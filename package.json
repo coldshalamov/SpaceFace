@@ -1,0 +1,35 @@
+{
+  "name": "spaceface",
+  "version": "0.1.0",
+  "description": "SpaceFace — a semi-3D top-down space trading/combat/mining game (Three.js).",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "node server.js",
+    "serve": "node server.js 8123",
+    "electron": "electron .",
+    "dist": "electron-builder",
+    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs"
+  },
+  "private": true,
+  "devDependencies": {
+    "electron": "^31.3.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.spaceface.game",
+    "productName": "SpaceFace",
+    "directories": { "output": "dist" },
+    "files": [
+      "index.html",
+      "styles/**",
+      "vendor/**",
+      "src/**",
+      "electron/**",
+      "package.json"
+    ],
+    "win": { "target": "nsis", "artifactName": "SpaceFace-Setup-${version}.${ext}" },
+    "mac": { "target": "dmg" },
+    "linux": { "target": "AppImage" }
+  }
+}

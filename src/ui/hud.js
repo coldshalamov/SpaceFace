@@ -1,0 +1,232 @@
+// Flight HUD (ARCHITECTURE §5.5, design spec "HUD LAYOUT") — always-mounted flight overlay.
+//
+// Layout:
+//   bottom-left   : hull / shield / energy / heat vertical bars + numerics
+//   bottom-center : throttle + speed + cargo (used/cap) + credits
+//   bottom-right  : radar (radar.js) with target panel (targetPanel.js) above it
+//   top-center    : alert queue (alerts.js renders into #alerts directly)
+//   top-right     : active objective line + off-screen objective arrow
+//
+// Update split (§5.5):
+//   - 60Hz cheap path (frame): bar widths via transform:scaleX, radar @20Hz, arrows via worldToScreen.
+//   - numerics via textContent @10Hz (every 6th tick).
+//   - lists/credits/cargo rebuilt only on data events (credits:changed, cargo:changed, ship:statsChanged).
+//
+// The HUD READS state for display and never mutates sim state (§5, §0.6).
+
+import { createRadar } from './radar.js';
+import { createTargetPanel } from './targetPanel.js';
+
+function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+export function createHud(ctx, alerts) {
+  const { state, helpers } = ctx;
+  const root = document.getElementById('hud');
+  root.innerHTML = '';
+
+  // ---- bottom-left: status bars ----
+  const bars = document.createElement('div');
+  bars.className = 'sf-bars';
+  const barDefs = [
+    ['hull', 'HULL', 'hull'],
+    ['shield', 'SHLD', 'shield'],
+    ['energy', 'ENGY', 'energy'],
+    ['heat', 'HEAT', 'heat'],
+  ];
+  const fillEls = {}, numEls = {};
+  for (const [key, label, mod] of barDefs) {
+    const row = document.createElement('div');
+    row.className = 'sf-barrow';
+    row.innerHTML = `
+      <span class="sf-barrow__label">${label}</span>
+      <div class="sf-bar sf-bar--${mod}"><div class="sf-bar__fill"></div></div>
+      <span class="sf-barrow__num mono">0</span>`;
+    bars.appendChild(row);
+    fillEls[key] = row.querySelector('.sf-bar__fill');
+    numEls[key] = row.querySelector('.sf-barrow__num');
+  }
+  root.appendChild(bars);
+
+  // ---- bottom-center: throttle / speed / cargo / credits ----
+  const center = document.createElement('div');
+  center.className = 'sf-cluster';
+  center.innerHTML = `
+    <div class="sf-stat"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span></div>
+    <div class="sf-stat"><span class="sf-stat__k">THR</span><span class="sf-stat__v mono" data-k="throttle">0%</span></div>
+    <div class="sf-stat sf-stat--wide"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
+    <div class="sf-stat sf-stat--wide"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>`;
+  root.appendChild(center);
+  const elSpeed = center.querySelector('[data-k=speed]');
+  const elThrottle = center.querySelector('[data-k=throttle]');
+  const elCargo = center.querySelector('[data-k=cargo]');
+  const elCredits = center.querySelector('[data-k=credits]');
+
+  // ---- bottom-right: target panel + radar ----
+  const rightDock = document.createElement('div');
+  rightDock.className = 'sf-rightdock';
+  const targetPanel = createTargetPanel(ctx);
+  const radar = createRadar(ctx);
+  rightDock.append(targetPanel.el, radar.el);
+  root.appendChild(rightDock);
+
+  // ---- top-right: objective tracker + arrow ----
+  const objWrap = document.createElement('div');
+  objWrap.className = 'sf-objectives';
+  root.appendChild(objWrap);
+  const arrow = document.createElement('div');
+  arrow.className = 'sf-objarrow';
+  arrow.style.display = 'none';
+  root.appendChild(arrow);
+
+  // ---------------------------------------------------------------------------
+  // Event-driven (rebuild) path — credits / cargo / objectives marked dirty.
+  // ---------------------------------------------------------------------------
+  let creditsDirty = true, cargoDirty = true, objDirty = true;
+  ctx.bus.on('credits:changed', () => { creditsDirty = true; });
+  ctx.bus.on('cargo:changed', () => { cargoDirty = true; });
+  ctx.bus.on('ship:statsChanged', () => { cargoDirty = true; });
+  ctx.bus.on('mission:updated', () => { objDirty = true; });
+  ctx.bus.on('mission:accepted', () => { objDirty = true; });
+  ctx.bus.on('mission:completed', () => { objDirty = true; });
+  ctx.bus.on('mission:abandoned', () => { objDirty = true; });
+
+  function refreshCredits() {
+    creditsDirty = false;
+    elCredits.textContent = Math.round(state.player.credits || 0).toLocaleString();
+  }
+  function refreshCargo() {
+    cargoDirty = false;
+    const c = state.player.cargo || {};
+    const used = Math.round(c.usedVolume || 0);
+    const cap = Math.round(c.capVolume || 40);
+    elCargo.textContent = `${used} / ${cap} u`;
+    elCargo.classList.toggle('sf-warn', cap > 0 && used >= cap);
+  }
+  function refreshObjectives() {
+    objDirty = false;
+    const active = (state.missions && state.missions.active) || [];
+    objWrap.innerHTML = '';
+    if (!active.length) return;
+    const frag = document.createDocumentFragment();
+    for (const m of active.slice(0, 4)) {
+      const line = document.createElement('div');
+      line.className = 'sf-obj';
+      const title = (m.title || m.name || m.type || 'Mission');
+      let prog = '';
+      const objs = m.objectives || [];
+      if (objs.length) {
+        const o = objs.find((x) => !x.done) || objs[0];
+        const cur = o.progress != null ? o.progress : (o.current != null ? o.current : 0);
+        const need = o.target != null ? o.target : (o.required != null ? o.required : (o.count != null ? o.count : 0));
+        prog = need ? ` ${cur}/${need}` : '';
+        line.dataset.label = o.label || o.text || '';
+      }
+      line.innerHTML = `<span class="sf-obj__dot"></span><span class="sf-obj__t">${title}${prog}</span>`;
+      frag.appendChild(line);
+    }
+    objWrap.appendChild(frag);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 60Hz cheap path
+  // ---------------------------------------------------------------------------
+  let tickN = 0;
+  let lowShieldActive = false, lowHullActive = false;
+
+  function frame(dt) {
+    tickN++;
+    const slow = (tickN % 6) === 0;   // 10Hz numerics
+    const radarTick = (tickN % 3) === 0; // 20Hz radar
+
+    const p = state.entities.get(state.playerId);
+
+    // --- bars (every frame, transform only) ---
+    if (p) {
+      const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
+      const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
+      const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
+      const heat = (p.data && p.data.heat != null) ? p.data.heat : (state.player.miningBeam ? state.player.miningBeam.heat : 0);
+      const heatMax = (p.data && p.data.heatMax) || 100;
+      const heatFrac = clamp01(heat / heatMax);
+
+      fillEls.hull.style.transform = `scaleX(${hullFrac})`;
+      fillEls.shield.style.transform = `scaleX(${shieldFrac})`;
+      fillEls.energy.style.transform = `scaleX(${capFrac})`;
+      fillEls.heat.style.transform = `scaleX(${heatFrac})`;
+
+      fillEls.hull.parentElement.classList.toggle('sf-bar--low', hullFrac < 0.25);
+      fillEls.shield.parentElement.classList.toggle('sf-bar--low', shieldFrac < 0.25 && shieldFrac > 0);
+
+      // contextual low alerts via alerts module
+      if (alerts) {
+        const lowShield = shieldFrac > 0 && shieldFrac < 0.2;
+        if (lowShield && !lowShieldActive) alerts.raise({ key: 'low-shield', sev: 'warn', text: 'SHIELDS LOW', ttl: Infinity });
+        if (!lowShield && lowShieldActive) alerts.clear('low-shield');
+        lowShieldActive = lowShield;
+        const lowHull = hullFrac > 0 && hullFrac < 0.25;
+        if (lowHull && !lowHullActive) alerts.raise({ key: 'low-hull', sev: 'danger', text: 'HULL CRITICAL', ttl: Infinity });
+        if (!lowHull && lowHullActive) alerts.clear('low-hull');
+        lowHullActive = lowHull;
+      }
+
+      if (slow) {
+        numEls.hull.textContent = Math.max(0, Math.round(p.hull)) + '';
+        numEls.shield.textContent = Math.max(0, Math.round(p.shield)) + '';
+        numEls.energy.textContent = Math.max(0, Math.round(p.cap)) + '';
+        numEls.heat.textContent = Math.round(heatFrac * 100) + '%';
+      }
+    }
+
+    // --- speed / throttle (numerics @10Hz) ---
+    if (slow && p) {
+      const sp = Math.hypot(p.vel.x, p.vel.z);
+      elSpeed.textContent = Math.round(sp) + '';
+      const maxSp = p.maxSpeed || 1;
+      elThrottle.textContent = Math.round(clamp01(sp / maxSp) * 100) + '%';
+    }
+
+    // --- credits / cargo / objectives (event-driven, applied lazily) ---
+    if (creditsDirty) refreshCredits();
+    if (cargoDirty) refreshCargo();
+    if (objDirty) refreshObjectives();
+
+    // --- target panel (every frame, cheap) ---
+    targetPanel.update();
+
+    // --- radar @20Hz ---
+    if (radarTick) radar.draw();
+
+    // --- off-screen objective arrow ---
+    updateObjectiveArrow(p);
+
+    // --- toasts/alerts expiry sweep ---
+    if (alerts && alerts.tick) alerts.tick();
+  }
+
+  function updateObjectiveArrow(p) {
+    const tracked = state.ui.trackedMissionId;
+    const active = (state.missions && state.missions.active) || [];
+    let wp = null;
+    const m = tracked ? active.find((x) => x.id === tracked) : active[0];
+    if (m) wp = m.waypoint || m.targetPos || (m.objectives && m.objectives[0] && m.objectives[0].pos) || null;
+    if (!wp || !p || !helpers.worldToScreen) { arrow.style.display = 'none'; return; }
+    const proj = helpers.worldToScreen({ x: wp.x, y: 0, z: wp.z });
+    if (proj.onScreen) { arrow.style.display = 'none'; return; }
+    // clamp to a screen-edge ellipse around center, pointing toward target
+    const w = window.innerWidth, h = window.innerHeight;
+    let dx = proj.x - w / 2, dy = proj.y - h / 2;
+    // worldToScreen returns mirrored coords for behind-camera points; normalize direction
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len; dy /= len;
+    const mx = w * 0.42, my = h * 0.42;
+    const ex = w / 2 + dx * mx, ey = h / 2 + dy * my;
+    arrow.style.display = 'block';
+    arrow.style.left = ex + 'px';
+    arrow.style.top = ey + 'px';
+    arrow.style.transform = `translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`;
+  }
+
+  function setVisible(v) { root.style.display = v ? 'block' : 'none'; }
+
+  return { frame, setVisible, refreshCredits, refreshCargo, refreshObjectives };
+}

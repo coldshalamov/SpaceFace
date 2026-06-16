@@ -1,0 +1,109 @@
+export const meta = {
+  name: 'spaceface-rest',
+  description: 'Implement all remaining systems: economy, world, factions, missions, automation, save, and the full UI (HUD + station/trade/shipyard/outfitting + star-map/tech/menus)',
+  phases: [{ title: 'Remaining systems', detail: '10 agents implement systems + UI against the shared contract' }],
+}
+
+const CONTRACT = `You implement part of the SpaceFace game (cwd: C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace). The engine spine + data + the fight/mine pillar already work and are VERIFIED: ships, cargo, weapons, combat, ai, mining, vfx, audio are implemented; the player flies, shoots, kills enemies, and mines ore into cargo. You add the trade/dock/jump/upgrade economy + the UI.
+
+READ FIRST (authoritative): ARCHITECTURE.md (the contract — §0 constants, §2.3 update order, §3 GameState schema, §4.1-4.4 system interface + MASTER EVENT TABLE, §4.5 save, §5 UI screen management). Your design spec under design/specs/. The data you consume in src/data/. And the relevant already-built code: src/core/* (helpers, eventBus, entity), src/systems/ships.js (getDerivedStats, makeShipEntitySpec, fitting), src/systems/cargo.js (addCargo/removeCargo), src/systems/combat.js (makeEnemySpawnSpec), src/systems/economy.js if present.
+
+NON-NEGOTIABLE:
+- A system module exports a NAMED const equal to its name: export const <name> = { name, init(ctx){}, update(dt,state){}, ... }. Keep the export name. Do NOT edit main.js, registry.js, loop.js, or another agent's file — only the file(s) listed for you.
+- init(ctx)={state,bus,three,registry,helpers}. Subscribe events in init; per-tick work in update(dt,state). Create entities ONLY via ctx.helpers.spawnEntity(spec); getEntity/queryRadius via helpers. Mark dead via entity.alive=false.
+- Events use ':' names EXACTLY per §4.4 with documented payloads. SINGLE-WRITER (§0.6): economy is the ONLY writer of state.player.credits (it handles economy:grantCredits/economy:chargeCredits from any system and emits credits:changed); factions is the ONLY writer of rep (handles faction:repDelta, emits faction:repChanged); cargo owns cargo; ships owns derived stats.
+- DETERMINISM: sim logic uses state.rng()/seeded streams, never Math.random() (UI/cosmetic may).
+- XZ plane; health 4-layer (hull/armorHp/shield/cap), hp aliases hull. Currency=credits, security 0..1, rep −1000..+1000/9 tiers, commodity ids cmdty_* (33 in src/data/commodities.js).
+
+UI RULES (§5) — for UI agents:
+- ALL UI is DOM in #ui-root layers (#hud, #screens, #toasts, #alerts). UI NEVER mutates sim state — it READS state for display and EMITS intent events (ui:buy/ui:sell/ui:buyShip/ui:fitModule/ui:unfitModule/ui:acceptMission/ui:setCourse/ui:unlockTech/world:requestJump/dock:undocked/etc per §4.4); systems handle them.
+- The 'ui' system (src/ui/uiRoot.js) exposes init(ctx) (mount #ui-root, build HUD + screen manager, register screens) and frame(dt,state) (called every render frame by the loop — cheap HUD refresh: bar widths via transform, numerics at ~10Hz). Worldspace→screen via ctx.helpers.worldToScreen(vec3).
+- SCREEN MANAGER (src/ui/screenManager.js): screenStack:string[]; pushScreen/popScreen/replaceScreen/closeAll; only top screen visible; toggles body.ui-modal-open (CSS hides #hud when a modal is open or docked).
+- SCREEN MODULE INTERFACE — every modal screen exports a const with: { id, mount(rootEl, ctx), onShow(ctx), onHide(), refresh(ctx) }. uiRoot imports and registers them all. Exact files + export names are listed per agent — MATCH THEM EXACTLY so uiRoot's imports resolve.
+- DOCK FLOW: physics emits dock:range{stationId,shipId,inRange} when the player is near a station. The ui-core HUD shows a "Press Enter to dock" prompt while inRange; on Enter, ui sets ui.docked=true, emits dock:docked{stationId}, and pushScreen('station'). The Undock button emits dock:undocked and popScreen(). economy/world/missions/save listen to dock:docked.
+- Use the sci-fi theme variables already in styles/ui.css (--accent #39d0ff, --hull, --shield, --energy, --panel, etc.). You MAY append CSS rules by injecting a <style> element from your JS module (id-scoped) — do not rewrite styles/ui.css.
+
+VERIFY before finishing: run \`node --check\` on each .js file you wrote. Data/system files must NOT import 'three' (UI doesn't need three).
+RETURN a short note: files written, events emitted+handled, state read/written, anything simplified.`
+
+const tasks = [
+  { key: 'economy', file: 'src/systems/economy.js', spec: '03-economy-trading.md', prompt:
+    `Implement the \`economy\` system (src/systems/economy.js) + export quote(stationId,cmdtyId,side,qty) and execute(stationId,cmdtyId,side,qty). Consume src/data/commodities.js, src/data/sectors.js (STATION_TYPES produce/consume).
+    - state.economy.markets[stationId][cmdtyId] = { stock, equilibrium, baseEq, role:'produce'|'consume'|'none', lastMid, lastBuy, lastSell, eventMods:[] } (§3.6). ensureMarket(stationId, stationTypeId) lazily builds a market from the station type's produce/consume profile + commodity basePrice. Price-from-stock: price rises as stock falls below equilibrium and vice-versa (e.g. mid = basePrice * (eq/stock)^elasticity clamped); buy = mid*(1+spread), sell = mid*(1-spread). Large trades move stock and price (price impact).
+    - Drift stock toward equilibrium on the 5s economy tick (state.economy.econClock); occasionally roll economic events (shortage/boom) per §3.6. Emit economy:tick, economy:tradeCompleted, economy:eventStarted/Ended.
+    - SOLE credits writer: handle economy:grantCredits{amount,reason} and economy:chargeCredits{amount,reason} (clamp ≥0), update state.player.credits, emit credits:changed{delta,reason,total}. Handle ui:buy/ui:sell{commodityId,qty}: validate cargo volume (via cargo addCargo/removeCargo) + credits, execute, emit economy:tradeCompleted + credits:changed + cargo via cargo helpers. Populate markets on dock:docked and sector:enter for present stations. Implement refuel/repair/ammo services via ui:service.
+    - Contraband: scanning + fines (emit contraband:scanned, faction:repDelta). Keep balanced per design/specs/03 (a profitable A→B route should net a sensible margin).`,
+  },
+  { key: 'world', file: 'src/systems/world.js', spec: '05-world-sectors-navigation.md', prompt:
+    `Implement the \`world\` system (src/systems/world.js) + export an enterSector(sectorId,{fromJump}={}) METHOD on the system (main.js will call registry.get('world').enterSector(startSectorId) at boot — do NOT auto-spawn on game:started). Consume src/data/sectors.js (SECTORS graph, STATION_TYPES, dangerTier/wealthIndex/dangerIndex), src/data/mining.js (ASTEROIDS/FIELDS), and import { makeEnemySpawnSpec } from './combat.js'.
+    - enterSector: despawn previous sector-scoped entities (stations/asteroids/enemies/pois — NOT the player), then spawn the sector's contents from data: station entities (type:'station', data:{stationId, stationTypeId, dockRadius~72, services, factionId}), asteroid fields using REAL ASTEROIDS type ids (so mining oreTables resolve — set data.typeId to a real ASTEROIDS id and data.oreHP from its hp), enemy spawns sized by sector.enemyDensity/enemyLevel via makeEnemySpawnSpec, and POIs. Set state.world.currentSectorId, state.world.activeSector, state.bounds (sector radius), emit sector:enter{sectorId,sector,entryPoint,firstVisit}. Place the player at an entry point.
+    - JUMP state machine (§3.8): handle world:requestJump{targetSectorId,via} (must be a neighbor in the SECTORS graph) → CHARGING (chargeNeeded secs, consume fuel) → emit jump:start → sector:exit (despawn) → enterSector(target,{fromJump:true}) → jump:arrive (chance of interdiction → spawn ambush via makeEnemySpawnSpec) → COOLDOWN. Block jump while combat lock (combat:lockChanged). Fuel: state.fuel{current,max}; emit fuel:changed/fuel:empty.
+    - Route helper: world:requestRoute → Dijkstra over the graph → state.nav.route. Discovery/fog: mark sectors discovered on enter, emit sector:discovered. Scanning: world:requestSectorScan reveals POIs.
+    - Keep it functional first-pass; the home sector (sector_helios_prime) must populate with at least one dockable station + an asteroid field so dock+trade+mine work, and at least one neighbor must be jumpable.`,
+  },
+  { key: 'factions', file: 'src/systems/factions.js', spec: '06-factions-reputation.md', prompt:
+    `Implement the \`factions\` system (src/systems/factions.js) + export getStanding(factionId) and priceMod(factionId). Consume src/data/factions.js (FACTION_META, relations), src/data/newGameDefaults.js (NEW_GAME.startReps).
+    - state.factions[id] = { rep:int(-1000..1000), tier:string, aggro:bool, ... } (§3.10). newGame-ish init from NEW_GAME.startReps when game:started fires (if not already set). SOLE rep writer: handle faction:repDelta{factionId,delta,reason} via applyRep (clamp, spillover to allies/enemies via relations matrix), emit faction:repChanged{factionId,delta,reason,newRep,newTier,tierChanged}. 9 named tiers across -1000..1000.
+    - Effects: priceMod(factionId) returns a buy/sell discount/surcharge by standing (economy reads it). aggro: when rep below a hostility threshold, set faction aggro → emit faction:aggro (ai/spawn react: that faction's ships attack the player). Award rep on relevant events: handle entity:killed (killing a faction's ship lowers rep with it, may raise rep with enemies), economy:tradeCompleted, mission:completed.
+    - Conflicts (§3.10 state.conflicts) + day:tick decay toward 0 — keep simple but present. Export helpers for economy/ai/missions to read standing.`,
+  },
+  { key: 'missions', file: 'src/systems/missions.js', spec: '07-missions-contracts-story-spine.md', prompt:
+    `Implement the \`missions\` system (src/systems/missions.js). Consume src/data/missions.js (MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING), commodities, sectors.
+    - Board generation (§3.11): state.missions.boards[stationId] = {refreshEpoch, slots:[MissionOffer]}. Generate offers deterministically (seed from hash32(seed,stationId,refreshEpoch)) per OFFER_MIX when a board is first viewed / dock:docked; refresh after MISSION_TUNING interval. Offer types: delivery, bounty, mining quota, etc. with reward formulas (scaling distance/risk/faction) per the data.
+    - Accept: handle ui:acceptMission{missionId} → move offer to state.missions.active, emit mission:accepted (economy may take collateral). Track objectives by listening to events (economy:tradeCompleted for delivery, entity:killed for bounty, mining:yield for quota, dock:docked at destination). On completion emit mission:completed{missionId,type,factionId,repMult} → economy:grantCredits + faction:repDelta. mission:failed/expired on TTL or fail. mission:updated for the HUD/board.
+    - Story spine: an 8-beat FSM (STORY_BEATS) that advances on triggers and gives direction; emit story:beatAdvanced. update(dt): decrement TTLs, expire, watch story triggers. Award researchPoints on some completions (research:pointsChanged).`,
+  },
+  { key: 'automation', file: 'src/systems/automation.js', spec: '08-automation-passive-income-anti-idle-layer.md', prompt:
+    `Implement the \`automation\` system (src/systems/automation.js). Consume src/data/automation.js (DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE). This is the anti-idle passive-income layer.
+    - state.automation (§3.9): drones[], traders[], outposts[], fleet[]. Mining DRONES: deployable near asteroid fields, auto-mine to a shared buffer, return; handle a deploy intent (ui:fleetOrder or a deploy event). Hired TRADERS assigned to a route generate passive credits per cycle (emit economy:grantCredits) with upkeep drain (economy:chargeCredits) and a loss-to-pirate risk roll. OUTPOSTS produce income/goods over time.
+    - Balance per AUTO_BALANCE: passive income is CAPPED relative to active earnings (passiveCapFrac), has upkeep, and risk — it supplements, never replaces active play. Offline catch-up bounded by offlineCapSec. update(dt): accrue on cadences; emit automation:incomeCredited, automation:assetLost, automation:outpostRaided.
+    - Handle ui:fleetOrder{shipId,order,targetRef}. Expose data the AutomationPanel UI reads. First-pass functional: buying a drone/trader and seeing passive credits accrue with upkeep is enough.`,
+  },
+  { key: 'save', file: 'src/save/saveSystem.js', spec: '11-procedural-audio-save-load-meta.md', prompt:
+    `Implement the \`save\` system (src/save/saveSystem.js) + src/save/checksum.js (export fnv1a hex) + src/save/migrations.js (export MIGRATIONS=[], CURRENT_VERSION re-export). Consume src/data/saveVersion.js.
+    - Do NOT implement newGame() (main.js owns bootstrap; if you add newGame it overrides boot — don't). Implement serialize()/save/load/autosave only.
+    - Envelope per §4.5: { fmt:'spaceface-save', version, savedAt, playtimeS, slot, checksum, data:{ [saveKey]:state } } with the save-key→system map (§4.5). Serialize: meta, settings, player (credits/cargo/ownedShips/fittings/research/stats), economy.markets, factions+conflicts, world (discovery/currentSectorId/jump/fuel), entities (player + persistent, minus mesh/THREE — store pos as {x,z}), missions+story, automation. checksum = fnv1a of JSON.stringify(data).
+    - localStorage keys (e.g. sf.save.<slot> + sf.save.index) + export/import JSON. Load: validate fmt+version → migrate → clear transient (despawn entities/dispose) → restore in deps-first order → re-emit entity:spawned so render rebuilds meshes → rebuild state.rng from meta.seed → save:loaded. Handle game:save/game:load (F5/F9 via ui), dock:docked/sector:enter/mission:completed autosave (debounced ≤1/10s; never mid-jump or while player:death pending). Keep robust: a missing/old save must not crash boot.`,
+  },
+  { key: 'ui-core', file: 'src/ui/uiRoot.js (+ screenManager.js, input.js, hud.js, radar.js, targetPanel.js, toasts.js, alerts.js)', spec: '09-ui-ux-hud-menus-screen-management-dom-overlay.md', prompt:
+    `Implement the CORE UI. Files: src/ui/uiRoot.js (the \`ui\` system), src/ui/screenManager.js, src/ui/input.js (UI key router), src/ui/hud.js, src/ui/radar.js, src/ui/targetPanel.js, src/ui/toasts.js, src/ui/alerts.js.
+    - uiRoot exports \`export const ui = { name:'ui', init(ctx), frame(dt,state) }\`. init: mount HUD into #hud, build the ScreenManager, instantiate toasts/alerts, wire the UI key router, and REGISTER all modal screens with the screen manager by importing them: stationHub (from ./screens/stationHub.js export const stationHub), starmapScreen (./screens/starmap.js), techTreeScreen (./screens/techTree.js), automationScreen (./screens/automationPanel.js), mainMenuScreen (./screens/mainMenu.js), newGameScreen (./screens/newGame.js), pauseScreen (./screens/pause.js), settingsScreen (./screens/settings.js), saveLoadScreen (./screens/saveLoad.js), helpScreen (./screens/help.js). Each screen has {id,mount(rootEl,ctx),onShow(ctx),onHide(),refresh(ctx)}. Wrap each import-and-register so a screen that throws on register doesn't break the rest (register inside try/catch).
+    - HUD (src/ui/hud.js): hull/shield/energy bars (transform:scaleX, cheap), throttle/speed, credits + cargo (used/cap), current-target panel (via targetPanel.js: name/faction/hull/shield/distance — target = state.player.targetId), a radar/minimap (radar.js: canvas, blips colored by team/faction, ~20Hz), active-objective line, and contextual alerts (alerts.js: low-shield, incoming, "Press Enter to dock" when dock:range inRange). frame(dt,state) does the cheap per-frame refresh; rebuild lists only on data events (credits:changed, cargo:changed, ship:statsChanged).
+    - screenManager (src/ui/screenManager.js): screenStack, pushScreen/popScreen/replaceScreen/closeAll, build-once-cache screens in #screens, toggle body.ui-modal-open.
+    - ui/input.js: a single document keydown router for UI keys (ESC=back/pause, M=star-map, T=tech, J=missions journal, Enter=dock when in range, F5/F9 save/load, mouse-wheel zoom passthrough). Movement/fire keys belong to the flight input system — do NOT handle those.
+    - DOCK: on dock:range{inRange:true} show the dock prompt; on Enter set state.ui.docked=true, emit dock:docked{stationId}, pushScreen('station'). Show the Main Menu at boot only if state.mode==='menu' (it's 'flight' now, so just run the HUD).
+    Append HUD CSS via an injected <style> element. Make the HUD readable and game-like.`,
+  },
+  { key: 'ui-station', file: 'src/ui/screens/{stationHub,market,shipyard,outfitting,services,factions,bar}.js', spec: '09-ui-ux-hud-menus-screen-management-dom-overlay.md', prompt:
+    `Implement the STATION hub + tabs. Files under src/ui/screens/: stationHub.js (export const stationHub, id 'station'), market.js, shipyard.js, outfitting.js, services.js, factions.js, bar.js. stationHub imports its tab panels (they can export factory functions you define) — keep them in this set so they're internally consistent.
+    - stationHub.mount builds a 7-tab left rail (Market / Shipyard / Outfitting / Missions / Services / Factions / Bar) + a right content pane; switching tabs swaps the panel (state.ui.activeStationTab). An Undock button emits dock:undocked. onShow(ctx) reads which station (state.world.activeSector / the docked stationId) and refreshes panels.
+    - Market panel: list commodities with the station's buy/sell prices (read state.economy.markets[stationId]; call the economy system's quote() via ctx.registry.get('economy').quote(...)), a qty stepper, and Buy/Sell buttons that EMIT ui:buy/ui:sell{commodityId,qty}. Show player cargo + credits. Refresh on economy:tradeCompleted/economy:tick/cargo:changed.
+    - Shipyard: list buyable hulls (src/data/ships.js via ctx.registry.get('ships')), show stats, Buy emits ui:buyShip{defId}; sell current ship. Outfitting: show the active ship's slot grid + installed modules + inventory; fit/unfit emits ui:fitModule/ui:unfitModule with live stat-delta preview (read ships.getDerivedStats). Services: refuel/repair/buy-ammo/insurance → emit ui:service. Missions tab: render the station's mission board (state.missions.boards[stationId]) with Accept → ui:acceptMission. Factions tab: rep bars (-1000..1000, 9 tiers) from state.factions. Bar: a couple of contacts/dialog stubs.
+    - Read state + emit intents only; never mutate sim state. Build with DocumentFragment; one delegated listener per list. Append CSS via injected <style>.`,
+  },
+  { key: 'ui-nav', file: 'src/ui/screens/{starmap,techTree,automationPanel}.js', spec: '09-ui-ux-hud-menus-screen-management-dom-overlay.md', prompt:
+    `Implement the navigation/progression screens. Files under src/ui/screens/: starmap.js (export const starmapScreen, id 'starmap'), techTree.js (export const techTreeScreen, id 'techTree'), automationPanel.js (export const automationScreen, id 'automation'). Each = {id,mount(rootEl,ctx),onShow(ctx),onHide(),refresh(ctx)} drawing to a <canvas> where graph-like.
+    - Star map: draw the SECTORS graph (src/data/sectors.js, positions from sector.position) with edges, current sector highlighted, security/faction coloring, fog for undiscovered (state.world.discovery). Click a reachable neighbor → "Set Course"/jump → emit world:requestJump{targetSectorId,via:'gate'} (or world:requestRoute for multi-hop). Show fuel + jump range.
+    - Tech tree: draw the TECH_NODES DAG (src/data/tech.js) with prereq lines, researched (state.player.researchedNodes) vs available vs locked, cost (credits+RP). Unlock button → ui:unlockTech{nodeId}.
+    - Automation panel: tabs for Drones/Traders/Outposts/Fleet reading state.automation; buy/assign buttons emit ui:fleetOrder / purchase intents (the automation system handles them); show passive income rate + cap bar.
+    - Read state + emit intents only. Append CSS via injected <style>.`,
+  },
+  { key: 'ui-menus', file: 'src/ui/screens/{mainMenu,newGame,pause,settings,saveLoad,help}.js', spec: '09-ui-ux-hud-menus-screen-management-dom-overlay.md', prompt:
+    `Implement the meta/menu screens. Files under src/ui/screens/: mainMenu.js (export const mainMenuScreen, id 'mainMenu'), newGame.js (newGameScreen, id 'newGame'), pause.js (pauseScreen, id 'pause'), settings.js (settingsScreen, id 'settings'), saveLoad.js (saveLoadScreen, id 'saveLoad'), help.js (helpScreen, id 'help'). Each = {id,mount(rootEl,ctx),onShow(ctx),onHide(),refresh(ctx)}.
+    - Pause (ESC in flight): Resume / Settings / Save / Load / Help / Main Menu buttons; emit sim:pause on show (set state.timeScale=0) and sim:resume on resume (timeScale=1).
+    - Settings: audio (master/sfx/music sliders → settings:changed), video (bloom, render scale, fov), gameplay (difficulty, autosave), controls cheat-sheet. Persist via settings:changed (save listens).
+    - Save/Load: list slots (from save system's index), Save/Load/Export/Import buttons emitting game:save/game:load. Help: keybind cheat-sheet (WASD move, mouse aim, Shift boost, LMB/Space fire, RMB mine, ESC pause, M map, T tech, J missions, Enter dock, F5/F9 save/load).
+    - Main Menu / New Game: title screen + New/Continue/Settings — these mainly matter when state.mode==='menu'; for now keep them functional but the game boots straight into flight.
+    - Read state + emit intents only; append CSS via injected <style>.`,
+  },
+]
+
+phase('Remaining systems')
+const results = await parallel(tasks.map((t) => () =>
+  agent(
+    `${CONTRACT}\n\n=== YOUR ASSIGNMENT: ${t.key} ===\nDesign spec: design/specs/${t.spec}\nFile(s) to write: ${t.file}\n\n${t.prompt}`,
+    { label: `impl:${t.key}`, phase: 'Remaining systems', agentType: 'general-purpose' }
+  ).then((note) => ({ key: t.key, note })).catch((e) => ({ key: t.key, error: String(e) }))
+))
+
+return { results: results.filter(Boolean) }

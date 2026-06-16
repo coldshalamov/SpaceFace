@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>SpaceFace</title>
+  <link rel="stylesheet" href="./styles/ui.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js",
+      "three/addons/": "./vendor/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="gl-canvas"></canvas>
+  <div id="ui-root">
+    <div id="hud"></div>
+    <div id="modal-backdrop"></div>
+    <div id="screens"></div>
+    <div id="toasts"></div>
+    <div id="alerts"></div>
+    <div id="vignette"></div>
+    <div id="boot-overlay"><div class="boot-inner">SPACEFACE<span class="boot-sub">initializing systems…</span></div></div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
