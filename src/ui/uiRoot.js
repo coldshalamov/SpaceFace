@@ -87,38 +87,49 @@ export const ui = {
 
     // === Cinematic intro splash using generated assets (C-INTRO still + menu bg + pilot + reticle) ===
     // Professional first impression + teaches controls immediately. Click/any key to proceed to menu.
-    const cinematic = document.createElement('div');
-    cinematic.id = 'cinematic-splash';
-    cinematic.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#05070d;overflow:hidden;';
-    cinematic.innerHTML = `
-      <div style="position:absolute;inset:0;background-image:url('assets/cinematics/menu_background.jpg');background-size:cover;opacity:0.7;filter:contrast(1.1);"></div>
-      <div style="position:relative;text-align:center;color:#d3e6ff;font-family:var(--mono,monospace);z-index:1;text-shadow:0 0 30px #39d0ff;">
-        <div style="font-size:13px;letter-spacing:6px;opacity:0.7;margin-bottom:8px;">A HARD SCI-FI SPACE ODYSSEY</div>
-        <div style="font-size:72px;line-height:1;letter-spacing:8px;margin-bottom:12px;color:#39d0ff;">SPACEFACE</div>
-        <div style="margin:12px auto 24px;max-width:620px;opacity:0.85;font-size:15px;line-height:1.35;">
-          Mine the glowing veins. Outrun the pirates. Build your empire.<br>
-          Your face is your legend.
+    // Only shows on first load per session (pro polish — doesn't annoy returning players).
+    const CINEMATIC_SEEN_KEY = 'sf.cinematicSeen';
+    const shouldShowCinematic = !sessionStorage.getItem(CINEMATIC_SEEN_KEY);
+    if (shouldShowCinematic) {
+      const cinematic = document.createElement('div');
+      cinematic.id = 'cinematic-splash';
+      cinematic.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#05070d;overflow:hidden;';
+      cinematic.innerHTML = `
+        <div style="position:absolute;inset:0;background-image:url('assets/cinematics/menu_background.jpg');background-size:cover;opacity:0.7;filter:contrast(1.1);"></div>
+        <div style="position:relative;text-align:center;color:#d3e6ff;font-family:var(--mono,monospace);z-index:1;text-shadow:0 0 30px #39d0ff;">
+          <div style="font-size:13px;letter-spacing:6px;opacity:0.7;margin-bottom:8px;">A HARD SCI-FI SPACE ODYSSEY</div>
+          <div style="font-size:72px;line-height:1;letter-spacing:8px;margin-bottom:12px;color:#39d0ff;">SPACEFACE</div>
+          <div style="margin:12px auto 24px;max-width:620px;opacity:0.85;font-size:15px;line-height:1.35;">
+            Mine the glowing veins. Outrun the pirates. Build your empire.<br>
+            Your face is your legend.
+          </div>
+          <div style="font-size:12px;opacity:0.6;margin-bottom:18px;">↑↓←→ / WASD • MOUSE AIM • SPACE FIRE • SHIFT BOOST</div>
+          <div style="font-size:11px;letter-spacing:3px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
         </div>
-        <div style="font-size:12px;opacity:0.6;margin-bottom:18px;">↑↓←→ / WASD • MOUSE AIM • SPACE FIRE • SHIFT BOOST</div>
-        <div style="font-size:11px;letter-spacing:3px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
-      </div>
-      <div id="cinematic-pilot" style="position:absolute;bottom:24px;right:24px;width:92px;height:92px;border:3px solid #39d0ff;border-radius:50%;overflow:hidden;box-shadow:0 0 30px #39d0ff;opacity:0.95;">
-        <img src="assets/pilots/pf_spaceface_portraits.jpg" style="width:100%;height:100%;object-fit:cover;">
-      </div>
-    `;
-    document.getElementById('ui-root').appendChild(cinematic);
+        <div id="cinematic-pilot" style="position:absolute;bottom:24px;right:24px;width:92px;height:92px;border:3px solid #39d0ff;border-radius:50%;overflow:hidden;box-shadow:0 0 30px #39d0ff;opacity:0.95;">
+          <img src="assets/pilots/pf_spaceface_portraits.jpg" style="width:100%;height:100%;object-fit:cover;">
+        </div>
+      `;
+      document.getElementById('ui-root').appendChild(cinematic);
 
-    const dismissCinematic = () => {
-      cinematic.style.transition = 'opacity .45s ease';
-      cinematic.style.opacity = '0';
-      setTimeout(() => cinematic.parentNode && cinematic.parentNode.removeChild(cinematic), 500);
-      // ensure menu shows
-      if (this.screenManager && !this.screenManager.top()) this.screenManager.pushScreen('mainMenu');
-    };
-    cinematic.addEventListener('click', dismissCinematic);
-    addEventListener('keydown', function once() { removeEventListener('keydown', once); dismissCinematic(); }, { once: true });
-    // Auto-dismiss safety after long time
-    setTimeout(() => { if (cinematic.parentNode) dismissCinematic(); }, 18000);
+      const dismissCinematic = () => {
+        cinematic.style.transition = 'opacity .45s ease';
+        cinematic.style.opacity = '0';
+        setTimeout(() => cinematic.parentNode && cinematic.parentNode.removeChild(cinematic), 500);
+        sessionStorage.setItem(CINEMATIC_SEEN_KEY, '1');
+        // ensure menu shows
+        if (this.screenManager && !this.screenManager.top()) this.screenManager.pushScreen('mainMenu');
+      };
+      cinematic.addEventListener('click', dismissCinematic);
+      addEventListener('keydown', function once() { removeEventListener('keydown', once); dismissCinematic(); }, { once: true });
+      // Auto-dismiss safety after long time
+      setTimeout(() => { if (cinematic.parentNode) dismissCinematic(); }, 18000);
+    } else {
+      // If already seen this session, ensure we land on the menu
+      setTimeout(() => {
+        if (this.screenManager && !this.screenManager.top()) this.screenManager.pushScreen('mainMenu');
+      }, 80);
+    }
 
     // Expose a simple professional video player for the generated C-INTRO clips (cool factor, uses the 6s videos we created).
     this.playCinematic = (videoPath = 'assets/cinematics/C-INTRO-01_6s.mp4', title = 'Intro') => {

@@ -927,6 +927,29 @@ This Superior Execution section is now part of the contract. All future generati
 In this iteration we:
 - Pruned low-value or redundant items in the previous step (~1/5 reduction) and kept the plan disciplined.
 - Added three focused, high-leverage new game features (Pilot Identity/Personal Narrative, Anomaly Discovery System, and Seasonal/Dynamic Events) that are made practical and exciting specifically because we can generate consistent characters, unique signature visuals, and fast themed batches at scale.
+
+## Post-"Game Complete" Professional Refactor (June 2026)
+User reported the game had reached a "complete" but janky state: bad graphics (procedural only), no arrow key movement, confusing/unfun DOM UI, overall not professional.
+
+**Actions taken (medium-size refactor + 3 review iterations + git history):**
+- Git: `git init` + initial commit of the janky state (all 192 files + generated assets from plan). Then main feat commit + 3 dedicated review/iteration commits with clear messages.
+- Controls fixed (src/systems/input.js): full Arrow key support (↑↓←→ for thrust/strafe) alongside WASD. Hints added to teach immediately.
+- **All plan assets integrated + more generated for the "now that more finished" opportunity**:
+  - Visuals: src/render/visualFactory.js now loads real textures (getExternalTexture cache + THREE.TextureLoader). Asteroids use ore_*_hero.jpg as map + emissive (Luminite/Xenium glow pop using B-009 + C-INTRO language). Fighter uses the generated fighter_albedo_emissive.jpg on hull for detailed lived-in look.
+  - VFX: src/render/vfx.js loads and uses fx_thruster_main.jpg and fx_explosion_small_elements.jpg for high-detail sprites on thrust/explosions (huge upgrade from dots/rings).
+  - renderer.js: early preload of 10+ key assets for zero pop-in.
+  - Additional assets generated on the fly (chained to bible): reticle.jpg, fighter_albedo_emissive.jpg, icons_atlas.jpg, menu_background.jpg. All copied to assets/ subdirs and used.
+  - Cinematics: full 4-shot intro (stills + 6s videos) now playable via "Watch Intro Cinematic" button in mainMenu + dedicated splash on boot using C-INTRO stills + pilot + menu bg.
+- **UI complete professional overhaul** (styles/ui.css + src/ui/uiRoot.js + mainMenu.js):
+  - CSS: full modern refresh (cinematic backgrounds from assets, enhanced panels with glows, pro buttons, dedicated #pilot-portrait container using PF-001, center #aim-reticle using generated asset, #control-hints bar that teaches arrows+mouse+keys, better toasts/vignette, icon atlas refs).
+  - JS: live pilot portrait in HUD, center reticle, dynamic flight hints, full cinematic splash intro (teaches controls, uses multiple generated assets), exposed playCinematic() + video overlay for the mp4s, "Watch Intro" button in mainMenu that actually plays one of our 6s C-INTRO videos.
+- Result: janky prototype transformed into a professional-feeling game. Beautiful consistent visuals (glowing detailed ores you actually mine, textured fighter you fly, pro FX, branded "SpaceFace" pilot, cinematic entry and playable intro clips). Clear/fun UI and controls. All "now" assets from the plan (and the extra integration ones) are live in the experience.
+- 3 review iterations applied post-main (each with commit): cinematic splash + preload + video button + logic hardening + plan documentation.
+- Updated this plan with implementation status for the used IDs (B-001/002/003/005/006/009/013, S-002, A-002/005/008/010, relevant FX/PF/C-INTRO, plus new generated). Remaining TODOs (more ships/ores, full atlases, new features) are perfect for future "when finished" passes.
+
+The game now delivers on the "visually great" vision from the plan. Future work can continue generating the rest of the table and integrating deeper (e.g. more ore variants, full sprite atlases from the FX boards, pilot decals on ship, station textures, etc.).
+
+**End of implementation notes.**
 - Strengthened descriptions on remaining items with explicit camera, readability, and optimization language.
 - Inserted a clean "MVP vs Full Scope Guidance" to prevent scope creep.
 - Enhanced the Superior Execution section to cover the new features and added a dedicated efficiency framework.
