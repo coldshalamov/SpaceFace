@@ -104,6 +104,15 @@ export const mainMenuScreen = {
     const bSettings = button('Settings');
     col.appendChild(bNew); col.appendChild(bContinue); col.appendChild(bLoad); col.appendChild(bSettings);
 
+    // "Watch Intro Cinematic" — directly plays one of our generated 6s C-INTRO videos (pro touch, uses the cinematic assets we created for the plan).
+    const bCine = button('Watch Intro Cinematic');
+    col.appendChild(bCine);
+    bCine.addEventListener('click', () => {
+      const ui = ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+      if (ui && ui.playCinematic) ui.playCinematic('assets/cinematics/C-INTRO-02_6s.mp4', 'Fighter Close-up — 60° Chase');
+      else if (window.playSpaceFaceCinematic) window.playSpaceFaceCinematic('assets/cinematics/C-INTRO-02_6s.mp4', 'Fighter Close-up — 60° Chase');
+    });
+
     bNew.addEventListener('click', () => nav(ctx, 'pushScreen', 'newGame'));
     bContinue.addEventListener('click', () => {
       // Continue = load the most recent save. Defer slot choice to the save system; emit a

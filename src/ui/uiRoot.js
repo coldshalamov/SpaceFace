@@ -120,6 +120,23 @@ export const ui = {
     // Auto-dismiss safety after long time
     setTimeout(() => { if (cinematic.parentNode) dismissCinematic(); }, 18000);
 
+    // Expose a simple professional video player for the generated C-INTRO clips (cool factor, uses the 6s videos we created).
+    this.playCinematic = (videoPath = 'assets/cinematics/C-INTRO-01_6s.mp4', title = 'Intro') => {
+      const ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;z-index:5000;background:rgba(3,5,10,0.92);display:flex;align-items:center;justify-content:center;';
+      ov.innerHTML = `
+        <div style="max-width:92vw;max-height:92vh;position:relative;">
+          <video src="${videoPath}" autoplay controls playsinline style="max-width:100%;max-height:82vh;border:3px solid #39d0ff;box-shadow:0 0 40px #39d0ff;"></video>
+          <div style="text-align:center;margin-top:8px;color:#d3e6ff;font-family:var(--mono);letter-spacing:2px;opacity:0.7;">${title} — click backdrop to close</div>
+        </div>
+      `;
+      ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+      const vid = ov.querySelector('video');
+      if (vid) vid.addEventListener('ended', () => setTimeout(() => ov.remove(), 400));
+      document.getElementById('ui-root').appendChild(ov);
+    };
+    window.playSpaceFaceCinematic = this.playCinematic; // handy for console or future buttons
+
     // UI key router (UI-owned keys only; flight keys belong to the flight input system)
     this.input = createUiInput(ctx, this.screenManager);
 
