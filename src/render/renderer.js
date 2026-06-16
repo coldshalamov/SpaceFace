@@ -35,6 +35,17 @@ export const render = {
     const starfield = createStarfield(scene);
     const vf = createVisualFactory();
 
+    // Preload key generated assets early (from the visual plan + new integration assets) so first asteroids/ships/FX/pilot look instant and beautiful. No white flash.
+    const PRELOAD_ASSETS = [
+      'assets/ores/ore_luminite_hero.jpg', 'assets/ores/ore_xenium_hero.jpg',
+      'assets/ores/ore_iron_hero.jpg', 'assets/ores/ore_ice_hero.jpg',
+      'assets/ships/fighter_albedo_emissive.jpg',
+      'assets/fx/fx_thruster_main.jpg', 'assets/fx/fx_explosion_small_elements.jpg',
+      'assets/pilots/pf_spaceface_portraits.jpg',
+      'assets/ui/reticle.jpg', 'assets/cinematics/menu_background.jpg'
+    ];
+    PRELOAD_ASSETS.forEach(p => { const i = new Image(); i.src = p; });
+
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.starfield = starfield; this.vf = vf;
     try { this.bloom = createBloom(renderer, window.innerWidth, window.innerHeight); }
     catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
