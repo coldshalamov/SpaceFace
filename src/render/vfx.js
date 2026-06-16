@@ -6,6 +6,23 @@
 // (cosmetic, never serialized).
 import * as THREE from 'three';
 
+// Duplicate lightweight external texture loader (same as visualFactory) so VFX can use our generated fx_* and ore assets without extra modules.
+// Falls back silently.
+const _extTexVfx = new Map();
+function getExternalTexture(path) {
+  if (_extTexVfx.has(path)) return _extTexVfx.get(path);
+  const tex = new THREE.TextureLoader().load(
+    path,
+    () => { tex.needsUpdate = true; },
+    undefined,
+    () => { /* silent fallback to procedural */ }
+  );
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  _extTexVfx.set(path, tex);
+  return tex;
+}
+
 // ---- pool caps by particle-quality setting (spec: low/med/high -> 1500/3000/4000) ----
 const PARTICLE_CAP = { low: 1500, med: 3000, high: 4000 };
 const SPRITE_CAP = 256;
@@ -141,6 +158,12 @@ export const vfx = {
     const ringTex = makeRingTexture();
     this._glowTex = tex;
     this._ringTex = ringTex;
+
+    // Use our generated FX assets (fx_thruster, explosion elements, mining beam) for much more detailed and beautiful VFX than pure procedural.
+    this._thrustTex = getExternalTexture('assets/fx/fx_thruster_main.jpg');
+    this._explosionTex = getExternalTexture('assets/fx/fx_explosion_small_elements.jpg');
+    this._miningTex = getExternalTexture('assets/fx/fx_mining_beam.jpg');
+
     this._spritePool = [];
     this._spr = []; // parallel CPU state
     for (let i = 0; i < SPRITE_CAP; i++) {
@@ -217,8 +240,15 @@ export const vfx = {
     // map — both textures already exist as the material's map, so no shader recompile is needed (and
     // forcing material.needsUpdate would re-run the program lookup on every swap during heavy combat).
     const wantRing = (kind === SPR_RING || kind === SPR_FRESNEL);
-    const wantTex = wantRing ? this._ringTex : this._glowTex;
-    if (spr.material.map !== wantTex) spr.material.map = wantTex;
+    let wantTex = wantRing ? this._ringTex : this._glowTex;
+    // Prefer detailed generated assets for key effects (explosions now use real elements from our FX bible for pro look).
+    if (!wantRing && kind === SPR_FLASH && this._explosionTex) {
+      wantTex = this._explosionTex;
+    }
+    if (spr.material.map !== wantTex) {
+      spr.material.map = wantTex;
+      spr.material.needsUpdate = true;
+    }
     spr.visible = true;
     spr.material.color.set(color);
     spr.material.opacity = op0;

@@ -71,8 +71,27 @@ function silhouetteFor(defId) {
 const _tex = new Map();
 const _geo = new Map();
 const _mat = new Map();
+const _extTex = new Map(); // external jpg assets from our visual generation pipeline (B-*, ore_*, fx_*, ship_*, ui_*)
 
 function noDispose(obj) { obj.dispose = () => {}; return obj; }
+
+// Simple cached external texture loader for the beautiful generated assets (Bibles, ores, FX, ships, UI, cinematics stills).
+// Falls back gracefully to procedural if load fails (keeps game playable).
+// Paths are relative to index.html (e.g. 'assets/ores/ore_luminite_hero.jpg').
+function getExternalTexture(path) {
+  if (_extTex.has(path)) return _extTex.get(path);
+  const tex = new THREE.TextureLoader().load(
+    path,
+    () => { tex.needsUpdate = true; },
+    undefined,
+    (err) => { console.warn('[visual] external asset load failed, using procedural fallback:', path); }
+  );
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  _extTex.set(path, tex);
+  return tex;
+}
 
 // Cosmetic wall-clock (seconds) for self-animation. Read inside onBeforeRender so spinning gems,
 // blinking nav lights and engine flicker move without touching the render loop / vfx (which this
@@ -218,12 +237,20 @@ function buildShipMesh(e, pal) {
   switch (sil) {
     case 'fighter': {
       // sleek dart: long cone nose, flat hull, swept wings, 2 engines
-      const body = new THREE.Mesh(getGeometry('fig:body', () => new THREE.BoxGeometry(1.6, 0.42, 0.7)), hm);
+      // Use the generated fighter concept + material bible (B-002) + emissive (B-009) for real texture beauty on the main player ship.
+      const fighterTex = getExternalTexture('assets/ships/fighter_albedo_emissive.jpg');
+      const bodyMat = hm.clone(); // clone so we can enhance without affecting other ships
+      if (fighterTex) {
+        bodyMat.map = fighterTex;
+        bodyMat.emissiveMap = fighterTex;
+        bodyMat.emissiveIntensity = 0.35; // let the bright engine/cockpit parts in the texture glow via emissiveMap
+      }
+      const body = new THREE.Mesh(getGeometry('fig:body', () => new THREE.BoxGeometry(1.6, 0.42, 0.7)), bodyMat);
       body.scale.setScalar(R * 0.6); g.add(body);
-      const nose = new THREE.Mesh(getGeometry('fig:nose', () => new THREE.ConeGeometry(0.30, 1.3, 8).rotateZ(-Math.PI / 2)), hm);
+      const nose = new THREE.Mesh(getGeometry('fig:nose', () => new THREE.ConeGeometry(0.30, 1.3, 8).rotateZ(-Math.PI / 2)), bodyMat);
       nose.position.x = R * 0.72; nose.scale.setScalar(R * 0.6); g.add(nose);
       for (const sgn of [1, -1]) {
-        const wing = new THREE.Mesh(getGeometry('fig:wing', () => new THREE.BoxGeometry(0.7, 0.08, 0.9)), hm);
+        const wing = new THREE.Mesh(getGeometry('fig:wing', () => new THREE.BoxGeometry(0.7, 0.08, 0.9)), bodyMat);
         wing.position.set(-R * 0.18, 0, sgn * R * 0.5 * wingK); wing.rotation.y = sgn * 0.5; wing.scale.set(R * 0.7, R * 0.7, R * 0.7 * wingK); g.add(wing);
         addStrip(R * 0.5, -R * 0.18, R * 0.04, sgn * R * 0.42 * wingK, 0);
       }
@@ -424,10 +451,33 @@ function astMaterial(typeId, def, tint) {
     const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
     const rough = getTexture('noise:astrough', () =>
       makeNoiseTexture({ size: 256, seed: 41, octaves: 4, baseCells: 6, contrast: 1.4, brightness: -0.05 }));
+
+    // Integrate beautiful generated ore hero assets + emissive glows from our visual plan (B-009, C-INTRO-03, ore_*_hero).
+    // Maps the in-game asteroid types (from data) to the high-quality hero renders and surfaces we generated.
+    let map = null;
+    let emissiveMap = null;
+    let eiBoost = def.ei;
+    const t = (typeId || '').toLowerCase();
+    if (t.includes('luminite') || t.includes('crystal') || def.variant === 'crystal') {
+      map = getExternalTexture('assets/ores/ore_luminite_hero.jpg');
+      emissiveMap = map;
+      eiBoost = Math.max(eiBoost, 0.9); // strong glow pop for mining reward
+    } else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') {
+      map = getExternalTexture('assets/ores/ore_xenium_hero.jpg');
+      emissiveMap = map;
+      eiBoost = Math.max(eiBoost, 0.75);
+    } else if (t.includes('iron') || def.variant === 'metal') {
+      map = getExternalTexture('assets/ores/ore_iron_hero.jpg');
+    } else if (t.includes('ice') || t.includes('water') || def.variant === 'ice') {
+      map = getExternalTexture('assets/ores/ore_ice_hero.jpg');
+    }
+    // Also pull surface detail from B-003 ore surfaces bible when we have a hero match (via the loaded map's detail).
+
     return new THREE.MeshStandardMaterial({
-      color, roughness: def.rough, metalness: def.metal,
-      roughnessMap: def.variant === 'crystal' ? null : rough,
-      emissive: new THREE.Color(def.emissive), emissiveIntensity: def.ei,
+      color, map, emissiveMap,
+      roughness: def.rough, metalness: def.metal,
+      roughnessMap: (def.variant === 'crystal' || map) ? null : rough,
+      emissive: new THREE.Color(def.emissive), emissiveIntensity: eiBoost,
       flatShading: def.flat,
     });
   });

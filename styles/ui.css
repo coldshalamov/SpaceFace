@@ -1,4 +1,5 @@
-/* SpaceFace — UI theme + layout. Systems extend this; core variables live here. */
+/* SpaceFace — UI theme + layout. Professional hard sci-fi using generated bible assets (B-006 icons, B-001/B-013 mood, pilot portraits, cinematic stills).
+   Enhanced for clarity, fun feedback, and beauty while keeping the industrial + vibrant cyan/purple/orange vibe. */
 :root {
   --bg: #05070d;
   --panel: #0b1220; --panel-2: #111d30; --panel-edge: #1d3350; --panel-edge-2: #2b4a72;
@@ -9,6 +10,10 @@
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "Consolas", "SFMono-Regular", ui-monospace, monospace;
   --ui-scale: 1;
+  /* extra from visual bible for pro polish */
+  --nebula-purple: #3a1c6e;
+  --nebula-cyan: #0e4030;
+  --glow-cyan: #7af7ff;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); }
@@ -38,3 +43,158 @@ button:disabled { opacity: .4; cursor: default; }
 .boot-inner { font-family: var(--mono); letter-spacing: .42em; font-size: 34px; color: var(--accent); text-shadow: 0 0 26px var(--accent); display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .boot-sub { font-size: 11px; letter-spacing: .22em; color: var(--ink-dim); text-shadow: none; }
 .boot-error { color: var(--danger); font-family: var(--mono); font-size: 13px; max-width: 70ch; white-space: pre-wrap; letter-spacing: normal; text-shadow: none; text-align: left; }
+
+/* ==================== PROFESSIONAL POLISH (post asset integration) ==================== */
+/* Use generated assets (menu_background, pilot portrait, icons_atlas, reticle, bible colors) for beauty and "SpaceFace" identity.
+   Clearer, more fun, less janky UI. Better feedback, modern space-industrial feel, strong readability from the 60° camera game. */
+
+#screens {
+  background-image: url('../assets/cinematics/menu_background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+#screens::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(5,7,13,0.65) 10%, rgba(5,7,13,0.35) 60%, rgba(5,7,13,0.75));
+  pointer-events: none;
+}
+
+.panel {
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.65), 0 0 0 1px rgba(57,208,255,0.08) inset;
+  backdrop-filter: blur(6px);
+}
+button, .btn {
+  font-family: inherit;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all .1s ease;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 0.92em;
+}
+button:hover, .btn:hover {
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(57,208,255,0.3);
+  transform: translateY(-1px);
+}
+button:active { transform: translateY(0); }
+
+.hud-bar {
+  background: rgba(5,7,13,0.75);
+  border-bottom: 1px solid var(--panel-edge);
+  backdrop-filter: blur(4px);
+}
+
+/* Pilot "SpaceFace" identity — the generated portrait makes the game personal and branded */
+#pilot-portrait {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 18px rgba(57,208,255,0.5);
+  z-index: 20;
+  pointer-events: auto;
+  background: #111d30;
+}
+#pilot-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: crisp-edges;
+}
+
+/* Aiming reticle from generated asset — professional center aim aid for mouse flight/combat */
+#aim-reticle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 15;
+  opacity: 0.85;
+  filter: drop-shadow(0 0 3px var(--glow-cyan));
+}
+#aim-reticle img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* Flight control hint bar — makes the game immediately understandable and less confusing */
+#control-hints {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: var(--ink-dim);
+  background: rgba(5,7,13,0.6);
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-edge);
+  white-space: nowrap;
+  z-index: 12;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Better toasts / feedback for fun factor (mining hits, kills, yields feel satisfying) */
+.toast {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-left: 4px solid var(--accent);
+  padding: 8px 14px;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  font-size: 13px;
+}
+.toast.good { border-left-color: var(--good); }
+.toast.warn { border-left-color: var(--warn); }
+
+/* Icons atlas usage hint (the generated B-006 + expansion can be used as decorative or future sliced icons) */
+.icon-ref {
+  background-image: url('../assets/ui/icons_atlas.jpg');
+  background-size: contain;
+  image-rendering: crisp-edges;
+}
+
+/* Screen titles and pro touches */
+#screens h1, #screens .title {
+  font-family: var(--mono);
+  letter-spacing: .35em;
+  text-shadow: 0 0 18px var(--accent);
+  color: var(--accent);
+}
+#screens .subtle { color: var(--ink-dim); font-size: 0.82em; }
+
+/* Vignette + damage feedback enhanced */
+#vignette {
+  box-shadow: inset 0 0 180px rgba(0,0,0,0), inset 0 0 80px rgba(255,84,112,0);
+  transition: box-shadow .25s ease;
+}
+body.low-hull #vignette {
+  box-shadow: inset 0 0 180px rgba(0,0,0,0.2), inset 0 0 120px rgba(255,84,112,0.35);
+}
+
+/* Make the boot feel like part of the cinematic world */
+#boot-overlay {
+  background: radial-gradient(circle at 50% 38%, #0a1426, #03050a), url('../assets/cinematics/menu_background.jpg');
+  background-size: cover;
+  background-blend-mode: multiply;
+}

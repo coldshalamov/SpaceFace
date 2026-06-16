@@ -57,6 +57,34 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
 
+    // === Professional asset-powered UI additions (pilot identity, reticle, control clarity, cinematic backgrounds) ===
+    // Pilot "SpaceFace" portrait (from generated PF-001) — makes the game personal and branded
+    const portrait = document.createElement('div');
+    portrait.id = 'pilot-portrait';
+    portrait.innerHTML = `<img src="assets/pilots/pf_spaceface_portraits.jpg" alt="SpaceFace pilot" title="Your SpaceFace — the reason you fly">`;
+    document.getElementById('ui-root').appendChild(portrait);
+
+    // Center aiming reticle using generated asset (professional aid for mouse-aim flight/combat)
+    const reticle = document.createElement('div');
+    reticle.id = 'aim-reticle';
+    reticle.innerHTML = `<img src="assets/ui/reticle.jpg" alt="aim">`;
+    document.getElementById('hud').appendChild(reticle);
+
+    // Always-visible (when in flight) control hints — fixes "confusing" by making arrows + mouse immediately obvious and fun
+    const hints = document.createElement('div');
+    hints.id = 'control-hints';
+    hints.textContent = 'WASD / ↑↓←→  thrust & strafe  •  Mouse aim  •  SPACE / LMB fire  •  SHIFT boost';
+    document.getElementById('ui-root').appendChild(hints);
+
+    // Hide hints when not in flight mode
+    const origFrame = this.frame ? this.frame.bind(this) : null;
+    this.frame = (dt, state) => {
+      if (origFrame) origFrame(dt, state);
+      const inFlight = state.mode === 'flight' && (!state.ui || !state.ui.screenStack || state.ui.screenStack.length === 0);
+      if (hints) hints.style.display = inFlight ? 'block' : 'none';
+      if (reticle) reticle.style.display = inFlight ? 'block' : 'none';
+    };
+
     // UI key router (UI-owned keys only; flight keys belong to the flight input system)
     this.input = createUiInput(ctx, this.screenManager);
 

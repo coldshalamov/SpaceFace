@@ -29,8 +29,13 @@ export const input = {
       return;
     }
     const k = this._keys;
-    inp.moveZ = (k['KeyW'] ? 1 : 0) - (k['KeyS'] ? 1 : 0);   // forward / reverse
-    inp.moveX = (k['KeyD'] ? 1 : 0) - (k['KeyA'] ? 1 : 0);   // strafe right / left
+    // Support both WASD and arrow keys for movement (arrows now work as requested)
+    const up = k['KeyW'] || k['ArrowUp'];
+    const down = k['KeyS'] || k['ArrowDown'];
+    const right = k['KeyD'] || k['ArrowRight'];
+    const left = k['KeyA'] || k['ArrowLeft'];
+    inp.moveZ = (up ? 1 : 0) - (down ? 1 : 0);   // forward / reverse
+    inp.moveX = (right ? 1 : 0) - (left ? 1 : 0);   // strafe right / left
     inp.boost = !!(k['ShiftLeft'] || k['ShiftRight']);
     inp.fire = this._m0 || !!k['Space'];
     inp.fireGroup = this._m2 ? 2 : (inp.fire ? 1 : null);
