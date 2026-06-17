@@ -530,7 +530,7 @@ export const economy = {
   // -------------------------------------------------------------------------------------------
   grantCredits(amount, reason) {
     amount = Math.round(amount || 0);
-    if (amount === 0) return this.state.player.credits;
+    if (amount <= 0) return this.state.player.credits;
     const p = this.state.player;
     p.credits = Math.max(0, (p.credits | 0) + amount);
     this.bus.emit('credits:changed', { delta: amount, reason: reason || 'grant', total: p.credits });
@@ -539,7 +539,7 @@ export const economy = {
 
   chargeCredits(amount, reason) {
     amount = Math.round(amount || 0);
-    if (amount === 0) return this.state.player.credits;
+    if (amount <= 0) return this.state.player.credits;
     const p = this.state.player;
     const before = p.credits | 0;
     p.credits = Math.max(0, before - amount); // clamp ≥0 (§ spec)

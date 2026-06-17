@@ -785,6 +785,23 @@ function checkEconomyRngFollowsCurrentSaveSeed() {
   assert.equal(state.economy.rng, economy.rng, 'load should attach RNG to restored economy state');
 }
 
+function checkCreditWritersRejectNegativeAmounts() {
+  const state = {
+    player: { credits: 100 },
+  };
+  const events = [];
+  economy.state = state;
+  economy.bus = { emit(event, payload) { events.push({ event, payload }); } };
+
+  economy.grantCredits(-25, 'bad:grant');
+  assert.equal(state.player.credits, 100, 'negative credit grants should not debit the player');
+
+  economy.chargeCredits(-40, 'bad:charge');
+  assert.equal(state.player.credits, 100, 'negative credit charges should not credit the player');
+
+  assert(!events.some((e) => e.payload && (e.payload.reason === 'bad:grant' || e.payload.reason === 'bad:charge')), 'negative credit intents should not emit credits:changed');
+}
+
 function checkGateTollRequiresCredits() {
   const makeState = (credits) => ({
     player: { credits, researchedNodes: [] },
@@ -905,6 +922,7 @@ checkNewGameOwnedShipDefaultsAreFitted();
 checkAmmoServiceOnlyChargesAcceptedCargo();
 checkInsuranceUsesDockedStationId();
 checkEconomyRngFollowsCurrentSaveSeed();
+checkCreditWritersRejectNegativeAmounts();
 checkGateTollRequiresCredits();
 checkSpawnRequestAmbushContract();
 
