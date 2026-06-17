@@ -203,6 +203,10 @@ export const settingsScreen = {
       rowSlider('FOV', () => vd.fov, 35, 90, 1, (x) => Math.round(x) + '°', (v) => this._set(ctx, 'video', 'fov', v));
       rowSelect('Particle quality', () => vd.particleQuality, [['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], (v) => this._set(ctx, 'video', 'particleQuality', v));
       rowToggle('VSync', () => vd.vsync, (v) => this._set(ctx, 'video', 'vsync', v));
+      // Accessibility (V2 §9/§12): vestibular-sensitive players get hit feedback (numbers, audio,
+      // smoke) with the camera shake / FOV punch / hit-stop freeze suppressed. Live-applied: the
+      // feel module reads settings.video.motionReduce every trigger, so toggling takes effect now.
+      rowToggle('Reduce motion', () => !!vd.motionReduce, (v) => this._set(ctx, 'video', 'motionReduce', v));
       rowSlider('UI scale', () => s.uiScale, 0.75, 1.5, 0.05, (x) => x.toFixed(2) + 'x', (v) => {
         this._set(ctx, null, 'uiScale', v);
         const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);

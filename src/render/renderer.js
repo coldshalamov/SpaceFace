@@ -71,6 +71,24 @@ export const render = {
     });
     bus.on('camera:shake', ({ amount }) => cam.addTrauma(amount || 0.3));
     bus.on('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
+    // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
+    // quality in the settings screen did nothing (only the initial value was used) — a "slider that
+    // doesn't work" sore thumb. We forward the values to the systems that own them.
+    bus.on('settings:changed', (p) => {
+      if (!p || p.section !== 'video') return;
+      const vd = state.settings.video;
+      if (this.bloom) this.bloom.setOptions({ bloom: vd.bloom, strength: vd.bloomStrength, threshold: vd.bloomThreshold });
+      // FOV: the feel system (feel.js) adds a transient punch on top of this base. We update the
+      // camera's base fov here; feel.frame() re-derives its cached base from settings when no punch
+      // is active, so the slider and the punch never fight.
+      if (p.key === 'fov' || p.key == null) {
+        const camObj = state.render.camera;
+        if (camObj && camObj.isPerspectiveCamera && typeof vd.fov === 'number') {
+          camObj.fov = vd.fov;
+          camObj.updateProjectionMatrix();
+        }
+      }
+    });
     // On sector change, reconcile rather than blindly clearing: the new sector's entities are
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player

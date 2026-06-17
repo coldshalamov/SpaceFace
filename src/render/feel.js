@@ -49,8 +49,8 @@ export const feel = {
     this._hsReturn = 1;       // timeScale we ease back toward when the dip ends
     this._fovPunch = 0;       // current additive fov offset (deg)
     this._vig = 0;            // current vignette opacity (0..1)
-    // cached camera fov baseline so we never drift it
-    this._fovBase = null;
+    // (FOV base is derived live from settings.video.fov each frame — no cached field, so the FOV
+    // slider and the punch never fight.)
 
     this._vigEl = null;
     this._injectStyle();
@@ -178,14 +178,16 @@ export const feel = {
     }
     const cam = this.state.render && this.state.render.camera;
     if (cam && cam.isPerspectiveCamera) {
-      if (this._fovBase == null) this._fovBase = cam.fov;
-      const target = this._fovBase + this._fovPunch;
+      // Derive the base from settings every frame (NOT a one-time cache) so the FOV slider and the
+      // punch cooperate: the slider sets settings.video.fov (renderer live-applies it), and we add
+      // the transient punch on top. When no punch is active we simply mirror the setting, so the
+      // slider is always authoritative and never fights the punch.
+      const baseFov = (this.state.settings && this.state.settings.video && this.state.settings.video.fov) || cam.fov || 50;
+      const target = baseFov + this._fovPunch;
       if (Math.abs(cam.fov - target) > 0.001) {
         cam.fov = target;
         cam.updateProjectionMatrix();
       }
-    } else {
-      this._fovBase = null;
     }
 
     // ---- vignette integration ----
