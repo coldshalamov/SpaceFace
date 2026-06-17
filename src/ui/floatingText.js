@@ -60,6 +60,9 @@ export function createFloatingText(ctx) {
   bus.on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); });
   bus.on('mining:yield', (p) => { if (p && p.pos && p.qty) spawn('+' + p.qty, 'sf-ft--ore', p.pos.x, p.pos.z, null, { life: 1.0, vy: 40 }); });
   bus.on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
+  // Phase 3/6: confirm a dash fired (violet, matches the boost bar) — only the player's, so a fleet
+  // of dashing NPCs doesn't spam text.
+  bus.on('ship:dash', (p) => { if (p && p.shipId === state.playerId) { const e = state.entities.get(p.shipId); if (e) spawn('DASH', 'sf-ft--dash', e.pos.x, e.pos.z, null, { life: 0.7, vy: 50 }); } });
 
   function update(dt) {
     if (!helpers.worldToScreen) return;
@@ -101,6 +104,7 @@ function injectStyle() {
   .sf-ft--kill { color:#ff8a4a; font-size:15px; letter-spacing:.16em; text-shadow:0 0 10px rgba(255,120,40,.7),0 0 4px #000; }
   .sf-ft--ore { color:#7af7d0; }
   .sf-ft--credits { color:#ffd84a; font-size:15px; }
+  .sf-ft--dash { color:#c98cff; font-size:14px; letter-spacing:.18em; text-shadow:0 0 10px rgba(170,90,255,.8),0 0 4px #000; }
   `;
   document.head.appendChild(s);
 }

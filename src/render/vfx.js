@@ -192,6 +192,7 @@ export const vfx = {
     add('ship:thrust', (p) => this._onThrust(p));
     add('ship:boostStart', (p) => this._onBoost(p, true));
     add('ship:boostStop', (p) => this._onBoost(p, false));
+    add('ship:dash', (p) => this._onDash(p));                      // Phase 3 dash impulse — violet shock cone
     add('jump:start', (p) => this._onJumpStart(p));
     add('jump:arrive', (p) => this._onJumpArrive(p));
     add('pickup:collected', (p) => this._onPickup(p));
@@ -517,6 +518,33 @@ export const vfx = {
         this._spawnParticle(bx, bz, Math.cos(a) * sp, Math.sin(a) * sp, 0.3, 2.4, 0.0, this._c0, this._c1, 2.0, 0, 0);
       }
     }
+  },
+
+  // Phase 3 dash: a distinct, punchy motion kick. A forward-facing violet shock ring expands from
+  // the nose (the "launch" moment) and a violet afterburner streak trails behind — color-matched to
+  // the boost bar so it reads as the same energy system, but visually distinct from sustained boost.
+  _onDash(p) {
+    const e = this._ent(p && p.shipId);
+    if (!e || !this._scene) return;
+    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+    const nx = e.pos.x + cf * (e.radius + 1);   // nose
+    const nz = e.pos.z + sf * (e.radius + 1);
+    const bx = e.pos.x - cf * (e.radius + 2);   // rear
+    const bz = e.pos.z - sf * (e.radius + 2);
+    const VIOLET = '#c98cff', VIOLET2 = '#7a3df0';
+    // expanding shock ring at the nose
+    this._spawnSprite(SPR_RING, nx, 0, nz, 0.32, 3.0, 11.0, 0.85, 0.0, VIOLET, cf * 6, sf * 6);
+    this._spawnSprite(SPR_FLASH, nx, 0, nz, 0.16, 5, 9, 0.9, 0.0, VIOLET, 0, 0);
+    // violet afterburner streak behind (longer + faster than the white boost streak)
+    this._c0.set('#ffffff'); this._c1.set(VIOLET2);
+    const baseA = Math.atan2(-sf, -cf);
+    const n = Math.max(8, Math.round(22 * (this._burst || 1)));
+    for (let k = 0; k < n; k++) {
+      const a = baseA + (Math.random() - 0.5) * 0.45;
+      const sp = 90 + Math.random() * 90;
+      this._spawnParticle(bx, bz, Math.cos(a) * sp, Math.sin(a) * sp, 0.45, 3.0, 0.0, this._c0, this._c1, 1.6, 0, 0);
+    }
+    if (e.id === this.state.playerId) this.helpers.camera && this.helpers.camera.addTrauma(0.28);  // punch
   },
 
   _onJumpStart(p) {

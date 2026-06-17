@@ -128,8 +128,17 @@ export const audio = {
     bus.on('jump:chargeStart', () => this._duckMusic());
     bus.on('jump:start', (p) => this._onJump(p));
     bus.on('sector:enter', () => { /* music recomputes threat next frame */ });
-    bus.on('ship:boostStart', (p) => {});
+    bus.on('ship:boostStart', (p) => {
+      // Sustained boost: a low engine roar. Reuse the small-explosion tail as a whoosh onset, gain low
+      // so it layers under combat without crowding. Only the player's boost is audible (NPCs spam this).
+      if (p && p.shipId === this.state.playerId) this.play('sfx_explosion_small', { gain: 0.18, rate: 0.55 });
+    });
     bus.on('ship:boostStop', (p) => {});
+    bus.on('ship:dash', (p) => {
+      // Dash: a distinct, punchy forward-whoosh. Higher pitch + louder than boost so it reads as the
+      // signature ability firing. Player-only (a fleet of dashing NPCs would be noise).
+      if (p && p.shipId === this.state.playerId) this.play('sfx_explosion_small', { gain: 0.5, rate: 1.25 });
+    });
     bus.on('toast', (p) => this._onCue((p && (p.kind === 'error' ? 'error' : 'click'))));
     bus.on('alert', (p) => this._onCue('alert'));
     bus.on('audio:cue', (p) => this._onCue(p && p.id));
