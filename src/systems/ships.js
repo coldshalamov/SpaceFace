@@ -170,6 +170,11 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const capRegen = shipDef.energyRegen * energyRegenMult;
   const cargoCap = Math.floor((shipDef.cargo + cargoFlat) * (1 + cargoCapPct) * cargoCapMult);
 
+  // (5) boost/dash config (Phase 3). regenRate rides the energy efficiency multiplier so better
+  // power systems help boost recharge. A ship with no boost block gets a near-zero pool (can't boost).
+  const bdef = shipDef.boost || {};
+  const boostRegen = (bdef.regenRate || 18) * energyRegenMult;
+
   return {
     hull: hullMax, hullMax,
     armorHp: 0, armorMax: 0, armorFlat: 0,
@@ -180,6 +185,13 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     bankFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     cargoCap,
+    boost: {
+      max: bdef.max || 0,
+      drainRate: bdef.drainRate || 40,
+      regenRate: boostRegen,
+      dashImpulse: bdef.dashImpulse || 0,
+      dashCooldown: bdef.dashCooldown || 3,
+    },
     // informational extras (read by combat/ui; not part of the flat copy)
     continuousDrain, damageReductionMult,
   };
@@ -273,6 +285,12 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
     shieldRegenRate: derived.shieldRegenRate, shieldRegenDelay: derived.shieldRegenDelay,
     cap: derived.cap, capMax: derived.capMax, capRegen: derived.capRegen,
     thrust: derived.thrust, turnRate: derived.turnRate, maxSpeed: derived.maxSpeed, drag: derived.drag,
+    // Phase 3 boost/dash runtime: energy starts full; dashCdT is the current cooldown countdown.
+    boost: {
+      energy: derived.boost.max, max: derived.boost.max,
+      drainRate: derived.boost.drainRate, regenRate: derived.boost.regenRate,
+      dashImpulse: derived.boost.dashImpulse, dashCd: derived.boost.dashCooldown, dashCdT: 0,
+    },
     data: {
       defId: shipDef.id,
       derived,
@@ -353,6 +371,18 @@ export const ships = {
     e.hull = derived.hullMax * hullFrac;
     e.shield = derived.shieldMax * shieldFrac;
     e.cap = derived.capMax * capFrac;
+
+    // refresh boost config (Phase 3) — preserve current energy fraction + cooldown timer so a
+    // refit doesn't silently refill or reset boost.
+    const boostFrac = (e.boost && e.boost.max) ? clamp01(e.boost.energy / e.boost.max) : 1;
+    const prevDashCdT = (e.boost && e.boost.dashCdT) || 0;
+    e.boost = {
+      energy: derived.boost.max * boostFrac,
+      max: derived.boost.max,
+      drainRate: derived.boost.drainRate, regenRate: derived.boost.regenRate,
+      dashImpulse: derived.boost.dashImpulse,
+      dashCd: derived.boost.dashCooldown, dashCdT: Math.min(prevDashCdT, derived.boost.dashCooldown),
+    };
 
     e.data.derived = derived;
     e.data.weapons = buildWeaponList(SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel'), fit, isPlayer);

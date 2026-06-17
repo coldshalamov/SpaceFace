@@ -47,16 +47,52 @@ export const flight = {
   applyPlayerIntent(e, dt) {
     const inp = this.state.input;
     const turn = e.turnRate || 3;
+    const boost = e.boost || (e.boost = { energy: 0, max: 0, drainRate: 40, regenRate: 18, dashImpulse: 0, dashCd: 3, dashCdT: 0 });
 
     // Yaw the nose from the turn-intent. (turnIntent: +1 right/clockwise, -1 left.) Sign matches
     // the world-rot convention (+rot = +angle = atan2(z,x)), so +turnIntent increases rot.
     const yawStep = inp.turnIntent * turn * dt;
-    e.rot = wrapAngle(e.rot + yawStep);
+    e.rot = wrapAngle(e.rot + yawStep + this._bankYawFromDrift(e));
     e.angVel = yawStep / dt;            // actual yaw rate (rad/s); physics no longer re-integrates it
-    e.flags.boosting = !!inp.boost;
+
+    // --- Phase 3 boost/dash ---
+    // Tap Shift (rising edge) = DASH: an instant impulse along the nose (or current heading), on its
+    // own cooldown, costing a chunk of boost energy. Hold Shift = SUSTAINED BOOST: drains energy
+    // continuously for +thrust/+top-speed. Boost cuts out below a threshold and can't restart until
+    // it regenerates back above it (anti-flicker hysteresis). A ship with boost.max == 0 can't boost.
+    if (boost.dashCdT > 0) boost.dashCdT = Math.max(0, boost.dashCdT - dt);
+    const dashJustPressed = inp.boost && !this._prevBoost;
+    let didDash = false;
+    if (dashJustPressed && boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= boost.dashImpulse * 0.6) {
+      // dash along the nose; if no throttle held, dash still works (escape move)
+      const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+      const imp = boost.dashImpulse;
+      e.vel.x += cf * imp;
+      e.vel.z += sf * imp;
+      boost.energy = Math.max(0, boost.energy - boost.dashImpulse * 0.6);
+      boost.dashCdT = boost.dashCd;
+      didDash = true;
+      this.bus.emit('ship:dash', { shipId: e.id, impulse: imp });
+    }
+    this._prevBoost = !!inp.boost;
+
+    // sustained boost: only while holding Shift (and not just having dashed), with hysteresis gating
+    if (!('_boostArmed' in boost)) boost._boostArmed = true;
+    let boosting = false;
+    if (inp.boost && boost.max > 0) {
+      if (boost._boostArmed && boost.energy > 1) {
+        boosting = true;
+        boost.energy = Math.max(0, boost.energy - boost.drainRate * dt);
+        if (boost.energy <= 0) boost._boostArmed = false;   // cut out; must regen to re-arm
+      }
+    } else if (boost.energy > boost.max * 0.35) {
+      boost._boostArmed = true;                              // re-arm threshold (hysteresis)
+    }
+    if (!boosting) boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * dt);
+    e.flags.boosting = boosting;
 
     // Throttle along the NOSE direction (not strafe). forward axis = (cos, sin).
-    const thrust = (e.thrust || 40) * (inp.boost ? 2.2 : 1);
+    const thrust = (e.thrust || 40) * (boosting ? 2.2 : 1);
     const throttle = inp.moveZ || 0;    // +1 forward, -1 reverse
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     let ax = cf * throttle * thrust;
@@ -67,7 +103,7 @@ export const flight = {
     e.vel.x += (ax - drag * e.vel.x) * dt;
     e.vel.z += (az - drag * e.vel.z) * dt;
 
-    const max = (e.maxSpeed || 120) * (inp.boost ? 2.0 : 1.15);
+    const max = (e.maxSpeed || 120) * (boosting ? 2.0 : 1.15);
     const sp = Math.hypot(e.vel.x, e.vel.z);
     if (sp > max) { const s = max / sp; e.vel.x *= s; e.vel.z *= s; }
 
@@ -80,6 +116,13 @@ export const flight = {
     const lateralBank = (lateral / Math.max(1, e.maxSpeed || 120)) * 0.25;
     const targetBank = (inp.turnIntent * bankFactor + lateralBank) * BANK_MAX;
     this._integrateBank(e, targetBank, dt, /*returnWhenIdle*/ true);
+  },
+
+  // small yaw assist from the current bank angle so a banked ship gently carves (a turn feels like
+  // it commits, not like flying on rails). Returns radians to add to the yaw step this tick.
+  _bankYawFromDrift(e) {
+    if (!e.bank) return 0;
+    return -e.bank * 0.15; // banking right carves a gentle right yaw, banking left carves left
   },
 
   // ---- NPC: turn toward aimAngle + thrust along ship-relative axes (unchanged contract) ----

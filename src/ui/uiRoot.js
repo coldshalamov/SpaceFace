@@ -290,8 +290,12 @@ function injectHudCss() {
   .sf-bar--shield .sf-bar__fill { background:linear-gradient(90deg,#1d6fa8,var(--shield)); }
   .sf-bar--energy .sf-bar__fill { background:linear-gradient(90deg,#b8932a,var(--energy)); }
   .sf-bar--heat .sf-bar__fill { background:linear-gradient(90deg,#a8521f,#ff8a3d); }
+  .sf-bar--boost .sf-bar__fill { background:linear-gradient(90deg,#7a3df0,#c98cff); }   /* Phase 3 boost energy (violet) */
   .sf-bar--low { animation:sf-barpulse 1s ease-in-out infinite alternate; }
+  .sf-bar--ready { box-shadow:inset 0 0 0 1px rgba(201,140,255,.45), 0 0 8px rgba(170,90,255,.5);
+    animation:sf-barready 1.1s ease-in-out infinite alternate; }
   @keyframes sf-barpulse { from { box-shadow:inset 0 0 0 1px rgba(255,84,112,.2); } to { box-shadow:inset 0 0 6px 1px rgba(255,84,112,.7); } }
+  @keyframes sf-barready { from { box-shadow:inset 0 0 0 1px rgba(201,140,255,.3); } to { box-shadow:inset 0 0 6px 2px rgba(170,90,255,.8); } }
 
   /* bottom-center cluster */
   .sf-cluster { position:absolute; left:50%; bottom:18px; transform:translateX(-50%);

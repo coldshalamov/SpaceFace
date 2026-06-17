@@ -17,6 +17,16 @@
 import { createRadar } from './radar.js';
 import { createTargetPanel } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
+import { SHIPS } from '../data/ships.js';
+
+// Ship role → friendly archetype label (Phase 3 HUD class indicator).
+const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const ROLE_LABEL = {
+  starter: 'Starter', mining: 'Miner', fighter: 'Fighter', freighter: 'Freighter',
+  multirole: 'Multirole', interceptor: 'Interceptor', mining_barge: 'Mining Barge',
+  corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
+  gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship',
+};
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
@@ -51,9 +61,10 @@ export function createHud(ctx, alerts) {
     ['hull', 'HULL', 'hull'],
     ['shield', 'SHLD', 'shield'],
     ['energy', 'ENGY', 'energy'],
+    ['boost', 'BOOST', 'boost'],   // Phase 3: boost/dash energy (hidden if the ship can't boost)
     ['heat', 'HEAT', 'heat'],
   ];
-  const fillEls = {}, numEls = {};
+  const fillEls = {}, numEls = {}, rowEls = {};
   for (const [key, label, mod] of barDefs) {
     const row = document.createElement('div');
     row.className = 'sf-barrow';
@@ -64,6 +75,7 @@ export function createHud(ctx, alerts) {
     bars.appendChild(row);
     fillEls[key] = row.querySelector('.sf-bar__fill');
     numEls[key] = row.querySelector('.sf-barrow__num');
+    rowEls[key] = row;
   }
   root.appendChild(bars);
 
@@ -75,13 +87,15 @@ export function createHud(ctx, alerts) {
     <div class="sf-stat"><span class="sf-stat__k">THR</span><span class="sf-stat__v mono" data-k="throttle">0%</span></div>
     <div class="sf-stat sf-stat--wide"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
     <div class="sf-stat sf-stat--wide"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
-    <div class="sf-stat" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span></div>`;
+    <div class="sf-stat" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span></div>
+    <div class="sf-stat sf-stat--wide" id="sf-rolestat"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
   root.appendChild(center);
   const elSpeed = center.querySelector('[data-k=speed]');
   const elThrottle = center.querySelector('[data-k=throttle]');
   const elCargo = center.querySelector('[data-k=cargo]');
   const elCredits = center.querySelector('[data-k=credits]');
   const elWeapons = center.querySelector('[data-k=weapons]');
+  const elRole = center.querySelector('[data-k=role]');
 
   // ---- bottom-right: target panel + radar ----
   const rightDock = document.createElement('div');
@@ -195,6 +209,21 @@ export function createHud(ctx, alerts) {
       fillEls.energy.style.transform = `scaleX(${capFrac})`;
       fillEls.heat.style.transform = `scaleX(${heatFrac})`;
 
+      // Phase 3 boost bar: energy fraction; the row is hidden entirely if the ship can't boost.
+      // When a dash is ready (cooldown elapsed + enough energy) the bar gets a 'ready' glow.
+      const boost = p.boost;
+      const boostRow = rowEls.boost;
+      if (boost && boost.max > 0 && boostRow) {
+        boostRow.style.display = '';
+        const bf = clamp01(boost.energy / boost.max);
+        fillEls.boost.style.transform = `scaleX(${bf})`;
+        const dashReady = boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= boost.dashImpulse * 0.6;
+        fillEls.boost.parentElement.classList.toggle('sf-bar--ready', dashReady);
+        if (slow) numEls.boost.textContent = Math.round(bf * 100) + (dashReady ? ' ▸' : '%');
+      } else if (boostRow) {
+        boostRow.style.display = 'none';   // no boost capacity (e.g. a stripped hull) — hide the row
+      }
+
       fillEls.hull.parentElement.classList.toggle('sf-bar--low', hullFrac < 0.25);
       fillEls.shield.parentElement.classList.toggle('sf-bar--low', shieldFrac < 0.25 && shieldFrac > 0);
 
@@ -235,6 +264,14 @@ export function createHud(ctx, alerts) {
       // cyan when you're aiming/firing manually. Purely a visual cue.
       const reticle = document.getElementById('aim-reticle');
       if (reticle) reticle.classList.toggle('autofire', auto);
+      // Class/archetype label: surfaces the ship's role so the player feels the archetype switch
+      // when they buy a new hull (Phase 3). Updates cheaply each slow tick.
+      const defId = p.data && p.data.defId;
+      if (defId !== this._lastDefId) {
+        this._lastDefId = defId;
+        const def = SHIP_BY_ID.get(defId);
+        elRole.textContent = def ? (def.name + ' · ' + ROLE_LABEL[def.role] || def.role) : '—';
+      }
     }
 
     // --- credits / cargo / objectives (event-driven, applied lazily) ---
