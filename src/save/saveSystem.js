@@ -523,6 +523,9 @@ export const save = {
     }
     const spec = clonePlain(saved);
     delete spec.id; delete spec._isPlayer;
+    // Legacy/current saves may contain ttl:0 because Infinity was JSON-sanitized on write.
+    // A player ship is not a timed entity, so restore it as non-expiring.
+    if (!Number.isFinite(spec.ttl) || spec.ttl <= 0) spec.ttl = Infinity;
     spec.flags = Object.assign({}, spec.flags, { noInterp: true });
     const e = this.helpers.spawnEntity(spec);
     state.playerId = e.id;
@@ -629,6 +632,8 @@ function plainEntity(e, isPlayer) {
     const v = e[k];
     if (v && typeof v === 'object' && typeof v.x === 'number' && typeof v.z === 'number' && v.isVector3) {
       out[k] = { x: v.x, z: v.z };
+    } else if (k === 'ttl' && !Number.isFinite(v)) {
+      continue;
     } else if (typeof v === 'function') {
       continue;
     } else {
