@@ -44,17 +44,22 @@ async function boot() {
 // Minimal playable scene so the engine is verifiable before subsystems exist:
 // player ship + a station + an asteroid ring.
 function bootstrapScene(state, helpers, bus, registry) {
-  const playerSpec = makeShipEntitySpec(NEW_GAME.shipId || 'ship_kestrel', {
-    team: 0, factionId: 'faction_free', isPlayer: true, player: state.player, pos: { x: 0, z: 0 },
+  const owned = state.player.ownedShips[state.player.activeShipIndex] || null;
+  const shipId = (owned && owned.defId) || NEW_GAME.shipId || 'ship_kestrel';
+  const fittings = (owned && owned.fittings) || [];
+  const playerSpec = makeShipEntitySpec(shipId, {
+    team: 0, factionId: 'faction_free', isPlayer: true, player: state.player, fittings, pos: { x: 0, z: 0 },
   });
   const player = helpers.spawnEntity(playerSpec);
   state.playerId = player.id;
   state.player.credits = NEW_GAME.credits || 5000;
+  const ships = registry.get('ships');
+  if (ships && typeof ships.recomputeActiveShip === 'function') ships.recomputeActiveShip();
 
   // World owns sector contents: it spawns stations, asteroid fields, enemies, and POIs from data.
   const world = registry.get('world');
   if (world && typeof world.enterSector === 'function') {
-    world.enterSector(NEW_GAME.startSectorId || 'sector_helios_prime');
+    world.enterSector(NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime');
   } else {
     // fallback: a single station + asteroid ring so the build is still playable
     helpers.spawnEntity({ type: 'station', factionId: 'faction_scn', pos: { x: 280, z: -140 }, radius: 42, mass: 1e6, hull: 1e6, hullMax: 1e6, data: { stationId: 'station_helios', dockRadius: 72, services: ['market', 'shipyard', 'missions'] } });
@@ -68,6 +73,17 @@ function startNewGame(state, helpers, bus, registry, opts) {
     bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
   }
   state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
+
+  const ships = registry.get('ships');
+  if (ships && typeof ships.newGame === 'function') {
+    ships.newGame();
+  } else {
+    state.player.ownedShips = [{ defId: NEW_GAME.shipId || 'ship_kestrel', fittings: [] }];
+    state.player.activeShipIndex = 0;
+    state.player.moduleInventory = [];
+    state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
+    state.player.researchPoints = NEW_GAME.researchPoints || 0;
+  }
 
   bootstrapScene(state, helpers, bus, registry);
   if (opts.name) state.player.name = opts.name;
