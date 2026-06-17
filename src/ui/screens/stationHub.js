@@ -424,6 +424,9 @@ const STATION_CSS = `
 .st-slot.filled { border-color: var(--panel-edge-2); }
 .st-slot.sel { border-color: var(--accent); box-shadow: 0 0 8px rgba(57,208,255,.3); }
 .st-slot-type { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); }
+.st-slot-facing { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 3px;
+  background: rgba(57,208,255,.14); color: var(--accent); font-size: .58rem; letter-spacing: .08em;
+  border: 1px solid rgba(57,208,255,.35); }
 .st-slot-mod { font-size: .85rem; margin-top: 3px; min-height: 1.1em; }
 .st-slot-unfit { position: absolute; top: 6px; right: 6px; font-size: .62rem; padding: 1px 6px;
   border-color: var(--danger); color: var(--danger); }

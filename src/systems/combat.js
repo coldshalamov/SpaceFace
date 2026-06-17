@@ -18,8 +18,17 @@ export function scaleCombatant(def, level) {
 function resolveEnemyWeapon(w, slotIndex) {
   const base = WPN.get(w.id);
   if (!base) return null;
+  // Phase 2 hardpoint fields: enemy ships have no per-hull facing data, so default front + the
+  // standard fixed-gun gimbal arc (they gimbal toward their AI lead angle, like the player does).
+  const isTurret = base.tracking === 'auto_turret';
+  const isHoming = base.tracking === 'homing';
+  const facing = isTurret ? 'turret' : 'front';
+  const gimbalArc = isTurret ? (base.turretArcDeg || 180) * Math.PI / 180
+    : (isHoming ? Math.PI : 22 * Math.PI / 180);
   return {
     ...base, slotIndex, defId: w.id,
+    facing, facingAngle: facing === 'turret' ? 0 : 0, gimbalArc,
+    muzzleOffset: [0.8, 0],
     dmg: w.dmgOverride ?? base.dmg,
     rof: w.rofOverride ?? base.rof,
     projSpeed: w.projSpeedOverride ?? base.projSpeed,

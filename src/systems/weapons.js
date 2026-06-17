@@ -54,14 +54,27 @@ export const weapons = {
     // 2) fire — player first, then NPC ships.
     const player = this.helpers.getEntity(state.playerId);
     if (player && player.alive && !player.flags.docked) {
-      const firing = !!state.input.fire; // group 1 = left-mouse / Space (group 2 = mining, not here)
-      this._serviceShip(player, firing, /*isPlayer*/ true, dt, state);
+      // Manual fire (LMB/Space) always wins; it aims at the mouse. Otherwise, if auto-fire is on,
+      // find the nearest aggressive enemy and fire at it (so the player can fly while guns auto-engage).
+      let firing = !!state.input.fire;
+      let autoTgt = null;
+      if (!firing && state.input.autoFire) {
+        autoTgt = this._autoFireTarget(player, state);
+        firing = !!autoTgt;
+      }
+      // aimAngle for gimbal/turret: mouse aim for manual, lead-angle for auto-fire, else nose.
+      const aimAngle = firing ? (autoTgt ? this._leadAngle(player, autoTgt, this._playerProjSpeed(player))
+                                         : (state.input.aimAngle || player.rot))
+                              : (state.input.aimAngle || player.rot);
+      this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, autoTgt);
     }
     for (const e of state.entityList) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
       const firing = !!(intent && intent.fire);
-      this._serviceShip(e, firing, false, dt, state);
+      // NPC aim = its intent aimAngle (already a lead/intercept angle from ai.js). fall back to nose.
+      const aimAngle = (intent && intent.aimAngle != null) ? intent.aimAngle : e.rot;
+      this._serviceShip(e, firing, false, dt, state, aimAngle, null);
     }
 
     // 3) beam release → combat:beamStop for owners who stopped firing a continuous weapon.
@@ -149,18 +162,21 @@ export const weapons = {
   },
 
   // --- fire all weapons on a ship if it is firing this tick ---
-  _serviceShip(e, firing, isPlayer, dt, state) {
+  // aimAngle: the world angle to gimbal/turret toward (player mouse aim, NPC lead, or auto-fire lead).
+  // forceTarget: an explicit target entity (auto-fire / missile-lock); null = use ship's selected target.
+  _serviceShip(e, firing, isPlayer, dt, state, aimAngle, forceTarget) {
     const ws = e.data && e.data.weapons;
     if (!ws || !ws.length) return;
     const cap = typeof e.cap === 'number' ? e.cap : (e.data.derived && e.data.derived.cap) || 0;
     let capLeft = cap;
+    if (aimAngle == null) aimAngle = e.rot;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
       const continuous = w.continuous != null ? w.continuous : def.continuous;
       if (continuous) {
-        capLeft = this._serviceBeam(e, w, def, firing, capLeft, dt, state);
+        capLeft = this._serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle);
       } else if (firing) {
-        capLeft = this._serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state);
+        capLeft = this._serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget);
       }
     }
     // write the drained capacitor back (cap pool is ours to spend; regen is combat's, §0.6 note)
@@ -169,7 +185,7 @@ export const weapons = {
 
   // Continuous beam: drain cap/heat while firing, push a transient ray, emit combat:fire/beamStop.
   // Damage application is combat's responsibility (we only mark the ray + spend resources).
-  _serviceBeam(e, w, def, firing, capLeft, dt, state) {
+  _serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle) {
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0; // cap/s
     const heatPerSec = w.heatPerSec != null ? w.heatPerSec : def.heatPerSec || 0;
     const heatMax = w.heatMax != null ? w.heatMax : def.heatMax || Infinity;
@@ -188,9 +204,10 @@ export const weapons = {
     w._heat = (w._heat || 0) + heatPerSec * dt;
     if (w._heat >= heatMax) w._heat = heatMax;
 
-    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-    const origin = { x: e.pos.x + cf * (e.radius || 1), z: e.pos.z + sf * (e.radius || 1) };
-    const to = { x: e.pos.x + cf * range, z: e.pos.z + sf * range };
+    // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
+    const dir = this._hardpointDir(e, w, aimAngle || e.rot, 0);
+    const origin = this._muzzle(e, w, dir);
+    const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
     if (state.combat && Array.isArray(state.combat.beams)) {
       state.combat.beams.push({
         ownerId: e.id, factionId: e.factionId,
@@ -202,13 +219,13 @@ export const weapons = {
     this._beamFiring.add(e.id);
     this.bus.emit('combat:fire', {
       ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex,
-      origin, dir: e.rot,
+      origin, dir,
     });
     return capLeft;
   },
 
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
-  _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state) {
+  _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget) {
     if ((w._cooldown || 0) > 0) return capLeft;
 
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
@@ -221,10 +238,10 @@ export const weapons = {
 
     const tracking = w.tracking || def.tracking || 'fixed';
     const isMissile = tracking === 'homing';
-    const isTurret = tracking === 'auto_turret';
+    const isTurret = (w.facing === 'turret') || (tracking === 'auto_turret');
 
-    // Targeting: fixed mounts fire straight; turrets/missiles need a target.
-    const tgt = (isMissile || isTurret) ? this._resolveTarget(e) : null;
+    // Targeting: missiles/turrets need a target (the forced auto-fire target, else the ship's selected).
+    const tgt = (isMissile || isTurret) ? (forceTarget || this._resolveTarget(e)) : null;
 
     let dir;
     if (isMissile) {
@@ -236,13 +253,15 @@ export const weapons = {
     } else if (isTurret) {
       if (!tgt) return capLeft;
       const aim = this._leadAngle(e, tgt, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
-      const arc = (w.turretArcDeg != null ? w.turretArcDeg : def.turretArcDeg || 360) * RAD;
-      if (Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft; // outside turret arc
+      const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
+      // turret arc is measured about the hull centre; outside it the mount can't bear.
+      if (Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
       dir = aim;
     } else {
-      // fixed forward mount, apply gaussian-ish spread from our own deterministic stream
-      const spreadDeg = w.spread != null ? w.spread : (def.spreadDeg != null ? def.spreadDeg : 0);
-      dir = e.rot + this._spread(spreadDeg);
+      // FIXED mount: base direction = nose + hardpoint facing offset, then gimbal-assist toward the
+      // aim direction within the mount's gimbal arc. Spread is layered on last. This is the
+      // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
+      dir = this._hardpointDir(e, w, aimAngle != null ? aimAngle : e.rot, def.spreadDeg != null ? def.spreadDeg : 0);
     }
 
     // --- commit: spend cap + heat, set cooldown ---
@@ -256,8 +275,7 @@ export const weapons = {
 
     this._spawnProjectile(e, w, def, dir, tgt, isMissile, state);
 
-    const cf = Math.cos(dir), sf = Math.sin(dir);
-    const origin = { x: e.pos.x + cf * (e.radius || 1), z: e.pos.z + sf * (e.radius || 1) };
+    const origin = this._muzzle(e, w, dir);
     this.bus.emit('combat:fire', {
       ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin, dir,
     });
@@ -273,7 +291,7 @@ export const weapons = {
 
     // launch speed: missiles start slow and accelerate to projSpeed; bullets launch at projSpeed
     const launchSpeed = isMissile && projSpeedMin != null ? projSpeedMin : projSpeed;
-    const muzzle = { x: e.pos.x + cf * r, z: e.pos.z + sf * r };
+    const muzzle = this._muzzle(e, w, dir);
     // inherit a portion of shooter velocity (momentum)
     const vel = {
       x: cf * launchSpeed + e.vel.x * 0.5,
@@ -350,6 +368,89 @@ export const weapons = {
     if (!spreadDeg) return 0;
     const g = (this._rng() + this._rng() - 1); // ~[-1,1], triangular
     return g * spreadDeg * RAD;
+  },
+
+  // ---- Phase 2: hardpoint facing + gimbal + muzzle offsets --------------------------------
+
+  // World-space fire direction for a FIXED hardpoint: base = nose + the mount's facing offset,
+  // then blend toward the requested aim angle, clamped to the mount's gimbal arc. A touch of
+  // deterministic spread is layered on last. Result is the actual projectile heading.
+  _hardpointDir(e, w, aimAngle, spreadDeg) {
+    const facingAngle = w.facingAngle || 0;
+    const base = e.rot + facingAngle;            // where the gun physically points
+    const arc = (w.gimbalArc != null ? w.gimbalArc : 0);
+    let dir = base;
+    if (arc > 0) {
+      const diff = wrapAngle(aimAngle - base);   // signed shortest delta toward the aim
+      const clamp = Math.max(-arc, Math.min(arc, diff));
+      dir = base + clamp;                        // gimbal-assist toward aim, locked to the cone
+    }
+    if (spreadDeg) dir += this._spread(spreadDeg);
+    return dir;
+  },
+
+  // Muzzle world position for a hardpoint: the ship centre + the facing's hull offset (rotated by
+  // the hull yaw) + a small radial push along the fire dir so shots visibly clear the hull.
+  _muzzle(e, w, dir) {
+    const r = e.radius || 1;
+    const off = (w.muzzleOffset || [0.8, 0]);
+    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+    // offset is in ship-local axes: off[0] = forward(+x), off[1] = right(+z).
+    // forward axis = (cf,sf); right axis = (-sf,cf). Rotate the local offset into world XZ.
+    const wx = off[0] * cf + off[1] * (-sf);
+    const wz = off[0] * sf + off[1] * cf;
+    const px = e.pos.x + wx * r + Math.cos(dir) * r * 0.35;
+    const pz = e.pos.z + wz * r + Math.sin(dir) * r * 0.35;
+    return { x: px, z: pz };
+  },
+
+  // Auto-fire target: the nearest ship that is ACTIVELY hostile toward the player — either on a
+  // hostile team and in an attack FSM state, or currently targeting/attacking the player. This
+  // implements "fire only at aggressive enemies while I fly" (Phase 2). Returns null if none.
+  _autoFireTarget(player, state) {
+    let best = null, bestD2 = Infinity;
+    const px = player.pos.x, pz = player.pos.z;
+    for (const e of state.entityList) {
+      if (e.type !== 'ship' || !e.alive || e.id === player.id) continue;
+      if (e.team === player.team) continue;              // friendly — never auto-target allies
+      if (!this._isAggressive(e, player, state)) continue;
+      const dx = e.pos.x - px, dz = e.pos.z - pz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { bestD2 = d2; best = e; }
+    }
+    return best;
+  },
+
+  // An NPC counts as aggressive if it has AI in an attacking state, OR it is the player's current
+  // selected/locked target, OR it recently damaged the player. Passive traders/patrols are skipped.
+  _isAggressive(e, player, state) {
+    const ai = e.data && e.data.ai;
+    if (ai) {
+      const fsm = ai.fsm;
+      if (fsm === 'attack' || fsm === 'strafe' || fsm === 'pursue') return true;
+      // lawful patrols only count if the player is wanted (they'd attack); otherwise leave them be
+      if (ai.lawful && !ai.playerWanted) return false;
+      // a fleeing trader isn't a threat, but if it's shooting back (cornered) we may engage it
+    }
+    const combat = e.data && e.data.combat;
+    if (combat && combat.targetId === player.id) return true;
+    // threat table: has this entity accrued threat from the player (i.e. it's been in a fight with us)?
+    const tbl = state.combat && state.combat.threatTables && state.combat.threatTables.get(e.id);
+    if (tbl && (tbl.get(player.id) || 0) > 0) return true;
+    return false;
+  },
+
+  // Representative projectile speed of the player's primary weapon, for auto-fire lead prediction.
+  _playerProjSpeed(player) {
+    const ws = player.data && player.data.weapons;
+    if (ws) {
+      for (const w of ws) {
+        const def = this._byId.get(w.defId);
+        const sp = w.projSpeed != null ? w.projSpeed : (def && def.projSpeed);
+        if (sp && sp > 0) return sp;
+      }
+    }
+    return 360;
   },
 };
 

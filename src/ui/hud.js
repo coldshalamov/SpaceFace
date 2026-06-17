@@ -67,19 +67,21 @@ export function createHud(ctx, alerts) {
   }
   root.appendChild(bars);
 
-  // ---- bottom-center: throttle / speed / cargo / credits ----
+  // ---- bottom-center: throttle / speed / cargo / credits / weapons ----
   const center = document.createElement('div');
   center.className = 'sf-cluster';
   center.innerHTML = `
     <div class="sf-stat"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span></div>
     <div class="sf-stat"><span class="sf-stat__k">THR</span><span class="sf-stat__v mono" data-k="throttle">0%</span></div>
     <div class="sf-stat sf-stat--wide"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
-    <div class="sf-stat sf-stat--wide"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>`;
+    <div class="sf-stat sf-stat--wide"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
+    <div class="sf-stat" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span></div>`;
   root.appendChild(center);
   const elSpeed = center.querySelector('[data-k=speed]');
   const elThrottle = center.querySelector('[data-k=throttle]');
   const elCargo = center.querySelector('[data-k=cargo]');
   const elCredits = center.querySelector('[data-k=credits]');
+  const elWeapons = center.querySelector('[data-k=weapons]');
 
   // ---- bottom-right: target panel + radar ----
   const rightDock = document.createElement('div');
@@ -222,6 +224,17 @@ export function createHud(ctx, alerts) {
       elSpeed.textContent = Math.round(sp) + '';
       const maxSp = p.maxSpeed || 1;
       elThrottle.textContent = Math.round(clamp01(sp / maxSp) * 100) + '%';
+      // Weapon status: count of guns + auto-fire state. Shows the strategic loadout at a glance
+      // and whether the guns will auto-engage aggressive enemies while you fly.
+      const ws = p.data && p.data.weapons;
+      const nGuns = ws ? ws.length : 0;
+      const auto = !!(state.input && state.input.autoFire);
+      elWeapons.textContent = nGuns + ' gun' + (nGuns === 1 ? '' : 's') + (auto ? ' · AUTO' : '');
+      elWeapons.classList.toggle('sf-warn', auto);
+      // Reticle reflects fire mode: amber ring when auto-fire is engaged (guns auto-target hostiles),
+      // cyan when you're aiming/firing manually. Purely a visual cue.
+      const reticle = document.getElementById('aim-reticle');
+      if (reticle) reticle.classList.toggle('autofire', auto);
     }
 
     // --- credits / cargo / objectives (event-driven, applied lazily) ---

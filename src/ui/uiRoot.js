@@ -267,6 +267,13 @@ function injectHudCss() {
   #hud { font-size: calc(15px * var(--ui-scale)); }
   #hud > * { pointer-events: none; }
 
+  /* Reticle reflects fire mode: amber tint + slight pulse when auto-fire is engaging hostiles,
+     cyan when the pilot aims/fires manually (Phase 2). */
+  #aim-reticle { transition: filter .2s ease; }
+  #aim-reticle.autofire { filter: hue-rotate(150deg) saturate(1.3) brightness(1.05);
+    animation: sf-reticlepulse 1.4s ease-in-out infinite alternate; }
+  @keyframes sf-reticlepulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+
   /* bottom-left status bars */
   .sf-bars { position:absolute; left:18px; bottom:18px; display:flex; flex-direction:column; gap:7px;
     padding:12px 14px; background:rgba(8,14,24,.55); border:1px solid var(--panel-edge);

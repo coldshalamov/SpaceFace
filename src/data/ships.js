@@ -1,6 +1,12 @@
 // src/data/ships.js – 13 canonical player hulls across T0..T5.
 // IDs use ship_ prefix per ARCHITECTURE §0.4. requiresTech refs use tech_ prefix.
 // Pure data, no imports.
+//
+// WEAPON HARDPOINTS (Phase 2): each weapon-slot entry may be a bare size ('S') — defaults to
+// 'front' — OR {size, facing} where facing ∈ 'front'|'left'|'right'|'rear'|'turret'. A fixed
+// hardpoint fires along (nose + facing offset) and gimbal-assists toward the mouse within an arc;
+// 'turret' tracks a target freely within turretArcDeg. Spreading facings across a hull makes
+// loadout position a real strategic choice (front guns vs broadside vs rear coverage).
 
 export const SHIPS = [
   // ---------- T0 ----------
@@ -24,14 +30,16 @@ export const SHIPS = [
     hull: 150, shield: 110, baseShieldRegen: 10, cargo: 15, mass: 16, handling: 1.4,
     bankFactor: 1.00,
     energyCap: 140, energyRegen: 22, collisionRadius: 14, price: 28000,
-    slots: { weapon: ['S','S'], shield: ['M'], engine: ['M'], cargo: [], mining: [], utility: ['S'] },
+    // twin fixed guns: one straight-front, one slightly off for a wider gimbal envelope
+    slots: { weapon: ['S', { size:'S', facing:'front' }], shield: ['M'], engine: ['M'], cargo: [], mining: [], utility: ['S'] },
   },
   {
     id: 'ship_mule', name: 'Mule', role: 'freighter', tier: 1,
     hull: 200, shield: 70, baseShieldRegen: 8, cargo: 140, mass: 55, handling: 0.6,
     bankFactor: 0.35,
     energyCap: 100, energyRegen: 14, collisionRadius: 18, price: 35000,
-    slots: { weapon: ['S'], shield: ['M'], engine: ['M'], cargo: ['M','M','M'], mining: [], utility: ['S'] },
+    // hauler: a rear-facing gun to discourage pursuit while it runs
+    slots: { weapon: [{ size:'S', facing:'rear' }], shield: ['M'], engine: ['M'], cargo: ['M','M','M'], mining: [], utility: ['S'] },
   },
   // ---------- T2 ----------
   {
@@ -39,21 +47,24 @@ export const SHIPS = [
     hull: 320, shield: 180, baseShieldRegen: 12, cargo: 90, mass: 48, handling: 1.0,
     bankFactor: 0.70,
     energyCap: 200, energyRegen: 28, collisionRadius: 18, price: 95000,
-    slots: { weapon: ['M','M'], shield: ['M'], engine: ['M'], cargo: ['M','M'], mining: ['M'], utility: ['M','M'] },
+    // multirole: one front + one rear = defend itself coming and going
+    slots: { weapon: ['M', { size:'M', facing:'rear' }], shield: ['M'], engine: ['M'], cargo: ['M','M'], mining: ['M'], utility: ['M','M'] },
   },
   {
     id: 'ship_hornet', name: 'Hornet', role: 'interceptor', tier: 2, requiresTech: 'tech_strike_craft',
     hull: 260, shield: 240, baseShieldRegen: 16, cargo: 20, mass: 24, handling: 1.7,
     bankFactor: 1.15,
     energyCap: 260, energyRegen: 38, collisionRadius: 16, price: 110000,
-    slots: { weapon: ['M','M','M'], shield: ['M'], engine: ['L'], cargo: [], mining: [], utility: ['S','S'] },
+    // interceptor: 2 front + 1 turret for all-aspect coverage on the attack run
+    slots: { weapon: ['M', 'M', { size:'M', facing:'turret' }], shield: ['M'], engine: ['L'], cargo: [], mining: [], utility: ['S','S'] },
   },
   {
     id: 'ship_ironback', name: 'Ironback', role: 'mining_barge', tier: 2, requiresTech: 'tech_industrial_mining',
     hull: 480, shield: 160, baseShieldRegen: 10, cargo: 200, mass: 90, handling: 0.5,
     bankFactor: 0.30,
     energyCap: 240, energyRegen: 26, collisionRadius: 24, price: 130000,
-    slots: { weapon: ['M'], shield: ['M','M'], engine: ['M'], cargo: ['M','M','M'], mining: ['L','L','L','L'], utility: ['M','M'] },
+    // slow barge: a turret so it can swat pests while its drill works
+    slots: { weapon: [{ size:'M', facing:'turret' }], shield: ['M','M'], engine: ['M'], cargo: ['M','M','M'], mining: ['L','L','L','L'], utility: ['M','M'] },
   },
   // ---------- T3 ----------
   {
@@ -61,21 +72,24 @@ export const SHIPS = [
     hull: 640, shield: 460, baseShieldRegen: 18, cargo: 70, mass: 80, handling: 1.1,
     bankFactor: 0.55,
     energyCap: 420, energyRegen: 52, collisionRadius: 22, price: 320000,
-    slots: { weapon: ['L','L','L'], shield: ['L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['M','M','M'] },
+    // corvette: 2 front + 1 broadside gun each side
+    slots: { weapon: ['L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['M','M','M'] },
   },
   {
     id: 'ship_atlas', name: 'Atlas', role: 'heavy_hauler', tier: 3, requiresTech: 'tech_bulk_logistics',
     hull: 720, shield: 300, baseShieldRegen: 12, cargo: 480, mass: 200, handling: 0.45,
     bankFactor: 0.25,
     energyCap: 360, energyRegen: 40, collisionRadius: 30, price: 380000,
-    slots: { weapon: ['M','M'], shield: ['L','L'], engine: ['L'], cargo: ['L','L','L','L','L','L'], mining: [], utility: ['M','M','M'] },
+    // ponderous hauler: front + rear PD guns — survive, don't win fights
+    slots: { weapon: ['M', { size:'M', facing:'rear' }], shield: ['L','L'], engine: ['L'], cargo: ['L','L','L','L','L','L'], mining: [], utility: ['M','M','M'] },
   },
   {
     id: 'ship_ranger', name: 'Ranger', role: 'explorer', tier: 3, requiresTech: 'tech_long_range_survey',
     hull: 480, shield: 380, baseShieldRegen: 16, cargo: 110, mass: 60, handling: 1.3,
     bankFactor: 0.90,
     energyCap: 500, energyRegen: 64, collisionRadius: 18, price: 290000,
-    slots: { weapon: ['M','M'], shield: ['M','M'], engine: ['L'], cargo: ['M','M'], mining: [], utility: ['L','L','L','L'] },
+    // explorer: twin front + a turret for self-defense deep in hostile space
+    slots: { weapon: ['M', 'M', { size:'M', facing:'turret' }], shield: ['M','M'], engine: ['L'], cargo: ['M','M'], mining: [], utility: ['L','L','L','L'] },
   },
   // ---------- T4 ----------
   {
@@ -83,14 +97,16 @@ export const SHIPS = [
     hull: 1100, shield: 820, baseShieldRegen: 22, cargo: 90, mass: 150, handling: 0.95,
     bankFactor: 0.40,
     energyCap: 720, energyRegen: 84, collisionRadius: 26, price: 950000,
-    slots: { weapon: ['L','L','L','L'], shield: ['L','L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['L','L','L','L'] },
+    // gunship: 2 front heavies + 1 broadside each side = a weapons platform
+    slots: { weapon: ['L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['L','L','L','L'] },
   },
   {
     id: 'ship_colossus', name: 'Colossus', role: 'battlecruiser', tier: 4, requiresTech: 'tech_capital_hulls',
     hull: 1600, shield: 1100, baseShieldRegen: 26, cargo: 200, mass: 300, handling: 0.7,
     bankFactor: 0.30,
     energyCap: 900, energyRegen: 100, collisionRadius: 32, price: 1400000,
-    slots: { weapon: ['L','L','L','L','L'], shield: ['L','L','L','L'], engine: ['L'], cargo: ['L','L'], mining: [], utility: ['L','L','L','L','L'] },
+    // battlecruiser: 3 front + broadside batteries both sides
+    slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L','L'], engine: ['L'], cargo: ['L','L'], mining: [], utility: ['L','L','L','L','L'] },
   },
   // ---------- T5 ----------
   {
@@ -98,6 +114,7 @@ export const SHIPS = [
     hull: 3200, shield: 2600, baseShieldRegen: 32, cargo: 350, mass: 600, handling: 0.6,
     bankFactor: 0.22,
     energyCap: 1600, energyRegen: 160, collisionRadius: 45, price: 4500000,
-    slots: { weapon: ['L','L','L','L','L','L','L'], shield: ['L','L','L','L','L'], engine: ['L'], cargo: ['L','L','L'], mining: [], utility: ['L','L','L','L','L','L','L','L'] },
+    // flagship: 3 front + 2 broadside each side — a broadside duel monster
+    slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'left' }, { size:'L', facing:'right' }, { size:'L', facing:'right' }], shield: ['L','L','L','L','L'], engine: ['L'], cargo: ['L','L','L'], mining: [], utility: ['L','L','L','L','L','L','L','L'] },
   },
 ];

@@ -138,8 +138,12 @@ export function createOutfittingPanel(ctx) {
       cell.className = 'st-slot st-slot-' + slot.type + (fittedId ? ' filled' : ' empty') + (selectedSlot === i ? ' sel' : '');
       cell.setAttribute('data-slot', String(i));
       cell.setAttribute('data-filled', fittedId ? '1' : '0');
+      // Weapon hardpoints show their facing (Phase 2) — front/left/right/rear/turret — so the
+      // strategic choice of where a gun sits on the hull is legible at a glance.
+      const facingTag = (slot.type === 'weapon' && slot.facing && slot.facing !== 'front')
+        ? ' <span class="st-slot-facing">' + slot.facing + '</span>' : '';
       cell.innerHTML =
-        '<div class="st-slot-type mono">' + slot.type + ' ' + slot.size + '</div>' +
+        '<div class="st-slot-type mono">' + slot.type + ' ' + slot.size + facingTag + '</div>' +
         '<div class="st-slot-mod">' + (def ? def.name : (selectedSlot === i ? 'pick a module ▾' : '— empty —')) + '</div>' +
         (fittedId ? '<button class="st-slot-unfit" data-act="unfit">unfit</button>' : '');
       frag.appendChild(cell);

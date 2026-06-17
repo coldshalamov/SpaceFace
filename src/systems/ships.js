@@ -30,6 +30,22 @@ const SLOT_TYPES = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
 const STARTER_WEAPON_ID = 'wpn_pulse_laser_s';
 const DEFAULT_MINING_BEAM_TIER = 'beam_mk1'; // §0.10 Kestrel mines at 18 ore-HP/s
 
+// ---- Weapon hardpoint facings (Phase 2) -----------------------------------------------------
+// A hardpoint's facing is a base world angle offset from the nose. front faces forward, rear aft,
+// left/right are broadsides, turret is omni (tracks within its turretArcDeg). A fixed hardpoint
+// fires along (nose + facingAngle) and gimbal-assists toward the aim direction within GIMBAL_ARC.
+export const FACING_ANGLE = { front: 0, right: Math.PI / 2, rear: Math.PI, left: -Math.PI / 2, turret: 0 };
+export const GIMBAL_ARC_DEFAULT = 22 * Math.PI / 180;   // ~22° half-angle gimbal cone for fixed guns
+// Muzzle offset per facing (in ship-radius fractions) so shots visibly leave the hull at the mount.
+export const FACING_OFFSET = { front: [0.8, 0], right: [0.1, 0.6], rear: [-0.8, 0], left: [0.1, -0.6], turret: [0.5, 0] };
+
+/** Normalize a weapon-slot entry (bare size OR {size, facing}) into {size, facing}. */
+function weaponSlotSpec(entry) {
+  if (typeof entry === 'string') return { size: entry, facing: 'front' };
+  if (entry && typeof entry === 'object') return { size: entry.size || 'S', facing: entry.facing || 'front' };
+  return { size: 'S', facing: 'front' };
+}
+
 // Handling / mass formulas. flight.js uses entity.thrust as a per-axis accel coefficient and
 // vel += (a - drag*vel)*dt, so real terminal ~= thrust/drag; maxSpeed is the safety clamp.
 // Constants are tuned so a fresh Kestrel (mass 18 + ion+booster+laser modules) lands on the
@@ -38,13 +54,18 @@ const BASE_TURN = 4.4;     // rad/s reference (before handling/mass/turnMult)
 const SPEED_SCALE = 2.6;   // engine.topSpeed -> maxSpeed clamp scale
 const THRUST_SCALE = 0.99; // engine.topSpeed -> thrust accel scale
 
-/** Build the canonical list of slots [{type,size,index}] for a ship def, in a stable order
- *  (weapon, shield, engine, cargo, mining, utility) so fittings[] indices are deterministic. */
+/** Build the canonical list of slots [{type,size,index,facing?}] for a ship def, in a stable order
+ *  (weapon, shield, engine, cargo, mining, utility) so fittings[] indices are deterministic.
+ *  Weapon slots carry a `facing` ('front'|'left'|'right'|'rear'|'turret'); other slot types don't. */
 export function buildSlotList(shipDef) {
   const slots = [];
   for (const type of SLOT_TYPES) {
     const arr = (shipDef.slots && shipDef.slots[type]) || [];
-    for (const size of arr) slots.push({ type, size, index: slots.length });
+    for (const entry of arr) {
+      const slot = { type, size: (typeof entry === 'string') ? entry : (entry && entry.size) || 'S', index: slots.length };
+      if (type === 'weapon') slot.facing = weaponSlotSpec(entry).facing;
+      slots.push(slot);
+    }
   }
   return slots;
 }
@@ -171,25 +192,36 @@ function buildWeaponList(shipDef, fittings, isPlayer) {
   for (let i = 0; i < equipped.length; i++) {
     const d = equipped[i];
     if (!d || d.slotType !== 'weapon') continue;
-    weapons.push(makeWeaponRuntime(d, i));
+    weapons.push(makeWeaponRuntime(d, slots[i], i));
   }
   // Fresh player Kestrel: NEW_GAME fits no weapon, so give a starter so the player can shoot (§task).
   if (weapons.length === 0 && isPlayer) {
     const wslot = slots.find((s) => s.type === 'weapon');
     const w = WEAPON_BY_ID.get(STARTER_WEAPON_ID);
-    if (wslot && w) weapons.push(makeWeaponRuntime(w, wslot.index));
+    if (wslot && w) weapons.push(makeWeaponRuntime(w, wslot, wslot.index));
   }
   return weapons;
 }
 
-function makeWeaponRuntime(def, slotIndex) {
+function makeWeaponRuntime(def, slot, slotIndex) {
+  // Hardpoint facing (Phase 2): turret/gimbal tracking determines how a gun acquires its aim.
+  const tracking = def.tracking || 'fixed';
+  const facing = (slot && slot.facing) || 'front';
+  const facingAngle = FACING_ANGLE[facing] != null ? FACING_ANGLE[facing] : 0;
+  const turretArc = def.turretArcDeg ? def.turretArcDeg * Math.PI / 180 : 0;
+  // turret mounts track freely within their arc; fixed mounts gimbal-assist within GIMBAL_ARC;
+  // homing weapons lock a target and steer in flight (no gimbal — they fire toward the target).
+  const isTurret = facing === 'turret' || tracking === 'auto_turret';
+  const isHoming = tracking === 'homing';
+  const gimbalArc = isTurret ? (turretArc || Math.PI) : (isHoming ? Math.PI : GIMBAL_ARC_DEFAULT);
+  const muzzleOffset = FACING_OFFSET[facing] || FACING_OFFSET.front;
   return {
-    slotIndex, defId: def.id,
+    slotIndex, defId: def.id, facing, facingAngle, gimbalArc, muzzleOffset,
     dmg: def.dmg, rof: def.rof, energyCost: def.energyCost,
     heat: def.heatPerShot || def.heatPerSec || 0, heatMax: def.heatMax || 100,
     projSpeed: def.projSpeed, range: def.range, spread: def.spreadDeg || 0,
-    tracking: def.tracking || 'fixed', lockTimeS: def.lockTimeS || 0,
-    damageType: def.damageType, arc: def.turretArcDeg ? { turret: def.turretArcDeg } : 'fixed',
+    tracking, lockTimeS: def.lockTimeS || 0,
+    damageType: def.damageType, arc: turretArc ? { turret: turretArc } : (gimbalArc ? { gimbal: gimbalArc } : 'fixed'),
     _cooldown: 0, _heat: 0,
   };
 }
