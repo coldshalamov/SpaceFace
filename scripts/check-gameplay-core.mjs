@@ -422,6 +422,81 @@ function checkGateTollRequiresCredits() {
   assert(paidEvents.some((e) => e.event === 'economy:chargeCredits' && e.payload.reason === 'gate_toll'), 'affordable gate toll should charge through economy');
 }
 
+function checkSpawnRequestAmbushContract() {
+  const state = {
+    mode: 'flight',
+    meta: { seed: 123, playtimeS: 0 },
+    playerId: 1,
+    player: { ownedShips: [], activeShipIndex: 0 },
+    entities: new Map([[1, {
+      id: 1,
+      type: 'ship',
+      alive: true,
+      pos: { x: 100, y: 0, z: -20 },
+      prevPos: { x: 100, y: 0, z: -20, copy(pos) { this.x = pos.x; this.y = pos.y || 0; this.z = pos.z; return this; } },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      prevRot: 0,
+      flags: {},
+      data: {},
+    }]]),
+    entityList: [],
+    rng: () => 0.5,
+    world: {
+      sectors: {},
+      currentSectorId: 'sector_ceres_belt',
+      activeSector: { stations: [], fields: [], hazards: [], pois: [], gates: [], enemies: [] },
+      discovery: {},
+      pendingSpawns: {},
+      rng: () => 0.5,
+    },
+    bounds: {},
+    jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
+    fuel: { current: 100, max: 100 },
+  };
+  const spawned = [];
+  const events = [];
+  const bus = createBus();
+  bus.on('interdiction:triggered', (p) => events.push(p));
+  const helpers = {
+    spawnEntity(spec) {
+      const ent = { id: 1000 + spawned.length, ...spec };
+      spawned.push(spec);
+      return ent;
+    },
+    hash32() { return 7; },
+    mulberry32() { return () => 0.5; },
+  };
+
+  world.init({ state, bus, helpers, registry: { get() { return null; } } });
+
+  bus.emit('spawn:request', {
+    entityType: 'pirate',
+    sectorId: 'sector_ceres_belt',
+    tags: ['ambush', 'trader_kill'],
+    refId: 'au_live',
+  });
+
+  assert.equal(state.world.activeSector.enemies.length, 1, 'active-sector pirate spawn request should spawn an ambush');
+  assert.equal(spawned[0].type, 'ship', 'ambush request should resolve to a spawned ship spec');
+  assert(events.some((e) => e.sectorId === 'sector_ceres_belt' && e.ambushCount === 1), 'spawn request should emit ambush telemetry');
+
+  bus.emit('spawn:request', {
+    entityType: 'pirate',
+    sectorId: 'sector_helios_prime',
+    tags: ['ambush', 'trader_kill'],
+    refId: 'au_queued',
+  });
+
+  assert.equal(state.world.pendingSpawns.sector_helios_prime.length, 1, 'off-sector spawn request should be queued by sector');
+  assert.equal(world.serialize().pendingSpawns.sector_helios_prime[0].refId, 'au_queued', 'queued spawn request should serialize with world overlay');
+
+  world.enterSector('sector_helios_prime');
+
+  assert.equal(state.world.pendingSpawns.sector_helios_prime, undefined, 'queued spawn request should be consumed on sector entry');
+  assert.equal(state.world.activeSector.enemies.length, 1, 'queued pirate request should materialize when the sector loads');
+}
+
 checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
 checkCombatRewardsAndLootKinds();
@@ -430,5 +505,6 @@ checkNewGameOwnedShipDefaultsAreFitted();
 checkAmmoServiceOnlyChargesAcceptedCargo();
 checkEconomyRngFollowsCurrentSaveSeed();
 checkGateTollRequiresCredits();
+checkSpawnRequestAmbushContract();
 
 console.log('Core gameplay checks OK');

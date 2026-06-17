@@ -68,6 +68,7 @@ export const world = {
       for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
     }
     if (!state.world.discovery) state.world.discovery = {};
+    if (!state.world.pendingSpawns || typeof state.world.pendingSpawns !== 'object') state.world.pendingSpawns = {};
 
     // Runtime-only flags (not serialized).
     this._combatLock = false;     // last combat:lockChanged value
@@ -87,6 +88,7 @@ export const world = {
     bus.on('module:unequipped', () => this._resolveShipModules());
     bus.on('ship:statsChanged', () => this._resolveShipModules());
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
+    bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
   },
 
   // =========================================================================================
@@ -145,6 +147,7 @@ export const world = {
     // Place the player ship at the entry point (move existing entity; world never spawns the player).
     this._placePlayer(entryPoint);
     this._resolveShipModules();
+    this._flushPendingSpawns(sectorId, sector);
 
     if (firstVisit) {
       this.bus.emit('sector:discovered', { sectorId });
@@ -485,10 +488,11 @@ export const world = {
     jump._fuelCost = 0;
   },
 
-  _spawnAmbush(sector, count) {
+  _spawnAmbush(sector, count, origin = null) {
     if (!sector || count <= 0) return;
     const player = this.state.entities.get(this.state.playerId);
-    const px = player ? player.pos.x : 0, pz = player ? player.pos.z : 0;
+    const px = origin ? origin.x : (player ? player.pos.x : 0);
+    const pz = origin ? origin.z : (player ? player.pos.z : 0);
     const pool = this._enemyPool(sector);
     const rng = this.state.world.rng || this.state.rng;
     const [lvLo, lvHi] = sector.enemyLevel || [1, 2];
@@ -505,6 +509,62 @@ export const world = {
     }
     if (this.state.world.activeSector) this.state.world.activeSector.enemies.push(...placed);
     this.bus.emit('interdiction:triggered', { sectorId: sector.id, ambushCount: count, spawnPos: { x: px, z: pz } });
+  },
+
+  _onSpawnRequest(p) {
+    const req = this._normalizeSpawnRequest(p);
+    if (!req) return false;
+    const sector = this.state.world.sectors[req.sectorId] || SECTOR_BY_ID.get(req.sectorId);
+    if (!sector) return false;
+    if (req.sectorId !== this.state.world.currentSectorId || !this.state.world.activeSector) {
+      this._queueSpawnRequest(req);
+      return true;
+    }
+    this._spawnFromRequest(req, sector);
+    return true;
+  },
+
+  _normalizeSpawnRequest(p) {
+    const tags = Array.isArray(p.tags) ? p.tags.filter((t) => typeof t === 'string') : [];
+    const entityType = p.entityType || p.type;
+    if (entityType !== 'pirate') return null;
+    const sectorId = p.sectorId || (this.state.world && this.state.world.currentSectorId);
+    if (!sectorId) return null;
+    const pos = p.position && Number.isFinite(p.position.x) && Number.isFinite(p.position.z)
+      ? { x: p.position.x, z: p.position.z }
+      : null;
+    const rawCount = p.count != null ? p.count : (p.ambushCount != null ? p.ambushCount : 1);
+    return {
+      entityType: 'pirate',
+      sectorId,
+      position: pos,
+      tags,
+      refId: p.refId || null,
+      count: clamp(Math.floor(rawCount) || 1, 1, 6),
+    };
+  },
+
+  _queueSpawnRequest(req) {
+    const world = this.state.world;
+    if (!world.pendingSpawns || typeof world.pendingSpawns !== 'object') world.pendingSpawns = {};
+    const list = world.pendingSpawns[req.sectorId] || (world.pendingSpawns[req.sectorId] = []);
+    list.push(req);
+  },
+
+  _flushPendingSpawns(sectorId, sector) {
+    const pending = this.state.world.pendingSpawns;
+    const list = pending && pending[sectorId];
+    if (!list || !list.length) return;
+    delete pending[sectorId];
+    for (const raw of list) {
+      const req = this._normalizeSpawnRequest(raw);
+      if (req) this._spawnFromRequest(req, sector);
+    }
+  },
+
+  _spawnFromRequest(req, sector) {
+    if (!req || req.entityType !== 'pirate') return;
+    this._spawnAmbush(sector, req.count || 1, req.position || null);
   },
 
   // =========================================================================================
@@ -840,6 +900,7 @@ export const world = {
     return {
       currentSectorId: state.world.currentSectorId,
       discovery: state.world.discovery,
+      pendingSpawns: state.world.pendingSpawns || {},
       sectorOwners: this._ownerOverlay(),
       jump: {
         state: state.jump.state, targetSectorId: state.jump.targetSectorId, via: state.jump.via,
@@ -862,6 +923,7 @@ export const world = {
     if (!data) return;
     const state = this.state;
     if (data.discovery) state.world.discovery = data.discovery;
+    state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     if (data.jump) {
       // restore overlay fields but never resume a mid-charge/jump (avoid a stuck FSM on load)
@@ -885,6 +947,7 @@ export const world = {
     const state = this.state;
     // reset overlay + jump/fuel to defaults; the home sector is entered by main.js post-boot.
     state.world.discovery = {};
+    state.world.pendingSpawns = {};
     state.jump.state = 'IDLE'; state.jump.targetSectorId = null; state.jump.via = null;
     state.jump.chargeT = 0; state.jump.chargeNeeded = 0; state.jump.cooldownT = 0;
     state.fuel = { current: 100, max: 100 };
