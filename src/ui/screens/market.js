@@ -78,6 +78,24 @@ export function createMarketPanel(ctx) {
     '<div class="st-stat"><span class="st-stat-l">CARGO</span><span class="mono st-cargo">0 / 0 u</span></div>';
   root.appendChild(header);
 
+  // --- Phase 4: trade route planner ("Best Trades") ---
+  // Scans marketIntel snapshots + this station's market for profitable buy-here→sell-there routes,
+  // ranked by margin per cargo-volume so haulers see their best move at a glance. "Set Nav" writes a
+  // navigation waypoint to the destination station the HUD arrow steers toward.
+  const planner = document.createElement('div');
+  planner.className = 'st-market-planner';
+  planner.innerHTML = '<div class="st-sub-h">Best Trades <span class="st-planner-hint">(buy here → sell elsewhere)</span></div>' +
+    '<div class="st-planner-list"></div>';
+  root.appendChild(planner);
+  const plannerList = planner.querySelector('.st-planner-list');
+  plannerList.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-act="nav"]');
+    if (!btn) return;
+    const stationId = btn.getAttribute('data-station');
+    const cmdtyId = btn.getAttribute('data-cmdty');
+    setNavTo(ctx, stationId, cmdtyId);
+  });
+
   // --- table head ---
   const tableHead = document.createElement('div');
   tableHead.className = 'st-row st-row-head';
@@ -193,7 +211,7 @@ export function createMarketPanel(ctx) {
     refreshValues();
   }
 
-  // Cheap in-place refresh of prices / owned / button-enabled.
+  // Cheap in-place refresh of prices / owned / button-enabled + planner + price heat.
   function refreshValues() {
     const state = ctx.state;
     const stationId = panel.stationId;
@@ -201,6 +219,7 @@ export function createMarketPanel(ctx) {
     header.querySelector('.st-credits').textContent = fmtCr(p.credits);
     const cap = p.cargo.capVolume || 0;
     header.querySelector('.st-cargo').textContent = Math.round(p.cargo.usedVolume || 0) + ' / ' + cap + ' u';
+    refreshPlanner(state, stationId);
     if (!panel._rowEls) return;
     for (const cmdtyId in panel._rowEls) {
       const row = panel._rowEls[cmdtyId];
@@ -210,15 +229,54 @@ export function createMarketPanel(ctx) {
       row.querySelector('.st-owned').textContent = owned;
       row.querySelector('.st-buy').textContent = fmtCr(buyP);
       row.querySelector('.st-sell').textContent = fmtCr(sellP);
+      // Phase 4 price heat: ▲/▼ vs the commodity base price so a glance shows rich vs cheap.
+      const def = COMMODITY_BY_ID.get(cmdtyId);
+      const base = def ? def.basePrice : 0;
+      const buyHeat = base > 0 ? (buyP - base) / base : 0;
+      applyPriceHeat(row.querySelector('.st-buy'), buyHeat);
+      const sellHeat = base > 0 ? (sellP - base) / base : 0;
+      applyPriceHeat(row.querySelector('.st-sell'), sellHeat);
       const buyBtn = row.querySelector('.st-buy-btn');
       const sellBtn = row.querySelector('.st-sell-btn');
       // buy disabled if can't afford even 1 unit or cargo full; sell disabled if own nothing.
-      const def = COMMODITY_BY_ID.get(cmdtyId);
       const vol = def && def.volPerU > 0 ? def.volPerU : 1;
       const room = (p.cargo.capVolume - p.cargo.usedVolume) >= vol;
       buyBtn.disabled = (p.credits < buyP) || !room;
       sellBtn.disabled = owned <= 0;
     }
+  }
+
+  // Render the trade-route planner (best buy→sell margins from market intel).
+  function refreshPlanner(state, stationId) {
+    const trades = computeBestTrades(state, stationId);
+    plannerList.textContent = '';
+    if (!trades.length) {
+      plannerList.innerHTML = '<div class="st-planner-empty">No profitable routes known yet — visit other stations to log their prices.</div>';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const t of trades) {
+      const row = document.createElement('div');
+      row.className = 'st-planner-row';
+      const pct = Math.round((t.margin / t.buyHere) * 100);
+      row.innerHTML =
+        '<span class="st-pl-cmdty">' + t.cmdtyName + '</span>' +
+        '<span class="st-pl-prices mono">buy ' + fmtCr(t.buyHere) + ' → sell ' + fmtCr(t.sellThere) + '</span>' +
+        '<span class="st-pl-margin st-pl-up">+' + fmtCr(t.margin) + '/u (' + pct + '%)</span>' +
+        '<span class="st-pl-dest">' + stationName(state, t.destStation) + '</span>' +
+        '<button class="st-pl-nav" data-act="nav" data-station="' + t.destStation + '" data-cmdty="' + t.cmdtyId + '">Set Nav</button>';
+      frag.appendChild(row);
+    }
+    plannerList.appendChild(frag);
+  }
+
+  // Tint a price cell green (cheap) or red (dear) relative to the base price.
+  function applyPriceHeat(el, heat) {
+    if (!el) return;
+    el.classList.remove('st-heat-up', 'st-heat-down', 'st-heat-flat');
+    if (heat <= -0.08) el.classList.add('st-heat-down');   // notably cheap (buy opportunity)
+    else if (heat >= 0.08) el.classList.add('st-heat-up'); // notably dear (sell opportunity)
+    else el.classList.add('st-heat-flat');
   }
 
   const panel = {
@@ -243,4 +301,73 @@ function maxBuyable(ctx, stationId, cmdtyId) {
   const byCredits = Math.floor(p.credits / buyP);
   const byRoom = Math.floor((p.cargo.capVolume - p.cargo.usedVolume) / vol);
   return Math.max(0, Math.min(byCredits, byRoom));
+}
+
+// ---- Phase 4: trade route planner -----------------------------------------------------------
+
+/** Resolve a station's display name from its entity or the sectors data catalog. */
+function stationName(state, stationId) {
+  for (const e of state.entityList) {
+    if (e.type === 'station' && e.data && e.data.stationId === stationId) {
+      return e.data.stationName || e.data.stationId || 'Station';
+    }
+  }
+  return stationId || 'Station';
+}
+
+/** Set a navigation waypoint to a destination station so the HUD arrow steers toward it. */
+function setNavTo(ctx, stationId, cmdtyId) {
+  const state = ctx.state;
+  // resolve the destination's world position: prefer a live station entity in this sector
+  let pos = null;
+  for (const e of state.entityList) {
+    if (e.type === 'station' && e.data && e.data.stationId === stationId) { pos = { x: e.pos.x, z: e.pos.z }; break; }
+  }
+  const cmdty = COMMODITY_BY_ID.get(cmdtyId);
+  state.nav.waypoint = {
+    stationId,
+    pos: pos || { x: 0, z: 0 },
+    label: stationName(state, stationId) + (cmdty ? ' · ' + cmdty.name : ''),
+  };
+  ctx.bus.emit('toast', { text: 'Nav set: ' + state.nav.waypoint.label + (pos ? '' : ' (in another sector — undock & jump)'), kind: 'info', ttl: 3 });
+  ctx.bus.emit('audio:cue', { id: 'ui_click' });
+}
+
+/** Build the ranked "Best Trades" list: for each commodity traded HERE, find the best known
+ *  SELL price across marketIntel snapshots, compute the per-unit and per-volume margin, and rank. */
+function computeBestTrades(state, hereStationId) {
+  const intel = state.economy && state.economy.marketIntel;
+  const hereMarket = state.economy && state.economy.markets && state.economy.markets[hereStationId];
+  if (!hereMarket) return [];
+  const out = [];
+  for (const cmdtyId in hereMarket) {
+    const entry = hereMarket[cmdtyId];
+    if (!entry || entry.lastBuy == null) continue;
+    const def = COMMODITY_BY_ID.get(cmdtyId);
+    if (!def) continue;
+    const vol = def.volPerU > 0 ? def.volPerU : 1;
+    const buyHere = entry.lastBuy;
+    // scan all known stations' snapshots for the best sell price
+    let bestSell = -1, bestStation = null, bestSeen = 0;
+    for (const sid in intel) {
+      if (sid === hereStationId) continue;
+      const snap = intel[sid].snapshot || {};
+      const s = snap[cmdtyId];
+      if (!s || s.sell == null) continue;
+      if (s.sell > bestSell) { bestSell = s.sell; bestStation = sid; bestSeen = intel[sid].seenAtT || 0; }
+    }
+    if (!bestStation || bestSell <= buyHere) continue;
+    const margin = bestSell - buyHere;
+    const perVol = margin / vol;   // rank by profit per cargo-volume (what a hauler cares about)
+    out.push({ cmdtyId, cmdtyName: def.name, buyHere, sellThere: bestSell, margin, perVol, destStation: bestStation, age: bestSeen });
+  }
+  out.sort((a, b) => b.perVol - a.perVol);
+  return out.slice(0, 5); // top 5
+}
+
+/** Active economic events affecting a station (shortage/boom/blockade/piracy) for badges. */
+function stationEvents(state, stationId) {
+  const evs = state.economy && state.economy.econEvents;
+  if (!evs || !evs.length) return [];
+  return evs.filter((e) => e.stationId === stationId && (e.duration == null || true)).map((e) => e.type);
 }

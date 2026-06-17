@@ -82,7 +82,7 @@ export function createGameState(seed) {
     world: { sectors: {}, currentSectorId: null, activeSector: { stations: [], fields: [], hazards: [], pois: [], gates: [] }, discovery: {}, entryPoint: { x: 0, z: 0, heading: 0 } },
     jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
     fuel: { current: 100, max: 100 },
-    nav: { route: null, autoTravel: false },
+    nav: { route: null, autoTravel: false, waypoint: null },   // waypoint = {stationId,pos:{x,z},label} set by the trade route planner
     automation: defaultAutomation(),
     ui: { screenStack: [], docked: false, activeStationTab: 'market', radarRange: 4000, toasts: [], alerts: [], trackedMissionId: null, starmapView: { cx: 0, cy: 0, zoom: 1 } },
 

@@ -404,6 +404,26 @@ const STATION_CSS = `
 .st-sell-btn:hover:not(:disabled) { background: var(--warn); color: #1a1000; }
 .st-market-foot { margin-top: 10px; color: var(--ink-dim); font-size: .8rem; }
 
+/* Phase 4: trade route planner + price heat */
+.st-market-planner { margin-bottom: 12px; border: 1px solid var(--panel-edge); border-radius: 8px;
+  padding: 10px 12px; background: linear-gradient(180deg, rgba(57,208,255,.06), rgba(10,18,32,.4)); }
+.st-planner-hint { color: var(--ink-mute); font-weight: 400; font-size: .7rem; letter-spacing: .02em; text-transform: none; }
+.st-planner-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.st-planner-empty { color: var(--ink-dim); font-size: .82rem; font-style: italic; padding: 4px 0; }
+.st-planner-row { display: grid; grid-template-columns: 1.4fr 2.2fr 1.6fr 1.4fr auto; align-items: center; gap: 10px;
+  padding: 6px 9px; background: rgba(10,18,32,.5); border: 1px solid var(--panel-edge); border-radius: 6px; font-size: .82rem; }
+.st-pl-cmdty { color: var(--ink); font-weight: 600; }
+.st-pl-prices { color: var(--ink-dim); font-size: .78rem; }
+.st-pl-margin { font-weight: 600; }
+.st-pl-up { color: var(--good); }
+.st-pl-dest { color: var(--ink-mute); font-size: .78rem; }
+.st-pl-nav { padding: 4px 10px; font-size: .72rem; border-color: var(--accent); color: var(--accent);
+  border-radius: 5px; cursor: pointer; }
+.st-pl-nav:hover { background: rgba(57,208,255,.14); }
+.st-heat-up { color: var(--danger); }     /* dear = sell opportunity (red = you can sell high) */
+.st-heat-down { color: var(--good); }     /* cheap = buy opportunity (green = buy low) */
+.st-heat-flat { color: var(--ink-dim); }
+
 /* shipyard */
 .st-sy-owned { margin-bottom: 16px; }
 .st-sy-owned-list { display: flex; gap: 10px; flex-wrap: wrap; }

@@ -112,6 +112,26 @@ export function createHud(ctx, alerts) {
   const objWrap = document.createElement('div');
   objWrap.className = 'sf-objectives';
   root.appendChild(objWrap);
+
+  // ---- Phase 4: nav readout (destination / distance / ETA) + fuel gauge (top-left) ----
+  const elNavReadout = document.createElement('div');
+  elNavReadout.className = 'sf-nav-readout';
+  elNavReadout.style.display = 'none';
+  elNavReadout.innerHTML =
+    '<div class="sf-nav-label mono">—</div>' +
+    '<div class="sf-nav-meta"><span class="sf-nav-dist">0 u</span> · ETA <span class="sf-nav-eta">—</span></div>';
+  root.appendChild(elNavReadout);
+
+  const elFuel = document.createElement('div');
+  elFuel.className = 'sf-fuel';
+  elFuel.innerHTML =
+    '<span class="sf-fuel-label mono">FUEL</span>' +
+    '<div class="sf-bar sf-bar--fuel"><div class="sf-bar__fill"></div></div>' +
+    '<span class="sf-fuel-num mono">0%</span>';
+  root.appendChild(elFuel);
+  const elFuelFill = elFuel.querySelector('.sf-bar__fill');
+  const elFuelNum = elFuel.querySelector('.sf-fuel-num');
+
   const arrow = document.createElement('div');
   arrow.className = 'sf-objarrow';
   arrow.style.display = 'none';
@@ -244,6 +264,12 @@ export function createHud(ctx, alerts) {
         numEls.shield.textContent = Math.max(0, Math.round(p.shield)) + '';
         numEls.energy.textContent = Math.max(0, Math.round(p.cap)) + '';
         numEls.heat.textContent = Math.round(heatFrac * 100) + '%';
+        // Phase 4 fuel gauge: low fuel flashes a warning.
+        const fuel = state.fuel || { current: 100, max: 100 };
+        const fuelFrac = fuel.max > 0 ? clamp01(fuel.current / fuel.max) : 1;
+        elFuelFill.style.transform = `scaleX(${fuelFrac})`;
+        elFuelNum.textContent = Math.round(fuelFrac * 100) + '%';
+        elFuel.classList.toggle('sf-fuel--low', fuelFrac < 0.25);
       }
     }
 
@@ -296,13 +322,28 @@ export function createHud(ctx, alerts) {
   }
 
   function updateObjectiveArrow(p) {
+    // Priority: a tracked mission waypoint, else a player-set trade nav waypoint (Phase 4).
     const tracked = state.ui.trackedMissionId;
     const active = (state.missions && state.missions.active) || [];
-    let wp = null;
     const m = tracked ? active.find((x) => x.id === tracked) : active[0];
+    let wp = null, wpLabel = null;
     if (m) wp = m.waypoint || m.targetPos || (m.objectives && m.objectives[0] && m.objectives[0].pos) || null;
-    if (!wp || !p || !helpers.worldToScreen) { arrow.style.display = 'none'; return; }
+    if (!wp && state.nav && state.nav.waypoint) {
+      // nav waypoint is a station; re-resolve its live world position each frame so it tracks
+      // moving entities and clears when the station is gone (e.g. after jumping away).
+      const nw = state.nav.waypoint;
+      if (nw.pos) { wp = nw.pos; wpLabel = nw.label; }
+    }
+    if (!wp || !p || !helpers.worldToScreen) { arrow.style.display = 'none'; elNavReadout.style.display = 'none'; return; }
     const proj = helpers.worldToScreen({ x: wp.x, y: 0, z: wp.z });
+    // distance + ETA readout (always shown while a nav target is set)
+    const dist = Math.hypot(wp.x - p.pos.x, wp.z - p.pos.z);
+    const speed = Math.hypot(p.vel.x, p.vel.z);
+    const etaS = speed > 5 ? dist / speed : Infinity;
+    elNavReadout.style.display = 'block';
+    elNavReadout.querySelector('.sf-nav-dist').textContent = Math.round(dist) + ' u';
+    elNavReadout.querySelector('.sf-nav-eta').textContent = isFinite(etaS) ? (etaS < 60 ? Math.round(etaS) + 's' : Math.round(etaS / 60) + 'm') : '—';
+    if (wpLabel) elNavReadout.querySelector('.sf-nav-label').textContent = wpLabel;
     if (proj.onScreen) { arrow.style.display = 'none'; return; }
     // clamp to a screen-edge ellipse around center, pointing toward target
     const w = window.innerWidth, h = window.innerHeight;
