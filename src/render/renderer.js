@@ -115,8 +115,10 @@ export const render = {
   syncEntityViews(alpha) {
     for (const e of this.state.entityList) {
       const m = e.mesh; if (!m) continue;
+      const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
       if (e.flags.noInterp) {
         m.position.set(e.pos.x, 0, e.pos.z); m.rotation.y = -e.rot;
+        if (hull && e.bank != null) hull.rotation.x = -e.bank; // roll around forward axis; +bank dips right wing
       } else {
         m.position.x = e.prevPos.x + (e.pos.x - e.prevPos.x) * alpha;
         m.position.z = e.prevPos.z + (e.pos.z - e.prevPos.z) * alpha;
@@ -124,6 +126,11 @@ export const render = {
         let dr = e.rot - e.prevRot;
         dr = ((dr + Math.PI) % (Math.PI * 2)) - Math.PI; if (dr < -Math.PI) dr += Math.PI * 2;
         m.rotation.y = -(e.prevRot + dr * alpha);
+        // interpolate bank for a smooth roll (prevBank snapshotted in core.preStep each step)
+        if (hull && e.bank != null) {
+          const pb = e.prevBank || 0;
+          hull.rotation.x = -(pb + (e.bank - pb) * alpha);
+        }
       }
     }
   },

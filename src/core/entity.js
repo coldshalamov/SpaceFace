@@ -34,6 +34,7 @@ export function makeEntity(spec = {}) {
     id: 0, type: 'fx', alive: true, factionId: null,
     pos: v3(spec.pos), vel: v3(spec.vel), prevPos: new THREE.Vector3(),
     rot: spec.rot || 0, prevRot: spec.rot || 0, angVel: 0,
+    bank: 0, prevBank: 0, bankVel: 0,   // roll-into-turn state (Phase 1 flight); bank = current roll (rad)
     radius: 1, mass: 1,
     hull: 1, hullMax: 1, armorHp: 0, armorMax: 0, armorFlat: 0,
     shield: 0, shieldMax: 0, shieldRegenRate: 0, shieldRegenDelay: 3, lastDamageT: -1e9,
@@ -53,6 +54,7 @@ export function makeEntity(spec = {}) {
   if (e.collisionMask === 0) e.collisionMask = DEFAULT_MASK[e.type] || 0;
   e.prevPos.copy(e.pos);
   e.prevRot = e.rot;
+  e.prevBank = e.bank;
   // hp / maxHp alias hull / hullMax (non-enumerable so save serialization ignores them)
   Object.defineProperty(e, 'hp', {
     get() { return this.hull; }, set(v) { this.hull = v; }, configurable: true, enumerable: false,

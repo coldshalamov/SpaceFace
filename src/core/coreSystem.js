@@ -57,6 +57,7 @@ export const core = {
     for (const e of state.entityList) {
       e.prevPos.copy(e.pos);
       e.prevRot = e.rot;
+      e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
     }
     const day = Math.floor(state.simTime / DAY_SECONDS);
     if (day !== this._lastDay) {

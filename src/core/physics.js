@@ -36,7 +36,9 @@ export const physics = {
       }
       e.pos.x += e.vel.x * dt;
       e.pos.z += e.vel.z * dt;
-      e.rot += e.angVel * dt;
+      // NOTE: e.rot is NOT integrated here. Rotation (yaw + bank) is fully owned by flight.js
+      // (Phase 1 fix: the old `e.rot += e.angVel*dt` here double-applied rotation, since flight
+      // already advanced e.rot). Projectiles set their own rot in weapons/spawn; flight sets ships'.
     }
   },
 

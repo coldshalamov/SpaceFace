@@ -71,14 +71,15 @@ function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.
 // action -> default human-readable key. Sections group the grid.
 const SECTIONS = [
   ['Flight', [
-    ['Move', 'moveUp', 'W A S D'],
-    ['Aim', 'aim', 'Mouse'],
+    ['Throttle forward / reverse', 'moveUp', '↑↓ / W S'],
+    ['Steer (yaw + bank)', 'aim', '←→ / A D'],
+    ['Aim weapons', 'aim', 'Mouse'],
     ['Boost', 'boost', 'Shift'],
     ['Fire group 1', 'fire1', 'LMB / Space'],
     ['Fire group 2', 'fire2', 'RMB'],
     ['Mine beam', 'mine', 'RMB on rock'],
+    ['Auto-fire toggle', 'autoFire', 'F'],
     ['Select weapon group', 'weaponGroup', 'Q / E'],
-    ['Target nearest hostile', 'targetNearest', 'F'],
   ]],
   ['Interface', [
     ['Cycle target', 'cycleTarget', 'Tab'],

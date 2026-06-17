@@ -120,6 +120,9 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const totalMass = baseMass + moduleMass;
   const massRatio = totalMass / baseMass;
   const handling = shipDef.handling || 1;
+  // Banking: per-hull roll-into-turn aggressiveness. Heavier loads bank less (mass dampens it),
+  // so a fully-loaded freighter feels even more ponderous in a turn.
+  const bankFactor = (shipDef.bankFactor != null ? shipDef.bankFactor : 0.6) / Math.sqrt(massRatio);
 
   const speedMass = 2 / (1 + massRatio);     // 1.0 at hull baseline, falls as mass grows
   const thrustMass = 1.5 / (0.5 + massRatio);
@@ -153,6 +156,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     shieldRegenRate, shieldRegenDelay: 3,
     cap: capMax, capMax, capRegen,
     thrust, turnRate, maxSpeed, drag,
+    bankFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     cargoCap,
     // informational extras (read by combat/ui; not part of the flat copy)
@@ -593,5 +597,6 @@ function copyDerivedOntoEntity(e, d) {
   e.shieldMax = d.shieldMax; e.shieldRegenRate = d.shieldRegenRate; e.shieldRegenDelay = d.shieldRegenDelay;
   e.capMax = d.capMax; e.capRegen = d.capRegen;
   e.thrust = d.thrust; e.turnRate = d.turnRate; e.maxSpeed = d.maxSpeed; e.drag = d.drag;
+  e.bankFactor = d.bankFactor;
   e.radius = d.radius; e.mass = d.mass;
 }

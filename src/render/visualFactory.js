@@ -235,10 +235,16 @@ function buildShipMesh(e, pal) {
   const accent = emissiveMaterial(pal.accent, 1.7);
   const cockpit = emissiveMaterial(pal.accent === '#39d0ff' ? '#bff4ff' : pal.accent, 2.2);
   const wingK = Math.max(0.3, recipe.wingSpan || 0.8); // wing-span scale from recipe
-  const g = new THREE.Group();
-  g.userData.engines = [];
+  // Two-layer structure for banking (Phase 1): `outer` is what the renderer yaws (rotation.y) +
+  // positions; `g` (the hull) is rolled (rotation.x) by the renderer to bank into turns. All ship
+  // geometry lives in `g`, so engines/canopy/wings tilt together when the hull banks.
+  const g = new THREE.Group();           // the bankable hull (rolled by renderer)
+  const outer = new THREE.Group();       // yaw + position holder (returned)
+  outer.add(g);
+  outer.userData.hull = g;
+  outer.userData.engines = [];
 
-  const addEngine = (x, z, scl) => { const en = engineGlow(pal, x, z, scl); g.add(en); g.userData.engines.push(en); };
+  const addEngine = (x, z, scl) => { const en = engineGlow(pal, x, z, scl); g.add(en); outer.userData.engines.push(en); };
   // Place exactly `engineCount` engine glows symmetrically across the rear of the hull.
   const placeEngines = (rearX, spreadZ, scl) => {
     const n = Math.max(1, Math.min(8, recipe.engineCount || 2));
@@ -395,7 +401,7 @@ function buildShipMesh(e, pal) {
   addAntennas(-R * 0.2, R * 0.2);
   // self-animate engine halos (subtle throb). The driver MUST live on a renderable child — Three
   // only fires onBeforeRender on objects in the render list (isMesh/isSprite), never on a bare Group.
-  const engines = g.userData.engines;
+  const engines = outer.userData.engines;
   if (engines && engines.length) {
     const ph = (seed % 100) / 100 * Math.PI * 2;
     // capture each plume's base (non-uniform) scale so the throb stretches its LENGTH only.
@@ -412,8 +418,8 @@ function buildShipMesh(e, pal) {
       };
     }
   }
-  g.userData.kind = 'ship';
-  return g;
+  outer.userData.kind = 'ship';
+  return outer;
 }
 
 // first renderable Mesh descendant (the body/spine/hull is always added first) — used as the

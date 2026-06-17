@@ -99,10 +99,11 @@ export const ui = {
     reticle.innerHTML = RETICLE_SVG;
     document.getElementById('hud').appendChild(reticle);
 
-    // Always-visible (when in flight) control hints — fixes "confusing" by making arrows + mouse immediately obvious and fun
+    // Always-visible (when in flight) control hints — reflects the Phase 1 flight model: arrows
+    // fly the ship (yaw + throttle) with momentum + banking; mouse independently aims & fires.
     const hints = document.createElement('div');
     hints.id = 'control-hints';
-    hints.textContent = 'WASD / ↑↓←→  thrust & strafe  •  Mouse aim  •  SPACE / LMB fire  •  SHIFT boost';
+    hints.textContent = '↑↓ throttle  •  ←→ / A D steer (banks)  •  Mouse aim  •  LMB / SPACE fire  •  RMB mine  •  SHIFT boost  •  F auto-fire';
     document.getElementById('ui-root').appendChild(hints);
 
     // Hide hints/reticle when not in pure flight (improved from initial override for robustness)
@@ -133,7 +134,7 @@ export const ui = {
             Mine the glowing veins. Outrun the pirates. Build your empire.<br>
             Your face is your legend.
           </div>
-          <div style="font-size:12px;opacity:0.6;margin-bottom:18px;">↑↓←→ / WASD • MOUSE AIM • SPACE FIRE • SHIFT BOOST</div>
+          <div style="font-size:12px;opacity:0.6;margin-bottom:18px;">↑↓ THROTTLE • ←→ STEER (BANKS) • MOUSE AIM • LMB FIRE • SHIFT BOOST</div>
           <div style="font-size:11px;letter-spacing:3px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
         </div>
         <div id="cinematic-pilot" style="position:absolute;bottom:24px;right:24px;width:92px;height:92px;border:3px solid #39d0ff;border-radius:50%;overflow:hidden;box-shadow:0 0 30px #39d0ff;opacity:0.95;background:#0b1220;">

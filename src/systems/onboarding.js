@@ -13,7 +13,7 @@ const STYLE_ID = 'sf-onboarding-style';
 // system emits its own synthetic event from update()). Steps may complete out of order; the panel
 // always shows the first incomplete one.
 const STEPS = [
-  { key: 'fly',     title: 'Reach Helios Station',     hint: 'Thrust with W A S D or the Arrow keys — the mouse aims your ship. Fly to the large station structure (shown on your radar).' },
+  { key: 'fly',     title: 'Reach Helios Station',     hint: 'Hold ↑ or W to thrust forward, and steer with ←→ / A D — your ship banks into the turn and carries momentum. Fly to the large station structure (shown on your radar).' },
   { key: 'dock',    title: 'Dock at the station',      hint: 'Glide into the station’s ring and press Enter when the dock prompt appears.' },
   { key: 'trade',   title: 'Trade at the Market',      hint: 'Open the Market tab. Buy a commodity low here, sell it high elsewhere — that spread is your first income.' },
   { key: 'mine',    title: 'Mine an asteroid',         hint: 'Undock and fly to the asteroid cluster in this system. Aim at a rock and hold the Right Mouse Button to mine ore.' },
