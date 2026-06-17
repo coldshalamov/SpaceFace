@@ -234,7 +234,10 @@ export const stationHub = {
     let sid = (state.ui && state.ui.dockedStationId) || this._stationId;
     // 2) else first station of the active sector
     const sect = state.world && state.world.activeSector;
-    if (!sid && sect && sect.stations && sect.stations.length) sid = sect.stations[0].id;
+    if (!sid && sect && sect.stations && sect.stations.length) {
+      const first = sect.stations[0];
+      sid = first.stationId || first.id;
+    }
     // 3) else first station of the current sector's static def
     if (!sid) {
       const curId = state.world && state.world.currentSectorId;

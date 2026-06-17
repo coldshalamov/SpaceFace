@@ -11,12 +11,14 @@ export const physics = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this._scratch = [];
+    this._dockStationId = null;
   },
 
   update(dt, state) {
     this.integrate(dt, state);
     state.spatialHash.rebuild(state.entityList);
     this.collide(dt, state);
+    this.updateDockRange(state);
   },
 
   integrate(dt, state) {
@@ -91,13 +93,9 @@ export const physics = {
       pk.alive = false;
       return;
     }
-    // station proximity (dock range) — soft, no physical push
+    // station hull contact — soft, no physical push. Dock-range enter/exit is tracked once per
+    // frame in updateDockRange() so the UI receives both true and false transitions.
     if (ta === 'station' || tb === 'station') {
-      const st = ta === 'station' ? a : b;
-      const sh = ta === 'station' ? b : a;
-      if (sh.type === 'ship' && sh.id === state.playerId) {
-        bus.emit('dock:range', { stationId: st.data && st.data.stationId, shipId: sh.id, inRange: true });
-      }
       // soft bounce off station hull
       pushApart(a, b, dist, dx, dz, 0.5);
       return;
@@ -106,6 +104,35 @@ export const physics = {
     pushApart(a, b, dist, dx, dz, 1);
     impulse(a, b, dx / dist, dz / dist);
     bus.emit('collision', { aId: a.id, bId: b.id, impulse: 1, pos: { x: a.pos.x, z: a.pos.z } });
+  },
+
+  updateDockRange(state) {
+    const player = state.entities.get(state.playerId);
+    let nextStationId = null;
+    let nextDist = Infinity;
+
+    if (player && player.alive) {
+      for (const st of state.entityList) {
+        if (!st.alive || st.type !== 'station') continue;
+        const data = st.data || {};
+        if (!data.stationId || data.isGate) continue;
+        const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0));
+        const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
+        if (d <= range && d < nextDist) {
+          nextDist = d;
+          nextStationId = data.stationId;
+        }
+      }
+    }
+
+    if (nextStationId === this._dockStationId) return;
+    if (this._dockStationId) {
+      this.bus.emit('dock:range', { stationId: this._dockStationId, shipId: state.playerId, inRange: false });
+    }
+    this._dockStationId = nextStationId;
+    if (nextStationId) {
+      this.bus.emit('dock:range', { stationId: nextStationId, shipId: state.playerId, inRange: true });
+    }
   },
 };
 

@@ -124,6 +124,17 @@ export const ui = {
     // Professional first impression + teaches controls immediately. Click/any key to proceed to menu.
     // Only shows on first load per session (pro polish — doesn't annoy returning players).
     const CINEMATIC_SEEN_KEY = 'sf.cinematicSeen';
+    this._pendingMainMenu = false;
+    this._registeredScreens = new Set();
+    const showMainMenuWhenReady = () => {
+      if (this.screenManager && this._registeredScreens && this._registeredScreens.has('mainMenu')) {
+        if (!this.screenManager.top()) this.screenManager.pushScreen('mainMenu');
+        this._pendingMainMenu = false;
+      } else {
+        this._pendingMainMenu = true;
+      }
+    };
+
     const shouldShowCinematic = !sessionStorage.getItem(CINEMATIC_SEEN_KEY);
     if (shouldShowCinematic) {
       const cinematic = document.createElement('div');
@@ -154,7 +165,7 @@ export const ui = {
         setTimeout(() => cinematic.parentNode && cinematic.parentNode.removeChild(cinematic), 500);
         sessionStorage.setItem(CINEMATIC_SEEN_KEY, '1');
         // ensure menu shows
-        if (this.screenManager && !this.screenManager.top()) this.screenManager.pushScreen('mainMenu');
+        showMainMenuWhenReady();
       };
       cinematic.addEventListener('click', dismissCinematic);
       addEventListener('keydown', function once() { removeEventListener('keydown', once); dismissCinematic(); }, { once: true });
@@ -163,7 +174,7 @@ export const ui = {
     } else {
       // If already seen this session, ensure we land on the menu
       setTimeout(() => {
-        if (this.screenManager && !this.screenManager.top()) this.screenManager.pushScreen('mainMenu');
+        showMainMenuWhenReady();
       }, 80);
     }
 
@@ -196,11 +207,13 @@ export const ui = {
     // dock flow: dock:docked → open station hub; dock:undocked → restore HUD
     this.bus.on('dock:docked', ({ stationId }) => {
       this.state.ui.docked = true;
+      this.state.ui.dockedStationId = stationId || null;
       if (this.screenManager.top() !== 'station') this.screenManager.pushScreen('station');
       else this.screenManager.syncVisibility();
     });
     this.bus.on('dock:undocked', () => {
       this.state.ui.docked = false;
+      this.state.ui.dockedStationId = null;
       // pop the station hub if it is the current top
       if (this.screenManager.top() === 'station') this.screenManager.popScreen();
       this.screenManager.syncVisibility();
@@ -211,6 +224,7 @@ export const ui = {
     this.bus.on('save:loaded', () => {
       // clear any stale modal restored from a save; HUD returns
       this.state.ui.docked = false;
+      this.state.ui.dockedStationId = null;
       this.screenManager.closeAll();
       this.screenManager.syncVisibility();
       refreshFlightUI();
@@ -233,8 +247,11 @@ export const ui = {
           if (!def || !def.id) { console.warn(`[ui] screen "${name}" missing valid export`); return; }
           try { this.screenManager.register(def); }
           catch (err) { console.error(`[ui] register("${def.id}") failed:`, err); return; }
+          if (!this._registeredScreens) this._registeredScreens = new Set();
+          this._registeredScreens.add(def.id);
           // if we are in menu mode and the main menu just became available, show it
-          if (def.id === 'mainMenu' && this.state.mode === 'menu' && !this.screenManager.isOpen()) {
+          if (def.id === 'mainMenu' && this.state.mode === 'menu' && (this._pendingMainMenu || !this.screenManager.isOpen())) {
+            this._pendingMainMenu = false;
             try { this.screenManager.pushScreen('mainMenu'); } catch (e) { console.error(e); }
           }
           // if docked already but the station hub registered late, open it
