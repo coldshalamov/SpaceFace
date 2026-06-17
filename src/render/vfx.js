@@ -100,6 +100,7 @@ export const vfx = {
     this._cap = cap;
     this._burst = QUALITY_BURST[q] || 1.0; // scales discrete-effect spawn counts
 
+    this._initEventLights();
     // ---- GPU point cloud ----
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(cap * 3);
@@ -307,6 +308,8 @@ export const vfx = {
     this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.07, 2.4, 3.8, 1.0, 0.0, '#ffffff', 0, 0);
     const mx = origin.x + Math.cos(base) * 1.2, mz = origin.z + Math.sin(base) * 1.2;
     this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.11, 3.6, 6.0, 0.9, 0.0, col, 0, 0);
+    // dynamic muzzle light — brief white-hot flash that lights the firing ship's hull
+    this._flashLight({ x: origin.x, z: origin.z }, 0xffffff, 3.0, 14, 120);
     // spark particles ejected forward along the aim cone +/-12deg
     const n = Math.max(2, Math.round(5 * burst));
     for (let k = 0; k < n; k++) {
@@ -354,6 +357,8 @@ export const vfx = {
       this._spawnSprite(SPR_FRESNEL, cx, 0, cz, 0.45, r * 2.0, r * 2.55, 0.9, 0.0, col, 0, 0);
       // localized flash at the actual hit point so the player reads WHERE it was struck
       this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.16, r * 0.7, r * 1.5, 0.8, 0.0, col, 0, 0);
+      // dynamic shield-hit light — tinted by faction shield colour, brief, snappy decay
+      this._flashLight({ x: pos.x, z: pos.z }, col, 4.0, 11, 140);
       // a few cool sparks skittering across the shield surface
       this._c0.set('#ffffff'); this._c1.set(col);
       const sn = Math.max(2, Math.round(5 * (this._burst || 1)));
@@ -416,6 +421,8 @@ export const vfx = {
     this._spawnSprite(SPR_FLASH, x, 0, z, 0.08, r * 1.4, r * 3.0, 1.0, 0.0, '#ffffff', 0, 0);
     this._spawnSprite(SPR_FLASH, x, 0, z, 0.18, r * 2.4, r * 6.0, 1.0, 0.0, '#fff2c0', 0, 0);
     this._spawnSprite(SPR_FLASH, x, 0, z, 0.30, r * 3.0, r * 8.5, 0.7, 0.0, '#ffb060', 0, 0);
+    // dynamic explosion light — warm orange, scaled to blast size, longer decay so it reads as fire
+    this._flashLight({ x, z }, 0xffb060, Math.min(14, 4 + r * 0.8), 5, 200 + r * 12);
     // (c) DOUBLE SHOCKWAVE — a fast thin leading ring + a slower wider one for depth.
     this._spawnSprite(SPR_RING, x, 0, z, 0.30, r * 0.5, r * 6.0, 0.9, 0.0, '#ffffff', 0, 0);
     this._spawnSprite(SPR_RING, x, 0, z, 0.46, r * 0.8, r * 9.0, 0.7, 0.0, '#dfe8ff', 0, 0);
@@ -479,6 +486,9 @@ export const vfx = {
     // contact glow + drifting dust puff
     this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.12, 1.4, 2.6, 0.6, 0.0, col, 0, 0);
     this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.4, 1.5, 3.2, 0.45, 0.0, col, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+    // dynamic mining light — ore-tinted glow at the contact point, cool & steady-ish (slower decay
+    // than combat flashes) so it reads as a continuous cutting beam, not a strobe.
+    this._flashLight({ x: pos.x, z: pos.z }, col, 2.5, 4.5, 90);
   },
 
   _onMiningYield(p) {
@@ -642,10 +652,86 @@ export const vfx = {
     this._emitTrails(dt);
     this._integrateParticles(dt);
     this._integrateSprites(dt);
+    this._decayEventLights(dt);
   },
 
   // (defensive) only used if pools attached lazily; avoids double-subscription
   _subscribeOnce() { if (!this._subs.length) this._subscribe(); },
+
+  // -------------------------------------------------------------------------
+  // Event lights (V2 §11 Tier-A rendering finish). A small pool of dynamic PointLights grabbed on
+  // "hero" events — muzzle flashes, explosions near the player, mining impacts, shield breaks — so
+  // they actually light their surroundings instead of just spraying additive sprites. This is the
+  // single biggest "sheen" upgrade for a low, bounded cost: capped at NPOOL simultaneous lights,
+  // player-proximate only (distant NPC fights don't light up), and decayed each frame.
+  // -------------------------------------------------------------------------
+  _LIGHT_NPOOL: 6,
+  _initEventLights() {
+    if (!this._scene) return;
+    // Respect the motion-reduce / quality gates: on low quality or motion-reduce, skip the pool
+    // entirely (lights are a vestibular/visual load). _flashLight becomes a no-op if pool is null.
+    const v = this.state.settings && this.state.settings.video;
+    if (v && (v.motionReduce || v.particleQuality === 'low')) { this._lights = null; return; }
+    this._lights = [];
+    for (let i = 0; i < this._LIGHT_NPOOL; i++) {
+      const l = new THREE.PointLight(0xffffff, 0, 400, 2.0); // color, intensity, distance, decay
+      l.visible = false;
+      this._scene.add(l);
+      this._lights.push({ obj: l, intensity: 0, peak: 0, decay: 0, t: 0 });
+    }
+    // cursor for LRU grab
+    this._lightCur = 0;
+  },
+
+  // Grab a pool light, position it at {x,z} (y lifted slightly above the plane), set its color +
+  // peak intensity, and arm a decay rate. Intensity eases up over ~50ms then decays exponentially
+  // — reads as a sharp flash, not a fade-in. `decayRate` ~ 6-10 (higher = snappier).
+  // `color` may be a hex number (0xffb060) OR a CSS string ('#ffb060') — normalized internally.
+  _flashLight(pos, color, peak, decayRate, dist) {
+    const pool = this._lights;
+    if (!pool || !pos) return;
+    // Cull if the event is far from the player (lights far away contribute nothing visible but
+    // still cost a per-fragment eval). Generous radius so nearby fights still light up.
+    const pp = this._playerPos();
+    const d = Math.hypot((pos.x || 0) - pp.x, (pos.z || 0) - pp.z);
+    if (d > 700) return;
+    const slot = pool[this._lightCur];
+    this._lightCur = (this._lightCur + 1) % pool.length;
+    const obj = slot.obj;
+    obj.position.set(pos.x || 0, 12, pos.z || 0); // lift above the play plane
+    if (typeof color === 'number') obj.color.setHex(color);
+    else obj.color.set(color); // CSS string ('#ffb060', 'rgb(...)', named)
+    if (dist) obj.distance = dist;
+    obj.visible = true;
+    slot.peak = peak;
+    slot.intensity = peak * 0.3; // start ramped partway (fast attack)
+    slot.decay = decayRate || 8;
+    slot.t = 0;
+  },
+
+  _decayEventLights(dt) {
+    const pool = this._lights;
+    if (!pool) return;
+    const ATTACK = 0.05; // seconds to reach peak after the initial partial ramp
+    for (const slot of pool) {
+      if (slot.peak <= 0) continue;
+      slot.t += dt;
+      if (slot.t < ATTACK) {
+        // fast attack toward peak
+        slot.intensity += (slot.peak - slot.intensity) * Math.min(1, dt / ATTACK);
+      } else {
+        // exponential decay toward 0
+        slot.intensity += -slot.intensity * slot.decay * dt;
+        if (slot.intensity < 0.02) { slot.intensity = 0; slot.peak = 0; slot.obj.visible = false; }
+      }
+      slot.obj.intensity = slot.intensity;
+    }
+  },
+
+  _playerPos() {
+    const e = this.state.entities.get(this.state.playerId);
+    return e ? e.pos : { x: 0, z: 0 };
+  },
 
   // per-frame engine-trail emission for every thrusting ship/drone (steady-state, pooled)
   _emitTrails(dt) {
