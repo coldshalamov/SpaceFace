@@ -1,0 +1,22 @@
+ignore_all_files_in_gitignore: true
+
+ignored_paths:
+  - "node_modules/**"
+  - "dist/**"
+  - "build/**"
+  - "coverage/**"
+  - ".vite/**"
+
+read_only: false
+
+excluded_tools: []
+
+initial_prompt: |
+  SpaceFace is a browser game project. Preserve active feature work and avoid
+  reverting or overwriting uncommitted changes from other agents.
+
+project_name: "SpaceFace"
+languages:
+  - typescript
+included_optional_tools: []
+encoding: utf-8
