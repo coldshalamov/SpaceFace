@@ -817,8 +817,11 @@ export const economy = {
             // shortage raises neighbour eq toward shortage (lowers stock target slightly),
             // boom raises demand. Express as a transient equilibrium nudge mod, refreshed each tick
             // (we don't persist propagation mods — recompute the blended target instead).
-            // Simpler & determinism-safe: nudge stock toward the pressured direction by a small frac.
-            const dir = ev.type === 'shortage' ? -1 : -1; // both pull neighbour stock down (scarcer)
+            // Economic pressure propagates one hop: a shortage makes neighbours scarcer (traders
+            // rush supply toward the shortage, draining local stock); a boom floods neighbours too
+            // (oversupply spills over). The sign was previously -1 for BOTH branches (bug: boom
+            // propagated as a shortage). Now boom pushes neighbour stock UP, shortage pushes it DOWN.
+            const dir = ev.type === 'shortage' ? -1 : +1;
             const nudge = entry.stock * 0.01 * hopPressure * dir;
             entry.stock = Math.max(1, entry.stock + nudge);
           }
