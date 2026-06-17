@@ -8,6 +8,38 @@
 // Flight/combat keys are owned here; UI-owned global keys are handled in src/ui/input.js.
 // NOTE: NPC ships NEVER read state.input — they write e.data.intent directly (ai.js), so this
 // control remap does not affect them.
+//
+// REBINDING (V2 §12): flight actions are resolved through a bindings map keyed by action id. The
+// defaults below are mirrored as `settings.controls.bindings` on first run; the Settings/Controls
+// tab captures a new key per action and persists it. Input reads state.settings.controls.bindings
+// (falling back to DEFAULT_BINDINGS) so changes take effect immediately, no restart needed.
+
+// Action -> default KeyboardEvent.code. A binding may map to MULTIPLE codes (e.g. throttle uses
+// both KeyW and ArrowUp) so WASD-and-arrows both work out of the box. The settings layer stores an
+// array per action; the UI lets the player set a primary + keeps the arrow-cluster as a secondary
+// for movement so arrow-key players aren't stranded.
+const DEFAULT_BINDINGS = {
+  forward:  ['KeyW', 'ArrowUp'],
+  reverse:  ['KeyS', 'ArrowDown'],
+  yawRight: ['KeyD', 'ArrowRight'],
+  yawLeft:  ['KeyA', 'ArrowLeft'],
+  boost:    ['ShiftLeft', 'ShiftRight'],
+  fire:     ['Space'],          // mouse LMB also fires (see update)
+  autoFire: ['KeyF'],
+  // Mouse buttons (LMB=fire, RMB=group2/mine) are not remappable in this pass — they're ergonomic
+  // constants. Keyboard equivalents (Space to fire) ARE remappable.
+};
+
+// Resolve the live binding for an action: prefer settings, fall back to defaults. Always returns an
+// array of codes (so a missing setting doesn't break input).
+function binding(state, action) {
+  const cfg = state.settings && state.settings.controls && state.settings.controls.bindings;
+  const list = (cfg && cfg[action]) || DEFAULT_BINDINGS[action];
+  return Array.isArray(list) ? list : (list ? [list] : []);
+}
+
+export const DEFAULTS = { BINDINGS: DEFAULT_BINDINGS };
+
 export const input = {
   name: 'input',
   init(ctx) {
@@ -30,6 +62,13 @@ export const input = {
     addEventListener('contextmenu', (e) => e.preventDefault());
   },
 
+  // True if any of the bound codes for `action` is currently held.
+  _held(state, action) {
+    const k = this._keys;
+    for (const code of binding(state, action)) if (k[code]) return true;
+    return false;
+  },
+
   update(dt, state) {
     const inp = state.input;
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0) {
@@ -38,25 +77,24 @@ export const input = {
       inp.fire = false; inp.boost = false; inp.fireGroup = null;
       return;
     }
-    const k = this._keys;
 
-    // --- direction: yaw the nose + throttle forward/reverse along the nose ---
-    // Support both WASD and arrow keys. Left/Right & A/D turn the ship (yaw intent), NOT strafe.
-    const up = k['KeyW'] || k['ArrowUp'];
-    const down = k['KeyS'] || k['ArrowDown'];
-    const right = k['KeyD'] || k['ArrowRight'];
-    const left = k['KeyA'] || k['ArrowLeft'];
+    // --- direction: yaw the nose + throttle forward/reverse along the nose (rebindable) ---
+    const up = this._held(state, 'forward');
+    const down = this._held(state, 'reverse');
+    const right = this._held(state, 'yawRight');
+    const left = this._held(state, 'yawLeft');
 
     inp.turnIntent = (right ? 1 : 0) - (left ? 1 : 0);   // +1 = turn clockwise (toward +rot)
     inp.moveZ = (up ? 1 : 0) - (down ? 1 : 0);            // throttle: +1 forward, -1 reverse
     inp.moveX = 0;                                        // no strafe in the new model (kept for AI compat)
 
-    inp.boost = !!(k['ShiftLeft'] || k['ShiftRight']);
-    inp.fire = this._m0 || !!k['Space'];
+    inp.boost = this._held(state, 'boost');
+    // LMB always fires (ergonomic constant); keyboard fire is rebindable.
+    inp.fire = this._m0 || this._held(state, 'fire');
     inp.fireGroup = this._m2 ? 2 : (inp.fire ? 1 : null);
 
     // Auto-fire toggle (edge-triggered): F flips state.input.autoFire.
-    if (k['KeyF']) {
+    if (this._held(state, 'autoFire')) {
       if (!this._autoFireHeld) {
         inp.autoFire = !inp.autoFire;
         this._autoFireHeld = true;

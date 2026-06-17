@@ -4,6 +4,8 @@
 // UI reads state.settings for display; the write to state.settings is the UI/settings
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
+import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
+
 const STYLE_ID = 'sf-menu-style';
 
 function getManager(ctx) {
@@ -58,6 +60,10 @@ function injectStyle() {
   .sf-menu .sf-grid2 .v { color:var(--ink); }
   .sf-menu .sf-foot { display:flex; gap:10px; justify-content:flex-end; margin-top:8px; }
   .sf-menu .sf-muted { color:var(--ink-mute); font-size:12px; }
+  .sf-bind-btn { font-family:var(--mono) !important; letter-spacing:.04em; text-align:center !important; }
+  .sf-bind-btn--capture { border-color:var(--accent) !important; color:var(--accent) !important;
+    box-shadow:0 0 12px rgba(57,208,255,.5) inset; animation:sf-bind-pulse 1s ease-in-out infinite; }
+  @keyframes sf-bind-pulse { 0%,100%{opacity:1;} 50%{opacity:.55;} }
   .sf-slot { display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--panel-edge);
     border-radius:6px; background:var(--panel); }
   .sf-slot.sel { border-color:var(--accent); box-shadow:0 0 10px rgba(57,208,255,.3); }
@@ -106,6 +112,36 @@ const KEYBINDS = [
 ];
 
 let refs = null;
+
+// --- Key rebinding (V2 §12) ---
+// DEFAULT_BINDINGS is the source of truth in input.js; mirror it here so the UI never desyncs.
+const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
+// Flight actions the player may rebind. (Mouse buttons + Space-as-fire-alt are ergonomic constants
+// and stay out of the rebind grid to keep the model simple.)
+const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'boost', 'autoFire'];
+const REBIND_LABELS = {
+  forward: 'Throttle up',
+  reverse: 'Throttle down (reverse)',
+  yawLeft: 'Steer left',
+  yawRight: 'Steer right',
+  boost: 'Boost',
+  autoFire: 'Toggle auto-fire',
+};
+// Turn a KeyboardEvent.code into a short, readable label: 'KeyW' -> 'W', 'ShiftLeft' -> 'L-Shift',
+// 'ArrowUp' -> '↑', 'Space' -> 'Space'.
+function humanizeCode(code) {
+  if (!code) return '—';
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (code.startsWith('Arrow')) return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }[code] || code;
+  if (code === 'Space') return 'Space';
+  if (code === 'ShiftLeft') return 'L-Shift';
+  if (code === 'ShiftRight') return 'R-Shift';
+  if (code === 'ControlLeft') return 'L-Ctrl';
+  if (code === 'ControlRight') return 'R-Ctrl';
+  if (code === 'AltLeft') return 'L-Alt';
+  return code;
+}
 
 export const settingsScreen = {
   id: 'settings',
@@ -218,18 +254,127 @@ export const settingsScreen = {
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
       rowToggle('Damage numbers', () => s.showDamageNumbers, (v) => this._set(ctx, null, 'showDamageNumbers', v));
     } else if (refs.active === 'Controls') {
-      pane.appendChild(el('p', 'sf-muted', 'Control reference (rebinding coming soon).'));
-      const grid = el('div', 'sf-grid2');
-      KEYBINDS.forEach(([action, keys]) => {
-        grid.appendChild(el('div', 'k', keys));
-        grid.appendChild(el('div', 'v', action));
-      });
-      pane.appendChild(grid);
+      pane.appendChild(el('p', 'sf-muted', 'Click a key to rebind it, then press a new key. Mouse buttons (fire/mine) are fixed.'));
+      this._renderControlsRebind(ctx, pane);
     }
   },
 
+  // Live rebind UI for flight actions. Reads defaults from input.js + any saved overrides in
+  // settings.controls.bindings. Capture-on-click: a clicked button enters "listening" mode and the
+  // next keydown sets the binding (with conflict detection — can't bind the same key to two actions
+  // in the movement cluster). Escape cancels capture, Backspace clears the binding to default.
+  _renderControlsRebind(ctx, pane) {
+    const s = ctx.state.settings;
+    if (!s.controls) s.controls = { bindings: null };
+    // Live bindings = defaults overlaid with saved overrides.
+    const live = {};
+    for (const a in DEFAULT_BINDINGS) live[a] = (DEFAULT_BINDINGS[a] || []).slice();
+    if (s.controls.bindings) for (const a in s.controls.bindings) live[a] = (s.controls.bindings[a] || []).slice();
+
+    const grid = el('div', 'sf-grid2');
+    grid.style.gridTemplateColumns = '1fr 140px';
+    REBINDABLE.forEach((action) => {
+      const label = el('div', 'v', REBIND_LABELS[action] || action);
+      const btn = el('button', 'sf-btn sf-bind-btn');
+      btn.style.minWidth = '120px';
+      const codes = live[action] || [];
+      btn.textContent = codes.map(humanizeCode).join(' / ') || '—';
+      btn.addEventListener('click', () => this._capture(ctx, btn, action, live, grid));
+      grid.appendChild(label);
+      grid.appendChild(btn);
+    });
+    pane.appendChild(grid);
+
+    // reset button
+    const resetRow = el('div', 'sf-row');
+    resetRow.style.marginTop = '12px';
+    const reset = el('button', 'sf-btn');
+    reset.textContent = 'Reset to defaults';
+    reset.style.width = 'auto';
+    reset.addEventListener('click', () => {
+      s.controls.bindings = null; // null => input.js falls back to DEFAULT_BINDINGS
+      ctx.bus.emit('settings:changed', { section: 'controls', key: 'bindings', value: null });
+      this._render(ctx);
+    });
+    const note = el('span', 'sf-muted');
+    note.style.marginLeft = '10px';
+    note.style.fontSize = '12px';
+    note.textContent = 'Arrow keys always also work for movement.';
+    resetRow.appendChild(reset);
+    resetRow.appendChild(note);
+    pane.appendChild(resetRow);
+  },
+
+  // Capture the next keydown as the new binding for `action`. Only ONE code per action in the UI
+  // (we keep arrow-cluster compatibility by leaving movement's secondary arrow code alone if the
+  // primary is being rebound — simplest mental model: "set the WASD key").
+  _capture(ctx, btn, action, live, grid) {
+    if (this._capturing) return;
+    this._capturing = true;
+    const prev = btn.textContent;
+    btn.textContent = 'Press a key…';
+    btn.classList.add('sf-bind-btn--capture');
+
+    const done = (commit) => {
+      this._capturing = false;
+      btn.classList.remove('sf-bind-btn--capture');
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('mousedown', onClickAway, true);
+      this._activeCapture = null;
+      if (!commit) btn.textContent = prev;
+    };
+    const onKey = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      // Escape cancels; Backspace resets this action to default.
+      if (ev.code === 'Escape') { done(false); return; }
+      if (ev.code === 'Backspace' || ev.code === 'Delete') {
+        this._commitBind(ctx, action, null, live, grid);
+        done(true);
+        return;
+      }
+      // Conflict check: don't let the same code be the PRIMARY (index 0) of two rebindable actions.
+      for (const other of REBINDABLE) {
+        if (other === action) continue;
+        if ((live[other] || [])[0] === ev.code) {
+          btn.textContent = 'In use: ' + (REBIND_LABELS[other] || other);
+          setTimeout(() => done(false), 900);
+          return;
+        }
+      }
+      this._commitBind(ctx, action, ev.code, live, grid);
+      done(true);
+    };
+    const onClickAway = (ev) => { if (ev.target !== btn) done(false); };
+    this._activeCapture = done;
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('mousedown', onClickAway, true);
+  },
+
+  // Persist a new primary binding for `action` into settings.controls.bindings. We preserve any
+  // secondary code (e.g. ArrowUp alongside KeyW) so arrow players keep working after a rebind.
+  _commitBind(ctx, action, code, live, grid) {
+    const s = ctx.state.settings;
+    if (!s.controls) s.controls = {};
+    if (!s.controls.bindings) s.controls.bindings = {};
+    const def = DEFAULT_BINDINGS[action] || [];
+    if (code == null) {
+      delete s.controls.bindings[action]; // reset to default
+      live[action] = def.slice();
+    } else {
+      // keep the arrow-cluster secondary if the default had one and it's not the code being set
+      const secondary = def.length > 1 ? def[1] : null;
+      const arr = (secondary && secondary !== code) ? [code, secondary] : [code];
+      s.controls.bindings[action] = arr;
+      live[action] = arr;
+    }
+    ctx.bus.emit('settings:changed', { section: 'controls', key: action, value: s.controls.bindings[action] });
+    this._render(ctx); // refresh the grid to show the new label
+  },
+
   onShow(ctx) { this._render(ctx); },
-  onHide() {},
+  // If the screen closes mid key-capture, bail out so the global keydown/mousedown listeners
+  // don't leak / swallow keys after the player navigates away.
+  onHide() { if (this._capturing && this._activeCapture) this._activeCapture(false); },
   // IMPORTANT: must be a no-op. uiRoot.frame() calls screenManager.refreshTop() every ~0.3s for
   // any open screen; if this rebuilt the DOM it would destroy a slider/select mid-drag (the
   // "can't drag below 3% / have to keep the mouse on the line" bug). The panel is fully
