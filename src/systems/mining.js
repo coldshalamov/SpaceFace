@@ -278,6 +278,8 @@ export const mining = {
   _onPickupCollected(p) {
     if (!p || !p.commodityId) return;
     if (p.collectorId !== this.state.playerId) return; // drones manage their own holds
+    const cargoSys = this.registry && this.registry.get && this.registry.get('cargo');
+    if (cargoSys && typeof cargoSys.addCargo === 'function') return; // cargo owns collected pickups
     const kind = p.kind || 'ore';
     if (kind === 'credits' || kind === 'module') return; // economy/ships own those
     const accepted = this._giveCargo(p.commodityId, p.amount || 1, p.collectorId);

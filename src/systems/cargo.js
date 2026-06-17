@@ -87,7 +87,10 @@ export const cargo = {
         addCargo(state, commodityId, qty);
       } else if (kind === 'module') {
         // physics only hands us a commodityId → treat it as the module defId; mint a deterministic instanceId.
-        state.player.moduleInventory.push({ instanceId: `mi_${++_moduleSeq}`, defId: commodityId });
+        const count = Math.max(1, Math.floor(qty || 1));
+        for (let i = 0; i < count; i++) {
+          state.player.moduleInventory.push({ instanceId: `mi_${++_moduleSeq}`, defId: commodityId });
+        }
       }
       // kind 'credits' is economy's concern (§4.4) — ignore here.
     });
@@ -127,6 +130,14 @@ export const cargo = {
     cargo.usedVolume = vol;
     cargo.usedMass = mass;
     emitChanged(cargo);
+  },
+
+  addCargo(commodityId, qty) {
+    return addCargo(this.state, commodityId, qty);
+  },
+
+  removeCargo(commodityId, qty) {
+    return removeCargo(this.state, commodityId, qty);
   },
 
   /** Dump up to `qty` units of `commodityId` into space as recoverable pickups. Returns amount dumped. */

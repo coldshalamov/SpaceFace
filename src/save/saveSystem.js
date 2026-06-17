@@ -78,8 +78,8 @@ export const save = {
     data.factions = this._callSerialize('factions') || {};
     data.world = this._callSerialize('world') || {};
     data.entities = this._serializeEntities();
-    data.missions = this._serializeMissions();
-    data.automation = this._serializeAutomation();
+    data.missions = this._callSerialize('missions') || this._serializeMissions();
+    data.automation = this._callSerialize('automation') || this._serializeAutomation();
     data.settings = this._serializeSettings();
     return data;
   },
@@ -453,12 +453,27 @@ export const save = {
 
   _restoreMissions(d) {
     if (!d) return;
-    if (d.missions) this.state.missions = d.missions;
-    if (d.story) this.state.story = d.story;
+    const payload = normalizeMissionSavePayload(d);
+    const sys = this.registry && this.registry.get && this.registry.get('missions');
+    if (sys && typeof sys.deserialize === 'function') {
+      try { sys.deserialize(payload); return; } catch (err) { console.error('[save] deserialize missions', err); }
+    }
+    if (payload.boards || payload.active || payload.completedLog) {
+      this.state.missions.boards = payload.boards || {};
+      this.state.missions.active = payload.active || [];
+      this.state.missions.completedLog = payload.completedLog || [];
+      this.state.missions.nextId = payload.nextId || 1;
+      this.state.missions.config = payload.config || null;
+    }
+    if (payload.story) this.state.story = payload.story;
   },
 
   _restoreAutomation(d) {
     if (!d) return;
+    const sys = this.registry && this.registry.get && this.registry.get('automation');
+    if (sys && typeof sys.deserialize === 'function') {
+      try { sys.deserialize(d); return; } catch (err) { console.error('[save] deserialize automation', err); }
+    }
     this.state.automation = d;
   },
 
@@ -655,4 +670,14 @@ function clonePlain(v) {
 
 function safeStringify(data) {
   return JSON.stringify(data);
+}
+
+function normalizeMissionSavePayload(d) {
+  if (!d || typeof d !== 'object') return {};
+  // Legacy saves stored { missions:{...}, story:{...} } before the save system delegated to the
+  // missions system's own serializer.
+  if (d.missions && !d.boards && !d.active) {
+    return Object.assign({}, d.missions, { story: d.story || d.missions.story });
+  }
+  return d;
 }

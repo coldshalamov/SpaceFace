@@ -130,16 +130,19 @@ export const combat = {
     t.alive = false;
     bus.emit('entity:killed', { id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z }, factionId: t.factionId, bountyCr: d.bountyCr || 0, lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type });
     bus.emit('camera:shake', { amount: 0.5 });
+    const bounty = Math.max(0, Math.round(d.bountyCr || 0));
+    if (bounty > 0) bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
     if (d.loot) {
       const { credits, items } = this.rollLoot(d.loot);
-      if (credits > 0) bus.emit('economy:grantCredits', { amount: credits, reason: 'bounty' });
+      if (credits > 0) bus.emit('economy:grantCredits', { amount: credits, reason: 'loot' });
       bus.emit('loot:drop', { pos: { x: t.pos.x, z: t.pos.z }, credits, items });
       for (const it of items) {
         const ang = this.rng() * Math.PI * 2, sp = 18 + this.rng() * 28;
+        const kind = lootPickupKind(it.id);
         this.helpers.spawnEntity({
           type: 'pickup', pos: { x: t.pos.x + Math.cos(ang) * 8, z: t.pos.z + Math.sin(ang) * 8 },
           vel: { x: Math.cos(ang) * sp, z: Math.sin(ang) * sp }, radius: 2.2,
-          data: { kind: 'cargo', commodityId: it.id, amount: it.qty, despawnAt: state.simTime + 30 },
+          data: { kind, commodityId: it.id, amount: it.qty, despawnAt: state.simTime + 30 },
         });
       }
     }
@@ -177,3 +180,7 @@ export const combat = {
     }
   },
 };
+
+function lootPickupKind(id) {
+  return (typeof id === 'string' && id.startsWith('cmdty_')) ? 'cargo' : 'module';
+}
