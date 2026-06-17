@@ -635,7 +635,7 @@ export const missions = {
     const baseRep = (MISSION_BASE_REP[m.type] != null ? MISSION_BASE_REP[m.type] : 3);
     const specRep = round(baseRep * (1 + (m.riskTier || 0) * 0.4));
     const repMult = specRep / 15;
-    this.bus.emit('mission:completed', { missionId: m.id, type: m.type, factionId: m.factionId, repMult });
+    const completedPayload = { missionId: m.id, type: m.type, factionId: m.factionId, repMult };
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
     if (m.type === 'recon_scan' || m.type === 'salvage_retrieval') {
@@ -658,6 +658,8 @@ export const missions = {
 
     // ── story chain progress (B5 branch chains) ──
     this._advanceStoryChain(m);
+
+    this.bus.emit('mission:completed', completedPayload);
   },
 
   _failMission(m, index, reason) {

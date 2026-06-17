@@ -606,7 +606,7 @@ export const economy = {
         if ((state.player.credits | 0) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for insurance', kind: 'error', ttl: 2 }); return; }
         if (cost) this.chargeCredits(cost, 'service:insurance');
         ins.insuredModules = true;
-        ins.lastStationId = state.ui && state.ui.docked ? state.ui.docked : ins.lastStationId;
+        ins.lastStationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || ins.lastStationId;
         this.bus.emit('toast', { text: `Hull insurance active (${cost}cr)`, kind: 'success', ttl: 2 });
       } else {
         if (!ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already inactive', kind: 'info', ttl: 2 }); return; }

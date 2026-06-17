@@ -6,6 +6,7 @@ import { cargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { combat } from '../src/systems/combat.js';
 import { economy } from '../src/systems/economy.js';
+import { missions } from '../src/systems/missions.js';
 import { ships, buildSlotList, makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 import { SHIPS } from '../src/data/ships.js';
@@ -127,6 +128,72 @@ function checkSaveDelegatesSystemHooks() {
   save._restoreAutomation({ drones: [{ id: 'd2', entityIds: [99] }], meta: { rngSeed: 8 }, nextId: 5 });
   assert.equal(automationPayload.nextId, 5, 'automation restore should use automation.deserialize');
   assert.equal(typeof state.automation.rng, 'function', 'automation deserialize should rebuild rng function');
+}
+
+function checkMissionCompletionAutosaveSeesSettledState() {
+  const state = {
+    mode: 'flight',
+    meta: { seed: 99, playtimeS: 25, createdAt: 'test', lastSavedAt: '' },
+    save: { currentSlot: null },
+    playerId: 0,
+    simTime: 10,
+    tick: 3,
+    player: {
+      credits: 0,
+      researchPoints: 0,
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 10, capMass: 10 },
+      stats: { missionsDone: 0 },
+    },
+    economy: {},
+    factions: {},
+    world: { currentSectorId: null, sectors: {} },
+    missions: { boards: {}, active: [], completedLog: [], nextId: 2, config: null },
+    story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
+    automation: { drones: [], meta: {} },
+    settings: {},
+    ui: { trackedMissionId: null },
+    entities: new Map(),
+    entityList: [],
+  };
+  const mission = {
+    id: 'm_autosave',
+    type: 'recon_scan',
+    factionId: 'faction_scn',
+    params: {},
+    status: 'active',
+    reward_cr: 120,
+    collateral_cr: 0,
+    riskTier: 1,
+    targetEntityIds: [],
+    title: 'Scan the Ghost Lane',
+  };
+  state.missions.active.push(mission);
+
+  const bus = createBus();
+  const systems = {
+    economy: { serialize: () => ({}) },
+    factions: { serialize: () => ({}) },
+    world: { serialize: () => ({}) },
+    missions,
+    automation: { serialize: () => ({}) },
+  };
+  save.state = state;
+  save.bus = bus;
+  save.registry = { get: (name) => systems[name] || null };
+  missions.init({ state, bus, helpers: {}, registry: save.registry });
+
+  let autosaveData = null;
+  bus.on('mission:completed', () => { autosaveData = save.serializeData(); });
+
+  missions._completeMission(mission, 0);
+
+  assert.equal(state.missions.active.length, 0, 'completed mission should leave active missions immediately');
+  assert.equal(state.player.researchPoints, 4, 'recon completion should award research points before completion autosave');
+  assert.equal(autosaveData.player.researchPoints, 4, 'mission-completed autosave should include research point rewards');
+  assert.equal(autosaveData.player.stats.missionsDone, 1, 'mission-completed autosave should include mission stats');
+  assert.equal(autosaveData.missions.active.length, 0, 'mission-completed autosave should not persist a completed mission as active');
+  assert.equal(autosaveData.missions.completedLog[0].type, 'recon_scan', 'mission-completed autosave should include completion log');
+  assert.equal(autosaveData.missions.story.beatIndex, 0, 'mission-completed autosave should include settled story state');
 }
 
 function checkCombatRewardsAndLootKinds() {
@@ -341,6 +408,27 @@ function checkAmmoServiceOnlyChargesAcceptedCargo() {
   assert(fullEvents.some((e) => e.event === 'toast' && e.payload.kind === 'error'), 'rejected ammo service should notify the player');
 }
 
+function checkInsuranceUsesDockedStationId() {
+  const state = {
+    player: {
+      credits: 1000,
+      insurance: { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null },
+    },
+    ui: { docked: true, dockedStationId: 'station_helios' },
+  };
+  const events = [];
+  economy.state = state;
+  economy.bus = { emit(event, payload) { events.push({ event, payload }); } };
+  economy._lastDockedStation = null;
+
+  economy.handleService({ type: 'insurance', amount: 1 });
+
+  assert.equal(state.player.insurance.insuredModules, true, 'insurance service should activate coverage');
+  assert.equal(state.player.insurance.lastStationId, 'station_helios', 'insurance should remember the actual docked station id');
+  assert.equal(state.player.credits, 500, 'insurance should charge the deductible');
+  assert(events.some((e) => e.event === 'credits:changed' && e.payload.reason === 'service:insurance'), 'insurance purchase should emit credit change');
+}
+
 function checkEconomyRngFollowsCurrentSaveSeed() {
   const makeState = (seed) => ({
     meta: { seed },
@@ -499,10 +587,12 @@ function checkSpawnRequestAmbushContract() {
 
 checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
+checkMissionCompletionAutosaveSeesSettledState();
 checkCombatRewardsAndLootKinds();
 checkFailedCargoFitDoesNotDuplicateModules();
 checkNewGameOwnedShipDefaultsAreFitted();
 checkAmmoServiceOnlyChargesAcceptedCargo();
+checkInsuranceUsesDockedStationId();
 checkEconomyRngFollowsCurrentSaveSeed();
 checkGateTollRequiresCredits();
 checkSpawnRequestAmbushContract();
