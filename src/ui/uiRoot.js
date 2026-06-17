@@ -123,7 +123,7 @@ export const ui = {
     if (shouldShowCinematic) {
       const cinematic = document.createElement('div');
       cinematic.id = 'cinematic-splash';
-      cinematic.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#05070d;overflow:hidden;';
+      cinematic.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#05070d;overflow:hidden;pointer-events:auto;';
       cinematic.innerHTML = `
         <div style="position:absolute;inset:0;background-image:url('assets/cinematics/menu_background.jpg');background-size:cover;background-position:center 30%;opacity:0.7;filter:contrast(1.1);"></div>
         <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,13,.5),rgba(5,7,13,0) 30%,rgba(5,7,13,0) 75%,rgba(5,7,13,1));"></div>

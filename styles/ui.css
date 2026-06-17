@@ -30,6 +30,8 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: 
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
 body.ui-modal-open #modal-backdrop { opacity: 1; pointer-events: auto; }
+body.ui-modal-open #sf-onboarding,
+body.ui-modal-open .sf-ob-intro { display: none; }
 
 .panel { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--panel-edge); border-radius: 8px; box-shadow: 0 6px 30px rgba(0, 0, 0, .5); }
 button { font-family: inherit; font-size: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: 5px; padding: 6px 12px; cursor: pointer; pointer-events: auto; transition: border-color .1s, color .1s; }
