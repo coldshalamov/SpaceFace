@@ -6,9 +6,10 @@ import { cargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { combat } from '../src/systems/combat.js';
 import { economy } from '../src/systems/economy.js';
-import { ships, buildSlotList } from '../src/systems/ships.js';
+import { ships, buildSlotList, makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 import { SHIPS } from '../src/data/ships.js';
+import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
 function makeCargoState() {
   return {
@@ -263,6 +264,36 @@ function checkFailedCargoFitDoesNotDuplicateModules() {
   assert(events.some((e) => e.event === 'toast' && e.payload.kind === 'error'), 'failed fit should notify the player');
 }
 
+function checkNewGameOwnedShipDefaultsAreFitted() {
+  const state = {
+    player: {},
+    entities: new Map(),
+    playerId: 1,
+  };
+  const events = [];
+
+  ships.state = state;
+  ships.bus = { emit: (event, payload) => events.push({ event, payload }) };
+
+  ships.newGame();
+
+  const owned = state.player.ownedShips[state.player.activeShipIndex];
+  assert.equal(owned.defId, NEW_GAME.shipId, 'new game should own the configured starter ship');
+  for (const defId of NEW_GAME.fittedModules) {
+    assert(owned.fittings.includes(defId), `new game should fit default module ${defId}`);
+  }
+
+  const spec = makeShipEntitySpec(owned.defId, {
+    team: 0,
+    isPlayer: true,
+    player: state.player,
+    fittings: owned.fittings,
+  });
+  assert(spec.data.weapons.length >= 1, 'starter player ship should have a weapon runtime');
+  assert.equal(spec.data.miningBeam.tierId, 'beam_mk1', 'starter mining laser should resolve to beam_mk1');
+  assert.equal(spec.data.derived.cargoCap, NEW_GAME.cargoCapacity, 'starter cargo cap should match new-game data');
+}
+
 function checkAmmoServiceOnlyChargesAcceptedCargo() {
   const state = {
     playerId: 1,
@@ -347,6 +378,7 @@ checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
 checkCombatRewardsAndLootKinds();
 checkFailedCargoFitDoesNotDuplicateModules();
+checkNewGameOwnedShipDefaultsAreFitted();
 checkAmmoServiceOnlyChargesAcceptedCargo();
 checkGateTollRequiresCredits();
 

@@ -17,7 +17,7 @@ export const SHIPS = [
     energyCap: 80, energyRegen: 12, collisionRadius: 14, price: 0, buyback: 8000,
     // boost: {max, drainRate (while boosting), regenRate (idle), dashImpulse (units), dashCooldown (s)}
     boost: { max: 100, drainRate: 38, regenRate: 22, dashImpulse: 150, dashCooldown: 2.0 },
-    slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['S'], mining: [], utility: ['S'] },
+    slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['S'], mining: ['S'], utility: ['S'] },
   },
   // ---------- T1 ----------
   {
