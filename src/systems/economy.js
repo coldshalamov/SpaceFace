@@ -170,11 +170,7 @@ export const economy = {
     this._eventAccumulator = 0;
 
     // dedicated seeded RNG stream (§0.5) so scan checks + event rolls don't disturb other streams.
-    const seed = (state.meta && state.meta.seed) || 1;
-    state.economy.rng = (this.helpers && this.helpers.mulberry32)
-      ? this.helpers.mulberry32((this.helpers.hash32 ? this.helpers.hash32(seed, 'economy') : seed) >>> 0)
-      : mulberryLocal((seed * 2654435761) >>> 0);
-    this.rng = state.economy.rng;
+    this.resetRng();
 
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
@@ -868,12 +864,25 @@ export const economy = {
   // -------------------------------------------------------------------------------------------
   // new game / save-load
   // -------------------------------------------------------------------------------------------
+  resetRng() {
+    const state = this.state;
+    const seed = (state.meta && state.meta.seed) || 1;
+    const streamSeed = (this.helpers && this.helpers.hash32)
+      ? this.helpers.hash32(seed, 'economy')
+      : ((seed * 2654435761) >>> 0);
+    state.economy.rng = (this.helpers && this.helpers.mulberry32)
+      ? this.helpers.mulberry32(streamSeed >>> 0)
+      : mulberryLocal(streamSeed >>> 0);
+    this.rng = state.economy.rng;
+  },
+
   newGame() {
     const state = this.state;
     state.economy.markets = {};
     state.economy.econEvents = [];
     state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     state.economy.marketIntel = {};
+    this.resetRng();
     this._nextEventId = 1;
     this._eventAccumulator = 0;
     // warm the home sector's markets so prices exist before first dock
@@ -926,6 +935,7 @@ export const economy = {
     econ.marketIntel = data.marketIntel || {};
     this._nextEventId = data.nextEventId || 1;
     this._eventAccumulator = 0;
+    this.resetRng();
   },
 };
 

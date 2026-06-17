@@ -341,6 +341,54 @@ function checkAmmoServiceOnlyChargesAcceptedCargo() {
   assert(fullEvents.some((e) => e.event === 'toast' && e.payload.kind === 'error'), 'rejected ammo service should notify the player');
 }
 
+function checkEconomyRngFollowsCurrentSaveSeed() {
+  const makeState = (seed) => ({
+    meta: { seed },
+    simTime: 0,
+    economy: { markets: {}, econEvents: [], econClock: { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }, marketIntel: {} },
+    world: { currentSectorId: 'sector_helios_prime', sectors: {} },
+    player: {
+      credits: 0,
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 10, capMass: 10 },
+      efficiencyMods: {},
+    },
+  });
+  const helpers = {
+    hash32(seed, label) { return ((seed * 1009) + String(label).length) >>> 0; },
+    mulberry32(seed) {
+      const rng = () => 0.5;
+      rng.seed = seed >>> 0;
+      return rng;
+    },
+  };
+
+  const state = makeState(11);
+  economy.state = state;
+  economy.helpers = helpers;
+  economy.bus = { emit() {} };
+
+  economy.resetRng();
+  const bootSeed = economy.rng.seed;
+
+  state.meta.seed = 22;
+  state.economy = makeState(22).economy;
+  economy.newGame();
+  assert.notEqual(economy.rng.seed, bootSeed, 'new game should not keep the boot-time economy RNG stream');
+  assert.equal(economy.rng.seed, helpers.hash32(22, 'economy'), 'new game should seed economy RNG from the current run seed');
+  assert.equal(state.economy.rng, economy.rng, 'new game should attach RNG to the replacement economy state');
+
+  state.meta.seed = 33;
+  economy.deserialize({
+    markets: {},
+    econEvents: [],
+    econClock: { accumulator: 0, lastTickT: 0, ticksElapsed: 0 },
+    marketIntel: {},
+    nextEventId: 9,
+  });
+  assert.equal(economy.rng.seed, helpers.hash32(33, 'economy'), 'load should reseed economy RNG from the restored save seed');
+  assert.equal(state.economy.rng, economy.rng, 'load should attach RNG to restored economy state');
+}
+
 function checkGateTollRequiresCredits() {
   const makeState = (credits) => ({
     player: { credits, researchedNodes: [] },
@@ -380,6 +428,7 @@ checkCombatRewardsAndLootKinds();
 checkFailedCargoFitDoesNotDuplicateModules();
 checkNewGameOwnedShipDefaultsAreFitted();
 checkAmmoServiceOnlyChargesAcceptedCargo();
+checkEconomyRngFollowsCurrentSaveSeed();
 checkGateTollRequiresCredits();
 
 console.log('Core gameplay checks OK');
