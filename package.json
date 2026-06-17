@@ -9,7 +9,7 @@
     "serve": "node server.js 8123",
     "electron": "electron .",
     "dist": "electron-builder",
-    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && node scripts/check-gameplay-core.mjs"
+    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && node scripts/check-ui-screen-imports.mjs && node scripts/check-gameplay-core.mjs"
   },
   "private": true,
   "devDependencies": {

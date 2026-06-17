@@ -4,7 +4,7 @@
 // UI reads state.settings for display; the write to state.settings is the UI/settings
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
-import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
+import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
 
 const STYLE_ID = 'sf-menu-style';
 
