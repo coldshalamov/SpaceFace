@@ -135,7 +135,10 @@ function resetRunState(state) {
   state.fuel = fresh.fuel;
   state.nav = fresh.nav;
   state.automation = fresh.automation;
-  state.ui = fresh.ui;
+  const ui = state.ui || (state.ui = {});
+  const screenStack = Array.isArray(ui.screenStack) ? ui.screenStack : [];
+  screenStack.length = 0;
+  Object.assign(ui, fresh.ui, { screenStack });
   state.save = fresh.save;
 }
 

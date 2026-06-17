@@ -11,6 +11,7 @@ const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _ray = new THREE.Raycaster();
 const _pt = new THREE.Vector3();
 const _v2 = new THREE.Vector2();
+const _drawSize = new THREE.Vector2();
 
 export const render = {
   name: 'render',
@@ -21,9 +22,8 @@ export const render = {
 
     const canvas = document.getElementById('gl-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, state.settings.video.pixelRatioCap || 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x060912, 1);
+    const drawSize = applyRendererSize(renderer, state);
 
     const scene = new THREE.Scene();
     // Thin fog for gentle depth cueing only — the old 0.00085 erased the entire backdrop, leaving a
@@ -43,7 +43,7 @@ export const render = {
     { const i = new Image(); i.src = 'assets/cinematics/menu_background.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.starfield = starfield; this.vf = vf;
-    try { this.bloom = createBloom(renderer, window.innerWidth, window.innerHeight); }
+    try { this.bloom = createBloom(renderer, drawSize.x, drawSize.y); }
     catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
     this._meshes = new Map(); // entityId -> Object3D
 
@@ -78,6 +78,7 @@ export const render = {
       if (!p || p.section !== 'video') return;
       const vd = state.settings.video;
       if (this.bloom) this.bloom.setOptions({ bloom: vd.bloom, strength: vd.bloomStrength, threshold: vd.bloomThreshold });
+      if (p.key === 'renderScale' || p.key === 'pixelRatioCap' || p.key == null) this.onResize();
       // FOV: the feel system (feel.js) adds a transient punch on top of this base. We update the
       // camera's base fov here; feel.frame() re-derives its cached base from settings when no punch
       // is active, so the slider and the punch never fight.
@@ -178,11 +179,27 @@ export const render = {
   },
 
   onResize() {
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    if (this.bloom) this.bloom.setSize(window.innerWidth, window.innerHeight);
+    const drawSize = applyRendererSize(this.renderer, this.state);
+    if (this.bloom) this.bloom.setSize(drawSize.x, drawSize.y);
     this.cam.onResize();
   },
 };
+
+function applyRendererSize(renderer, state) {
+  const vd = (state.settings && state.settings.video) || {};
+  const cap = finiteInRange(vd.pixelRatioCap, 0.25, 4, 2);
+  const scale = finiteInRange(vd.renderScale, 0.5, 2, 1);
+  const base = Math.min(window.devicePixelRatio || 1, cap);
+  renderer.setPixelRatio(Math.max(0.25, base * scale));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  return renderer.getDrawingBufferSize(_drawSize);
+}
+
+function finiteInRange(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
 
 function disposeObject(obj) {
   obj.traverse((c) => {
