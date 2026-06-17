@@ -15,6 +15,7 @@ import { createMarketPanel } from './market.js';
 import { createShipyardPanel } from './shipyard.js';
 import { createOutfittingPanel } from './outfitting.js';
 import { createServicesPanel } from './services.js';
+import { createManufacturePanel } from './manufacture.js';
 import { createFactionsPanel } from './factions.js';
 import { createBarPanel } from './bar.js';
 import { SECTORS } from '../../data/sectors.js';
@@ -28,6 +29,7 @@ const TABS = [
   { id: 'market', label: 'Market', icon: '⚖' },
   { id: 'shipyard', label: 'Shipyard', icon: '⛴' },
   { id: 'outfit', label: 'Outfitting', icon: '⚙' },
+  { id: 'manufacture', label: 'Manufacture', icon: '⚒' },
   { id: 'missions', label: 'Missions', icon: '✦' },
   { id: 'services', label: 'Services', icon: '⛽' },
   { id: 'factions', label: 'Factions', icon: '⚑' },
@@ -107,6 +109,7 @@ export const stationHub = {
       market: createMarketPanel(ctx),
       shipyard: createShipyardPanel(ctx),
       outfit: createOutfittingPanel(ctx),
+      manufacture: createManufacturePanel(ctx),
       services: createServicesPanel(ctx),
       factions: createFactionsPanel(ctx),
       bar: createBarPanel(ctx),
@@ -409,6 +412,26 @@ const STATION_CSS = `
 .st-sell-btn { border-color: var(--warn); color: var(--warn); }
 .st-sell-btn:hover:not(:disabled) { background: var(--warn); color: #1a1000; }
 .st-market-foot { margin-top: 10px; color: var(--ink-dim); font-size: .8rem; }
+
+/* Phase 7: Manufacturing panel */
+.st-manufacture { display: flex; flex-direction: column; gap: 6px; }
+.st-manuf-intro { color: var(--ink-dim); font-size: .82rem; margin-bottom: 8px; line-height: 1.4; }
+.st-manuf-group-h { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--accent); margin: 14px 0 6px;
+  display: flex; align-items: center; gap: 10px; }
+.st-manuf-group-h::after { content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--panel-edge), transparent); }
+.st-manuf-list { display: flex; flex-direction: column; gap: 8px; }
+.st-manuf-card { padding: 12px 14px; }
+.st-manuf-card.st-manuf-locked { opacity: .5; filter: saturate(.3); }
+.st-manuf-card-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.st-manuf-title { font-size: var(--t-md); font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.st-manuf-desc { color: var(--ink-dim); font-size: .78rem; margin: 4px 0 2px; line-height: 1.35; }
+.st-manuf-augnote { color: var(--warn); font-size: .72rem; margin-top: 2px; }
+.st-manuf-out { color: var(--good); font-size: .8rem; margin: 4px 0; font-weight: 600; }
+.st-manuf-mats { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.st-mat-chip { font-size: .7rem; padding: 2px 7px; border-radius: var(--r-pill); font-family: var(--mono);
+  background: rgba(98,224,138,.12); color: var(--good); border: 1px solid rgba(98,224,138,.25); }
+.st-mat-chip.st-mat-missing { background: rgba(255,84,112,.12); color: var(--danger); border-color: rgba(255,84,112,.25); }
 
 /* Phase 4: trade route planner + price heat */
 .st-market-planner { margin-bottom: 12px; border: 1px solid var(--panel-edge); border-radius: 8px;
