@@ -24,7 +24,7 @@ export function createToasts(ctx) {
     el.addEventListener('click', () => dismiss(rec));
     // newest on top
     root.prepend(el);
-    const rec = { el, born: performance.now(), ttl: ttl * 1000 };
+    const rec = { el, born: performance.now(), ttl: normalizeTtlMs(ttl) };
     live.unshift(rec);
     // animate in next frame
     requestAnimationFrame(() => el.classList.add('sf-toast--in'));
@@ -56,4 +56,10 @@ export function createToasts(ctx) {
   bus.on('toast', push);
 
   return { push, tick };
+}
+
+function normalizeTtlMs(ttl) {
+  const n = Number(ttl);
+  if (!Number.isFinite(n) || n <= 0) return 4000;
+  return n > 60 ? n : n * 1000;
 }

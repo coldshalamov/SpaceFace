@@ -378,6 +378,7 @@ function injectHudCss() {
     background:rgba(11,18,32,.92); border:1px solid var(--panel-edge); border-left:3px solid var(--accent);
     border-radius:6px; color:var(--ink); font-size:13px; box-shadow:0 6px 22px rgba(0,0,0,.5);
     pointer-events:auto; cursor:pointer; transform:translateX(120%); opacity:0; transition:transform .16s ease, opacity .16s ease; }
+  body.ui-modal-open .sf-toast { pointer-events:none; cursor:default; }
   .sf-toast--in { transform:translateX(0); opacity:1; }
   .sf-toast--out { transform:translateX(120%); opacity:0; }
   .sf-toast__icon { font-family:var(--mono); font-size:13px; color:var(--accent); }

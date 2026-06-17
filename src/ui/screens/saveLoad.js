@@ -119,6 +119,28 @@ function fmtMeta(meta) {
   const date = when ? new Date(when).toLocaleString() : '';
   return [date, t].filter(Boolean).join('  ·  ') || 'Saved';
 }
+function isOccupied(meta) {
+  return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
+}
+function latestOccupiedSlot(slots) {
+  let best = null;
+  let bestT = -1;
+  Object.keys(slots || {}).forEach((slot) => {
+    const meta = slots[slot];
+    if (!isOccupied(meta)) return;
+    const t = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
+    if (t >= bestT) { bestT = t; best = slot; }
+  });
+  return best;
+}
+function exportSlotChoice(ctx, slots) {
+  const selected = refs && refs.selected;
+  if (selected && isOccupied(slots[selected])) return selected;
+  const current = ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot;
+  if (current && isOccupied(slots[current])) return current;
+  if (isOccupied(slots.quick)) return 'quick';
+  return latestOccupiedSlot(slots);
+}
 
 function canSave(ctx) {
   const state = ctx && ctx.state;
@@ -167,11 +189,21 @@ export const saveLoadScreen = {
     // include any extra slots present in the index but not in our default list
     Object.keys(slots).forEach((k) => { if (!ids.includes(k) && k !== 'autosave' && k !== 'auto') ids.push(k); });
     if (slots.autosave || slots.auto) ids.push(slots.autosave ? 'autosave' : 'auto');
+    if (!refs.selected || !ids.includes(refs.selected)) {
+      refs.selected = (ctx.state.save && ctx.state.save.currentSlot && ids.includes(ctx.state.save.currentSlot))
+        ? ctx.state.save.currentSlot
+        : (latestOccupiedSlot(slots) || 'quick');
+    }
 
     ids.forEach((id) => {
       const meta = slots[id];
-      const occupied = !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
-      const row = el('div', 'sf-slot' + (occupied ? '' : ' empty'));
+      const occupied = isOccupied(meta);
+      const row = el('div', 'sf-slot' + (occupied ? '' : ' empty') + (refs.selected === id ? ' sel' : ''));
+      row.addEventListener('click', (ev) => {
+        if (ev.target && ev.target.closest && ev.target.closest('button,input')) return;
+        refs.selected = id;
+        this._render(ctx);
+      });
       const main = el('div', 'sf-slot-main');
       main.appendChild(el('div', 'sf-slot-name', slotLabel(id)));
       main.appendChild(el('div', 'sf-slot-sub', fmtMeta(meta)));
@@ -186,13 +218,14 @@ export const saveLoadScreen = {
           this._render(ctx);
           return;
         }
+        refs.selected = id;
         ctx.bus.emit('game:save', { slot: id });
         ctx.bus.emit('toast', { text: 'Saving to ' + slotLabel(id), kind: 'info', ttl: 2500 });
         setTimeout(() => this._render(ctx), 120);
       });
       const bLoad = el('button', 'sf-tab', 'Load'); bLoad.style.minWidth = '64px';
       bLoad.disabled = !occupied;
-      bLoad.addEventListener('click', () => { ctx.bus.emit('game:load', { slot: id }); });
+      bLoad.addEventListener('click', () => { refs.selected = id; ctx.bus.emit('game:load', { slot: id }); });
 
       row.appendChild(bSave);
       row.appendChild(bLoad);
@@ -210,18 +243,26 @@ export const saveLoadScreen = {
 
   _export(ctx) {
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
+    const slots = readSlots(ctx);
+    const slot = exportSlotChoice(ctx, slots);
     let blobText = null;
-    if (sys && typeof sys.exportSave === 'function') { try { blobText = sys.exportSave(refs && refs.selected); } catch (e) {} }
+    if (!slot) { ctx.bus.emit('toast', { text: 'Nothing to export', kind: 'warn', ttl: 2500 }); return; }
+    if (refs) refs.selected = slot;
+    if (sys && typeof sys.exportSlot === 'function') {
+      try { blobText = sys.exportSlot(slot); } catch (e) { blobText = null; }
+      if (blobText) { this._render(ctx); return; }
+    }
+    if (sys && typeof sys.exportSave === 'function') { try { blobText = sys.exportSave(slot); } catch (e) {} }
     if (blobText == null) {
-      // fallback: export the quick slot raw from localStorage
-      try { blobText = (typeof localStorage !== 'undefined' && localStorage.getItem(LS_PREFIX + 'quick')) || null; } catch (e) {}
+      // fallback: export the chosen slot raw from localStorage
+      try { blobText = (typeof localStorage !== 'undefined' && localStorage.getItem(LS_PREFIX + slot)) || null; } catch (e) {}
     }
     if (!blobText) { ctx.bus.emit('toast', { text: 'Nothing to export', kind: 'warn', ttl: 2500 }); return; }
     try {
       const blob = new Blob([blobText], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'spaceface-save.json';
+      a.href = url; a.download = 'spaceface_' + slot + '.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) { ctx.bus.emit('toast', { text: 'Export failed', kind: 'warn', ttl: 2500 }); }
@@ -230,19 +271,27 @@ export const saveLoadScreen = {
   _import(ctx, fileIn) {
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = String(reader.result || '');
-      const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
-      let ok = false;
-      if (sys && typeof sys.importSave === 'function') { try { sys.importSave(text); ok = true; } catch (e) {} }
-      if (!ok) {
-        try { if (typeof localStorage !== 'undefined') { localStorage.setItem(LS_PREFIX + 'import', text); ok = true; } } catch (e) {}
-      }
+    const finish = (ok) => {
       ctx.bus.emit('toast', { text: ok ? 'Save imported' : 'Import failed', kind: ok ? 'good' : 'warn', ttl: 2800 });
       fileIn.value = '';
       this._render(ctx);
     };
+    const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
+    if (sys && typeof sys.importFile === 'function') {
+      try { sys.importFile(f, finish); return; } catch (e) {}
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || '');
+      let ok = false;
+      if (sys && typeof sys.importString === 'function') { try { ok = !!sys.importString(text, 'quick'); } catch (e) {} }
+      else if (sys && typeof sys.importSave === 'function') { try { ok = !!sys.importSave(text); } catch (e) {} }
+      if (!ok) {
+        try { if (typeof localStorage !== 'undefined') { localStorage.setItem(LS_PREFIX + 'import', text); ok = true; } } catch (e) {}
+      }
+      finish(ok);
+    };
+    reader.onerror = () => finish(false);
     reader.readAsText(f);
   },
 
