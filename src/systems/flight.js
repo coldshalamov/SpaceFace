@@ -29,8 +29,13 @@ export const flight = {
     const player = state.entities.get(state.playerId);
     if (player && state.mode === 'flight' && !player.flags.docked) {
       this.applyPlayerIntent(player, dt);
-      if (state.input.boost && !player.flags.boosting) { player.flags.boosting = true; this.bus.emit('ship:boostStart', { shipId: player.id }); }
-      else if (!state.input.boost && player.flags.boosting) { player.flags.boosting = false; this.bus.emit('ship:boostStop', { shipId: player.id }); }
+      // Emit boost start/stop on the TRUE transition (applyPlayerIntent already set flags.boosting
+      // to the actual sustained-boost state above). The old code re-derived it from raw input.boost,
+      // which desynced the audio loop and VFX trails whenever energy cut boost mid-hold.
+      const wasBoosting = player._wasBoosting || false;
+      if (player.flags.boosting && !wasBoosting) this.bus.emit('ship:boostStart', { shipId: player.id });
+      else if (!player.flags.boosting && wasBoosting) this.bus.emit('ship:boostStop', { shipId: player.id });
+      player._wasBoosting = player.flags.boosting;
     } else if (player && !player.flags.docked) {
       // Not in active flight (paused/menu): still ease the bank back to level so it doesn't freeze tilted.
       this._settleBank(player, dt);
@@ -122,7 +127,7 @@ export const flight = {
   // it commits, not like flying on rails). Returns radians to add to the yaw step this tick.
   _bankYawFromDrift(e) {
     if (!e.bank) return 0;
-    return -e.bank * 0.15; // banking right carves a gentle right yaw, banking left carves left
+    return e.bank * 0.15; // banking right (+bank) carves a gentle right yaw, left carves left
   },
 
   // ---- NPC: turn toward aimAngle + thrust along ship-relative axes (unchanged contract) ----

@@ -14,9 +14,12 @@ function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
 function slotSummary(def) {
   const order = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
   const parts = [];
+  // Slot entries may be bare sizes ('S') OR {size, facing} objects (Phase 2 weapon hardpoints).
+  // Normalize to the size letter so the summary never renders "[object Object]".
+  const sizeOf = (e) => (typeof e === 'string') ? e : ((e && e.size) || '?');
   for (const t of order) {
     const arr = (def.slots && def.slots[t]) || [];
-    if (arr.length) parts.push(t[0].toUpperCase() + ':' + arr.join(''));
+    if (arr.length) parts.push(t[0].toUpperCase() + ':' + arr.map(sizeOf).join(''));
   }
   return parts.join('  ');
 }

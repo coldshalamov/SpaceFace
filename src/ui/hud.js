@@ -330,9 +330,17 @@ export function createHud(ctx, alerts) {
     if (m) wp = m.waypoint || m.targetPos || (m.objectives && m.objectives[0] && m.objectives[0].pos) || null;
     if (!wp && state.nav && state.nav.waypoint) {
       // nav waypoint is a station; re-resolve its live world position each frame so it tracks
-      // moving entities and clears when the station is gone (e.g. after jumping away).
+      // moving entities, and clear it if the station is no longer in this sector (e.g. after a jump).
       const nw = state.nav.waypoint;
-      if (nw.pos) { wp = nw.pos; wpLabel = nw.label; }
+      let livePos = null;
+      if (nw.stationId) {
+        for (const e of state.entityList) {
+          if (e.type === 'station' && e.data && e.data.stationId === nw.stationId) { livePos = e.pos; break; }
+        }
+        if (!livePos) { state.nav.waypoint = null; }   // station gone (jumped away) — drop the stale arrow
+      }
+      const pos = livePos || nw.pos;
+      if (pos) { wp = pos; wpLabel = nw.label; }
     }
     if (!wp || !p || !helpers.worldToScreen) { arrow.style.display = 'none'; elNavReadout.style.display = 'none'; return; }
     const proj = helpers.worldToScreen({ x: wp.x, y: 0, z: wp.z });

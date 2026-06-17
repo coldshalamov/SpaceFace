@@ -207,8 +207,11 @@ function buildWeaponList(shipDef, fittings, isPlayer) {
     weapons.push(makeWeaponRuntime(d, slots[i], i));
   }
   // Fresh player Kestrel: NEW_GAME fits no weapon, so give a starter so the player can shoot (§task).
+  // Prefer a front-facing slot — a hull whose only hardpoint faces rear/turret shouldn't fire its
+  // free starter gun backward or as an unturreted fixed mount.
   if (weapons.length === 0 && isPlayer) {
-    const wslot = slots.find((s) => s.type === 'weapon');
+    const wslot = slots.find((s) => s.type === 'weapon' && (s.facing === 'front' || !s.facing))
+               || slots.find((s) => s.type === 'weapon');
     const w = WEAPON_BY_ID.get(STARTER_WEAPON_ID);
     if (wslot && w) weapons.push(makeWeaponRuntime(w, wslot, wslot.index));
   }
