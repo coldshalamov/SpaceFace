@@ -98,7 +98,7 @@ export const crafting = {
       }
       grantMsg = '+' + (out.qty || 1) + ' ' + out.id;
     } else if (out.kind === 'ship') {
-      ships.acquireShip(out.id, /*setActive*/ false);
+      ships.buyShip({ defId: out.id, setActive: false, grant: true });   // crafted: materials were the cost
       grantMsg = 'Ship: ' + out.id;
     }
 

@@ -116,5 +116,5 @@ export function createManufacturePanel(ctx) {
     list.appendChild(frag);
   }
 
-  return { root, refresh, panel: { refresh } };
+  return { el: root, refresh, onShow: () => refresh(), panel: { refresh } };
 }

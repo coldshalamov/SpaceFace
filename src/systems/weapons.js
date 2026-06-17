@@ -241,7 +241,14 @@ export const weapons = {
     const isTurret = (w.facing === 'turret') || (tracking === 'auto_turret');
 
     // Targeting: missiles/turrets need a target (the forced auto-fire target, else the ship's selected).
-    const tgt = (isMissile || isTurret) ? (forceTarget || this._resolveTarget(e)) : null;
+    let tgt = (isMissile || isTurret) ? (forceTarget || this._resolveTarget(e)) : null;
+    // Player turret with no selected target: synthesize a point-target along the aim direction at
+    // weapon range so manual LMB still fires the turret toward the cursor (a fixed gun would gimbal
+    // there; a turret should too). Missiles still require a real lockable target.
+    if (!tgt && isTurret && isPlayer && !isMissile) {
+      const r = (w.range != null ? w.range : def.range || 600);
+      tgt = { pos: { x: e.pos.x + Math.cos(aimAngle) * r, z: e.pos.z + Math.sin(aimAngle) * r }, vel: { x: 0, z: 0 } };
+    }
 
     let dir;
     if (isMissile) {

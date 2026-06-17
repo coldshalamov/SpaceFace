@@ -20,7 +20,8 @@ function resolveEnemyWeapon(w, slotIndex) {
   if (!base) return null;
   // Phase 2 hardpoint fields: enemy ships have no per-hull facing data, so default front + the
   // standard fixed-gun gimbal arc (they gimbal toward their AI lead angle, like the player does).
-  const isTurret = base.tracking === 'auto_turret';
+  // An enemy entry may force a turret mount via w.turret:true (e.g. capital boss broadside beams).
+  const isTurret = base.tracking === 'auto_turret' || !!w.turret;
   const isHoming = base.tracking === 'homing';
   const facing = isTurret ? 'turret' : 'front';
   const gimbalArc = isTurret ? (base.turretArcDeg || 180) * Math.PI / 180
@@ -34,7 +35,8 @@ function resolveEnemyWeapon(w, slotIndex) {
     projSpeed: w.projSpeedOverride ?? base.projSpeed,
     range: w.rangeOverride ?? base.range,
     spread: base.spreadDeg ?? 0,
-    arc: base.tracking === 'auto_turret' ? { turret: base.turretArcDeg || 180 } : 'fixed',
+    tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),
+    arc: isTurret ? { turret: base.turretArcDeg || 180 } : 'fixed',
     heatMax: base.heatMax ?? 100, lockTimeS: base.lockTimeS ?? 0,
     _cooldown: 0, _heat: 0,
   };
@@ -61,7 +63,19 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos) {
   if (def.collisionRadius) spec.radius = def.collisionRadius;
   if (def.mass) spec.mass = def.mass;
   spec.drag = spec.drag || 1.25;
-  const ws = (def.weapons || []).map((w, i) => resolveEnemyWeapon(w, i)).filter(Boolean);
+  // Expand weapon entries by their declared count so a boss that lists {id,count:4} actually gets 4
+  // independent weapon instances (each with its own cooldown/heat), not 1. (Phase-2 audit fix.)
+  const ws = [];
+  {
+    let idx = 0;
+    for (const w of (def.weapons || [])) {
+      const n = Math.max(1, w.count || 1);
+      for (let k = 0; k < n; k++) {
+        const rw = resolveEnemyWeapon(w, idx++);
+        if (rw) ws.push(rw);
+      }
+    }
+  }
   spec.data = spec.data || {};
   if (ws.length) spec.data.weapons = ws;
   spec.data.miningBeam = null;

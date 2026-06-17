@@ -309,7 +309,7 @@ function maxBuyable(ctx, stationId, cmdtyId) {
 function stationName(state, stationId) {
   for (const e of state.entityList) {
     if (e.type === 'station' && e.data && e.data.stationId === stationId) {
-      return e.data.stationName || e.data.stationId || 'Station';
+      return e.data.name || e.data.stationName || e.data.stationId || 'Station';
     }
   }
   return stationId || 'Station';
@@ -363,11 +363,4 @@ function computeBestTrades(state, hereStationId) {
   }
   out.sort((a, b) => b.perVol - a.perVol);
   return out.slice(0, 5); // top 5
-}
-
-/** Active economic events affecting a station (shortage/boom/blockade/piracy) for badges. */
-function stationEvents(state, stationId) {
-  const evs = state.economy && state.economy.econEvents;
-  if (!evs || !evs.length) return [];
-  return evs.filter((e) => e.stationId === stationId && (e.duration == null || true)).map((e) => e.type);
 }

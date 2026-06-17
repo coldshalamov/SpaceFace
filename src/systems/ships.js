@@ -455,24 +455,27 @@ export const ships = {
 
   // ---- shipyard: buy / sell ship ----------------------------------------------------------
 
-  buyShip({ defId, setActive = false }) {
+  buyShip({ defId, setActive = false, grant = false }) {
     const def = SHIP_BY_ID.get(defId);
     const p = this.state.player;
     if (!def) return false;
-    if (!this.isUnlocked(def)) {
-      this.bus.emit('toast', { text: 'Research required: ' + def.requiresTech, kind: 'error', ttl: 3 });
-      return false;
+    // grant=true: crafted ship — materials were the cost, tech already gated by the blueprint.
+    if (!grant) {
+      if (!this.isUnlocked(def)) {
+        this.bus.emit('toast', { text: 'Research required: ' + def.requiresTech, kind: 'error', ttl: 3 });
+        return false;
+      }
+      const price = def.price || 0;
+      if (p.credits < price) {
+        this.bus.emit('toast', { text: 'Insufficient credits', kind: 'error', ttl: 3 });
+        return false;
+      }
+      if (price) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyShip:' + defId });
     }
-    const price = def.price || 0;
-    if (p.credits < price) {
-      this.bus.emit('toast', { text: 'Insufficient credits', kind: 'error', ttl: 3 });
-      return false;
-    }
-    if (price) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyShip:' + defId });
     const slots = buildSlotList(def);
     p.ownedShips.push({ defId, fittings: new Array(slots.length).fill(null) });
     const newIndex = p.ownedShips.length - 1;
-    this.bus.emit('ship:purchased', { defId, price });
+    this.bus.emit('ship:purchased', { defId, price: grant ? 0 : (def.price || 0) });
     if (setActive) this.setActiveShip(newIndex);
     return true;
   },
