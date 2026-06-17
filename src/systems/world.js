@@ -87,7 +87,6 @@ export const world = {
     bus.on('module:unequipped', () => this._resolveShipModules());
     bus.on('ship:statsChanged', () => this._resolveShipModules());
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
-    bus.on('ui:service', (p) => this._onService(p || {}));
   },
 
   // =========================================================================================
@@ -754,13 +753,6 @@ export const world = {
     const f = this.state.fuel;
     f.current = Math.min(f.max, f.current + amount);
     this.bus.emit('fuel:changed', { current: f.current, max: f.max });
-  },
-
-  _onService({ type, amount }) {
-    if (type !== 'refuel') return; // economy charges; world tops up the tank
-    const f = this.state.fuel;
-    const want = amount != null ? amount : (f.max - f.current);
-    this._addFuel(want);
   },
 
   // --- jump-drive / scanner / fuel-tank module resolution -----------------------------------

@@ -374,11 +374,10 @@ export const factions = {
   newGame() {
     const state = this.state || _state;
     if (!state) return;
-    state.factions = state.factions || {};
-    state.conflicts = state.conflicts || {};
+    state.factions = {};
+    state.conflicts = {};
     for (const id of FACTION_IDS) {
-      // Idempotent: only seed factions a load hasn't already restored.
-      if (!state.factions[id]) ensureFaction(state, id);
+      ensureFaction(state, id);
     }
   },
 

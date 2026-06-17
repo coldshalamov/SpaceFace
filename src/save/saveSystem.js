@@ -392,6 +392,10 @@ export const save = {
 
       // 10. restore missions/automation/settings.
       this._restoreMissions(data.missions);
+      const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
+      if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
+        try { missionsSys.spawnTargetsForSector(sectorId); } catch (err) { console.error('[save] spawn mission targets', err); }
+      }
       this._restoreAutomation(data.automation);
       this._restoreSettings(data.settings);
 

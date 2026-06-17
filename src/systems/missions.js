@@ -829,6 +829,12 @@ export const missions = {
   _onSectorEnter(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
+    this.spawnTargetsForSector(sectorId);
+    this._storyTrigger('sector', { sectorId });
+  },
+
+  spawnTargetsForSector(sectorId) {
+    if (!sectorId) return;
     // Spawn (or re-spawn after load) deferred targets for any active mission keyed to this sector.
     for (const m of this.state.missions.active) {
       if (m.status !== 'active' || !m.needsTargets) continue;
@@ -840,7 +846,6 @@ export const missions = {
         this._spawnTargetsFor(m);
       }
     }
-    this._storyTrigger('sector', { sectorId });
   },
 
   _onSectorExit(p) {
@@ -1006,16 +1011,18 @@ export const missions = {
   // =========================================================================================
   newGame() {
     const state = this.state;
-    state.missions.boards = state.missions.boards || {};
-    state.missions.active = state.missions.active || [];
-    state.missions.completedLog = state.missions.completedLog || [];
-    if (state.missions.nextId == null) state.missions.nextId = 1;
+    state.missions.boards = {};
+    state.missions.active = [];
+    state.missions.completedLog = [];
+    state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
-    if (!state.story) state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
+    state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
+    this._spawnSeq = 0;
     // Direction toast for the opening beat (guard against the double newGame call: save.newGame()
     // then game:started both fire it → only toast once).
-    if (this._newGamed) return;
-    this._newGamed = true;
+    const toastKey = state.meta && state.meta.seed;
+    if (this._newGameToastSeed === toastKey) return;
+    this._newGameToastSeed = toastKey;
     const b0 = STORY_BEATS[state.story.beatIndex];
     if (b0 && BEAT_HINT[b0.beat]) this.bus.emit('toast', { text: BEAT_HINT[b0.beat], kind: 'story', ttl: 6 });
   },

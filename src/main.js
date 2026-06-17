@@ -74,6 +74,12 @@ function startNewGame(state, helpers, bus, registry, opts) {
   }
   state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
+  resetRunState(state);
+  for (const name of ['world', 'factions', 'economy', 'automation', 'missions']) {
+    const sys = registry.get(name);
+    if (sys && typeof sys.newGame === 'function') sys.newGame();
+  }
+
   const ships = registry.get('ships');
   if (ships && typeof ships.newGame === 'function') {
     ships.newGame();
@@ -91,6 +97,46 @@ function startNewGame(state, helpers, bus, registry, opts) {
   state.mode = 'flight';
   bus.emit('game:started', {});
   console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
+}
+
+function resetRunState(state) {
+  const seed = ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0) || 1;
+  const fresh = createGameState(seed);
+  const cameraObj = state.camera && state.camera.obj;
+  const cameraFocus = state.camera && state.camera.focus;
+  const cameraShake = state.camera && state.camera.shakeOffset;
+
+  state.meta = fresh.meta;
+  state.timeScale = 1;
+  state.accumulator = 0;
+  state.simTime = 0;
+  state.tick = 0;
+  state.days = 0;
+  state.rng = fresh.rng;
+  state.input = fresh.input;
+  Object.assign(state.camera, fresh.camera, {
+    obj: cameraObj || null,
+    focus: cameraFocus || fresh.camera.focus,
+    shakeOffset: cameraShake || fresh.camera.shakeOffset,
+  });
+  if (state.camera.focus && typeof state.camera.focus.set === 'function') state.camera.focus.set(0, 0, 0);
+  if (state.camera.shakeOffset && typeof state.camera.shakeOffset.set === 'function') state.camera.shakeOffset.set(0, 0, 0);
+  state.bounds = fresh.bounds;
+  state.spatialHash = fresh.spatialHash;
+  state.player = fresh.player;
+  state.combat = fresh.combat;
+  state.economy = fresh.economy;
+  state.factions = fresh.factions;
+  state.conflicts = fresh.conflicts;
+  state.missions = fresh.missions;
+  state.story = fresh.story;
+  state.world = fresh.world;
+  state.jump = fresh.jump;
+  state.fuel = fresh.fuel;
+  state.nav = fresh.nav;
+  state.automation = fresh.automation;
+  state.ui = fresh.ui;
+  state.save = fresh.save;
 }
 
 function hideBootOverlay() {

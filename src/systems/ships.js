@@ -505,13 +505,20 @@ export const ships = {
 
   setActiveShip(index) {
     const p = this.state.player;
-    if (!p.ownedShips[index]) return false;
+    const owned = p.ownedShips[index];
+    if (!owned) return false;
+    const target = getDerivedStats(owned.defId, owned.fittings || [], p);
+    const cargo = p.cargo || {};
+    if ((cargo.usedVolume || 0) > target.cargoCap) {
+      this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
+      return false;
+    }
     p.activeShipIndex = index;
     // re-derive the player entity onto the new hull if it exists
     const e = this.state.entities.get(this.state.playerId);
     if (e) {
-      e.data.defId = p.ownedShips[index].defId;
-      this.recomputeEntity(e.id, p.ownedShips[index].fittings);
+      e.data.defId = owned.defId;
+      this.recomputeEntity(e.id, owned.fittings);
     }
     return true;
   },

@@ -142,11 +142,12 @@ export const feel = {
     }
   },
 
-  // True when no modal screen is open (screenManager maintains the stack on state.ui.screens).
+  // True when no modal screen is open (screenManager maintains state.ui.screenStack).
   // We treat "any open screen" as "do not steal the freeze" — pause/save/mainMenu all open one.
   _modalClear() {
-    const s = this.state.ui && this.state.ui.screens;
-    return !s || s.length === 0;
+    const ui = this.state.ui || {};
+    const stack = ui.screenStack || ui.screens;
+    return !ui.docked && (!stack || stack.length === 0);
   },
 
   frame(frameDt, state) {

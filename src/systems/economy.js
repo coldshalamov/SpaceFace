@@ -596,6 +596,22 @@ export const economy = {
       const realCost = round(added * AMMO_UNIT_CR);
       this.chargeCredits(realCost, 'service:ammo');
       this.bus.emit('toast', { text: `Bought ${added} munitions (${realCost}cr)`, kind: 'success', ttl: 2 });
+    } else if (type === 'insurance') {
+      const ins = state.player.insurance || (state.player.insurance = { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null });
+      const enable = !!p.amount;
+      if (enable) {
+        if (ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already active', kind: 'info', ttl: 2 }); return; }
+        const cost = Math.max(0, Math.round(ins.deductibleCr || 0));
+        if ((state.player.credits | 0) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for insurance', kind: 'error', ttl: 2 }); return; }
+        if (cost) this.chargeCredits(cost, 'service:insurance');
+        ins.insuredModules = true;
+        ins.lastStationId = state.ui && state.ui.docked ? state.ui.docked : ins.lastStationId;
+        this.bus.emit('toast', { text: `Hull insurance active (${cost}cr)`, kind: 'success', ttl: 2 });
+      } else {
+        if (!ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already inactive', kind: 'info', ttl: 2 }); return; }
+        ins.insuredModules = false;
+        this.bus.emit('toast', { text: 'Hull insurance cancelled', kind: 'info', ttl: 2 });
+      }
     }
   },
 

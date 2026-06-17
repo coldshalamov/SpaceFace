@@ -96,7 +96,6 @@ export const render = {
     bus.on('sector:enter', () => this.reconcileMeshes());
 
     window.addEventListener('resize', () => this.onResize());
-    window.addEventListener('wheel', (ev) => cam.setZoom(state.camera.zoom + Math.sign(ev.deltaY) * 6), { passive: true });
   },
 
   clearAllMeshes(keepPlayer) {

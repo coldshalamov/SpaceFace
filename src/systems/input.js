@@ -12,6 +12,7 @@ export const input = {
   name: 'input',
   init(ctx) {
     this.state = ctx.state;
+    this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     const keys = (this._keys = Object.create(null));
     this._ndc = { x: 0, y: 0 };
@@ -59,7 +60,7 @@ export const input = {
       if (!this._autoFireHeld) {
         inp.autoFire = !inp.autoFire;
         this._autoFireHeld = true;
-        this.state.bus.emit('toast', { text: 'Auto-fire ' + (inp.autoFire ? 'ON' : 'OFF'), kind: 'info', ttl: 2 });
+        this.bus.emit('toast', { text: 'Auto-fire ' + (inp.autoFire ? 'ON' : 'OFF'), kind: 'info', ttl: 2 });
       }
     } else {
       this._autoFireHeld = false;
