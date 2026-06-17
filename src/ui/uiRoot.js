@@ -111,9 +111,14 @@ export const ui = {
       if (hints) hints.style.display = visible ? 'block' : 'none';
       if (reticle) reticle.style.display = visible ? 'block' : 'none';
     };
-    this.bus.on('mode:changed', ({ mode }) => setFlightUI(mode === 'flight'));
+    const refreshFlightUI = () => {
+      const modalOpen = this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen();
+      const docked = this.state && this.state.ui && this.state.ui.docked === true;
+      setFlightUI(this.state && this.state.mode === 'flight' && !modalOpen && !docked);
+    };
+    this.bus.on('mode:changed', refreshFlightUI);
     // initial
-    setTimeout(() => setFlightUI(this.state && this.state.mode === 'flight'), 50);
+    setTimeout(refreshFlightUI, 50);
 
     // === Cinematic intro splash using generated assets (C-INTRO still + menu bg + pilot + reticle) ===
     // Professional first impression + teaches controls immediately. Click/any key to proceed to menu.
@@ -202,12 +207,13 @@ export const ui = {
     });
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
-    this.bus.on('game:started', () => { this.screenManager.closeAll(); this.screenManager.syncVisibility(); });
+    this.bus.on('game:started', () => { this.screenManager.closeAll(); this.screenManager.syncVisibility(); refreshFlightUI(); });
     this.bus.on('save:loaded', () => {
       // clear any stale modal restored from a save; HUD returns
       this.state.ui.docked = false;
       this.screenManager.closeAll();
       this.screenManager.syncVisibility();
+      refreshFlightUI();
     });
 
     // register all modal screens (dynamic + per-screen guarded). The Main Menu is shown by the
@@ -266,6 +272,9 @@ function injectHudCss() {
   /* ===== SpaceFace flight HUD ===== */
   #hud { font-size: calc(15px * var(--ui-scale)); }
   #hud > * { pointer-events: none; }
+  body.ui-modal-open #aim-reticle,
+  body.ui-modal-open #control-hints,
+  body.ui-modal-open #pilot-portrait { display: none !important; }
 
   /* Reticle reflects fire mode: amber tint + slight pulse when auto-fire is engaging hostiles,
      cyan when the pilot aims/fires manually (Phase 2). */

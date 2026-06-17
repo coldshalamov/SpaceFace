@@ -67,13 +67,18 @@ export const feel = {
     s.textContent = `
 #sf-feel-vig { position:absolute; inset:0; z-index:1200; pointer-events:none; opacity:0;
   mix-blend-mode:screen; transition:none; }
-#sf-feel-vig--hit   { background:radial-gradient(circle at 50% 55%, rgba(255,90,70,0) 45%, rgba(255,60,50,1) 100%); }
-#sf-feel-vig--death { background:radial-gradient(circle at 50% 50%, rgba(255,30,50,0) 25%, rgba(255,20,40,1) 100%); }
+.sf-feel-vig--hit   { background:radial-gradient(circle at 50% 55%, rgba(255,90,70,0) 45%, rgba(255,60,50,1) 100%); }
+.sf-feel-vig--death { background:radial-gradient(circle at 50% 50%, rgba(255,30,50,0) 25%, rgba(255,20,40,1) 100%); }
     `;
     document.head.appendChild(s);
   },
 
   _mountVignette() {
+    this._ensureVignette();
+  },
+
+  _ensureVignette() {
+    if (this._vigEl && this._vigEl.isConnected) return this._vigEl;
     // Mount under #hud (the always-present flight overlay) so it inherits the HUD layering and
     // is naturally hidden when the HUD is hidden (docked/modal). Falls back to body.
     const root = document.getElementById('hud') || document.body;
@@ -83,6 +88,7 @@ export const feel = {
     el.style.display = 'none';
     root.appendChild(el);
     this._vigEl = el;
+    return el;
   },
 
   _subscribe() {
@@ -135,9 +141,10 @@ export const feel = {
     this._fovPunch = Math.min(this._fovPunch + fovAdd, FOV_PUNCH_DEATH + 1);
 
     // Vignette: swap gradient class and raise opacity toward the peak.
-    if (this._vigEl && vigPeak > 0) {
-      this._vigEl.className = 'sf-feel-vig' + (vigCls ? (' sf-feel-vig--' + vigCls) : '');
-      this._vigEl.style.display = 'block';
+    const vigEl = this._ensureVignette();
+    if (vigEl && vigPeak > 0) {
+      vigEl.className = 'sf-feel-vig' + (vigCls ? (' sf-feel-vig--' + vigCls) : '');
+      vigEl.style.display = 'block';
       this._vig = Math.max(this._vig, vigPeak);
     }
   },
@@ -192,10 +199,11 @@ export const feel = {
     }
 
     // ---- vignette integration ----
-    if (this._vig > 0.001 && this._vigEl) {
+    const vigEl = this._vig > 0.001 ? this._ensureVignette() : this._vigEl;
+    if (this._vig > 0.001 && vigEl) {
       this._vig += -this._vig * VIG_DECAY * frameDt;
-      if (this._vig < 0.001) { this._vig = 0; this._vigEl.style.opacity = '0'; this._vigEl.style.display = 'none'; }
-      else this._vigEl.style.opacity = String(this._vig);
+      if (this._vig < 0.001) { this._vig = 0; vigEl.style.opacity = '0'; vigEl.style.display = 'none'; }
+      else vigEl.style.opacity = String(this._vig);
     }
   },
 };
