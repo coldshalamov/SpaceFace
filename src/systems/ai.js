@@ -231,8 +231,13 @@ export const ai = {
     if (other.team === e.team) return false;
     const ai = e.data && e.data.ai;
     if (ai && Array.isArray(ai.hostileTeams)) return ai.hostileTeams.includes(other.team);
-    // Lawful patrols are only hostile to flagged-wanted players; default: any cross-team is hostile.
-    if (ai && ai.lawful && other.team === 0) return !!ai.playerWanted;
+    // Lawful patrols are only hostile to wanted players. Derive "wanted" LIVE from the heat system
+    // (V2 §20b) so a player who cools off stops being hunted — the old ai.playerWanted field was
+    // never written anywhere (dead infrastructure), so reading it live is both the fix and the feature.
+    if (ai && ai.lawful && other.team === 0) {
+      const h = this.state.player && this.state.player.heat;
+      return typeof h === 'number' ? h >= 0.15 : false;
+    }
     return true;
   },
 

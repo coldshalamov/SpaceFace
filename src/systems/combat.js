@@ -85,7 +85,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos) {
   spec.data = spec.data || {};
   if (ws.length) spec.data.weapons = ws;
   spec.data.miningBeam = null;
-  spec.data.ai = { archetype: def.aiArchetype };
+  spec.data.ai = { archetype: def.aiArchetype, lawful: !!def.factionLawful };
   spec.data.bountyCr = def.bountyCr || 0;
   spec.data.loot = def.loot || null;
   spec.data.lootTableId = def.id;

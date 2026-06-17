@@ -174,6 +174,27 @@ export function createHud(ctx, alerts) {
   ctx.bus.on('mission:completed', () => { objDirty = true; });
   ctx.bus.on('mission:abandoned', () => { objDirty = true; });
 
+  // WANTED indicator (V2 §20b / cut-list #15): a persistent red alert when the player's heat is
+  // above the lawful-engagement threshold. Event-driven from the heat system's heat:changed.
+  let wantedActive = false;
+  if (alerts) {
+    ctx.bus.on('heat:changed', (p) => {
+      const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
+      const wanted = v >= 0.15;
+      const tier = v >= 0.6 ? 'HIGH' : v >= 0.35 ? 'MODERATE' : 'LOW';
+      if (wanted && !wantedActive) {
+        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED · LAW ENFORCEMENT ACTIVE', ttl: Infinity });
+        wantedActive = true;
+      } else if (wanted && wantedActive) {
+        // refresh the text to show the new tier (raise dedups by key but updates text/sev)
+        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED (' + tier + ') · HUNTERS INBOUND', ttl: Infinity });
+      } else if (!wanted && wantedActive) {
+        alerts.clear('wanted');
+        wantedActive = false;
+      }
+    });
+  }
+
   function refreshCredits() {
     creditsDirty = false;
     elCredits.textContent = Math.round(state.player.credits || 0).toLocaleString();

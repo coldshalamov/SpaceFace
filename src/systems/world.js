@@ -350,6 +350,25 @@ export const world = {
       const ent = this.helpers.spawnEntity(spec);
       active.enemies.push(ent.id);
     }
+    // WANTED hunters (V2 §20b / cut-list #15): if the player is hot, bounty-hunter lawful patrols
+    // spawn specifically to hunt them — real consequence for piracy. Count scales with heat; they
+    // drop near the player so the threat is immediate, not ambient. High-sec already has patrols,
+    // so hunters matter most in the lawless fringe where a criminal hides.
+    const heatVal = this.state.player && this.state.player.heat;
+    if (typeof heatVal === 'number' && heatVal >= 0.15 && sector.security < 0.6) {
+      const hunters = Math.min(4, Math.round(heatVal * 4 + 0.5));
+      const player = this.state.entities.get(this.state.playerId);
+      const px = player ? player.pos.x : 0, pz = player ? player.pos.z : 0;
+      for (let i = 0; i < hunters; i++) {
+        const ang = rng() * Math.PI * 2;
+        const r = 180 + rng() * 220; // drop in a ring around the player — closing in
+        const pos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+        const level = Math.round(lvHi + (lvHi - lvLo) * 0.5 * rng()); // tough: top of band or above
+        const spec = makeEnemySpawnSpec('patrol_lawman', clamp(level, lvLo, lvHi + 2), pos);
+        const ent = this.helpers.spawnEntity(spec);
+        active.enemies.push(ent.id);
+      }
+    }
   },
 
   _enemyPool(sector) {

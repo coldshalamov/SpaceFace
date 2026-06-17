@@ -20,6 +20,11 @@ function defaultSettings() {
 function defaultPlayer() {
   return {
     credits: 0, debt: 0, bounty: 0,
+    // WANTED heat (V2 §20b / cut-list #15): 0..1 scalar that rises with piracy/contraband/unprovoked
+    // attacks and decays slowly over clean time. Drives bounty-hunter spawn pressure + the lawful
+    // "playerWanted" AI flag so patrol_lawman enemies actually hunt a criminal player. Decoupled
+    // from per-faction aggro so "the law is after me" is one legible number, not eight.
+    heat: 0,
     ownedShips: [], activeShipIndex: 0,
     moduleInventory: [], researchedNodes: [],
     droneTierCap: 1,
