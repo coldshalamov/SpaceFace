@@ -550,12 +550,10 @@ export const ships = {
       return false;
     }
 
-    // unfit whatever currently occupies the slot back to inventory (free)
     const existing = owned.fittings[slotIndex];
-    if (existing) p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId: existing });
 
     // remove the module from inventory if it came from there
-    if (invIdx >= 0) p.moduleInventory.splice(invIdx, 1);
+    const fittedInventoryItem = invIdx >= 0 ? p.moduleInventory.splice(invIdx, 1)[0] : null;
 
     owned.fittings[slotIndex] = defId;
 
@@ -564,10 +562,13 @@ export const ships = {
     if (this.wouldOverflowCargo(owned)) {
       // revert
       owned.fittings[slotIndex] = existing;
-      if (invIdx >= 0) p.moduleInventory.push({ instanceId, defId });
+      if (fittedInventoryItem) p.moduleInventory.splice(invIdx, 0, fittedInventoryItem);
       this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
       return false;
     }
+
+    // unfit whatever previously occupied the slot back to inventory (free) after validation succeeds.
+    if (existing) p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId: existing });
 
     this.bus.emit('module:equipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
     this.recomputeIfActive(shipIndex, owned.fittings);

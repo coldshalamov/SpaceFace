@@ -5,6 +5,8 @@ import { save } from '../src/save/saveSystem.js';
 import { cargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { combat } from '../src/systems/combat.js';
+import { ships, buildSlotList } from '../src/systems/ships.js';
+import { SHIPS } from '../src/data/ships.js';
 
 function makeCargoState() {
   return {
@@ -178,8 +180,50 @@ function checkCombatRewardsAndLootKinds() {
   assert(events.some((e) => e.event === 'entity:killed' && e.payload.bountyCr === 50), 'kill event should carry bounty');
 }
 
+function checkFailedCargoFitDoesNotDuplicateModules() {
+  const atlas = SHIPS.find((s) => s.id === 'ship_atlas');
+  const slots = buildSlotList(atlas);
+  const cargoSlotIndex = slots.findIndex((s) => s.type === 'cargo' && s.size === 'L');
+  assert(cargoSlotIndex >= 0, 'atlas should have an L cargo slot');
+
+  const fittings = new Array(slots.length).fill(null);
+  fittings[cargoSlotIndex] = 'mod_cargo_compactor_l';
+  const inventoryItem = { instanceId: 'mi_try_expander', defId: 'mod_cargo_expander_l' };
+  const state = {
+    playerId: 1,
+    tick: 10,
+    player: {
+      ownedShips: [{ defId: 'ship_atlas', fittings }],
+      activeShipIndex: 0,
+      cargo: {
+        items: { cmdty_silicate: 650 },
+        usedVolume: 650,
+        usedMass: 650,
+        capVolume: 678,
+        capMass: 999,
+      },
+      moduleInventory: [inventoryItem],
+      researchedNodes: ['tech_bulk_logistics', 'tech_matter_compression'],
+      efficiencyMods: { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 },
+    },
+    entities: new Map(),
+  };
+  const events = [];
+
+  ships.state = state;
+  ships.bus = { emit: (event, payload) => events.push({ event, payload }) };
+
+  const fitted = ships.fitModule({ slotIndex: cargoSlotIndex, instanceId: inventoryItem.instanceId });
+
+  assert.equal(fitted, false, 'overflowing replacement fit should be rejected');
+  assert.equal(fittings[cargoSlotIndex], 'mod_cargo_compactor_l', 'failed fit should restore the previous module');
+  assert.deepEqual(state.player.moduleInventory, [inventoryItem], 'failed fit should restore inventory without duplicating the fitted module');
+  assert(events.some((e) => e.event === 'toast' && e.payload.kind === 'error'), 'failed fit should notify the player');
+}
+
 checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
 checkCombatRewardsAndLootKinds();
+checkFailedCargoFitDoesNotDuplicateModules();
 
 console.log('Core gameplay checks OK');
