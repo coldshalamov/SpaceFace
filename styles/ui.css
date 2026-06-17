@@ -21,7 +21,7 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: 
 #ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); }
 #ui-root > div { position: absolute; }
 #hud { inset: 0; z-index: 10; transition: opacity .12s ease; }
-#modal-backdrop { inset: 0; z-index: 90; background: rgba(2, 5, 12, .55); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .12s; }
+#modal-backdrop { inset: 0; z-index: 90; background: radial-gradient(circle at 50% 40%, rgba(2,5,12,.45), rgba(2,5,12,.7)); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity var(--dur) var(--ease); }
 #screens { inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
 #screens > * { pointer-events: auto; }
 #toasts { right: 16px; top: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
@@ -87,9 +87,8 @@ button:hover, .btn:hover {
   border-color: var(--accent);
   color: #fff;
   box-shadow: 0 0 12px rgba(57,208,255,0.3);
-  transform: translateY(-1px);
 }
-button:active { transform: translateY(0); }
+button:active { transform: translateY(1px); }
 
 .hud-bar {
   background: rgba(5,7,13,0.75);
@@ -141,20 +140,22 @@ button:active { transform: translateY(0); }
 /* Flight control hint bar — makes the game immediately understandable and less confusing */
 #control-hints {
   position: absolute;
-  bottom: 10px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 11px;
-  letter-spacing: .06em;
+  font-size: var(--t-sm);
+  letter-spacing: .04em;
   color: var(--ink-dim);
-  background: rgba(5,7,13,0.6);
-  padding: 3px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--panel-edge);
+  background: var(--glass);
+  padding: 6px 18px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--glass-edge);
   white-space: nowrap;
   z-index: 12;
   pointer-events: none;
   user-select: none;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--sh-1);
 }
 
 /* Better toasts / feedback for fun factor (mining hits, kills, yields feel satisfying) */
@@ -201,3 +202,131 @@ body.low-hull #vignette {
   background-size: cover;
   background-blend-mode: multiply;
 }
+
+/* ============================================================================================
+   PHASE 5 — DESIGN SYSTEM
+   A formalized token + component layer so every screen shares one cohesive, modern identity.
+   Adds spacing/radius/type/motion/elevation scales, reusable components (cards, badges, tabs,
+   dividers, section headers), and refined buttons/inputs. Existing screens inherit these via the
+   tokens without a risky per-screen rewrite.
+   ============================================================================================ */
+:root {
+  /* spacing scale (4px base) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  /* radius scale */
+  --r-sm: 4px; --r-md: 7px; --r-lg: 10px; --r-xl: 14px; --r-pill: 999px;
+  /* type scale */
+  --t-xs: 10px; --t-sm: 12px; --t-md: 14px; --t-lg: 17px; --t-xl: 22px; --t-2xl: 30px;
+  /* motion */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --dur-fast: .1s; --dur: .18s; --dur-slow: .3s;
+  /* elevation */
+  --sh-1: 0 2px 10px rgba(0,0,0,.4);
+  --sh-2: 0 6px 24px rgba(0,0,0,.55);
+  --sh-3: 0 14px 44px rgba(0,0,0,.7);
+  /* glass surface */
+  --glass: rgba(11,18,32,.62);
+  --glass-edge: rgba(57,208,255,.16);
+  /* accent gradient (used for highlights, active states, brand moments) */
+  --grad-accent: linear-gradient(135deg, var(--accent), var(--accent-3));
+}
+
+/* ---- reusable components --------------------------------------------------------------- */
+
+/* Card: the workhorse surface for list rows, ship cards, stat blocks. */
+.sf-card {
+  background: var(--glass);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3) var(--sp-4);
+  backdrop-filter: blur(6px);
+  transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.sf-card--hover:hover {
+  border-color: var(--glass-edge);
+  box-shadow: var(--sh-2);
+  transform: translateY(-2px);
+}
+.sf-card--accent { border-left: 3px solid var(--accent); }
+
+/* Badge / tag: legality, facing, tier, event pills. */
+.sf-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 8px; border-radius: var(--r-pill);
+  font-size: var(--t-xs); letter-spacing: .08em; text-transform: uppercase;
+  background: rgba(57,208,255,.12); color: var(--accent);
+  border: 1px solid rgba(57,208,255,.3);
+}
+.sf-badge--good { background: rgba(98,224,138,.12); color: var(--good); border-color: rgba(98,224,138,.3); }
+.sf-badge--warn { background: rgba(255,179,71,.12); color: var(--warn); border-color: rgba(255,179,71,.3); }
+.sf-badge--danger { background: rgba(255,84,112,.12); color: var(--danger); border-color: rgba(255,84,112,.3); }
+.sf-badge--muted { background: rgba(132,160,200,.1); color: var(--ink-dim); border-color: rgba(132,160,200,.2); }
+
+/* Section header: the small all-caps label above a group. */
+.sf-section-h {
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-mute);
+  display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2);
+}
+.sf-section-h::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--panel-edge), transparent);
+}
+
+/* Tabs: shared station-hub tab strip styling. */
+.sf-tabs { display: flex; gap: var(--sp-1); padding: var(--sp-1); border-radius: var(--r-lg);
+  background: rgba(5,9,18,.5); border: 1px solid var(--panel-edge); }
+.sf-tab { padding: var(--sp-2) var(--sp-4); border-radius: var(--r-md); cursor: pointer;
+  color: var(--ink-dim); font-size: var(--t-sm); letter-spacing: .04em; pointer-events: auto;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease); border: none; background: none; text-transform: none; }
+.sf-tab:hover { color: var(--ink); background: rgba(57,208,255,.08); }
+.sf-tab.active { color: #fff; background: var(--grad-accent); box-shadow: 0 0 14px rgba(57,208,255,.35); }
+
+/* Primary / ghost button variants for clear affordance hierarchy. */
+.sf-btn { font-family: inherit; cursor: pointer; pointer-events: auto; border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-4); font-size: var(--t-sm); letter-spacing: .06em; text-transform: uppercase;
+  transition: all var(--dur) var(--ease); }
+.sf-btn--primary { background: var(--grad-accent); color: #04121a; border: none; font-weight: 700;
+  box-shadow: 0 0 16px rgba(57,208,255,.3); }
+.sf-btn--primary:hover { box-shadow: 0 0 24px rgba(57,208,255,.55); transform: translateY(-1px); }
+.sf-btn--ghost { background: var(--glass); color: var(--ink); border: 1px solid var(--panel-edge); }
+.sf-btn--ghost:hover { border-color: var(--accent); color: #fff; }
+.sf-btn--danger { background: rgba(255,84,112,.15); color: var(--danger); border: 1px solid rgba(255,84,112,.4); }
+.sf-btn:disabled { opacity: .4; cursor: default; transform: none; box-shadow: none; }
+
+/* Inputs */
+.sf-input { font-family: inherit; background: rgba(5,9,18,.6); color: var(--ink);
+  border: 1px solid var(--panel-edge); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3);
+  font-size: var(--t-sm); pointer-events: auto; transition: border-color var(--dur) var(--ease); }
+.sf-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(57,208,255,.18); }
+
+/* Stat readout (label over value) — used in shipyard/market headers. */
+.sf-stat-block { display: flex; flex-direction: column; gap: 2px; }
+.sf-stat-block__k { font-size: var(--t-xs); letter-spacing: .12em; color: var(--ink-mute); text-transform: uppercase; }
+.sf-stat-block__v { font-size: var(--t-lg); color: var(--ink); font-family: var(--mono); }
+
+/* Screen title bar: consistent header for every modal screen. */
+.sf-screen-title {
+  font-family: var(--mono); font-size: var(--t-xl); letter-spacing: .28em;
+  color: var(--accent); text-shadow: 0 0 18px rgba(57,208,255,.5);
+  display: flex; align-items: baseline; gap: var(--sp-3);
+}
+.sf-screen-title .sf-screen-sub { font-family: var(--font); font-size: var(--t-sm);
+  letter-spacing: .04em; color: var(--ink-dim); text-shadow: none; text-transform: none; }
+
+/* Divider */
+.sf-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--panel-edge), transparent);
+  border: none; margin: var(--sp-3) 0; }
+
+/* Empty state */
+.sf-empty { color: var(--ink-mute); font-style: italic; font-size: var(--t-sm); padding: var(--sp-3); text-align: center; }
+
+/* Fade-in for screens/panels so they feel responsive, not pop-in. */
+@keyframes sf-fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.sf-fadein { animation: sf-fadein var(--dur-slow) var(--ease) both; }
+
+/* Scrollbars: slim, on-theme (the station lists get long). */
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: rgba(5,9,18,.4); }
+*::-webkit-scrollbar-thumb { background: var(--panel-edge-2); border-radius: var(--r-pill); }
+*::-webkit-scrollbar-thumb:hover { background: var(--accent); }

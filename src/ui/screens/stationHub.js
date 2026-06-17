@@ -349,25 +349,31 @@ function fmtTime(s) {
 // ---- scoped CSS (injected once; uses theme vars from styles/ui.css) --------------------------
 const STATION_CSS = `
 .st-hub { width: min(1100px, 94vw); height: min(760px, 92vh); display: flex; flex-direction: column;
-  pointer-events: auto; overflow: hidden; }
+  pointer-events: auto; overflow: hidden; animation: sf-fadein .3s var(--ease) both; }
 .st-topbar { display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 18px; border-bottom: 1px solid var(--panel-edge); background: rgba(8,14,26,.6); }
-.st-station-name { font-size: 1.2rem; letter-spacing: .04em; }
-.st-station-fac { margin-left: 12px; color: var(--ink-dim); font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; }
-.st-undock { border-color: var(--accent); color: var(--accent); letter-spacing: .08em; }
-.st-undock:hover { background: var(--accent); color: #021018; }
+  padding: 14px 20px; border-bottom: 1px solid var(--panel-edge);
+  background: linear-gradient(180deg, rgba(14,24,42,.7), rgba(8,14,26,.5)); }
+.st-station-name { font-size: var(--t-xl); letter-spacing: .04em; color: #fff; font-weight: 600;
+  text-shadow: 0 0 16px rgba(57,208,255,.25); }
+.st-station-fac { margin-left: 14px; color: var(--accent); font-size: var(--t-xs);
+  letter-spacing: .14em; text-transform: uppercase; padding: 2px 10px; border-radius: var(--r-pill);
+  border: 1px solid rgba(57,208,255,.3); background: rgba(57,208,255,.08); }
+.st-undock { border-color: var(--accent); color: var(--accent); letter-spacing: .08em; font-weight: 600; }
+.st-undock:hover { background: var(--grad-accent); color: #04121a; box-shadow: 0 0 16px rgba(57,208,255,.4); }
 .st-body { display: flex; flex: 1; min-height: 0; }
-.st-rail { width: 168px; flex: none; display: flex; flex-direction: column; gap: 2px; padding: 10px 8px;
-  border-right: 1px solid var(--panel-edge); background: rgba(6,10,20,.5); }
+.st-rail { width: 176px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-3) var(--sp-2);
+  border-right: 1px solid var(--panel-edge); background: rgba(6,10,20,.55); }
 .st-tab { display: flex; align-items: center; gap: 10px; text-align: left; background: transparent;
-  border: 1px solid transparent; border-radius: 6px; padding: 9px 10px; color: var(--ink-dim); }
-.st-tab:hover { color: var(--ink); border-color: var(--panel-edge); }
-.st-tab.active { color: var(--accent); background: rgba(57,208,255,.08);
-  border-color: rgba(57,208,255,.35); box-shadow: inset 3px 0 0 var(--accent); }
+  border: 1px solid transparent; border-radius: var(--r-md); padding: 9px 12px; color: var(--ink-dim);
+  transition: all var(--dur) var(--ease); }
+.st-tab:hover { color: var(--ink); background: rgba(57,208,255,.06); }
+.st-tab.active { color: #fff; background: linear-gradient(90deg, rgba(57,208,255,.18), rgba(57,208,255,.04));
+  border-color: rgba(57,208,255,.35); box-shadow: inset 3px 0 0 var(--accent), 0 0 12px rgba(57,208,255,.12); }
 .st-tab-icon { width: 18px; text-align: center; opacity: .85; }
 .st-tab-label { letter-spacing: .04em; font-size: .92rem; }
 .st-content { flex: 1; min-width: 0; overflow: hidden; position: relative; }
-.st-tabpanel { position: absolute; inset: 0; overflow-y: auto; padding: 14px 18px; }
+.st-tabpanel { position: absolute; inset: 0; overflow-y: auto; padding: var(--sp-4) var(--sp-5);
+  animation: sf-fadein .22s var(--ease) both; }
 .st-sub-h { font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-mute);
   margin: 2px 0 10px; }
 .st-empty { color: var(--ink-mute); font-size: .85rem; padding: 18px 4px; font-style: italic; }

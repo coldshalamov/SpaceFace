@@ -128,14 +128,14 @@ export const ui = {
         <div style="position:absolute;inset:0;background-image:url('assets/cinematics/menu_background.jpg');background-size:cover;background-position:center 30%;opacity:0.7;filter:contrast(1.1);"></div>
         <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,13,.5),rgba(5,7,13,0) 30%,rgba(5,7,13,0) 75%,rgba(5,7,13,1));"></div>
         <div style="position:relative;text-align:center;color:#d3e6ff;font-family:var(--mono,monospace);z-index:1;text-shadow:0 0 30px #39d0ff;">
-          <div style="font-size:13px;letter-spacing:6px;opacity:0.7;margin-bottom:8px;">A HARD SCI-FI SPACE ODYSSEY</div>
-          <div style="font-size:72px;line-height:1;letter-spacing:8px;margin-bottom:12px;color:#39d0ff;">SPACEFACE</div>
-          <div style="margin:12px auto 24px;max-width:620px;opacity:0.85;font-size:15px;line-height:1.35;">
+          <div style="font-size:13px;letter-spacing:8px;opacity:0.7;margin-bottom:10px;">A HARD SCI-FI SPACE ODYSSEY</div>
+          <div style="font-size:clamp(48px,9vw,92px);line-height:1;letter-spacing:.12em;margin-bottom:14px;color:#39d0ff;font-weight:700;">SPACEFACE</div>
+          <div style="margin:14px auto 26px;max-width:640px;opacity:0.85;font-size:15px;line-height:1.45;font-family:var(--font,sans-serif);letter-spacing:.02em;">
             Mine the glowing veins. Outrun the pirates. Build your empire.<br>
             Your face is your legend.
           </div>
-          <div style="font-size:12px;opacity:0.6;margin-bottom:18px;">↑↓ THROTTLE • ←→ STEER (BANKS) • MOUSE AIM • LMB FIRE • SHIFT BOOST</div>
-          <div style="font-size:11px;letter-spacing:3px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
+          <div style="font-size:12px;opacity:0.6;margin-bottom:20px;letter-spacing:.08em;">↑↓ THROTTLE &nbsp;•&nbsp; ←→ STEER (BANKS) &nbsp;•&nbsp; MOUSE AIM &nbsp;•&nbsp; LMB FIRE &nbsp;•&nbsp; F AUTO-FIRE &nbsp;•&nbsp; SHIFT BOOST/DASH</div>
+          <div style="font-size:11px;letter-spacing:4px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
         </div>
         <div id="cinematic-pilot" style="position:absolute;bottom:24px;right:24px;width:92px;height:92px;border:3px solid #39d0ff;border-radius:50%;overflow:hidden;box-shadow:0 0 30px #39d0ff;opacity:0.95;background:#0b1220;">
           ${PILOT_AVATAR_SVG}
