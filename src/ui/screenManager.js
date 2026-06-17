@@ -54,6 +54,10 @@ export function createScreenManager(ctx) {
       rec.el.style.display = id === top ? 'flex' : 'none';
     }
     const open = stack.length > 0;
+    // When no modal is open, hide the #screens container ENTIRELY — it carries a full-screen
+    // background image (the menu art) at z-index 100, which would otherwise sit on top of the
+    // flight canvas (z-index 10) and blank the screen after New Game even though the sim is live.
+    if (screensRoot) screensRoot.style.display = open ? 'flex' : 'none';
     document.body.classList.toggle('ui-modal-open', open || state.ui.docked === true);
     if (backdrop) backdrop.style.pointerEvents = open ? 'auto' : 'none';
     syncPause();

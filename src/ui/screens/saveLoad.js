@@ -179,6 +179,14 @@ export const saveLoadScreen = {
 
       row.appendChild(bSave);
       row.appendChild(bLoad);
+      // Empty slots offer a direct "New Game" so the player isn't forced back to the main menu to
+      // start — addressing the confusing "only a Back button" flow.
+      if (!occupied) {
+        const bNew = el('button', 'sf-tab', 'New Game'); bNew.style.minWidth = '84px';
+        bNew.style.borderColor = 'var(--accent)'; bNew.style.color = 'var(--accent)';
+        bNew.addEventListener('click', () => nav(ctx, 'pushScreen', 'newGame'));
+        row.appendChild(bNew);
+      }
       refs.list.appendChild(row);
     });
   },
