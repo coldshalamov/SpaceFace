@@ -335,6 +335,7 @@ export const save = {
       // Migrate a COPY so a throwing migration never half-mutates anything we keep.
       let data = clonePlain(env.data);
       if (!runMigrations(data, ver)) { this.bus.emit('save:error', { slot, reason: 'migration_failed' }); return false; }
+      if (!hasRestorablePlayer(data)) { this.bus.emit('save:error', { slot, reason: 'no_player' }); return false; }
 
       // Everything validated → perform the (destructive) restore.
       this._restore(data, slot);
@@ -655,6 +656,11 @@ function runMigrations(data, fromVer) {
     v = step.to;
   }
   return true;
+}
+
+function hasRestorablePlayer(data) {
+  const player = data && data.entities && data.entities.player;
+  return !!(player && typeof player === 'object');
 }
 
 // Serialize an entity to a plain object: drop mesh/view (THREE refs), encode pos/vel as {x,z} (§4.5).

@@ -363,6 +363,74 @@ function checkLoadDoesNotSpawnTargetsForStaleLiveMissions() {
   assert.equal(state.ui.trackedMissionId, null, 'load should not keep tracking a stale pre-load mission');
 }
 
+function checkLoadRejectsSaveWithoutPlayerEntity() {
+  const state = {
+    mode: 'flight',
+    timeScale: 1,
+    meta: { seed: 7, playtimeS: 1, createdAt: 'old', lastSavedAt: '' },
+    save: { currentSlot: 'old' },
+    playerId: 1,
+    simTime: 5,
+    tick: 2,
+    player: {
+      credits: 50,
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 10, capMass: 10 },
+    },
+    economy: {},
+    factions: {},
+    world: { currentSectorId: 'sector_helios_prime', sectors: {} },
+    missions: { boards: {}, active: [], completedLog: [], nextId: 1, config: null },
+    story: { beatIndex: 0 },
+    automation: { drones: [], meta: {} },
+    settings: {},
+    ui: { trackedMissionId: null },
+    entities: new Map(),
+    entityList: [],
+    freeIds: [],
+    nextEntityId: 2,
+    rng: () => 0.5,
+  };
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 12, y: 0, z: -4 },
+    radius: 4,
+    factionId: 'faction_player',
+  };
+  state.entities.set(1, player);
+  state.entityList.push(player);
+  const events = [];
+
+  save.state = state;
+  save.bus = { emit(event, payload) { events.push({ event, payload }); } };
+  save.helpers = {};
+  save.registry = { get() { return null; } };
+
+  const ok = save.loadEnvelope({
+    fmt: 'spaceface-save',
+    version: 1,
+    slot: 'bad',
+    data: {
+      meta: { seed: 9, playtimeS: 9, createdAt: 'bad', lastSavedAt: 'bad' },
+      player: { credits: 999 },
+      cargo: { items: {}, capVolume: 10, capMass: 10 },
+      economy: {},
+      factions: {},
+      world: { currentSectorId: 'sector_ceres_belt' },
+      entities: { persistent: [], simTime: 9, tick: 4 },
+      missions: { boards: {}, active: [], completedLog: [], nextId: 1, story: { beatIndex: 0 } },
+      automation: {},
+      settings: {},
+    },
+  }, 'bad');
+
+  assert.equal(ok, false, 'save without a player entity should be rejected');
+  assert.equal(state.playerId, 1, 'rejected playerless save should not clear the live player id');
+  assert.equal(state.entities.get(1), player, 'rejected playerless save should leave live entities untouched');
+  assert(events.some((e) => e.event === 'save:error' && e.payload.reason === 'no_player'), 'playerless save should emit no_player');
+}
+
 function checkCombatRewardsAndLootKinds() {
   const grants = [];
   const spawned = [];
@@ -829,6 +897,7 @@ checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
 checkMissionCompletionAutosaveSeesSettledState();
 checkLoadDoesNotSpawnTargetsForStaleLiveMissions();
+checkLoadRejectsSaveWithoutPlayerEntity();
 checkCombatRewardsAndLootKinds();
 checkInsuredRespawnUsesStationRefundAndCargoLoss();
 checkFailedCargoFitDoesNotDuplicateModules();
