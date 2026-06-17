@@ -1,14 +1,18 @@
 // src/ui/screens/services.js — STATION "Services" tab panel.
 // Refuel / repair hull / buy ammo / toggle insurance. Each action emits ui:service {type,amount};
 // economy/world own the credit charge + the effect (§0.6, §4.4). Read-only over sim state.
-//
-// Prices are illustrative client-side previews; the owning system applies the authoritative cost.
-const FUEL_CR_PER_UNIT = 3;     // refuel cost preview
-const HULL_CR_PER_HP = 5;       // repair cost preview
+import { SERVICE_PRICES } from '../../systems/economy.js';
+
 const AMMO_BATCH = 100;         // munitions per ammo purchase
-const AMMO_CR_PER_UNIT = 4;
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
+
+function repairMissing(e) {
+  if (!e) return { hull: 0, armor: 0, total: 0 };
+  const hull = Math.max(0, (e.hullMax || 0) - (e.hull || 0));
+  const armor = Math.max(0, (e.armorMax || 0) - (e.armorHp || 0));
+  return { hull, armor, total: hull + armor };
+}
 
 export function createServicesPanel(ctx) {
   const root = document.createElement('div');
@@ -35,7 +39,7 @@ export function createServicesPanel(ctx) {
       amount = Math.max(0, (state.fuel.max || 0) - (state.fuel.current || 0));
     } else if (type === 'repair') {
       const e = state.entities.get(state.playerId);
-      amount = e ? Math.max(0, (e.hullMax || 0) - (e.hull || 0)) : 0;
+      amount = repairMissing(e).total;
     } else if (type === 'ammo') {
       amount = AMMO_BATCH;
     } else if (type === 'insurance') {
@@ -80,16 +84,17 @@ export function createServicesPanel(ctx) {
       let cost = 0, detail = r.desc;
       if (r.type === 'refuel') {
         const missing = Math.max(0, (state.fuel.max || 0) - (state.fuel.current || 0));
-        cost = Math.round(missing * FUEL_CR_PER_UNIT);
+        cost = Math.round(missing * SERVICE_PRICES.fuelCrPerUnit);
         detail = 'Fuel ' + Math.round(state.fuel.current || 0) + '/' + Math.round(state.fuel.max || 0) +
           ' · ' + fmtCr(cost) + ' cr';
       } else if (r.type === 'repair') {
-        const missing = e ? Math.max(0, (e.hullMax || 0) - (e.hull || 0)) : 0;
-        cost = Math.round(missing * HULL_CR_PER_HP);
+        const missing = repairMissing(e);
+        cost = Math.round(missing.total * SERVICE_PRICES.repairCrPerHp);
         detail = 'Hull ' + Math.round(e ? e.hull : 0) + '/' + Math.round(e ? e.hullMax : 0) +
+          ' · Armor ' + Math.round(e ? e.armorHp || 0 : 0) + '/' + Math.round(e ? e.armorMax || 0 : 0) +
           ' · ' + fmtCr(cost) + ' cr';
       } else if (r.type === 'ammo') {
-        cost = AMMO_BATCH * AMMO_CR_PER_UNIT;
+        cost = AMMO_BATCH * SERVICE_PRICES.ammoCrPerUnit;
         detail = AMMO_BATCH + ' units · ' + fmtCr(cost) + ' cr';
       } else if (r.type === 'insurance') {
         const ins = p.insurance || {};

@@ -48,6 +48,11 @@ const BRIBE_FRAC = 0.30;
 const FUEL_UNIT_CR = 6;            // cr per fuel unit
 const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
+export const SERVICE_PRICES = Object.freeze({
+  fuelCrPerUnit: FUEL_UNIT_CR,
+  repairCrPerHp: REPAIR_HP_CR,
+  ammoCrPerUnit: AMMO_UNIT_CR,
+});
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
