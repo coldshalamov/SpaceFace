@@ -196,6 +196,173 @@ function checkMissionCompletionAutosaveSeesSettledState() {
   assert.equal(autosaveData.missions.story.beatIndex, 0, 'mission-completed autosave should include settled story state');
 }
 
+function checkLoadDoesNotSpawnTargetsForStaleLiveMissions() {
+  const makeVec = (x = 0, z = 0) => ({
+    x,
+    y: 0,
+    z,
+    set(nx, ny, nz) { this.x = nx; this.y = ny || 0; this.z = nz; return this; },
+    copy(pos) { this.x = pos.x; this.y = pos.y || 0; this.z = pos.z; return this; },
+  });
+  const state = {
+    mode: 'flight',
+    meta: { seed: 7, playtimeS: 1, createdAt: 'old', lastSavedAt: '' },
+    save: { currentSlot: 'old' },
+    playerId: 1,
+    simTime: 5,
+    tick: 2,
+    player: {
+      credits: 0,
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 10, capMass: 10 },
+      ownedShips: [{ defId: 'ship_kestrel', fittings: [] }],
+      activeShipIndex: 0,
+      moduleInventory: [],
+      targetId: null,
+      stats: { missionsDone: 0 },
+    },
+    economy: {},
+    factions: {},
+    world: { currentSectorId: 'sector_ceres_belt', sectors: {}, activeSector: {}, discovery: {}, pendingSpawns: {} },
+    jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
+    fuel: { current: 100, max: 100 },
+    nav: { route: null, autoTravel: false },
+    missions: {
+      boards: {},
+      active: [{
+        id: 'm_stale',
+        type: 'bounty_hunt',
+        factionId: 'faction_scn',
+        params: {},
+        status: 'active',
+        objectiveProgress: 0,
+        objectiveTarget: 1,
+        reward_cr: 0,
+        collateral_cr: 0,
+        riskTier: 0,
+        destSectorId: 'sector_helios_prime',
+        targetEntityIds: [],
+        needsTargets: true,
+        title: 'Old Target',
+      }],
+      completedLog: [],
+      nextId: 2,
+      config: null,
+    },
+    story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
+    automation: { drones: [], meta: {} },
+    settings: {},
+    ui: { trackedMissionId: 'm_stale' },
+    entities: new Map(),
+    entityList: [],
+    freeIds: [],
+    nextEntityId: 1,
+    rng: () => 0.5,
+  };
+  const bus = createBus();
+  const helpers = {
+    spawnEntity(spec) {
+      const ent = {
+        id: state.nextEntityId++,
+        ...spec,
+        alive: spec.alive !== false,
+        flags: spec.flags || {},
+        data: spec.data || {},
+        pos: makeVec(spec.pos && spec.pos.x, spec.pos && spec.pos.z),
+        prevPos: makeVec(spec.pos && spec.pos.x, spec.pos && spec.pos.z),
+        vel: makeVec(spec.vel && spec.vel.x, spec.vel && spec.vel.z),
+        rot: spec.rot || 0,
+        prevRot: spec.rot || 0,
+      };
+      state.entities.set(ent.id, ent);
+      state.entityList.push(ent);
+      return ent;
+    },
+    getEntity(id) { return state.entities.get(id); },
+    player() { return state.entities.get(state.playerId); },
+    hash32() { return 1; },
+    mulberry32() { return () => 0.5; },
+  };
+  const worldStub = {
+    serialize: () => ({}),
+    deserialize(data) {
+      state.world.currentSectorId = data && data.currentSectorId;
+    },
+    enterSector(sectorId) {
+      state.world.currentSectorId = sectorId;
+      bus.emit('sector:enter', { sectorId });
+    },
+  };
+  const registry = {
+    get(name) {
+      return {
+        economy: { serialize: () => ({}), deserialize() {} },
+        factions: { serialize: () => ({}), deserialize() {} },
+        world: worldStub,
+        ships: { recomputeActiveShip() {} },
+        cargo: { recompute() {} },
+        missions,
+        automation: { serialize: () => ({}), deserialize() {} },
+      }[name] || null;
+    },
+  };
+  const savedData = {
+    meta: { seed: 11, playtimeS: 9, createdAt: 'save', lastSavedAt: 'save' },
+    player: {
+      credits: 10,
+      ownedShips: [{ defId: 'ship_kestrel', fittings: [] }],
+      activeShipIndex: 0,
+      moduleInventory: [],
+      targetId: null,
+      stats: { missionsDone: 0 },
+    },
+    cargo: { items: {}, capVolume: 10, capMass: 10 },
+    economy: {},
+    factions: {},
+    world: { currentSectorId: 'sector_helios_prime' },
+    entities: {
+      player: {
+        type: 'ship',
+        alive: true,
+        pos: { x: 0, z: 0 },
+        vel: { x: 0, z: 0 },
+        rot: 0,
+        flags: {},
+        data: { defId: 'ship_kestrel' },
+        hull: 100,
+        hullMax: 100,
+        shield: 20,
+        shieldMax: 20,
+        cap: 30,
+        capMax: 30,
+      },
+      persistent: [],
+      simTime: 9,
+      tick: 4,
+    },
+    missions: {
+      boards: {},
+      active: [],
+      completedLog: [],
+      nextId: 1,
+      story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
+    },
+    automation: {},
+    settings: {},
+  };
+
+  save.state = state;
+  save.bus = bus;
+  save.helpers = helpers;
+  save.registry = registry;
+  missions.init({ state, bus, helpers, registry });
+
+  save._restore(savedData, 'loaded');
+
+  assert.equal(state.missions.active.length, 0, 'loaded save should restore its empty active mission list');
+  assert(!state.entityList.some((e) => e.data && e.data.missionTag === 'm_stale'), 'load should not spawn targets for stale pre-load missions');
+  assert.equal(state.ui.trackedMissionId, null, 'load should not keep tracking a stale pre-load mission');
+}
+
 function checkCombatRewardsAndLootKinds() {
   const grants = [];
   const spawned = [];
@@ -661,6 +828,7 @@ function checkSpawnRequestAmbushContract() {
 checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
 checkMissionCompletionAutosaveSeesSettledState();
+checkLoadDoesNotSpawnTargetsForStaleLiveMissions();
 checkCombatRewardsAndLootKinds();
 checkInsuredRespawnUsesStationRefundAndCargoLoss();
 checkFailedCargoFitDoesNotDuplicateModules();

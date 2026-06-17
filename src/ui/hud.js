@@ -17,6 +17,7 @@
 import { createRadar } from './radar.js';
 import { createTargetPanel } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
+import { createDamageIndicators } from './damageIndicators.js';
 import { SHIPS } from '../data/ships.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
@@ -107,6 +108,14 @@ export function createHud(ctx, alerts) {
 
   // floating combat text (damage numbers, ore yield, credits, kills)
   const floatingText = createFloatingText(ctx);
+
+  // directional damage indicators (red arcs at screen edge showing where hits came from)
+  const dmgInd = createDamageIndicators().bind(
+    () => state.entities.get(state.playerId),
+    state.playerId,
+  );
+  root.appendChild(dmgInd.el);
+  ctx.bus.on('combat:damage', (p) => dmgInd.onDamage(p));
 
   // ---- top-right: objective tracker + arrow ----
   const objWrap = document.createElement('div');
@@ -313,6 +322,9 @@ export function createHud(ctx, alerts) {
 
     // --- radar @20Hz ---
     if (radarTick) radar.draw();
+
+    // directional damage indicators advance + reposition every frame (they track camera roll)
+    dmgInd.tick(dt, helpers);
 
     // --- off-screen objective arrow ---
     updateObjectiveArrow(p);

@@ -347,9 +347,9 @@ export const save = {
   },
 
   // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):
-  // pause → clear transient runtime → restore meta/player/cargo/economy/factions/world → spawn the
-  // saved player → re-enter the sector (regenerates NPCs/stations/asteroids) → re-apply player pose
-  // → restore missions/automation/settings → rebuild rng → save:loaded → unpause.
+  // pause → clear old mission runtime/transient entities → restore meta/player/cargo/economy/factions/world
+  // → spawn the saved player → re-enter the sector (regenerates NPCs/stations/asteroids) →
+  // re-apply player pose → restore missions/automation/settings → rebuild rng → save:loaded → unpause.
   _restore(data, slot) {
     const state = this.state;
     this._restoring = true;
@@ -360,35 +360,39 @@ export const save = {
       // 1. meta (seed/version/playtime) first — enterSector & rng depend on meta.seed.
       this._restoreMeta(data.meta);
 
-      // 2. clear ALL transient entities (dispose meshes via entity:destroyed) and reset id allocator.
+      // 2. Drop live-run mission runtime before restore events fire. entity:destroyed/sector:enter
+      // listeners must not fail or spawn targets for missions from the pre-load game.
+      this._clearMissionRuntimeForRestore();
+
+      // 3. clear ALL transient entities (dispose meshes via entity:destroyed) and reset id allocator.
       this._clearEntities();
 
-      // 3. restore non-spatial subtrees (deps first).
+      // 4. restore non-spatial subtrees (deps first).
       this._restorePlayer(data.player);
       this._restoreCargo(data.cargo);
       this._callDeserialize('economy', data.economy);
       this._callDeserialize('factions', data.factions);
       this._callDeserialize('world', data.world); // sets currentSectorId; does NOT spawn entities
 
-      // 4. spawn the saved player entity (fresh id) and adopt it.
+      // 5. spawn the saved player entity (fresh id) and adopt it.
       const savedPlayer = data.entities && data.entities.player;
       this._spawnPlayer(savedPlayer);
 
-      // 5. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
+      // 6. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
       const shipsSys = this.registry.get('ships');
       if (shipsSys && typeof shipsSys.recomputeActiveShip === 'function') {
         try { shipsSys.recomputeActiveShip(); } catch (err) { console.error('[save] recomputeActiveShip', err); }
       }
-      // 6. re-apply saved ABSOLUTE hull/shield/cap (recompute preserves fractions → would drift).
+      // 7. re-apply saved ABSOLUTE hull/shield/cap (recompute preserves fractions → would drift).
       this._applySavedVitals(savedPlayer);
 
-      // 7. recompute cargo caches from restored items.
+      // 8. recompute cargo caches from restored items.
       const cargoSys = this.registry.get('cargo');
       if (cargoSys && typeof cargoSys.recompute === 'function') {
         try { cargoSys.recompute(); } catch (err) { console.error('[save] cargo.recompute', err); }
       }
 
-      // 8. regenerate the saved sector's contents around the player.
+      // 9. regenerate the saved sector's contents around the player.
       const worldSys = this.registry.get('world');
       const sectorId = state.world.currentSectorId;
       if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
@@ -397,10 +401,10 @@ export const save = {
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
       this._applySavedPose(savedPlayer);
 
-      // 9. clear stale entity-id references (the saved targets belong to entities that no longer exist).
+      // 10. clear stale entity-id references (the saved targets belong to entities that no longer exist).
       this._clearStaleTargets();
 
-      // 10. restore missions/automation/settings.
+      // 11. restore missions/automation/settings.
       this._restoreMissions(data.missions);
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
@@ -409,14 +413,14 @@ export const save = {
       this._restoreAutomation(data.automation);
       this._restoreSettings(data.settings);
 
-      // 11. restore sim clock + rebuild the master RNG from the (unchanged) seed.
+      // 12. restore sim clock + rebuild the master RNG from the (unchanged) seed.
       if (data.entities) {
         if (typeof data.entities.simTime === 'number') state.simTime = data.entities.simTime;
         if (typeof data.entities.tick === 'number') state.tick = data.entities.tick;
       }
       state.rng = mulberry32((state.meta.seed >>> 0) || 1);
 
-      // 12. finalize.
+      // 13. finalize.
       state.meta.version = CURRENT_VERSION;
       state.save.currentSlot = slot;
       state.mode = 'flight';
@@ -576,6 +580,21 @@ export const save = {
       e.data.combat.lockTarget = null;
       e.data.combat.lockProgress = 0;
     }
+  },
+
+  _clearMissionRuntimeForRestore() {
+    const state = this.state;
+    const missions = state.missions;
+    if (missions && Array.isArray(missions.active)) {
+      for (const m of missions.active) {
+        if (!m) continue;
+        m.targetEntityIds = [];
+        m._escorteeId = null;
+        m._escorteeArrived = false;
+      }
+      missions.active = [];
+    }
+    if (state.ui) state.ui.trackedMissionId = null;
   },
 
   // ── file export / import ────────────────────────────────────────────────────────────────────
