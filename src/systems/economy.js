@@ -590,10 +590,12 @@ export const economy = {
       if (units <= 0) return;
       const cost = round(units * AMMO_UNIT_CR);
       if ((state.player.credits | 0) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for munitions', kind: 'error', ttl: 2 }); return; }
-      this.chargeCredits(cost, 'service:ammo');
       // ammo is tracked as a cargo commodity (cmdty_munitions) so it integrates with the hold.
-      this.addToCargo(this.registryGet && this.registryGet('cargo'), state, 'cmdty_munitions', units);
-      this.bus.emit('toast', { text: `Bought ${units} munitions (${cost}cr)`, kind: 'success', ttl: 2 });
+      const added = this.addToCargo(this.registryGet && this.registryGet('cargo'), state, 'cmdty_munitions', units);
+      if (added <= 0) { this.bus.emit('toast', { text: 'Cargo hold full', kind: 'error', ttl: 2 }); return; }
+      const realCost = round(added * AMMO_UNIT_CR);
+      this.chargeCredits(realCost, 'service:ammo');
+      this.bus.emit('toast', { text: `Bought ${added} munitions (${realCost}cr)`, kind: 'success', ttl: 2 });
     }
   },
 

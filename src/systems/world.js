@@ -544,6 +544,7 @@ export const world = {
     // gate toll (high-sec customs) — charge credits via economy (single-writer)
     if (via === 'gate') {
       const toll = this._gateToll(target);
+      if (toll > 0 && ((state.player && state.player.credits) | 0) < toll) return reject('credits');
       if (toll > 0) this.bus.emit('economy:chargeCredits', { amount: toll, reason: 'gate_toll' });
     }
 

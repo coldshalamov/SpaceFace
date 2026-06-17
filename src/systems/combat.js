@@ -128,14 +128,16 @@ export const combat = {
     if (t.id === state.playerId) { this.respawnPlayer(t, killerId); return; }
     if (!t.alive) return;
     t.alive = false;
+    const killedByPlayer = killerId === state.playerId;
     bus.emit('entity:killed', { id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z }, factionId: t.factionId, bountyCr: d.bountyCr || 0, lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type });
     bus.emit('camera:shake', { amount: 0.5 });
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
-    if (bounty > 0) bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
+    if (bounty > 0 && killedByPlayer) bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
     if (d.loot) {
       const { credits, items } = this.rollLoot(d.loot);
-      if (credits > 0) bus.emit('economy:grantCredits', { amount: credits, reason: 'loot' });
-      bus.emit('loot:drop', { pos: { x: t.pos.x, z: t.pos.z }, credits, items });
+      const creditedLoot = killedByPlayer ? credits : 0;
+      if (creditedLoot > 0) bus.emit('economy:grantCredits', { amount: creditedLoot, reason: 'loot' });
+      bus.emit('loot:drop', { pos: { x: t.pos.x, z: t.pos.z }, credits: creditedLoot, items });
       for (const it of items) {
         const ang = this.rng() * Math.PI * 2, sp = 18 + this.rng() * 28;
         const kind = lootPickupKind(it.id);

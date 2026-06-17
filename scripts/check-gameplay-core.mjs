@@ -5,7 +5,9 @@ import { save } from '../src/save/saveSystem.js';
 import { cargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { combat } from '../src/systems/combat.js';
+import { economy } from '../src/systems/economy.js';
 import { ships, buildSlotList } from '../src/systems/ships.js';
+import { world } from '../src/systems/world.js';
 import { SHIPS } from '../src/data/ships.js';
 
 function makeCargoState() {
@@ -178,6 +180,46 @@ function checkCombatRewardsAndLootKinds() {
   assert(grants.some((g) => g.amount === 7 && g.reason === 'loot'), 'loot credits should still pay out');
   assert.equal(spawned[0].data.kind, 'module', 'weapon loot should spawn as module pickup');
   assert(events.some((e) => e.event === 'entity:killed' && e.payload.bountyCr === 50), 'kill event should carry bounty');
+
+  const npcGrants = [];
+  const npcEvents = [];
+  const npcState = {
+    playerId: 1,
+    simTime: 43,
+    entities: new Map(),
+  };
+  const npcKiller = { id: 99, type: 'ship', team: 1, alive: true };
+  const npcTarget = {
+    id: 100,
+    type: 'ship',
+    team: 2,
+    alive: true,
+    pos: { x: 0, z: 0 },
+    data: {
+      bountyCr: 50,
+      loot: {
+        creditsRange: [7, 7],
+        guaranteed: [{ id: 'cmdty_scrap_metal', qtyRange: [1, 1] }],
+      },
+    },
+  };
+  npcState.entities.set(npcKiller.id, npcKiller);
+  npcState.entities.set(npcTarget.id, npcTarget);
+
+  combat.state = npcState;
+  combat.bus = {
+    emit(event, payload) {
+      npcEvents.push({ event, payload });
+      if (event === 'economy:grantCredits') npcGrants.push(payload);
+    },
+  };
+  combat.helpers = { spawnEntity: (spec) => spec };
+  combat.rng = () => 0;
+
+  combat.kill(npcTarget, npcKiller.id);
+
+  assert.equal(npcGrants.length, 0, 'NPC-on-NPC kills should not pay player bounty or loot credits');
+  assert(npcEvents.some((e) => e.event === 'loot:drop' && e.payload.credits === 0), 'NPC-on-NPC loot drop should not show player credits');
 }
 
 function checkFailedCargoFitDoesNotDuplicateModules() {
@@ -221,9 +263,91 @@ function checkFailedCargoFitDoesNotDuplicateModules() {
   assert(events.some((e) => e.event === 'toast' && e.payload.kind === 'error'), 'failed fit should notify the player');
 }
 
+function checkAmmoServiceOnlyChargesAcceptedCargo() {
+  const state = {
+    playerId: 1,
+    player: {
+      credits: 1000,
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 1, capMass: 999 },
+    },
+  };
+  const events = [];
+  const bus = {
+    on() {},
+    emit(event, payload) { events.push({ event, payload }); },
+  };
+
+  cargo.init({ state, bus, helpers: {}, registry: { get: (name) => (name === 'cargo' ? cargo : null) } });
+  economy.state = state;
+  economy.bus = bus;
+
+  economy.handleService({ type: 'ammo', amount: 5 });
+
+  assert.equal(state.player.cargo.items.cmdty_munitions, 1, 'ammo service should add only units that fit');
+  assert.equal(state.player.credits, 988, 'ammo service should charge only accepted munitions');
+  assert(events.some((e) => e.event === 'cargo:full'), 'partial ammo service should report a full hold');
+
+  const fullState = {
+    playerId: 1,
+    player: {
+      credits: 1000,
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 0, capMass: 999 },
+    },
+  };
+  const fullEvents = [];
+  const fullBus = {
+    on() {},
+    emit(event, payload) { fullEvents.push({ event, payload }); },
+  };
+  cargo.init({ state: fullState, bus: fullBus, helpers: {}, registry: { get: (name) => (name === 'cargo' ? cargo : null) } });
+  economy.state = fullState;
+  economy.bus = fullBus;
+
+  economy.handleService({ type: 'ammo', amount: 5 });
+
+  assert.equal(fullState.player.cargo.items.cmdty_munitions, undefined, 'full hold should not receive ammo');
+  assert.equal(fullState.player.credits, 1000, 'full hold should not be charged for rejected ammo');
+  assert(fullEvents.some((e) => e.event === 'toast' && e.payload.kind === 'error'), 'rejected ammo service should notify the player');
+}
+
+function checkGateTollRequiresCredits() {
+  const makeState = (credits) => ({
+    player: { credits, researchedNodes: [] },
+    story: { flags: {} },
+    world: { currentSectorId: 'sector_ceres_belt', sectors: {} },
+    jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
+    fuel: { current: 100, max: 100 },
+  });
+
+  const poorState = makeState(0);
+  const poorEvents = [];
+  world.state = poorState;
+  world.bus = { emit: (event, payload) => poorEvents.push({ event, payload }) };
+  world._combatLock = false;
+
+  world._onRequestJump({ targetSectorId: 'sector_helios_prime', via: 'gate' });
+
+  assert.equal(poorState.jump.state, 'IDLE', 'unaffordable gate toll should not start jump charging');
+  assert(poorEvents.some((e) => e.event === 'jump:chargeAbort' && e.payload.reason === 'credits'), 'unaffordable gate toll should reject with credits reason');
+  assert(!poorEvents.some((e) => e.event === 'economy:chargeCredits'), 'unaffordable gate toll should not emit a partial charge');
+
+  const paidState = makeState(1000);
+  const paidEvents = [];
+  world.state = paidState;
+  world.bus = { emit: (event, payload) => paidEvents.push({ event, payload }) };
+  world._combatLock = false;
+
+  world._onRequestJump({ targetSectorId: 'sector_helios_prime', via: 'gate' });
+
+  assert.equal(paidState.jump.state, 'CHARGING', 'affordable gate toll should start jump charging');
+  assert(paidEvents.some((e) => e.event === 'economy:chargeCredits' && e.payload.reason === 'gate_toll'), 'affordable gate toll should charge through economy');
+}
+
 checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
 checkCombatRewardsAndLootKinds();
 checkFailedCargoFitDoesNotDuplicateModules();
+checkAmmoServiceOnlyChargesAcceptedCargo();
+checkGateTollRequiresCredits();
 
 console.log('Core gameplay checks OK');
