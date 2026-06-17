@@ -668,8 +668,83 @@ export const vfx = {
       if (throttle < 0.08) continue; // idle ships emit nothing
       this._emitEngineTrail(e, throttle, step);
       void playerId;
+      // Damage smoke: a wounded ship trails smoke so its state is readable at a glance (V2 §9:
+      // particles are information). Two tiers — wounded (<40% hull) gets wispy grey smoke,
+      // critical (<18%) adds orange embers + denser smoke. Even a stationary/idle damaged ship
+      // smokes, so you can spot a limping enemy without HUD readouts.
+      if (e.hullMax && e.hull < e.hullMax) {
+        const frac = e.hull / e.hullMax;
+        if (frac < 0.40) this._emitDamageSmoke(e, frac, step);
+      }
     }
   },
+
+  // Persistent damage smoke/ember trail for wounded ships. Severe wounds smoke harder and add hot
+  // embers; the smoke lingers (low drag, long life) so it leaves a visible trail even when slow.
+  // c0/c1 are the color scratch pair; we reuse this._c0/_c1 like the other emitters.
+  _SMOKE_GREY: '#3a3a40',
+  _SMOKE_DARK: '#18181c',
+  _EMBER_HOT: '#ff7a2c',
+  _EMBER_DIM: '#7a2a10',
+  _emitDamageSmoke(e, frac, dt) {
+    if (!this._scene) return;
+    // severity 0..1: 0 at the wound threshold (40%), 1 at death's door (0%)
+    const severe = Math.max(0, Math.min(1, (0.40 - frac) / 0.40));
+    // emit rate scales with severity; cap so a swarm of wounded ships can't drown the pool.
+    // throttle the smoke to ~every other trail tick to stay cheap, harder when critical.
+    this._smokeAcc = (this._smokeAcc || 0) + dt * (0.6 + severe * 1.4);
+    if (this._smokeAcc < 0.032) return;
+    const n = this._smokeAcc >= 0.064 ? 2 : 1;
+    this._smokeAcc = 0;
+
+    const r = e.radius || 4;
+    // emit from a few offsets around the hull center (a burning ship doesn't smoke from one point)
+    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+    // carry slightly with the ship's motion so the trail streams behind
+    const vx = -(e.vel.x || 0) * 0.15;
+    const vz = -(e.vel.z || 0) * 0.15;
+
+    for (let k = 0; k < n; k++) {
+      // pick a spot on the hull: alternate rear-ish and mid-side so the smoke looks like it's
+      // venting from multiple breaches, not a single exhaust.
+      const off = (k === 0 ? -0.3 : 0.25) * r + (Math.random() - 0.5) * r * 0.4;
+      const lat = (Math.random() - 0.5) * r * 0.7;
+      const sx = e.pos.x + cf * off - sf * lat;
+      const sz = e.pos.z + sf * off + cf * lat;
+
+      // grey smoke puff: grows, drifts back, fades. Long life + low drag = a lingering trail.
+      this._c0.set(this._SMOKE_GREY); this._c1.set(this._SMOKE_DARK);
+      const drift = 4 + Math.random() * 6;
+      const da = Math.atan2(-(e.vel.z || drift), -(e.vel.x || 0)) + (Math.random() - 0.5) * 1.2;
+      this._spawnParticle(
+        sx, sz,
+        vx + Math.cos(da) * drift * 0.4, vz + Math.sin(da) * drift * 0.4,
+        0.9 + severe * 0.6,        // life: longer when worse
+        2.2 + severe * 1.5,        // size0: small
+        6.0 + severe * 5.0,        // size1: billows out
+        this._c0, this._c1,
+        0.6,                        // drag: low, so it lingers
+        1.5 + Math.random() * 2.0,  // y: rises above the deck
+        3.0 + Math.random() * 2.0,  // vy: buoyant rise
+      );
+
+      // critical-only hot embers: bright orange sparks that flicker out fast — reads as "this ship
+      // is about to die" without needing a health bar. Sparse so it doesn't spam the pool.
+      if (severe > 0.55 && Math.random() < 0.5) {
+        this._c0.set(this._EMBER_HOT); this._c1.set(this._EMBER_DIM);
+        const ea = Math.random() * Math.PI * 2;
+        const es = 10 + Math.random() * 16;
+        this._spawnParticle(
+          sx, sz,
+          Math.cos(ea) * es, Math.sin(ea) * es,
+          0.35, 1.0, 0.2,
+          this._c0, this._c1,
+          2.5, 1.0 + Math.random() * 1.5, 6.0 + Math.random() * 4.0,
+        );
+      }
+    }
+  },
+
 
   _integrateParticles(dt) {
     const cap = this._cap;
