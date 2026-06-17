@@ -290,6 +290,79 @@ function checkCombatRewardsAndLootKinds() {
   assert(npcEvents.some((e) => e.event === 'loot:drop' && e.payload.credits === 0), 'NPC-on-NPC loot drop should not show player credits');
 }
 
+function checkInsuredRespawnUsesStationRefundAndCargoLoss() {
+  const makeVec = (x, z) => ({
+    x,
+    y: 0,
+    z,
+    set(nx, ny, nz) { this.x = nx; this.y = ny || 0; this.z = nz; return this; },
+    copy(pos) { this.x = pos.x; this.y = pos.y || 0; this.z = pos.z; return this; },
+  });
+  const state = {
+    playerId: 1,
+    simTime: 42,
+    player: {
+      credits: 100,
+      insurance: { rate: 0.6, deductibleCr: 500, insuredModules: true, lastStationId: 'station_helios' },
+      ownedShips: [{ defId: 'ship_pelican', fittings: ['mod_cargo_pod_m', 'wpn_pulse_laser_s'] }],
+      activeShipIndex: 0,
+      cargo: {
+        items: { cmdty_ore_iron: 5, cmdty_ice_water: 3 },
+        usedVolume: 9.2,
+        usedMass: 5.5,
+        capVolume: 100,
+        capMass: 100,
+      },
+    },
+    entities: new Map(),
+    world: {
+      currentSectorId: 'sector_helios_prime',
+      activeSector: {
+        stations: [{ stationId: 'station_helios', pos: { x: 320, z: -80 } }],
+      },
+    },
+  };
+  const player = {
+    id: 1,
+    type: 'ship',
+    pos: makeVec(10, 10),
+    prevPos: makeVec(10, 10),
+    vel: makeVec(5, -3),
+    flags: {},
+    data: { defId: 'ship_pelican' },
+    hull: 0,
+    hullMax: 180,
+    shield: 0,
+    shieldMax: 60,
+    cap: 0,
+    capMax: 110,
+  };
+  state.entities.set(player.id, player);
+  const events = [];
+
+  combat.state = state;
+  combat.bus = { emit: (event, payload) => events.push({ event, payload }) };
+
+  combat.respawnPlayer(player, 99);
+
+  const respawn = events.find((e) => e.event === 'player:respawn');
+  const refund = events.find((e) => e.event === 'economy:grantCredits' && e.payload.reason === 'insurance:respawn');
+  assert(respawn, 'insured death should emit player:respawn');
+  assert(refund, 'insured respawn should emit an insurance refund credit event');
+  assert.equal(respawn.payload.stationId, 'station_helios', 'insured respawn should use the last insured station');
+  assert.equal(respawn.payload.refundCr, 18400, 'insured respawn should report the net insurance refund');
+  assert.equal(refund.payload.amount, 18400, 'insurance refund should route through economy');
+  assert.equal(respawn.payload.cargoLost, true, 'insured respawn should report cargo loss');
+  assert.equal(respawn.payload.cargoLostQty, 3, 'insured respawn should report lost cargo units');
+  assert.equal(state.player.cargo.items.cmdty_ore_iron, 3, 'respawn should lose half of iron cargo');
+  assert.equal(state.player.cargo.items.cmdty_ice_water, 2, 'respawn should lose half of ice cargo');
+  assert.equal(player.pos.x, 320, 'respawn should move player to the last station x position');
+  assert.equal(player.pos.z, -80, 'respawn should move player to the last station z position');
+  assert.equal(player.hull, player.hullMax, 'respawn should restore hull');
+  assert.equal(player.shield, player.shieldMax, 'respawn should restore shield');
+  assert.equal(player.cap, player.capMax, 'respawn should restore capacitor');
+}
+
 function checkFailedCargoFitDoesNotDuplicateModules() {
   const atlas = SHIPS.find((s) => s.id === 'ship_atlas');
   const slots = buildSlotList(atlas);
@@ -589,6 +662,7 @@ checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
 checkMissionCompletionAutosaveSeesSettledState();
 checkCombatRewardsAndLootKinds();
+checkInsuredRespawnUsesStationRefundAndCargoLoss();
 checkFailedCargoFitDoesNotDuplicateModules();
 checkNewGameOwnedShipDefaultsAreFitted();
 checkAmmoServiceOnlyChargesAcceptedCargo();

@@ -3,11 +3,17 @@
 // step 8, §4.4). Single source of health mutation for ships/stations/drones.
 import { WEAPONS } from '../data/weapons.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
+import { SHIPS } from '../data/ships.js';
+import { MODULES } from '../data/modules.js';
 import { makeShipEntitySpec } from './ships.js';
+import { removeCargo } from './cargo.js';
 import { mulberry32, hash32 } from '../core/rng.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
+const SHIP = new Map(SHIPS.map((s) => [s.id, s]));
+const MOD = new Map(MODULES.map((m) => [m.id, m]));
+const CARGO_LOSS_RATE = 0.5;
 
 /** Scale an enemy archetype's base stats by encounter level. */
 export function scaleCombatant(def, level) {
@@ -90,12 +96,25 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos) {
 
 function qrange(range, r) { if (!range) return 1; const [lo, hi] = range; return Math.round(lo + (hi - lo) * r()); }
 
+function catalogValue(id) {
+  const def = SHIP.get(id) || WPN.get(id) || MOD.get(id);
+  if (!def) return 0;
+  return Math.max(0, Math.round((def.buyback != null ? def.buyback : def.price) || 0));
+}
+
+function setVecXZ(vec, x, z) {
+  if (!vec) return;
+  if (typeof vec.set === 'function') vec.set(x, 0, z);
+  else { vec.x = x; vec.y = 0; vec.z = z; }
+}
+
 export const combat = {
   name: 'combat',
   init(ctx) {
     this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
     this.rng = mulberry32(hash32(ctx.state.meta.seed, 'combat'));
     ctx.bus.on('projectile:hit', (p) => this.onHit(p));
+    ctx.bus.on('dock:docked', (p) => this.rememberRespawnStation(p && p.stationId));
   },
 
   onHit({ targetId, ownerId, damage, damageType, pos }) {
@@ -164,11 +183,76 @@ export const combat = {
   respawnPlayer(t, killerId) {
     const state = this.state, bus = this.bus;
     bus.emit('player:death', { pos: { x: t.pos.x, z: t.pos.z }, killerId });
+    const stationId = this.respawnStationId();
+    const respawnPos = this.respawnPosition(stationId);
+    const refundCr = this.insuranceRefund(t);
+    const cargoLostQty = this.applyRespawnCargoLoss();
+    if (refundCr > 0) bus.emit('economy:grantCredits', { amount: refundCr, reason: 'insurance:respawn' });
     t.hull = t.hullMax; t.shield = t.shieldMax; t.cap = t.capMax;
-    t.pos.set(0, 0, 0); t.vel.set(0, 0, 0); t.prevPos.copy(t.pos);
+    setVecXZ(t.pos, respawnPos.x, respawnPos.z);
+    setVecXZ(t.vel, 0, 0);
+    if (t.prevPos && typeof t.prevPos.copy === 'function') t.prevPos.copy(t.pos);
+    else setVecXZ(t.prevPos, respawnPos.x, respawnPos.z);
     t.flags.invuln = true; t._invulnUntil = state.simTime + 3;
-    bus.emit('player:respawn', { stationId: null, shipId: t.data && t.data.defId, refundCr: 0, cargoLost: false });
+    bus.emit('player:respawn', {
+      stationId,
+      shipId: t.data && t.data.defId,
+      refundCr,
+      cargoLost: cargoLostQty > 0,
+      cargoLostQty,
+    });
     bus.emit('camera:shake', { amount: 0.8 });
+  },
+
+  rememberRespawnStation(stationId) {
+    if (!stationId) return;
+    const player = this.state && this.state.player;
+    if (!player) return;
+    const ins = player.insurance || (player.insurance = { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null });
+    ins.lastStationId = stationId;
+  },
+
+  respawnStationId() {
+    const player = this.state && this.state.player;
+    const ins = player && player.insurance;
+    if (ins && ins.lastStationId) return ins.lastStationId;
+    const stations = this.state && this.state.world && this.state.world.activeSector && this.state.world.activeSector.stations;
+    return stations && stations[0] ? stations[0].stationId || null : null;
+  },
+
+  respawnPosition(stationId) {
+    const stations = this.state && this.state.world && this.state.world.activeSector && this.state.world.activeSector.stations;
+    const station = stationId && stations && stations.find((s) => s.stationId === stationId);
+    const pos = station && station.pos;
+    return pos ? { x: pos.x || 0, z: pos.z || 0 } : { x: 0, z: 0 };
+  },
+
+  insuranceRefund(t) {
+    const player = this.state && this.state.player;
+    const ins = player && player.insurance;
+    if (!player || !ins || !ins.insuredModules) return 0;
+    const owned = (player.ownedShips || [])[player.activeShipIndex || 0] || {};
+    const shipId = owned.defId || (t.data && t.data.defId);
+    const shipValue = catalogValue(shipId);
+    let moduleValue = 0;
+    for (const id of (owned.fittings || [])) {
+      if (id) moduleValue += catalogValue(id);
+    }
+    const rate = Math.max(0, Number(ins.rate) || 0);
+    const deductible = Math.max(0, Math.round(ins.deductibleCr || 0));
+    return Math.max(0, Math.round(rate * (shipValue + moduleValue) - deductible));
+  },
+
+  applyRespawnCargoLoss() {
+    const cargo = this.state && this.state.player && this.state.player.cargo;
+    if (!cargo || !cargo.items) return 0;
+    let lost = 0;
+    for (const id of Object.keys(cargo.items)) {
+      const have = Math.max(0, Math.floor(cargo.items[id] || 0));
+      const qty = Math.floor(have * CARGO_LOSS_RATE);
+      if (qty > 0) lost += removeCargo(this.state, id, qty);
+    }
+    return lost;
   },
 
   update(dt, state) {
