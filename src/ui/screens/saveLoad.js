@@ -120,6 +120,11 @@ function fmtMeta(meta) {
   return [date, t].filter(Boolean).join('  ·  ') || 'Saved';
 }
 
+function canSave(ctx) {
+  const state = ctx && ctx.state;
+  return !!(state && state.playerId && state.entities && state.entities.get(state.playerId));
+}
+
 let refs = null;
 
 export const saveLoadScreen = {
@@ -155,6 +160,7 @@ export const saveLoadScreen = {
   _render(ctx) {
     if (!refs) return;
     const slots = readSlots(ctx);
+    const saveAllowed = canSave(ctx);
     refs.list.innerHTML = '';
     const ids = ['quick'];
     for (let i = 1; i <= SLOT_COUNT - 1; i++) ids.push(String(i));
@@ -172,7 +178,18 @@ export const saveLoadScreen = {
       row.appendChild(main);
 
       const bSave = el('button', 'sf-tab', 'Save'); bSave.style.minWidth = '64px';
-      bSave.addEventListener('click', () => { ctx.bus.emit('game:save', { slot: id }); ctx.bus.emit('toast', { text: 'Saving to ' + slotLabel(id), kind: 'info', ttl: 2500 }); setTimeout(() => this._render(ctx), 120); });
+      bSave.disabled = !saveAllowed;
+      bSave.title = saveAllowed ? 'Save to ' + slotLabel(id) : 'Start or load a game before saving';
+      bSave.addEventListener('click', () => {
+        if (!canSave(ctx)) {
+          ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
+          this._render(ctx);
+          return;
+        }
+        ctx.bus.emit('game:save', { slot: id });
+        ctx.bus.emit('toast', { text: 'Saving to ' + slotLabel(id), kind: 'info', ttl: 2500 });
+        setTimeout(() => this._render(ctx), 120);
+      });
       const bLoad = el('button', 'sf-tab', 'Load'); bLoad.style.minWidth = '64px';
       bLoad.disabled = !occupied;
       bLoad.addEventListener('click', () => { ctx.bus.emit('game:load', { slot: id }); });

@@ -163,11 +163,21 @@ export const save = {
     return null;
   },
 
+  _hasPlayerEntity() {
+    const state = this.state;
+    return !!(state && state.playerId && state.entities && state.entities.get(state.playerId));
+  },
+
   // ── save (write a slot) ─────────────────────────────────────────────────────────────────────
 
   /** Serialize the current state and persist it to localStorage under `slot`. */
   save(slot) {
     slot = slot || 'quick';
+    if (!this._hasPlayerEntity()) {
+      this.bus.emit('save:error', { slot, reason: 'no_player' });
+      this.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
+      return false;
+    }
     this.bus.emit('save:started', { slot });
     let envelope;
     try {

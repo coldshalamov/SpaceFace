@@ -77,7 +77,10 @@ export function createScreenManager(ctx) {
     } else if (!wantPause && pauseEmitted) {
       pauseEmitted = false;
       // only resume if the sim is in flight (not at the main menu)
-      if (state.mode === 'flight' || state.mode === 'paused') state.timeScale = 1;
+      if (state.mode === 'flight' || state.mode === 'paused') {
+        state.timeScale = 1;
+        if (state.mode === 'paused') state.mode = 'flight';
+      }
       bus.emit('sim:resume', {});
     }
   }
