@@ -129,7 +129,11 @@ export function createScreenManager(ctx) {
   function isOpen() { return stack.length > 0; }
   function getActiveScreenDef() { return activeDef(); }
   function refreshTop() { const d = activeDef(); if (d && d.refresh) { try { d.refresh(ctx); } catch (e) { console.error(e); } } }
-  function locked() { const d = activeDef(); return !!(d && d.data && d.data.locked); }
+  function locked() {
+    const d = activeDef();
+    if (d && d.data && d.data.locked) return true;
+    return state.mode === 'menu' && stack.length === 1 && top() === 'mainMenu';
+  }
 
   // Backdrop click pops the top (unless the screen is mid-transaction locked).
   if (backdrop) {
