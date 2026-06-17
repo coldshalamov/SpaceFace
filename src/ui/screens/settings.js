@@ -36,7 +36,17 @@ function injectStyle() {
   .sf-menu .sf-row { display:flex; align-items:center; justify-content:space-between; gap:14px; }
   .sf-menu .sf-row > label { color:var(--ink-dim); font-size:13px; flex:0 0 38%; }
   .sf-menu .sf-row > .sf-ctl { flex:1; display:flex; align-items:center; gap:10px; justify-content:flex-end; }
-  .sf-menu input[type=range] { flex:1; accent-color:var(--accent); }
+  .sf-menu input[type=range] { flex:1; accent-color:var(--accent); height:26px; cursor:pointer;
+    touch-action:none; -webkit-appearance:none; appearance:none; background:transparent; }
+  .sf-menu input[type=range]::-webkit-slider-runnable-track { height:6px; border-radius:3px;
+    background:linear-gradient(90deg,var(--accent),var(--panel-edge-2)); }
+  .sf-menu input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none;
+    width:20px; height:20px; margin-top:-7px; border-radius:50%; background:var(--accent);
+    border:2px solid #06121e; box-shadow:0 0 8px rgba(57,208,255,.6); cursor:grab; }
+  .sf-menu input[type=range]:active::-webkit-slider-thumb { cursor:grabbing; transform:scale(1.12); }
+  .sf-menu input[type=range]::-moz-range-track { height:6px; border-radius:3px; background:var(--panel-edge-2); }
+  .sf-menu input[type=range]::-moz-range-thumb { width:20px; height:20px; border-radius:50%;
+    background:var(--accent); border:2px solid #06121e; box-shadow:0 0 8px rgba(57,208,255,.6); }
   .sf-menu select, .sf-menu input[type=text], .sf-menu input[type=number] {
     font-family:inherit; font-size:13px; color:var(--ink); background:var(--panel); border:1px solid var(--panel-edge);
     border-radius:5px; padding:6px 8px; pointer-events:auto; }
@@ -178,10 +188,11 @@ export const settingsScreen = {
 
     if (refs.active === 'Audio') {
       const a = s.audio;
+      // Prominent first control: a big Mute-all button so silence is always one click away.
+      rowToggle('Mute all', () => a.muted, (v) => this._set(ctx, 'audio', 'muted', v));
       rowSlider('Master', () => a.master, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'master', v));
       rowSlider('SFX', () => a.sfx, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'sfx', v));
       rowSlider('Music', () => a.music, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'music', v));
-      rowToggle('Muted', () => a.muted, (v) => this._set(ctx, 'audio', 'muted', v));
     } else if (refs.active === 'Video') {
       const vd = s.video;
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
@@ -213,5 +224,9 @@ export const settingsScreen = {
 
   onShow(ctx) { this._render(ctx); },
   onHide() {},
-  refresh(ctx) { this._render(ctx); },
+  // IMPORTANT: must be a no-op. uiRoot.frame() calls screenManager.refreshTop() every ~0.3s for
+  // any open screen; if this rebuilt the DOM it would destroy a slider/select mid-drag (the
+  // "can't drag below 3% / have to keep the mouse on the line" bug). The panel is fully
+  // event-driven — its own controls update their own value labels — so there is nothing to refresh.
+  refresh() {},
 };

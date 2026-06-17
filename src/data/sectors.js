@@ -14,13 +14,16 @@ export const SECTORS = [
   {
     id: 'sector_helios_prime', name: 'Helios Prime', tier: 0, security: 0.98,
     factionId: 'faction_scn', position: { x: 0, y: 0 }, worldRadius: 3500,
-    trafficPerMin: 18, enemyDensity: 0.03, enemyLevel: [1, 2],
+    // Tutorial home sector: NO hostile spawns (enemyDensity 0). A brand-new pilot must not be
+    // hunted before learning the ropes; danger ramps up only in neighbouring sectors.
+    trafficPerMin: 18, enemyDensity: 0, enemyLevel: [1, 2],
     neighbors: ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
     stations: [
       { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'] },
       { id: 'station_coalition',  name: 'Coalition HQ',    type: 'military',  factionId: 'faction_scn', size: 'M', services: ['missions','repair','refuel'] },
     ],
-    fields: [],
+    // A small safe asteroid cluster so new pilots can learn mining at home (no hostiles here).
+    fields: [ { id: 'f_helios_starter', type: 'ast_common_rock', countWeight: 1.0 } ],
     hazards: [],
     pois: [
       { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },

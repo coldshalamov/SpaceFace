@@ -10,7 +10,7 @@ function defaultSettings() {
     uiScale: 1,
     showDamageNumbers: true,
     keybinds: {},
-    audio: { master: 0.8, sfx: 0.9, music: 0.6, muted: false },
+    audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
     video: { renderScale: 1, bloom: true, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'high', pixelRatioCap: 2 },
     gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard' },
   };

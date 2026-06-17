@@ -51,13 +51,16 @@ button:disabled { opacity: .4; cursor: default; }
 #screens {
   background-image: url('../assets/cinematics/menu_background.jpg');
   background-size: cover;
-  background-position: center;
+  /* bias up so the cropped region favours the hero composition and pushes the asset's tiny corner
+     captions toward/under the bottom fade */
+  background-position: center 32%;
   background-repeat: no-repeat;
 }
 #screens::before {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(5,7,13,0.65) 10%, rgba(5,7,13,0.35) 60%, rgba(5,7,13,0.75));
+  /* opaque at the very top & bottom edges hides the menu_background.jpg corner reference labels */
+  background: linear-gradient(180deg, rgba(5,7,13,0.85) 0%, rgba(5,7,13,0.5) 14%, rgba(5,7,13,0.35) 55%, rgba(5,7,13,0.8) 90%, rgba(5,7,13,1) 100%);
   pointer-events: none;
 }
 

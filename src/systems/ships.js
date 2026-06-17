@@ -125,12 +125,18 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const thrustMass = 1.5 / (0.5 + massRatio);
   const turnMass = 1.4 / (0.4 + massRatio);
 
-  // (3) engine-derived movement
+  // (3) engine-derived movement.
+  // The semi-Newtonian model gives steady-state speed = thrust/drag. Previously thrust/drag was
+  // ~1/3 of maxSpeed, so ships crept and never reached their own ceiling (felt dead). We now solve
+  // thrust from a desired CRUISE velocity so every hull actually reaches a satisfying speed, and
+  // pick drag for responsiveness (~1/drag is the accelerate/stop time constant in seconds).
   const eng = engineMods(pickEngine(equipped) || FALLBACK_ENGINE);
-  const maxSpeed = eng.topSpeed * SPEED_SCALE * handling * speedMass;
-  const thrust = eng.topSpeed * THRUST_SCALE * eng.accelMult * handling * thrustMass;
+  const maxSpeed = eng.topSpeed * SPEED_SCALE * handling * speedMass;   // boost ceiling
+  const drag = 1.7 + 0.6 * massRatio;                                   // ~0.4–0.6s time constant
+  const cruiseFrac = Math.min(0.85, 0.60 + 0.14 * eng.accelMult);       // 0.72 baseline; better engines cruise faster
+  const cruise = maxSpeed * cruiseFrac;
+  const thrust = cruise * drag * THRUST_SCALE;                          // terminal velocity ≈ cruise
   const turnRate = BASE_TURN * eng.turnMult * handling * turnMass;
-  const drag = 0.75 + 0.30 * massRatio;
 
   // (4) health / energy / cargo
   const hullMax = shipDef.hull + hullFlat;

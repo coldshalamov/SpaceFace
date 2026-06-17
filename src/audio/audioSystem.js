@@ -204,10 +204,10 @@ export const audio = {
         param.linearRampToValueAtTime(Math.max(0.0001, target), t + 0.05);
       } catch (_) { try { param.value = target; } catch (__) {} }
     };
-    ramp(rt.masterGain.gain, muted ? 0.0001 : Math.max(0.0001, linearGain(a.master == null ? 0.8 : a.master)));
-    ramp(rt.sfxBus.gain, Math.max(0.0001, linearGain(a.sfx == null ? 0.9 : a.sfx)));
+    ramp(rt.masterGain.gain, muted ? 0.0001 : Math.max(0.0001, linearGain(a.master == null ? 0.55 : a.master)));
+    ramp(rt.sfxBus.gain, Math.max(0.0001, linearGain(a.sfx == null ? 0.7 : a.sfx)));
     // musicBus base gain (ducking multiplies this transiently)
-    rt._musicBase = Math.max(0.0001, linearGain(a.music == null ? 0.6 : a.music));
+    rt._musicBase = Math.max(0.0001, linearGain(a.music == null ? 0.32 : a.music));
     ramp(rt.musicBus.gain, rt._musicBase);
   },
 
@@ -477,21 +477,24 @@ export const audio = {
     const ROOTS = { A: 55, B: 110, C: 110, D: 130.81 };
     const root = ROOTS[key] || 110;
     const chord = key === 'D'
-      ? [root, root * 1.26, root * 1.5, root * 2.25]      // warm maj add9-ish
+      ? [root, root * 1.25, root * 1.5, root * 2]               // docked: warm major triad + octave
       : key === 'B'
-        ? [root, root * 1.2, root * 1.5]                  // minor triad
+        ? [root, root * 1.2, root * 1.5, root * 1.8]            // tense: minor add the b7 tension
         : key === 'C'
-          ? [root * 0.5, root, root * 1.5]                // bass + fifth (combat)
-          : [root, root * 1.005];                         // calm detuned drone
+          ? [root * 0.5, root, root * 1.5]                      // combat: bass + fifth (driving)
+          : [root, root * 1.5, root * 2, root * 2.5];           // calm: open root-fifth-octave-tenth pad
 
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = key === 'C' ? 1600 : key === 'D' ? 1100 : key === 'B' ? 1400 : 600;
+    // Softer, darker cutoffs so the bed is ambient, not buzzy.
+    lp.frequency.value = key === 'C' ? 1100 : key === 'D' ? 900 : key === 'B' ? 850 : 480;
     lp.connect(parentGain);
 
     for (let i = 0; i < chord.length; i++) {
       const o = ctx.createOscillator();
-      o.type = key === 'C' ? 'square' : (key === 'D' ? 'triangle' : 'sawtooth');
+      // Warm triangles for the ambient stems; combat keeps a little edge with a sawtooth (was a
+      // harsh square). This removes most of the "screaming" overtones from the drone bed.
+      o.type = key === 'C' ? 'sawtooth' : 'triangle';
       o.frequency.value = chord[i];
       o.detune.value = (i - chord.length / 2) * 4; // gentle chorus
       const og = ctx.createGain();
@@ -514,9 +517,9 @@ export const audio = {
     if (key === 'C') {
       const lfo = ctx.createOscillator();
       const lg = ctx.createGain();
-      lfo.type = 'square';
+      lfo.type = 'sine';
       lfo.frequency.value = 130 / 60 * 2; // ~8th notes at 130 BPM
-      lg.gain.value = 0.4;
+      lg.gain.value = 0.18;
       const bias = ctx.createConstantSource ? ctx.createConstantSource() : null;
       lfo.connect(lg); lg.connect(parentGain.gain);
       try { lfo.start(t0); } catch (_) {}
@@ -593,29 +596,30 @@ export const audio = {
       hullPct = player.hullMax > 0 ? clamp(player.hull / player.hullMax, 0, 1) : 1;
     }
     const alive = player && player.alive;
-    rt.alarms.lowShield = !!(alive && shieldPct < 0.25);
+    rt.alarms.lowShield = !!(alive && shieldPct < 0.18);
     rt.alarms.lowHull = !!(alive && hullPct < 0.20);
 
     if (ctx.state !== 'running') return;
     const now = ctx.currentTime;
     const horizon = now + 0.15;
 
-    // low-shield: alternating 880/660 square, 0.12s on, 0.18s gap
+    // low-shield: soft alternating 587/440 triangle chirp, brief, with a long gap so it informs
+    // without screaming (was a near-continuous 880/660 square siren — the main "scream").
     if (rt.alarms.lowShield) {
       while (rt._alarmNext.lowShield < horizon) {
         const t = Math.max(rt._alarmNext.lowShield, now);
-        this._beep(rt._alarmFlip.lowShield ? 660 : 880, t, 0.12, 0.12, 'square');
+        this._beep(rt._alarmFlip.lowShield ? 440 : 587, t, 0.10, 0.05, 'triangle');
         rt._alarmFlip.lowShield = !rt._alarmFlip.lowShield;
-        rt._alarmNext.lowShield = t + 0.12 + 0.18;
+        rt._alarmNext.lowShield = t + 0.10 + 0.42;
       }
     } else { rt._alarmNext.lowShield = now; }
 
-    // low-hull: 440 sine pulse 0.25s on / 0.4s off
+    // low-hull: gentle 330 sine pulse 0.22s on / 0.6s off (was a louder 440 pulse)
     if (rt.alarms.lowHull) {
       while (rt._alarmNext.lowHull < horizon) {
         const t = Math.max(rt._alarmNext.lowHull, now);
-        this._beep(440, t, 0.25, 0.16, 'sine');
-        rt._alarmNext.lowHull = t + 0.25 + 0.4;
+        this._beep(330, t, 0.22, 0.085, 'sine');
+        rt._alarmNext.lowHull = t + 0.22 + 0.6;
       }
     } else { rt._alarmNext.lowHull = now; }
   },

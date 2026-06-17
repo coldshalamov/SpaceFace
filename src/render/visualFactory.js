@@ -157,6 +157,12 @@ function emissiveMaterial(color, intensity = 1.6) {
 function basicGlowMaterial(color) {
   return getMaterial(`basic:${color}`, () => new THREE.MeshBasicMaterial({ color: new THREE.Color(color) }));
 }
+// Additive unlit glow (energy bolts / aura sheaths) — pops through bloom without depth-writing.
+function additiveGlowMaterial(color, opacity = 0.75) {
+  return getMaterial(`add:${color}:${opacity}`, () => new THREE.MeshBasicMaterial({
+    color: new THREE.Color(color), blending: THREE.AdditiveBlending, transparent: true, opacity, depthWrite: false,
+  }));
+}
 
 // Additive halo sprite material by color (shared texture, per-color material).
 function haloSpriteMaterial(color) {
@@ -178,17 +184,43 @@ function makeHalo(color, scale) {
 // SHIPS — distinct silhouettes per role, faction-colored, built from cached primitives.
 // All geometry is authored with the nose along +X.
 // ---------------------------------------------------------------------------------------------
+// Additive flame material for the exhaust plume (directional, NOT a giant round halo).
+function plumeMaterial(color) {
+  return getMaterial(`plume:${color}`, () => new THREE.MeshBasicMaterial({
+    color: new THREE.Color(color), blending: THREE.AdditiveBlending,
+    transparent: true, opacity: 0.55, depthWrite: false,
+  }));
+}
 function engineGlow(pal, x, z, scale) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
+  // bright nozzle ring at the hull
   const nozzle = new THREE.Mesh(
-    getGeometry('eng:nozzle', () => new THREE.CylinderGeometry(0.42, 0.30, 0.5, 10).rotateZ(Math.PI / 2)),
-    emissiveMaterial(pal.thruster, 2.6),
+    getGeometry('eng:nozzle', () => new THREE.CylinderGeometry(0.34, 0.22, 0.32, 12).rotateZ(Math.PI / 2)),
+    emissiveMaterial(pal.thruster, 2.4),
   );
   nozzle.scale.setScalar(scale);
   g.add(nozzle);
-  const halo = makeHalo(pal.thruster, scale * 2.4);
-  halo.position.x = -0.4 * scale;
+  // tight exhaust plume: a short, fat cone trailing back (-X) — a flame, not a needle. apex points
+  // -X (rear) via rotateZ(+90deg). A brighter inner cone gives a white-hot core.
+  const plume = new THREE.Mesh(
+    getGeometry('eng:plume', () => new THREE.ConeGeometry(0.34, 0.95, 16).rotateZ(Math.PI / 2)),
+    plumeMaterial(pal.thruster),
+  );
+  plume.scale.set(scale * 0.95, scale * 0.74, scale * 0.74);
+  plume.position.x = -0.72 * scale;
+  g.add(plume);
+  g.userData.plume = plume;
+  const core = new THREE.Mesh(
+    getGeometry('eng:plumecore', () => new THREE.ConeGeometry(0.18, 0.62, 14).rotateZ(Math.PI / 2)),
+    plumeMaterial('#eaffff'),
+  );
+  core.scale.set(scale * 0.9, scale * 0.6, scale * 0.6);
+  core.position.x = -0.52 * scale;
+  g.add(core);
+  // small soft core glow at the nozzle (modest — was scale*2.4, the blob)
+  const halo = makeHalo(pal.thruster, scale * 0.5);
+  halo.position.x = -0.28 * scale;
   g.add(halo);
   return g;
 }
@@ -236,15 +268,11 @@ function buildShipMesh(e, pal) {
 
   switch (sil) {
     case 'fighter': {
-      // sleek dart: long cone nose, flat hull, swept wings, 2 engines
-      // Use the generated fighter concept + material bible (B-002) + emissive (B-009) for real texture beauty on the main player ship.
-      const fighterTex = getExternalTexture('assets/ships/fighter_albedo_emissive.jpg');
-      const bodyMat = hm.clone(); // clone so we can enhance without affecting other ships
-      if (fighterTex) {
-        bodyMat.map = fighterTex;
-        bodyMat.emissiveMap = fighterTex;
-        bodyMat.emissiveIntensity = 0.35; // let the bright engine/cockpit parts in the texture glow via emissiveMap
-      }
+      // sleek dart: long cone nose, flat hull, swept wings, 2 engines.
+      // Uses the clean procedural hull material. (The generated fighter_albedo_emissive.jpg is a
+      // LABELLED contact-sheet reference, not a UV texture — applying it mapped caption text + two
+      // side-by-side render panels onto the hull.)
+      const bodyMat = hm;
       const body = new THREE.Mesh(getGeometry('fig:body', () => new THREE.BoxGeometry(1.6, 0.42, 0.7)), bodyMat);
       body.scale.setScalar(R * 0.6); g.add(body);
       const nose = new THREE.Mesh(getGeometry('fig:nose', () => new THREE.ConeGeometry(0.30, 1.3, 8).rotateZ(-Math.PI / 2)), bodyMat);
@@ -370,15 +398,16 @@ function buildShipMesh(e, pal) {
   const engines = g.userData.engines;
   if (engines && engines.length) {
     const ph = (seed % 100) / 100 * Math.PI * 2;
-    for (const en of engines) { const h = en.children && en.children[1]; if (h) en.userData.haloBase = h.scale.x; }
+    // capture each plume's base (non-uniform) scale so the throb stretches its LENGTH only.
+    for (const en of engines) { const p = en.userData.plume; if (p) en.userData.plumeBase = { x: p.scale.x, y: p.scale.y, z: p.scale.z }; }
     const driver = firstMesh(g);
     if (driver) {
       driver.frustumCulled = false; // keep ticking while the hull body itself is on-screen
       driver.onBeforeRender = () => {
         const t = nowSec();
         for (let i = 0; i < engines.length; i++) {
-          const halo = engines[i].children && engines[i].children[1];
-          if (halo) { const s = 1 + 0.12 * Math.sin(t * 6 + ph + i); halo.scale.setScalar((engines[i].userData.haloBase || halo.scale.x) * s); }
+          const p = engines[i].userData.plume, b = engines[i].userData.plumeBase;
+          if (p && b) { const s = 1 + 0.18 * Math.sin(t * 9 + ph + i); p.scale.set(b.x * s, b.y, b.z); }
         }
       };
     }
@@ -452,31 +481,19 @@ function astMaterial(typeId, def, tint) {
     const rough = getTexture('noise:astrough', () =>
       makeNoiseTexture({ size: 256, seed: 41, octaves: 4, baseCells: 6, contrast: 1.4, brightness: -0.05 }));
 
-    // Integrate beautiful generated ore hero assets + emissive glows from our visual plan (B-009, C-INTRO-03, ore_*_hero).
-    // Maps the in-game asteroid types (from data) to the high-quality hero renders and surfaces we generated.
-    let map = null;
-    let emissiveMap = null;
+    // Procedural surfaces only. (The generated ore_*_hero.jpg assets are LABELLED contact-sheet
+    // references — multiple views + caption text — and were being emissive-mapped onto crystals, so
+    // valuable rocks literally glowed reference text. Valuable ores still pop via emissive colour +
+    // the crystal shards/halo added in buildAsteroid.)
     let eiBoost = def.ei;
     const t = (typeId || '').toLowerCase();
-    if (t.includes('luminite') || t.includes('crystal') || def.variant === 'crystal') {
-      map = getExternalTexture('assets/ores/ore_luminite_hero.jpg');
-      emissiveMap = map;
-      eiBoost = Math.max(eiBoost, 0.9); // strong glow pop for mining reward
-    } else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') {
-      map = getExternalTexture('assets/ores/ore_xenium_hero.jpg');
-      emissiveMap = map;
-      eiBoost = Math.max(eiBoost, 0.75);
-    } else if (t.includes('iron') || def.variant === 'metal') {
-      map = getExternalTexture('assets/ores/ore_iron_hero.jpg');
-    } else if (t.includes('ice') || t.includes('water') || def.variant === 'ice') {
-      map = getExternalTexture('assets/ores/ore_ice_hero.jpg');
-    }
-    // Also pull surface detail from B-003 ore surfaces bible when we have a hero match (via the loaded map's detail).
+    if (t.includes('luminite') || t.includes('crystal') || def.variant === 'crystal') eiBoost = Math.max(eiBoost, 0.9);
+    else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
 
     return new THREE.MeshStandardMaterial({
-      color, map, emissiveMap,
+      color,
       roughness: def.rough, metalness: def.metal,
-      roughnessMap: (def.variant === 'crystal' || map) ? null : rough,
+      roughnessMap: def.variant === 'crystal' ? null : rough,
       emissive: new THREE.Color(def.emissive), emissiveIntensity: eiBoost,
       flatShading: def.flat,
     });
@@ -713,12 +730,20 @@ function buildProjectile(e) {
     tip.position.x = R * 1.4; tip.scale.setScalar(R); g.add(tip);
     const flame = makeHalo(color, R * 2.0); flame.position.x = -R * 1.2; g.add(flame);
   } else {
-    const bolt = new THREE.Mesh(
-      getGeometry('proj:bolt', () => new THREE.CylinderGeometry(0.5, 0.5, 5.0, 6).rotateZ(Math.PI / 2)),
-      basicGlowMaterial(color),
+    // energy bolt: a white-hot core + an additive coloured glow sheath + a soft halo, elongated so it
+    // reads as a streak punching through bloom rather than a dot.
+    const core = new THREE.Mesh(
+      getGeometry('proj:core', () => new THREE.CapsuleGeometry(0.28, 4.6, 4, 8).rotateZ(Math.PI / 2)),
+      basicGlowMaterial('#ffffff'),
     );
-    bolt.scale.setScalar(R); g.add(bolt);
-    g.add(makeHalo(color, R * 3.5));
+    core.scale.setScalar(R); g.add(core);
+    const glow = new THREE.Mesh(
+      getGeometry('proj:glow', () => new THREE.CapsuleGeometry(0.62, 5.4, 4, 8).rotateZ(Math.PI / 2)),
+      additiveGlowMaterial(color, 0.8),
+    );
+    glow.scale.setScalar(R); g.add(glow);
+    const halo = makeHalo(color, R * 4.2); halo.position.x = R * 1.2; g.add(halo);   // bright leading tip
+    g.add(makeHalo(color, R * 2.6));
   }
   g.userData.kind = 'projectile';
   return g;

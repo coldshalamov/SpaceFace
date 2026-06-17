@@ -20,31 +20,27 @@ export const render = {
     const state = ctx.state, bus = ctx.bus;
 
     const canvas = document.getElementById('gl-canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, state.settings.video.pixelRatioCap || 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x05070d, 1);
+    renderer.setClearColor(0x060912, 1);
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x05070d, 0.00085);
-    scene.add(new THREE.AmbientLight(0x3a4a66, 0.75));
-    const key = new THREE.DirectionalLight(0xbcd6ff, 1.5); key.position.set(60, 140, 40); scene.add(key);
-    const rim = new THREE.DirectionalLight(0x5566ff, 0.5); rim.position.set(-70, 50, -60); scene.add(rim);
+    // Thin fog for gentle depth cueing only — the old 0.00085 erased the entire backdrop, leaving a
+    // black void. This keeps the nebula + far stars visible while still fading the deep distance.
+    scene.fog = new THREE.FogExp2(0x0a1430, 0.00026);
+    scene.add(new THREE.AmbientLight(0x42506f, 0.85));
+    const key = new THREE.DirectionalLight(0xcfe2ff, 1.7); key.position.set(60, 140, 40); scene.add(key);
+    const rim = new THREE.DirectionalLight(0x6a5cff, 0.7); rim.position.set(-70, 50, -60); scene.add(rim);
+    const fill = new THREE.DirectionalLight(0x39d0ff, 0.35); fill.position.set(20, 30, 120); scene.add(fill);
 
     const cam = createChaseCamera(state);
     const starfield = createStarfield(scene);
     const vf = createVisualFactory();
 
-    // Preload key generated assets early (from the visual plan + new integration assets) so first asteroids/ships/FX/pilot look instant and beautiful. No white flash.
-    const PRELOAD_ASSETS = [
-      'assets/ores/ore_luminite_hero.jpg', 'assets/ores/ore_xenium_hero.jpg',
-      'assets/ores/ore_iron_hero.jpg', 'assets/ores/ore_ice_hero.jpg',
-      'assets/ships/fighter_albedo_emissive.jpg',
-      'assets/fx/fx_thruster_main.jpg', 'assets/fx/fx_explosion_small_elements.jpg',
-      'assets/pilots/pf_spaceface_portraits.jpg',
-      'assets/ui/reticle.jpg', 'assets/cinematics/menu_background.jpg'
-    ];
-    PRELOAD_ASSETS.forEach(p => { const i = new Image(); i.src = p; });
+    // Preload the menu background (the only generated .jpg we use — the rest are captioned
+    // contact-sheet references and are replaced by procedural materials / inline SVG).
+    { const i = new Image(); i.src = 'assets/cinematics/menu_background.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.starfield = starfield; this.vf = vf;
     try { this.bloom = createBloom(renderer, window.innerWidth, window.innerHeight); }
@@ -75,7 +71,11 @@ export const render = {
     });
     bus.on('camera:shake', ({ amount }) => cam.addTrauma(amount || 0.3));
     bus.on('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
-    bus.on('sector:enter', () => this.clearAllMeshes(/*keepPlayer*/ true));
+    // On sector change, reconcile rather than blindly clearing: the new sector's entities are
+    // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
+    // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
+    // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
+    bus.on('sector:enter', () => this.reconcileMeshes());
 
     window.addEventListener('resize', () => this.onResize());
     window.addEventListener('wheel', (ev) => cam.setZoom(state.camera.zoom + Math.sign(ev.deltaY) * 6), { passive: true });
@@ -85,6 +85,30 @@ export const render = {
     for (const [id, m] of [...this._meshes]) {
       if (keepPlayer && id === this.state.playerId) continue;
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
+    }
+  },
+
+  // Self-healing entity<->mesh reconciliation. Guarantees every alive, renderable entity has a
+  // scene mesh and that meshes for gone entities are disposed — independent of event ordering.
+  // This is the safety net that makes the world actually render (entity:spawned alone was being
+  // undone by the old sector:enter clear). Cheap: only builds/destroys on a delta.
+  reconcileMeshes() {
+    const state = this.state;
+    // remove meshes whose entity no longer exists or has died
+    for (const [id, m] of this._meshes) {
+      const e = state.entities.get(id);
+      if (!e || e.alive === false) { this.scene.remove(m); disposeObject(m); this._meshes.delete(id); }
+    }
+    // build meshes for alive entities that lack one (fx are particle-managed by vfx -> mark + skip)
+    for (const e of state.entityList) {
+      if (e._noMesh || this._meshes.has(e.id)) continue;
+      const m = this.vf.build(e);
+      if (!m) { e._noMesh = true; continue; }
+      m.position.set(e.pos.x, 0, e.pos.z);
+      m.rotation.y = -e.rot;
+      e.mesh = m; e.view = { root: m };
+      this._meshes.set(e.id, m);
+      this.scene.add(m);
     }
   },
 
@@ -105,6 +129,7 @@ export const render = {
   },
 
   renderFrame(alpha, frameDt) {
+    this.reconcileMeshes();
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
     this.starfield.recenter(this.cam.obj.position);

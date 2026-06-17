@@ -12,6 +12,32 @@
 
 import { createScreenManager } from './screenManager.js';
 import { createUiInput } from './input.js';
+
+// Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
+const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
+  <g fill="none" stroke="#39d0ff" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 3px #39d0ff)">
+    <circle cx="50" cy="50" r="30" opacity="0.85"/>
+    <circle cx="50" cy="50" r="40" opacity="0.18"/>
+    <line x1="50" y1="6" x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="94"/>
+    <line x1="6" y1="50" x2="20" y2="50"/><line x1="80" y1="50" x2="94" y2="50"/>
+  </g>
+  <circle cx="50" cy="50" r="3" fill="#39d0ff" style="filter:drop-shadow(0 0 4px #39d0ff)"/>
+</svg>`;
+const PILOT_AVATAR_SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+  <defs>
+    <radialGradient id="sfvisor" cx="42%" cy="38%" r="70%">
+      <stop offset="0%" stop-color="#bff4ff"/><stop offset="45%" stop-color="#39d0ff"/><stop offset="100%" stop-color="#0a3a5c"/>
+    </radialGradient>
+    <linearGradient id="sfhelm" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a3a5a"/><stop offset="100%" stop-color="#101a2e"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" fill="#0b1220"/>
+  <path d="M10 38 a22 22 0 0 1 44 0 v10 a6 6 0 0 1 -6 6 H16 a6 6 0 0 1 -6 -6 z" fill="url(#sfhelm)" stroke="#39d0ff" stroke-width="1.5"/>
+  <path d="M17 34 a15 13 0 0 1 30 0 v5 a4 4 0 0 1 -4 4 H21 a4 4 0 0 1 -4 -4 z" fill="url(#sfvisor)"/>
+  <ellipse cx="26" cy="31" rx="3.5" ry="6" fill="#eafcff" opacity="0.5"/>
+  <path d="M14 40 h36" stroke="#39d0ff" stroke-width="1" opacity="0.4"/>
+</svg>`;
 import { createHud } from './hud.js';
 import { createToasts } from './toasts.js';
 import { createAlerts } from './alerts.js';
@@ -57,17 +83,20 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
 
-    // === Professional asset-powered UI additions (pilot identity, reticle, control clarity, cinematic backgrounds) ===
-    // Pilot "SpaceFace" portrait (from generated PF-001) — makes the game personal and branded
+    // === UI identity: pilot avatar, aiming reticle, control clarity ===
+    // NOTE: the generated assets/pilots/*.jpg and assets/ui/reticle.jpg are LABELLED reference
+    // contact-sheets (captions + black backgrounds), not usable sprites — they rendered text in the
+    // HUD. Replaced with clean on-theme inline SVG (a helmet avatar + a crosshair).
     const portrait = document.createElement('div');
     portrait.id = 'pilot-portrait';
-    portrait.innerHTML = `<img src="assets/pilots/pf_spaceface_portraits.jpg" alt="SpaceFace pilot" title="Your SpaceFace — the reason you fly">`;
+    portrait.title = 'Pilot';
+    portrait.innerHTML = PILOT_AVATAR_SVG;
     document.getElementById('ui-root').appendChild(portrait);
 
-    // Center aiming reticle using generated asset (professional aid for mouse-aim flight/combat)
+    // Center aiming reticle (clean SVG crosshair).
     const reticle = document.createElement('div');
     reticle.id = 'aim-reticle';
-    reticle.innerHTML = `<img src="assets/ui/reticle.jpg" alt="aim">`;
+    reticle.innerHTML = RETICLE_SVG;
     document.getElementById('hud').appendChild(reticle);
 
     // Always-visible (when in flight) control hints — fixes "confusing" by making arrows + mouse immediately obvious and fun
@@ -95,7 +124,8 @@ export const ui = {
       cinematic.id = 'cinematic-splash';
       cinematic.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#05070d;overflow:hidden;';
       cinematic.innerHTML = `
-        <div style="position:absolute;inset:0;background-image:url('assets/cinematics/menu_background.jpg');background-size:cover;opacity:0.7;filter:contrast(1.1);"></div>
+        <div style="position:absolute;inset:0;background-image:url('assets/cinematics/menu_background.jpg');background-size:cover;background-position:center 30%;opacity:0.7;filter:contrast(1.1);"></div>
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,13,.5),rgba(5,7,13,0) 30%,rgba(5,7,13,0) 75%,rgba(5,7,13,1));"></div>
         <div style="position:relative;text-align:center;color:#d3e6ff;font-family:var(--mono,monospace);z-index:1;text-shadow:0 0 30px #39d0ff;">
           <div style="font-size:13px;letter-spacing:6px;opacity:0.7;margin-bottom:8px;">A HARD SCI-FI SPACE ODYSSEY</div>
           <div style="font-size:72px;line-height:1;letter-spacing:8px;margin-bottom:12px;color:#39d0ff;">SPACEFACE</div>
@@ -106,8 +136,8 @@ export const ui = {
           <div style="font-size:12px;opacity:0.6;margin-bottom:18px;">↑↓←→ / WASD • MOUSE AIM • SPACE FIRE • SHIFT BOOST</div>
           <div style="font-size:11px;letter-spacing:3px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
         </div>
-        <div id="cinematic-pilot" style="position:absolute;bottom:24px;right:24px;width:92px;height:92px;border:3px solid #39d0ff;border-radius:50%;overflow:hidden;box-shadow:0 0 30px #39d0ff;opacity:0.95;">
-          <img src="assets/pilots/pf_spaceface_portraits.jpg" style="width:100%;height:100%;object-fit:cover;">
+        <div id="cinematic-pilot" style="position:absolute;bottom:24px;right:24px;width:92px;height:92px;border:3px solid #39d0ff;border-radius:50%;overflow:hidden;box-shadow:0 0 30px #39d0ff;opacity:0.95;background:#0b1220;">
+          ${PILOT_AVATAR_SVG}
         </div>
       `;
       document.getElementById('ui-root').appendChild(cinematic);

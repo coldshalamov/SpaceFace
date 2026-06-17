@@ -159,11 +159,8 @@ export const vfx = {
     this._glowTex = tex;
     this._ringTex = ringTex;
 
-    // Use our generated FX assets (fx_thruster, explosion elements, mining beam) for much more detailed and beautiful VFX than pure procedural.
-    this._thrustTex = getExternalTexture('assets/fx/fx_thruster_main.jpg');
-    this._explosionTex = getExternalTexture('assets/fx/fx_explosion_small_elements.jpg');
-    this._miningTex = getExternalTexture('assets/fx/fx_mining_beam.jpg');
-
+    // NOTE: the generated assets/fx/*.jpg are LABELLED contact-sheet references, not usable sprite
+    // strips, so VFX is driven entirely by the clean procedural glow/ring textures above.
     this._spritePool = [];
     this._spr = []; // parallel CPU state
     for (let i = 0; i < SPRITE_CAP; i++) {
@@ -189,6 +186,7 @@ export const vfx = {
     add('collision', (p) => this._onCollision(p));
     add('entity:killed', (p) => this._onKilled(p));
     add('entity:destroyed', (p) => this._onDestroyed(p));
+    add('player:death', (p) => this._explode({ pos: p && p.pos, radius: 12 }, true));
     add('mining:tick', (p) => this._onMiningTick(p));
     add('mining:yield', (p) => this._onMiningYield(p));
     add('ship:thrust', (p) => this._onThrust(p));
@@ -240,11 +238,10 @@ export const vfx = {
     // map — both textures already exist as the material's map, so no shader recompile is needed (and
     // forcing material.needsUpdate would re-run the program lookup on every swap during heavy combat).
     const wantRing = (kind === SPR_RING || kind === SPR_FRESNEL);
-    let wantTex = wantRing ? this._ringTex : this._glowTex;
-    // Prefer detailed generated assets for key effects (explosions now use real elements from our FX bible for pro look).
-    if (!wantRing && kind === SPR_FLASH && this._explosionTex) {
-      wantTex = this._explosionTex;
-    }
+    // Always use the clean procedural textures. (The generated fx_explosion_small_elements.jpg is a
+    // LABELLED contact-sheet reference, not a usable sprite — using it rendered "CORE FLASH / HIGH /
+    // SMOKE AND SPARKS" text in every explosion. The procedural radial glow reads far better anyway.)
+    const wantTex = wantRing ? this._ringTex : this._glowTex;
     if (spr.material.map !== wantTex) {
       spr.material.map = wantTex;
       spr.material.needsUpdate = true;

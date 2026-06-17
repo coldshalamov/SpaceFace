@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { damp } from '../core/math.js';
 
 export function createChaseCamera(state) {
-  const cam = new THREE.PerspectiveCamera(state.settings.video.fov || 50, window.innerWidth / window.innerHeight, 1, 4000);
+  // Far plane is deep (14k) so distant planets + far star layers render; fog still fades mid-distance.
+  const cam = new THREE.PerspectiveCamera(state.settings.video.fov || 50, window.innerWidth / window.innerHeight, 1, 14000);
   const c = state.camera;
   c.shakeOffset = new THREE.Vector3();
   c.focus = new THREE.Vector3();

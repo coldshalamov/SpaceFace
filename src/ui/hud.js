@@ -16,8 +16,28 @@
 
 import { createRadar } from './radar.js';
 import { createTargetPanel } from './targetPanel.js';
+import { createFloatingText } from './floatingText.js';
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+function injectDeathStyle() {
+  if (document.getElementById('sf-death-style')) return;
+  const s = document.createElement('style');
+  s.id = 'sf-death-style';
+  s.textContent = `
+  .sf-death { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; z-index:1500; pointer-events:none; opacity:0; }
+  .sf-death.show { animation:sf-death-seq 2.4s ease forwards; }
+  @keyframes sf-death-seq { 0%{opacity:0;} 8%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
+  .sf-death__big { font-family:var(--mono,Consolas,monospace); font-size:46px; letter-spacing:.22em; color:#ff5470;
+    text-shadow:0 0 30px rgba(255,84,112,.7), 0 2px 4px #000; }
+  .sf-death__sub { font-family:var(--mono,Consolas,monospace); font-size:14px; letter-spacing:.3em; color:#ffd2da; text-transform:uppercase; }
+  body.sf-deathflash::after { content:''; position:fixed; inset:0; z-index:1400; pointer-events:none;
+    background:radial-gradient(circle at 50% 50%, rgba(255,40,70,0) 30%, rgba(255,30,60,.55) 100%); animation:sf-deathflash .7s ease forwards; }
+  @keyframes sf-deathflash { 0%{opacity:0;} 15%{opacity:1;} 100%{opacity:0;} }
+  `;
+  document.head.appendChild(s);
+}
 
 export function createHud(ctx, alerts) {
   const { state, helpers } = ctx;
@@ -69,6 +89,9 @@ export function createHud(ctx, alerts) {
   rightDock.append(targetPanel.el, radar.el);
   root.appendChild(rightDock);
 
+  // floating combat text (damage numbers, ore yield, credits, kills)
+  const floatingText = createFloatingText(ctx);
+
   // ---- top-right: objective tracker + arrow ----
   const objWrap = document.createElement('div');
   objWrap.className = 'sf-objectives';
@@ -77,6 +100,22 @@ export function createHud(ctx, alerts) {
   arrow.className = 'sf-objarrow';
   arrow.style.display = 'none';
   root.appendChild(arrow);
+
+  // ---- death / respawn feedback banner ----
+  injectDeathStyle();
+  const deathBanner = document.createElement('div');
+  deathBanner.className = 'sf-death';
+  deathBanner.innerHTML = '<div class="sf-death__big">SHIP DESTROYED</div><div class="sf-death__sub">Emergency recovery online…</div>';
+  root.appendChild(deathBanner);
+  ctx.bus.on('player:death', () => {
+    deathBanner.classList.remove('show'); void deathBanner.offsetWidth; // restart animation
+    deathBanner.classList.add('show');
+    document.body.classList.add('sf-deathflash');
+    setTimeout(() => document.body.classList.remove('sf-deathflash'), 700);
+  });
+  ctx.bus.on('player:respawn', () => {
+    ctx.bus.emit('toast', { text: 'Hull rebuilt — fly safe, pilot. (3s shields online)', kind: 'good', ttl: 4 });
+  });
 
   // ---------------------------------------------------------------------------
   // Event-driven (rebuild) path — credits / cargo / objectives marked dirty.
@@ -192,6 +231,9 @@ export function createHud(ctx, alerts) {
 
     // --- target panel (every frame, cheap) ---
     targetPanel.update();
+
+    // --- floating combat text ---
+    floatingText.update(dt || 0.016);
 
     // --- radar @20Hz ---
     if (radarTick) radar.draw();
