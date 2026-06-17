@@ -90,6 +90,7 @@ export const audio = {
     rt._pendingState = null; rt._pendingSince = 0;
     rt._musicStarted = false;
     rt._duckUntil = 0;            // wallclock until which musicBus is ducked
+    rt._paused = false;           // set by sim:pause, cleared by sim:resume (gate sim-driven audio)
     rt._alarmNext = { lowShield: 0, lowHull: 0 }; // next scheduled beep time (ctx.currentTime)
     rt._alarmFlip = { lowShield: false };
     rt._rafId = 0;
@@ -143,6 +144,14 @@ export const audio = {
     bus.on('alert', (p) => this._onCue('alert'));
     bus.on('audio:cue', (p) => this._onCue(p && p.id));
     bus.on('settings:changed', (p) => { if (!p || p.section === 'audio' || p.section == null) this._applySettings(); });
+
+    // Pause respect (V2 §17 anti-pattern: "audio playing behind the pause menu"). When the sim
+    // freezes (pause menu, save-load swap, main menu), we duck music to silence, stop scheduling
+    // alarm beeps, and skip threat/music recomputation so the bed doesn't churn. On resume we
+    // restore the music bus and re-seed the alarm timers. UI cues (clicks) still play so menus
+    // feel responsive.
+    bus.on('sim:pause', () => this._onPause(true));
+    bus.on('sim:resume', () => this._onPause(false));
 
     // UI namespaced cue events (DOM UI may emit these directly).
     bus.on('ui:click', () => this._onCue('click'));
@@ -199,6 +208,35 @@ export const audio = {
     this._buildMusic();
     this._startFrameLoop();
     return ctx;
+  },
+
+  // Pause/resume handler. Ducks music to silence and stops alarm scheduling so the pause menu is
+  // quiet; SFX one-shots and UI cues keep working (menus need feedback). Idempotent.
+  _onPause(paused) {
+    const rt = this.rt;
+    rt._paused = !!paused;
+    const ctx = rt.ctx;
+    if (!ctx) return;
+    if (paused) {
+      // duck music to ~0 over 80ms so the cutoff is smooth, not a hard cut
+      try {
+        const t = ctx.currentTime;
+        rt.musicBus.gain.cancelScheduledValues(t);
+        rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
+        rt.musicBus.gain.linearRampToValueAtTime(0.0001, t + 0.08);
+      } catch (_) {}
+    } else {
+      // restore to the configured music base
+      try {
+        const t = ctx.currentTime;
+        rt.musicBus.gain.cancelScheduledValues(t);
+        rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
+        rt.musicBus.gain.linearRampToValueAtTime(Math.max(0.0001, rt._musicBase || 0.5), t + 0.4);
+      } catch (_) {}
+      // re-seed alarm timers so they don't dump a backlog burst on resume
+      rt._alarmNext.lowShield = ctx.currentTime;
+      rt._alarmNext.lowHull = ctx.currentTime;
+    }
   },
 
   _applySettings() {
@@ -598,6 +636,7 @@ export const audio = {
   _tickAlarms() {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx) return;
+    if (rt._paused) return; // pause menu must be quiet — no beeps
     const player = this.state.entities.get(this.state.playerId);
     let shieldPct = 1, hullPct = 1;
     if (player) {
@@ -675,8 +714,8 @@ export const audio = {
       if (rt._wantMining && !rt.loops.mining) this._onMiningStart({ minerId: rt._wantMining.minerId, targetId: rt._wantMining.targetId });
     }
 
-    // recover music gain after a duck
-    if (rt._duckUntil && now >= rt._duckUntil && rt.musicBus) {
+    // recover music gain after a duck (skip while paused — _onPause manages the bus)
+    if (!rt._paused && rt._duckUntil && now >= rt._duckUntil && rt.musicBus) {
       rt._duckUntil = 0;
       try {
         rt.musicBus.gain.cancelScheduledValues(now);
@@ -685,8 +724,12 @@ export const audio = {
       } catch (_) {}
     }
 
-    this._recomputeMusic(nowWall);
-    this._tickAlarms();
+    // Skip the sim-driven work (threat/music recompute, alarms) while paused — the pause menu must
+    // be quiet. Voice GC still runs so one-shots finish cleanly; context-resume still runs above.
+    if (!rt._paused) {
+      this._recomputeMusic(nowWall);
+      this._tickAlarms();
+    }
     this._updateLoopPositions();
     this._gcVoices(now);
   },
