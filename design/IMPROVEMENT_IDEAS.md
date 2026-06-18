@@ -232,6 +232,12 @@ These are the ideas that made the threshold. Ordered so each enables the next:
 4. **#2+ NPC traders with real wallets + visible haulers** (8.0) — fixes bug + aliveness
 5. **#24 Faction power table driving wars** (8.0) — builds on #4
 6. **#14 NPC haulers wired into the real economy** (8.2) — the big background-sim payoff
+   - **DELIVERED by #2 + #24 in combination** (commits 84e304b + 7fe6b01): #2 fixed the wallet bug
+     so NPC trades use real stock-pressure (prices actually move) and spawned visible haulers that
+     emit `aiTrader:requestTrade`; #24 made their presence feed faction power. Together: NPC haulers
+     ARE wired into the real economy, their flows move prices, and the player's routes compete with
+     a market that shifts on its own. **Deferred polish:** inter-sector hauler flow (currently
+     in-sector only) — would add cross-system price arbitrage driven by NPC traffic.
 7. **#27 Drill lens as 2D screen** (8.0) — mining becomes a verb
 8. **#28 Automation alphabet + first rover** (8.2) — the spine
 9. **#21 Intervention loop** (8.2) — automation generates drama (needs #8)
