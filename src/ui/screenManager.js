@@ -58,9 +58,19 @@ export function createScreenManager(ctx) {
     // background image (the menu art) at z-index 100, which would otherwise sit on top of the
     // flight canvas (z-index 10) and blank the screen after New Game even though the sim is live.
     if (screensRoot) screensRoot.style.display = open ? 'flex' : 'none';
-    document.body.classList.toggle('ui-modal-open', open || state.ui.docked === true);
+    const modalOpen = open || state.ui.docked === true;
+    document.body.classList.toggle('ui-modal-open', modalOpen);
+    syncHudAccessibility(modalOpen || state.mode !== 'flight');
     if (backdrop) backdrop.style.pointerEvents = open ? 'auto' : 'none';
     syncPause();
+  }
+
+  function syncHudAccessibility(hidden) {
+    const hud = document.getElementById('hud');
+    if (!hud) return;
+    if (hidden) hud.setAttribute('aria-hidden', 'true');
+    else hud.removeAttribute('aria-hidden');
+    if ('inert' in hud) hud.inert = hidden;
   }
 
   // Pause the sim while any pausing screen sits anywhere in the stack. The pause/menu screens

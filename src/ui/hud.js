@@ -38,6 +38,7 @@ function injectDeathStyle() {
   s.textContent = `
   .sf-death { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:8px; z-index:1500; pointer-events:none; opacity:0; }
+  .sf-death[hidden] { display:none !important; }
   .sf-death.show { animation:sf-death-seq 2.4s ease forwards; }
   @keyframes sf-death-seq { 0%{opacity:0;} 8%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
   .sf-death__big { font-family:var(--mono,Consolas,monospace); font-size:46px; letter-spacing:.22em; color:#ff5470;
@@ -150,13 +151,25 @@ export function createHud(ctx, alerts) {
   injectDeathStyle();
   const deathBanner = document.createElement('div');
   deathBanner.className = 'sf-death';
+  deathBanner.hidden = true;
+  deathBanner.setAttribute('aria-hidden', 'true');
+  deathBanner.setAttribute('role', 'alert');
   deathBanner.innerHTML = '<div class="sf-death__big">SHIP DESTROYED</div><div class="sf-death__sub">Emergency recovery online…</div>';
   root.appendChild(deathBanner);
+  let deathHideTimer = 0;
   ctx.bus.on('player:death', () => {
+    clearTimeout(deathHideTimer);
+    deathBanner.hidden = false;
+    deathBanner.removeAttribute('aria-hidden');
     deathBanner.classList.remove('show'); void deathBanner.offsetWidth; // restart animation
     deathBanner.classList.add('show');
     document.body.classList.add('sf-deathflash');
     setTimeout(() => document.body.classList.remove('sf-deathflash'), 700);
+    deathHideTimer = setTimeout(() => {
+      deathBanner.classList.remove('show');
+      deathBanner.hidden = true;
+      deathBanner.setAttribute('aria-hidden', 'true');
+    }, 2500);
   });
   ctx.bus.on('player:respawn', () => {
     ctx.bus.emit('toast', { text: 'Hull rebuilt — fly safe, pilot. (3s shields online)', kind: 'good', ttl: 4 });
