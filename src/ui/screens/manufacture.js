@@ -45,12 +45,15 @@ export function createManufacturePanel(ctx) {
     if (!btn || btn.disabled) return;
     const bpId = btn.getAttribute('data-bp');
     const crafting = ctx.crafting || (ctx.registry && ctx.registry.get('crafting'));
-    if (crafting && crafting.build(bpId)) refresh();
+    // pass the docked station id so the build lands in that station's queue (V2 cut-list #3)
+    const sid = ctx.state.ui && ctx.state.ui.dockedStationId;
+    if (crafting && crafting.build(bpId, sid)) refresh();
   });
   // refresh when cargo/credits/research change so costs + availability update live
   ctx.bus.on('cargo:changed', () => { if (root.closest('.st-tabpanel') && root.closest('.st-tabpanel').style.display !== 'none') refresh(); });
   ctx.bus.on('credits:changed', () => { if (root.closest('.st-tabpanel') && root.closest('.st-tabpanel').style.display !== 'none') refresh(); });
   ctx.bus.on('craft:complete', () => refresh());
+  ctx.bus.on('craft:queueChanged', () => refresh());   // build enqueued/completed -> re-render
   ctx.bus.on('tech:researched', () => refresh());
 
   function refresh() {
@@ -100,13 +103,23 @@ export function createManufacturePanel(ctx) {
         // buildable check (mirror crafting.status, but cheap local version for the button state)
         let canBuild = techOk;
         for (const id in bp.inputs) if ((items[id] || 0) < bp.inputs[id]) canBuild = false;
+        // V2 cut-list #3: timed recipes share a 1-slot queue per station — disable build while busy
+        const timeS = crafting ? crafting.buildTime(bp) : 0;
+        const sid = ctx.state.ui && ctx.state.ui.dockedStationId;
+        const busy = timeS > 0 && crafting && crafting.isBusy(sid);
+        if (busy) canBuild = false;
+        const inProgress = busy && crafting.progress && crafting._currentJobName
+          ? crafting._currentJobName(sid) : null;
+
+        const timeLabel = timeS > 0 ? `<span class="st-manuf-time">${Math.round(timeS)}s fab</span>` : '';
+        const buildBtnText = inProgress ? 'BUILDING…' : 'BUILD';
 
         card.innerHTML =
           `<div class="st-manuf-card-h">
              <div class="st-manuf-title">${bp.name}${techLabel}</div>
-             <button class="sf-btn sf-btn--primary st-manuf-build" data-act="build" data-bp="${bp.id}" ${canBuild ? '' : 'disabled'}>BUILD</button>
+             <button class="sf-btn sf-btn--primary st-manuf-build" data-act="build" data-bp="${bp.id}" ${canBuild ? '' : 'disabled'}>${buildBtnText}</button>
            </div>
-           <div class="st-manuf-desc">${bp.desc || ''}</div>
+           <div class="st-manuf-desc">${bp.desc || ''}${timeLabel}</div>
            ${augNote}
            <div class="st-manuf-out">→ ${outNm}${qtyLabel}</div>
            <div class="st-manuf-mats">${matsHtml}</div>`;

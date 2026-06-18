@@ -5,11 +5,25 @@
 // stock, assembles it into parts, augments their favourite modules up tiers, and ultimately
 // manufactures ships from materials — the "build an empire" fantasy.
 //
-// The system is reactive (no per-frame update): the UI calls canBuild() / build() and this consumes
-// materials from cargo, grants the product (cargo commodity / module inventory / owned ship), and
-// emits events for audio + toast feedback. Tech gating uses the player's researchedNodes.
+// V2 §3 (cut-list #3): builds now take REAL game-time. Each station has a build queue (capacity 1 =
+// strategic — you choose what to commit the fab to). `bp.timeS` is honored: a job consumes inputs
+// up front, then accumulates progress over game-time (respects pause/timeScale, not wall-clock),
+// and grants the product on completion. Refining stays near-instant; ship manufacturing takes long
+// enough that planning your production is a real decision. Recipes with timeS:0 remain instant for
+// backward compatibility (basic refining).
 import { BLUEPRINTS, BLUEPRINT_BY_ID } from '../data/blueprints.js';
 import { addCargo, removeCargo } from './cargo.js';
+
+// Sensible build durations by category when a blueprint doesn't specify one (the data ships with
+// timeS:0 everywhere — these defaults make manufacturing feel like a real production loop without
+// requiring a data migration). Applied only when bp.timeS is missing/0 AND the category warrants it.
+const DEFAULT_TIME_S = {
+  refine: 0,       // bulk processing stays instant — it's the "grind ore into stock" tier
+  assemble: 20,    // a module takes ~20s of game-time at the fab
+  augment: 35,     // augmenting a module up a tier is a delicate job
+  ship: 120,       // manufacturing a whole ship is a serious commitment — the empire-building beat
+};
+const QUEUE_CAPACITY = 1; // one slot per station — capacity IS the strategic constraint
 
 export const crafting = {
   name: 'crafting',
@@ -19,14 +33,32 @@ export const crafting = {
     this.ctx = ctx;
     // expose helpers for the UI to call without reaching through ctx
     ctx.crafting = this;
+    // Build queues live here: { [stationId]: { bpId, elapsed, total, productSpec } | null }
+    if (!this.state.crafting) this.state.crafting = { queues: {} };
   },
 
   // Lazy refs to sibling systems (they init before crafting via registry order). Using getters keeps
   // us robust if init order ever shifts.
   get _ships() { return this.ctx.registry.get('ships'); },
 
-  // No per-frame work: crafting is purely UI-driven. (Kept in the registry for ctx + sibling access.)
-  update() {},
+  // Advance in-progress build jobs by dt of GAME-time (the loop passes sim dt, already gated by
+  // timeScale/pause, so a paused game doesn't progress production and a save-load catch-up works).
+  update(dt, state) {
+    const queues = (state.crafting && state.crafting.queues) || {};
+    let changed = false;
+    for (const stationId in queues) {
+      const job = queues[stationId];
+      if (!job || job.done) continue;
+      job.elapsed += dt;
+      if (job.elapsed >= job.total) {
+        this._grantProduct(job);
+        job.done = true;
+        queues[stationId] = null;
+        changed = true;
+      }
+    }
+    if (changed) this.bus.emit('craft:queueChanged', {});
+  },
 
   /** All blueprints buildable at a given station type, with availability precomputed for the UI. */
   listFor(stationType) {
@@ -36,7 +68,36 @@ export const crafting = {
       .map((b) => ({ bp: b, ...this.status(b, p) }));
   },
 
-  /** Per-blueprint availability: tech unlocked? materials present? source module owned (augment)? */
+  /** Effective build duration for a blueprint (honors bp.timeS, else DEFAULT_TIME_S by category). */
+  buildTime(bp) {
+    if (!bp) return 0;
+    if (bp.timeS && bp.timeS > 0) return bp.timeS;
+    return DEFAULT_TIME_S[bp.category] || 0;
+  },
+
+  /** Is the given station's build queue busy? (capacity = 1) */
+  isBusy(stationId) {
+    const q = this.state.crafting && this.state.crafting.queues && this.state.crafting.queues[stationId];
+    return !!(q && !q.done);
+  },
+
+  /** Progress 0..1 of the current job at a station (0 if idle). For the UI. */
+  progress(stationId) {
+    const q = this.state.crafting && this.state.crafting.queues && this.state.crafting.queues[stationId];
+    if (!q || q.done || !q.total) return 0;
+    return Math.max(0, Math.min(1, q.elapsed / q.total));
+  },
+
+  /** Name of the in-progress job at a station, for UI ("BUILDING… <name>"). Null if idle. */
+  _currentJobName(stationId) {
+    const q = this.state.crafting && this.state.crafting.queues && this.state.crafting.queues[stationId];
+    if (!q || q.done) return null;
+    const bp = q.bp || BLUEPRINT_BY_ID.get(q.bpId);
+    return bp ? bp.name : null;
+  },
+
+  /** Per-blueprint availability: tech unlocked? materials present? source module owned (augment)?
+   *  + queue free? */
   status(bp, p) {
     p = p || this.state.player;
     const techOk = !bp.requiresTech || p.researchedNodes.includes(bp.requiresTech);
@@ -57,8 +118,9 @@ export const crafting = {
     return Object.keys(bp.inputs).map((id) => ({ id, need: bp.inputs[id], have: items[id] || 0 }));
   },
 
-  /** Consume inputs + grant the output. Returns true on success (emits its own toasts on failure). */
-  build(bpId) {
+  /** Consume inputs + enqueue (or grant instantly if timeS=0). Returns true on success.
+   *  stationId is the station where the build is committed (each station has its own 1-slot queue). */
+  build(bpId, stationId) {
     const bp = BLUEPRINT_BY_ID.get(bpId);
     if (!bp) return false;
     const p = this.state.player;
@@ -75,8 +137,14 @@ export const crafting = {
       this.bus.emit('toast', { text: 'Not enough materials', kind: 'error', ttl: 3 });
       return false;
     }
+    // queue capacity gate: one job per station at a time (the strategic constraint)
+    const sid = stationId || (this.state.ui && this.state.ui.dockedStationId) || '__any__';
+    if (this.buildTime(bp) > 0 && this.isBusy(sid)) {
+      this.bus.emit('toast', { text: 'Fab busy — finish the current job first', kind: 'error', ttl: 3 });
+      return false;
+    }
 
-    // 1) consume input materials from cargo
+    // 1) consume input materials from cargo NOW (committed up front; you don't get them back on cancel)
     for (const id in bp.inputs) {
       removeCargo(this.state, id, bp.inputs[id]);
     }
@@ -85,7 +153,30 @@ export const crafting = {
       this.consumeOneModule(p, bp.fromModule);
     }
 
-    // 3) grant the product
+    const total = this.buildTime(bp);
+    if (total <= 0) {
+      // instant path (basic refining): grant immediately, same as before
+      this._grantProduct({ bp });
+      this.bus.emit('craft:complete', { bpId, productId: bp.outputs.id, kind: bp.outputs.kind, qty: bp.outputs.qty });
+      this.bus.emit('audio:cue', { id: 'confirm' });
+      this.bus.emit('toast', { text: 'Manufactured: ' + bp.name, kind: 'info', ttl: 2.5 });
+      return true;
+    }
+
+    // enqueue the job — materials already consumed; product granted on completion via update().
+    // Store bpId only (NOT the bp object) so the queue is plain serializable data with no live refs.
+    const queues = this.state.crafting.queues;
+    queues[sid] = { bpId, elapsed: 0, total, done: false, stationId: sid };
+    this.bus.emit('craft:queueChanged', {});
+    this.bus.emit('audio:cue', { id: 'confirm' });
+    this.bus.emit('toast', { text: 'Fabrication started: ' + bp.name + ' (' + Math.round(total) + 's)', kind: 'info', ttl: 3 });
+    return true;
+  },
+
+  // Grant the product for an instant build or a completed queued job.
+  _grantProduct(job) {
+    const bp = job.bp || BLUEPRINT_BY_ID.get(job.bpId);
+    if (!bp) return;
     const ships = this._ships;
     const out = bp.outputs;
     let grantMsg = '';
@@ -94,18 +185,19 @@ export const crafting = {
       grantMsg = '+' + out.qty + ' ' + out.id;
     } else if (out.kind === 'module' || out.kind === 'weapon') {
       for (let i = 0; i < (out.qty || 1); i++) {
-        p.moduleInventory.push({ instanceId: ships.nextInstanceId(), defId: out.id });
+        this.state.player.moduleInventory.push({ instanceId: ships.nextInstanceId(), defId: out.id });
       }
       grantMsg = '+' + (out.qty || 1) + ' ' + out.id;
     } else if (out.kind === 'ship') {
       ships.buyShip({ defId: out.id, setActive: false, grant: true });   // crafted: materials were the cost
       grantMsg = 'Ship: ' + out.id;
     }
-
-    this.bus.emit('craft:complete', { bpId, productId: out.id, kind: out.kind, qty: out.qty });
-    this.bus.emit('audio:cue', { id: 'confirm' });
-    this.bus.emit('toast', { text: 'Manufactured: ' + bp.name, kind: 'info', ttl: 2.5 });
-    return true;
+    if (job.stationId) {
+      // completed-queue path: emit the full feedback suite so the UI/toasts react
+      this.bus.emit('craft:complete', { bpId: bp.id, productId: out.id, kind: out.kind, qty: out.qty });
+      this.bus.emit('toast', { text: '✓ Fabrication complete: ' + bp.name, kind: 'good', ttl: 3.5 });
+      this.bus.emit('craft:queueChanged', {});
+    }
   },
 
   /** Count instances of a module def in inventory + currently fitted across owned ships. */

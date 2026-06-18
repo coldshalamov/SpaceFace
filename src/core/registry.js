@@ -37,8 +37,10 @@ export function createRegistry(ctx) {
   // heat runs late so piracy events from combat/factions this tick have landed before decay.
   // traffic runs after world (sector:enter has spawned stations) and after heat (so piracy on a
   // freighter this frame is accounted) — it only writes its own entities' intent, never player state.
+  // crafting now has a real update (build-queue progress) so it's in the sim order; it only mutates
+  // its own queues + grants products, never movement/combat state.
   const UPDATE_ORDER = [
-    input, ai, flight, weapons, physics, combat, mining, cargo,
+    input, ai, flight, weapons, physics, combat, mining, cargo, crafting,
     economy, automation, world, factions, missions, heat, traffic, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
