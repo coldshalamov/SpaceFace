@@ -1,0 +1,197 @@
+/* SpaceFace — Accessibility layer (V2 §9/§12). Pairs with src/ui/accessibility.js.
+   NOT LINKED YET: the lead adds <link rel="stylesheet" href="./styles/accessibility.css"/> in
+   index.html AFTER styles/ui.css (this file overrides theme tokens, so load order matters).
+
+   What this file CAN and CANNOT do (honesty note — mirrored in design/ACCESSIBILITY.md):
+   - CAN recolor everything that reads a CSS var or whose gradient we re-declare here at higher
+     specificity: status bars (.sf-bar--* fills, originally src/ui/uiRoot.js:315-319), badges, alert
+     strips, vignette. The bar fills mix one var stop (var(--hull)/--shield/--energy) with a HARDCODED
+     hex dark stop, and heat/boost/fuel are fully hardcoded — so we re-declare the WHOLE gradient under
+     each palette class rather than only flipping the var (which would leave the dark stop stale).
+   - CANNOT recolor the radar blips: src/ui/radar.js draws them on a <canvas> with JS hex. That remap
+     is handled in JS (SEMANTIC_PALETTE / semanticColor in accessibility.js) and is a wiring TODO for
+     the lead, NOT something this stylesheet does.
+
+   VARIABLE COLLISION the lead must reconcile:
+   - The shipped UI already uses --ui-scale (root setting `uiScale`, range 0.75–1.5; drives #hud
+     font-size at src/ui/uiRoot.js:290, set in settings.js:246-248). This file introduces --sf-ui-scale
+     (task spec: 100–200%) and clamps it. applyAccessibility() sets BOTH to the same value so nothing
+     regresses pre-reconciliation. The lead should pick one var + one range.
+
+   Conventions copied from styles/ui.css: CSS-var theming on :root, --sf-* prefix for new tokens,
+   no nesting, no external deps. */
+
+/* ============================================================================================
+   TOKENS — colorblind-safe semantic colors. Defaults equal the shipped theme (identity / 'none').
+   accessibility.js#applyAccessibility() overwrites these on documentElement per the active mode, so
+   these :root values are just the fallback when the JS controller hasn't run yet.
+   ============================================================================================ */
+:root {
+  --sf-hostile: #ff5470; --sf-neutral: #9aa8bc; --sf-friendly: #62e08a; --sf-ally: #39d0ff;
+  --sf-hull: #ff5470; --sf-shield: #39d0ff; --sf-energy: #ffd84a; --sf-cargo: #7af7d0;
+  --sf-warn: #ffb347; --sf-danger: #ff5470; --sf-good: #62e08a;
+
+  /* iOS / notched-display safe-area fallbacks (0 on desktops that don't define env()). */
+  --sf-safe-top: env(safe-area-inset-top, 0px);
+  --sf-safe-right: env(safe-area-inset-right, 0px);
+  --sf-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --sf-safe-left: env(safe-area-inset-left, 0px);
+}
+
+/* ============================================================================================
+   COLORBLIND PALETTES — applied as a class on <html> (sf-cb-protanopia / -deuteranopia / -tritanopia).
+   accessibility.js also sets the matching --sf-* custom props; the class drives the bar-gradient
+   re-declares below (which can't be done with a single var because the dark gradient stop is hardcoded
+   hex in uiRoot.js). Keeping both in sync is intentional — vars for var-driven elements, classes for
+   the gradient overrides.
+   ============================================================================================ */
+
+/* The bar fills: re-declare the FULL gradient so both stops move (uiRoot.js bakes a hex dark stop). */
+.sf-cb-protanopia  .sf-bar--hull   .sf-bar__fill { background: linear-gradient(90deg, #b35200, var(--sf-hull)); }
+.sf-cb-protanopia  .sf-bar--shield .sf-bar__fill { background: linear-gradient(90deg, #1d6fa8, var(--sf-shield)); }
+.sf-cb-protanopia  .sf-bar--energy .sf-bar__fill { background: linear-gradient(90deg, #b8932a, var(--sf-energy)); }
+.sf-cb-protanopia  .sf-bar--heat   .sf-bar__fill { background: linear-gradient(90deg, #8a3d00, #f0e442); }
+.sf-cb-protanopia  .sf-bar--boost  .sf-bar__fill { background: linear-gradient(90deg, #006f78, #00b7c2); }
+
+.sf-cb-deuteranopia .sf-bar--hull   .sf-bar__fill { background: linear-gradient(90deg, #b34000, var(--sf-hull)); }
+.sf-cb-deuteranopia .sf-bar--shield .sf-bar__fill { background: linear-gradient(90deg, #1d6fa8, var(--sf-shield)); }
+.sf-cb-deuteranopia .sf-bar--energy .sf-bar__fill { background: linear-gradient(90deg, #b8932a, var(--sf-energy)); }
+.sf-cb-deuteranopia .sf-bar--heat   .sf-bar__fill { background: linear-gradient(90deg, #8a3300, #f0e442); }
+.sf-cb-deuteranopia .sf-bar--boost  .sf-bar__fill { background: linear-gradient(90deg, #0a6f7e, #26c6da); }
+
+.sf-cb-tritanopia  .sf-bar--hull   .sf-bar__fill { background: linear-gradient(90deg, #a8243f, var(--sf-hull)); }
+.sf-cb-tritanopia  .sf-bar--shield .sf-bar__fill { background: linear-gradient(90deg, #066077, var(--sf-shield)); }
+.sf-cb-tritanopia  .sf-bar--energy .sf-bar__fill { background: linear-gradient(90deg, #b8651a, var(--sf-energy)); }
+.sf-cb-tritanopia  .sf-bar--heat   .sf-bar__fill { background: linear-gradient(90deg, #a8521f, #ff9d2f); }
+.sf-cb-tritanopia  .sf-bar--boost  .sf-bar__fill { background: linear-gradient(90deg, #1a7e6e, #2dd4bf); }
+
+/* Badge / alert severities track the colorblind-safe vars (these ARE var-driven in ui.css:262-265). */
+:is(.sf-cb-protanopia, .sf-cb-deuteranopia, .sf-cb-tritanopia) .sf-badge--good {
+  background: rgba(0, 183, 194, .14); color: var(--sf-good); border-color: rgba(0, 183, 194, .35);
+}
+:is(.sf-cb-protanopia, .sf-cb-deuteranopia, .sf-cb-tritanopia) .sf-badge--warn {
+  color: var(--sf-warn); border-color: color-mix(in srgb, var(--sf-warn) 35%, transparent);
+}
+:is(.sf-cb-protanopia, .sf-cb-deuteranopia, .sf-cb-tritanopia) .sf-badge--danger {
+  color: var(--sf-danger); border-color: color-mix(in srgb, var(--sf-danger) 40%, transparent);
+}
+/* Alert strips (src/ui/alerts.js severities): drive the left border off the safe var. */
+:is(.sf-cb-protanopia, .sf-cb-deuteranopia, .sf-cb-tritanopia) .toast.warn { border-left-color: var(--sf-warn); }
+:is(.sf-cb-protanopia, .sf-cb-deuteranopia, .sf-cb-tritanopia) .toast.good { border-left-color: var(--sf-good); }
+
+/* ============================================================================================
+   HIGH CONTRAST — class on <html> (sf-high-contrast). Strengthen borders, opaque surfaces, brighter
+   ink, kill the blur-glass that lowers legibility. We RAISE specificity (html.sf-high-contrast …) to
+   win over ui.css without editing it.
+   ============================================================================================ */
+html.sf-high-contrast {
+  --ink: #ffffff; --ink-dim: #d6e4ff; --ink-mute: #aac2e6;
+  --panel: #000307; --panel-2: #04121f; --panel-edge: #5fb8ff; --panel-edge-2: #8fd2ff;
+  --glass: rgba(2, 6, 12, .94); --glass-edge: #5fb8ff;
+}
+html.sf-high-contrast .panel,
+html.sf-high-contrast .sf-card,
+html.sf-high-contrast .toast {
+  background: var(--panel);
+  border: 2px solid var(--panel-edge);
+  backdrop-filter: none;       /* blur reduces text legibility for low-vision users */
+  box-shadow: none;
+}
+html.sf-high-contrast button,
+html.sf-high-contrast .sf-btn,
+html.sf-high-contrast .btn {
+  border: 2px solid var(--panel-edge);
+  background: var(--panel-2);
+  color: #fff;
+}
+html.sf-high-contrast button:focus-visible,
+html.sf-high-contrast .sf-btn:focus-visible,
+html.sf-high-contrast a:focus-visible,
+html.sf-high-contrast [tabindex]:focus-visible {
+  outline: 3px solid #ffe14d;
+  outline-offset: 2px;
+}
+html.sf-high-contrast .sf-bar { border: 1px solid var(--panel-edge); }
+html.sf-high-contrast #hud,
+html.sf-high-contrast .sf-barrow__num,
+html.sf-high-contrast .sf-stat__v { text-shadow: 0 1px 2px #000, 0 0 1px #000; }
+
+/* Always give keyboard users a visible focus ring, even outside high-contrast (motor/keyboard a11y). */
+:focus-visible { outline: 2px solid var(--accent, #39d0ff); outline-offset: 2px; }
+
+/* ============================================================================================
+   REDUCED MOTION — both the OS preference AND an explicit in-game class (sf-reduce-motion). These are
+   belt-and-suspenders: the class is driven by settings.video.motionReduce via accessibility.js; the
+   media query catches users who never opened settings. This handles CSS transitions/animations; the
+   3D camera shake / FOV punch is suppressed in JS (feel.js reads motionReduce; vfx via getMotionReduced).
+   ============================================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html.sf-reduce-motion *,
+html.sf-reduce-motion *::before,
+html.sf-reduce-motion *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+  scroll-behavior: auto !important;
+}
+/* Kill the parallax/drift transforms that read as motion. */
+html.sf-reduce-motion .sf-fadein { animation: none !important; }
+
+/* ============================================================================================
+   REDUCED FLASH — separate axis (sf-reduce-flash, photosensitivity). Distinct from reduce-motion: a
+   player may keep camera movement but cannot tolerate strobing. Tame the rapid opacity pulses that
+   ui.css/hud.js define (death flash, bind-pulse, low-* blink) WITHOUT removing the information — the
+   element stays visible at a steady opacity instead of vanishing/flashing.
+   ============================================================================================ */
+html.sf-reduce-flash .sf-death,
+html.sf-reduce-flash .sf-death.show { animation: none !important; opacity: 1 !important; }
+html.sf-reduce-flash .sf-bind-btn--capture { animation: none !important; opacity: 1 !important; }
+html.sf-reduce-flash body.sf-deathflash::after { animation: none !important; opacity: .35 !important; }
+/* Any element using a flashing keyframe should hold steady; blanket-tame names that pulse. */
+html.sf-reduce-flash [class*="pulse"],
+html.sf-reduce-flash [class*="blink"],
+html.sf-reduce-flash [class*="flash"] { animation: none !important; opacity: 1 !important; }
+
+/* ============================================================================================
+   UI SCALE — owned by the shipped `--ui-scale` path (ui.css:21 #ui-root + uiRoot.js:290 #hud), driven
+   by the Video > UI scale slider (range extended to 0.75–2.0 in settings.js for the 1–2x requirement).
+   The accessibility layer deliberately does NOT introduce a second scale var, to avoid double-scaling.
+   ============================================================================================ */
+
+/* ============================================================================================
+   SAFE-AREA INSETS — pad the HUD root inside notches / rounded corners / gesture bars so bars and
+   radar aren't clipped on phones/tablets or TVs with overscan. Uses env() with 0 fallbacks (no effect
+   on standard desktop displays).
+   ============================================================================================ */
+#hud {
+  padding-top: var(--sf-safe-top);
+  padding-right: var(--sf-safe-right);
+  padding-bottom: var(--sf-safe-bottom);
+  padding-left: var(--sf-safe-left);
+}
+
+/* ============================================================================================
+   DYSLEXIA-READABLE FONT — class on <html> (sf-dyslexia). Swaps the proportional UI font for a
+   high-legibility stack and loosens letter/word spacing + line-height. No web font is bundled (zero
+   build step), so we fall back through widely-installed legible faces; if the lead later ships
+   OpenDyslexic, add it to the front of this stack. The monospace HUD numerics are left intact.
+   ============================================================================================ */
+html.sf-dyslexia {
+  --font: "OpenDyslexic", "Atkinson Hyperlegible", "Comic Sans MS", "Verdana", system-ui, sans-serif;
+}
+html.sf-dyslexia,
+html.sf-dyslexia .sf-menu,
+html.sf-dyslexia #screens {
+  letter-spacing: .03em;
+  word-spacing: .06em;
+  line-height: 1.5;
+}
+/* Don't space-out the mono telemetry (alignment matters more than tracking there). */
+html.sf-dyslexia .mono { letter-spacing: normal; word-spacing: normal; }

@@ -5,6 +5,8 @@
 //
 // Formulas (§ spec): px = 90 + (e.x-p.x)/range*90 ; py = 90 + (e.z-p.z)/range*90.
 
+import { semanticColor, semanticShape } from './accessibility.js';
+
 const SIZE = 180;       // CSS px
 const C = SIZE / 2;     // center
 const R = 88;           // usable radius (px)
@@ -20,11 +22,19 @@ const COL = {
   asteroid: '#6e7b8c', pickup: '#ffe36b', station: '#7af7d0', ring: '#1d3350',
 };
 
-function blipColor(e, playerTeam) {
+// Classify a ship/drone blip into a semantic state (drives the colorblind palette + redundant shape).
+function shipState(e, playerTeam) {
+  if (e.team !== playerTeam && e.team !== 0) return 'hostile';
+  if (e.factionId && FACTION_COLOR[e.factionId]) return 'friendly';
+  return 'neutral';
+}
+
+function blipColor(e, playerTeam, mode) {
   if (e.type === 'asteroid') return COL.asteroid;
   if (e.type === 'pickup') return COL.pickup;
   if (e.type === 'station') return e.factionId && FACTION_COLOR[e.factionId] ? FACTION_COLOR[e.factionId] : COL.station;
-  // ships / drones
+  // ships / drones — when a colorblind mode is active, use the colorblind-safe semantic palette.
+  if (mode && mode !== 'none') return semanticColor(shipState(e, playerTeam), mode);
   if (e.factionId && FACTION_COLOR[e.factionId]) {
     // color hostiles red regardless of faction tint when clearly enemy team
     if (e.team !== playerTeam && e.team !== 0) return COL.hostile;
@@ -32,6 +42,13 @@ function blipColor(e, playerTeam) {
   }
   if (e.team !== playerTeam && e.team !== 0) return COL.hostile;
   return COL.neutral;
+}
+
+// Redundant blip shape so hostility is readable without color (colorblind mode). Caller sets fillStyle.
+function drawShipShape(g, x, y, shape) {
+  if (shape === 'triangle') { g.beginPath(); g.moveTo(x, y - 2.4); g.lineTo(x + 2.2, y + 2); g.lineTo(x - 2.2, y + 2); g.closePath(); g.fill(); }
+  else if (shape === 'diamond') { g.beginPath(); g.moveTo(x, y - 2.4); g.lineTo(x + 2.4, y); g.lineTo(x, y + 2.4); g.lineTo(x - 2.4, y); g.closePath(); g.fill(); }
+  else g.fillRect(x - 1.6, y - 1.6, 3.2, 3.2);
 }
 
 export function createRadar(ctx) {
@@ -68,6 +85,7 @@ export function createRadar(ctx) {
     const px = p.pos.x, pz = p.pos.z;
     const targetId = state.player.targetId;
     const playerTeam = p.team;
+    const cbMode = (state.settings.accessibility && state.settings.accessibility.colorblindMode) || 'none';
 
     const list = state.entityList;
     for (let i = 0; i < list.length; i++) {
@@ -76,7 +94,7 @@ export function createRadar(ctx) {
       if (e.type === 'projectile' || e.type === 'fx') continue;
       const dx = e.pos.x - px, dz = e.pos.z - pz;
       const dist = Math.hypot(dx, dz);
-      const col = blipColor(e, playerTeam);
+      const col = blipColor(e, playerTeam, cbMode);
       let bx, by, off = false;
       if (dist > range) {
         off = true;
@@ -100,7 +118,9 @@ export function createRadar(ctx) {
       } else if (e.type === 'station') {
         g.fillRect(bx - 2.5, by - 2.5, 5, 5);
       } else {
-        g.fillRect(bx - 1.6, by - 1.6, 3.2, 3.2);
+        // ship/drone — colorblind mode adds a redundant shape (hostile triangle / friendly diamond).
+        if (cbMode !== 'none') drawShipShape(g, bx, by, semanticShape(shipState(e, playerTeam)));
+        else g.fillRect(bx - 1.6, by - 1.6, 3.2, 3.2);
       }
       if (e.id === targetId) {
         g.strokeStyle = '#fff'; g.lineWidth = 1.2;

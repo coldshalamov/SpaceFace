@@ -6,6 +6,7 @@ import { createChaseCamera } from './camera.js';
 import { createStarfield } from './starfield.js';
 import { createVisualFactory } from './visualFactory.js';
 import { createBloom } from './bloom.js';
+import { installDiagnostics } from './diagnostics.js';
 
 const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _ray = new THREE.Raycaster();
@@ -21,7 +22,10 @@ export const render = {
     const state = ctx.state, bus = ctx.bus;
 
     const canvas = document.getElementById('gl-canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
+    // preserveDrawingBuffer is needed only by the dev /__shot screenshot route (dev browser/preview),
+    // not by the packaged build (loaded with ?prod=1) — keep it off there to avoid the readback cost.
+    const devShot = !(typeof location !== 'undefined' && new URLSearchParams(location.search).get('prod') === '1');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: devShot });
     renderer.setClearColor(0x060912, 1);
     const drawSize = applyRendererSize(renderer, state);
 
@@ -46,6 +50,9 @@ export const render = {
     try { this.bloom = createBloom(renderer, drawSize.x, drawSize.y); }
     catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
     this._meshes = new Map(); // entityId -> Object3D
+    // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
+    try { this.diag = installDiagnostics(renderer, { entities: () => state.entityList.length }); }
+    catch (err) { console.warn('[render] diagnostics unavailable:', err); this.diag = null; }
 
     state.render.scene = scene;
     state.render.renderer = renderer;
@@ -160,6 +167,7 @@ export const render = {
     this.starfield.recenter(this.cam.obj.position);
     if (this.bloom && this.state.settings.video.bloom !== false) this.bloom.render(this.scene, this.cam.obj);
     else this.renderer.render(this.scene, this.cam.obj);
+    if (this.diag) this.diag.update(frameDt);
   },
 
   worldToScreen(v) {

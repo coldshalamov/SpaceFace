@@ -14,6 +14,9 @@ function defaultSettings() {
     video: { renderScale: 1, bloom: true, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'high', pixelRatioCap: 2, motionReduce: false },
     gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard' },
     controls: { bindings: null },  // null = use input.js DEFAULT_BINDINGS; populated on first rebind
+    // Accessibility (V2 §9/§12). motionReduce lives under video (feel/vfx read it there); uiScale is the
+    // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.
+    accessibility: { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false },
   };
 }
 

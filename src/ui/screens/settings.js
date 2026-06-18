@@ -86,7 +86,7 @@ function shell(rootEl, title, extraClass) {
 }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
-const TABS = ['Audio', 'Video', 'Gameplay', 'Controls'];
+const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
 // Default keybind cheat-sheet (also used by Help). Flight keys are owned by input/flight,
 // listed here for the player's reference (§5.6).
 const KEYBINDS = [
@@ -243,7 +243,7 @@ export const settingsScreen = {
       // smoke) with the camera shake / FOV punch / hit-stop freeze suppressed. Live-applied: the
       // feel module reads settings.video.motionReduce every trigger, so toggling takes effect now.
       rowToggle('Reduce motion', () => !!vd.motionReduce, (v) => this._set(ctx, 'video', 'motionReduce', v));
-      rowSlider('UI scale', () => s.uiScale, 0.75, 1.5, 0.05, (x) => x.toFixed(2) + 'x', (v) => {
+      rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v) => {
         this._set(ctx, null, 'uiScale', v);
         const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);
       });
@@ -253,6 +253,17 @@ export const settingsScreen = {
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
       rowToggle('Damage numbers', () => s.showDamageNumbers, (v) => this._set(ctx, null, 'showDamageNumbers', v));
+    } else if (refs.active === 'Access') {
+      const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false });
+      rowSelect('Colorblind palette', () => ac.colorblindMode || 'none',
+        [['none', 'Off'], ['protanopia', 'Protanopia (red-weak)'], ['deuteranopia', 'Deuteranopia (green-weak)'], ['tritanopia', 'Tritanopia (blue-weak)']],
+        (v) => this._set(ctx, 'accessibility', 'colorblindMode', v));
+      rowToggle('High contrast', () => !!ac.highContrast, (v) => this._set(ctx, 'accessibility', 'highContrast', v));
+      rowToggle('Reduce flashing', () => !!ac.flashReduce, (v) => this._set(ctx, 'accessibility', 'flashReduce', v));
+      rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
+      // Reduce-motion mirror — the field lives under video (feel/vfx read it there); surfaced here too.
+      rowToggle('Reduce motion', () => !!s.video.motionReduce, (v) => this._set(ctx, 'video', 'motionReduce', v));
+      pane.appendChild(el('p', 'sf-muted', 'UI scale is on the Video tab. Colorblind mode also recolors radar blips and adds redundant shapes.'));
     } else if (refs.active === 'Controls') {
       pane.appendChild(el('p', 'sf-muted', 'Click a key to rebind it, then press a new key. Mouse buttons (fire/mine) are fixed.'));
       this._renderControlsRebind(ctx, pane);

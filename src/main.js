@@ -9,6 +9,14 @@ import { startLoop } from './core/loop.js';
 import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
 import { NEW_GAME } from './data/newGameDefaults.js';
+import { createTelemetry } from './systems/telemetry.js';
+import { applyAccessibility } from './ui/accessibility.js';
+
+// Debug surfaces (the mutable window.SF handle + boot logs) are exposed only OUTSIDE a packaged build.
+// The packaged app loads the page with ?prod=1 (electron/main.cjs); dev servers, the preview, and a
+// plain browser do not — so debugging stays available in dev while players get a clean console and no
+// global game handle. (userAgent sniffing fails here: the desktop preview is itself Electron-based.)
+const SF_DEBUG = !(typeof location !== 'undefined' && new URLSearchParams(location.search).get('prod') === '1');
 
 async function boot() {
   try {
@@ -22,6 +30,14 @@ async function boot() {
     ctx.registry = registry;
     registry.init();
 
+    // Local telemetry sink (privacy-safe, no network): onboarding funnel, balance/career stats,
+    // death heatmap. Subscribes to the live bus; mirrored to window.__SF_TELEMETRY__ for dev.
+    const telemetry = createTelemetry(bus, state);
+    // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
+    applyAccessibility(state.settings);
+    bus.on('settings:changed', () => applyAccessibility(state.settings));
+    bus.on('save:loaded', () => applyAccessibility(state.settings));
+
     // If the save system implements newGame(), let it own world setup; else use the skeleton bootstrap.
     // Boot to the MAIN MENU. uiRoot shows it automatically because state.mode === 'menu' (the
     // gameState default). The world is created on New Game (game:new) and restored on Continue
@@ -32,9 +48,11 @@ async function boot() {
     startLoop(state, registry);
     hideBootOverlay();
 
-    // expose for debugging and the dev observe loop
-    window.SF = { state, bus, registry, ctx, THREE };
-    console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
+    // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
+    if (SF_DEBUG) {
+      window.SF = { state, bus, registry, ctx, THREE, telemetry };
+      console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
+    }
   } catch (err) {
     showBootError(err);
     throw err;
@@ -96,7 +114,7 @@ function startNewGame(state, helpers, bus, registry, opts) {
   if (opts.difficulty) state.settings.gameplay.difficulty = opts.difficulty;
   state.mode = 'flight';
   bus.emit('game:started', {});
-  console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
+  if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
 }
 
 function resetRunState(state) {
