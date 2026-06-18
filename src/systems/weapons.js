@@ -433,6 +433,10 @@ export const weapons = {
   _isAggressive(e, player, state) {
     const ai = e.data && e.data.ai;
     if (ai) {
+      // Passive freighters (ambient traffic, V2 §28b) are NEVER auto-targeted — they're scenery +
+      // economy movers, not threats. Attacking one is a deliberate player choice (piracy -> heat),
+      // never an auto-fire accident.
+      if (ai.passive) return false;
       const fsm = ai.fsm;
       if (fsm === 'attack' || fsm === 'strafe' || fsm === 'pursue') return true;
       // lawful patrols only count if the player is wanted (they'd attack); otherwise leave them be

@@ -97,6 +97,10 @@ export const ai = {
       if (e.id === state.playerId) continue;
       const data = e.data;
       if (!data || !data.ai) continue;          // only entities the spawner tagged as AI ships
+      // Passive freighters (ambient traffic, V2 §28b) drive themselves via data.intent from the
+      // traffic system — skip the combat FSM so they never acquire/attack/strafe. They can still be
+      // attacked (piracy -> heat), they just don't initiate.
+      if (data.ai.passive) continue;
       this._think(e, data, state, player, dt);
     }
   },

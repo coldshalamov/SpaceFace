@@ -186,8 +186,20 @@ export const economy = {
     bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty); });
 
     // ---- NPC / passive-income trades route through the same execute path (self-balancing) --
-    bus.on('aiTrader:requestTrade', (p) => { if (p) this.execute(p.stationId, p.commodityId, p.side, p.qty); });
-    bus.on('miningDrone:sellOre', (p) => { if (p) this.execute(p.stationId, p.commodityId || p.good, 'sell', p.qty); });
+    // NPC / drone trades move market stock (their activity shifts prices — the whole point of a
+    // living economy) but must NOT touch the player's wallet or cargo. Previously both routed
+    // through execute(), which hardcodes isPlayer=true and debits/credits state.player — a latent
+    // bug where an NPC "sale" literally paid the player. Now they use the stock-only pressure path
+    // (applyStockPressure), the same path automation uses, so NPCs are real economic actors without
+    // a wallet-coupling accident. (Audit cut-list #2.)
+    bus.on('aiTrader:requestTrade', (p) => {
+      if (!p) return;
+      this.applyStockPressure(p.stationId, p.commodityId, p.side, p.qty);
+    });
+    bus.on('miningDrone:sellOre', (p) => {
+      if (!p) return;
+      this.applyStockPressure(p.stationId, p.commodityId || p.good, 'sell', p.qty);
+    });
     bus.on('economy:applyTradePressure', (p) => { // automation pressure: nudge stock without crediting
       if (!p) return; const side = (p.vol || 0) >= 0 ? 'sell' : 'buy';
       this.applyStockPressure(p.stationId, p.good || p.commodityId, side, Math.abs(p.vol || 0));

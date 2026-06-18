@@ -17,6 +17,7 @@ import { missions } from '../systems/missions.js';
 import { ships } from '../systems/ships.js';
 import { crafting } from '../systems/crafting.js';
 import { heat } from '../systems/heat.js';
+import { traffic } from '../systems/traffic.js';
 import { onboarding } from '../systems/onboarding.js';
 import { render } from '../render/renderer.js';
 import { vfx } from '../render/vfx.js';
@@ -29,14 +30,16 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, input, ai, flight, weapons, physics, combat, mining, cargo, economy,
-    automation, world, factions, missions, ships, crafting, heat, onboarding, render, vfx, feel, audio, ui, save,
+    automation, world, factions, missions, ships, crafting, heat, traffic, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI before flight, weapons before physics, etc.) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
   // heat runs late so piracy events from combat/factions this tick have landed before decay.
+  // traffic runs after world (sector:enter has spawned stations) and after heat (so piracy on a
+  // freighter this frame is accounted) — it only writes its own entities' intent, never player state.
   const UPDATE_ORDER = [
     input, ai, flight, weapons, physics, combat, mining, cargo,
-    economy, automation, world, factions, missions, heat, onboarding,
+    economy, automation, world, factions, missions, heat, traffic, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
 
