@@ -15,11 +15,13 @@ const checks = [
 
 let ok = 0;
 let fail = 0;
+const loaded = new Map();
 
 for (const [path, exportName] of checks) {
   try {
     const mod = await import(path);
     const def = mod[exportName];
+    loaded.set(exportName, def);
     const missing = [];
     if (!def) missing.push(exportName);
     if (def && !def.id) missing.push(`${exportName}.id`);
@@ -34,6 +36,20 @@ for (const [path, exportName] of checks) {
   } catch (err) {
     console.log(`ERR  ${path} - ${err.message}`);
     fail++;
+  }
+}
+
+const starmap = loaded.get('starmapScreen');
+if (starmap) {
+  let popped = 0;
+  const handled = typeof starmap.onKey === 'function' &&
+    starmap.onKey({ key: 'M' }, { screenManager: { popScreen() { popped++; } } });
+  if (!handled || popped !== 1) {
+    console.log('FAIL starmapScreen - M shortcut must close the starmap');
+    fail++;
+  } else {
+    console.log('ok   starmapScreen - M shortcut closes');
+    ok++;
   }
 }
 

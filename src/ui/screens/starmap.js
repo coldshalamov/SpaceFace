@@ -63,6 +63,13 @@ function injectStyle() {
   document.head.appendChild(el);
 }
 
+function closeScreen(ctx) {
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  const mgr = (ctx && (ctx.screenManager || ctx.screens)) || (ui && (ui.screenManager || ui.manager));
+  if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
+  else if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
+}
+
 export const starmapScreen = {
   id: 'starmap',
   _ctx: null,
@@ -141,6 +148,14 @@ export const starmapScreen = {
   },
 
   onHide() { /* DOM retained per ScreenManager cache contract; nothing to tear down */ },
+
+  onKey(ev, ctx) {
+    if (ev && (ev.key === 'm' || ev.key === 'M')) {
+      closeScreen(ctx || this._ctx);
+      return true;
+    }
+    return false;
+  },
 
   refresh(ctx) {
     if (ctx) this._ctx = ctx;
