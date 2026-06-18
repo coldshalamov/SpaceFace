@@ -121,6 +121,8 @@ export const SECTORS = [
     pois: [
       { id: 'poi_merc',    type: 'colony',   name: 'Mercenary Outpost', factionId: 'faction_quiet' },
       { id: 'poi_cruiser', type: 'derelict', name: 'Derelict Cruiser' },
+      // V2 §6 / M3: a claimable industrial moon — a body the player can claim and build on.
+      { id: 'poi_claim_pallas', type: 'colony', name: 'Pallas Industrial Moon', claimable: true, size: 'M' },
     ],
   },
   {
@@ -140,7 +142,7 @@ export const SECTORS = [
       { type: 'radiation',      center: { x: 300,  z: -700 }, radius: 700, intensity: 0.5 },
       { type: 'dense_asteroid', center: { x: -600, z: 500  }, radius: 650, intensity: 0.5 },
     ],
-    pois: [ { id: 'poi_colony', type: 'colony', name: 'Abandoned Mining Colony' } ],
+    pois: [ { id: 'poi_colony', type: 'colony', name: 'Abandoned Mining Colony', claimable: true, size: 'S' } ],
   },
   {
     id: 'sector_sker_haven', name: 'Sker Haven', tier: 3, security: 0.08,

@@ -315,9 +315,11 @@ export const world = {
           poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
           hidden: !!poi.hidden, gatedBy: poi.gatedBy || null,
           scanRange: poi.scanRange || SCAN_RANGE, sectorId: sector.id,
+          // V2 §6 / M3: claimable bodies carry their claim flag + size so the player can claim them.
+          claimable: !!poi.claimable, size: poi.size || 'M',
         },
       });
-      active.pois.push({ id: ent.id, poiId: poi.id, type: poi.type, pos, hidden: !!poi.hidden });
+      active.pois.push({ id: ent.id, poiId: poi.id, type: poi.type, pos, hidden: !!poi.hidden, claimable: !!poi.claimable });
     }
   },
 

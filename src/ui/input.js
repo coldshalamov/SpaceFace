@@ -92,6 +92,12 @@ export function createUiInput(ctx, screenManager) {
         ev.preventDefault();
         openDrill();
         return;
+      case 'c': case 'C':
+        // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base
+        // screen for an already-claimed body to build modules / teleport.
+        ev.preventDefault();
+        claimOrOpenBase();
+        return;
       case 'F5':
         ev.preventDefault(); bus.emit('game:save', { slot: 'quick' }); return;
       case 'F9':
@@ -129,6 +135,47 @@ export function createUiInput(ctx, screenManager) {
     state.ui.pendingDrillAsteroidId = astId;
     screenManager.pushScreen('drill');
     bus.emit('audio:cue', { id: 'ui_open' });
+  }
+
+  // V2 §6 / M3: claim the nearest claimable body POI in range, or — if the player is near an
+  // already-claimed body — open the Base screen to build modules / teleport. Bails with a toast
+  // if no claimable POI is nearby.
+  function claimOrOpenBase() {
+    const claimsSys = ctx.registry && ctx.registry.get('claims');
+    if (!claimsSys) return;
+    const player = state.entities.get(state.playerId);
+    if (!player) return;
+    const RANGE = 220;
+    // find claimable POI entities in range
+    let nearest = null, bestD = RANGE * RANGE;
+    for (const e of state.entityList) {
+      if (!e.alive || !e.data || !e.data.poi || !e.data.claimable) continue;
+      const d = (e.pos.x - player.pos.x) ** 2 + (e.pos.z - player.pos.z) ** 2;
+      if (d < bestD) { bestD = d; nearest = e; }
+    }
+    if (!nearest) {
+      bus.emit('toast', { text: 'No claimable body in range — fly near a colony/moon and press C', kind: 'warn', ttl: 3 });
+      return;
+    }
+    const poiDef = {
+      id: nearest.data.poiId,
+      name: nearest.data.name,
+      size: nearest.data.size || 'M',
+      pos: { x: nearest.pos.x, z: nearest.pos.z },
+    };
+    // already claimed? open the Base screen for it
+    if (claimsSys.isClaimed(poiDef.id)) {
+      if (!state.ui) state.ui = {};
+      state.ui.pendingClaimBodyId = (claimsSys.list().find((b) => b.poiId === poiDef.id) || {}).id;
+      if (screenManager.hasScreen && screenManager.hasScreen('base')) {
+        screenManager.pushScreen('base');
+      } else {
+        bus.emit('toast', { text: 'Body claimed. (Base screen coming soon — refinery auto-runs, teleporter ready.)', kind: 'info', ttl: 4 });
+      }
+      return;
+    }
+    // claim it (the system validates credits + emits feedback)
+    claimsSys.claim(poiDef);
   }
 
   // Emit the intent only; uiRoot's dock:undocked handler owns clearing ui.docked and popping

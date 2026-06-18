@@ -20,6 +20,7 @@ import { heat } from '../systems/heat.js';
 import { traffic } from '../systems/traffic.js';
 import { drill } from '../systems/drill.js';
 import { intervention } from '../systems/intervention.js';
+import { claims } from '../systems/claims.js';
 import { onboarding } from '../systems/onboarding.js';
 import { render } from '../render/renderer.js';
 import { vfx } from '../render/vfx.js';
@@ -32,7 +33,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, input, ai, flight, weapons, physics, combat, mining, cargo, economy,
-    automation, intervention, world, factions, missions, ships, crafting, heat, traffic, drill, onboarding, render, vfx, feel, audio, ui, save,
+    automation, intervention, world, factions, missions, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI before flight, weapons before physics, etc.) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -43,9 +44,10 @@ export function createRegistry(ctx) {
   // its own queues + grants products, never movement/combat state.
   // intervention runs after automation (so automation:assetLost this tick has fired) and prunes
   // closed salvage wrecks.
+  // claims runs late (after cargo/economy) so its refinery conversion uses fresh cargo state.
   const UPDATE_ORDER = [
     input, ai, flight, weapons, physics, combat, mining, cargo, crafting,
-    economy, automation, intervention, world, factions, missions, heat, traffic, drill, onboarding,
+    economy, automation, intervention, world, factions, missions, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
 
