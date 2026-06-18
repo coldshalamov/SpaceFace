@@ -5,8 +5,22 @@
 // candidate copy first).
 //
 // CURRENT_VERSION lives in src/data/saveVersion.js (the single source of truth) and is re-exported
-// here for convenience. The schema is at v1, so there are no migrations yet — the array is empty.
+// here for convenience.
 // When the schema changes: bump CURRENT_VERSION in saveVersion.js and append { from:N-1, to:N, fn }.
 export { CURRENT_VERSION } from '../data/saveVersion.js';
 
-export const MIGRATIONS = [];
+export const MIGRATIONS = [
+  {
+    from: 1,
+    to: 2,
+    fn(data) {
+      if (!data.crafting || typeof data.crafting !== 'object') {
+        data.crafting = { queues: {} };
+        return;
+      }
+      if (!data.crafting.queues || typeof data.crafting.queues !== 'object') {
+        data.crafting.queues = {};
+      }
+    },
+  },
+];

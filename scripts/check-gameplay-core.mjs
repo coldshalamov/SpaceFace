@@ -5,6 +5,7 @@ import { save } from '../src/save/saveSystem.js';
 import { cargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { combat } from '../src/systems/combat.js';
+import { crafting } from '../src/systems/crafting.js';
 import { economy } from '../src/systems/economy.js';
 import { heat } from '../src/systems/heat.js';
 import { missions } from '../src/systems/missions.js';
@@ -75,6 +76,7 @@ function makeSaveState() {
     missions: { boards: {}, active: [], completedLog: [], nextId: 1 },
     story: { beatIndex: 0 },
     automation: { drones: [], meta: {} },
+    crafting: { queues: {} },
     settings: {},
     entityList: [],
   };
@@ -129,6 +131,42 @@ function checkSaveDelegatesSystemHooks() {
   save._restoreAutomation({ drones: [{ id: 'd2', entityIds: [99] }], meta: { rngSeed: 8 }, nextId: 5 });
   assert.equal(automationPayload.nextId, 5, 'automation restore should use automation.deserialize');
   assert.equal(typeof state.automation.rng, 'function', 'automation deserialize should rebuild rng function');
+}
+
+function checkSaveDelegatesCraftingHooks() {
+  const state = makeSaveState();
+  state.crafting = {
+    queues: {
+      station_alpha: { bpId: 'bp_build_pulse_laser_s', elapsed: 5, total: 20, done: false, stationId: 'station_alpha' },
+    },
+  };
+  const systems = {
+    economy: { serialize: () => ({}) },
+    factions: { serialize: () => ({}) },
+    world: { serialize: () => ({}) },
+    missions: { serialize: () => ({ boards: {}, active: [], completedLog: [], nextId: 1, story: { beatIndex: 0 } }) },
+    automation: { serialize: () => ({}) },
+    crafting,
+  };
+
+  crafting.state = state;
+  save.state = state;
+  save.registry = { get: (name) => systems[name] || null };
+  const data = save.serializeData();
+
+  assert.equal(data.crafting.queues.station_alpha.bpId, 'bp_build_pulse_laser_s', 'save should use crafting.serialize');
+  assert.equal(data.crafting.queues.station_alpha.elapsed, 5, 'save should preserve queued crafting progress');
+
+  save._restoreCrafting({
+    queues: {
+      station_beta: { bpId: 'bp_build_cargopod_m', elapsed: 3, total: 20, done: false, stationId: 'station_beta' },
+    },
+  });
+  assert.equal(state.crafting.queues.station_beta.bpId, 'bp_build_cargopod_m', 'crafting restore should use crafting.deserialize');
+  assert.equal(state.crafting.queues.station_beta.elapsed, 3, 'crafting restore should preserve queue progress');
+
+  save._restoreCrafting(undefined);
+  assert.deepEqual(state.crafting.queues, {}, 'missing legacy crafting payload should clear live crafting queues');
 }
 
 function checkMissionCompletionAutosaveSeesSettledState() {
@@ -977,6 +1015,7 @@ function checkSpawnRequestAmbushContract() {
 
 checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
+checkSaveDelegatesCraftingHooks();
 checkMissionCompletionAutosaveSeesSettledState();
 checkLoadDoesNotSpawnTargetsForStaleLiveMissions();
 checkLoadRejectsSaveWithoutPlayerEntity();

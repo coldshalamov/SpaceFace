@@ -25,6 +25,38 @@ const DEFAULT_TIME_S = {
 };
 const QUEUE_CAPACITY = 1; // one slot per station — capacity IS the strategic constraint
 
+function buildDuration(bp) {
+  if (!bp) return 0;
+  if (bp.timeS && bp.timeS > 0) return bp.timeS;
+  return DEFAULT_TIME_S[bp.category] || 0;
+}
+
+function normalizeQueues(raw) {
+  const queues = {};
+  if (!raw || typeof raw !== 'object') return queues;
+  for (const stationId in raw) {
+    const job = raw[stationId];
+    if (!job || job.done) continue;
+    const bpId = typeof job.bpId === 'string'
+      ? job.bpId
+      : (job.bp && typeof job.bp.id === 'string' ? job.bp.id : null);
+    const bp = bpId ? BLUEPRINT_BY_ID.get(bpId) : null;
+    if (!bp) continue;
+    const total = Number.isFinite(job.total) && job.total > 0 ? job.total : buildDuration(bp);
+    if (!(total > 0)) continue;
+    const elapsedRaw = Number.isFinite(job.elapsed) ? job.elapsed : 0;
+    const elapsed = Math.max(0, Math.min(total, elapsedRaw));
+    queues[stationId] = {
+      bpId,
+      elapsed,
+      total,
+      done: false,
+      stationId: typeof job.stationId === 'string' ? job.stationId : stationId,
+    };
+  }
+  return queues;
+}
+
 export const crafting = {
   name: 'crafting',
   init(ctx) {
@@ -70,9 +102,7 @@ export const crafting = {
 
   /** Effective build duration for a blueprint (honors bp.timeS, else DEFAULT_TIME_S by category). */
   buildTime(bp) {
-    if (!bp) return 0;
-    if (bp.timeS && bp.timeS > 0) return bp.timeS;
-    return DEFAULT_TIME_S[bp.category] || 0;
+    return buildDuration(bp);
   },
 
   /** Is the given station's build queue busy? (capacity = 1) */
@@ -219,5 +249,13 @@ export const crafting = {
       const slot = (s.fittings || []).indexOf(defId);
       if (slot >= 0) { s.fittings[slot] = null; this._ships.recomputeIfActive(si, s.fittings); return; }
     }
+  },
+
+  serialize() {
+    return { queues: normalizeQueues(this.state.crafting && this.state.crafting.queues) };
+  },
+
+  deserialize(data) {
+    this.state.crafting = { queues: normalizeQueues(data && data.queues) };
   },
 };

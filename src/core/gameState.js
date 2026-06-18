@@ -85,6 +85,7 @@ export function createGameState(seed) {
     conflicts: {},
     missions: { boards: {}, active: [], completedLog: [], nextId: 1, config: null },
     story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
+    crafting: { queues: {} },
     world: { sectors: {}, currentSectorId: null, activeSector: { stations: [], fields: [], hazards: [], pois: [], gates: [] }, discovery: {}, entryPoint: { x: 0, z: 0, heading: 0 } },
     jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
     fuel: { current: 100, max: 100 },

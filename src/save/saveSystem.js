@@ -80,6 +80,7 @@ export const save = {
     data.entities = this._serializeEntities();
     data.missions = this._callSerialize('missions') || this._serializeMissions();
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
+    data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
     data.settings = this._serializeSettings();
     return data;
   },
@@ -131,6 +132,10 @@ export const save = {
 
   _serializeAutomation() {
     return clonePlain(this.state.automation);
+  },
+
+  _serializeCrafting() {
+    return clonePlain(this.state.crafting || { queues: {} });
   },
 
   _serializeSettings() {
@@ -412,6 +417,7 @@ export const save = {
         try { missionsSys.spawnTargetsForSector(sectorId); } catch (err) { console.error('[save] spawn mission targets', err); }
       }
       this._restoreAutomation(data.automation);
+      this._restoreCrafting(data.crafting);
       this._restoreSettings(data.settings);
 
       // 12. restore sim clock + rebuild the master RNG from the (unchanged) seed.
@@ -494,6 +500,15 @@ export const save = {
       try { sys.deserialize(d); return; } catch (err) { console.error('[save] deserialize automation', err); }
     }
     this.state.automation = d;
+  },
+
+  _restoreCrafting(d) {
+    const payload = d || { queues: {} };
+    const sys = this.registry && this.registry.get && this.registry.get('crafting');
+    if (sys && typeof sys.deserialize === 'function') {
+      try { sys.deserialize(payload); return; } catch (err) { console.error('[save] deserialize crafting', err); }
+    }
+    this.state.crafting = clonePlain(payload);
   },
 
   _restoreSettings(d) {
