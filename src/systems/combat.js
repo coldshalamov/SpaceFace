@@ -273,6 +273,42 @@ export const combat = {
       }
       if (e.capMax > 0 && e.cap < e.capMax) e.cap = Math.min(e.capMax, e.cap + (e.capRegen || 0) * dt);
     }
+    this._applyBeamDamage(state);
+  },
+
+  // Continuous beam weapons (weapons.js) push a ray per firing beam into state.combat.beams each tick
+  // with a dpsThisTick value; weapons clears the list at the start of its update, so this consumes the
+  // current tick's beams (weapons runs before combat in UPDATE_ORDER). Each beam damages the FIRST
+  // entity along its path. Without this sweep, beam weapons (and the Dreadnought's heavy beams) deal
+  // zero damage — only writes, no reads.
+  _applyBeamDamage(state) {
+    const beams = state.combat && state.combat.beams;
+    if (!beams || !beams.length) return;
+    for (let i = 0; i < beams.length; i++) {
+      const beam = beams[i];
+      if (!beam || !beam.from || !beam.to || !(beam.dpsThisTick > 0)) continue;
+      const ax = beam.from.x, az = beam.from.z;
+      const dx = beam.to.x - ax, dz = beam.to.z - az;
+      const len2 = dx * dx + dz * dz || 1e-6;
+      const owner = state.entities.get(beam.ownerId);
+      const ownerTeam = owner ? owner.team : null;
+      let bestT = Infinity, bestE = null;
+      for (const e of state.entityList) {
+        if (!e.alive) continue;
+        if (e.type !== 'ship' && e.type !== 'station' && e.type !== 'drone') continue;
+        if (e.id === beam.ownerId) continue;
+        if (ownerTeam != null && e.team === ownerTeam) continue; // no friendly fire
+        let t = ((e.pos.x - ax) * dx + (e.pos.z - az) * dz) / len2;
+        if (t < 0) t = 0; else if (t > 1) t = 1;
+        const px = e.pos.x - (ax + dx * t), pz = e.pos.z - (az + dz * t);
+        const rr = (e.radius || 6) + 2;
+        if (px * px + pz * pz <= rr * rr && t < bestT) { bestT = t; bestE = e; }
+      }
+      if (bestE) {
+        this.onHit({ targetId: bestE.id, ownerId: beam.ownerId, damage: beam.dpsThisTick,
+          damageType: beam.dmgType || 'energy', pos: { x: ax + dx * bestT, z: az + dz * bestT } });
+      }
+    }
   },
 };
 

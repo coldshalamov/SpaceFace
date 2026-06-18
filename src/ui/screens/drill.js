@@ -130,15 +130,9 @@ export const drillScreen = {
     const state = ctx.state;
     const drillSys = ctx.drill || (ctx.registry && ctx.registry.get('drill'));
 
-    // Resolve the asteroid to drill. Caller sets state.ui.pendingDrillAsteroidId before pushScreen;
-    // if absent, bail gracefully (pop self) so a stray open can't soft-lock.
-    const asteroidId = (state.ui && state.ui.pendingDrillAsteroidId) || null;
-    if (state.ui) state.ui.pendingDrillAsteroidId = null;
-    if (!asteroidId || !drillSys) {
-      exitBtn.addEventListener('click', () => { if (ctx.screenManager) ctx.screenManager.popScreen(); });
-      return;
-    }
-    drillSys.begin(asteroidId);
+    // The drilling SESSION (asteroid resolve + begin + key listeners + rAF loop) is started per-open
+    // in startSession() at the end of mount, NOT here — screens are mounted ONCE and cached, so any
+    // session setup done at mount time would only ever run for the very first open.
 
     // ---- input (local; sim is paused so we own keys) ----
     const held = { left: false, right: false, up: false, down: false };
@@ -159,20 +153,13 @@ export const drillScreen = {
       else if (c === 'ArrowUp' || c === 'KeyW') held.up = false;
       else if (c === 'ArrowDown' || c === 'KeyS') held.down = false;
     };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
     exitBtn.addEventListener('click', exit);
 
     function exit() {
-      // summarize yield in a toast on the flight HUD after exit
+      // summarize yield BEFORE popping (popScreen → onHide → stopSession ends the session + tears down)
       const d = state.drill;
-      const yieldLog = d ? d.yieldLog : {};
-      drillSys.end();
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      const total = d ? Object.values(d.yieldLog).reduce((a, b) => a + b, 0) : 0;
       if (ctx.screenManager) ctx.screenManager.popScreen();
-      // emit a summary toast for the flight HUD
-      const total = Object.values(yieldLog).reduce((a, b) => a + b, 0);
       if (total > 0 && ctx.bus) ctx.bus.emit('toast', { text: 'Drill complete: +' + total + ' ore extracted', kind: 'good', ttl: 4 });
     }
 
@@ -292,17 +279,36 @@ export const drillScreen = {
       hud.querySelector('[data-cargo]').textContent = cargoUsed + '%';
     }
 
-    rafId = requestAnimationFrame(frame);
-
-    // stash cleanup so onHide can stop the loop + remove listeners
-    this._cleanup = () => {
+    // Per-open session lifecycle. mount() runs ONCE (screens are cached), so the session setup must
+    // live in startSession() and (re)run on every onShow — otherwise drilling only works the first
+    // time the screen is opened. onHide tears the session down.
+    const startSession = () => {
+      const asteroidId = (state.ui && state.ui.pendingDrillAsteroidId) || null;
+      if (state.ui) state.ui.pendingDrillAsteroidId = null;
+      if (!asteroidId || !drillSys) return; // stray open with no rock — leave the Eject-only screen up
+      drillSys.begin(asteroidId);
+      held.left = held.right = held.up = held.down = false;
+      moveCooldown = 0; gasHitFlash.t = 0; yieldFlash.t = 0;
+      window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('keyup', onKeyUp);
+      last = performance.now();
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(frame);
+      this._active = true;
+    };
+    const stopSession = () => {
+      if (!this._active) return;
+      this._active = false;
       cancelAnimationFrame(rafId);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      if (state.drill && drillSys) drillSys.end();
     };
+    this._startSession = startSession;
+    this._cleanup = stopSession;
   },
 
-  onShow() {},
+  onShow() { if (this._startSession) this._startSession(); },
   onHide() { if (this._cleanup) this._cleanup(); },
   refresh() {},
 };
