@@ -336,7 +336,7 @@ error-free, Access tab + colorblind palette confirmed in the running game):
 - Mission `rewardFormula` strings synced to `MISSION_TUNING.BASE`; **`balance-sim.mjs` made
   self-validating** (it had been printing a hardcoded finding — a bug in the Phase-A deliverable itself).
 
-**Review fixes (whole-repo adversarial review, 6 domains)**
+**Review fixes — pass 1 (whole-repo adversarial review, 6 domains)**
 - Salvaged wrecks now set `_salvaged` so the intervention loop reports `recovered=true` (`mining.js`).
 - `physics.collide()` reuses a preallocated `Set` instead of allocating one every frame.
 - Transient state (salvage interventions, active drill session) is cleared on load so stale
@@ -344,6 +344,21 @@ error-free, Access tab + colorblind palette confirmed in the running game):
 - Reviewer's "serialize interventions" proposal was **declined** with reason: the wrecks are
   non-persistent entities, so serializing the tracking array alone would fire spurious `recovered=true`
   closes on load. Clearing is the correct minimal fix.
+
+**Review fixes — pass 2 (runtime playtest of every path + static review of combat/ai/audio/ui/vfx)**
+The runtime playtest (fly/fire/mine/trade/jump/all 16 screens/combat-death-respawn/automation/
+save-load/drill, plus edge cases) was **console-error-clean**. The static pass found, and I fixed:
+- **Beam weapons dealt zero damage** — `weapons.js` wrote rays to `state.combat.beams` but nothing
+  consumed them. `combat.update()` now sweeps beams and damages the first entity along each path.
+- **Drill lens worked only on first open** — screens mount once + cache; the drill did its session
+  setup in `mount()` with an empty `onShow()`. Split DOM-build (mount) from session-start (onShow).
+- **Declined as non-bugs** (verified): flat-armor fully absorbing weak hits is intentional (not a
+  missing damage floor); music stems + stationHub/drill bus listeners register once under the
+  mount-once lifecycle and *must* persist (adding `bus.off` would break refresh — the reviewers
+  missed the lifecycle).
+- **Deferred — balance-affecting incomplete features:** weapon `splashDmg`/`splashRadius` and
+  `armorPierce` are present in data but unread. Wiring them is real (like the beam fix) but changes
+  damage balance the other dev tuned — do it *with* the balance-sim gate + a playtest, not blind.
 
 **Process/tooling docs — DONE (new files):** `EVENT_TAXONOMY.md`, `PERF_BUDGET.md`, `ACCESSIBILITY.md`,
 `QA_MATRIX.md`, `PLAYTEST_SCRIPT.md`, `adr/` (template + 2 retroactive ADRs), `scripts/balance-sim.mjs`.
