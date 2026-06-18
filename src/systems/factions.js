@@ -35,6 +35,10 @@ const WAR_THRESHOLD = 75;     // tension >= this → 'war'
 const TENSE_THRESHOLD = 40;   // tension >= this → 'tense'
 const FLIP_THRESHOLD = 100;   // |cumulative momentum| beyond this flips the contested sector
 const PLAYER_WEIGHT = 25;     // playerLean contribution to war momentum
+// V2 §24: faction power imbalance contributes to war momentum too, so NPC-vs-NPC wars can resolve
+// without the player. Weighted lower than the player's direct lean (the player should still feel
+// impactful) but high enough that a real power gap flips a sector over a few days of grinding.
+const POWER_WEIGHT = 0.9;
 const DECAY_POSITIVE = false; // default: only negative rep decays toward neutral (spec)
 
 // Contested sectors flippable in war: pairKey → sectorId (spec CONTESTED SECTORS, sector_ ids).
@@ -101,6 +105,11 @@ function ensureFaction(state, id) {
       lastDelta: { value: 0, reason: 'init', t: 0 },
       knownContrabandStrikes: 0,
       discoveredHostileBy: 0,
+      // V2 §28b/§24 — faction power drives war momentum independent of the player. Derived
+      // periodically from sector ownership + visible economic/military activity. See
+      // _recomputeFactionPower. Starts at a small neutral baseline so wars can grind without us.
+      power: 10,
+      powerNonce: 0,
     };
   }
   return rec;
@@ -324,21 +333,29 @@ export const factions = {
     this._warAccumDays += days;
     if (this._warAccumDays >= 1) {
       this._warAccumDays = 0;
+      // Recompute faction power once per day so NPC activity (sector ownership, visible haulers,
+      // military losses) feeds war momentum. Cheap: a single pass over sectors + entity list.
+      this._recomputeFactionPower(state);
       for (const key in state.conflicts) {
         const c = state.conflicts[key];
         if (c.state !== 'war') continue;
         const [a, b] = key.split(':');
-        // baseStrength is symmetric here (no faction power table yet) → momentum is player-driven.
-        c.momentum = (c.momentum || 0) + c.playerLean * PLAYER_WEIGHT;
+        const pa = (state.factions[a] && state.factions[a].power) || 0;
+        const pb = (state.factions[b] && state.factions[b].power) || 0;
+        // Momentum = player's direct lean + the NPC power imbalance. Positive (favoring B) when
+        // either the player leaned toward B OR B is simply stronger. This replaces the "symmetric
+        // baseStrength → momentum is player-driven" placeholder (audit #24).
+        c.momentum = (c.momentum || 0) + c.playerLean * PLAYER_WEIGHT + (pb - pa) * POWER_WEIGHT;
         if (Math.abs(c.momentum) >= FLIP_THRESHOLD) {
-          const winner = c.momentum > 0 ? b : a; // positive lean favors side B (see _feedTensionForKill)
+          const winner = c.momentum > 0 ? b : a; // positive lean/power favors side B
           const loser = winner === a ? b : a;
           const sectorId = CONTESTED[key];
           if (sectorId && state.world && state.world.sectors && state.world.sectors[sectorId]) {
             state.world.sectors[sectorId].owner = winner; // §0.6: factions writes sector owner
             if (this.bus) this.bus.emit('conflict:flip', { pairKey: key, sectorId, newOwner: winner });
           }
-          // Reward the side the player favored; penalize the other (spec warResolve).
+          // Reward the side the player favored; penalize the other (spec warResolve). Only apply the
+          // rep swing if the player actually leaned (a pure NPC-power flip shouldn't credit the player).
           const leanMag = Math.abs(c.playerLean);
           if (leanMag > 0) {
             this.applyRep(winner, 20 * leanMag, 'war_won');
@@ -348,6 +365,60 @@ export const factions = {
           this._refreshConflictState(key, c);
         }
       }
+    }
+  },
+
+  // Recompute each faction's `power` from world state: sector ownership (territory = power base),
+  // visible economic activity (NPC haulers of that faction = trade power), minus recent military
+  // losses (a faction losing ships is weakening). Kept cheap and bounded so a day-tick is fine.
+  // This is the "faction power table" the audit (factions.js:331 comment) said was missing.
+  _recomputeFactionPower(state) {
+    if (!state.factions || !state.world) return;
+    // Start every faction at a baseline so even un-tracked factions have a little inertia.
+    const power = {};
+    for (const id of FACTION_IDS) power[id] = 5;
+
+    // (1) Territory: each owned sector adds power.
+    const sectors = (state.world && state.world.sectors) || {};
+    for (const sid in sectors) {
+      const owner = sectors[sid].owner;
+      if (owner && power[owner] != null) power[owner] += 6;
+    }
+
+    // (2) Economic activity: count visible NPC haulers per faction (the traffic system spawns these;
+    // their presence = that faction is trading = economic power). Capped so a busy sector doesn't
+    // dominate. Also count live stations of the faction (infrastructure).
+    const haulerByFac = {};
+    const stationByFac = {};
+    for (const e of state.entityList) {
+      if (!e.alive) continue;
+      const fid = e.factionId;
+      if (fid == null || power[fid] == null) continue;
+      if (e.type === 'ship' && e.data && e.data.ai && e.data.ai.passive) {
+        haulerByFac[fid] = (haulerByFac[fid] || 0) + 1;
+      } else if (e.type === 'station' && !(e.data && e.data.isGate)) {
+        stationByFac[fid] = (stationByFac[fid] || 0) + 1;
+      }
+    }
+    for (const id of FACTION_IDS) {
+      power[id] += Math.min(12, (haulerByFac[id] || 0) * 2);  // haulers: trade power, capped
+      power[id] += Math.min(8, (stationByFac[id] || 0) * 3);   // stations: infrastructure
+    }
+
+    // (3) Military health: a faction at -aggro (losing the war of attrition) is weakened. This ties
+    // standing to power so a hated faction is also militarily diminished.
+    for (const id of FACTION_IDS) {
+      const rec = state.factions[id];
+      if (!rec) continue;
+      if (rec.aggro) power[id] = Math.max(2, power[id] - 6); // bleeding support
+    }
+
+    // Commit (eased toward the new value so power doesn't lurch day-to-day; reads as a slow shift).
+    for (const id of FACTION_IDS) {
+      const rec = state.factions[id];
+      if (!rec) continue;
+      const target = power[id];
+      rec.power = rec.power + (target - rec.power) * 0.5;
     }
   },
 
