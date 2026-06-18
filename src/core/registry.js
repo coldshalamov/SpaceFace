@@ -19,6 +19,7 @@ import { crafting } from '../systems/crafting.js';
 import { heat } from '../systems/heat.js';
 import { traffic } from '../systems/traffic.js';
 import { drill } from '../systems/drill.js';
+import { intervention } from '../systems/intervention.js';
 import { onboarding } from '../systems/onboarding.js';
 import { render } from '../render/renderer.js';
 import { vfx } from '../render/vfx.js';
@@ -31,7 +32,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, input, ai, flight, weapons, physics, combat, mining, cargo, economy,
-    automation, world, factions, missions, ships, crafting, heat, traffic, drill, onboarding, render, vfx, feel, audio, ui, save,
+    automation, intervention, world, factions, missions, ships, crafting, heat, traffic, drill, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI before flight, weapons before physics, etc.) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -40,9 +41,11 @@ export function createRegistry(ctx) {
   // freighter this frame is accounted) — it only writes its own entities' intent, never player state.
   // crafting now has a real update (build-queue progress) so it's in the sim order; it only mutates
   // its own queues + grants products, never movement/combat state.
+  // intervention runs after automation (so automation:assetLost this tick has fired) and prunes
+  // closed salvage wrecks.
   const UPDATE_ORDER = [
     input, ai, flight, weapons, physics, combat, mining, cargo, crafting,
-    economy, automation, world, factions, missions, heat, traffic, onboarding,
+    economy, automation, intervention, world, factions, missions, heat, traffic, drill, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
 
