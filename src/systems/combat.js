@@ -137,7 +137,11 @@ export const combat = {
     }
     if (rem > 0) t.hull -= rem;
     const isPlayer = t.id === state.playerId;
-    bus.emit('combat:damage', { targetId: t.id, attackerId: ownerId, amount: damage, type: damageType, brokeShield, isPlayer, pos });
+    const factionLawful = !!(t.data && t.data.ai && t.data.ai.lawful);
+    bus.emit('combat:damage', {
+      targetId: t.id, attackerId: ownerId, amount: damage, type: damageType,
+      brokeShield, isPlayer, pos, factionId: t.factionId || null, factionLawful,
+    });
     if (isPlayer) bus.emit('camera:shake', { amount: brokeShield ? 0.4 : 0.2 });
     if (t.hull <= 0) this.kill(t, ownerId);
   },
@@ -148,7 +152,12 @@ export const combat = {
     if (!t.alive) return;
     t.alive = false;
     const killedByPlayer = killerId === state.playerId;
-    bus.emit('entity:killed', { id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z }, factionId: t.factionId, bountyCr: d.bountyCr || 0, lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type });
+    const factionLawful = !!(d.ai && d.ai.lawful);
+    bus.emit('entity:killed', {
+      id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
+      factionId: t.factionId, factionLawful, bountyCr: d.bountyCr || 0,
+      lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
+    });
     bus.emit('camera:shake', { amount: 0.5 });
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
     if (bounty > 0 && killedByPlayer) bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });

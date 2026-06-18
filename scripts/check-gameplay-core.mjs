@@ -6,6 +6,7 @@ import { cargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { combat } from '../src/systems/combat.js';
 import { economy } from '../src/systems/economy.js';
+import { heat } from '../src/systems/heat.js';
 import { missions } from '../src/systems/missions.js';
 import { ships, buildSlotList, makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
@@ -525,6 +526,70 @@ function checkCombatRewardsAndLootKinds() {
   assert(npcEvents.some((e) => e.event === 'loot:drop' && e.payload.credits === 0), 'NPC-on-NPC loot drop should not show player credits');
 }
 
+function checkHeatUsesTargetFactionContext() {
+  const makeState = (target) => {
+    const state = {
+      playerId: 1,
+      simTime: 10,
+      player: { heat: 0 },
+      factions: {
+        faction_vael: { aggro: true },
+        faction_scn: { aggro: true },
+      },
+      entities: new Map(),
+    };
+    const player = { id: 1, type: 'ship', team: 0, alive: true, flags: {}, pos: { x: 0, z: 0 }, data: {} };
+    state.entities.set(player.id, player);
+    state.entities.set(target.id, target);
+    return state;
+  };
+
+  const hostile = {
+    id: 2,
+    type: 'ship',
+    team: 1,
+    alive: true,
+    flags: {},
+    factionId: 'faction_vael',
+    pos: { x: 10, z: 0 },
+    data: { ai: { lawful: false } },
+    hull: 100,
+    shieldMax: 0,
+    shield: 0,
+    armorHp: 0,
+  };
+  const hostileState = makeState(hostile);
+  const hostileBus = createBus();
+  heat.init({ state: hostileState, bus: hostileBus, helpers: {}, registry: { get() { return null; } } });
+  combat.state = hostileState;
+  combat.bus = hostileBus;
+
+  combat.onHit({ targetId: hostile.id, ownerId: hostileState.playerId, damage: 5, damageType: 'kinetic', pos: { x: 10, z: 0 } });
+
+  assert.equal(hostileState.player.heat, 0, 'damaging an already-hostile faction should not raise piracy heat');
+
+  const lawman = {
+    id: 3,
+    type: 'ship',
+    team: 1,
+    alive: true,
+    flags: {},
+    factionId: 'faction_scn',
+    pos: { x: 20, z: 0 },
+    data: { ai: { lawful: true }, shipClass: 'gunship' },
+    hull: 100,
+  };
+  const lawState = makeState(lawman);
+  const lawBus = createBus();
+  heat.init({ state: lawState, bus: lawBus, helpers: {}, registry: { get() { return null; } } });
+  combat.state = lawState;
+  combat.bus = lawBus;
+
+  combat.kill(lawman, lawState.playerId);
+
+  assert(lawState.player.heat > 0, 'killing a lawful patrol should raise heat even if its faction is already hostile');
+}
+
 function checkInsuredRespawnUsesStationRefundAndCargoLoss() {
   const makeVec = (x, z) => ({
     x,
@@ -916,6 +981,7 @@ checkMissionCompletionAutosaveSeesSettledState();
 checkLoadDoesNotSpawnTargetsForStaleLiveMissions();
 checkLoadRejectsSaveWithoutPlayerEntity();
 checkCombatRewardsAndLootKinds();
+checkHeatUsesTargetFactionContext();
 checkInsuredRespawnUsesStationRefundAndCargoLoss();
 checkFailedCargoFitDoesNotDuplicateModules();
 checkNewGameOwnedShipDefaultsAreFitted();
