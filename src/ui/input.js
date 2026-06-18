@@ -86,6 +86,12 @@ export function createUiInput(ctx, screenManager) {
       case 'Enter':
         if (dockInRange) { ev.preventDefault(); doDock(); }
         return;
+      case 'b': case 'B':
+        // Drill lens (V2 §7 / cut-list #27): open the ant-farm mining screen on the targeted
+        // asteroid (or the mining system's soft-locked one). Bails with a toast if no asteroid.
+        ev.preventDefault();
+        openDrill();
+        return;
       case 'F5':
         ev.preventDefault(); bus.emit('game:save', { slot: 'quick' }); return;
       case 'F9':
@@ -96,6 +102,33 @@ export function createUiInput(ctx, screenManager) {
         else if (code === 'Minus' || code === 'NumpadSubtract') { bus.emit('camera:zoom', { delta: 8 }); }
         return;
     }
+  }
+
+  // Resolve a drillable asteroid: player's selected target (if it's an asteroid), else the mining
+  // system's soft-locked asteroid. Sets the pending id and pushes the drill screen.
+  function openDrill() {
+    let astId = null;
+    const tid = state.player.targetId;
+    if (tid != null) {
+      const t = state.entities.get(tid);
+      if (t && t.type === 'asteroid' && t.alive) astId = t.id;
+    }
+    if (astId == null) {
+      // fall back to the mining system's soft-lock
+      const mining = ctx.registry && ctx.registry.get('mining');
+      if (mining && mining._lockTargetId) {
+        const t = state.entities.get(mining._lockTargetId);
+        if (t && t.type === 'asteroid' && t.alive) astId = t.id;
+      }
+    }
+    if (astId == null) {
+      bus.emit('toast', { text: 'No asteroid targeted — target a rock and press B to drill', kind: 'warn', ttl: 3 });
+      return;
+    }
+    if (!state.ui) state.ui = {};
+    state.ui.pendingDrillAsteroidId = astId;
+    screenManager.pushScreen('drill');
+    bus.emit('audio:cue', { id: 'ui_open' });
   }
 
   // Emit the intent only; uiRoot's dock:undocked handler owns clearing ui.docked and popping

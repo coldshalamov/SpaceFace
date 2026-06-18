@@ -18,6 +18,7 @@ import { ships } from '../systems/ships.js';
 import { crafting } from '../systems/crafting.js';
 import { heat } from '../systems/heat.js';
 import { traffic } from '../systems/traffic.js';
+import { drill } from '../systems/drill.js';
 import { onboarding } from '../systems/onboarding.js';
 import { render } from '../render/renderer.js';
 import { vfx } from '../render/vfx.js';
@@ -30,7 +31,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, input, ai, flight, weapons, physics, combat, mining, cargo, economy,
-    automation, world, factions, missions, ships, crafting, heat, traffic, onboarding, render, vfx, feel, audio, ui, save,
+    automation, world, factions, missions, ships, crafting, heat, traffic, drill, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI before flight, weapons before physics, etc.) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.

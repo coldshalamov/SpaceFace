@@ -78,6 +78,7 @@ const SECTIONS = [
     ['Fire group 1', 'fire1', 'LMB / Space'],
     ['Fire group 2', 'fire2', 'RMB'],
     ['Mine beam', 'mine', 'RMB on rock'],
+    ['Deep-drill (ant-farm)', 'drill', 'B (target an asteroid)'],
     ['Auto-fire toggle', 'autoFire', 'F'],
     ['Select weapon group', 'weaponGroup', 'Q / E'],
   ]],
