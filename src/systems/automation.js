@@ -25,6 +25,8 @@
 // danger from the SECTORS catalog (dangerIndex), the player tier from player.droneTierCap.
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
+import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
+import { addCargo, removeCargo } from './cargo.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -163,6 +165,25 @@ export const automation = {
       if (g.status === 'distressed') { this._parkDroneEntities(g); continue; } // frozen until upkeep paid
 
       g.oreType = g.oreType || DRONE_ORE_ID;
+
+      // PROGRAM PATH (V2 §4 / cut-list #28): if the group has an assigned alphabet template,
+      // run it instead of the legacy mine-to-buffer loop. The drone mines into the player's REAL
+      // cargo (via canonical addCargo) and sells at a depot for real credits — the player-authored
+      // automation fantasy. Falls through to the legacy path when no program is assigned.
+      if (g.program && TEMPLATES[g.program.templateId]) {
+        this._runProgrammedGroup(g, def, dt, curSector);
+        // fuel still bleeds while running a program (the attention cost, same as legacy)
+        g.fuel = Math.max(0, (g.fuel || 0) - (def.fuelRate || 1) * dt);
+        if (g.fuel <= 0) {
+          this._releaseDroneEntities(g);
+          this._loseAsset('drone', g, this._droneBufferValue(g), g.sectorId);
+          a.drones.splice(i, 1);
+          continue;
+        }
+        g.status = 'program';
+        continue;
+      }
+
       const cap = g.bufferCap || def.bufferCap || 0;
       const room = cap - (g.buffer || 0);
 
@@ -192,6 +213,81 @@ export const automation = {
       g.ratePerMin = this._droneRatePerMin(g, def);
     }
   },
+
+  // Run a drone group's alphabet program (V2 §4 / cut-list #28). Provides the callbacks the
+  // alphabet runtime needs: steerTo (drives the flying entities), mineIntoCargo (real cargo via
+  // addCargo), sellMinedCargo (real credits via the passive funnel). Mines the same authored rate
+  // as the legacy path so balance is unchanged — the program just changes WHERE the ore goes
+  // (player cargo + sold by the drone, vs a realized-on-recall buffer).
+  _runProgrammedGroup(g, def, dt, curSector) {
+    // ensure entities exist (same spawn as legacy)
+    if ((!g.entityIds || !g.entityIds.length) && g.sectorId === curSector) this._spawnDroneEntities(g, def);
+    const ctx = {
+      state: this.state, helpers: this.helpers, group: g,
+      steerTo: (beacon, ddt) => this._steerGroupTo(g, def, beacon, ddt, curSector),
+      mineIntoCargo: (ddt) => this._programMineIntoCargo(g, def, ddt),
+      sellMinedCargo: (stationId) => this._programSellCargo(g, stationId),
+    };
+    tickProgram(g, ctx, dt);
+  },
+
+  // Steer every live entity in the group toward a beacon; returns true when the lead entity is
+  // "at" the beacon (within arrival range). Reuses the legacy _driveDrone steering.
+  _steerGroupTo(g, def, beacon, dt, curSector) {
+    if (!beacon || g.sectorId !== curSector || !g.entityIds || !g.entityIds.length) return false;
+    const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));
+    const target = { x: beacon.x, z: beacon.z };
+    let lead = null;
+    for (const id of g.entityIds) {
+      const e = getEnt(id);
+      if (!e || !e.alive) continue;
+      lead = e;
+      this._driveDrone(e, target, dt, false);
+    }
+    if (!lead) return false;
+    // arrival threshold scales with target type (rocks need a standoff; stations/depot closer)
+    const arriveR = beacon.entity && beacon.entity.type === 'asteroid'
+      ? (beacon.entity.radius || 6) + 14 + 34   // standoff + mine range
+      : 60;
+    const dx = lead.pos.x - target.x, dz = lead.pos.z - target.z;
+    return (dx * dx + dz * dz) < arriveR * arriveR;
+  },
+
+  // Mine into the PLAYER'S cargo at the authored rate (capped by free cargo volume). This is the
+  // real-cargo grant path — the drone is now earning actual ore the player can use or sell.
+  _programMineIntoCargo(g, def, dt) {
+    const cargo = this.state.player.cargo;
+    if (!cargo) return;
+    const free = cargo.capVolume - cargo.usedVolume;
+    if (free <= 0) return;
+    // convert authored ore-units/sec rate into cargo volume (iron ≈ 1 vol/u for the baseline)
+    const rate = (def.mineRate || 0.8) * (g.count || 1);
+    const want = Math.max(1, Math.floor(Math.min(rate * dt, free)));
+    const added = addCargo(this.state, g.oreType || DRONE_ORE_ID, want);
+    if (added > 0) {
+      // cosmetic mining-tick feedback so the player SEES the drone working
+      const rock = this._nearestAsteroid(this._playerPos(), 600);
+      this.bus.emit('mining:tick', { contactPos: rock ? rock.pos : this._playerPos(), oreType: g.oreType || DRONE_ORE_ID });
+    }
+  },
+
+  // Sell the player's mined ore at the depot station for real credits, through the passive funnel
+  // (so the cap still applies — program income isn't a cap bypass). Sells the drone's chosen ore.
+  _programSellCargo(g, stationId) {
+    const cargo = this.state.player.cargo;
+    if (!cargo || !cargo.items) return;
+    const oreId = g.oreType || DRONE_ORE_ID;
+    const have = cargo.items[oreId] || 0;
+    if (have <= 0) return;
+    const price = this._orePrice(oreId);
+    const gross = have * price;
+    if (gross > 0) {
+      removeCargo(this.state, oreId, have);
+      this.creditPassive(gross, 'drone:program');
+      if (stationId) this.bus.emit('economy:applyTradePressure', { stationId, good: oreId, vol: have });
+    }
+  },
+
 
   // Spawn the visible flying drones for a freshly deployed group near the nearest asteroid field.
   // Best-effort: needs the core spawnEntity helper and the group's home sector loaded.
@@ -708,8 +804,23 @@ export const automation = {
       case 'orderEscort': return this.setFleetOrder(p.shipId, 'escort', p.targetRef);
       case 'orderMine': return this.setFleetOrder(p.shipId, 'mine', p.targetRef);
       case 'orderRecall': return this.setFleetOrder(p.shipId, 'idle', p.targetRef);
+      // V2 §4 / cut-list #28: assign an alphabet template to a drone group (program it). targetRef
+      // is the templateId ('mine_to_depot' | 'patrol_guard' | 'scout_report'); null/'' clears it.
+      case 'assignProgram': return this.assignProgram(p.shipId, p.targetRef);
       default: return false;
     }
+  },
+
+  // Assign (or clear) an alphabet program on a drone group. The drone then runs the template
+  // instead of the legacy mine-to-buffer loop — mining into real cargo + selling at a depot.
+  assignProgram(droneId, templateId) {
+    const g = this.state.automation.drones.find((x) => x.id === droneId);
+    if (!g) return false;
+    if (!templateId) { clearTemplate(g); this.toast('Drone program cleared (legacy mode)', 'info'); return true; }
+    if (!TEMPLATES[templateId]) { this.toast('Unknown program: ' + templateId, 'error'); return false; }
+    assignTemplate(g, templateId);
+    this.toast('Drone program: ' + TEMPLATES[templateId].name, 'success');
+    return true;
   },
 
   // ---- DRONES ----

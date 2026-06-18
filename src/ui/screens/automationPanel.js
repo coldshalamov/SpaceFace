@@ -59,6 +59,12 @@ const CSS = `
 #sf-automation .au-pill.ok { color: var(--good); border-color: rgba(98,224,138,.5); }
 #sf-automation .au-pill.warn { color: var(--warn); border-color: rgba(255,179,71,.5); }
 #sf-automation .au-pill.bad { color: var(--danger); border-color: rgba(255,84,112,.5); }
+#sf-automation .au-program-row { display:flex; align-items:center; gap:8px; margin-top:6px; }
+#sf-automation .au-program-label { font-size:.7em; color:var(--ink-mute); letter-spacing:.04em; text-transform:uppercase; }
+#sf-automation .au-program { font-family:var(--mono); font-size:.78em; padding:3px 8px; border-radius:4px;
+  background:var(--panel); color:var(--ink); border:1px solid var(--panel-edge); cursor:pointer; }
+#sf-automation .au-program-badge { font-family:var(--mono); font-size:.66em; padding:1px 6px; border-radius:8px;
+  background:rgba(57,208,255,.12); color:var(--accent); border:1px solid rgba(57,208,255,.4); margin-left:6px; }
 #sf-automation .au-minibar { width: 90px; height: 6px; border-radius: 3px; background: rgba(20,28,42,.9);
   overflow: hidden; display: inline-block; vertical-align: middle; }
 #sf-automation .au-minibar > i { display: block; height: 100%; background: var(--good); }
@@ -110,6 +116,12 @@ export const automationScreen = {
     rootEl.querySelector('[data-body]').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
       if (btn) this._onAction(btn.dataset.act, btn.dataset.ref, btn.dataset.kind);
+    });
+    // V2 §4 / cut-list #28: program dropdown change handler (selects don't fire 'click').
+    rootEl.querySelector('[data-body]').addEventListener('change', (e) => {
+      const sel = e.target.closest('select[data-act="assignProgram"]');
+      if (!sel) return;
+      this._onAction('assignProgram', sel.dataset.ref, sel.dataset.kind, sel.value);
     });
   },
 
@@ -215,17 +227,31 @@ export const automationScreen = {
         const buf = d.buffer != null ? d.buffer : 0;
         const bufCap = def.bufferCap || 1;
         const fuelPct = d.fuelMax ? (d.fuel || 0) / d.fuelMax : (def.fuelMax ? (d.fuel || 0) / def.fuelMax : 1);
+        // V2 §4 / cut-list #28: program dropdown. Shows the drone's current alphabet template (or
+        // Manual for the legacy mine-to-buffer loop). Switching emits assignProgram.
+        const curTpl = (d.program && d.program.templateId) || '';
+        const programOpts = [
+          ['manual', 'Manual (mine→bank)', ''],
+          ['mine_to_depot', 'Mine → Haul → Sell', 'mine_to_depot'],
+          ['patrol_guard', 'Guard Player', 'patrol_guard'],
+          ['scout_report', 'Scout → Report', 'scout_report'],
+        ].map(([v, label, id]) => `<option value="${id}" ${curTpl === id ? 'selected' : ''}>${label}</option>`).join('');
+        const programBadge = curTpl ? ` <span class="au-program-badge">⚙ ${curTpl}</span>` : '';
         const card = document.createElement('div');
         card.className = 'au-card';
         card.innerHTML = `
           <div class="grow">
-            <div class="nm">${prettyId(def.id)} ${statusPill(d.status)}</div>
+            <div class="nm">${prettyId(def.id)} ${statusPill(d.status)}${programBadge}</div>
             <div class="meta">
               <span>tier ${def.tier}</span>
               <span>mine ${def.mineRate}/s</span>
               <span>buffer ${Math.round(buf)}/${bufCap} ${miniBar(buf / bufCap)}</span>
               <span>fuel ${miniBar(fuelPct)}</span>
               <span>upkeep ${def.upkeepPerMin}/min</span>
+            </div>
+            <div class="au-program-row">
+              <span class="au-program-label">Program:</span>
+              <select class="au-program" data-act="assignProgram" data-ref="${d.id != null ? d.id : def.id}" data-kind="drone">${programOpts}</select>
             </div>
           </div>
           <button class="au-order" data-act="recall" data-ref="${d.id != null ? d.id : def.id}" data-kind="drone">Recall</button>`;
@@ -418,7 +444,8 @@ export const automationScreen = {
   },
 
   // ---- intent dispatch ----------------------------------------------------
-  _onAction(act, ref, kind) {
+  // `extra` carries the selected value for <select>-driven actions (e.g. assignProgram templateId).
+  _onAction(act, ref, kind, extra) {
     const bus = this._ctx.bus;
     // single intent channel into automation: ui:fleetOrder {shipId, order, targetRef} (§4.4).
     // shipId carries the instance id for existing assets; targetRef carries the catalog defId or
@@ -435,16 +462,19 @@ export const automationScreen = {
       orderMine: 'Order: mine.',
       orderRecall: 'Order: recall.',
       assignFleet: 'Assigning wingman…',
+      assignProgram: 'Assigning drone program…',
     };
 
     // For purchases/assigns the instance does not exist yet → shipId null, targetRef = defId/index.
     const purchaseLike = ['buyDrone', 'hireTrader', 'buildOutpost', 'assignFleet'];
     const isPurchase = purchaseLike.includes(act);
+    // assignProgram targets an EXISTING drone (shipId = ref) with the templateId as targetRef.
+    const isProgram = act === 'assignProgram';
 
     bus.emit('ui:fleetOrder', {
-      shipId: isPurchase ? null : numOr(ref),
+      shipId: (isPurchase) ? null : numOr(ref),
       order: act,
-      targetRef: ref,
+      targetRef: isProgram ? (extra || null) : ref,
       kind: kind || null,
     });
 
