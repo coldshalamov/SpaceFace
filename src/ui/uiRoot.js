@@ -49,6 +49,7 @@ const SCREEN_MODULES = [
   { path: './screens/techTree.js', name: 'techTreeScreen' },
   { path: './screens/automationPanel.js', name: 'automationScreen' },
   { path: './screens/drill.js', name: 'drillScreen' },
+  { path: './screens/base.js', name: 'baseScreen' },
   { path: './screens/mainMenu.js', name: 'mainMenuScreen' },
   { path: './screens/newGame.js', name: 'newGameScreen' },
   { path: './screens/pause.js', name: 'pauseScreen' },

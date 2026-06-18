@@ -5,6 +5,8 @@ const checks = [
   ['../src/ui/screens/starmap.js', 'starmapScreen'],
   ['../src/ui/screens/techTree.js', 'techTreeScreen'],
   ['../src/ui/screens/automationPanel.js', 'automationScreen'],
+  ['../src/ui/screens/drill.js', 'drillScreen'],
+  ['../src/ui/screens/base.js', 'baseScreen'],
   ['../src/ui/screens/mainMenu.js', 'mainMenuScreen'],
   ['../src/ui/screens/newGame.js', 'newGameScreen'],
   ['../src/ui/screens/pause.js', 'pauseScreen'],

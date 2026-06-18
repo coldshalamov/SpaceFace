@@ -10,7 +10,7 @@
 // Screens that "pause the sim" (pause / menus) emit sim:pause while at least one such screen
 // is open and sim:resume once none remain. Screen modules implement {id,mount,onShow,onHide,refresh}.
 
-const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'settings', 'saveLoad', 'help', 'drill']);
+const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'settings', 'saveLoad', 'help', 'drill', 'base']);
 
 export function createScreenManager(ctx) {
   const { state, bus } = ctx;
