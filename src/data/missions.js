@@ -29,7 +29,7 @@ export const MISSION_TYPES = [
   {
     type: 'cargo_delivery', riskTierRange: [0, 1], chainable: true,
     completionEvent: 'cargo.delivered',
-    rewardFormula: 'round(120 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
+    rewardFormula: 'round(180 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
     timeFormula: 'round((distance/140 + 20) * slack)', taskTime: 20,
     failureCondition: 'timer OR cargo lost (ship destroyed)',
     constraints: { needsCargoSpace: true },
@@ -37,7 +37,7 @@ export const MISSION_TYPES = [
   {
     type: 'bulk_trade', riskTierRange: [1, 2], chainable: true, collateral: true,
     completionEvent: 'trade.sold (aggregated to quota)',
-    rewardFormula: 'round(150 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
+    rewardFormula: 'round(170 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
     timeFormula: 'round((distance/140 + quotaQty*1.5) * slack)', taskTime: 'quotaQty*1.5',
     failureCondition: 'timer OR fail to sell quota; collateral forfeited',
     constraints: { collateralPct: 0.25 },
@@ -53,7 +53,7 @@ export const MISSION_TYPES = [
   {
     type: 'mining_quota', riskTierRange: [1, 3], chainable: true,
     completionEvent: 'mining.yield (aggregated to quota)',
-    rewardFormula: 'round(90 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
+    rewardFormula: 'round(130 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
     timeFormula: 'round((distance/140 + quotaQty*3) * slack)', taskTime: 'quotaQty*3',
     failureCondition: 'timer',
     constraints: {},
@@ -61,7 +61,7 @@ export const MISSION_TYPES = [
   {
     type: 'salvage_retrieval', riskTierRange: [1, 3], chainable: true,
     completionEvent: 'cargo.delivered (itemId==salvageId)',
-    rewardFormula: 'round(130 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
+    rewardFormula: 'round(160 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
     timeFormula: 'round((distance/140 + 30) * slack)', taskTime: 30,
     failureCondition: 'timer OR wreck destroyed before pickup',
     constraints: {},
@@ -93,7 +93,7 @@ export const MISSION_TYPES = [
   {
     type: 'passenger_transport', riskTierRange: [0, 2], chainable: true,
     completionEvent: 'dock.entered@dest',
-    rewardFormula: 'round(110 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
+    rewardFormula: 'round(160 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
     timeFormula: 'round((distance/140 + 20) * slack)', taskTime: 20,
     failureCondition: 'timer OR ship destroyed (passenger lost)',
     constraints: {},
@@ -101,7 +101,7 @@ export const MISSION_TYPES = [
   {
     type: 'recon_scan', riskTierRange: [1, 3], chainable: true,
     completionEvent: 'scan.completed (targetId in objective set)',
-    rewardFormula: 'round(100 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + scanTargets*0.25) * f_faction * f_time)',
+    rewardFormula: 'round(140 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + scanTargets*0.25) * f_faction * f_time)',
     timeFormula: 'round((distance/140 + scanTargets*25) * slack)', taskTime: 'scanTargets*25',
     failureCondition: 'timer OR scan-target despawns',
     constraints: { fValueIsScanTargets: true },

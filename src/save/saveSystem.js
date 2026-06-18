@@ -418,6 +418,11 @@ export const save = {
       }
       this._restoreAutomation(data.automation);
       this._restoreCrafting(data.crafting);
+      // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
+      // load) and the drill session's screen is closed on load. Clear their tracking so stale
+      // cross-save references (wreck ids from the prior session) can't dangle into the loaded game.
+      this.state.interventions = [];
+      this.state.drill = null;
       this._restoreSettings(data.settings);
 
       // 12. restore sim clock + rebuild the master RNG from the (unchanged) seed.

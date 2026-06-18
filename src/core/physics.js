@@ -11,6 +11,7 @@ export const physics = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this._scratch = [];
+    this._checked = new Set(); // reused each collide() to avoid a per-frame Set allocation
     this._dockStationId = null;
   },
 
@@ -47,7 +48,7 @@ export const physics = {
   collide(dt, state) {
     const bus = this.bus;
     const out = this._scratch;
-    const checked = new Set(); // pair keys this step
+    const checked = this._checked; checked.clear(); // pair keys this step (reused; no per-frame alloc)
     for (const a of state.entityList) {
       if (!a.alive || !a.collides) continue;
       out.length = 0;

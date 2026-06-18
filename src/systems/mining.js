@@ -339,6 +339,10 @@ export const mining = {
     remaining = Object.values(pool).reduce((a, b) => a + b, 0);
     if (d.salvageTimeLeft <= 0 || remaining <= 0) {
       this.bus.emit('salvage:completed', { wreckId: wreck.id, loot: got });
+      // Mark recovered so the intervention loop reports recovered=true (it reads e.data._salvaged).
+      // _drainWreck only runs while the player's salvage beam is on the wreck, so reaching completion
+      // here means the player did recover cargo (vs an untouched wreck despawning).
+      d._salvaged = true;
       wreck.alive = false;
       this._stopBeam();
     }
