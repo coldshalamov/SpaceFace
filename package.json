@@ -26,7 +26,8 @@
       "vendor/**",
       "src/**",
       "electron/**",
-      "package.json"
+      "package.json",
+      "assets/cinematics/menu_background.jpg"
     ],
     "win": { "target": "nsis", "artifactName": "SpaceFace-Setup-${version}.${ext}" },
     "mac": { "target": "dmg" },

@@ -1,18 +1,25 @@
 // Electron desktop shell for SpaceFace (Steam-ready).
-// Serves the app from a tiny in-process static server on a random localhost port so ES modules +
+// Serves the app from a tiny in-process static server on a FIXED localhost port so ES modules +
 // the importmap load exactly as they do in a browser, then opens a frameless game window.
+//
+// SAVE PERSISTENCE: the port MUST be fixed. localStorage (where saveSystem.js persists) is keyed by
+// origin = scheme://host:port. A random port (listen(0)) changes the origin every launch, so every
+// prior save becomes invisible. A fixed port keeps the origin stable across relaunches → saves persist.
 const { app, BrowserWindow } = require('electron');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
+// Dedicated fixed port for the packaged app (distinct from the dev server's 8123 so both can run).
+const PORT = 41788;
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
-  '.jpg': 'image/jpeg', '.webp': 'image/webp', '.wasm': 'application/wasm',
-  '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.ico': 'image/x-icon',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
+  '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf',
+  '.ico': 'image/x-icon', '.map': 'application/json; charset=utf-8',
 };
 
 function startServer() {
@@ -29,7 +36,16 @@ function startServer() {
         res.end(data);
       });
     });
-    server.listen(0, '127.0.0.1', () => resolve(server.address().port));
+    // Fixed port for a stable origin (save persistence). If it's busy (rare — another app, or a stale
+    // instance the single-instance lock didn't catch), fall back to an ephemeral port so the game still
+    // boots rather than crashing to a black window.
+    server.on('error', (err) => {
+      if (err && err.code === 'EADDRINUSE') {
+        console.warn('[electron] port ' + PORT + ' busy; using an ephemeral port (saves may not persist this run)');
+        server.listen(0, '127.0.0.1', () => resolve(server.address().port));
+      } else { throw err; }
+    });
+    server.listen(PORT, '127.0.0.1', () => resolve(server.address().port));
   });
 }
 
@@ -42,10 +58,22 @@ async function createWindow() {
   });
   win.removeMenu();
   win.once('ready-to-show', () => win.show());
-  win.loadURL(`http://127.0.0.1:${port}/`);
+  // ?prod=1 marks this as the packaged build so the client strips debug surfaces (window.SF, boot
+  // logs, preserveDrawingBuffer). Dev servers / the preview load '/' without it and keep them.
+  win.loadURL(`http://127.0.0.1:${port}/?prod=1`);
   // win.webContents.openDevTools();
 }
 
-app.whenReady().then(createWindow);
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+// Single-instance lock: a second launch focuses the existing window instead of starting a rival
+// server that would lose the fixed port (and split saves across origins).
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    const w = BrowserWindow.getAllWindows()[0];
+    if (w) { if (w.isMinimized()) w.restore(); w.focus(); }
+  });
+  app.whenReady().then(createWindow);
+  app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+}
