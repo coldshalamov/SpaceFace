@@ -5,7 +5,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
-import { makeShipEntitySpec } from './ships.js';
+import { makeShipEntitySpec, fittingsFromWeapons } from './ships.js';
 import { removeCargo } from './cargo.js';
 import { mulberry32, hash32 } from '../core/rng.js';
 
@@ -84,12 +84,24 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos) {
   }
   spec.data = spec.data || {};
   if (ws.length) spec.data.weapons = ws;
+  // Keep the render-facing fittings in sync with the NPC's assigned weapons so its barrels render
+  // at the right hardpoints (combat bypasses the fittings path that the player shipyard uses).
+  const shipDef = SHIP.get(def.shipId) || SHIPS.find((s) => s.id === def.shipId);
+  if (shipDef) spec.data.fittings = fittingsFromWeapons(shipDef, ws);
+  // Visual tier scales with danger level: a tougher enemy (higher level) reads as an upgraded Mk.II/III
+  // hull so higher-danger zones are visibly more threatening. Maps level→minTier thresholds (≈Mk.II at
+  // L6, Mk.III at L12). Player ships are unaffected (they sum their own fitted module tiers).
+  spec.data.visualTier = Math.max(0, Math.round((level - 1) * 1.8));
   spec.data.miningBeam = null;
   spec.data.ai = { archetype: def.aiArchetype, lawful: !!def.factionLawful };
   spec.data.bountyCr = def.bountyCr || 0;
   spec.data.loot = def.loot || null;
   spec.data.lootTableId = def.id;
   spec.data.shipClass = def.shipClass || 'fighter';
+  // Enemy silhouette override (graphics spec Workstream D): when present, the render track
+  // draws the enemy as its OWN hostile family instead of the player ship-def's family. Gameplay
+  // stats still come from shipId; only the appearance changes.
+  if (def.silhouette) spec.data.silhouette = def.silhouette;
   spec.factionId = factionId;
   return spec;
 }

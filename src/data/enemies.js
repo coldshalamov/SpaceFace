@@ -2,10 +2,16 @@
 // 3-layer model: shield -> armor -> hull. Stats are BASE (pre-dangerTier scaling).
 // weapon IDs use wpn_ prefix; loot drop IDs use cmdty_ prefix; shipId uses ship_ prefix.
 // Pure data, no imports.
+//
+// VISUALS: each enemy carries a `silhouette` field consumed ONLY by the render track
+// (src/render/visualFactory.js). When present it overrides the ship-def family lookup so the
+// enemy reads as its OWN hostile silhouette — not a recolored player hull. Values map to the
+// ENEMY_FAMILY_BUILDERS table. shipId still drives gameplay stats; silhouette drives appearance.
 
 export const ENEMY_TYPES = [
   {
     id: 'wasp_swarmer', name: 'Wasp Swarmer', shipId: 'ship_wasp',
+    silhouette: 'drone_swarm',
     aiArchetype: 'swarmer', levelRange: [1, 3],
     hull: 60, armor: 10, armorFlat: 1, shield: 30, shieldRegen: 5, cap: 60, capRegen: 20,
     maxSpeed: 240, accel: 240, turnRate: 4.2, collisionRadius: 12, mass: 16,
@@ -19,6 +25,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'lancer_sniper', name: 'Lancer Sniper', shipId: 'ship_wasp',
+    silhouette: 'sniper_lance',
     aiArchetype: 'sniper', levelRange: [2, 5],
     hull: 90, armor: 20, armorFlat: 2, shield: 80, shieldRegen: 6, cap: 120, capRegen: 22,
     maxSpeed: 180, accel: 120, turnRate: 2.0, collisionRadius: 14, mass: 24,
@@ -35,6 +42,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'bruiser_brawler', name: 'Bruiser Brawler', shipId: 'ship_bastion',
+    silhouette: 'bruiser_armor',
     aiArchetype: 'brawler', levelRange: [3, 7],
     hull: 420, armor: 160, armorFlat: 8, shield: 160, shieldRegen: 12, cap: 180, capRegen: 24,
     maxSpeed: 160, accel: 130, turnRate: 2.2, collisionRadius: 20, mass: 70,
@@ -51,6 +59,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'mule_trader', name: 'Fleeing Trader', shipId: 'ship_mule',
+    silhouette: 'trader_haul',
     aiArchetype: 'fleeing_trader', levelRange: [1, 6],
     hull: 200, armor: 60, armorFlat: 4, shield: 120, shieldRegen: 8, cap: 100, capRegen: 14,
     maxSpeed: 190, accel: 90, turnRate: 1.6, collisionRadius: 18, mass: 55,
@@ -68,6 +77,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'reaver_pirate', name: 'Reaver Pirate', shipId: 'ship_drifter',
+    silhouette: 'pirate_swoop',
     aiArchetype: 'pirate', levelRange: [1, 8],
     hull: 260, armor: 90, armorFlat: 5, shield: 140, shieldRegen: 10, cap: 160, capRegen: 22,
     maxSpeed: 200, accel: 160, turnRate: 2.6, collisionRadius: 18, mass: 60,
@@ -84,6 +94,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'corsair_raider', name: 'Corsair Raider', shipId: 'ship_hornet',
+    silhouette: 'corsair_blade',
     aiArchetype: 'pirate', levelRange: [4, 10],
     hull: 340, armor: 120, armorFlat: 7, shield: 200, shieldRegen: 12, cap: 200, capRegen: 26,
     maxSpeed: 210, accel: 170, turnRate: 2.8, collisionRadius: 18, mass: 64,
@@ -101,6 +112,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'patrol_lawman', name: 'Patrol Interceptor', shipId: 'ship_hornet',
+    silhouette: 'patrol_interdict',
     aiArchetype: 'brawler', levelRange: [3, 9],
     hull: 380, armor: 140, armorFlat: 7, shield: 240, shieldRegen: 14, cap: 220, capRegen: 28,
     maxSpeed: 200, accel: 160, turnRate: 2.6, collisionRadius: 18, mass: 70,
@@ -114,6 +126,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'dreadnought_boss', name: "Dreadnought 'Iron Maw'", shipId: 'ship_leviathan',
+    silhouette: 'dreadnought_enemy',
     aiArchetype: 'miniboss_capital', levelRange: [10, 15],
     hull: 6000, armor: 2200, armorFlat: 25, shield: 2400, shieldRegen: 60, shieldRegenDelay: 6, cap: 2000, capRegen: 40,
     maxSpeed: 70, accel: 30, turnRate: 0.4, collisionRadius: 60, mass: 2000,
