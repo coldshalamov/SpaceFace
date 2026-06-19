@@ -105,4 +105,26 @@ export async function runShipShot(SF) {
   cam.position.copy(prevPos);
   scene.remove(tmp);
   for (const c of hidden) c.visible = true;
+
+  // ---- Concord Patrol Interdictor capture (spec §8.2, Phase 3): the lawful-authority NPC, captured
+  // alongside the player Kestrel so the faction-contrast read (§20 Phase 3) can be judged. Built via
+  // the same live factory — the override seam intercepts it as a faction_scn patrol_lawman. ----
+  try {
+    const concordEnt = { id: 'shot_concord', type: 'ship', team: 1, radius: 18, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, factionId: 'faction_scn', data: { defId: 'ship_hornet', lootTableId: 'patrol_lawman', ai: { lawful: true } } };
+    const concordMesh = vf.build(concordEnt);
+    if (concordMesh) {
+      const tmp2 = new THREE.Group(); scene.add(tmp2); tmp2.add(concordMesh);
+      const hidden2 = [];
+      for (const child of scene.children) { if (child !== tmp2 && child.userData && child.userData.kind) { child.visible = false; hidden2.push(child); } }
+      const p2 = cam.position.clone(); cam.position.set(38, 28, 38); cam.lookAt(0, 1.5, 0);
+      renderer.render(scene, cam); await new Promise((r) => setTimeout(r, 30));
+      try {
+        const url = renderer.domElement.toDataURL('image/jpeg', 0.88);
+        const res = await fetch('/__shot?name=concord_patrol_live', { method: 'POST', body: url });
+        console.log('[shipShot] captured concord_patrol_live.jpg ->', (await res.json()).file);
+      } catch (err) { console.error('[shipShot] concord capture failed', err); }
+      cam.position.copy(p2); scene.remove(tmp2);
+      for (const c of hidden2) c.visible = true;
+    }
+  } catch (err) { console.error('[shipShot] concord build failed', err); }
 }
