@@ -7,7 +7,8 @@
 //
 // Run: node scripts/capture-gameplay.mjs [port]
 import { spawn } from 'node:child_process';
-import { existsSync, statSync, readFileSync } from 'node:fs';
+import { existsSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const PORT = Number(process.argv[2] || process.env.PORT || 8123);
@@ -103,7 +104,18 @@ async function cdpCapture() {
   const diagRes = await send('Runtime.evaluate', { expression: 'JSON.stringify((window.__THREE_GAME_DIAGNOSTICS__&&window.__THREE_GAME_DIAGNOSTICS__.getReport)?window.__THREE_GAME_DIAGNOSTICS__.getReport():{error:"no diagnostics handle"})', returnByValue: true });
   const report = JSON.parse(diagRes.result.value);
 
-  // Capture a screenshot of the live game frame (full page, not just a ship).
+  // §16.4 scene set: capture a short sequence as the live world evolves (more entities spawn, combat/
+  // mining occur over time). Each shot is a candidate scene; the runbook records which §16.4 type each
+  // best represents. Captured at ~3s intervals so the world changes between frames.
+  const SCENES = ['gameplay_flight', 'gameplay_t2', 'gameplay_t3', 'gameplay_t4'];
+  const b64s = [];
+  for (const name of SCENES) {
+    const sr = await send('Page.captureScreenshot', { format: 'jpeg', quality: 88 });
+    writeFileSync(`.devshots/${name}.jpg`, Buffer.from(sr.data, 'base64'));
+    b64s.push(name);
+    if (name !== SCENES[SCENES.length - 1]) await sleep(3000);
+  }
+  // Primary screenshot for the §16.4 "hero flight" scene (scene 1).
   const shotRes = await send('Page.captureScreenshot', { format: 'jpeg', quality: 88 });
   const b64 = shotRes.data;
 
@@ -124,8 +136,6 @@ try { child.kill(); } catch (_) {}
 if (!result) { console.error('[gameplay] FAILED'); process.exit(1); }
 
 // Write the diagnostics report.
-const { writeFileSync, mkdirSync } = await import('node:fs');
-const { dirname } = await import('node:path');
 try { mkdirSync(dirname(REPORT), { recursive: true }); } catch (_) {}
 writeFileSync(REPORT, JSON.stringify(result.report, null, 2));
 writeFileSync(SHOT_PATH, Buffer.from(result.b64, 'base64'));
