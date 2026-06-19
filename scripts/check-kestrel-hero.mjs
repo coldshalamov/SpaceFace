@@ -127,5 +127,23 @@ check('seam does not propagate hero-builder exceptions', fallback === undefined 
 installVisualOverrides(vf);
 check('install is idempotent', vf.__spacefaceOverridesInstalled === true);
 
+// ---- §9.10 upgrade behavior: visualTier changes ONE dimension (aft energy mass), preserves identity ----
+// An upgrade enlarges the aft ring + adds cooling + changes plume — but the hull/silhouette stays the
+// same (still the same ship, changed). The builder exposes the tier result on userData and the enlarged
+// aft ring bakes into the merged geometry pre-batch, so we compare the aft-region bounding width.
+const t0 = buildKestrelHero(mkKestrelEntity({ data: { defId: 'ship_kestrel', fittings: [], visualTier: 0 } }));
+const t3 = buildKestrelHero(mkKestrelEntity({ data: { defId: 'ship_kestrel', fittings: [], visualTier: 3 } }));
+check('§9.10 tier0 exposes visualTier=0', t0.userData.visualTier === 0);
+check('§9.10 tier3 exposes visualTier=3', t3.userData.visualTier === 3);
+check('§9.10 tier>=2 added a cooling ring', t3.userData.upgradeCooling === true);
+check('§9.10 tier0 has no cooling ring (stock)', t0.userData.upgradeCooling === false);
+// The aft energy mass grew: the aft-most region (x < -12) is wider on tier 3 (enlarged ring + cooling).
+const aftWidth = (r) => { let mz = 0; r.traverse((o) => { if (!o.isMesh || !o.geometry) return; const p = o.geometry.attributes.position; if (!p) return; const wm = new THREE.Matrix4().multiplyMatrices(o.matrixWorld, new THREE.Matrix4().makeRotationFromQuaternion(o.quaternion)); for (let i=0;i<p.count;i++){ const x=p.getX(i); if (x < -11.5) mz = Math.max(mz, Math.abs(p.getZ(i))); } }); return mz; };
+check('§9.10 tier3 aft region is wider (aft energy mass grew)', aftWidth(t3) > aftWidth(t0), `t0=${aftWidth(t0).toFixed(2)} t3=${aftWidth(t3).toFixed(2)}`);
+// Identity preserved: the sockets are identical across tiers (same ship, changed).
+const socketsT0 = new Set(); t0.traverse((o) => { if (o.userData && o.userData.spacefaceSocket) socketsT0.add(o.name); });
+const socketsT3 = new Set(); t3.traverse((o) => { if (o.userData && o.userData.spacefaceSocket) socketsT3.add(o.name); });
+check('§9.10 identity preserved (same sockets across tiers)', socketsT0.size === socketsT3.size && [...socketsT0].every((s) => socketsT3.has(s)));
+
 console.log(`\n${ok} ok, ${fail} fail`);
 process.exit(fail ? 1 : 0);

@@ -420,7 +420,7 @@ export function buildKestrelHero(entity) {
   // 4) One axial M drive. Rings expose load and heat paths; the glow begins inside the nozzle.
   addCylinderX(hull, mat.graphite, 'Kestrel_Axial_Drive_Housing', 2.05, 4.4, [-10.65, -0.05, 0], 16);
   addTorusX(hull, mat.gunmetal, 'Kestrel_Drive_Forward_Ring', 1.86, 0.20, [-8.45, -0.05, 0]);
-  addTorusX(hull, mat.frontier, 'Kestrel_Drive_Aft_Ring', 1.87, 0.22, [-13.33, -0.05, 0]);
+  const aftRing = addTorusX(hull, mat.frontier, 'Kestrel_Drive_Aft_Ring', 1.87, 0.22, [-13.33, -0.05, 0]);
   const fan = addCylinderX(hull, mat.drive, 'Kestrel_Drive_Fan', 1.48, 0.18, [-13.53, -0.05, 0], 12);
   const driveCore = addCylinderX(hull, mat.driveCore, 'Kestrel_Drive_Core', 0.94, 0.24, [-13.66, -0.05, 0], 14);
   const plume = addMesh(hull, new THREE.CircleGeometry(2.55, 24), mat.driveGlow, 'Kestrel_Drive_Glow', [-13.82, -0.05, 0], [0, -Math.PI / 2, 0]);
@@ -430,6 +430,27 @@ export function buildKestrelHero(entity) {
   driveCore.userData.damageRole = 'driveCore'; // §9.11 Critical: unstable axial drive
   plume.userData.damageRole = 'plume';         // §9.11 Critical: plume flickers/dims
   plume.renderOrder = 2;
+
+  // §9.10 Upgrade behavior — "my old ship, changed," not a new ship. An upgrade strongly changes ONE
+  // major dimension; here that dimension is AFT ENERGY MASS (the spec's first example: "engine upgrade
+  // enlarges aft ring, adds cooling, and changes plume behavior"). visualTier comes from the shipyard
+  // tier system / combat danger scaling (combat.js sets data.visualTier). Applied to the captured
+  // references BEFORE static batching (so the scale bakes into the merged geometry). Tier 0 = stock;
+  // each step enlarges the aft ring, tier>=2 adds a cooling ring, tier 3 brightens the plume. The
+  // hull/silhouette is unchanged, so identity is preserved (§9.10: "my old ship, changed").
+  const tier = Math.max(0, Math.min(3, Math.round((entity && entity.data && entity.data.visualTier) || 0)));
+  let coolingRing = null;
+  if (tier > 0) {
+    aftRing.scale.setScalar(1 + tier * 0.12);                       // enlarge aft ring (bakes pre-merge)
+    if (tier >= 2) {
+      coolingRing = addTorusX(hull, mat.graphite, 'Kestrel_Drive_Cooling_Ring', 2.12, 0.10, [-12.6, -0.05, 0]);
+    }
+    if (tier >= 3) {
+      plume.material = glowMaterial(COLOR.frontier, 0.74);          // tier 3: hotter plume
+    }
+  }
+  root.userData.visualTier = tier;          // exposed for inspection / §9.10 smoke test
+  root.userData.upgradeCooling = tier >= 2;  // tier>=2 added a cooling ring (aft energy mass upgrade)
 
   // 5) Visible starter verbs. The player can shoot and mine immediately, so the model exposes both
   // tools rather than forcing gameplay to originate from an invisible point.
