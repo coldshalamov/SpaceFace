@@ -67,6 +67,10 @@ Prison origin: They were the ones the wardens used for the jobs the other prison
 Graffiti: *They didn't modify the workers. They modified the terms of the workers.*
 Second graffiti (smaller, below the first): *THE ADDENDUM IS ON PAGE 9. READ PAGE 9.*
 
+**Mechanical spec override — Vael:**
+
+The faction mechanical spec (`design/specs/06-factions-reputation.md`) classifies Vael as "alien/outsider hive-collective" with "alien sectors." For narrative purposes, the Vael are **not biologically alien**. They are humans — or human-descended — from the Veil Nebula region who operate under a completely separate contract and governance framework. Their "alien" quality is cultural and legal: their contract language, their twelve-page addenda, and their organizational structure are as incomprehensible to standard spacers as a foreign language. The Veil Expanse and Chorus Deep regions (where Vael is based) are simply far from the core sectors and governed differently. "Inscrutable" means the addendum is impenetrable, not that the species is. Starting rep -120 reflects that the Vael's contractual relationships begin from a position of disadvantage for anyone who hasn't read page 9.
+
 **Non-Negotiables**
 - Every faction's HUD text and graffiti must be written in the exact clipped, declarative style that would pass the Shalamov/McCarthy test.
 - Every betrayal must cost the player something concrete (oxygen, ammo, time, reputation) before correction is possible.

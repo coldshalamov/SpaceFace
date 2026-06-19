@@ -120,9 +120,16 @@ The player's ship departs. The station doesn't flag them on leaving. The derelic
 
 ---
 
-**Cross-reference note:**
+**Cross-reference notes:**
 
-The mechanical spec (`design/specs/07-missions-contracts-story-spine.md`) B7 reward currently reads "title 'Sector Baron' + NewGame+ unlock." This narrative redesign replaces that reward structure. When implementing B7, the mission system's `story.beatAdvanced{fromIndex:6,toIndex:7}` event should trigger the three-contract-board update described above, not a title grant. The net-worth and rep preconditions (100k + rep ≥50) remain unchanged.
+The mechanical spec (`design/specs/07-missions-contracts-story-spine.md`) B7 reward currently reads "title 'Sector Baron' + NewGame+ unlock." This narrative redesign replaces that reward structure. When implementing B7, the mission system's `story.beatAdvanced{fromIndex:6,toIndex:7}` event should trigger the four-contract-board update described above, not a title grant. The net-worth and rep preconditions (100k + rep ≥50) remain unchanged.
+
+The sector navigation spec (`design/specs/05-world-sectors-navigation.md`) tags S9 (Ashfall Reach) as "faction Rogue AI/Boss" with POIs "Boss Arena Signal, Ancient Vault (legendary loot)." **This must be overridden.** S9 in the narrative is not a boss arena. The correct S9 content:
+- Faction: **Unclaimed / No Infrastructure** (no faction affiliation)
+- POI 1: **Derelict Administrative Station** (the Kurtz figure's station — discoverable via recon_scan, shows as "SCAVENGER — UNKNOWN" in the mission log on first approach)
+- POI 2: **Wormhole Threshold** (the jump-without-destination prompt for Choice C — not a normal gate)
+- "Ancient Vault" → The Kurtz figure's ledger (cargo item "PERSONAL EFFECTS — 1 UNIT / 0.4t", not a loot drop)
+- "Boss Arena Signal" → "ASHFALL REACH — SIGNAL DETECTED: LONG-FORM TRANSMISSION. SOURCE: DERELICT STATION." (comms popup, not a beacon POI)
 
 ---
 
