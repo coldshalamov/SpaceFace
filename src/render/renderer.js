@@ -8,6 +8,7 @@ import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
 import { projectedWidthPx } from './lod.js';
+import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
 import { createPlanetFactory } from './planetFactory.js';
 
@@ -153,6 +154,10 @@ export const render = {
     { const dpr = renderer.getPixelRatio() || 1; this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr }; }
     try { this.bloom = createBloom(renderer, drawSize.x, drawSize.y); }
     catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
+    // Collision/socket/landing-contact debug visualization (spec §12.5). OFF by default; toggled via
+    // the render system handle (state.render.debug.toggle) — wired to F7 in ui/input.js.
+    try { this.collisionDebug = createCollisionDebug(this); }
+    catch (err) { console.warn('[render] collision debug unavailable:', err); this.collisionDebug = null; }
     this._meshes = new Map(); // entityId -> Object3D
     this._meshReconcileDirty = true;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
@@ -163,6 +168,15 @@ export const render = {
     state.render.renderer = renderer;
     state.render.camera = cam.obj;
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
+    // Collision/socket/landing debug toggle (spec §12.5), bound to F7 in ui/input.js. Capture the
+    // render-system `this` once so the handle closures resolve the live collisionDebug regardless of
+    // how they're invoked (method `this` would otherwise bind to the debug handle object itself).
+    const renderSys = this;
+    state.render.debug = {
+      get on() { return renderSys.collisionDebug ? renderSys.collisionDebug.on : false; },
+      toggle: () => renderSys.collisionDebug ? renderSys.collisionDebug.toggle() : false,
+      set: (v) => { if (renderSys.collisionDebug) renderSys.collisionDebug.setDebug(v); },
+    };
     state.camera.obj = cam.obj;
 
     ctx.helpers.worldToScreen = (v) => this.worldToScreen(v);
@@ -296,6 +310,7 @@ export const render = {
     const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
     for (const e of this.state.entityList) {
       const m = e.mesh; if (!m) continue;
+      m.userData.__lastEntity = e; // stash for read-only debug overlays (collision radius), spec §12.5
       const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
       if (e.flags.noInterp) {
         m.position.set(e.pos.x, 0, e.pos.z); m.rotation.y = -e.rot;
@@ -360,6 +375,9 @@ export const render = {
     this._updateShadowFollow();
     if (this.bloom && this.state.settings.video.bloom !== false) this.bloom.render(this.scene, this.cam.obj);
     else this.renderer.render(this.scene, this.cam.obj);
+    // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
+    // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
+    if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
     if (this.diag) this.diag.update(frameDt);
   },
 
