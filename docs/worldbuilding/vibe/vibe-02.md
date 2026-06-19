@@ -1,0 +1,17 @@
+**SPACEFACE VIBE DOCUMENT**
+
+SpaceFace starts in the armpit of the solar system: a half-abandoned prison-colony called The Pit, where the UN dumped the last generation of "unreformable" debtors, hackers, and political embarrassments. Your ship is a repossessed tug with a reactor that prays to Saint Jude. Your crew is whatever three idiots will still talk to you after the last job went sideways. You are not a hero. You are the guy who knows which airlock the inspectors never check.
+
+The culture is pure spacer superstition dressed up as operational security. Never name a ship after a living person. Never jump on a Tuesday. If the comms glitch three times in one shift, someone's about to die. Graffiti is the only honest newsfeed left. Every docking bay bulkhead is a palimpsest of last week's lies: "DON'T TRADE WITH GANYMEDE—THEY'RE EATING THE HYDROPONICS TECH," "CAPTAIN VOSS STILL OWES ME 400 CRED AND A KIDNEY," "THE BELT IS WATCHING." These messages update between visits. Sometimes they argue with each other. Sometimes they know things you haven't done yet.
+
+Comms are a constant low-grade migraine. Micro-popups slide in from every direction—corporate debt collectors, exes, rival smugglers, your own increasingly unhinged nav AI. Most are noise. Some are traps. A few are the only warning you'll get before a "routine" customs scan turns into a boarding action. The best pilots learn to read the popups the way old sailors read clouds.
+
+The story begins small and stays small for as long as it can. First jobs are the usual: smuggle a crate of vat-meat that definitely isn't human, rig a dock auction, plant a virus that makes a rival's ore scanner hallucinate gold. You're just trying to keep the reactor fueled and the hull patched. Then the jobs start arriving with names attached—mid-level bureaucrats, minor corporate officers, one actual UN inspector who should not be talking to someone like you. The money gets better. The bodies get harder to hide. The graffiti starts mentioning you by callsign.
+
+What escalates isn't your ambition. It's the realization that the entire system is already rotting from the inside and everyone with a clean uniform is either complicit or will be soon. Le Carré would recognize the gray men in clean stations who sign the orders that get your friends spaced. Greene would recognize the priest who blesses the smuggling hold because the orphanage needs new filters. Bacigalupi would recognize the way the air recyclers fail first on the lowest decks, the way the rich buy bottled atmosphere while everyone else learns to ignore the smell of slow suffocation.
+
+You never fight the system head-on. You steal its lunch money, sell it back to them at a markup, then use the profit to buy the next layer of rot. The joke is that the only way to stay human is to keep being a criminal. The punchline is that eventually even the criminals start acting like the institutions they hate—only with worse bookkeeping.
+
+The tone is gallows humor over the sound of a failing life-support alarm. Every victory is provisional. Every alliance is a future betrayal with better terms. The universe is vast, empty, and already halfway through the process of forgetting you existed. The only thing that might outlast you is the graffiti you leave behind, and even that will eventually be painted over by someone hungrier and meaner.
+
+Welcome to the Pit. Try not to die funny.

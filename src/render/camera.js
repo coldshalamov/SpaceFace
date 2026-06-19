@@ -30,7 +30,7 @@ export function createChaseCamera(state) {
   return {
     obj: cam,
     addTrauma(amount) { c.trauma = Math.min(1, c.trauma + amount); },
-    setZoom(z) { c.zoom = Math.max(45, Math.min(130, z)); },
+    setZoom(z) { c.zoom = Math.max(45, Math.min(220, z)); },
     follow(dt) {
       const p = state.entities.get(state.playerId);
       let fx = c.focus.x, fz = c.focus.z;

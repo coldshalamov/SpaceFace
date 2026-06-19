@@ -1,4 +1,6 @@
 @echo off
+setlocal
+pushd "%~dp0"
 title SpaceFace (Desktop)
 echo.
 echo ============================================
@@ -18,22 +20,42 @@ if %errorlevel% neq 0 (
     echo Then run this file again.
     echo.
     pause
-    exit /b
+    popd
+    exit /b 1
 )
 
-REM Install dependencies if needed (first time only)
-if not exist "node_modules" (
-    echo Installing required packages (this may take a minute the first time)...
+REM Install dependencies if needed (first time only, or if Electron is missing)
+if not exist "node_modules\.bin\electron.cmd" (
+    echo Installing required packages - this may take a minute the first time...
     call npm install
+    if %errorlevel% neq 0 (
+        echo.
+        echo ERROR: npm install failed.
+        echo Please check the error above, then run this file again.
+        echo.
+        pause
+        popd
+        exit /b 1
+    )
     echo.
 )
 
 echo Launching SpaceFace desktop app...
-echo (You can close this window after the game opens)
+echo You can close this window after the game opens.
 echo.
 
 call npm run electron
+if %errorlevel% neq 0 (
+    echo.
+    echo ERROR: SpaceFace desktop app failed to launch.
+    echo Please check the error above.
+    echo.
+    pause
+    popd
+    exit /b 1
+)
 
 echo.
 echo Game closed.
 pause >nul
+popd

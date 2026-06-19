@@ -16,7 +16,10 @@ function entityName(e) {
     const def = e.data && e.data.defId ? SHIP_BY_ID.get(e.data.defId) : null;
     return (e.data && e.data.name) || (def && def.name) || 'Unknown Ship';
   }
-  if (e.type === 'station') return (e.data && (e.data.stationName || e.data.stationId)) || 'Station';
+  if (e.type === 'station') {
+    if (e.data && e.data.isGate) return e.data.name || 'Jump Gate';
+    return (e.data && (e.data.name || e.data.stationName || e.data.stationId)) || 'Station';
+  }
   if (e.type === 'asteroid') return 'Asteroid';
   if (e.type === 'wreck') return 'Wreck';
   if (e.type === 'drone') return 'Drone';

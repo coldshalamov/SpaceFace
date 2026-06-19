@@ -34,7 +34,7 @@ export function makeEntity(spec = {}) {
     id: 0, type: 'fx', alive: true, factionId: null,
     pos: v3(spec.pos), vel: v3(spec.vel), prevPos: new THREE.Vector3(),
     rot: spec.rot || 0, prevRot: spec.rot || 0, angVel: 0,
-    bank: 0, prevBank: 0, bankVel: 0,   // roll-into-turn state (Phase 1 flight); bank = current roll (rad)
+    bank: 0, prevBank: 0, bankVel: 0,   // visual roll pose; +bank = bank right, never feeds yaw
     radius: 1, mass: 1,
     hull: 1, hullMax: 1, armorHp: 0, armorMax: 0, armorFlat: 0,
     shield: 0, shieldMax: 0, shieldRegenRate: 0, shieldRegenDelay: 3, lastDamageT: -1e9,

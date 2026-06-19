@@ -24,7 +24,7 @@ function getExternalTexture(path) {
 }
 
 // ---- pool caps by particle-quality setting (spec: low/med/high -> 1500/3000/4000) ----
-const PARTICLE_CAP = { low: 1500, med: 3000, high: 4000 };
+const PARTICLE_CAP = { low: 1500, med: 3000, medium: 3000, high: 4000 };
 const SPRITE_CAP = 256;
 
 // Sprite "kinds" — drive how a pooled sprite ages (scale/opacity curve).
@@ -35,7 +35,7 @@ const SPR_FRESNEL = 3; // shield-hit fresnel ripple: bright rim ring that snaps 
 
 // Per-quality spawn multiplier so "punchier" effects scale with the particle budget instead of
 // blindly multiplying spawns against a 1500-particle low cap (where recycle is O(cap) per spawn).
-const QUALITY_BURST = { low: 0.55, med: 0.8, high: 1.0 };
+const QUALITY_BURST = { low: 0.55, med: 0.8, medium: 0.8, high: 1.0 };
 
 // Additive blend point-shader: size attenuates with distance, color/size lerp by age, fade out.
 const PARTICLE_VERT = `
@@ -101,6 +101,7 @@ export const vfx = {
     this._burst = QUALITY_BURST[q] || 1.0; // scales discrete-effect spawn counts
 
     this._initEventLights();
+    this._initRibbonTrails();
     // ---- GPU point cloud ----
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(cap * 3);
@@ -416,23 +417,30 @@ export const vfx = {
     const x = pos.x, z = pos.z;
     const burst = this._burst || 1;
 
-    // (a) MULTI-LAYER FLASH — a tiny instant white core punch, a warm mid flash, and a broad soft
-    //     outer bloom-feeder. Layering different lifetimes/colours reads far punchier than one sprite.
+    // (a) MULTI-LAYER FLASH — a tiny instant white core punch, a hot mid flash, and a broad neon
+    //     outer bloom-feeder. Cyberpunk-noir: push the outer bloom toward neon magenta so explosions
+    //     read as energy discharges, not just orange fire.
     this._spawnSprite(SPR_FLASH, x, 0, z, 0.08, r * 1.4, r * 3.0, 1.0, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.18, r * 2.4, r * 6.0, 1.0, 0.0, '#fff2c0', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.30, r * 3.0, r * 8.5, 0.7, 0.0, '#ffb060', 0, 0);
-    // dynamic explosion light — warm orange, scaled to blast size, longer decay so it reads as fire
-    this._flashLight({ x, z }, 0xffb060, Math.min(14, 4 + r * 0.8), 5, 200 + r * 12);
-    // (c) DOUBLE SHOCKWAVE — a fast thin leading ring + a slower wider one for depth.
+    this._spawnSprite(SPR_FLASH, x, 0, z, 0.18, r * 2.4, r * 6.0, 1.0, 0.0, '#ffe8a0', 0, 0);
+    this._spawnSprite(SPR_FLASH, x, 0, z, 0.30, r * 3.0, r * 8.5, 0.7, 0.0, '#ff5fa0', 0, 0);
+    // dynamic explosion light — neon-warm, scaled to blast size, longer decay so it reads as fire
+    this._flashLight({ x, z }, 0xff70a0, Math.min(14, 4 + r * 0.8), 5, 200 + r * 12);
+    // (c) TRIPLE CHROMATIC SHOCKWAVE — a fast white leading ring + a neon-cyan mid ring + a neon-
+    //     magenta outer ring. The cyan/magenta pair reads as a chromatic aberration / energy rupture,
+    //     the signature cyberpunk explosion cue (vs a plain white soap-bubble ring).
     this._spawnSprite(SPR_RING, x, 0, z, 0.30, r * 0.5, r * 6.0, 0.9, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_RING, x, 0, z, 0.46, r * 0.8, r * 9.0, 0.7, 0.0, '#dfe8ff', 0, 0);
-    // (b) embers: hot-yellow -> ember-red
+    this._spawnSprite(SPR_RING, x, 0, z, 0.42, r * 0.7, r * 8.0, 0.8, 0.0, '#5fe0ff', 0, 0);
+    this._spawnSprite(SPR_RING, x, 0, z, 0.52, r * 0.9, r * 10.5, 0.6, 0.0, '#ff5fe0', 0, 0);
+    // (b) embers: hot-yellow -> ember-red, with a few NEON magenta embers mixed in (energy debris)
     const embers = Math.max(8, Math.round((big ? 44 : 26) * burst));
     this._c0.set('#ffe08a'); this._c1.set('#802010');
     for (let k = 0; k < embers; k++) {
       const a = Math.random() * Math.PI * 2;
       const sp = 20 + Math.random() * 50;
       const life = 0.6 + Math.random() * 0.5;
+      // ~1 in 5 embers is neon magenta (ionized debris) for the punk-grit energy look
+      if (k % 5 === 0) { this._c0.set('#ff5fe0'); this._c1.set('#60106a'); }
+      else { this._c0.set('#ffe08a'); this._c1.set('#802010'); }
       this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, life, 2.5, 0.0, this._c0, this._c1, 1.5, 0, 0);
     }
     // (b2) fast bright SPARKS — short-lived white-hot streaks for the initial flash-front snap
@@ -650,6 +658,7 @@ export const vfx = {
     this._t += dt;
 
     this._emitTrails(dt);
+    this._updateRibbonTrails(dt);
     this._integrateParticles(dt);
     this._integrateSprites(dt);
     this._decayEventLights(dt);
@@ -772,6 +781,38 @@ export const vfx = {
   _SMOKE_DARK: '#18181c',
   _EMBER_HOT: '#ff7a2c',
   _EMBER_DIM: '#7a2a10',
+  // Ribbon trails for medium-large ships: maintained per entity, updated each trail tick
+  _ribbonTrails: null,
+  _initRibbonTrails() { this._ribbonTrails = new Map(); },
+
+  _updateRibbonTrails(dt) {
+    if (!this._ribbonTrails || !this._scene) return;
+    const state = this.state;
+    for (const e of state.entityList) {
+      if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
+      if ((e.radius || 0) < 22) continue; // fighters use particles only; frigates+ get ribbon
+      if (e.flags && e.flags.docked) { const rt = this._ribbonTrails.get(e.id); if (rt) rt.clear(); continue; }
+      const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
+      if (speed < 4) continue;
+      let trail = this._ribbonTrails.get(e.id);
+      if (!trail) {
+        const w = Math.max(2.5, (e.radius || 14) * 0.16);
+        trail = makeRibbonTrail(this._scene, this._engineColor(e), 30, w);
+        this._ribbonTrails.set(e.id, trail);
+      }
+      // sample from engine nozzle (rear of ship)
+      const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+      const back = (e.radius || 14) * 0.88;
+      trail.push(e.pos.x - cf * back, e.pos.z - sf * back, e.rot);
+      trail.rebuild(0.25 + Math.min(1, speed / Math.max(20, e.maxSpeed || 80)) * 0.4);
+    }
+    // dispose dead entities
+    for (const [id, trail] of this._ribbonTrails) {
+      const e = state.entities.get(id);
+      if (!e || !e.alive) { trail.dispose(); this._ribbonTrails.delete(id); }
+    }
+  },
+
   _emitDamageSmoke(e, frac, dt) {
     if (!this._scene) return;
     // severity 0..1: 0 at the wound threshold (40%), 1 at death's door (0%)
@@ -833,23 +874,29 @@ export const vfx = {
 
 
   _integrateParticles(dt) {
+    if (this._liveCount <= 0) {
+      this._pGeo.setDrawRange(0, 0);
+      return;
+    }
     const cap = this._cap;
     const pos = this._pPos, col = this._pCol, size = this._pSize, alpha = this._pAlpha;
     let writeMax = 0;
     let live = 0;
     for (let i = 0; i < cap; i++) {
       if (!this._alive[i]) {
-        // keep dead slots collapsed to alpha 0 (won't draw)
         alpha[i] = 0;
         continue;
       }
       let age = this._age[i] + dt;
       const life = this._life[i];
-      if (age >= life) { this._alive[i] = 0; alpha[i] = 0; continue; }
+      if (age >= life) {
+        this._alive[i] = 0;
+        alpha[i] = 0;
+        continue;
+      }
       this._age[i] = age;
       const t = age / life;
 
-      // integrate with drag
       const dr = this._drag[i];
       const damp = 1 - Math.min(1, dr * dt);
       this._vx[i] *= damp; this._vy[i] *= damp; this._vz[i] *= damp;
@@ -914,6 +961,60 @@ export const vfx = {
     }
   },
 };
+
+// ---------------------------------------------------------------------------
+// ribbon trail factory (tapering triangle-strip mesh for large ships — cleaner than particle only)
+// ---------------------------------------------------------------------------
+function makeRibbonTrail(scene, color, nSeg, baseWidth) {
+  nSeg = nSeg || 30; baseWidth = baseWidth || 5;
+  const verts = nSeg * 2;
+  const pos = new Float32Array(verts * 3);
+  const geo = new THREE.BufferGeometry();
+  const posAttr = new THREE.BufferAttribute(pos, 3);
+  posAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('position', posAttr);
+  const idx = [];
+  for (let i = 0; i < nSeg - 1; i++) {
+    const b = i * 2;
+    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+  }
+  geo.setIndex(idx);
+  const mat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(color || '#7fe0ff'),
+    transparent: true, opacity: 0.5,
+    depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.frustumCulled = false; mesh.renderOrder = 4;
+  scene.add(mesh);
+
+  const pts = new Float32Array(nSeg * 3); // x, z, rot per ring slot
+  let head = 0, count = 0;
+
+  return {
+    push(x, z, rot) {
+      pts[head * 3] = x; pts[head * 3 + 1] = z; pts[head * 3 + 2] = rot;
+      head = (head + 1) % nSeg;
+      if (count < nSeg) count++;
+    },
+    rebuild(opacity) {
+      if (opacity != null) mat.opacity = opacity;
+      for (let i = 0; i < nSeg; i++) {
+        const t = i / Math.max(1, count - 1);
+        const slot = ((head - 1 - i) % nSeg + nSeg) % nSeg;
+        const x = pts[slot * 3], z = pts[slot * 3 + 1], rot = pts[slot * 3 + 2];
+        const w = baseWidth * Math.max(0, 1 - t * 0.97);
+        const px = Math.sin(rot) * w, pz = -Math.cos(rot) * w;
+        const vi = i * 2;
+        pos[vi * 3] = x + px; pos[vi * 3 + 1] = 0.4; pos[vi * 3 + 2] = z + pz;
+        pos[(vi + 1) * 3] = x - px; pos[(vi + 1) * 3 + 1] = 0.4; pos[(vi + 1) * 3 + 2] = z - pz;
+      }
+      geo.attributes.position.needsUpdate = true;
+    },
+    clear() { count = 0; },
+    dispose() { scene.remove(mesh); geo.dispose(); mat.dispose(); },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // pure helpers (module scope)

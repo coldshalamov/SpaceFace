@@ -11,9 +11,9 @@ function defaultSettings() {
     showDamageNumbers: true,
     keybinds: {},
     audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
-    video: { renderScale: 1, bloom: true, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'high', pixelRatioCap: 2, motionReduce: false },
-    gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard' },
-    controls: { bindings: null },  // null = use input.js DEFAULT_BINDINGS; populated on first rebind
+    video: { renderScale: 1, bloom: true, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'high', pixelRatioCap: 2, motionReduce: false, shadows: true },
+    gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'custom' },
+    controls: { bindings: null, flightMode: 'assisted' },  // null = use input.js DEFAULT_BINDINGS; populated on first rebind
     // Accessibility (V2 §9/§12). motionReduce lives under video (feel/vfx read it there); uiScale is the
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.
     accessibility: { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false },
@@ -75,7 +75,7 @@ export function createGameState(seed) {
     days: 0,
     rng: mulberry32(seed),
     input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, fire: false, fireGroup: null, autoFire: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 } },
-    camera: { obj: null, tilt: 60, zoom: 70, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 18 },
+    camera: { obj: null, tilt: 60, zoom: 95, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 18 },
     bounds: { radius: 2600, hardRadius: 3000, center: { x: 0, z: 0 } },
 
     // --- meta records ---

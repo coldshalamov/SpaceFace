@@ -9,6 +9,7 @@
     "serve": "node server.js 8123",
     "electron": "electron .",
     "dist": "electron-builder",
+    "check:flight": "node scripts/flight-lab-sim.mjs && node scripts/probe-flight-visual.mjs",
     "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && node scripts/check-gameplay-core.mjs"
   },
   "private": true,
@@ -32,5 +33,9 @@
     "win": { "target": "nsis", "artifactName": "SpaceFace-Setup-${version}.${ext}" },
     "mac": { "target": "dmg" },
     "linux": { "target": "AppImage" }
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.19.3",
+    "three": "0.184.0"
   }
 }

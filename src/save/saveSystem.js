@@ -18,6 +18,20 @@ const INDEX_KEY = LS_PREFIX + 'index';
 const FMT = 'spaceface-save';
 const AUTOSAVE_SLOT = 'auto';
 const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
+const DEFAULT_FLIGHT_MODE = 'assisted';
+const DEFAULT_PHYSICS_BACKEND = 'custom';
+const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
+const VALID_PHYSICS_BACKENDS = new Set(['custom', 'rapier']);
+const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
+  'mesh',
+  'view',
+  'prevPos',
+  'prevRot',
+  'angVel',
+  'bank',
+  'bankVel',
+]);
+const TRANSIENT_ENTITY_FLAGS = new Set(['boosting', 'noInterp']);
 
 // Save-key → serialize/deserialize plan (§4.5 map). Order is the load/restore order (deps first).
 // `get(state, system)` reads the key's payload; `set(state, system, data)` restores it. Systems that
@@ -518,8 +532,8 @@ export const save = {
 
   _restoreSettings(d) {
     if (!d) return;
-    // shallow-merge so any new default keys absent from an old save survive (forward-compat).
-    this.state.settings = Object.assign({}, this.state.settings, d);
+    // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
+    this.state.settings = sanitizeRestoredSettings(mergePlain(this.state.settings, d));
   },
 
   _callDeserialize(name, data) {
@@ -683,13 +697,20 @@ function hasRestorablePlayer(data) {
   return !!(player && typeof player === 'object');
 }
 
-// Serialize an entity to a plain object: drop mesh/view (THREE refs), encode pos/vel as {x,z} (§4.5).
+// Serialize an entity to a plain object: drop render/interpolation/controller state, encode pos/vel
+// as {x,z}, and keep only authoritative gameplay fields (§4.5).
 function plainEntity(e, isPlayer) {
   const out = {};
   for (const k in e) {
-    if (k === 'mesh' || k === 'view' || k === 'prevPos') continue;
+    if (shouldSkipEntitySaveKey(k)) continue;
     const v = e[k];
-    if (v && typeof v === 'object' && typeof v.x === 'number' && typeof v.z === 'number' && v.isVector3) {
+    if (k === 'flags') {
+      const flags = sanitizeEntityFlagsForSave(v);
+      if (Object.keys(flags).length) out.flags = flags;
+    } else if (k === 'boost') {
+      const boost = sanitizeBoostForSave(v);
+      if (boost !== undefined) out.boost = boost;
+    } else if (v && typeof v === 'object' && typeof v.x === 'number' && typeof v.z === 'number' && v.isVector3) {
       out[k] = { x: v.x, z: v.z };
     } else if (k === 'ttl' && !Number.isFinite(v)) {
       continue;
@@ -703,6 +724,32 @@ function plainEntity(e, isPlayer) {
   if (e.pos) out.pos = { x: e.pos.x, z: e.pos.z };
   if (e.vel) out.vel = { x: e.vel.x, z: e.vel.z };
   out._isPlayer = !!isPlayer;
+  return out;
+}
+
+function shouldSkipEntitySaveKey(key) {
+  return isUnsafePlainKey(key) || key.charAt(0) === '_' || TRANSIENT_ENTITY_SAVE_KEYS.has(key);
+}
+
+function sanitizeEntityFlagsForSave(flags) {
+  if (!flags || typeof flags !== 'object' || Array.isArray(flags)) return {};
+  const out = {};
+  for (const k in flags) {
+    if (isUnsafePlainKey(k) || k.charAt(0) === '_' || TRANSIENT_ENTITY_FLAGS.has(k)) continue;
+    const cv = clonePlain(flags[k]);
+    if (cv !== undefined) out[k] = cv;
+  }
+  return out;
+}
+
+function sanitizeBoostForSave(boost) {
+  if (!boost || typeof boost !== 'object' || Array.isArray(boost)) return clonePlain(boost);
+  const out = {};
+  for (const k in boost) {
+    if (isUnsafePlainKey(k) || k.charAt(0) === '_') continue;
+    const cv = clonePlain(boost[k]);
+    if (cv !== undefined) out[k] = cv;
+  }
   return out;
 }
 
@@ -724,12 +771,66 @@ function clonePlain(v) {
     if (v instanceof Map || v instanceof Set) return undefined;
     const out = {};
     for (const k in v) {
+      if (isUnsafePlainKey(k)) continue;
       const cv = clonePlain(v[k]);
       if (cv !== undefined) out[k] = cv;
     }
     return out;
   }
   return undefined;
+}
+
+function mergePlain(base, patch) {
+  const out = clonePlain(base || {});
+  if (!patch || typeof patch !== 'object') return out;
+  for (const k in patch) {
+    if (isUnsafePlainKey(k)) continue;
+    const pv = patch[k];
+    if (pv && typeof pv === 'object' && !Array.isArray(pv)) {
+      out[k] = mergePlain(out[k] && typeof out[k] === 'object' && !Array.isArray(out[k]) ? out[k] : {}, pv);
+    } else {
+      out[k] = clonePlain(pv);
+    }
+  }
+  return out;
+}
+
+function sanitizeRestoredSettings(settings) {
+  const s = settings && typeof settings === 'object' && !Array.isArray(settings) ? settings : {};
+  if (!s.gameplay || typeof s.gameplay !== 'object' || Array.isArray(s.gameplay)) s.gameplay = {};
+  if (!VALID_PHYSICS_BACKENDS.has(s.gameplay.physicsBackend)) {
+    s.gameplay.physicsBackend = DEFAULT_PHYSICS_BACKEND;
+  }
+
+  if (!s.controls || typeof s.controls !== 'object' || Array.isArray(s.controls)) s.controls = {};
+  if (!VALID_FLIGHT_MODES.has(s.controls.flightMode)) {
+    s.controls.flightMode = DEFAULT_FLIGHT_MODE;
+  }
+  s.controls.bindings = normalizeControlBindings(s.controls.bindings);
+  return s;
+}
+
+function normalizeControlBindings(bindings) {
+  if (bindings == null) return null;
+  if (!bindings || typeof bindings !== 'object' || Array.isArray(bindings)) return null;
+  const out = {};
+  for (const action in bindings) {
+    if (isUnsafePlainKey(action)) continue;
+    const raw = bindings[action];
+    const list = Array.isArray(raw) ? raw : (typeof raw === 'string' ? [raw] : []);
+    const clean = [];
+    for (const code of list) {
+      if (typeof code !== 'string') continue;
+      const trimmed = code.trim();
+      if (trimmed) clean.push(trimmed);
+    }
+    if (clean.length) out[action] = clean;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function isUnsafePlainKey(key) {
+  return key === '__proto__' || key === 'constructor' || key === 'prototype';
 }
 
 function safeStringify(data) {

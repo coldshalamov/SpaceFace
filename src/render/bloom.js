@@ -86,22 +86,89 @@ const BLUR_FRAG = /* glsl */`
   }
 `;
 
-// Composite: scene + strength*bloom, then manual sRGB encode. The clamp-first keeps NaN/negatives
-// from the HDR buffer from poisoning the output. At uStrength == 0 this equals encode(rtScene),
-// which is exactly what the renderer would have written to screen — the invariant.
+// Composite: scene + strength*bloom, ACES filmic, then the CINEMATIC POST GRADE
+// (color grade → atmospheric vignette → animated film grain) and sRGB encode. ACES lives here (not
+// on renderer.toneMapping) so the bloom-on/off paths stay in sync — see COLOR-MANAGEMENT INVARIANT.
+// The post grade is the single highest-value graphics lever: it touches EVERY asset at once, giving
+// the whole frame a cohesive cyberpunk-noir mood (teal shadows, warm highlights, soft corner fall-off,
+// subtle film grain) instead of a flat render-engine default.
 const COMPOSITE_FRAG = /* glsl */`
   precision highp float;
   varying vec2 vUv;
   uniform sampler2D tScene;
   uniform sampler2D tBloom;
   uniform float uStrength;
+  uniform float uExposure;
+  uniform float uAces;
+  uniform float uGrain;     // film grain amount 0..1 (cinematic; animated via uTime)
+  uniform float uVignette;  // atmospheric corner darkening 0..1
+  uniform float uGrade;     // color-grade blend 0..1 (0 = off, 1 = full cyberpunk-noir LUT)
+  uniform float uTime;
+
+  // Narkowicz 2015 ACES approximation (input in linear, output 0-1)
+  vec3 acesFilmic(vec3 x) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+  }
+
+  // Hash for cheap animated grain (no texture lookup — fully procedural, frame-varying).
+  float hash21(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+  }
+
   void main() {
     vec3 scene = texture2D(tScene, vUv).rgb;
     vec3 bloom = texture2D(tBloom, vUv).rgb;
-    vec3 c = scene + bloom * uStrength;
-    c = clamp(c, 0.0, 1.0);
-    // linear -> sRGB (matches three's SRGBColorSpace output transform)
+    vec3 c = (scene + bloom * uStrength) * uExposure;
+    c = max(c, vec3(0.0));
+    // tone mapping: blend between simple clamp (uAces=0) and ACES filmic (uAces=1)
+    vec3 cClamped = clamp(c, 0.0, 1.0);
+    vec3 cAces    = acesFilmic(c);
+    c = mix(cClamped, cAces, uAces);
+
+    // ---- CINEMATIC COLOR GRADE (cyberpunk-noir): teal pushed shadows + warm amber highlights +
+    //      a slight magenta lift in the mids, blended by uGrade. This is the "soul" pass — it
+    //      unifies every asset (ships, stations, asteroids, planets, nebula, VFX) under one mood.
+    vec3 graded = c;
+    {
+      float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      // shadows → cool teal/cyan; highlights → warm amber; both via luma-masked tints
+      vec3 shadowTint  = vec3(0.04, 0.12, 0.16);   // teal push in the darks
+      vec3 highTint    = vec3(0.14, 0.08, 0.02);   // amber in the brights
+      graded = c + shadowTint * (1.0 - smoothstep(0.0, 0.45, luma));
+      graded = graded + highTint * smoothstep(0.55, 1.0, luma);
+      // gentle global contrast/saturation lift for a richer, less flat look
+      graded = mix(vec3(luma), graded, 1.12);
+    }
+    c = mix(c, graded, uGrade);
+
+    // ---- ATMOSPHERIC VIGNETTE: soft corner darkening for focus + a cinematic "shot through a lens"
+    //      feel. Cheaper than a real lens model but reads instantly as "movie" not "game engine".
+    {
+      vec2 d = vUv - vec2(0.5);
+      float dist = dot(d, d) * 2.2;            // 0 center → ~1.1 corners
+      float vig = smoothstep(0.85, 0.25, dist); // keep center bright, fall off at edges
+      c *= mix(1.0, vig, uVignette);
+    }
+
+    // linear -> sRGB
     vec3 srgb = mix(1.055 * pow(c, vec3(1.0 / 2.4)) - vec3(0.055), c * 12.92, step(c, vec3(0.0031308)));
+
+    // ---- FILM GRAIN (applied in sRGB space so it reads as photochemical noise, not a render glitch).
+    //      Animated per-pixel + per-frame; scaled by luminance so it's stronger in darks (where film
+    //      grain naturally lives) and invisible in brights.
+    if (uGrain > 0.001) {
+      float luma = dot(srgb, vec3(0.2126, 0.7152, 0.0722));
+      float n = hash21(vUv * vec2(1920.0, 1080.0) + fract(uTime) * 91.7) - 0.5;
+      srgb += n * uGrain * (0.25 + 0.75 * (1.0 - luma)) * 0.10;
+    }
+
     gl_FragColor = vec4(srgb, 1.0);
   }
 `;
@@ -123,6 +190,8 @@ export function createBloom(renderer, width, height) {
   let strength = 0.9;
   let threshold = 0.65;
   const knee = 0.12;
+  let exposure = 1.0;
+  let aces = 1.0; // 1 = ACES filmic by default
 
   // ---- render targets ----
   // rtScene is full-res (needs a depth buffer for the scene render). The bright/blur targets are
@@ -175,9 +244,15 @@ export function createBloom(renderer, width, height) {
     uDir: { value: new THREE.Vector2(1, 0) },
   });
   const compositeMat = mkMat(COMPOSITE_FRAG, {
-    tScene: { value: null },
-    tBloom: { value: null },
-    uStrength: { value: strength },
+    tScene:     { value: null },
+    tBloom:     { value: null },
+    uStrength:  { value: strength },
+    uExposure:  { value: exposure },
+    uAces:      { value: aces },
+    uGrain:     { value: 0.35 },   // film grain (cyberpunk-noir mood)
+    uVignette:  { value: 0.85 },   // atmospheric corner fall-off
+    uGrade:     { value: 0.55 },   // teal-shadow/amber-highlight color grade
+    uTime:      { value: 0 },
   });
 
   // draw the shared quad with a given material into a given target (null = screen)
@@ -221,10 +296,13 @@ export function createBloom(renderer, width, height) {
     blurMat.uniforms.uDir.value.set(0, 1);
     blit(blurMat, rtBlurB);
 
-    // pass 4 — composite to screen (sRGB-encoded)
+    // pass 4 — composite to screen (sRGB-encoded, with cinematic post grade applied)
     compositeMat.uniforms.tScene.value = rtScene.texture;
     compositeMat.uniforms.tBloom.value = rtBlurB.texture;
     compositeMat.uniforms.uStrength.value = strength;
+    compositeMat.uniforms.uExposure.value = exposure;
+    compositeMat.uniforms.uAces.value = aces;
+    compositeMat.uniforms.uTime.value = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
     blit(compositeMat, null);
 
     renderer.autoClear = prevAutoClear;
@@ -252,6 +330,12 @@ export function createBloom(renderer, width, height) {
     if (typeof o.bloomStrength === 'number') strength = Math.max(0, o.bloomStrength);
     if (typeof o.threshold === 'number') threshold = o.threshold;
     if (typeof o.bloomThreshold === 'number') threshold = o.bloomThreshold;
+    if (typeof o.exposure === 'number') exposure = Math.max(0.1, o.exposure);
+    if (typeof o.acesToneMapping === 'boolean') aces = o.acesToneMapping ? 1.0 : 0.0;
+    // cinematic post grade (cyberpunk-noir) — adjustable via settings.video.*
+    if (typeof o.grain === 'number') compositeMat.uniforms.uGrain.value = Math.max(0, Math.min(1, o.grain));
+    if (typeof o.vignette === 'number') compositeMat.uniforms.uVignette.value = Math.max(0, Math.min(1, o.vignette));
+    if (typeof o.grade === 'number') compositeMat.uniforms.uGrade.value = Math.max(0, Math.min(1, o.grade));
   }
 
   function dispose() {

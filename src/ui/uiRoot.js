@@ -129,6 +129,10 @@ export const ui = {
     this._pendingMainMenu = false;
     this._registeredScreens = new Set();
     const showMainMenuWhenReady = () => {
+      if (!this.state || this.state.mode !== 'menu') {
+        this._pendingMainMenu = false;
+        return;
+      }
       if (this.screenManager && this._registeredScreens && this._registeredScreens.has('mainMenu')) {
         if (!this.screenManager.top()) this.screenManager.pushScreen('mainMenu');
         this._pendingMainMenu = false;
@@ -161,7 +165,14 @@ export const ui = {
       `;
       document.getElementById('ui-root').appendChild(cinematic);
 
+      let dismissed = false;
+      let autoDismissTimer = null;
       const dismissCinematic = () => {
+        if (dismissed) return;
+        dismissed = true;
+        cinematic.removeEventListener('click', dismissCinematic);
+        removeEventListener('keydown', dismissCinematic);
+        if (autoDismissTimer) clearTimeout(autoDismissTimer);
         cinematic.style.transition = 'opacity .45s ease';
         cinematic.style.opacity = '0';
         setTimeout(() => cinematic.parentNode && cinematic.parentNode.removeChild(cinematic), 500);
@@ -170,9 +181,9 @@ export const ui = {
         showMainMenuWhenReady();
       };
       cinematic.addEventListener('click', dismissCinematic);
-      addEventListener('keydown', function once() { removeEventListener('keydown', once); dismissCinematic(); }, { once: true });
+      addEventListener('keydown', dismissCinematic);
       // Auto-dismiss safety after long time
-      setTimeout(() => { if (cinematic.parentNode) dismissCinematic(); }, 18000);
+      autoDismissTimer = setTimeout(() => { if (cinematic.parentNode) dismissCinematic(); }, 18000);
     } else {
       // If already seen this session, ensure we land on the menu
       setTimeout(() => {
@@ -205,6 +216,7 @@ export const ui = {
     this.bus.on('ui:popScreen', () => this.screenManager.popScreen());
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
     this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
+    this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
 
     // dock flow: dock:docked → open station hub; dock:undocked → restore HUD
     this.bus.on('dock:docked', ({ stationId }) => {
@@ -283,6 +295,45 @@ export const ui = {
   },
 };
 
+function cycleTarget(state, dir, bus) {
+  const player = state.entities.get(state.playerId);
+  if (!player) return;
+  const contacts = [];
+  for (const e of state.entityList) {
+    if (!e.alive || e === player) continue;
+    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
+    const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 5200) continue;
+    contacts.push({ e, d });
+  }
+  contacts.sort((a, b) => a.d - b.d);
+  if (!contacts.length) {
+    state.player.targetId = null;
+    if (bus) bus.emit('toast', { text: 'No contacts in scanner range', kind: 'info', ttl: 2 });
+    return;
+  }
+  const ids = contacts.map((c) => c.e.id);
+  const idx = ids.indexOf(state.player.targetId);
+  const nextIdx = idx < 0 ? 0 : (idx + dir + ids.length) % ids.length;
+  const target = contacts[nextIdx].e;
+  state.player.targetId = target.id;
+  if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
+}
+
+function targetLabel(e) {
+  if (!e) return 'Contact';
+  if (e.type === 'station') {
+    if (e.data && e.data.isGate) return e.data.name || 'Jump Gate';
+    return (e.data && (e.data.name || e.data.stationName || e.data.stationId)) || 'Station';
+  }
+  if (e.type === 'asteroid') return 'Asteroid';
+  if (e.type === 'wreck') return 'Wreck';
+  if (e.type === 'ship') return (e.data && e.data.name) || 'Ship';
+  if (e.type === 'drone') return 'Drone';
+  return e.type || 'Contact';
+}
+
 function injectHudCss() {
   if (document.getElementById(HUD_STYLE_ID)) return;
   const s = document.createElement('style');
@@ -355,9 +406,20 @@ function injectHudCss() {
 
   /* bottom-right radar + target */
   .sf-rightdock { position:absolute; right:18px; bottom:18px; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+  .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
   .sf-radar { width:180px; height:180px; border-radius:50%; overflow:hidden;
     border:1px solid var(--panel-edge); box-shadow:0 0 18px rgba(0,0,0,.5); }
   .sf-radar canvas { display:block; }
+  .sf-radar-legend { width:220px; display:grid; grid-template-columns:repeat(5, auto); gap:4px 7px; justify-content:center;
+    padding:5px 7px; background:rgba(8,14,24,.58); border:1px solid var(--panel-edge); border-radius:7px;
+    color:var(--ink-dim); font-size:9px; letter-spacing:.04em; backdrop-filter:blur(4px); }
+  .sf-radar-legend span { display:flex; align-items:center; gap:4px; white-space:nowrap; }
+  .sf-radar-legend i { display:inline-block; width:7px; height:7px; flex:0 0 auto; }
+  .sf-radar-legend .stn { background:var(--accent-2); }
+  .sf-radar-legend .gate { border:1px solid #b99cff; border-radius:50%; }
+  .sf-radar-legend .rock { background:#6e7b8c; border-radius:50%; }
+  .sf-radar-legend .bad { width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:7px solid var(--danger); }
+  .sf-radar-legend .obj { transform:rotate(45deg); border:1px solid #ffe36b; }
   .sf-target { width:220px; padding:8px 10px; display:flex; flex-direction:column; gap:5px; }
   .sf-target__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
   .sf-target__name { font-size:13px; color:var(--ink); letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -402,6 +464,56 @@ function injectHudCss() {
     animation:sf-alertpulse .8s ease-in-out infinite alternate; }
   @keyframes sf-alertpulse { from { box-shadow:0 0 0 0 rgba(255,84,112,0); transform:scale(1); }
     to { box-shadow:0 0 14px 1px rgba(255,84,112,.55); transform:scale(1.03); } }
+
+  @media (max-width: 760px), (max-height: 620px) {
+    #control-hints { display:none !important; }
+    #pilot-portrait { width:54px; height:54px; top:10px; right:10px; }
+    #toasts { left:10px; right:74px; top:10px; align-items:stretch; }
+    .sf-toast { width:auto; max-width:none; font-size:12px; padding:8px 10px; }
+    #alerts { top:84px; width:calc(100vw - 20px); }
+    .sf-alert { max-width:100%; font-size:10px; letter-spacing:.08em; white-space:normal; text-align:center; justify-content:center; }
+
+    .sf-fuel { left:10px; top:10px; padding:5px 8px; max-width:178px; }
+    .sf-fuel-label { font-size:9px; }
+    .sf-bar--fuel { width:74px; }
+    .sf-fuel-num { width:30px; font-size:10px; }
+    .sf-nav-readout { top:276px; max-width:calc(100vw - 24px); padding:6px 10px; }
+    .sf-nav-label { max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+    .sf-nav-meta { font-size:10px; }
+
+    #sf-onboarding { left:12px !important; top:138px !important; width:min(316px, calc(100vw - 24px)) !important; }
+    #sf-onboarding .sf-ob-card { padding:10px 11px; }
+    #sf-onboarding .sf-ob-title { font-size:13px; }
+    #sf-onboarding .sf-ob-hint { font-size:11px; line-height:1.4; }
+    .sf-ob-intro { top:12% !important; width:min(520px, calc(100vw - 24px)) !important; padding:18px !important; }
+    .sf-ob-intro h1 { font-size:20px; }
+    .sf-ob-intro p { font-size:13px; }
+
+    .sf-bars { left:8px; bottom:108px; gap:5px; padding:9px 8px; width:174px; }
+    .sf-barrow { gap:5px; }
+    .sf-barrow__label { width:34px; font-size:9px; }
+    .sf-barrow__num { width:28px; font-size:10px; }
+    .sf-bar { width:88px; height:10px; }
+    .sf-bar--sm { height:7px; width:100%; }
+
+    .sf-rightdock { right:8px; bottom:108px; gap:5px; }
+    .sf-target { width:160px; padding:6px 8px; }
+    .sf-target__name { font-size:11px; }
+    .sf-target__meta { font-size:10px; }
+    .sf-radar-wrap { gap:4px; }
+    .sf-radar { width:132px; height:132px; }
+    .sf-radar canvas { width:132px !important; height:132px !important; }
+    .sf-radar-legend { width:160px; grid-template-columns:repeat(5, auto); gap:3px 4px; padding:4px 5px; font-size:8px; }
+    .sf-radar-legend i { width:6px; height:6px; }
+    .sf-radar-legend .bad { border-left-width:3px; border-right-width:3px; border-bottom-width:6px; }
+
+    .sf-cluster { left:8px; right:8px; bottom:8px; transform:none; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:5px; }
+    .sf-stat { min-width:0; padding:5px 6px; border-radius:6px; gap:1px; }
+    .sf-stat--wide { min-width:0; }
+    .sf-stat__k { font-size:8px; }
+    .sf-stat__v { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    #sf-rolestat { display:none; }
+  }
   `;
   document.head.appendChild(s);
 }

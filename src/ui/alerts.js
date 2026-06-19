@@ -83,6 +83,11 @@ export function createAlerts(ctx) {
   });
   bus.on('dock:docked', () => clear('dock'));
 
+  bus.on('gate:range', ({ inRange, name }) => {
+    if (inRange) raise({ key: 'gate', sev: 'info', text: `${name || 'JUMP GATE'} · OPEN STARMAP (M) TO JUMP`, ttl: Infinity });
+    else clear('gate');
+  });
+
   // incoming fire on the player
   bus.on('combat:damage', (p) => {
     if (!p || !p.isPlayer) return;

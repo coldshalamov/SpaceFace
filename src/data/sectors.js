@@ -22,8 +22,12 @@ export const SECTORS = [
       { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'] },
       { id: 'station_coalition',  name: 'Coalition HQ',    type: 'military',  factionId: 'faction_scn', size: 'M', services: ['missions','repair','refuel'] },
     ],
-    // A small safe asteroid cluster so new pilots can learn mining at home (no hostiles here).
-    fields: [ { id: 'f_helios_starter', type: 'ast_common_rock', countWeight: 1.0 } ],
+    // A small safe asteroid claim close to the spawn point so new pilots can learn mining before
+    // the wider sector opens up (no hostiles here).
+    fields: [ {
+      id: 'f_helios_starter', type: 'ast_common_rock', countWeight: 1.0,
+      center: { x: 720, z: -260 }, clusterRadius: 240, count: 18,
+    } ],
     hazards: [],
     pois: [
       { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },

@@ -53,6 +53,14 @@ async function boot() {
       window.SF = { state, bus, registry, ctx, THREE, telemetry };
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
     }
+
+    // Dev-only ship turntable preview: ?dev=shippreview renders every hull × tier into .devshots/
+    // for visual verification. Requires the render system to be initialized, so we wait a frame.
+    if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'shippreview') {
+      const { runShipPreview } = await import('./render/shipPreview.js');
+      // ensure the render system has registered its scene/renderer handles on state.render
+      setTimeout(() => { runShipPreview({ state, registry, THREE }).catch((e) => console.error('[shipPreview]', e)); }, 500);
+    }
   } catch (err) {
     showBootError(err);
     throw err;

@@ -3,7 +3,10 @@
 // Blips colored by team/faction; off-range contacts clamp to the edge as hollow chevrons;
 // the current target gets a ring. Canvas is DPI-scaled so blips stay crisp on 4K/Retina.
 //
-// Formulas (§ spec): px = 90 + (e.x-p.x)/range*90 ; py = 90 + (e.z-p.z)/range*90.
+// Formulas (§ spec): px = 90 + (e.x-p.x)/range*90 ; py = 90 - (e.z-p.z)/range*90.
+// NOTE: the vertical is negated vs. a naïve projection. The chase cam sits at +Y/-Z looking toward
+// +Z, so world +Z reads as screen UP — the minimap must mirror that (canvas +y is down), otherwise
+// everything is upside-down relative to what the player sees.
 
 import { semanticColor, semanticShape } from './accessibility.js';
 
@@ -19,7 +22,8 @@ const FACTION_COLOR = {
 };
 const COL = {
   player: '#39d0ff', hostile: '#ff5470', neutral: '#9aa8bc',
-  asteroid: '#6e7b8c', pickup: '#ffe36b', station: '#7af7d0', ring: '#1d3350',
+  asteroid: '#6e7b8c', pickup: '#ffe36b', station: '#7af7d0', gate: '#b99cff',
+  objective: '#ffe36b', ring: '#1d3350',
 };
 
 // Classify a ship/drone blip into a semantic state (drives the colorblind palette + redundant shape).
@@ -32,7 +36,10 @@ function shipState(e, playerTeam) {
 function blipColor(e, playerTeam, mode) {
   if (e.type === 'asteroid') return COL.asteroid;
   if (e.type === 'pickup') return COL.pickup;
-  if (e.type === 'station') return e.factionId && FACTION_COLOR[e.factionId] ? FACTION_COLOR[e.factionId] : COL.station;
+  if (e.type === 'station') {
+    if (e.data && e.data.isGate) return COL.gate;
+    return e.factionId && FACTION_COLOR[e.factionId] ? FACTION_COLOR[e.factionId] : COL.station;
+  }
   // ships / drones — when a colorblind mode is active, use the colorblind-safe semantic palette.
   if (mode && mode !== 'none') return semanticColor(shipState(e, playerTeam), mode);
   if (e.factionId && FACTION_COLOR[e.factionId]) {
@@ -54,7 +61,9 @@ function drawShipShape(g, x, y, shape) {
 export function createRadar(ctx) {
   const { state } = ctx;
   const wrap = document.createElement('div');
-  wrap.className = 'sf-radar';
+  wrap.className = 'sf-radar-wrap';
+  const dial = document.createElement('div');
+  dial.className = 'sf-radar';
   const canvas = document.createElement('canvas');
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = SIZE * dpr;
@@ -63,7 +72,16 @@ export function createRadar(ctx) {
   canvas.style.height = SIZE + 'px';
   const g = canvas.getContext('2d');
   g.scale(dpr, dpr);
-  wrap.appendChild(canvas);
+  dial.appendChild(canvas);
+  const legend = document.createElement('div');
+  legend.className = 'sf-radar-legend';
+  legend.innerHTML = ''
+    + '<span><i class="stn"></i>Station</span>'
+    + '<span><i class="gate"></i>Gate</span>'
+    + '<span><i class="rock"></i>Rock</span>'
+    + '<span><i class="bad"></i>Hostile</span>'
+    + '<span><i class="obj"></i>Goal</span>';
+  wrap.append(dial, legend);
 
   function draw() {
     const p = state.entities.get(state.playerId);
@@ -98,15 +116,15 @@ export function createRadar(ctx) {
       let bx, by, off = false;
       if (dist > range) {
         off = true;
-        const a = Math.atan2(dz, dx);
+        const a = Math.atan2(-dz, dx);   // -dz: match the screen (world +Z is up on screen)
         bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
       } else {
-        bx = C + (dx / range) * R; by = C + (dz / range) * R;
+        bx = C + (dx / range) * R; by = C - (dz / range) * R;   // vertical mirrored to screen
       }
       g.fillStyle = col; g.strokeStyle = col;
       if (off) {
         // hollow chevron at edge
-        const a = Math.atan2(dz, dx);
+        const a = Math.atan2(-dz, dx);   // same -dz convention as the blip projection above
         g.save(); g.translate(bx, by); g.rotate(a);
         g.lineWidth = 1.5; g.beginPath();
         g.moveTo(-3, -3); g.lineTo(2, 0); g.lineTo(-3, 3); g.stroke();
@@ -116,7 +134,12 @@ export function createRadar(ctx) {
       } else if (e.type === 'asteroid') {
         g.beginPath(); g.arc(bx, by, 1.4, 0, Math.PI * 2); g.fill();
       } else if (e.type === 'station') {
-        g.fillRect(bx - 2.5, by - 2.5, 5, 5);
+        if (e.data && e.data.isGate) {
+          g.lineWidth = 1.6;
+          g.beginPath(); g.arc(bx, by, 3.8, 0, Math.PI * 2); g.stroke();
+        } else {
+          g.fillRect(bx - 2.5, by - 2.5, 5, 5);
+        }
       } else {
         // ship/drone — colorblind mode adds a redundant shape (hostile triangle / friendly diamond).
         if (cbMode !== 'none') drawShipShape(g, bx, by, semanticShape(shipState(e, playerTeam)));
@@ -128,8 +151,36 @@ export function createRadar(ctx) {
       }
     }
 
-    // player marker — triangle pointing along heading
-    g.save(); g.translate(C, C); g.rotate(p.rot);
+    // Active navigation/objective marker. This is deliberately bright and shape-distinct so a
+    // first-time player can connect "yellow arrow/readout" with the radar.
+    const wp = state.nav && state.nav.waypoint;
+    const pos = wp && wp.pos;
+    if (pos) {
+      const dx = pos.x - px, dz = pos.z - pz;
+      const dist = Math.hypot(dx, dz);
+      let bx, by;
+      if (dist > range) {
+        const a = Math.atan2(-dz, dx);
+        bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
+      } else {
+        bx = C + (dx / range) * R; by = C - (dz / range) * R;
+      }
+      g.save();
+      g.strokeStyle = COL.objective;
+      g.fillStyle = COL.objective;
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.moveTo(bx, by - 5); g.lineTo(bx + 5, by); g.lineTo(bx, by + 5); g.lineTo(bx - 5, by); g.closePath();
+      g.stroke();
+      g.globalAlpha = 0.22;
+      g.beginPath(); g.arc(bx, by, 9, 0, Math.PI * 2); g.fill();
+      g.restore();
+    }
+
+    // player marker — triangle pointing along heading. Negate rot: the minimap is vertically
+    // mirrored to match the screen (see blip projection above), so a yaw that points the nose up on
+    // screen must also point the marker up on the radar.
+    g.save(); g.translate(C, C); g.rotate(-p.rot);
     g.fillStyle = COL.player;
     g.beginPath(); g.moveTo(5, 0); g.lineTo(-4, -3.5); g.lineTo(-4, 3.5); g.closePath(); g.fill();
     g.restore();

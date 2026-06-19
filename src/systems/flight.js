@@ -4,31 +4,91 @@
 // physics.integrate moves position (ARCHITECTURE §2.3 step 3). Rotation is OWNED HERE — physics
 // no longer integrates e.rot (Phase 1 fix of the prior double-integration bug).
 //
-// CONTROL MODELS (Phase 1 rework):
+// CONTROL MODELS:
 //   • PLAYER (new): ↑/W throttle forward, ←→ yaw the nose, mouse aims weapons independently.
 //     The ship banks (rolls) into turns for a cinematic, weighty feel.
 //   • NPC (unchanged contract): ai.js writes e.data.intent {moveX,moveZ,boost,fire,fireGroup,
 //     aimAngle}; flight turns the nose toward aimAngle and thrusts along it. The 6-field intent
 //     schema is FROZEN — do not break it or AI dogfighting stops working.
+import {
+  computeFlightFrame,
+  resolveFlightProfile,
+  settleBankPose,
+  stepNpcFlight,
+  stepPlayerFlight,
+} from '../core/flightDynamics.js';
 import { wrapAngle } from '../core/rng.js';
 
-// Banking tunables. target bank = turnIntent-scaled angle; a spring+damp eases toward it with a
-// slight overshoot so the hull "settles" after a turn instead of snapping flat.
-const BANK_MAX = 0.95;        // rad (~54°) max roll for the twitchiest hull at full bankFactor
-const BANK_SPRING = 9.0;      // higher = snappier bank response
-const BANK_DAMP = 5.5;        // critical-ish damping (BANK_SPRING/2 would be exactly critical)
-const BANK_RETURN_SPRING = 4.0; // extra pull back to level when not turning (levels out promptly)
 const ANG_VEL_DRAG = 2.2;     // per-second decay of yaw rate for drifting (intent-less) ships
-const NPC_TURN = 3.0;         // fallback turn rate if an NPC entity lacks e.turnRate
+const DASH_TAP_WINDOW = 0.18;  // Shift taps up to this duration become dash; longer holds boost.
+const DEFAULT_BOOST_RESOURCE = Object.freeze({
+  energy: 0,
+  max: 0,
+  drainRate: 40,
+  regenRate: 18,
+  dashImpulse: 0,
+  dashCd: 3,
+  dashCdT: 0,
+});
+const NEUTRAL_PLAYER_INPUT = Object.freeze({
+  turnIntent: 0,
+  moveX: 0,
+  moveZ: 0,
+  boost: false,
+  controlsBlocked: true,
+});
 
 export const flight = {
   name: 'flight',
-  init(ctx) { this.state = ctx.state; this.bus = ctx.bus; },
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this._resetRuntime();
+    this._debugFlight = debugFlightEnabled();
+    this._diag = {
+      enabled: this._debugFlight,
+      shipId: null,
+      mode: 'assisted',
+      flightClass: 'scout',
+      speed: 0,
+      forwardSpeed: 0,
+      lateralSpeed: 0,
+      slipAngle: 0,
+      yawRate: 0,
+      targetYawRate: 0,
+      assistStrength: 0,
+      bank: 0,
+      mass: 0,
+      inertia: 0,
+      physicsBackend: 'custom',
+      tickMs: 0,
+    };
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('save:loaded', () => {
+        const player = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+        this._cancelPlayerBoost(player);
+      });
+      this.bus.on('game:started', () => {
+        const player = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+        this._cancelPlayerBoost(player);
+        this._resetRuntime();
+      });
+    }
+    if (this._debugFlight && typeof window !== 'undefined') {
+      window.__SF_FLIGHT_DIAGNOSTICS__ = {
+        getReport: () => this._diag,
+        snapshot: this._diag,
+      };
+    }
+  },
 
   update(dt, state) {
+    const t0 = nowMs();
     const player = state.entities.get(state.playerId);
-    if (player && state.mode === 'flight' && !player.flags.docked) {
-      this.applyPlayerIntent(player, dt);
+    if (player && playerFlightSimActive(state, player)) {
+      const controlsActive = playerFlightControlsActive(state, player);
+      if (!controlsActive) this._cancelPlayerBoost(player);
+      this.applyPlayerIntent(player, dt, controlsActive ? null : NEUTRAL_PLAYER_INPUT);
       // Emit boost start/stop on the TRUE transition (applyPlayerIntent already set flags.boosting
       // to the actual sustained-boost state above). The old code re-derived it from raw input.boost,
       // which desynced the audio loop and VFX trails whenever energy cut boost mid-hold.
@@ -36,9 +96,10 @@ export const flight = {
       if (player.flags.boosting && !wasBoosting) this.bus.emit('ship:boostStart', { shipId: player.id });
       else if (!player.flags.boosting && wasBoosting) this.bus.emit('ship:boostStop', { shipId: player.id });
       player._wasBoosting = player.flags.boosting;
-    } else if (player && !player.flags.docked) {
+    } else if (player) {
       // Not in active flight (paused/menu): still ease the bank back to level so it doesn't freeze tilted.
-      this._settleBank(player, dt);
+      settleBankPose(player, dt);
+      this._cancelPlayerBoost(player);
     }
     for (const e of state.entityList) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
@@ -46,45 +107,50 @@ export const flight = {
       if (intent) this.applyIntent(e, intent, dt);
       else { this.applyDrag(e, dt); this._settleBank(e, dt); }
     }
+    this._diag.tickMs = Math.max(0, nowMs() - t0);
+    if (player) this._publishDiagnostics(player);
   },
 
   // ---- PLAYER: turn-nose + throttle + bank (mouse aims weapons, not the ship) ----
-  applyPlayerIntent(e, dt) {
-    const inp = this.state.input;
-    const turn = e.turnRate || 3;
-    const boost = e.boost || (e.boost = { energy: 0, max: 0, drainRate: 40, regenRate: 18, dashImpulse: 0, dashCd: 3, dashCdT: 0 });
-
-    // Yaw the nose from the turn-intent. (turnIntent: +1 right/clockwise, -1 left.) Sign matches
-    // the world-rot convention (+rot = +angle = atan2(z,x)), so +turnIntent increases rot.
-    const yawStep = inp.turnIntent * turn * dt;
-    e.rot = wrapAngle(e.rot + yawStep + this._bankYawFromDrift(e));
-    e.angVel = yawStep / dt;            // actual yaw rate (rad/s); physics no longer re-integrates it
+  applyPlayerIntent(e, dt, inputOverride = null) {
+    normalizeFlightRuntime(e);
+    const inp = inputOverride || this.state.input;
+    const boost = normalizeBoostResource(e);
 
     // --- Phase 3 boost/dash ---
-    // Tap Shift (rising edge) = DASH: an instant impulse along the nose (or current heading), on its
-    // own cooldown, costing a chunk of boost energy. Hold Shift = SUSTAINED BOOST: drains energy
-    // continuously for +thrust/+top-speed. Boost cuts out below a threshold and can't restart until
-    // it regenerates back above it (anti-flicker hysteresis). A ship with boost.max == 0 can't boost.
+    // Tap Shift = DASH: an instant impulse along the nose on its own cooldown, costing a chunk of
+    // boost energy. Hold Shift = SUSTAINED BOOST: drains energy continuously for +thrust/+top-speed.
+    // The tap/hold split is important: a held boost must not spend most of its energy on the dash.
+    // Boost cuts out below a threshold and can't restart until it regenerates back above it
+    // (anti-flicker hysteresis). A ship with boost.max == 0 can't boost.
     if (boost.dashCdT > 0) boost.dashCdT = Math.max(0, boost.dashCdT - dt);
-    const dashJustPressed = inp.boost && !this._prevBoost;
-    let didDash = false;
-    if (dashJustPressed && boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= boost.dashImpulse * 0.6) {
-      // dash along the nose; if no throttle held, dash still works (escape move)
-      const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-      const imp = boost.dashImpulse;
-      e.vel.x += cf * imp;
-      e.vel.z += sf * imp;
-      boost.energy = Math.max(0, boost.energy - boost.dashImpulse * 0.6);
-      boost.dashCdT = boost.dashCd;
-      didDash = true;
-      this.bus.emit('ship:dash', { shipId: e.id, impulse: imp });
+    const rawBoostHeld = !!inp.boost;
+    const controlsBlocked = !!inp.controlsBlocked;
+    const suppressBoost = !!this._suppressBoostUntilRelease;
+    const boostHeld = rawBoostHeld && !suppressBoost;
+    const boostWasHeld = !!this._prevBoost;
+    if (boostHeld && !boostWasHeld) {
+      boost._boostHoldT = 0;
+      boost._dashCandidate = true;
     }
-    this._prevBoost = !!inp.boost;
+    if (boostHeld) {
+      boost._boostHoldT = (boost._boostHoldT || 0) + dt;
+      if (boost._boostHoldT > DASH_TAP_WINDOW) boost._dashCandidate = false;
+    } else if (boostWasHeld) {
+      const heldT = boost._boostHoldT || 0;
+      if (boost._dashCandidate && heldT <= DASH_TAP_WINDOW) {
+        this._triggerDash(e, boost);
+      }
+      boost._boostHoldT = 0;
+      boost._dashCandidate = false;
+    }
+    if (!rawBoostHeld && suppressBoost && !controlsBlocked) this._suppressBoostUntilRelease = false;
+    this._prevBoost = boostHeld;
 
     // sustained boost: only while holding Shift (and not just having dashed), with hysteresis gating
     if (!('_boostArmed' in boost)) boost._boostArmed = true;
     let boosting = false;
-    if (inp.boost && boost.max > 0) {
+    if (boostHeld && boost.max > 0) {
       if (boost._boostArmed && boost.energy > 1) {
         boosting = true;
         boost.energy = Math.max(0, boost.energy - boost.drainRate * dt);
@@ -96,79 +162,56 @@ export const flight = {
     if (!boosting) boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * dt);
     e.flags.boosting = boosting;
 
-    // Throttle along the NOSE direction (not strafe). forward axis = (cos, sin).
-    const thrust = (e.thrust || 40) * (boosting ? 2.2 : 1);
-    const throttle = inp.moveZ || 0;    // +1 forward, -1 reverse
-    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-    let ax = cf * throttle * thrust;
-    let az = sf * throttle * thrust;
-    if (throttle < 0) { ax *= 0.5; az *= 0.5; }  // reverse thrust is weaker
-
-    const drag = e.drag || 1.2;
-    e.vel.x += (ax - drag * e.vel.x) * dt;
-    e.vel.z += (az - drag * e.vel.z) * dt;
-
-    const max = (e.maxSpeed || 120) * (boosting ? 2.0 : 1.15);
-    const sp = Math.hypot(e.vel.x, e.vel.z);
-    if (sp > max) { const s = max / sp; e.vel.x *= s; e.vel.z *= s; }
-
-    // Bank: roll the hull into the turn. Combine the player's turn-intent with the actual yaw rate
-    // so even a drifting turn banks realistically. bankFactor (per hull) scales the aggressiveness.
-    const bankFactor = e.bankFactor != null ? e.bankFactor : 0.6;
-    // Lateral velocity also leaks a little bank — a ship sliding sideways leans, like an aircraft.
-    const sf2 = -Math.sin(e.rot), cf2 = Math.cos(e.rot); // right axis = (-sin, cos)
-    const lateral = e.vel.x * cf2 + e.vel.z * sf2;
-    const lateralBank = (lateral / Math.max(1, e.maxSpeed || 120)) * 0.25;
-    const targetBank = (inp.turnIntent * bankFactor + lateralBank) * BANK_MAX;
-    this._integrateBank(e, targetBank, dt, /*returnWhenIdle*/ true);
+    const profile = resolveFlightProfile(e, this.state);
+    stepPlayerFlight(e, inp, dt, profile, { boosting });
   },
 
-  // small yaw assist from the current bank angle so a banked ship gently carves (a turn feels like
-  // it commits, not like flying on rails). Returns radians to add to the yaw step this tick.
-  _bankYawFromDrift(e) {
-    if (!e.bank) return 0;
-    return e.bank * 0.15; // banking right (+bank) carves a gentle right yaw, left carves left
+  _triggerDash(e, boost) {
+    if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashImpulse * 0.6) return false;
+    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+    const imp = boost.dashImpulse;
+    e.vel.x += cf * imp;
+    e.vel.z += sf * imp;
+    boost.energy = Math.max(0, boost.energy - boost.dashImpulse * 0.6);
+    boost.dashCdT = boost.dashCd;
+    this.bus.emit('ship:dash', { shipId: e.id, impulse: imp });
+    return true;
+  },
+
+  _resetRuntime() {
+    this._prevBoost = false;
+    this._suppressBoostUntilRelease = false;
+  },
+
+  _cancelPlayerBoost(e) {
+    const boost = e && e.boost;
+    const hadGesture = !!(this._prevBoost || (boost && (boost._dashCandidate || boost._boostHoldT > 0)) || (e && e.flags && e.flags.boosting));
+    if (hadGesture) this._suppressBoostUntilRelease = true;
+    this._prevBoost = false;
+    if (boost) {
+      boost._boostHoldT = 0;
+      boost._dashCandidate = false;
+    }
+    if (!e || !e.flags) return;
+    const wasBoosting = !!(e.flags.boosting || e._wasBoosting);
+    e.flags.boosting = false;
+    e._wasBoosting = false;
+    if (wasBoosting && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('ship:boostStop', { shipId: e.id });
+    }
   },
 
   // ---- NPC: turn toward aimAngle + thrust along ship-relative axes (unchanged contract) ----
   applyIntent(e, intent, dt) {
-    const turn = e.turnRate || NPC_TURN;
-    const d = wrapAngle((intent.aimAngle || 0) - e.rot);
-    const step = Math.max(-turn * dt, Math.min(turn * dt, d));
-    e.rot = wrapAngle(e.rot + step);
-    e.angVel = step / dt;
+    normalizeFlightRuntime(e);
     e.flags.boosting = !!intent.boost;
-
-    const thrust = (e.thrust || 40) * (intent.boost ? 2.2 : 1);
-    const fwd = intent.moveZ || 0;
-    const str = intent.moveX || 0;
-    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-    // forward axis = (cos,sin); right axis = (-sin,cos)
-    let ax = (cf * fwd + (-sf) * str * 0.6) * thrust;
-    let az = (sf * fwd + (cf) * str * 0.6) * thrust;
-    if (fwd < 0) { ax *= 0.5; az *= 0.5; }       // reverse is weaker
-
-    const drag = e.drag || 1.2;
-    e.vel.x += (ax - drag * e.vel.x) * dt;
-    e.vel.z += (az - drag * e.vel.z) * dt;
-
-    const max = (e.maxSpeed || 120) * (intent.boost ? 2.0 : 1.15);
-    const sp = Math.hypot(e.vel.x, e.vel.z);
-    if (sp > max) { const s = max / sp; e.vel.x *= s; e.vel.z *= s; }
-
-    // NPC banking mirrors the player's: bank into the actual yaw rate so dogfighters lean into jinks.
-    const bankFactor = e.bankFactor != null ? e.bankFactor : 0.7;
-    const sf2 = -Math.sin(e.rot), cf2 = Math.cos(e.rot);
-    const lateral = e.vel.x * cf2 + e.vel.z * sf2;
-    const lateralBank = (lateral / Math.max(1, e.maxSpeed || 120)) * 0.25;
-    const turnDir = Math.max(-1, Math.min(1, e.angVel / Math.max(0.01, turn))); // -1..1 from yaw rate
-    const targetBank = (turnDir * bankFactor + lateralBank) * BANK_MAX;
-    this._integrateBank(e, targetBank, dt, /*returnWhenIdle*/ true);
+    stepNpcFlight(e, intent, dt, resolveFlightProfile(e, this.state));
   },
 
   // Linear-only drag for intent-less drifters. Also decays yaw rate so a ship that lost its pilot
   // stops spinning (the old code never damped angVel — physics kept rotating it forever).
   applyDrag(e, dt) {
+    normalizeFlightRuntime(e);
     const drag = e.drag || 1.2;
     e.vel.x -= drag * e.vel.x * dt;
     e.vel.z -= drag * e.vel.z * dt;
@@ -176,24 +219,90 @@ export const flight = {
     e.rot = wrapAngle(e.rot + e.angVel * dt); // keep applying residual spin as it decays
   },
 
-  // Spring-damper bank toward a target roll angle. Small extra spring pulls to 0 when idle so the
-  // ship levels out promptly after releasing the turn. Result stored on e.bank (rad, + = roll right).
-  _integrateBank(e, targetBank, dt, returnWhenIdle) {
-    if (e.bank == null) e.bank = 0;
-    if (e.bankVel == null) e.bankVel = 0;
-    let acc = BANK_SPRING * (targetBank - e.bank) - BANK_DAMP * e.bankVel;
-    if (returnWhenIdle) acc -= BANK_RETURN_SPRING * e.bank * (1 - Math.min(1, Math.abs(targetBank) / BANK_MAX));
-    e.bankVel += acc * dt;
-    e.bank += e.bankVel * dt;
-    // clamp roll to a sane envelope so it never inverts
-    const lim = BANK_MAX * 1.15;
-    if (e.bank > lim) { e.bank = lim; e.bankVel = Math.min(0, e.bankVel); }
-    else if (e.bank < -lim) { e.bank = -lim; e.bankVel = Math.max(0, e.bankVel); }
-  },
-
   // Ease bank back to level (used when a ship has no active input — paused, menu, drifting NPC).
   _settleBank(e, dt) {
-    if (!e.bank) return;
-    this._integrateBank(e, 0, dt, true);
+    settleBankPose(e, dt);
+  },
+
+  _publishDiagnostics(player) {
+    const frame = player._flightFrame || computeFlightFrame(player, resolveFlightProfile(player, this.state));
+    const gameplay = (this.state.settings && this.state.settings.gameplay) || {};
+    Object.assign(this._diag, {
+      shipId: player.id,
+      mode: frame.mode || 'assisted',
+      flightClass: frame.flightClass || 'scout',
+      speed: frame.speed || 0,
+      forwardSpeed: frame.forwardSpeed || 0,
+      lateralSpeed: frame.lateralSpeed || 0,
+      slipAngle: frame.slipAngle || 0,
+      yawRate: frame.yawRate || player.angVel || 0,
+      targetYawRate: frame.targetYawRate || 0,
+      assistStrength: frame.assistStrength || 0,
+      bank: frame.bank || player.bank || 0,
+      mass: frame.mass || 0,
+      inertia: frame.inertia || 0,
+      physicsBackend: gameplay.physicsBackend || 'custom',
+    });
+    this.state.flightRuntime = this.state.flightRuntime || {};
+    this.state.flightRuntime.diagnostics = this._diag;
   },
 };
+
+function nowMs() {
+  return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+}
+
+function debugFlightEnabled() {
+  if (typeof location === 'undefined') return false;
+  try { return new URLSearchParams(location.search).get('debug') === 'flight'; }
+  catch (_) { return false; }
+}
+
+function playerFlightSimActive(state, player) {
+  if (!player || state.mode !== 'flight') return false;
+  if (player.flags && player.flags.docked) return false;
+  return true;
+}
+
+function playerFlightControlsActive(state, player) {
+  if (!playerFlightSimActive(state, player)) return false;
+  const ui = state.ui || {};
+  const stack = Array.isArray(ui.screenStack) ? ui.screenStack : (Array.isArray(ui.screens) ? ui.screens : []);
+  return !ui.docked && stack.length === 0;
+}
+
+function normalizeFlightRuntime(e) {
+  if (!e.flags || typeof e.flags !== 'object') e.flags = {};
+  if (!e.vel || typeof e.vel !== 'object') e.vel = { x: 0, z: 0 };
+  if (!Number.isFinite(e.vel.x)) e.vel.x = 0;
+  if (!Number.isFinite(e.vel.z)) e.vel.z = 0;
+}
+
+function normalizeBoostResource(e) {
+  let boost = e.boost;
+  if (!boost || typeof boost !== 'object' || Array.isArray(boost)) {
+    boost = Object.assign({}, DEFAULT_BOOST_RESOURCE);
+    e.boost = boost;
+    return boost;
+  }
+
+  const energyHint = Number.isFinite(boost.energy) ? Math.max(0, boost.energy) : null;
+  const maxHint = Number.isFinite(boost.max) ? Math.max(0, boost.max) : null;
+  const max = maxHint != null ? maxHint : (energyHint != null ? energyHint : DEFAULT_BOOST_RESOURCE.max);
+
+  boost.max = max;
+  boost.energy = Math.min(max, energyHint != null ? energyHint : max);
+  boost.drainRate = finiteNonNegative(boost.drainRate, DEFAULT_BOOST_RESOURCE.drainRate);
+  boost.regenRate = finiteNonNegative(boost.regenRate, DEFAULT_BOOST_RESOURCE.regenRate);
+  boost.dashImpulse = finiteNonNegative(boost.dashImpulse, DEFAULT_BOOST_RESOURCE.dashImpulse);
+  boost.dashCd = finiteNonNegative(boost.dashCd, DEFAULT_BOOST_RESOURCE.dashCd);
+  boost.dashCdT = Math.min(boost.dashCd, finiteNonNegative(boost.dashCdT, DEFAULT_BOOST_RESOURCE.dashCdT));
+  if ('_boostHoldT' in boost && !Number.isFinite(boost._boostHoldT)) boost._boostHoldT = 0;
+  if ('_dashCandidate' in boost && typeof boost._dashCandidate !== 'boolean') boost._dashCandidate = false;
+  if ('_boostArmed' in boost && typeof boost._boostArmed !== 'boolean') boost._boostArmed = true;
+  return boost;
+}
+
+function finiteNonNegative(value, fallback) {
+  return Number.isFinite(value) ? Math.max(0, value) : fallback;
+}

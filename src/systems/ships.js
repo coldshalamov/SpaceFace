@@ -53,6 +53,16 @@ function weaponSlotSpec(entry) {
 const BASE_TURN = 4.4;     // rad/s reference (before handling/mass/turnMult)
 const SPEED_SCALE = 2.6;   // engine.topSpeed -> maxSpeed clamp scale
 const THRUST_SCALE = 0.99; // engine.topSpeed -> thrust accel scale
+const PLAYER_TURN_RATE_MULT = 0.78;
+const PLAYER_TURN_RATE_CAP = 3.8;
+
+const FLIGHT_CLASS_TUNING = {
+  scout: { accel: 1.05, strafe: 0.58, turn: 1.08, brake: 1.1, assist: 1.15, inertia: 0.92 },
+  fighter: { accel: 1.18, strafe: 0.68, turn: 1.28, brake: 1.18, assist: 1.25, inertia: 0.75 },
+  miner: { accel: 0.92, strafe: 0.46, turn: 0.82, brake: 0.95, assist: 1.18, inertia: 1.12 },
+  hauler: { accel: 0.72, strafe: 0.36, turn: 0.58, brake: 0.86, assist: 1.08, inertia: 1.35 },
+  capital: { accel: 0.42, strafe: 0.24, turn: 0.34, brake: 0.62, assist: 0.92, inertia: 1.85 },
+};
 
 /** Build the canonical list of slots [{type,size,index,facing?}] for a ship def, in a stable order
  *  (weapon, shield, engine, cargo, mining, utility) so fittings[] indices are deterministic.
@@ -87,6 +97,37 @@ function resolveFittings(shipDef, fittings) {
   return { slots, equipped: out };
 }
 
+/** Build a render-facing fittings array (defId | null, parallel to buildSlotList order) that also
+ *  reflects the synthetic starter weapon given to a fresh player Kestrel (NEW_GAME fits none), so
+ *  the player ship visibly shows a barrel for the gun they actually fire. NPC fittings pass through
+ *  unchanged; their weapons[] are already real fittings. Non-player ships with an empty weapon slot
+ *  and no weapons[] just get nulls there (correct — they have no gun to show). */
+function fittingsForView(shipDef, fittings, weapons) {
+  const slots = buildSlotList(shipDef);
+  const view = new Array(slots.length).fill(null);
+  for (let i = 0; i < slots.length; i++) {
+    const id = fittings && fittings[i];
+    if (id) view[i] = id;
+  }
+  // If there are resolved weapons but the weapon slot is empty in fittings (the starter-gun case),
+  // backfill the first matching weapon slot with that weapon's defId so the barrel renders.
+  if (weapons && weapons.length) {
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i].type !== 'weapon' || view[i]) continue;
+      const w = weapons.find((ww) => ww.slotIndex === i);
+      if (w && w.defId) { view[i] = w.defId; }
+    }
+  }
+  return view;
+}
+
+/** Re-derive a render-facing fittings array purely from a resolved weapons[] list. Used by NPC
+ *  spawners (combat/traffic) that bypass the fittings path and assign weapons directly — calling
+ *  this keeps their `data.fittings` in sync so their barrels render at the right hardpoints. */
+export function fittingsFromWeapons(shipDef, weapons) {
+  return fittingsForView(shipDef, [], weapons || []);
+}
+
 function pickEngine(equipped) {
   for (const d of equipped) if (d && d.slotType === 'engine') return d;
   return null;
@@ -101,6 +142,43 @@ function engineMods(def) {
     topSpeed: (m && m.topSpeed) || FALLBACK_ENGINE.mods.topSpeed,
     accelMult: (m && m.accelMult) || FALLBACK_ENGINE.mods.accelMult,
     turnMult: (m && m.turnMult) || FALLBACK_ENGINE.mods.turnMult,
+  };
+}
+
+function flightClassForShip(shipDef) {
+  const role = String((shipDef && shipDef.role) || '').toLowerCase();
+  if (role.includes('fighter') || role.includes('interceptor')) return 'fighter';
+  if (role.includes('hauler') || role.includes('freighter')) return 'hauler';
+  if (role.includes('mining')) return 'miner';
+  if (role.includes('corvette') || role.includes('gunship') || role.includes('battlecruiser') || role.includes('flagship')) return 'capital';
+  return 'scout';
+}
+
+function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor }) {
+  const t = FLIGHT_CLASS_TUNING[flightClass] || FLIGHT_CLASS_TUNING.scout;
+  const inertia = Math.max(1, (totalMass / Math.max(0.3, handling)) * t.inertia);
+  const maxYawRate = Math.min(turnRate * PLAYER_TURN_RATE_MULT * t.turn, PLAYER_TURN_RATE_CAP);
+  return {
+    flightClass,
+    mass: totalMass,
+    inertia,
+    mainAccel: thrust * t.accel,
+    reverseAccel: thrust * 0.55 * t.accel,
+    strafeAccel: thrust * t.strafe,
+    angularAccel: Math.max(5, turnRate * 8.5 * t.turn / Math.sqrt(Math.max(0.4, massRatio))),
+    angularBrake: Math.max(12, turnRate * 15 * t.brake / Math.pow(Math.max(0.4, massRatio), 0.25)),
+    maxYawRate,
+    linearDrag: drag,
+    lateralDrag: drag * 0.42,
+    assistStrength: t.assist,
+    reverseBrake: 2.4 + 0.35 * handling,
+    maxSpeed,
+    boostMult: 2.2,
+    normalMaxSpeedMult: 1.15,
+    boostMaxSpeedMult: 2.0,
+    bankMax: 0.68,
+    bankFactor,
+    role: shipDef.role || 'ship',
   };
 }
 
@@ -174,6 +252,19 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   // power systems help boost recharge. A ship with no boost block gets a near-zero pool (can't boost).
   const bdef = shipDef.boost || {};
   const boostRegen = (bdef.regenRate || 18) * energyRegenMult;
+  const flightClass = flightClassForShip(shipDef);
+  const flightModel = buildFlightModel({
+    shipDef,
+    flightClass,
+    totalMass,
+    massRatio,
+    handling,
+    thrust,
+    turnRate,
+    maxSpeed,
+    drag,
+    bankFactor,
+  });
 
   return {
     hull: hullMax, hullMax,
@@ -183,6 +274,8 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     cap: capMax, capMax, capRegen,
     thrust, turnRate, maxSpeed, drag,
     bankFactor,
+    flightClass,
+    flightModel,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     cargoCap,
     boost: {
@@ -281,6 +374,7 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
     type: 'ship', factionId, team,
     pos: pos || { x: 0, z: 0 }, rot,
     radius: derived.radius, mass: derived.mass,
+    flightClass: derived.flightClass, flightModel: derived.flightModel,
     // flat health/energy/flight fields (flight + physics read these directly) — §shared shape
     hull: derived.hull, hullMax: derived.hullMax,
     armorHp: derived.armorHp, armorMax: derived.armorMax, armorFlat: derived.armorFlat,
@@ -299,6 +393,10 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
       derived,
       weapons,
       miningBeam,
+      // Effective loadout (defId | null, parallel to buildSlotList order) for the render track to
+      // read tier + place visible props. Includes the synthetic starter weapon for a fresh player
+      // Kestrel so the free gun shows a barrel. NPCs pass their fittings through verbatim.
+      fittings: fittingsForView(shipDef, fittings, weapons),
       combat: { targetId: null, lockTarget: null, lockProgress: 0 },
       intent: null,
       ai,
@@ -387,12 +485,28 @@ export const ships = {
       dashCd: derived.boost.dashCooldown, dashCdT: Math.min(prevDashCdT, derived.boost.dashCooldown),
     };
 
+    // snapshot the appearance signature BEFORE we overwrite weapons/fittings so we can detect a
+    // visible change (hull def or loadout) and ask the render track to rebuild the mesh.
+    const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
+    const prevAppearance = e.data._appearance || '';
+    const newWeapons = buildWeaponList(shipDef, fit, isPlayer);
+    const newViewFittings = fittingsForView(shipDef, fit, newWeapons);
+    const newAppearance = defId + '|' + newViewFittings.join(',');
+
     e.data.derived = derived;
-    e.data.weapons = buildWeaponList(SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel'), fit, isPlayer);
-    e.data.miningBeam = buildMiningBeam(SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel'), fit, isPlayer);
+    e.data.weapons = newWeapons;
+    e.data.miningBeam = buildMiningBeam(shipDef, fit, isPlayer);
+    e.data.fittings = newViewFittings;
+    e.data._appearance = newAppearance;
 
     this.bus.emit('ship:statsChanged', { shipId: e.id, derived });
     this.bus.emit('ship:cargoCapChanged', { shipId: e.id, cargoCap: derived.cargoCap });
+    // Appearance changed (hull swap or loadout change) → render track rebuilds the mesh so visible
+    // weapons/engines/tier reflect the current ship. Emitted only on an actual change to avoid
+    // rebuilding the mesh on every pure-stat recompute (e.g. research efficiency ticks).
+    if (newAppearance !== prevAppearance) {
+      this.bus.emit('ship:appearanceChanged', { id: e.id });
+    }
     return derived;
   },
 
@@ -674,5 +788,7 @@ function copyDerivedOntoEntity(e, d) {
   e.capMax = d.capMax; e.capRegen = d.capRegen;
   e.thrust = d.thrust; e.turnRate = d.turnRate; e.maxSpeed = d.maxSpeed; e.drag = d.drag;
   e.bankFactor = d.bankFactor;
+  e.flightClass = d.flightClass;
+  e.flightModel = d.flightModel;
   e.radius = d.radius; e.mass = d.mass;
 }

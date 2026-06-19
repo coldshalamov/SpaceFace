@@ -73,6 +73,7 @@ const SECTIONS = [
   ['Flight', [
     ['Throttle forward / reverse', 'moveUp', '↑↓ / W S'],
     ['Steer (yaw + bank)', 'aim', '←→ / A D'],
+    ['Lateral thrusters', 'strafe', 'Q / E'],
     ['Aim weapons', 'aim', 'Mouse'],
     ['Boost', 'boost', 'Shift'],
     ['Fire group 1', 'fire1', 'LMB / Space'],
@@ -81,7 +82,6 @@ const SECTIONS = [
     ['Deep-drill (ant-farm)', 'drill', 'B (target an asteroid)'],
     ['Claim body / open base', 'claim', 'C (near a colony/moon)'],
     ['Auto-fire toggle', 'autoFire', 'F'],
-    ['Select weapon group', 'weaponGroup', 'Q / E'],
   ]],
   ['Interface', [
     ['Cycle target', 'cycleTarget', 'Tab'],
@@ -89,7 +89,7 @@ const SECTIONS = [
     ['Pause', 'pause', 'ESC / P'],
     ['Star-map', 'map', 'M'],
     ['Tech tree', 'tech', 'T'],
-    ['Missions / journal', 'missions', 'J'],
+    ['Automation / fleet', 'automation', 'J'],
     ['Help', 'help', 'F1 / H'],
     ['Quick save', 'quicksave', 'F5'],
     ['Quick load', 'quickload', 'F9'],

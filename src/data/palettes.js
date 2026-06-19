@@ -71,6 +71,45 @@ export const FACTION_PALETTES = {
   },
 };
 
+// PAINT_PROFILES — the soul of the art direction. Maps a faction's `personality` to a paint profile
+// that the render track reads to decide how grimy/chrome/graffitied a ship looks. This makes the
+// "dirty outlaw vs clean authority" contrast DATA-DRIVEN: every NPC inherits its look from its
+// faction personality automatically, no per-ship authoring needed.
+//
+//   grime     0..1 — oil streaks, rust blooms, bolted-on patches, dust. 0 = pristine, 1 = filthy.
+//   chrome    0..1 — mirror reflectivity (env-map intensity). Authority ships = high; outlaws = ~0.
+//   noseArt   null | 'bomber' | 'punk' | 'insignia' — decal style on the hull flanks/nose.
+//   killMarks true  — bomb/kill tallies stenciled near the cockpit (combat veterans only).
+//   patches   0..1  — probability of bolted-on repair patches (welded plates over battle damage).
+//
+// The player's faction_free (independent) profile is the haunted ex-gangster runner: heavy grime,
+// bomber+punk hybrid nose-art, kill marks, repair patches — a ship with a dark history nobody else
+// would touch. Concord/Meridian authority are pristine chrome. Pirates are the filthiest.
+export const PAINT_PROFILES = {
+  lawful:      { grime: 0.05, chrome: 0.85, noseArt: 'insignia', killMarks: false, patches: 0.0 },  // Concord Navy — pristine chrome, clean insignia
+  corporate:   { grime: 0.10, chrome: 0.70, noseArt: 'insignia', killMarks: false, patches: 0.0 },  // Meridian — clean chrome, corporate logos
+  independent: { grime: 0.55, chrome: 0.05, noseArt: 'bomber', killMarks: true, patches: 0.4 },     // Free Frontier (PLAYER) — haunted ex-gangster runner
+  blue_collar: { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3 },          // Drift Miners — workhorse, honest grime
+  pirate:      { grime: 0.85, chrome: 0.0, noseArt: 'punk', killMarks: true, patches: 0.6 },         // Crimson Reach — filthy, tagged, scarred
+  smuggler:    { grime: 0.50, chrome: 0.0, noseArt: 'punk', killMarks: false, patches: 0.35 },       // The Quiet — stealthy grime, tags
+  xenophobic:  { grime: 0.15, chrome: 0.30, noseArt: 'insignia', killMarks: true, patches: 0.1 },    // The Vael — alien, austere
+  // default fallback for any faction lacking a personality match
+  default:     { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2 },
+};
+
+// The player ship's canonical nose-art seed text — drives the dark-humor stenciled graffiti on the
+// Kestrel. "BORROWED TIME" is the in-fiction nickname: a haunted ex-gangster death-ship the player
+// took because nobody else would fly it. Render-facing only; never read by gameplay.
+export const PLAYER_NOSE_ART = {
+  ship_kestrel: { motto: 'BORROWED TIME', mascot: 'ghost', sharkMouth: true, tally: 13 },
+};
+
+// Resolve a paint profile for a faction personality string. Returns a fresh merged object so callers
+// can safely tweak per-ship without mutating the shared profile.
+export function paintProfileFor(personality) {
+  return Object.assign({}, PAINT_PROFILES[personality] || PAINT_PROFILES.default);
+}
+
 export const SECTOR_PALETTES = {
   sector_helios_prime: {
     skyColor:     '#010818',

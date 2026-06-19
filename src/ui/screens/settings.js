@@ -92,13 +92,13 @@ const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
 const KEYBINDS = [
   ['Throttle', '↑↓ / W S'],
   ['Steer (yaw + bank)', '←→ / A D'],
+  ['Lateral thrusters', 'Q / E'],
   ['Aim weapons', 'Mouse'],
   ['Boost', 'Shift'],
   ['Fire (group 1)', 'LMB / Space'],
   ['Fire (group 2)', 'RMB'],
   ['Mine beam', 'RMB (on rock)'],
   ['Auto-fire toggle', 'F'],
-  ['Weapon group', 'Q / E'],
   ['Target nearest', 'T'],
   ['Cycle target', 'Tab'],
   ['Dock', 'Enter (when prompted)'],
@@ -118,12 +118,14 @@ let refs = null;
 const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // Flight actions the player may rebind. (Mouse buttons + Space-as-fire-alt are ergonomic constants
 // and stay out of the rebind grid to keep the model simple.)
-const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'boost', 'autoFire'];
+const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire'];
 const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
   yawLeft: 'Steer left',
   yawRight: 'Steer right',
+  strafeLeft: 'Lateral thrust left',
+  strafeRight: 'Lateral thrust right',
   boost: 'Boost',
   autoFire: 'Toggle auto-fire',
 };
@@ -249,7 +251,12 @@ export const settingsScreen = {
       });
     } else if (refs.active === 'Gameplay') {
       const g = s.gameplay;
+      if (!s.controls) s.controls = { bindings: null, flightMode: 'assisted' };
+      if (!s.controls.flightMode) s.controls.flightMode = 'assisted';
+      if (!g.physicsBackend) g.physicsBackend = 'custom';
       rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
+      rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
+      rowSelect('Physics backend', () => g.physicsBackend || 'custom', [['custom', 'Custom'], ['rapier', 'Rapier']], (v) => this._set(ctx, 'gameplay', 'physicsBackend', v));
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
       rowToggle('Damage numbers', () => s.showDamageNumbers, (v) => this._set(ctx, null, 'showDamageNumbers', v));

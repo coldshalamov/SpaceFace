@@ -4,9 +4,54 @@
 import * as THREE from 'three';
 import { createChaseCamera } from './camera.js';
 import { createStarfield } from './starfield.js';
-import { createVisualFactory } from './visualFactory.js';
+import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { createBloom } from './bloom.js';
 import { installDiagnostics } from './diagnostics.js';
+import { createPlanetFactory } from './planetFactory.js';
+
+// Map a sector's danger/tier to a nebula backdrop tint so each region of the galaxy has its own
+// color signature. Core (safe, low tier) = clean blue; industrial mid-ring = rust/amber; lawless
+// frontier = blood-red; alien/endgame tier 4+ = violet. Returns a hex string or null (default).
+function sectorNebulaTint(sector) {
+  if (!sector) return null;
+  const tier = sector.tier || 0;
+  const sec = sector.security != null ? sector.security : 1;
+  const danger = (1 - sec) + tier * 0.15; // blended danger metric
+  if (tier >= 4) return '#5a1e8a';        // violet — alien / lawless endgame (Veil, Ashfall)
+  if (danger > 0.7) return '#8a1e1e';     // blood-red — dangerous frontier (Io Reach, Sker)
+  if (danger > 0.45) return '#8a4a1e';    // rust/amber — industrial mid-ring (Vesta, Pallas)
+  if (danger > 0.2) return '#1e4a8a';     // deep blue — settled belt (Ceres, Tethys)
+  return '#1e3a6a';                        // clean blue — safe core (Helios Prime)
+}
+
+// ---- contact shadow disc (module-level cache so one texture serves all entities) ----------------
+let _shadowTex = null;
+function getContactShadowTex() {
+  if (_shadowTex) return _shadowTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0.0, 'rgba(0,0,0,0.70)');
+  g.addColorStop(0.6, 'rgba(0,0,0,0.35)');
+  g.addColorStop(1.0, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+  _shadowTex = new THREE.CanvasTexture(c);
+  return _shadowTex;
+}
+
+function attachContactShadow(mesh, entity) {
+  if (!mesh || entity._noShadow) return;
+  const r = Math.max(16, (entity.radius || 28) * 1.4);
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(r, 20),
+    new THREE.MeshBasicMaterial({ map: getContactShadowTex(), transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.NormalBlending }),
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = -0.5; // just below entity plane
+  disc.renderOrder = -2;
+  disc.frustumCulled = false;
+  mesh.add(disc);
+}
 
 const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _ray = new THREE.Raycaster();
@@ -38,18 +83,69 @@ export const render = {
     const rim = new THREE.DirectionalLight(0x6a5cff, 0.7); rim.position.set(-70, 50, -60); scene.add(rim);
     const fill = new THREE.DirectionalLight(0x39d0ff, 0.35); fill.position.set(20, 30, 120); scene.add(fill);
 
+    // Real shadow maps (graphics spec Workstream G). Gated behind settings.video.shadows (default
+    // true). The key light becomes a shadow caster with a tight frustum that follows the player so
+    // ships/stations cast real shadows on the play plane — a groundedness the contact-shadow disc
+    // only faked. The bloom contract (bloom.js) is untouched: shadows write to the depth buffer
+    // during the normal scene render, before bloom samples it.
+    const shadowsOn = !(state.settings && state.settings.video && state.settings.video.shadows === false);
+    if (shadowsOn) {
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      key.castShadow = true;
+      key.shadow.mapSize.set(2048, 2048);
+      // Orthographic frustum sized to the local play area around the player (updated per frame in
+      // renderFrame to follow the player). Tight bounds = crisp shadows at usable resolution.
+      const SC = key.shadow.camera;
+      SC.near = 10; SC.far = 600;
+      SC.left = -700; SC.right = 700; SC.top = 700; SC.bottom = -700;
+      SC.updateProjectionMatrix();
+      key.shadow.bias = -0.0008;
+      key.shadow.normalBias = 0.04;
+      key.target = new THREE.Object3D(); scene.add(key.target);
+    }
+
     const cam = createChaseCamera(state);
     const starfield = createStarfield(scene);
     const vf = createVisualFactory();
+
+    // Bake a PMREM environment map from the nebula backdrop (scene.background) so chrome/authority
+    // hulls can mirror the actual space around them — real reflections of the nebula + stars rather
+    // than a canned gradient. Done once after the starfield sets scene.background; the resulting
+    // envMap is exposed on state.render for the visual factory to attach to high-metalness hulls.
+    let envMap = null;
+    try {
+      // wait one frame so scene.background (an async-decoded CanvasTexture) is present, then bake
+      const bakeEnv = () => {
+        try {
+          const pmrem = new THREE.PMREMGenerator(renderer);
+          // use the scene background if it's a texture; else fall back to a synthetic equirect from
+          // the scene's current render. PMREMGenerator.fromScene bakes whatever is currently visible
+          // (the nebula backdrop) into a filtered cubemap — exactly what chrome should reflect.
+          envMap = scene.background && scene.background.isTexture
+            ? pmrem.fromEquirectangular(scene.background).texture
+            : pmrem.fromScene(scene, 0, 0.1, 1000).texture;
+          pmrem.dispose();
+          state.render.envMap = envMap;
+          setEnvMapForShips(envMap);   // hand it to the visual factory for chrome/authority hulls
+          if (scene.environment === null) scene.environment = envMap; // subtle global reflection on all PBR
+        } catch (_) { /* env-map optional — chrome falls back to high-metalness matte */ }
+      };
+      setTimeout(bakeEnv, 120); // let the starfield's async background decode first
+    } catch (_) { /* PMREM unavailable */ }
 
     // Preload the menu background (the only generated .jpg we use — the rest are captioned
     // contact-sheet references and are replaced by procedural materials / inline SVG).
     { const i = new Image(); i.src = 'assets/cinematics/menu_background.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.starfield = starfield; this.vf = vf;
+    this._keyLight = shadowsOn ? key : null; // referenced by _updateShadowFollow() each frame
+    this.planetFactory = createPlanetFactory();
+    this._planetBodies = [];
     try { this.bloom = createBloom(renderer, drawSize.x, drawSize.y); }
     catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
     this._meshes = new Map(); // entityId -> Object3D
+    this._meshReconcileDirty = true;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
     try { this.diag = installDiagnostics(renderer, { entities: () => state.entityList.length }); }
     catch (err) { console.warn('[render] diagnostics unavailable:', err); this.diag = null; }
@@ -57,6 +153,7 @@ export const render = {
     state.render.scene = scene;
     state.render.renderer = renderer;
     state.render.camera = cam.obj;
+    state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     state.camera.obj = cam.obj;
 
     ctx.helpers.worldToScreen = (v) => this.worldToScreen(v);
@@ -65,9 +162,16 @@ export const render = {
 
     bus.on('entity:spawned', ({ id, entity }) => {
       const m = vf.build(entity);
-      if (!m) return;
+      if (!m) { entity._noMesh = true; return; }
       m.position.set(entity.pos.x, 0, entity.pos.z);
       m.rotation.y = -entity.rot;
+      if (entity.type === 'ship' || entity.type === 'station') {
+        attachContactShadow(m, entity);
+        // Cast real shadows (graphics spec G). The contact disc is the receiver-independent
+        // fallback; castShadow lets ships/stations also shadow each other + the play plane when the
+        // key light's shadow camera covers them. Walking the group sets every child mesh.
+        m.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+      }
       entity.mesh = m; entity.view = { root: m };
       this._meshes.set(id, m);
       scene.add(m);
@@ -76,6 +180,11 @@ export const render = {
       const m = this._meshes.get(id);
       if (m) { scene.remove(m); disposeObject(m); this._meshes.delete(id); }
     });
+    // Ship hull swap or loadout change (fit/upgrade) — rebuild the mesh so visible hardpoints,
+    // engines and tier reflect the current ship. Without this the mesh is frozen at spawn and a
+    // shipyard hull switch or fitted weapon never shows. Mirrors the spawn path: dispose old,
+    // build new, re-seat from the entity's live transform.
+    bus.on('ship:appearanceChanged', ({ id }) => render.rebuildShipMesh(id));
     bus.on('camera:shake', ({ amount }) => cam.addTrauma(amount || 0.3));
     bus.on('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
@@ -84,7 +193,7 @@ export const render = {
     bus.on('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       const vd = state.settings.video;
-      if (this.bloom) this.bloom.setOptions({ bloom: vd.bloom, strength: vd.bloomStrength, threshold: vd.bloomThreshold });
+      if (this.bloom) this.bloom.setOptions({ bloom: vd.bloom, strength: vd.bloomStrength, threshold: vd.bloomThreshold, exposure: vd.exposure, acesToneMapping: vd.acesToneMapping !== false });
       if (p.key === 'renderScale' || p.key === 'pixelRatioCap' || p.key == null) this.onResize();
       // FOV: the feel system (feel.js) adds a transient punch on top of this base. We update the
       // camera's base fov here; feel.frame() re-derives its cached base from settings when no punch
@@ -101,7 +210,17 @@ export const render = {
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
-    bus.on('sector:enter', () => this.reconcileMeshes());
+    bus.on('sector:enter', ({ sector } = {}) => {
+      this.reconcileMeshes();
+      this._updatePlanetBodies(sector);
+      // Tint the nebula backdrop to the sector's mood so each region of the galaxy reads with its
+      // own color signature: clean-blue core → rust/amber industrial → blood-red frontier → violet
+      // alien/endgame. Drives the whole-frame atmosphere, reinforcing the core-to-frontier gradient.
+      if (this.starfield && this.starfield.setSectorTint) {
+        this.starfield.setSectorTint(sectorNebulaTint(sector));
+      }
+    });
+    bus.on('save:loaded', () => { this._meshReconcileDirty = true; });
 
     window.addEventListener('resize', () => this.onResize());
   },
@@ -131,11 +250,37 @@ export const render = {
       if (!m) { e._noMesh = true; continue; }
       m.position.set(e.pos.x, 0, e.pos.z);
       m.rotation.y = -e.rot;
+      if (e.type === 'ship' || e.type === 'station') attachContactShadow(m, e);
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
       this.scene.add(m);
     }
+    this._meshReconcileDirty = false;
   },
+
+  // Rebuild one ship's mesh after a hull swap or loadout change. Disposes the old Object3D, builds a
+  // fresh one from the (now-updated) entity, and re-seats it from the entity's live transform so it
+  // doesn't snap. Player-only in practice, but safe for any ship id. Textures/geo/materials are
+  // cached in the factory (never disposed), so only the per-entity Object3D graph is freed here —
+  // exactly the same lifecycle the per-entity disposer in disposeObject() already assumes.
+  rebuildShipMesh(id) {
+    const e = this.state.entities.get(id);
+    if (!e || e.alive === false) return;
+    const old = this._meshes.get(id);
+    if (old) { this.scene.remove(old); disposeObject(old); this._meshes.delete(id); }
+    const m = this.vf.build(e);
+    if (!m) return;
+    m.position.set(e.pos.x, 0, e.pos.z);
+    m.rotation.y = -e.rot;
+    // carry the bank pose so the rebuilt hull doesn't momentarily sit level mid-turn
+    const hull = m.userData && m.userData.hull;
+    if (hull && e.bank != null) hull.rotation.x = e.bank;
+    if (e.type === 'ship' || e.type === 'station') attachContactShadow(m, e);
+    e.mesh = m; e.view = { root: m };
+    this._meshes.set(id, m);
+    this.scene.add(m);
+  },
+
 
   syncEntityViews(alpha) {
     for (const e of this.state.entityList) {
@@ -143,7 +288,7 @@ export const render = {
       const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
       if (e.flags.noInterp) {
         m.position.set(e.pos.x, 0, e.pos.z); m.rotation.y = -e.rot;
-        if (hull && e.bank != null) hull.rotation.x = -e.bank; // roll around forward axis; +bank dips right wing
+        if (hull && e.bank != null) hull.rotation.x = e.bank; // roll around forward axis; +bank banks right
       } else {
         m.position.x = e.prevPos.x + (e.pos.x - e.prevPos.x) * alpha;
         m.position.z = e.prevPos.z + (e.pos.z - e.prevPos.z) * alpha;
@@ -154,20 +299,55 @@ export const render = {
         // interpolate bank for a smooth roll (prevBank snapshotted in core.preStep each step)
         if (hull && e.bank != null) {
           const pb = e.prevBank || 0;
-          hull.rotation.x = -(pb + (e.bank - pb) * alpha);
+          hull.rotation.x = pb + (e.bank - pb) * alpha;
         }
       }
     }
   },
 
+  _updatePlanetBodies(sector) {
+    for (const b of this._planetBodies) { this.scene.remove(b.mesh); }
+    this.planetFactory.disposeBodies(this._planetBodies);
+    this._planetBodies = this.planetFactory.buildSectorBodies(sector);
+    for (const b of this._planetBodies) {
+      b.mesh.position.copy(b.basePos);
+      this.scene.add(b.mesh);
+    }
+  },
+
+  _updatePlanetParallax() {
+    const cam = this.cam.obj.position;
+    for (const b of this._planetBodies) {
+      b.mesh.position.x = b.basePos.x + cam.x * (1 - b.parallax);
+      b.mesh.position.z = b.basePos.z + cam.z * (1 - b.parallax);
+    }
+  },
+
   renderFrame(alpha, frameDt) {
-    this.reconcileMeshes();
+    if (this._meshReconcileDirty) this.reconcileMeshes();
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
     this.starfield.recenter(this.cam.obj.position);
+    this._updatePlanetParallax();
+    // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
+    // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
+    // an offset from its target; we move both together. No-op if shadows are disabled.
+    this._updateShadowFollow();
     if (this.bloom && this.state.settings.video.bloom !== false) this.bloom.render(this.scene, this.cam.obj);
     else this.renderer.render(this.scene, this.cam.obj);
     if (this.diag) this.diag.update(frameDt);
+  },
+
+  // Center the key light + its shadow camera on the player each frame. The light direction stays
+  // fixed (60,140,40 offset); only the origin translates so shadows track the player across the
+  // sector instead of being pinned to world (0,0,0) and clipping at the frustum edge.
+  _updateShadowFollow() {
+    if (!this._keyLight) return;
+    const p = this.state.playerId ? (this.state.entities && this.state.entities.get(this.state.playerId)) : null;
+    const px = p ? p.pos.x : 0, pz = p ? p.pos.z : 0;
+    this._keyLight.position.set(px + 60, 140, pz + 40);
+    this._keyLight.target.position.set(px, 0, pz);
+    this._keyLight.target.updateMatrixWorld();
   },
 
   worldToScreen(v) {
@@ -211,7 +391,8 @@ function finiteInRange(value, min, max, fallback) {
 
 function disposeObject(obj) {
   obj.traverse((c) => {
-    if (c.geometry) c.geometry.dispose();
+    if (c.isBatchedMesh && typeof c.dispose === 'function') c.dispose();
+    else if (c.geometry) c.geometry.dispose();
     if (c.material) { const mm = Array.isArray(c.material) ? c.material : [c.material]; mm.forEach((m) => m.dispose()); }
   });
 }

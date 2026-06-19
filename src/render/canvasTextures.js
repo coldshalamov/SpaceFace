@@ -278,3 +278,382 @@ export function makeStarTexture(opts = {}) {
   tex.needsUpdate = true;
   return tex;
 }
+
+/**
+ * Tangent-space NORMAL map for a paneled hull: flat plates with beveled seam grooves between them
+ * and a gentle convex bow across each plate. Sampled by MeshStandardMaterial.normalMap so the hull
+ * catches the scene's key/rim/fill directional lights instead of reading as flat shading. Output is
+ * linear (no sRGB encode) — normal maps must stay linear.
+ * opts: { size, seed, panelCount, bevel }   bevel = groove depth strength (0..1, ~0.5 default)
+ */
+export function makeHullNormalMap(opts = {}) {
+  const { size = 256, seed = 23, panelCount = 12, bevel = 0.5 } = opts;
+  const rnd = mulberry32(seed);
+  const cols = Math.max(2, Math.round(Math.sqrt(panelCount)));
+  const cw = size / cols;
+
+  // Build a height field: each plate sits at +bow near its center, drops to 0 in the seam grooves.
+  // Groove width as a fraction of cell; bow amplitude scales with bevel.
+  const groove = cw * 0.10;
+  const bow = bevel * 14; // height units
+  const half = size / 2;
+  const field = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      // distance from nearest seam line (in cell space)
+      const fx = x / cw, fy = y / cw;
+      const lx = fx - Math.floor(fx), ly = fy - Math.floor(fy);
+      const dx = Math.min(lx, 1 - lx) * cw; // px from nearest vertical seam
+      const dy = Math.min(ly, 1 - ly) * cw; // px from nearest horizontal seam
+      let h = 0;
+      if (dx > groove && dy > groove) {
+        // inside a plate: gentle convex bow, peak at plate center, slight per-plate jitter
+        const px = lx - 0.5, py = ly - 0.5;
+        const plateJitter = (rnd() - 0.5) * bow * 0.15; // deterministic-ish via row stepping
+        h = bow * (1 - (px * px + py * py) * 2.2) + plateJitter;
+      }
+      field[y * size + x] = h;
+    }
+  }
+  // derive normal from height gradient (Sobel-ish), encode to [0,1] RGB (tangent space: +Z out)
+  const canvas = makeCanvas(size);
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  const at = (x, y) => field[((y + size) % size) * size + ((x + size) % size)];
+  const strength = 1.0 + bevel * 1.5;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = (at(x - 1, y) - at(x + 1, y)) * strength;
+      const dy = (at(x, y - 1) - at(x, y + 1)) * strength;
+      const nx = dx, ny = dy, nz = 18; // normal before normalize; nz tunes flatness
+      const len = Math.hypot(nx, ny, nz) || 1;
+      const k = (y * size + x) * 4;
+      img.data[k] = ((nx / len) * 0.5 + 0.5) * 255;
+      img.data[k + 1] = ((ny / len) * 0.5 + 0.5) * 255;
+      img.data[k + 2] = ((nz / len) * 0.5 + 0.5) * 255;
+      img.data[k + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return finalize(canvas, { srgb: false });
+}
+
+/**
+ * Second-frequency greeble detail: fine vents, access hatches, cable runs and small warning plates
+ * scattered over a transparent base. Designed as an OVERLAY (transparent where there's no detail)
+ * layered via a second decal mesh on top of the primary hull greeble, so close-up hulls read as
+ * densely detailed without re-baking the whole surface. opts: { size, seed, density, accent }
+ */
+export function makeGreebleDetailTexture(opts = {}) {
+  const { size = 256, seed = 51, density = 1.0, accent = '#6a7488' } = opts;
+  const rnd = mulberry32(seed);
+  const canvas = makeCanvas(size);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size); // transparent base
+
+  // fine vent slats (small horizontal grille clusters)
+  const vents = Math.round(10 * density);
+  for (let i = 0; i < vents; i++) {
+    const w = (0.05 + rnd() * 0.10) * size, h = (0.03 + rnd() * 0.05) * size;
+    const x = rnd() * (size - w), y = rnd() * (size - h);
+    ctx.fillStyle = 'rgba(20,24,32,0.85)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(10,14,20,0.9)'; ctx.lineWidth = 1;
+    const slats = 3 + Math.floor(rnd() * 4);
+    for (let s = 1; s < slats; s++) { const sy = y + (s / slats) * h; ctx.beginPath(); ctx.moveTo(x, sy); ctx.lineTo(x + w, sy); ctx.stroke(); }
+  }
+  // small access hatches (square with a handle dot)
+  const hatches = Math.round(8 * density);
+  for (let i = 0; i < hatches; i++) {
+    const s = (0.04 + rnd() * 0.06) * size;
+    const x = rnd() * (size - s), y = rnd() * (size - s);
+    ctx.fillStyle = 'rgba(40,46,58,0.8)'; ctx.fillRect(x, y, s, s);
+    ctx.strokeStyle = 'rgba(8,12,18,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, s, s);
+    ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(x + s * 0.5, y + s * 0.78, s * 0.10, 0, Math.PI * 2); ctx.fill();
+  }
+  // cable runs (thin slightly-curving lines)
+  ctx.strokeStyle = 'rgba(60,66,78,0.7)'; ctx.lineWidth = Math.max(1, size / 256);
+  const cables = Math.round(6 * density);
+  for (let i = 0; i < cables; i++) {
+    const x0 = rnd() * size, y0 = rnd() * size;
+    ctx.beginPath(); ctx.moveTo(x0, y0);
+    ctx.bezierCurveTo(x0 + (rnd() - 0.5) * size * 0.3, y0 + rnd() * size * 0.3,
+                      x0 + (rnd() - 0.5) * size * 0.3, y0 + rnd() * size * 0.3,
+                      x0 + (rnd() - 0.5) * size * 0.4, y0 + size * (0.1 + rnd() * 0.2));
+    ctx.stroke();
+  }
+  return finalize(canvas, { srgb: true });
+}
+
+/**
+ * A transparent DECAL sheet for hull markings: faction racing stripes, hazard chevrons and small
+ * warning triangles. Used as an overlay decal so liveries/identifiers sit on the hull without
+ * rebaking the base plating. Pick which decals via opts.include. opts:
+ *   { size, accent, stripe=true, chevron=true, warning=true, seed }
+ */
+export function makeDecalSheet(opts = {}) {
+  const { size = 256, accent = '#39d0ff', stripe = true, chevron = true, warning = true, seed = 7 } = opts;
+  const rnd = mulberry32(seed);
+  const canvas = makeCanvas(size);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+
+  if (stripe) {
+    // two angled faction stripes across the upper third
+    ctx.save();
+    ctx.translate(size * 0.5, size * 0.3);
+    ctx.rotate(-0.25);
+    ctx.fillStyle = accent;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(-size * 0.6, -size * 0.03, size * 1.2, size * 0.035);
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(-size * 0.6, size * 0.01, size * 1.2, size * 0.02);
+    ctx.restore();
+  }
+  if (chevron) {
+    // a hazard chevron band near the lower edge
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    const bandY = size * 0.72, bandH = size * 0.08;
+    for (let x = -size; x < size * 2; x += bandH * 2) {
+      ctx.fillStyle = '#3a3a2a';
+      ctx.beginPath();
+      ctx.moveTo(x, bandY); ctx.lineTo(x + bandH, bandY); ctx.lineTo(x + bandH * 2, bandY + bandH);
+      ctx.lineTo(x + bandH, bandY + bandH); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d8c24a';
+      ctx.beginPath();
+      ctx.moveTo(x + bandH, bandY); ctx.lineTo(x + bandH * 2, bandY); ctx.lineTo(x + bandH * 3, bandY + bandH);
+      ctx.lineTo(x + bandH * 2, bandY + bandH); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  if (warning) {
+    // a few small warning triangles with a "!" — placed at deterministic spots
+    const spots = [[0.18, 0.55], [0.78, 0.45], [0.5, 0.88]];
+    for (const [fx, fy] of spots) {
+      const cx = fx * size, cy = fy * size, r = size * 0.035;
+      ctx.fillStyle = '#e0b020';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r * 0.9, cy + r * 0.75); ctx.lineTo(cx - r * 0.9, cy + r * 0.75);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#1a1404';
+      ctx.fillRect(cx - r * 0.08, cy - r * 0.35, r * 0.16, r * 0.7);
+      ctx.beginPath(); ctx.arc(cx, cy + r * 0.5, r * 0.1, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // a tiny ID stencil block so ships read as individually marked craft
+  ctx.fillStyle = 'rgba(180,190,205,0.55)';
+  ctx.font = `${Math.round(size * 0.05)}px monospace`;
+  ctx.fillText('SF-' + (1000 + Math.floor(rnd() * 8999)), size * 0.06, size * 0.96);
+  return finalize(canvas, { srgb: true });
+}
+
+/**
+ * GRIME layer — oil streaks, rust blooms, soot, dust, and water-stain runs. Transparent overlay so
+ * it darkens/weather-ops the hull beneath without re-baking the base plating. intensity 0..1 scales
+ * how filthy the hull reads. This is the core of the "dirty outlaw vs clean authority" contrast.
+ */
+export function makeGrimeTexture(opts = {}) {
+  const { size = 256, seed = 13, intensity = 0.5 } = opts;
+  const rnd = mulberry32(seed);
+  const canvas = makeCanvas(size);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+
+  // rust blooms (mottled orange-brown patches) — more on high-intensity (filthy) hulls
+  const rustCount = Math.round((4 + intensity * 10));
+  for (let i = 0; i < rustCount; i++) {
+    const cx = rnd() * size, cy = rnd() * size, r = (0.04 + rnd() * 0.10) * size;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    const rustAlpha = 0.25 + intensity * 0.35;
+    grad.addColorStop(0, `rgba(110,60,25,${rustAlpha})`);
+    grad.addColorStop(0.6, `rgba(80,45,20,${rustAlpha * 0.5})`);
+    grad.addColorStop(1, 'rgba(80,45,20,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  }
+  // soot/smoke blackening near vents and the rear (engines belch)
+  for (let i = 0; i < Math.round(intensity * 6); i++) {
+    const cx = rnd() * size, cy = rnd() * size, r = (0.06 + rnd() * 0.12) * size;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, `rgba(10,10,12,${0.35 * intensity})`);
+    grad.addColorStop(1, 'rgba(10,10,12,0)');
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  }
+  // oil streaks — vertical runs from a source point (gravity-dripped oil)
+  ctx.strokeStyle = `rgba(20,18,16,${0.3 + intensity * 0.3})`;
+  ctx.lineWidth = Math.max(1, size / 200);
+  for (let i = 0; i < Math.round(intensity * 8); i++) {
+    const x = rnd() * size, y0 = rnd() * size * 0.7, len = (0.1 + rnd() * 0.25) * size;
+    ctx.beginPath(); ctx.moveTo(x, y0);
+    ctx.lineTo(x + (rnd() - 0.5) * size * 0.05, y0 + len);
+    ctx.stroke();
+    // a dab at the top (the leak source)
+    ctx.fillStyle = `rgba(15,13,12,${0.4 * intensity})`;
+    ctx.beginPath(); ctx.arc(x, y0, size * 0.012, 0, Math.PI * 2); ctx.fill();
+  }
+  // fine dust haze — a near-uniform low-alpha brown wash for the dull, sun-baked look
+  ctx.fillStyle = `rgba(60,52,40,${intensity * 0.08})`;
+  ctx.fillRect(0, 0, size, size);
+  return finalize(canvas, { srgb: true });
+}
+
+/**
+ * REPAIR PATCHES — bolted-on welded plates over old battle damage. Distinct rectangular plates with
+ * visible bolt heads, drawn slightly off-axis from the hull plating so they read as later additions.
+ * density 0..1 controls how patchy/scarred the hull is. Transparent overlay.
+ */
+export function makePatchTexture(opts = {}) {
+  const { size = 256, seed = 29, density = 0.3 } = opts;
+  const rnd = mulberry32(seed);
+  const canvas = makeCanvas(size);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  const count = Math.round(density * 7);
+  for (let i = 0; i < count; i++) {
+    const w = (0.08 + rnd() * 0.12) * size, h = (0.06 + rnd() * 0.10) * size;
+    const x = rnd() * (size - w), y = rnd() * (size - h);
+    const rot = (rnd() - 0.5) * 0.4;
+    ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rot);
+    // plate body — slightly different metal tone than the hull (a welded-on repair)
+    ctx.fillStyle = 'rgba(55,58,66,0.9)';
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    // weld bead around the edge
+    ctx.strokeStyle = 'rgba(28,30,34,0.95)'; ctx.lineWidth = Math.max(1, size / 220);
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    // bolt heads at the corners
+    ctx.fillStyle = 'rgba(18,20,24,0.95)';
+    for (const [bx, by] of [[-w/2+3,-h/2+3],[w/2-3,-h/2+3],[-w/2+3,h/2-3],[w/2-3,h/2-3]]) {
+      ctx.beginPath(); ctx.arc(bx, by, Math.max(1.2, size/240), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  return finalize(canvas, { srgb: true });
+}
+
+/**
+ * NOSE-ART decal — the personality of the ship. Three styles:
+ *   'bomber' — WW2/Vietnam bomber look: a toothed shark mouth on the nose, a stencil motto near the
+ *              cockpit, and a mascot/ghost glyph. Dark-humor "death-ship" vibe.
+ *   'punk'   — cyberpunk tags: spray-paint drips, stencil band logos, anarchy marks, neon scratch.
+ *   'insignia'— clean authority: a crisp faction crest + designation stripe. Pristine.
+ * Returns a transparent decal sized for a flank panel. motto/mascot/tally customize the bomber look.
+ */
+export function makeNoseArtTexture(opts = {}) {
+  const { size = 256, seed = 7, style = 'bomber', accent = '#39d0ff',
+    motto = 'BORROWED TIME', mascot = 'ghost', tally = 13 } = opts;
+  const rnd = mulberry32(seed);
+  const canvas = makeCanvas(size);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+
+  if (style === 'bomber') {
+    // SHARK MOUTH — a jagged red maw with white teeth, the Flying Tigers / bomber-nose classic
+    const mx = size * 0.5, my = size * 0.38, mw = size * 0.42, mh = size * 0.20;
+    ctx.save(); ctx.translate(mx, my);
+    // mouth outline (dark red)
+    ctx.fillStyle = '#7a1018';
+    ctx.beginPath();
+    ctx.moveTo(-mw / 2, 0);
+    ctx.quadraticCurveTo(0, mh * 0.9, mw / 2, 0);                 // lower jaw
+    ctx.quadraticCurveTo(0, -mh * 0.5, -mw / 2, 0);               // upper lip
+    ctx.fill();
+    // teeth (white triangles along both lips)
+    ctx.fillStyle = '#e8e4d8';
+    const teeth = 9;
+    for (let i = 0; i < teeth; i++) {
+      const t = i / (teeth - 1);
+      const tx = -mw / 2 + t * mw;
+      // upper teeth point down
+      const uy = -mh * 0.18 + Math.sin(t * Math.PI) * mh * 0.05;
+      ctx.beginPath(); ctx.moveTo(tx - mw / teeth * 0.3, uy); ctx.lineTo(tx + mw / teeth * 0.3, uy);
+      ctx.lineTo(tx, uy + mh * 0.32); ctx.closePath(); ctx.fill();
+      // lower teeth point up (offset)
+      const ly = mh * 0.35 - Math.sin(t * Math.PI) * mh * 0.05;
+      ctx.beginPath(); ctx.moveTo(tx - mw / teeth * 0.3, ly); ctx.lineTo(tx + mw / teeth * 0.3, ly);
+      ctx.lineTo(tx, ly - mh * 0.28); ctx.closePath(); ctx.fill();
+    }
+    // beady eye above the mouth (menacing)
+    ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(-mw * 0.3, -mh * 0.55, size * 0.018, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(-mw * 0.3, -mh * 0.55, size * 0.008, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // MOTTO stencil (the ship's dark-humor name)
+    ctx.fillStyle = 'rgba(225,225,220,0.92)';
+    ctx.font = `bold ${Math.round(size * 0.075)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(motto, size * 0.5, size * 0.68);
+
+    // KILL TALLY — bomb/round marks beneath the cockpit (veteran of many fights)
+    const cols = Math.min(tally, 13);
+    for (let i = 0; i < cols; i++) {
+      const bx = size * 0.5 + (i - (cols - 1) / 2) * size * 0.045;
+      const by = size * 0.82;
+      ctx.fillStyle = 'rgba(200,200,195,0.85)';
+      ctx.beginPath(); ctx.arc(bx, by, size * 0.014, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(200,200,195,0.85)'; ctx.lineWidth = Math.max(1, size / 256);
+      ctx.beginPath(); ctx.moveTo(bx, by - size * 0.014); ctx.lineTo(bx, by - size * 0.04); ctx.stroke();
+    }
+
+    // MASCOT glyph — a small ghost/sketch by the motto (the "haunted" ship's mascot)
+    if (mascot === 'ghost') {
+      const gx = size * 0.18, gy = size * 0.62, gr = size * 0.05;
+      ctx.fillStyle = 'rgba(210,210,225,0.8)';
+      ctx.beginPath(); ctx.arc(gx, gy, gr, Math.PI, 0); ctx.lineTo(gx + gr, gy + gr);    // ghost body
+      ctx.lineTo(gx + gr * 0.66, gy + gr * 0.8); ctx.lineTo(gx + gr * 0.33, gy + gr);
+      ctx.lineTo(gx, gy + gr * 0.8); ctx.lineTo(gx - gr * 0.33, gy + gr);
+      ctx.lineTo(gx - gr * 0.66, gy + gr * 0.8); ctx.lineTo(gx - gr, gy + gr);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(20,20,30,0.9)';                                           // eyes
+      ctx.beginPath(); ctx.arc(gx - gr * 0.35, gy, gr * 0.12, 0, Math.PI * 2);
+      ctx.arc(gx + gr * 0.35, gy, gr * 0.12, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (style === 'punk') {
+    // SPRAY-PAINT TAGS — neon stencil scrawls with drip runs, anarchy marks, scratch lettering
+    ctx.save();
+    // a big spray-painted tag band
+    ctx.fillStyle = accent;
+    ctx.globalAlpha = 0.75;
+    ctx.font = `italic bold ${Math.round(size * 0.13)}px sans-serif`;
+    ctx.textAlign = 'center';
+    const tags = ['NO FUTURE', 'RUST', '404', 'FREE', 'VOID'];
+    ctx.fillText(tags[Math.floor(rnd() * tags.length)], size * 0.5, size * 0.45);
+    ctx.globalAlpha = 1;
+    // drip runs under the tag
+    ctx.strokeStyle = accent; ctx.lineWidth = Math.max(1, size / 200);
+    for (let i = 0; i < 6; i++) {
+      const x = size * (0.2 + rnd() * 0.6), y0 = size * 0.5, len = (0.05 + rnd() * 0.2) * size;
+      ctx.globalAlpha = 0.5 + rnd() * 0.4;
+      ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + len); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y0 + len, size * 0.01, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // anarchy circle-A
+    const ax = size * 0.78, ay = size * 0.72, ar = size * 0.06;
+    ctx.strokeStyle = 'rgba(230,230,230,0.85)'; ctx.lineWidth = Math.max(1.5, size / 170);
+    ctx.beginPath(); ctx.arc(ax, ay, ar, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax - ar, ay); ctx.lineTo(ax + ar, ay); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax, ay - ar * 0.9); ctx.lineTo(ax, ay + ar * 0.9); ctx.stroke();
+    ctx.restore();
+  } else { // insignia — clean authority crest
+    ctx.save();
+    // crisp diamond crest
+    ctx.fillStyle = accent; ctx.globalAlpha = 0.9;
+    const cx = size * 0.5, cy = size * 0.45, cr = size * 0.16;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - cr); ctx.lineTo(cx + cr, cy); ctx.lineTo(cx, cy + cr); ctx.lineTo(cx - cr, cy);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+    // inner ring
+    ctx.strokeStyle = 'rgba(235,238,245,0.95)'; ctx.lineWidth = Math.max(1.5, size / 150);
+    ctx.beginPath(); ctx.arc(cx, cy, cr * 0.55, 0, Math.PI * 2); ctx.stroke();
+    // designation stripe (clean, orderly)
+    ctx.fillStyle = 'rgba(235,238,245,0.9)';
+    ctx.fillRect(size * 0.2, size * 0.72, size * 0.6, size * 0.05);
+    ctx.fillStyle = 'rgba(20,30,50,0.9)';
+    ctx.font = `bold ${Math.round(size * 0.045)}px monospace`; ctx.textAlign = 'center';
+    ctx.fillText('AUTHORITY', size * 0.5, size * 0.76);
+    ctx.restore();
+  }
+  return finalize(canvas, { srgb: true });
+}

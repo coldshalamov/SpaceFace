@@ -73,6 +73,12 @@ export function createScreenManager(ctx) {
     if ('inert' in hud) hud.inert = hidden;
   }
 
+  function clearModalFocus() {
+    const active = document.activeElement;
+    if (!active || active === document.body) return;
+    if (screensRoot && screensRoot.contains(active) && typeof active.blur === 'function') active.blur();
+  }
+
   // Pause the sim while any pausing screen sits anywhere in the stack. The pause/menu screens
   // also set state.timeScale in their own onShow/onHide (documented §5.4 exception); driving it
   // here from the stack as well guarantees ANY pausing screen freezes the sim regardless of the
@@ -116,6 +122,7 @@ export function createScreenManager(ctx) {
     if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
     stack.pop();
     syncVisibility();
+    if (!stack.length) clearModalFocus();
     const next = activeDef();
     if (next && next.onShow) { try { next.onShow(ctx); } catch (e) { console.error(e); } }
     if (next && next.refresh) { try { next.refresh(ctx); } catch (e) { console.error(e); } }
@@ -137,6 +144,7 @@ export function createScreenManager(ctx) {
       stack.pop();
     }
     syncVisibility();
+    clearModalFocus();
   }
 
   function isOpen() { return stack.length > 0; }

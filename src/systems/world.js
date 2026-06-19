@@ -218,12 +218,16 @@ export const world = {
     for (const fdef of fieldDefs) {
       const depleted = (disc.fieldsDepleted && disc.fieldsDepleted[fdef.id]) || 0;
       const share = (fdef.countWeight || 1) / totalWeight;
-      const count = Math.max(4, Math.round(budget * share * (1 - 0.6 * depleted)));
-      // Cluster center somewhere in the outer half of the disc.
+      const count = fdef.count != null
+        ? Math.max(1, Math.round(fdef.count * (1 - 0.6 * depleted)))
+        : Math.max(4, Math.round(budget * share * (1 - 0.6 * depleted)));
+      // Authored fields may pin their center/radius for onboarding or landmark readability.
       const cang = rng() * Math.PI * 2;
       const cR = wr * (0.35 + rng() * 0.4);
-      const center = { x: Math.cos(cang) * cR, z: Math.sin(cang) * cR };
-      const clusterR = params.clusterRadius || 450;
+      const center = fdef.center
+        ? { x: fdef.center.x, z: fdef.center.z }
+        : { x: Math.cos(cang) * cR, z: Math.sin(cang) * cR };
+      const clusterR = fdef.clusterRadius || params.clusterRadius || 450;
       const astIds = [];
       for (let i = 0; i < count; i++) {
         const a = this._spawnAsteroid(fdef, params, center, clusterR, rng);

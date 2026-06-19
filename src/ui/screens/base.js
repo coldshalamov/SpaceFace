@@ -41,15 +41,29 @@ function pretty(id) { return (id || '').replace(/_/g, ' ').replace(/\b\w/g, (c) 
 
 export const baseScreen = {
   id: 'base',
+  _rootEl: null,
+  _ctx: null,
+  _bodyId: null,
 
+  // Build the shell ONCE and cache refs. Screens are mounted once by screenManager (build()), so the
+  // per-open render — which depends on the just-set state.ui.pendingClaimBodyId — must live in
+  // onShow()/_render(), NOT here. Doing it in mount() would freeze the screen on the FIRST body
+  // opened and show its stale data on every subsequent open (the bug this file is fixing).
   mount(rootEl, ctx) {
     injectStyle();
+    this._rootEl = rootEl;
+    this._ctx = ctx;
+  },
+
+  // Full render of the currently-selected body (this._bodyId) against LIVE claims state. Safe to call
+  // repeatedly: it rebuilds rootEl each time. Called on every open (onShow) and after a build.
+  _render() {
+    const rootEl = this._rootEl;
+    const ctx = this._ctx;
+    if (!rootEl || !ctx) return;
     const state = ctx.state;
-    const claimsSys = ctx.drill ? null : (ctx.registry && ctx.registry.get('claims'));
-    const claims = claimsSys || (ctx.claims);
-    const bodyId = (state.ui && state.ui.pendingClaimBodyId) || null;
-    if (state.ui) state.ui.pendingClaimBodyId = null;
-    const body = bodyId && claims ? claims.list().find((b) => b.id === bodyId) : null;
+    const claims = ctx.registry && ctx.registry.get('claims');
+    const body = this._bodyId && claims ? claims.list().find((b) => b.id === this._bodyId) : null;
 
     rootEl.innerHTML = '';
     const wrap = document.createElement('div');
@@ -141,7 +155,7 @@ export const baseScreen = {
         btn.textContent = !techOk ? 'Locked' : !afford ? 'Too expensive' : !slotFree ? 'No free slot' : 'Build';
         btn.disabled = !canBuild;
         btn.addEventListener('click', () => {
-          if (claims.buildModule(body.id, mod.id)) this._render(rootEl, ctx);
+          if (claims.buildModule(body.id, mod.id)) this._render();
         });
         card.appendChild(btn);
       }
@@ -162,9 +176,27 @@ export const baseScreen = {
     rootEl.appendChild(wrap);
   },
 
-  onShow() {},
+  // Read the requested body FRESH on each open — input.js (the 'C' keybind) sets
+  // state.ui.pendingClaimBodyId right before pushScreen('base'), so a different body each time
+  // re-renders correctly. Clear the handoff flag once consumed; if re-shown with no new pending id
+  // (e.g. popped back to from a screen pushed on top), keep the last body rather than blanking out.
+  onShow(ctx) {
+    if (ctx) this._ctx = ctx;
+    const state = this._ctx && this._ctx.state;
+    const pending = (state && state.ui && state.ui.pendingClaimBodyId) || null;
+    if (pending) {
+      this._bodyId = pending;
+      state.ui.pendingClaimBodyId = null;
+    }
+    this._render();
+  },
+
   onHide() {},
+
+  // IMPORTANT: must be a no-op (mirrors settings.js / drill.js). uiRoot.frame() calls
+  // screenManager.refreshTop() ~3x/sec for any open screen; since _render() does a full
+  // rootEl.innerHTML rebuild, running it here would flicker the panel and could drop a click on a
+  // Build button. The screen needs no periodic refresh: base pauses the sim (timeScale 0) so nothing
+  // mutates underneath it, and the only change (build) re-renders directly from its own handler.
   refresh() {},
-  // re-render in place (used after a build so the slots + shop update without popping the screen)
-  _render(rootEl, ctx) { this.mount(rootEl, ctx); },
 };

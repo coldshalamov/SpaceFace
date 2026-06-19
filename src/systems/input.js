@@ -2,6 +2,7 @@
 // state.input each tick. Control scheme (Phase 1 flight rework — "arrows fly, mouse aims"):
 //   ↑/W  thrust forward along the nose   ↓/S  reverse thrust (weaker)
 //   ←→ / A D  YAW the ship's nose left/right (not strafe — the ship banks into the turn)
+//   Q/E  lateral thrusters left/right
 //   Mouse  independent aim for gimballed weapons + click to fire
 //   LMB / Space  fire group 1 (manual)   RMB  mining beam (group 2)   Shift  boost
 //   F  toggle auto-fire (handled in weapons; only the toggle edge lives here)
@@ -23,6 +24,8 @@ const DEFAULT_BINDINGS = {
   reverse:  ['KeyS', 'ArrowDown'],
   yawRight: ['KeyD', 'ArrowRight'],
   yawLeft:  ['KeyA', 'ArrowLeft'],
+  strafeLeft:  ['KeyQ'],
+  strafeRight: ['KeyE'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     ['Space'],          // mouse LMB also fires (see update)
   autoFire: ['KeyF'],
@@ -83,10 +86,12 @@ export const input = {
     const down = this._held(state, 'reverse');
     const right = this._held(state, 'yawRight');
     const left = this._held(state, 'yawLeft');
+    const strafeRight = this._held(state, 'strafeRight');
+    const strafeLeft = this._held(state, 'strafeLeft');
 
     inp.turnIntent = (right ? 1 : 0) - (left ? 1 : 0);   // +1 = turn clockwise (toward +rot)
     inp.moveZ = (up ? 1 : 0) - (down ? 1 : 0);            // throttle: +1 forward, -1 reverse
-    inp.moveX = 0;                                        // no strafe in the new model (kept for AI compat)
+    inp.moveX = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0); // lateral thrusters: +1 ship-local right
 
     inp.boost = this._held(state, 'boost');
     // LMB always fires (ergonomic constant); keyboard fire is rebindable.
