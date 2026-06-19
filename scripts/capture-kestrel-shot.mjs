@@ -10,7 +10,8 @@ import { existsSync, statSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const PORT = Number(process.argv[2] || process.env.PORT || 8123);
-const SHOTS = ['kestrel_hero_live.jpg', 'kestrel_hero_critical.jpg'];
+// All shots the ?dev=shipshot page produces. The diagnostics one is a JSON body, not an image.
+const SHOTS = ['kestrel_hero_live.jpg', 'kestrel_hero_critical.jpg', 'kestrel_bloom_on.jpg', 'kestrel_bloom_off.jpg', 'kestrel_topdown.jpg'];
 const shotPath = (f) => `.devshots/${f}`;
 
 // Locate Chrome. Prefer the system Chrome; fall back to Edge.
@@ -39,7 +40,7 @@ const args = [
 ];
 
 const child = spawn(chrome, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
-const HARD_KILL_MS = 25000; // hard ceiling — two frames need <4s; this is pure safety.
+const HARD_KILL_MS = 35000; // hard ceiling — five frames + diagnostics need ~6s; this is pure safety.
 
 const watchdog = setTimeout(() => {
   console.error(`[capture] hard-killing chrome after ${HARD_KILL_MS}ms (watchdog)`);

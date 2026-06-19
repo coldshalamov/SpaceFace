@@ -63,6 +63,44 @@ export async function runShipShot(SF) {
     } catch (err) { console.error('[shipShot] critical capture failed', err); }
   }
 
+  // ---- §18 Gate 6: bloom on/off diagnostic pair + frame-time report ----
+  // Capture the same framing with bloom on and off so the diagnostic difference is visible, and dump
+  // the diagnostics report (draw calls / tris / frame-time p95) to a JSON the live session reads.
+  const video = (state.settings && state.settings.video) || {};
+  const prevBloom = video.bloom;
+  const captureAt = async (name, camPos) => {
+    cam.position.set(camPos[0], camPos[1], camPos[2]);
+    cam.lookAt(0, 1.5, 0);
+    renderer.render(scene, cam);
+    await new Promise((r) => setTimeout(r, 30));
+    try {
+      const url = renderer.domElement.toDataURL('image/jpeg', 0.88);
+      const res = await fetch('/__shot?name=' + name, { method: 'POST', body: url });
+      console.log('[shipShot] captured', name, '->', (await res.json()).file);
+    } catch (err) { console.error('[shipShot] capture', name, 'failed', err); }
+  };
+
+  video.bloom = true; if (state.render.bloom) state.render.bloom.setOptions && state.render.bloom.setOptions({ bloom: true });
+  await captureAt('kestrel_bloom_on', [34, 26, 34]);
+  video.bloom = false;
+  await captureAt('kestrel_bloom_off', [34, 26, 34]);
+  video.bloom = prevBloom; // restore
+  // Top-down smallest-scale view (the §22 'silhouette at smallest camera scale' bullet, live).
+  await captureAt('kestrel_topdown', [0, 70, 0.01]);
+
+  // Diagnostics report: draw calls / tris / frame-time. One sample isn't a p95, but it confirms the
+  // pipeline runs and records the structure (real per-frame p95 needs the live loop on target HW).
+  try {
+    const diag = (typeof window !== 'undefined') && window.__THREE_GAME_DIAGNOSTICS__;
+    if (diag && typeof diag.getReport === 'function') {
+      const report = diag.getReport();
+      await fetch('/__shot?name=kestrel_diagnostics', { method: 'POST', body: JSON.stringify(report) });
+      console.log('[shipShot] diagnostics: calls=' + report.render.calls + ' tris=' + report.render.triangles + ' lastMs=' + (report.frameMs && report.frameMs.last));
+    } else {
+      console.log('[shipShot] diagnostics handle not yet available');
+    }
+  } catch (err) { console.error('[shipShot] diagnostics dump failed', err); }
+
   // Restore the scene so a subsequent live session isn't disturbed.
   cam.position.copy(prevPos);
   scene.remove(tmp);
