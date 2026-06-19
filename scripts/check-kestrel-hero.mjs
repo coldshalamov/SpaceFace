@@ -40,9 +40,10 @@ const EXPECTED_SOCKETS = [
   'SOCKET_Weapon_Front', 'SOCKET_Mining_Front', 'SOCKET_Engine_Main',
   'SOCKET_Utility_Dorsal', 'SOCKET_Cargo_Ventral', 'SOCKET_Trail_Main', 'SOCKET_Camera_Focus',
 ];
-// renderContract in kestrelHero.js declares "<= 18 before post-processing". Static batching merges
-// same-material meshes; the three dynamic drive parts (fan, core, plume) + decals stay separate.
-const DRAW_BUDGET = 18;
+// renderContract in kestrelHero.js declares "<= 20 before post-processing", the spec's §12.2
+// player-starter tier ceiling (8–20). Static batching merges same-material meshes; the three dynamic
+// drive parts (fan, core, plume) + nav lights + utility pod stay separate for damage-state modulation.
+const DRAW_BUDGET = 20;
 
 let ok = 0, fail = 0;
 function check(label, cond, detail = '') {

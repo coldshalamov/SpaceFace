@@ -2,6 +2,7 @@
 // Bespoke player-starter ship for SpaceFace. Authoring space follows the project contract:
 // +X forward, +Y up, +Z starboard, metres. The finished hull is 28 m long, ~14 m wide, ~6 m tall.
 import * as THREE from 'three';
+import { attachDamageStateDriver } from './kestrelDamage.js';
 
 const TAU = Math.PI * 2;
 const DESIGN_RADIUS = 14;
@@ -425,6 +426,8 @@ export function buildKestrelHero(entity) {
   fan.userData.keepSeparate = true;
   driveCore.userData.keepSeparate = true;
   plume.userData.keepSeparate = true;
+  driveCore.userData.damageRole = 'driveCore'; // §9.11 Critical: unstable axial drive
+  plume.userData.damageRole = 'plume';         // §9.11 Critical: plume flickers/dims
   plume.renderOrder = 2;
 
   // 5) Visible starter verbs. The player can shoot and mine immediately, so the model exposes both
@@ -446,7 +449,13 @@ export function buildKestrelHero(entity) {
     }
   }
   addBox(hull, mat.repair, 'Kestrel_Utility_Pod_Starboard', [3.25, 1.0, 1.65], [-1.4, 1.3, 3.75], [0, -0.08, 0]);
+  // The utility pod is a named secondary part: shed at Critical (§9.11 #4 asymmetric debris shedding).
+  // It is the pod body; the band is a sibling. Kept out of static batching so the damage driver can
+  // hide it cleanly when the ship has lost hardware.
   addBox(hull, mat.warning, 'Kestrel_Utility_Pod_Band', [0.28, 1.08, 1.74], [-0.55, 1.3, 3.75]);
+  const utilityPod = hull.children[hull.children.length - 2]; // the pod body added just before the band
+  utilityPod.userData.damageRole = 'secondary';
+  utilityPod.userData.keepSeparate = true;
   const mast = addCylinderX(hull, mat.gunmetal, 'Kestrel_Antenna_Mast', 0.08, 1.85, [-3.1, 2.65, -1.28], 7);
   mast.rotation.z = Math.PI / 2; // convert the X-oriented helper into a vertical mast
   addTorusX(hull, mat.sensor, 'Kestrel_Antenna_Loop', 0.34, 0.055, [-3.1, 3.55, -1.28], 5, 14).rotation.y = 0;
@@ -459,10 +468,14 @@ export function buildKestrelHero(entity) {
   }
 
   // Human-scale lights: warm cabin/service light; cyan navigation/sensing. Red remains reserved for
-  // actual danger and damage elsewhere in the game.
+  // actual danger and damage elsewhere in the game. The nav lights are a damage-relevant light group
+  // (§9.11: a failed light group reads as damage without the HUD hull bar) — kept out of static
+  // batching so the damage driver can modulate each independently.
   addBox(hull, mat.practical, 'Kestrel_Cabin_Practical', [0.22, 0.16, 1.3], [4.1, 2.39, 0]);
-  addBox(hull, mat.sensor, 'Kestrel_Nav_Port', [0.38, 0.18, 0.16], [1.6, 0.45, -6.45]);
-  addBox(hull, mat.sensor, 'Kestrel_Nav_Starboard', [0.38, 0.18, 0.16], [1.6, 0.45, 6.45]);
+  const navPort = addBox(hull, mat.sensor, 'Kestrel_Nav_Port', [0.38, 0.18, 0.16], [1.6, 0.45, -6.45]);
+  const navStbd = addBox(hull, mat.sensor, 'Kestrel_Nav_Starboard', [0.38, 0.18, 0.16], [1.6, 0.45, 6.45]);
+  navPort.userData.damageRole = 'navLight'; navPort.userData.keepSeparate = true;
+  navStbd.userData.damageRole = 'navLight'; navStbd.userData.keepSeparate = true;
 
   addBorrowedTimeDecal(hull);
   addFadedSharkTeeth(hull);
@@ -495,12 +508,19 @@ export function buildKestrelHero(entity) {
 
   mergeStaticByMaterial(hull, new Set([fan, driveCore, plume]));
 
+  // Damage-state system (spec §9.11): attach a per-frame driver that reads the entity's live hull
+  // fraction and modulates the addressable light groups / armor / drive / secondary parts so damage is
+  // readable without the HUD hull bar. The renderer calls root.userData.updateDamageState(entity, now)
+  // each frame; the driver holds the part references and is reversible through Critical.
+  attachDamageStateDriver(root, hull, 0.30);
+
   root.userData.renderContract = {
     coordinateSystem: '+X forward, +Y up, +Z starboard',
     authoredMetres: true,
     nominalDimensions: [28, 6, 14],
     sockets: 7,
-    drawCallTarget: '<= 18 before post-processing',
+    drawCallTarget: '<= 20 before post-processing (spec §12.2 player-starter tier; 16 static-batched + drive/nav/damage parts)',
+    damageStates: ['operational', 'stressed', 'damaged', 'critical', 'destruction'],
     version: 1,
   };
   return root;

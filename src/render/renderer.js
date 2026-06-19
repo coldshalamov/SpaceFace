@@ -289,6 +289,7 @@ export const render = {
 
 
   syncEntityViews(alpha) {
+    const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
     for (const e of this.state.entityList) {
       const m = e.mesh; if (!m) continue;
       const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
@@ -308,6 +309,10 @@ export const render = {
           hull.rotation.x = pb + (e.bank - pb) * alpha;
         }
       }
+      // Hero-asset damage states (spec §9.11): hero meshes carry an updateDamageState closure that
+      // modulates light groups / armor / drive from the live hull fraction so damage reads without the
+      // HUD bar. Cheap no-op for non-hero meshes (no closure). Called once per frame per entity.
+      if (m.userData.updateDamageState) m.userData.updateDamageState(e, now);
     }
   },
 
