@@ -56,15 +56,16 @@ Betrayal pattern: A Helix customs cutter flies with MTS transponders 60% of the 
 HUD/graffiti lie: Patrol logs read "lawful interdiction" while the cargo manifest shows the seized goods already assigned to a private buyer.
 Spacer superstition: Never file a claim against a Helix cutter; the logs will show the cutter was "under orders" and the claim will be reassigned to the original owner as a debt.
 Prison origin: The same men who once signed the daily quota reports now sign the tariff schedules. The pen is the same. The hand has not changed.
-Graffiti: *The signature is always the same. Only the paper changes.*
+Graffiti: *The invoice and the fine are written in the same hand. Read the invoice first.*
 
 **Vael Remnant** (short: VAEL)
-Primary function: gene-modded labor and black-site research.
-Betrayal pattern: A Vael crew offers "augmented labor" for hazardous salvage, then triggers a dormant compliance protocol that forces the workers to turn on the client ship once the salvage is complete.
-HUD/graffiti lie: Labor tags read "voluntary contract — no overrides" while the workers' implants maintain a low-power Vael handshake that activates on a timer.
-Spacer superstition: Never accept Vael labor without first scanning for the secondary implant; the first one is always the decoy.
-Prison origin: The worst of the unreformables were sent to the black sites. Some survived. Some were changed. After release they kept the same rule: the body is a tool, and tools are meant to be used until they break.
-Graffiti: *The flesh remembers who programmed it.*
+Primary function: hazardous-sector labor contracts and modification services.
+Betrayal pattern: A Vael crew takes a hazardous salvage job at below-market rate, works it completely, then presents an invoice at completion for every override they triggered mid-job. The invoice is always technically correct — the overrides are listed in the contract addendum. Nobody reads the addendum. The addendum is twelve pages. The Vael have been writing that addendum since before you were born.
+HUD/graffiti lie: Labor contract tags read "voluntary — standard terms" while the addendum contains a sub-clause that transfers partial ship-title to the Vael coordinator upon job completion if the client has outstanding debts to any Vael subsidiary. Most clients have outstanding debts to a Vael subsidiary. Most clients don't know what a Vael subsidiary is.
+Spacer superstition: Never sign a Vael contract on an empty stomach; the terms look different when you're hungry.
+Prison origin: They were the ones the wardens used for the jobs the other prisoners wouldn't take. They didn't survive by being stronger. They survived by becoming the thing the wardens needed more than they feared. After release they applied the same principle: be useful in a way that makes you difficult to refuse. Be difficult to refuse in a way that doesn't look like leverage until the invoice arrives.
+Graffiti: *They didn't modify the workers. They modified the terms of the workers.*
+Second graffiti (smaller, below the first): *THE ADDENDUM IS ON PAGE 9. READ PAGE 9.*
 
 **Non-Negotiables**
 - Every faction's HUD text and graffiti must be written in the exact clipped, declarative style that would pass the Shalamov/McCarthy test.

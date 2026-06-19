@@ -7,7 +7,7 @@ Vietnam-era punk graffiti sprayed on a bulkhead that still smells like cordite a
 Malcolm Reynolds after five years in a penal colony and a bad tattoo artist. Short sentences. Sarcasm as punctuation. "They said the contract was clean. They lied. We still took it." No inspirational speeches. No "we can do this." Just "don't die stupid" muttered into the comms while the reactor screams.
 
 **Humor Style**
-Borderlands edge sharpened on a whetstone of actual corpses. Dark, fast, zero sentiment. Killing is never glorified and never tragic—just another line item on the after-action report. "Target neutralized. Also the guy next to him. And the wall behind them. Ship's happy." Gallows humor that lands because the alternative is screaming into the void. Laugh or bleed; the game prefers you do both.
+Borderlands edge sharpened on a whetstone of actual corpses. Dark, fast, zero sentiment. Killing is never glorified and never tragic—just another line item on the after-action report. "Target neutralized. Also the guy next to him. And the wall behind them. Kill feed took a second to catch up." Gallows humor that lands because the alternative is screaming into the void. Laugh or bleed; the game prefers you do both.
 
 **Visual Storytelling**
 Mr Robot paranoia rendered in three dimensions. Static on every long-range scan. Flickering HUD tags that sometimes read "FRIENDLY" and sometimes read "WAS FRIENDLY." Graffiti that moves when you're not looking. Ship interiors that look like someone started redecorating with a flamethrower and lost interest halfway through. Lighting is always either too bright (interrogation) or too dark (ambush). No clean hero shots. Every frame should feel like it was pulled from a body-cam that survived the operator.
