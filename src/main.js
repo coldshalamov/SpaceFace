@@ -61,6 +61,12 @@ async function boot() {
       // ensure the render system has registered its scene/renderer handles on state.render
       setTimeout(() => { runShipPreview({ state, registry, THREE }).catch((e) => console.error('[shipPreview]', e)); }, 500);
     }
+    // Dev-only single-frame Kestrel hero capture: ?dev=shipshot renders the player Kestrel once (no
+    // rAF loop, so it's robust under headless Chrome) and POSTs kestrel_hero_live.jpg to /__shot.
+    if (SF_DEBUG && typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === 'shipshot') {
+      const { runShipShot } = await import('./render/shipShot.js');
+      setTimeout(() => { runShipShot({ state, registry, THREE }).catch((e) => console.error('[shipShot]', e)); }, 500);
+    }
   } catch (err) {
     showBootError(err);
     throw err;

@@ -333,11 +333,11 @@ function buildMaterials() {
       transparent: true,
       opacity: 0.92,
     }),
-    sensor: emissiveMaterial(COLOR.frontierPale, 2.4),
-    practical: emissiveMaterial(COLOR.practical, 1.35),
-    drive: emissiveMaterial(COLOR.frontier, 2.75),
-    driveCore: emissiveMaterial(COLOR.driveCore, 4.2),
-    driveGlow: glowMaterial(COLOR.frontier, 0.46),
+    sensor: emissiveMaterial(COLOR.frontierPale, 3.2),
+    practical: emissiveMaterial(COLOR.practical, 1.8),
+    drive: emissiveMaterial(COLOR.frontier, 3.4),
+    driveCore: emissiveMaterial(COLOR.driveCore, 5.0),
+    driveGlow: glowMaterial(COLOR.frontier, 0.62),
   };
   for (const [name, material] of Object.entries(materials)) material.name = `Kestrel_${name}`;
   return materials;
