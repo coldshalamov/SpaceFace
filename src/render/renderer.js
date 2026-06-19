@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { createChaseCamera } from './camera.js';
 import { createStarfield } from './starfield.js';
 import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
+import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
 import { installDiagnostics } from './diagnostics.js';
 import { createPlanetFactory } from './planetFactory.js';
@@ -108,6 +109,10 @@ export const render = {
     const cam = createChaseCamera(state);
     const starfield = createStarfield(scene);
     const vf = createVisualFactory();
+    // Hero-asset registry (spec §17.3): wraps the factory's build() so the bespoke player Kestrel is
+    // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
+    // back to the original procedural builder, so non-Kestrel entities are completely unaffected.
+    installVisualOverrides(vf);
 
     // Bake a PMREM environment map from the nebula backdrop (scene.background) so chrome/authority
     // hulls can mirror the actual space around them — real reflections of the nebula + stars rather
