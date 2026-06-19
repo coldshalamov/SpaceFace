@@ -372,11 +372,15 @@ function hullMaterial(pal, panelCount = 14) {
     // tangent-space normal map of the panel bevels so hull surfaces catch the key/rim/fill lights.
     const normal = getTexture(`hullnrm:${pc}`, () =>
       makeHullNormalMap({ size: 256, seed: seed + 1, panelCount: pc, bevel: 0.55 }));
+    // Painted pressure shell: primarily dielectric (low metalness) per spec §4.5/§11.1 — a coated
+    // hull should read as paint, not bare metal, so the metalness contrast with exposed hardware
+    // (gunmetal/graphite at 0.78–0.88) carries the material hierarchy instead of a uniform sparkle.
+    // Roughness is raised slightly so age reads; roughnessMap still provides the local history.
     return new THREE.MeshStandardMaterial({
       map: albedo, roughnessMap: rough, normalMap: normal, color: 0xffffff,
-      roughness: 0.62, metalness: 0.55,
+      roughness: 0.66, metalness: 0.16,
       normalScale: new THREE.Vector2(0.7, 0.7),
-      emissive: new THREE.Color(pal.emissive), emissiveIntensity: 0.05,
+      emissive: new THREE.Color(pal.emissive), emissiveIntensity: 0.04,
     });
   });
 }
@@ -652,7 +656,7 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
 
 // dark machinery material for weapon internals (breech blocks, tube mouths, ammo belts)
 function darkWpnMat() {
-  return getMaterial('wpn:dark', () => new THREE.MeshStandardMaterial({ color: 0x10141a, roughness: 0.85, metalness: 0.5 }));
+  return getMaterial('wpn:dark', () => new THREE.MeshStandardMaterial({ color: 0x10141a, roughness: 0.7, metalness: 0.66 }));
 }
 
 // ---- engine props ----------------------------------------------------------------------------
@@ -663,7 +667,7 @@ function engineProp(pal, R, scaleK, engineClass) {
   const s = R * 0.22 * scaleK * (0.85 + Math.min(0.5, (engineClass || 60) / 240));
   const housingMat = hullMaterial(pal, 8);
   const nozzleMat = emissiveMaterial(pal.thruster, 2.4);
-  const darkMat = getMaterial('eng:dark', () => new THREE.MeshStandardMaterial({ color: 0x0c1016, roughness: 0.8, metalness: 0.5 }));
+  const darkMat = getMaterial('eng:dark', () => new THREE.MeshStandardMaterial({ color: 0x0c1016, roughness: 0.72, metalness: 0.68 }));
   // engine nacelle housing (cylinder lying along X) with an intake lip at the front
   const nacelle = new THREE.Mesh(getGeometry('eng:nacelle', () => new THREE.CylinderGeometry(0.3, 0.34, 0.7, 12).rotateZ(Math.PI / 2)), housingMat);
   nacelle.scale.set(s, s, s); g.add(nacelle);
@@ -771,8 +775,8 @@ function surfaceDetail(ctx) {
   const rcsGeo = getGeometry('greeb:rcs', () => new THREE.CylinderGeometry(0.035, 0.05, 0.06, 6));
   const finGeo = getGeometry('greeb:fin', () => new THREE.BoxGeometry(0.04, 0.12, 0.08));
   const ventMat = hm;
-  const darkMat = getMaterial('greeb:dark', () => new THREE.MeshStandardMaterial({ color: 0x14181f, roughness: 0.8, metalness: 0.4 }));
-  const glowMat = emissiveMaterial(pal.accent, 1.2);
+  const darkMat = getMaterial('greeb:dark', () => new THREE.MeshStandardMaterial({ color: 0x14181f, roughness: 0.74, metalness: 0.62 }));
+  const glowMat = emissiveMaterial(pal.accent, 0.85);
 
   // walk the grid; each cell has a probability of hosting a cluster, gated by density
   for (let ix = 0; ix < cellsX; ix++) {

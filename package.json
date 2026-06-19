@@ -10,8 +10,8 @@
     "electron": "electron .",
     "dist": "electron-builder",
     "check:flight": "node scripts/flight-lab-sim.mjs && node scripts/probe-flight-visual.mjs",
-    "check:art": "node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs",
-    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && node scripts/check-gameplay-core.mjs && node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs"
+    "check:art": "node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs",
+    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && node scripts/check-gameplay-core.mjs && node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs"
   },
   "private": true,
   "devDependencies": {
