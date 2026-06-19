@@ -182,7 +182,11 @@ export const onboarding = {
     const p = this.state.entities.get(this.state.playerId);
     if (!step || !step.target || !p) return null;
     let best = null, bestD = Infinity;
-    for (const e of this.state.entityList) {
+    const index = this.state.entityIndex;
+    const list = step.target === 'asteroid'
+      ? ((index && index.asteroids) || this.state.entityList)
+      : ((index && index.dockStations) || this.state.entityList);
+    for (const e of list) {
       if (!e.alive) continue;
       if (step.target === 'asteroid') {
         if (e.type !== 'asteroid' || (e.data && e.data.respawnAt != null)) continue;

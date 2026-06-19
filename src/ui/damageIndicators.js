@@ -22,8 +22,9 @@ export function createDamageIndicators() {
     s.textContent = `
 .sf-dmgind-root { position:absolute; inset:0; z-index:1100; pointer-events:none; overflow:hidden; }
 .sf-dmgind-arc {
-  position:absolute; left:50%; top:50%; width:0; height:0;
+  position:absolute; left:0; top:0; width:0; height:0;
   pointer-events:none; opacity:0; transform-origin:center;
+  will-change:transform,opacity;
   transition: none;
 }
 .sf-dmgind-arc__blade {
@@ -154,11 +155,9 @@ export function createDamageIndicators() {
       const op = fadeIn * decay;
       a.el.className = 'sf-dmgind-arc' + (a.crit ? ' crit' : '');
       a.el.style.display = 'block';
-      a.el.style.left = ex + 'px';
-      a.el.style.top = ey + 'px';
       a.el.style.opacity = String(op);
       // rotate the arc so its blade points outward from center toward the hit source
-      a.el.style.transform = `translate(-50%,-50%) rotate(${screenAngle}rad)`;
+      a.el.style.transform = `translate3d(${ex}px,${ey}px,0) translate(-50%,-50%) rotate(${screenAngle}rad)`;
     }
   }
 

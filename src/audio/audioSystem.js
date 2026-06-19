@@ -5,10 +5,10 @@
 // derived threat level. Honors settings.audio.{master,sfx,music,muted} and settings:changed.
 //
 // IMPORTANT: the registry never calls audio.update() (audio is init-only; it is not in
-// UPDATE_ORDER and not invoked in renderUpdate). So all per-frame work — threat recompute,
-// music crossfades, alarm scheduling, positional loop tracking, voice GC — is driven by a
-// self-owned requestAnimationFrame loop that starts once the AudioContext exists. update(dt,state)
-// is implemented too (harmless if ever wired in) but the rAF loop is the real driver.
+// UPDATE_ORDER and not invoked in renderUpdate). So runtime audio work is driven by a self-owned
+// requestAnimationFrame loop that starts once the AudioContext exists. Audible scheduling and voice
+// GC still run every frame; analysis-style music threat scans and loop-position automation are
+// cadence-limited inside that loop. update(dt,state) is implemented too (harmless if ever wired in).
 //
 // Robustness: nothing throws if there is no AudioContext yet (suspended/autoplay-blocked).
 // Early events before the first user gesture are dropped (one-shots) or remembered as desired
@@ -27,6 +27,8 @@ const XFADE_S = 2.5;
 const XFADE_COMBAT_S = 1.0;
 const STATE_HOLD_S = 1.5;       // hysteresis
 const IN_COMBAT_WINDOW = 6;     // s since last damage counts as "in combat"
+const MUSIC_RECOMPUTE_S = 0.1;  // analysis cadence; state changes still have 1.5s hysteresis
+const LOOP_POSITION_UPDATE_S = 0.05; // AudioParam smoothing already runs over this window
 // target stem weights per music state (A=calm drone, B=tense pad, C=combat, D=docked warm)
 const STEM_WEIGHTS = {
   calm:   { A: 1.0, B: 0.0, C: 0.0, D: 0.0 },
@@ -96,6 +98,10 @@ export const audio = {
     rt._rafId = 0;
     rt._wantBeam = {};            // owners desiring a beam loop (started on resume)
     rt._wantMining = null;        // { minerId, targetId } desired mining loop
+    rt._musicDirty = true;
+    rt._nextMusicScan = 0;
+    rt._loopPositionDirty = true;
+    rt._nextLoopPositionUpdate = 0;
     this.rt = rt;
 
     const bus = this.bus;
@@ -128,7 +134,7 @@ export const audio = {
     bus.on('dock:undocked', () => this._onUndocked());
     bus.on('jump:chargeStart', () => this._duckMusic());
     bus.on('jump:start', (p) => this._onJump(p));
-    bus.on('sector:enter', () => { /* music recomputes threat next frame */ });
+    bus.on('sector:enter', () => { this._markMusicDirty(); });
     bus.on('ship:boostStart', (p) => {
       // Sustained boost: a low engine roar. Reuse the small-explosion tail as a whoosh onset, gain low
       // so it layers under combat without crowding. Only the player's boost is audible (NPCs spam this).
@@ -159,7 +165,7 @@ export const audio = {
     bus.on('ui:deny', () => this._onCue('deny'));
 
     // Rebuild graph on load (transient runtime is wiped on load).
-    bus.on('save:loaded', () => { this._applySettings(); });
+    bus.on('save:loaded', () => { this._applySettings(); this._markMusicDirty(); });
     bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
 
     // If a context already exists (hot reload), wire immediately.
@@ -171,6 +177,14 @@ export const audio = {
   // Implemented for completeness; the rAF loop is the real per-frame driver since the
   // registry does not call audio.update().
   update(dt, state) { /* no-op: driven by _frame() */ },
+
+  _markMusicDirty() {
+    if (this.rt) this.rt._musicDirty = true;
+  },
+
+  _markLoopPositionDirty() {
+    if (this.rt) this.rt._loopPositionDirty = true;
+  },
 
   // ---- context lifecycle ----
   _ensureContext() {
@@ -236,6 +250,8 @@ export const audio = {
       // re-seed alarm timers so they don't dump a backlog burst on resume
       rt._alarmNext.lowShield = ctx.currentTime;
       rt._alarmNext.lowHull = ctx.currentTime;
+      this._markMusicDirty();
+      this._markLoopPositionDirty();
     }
   },
 
@@ -357,7 +373,7 @@ export const audio = {
     if (!ctx || ctx.state !== 'running') return;
     if (rt.loops['beam_' + ownerId]) return;
     const v = this._startLoopVoice('sfx_wpn_beam_laser', pos, 0.85);
-    if (v) { v.trackId = ownerId; rt.loops['beam_' + ownerId] = v; }
+    if (v) { v.trackId = ownerId; rt.loops['beam_' + ownerId] = v; this._markLoopPositionDirty(); }
   },
 
   _stopBeam(ownerId) {
@@ -378,7 +394,7 @@ export const audio = {
 
   _onDamage(p) {
     if (!p) return;
-    if (p.isPlayer) this.rt._lastDamageT = this.state.simTime;
+    if (p.isPlayer) { this.rt._lastDamageT = this.state.simTime; this._markMusicDirty(); }
     // shield hit vs hull hit (brokeShield true => shield just dropped, play harder)
     const rid = (p.brokeShield === false && p.kind !== 'hull') ? 'sfx_wpn_pulse_laser' : 'sfx_explosion_small';
     // Prefer a short metallic/energy tick; reuse mining impact for hull, pulse for shield.
@@ -418,13 +434,14 @@ export const audio = {
     if (!ctx || ctx.state !== 'running') return;
     if (rt.loops.mining) return;
     const v = this._startLoopVoice('sfx_mining_beam', p.position, 0.6);
-    if (v) { v.trackId = p.targetId; rt.loops.mining = v; }
+    if (v) { v.trackId = p.targetId; rt.loops.mining = v; this._markLoopPositionDirty(); }
   },
 
   _onMiningStop(p) {
     const rt = this.rt;
     rt._wantMining = null;
     if (rt.loops.mining) { this._endLoopVoice(rt.loops.mining); delete rt.loops.mining; }
+    this._markLoopPositionDirty();
   },
 
   _onMiningTick(p) {
@@ -467,10 +484,12 @@ export const audio = {
   _onDocked(p) {
     this.play('sfx_ui_confirm', { gain: 0.9, rate: 0.6 });
     this.rt._docked = true;
+    this._markMusicDirty();
   },
 
   _onUndocked() {
     this.rt._docked = false;
+    this._markMusicDirty();
   },
 
   _onJump(p) {
@@ -727,15 +746,23 @@ export const audio = {
     // Skip the sim-driven work (threat/music recompute, alarms) while paused — the pause menu must
     // be quiet. Voice GC still runs so one-shots finish cleanly; context-resume still runs above.
     if (!rt._paused) {
-      this._recomputeMusic(nowWall);
+      if (rt._musicDirty || nowWall >= (rt._nextMusicScan || 0)) {
+        this._recomputeMusic(nowWall);
+        rt._nextMusicScan = nowWall + MUSIC_RECOMPUTE_S;
+        rt._musicDirty = false;
+      }
       this._tickAlarms();
     }
-    this._updateLoopPositions();
+    if (rt._loopPositionDirty || now >= (rt._nextLoopPositionUpdate || 0)) {
+      this._updateLoopPositions(now);
+      rt._nextLoopPositionUpdate = now + LOOP_POSITION_UPDATE_S;
+      rt._loopPositionDirty = false;
+    }
     this._gcVoices(now);
   },
 
   // Track positional loop voices (beam/mining) toward their target's current position.
-  _updateLoopPositions() {
+  _updateLoopPositions(now) {
     const rt = this.rt;
     const pp = this._playerPos();
     const apply = (v) => {
@@ -745,7 +772,7 @@ export const audio = {
       const d = Math.hypot(e.pos.x - pp.x, e.pos.z - pp.z);
       let att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       const pan = clamp((e.pos.x - pp.x) / PAN_SPAN, -1, 1);
-      const t = rt.ctx.currentTime;
+      const t = now == null ? rt.ctx.currentTime : now;
       try { v.gain.gain.setTargetAtTime(Math.max(0.0001, (v._baseGain || 0.3) * att), t, 0.05); } catch (_) {}
       if (v._panner) { try { v._panner.pan.setTargetAtTime(pan, t, 0.05); } catch (_) {} }
     };

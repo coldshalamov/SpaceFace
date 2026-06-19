@@ -50,7 +50,7 @@ async function boot() {
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     if (SF_DEBUG) {
-      window.SF = { state, bus, registry, ctx, THREE, telemetry };
+      window.SF = { state, bus, registry, ctx, helpers, THREE, telemetry };
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
     }
 
@@ -106,7 +106,7 @@ function startNewGame(state, helpers, bus, registry, opts) {
   }
   state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
-  resetRunState(state);
+  resetRunState(state, opts || {});
   for (const name of ['world', 'factions', 'economy', 'automation', 'missions']) {
     const sys = registry.get(name);
     if (sys && typeof sys.newGame === 'function') sys.newGame();
@@ -131,8 +131,11 @@ function startNewGame(state, helpers, bus, registry, opts) {
   if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
 }
 
-function resetRunState(state) {
-  const seed = ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0) || 1;
+function resetRunState(state, opts = {}) {
+  const requestedSeed = Number(opts.seed);
+  const seed = Number.isFinite(requestedSeed) && requestedSeed > 0
+    ? (requestedSeed >>> 0)
+    : (((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0) || 1);
   const fresh = createGameState(seed);
   const cameraObj = state.camera && state.camera.obj;
   const cameraFocus = state.camera && state.camera.focus;

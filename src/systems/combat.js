@@ -277,7 +277,8 @@ export const combat = {
   },
 
   update(dt, state) {
-    for (const e of state.entityList) {
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
       if (e.flags.invuln && e._invulnUntil != null && state.simTime >= e._invulnUntil) e.flags.invuln = false;
       if (e.shieldMax > 0 && e.shield < e.shieldMax && state.simTime - (e.lastDamageT || -1e9) >= (e.shieldRegenDelay || 3)) {
@@ -305,7 +306,8 @@ export const combat = {
       const owner = state.entities.get(beam.ownerId);
       const ownerTeam = owner ? owner.team : null;
       let bestT = Infinity, bestE = null;
-      for (const e of state.entityList) {
+      const damageables = (state.entityIndex && state.entityIndex.damageables) || state.entityList;
+      for (const e of damageables) {
         if (!e.alive) continue;
         if (e.type !== 'ship' && e.type !== 'station' && e.type !== 'drone') continue;
         if (e.id === beam.ownerId) continue;

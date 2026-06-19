@@ -173,7 +173,8 @@ export const claims = {
 
   _nearestStationId(body) {
     let best = null, bestD = Infinity;
-    for (const e of this.state.entityList) {
+    const stations = (this.state.entityIndex && this.state.entityIndex.dockStations) || this.state.entityList;
+    for (const e of stations) {
       if (!e.alive || e.type !== 'station' || (e.data && e.data.isGate)) continue;
       const d = (e.pos.x - body.x) ** 2 + (e.pos.z - body.z) ** 2;
       if (d < bestD) { bestD = d; best = e; }
@@ -183,8 +184,12 @@ export const claims = {
 
   _stationName(stationId) {
     if (!stationId) return null;
-    for (const e of this.state.entityList) {
-      if (e.type === 'station' && e.data && e.data.stationId === stationId) return e.data.name || stationId;
+    const byStationId = this.state.entityIndex && this.state.entityIndex.byStationId;
+    const indexed = byStationId && byStationId.get(stationId);
+    if (indexed && indexed.alive && indexed.type === 'station' && indexed.data) return indexed.data.name || stationId;
+    const stations = (this.state.entityIndex && this.state.entityIndex.stations) || this.state.entityList;
+    for (const e of stations) {
+      if (e.alive && e.type === 'station' && e.data && e.data.stationId === stationId) return e.data.name || stationId;
     }
     return stationId;
   },

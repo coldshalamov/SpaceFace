@@ -100,7 +100,7 @@ export function createGameState(seed) {
     content: {},
 
     // --- transient runtime (NEVER serialized) ---
-    render: {}, vfx: {}, audioRuntime: {},
+    render: {}, vfx: {}, audioRuntime: {}, perfRuntime: null,
     save: { lastAutosaveAt: 0, dirty: false, currentSlot: null },
   };
 }

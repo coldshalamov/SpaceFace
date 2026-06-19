@@ -407,7 +407,7 @@ export const automation = {
   },
 
   _nearestAsteroid(pos, range) {
-    const list = this.state.entityList;
+    const list = (this.state.entityIndex && this.state.entityIndex.asteroids) || this.state.entityList;
     if (!list || !pos) return null;
     let best = null, bestD2 = (range || 1e9) * (range || 1e9);
     for (const e of list) {

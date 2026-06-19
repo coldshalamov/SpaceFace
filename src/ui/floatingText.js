@@ -39,6 +39,7 @@ export function createFloatingText(ctx) {
     n.el.textContent = text;
     n.el.style.display = 'block';
     n.el.style.opacity = '1';
+    n.el.style.transform = 'translate3d(0,0,0) translate(-50%,-50%)';
     n.x = 0; n.y = 0;
   }
 
@@ -78,8 +79,7 @@ export function createFloatingText(ctx) {
       const t = n.age / n.life;
       const rise = n.vy * n.age;            // integrated rise (px)
       const drift = n.vx * n.age;
-      n.el.style.left = (s.x + drift) + 'px';
-      n.el.style.top = (s.y + rise) + 'px';
+      n.el.style.transform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%)`;
       n.el.style.opacity = String(s.onScreen ? (1 - t * t) : 0);
     }
   }
@@ -93,7 +93,7 @@ function injectStyle() {
   s.id = STYLE_ID;
   s.textContent = `
   #sf-floattext { position:absolute; inset:0; pointer-events:none; z-index:40; overflow:hidden; }
-  .sf-ft { position:absolute; transform:translate(-50%,-50%); font-family:var(--mono,Consolas,monospace);
+  .sf-ft { position:absolute; left:0; top:0; transform:translate3d(0,0,0) translate(-50%,-50%); font-family:var(--mono,Consolas,monospace);
     font-weight:700; font-size:16px; letter-spacing:.02em; white-space:nowrap; will-change:transform,opacity;
     text-shadow:0 0 6px rgba(0,0,0,.9), 0 1px 2px rgba(0,0,0,.9); }
   .sf-ft--hull { color:#ffd24a; }

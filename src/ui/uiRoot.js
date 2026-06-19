@@ -277,16 +277,33 @@ export const ui = {
     }
   },
 
-  // Per-render-frame cheap HUD path (§5.5). Runs even while paused/docked (render keeps going);
-  // we still refresh the HUD numbers/radar but the HUD layer is CSS-hidden when modal/docked.
+  // Per-render-frame cheap HUD path (§5.5). The expensive HUD paint/update path only runs when
+  // the flight HUD is visible; hidden modal/docked states keep toasts and safety alerts alive.
   frame(dt, state) {
     try {
-      if (this.hud) this.hud.frame(dt);
+      const st = state || this.state;
+      const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
+      const docked = !!(st && st.ui && st.ui.docked === true);
+      const hudVisible = !!(st && st.mode === 'flight' && !modalOpen && !docked);
+      if (this.hud) {
+        if (hudVisible) {
+          if (!this._hudVisibleLast && this.hud.forceRefresh) this.hud.forceRefresh();
+          this.hud.frame(dt);
+        } else if (this.hud.tickHidden) {
+          this.hud.tickHidden(dt);
+        }
+        this._hudVisibleLast = hudVisible;
+      }
       if (this.toasts && this.toasts.tick) this.toasts.tick();
       // refresh the active modal screen at a low cadence (event-driven screens also self-update)
       this._rt = (this._rt || 0) + 1;
       if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {
-        this.screenManager.refreshTop();
+        const def = this.screenManager.getActiveScreenDef && this.screenManager.getActiveScreenDef();
+        if (def && (def.id === 'automation' || def.id === 'starmap' || def.id === 'techTree') && def.refresh) {
+          def.refresh(this.ctx, { periodic: true });
+        } else {
+          this.screenManager.refreshTop();
+        }
       }
     } catch (err) {
       this._fe = (this._fe || 0) + 1;
@@ -434,8 +451,9 @@ function injectHudCss() {
   .sf-obj__t { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* off-screen objective arrow */
-  .sf-objarrow { position:absolute; width:0; height:0; border-style:solid; border-width:8px 0 8px 14px;
-    border-color:transparent transparent transparent var(--accent); filter:drop-shadow(0 0 5px var(--accent)); z-index:11; }
+  .sf-objarrow { position:absolute; left:0; top:0; width:0; height:0; border-style:solid; border-width:8px 0 8px 14px;
+    border-color:transparent transparent transparent var(--accent); filter:drop-shadow(0 0 5px var(--accent)); z-index:11;
+    will-change:transform; }
 
   /* ===== toasts ===== */
   .sf-toast { display:flex; align-items:center; gap:9px; width:280px; padding:9px 12px;

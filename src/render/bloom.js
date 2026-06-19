@@ -4,10 +4,9 @@
 // EffectComposer/FullScreenQuad):
 //   pass 0  scene        -> rtScene        (renderer.render at full res, HalfFloat so emissive
 //                                           additive brights can exceed 1.0)
-//   pass 1  bright-pass   rtScene -> rtBright   (luminance threshold + soft knee, HALF res)
-//   pass 2  blur H        rtBright -> rtBlurA   (separable gaussian, 5-tap, HALF res)
-//   pass 3  blur V        rtBlurA  -> rtBlurB   (separable gaussian, 5-tap, HALF res)
-//   pass 4  composite     rtScene + strength*rtBlurB -> default framebuffer (sRGB-encoded)
+//   pass 1  bright+blur H rtScene -> rtBlurA    (same threshold/knee + horizontal gaussian, HALF res)
+//   pass 2  blur V        rtBlurA  -> rtBlurB   (separable gaussian, 5-tap, HALF res)
+//   pass 3  composite     rtScene + strength*rtBlurB -> default framebuffer (sRGB-encoded)
 //
 // COLOR-MANAGEMENT INVARIANT (the thing that makes this provably correct):
 //   At bloomStrength == 0 the composite output is pixel-identical to a plain
@@ -25,7 +24,7 @@
 //   composite shader (sample scene+bloom, tonemap, THEN sRGB-encode). Until then, composite = add +
 //   encode, which is exactly what preserves the strength==0 == plain-render invariant.
 //
-// Cost: scene render + 4 cheap fullscreen quads, blur targets at half-res. Cheap enough for the
+// Cost: scene render + 3 cheap fullscreen quads, blur targets at half-res. Cheap enough for the
 // 60fps target. createBloom() is a drop-in replacement for renderer.render — the render layer calls
 // bloom.render(scene, camera) instead.
 import * as THREE from 'three';
@@ -41,24 +40,39 @@ const QUAD_VERT = /* glsl */`
   }
 `;
 
-// Bright-pass: keep only the part of each pixel whose luminance exceeds the threshold, with a soft
-// knee so the bloom ramps in smoothly instead of hard-clipping. Preserves hue (scales the colour by
-// the contribution ratio). Formula per design/specs/10.
-const BRIGHT_FRAG = /* glsl */`
+// Fused bright extraction + horizontal blur. This removes the old rtBright pass while preserving the
+// same threshold/knee math per blur tap.
+const BLUR_EXTRACT_H_FRAG = /* glsl */`
   precision highp float;
   varying vec2 vUv;
   uniform sampler2D tDiffuse;
+  uniform vec2 uTexel;
   uniform float uThreshold;
   uniform float uKnee;
-  void main() {
-    vec3 c = texture2D(tDiffuse, vUv).rgb;
+
+  vec3 bright(vec2 uv) {
+    vec3 c = texture2D(tDiffuse, uv).rgb;
     c = max(c, vec3(0.0)); // guard against negative/NaN leaking into the blur
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     // soft-knee bright extract: 0 below (threshold-knee), smooth ramp, full above threshold
     float soft = smoothstep(uThreshold - uKnee, uThreshold + uKnee, l);
     float contrib = max(l - uThreshold, 0.0) + soft * uKnee;
     float scale = contrib / max(l, 1e-4);
-    gl_FragColor = vec4(c * scale, 1.0);
+    return c * scale;
+  }
+
+  void main() {
+    const float w0 = 0.402620;
+    const float w1 = 0.244201;
+    const float w2 = 0.054489;
+    vec2 o1 = uTexel * vec2(1.0, 0.0);
+    vec2 o2 = uTexel * vec2(2.0, 0.0);
+    vec3 sum = bright(vUv) * w0;
+    sum += bright(vUv + o1) * w1;
+    sum += bright(vUv - o1) * w1;
+    sum += bright(vUv + o2) * w2;
+    sum += bright(vUv - o2) * w2;
+    gl_FragColor = vec4(sum, 1.0);
   }
 `;
 
@@ -212,7 +226,6 @@ export function createBloom(renderer, width, height) {
   let rtScene = new THREE.WebGLRenderTarget(W, H, { ...rtOpts(), depthBuffer: true, samples: sceneSamples });
   let halfW = Math.max(1, W >> 1);
   let halfH = Math.max(1, H >> 1);
-  let rtBright = new THREE.WebGLRenderTarget(halfW, halfH, rtOpts());
   let rtBlurA = new THREE.WebGLRenderTarget(halfW, halfH, rtOpts());
   let rtBlurB = new THREE.WebGLRenderTarget(halfW, halfH, rtOpts());
 
@@ -233,8 +246,9 @@ export function createBloom(renderer, width, height) {
     toneMapped: false, // never let three's tone-mapping touch a post pass
   });
 
-  const brightMat = mkMat(BRIGHT_FRAG, {
+  const blurExtractMat = mkMat(BLUR_EXTRACT_H_FRAG, {
     tDiffuse: { value: null },
+    uTexel: { value: new THREE.Vector2(1 / halfW, 1 / halfH) },
     uThreshold: { value: threshold },
     uKnee: { value: knee },
   });
@@ -281,22 +295,17 @@ export function createBloom(renderer, width, height) {
     // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
     renderer.autoClear = false;
 
-    // pass 1 — bright extract (full -> half)
-    brightMat.uniforms.tDiffuse.value = rtScene.texture;
-    brightMat.uniforms.uThreshold.value = threshold;
-    blit(brightMat, rtBright);
+    // pass 1 — bright extract fused with horizontal blur (full -> half)
+    blurExtractMat.uniforms.tDiffuse.value = rtScene.texture;
+    blurExtractMat.uniforms.uThreshold.value = threshold;
+    blit(blurExtractMat, rtBlurA);
 
-    // pass 2 — horizontal blur (half -> half)
-    blurMat.uniforms.tDiffuse.value = rtBright.texture;
-    blurMat.uniforms.uDir.value.set(1, 0);
-    blit(blurMat, rtBlurA);
-
-    // pass 3 — vertical blur (half -> half)
+    // pass 2 — vertical blur (half -> half)
     blurMat.uniforms.tDiffuse.value = rtBlurA.texture;
     blurMat.uniforms.uDir.value.set(0, 1);
     blit(blurMat, rtBlurB);
 
-    // pass 4 — composite to screen (sRGB-encoded, with cinematic post grade applied)
+    // pass 3 — composite to screen (sRGB-encoded, with cinematic post grade applied)
     compositeMat.uniforms.tScene.value = rtScene.texture;
     compositeMat.uniforms.tBloom.value = rtBlurB.texture;
     compositeMat.uniforms.uStrength.value = strength;
@@ -315,9 +324,9 @@ export function createBloom(renderer, width, height) {
     halfW = Math.max(1, W >> 1);
     halfH = Math.max(1, H >> 1);
     rtScene.setSize(W, H);
-    rtBright.setSize(halfW, halfH);
     rtBlurA.setSize(halfW, halfH);
     rtBlurB.setSize(halfW, halfH);
+    blurExtractMat.uniforms.uTexel.value.set(1 / halfW, 1 / halfH);
     blurMat.uniforms.uTexel.value.set(1 / halfW, 1 / halfH);
   }
 
@@ -340,11 +349,10 @@ export function createBloom(renderer, width, height) {
 
   function dispose() {
     rtScene.dispose();
-    rtBright.dispose();
     rtBlurA.dispose();
     rtBlurB.dispose();
     quadGeo.dispose();
-    brightMat.dispose();
+    blurExtractMat.dispose();
     blurMat.dispose();
     compositeMat.dispose();
   }

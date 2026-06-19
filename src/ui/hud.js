@@ -30,6 +30,12 @@ const ROLE_LABEL = {
 };
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+function setDisplay(el, visible, mode = 'block') {
+  if (!el) return;
+  const next = visible ? mode : 'none';
+  if (el.style.display !== next) el.style.display = next;
+}
 
 function injectDeathStyle() {
   if (document.getElementById('sf-death-style')) return;
@@ -131,6 +137,9 @@ export function createHud(ctx, alerts) {
     '<div class="sf-nav-label mono">—</div>' +
     '<div class="sf-nav-meta"><span class="sf-nav-dist">0 u</span> · ETA <span class="sf-nav-eta">—</span></div>';
   root.appendChild(elNavReadout);
+  const elNavLabel = elNavReadout.querySelector('.sf-nav-label');
+  const elNavDist = elNavReadout.querySelector('.sf-nav-dist');
+  const elNavEta = elNavReadout.querySelector('.sf-nav-eta');
 
   const elFuel = document.createElement('div');
   elFuel.className = 'sf-fuel';
@@ -210,14 +219,14 @@ export function createHud(ctx, alerts) {
 
   function refreshCredits() {
     creditsDirty = false;
-    elCredits.textContent = Math.round(state.player.credits || 0).toLocaleString();
+    setText(elCredits, Math.round(state.player.credits || 0).toLocaleString());
   }
   function refreshCargo() {
     cargoDirty = false;
     const c = state.player.cargo || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
-    elCargo.textContent = `${used} / ${cap} u`;
+    setText(elCargo, `${used} / ${cap} u`);
     elCargo.classList.toggle('sf-warn', cap > 0 && used >= cap);
   }
   function refreshObjectives() {
@@ -250,6 +259,28 @@ export function createHud(ctx, alerts) {
   // ---------------------------------------------------------------------------
   let tickN = 0;
   let lowShieldActive = false, lowHullActive = false;
+  let lastDefId = null;
+  let elReticle = null;
+  let cachedNavStationId = null;
+  let cachedNavEntity = null;
+  let cachedNavListLength = -1;
+  let lastNavLabel = '';
+  let lastNavDist = '';
+  let lastNavEta = '';
+
+  function syncSafetyAlerts(p, hullFrac, shieldFrac) {
+    if (!alerts || !p) return;
+    if (hullFrac == null) hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
+    if (shieldFrac == null) shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
+    const lowShield = shieldFrac > 0 && shieldFrac < 0.2;
+    if (lowShield && !lowShieldActive) alerts.raise({ key: 'low-shield', sev: 'warn', text: 'SHIELDS LOW', ttl: Infinity });
+    if (!lowShield && lowShieldActive) alerts.clear('low-shield');
+    lowShieldActive = lowShield;
+    const lowHull = hullFrac > 0 && hullFrac < 0.25;
+    if (lowHull && !lowHullActive) alerts.raise({ key: 'low-hull', sev: 'danger', text: 'HULL CRITICAL', ttl: Infinity });
+    if (!lowHull && lowHullActive) alerts.clear('low-hull');
+    lowHullActive = lowHull;
+  }
 
   function frame(dt) {
     tickN++;
@@ -282,7 +313,7 @@ export function createHud(ctx, alerts) {
         fillEls.boost.style.transform = `scaleX(${bf})`;
         const dashReady = boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= boost.dashImpulse * 0.6;
         fillEls.boost.parentElement.classList.toggle('sf-bar--ready', dashReady);
-        if (slow) numEls.boost.textContent = Math.round(bf * 100) + (dashReady ? ' ▸' : '%');
+        if (slow) setText(numEls.boost, Math.round(bf * 100) + (dashReady ? ' ▸' : '%'));
       } else if (boostRow) {
         boostRow.style.display = 'none';   // no boost capacity (e.g. a stripped hull) — hide the row
       }
@@ -291,27 +322,18 @@ export function createHud(ctx, alerts) {
       fillEls.shield.parentElement.classList.toggle('sf-bar--low', shieldFrac < 0.25 && shieldFrac > 0);
 
       // contextual low alerts via alerts module
-      if (alerts) {
-        const lowShield = shieldFrac > 0 && shieldFrac < 0.2;
-        if (lowShield && !lowShieldActive) alerts.raise({ key: 'low-shield', sev: 'warn', text: 'SHIELDS LOW', ttl: Infinity });
-        if (!lowShield && lowShieldActive) alerts.clear('low-shield');
-        lowShieldActive = lowShield;
-        const lowHull = hullFrac > 0 && hullFrac < 0.25;
-        if (lowHull && !lowHullActive) alerts.raise({ key: 'low-hull', sev: 'danger', text: 'HULL CRITICAL', ttl: Infinity });
-        if (!lowHull && lowHullActive) alerts.clear('low-hull');
-        lowHullActive = lowHull;
-      }
+      syncSafetyAlerts(p, hullFrac, shieldFrac);
 
       if (slow) {
-        numEls.hull.textContent = Math.max(0, Math.round(p.hull)) + '';
-        numEls.shield.textContent = Math.max(0, Math.round(p.shield)) + '';
-        numEls.energy.textContent = Math.max(0, Math.round(p.cap)) + '';
-        numEls.heat.textContent = Math.round(heatFrac * 100) + '%';
+        setText(numEls.hull, Math.max(0, Math.round(p.hull)) + '');
+        setText(numEls.shield, Math.max(0, Math.round(p.shield)) + '');
+        setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
+        setText(numEls.heat, Math.round(heatFrac * 100) + '%');
         // Phase 4 fuel gauge: low fuel flashes a warning.
         const fuel = state.fuel || { current: 100, max: 100 };
         const fuelFrac = fuel.max > 0 ? clamp01(fuel.current / fuel.max) : 1;
         elFuelFill.style.transform = `scaleX(${fuelFrac})`;
-        elFuelNum.textContent = Math.round(fuelFrac * 100) + '%';
+        setText(elFuelNum, Math.round(fuelFrac * 100) + '%');
         elFuel.classList.toggle('sf-fuel--low', fuelFrac < 0.25);
       }
     }
@@ -319,27 +341,27 @@ export function createHud(ctx, alerts) {
     // --- speed / throttle (numerics @10Hz) ---
     if (slow && p) {
       const sp = Math.hypot(p.vel.x, p.vel.z);
-      elSpeed.textContent = Math.round(sp) + '';
+      setText(elSpeed, Math.round(sp) + '');
       const maxSp = p.maxSpeed || 1;
-      elThrottle.textContent = Math.round(clamp01(sp / maxSp) * 100) + '%';
+      setText(elThrottle, Math.round(clamp01(sp / maxSp) * 100) + '%');
       // Weapon status: count of guns + auto-fire state. Shows the strategic loadout at a glance
       // and whether the guns will auto-engage aggressive enemies while you fly.
       const ws = p.data && p.data.weapons;
       const nGuns = ws ? ws.length : 0;
       const auto = !!(state.input && state.input.autoFire);
-      elWeapons.textContent = nGuns + ' gun' + (nGuns === 1 ? '' : 's') + (auto ? ' · AUTO' : '');
+      setText(elWeapons, nGuns + ' gun' + (nGuns === 1 ? '' : 's') + (auto ? ' · AUTO' : ''));
       elWeapons.classList.toggle('sf-warn', auto);
       // Reticle reflects fire mode: amber ring when auto-fire is engaged (guns auto-target hostiles),
       // cyan when you're aiming/firing manually. Purely a visual cue.
-      const reticle = document.getElementById('aim-reticle');
-      if (reticle) reticle.classList.toggle('autofire', auto);
+      if (!elReticle) elReticle = document.getElementById('aim-reticle');
+      if (elReticle) elReticle.classList.toggle('autofire', auto);
       // Class/archetype label: surfaces the ship's role so the player feels the archetype switch
       // when they buy a new hull (Phase 3). Updates cheaply each slow tick.
       const defId = p.data && p.data.defId;
-      if (defId !== this._lastDefId) {
-        this._lastDefId = defId;
+      if (defId !== lastDefId) {
+        lastDefId = defId;
         const def = SHIP_BY_ID.get(defId);
-        elRole.textContent = def ? (def.name + ' · ' + ROLE_LABEL[def.role] || def.role) : '—';
+        setText(elRole, def ? (def.name + ' · ' + (ROLE_LABEL[def.role] || def.role || 'Ship')) : '—');
       }
     }
 
@@ -361,13 +383,42 @@ export function createHud(ctx, alerts) {
     dmgInd.tick(dt, helpers);
 
     // --- off-screen objective arrow ---
-    updateObjectiveArrow(p);
+    updateObjectiveArrow(p, slow);
 
     // --- toasts/alerts expiry sweep ---
     if (alerts && alerts.tick) alerts.tick();
   }
 
-  function updateObjectiveArrow(p) {
+  function tickHidden(dt) {
+    const p = state.entities.get(state.playerId);
+    syncSafetyAlerts(p);
+    if (alerts && alerts.tick) alerts.tick();
+  }
+
+  function resolveNavStation(nw) {
+    if (!nw || !nw.stationId) return null;
+    if (
+      cachedNavStationId === nw.stationId &&
+      cachedNavListLength === state.entityList.length &&
+      cachedNavEntity &&
+      cachedNavEntity.alive &&
+      cachedNavEntity.type === 'station'
+    ) {
+      return cachedNavEntity;
+    }
+    cachedNavStationId = nw.stationId;
+    cachedNavListLength = state.entityList.length;
+    cachedNavEntity = null;
+    for (const e of state.entityList) {
+      if (e.type === 'station' && e.data && e.data.stationId === nw.stationId) {
+        cachedNavEntity = e;
+        break;
+      }
+    }
+    return cachedNavEntity;
+  }
+
+  function updateObjectiveArrow(p, slow) {
     // Priority: a tracked mission waypoint, else a player-set trade nav waypoint (Phase 4).
     const tracked = state.ui.trackedMissionId;
     const active = (state.missions && state.missions.active) || [];
@@ -380,25 +431,34 @@ export function createHud(ctx, alerts) {
       const nw = state.nav.waypoint;
       let livePos = null;
       if (nw.stationId) {
-        for (const e of state.entityList) {
-          if (e.type === 'station' && e.data && e.data.stationId === nw.stationId) { livePos = e.pos; break; }
-        }
+        const station = resolveNavStation(nw);
+        if (station) livePos = station.pos;
         if (!livePos) { state.nav.waypoint = null; }   // station gone (jumped away) — drop the stale arrow
       }
       const pos = livePos || nw.pos;
       if (pos) { wp = pos; wpLabel = nw.label; }
     }
-    if (!wp || !p || !helpers.worldToScreen) { arrow.style.display = 'none'; elNavReadout.style.display = 'none'; return; }
+    if (!wp || !p || !helpers.worldToScreen) {
+      setDisplay(arrow, false);
+      setDisplay(elNavReadout, false);
+      lastNavLabel = '';
+      return;
+    }
     const proj = helpers.worldToScreen({ x: wp.x, y: 0, z: wp.z });
     // distance + ETA readout (always shown while a nav target is set)
     const dist = Math.hypot(wp.x - p.pos.x, wp.z - p.pos.z);
     const speed = Math.hypot(p.vel.x, p.vel.z);
     const etaS = speed > 5 ? dist / speed : Infinity;
-    elNavReadout.style.display = 'block';
-    elNavReadout.querySelector('.sf-nav-dist').textContent = Math.round(dist) + ' u';
-    elNavReadout.querySelector('.sf-nav-eta').textContent = isFinite(etaS) ? (etaS < 60 ? Math.round(etaS) + 's' : Math.round(etaS / 60) + 'm') : '—';
-    if (wpLabel) elNavReadout.querySelector('.sf-nav-label').textContent = wpLabel;
-    if (proj.onScreen) { arrow.style.display = 'none'; return; }
+    setDisplay(elNavReadout, true);
+    const label = wpLabel || '—';
+    if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
+    if (slow || !lastNavDist) {
+      const distText = Math.round(dist) + ' u';
+      const etaText = isFinite(etaS) ? (etaS < 60 ? Math.round(etaS) + 's' : Math.round(etaS / 60) + 'm') : '—';
+      if (distText !== lastNavDist) { setText(elNavDist, distText); lastNavDist = distText; }
+      if (etaText !== lastNavEta) { setText(elNavEta, etaText); lastNavEta = etaText; }
+    }
+    if (proj.onScreen) { setDisplay(arrow, false); return; }
     // clamp to a screen-edge ellipse around center, pointing toward target
     const w = window.innerWidth, h = window.innerHeight;
     let dx = proj.x - w / 2, dy = proj.y - h / 2;
@@ -407,13 +467,23 @@ export function createHud(ctx, alerts) {
     dx /= len; dy /= len;
     const mx = w * 0.42, my = h * 0.42;
     const ex = w / 2 + dx * mx, ey = h / 2 + dy * my;
-    arrow.style.display = 'block';
-    arrow.style.left = ex + 'px';
-    arrow.style.top = ey + 'px';
-    arrow.style.transform = `translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`;
+    setDisplay(arrow, true);
+    arrow.style.transform = `translate3d(${ex}px,${ey}px,0) translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`;
   }
 
   function setVisible(v) { root.style.display = v ? 'block' : 'none'; }
 
-  return { frame, setVisible, refreshCredits, refreshCargo, refreshObjectives };
+  function forceRefresh() {
+    creditsDirty = true;
+    cargoDirty = true;
+    objDirty = true;
+    tickN = 5;
+    lastDefId = null;
+    lastNavDist = '';
+    lastNavEta = '';
+    if (radar.invalidate) radar.invalidate();
+    if (targetPanel.forceRefresh) targetPanel.forceRefresh();
+  }
+
+  return { frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives };
 }

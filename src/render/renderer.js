@@ -29,6 +29,8 @@ function sectorNebulaTint(sector) {
 
 // ---- contact shadow disc (module-level cache so one texture serves all entities) ----------------
 let _shadowTex = null;
+let _shadowGeo = null;
+let _shadowMat = null;
 function getContactShadowTex() {
   if (_shadowTex) return _shadowTex;
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -41,19 +43,44 @@ function getContactShadowTex() {
   _shadowTex = new THREE.CanvasTexture(c);
   return _shadowTex;
 }
+function getContactShadowGeo() {
+  if (!_shadowGeo) _shadowGeo = new THREE.CircleGeometry(1, 20);
+  return _shadowGeo;
+}
+function getContactShadowMat() {
+  if (!_shadowMat) {
+    _shadowMat = new THREE.MeshBasicMaterial({
+      map: getContactShadowTex(),
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+      blending: THREE.NormalBlending,
+    });
+  }
+  return _shadowMat;
+}
 
 function attachContactShadow(mesh, entity) {
   if (!mesh || entity._noShadow) return;
   const r = Math.max(16, (entity.radius || 28) * 1.4);
-  const disc = new THREE.Mesh(
-    new THREE.CircleGeometry(r, 20),
-    new THREE.MeshBasicMaterial({ map: getContactShadowTex(), transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.NormalBlending }),
-  );
+  const disc = new THREE.Mesh(getContactShadowGeo(), getContactShadowMat());
+  disc.scale.setScalar(r);
   disc.rotation.x = -Math.PI / 2;
   disc.position.y = -0.5; // just below entity plane
   disc.renderOrder = -2;
   disc.frustumCulled = false;
+  disc.userData.sharedContactShadow = true;
   mesh.add(disc);
+}
+
+function configureShadowCasters(root) {
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.userData && o.userData.sharedContactShadow) { o.castShadow = false; return; }
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    const casts = mats.some((m) => m && !m.transparent && m.depthWrite !== false && (m.opacity == null || m.opacity >= 1) && m.blending === THREE.NormalBlending);
+    o.castShadow = casts;
+  });
 }
 
 const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -93,7 +120,7 @@ export const render = {
     // during the normal scene render, before bloom samples it.
     const shadowsOn = !(state.settings && state.settings.video && state.settings.video.shadows === false);
     if (shadowsOn) {
-      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.enabled = false;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       key.castShadow = true;
       key.shadow.mapSize.set(2048, 2048);
@@ -147,6 +174,9 @@ export const render = {
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.starfield = starfield; this.vf = vf;
     this._keyLight = shadowsOn ? key : null; // referenced by _updateShadowFollow() each frame
+    this._shadowSettingOn = shadowsOn;
+    this._shadowReceiversDirty = true;
+    this._shadowReceiverCount = 0;
     this.planetFactory = createPlanetFactory();
     this._planetBodies = [];
     // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
@@ -161,7 +191,30 @@ export const render = {
     this._meshes = new Map(); // entityId -> Object3D
     this._meshReconcileDirty = true;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
-    try { this.diag = installDiagnostics(renderer, { entities: () => state.entityList.length }); }
+    try {
+      this.diag = installDiagnostics(renderer, {
+        entities: () => state.entityList.length,
+        particles: () => {
+          const sys = ctx.registry && ctx.registry.get('vfx');
+          return sys ? sys._liveCount : 0;
+        },
+        sprites: () => {
+          const sys = ctx.registry && ctx.registry.get('vfx');
+          return sys ? (sys._liveSpriteCount || 0) : 0;
+        },
+        lights: () => {
+          const sys = ctx.registry && ctx.registry.get('vfx');
+          const pool = sys && sys._lights;
+          if (!pool) return 0;
+          let n = 0;
+          for (const slot of pool) if (slot && slot.obj && slot.obj.visible) n++;
+          return n;
+        },
+        perf: () => state.perfRuntime && state.perfRuntime.getReport ? state.perfRuntime.getReport() : {},
+        settings: () => ({ video: { ...((state.settings && state.settings.video) || {}) } }),
+      });
+      state.render.diagnostics = this.diag;
+    }
     catch (err) { console.warn('[render] diagnostics unavailable:', err); this.diag = null; }
 
     state.render.scene = scene;
@@ -191,14 +244,12 @@ export const render = {
       m.rotation.y = -entity.rot;
       if (entity.type === 'ship' || entity.type === 'station') {
         attachContactShadow(m, entity);
-        // Cast real shadows (graphics spec G). The contact disc is the receiver-independent
-        // fallback; castShadow lets ships/stations also shadow each other + the play plane when the
-        // key light's shadow camera covers them. Walking the group sets every child mesh.
-        m.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+        configureShadowCasters(m);
       }
       entity.mesh = m; entity.view = { root: m };
       this._meshes.set(id, m);
       scene.add(m);
+      this._shadowReceiversDirty = true;
     });
     bus.on('entity:destroyed', ({ id }) => {
       const m = this._meshes.get(id);
@@ -218,6 +269,10 @@ export const render = {
       if (!p || p.section !== 'video') return;
       const vd = state.settings.video;
       if (this.bloom) this.bloom.setOptions({ bloom: vd.bloom, strength: vd.bloomStrength, threshold: vd.bloomThreshold, exposure: vd.exposure, acesToneMapping: vd.acesToneMapping !== false });
+      if (p.key === 'shadows' || p.key == null) {
+        this._shadowSettingOn = vd.shadows !== false;
+        this._shadowReceiversDirty = true;
+      }
       if (p.key === 'renderScale' || p.key === 'pixelRatioCap' || p.key == null) this.onResize();
       // FOV: the feel system (feel.js) adds a transient punch on top of this base. We update the
       // camera's base fov here; feel.frame() re-derives its cached base from settings when no punch
@@ -265,7 +320,7 @@ export const render = {
     // remove meshes whose entity no longer exists or has died
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
-      if (!e || e.alive === false) { this.scene.remove(m); disposeObject(m); this._meshes.delete(id); }
+      if (!e || e.alive === false) { this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true; }
     }
     // build meshes for alive entities that lack one (fx are particle-managed by vfx -> mark + skip)
     for (const e of state.entityList) {
@@ -274,10 +329,11 @@ export const render = {
       if (!m) { e._noMesh = true; continue; }
       m.position.set(e.pos.x, 0, e.pos.z);
       m.rotation.y = -e.rot;
-      if (e.type === 'ship' || e.type === 'station') attachContactShadow(m, e);
+      if (e.type === 'ship' || e.type === 'station') { attachContactShadow(m, e); configureShadowCasters(m); }
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
       this.scene.add(m);
+      this._shadowReceiversDirty = true;
     }
     this._meshReconcileDirty = false;
   },
@@ -291,7 +347,7 @@ export const render = {
     const e = this.state.entities.get(id);
     if (!e || e.alive === false) return;
     const old = this._meshes.get(id);
-    if (old) { this.scene.remove(old); disposeObject(old); this._meshes.delete(id); }
+    if (old) { this.scene.remove(old); disposeObject(old); this._meshes.delete(id); this._shadowReceiversDirty = true; }
     const m = this.vf.build(e);
     if (!m) return;
     m.position.set(e.pos.x, 0, e.pos.z);
@@ -299,10 +355,11 @@ export const render = {
     // carry the bank pose so the rebuilt hull doesn't momentarily sit level mid-turn
     const hull = m.userData && m.userData.hull;
     if (hull && e.bank != null) hull.rotation.x = e.bank;
-    if (e.type === 'ship' || e.type === 'station') attachContactShadow(m, e);
+    if (e.type === 'ship' || e.type === 'station') { attachContactShadow(m, e); configureShadowCasters(m); }
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
     this.scene.add(m);
+    this._shadowReceiversDirty = true;
   },
 
 
@@ -310,7 +367,7 @@ export const render = {
     const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
     for (const e of this.state.entityList) {
       const m = e.mesh; if (!m) continue;
-      m.userData.__lastEntity = e; // stash for read-only debug overlays (collision radius), spec §12.5
+      if (this.collisionDebug && this.collisionDebug.on) m.userData.__lastEntity = e; // read-only debug overlay
       const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
       if (e.flags.noInterp) {
         m.position.set(e.pos.x, 0, e.pos.z); m.rotation.y = -e.rot;
@@ -337,10 +394,10 @@ export const render = {
       // pixel width with hysteresis, so assets can drop detail at distance. The selector owns no
       // geometry; per-asset hooks read m.userData.lod.level and decide what to show. Cheap for entities
       // without a lod state (no closure attached).
-      if (m.userData.lod) {
+      if (m.userData.lod && m.userData.updateLod) {
         const px = projectedWidthPx(e.pos, e.radius, this.cam.obj, this.viewport);
         const level = m.userData.lod.resolve(px);
-        if (m.userData.updateLod) m.userData.updateLod(level);
+        m.userData.updateLod(level);
       }
     }
   },
@@ -353,6 +410,7 @@ export const render = {
       b.mesh.position.copy(b.basePos);
       this.scene.add(b.mesh);
     }
+    this._shadowReceiversDirty = true;
   },
 
   _updatePlanetParallax() {
@@ -369,6 +427,7 @@ export const render = {
     this.cam.follow(frameDt);
     this.starfield.recenter(this.cam.obj.position);
     this._updatePlanetParallax();
+    this._syncShadowMapEnabled();
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
     // an offset from its target; we move both together. No-op if shadows are disabled.
@@ -378,7 +437,6 @@ export const render = {
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
     if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
-    if (this.diag) this.diag.update(frameDt);
   },
 
   // Center the key light + its shadow camera on the player each frame. The light direction stays
@@ -386,11 +444,30 @@ export const render = {
   // sector instead of being pinned to world (0,0,0) and clipping at the frustum edge.
   _updateShadowFollow() {
     if (!this._keyLight) return;
+    if (!this.renderer.shadowMap || !this.renderer.shadowMap.enabled) return;
     const p = this.state.playerId ? (this.state.entities && this.state.entities.get(this.state.playerId)) : null;
     const px = p ? p.pos.x : 0, pz = p ? p.pos.z : 0;
     this._keyLight.position.set(px + 60, 140, pz + 40);
     this._keyLight.target.position.set(px, 0, pz);
     this._keyLight.target.updateMatrixWorld();
+  },
+
+  _syncShadowMapEnabled() {
+    if (!this._keyLight || !this.renderer.shadowMap) return;
+    if (!this._shadowSettingOn) {
+      this.renderer.shadowMap.enabled = false;
+      this._keyLight.castShadow = false;
+      return;
+    }
+    if (this._shadowReceiversDirty) {
+      let receivers = 0;
+      this.scene.traverse((o) => { if (o && o.receiveShadow) receivers++; });
+      this._shadowReceiverCount = receivers;
+      this._shadowReceiversDirty = false;
+    }
+    const enabled = this._shadowReceiverCount > 0;
+    this.renderer.shadowMap.enabled = enabled;
+    this._keyLight.castShadow = enabled;
   },
 
   worldToScreen(v) {
@@ -415,8 +492,14 @@ export const render = {
   socketWorldPos(entityId, socketName) {
     const m = this._meshes.get(entityId);
     if (!m) return null;
-    let socket = null;
-    m.traverse((o) => { if (!socket && o.userData && o.userData.spacefaceSocket && o.name === socketName) socket = o; });
+    let cache = m.userData.__socketCache;
+    if (!cache) cache = m.userData.__socketCache = new Map();
+    let socket = cache.get(socketName);
+    if (socket === undefined) {
+      socket = null;
+      m.traverse((o) => { if (!socket && o.userData && o.userData.spacefaceSocket && o.name === socketName) socket = o; });
+      cache.set(socketName, socket);
+    }
     if (!socket) return null;
     socket.updateWorldMatrix(true, false);
     return { x: socket.matrixWorld.elements[12], z: socket.matrixWorld.elements[14] };
@@ -452,7 +535,7 @@ function finiteInRange(value, min, max, fallback) {
 function disposeObject(obj) {
   obj.traverse((c) => {
     if (c.isBatchedMesh && typeof c.dispose === 'function') c.dispose();
-    else if (c.geometry) c.geometry.dispose();
-    if (c.material) { const mm = Array.isArray(c.material) ? c.material : [c.material]; mm.forEach((m) => m.dispose()); }
+    else if (c.geometry && !(c.userData && c.userData.sharedContactShadow)) c.geometry.dispose();
+    if (c.material && !(c.userData && c.userData.sharedContactShadow)) { const mm = Array.isArray(c.material) ? c.material : [c.material]; mm.forEach((m) => m.dispose()); }
   });
 }

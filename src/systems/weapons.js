@@ -44,8 +44,9 @@ export const weapons = {
       if (!Array.isArray(state.combat.beams)) state.combat.beams = [];
       else state.combat.beams.length = 0;
     }
-    this._beamFiringPrev = this._beamFiring;
-    this._beamFiring = new Set();
+    this._beamFiringPrev.clear();
+    for (const ownerId of this._beamFiring) this._beamFiringPrev.add(ownerId);
+    this._beamFiring.clear();
 
     // 1) cool/recharge every weapon instance + steer in-flight homing projectiles.
     this._tickWeapons(dt, state);
@@ -68,7 +69,8 @@ export const weapons = {
                               : (state.input.aimAngle || player.rot);
       this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, autoTgt);
     }
-    for (const e of state.entityList) {
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    for (const e of ships) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
       const firing = !!(intent && intent.fire);
@@ -85,7 +87,8 @@ export const weapons = {
 
   // --- per-instance timers (cooldown, heat dissipation, lock decay) ---
   _tickWeapons(dt, state) {
-    for (const e of state.entityList) {
+    const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships)) || state.entityList;
+    for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
       const ws = e.data && e.data.weapons;
       if (!ws) continue;
@@ -135,7 +138,8 @@ export const weapons = {
 
   // --- homing projectile steering (physics.integrate only does pos += vel*dt) ---
   _steerHoming(dt, state) {
-    for (const p of state.entityList) {
+    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    for (const p of projectiles) {
       if (p.type !== 'projectile' || !p.alive) continue;
       const d = p.data;
       if (!d || d.kind !== 'missile') continue;
@@ -417,7 +421,8 @@ export const weapons = {
   _autoFireTarget(player, state) {
     let best = null, bestD2 = Infinity;
     const px = player.pos.x, pz = player.pos.z;
-    for (const e of state.entityList) {
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    for (const e of ships) {
       if (e.type !== 'ship' || !e.alive || e.id === player.id) continue;
       if (e.team === player.team) continue;              // friendly — never auto-target allies
       if (!this._isAggressive(e, player, state)) continue;

@@ -68,6 +68,8 @@ function injectStyle() {
   document.head.appendChild(el);
 }
 
+function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+
 // Build once: id -> node, plus per-node layout depth (longest prereq chain) and row index.
 function buildLayout(nodes) {
   const byId = {};
@@ -139,6 +141,9 @@ export const techTreeScreen = {
   _selectedId: null,
   _hoverId: null,
   _dpr: 1,
+  _els: null,
+  _drawSig: '',
+  _sidebarSig: '',
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -170,12 +175,19 @@ export const techTreeScreen = {
     this._canvas = rootEl.querySelector('canvas');
     this._g = this._canvas.getContext('2d');
     this._layout = buildLayout(this._nodes());
+    this._els = {
+      cr: rootEl.querySelector('[data-cr]'),
+      rp: rootEl.querySelector('[data-rp]'),
+      count: rootEl.querySelector('[data-count]'),
+      selected: rootEl.querySelector('[data-sel]'),
+      actions: rootEl.querySelector('[data-actions]'),
+    };
 
     this._canvas.addEventListener('click', (e) => this._onCanvasClick(e));
     this._canvas.addEventListener('mousemove', (e) => this._onCanvasMove(e));
     this._canvas.addEventListener('mouseleave', () => { this._hoverId = null; this._draw(); });
 
-    rootEl.querySelector('[data-actions]').addEventListener('click', (e) => {
+    this._els.actions.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
       if (btn) this._onAction(btn.dataset.act);
     });
@@ -189,12 +201,20 @@ export const techTreeScreen = {
 
   onHide() { /* cached DOM retained */ },
 
-  refresh(ctx) {
+  refresh(ctx, opts = {}) {
     if (ctx) this._ctx = ctx;
     if (!this._root) return;
     this._syncHeader();
-    this._syncSidebar();
-    this._draw();
+    const sidebarSig = this._sidebarSignature();
+    if (!opts.periodic || sidebarSig !== this._sidebarSig) {
+      this._sidebarSig = sidebarSig;
+      this._syncSidebar();
+    }
+    const drawSig = this._drawSignature();
+    if (!opts.periodic || drawSig !== this._drawSig) {
+      this._drawSig = drawSig;
+      this._draw();
+    }
   },
 
   // ---- internals ----------------------------------------------------------
@@ -239,6 +259,7 @@ export const techTreeScreen = {
   _draw() {
     const g = this._g, cv = this._canvas;
     if (!g || !this._layout) return;
+    this._drawSig = this._drawSignature();
     g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
     const w = cv.width / this._dpr, h = cv.height / this._dpr;
     g.clearRect(0, 0, w, h);
@@ -379,17 +400,16 @@ export const techTreeScreen = {
 
   _syncHeader() {
     const st = this._ctx.state;
-    const cr = this._root.querySelector('[data-cr]');
-    const rp = this._root.querySelector('[data-rp]');
-    const ct = this._root.querySelector('[data-count]');
-    if (cr) cr.textContent = fmtCr((st.player && st.player.credits) || 0);
-    if (rp) rp.textContent = ((st.player && st.player.researchPoints) || 0).toLocaleString();
-    if (ct) ct.textContent = `${this._researched().length}/${this._nodes().length}`;
+    setText(this._els && this._els.cr, fmtCr((st.player && st.player.credits) || 0));
+    setText(this._els && this._els.rp, ((st.player && st.player.researchPoints) || 0).toLocaleString());
+    setText(this._els && this._els.count, `${this._researched().length}/${this._nodes().length}`);
   },
 
   _syncSidebar() {
-    const sel = this._root.querySelector('[data-sel]');
-    const actions = this._root.querySelector('[data-actions]');
+    const sel = this._els && this._els.selected;
+    const actions = this._els && this._els.actions;
+    if (!sel || !actions) return;
+    this._sidebarSig = this._sidebarSignature();
     if (!this._selectedId) {
       sel.innerHTML = `<div class="tt-hint">Select a node to inspect its cost, effects and prerequisites.</div>`;
       actions.innerHTML = '';
@@ -445,6 +465,26 @@ export const techTreeScreen = {
     this._ctx.bus.emit('toast', { text: `Researching ${n.name}…`, kind: 'info', ttl: 3000 });
     // optimistic-free: refresh on next event-driven cycle; refresh now in case ships is synchronous
     this.refresh(this._ctx);
+  },
+
+  _researchSignature() {
+    return this._researched().join(',');
+  },
+
+  _drawSignature() {
+    return [this._researchSignature(), this._selectedId || '', this._hoverId || '', this._dpr, this._nodes().length].join('|');
+  },
+
+  _sidebarSignature() {
+    const st = this._ctx.state;
+    const player = st.player || {};
+    return [
+      this._selectedId || '',
+      this._researchSignature(),
+      Math.round(player.credits || 0),
+      player.researchPoints || 0,
+      this._nodes().length,
+    ].join('|');
   },
 };
 

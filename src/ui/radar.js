@@ -59,7 +59,7 @@ function drawShipShape(g, x, y, shape) {
 }
 
 export function createRadar(ctx) {
-  const { state } = ctx;
+  const { state, bus } = ctx;
   const wrap = document.createElement('div');
   wrap.className = 'sf-radar-wrap';
   const dial = document.createElement('div');
@@ -72,6 +72,12 @@ export function createRadar(ctx) {
   canvas.style.height = SIZE + 'px';
   const g = canvas.getContext('2d');
   g.scale(dpr, dpr);
+  const bgCanvas = document.createElement('canvas');
+  bgCanvas.width = SIZE * dpr;
+  bgCanvas.height = SIZE * dpr;
+  const bg = bgCanvas.getContext('2d');
+  bg.scale(dpr, dpr);
+  drawBackground(bg);
   dial.appendChild(canvas);
   const legend = document.createElement('div');
   legend.className = 'sf-radar-legend';
@@ -83,21 +89,50 @@ export function createRadar(ctx) {
     + '<span><i class="obj"></i>Goal</span>';
   wrap.append(dial, legend);
 
+  let contactList = [];
+  let contactsDirty = true;
+  let cachedEntityList = null;
+  let cachedLength = -1;
+  let cachedPlayerId = null;
+
+  function markContactsDirty() { contactsDirty = true; }
+
+  if (bus && bus.on) {
+    bus.on('entity:spawned', markContactsDirty);
+    bus.on('entity:destroyed', markContactsDirty);
+    bus.on('game:started', markContactsDirty);
+    bus.on('save:loaded', markContactsDirty);
+    bus.on('sector:enter', markContactsDirty);
+  }
+
+  function isRadarContact(e, player) {
+    if (!e || e === player) return false;
+    return e.type !== 'projectile' && e.type !== 'fx';
+  }
+
+  function contactsFor(player) {
+    const list = state.entityList;
+    if (!contactsDirty && cachedEntityList === list && cachedLength === list.length && cachedPlayerId === state.playerId) {
+      return contactList;
+    }
+    contactList = [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (isRadarContact(e, player)) contactList.push(e);
+    }
+    cachedEntityList = list;
+    cachedLength = list.length;
+    cachedPlayerId = state.playerId;
+    contactsDirty = false;
+    return contactList;
+  }
+
   function draw() {
     const p = state.entities.get(state.playerId);
     const range = state.ui.radarRange || 4000;
+    const rangeSq = range * range;
     g.clearRect(0, 0, SIZE, SIZE);
-
-    // backdrop disc
-    g.fillStyle = 'rgba(6,12,22,0.62)';
-    g.beginPath(); g.arc(C, C, R + 4, 0, Math.PI * 2); g.fill();
-
-    // concentric rings at 25/50/100%
-    g.strokeStyle = COL.ring; g.lineWidth = 1;
-    for (const f of [0.25, 0.5, 1.0]) { g.beginPath(); g.arc(C, C, R * f, 0, Math.PI * 2); g.stroke(); }
-    // crosshair
-    g.strokeStyle = 'rgba(57,208,255,0.12)';
-    g.beginPath(); g.moveTo(C, C - R); g.lineTo(C, C + R); g.moveTo(C - R, C); g.lineTo(C + R, C); g.stroke();
+    g.drawImage(bgCanvas, 0, 0, SIZE, SIZE);
 
     if (!p) return;
     const px = p.pos.x, pz = p.pos.z;
@@ -105,16 +140,15 @@ export function createRadar(ctx) {
     const playerTeam = p.team;
     const cbMode = (state.settings.accessibility && state.settings.accessibility.colorblindMode) || 'none';
 
-    const list = state.entityList;
+    const list = contactsFor(p);
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e.alive || e === p) continue;
-      if (e.type === 'projectile' || e.type === 'fx') continue;
       const dx = e.pos.x - px, dz = e.pos.z - pz;
-      const dist = Math.hypot(dx, dz);
+      const distSq = dx * dx + dz * dz;
       const col = blipColor(e, playerTeam, cbMode);
       let bx, by, off = false;
-      if (dist > range) {
+      if (distSq > rangeSq) {
         off = true;
         const a = Math.atan2(-dz, dx);   // -dz: match the screen (world +Z is up on screen)
         bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
@@ -157,9 +191,9 @@ export function createRadar(ctx) {
     const pos = wp && wp.pos;
     if (pos) {
       const dx = pos.x - px, dz = pos.z - pz;
-      const dist = Math.hypot(dx, dz);
+      const distSq = dx * dx + dz * dz;
       let bx, by;
-      if (dist > range) {
+      if (distSq > rangeSq) {
         const a = Math.atan2(-dz, dx);
         bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
       } else {
@@ -186,5 +220,18 @@ export function createRadar(ctx) {
     g.restore();
   }
 
-  return { el: wrap, draw };
+  return { el: wrap, draw, invalidate: markContactsDirty };
+}
+
+function drawBackground(g) {
+  // backdrop disc
+  g.fillStyle = 'rgba(6,12,22,0.62)';
+  g.beginPath(); g.arc(C, C, R + 4, 0, Math.PI * 2); g.fill();
+
+  // concentric rings at 25/50/100%
+  g.strokeStyle = COL.ring; g.lineWidth = 1;
+  for (const f of [0.25, 0.5, 1.0]) { g.beginPath(); g.arc(C, C, R * f, 0, Math.PI * 2); g.stroke(); }
+  // crosshair
+  g.strokeStyle = 'rgba(57,208,255,0.12)';
+  g.beginPath(); g.moveTo(C, C - R); g.lineTo(C, C + R); g.moveTo(C - R, C); g.lineTo(C + R, C); g.stroke();
 }

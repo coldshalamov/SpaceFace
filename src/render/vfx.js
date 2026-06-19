@@ -76,6 +76,14 @@ export const vfx = {
     this._t = 0;
     this._scene = null;
     this._subs = [];
+    this._trailCandidates = [];
+    this._ribbonCandidates = [];
+    this._trailCacheDirty = true;
+    this._trailListRef = null;
+    this._trailListLength = -1;
+    this._socketScratch = { x: 0, z: 0 };
+    this._liveSpriteCount = 0;
+    this._activeLightCount = 0;
 
     // colour scratch objects (reused; no per-event allocation)
     this._c0 = new THREE.Color();
@@ -153,6 +161,13 @@ export const vfx = {
     this._alive = new Uint8Array(cap);
     this._head = 0;        // round-robin allocation cursor
     this._liveCount = 0;
+    this._pDrawMax = 0;
+    this._activeParticles = new Int32Array(cap);
+    this._activeParticlePos = new Int32Array(cap);
+    this._activeParticlePos.fill(-1);
+    this._freeParticles = new Int32Array(cap);
+    for (let i = 0; i < cap; i++) this._freeParticles[i] = cap - 1 - i;
+    this._freeParticleCount = cap;
 
     // ---- discrete sprite pool (flash / ring / puff / fresnel) ----
     // Two shared textures: a filled radial glow (flash/puff) and a hollow ring (shockwave/fresnel).
@@ -166,8 +181,11 @@ export const vfx = {
     this._spritePool = [];
     this._spr = []; // parallel CPU state
     for (let i = 0; i < SPRITE_CAP; i++) {
-      const m = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, transparent: true, opacity: 0 });
-      const s = new THREE.Sprite(m);
+      const glowMaterial = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, transparent: true, opacity: 0 });
+      const ringMaterial = new THREE.SpriteMaterial({ map: ringTex, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, transparent: true, opacity: 0 });
+      const s = new THREE.Sprite(glowMaterial);
+      s.userData.glowMaterial = glowMaterial;
+      s.userData.ringMaterial = ringMaterial;
       s.visible = false;
       s.frustumCulled = false;
       s.renderOrder = 11;
@@ -176,6 +194,13 @@ export const vfx = {
       this._spr.push({ alive: false, kind: SPR_FLASH, age: 0, life: 1, size0: 1, size1: 1, op0: 1, op1: 0, x: 0, y: 0, z: 0, vx: 0, vz: 0, roll: 0 });
     }
     this._sHead = 0;
+    this._activeSprites = new Int32Array(SPRITE_CAP);
+    this._activeSpritePos = new Int32Array(SPRITE_CAP);
+    this._activeSpritePos.fill(-1);
+    this._freeSprites = new Int32Array(SPRITE_CAP);
+    for (let i = 0; i < SPRITE_CAP; i++) this._freeSprites[i] = SPRITE_CAP - 1 - i;
+    this._freeSpriteCount = SPRITE_CAP;
+    this._liveSpriteCount = 0;
   },
 
   _subscribe() {
@@ -186,8 +211,12 @@ export const vfx = {
     add('projectile:hit', (p) => this._onProjectileHit(p));
     add('combat:damage', (p) => this._onDamage(p));
     add('collision', (p) => this._onCollision(p));
-    add('entity:killed', (p) => this._onKilled(p));
-    add('entity:destroyed', (p) => this._onDestroyed(p));
+    add('entity:killed', (p) => { this._markEntityCacheDirty(); this._onKilled(p); });
+    add('entity:destroyed', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
+    add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
+    add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
+    add('sector:enter', () => this._markEntityCacheDirty());
+    add('save:loaded', () => this._markEntityCacheDirty());
     add('player:death', (p) => this._explode({ pos: p && p.pos, radius: 12 }, true));
     add('mining:tick', (p) => this._onMiningTick(p));
     add('mining:yield', (p) => this._onMiningYield(p));
@@ -206,12 +235,12 @@ export const vfx = {
   _spawnParticle(x, z, vx, vz, life, size0, size1, c0, c1, drag, y, vy) {
     if (!this._scene) return;
     const cap = this._cap;
-    // find a free slot via round-robin; if pool is full, recycle the slot at the cursor (oldest-ish)
-    let i = this._head;
-    let scanned = 0;
-    while (this._alive[i] && scanned < cap) { i = (i + 1) % cap; scanned++; }
+    // Prefer an O(1) free stack. Only when every slot is live do we recycle at the cursor.
+    let i;
+    if (this._freeParticleCount > 0) i = this._freeParticles[--this._freeParticleCount];
+    else i = this._head;
     this._head = (i + 1) % cap;
-    if (!this._alive[i]) this._liveCount++;
+    if (!this._alive[i]) this._activateParticle(i);
 
     this._px[i] = x; this._py[i] = y || 0; this._pz[i] = z;
     this._vx[i] = vx; this._vy[i] = vy || 0; this._vz[i] = vz;
@@ -225,30 +254,28 @@ export const vfx = {
   _spawnSprite(kind, x, y, z, life, size0, size1, op0, op1, color, vx, vz) {
     if (!this._scene) return null;
     const n = SPRITE_CAP;
-    let i = this._sHead;
-    let scanned = 0;
-    while (this._spr[i].alive && scanned < n) { i = (i + 1) % n; scanned++; }
+    let i;
+    if (this._freeSpriteCount > 0) i = this._freeSprites[--this._freeSpriteCount];
+    else i = this._sHead;
     this._sHead = (i + 1) % n;
 
     const st = this._spr[i];
+    const wasAlive = st.alive;
     st.alive = true; st.kind = kind; st.age = 0; st.life = life;
     st.size0 = size0; st.size1 = size1; st.op0 = op0; st.op1 = op1;
     st.x = x; st.y = y || 0; st.z = z; st.vx = vx || 0; st.vz = vz || 0;
     st.roll = Math.random() * Math.PI * 2;
 
     const spr = this._spritePool[i];
-    // ring/fresnel kinds use the hollow ring texture; flash/puff use the filled glow. Just swap the
-    // map — both textures already exist as the material's map, so no shader recompile is needed (and
-    // forcing material.needsUpdate would re-run the program lookup on every swap during heavy combat).
+    // Ring/fresnel kinds use the hollow ring texture; flash/puff use the filled glow. Each slot owns
+    // both stable material variants, so kind changes do not mutate maps or force material updates.
     const wantRing = (kind === SPR_RING || kind === SPR_FRESNEL);
     // Always use the clean procedural textures. (The generated fx_explosion_small_elements.jpg is a
     // LABELLED contact-sheet reference, not a usable sprite — using it rendered "CORE FLASH / HIGH /
     // SMOKE AND SPARKS" text in every explosion. The procedural radial glow reads far better anyway.)
-    const wantTex = wantRing ? this._ringTex : this._glowTex;
-    if (spr.material.map !== wantTex) {
-      spr.material.map = wantTex;
-      spr.material.needsUpdate = true;
-    }
+    const wantMaterial = wantRing ? spr.userData.ringMaterial : spr.userData.glowMaterial;
+    if (spr.material !== wantMaterial) spr.material = wantMaterial;
+    if (!wasAlive) this._activateSprite(i);
     spr.visible = true;
     spr.material.color.set(color);
     spr.material.opacity = op0;
@@ -256,6 +283,56 @@ export const vfx = {
     spr.position.set(x, y || 0, z);
     spr.scale.setScalar(size0);
     return st;
+  },
+
+  _activateParticle(i) {
+    this._alive[i] = 1;
+    this._activeParticlePos[i] = this._liveCount;
+    this._activeParticles[this._liveCount++] = i;
+  },
+
+  _retireParticle(i) {
+    if (!this._alive[i]) return;
+    this._alive[i] = 0;
+    this._pAlpha[i] = 0;
+    const pos = this._activeParticlePos[i];
+    if (pos >= 0) {
+      const lastPos = --this._liveCount;
+      const moved = this._activeParticles[lastPos];
+      if (pos !== lastPos) {
+        this._activeParticles[pos] = moved;
+        this._activeParticlePos[moved] = pos;
+      }
+      this._activeParticlePos[i] = -1;
+    }
+    this._freeParticles[this._freeParticleCount++] = i;
+  },
+
+  _activateSprite(i) {
+    this._activeSpritePos[i] = this._liveSpriteCount;
+    this._activeSprites[this._liveSpriteCount++] = i;
+  },
+
+  _retireSprite(i) {
+    const st = this._spr[i];
+    if (!st || !st.alive) return;
+    st.alive = false;
+    const spr = this._spritePool[i];
+    if (spr) {
+      spr.visible = false;
+      spr.material.opacity = 0;
+    }
+    const pos = this._activeSpritePos[i];
+    if (pos >= 0) {
+      const lastPos = --this._liveSpriteCount;
+      const moved = this._activeSprites[lastPos];
+      if (pos !== lastPos) {
+        this._activeSprites[pos] = moved;
+        this._activeSpritePos[moved] = pos;
+      }
+      this._activeSpritePos[i] = -1;
+    }
+    this._freeSprites[this._freeSpriteCount++] = i;
   },
 
   // -------------------------------------------------------------------------
@@ -289,6 +366,63 @@ export const vfx = {
     if (p && p.toPos && typeof p.toPos.x === 'number') return p.toPos;
     const e = this._ent(entId);
     return e ? e.pos : null;
+  },
+
+  _markEntityCacheDirty() {
+    this._trailCacheDirty = true;
+  },
+
+  _markEntityCacheDirtyIfTrailType(p) {
+    const t = p && p.type;
+    if (!t || t === 'ship' || t === 'drone') this._markEntityCacheDirty();
+  },
+
+  _refreshTrailCandidates() {
+    const list = this.state.entityList || [];
+    if (!this._trailCacheDirty && this._trailListRef === list && this._trailListLength === list.length) return;
+    this._trailCandidates.length = 0;
+    this._ribbonCandidates.length = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || (e.type !== 'ship' && e.type !== 'drone')) continue;
+      this._trailCandidates.push(e);
+      if ((e.radius || 0) >= 22) this._ribbonCandidates.push(e);
+    }
+    this._trailListRef = list;
+    this._trailListLength = list.length;
+    this._trailCacheDirty = false;
+  },
+
+  _invalidateTrailSocket(id) {
+    if (id == null) {
+      for (const e of this._trailCandidates) if (e && e.view) delete e.view.__vfxTrailSocket;
+      return;
+    }
+    const e = this._ent(id);
+    if (e && e.view) delete e.view.__vfxTrailSocket;
+  },
+
+  _trailSocketWorldPos(e) {
+    const view = e && e.view;
+    const root = view && view.root;
+    if (root && typeof root.traverse === 'function') {
+      let cache = view.__vfxTrailSocket;
+      if (!cache || cache.root !== root) {
+        let socket = null;
+        root.traverse((o) => {
+          if (!socket && o.userData && o.userData.spacefaceSocket && o.name === 'SOCKET_Trail_Main') socket = o;
+        });
+        cache = view.__vfxTrailSocket = { root, socket };
+      }
+      if (cache.socket) {
+        cache.socket.updateWorldMatrix(true, false);
+        const el = cache.socket.matrixWorld.elements;
+        this._socketScratch.x = el[12];
+        this._socketScratch.z = el[14];
+        return this._socketScratch;
+      }
+    }
+    return this.helpers.socketWorldPos ? this.helpers.socketWorldPos(e.id, 'SOCKET_Trail_Main') : null;
   },
 
   // -------------------------------------------------------------------------
@@ -635,7 +769,7 @@ export const vfx = {
     // leaves the real engine, not a center-derived point (spec §9.9, §14.2). Falls back to the
     // radial-behind formula for procedural ships that have no socket.
     let bx, bz;
-    const sock = this.helpers.socketWorldPos ? this.helpers.socketWorldPos(e.id, 'SOCKET_Trail_Main') : null;
+    const sock = this._trailSocketWorldPos(e);
     if (sock) { bx = sock.x; bz = sock.z; }
     else {
       const back = (e.radius || 4) * 0.85;
@@ -694,13 +828,14 @@ export const vfx = {
     // Respect the motion-reduce / quality gates: on low quality or motion-reduce, skip the pool
     // entirely (lights are a vestibular/visual load). _flashLight becomes a no-op if pool is null.
     const v = this.state.settings && this.state.settings.video;
+    this._activeLightCount = 0;
     if (v && (v.motionReduce || v.particleQuality === 'low')) { this._lights = null; return; }
     this._lights = [];
     for (let i = 0; i < this._LIGHT_NPOOL; i++) {
       const l = new THREE.PointLight(0xffffff, 0, 400, 2.0); // color, intensity, distance, decay
       l.visible = false;
       this._scene.add(l);
-      this._lights.push({ obj: l, intensity: 0, peak: 0, decay: 0, t: 0 });
+      this._lights.push({ obj: l, intensity: 0, peak: 0, decay: 0, t: 0, active: false });
     }
     // cursor for LRU grab
     this._lightCur = 0;
@@ -721,6 +856,10 @@ export const vfx = {
     const slot = pool[this._lightCur];
     this._lightCur = (this._lightCur + 1) % pool.length;
     const obj = slot.obj;
+    if (!slot.active) {
+      slot.active = true;
+      this._activeLightCount++;
+    }
     obj.position.set(pos.x || 0, 12, pos.z || 0); // lift above the play plane
     if (typeof color === 'number') obj.color.setHex(color);
     else obj.color.set(color); // CSS string ('#ffb060', 'rgb(...)', named)
@@ -745,7 +884,15 @@ export const vfx = {
       } else {
         // exponential decay toward 0
         slot.intensity += -slot.intensity * slot.decay * dt;
-        if (slot.intensity < 0.02) { slot.intensity = 0; slot.peak = 0; slot.obj.visible = false; }
+        if (slot.intensity < 0.02) {
+          slot.intensity = 0;
+          slot.peak = 0;
+          slot.obj.visible = false;
+          if (slot.active) {
+            slot.active = false;
+            this._activeLightCount = Math.max(0, this._activeLightCount - 1);
+          }
+        }
       }
       slot.obj.intensity = slot.intensity;
     }
@@ -758,13 +905,12 @@ export const vfx = {
 
   // per-frame engine-trail emission for every thrusting ship/drone (steady-state, pooled)
   _emitTrails(dt) {
-    const state = this.state;
     this._trailAcc = (this._trailAcc || 0) + dt;
     // emit at ~60 Hz cadence (one trail particle per ship per ~16ms)
     if (this._trailAcc < 0.016) return;
     const step = this._trailAcc; this._trailAcc = 0;
-    const list = state.entityList;
-    const playerId = state.playerId;
+    this._refreshTrailCandidates();
+    const list = this._trailCandidates;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
@@ -776,7 +922,6 @@ export const vfx = {
       if (e.flags && e.flags.boosting) throttle = Math.min(1, throttle + 0.5);
       if (throttle < 0.08) continue; // idle ships emit nothing
       this._emitEngineTrail(e, throttle, step);
-      void playerId;
       // Damage smoke: a wounded ship trails smoke so its state is readable at a glance (V2 §9:
       // particles are information). Two tiers — wounded (<40% hull) gets wispy grey smoke,
       // critical (<18%) adds orange embers + denser smoke. Even a stationary/idle damaged ship
@@ -802,9 +947,9 @@ export const vfx = {
   _updateRibbonTrails(dt) {
     if (!this._ribbonTrails || !this._scene) return;
     const state = this.state;
-    for (const e of state.entityList) {
+    this._refreshTrailCandidates();
+    for (const e of this._ribbonCandidates) {
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
-      if ((e.radius || 0) < 22) continue; // fighters use particles only; frigates+ get ribbon
       if (e.flags && e.flags.docked) { const rt = this._ribbonTrails.get(e.id); if (rt) rt.clear(); continue; }
       const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
       if (speed < 4) continue;
@@ -890,22 +1035,19 @@ export const vfx = {
   _integrateParticles(dt) {
     if (this._liveCount <= 0) {
       this._pGeo.setDrawRange(0, 0);
+      this._pDrawMax = 0;
       return;
     }
-    const cap = this._cap;
     const pos = this._pPos, col = this._pCol, size = this._pSize, alpha = this._pAlpha;
+    const active = this._activeParticles;
     let writeMax = 0;
-    let live = 0;
-    for (let i = 0; i < cap; i++) {
-      if (!this._alive[i]) {
-        alpha[i] = 0;
-        continue;
-      }
+    let cursor = 0;
+    while (cursor < this._liveCount) {
+      const i = active[cursor];
       let age = this._age[i] + dt;
       const life = this._life[i];
       if (age >= life) {
-        this._alive[i] = 0;
-        alpha[i] = 0;
+        this._retireParticle(i);
         continue;
       }
       this._age[i] = age;
@@ -926,9 +1068,9 @@ export const vfx = {
       size[i] = this._size0[i] + (this._size1[i] - this._size0[i]) * t;
       alpha[i] = 1 - t;
       if (i + 1 > writeMax) writeMax = i + 1;
-      live++;
+      cursor++;
     }
-    this._liveCount = live;
+    this._pDrawMax = writeMax;
     this._pGeo.setDrawRange(0, writeMax);
     if (writeMax > 0) {
       this._pGeo.attributes.position.needsUpdate = true;
@@ -939,14 +1081,16 @@ export const vfx = {
   },
 
   _integrateSprites(dt) {
-    const pool = this._spritePool, st = this._spr;
-    for (let i = 0; i < pool.length; i++) {
+    if (this._liveSpriteCount <= 0) return;
+    const pool = this._spritePool, st = this._spr, active = this._activeSprites;
+    let cursor = 0;
+    while (cursor < this._liveSpriteCount) {
+      const i = active[cursor];
       const s = st[i];
-      if (!s.alive) continue;
       s.age += dt;
       const t = s.age / s.life;
       const spr = pool[i];
-      if (t >= 1) { s.alive = false; spr.visible = false; spr.material.opacity = 0; continue; }
+      if (t >= 1) { this._retireSprite(i); continue; }
       let scale, op;
       if (s.kind === SPR_RING) {
         const e = easeOutCubic(t);
@@ -972,6 +1116,7 @@ export const vfx = {
       spr.position.set(s.x, s.y, s.z);
       spr.scale.setScalar(Math.max(0.01, scale));
       spr.material.opacity = Math.max(0, op);
+      cursor++;
     }
   },
 };

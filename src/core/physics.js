@@ -24,7 +24,8 @@ export const physics = {
     this.bus = ctx.bus;
     this._scratch = [];
     this._statics = [];
-    this._checked = new Set(); // reused each collide() to avoid a per-frame Set allocation
+    this._pairMarks = new Map(); // low id -> Map<high id, stamp>; avoids per-frame string pair keys
+    this._pairStamp = 1;
     this._dockStationId = null;
     this._gateEntityId = null;
     this._rapier = null;
@@ -87,8 +88,9 @@ export const physics = {
   collide(dt, state) {
     const bus = this.bus;
     const out = this._scratch;
-    const checked = this._checked; checked.clear(); // pair keys this step (reused; no per-frame alloc)
-    for (const a of state.entityList) {
+    const stamp = this._nextPairStamp();
+    const source = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
+    for (const a of source) {
       if (!a.alive || !a.collides) continue;
       out.length = 0;
       state.spatialHash.queryRadius(a.pos.x, a.pos.z, a.radius + 4, out);
@@ -96,9 +98,7 @@ export const physics = {
         if (!a.alive) break;
         if (bEnt === a || !bEnt.alive || !bEnt.collides) continue;
         if (!(a.collisionMask & maskOf(bEnt)) && !(bEnt.collisionMask & maskOf(a))) continue;
-        const key = pairKey(a.id, bEnt.id);
-        if (checked.has(key)) continue;
-        checked.add(key);
+        if (this._pairSeen(a.id, bEnt.id, stamp)) continue;
         if (!a.alive || !bEnt.alive) continue;
         const dx = bEnt.pos.x - a.pos.x, dz = bEnt.pos.z - a.pos.z;
         const rsum = a.radius + bEnt.radius;
@@ -115,12 +115,14 @@ export const physics = {
     const statics = this._statics;
     if (!useHash) {
       statics.length = 0;
-      for (const e of state.entityList) {
+      const source = (state.entityIndex && state.entityIndex.statics) || state.entityList;
+      for (const e of source) {
         if (e.alive && e.collides && (e.type === 'asteroid' || e.type === 'station')) statics.push(e);
       }
       if (!statics.length) return;
     }
-    for (const ship of state.entityList) {
+    const ships = (state.entityIndex && state.entityIndex.shipLike) || state.entityList;
+    for (const ship of ships) {
       if (!ship.alive || !ship.collides || (ship.type !== 'ship' && ship.type !== 'drone')) continue;
       const start = previousPos(ship, dt);
       const end = ship.pos;
@@ -152,11 +154,12 @@ export const physics = {
   sweepProjectiles(dt, state) {
     const out = this._scratch;
     const useHash = !!(state.spatialHash && typeof state.spatialHash.queryRadius === 'function');
-    for (const proj of state.entityList) {
+    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPos(proj, dt);
       const end = proj.pos;
-      let candidates = state.entityList;
+      let candidates = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
       if (useHash) {
         const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
         out.length = 0;
@@ -243,7 +246,8 @@ export const physics = {
     let nextGateDist = Infinity;
 
     if (player && player.alive) {
-      for (const st of state.entityList) {
+      const stations = (state.entityIndex && state.entityIndex.stations) || state.entityList;
+      for (const st of stations) {
         if (!st.alive || st.type !== 'station') continue;
         const data = st.data || {};
         const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0));
@@ -344,6 +348,26 @@ export const physics = {
     this._diag.rapierContacts = 0;
     this._diag.rapierEvents = 0;
   },
+
+  _nextPairStamp() {
+    let stamp = this._pairStamp + 1;
+    if (stamp > 0x7fffffff) {
+      this._pairMarks.clear();
+      stamp = 1;
+    }
+    this._pairStamp = stamp;
+    return stamp;
+  },
+
+  _pairSeen(aId, bId, stamp) {
+    const lo = aId < bId ? aId : bId;
+    const hi = aId < bId ? bId : aId;
+    let row = this._pairMarks.get(lo);
+    if (!row) { row = new Map(); this._pairMarks.set(lo, row); }
+    if (row.get(hi) === stamp) return true;
+    row.set(hi, stamp);
+    return false;
+  },
 };
 
 function maskOf(e) {
@@ -357,10 +381,6 @@ function maskOf(e) {
     case 'wreck': return Masks.WRECK;
     default: return 0;
   }
-}
-
-function pairKey(a, b) {
-  return a < b ? `${a}:${b}` : `${b}:${a}`;
 }
 
 function canCollide(a, b) {

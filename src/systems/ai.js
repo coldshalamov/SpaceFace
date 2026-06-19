@@ -80,7 +80,7 @@ export const ai = {
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
-    const list = state.entityList;
+    const list = (state.entityIndex && state.entityIndex.aiShips) || state.entityList;
     const player = state.entities.get(state.playerId) || null;
 
     // Decay threat once per tick (framerate-independent).

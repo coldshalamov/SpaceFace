@@ -128,7 +128,8 @@ export const mining = {
     const aim = state.input.aimAngle || 0;
     const ax = Math.cos(aim), az = Math.sin(aim);
     let best = null, bestScore = -Infinity;
-    for (const e of state.entityList) {
+    const mineables = (state.entityIndex && state.entityIndex.mineables) || state.entityList;
+    for (const e of mineables) {
       if (!e.alive) continue;
       if (e.type !== 'asteroid' && e.type !== 'wreck') continue;
       if (e.type === 'asteroid' && e.data && e.data.respawnAt != null) continue; // mined-out, awaiting respawn
@@ -253,7 +254,8 @@ export const mining = {
     const player = state.entities.get(state.playerId);
     if (!player) return;
     const magnet = state.player.magnetRange || 90;
-    for (const e of state.entityList) {
+    const pickups = (state.entityIndex && state.entityIndex.pickups) || state.entityList;
+    for (const e of pickups) {
       if (!e.alive || e.type !== 'pickup') continue;
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;

@@ -63,6 +63,8 @@ function injectStyle() {
   document.head.appendChild(el);
 }
 
+function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+
 function closeScreen(ctx) {
   const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
   const mgr = (ctx && (ctx.screenManager || ctx.screens)) || (ui && (ui.screenManager || ui.manager));
@@ -81,6 +83,9 @@ export const starmapScreen = {
   _hoverId: null,
   _dpr: 1,
   _ro: null,
+  _els: null,
+  _drawSig: '',
+  _sidebarSig: '',
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -117,6 +122,13 @@ export const starmapScreen = {
 
     this._canvas = rootEl.querySelector('canvas');
     this._g = this._canvas.getContext('2d');
+    this._els = {
+      fuel: rootEl.querySelector('[data-fuel]'),
+      jumpState: rootEl.querySelector('[data-jstate]'),
+      range: rootEl.querySelector('[data-range]'),
+      selected: rootEl.querySelector('[data-sel]'),
+      actions: rootEl.querySelector('[data-actions]'),
+    };
 
     // delegated click on the canvas -> hit-test nodes
     this._canvas.addEventListener('click', (e) => this._onCanvasClick(e));
@@ -124,7 +136,7 @@ export const starmapScreen = {
     this._canvas.addEventListener('mouseleave', () => { this._hoverId = null; this._draw(); });
 
     // delegated click for the action buttons
-    rootEl.querySelector('[data-actions]').addEventListener('click', (e) => {
+    this._els.actions.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
       if (btn) this._onAction(btn.dataset.act);
     });
@@ -157,12 +169,20 @@ export const starmapScreen = {
     return false;
   },
 
-  refresh(ctx) {
+  refresh(ctx, opts = {}) {
     if (ctx) this._ctx = ctx;
     if (!this._root) return;
     this._syncHeader();
-    this._syncSidebar();
-    this._draw();
+    const sidebarSig = this._sidebarSignature();
+    if (!opts.periodic || sidebarSig !== this._sidebarSig) {
+      this._sidebarSig = sidebarSig;
+      this._syncSidebar();
+    }
+    const drawSig = this._drawSignature();
+    if (!opts.periodic || drawSig !== this._drawSig) {
+      this._drawSig = drawSig;
+      this._draw();
+    }
   },
 
   // ---- internals ----------------------------------------------------------
@@ -249,6 +269,7 @@ export const starmapScreen = {
   _draw() {
     const g = this._g, cv = this._canvas;
     if (!g || cv.width < 2) return;
+    this._drawSig = this._drawSignature();
     g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
     const w = cv.width / this._dpr, h = cv.height / this._dpr;
     g.clearRect(0, 0, w, h);
@@ -384,23 +405,23 @@ export const starmapScreen = {
   _syncHeader() {
     const st = this._ctx.state;
     const fuel = st.fuel || { current: 0, max: 0 };
-    const f = this._root.querySelector('[data-fuel]');
-    if (f) f.textContent = `${Math.round(fuel.current)}/${Math.round(fuel.max)}`;
-    const j = this._root.querySelector('[data-jstate]');
-    if (j) j.textContent = (st.jump && st.jump.state) || 'IDLE';
-    const r = this._root.querySelector('[data-range]');
+    setText(this._els && this._els.fuel, `${Math.round(fuel.current)}/${Math.round(fuel.max)}`);
+    setText(this._els && this._els.jumpState, (st.jump && st.jump.state) || 'IDLE');
+    const r = this._els && this._els.range;
     if (r) {
       // jump range: with Advanced Navigation tech the player can plot multi-hop routes;
       // otherwise only adjacent (gate) jumps.
       const longRange = st.player && st.player.researchedNodes &&
         st.player.researchedNodes.includes('tech_advanced_navigation');
-      r.textContent = longRange ? 'multi-hop route' : 'adjacent only';
+      setText(r, longRange ? 'multi-hop route' : 'adjacent only');
     }
   },
 
   _syncSidebar() {
-    const sel = this._root.querySelector('[data-sel]');
-    const actions = this._root.querySelector('[data-actions]');
+    const sel = this._els && this._els.selected;
+    const actions = this._els && this._els.actions;
+    if (!sel || !actions) return;
+    this._sidebarSig = this._sidebarSignature();
     if (!this._selectedId) {
       sel.innerHTML = `<div class="sm-hint">Select a sector node to view details and plot a course.</div>`;
       actions.innerHTML = '';
@@ -459,6 +480,25 @@ export const starmapScreen = {
       bus.emit('toast', { text: `Plotting route to ${this._nameOf(target)}…`, kind: 'info', ttl: 3000 });
     }
     this._syncHeader();
+  },
+
+  _drawSignature() {
+    const parts = [this._currentId() || '', this._selectedId || '', this._hoverId || '', this._dpr];
+    for (const s of this._sectors()) {
+      parts.push(s.id, this._isDiscovered(s.id) ? 1 : 0);
+    }
+    return parts.join('|');
+  },
+
+  _sidebarSignature() {
+    const d = this._selectedId ? this._discovery(this._selectedId) : null;
+    return [
+      this._selectedId || '',
+      this._currentId() || '',
+      d && d.discovered ? 1 : 0,
+      d && d.visitedCount ? d.visitedCount : 0,
+      this._ctx.state.player && (this._ctx.state.player.researchedNodes || []).includes('tech_advanced_navigation') ? 1 : 0,
+    ].join('|');
   },
 
   _nameOf(id) {

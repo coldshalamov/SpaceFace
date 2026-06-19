@@ -28,6 +28,7 @@ import { feel } from '../render/feel.js';
 import { audio } from '../audio/audioSystem.js';
 import { ui } from '../ui/uiRoot.js';
 import { save } from '../save/saveSystem.js';
+import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 
 export function createRegistry(ctx) {
   // init / registration order
@@ -58,16 +59,50 @@ export function createRegistry(ctx) {
     init() { for (const s of SYSTEMS) { if (s.init) s.init(ctx); } },
     step(dt) {
       const state = ctx.state;
-      core.preStep(dt, state);
-      for (const s of UPDATE_ORDER) { if (s.update) s.update(dt, state); }
-      core.lifetimeSweep(dt, state);
+      const perf = ensurePerfRuntime(state);
+      const stepStart = perfNow();
+      let t = perfNow();
+      try { core.preStep(dt, state); }
+      finally { perf.recordSystem('core.preStep', perfNow() - t); }
+      for (const s of UPDATE_ORDER) {
+        if (!s.update) continue;
+        t = perfNow();
+        try { s.update(dt, state); }
+        finally { perf.recordSystem(s.name, perfNow() - t); }
+      }
+      t = perfNow();
+      try { core.lifetimeSweep(dt, state); }
+      finally {
+        perf.recordSystem('core.lifetimeSweep', perfNow() - t);
+        perf.recordStepTotal(perfNow() - stepStart);
+      }
     },
     renderUpdate(alpha, frameDt) {
       const state = ctx.state;
-      render.renderFrame(alpha, frameDt);
-      if (vfx.update) vfx.update(frameDt, state);
-      if (feel.frame) feel.frame(frameDt, state);
-      if (ui.frame) ui.frame(frameDt, state);
+      const perf = ensurePerfRuntime(state);
+      try {
+        let t = perfNow();
+        try { render.renderFrame(alpha, frameDt); }
+        finally { perf.recordPhase('render', perfNow() - t); }
+        if (vfx.update) {
+          t = perfNow();
+          try { vfx.update(frameDt, state); }
+          finally { perf.recordPhase('vfx', perfNow() - t); }
+        }
+        if (feel.frame) {
+          t = perfNow();
+          try { feel.frame(frameDt, state); }
+          finally { perf.recordPhase('feel', perfNow() - t); }
+        }
+        if (ui.frame) {
+          t = perfNow();
+          try { ui.frame(frameDt, state); }
+          finally { perf.recordPhase('ui', perfNow() - t); }
+        }
+      } finally {
+        const diag = state.render && state.render.diagnostics;
+        if (diag && typeof diag.update === 'function') diag.update(frameDt);
+      }
     },
   };
 }

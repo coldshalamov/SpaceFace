@@ -789,8 +789,14 @@ export const missions = {
     let target = null;
     const inDestSector = state.world.currentSectorId === m.destSectorId;
     if (inDestSector) {
-      for (const cand of state.entityList) {
-        if (cand.type === 'station' && cand.data && cand.data.stationId === m.destStationId) { target = cand; break; }
+      const byStationId = state.entityIndex && state.entityIndex.byStationId;
+      target = byStationId && m.destStationId ? byStationId.get(m.destStationId) : null;
+      if (!target || !target.alive || target.type !== 'station') {
+        const stations = (state.entityIndex && state.entityIndex.stations) || state.entityList;
+        target = null;
+        for (const cand of stations) {
+          if (cand.alive && cand.type === 'station' && cand.data && cand.data.stationId === m.destStationId) { target = cand; break; }
+        }
       }
     }
     if (!target) {

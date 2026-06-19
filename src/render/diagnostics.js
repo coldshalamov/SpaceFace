@@ -31,6 +31,8 @@ const RING_N = 180; // ~3s of history at 60fps; sized for a stable p95 without p
  * @param {() => number} [opts.entities]  - getter for live entity count     (e.g. () => SF.state.entityList.length)
  * @param {() => number} [opts.sprites]   - getter for live sprite count     (optional)
  * @param {() => number} [opts.lights]    - getter for active dynamic lights (optional)
+ * @param {() => object} [opts.perf]       - getter for perfRuntime report    (optional)
+ * @param {() => object} [opts.settings]   - getter for settings metadata     (optional)
  * @param {boolean} [opts.overlay] - create+show the on-screen overlay immediately (default false).
  * @returns {{ update(dt:number):void, getReport():object, setOverlay(on:boolean):void,
  *            toggleOverlay():boolean, get overlay():boolean, dispose():void }}
@@ -98,6 +100,17 @@ export function installDiagnostics(renderer, opts = {}) {
       'calls ' + info.calls + '  tris ' + info.triangles + '\n' +
       'geo ' + info.geometries + '  tex ' + info.textures + '  prog ' + info.programs + '\n' +
       'part ' + counts.particles + '  ent ' + counts.entities;
+  }
+
+  function resetFrameStats() {
+    ftMs.fill(0);
+    sortScratch.fill(0);
+    head = 0;
+    count = 0;
+    lastMs = 0;
+    fps = 0;
+    fpsEma = 0;
+    overlayAcc = 0;
   }
 
   // ---- per-frame sample (called once per frame, AFTER the draw) ----
@@ -168,7 +181,7 @@ export function installDiagnostics(renderer, opts = {}) {
       p95 = sub[idx];
     }
 
-    return {
+    const out = {
       fps: fps,
       fpsAvg: avg > 0 ? 1000 / avg : 0,
       fpsEma: fpsEma,
@@ -178,6 +191,9 @@ export function installDiagnostics(renderer, opts = {}) {
       memory: { geometries: info.geometries, textures: info.textures, programs: info.programs },
       counts: { particles: counts.particles, sprites: counts.sprites, entities: counts.entities, lights: counts.lights },
     };
+    if (typeof opts.perf === 'function') out.perf = safeObject(opts.perf());
+    if (typeof opts.settings === 'function') out.settings = safeObject(opts.settings());
+    return out;
   }
 
   function toggleOverlay() { setOverlay(!overlayOn); return overlayOn; }
@@ -194,6 +210,7 @@ export function installDiagnostics(renderer, opts = {}) {
   const api = {
     update,
     getReport,
+    reset: resetFrameStats,
     setOverlay,
     toggleOverlay,
     get overlay() { return overlayOn; },
@@ -213,6 +230,7 @@ export function installDiagnostics(renderer, opts = {}) {
 
 // coerce a getter result to a finite number (getters may return undefined before systems are up)
 function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+function safeObject(v) { return v && typeof v === 'object' ? v : {}; }
 
 // ARCHITECTURE §9 naming convenience — keep a capitalized alias available too.
 export { installDiagnostics as Diagnostics };

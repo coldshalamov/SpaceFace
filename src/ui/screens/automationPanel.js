@@ -84,6 +84,8 @@ export const automationScreen = {
   _ctx: null,
   _root: null,
   _tab: 'drones',
+  _els: null,
+  _bodySig: '',
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -106,34 +108,47 @@ export const automationScreen = {
         </div>
       </div>
       <div class="au-body" data-body></div>`;
+    const body = rootEl.querySelector('[data-body]');
+    this._els = {
+      cr: rootEl.querySelector('[data-cr]'),
+      rate: rootEl.querySelector('[data-rate]'),
+      capfill: rootEl.querySelector('[data-capfill]'),
+      captxt: rootEl.querySelector('[data-captxt]'),
+      body,
+      tabs: Array.from(rootEl.querySelectorAll('[data-tab]')),
+    };
 
     rootEl.querySelector('[data-tabs]').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-tab]');
-      if (btn) { this._tab = btn.dataset.tab; this.refresh(this._ctx); }
+      if (btn && btn.dataset.tab !== this._tab) { this._tab = btn.dataset.tab; this.refresh(this._ctx, { forceBody: true }); }
     });
 
     // one delegated listener for all action buttons in the body
-    rootEl.querySelector('[data-body]').addEventListener('click', (e) => {
+    body.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
       if (btn) this._onAction(btn.dataset.act, btn.dataset.ref, btn.dataset.kind);
     });
     // V2 §4 / cut-list #28: program dropdown change handler (selects don't fire 'click').
-    rootEl.querySelector('[data-body]').addEventListener('change', (e) => {
+    body.addEventListener('change', (e) => {
       const sel = e.target.closest('select[data-act="assignProgram"]');
       if (!sel) return;
       this._onAction('assignProgram', sel.dataset.ref, sel.dataset.kind, sel.value);
     });
   },
 
-  onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx); },
+  onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
   onHide() { /* cached DOM retained */ },
 
-  refresh(ctx) {
+  refresh(ctx, opts = {}) {
     if (ctx) this._ctx = ctx;
     if (!this._root) return;
     this._syncHeader();
     this._syncTabs();
-    this._renderBody();
+    const sig = this._bodySignature();
+    if (opts.forceBody || sig !== this._bodySig) {
+      this._bodySig = sig;
+      this._renderBody();
+    }
   },
 
   // ---- internals ----------------------------------------------------------
@@ -177,27 +192,63 @@ export const automationScreen = {
 
   _syncHeader() {
     const st = this._ctx.state;
-    const cr = this._root.querySelector('[data-cr]');
+    const cr = this._els && this._els.cr;
     if (cr) cr.textContent = ((st.player && st.player.credits) || 0).toLocaleString();
 
     const rate = this._currentRatePerMin();
     const cap = this._passiveCapPerMin();
-    const rateEl = this._root.querySelector('[data-rate]');
+    const rateEl = this._els && this._els.rate;
     if (rateEl) rateEl.textContent = `${Math.round(rate)} cr/min`;
-    const fill = this._root.querySelector('[data-capfill]');
+    const fill = this._els && this._els.capfill;
     if (fill) fill.style.width = (cap > 0 ? Math.max(0, Math.min(100, (rate / cap) * 100)) : 0).toFixed(1) + '%';
-    const captxt = this._root.querySelector('[data-captxt]');
+    const captxt = this._els && this._els.captxt;
     if (captxt) captxt.textContent = `cap ${Math.round(cap)} cr/min`;
   },
 
   _syncTabs() {
-    for (const b of this._root.querySelectorAll('[data-tab]')) {
+    const tabs = (this._els && this._els.tabs) || [];
+    for (const b of tabs) {
       b.classList.toggle('active', b.dataset.tab === this._tab);
     }
   },
 
+  _bodySignature() {
+    const a = this._auto();
+    const st = this._ctx.state;
+    const player = st.player || {};
+    const parts = [this._tab, this._playerTier(), player.activeShipIndex || 0];
+    if (this._tab === 'drones') {
+      for (const d of a.drones || []) {
+        const program = d.program && d.program.templateId;
+        parts.push(d.id, d.defId, d.status, Math.round(d.buffer || 0), Math.round(d.fuel || 0), program || '');
+      }
+    } else if (this._tab === 'traders') {
+      const hireUnlocked = (player.researchedNodes || []).includes('tech_autonomous_fleets');
+      parts.push(hireUnlocked ? 1 : 0);
+      for (const t of a.traders || []) {
+        const route = t.route ? `${t.route.from || ''}>${t.route.to || ''}` : '';
+        parts.push(t.id, t.defId, t.status, route, Math.round(t.ratePerMin || 0));
+      }
+    } else if (this._tab === 'outposts') {
+      const buildUnlocked = (player.researchedNodes || []).includes('tech_outpost_charter');
+      parts.push(buildUnlocked ? 1 : 0);
+      for (const o of a.outposts || []) {
+        parts.push(o.id, o.defId, o.status, o.sectorId || '', Math.round(o.storage || 0), Math.round(o.ratePerMin || 0));
+      }
+    } else {
+      const owned = player.ownedShips || [];
+      parts.push(a.fleetCap || 0, owned.length);
+      for (const fs of a.fleet || []) {
+        parts.push(fs.id, fs.defId, fs.name || '', fs.status, fs.order || '', fs.hullPct != null ? Math.round(fs.hullPct * 100) : '');
+      }
+      for (let i = 0; i < owned.length; i++) parts.push(i, owned[i] && owned[i].defId, owned[i] && owned[i].customName);
+    }
+    return parts.join('|');
+  },
+
   _renderBody() {
-    const body = this._root.querySelector('[data-body]');
+    const body = this._els && this._els.body;
+    if (!body) return;
     const frag = document.createDocumentFragment();
     if (this._tab === 'drones') this._renderDrones(frag);
     else if (this._tab === 'traders') this._renderTraders(frag);
@@ -482,7 +533,7 @@ export const automationScreen = {
 
     // refresh in case automation handled synchronously; otherwise it re-emits change events the
     // uiRoot will route back to refresh() anyway.
-    this.refresh(this._ctx);
+    this.refresh(this._ctx, { forceBody: true });
   },
 };
 

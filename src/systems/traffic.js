@@ -85,7 +85,8 @@ export const traffic = {
 
   _sectorStations() {
     const out = [];
-    for (const e of this.state.entityList) {
+    const stations = (this.state.entityIndex && this.state.entityIndex.dockStations) || this.state.entityList;
+    for (const e of stations) {
       if (e.type === 'station' && e.alive && !(e.data && e.data.isGate)) out.push(e);
     }
     return out;
@@ -132,7 +133,7 @@ export const traffic = {
       // waiting at station?
       if (rec.waitT > 0) {
         rec.waitT -= dt;
-        e.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: e.rot };
+        setIntent(e, 0, 0, false, false, null, e.rot);
         continue;
       }
 
@@ -150,11 +151,11 @@ export const traffic = {
         }
         rec.waitT = 2.5 + (rng.next ? rng.next() : rng()) * 2;
         rec.targetId = this._pickStation(stations, rng).id;
-        e.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle };
+        setIntent(e, 0, 0, false, false, null, aimAngle);
         continue;
       }
       // drive: face the target, thrust forward. moveZ=1 means forward along the nose.
-      e.data.intent = { moveX: 0, moveZ: 1, boost: false, fire: false, fireGroup: null, aimAngle };
+      setIntent(e, 0, 1, false, false, null, aimAngle);
       // clamp speed (intent is read by flight; we keep it simple — full forward, slow ship hull)
     }
   },
@@ -174,3 +175,14 @@ export const traffic = {
     this.bus.emit('aiTrader:requestTrade', { stationId, commodityId, side, qty });
   },
 };
+
+function setIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
+  const data = e.data || (e.data = {});
+  const intent = data.intent || (data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 });
+  intent.moveX = moveX;
+  intent.moveZ = moveZ;
+  intent.boost = boost;
+  intent.fire = fire;
+  intent.fireGroup = fireGroup;
+  intent.aimAngle = aimAngle;
+}
