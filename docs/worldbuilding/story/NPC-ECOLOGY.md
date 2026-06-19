@@ -38,6 +38,27 @@ The network is not a conspiracy. It is a language. The Pit is where they all lea
 
 ---
 
+**The Ritchie structural reveal:**
+
+If the player runs contracts from all four pairs in a single playthrough, and accesses the secondary manifest logs at Tycho, Hollow, Bourse, and Cinder in sequence, the combined log shows a pattern:
+
+— Ore extracted at Pit shafts, weight recorded by Kessler (under-count)
+— Yield logged as "moisture loss" by Drift at Meridian Exchange (matching under-count)
+— Claim on that shaft filed as exhausted by Voss at Hollow Station (pre-empts accurate re-assay)
+— Equipment used on that shaft maintained by Slate at Pit shipyard (fails before re-assay possible)
+— The ore that was "moisture loss" re-enters the system as sealed freight through Mira at Bourse
+— The credits from that re-sale converted by Quinn at Outpost 9 (becomes house scrip, exits the audit trail)
+— The bounty that covers anyone who asks questions cleared by Rook at Cinder (double-tagged, self-paying)
+— The customs inspection of any ship carrying the re-entered ore cleared by Hale at Gate 3 (REG 44-C)
+
+Eight people. One operation. They did not design it together. They don't know they're in it together. The operation designed itself out of the proximity and the mutual utility and twenty years of the same prison teaching everyone the same lesson. They are not colleagues. They are rhymes.
+
+The operation's name, if it has one, is CONTRACT 47-A. Not the player's first job — the operation's first iteration. The player's first job was a continuation of a contract that predates them. Every job they've taken since is a continuation of that job. The graffiti has always known this. The ledger at Ashfall Reach documents it. The player is the latest counterparty.
+
+The Ritchie punchline: when the player sees the combined log and recognizes the pattern, there is no cutscene, no music sting. The log just sits there. The punchline is that they were in the story before they knew it was a story.
+
+---
+
 **Non-Negotiables:**
 
 - No NPC ever references another by name in dialog or contract text.

@@ -21,6 +21,8 @@ DRIFT MINERS COLLECTIVE — CLAIM FILING SUSPENDED: HOLLOW STATION. BACKLOG 22 C
 
 BOURSE FREIGHT — CARGO INSURANCE REMINDER: VERIFY SEAL CODES BEFORE TRANSIT. *(The seal code verification system logs to a database Mira has write access to.)*
 
+CONCORD LOGISTICS OVERSIGHT — SECTOR MAINTENANCE ADVISORY: ATMOSPHERIC RECYCLER SERVICE SCHEDULED. SECTORS NOT MEETING VIABILITY THRESHOLD INELIGIBLE. REVIEW REQUIREMENTS UNDER REF 44-C. *(REF 44-C — the same regulation code Hale uses for customs infractions and the same reference number on Vale's contract authorizations — is also the administrative framework for atmospheric viability scoring. The Pit's viability score fell below threshold in year 3. The Pit has not been on this advisory list since year 3.)*
+
 ---
 
 **TRAPS (appears mid-game, during jump charging or transit):**
@@ -43,7 +45,7 @@ CONCORD ADMIN — CONTRACT 47-A: PAYMENT PENDING. PLEASE ADVISE AVAILABILITY. *(
 
 [UNDELIVERED — RETURN TO SENDER] — TO: SLATE / PIT SHIPYARD / RE: BERTH 4 / WE KNOW WHICH SEAM. *(Return-to-sender means either Slate moved or the sender didn't survive to check delivery.)*
 
-HOLLW STA CLAIM OFFICE — VOSS FILING SUSPENDED: DISPUTE PENDING. NEW CREW ADVISE. *(The second crew. They filed in time. The suspension will be lifted by next cycle. The original claim will be reinstated. The second crew will not be notified.)*
+HOLLOW STATION CLAIM OFFICE — VOSS FILING SUSPENDED: DISPUTE PENDING. NEW CREW ADVISE. *(The second crew. They filed in time. The suspension will be lifted by next cycle. The original claim will be reinstated. The second crew will not be notified.)*
 
 ---
 

@@ -108,6 +108,22 @@ QUESTION: Is this the right set of choices, given the tone? Le Carré's endings 
 
 ---
 
+---
+
+## CURRENT WORKING ANSWERS (developed before agy session — compare to agy's response):
+
+**Prompt 1:** Working answer is Option C (leave unexplained). Conrad/McCarthy both leave the mechanism unreported. The graffiti's prophecy is a given. The player never learns how. The alternative reading is that the graffiti is Option A (dead workers wrote it) but the game never confirms this; the ambiguity is the point.
+
+**Prompt 2:** Working answer: the structural center is DRIFT (the ledger node). Drift is where all four operation phases converge as numbers — weight variance (Kessler), claim status (Voss), incoming freight (Mira), and funds (Quinn) all become numbers in a ledger. The single transaction: ore extracted in the Pit, under-counted at the scale (Kessler), re-logged as "moisture loss" (Drift), re-entered as sealed freight (Mira), converted to clean credits (Quinn), while the claim is pre-emptied (Voss), equipment is sabotaged (Slate), the bounty is double-billed (Rook), and the customs inspection is cleared (Hale). Eight nodes. One operation. The name of the operation is CONTRACT 47-A.
+
+**Prompt 3:** Working answer: the recognition moment is the player's own name in the Kurtz ledger, in the COUNTERPARTY column, six weeks before their first contract. They were in the record before they got there. The "horror" equivalent: "The count never ends. You know that. That's why you're here."
+
+**Prompt 4:** Working answer: the scarce resource is atmospheric processing capacity. Who controls the recyclers controls who breathes what. Director Vale administers the allocation queue that determines recycler maintenance budgets by sector. Ore contracts are the financial mechanism by which sectors prove viability for the next maintenance cycle. The Pit's recyclers stopped being serviced in year 3 because the Pit can't move enough ore to prove viability under the allocation formula. This is not in the organizational chart. It's in the Kurtz figure's ledger, in the column labeled "MAINTENANCE ALLOCATION — SECTOR ATMOSPHERIC."
+
+**Prompt 6:** Working answer: there is a fourth choice. Choice D: "The Ledger Continues" — the player stays at Ashfall Reach and keeps the record. Not death. Not joining the system. Not disappearing from the system. Witnessing it. The previous Kurtz figure's name eventually disappears from the station. The player's name transitions in the ledger from "COUNTERPARTY — ACTIVE" to "WITNESS — CURRENT." The airlock graffiti: "THIS ONE STAYED."
+
+---
+
 ## HOW TO RUN THESE:
 
 ```bash

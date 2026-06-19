@@ -128,7 +128,9 @@ Vale: the income clearing note. Fourth sighting. Also: the CONTRACT 47-A payment
 
 Mechanic: reach Ashfall Reach and make the endgame choice.
 
-Narrative: The Kurtz figure's ledger. Director Vale as a line item under BENEFICIARY. The three choices (Clean Uniform, Same Silence, Only Honest Option) are not presented as a menu. They are three available contracts on three separate board entries, plus the graffiti-only option C.
+Narrative: The Kurtz figure's ledger. Director Vale as a line item under BENEFICIARY. The player's own callsign in the ledger, in the COUNTERPARTY column, filed six weeks before their first contract — under the transponder ID that the ship carried before they bought it. They are already in the record. They were in it before they arrived.
+
+The four choices (Clean Uniform, Same Silence, Only Honest Option, The Ledger Continues) are not presented as a menu. They are three available contracts on three separate board entries, the graffiti-only option C, and the staying-at-the-desk option D (available only if the player is holding the ledger and declines to leave).
 
 Graffiti on the player's bulkhead (reappears, same hand): THEY KNEW THE MASS. THEY ALWAYS KNEW THE MASS.
 

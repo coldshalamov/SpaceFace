@@ -62,6 +62,24 @@ The player's name appears in the graffiti at the next docking cycle, after the s
 
 ---
 
+**CHOICE D: THE LEDGER CONTINUES**
+
+This option is available only if the player took the ledger from the Kurtz figure and has not jettisoned it.
+
+There is no contract board entry for this choice. No comms message. The option appears as a prompt when the player has the ledger in cargo and attempts to leave Ashfall Reach for any other sector: "DEPART ASHFALL REACH?" Yes / No.
+
+If No: the player stays. The prompt resolves. Nothing happens. The derelict station is still there. The Kurtz figure is still at their desk. If the player approaches the station again, the Kurtz figure says only: "You're still here." And later, if the player keeps returning: "You can have the desk." One day the Kurtz figure's name in the Concord database changes from "DECEASED — SECTOR INCIDENT" to "MISSING — STATUS UNRESOLVED." Nobody filed the update. The system just runs its maintenance sweep and escalates the flag.
+
+What happens: the player becomes the next Kurtz figure. They sit at the desk. Cargo traffic keeps moving through the sectors. The patterns keep recurring. The player's ledger entry transitions from "COUNTERPARTY — ACTIVE" to "WITNESS — CURRENT." The endgame loop is now: watch, record, stay. The Kurtz figure who was there before you eventually leaves — not by dying, just by not being there when you check next cycle.
+
+The graffiti that appears at the station airlock once the player stays: "THIS ONE STAYED."
+
+The graffiti at the first station the player will never return to: "THEY'RE NOT COMING BACK."
+
+What the HUD shows for the duration of Choice D: "CARGO: PERSONAL EFFECTS — 1 UNIT / 0.4t." The ledger. Still there.
+
+---
+
 **Why these three choices and not one:**
 
 Le Carré endings are not about winning or losing. They're about what kind of person you become in the process of surviving. George Smiley at the end of *Tinker Tailor* doesn't win. He understands. The winning is hollow. The understanding is what costs him everything.
@@ -71,6 +89,8 @@ Choice A is Smiley becoming Karla's mirror: the player becomes the institution t
 Choice B is Smiley retiring to something that isn't retirement: the player becomes the system's lubricant. They make the rot run smoother. That's not nothing.
 
 Choice C is the book closing itself: the player stops before they become either. Whether this is dignity or waste depends on how many contracts they ran before choosing it.
+
+Choice D is the Conrad answer: the witness. Not the horror, not the man who escaped the horror — the man who saw enough to document it and then discovered that documentation changes nothing about the fact of it. The Kurtz figure in Heart of Darkness is hollowed out by what he's seen. The Conrad equivalent here is someone who survives the knowledge by refusing to stop counting it. The choice isn't heroic. It's just more honest than the other three.
 
 None of these choices is rewarded with a title. None of them is presented as the "good" ending. The game ends the same way it began: with the HUD showing cargo weight that doesn't match what's actually in the hold, and graffiti that knows something the system has already decided not to record.
 
@@ -84,15 +104,25 @@ Their name is in the Concord database as "DECEASED — SECTOR INCIDENT."
 
 What they have: the complete ledger of every cargo transaction that was falsified in Sectors 1–6 over the past twenty years. Every Kessler weight discrepancy. Every Mira reroute. Every Hale clearance. Compiled in handwritten columns on paper, cross-referenced, with names attached.
 
+On the wall above the desk: a hand-labeled chart. Twenty years of atmospheric maintenance budget allocations, sector by sector, cross-referenced with faction holdings. The column marked "THE PIT" has no entries after year 3. The column marked "HELIOS PRIME" has entries every cycle. The column that correlates with ore-contract volume is labeled "VIABILITY SCORE." Sectors that score low on viability don't get recycler maintenance. Sectors that don't get recycler maintenance become uninhabitable. Uninhabitable sectors revert to Concord. The column showing reversion is labeled "ADMINISTRATIVE CLOSURE." Vale's initial appears in the CLOSURE AUTHORITY column on every entry.
+
+The player's name is in the ledger. Not in the recent section — in the section that begins six weeks before the player's first contract. The callsign they're flying under is already in the COUNTERPARTY column under a job that pre-dates them, filed under the transponder ID that the ship had before they got it. They are already in the record. They were in it before they arrived. The ship carries the record forward.
+
 What they say when the player arrives: "I know what you're carrying. I knew before you got here. The mass is always the same. Only the manifest changes."
 
 They don't want anything. They're not asking to be rescued. The information is there if the player wants it. There's no mission attached to taking it. If the player takes the ledger, nothing immediately changes. It just becomes a cargo item: "PERSONAL EFFECTS — 1 UNIT." Mass: 0.4t.
 
-The ledger is not usable as a weapon against the factions. It's not leverage. It's a record. The game has nowhere to put it. Neither does the player. That's the point.
+The ledger is not usable as a weapon against the factions. It's not leverage. It's a record. The game has nowhere to put it. Neither does the player. That's the point. But the player's name stays in it.
 
 The Kurtz figure's final line, after the player takes the ledger or declines: "The count never ends. You know that. That's why you're here."
 
 The player's ship departs. The station doesn't flag them on leaving. The derelict returns to being a blip on the sector scan. The mass of the ledger is 0.4t and it never changes, even if the player jettisons it. The manifest still shows it.
+
+---
+
+**Cross-reference note:**
+
+The mechanical spec (`design/specs/07-missions-contracts-story-spine.md`) B7 reward currently reads "title 'Sector Baron' + NewGame+ unlock." This narrative redesign replaces that reward structure. When implementing B7, the mission system's `story.beatAdvanced{fromIndex:6,toIndex:7}` event should trigger the three-contract-board update described above, not a title grant. The net-worth and rep preconditions (100k + rep ≥50) remain unchanged.
 
 ---
 

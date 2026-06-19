@@ -73,6 +73,18 @@ Both languages describe the same events. The gap between them is the game.
 
 ---
 
+**ATMOSPHERE / BREATH**
+
+The Bacigalupi layer. Everything in the game is ultimately about who controls the recyclers — the atmospheric processing infrastructure that determines what the air is like on every station. Temperature and light are the visible symptoms. The recycler budget is the underlying cause.
+
+The Pit's failing recyclers are not an accident of engineering. They are the Pit's faction position in the atmospheric maintenance queue. The queue is administered by Director Vale's division. The richer the station, the better the air. The better the air, the sharper the thinking, the healthier the inhabitants, the higher the productivity, the more ore moved — the more recycler budget allocated next cycle. It is a closed loop that the Pit exited in year 3.
+
+Recurring breath language: filter quality, scrubber maintenance, oxygen saturation, "elevated CO2," "reserve atmosphere," "breathe deep (something you couldn't do in the Pit)." These are not atmospheric details. They are economic status markers.
+
+The player's ship runs on recycled air from an original-equipment recycler that hasn't been serviced since before they got the ship. They breathe Pit air in transit. The first time they dock at a rich station, the air hits differently. That difference is money. That money flows up through the faction system to the allocation that Vale administers. The player has been paying for air since B0. They just didn't know which account it went into.
+
+---
+
 **THE STAR THAT BURNED OUT**
 
 Helios Prime runs on a star called Helios. The star is not referenced anywhere in the game text. This is intentional: the star predates everything, will outlast everything, and has nothing to say about what happens in its gravity well. The player starts the game orbiting something they never see.

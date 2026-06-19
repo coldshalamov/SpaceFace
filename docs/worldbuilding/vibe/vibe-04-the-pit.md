@@ -36,6 +36,24 @@ When you make enough money to buy a ship and leave, the first thing you notice i
 
 ---
 
+---
+
+**The Bacigalupi resource — what everything is actually about:**
+
+The economy of SpaceFace runs on ore and credits and faction rep. That is the surface economy. Beneath it is the resource everything is actually organized around: atmospheric processing capacity.
+
+Recycling infrastructure is what makes sealed habitats livable. Every station's value is ultimately a function of its recycler quality. The Pit has failing recyclers because recyclers cost money and the Pit is owed nothing. Helios Prime has excellent recyclers because Helios Prime is where the people who fund recyclers live. The stations in between have recyclers that are exactly as good as their position in the faction hierarchy allows.
+
+The factions don't fight over ore fields. They fight over sectors because sectors contain processing infrastructure. A sector with exhausted ore but functioning recyclers is worth more than a sector with full veins and failing scrubbers. The Concord administers jump gate rights partly because jump gate proximity determines who has emergency scrubber access. The MTS toll routes run through the sectors with the best atmospheric processing — the toll is not for transit, it's for the air the transit routes through.
+
+Director Vale's administrative division is Atmospheric Logistics Allocation, which is buried in the Concord's organizational chart under "Logistics Oversight." The division determines which stations get the next cycle's recycler maintenance budget and in what order. This is why Vale's signature appears on every significant contract. Not because Vale micromanages ore runs. Because the ore runs are cover for the decisions about who breathes what air this cycle.
+
+The graffiti that knows this: none, explicitly. But every graffiti piece that touches on temperature, light, smell, or breath is graffiti about who controls the recyclers. "BETTER THAN THE ALTERNATIVE. BARELY. CHECK BACK NEXT QUARTER." — that's not about the food. That's about the filters. The food just makes the filter schedule visible.
+
+The player doesn't know this until they're at Ashfall Reach, where the recyclers are fully offline and they're running on reserve atmosphere and the Kurtz figure's desk has a hand-labeled chart on the wall: 20 years of atmospheric maintenance budget allocations, sector by sector, cross-referenced with faction holdings. The column marked "THE PIT" has no entries after year 3.
+
+---
+
 **For writers and designers:**
 
 Every new location in SpaceFace should be readable against The Pit. Does it smell better or worse? Is the lighting brighter or dimmer? Is the temperature controlled or does it tell you something about the budget? These are not decorative details. They are the game's measurement system for how far up or down the hierarchy any space sits.

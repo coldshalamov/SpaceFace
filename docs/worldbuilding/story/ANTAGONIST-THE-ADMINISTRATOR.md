@@ -6,7 +6,9 @@ The story spine has eight beats and no face on the system. This is the face.
 
 **Who they are:**
 
-Director Vale. No first name in any public record. Concord Auxiliary, Mid-Sector Administrative Division, Logistics Oversight. The title is real. The division is real. What the division actually does is not listed anywhere.
+Director Vale. No first name in any public record. Concord Auxiliary, Mid-Sector Administrative Division, Logistics Oversight. The title is real. The division is real. What the division actually does is not in the public-facing organizational chart.
+
+The division is Atmospheric Logistics Allocation. It determines which stations receive recycler maintenance budget in each cycle and in what order. This is the allocation that decides whether a station breathes at full spectrum or at Pit levels. Vale doesn't administer ore contracts because Vale cares about ore. Vale's signature appears on ore contracts because ore contracts are the financial mechanism by which sectors demonstrate fiscal viability for the next recycler maintenance cycle. A sector that can't move ore doesn't get its recyclers serviced. A sector that doesn't get its recyclers serviced becomes uninhabitable. An uninhabitable sector's claims revert to Concord. Vale processes the reversion. The paperwork is always correct.
 
 Vale is the person who posts Contract 47-A. Not personally — they don't post contracts. But the chain from Vale's signature to the job that withheld the player's payment in the opening run is exactly three links long, and any player who runs enough contracts and pays attention to the paperwork will eventually be able to count them.
 

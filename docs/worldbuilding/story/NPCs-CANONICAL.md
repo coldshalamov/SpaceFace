@@ -6,7 +6,7 @@ Eight names appear on contract boards and after-action logs across sectors. They
 
 **VOSS** runs the claim recorder at Hollow Station. "Vein looks played out. Move on." Mask down. Cutter finishes. Claim filed exhausted same shift new crew arrives. Prior markers stripped. Graffiti (on the claim post): THE ROCK REMEMBERS WHO FILED FIRST. Graffiti (lower, added after, unattributed): THE SECOND SHIFT FOUND MARKERS. THEY'RE GONE NOW. VOSS WAS ON THAT SHIFT.
 
-**MIRA** handles sealed freight at Bourse. "Route's clear. Payment on delivery." She swaps the manifest codes at the relay while the comms window stays open on the prior client's channel. The crate arrives with new seals. The original client receives the seizure notice. Graffiti inside the cargo hold: THE SEAL WAS NEVER YOURS.
+**MIRA** handles sealed freight at Bourse. "Route's clear. Payment on delivery." She swaps the manifest codes at the relay while the comms window stays open on the prior client's channel. The crate arrives with new seals. The original client receives the seizure notice. Graffiti inside the cargo hold: THE SEAL WAS NEVER YOURS. Graffiti at the loading dock (added later, different hand): MIRA NEVER TOUCHES THE CRATE. THAT'S HOW YOU KNOW WHAT'S IN IT.
 
 **ROOK** coordinates bounty tags from a booth at Cinder. "Target's last ping was here. Standard fee." The stylus hovers over the payout line, then adds a second signature below it. The same target ID appears on a second board the next cycle. Rook's cut is already deducted from both. Graffiti on the comms panel: ONE NAME. TWO PAYERS. Below it, cut off: ROOK OWES ME—
 

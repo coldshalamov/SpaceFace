@@ -48,7 +48,7 @@ Betrayal pattern: A Choir cell offers a relic authentication service, certifies 
 HUD/graffiti lie: Relic tags read "dormant — no signal" while the object maintains a low-power Choir handshake.
 Spacer superstition: Never carry a Choir-certified relic past a Choir shrine without first cracking its casing; intact relics auto-report their own location as "pilgrim tribute."
 Prison origin: Some inmates found meaning in the old rituals when the new ones failed. After release they kept the same certainty: the relic is never inert, only waiting.
-Graffiti: *The relic does not forget who carried it.*
+Graffiti: *The relic reports home. The shrine is home.*
 
 **Helix Directorate** (short: HELIX)
 Primary function: legal-corporate membrane and tariff enforcement.
@@ -62,7 +62,7 @@ Graffiti: *The invoice and the fine are written in the same hand. Read the invoi
 Primary function: hazardous-sector labor contracts and modification services.
 Betrayal pattern: A Vael crew takes a hazardous salvage job at below-market rate, works it completely, then presents an invoice at completion for every override they triggered mid-job. The invoice is always technically correct — the overrides are listed in the contract addendum. Nobody reads the addendum. The addendum is twelve pages. The Vael have been writing that addendum since before you were born.
 HUD/graffiti lie: Labor contract tags read "voluntary — standard terms" while the addendum contains a sub-clause that transfers partial ship-title to the Vael coordinator upon job completion if the client has outstanding debts to any Vael subsidiary. Most clients have outstanding debts to a Vael subsidiary. Most clients don't know what a Vael subsidiary is.
-Spacer superstition: Never sign a Vael contract on an empty stomach; the terms look different when you're hungry.
+Spacer superstition: Never accept a Vael job when you owe anything to anyone. The addendum reaches farther than the job does.
 Prison origin: They were the ones the wardens used for the jobs the other prisoners wouldn't take. They didn't survive by being stronger. They survived by becoming the thing the wardens needed more than they feared. After release they applied the same principle: be useful in a way that makes you difficult to refuse. Be difficult to refuse in a way that doesn't look like leverage until the invoice arrives.
 Graffiti: *They didn't modify the workers. They modified the terms of the workers.*
 Second graffiti (smaller, below the first): *THE ADDENDUM IS ON PAGE 9. READ PAGE 9.*
