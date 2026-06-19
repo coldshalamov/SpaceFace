@@ -90,4 +90,28 @@ Reveal: kill-feed "CREW B — 4 REGISTERED / LAST PING: HOLLOW STATION SHAFT 7 /
 
 ---
 
+**15 (CLEAN CONTRACT)**  
+Board: "CARGO RUN — STANDARD"  
+HUD on accept: "Pickup confirmed."  
+Graffiti: "Cargo arrived."  
+Reveal: none.
+
+**16 (CLEAN CONTRACT)**  
+Board: "PASSENGER TRANSFER — ROUTINE"  
+HUD on accept: "Passenger aboard."  
+Graffiti: "They got there."  
+Reveal: none.
+
+---
+
+**Design principle — the clean contract:**
+
+Not every contract reveals horror. If every manifest self-corrects, every kill feed surprises, every graffiti line accuses — the player expects the reveal and the reveals stop working. Le Carré's London is not a place where every door opens onto a crime. It's a place where most doors open onto ordinary rooms, and the extraordinary ones look like the rest until they don't.
+
+The clean contracts (15, 16, and procedural variants) should be indistinguishable from the corrupt ones at the board level. Same language. Same HUD text. The graffiti is flat because nothing happened. "Cargo arrived." is the graffiti for a job that was exactly what it said it was. The player doesn't know until the end. This is the structure: a dozen ordinary hauls, then Contract 08.
+
+The contrast is what makes Contract 08 work. Without the clean contracts, the horror is just the texture of the game. With them, it's an event.
+
+---
+
 Word count: 612 (original) + additions. All text is raw contract data. No framing. Consistent with unreliable HUD, moving graffiti, and post-action truth bleed.
