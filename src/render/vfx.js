@@ -296,7 +296,13 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _onFire(p) {
     if (!this._scene) return;
-    const origin = (p.origin && typeof p.origin.x === 'number') ? p.origin : this._posFrom(p, p.ownerId);
+    // Hero assets carry named sockets (spec §9.9): a weapon muzzle should leave the visible barrel, not
+    // the entity center. Resolve from the live mesh socket when available, else use the payload origin.
+    let origin = (p.origin && typeof p.origin.x === 'number') ? p.origin : this._posFrom(p, p.ownerId);
+    if (this.helpers.socketWorldPos && p.ownerId === this.state.playerId) {
+      const sock = this.helpers.socketWorldPos(p.ownerId, 'SOCKET_Weapon_Front');
+      if (sock) origin = sock;
+    }
     if (!origin) return;
     // combat:fire emits `dir` as a NUMBER (yaw radians) — both weapons.js emitters do. Older callers
     // may pass {x,z}. Resolve robustly (0 is a valid heading, so never treat dir===0 as falsy).
@@ -625,9 +631,17 @@ export const vfx = {
     if (!this._scene) return;
     const col0 = this._engineColor(e);
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-    const back = (e.radius || 4) * 0.85;
-    const bx = e.pos.x - cf * back;
-    const bz = e.pos.z - sf * back;
+    // Hero assets carry SOCKET_Trail_Main at the authored nozzle; originate the plume there so it
+    // leaves the real engine, not a center-derived point (spec §9.9, §14.2). Falls back to the
+    // radial-behind formula for procedural ships that have no socket.
+    let bx, bz;
+    const sock = this.helpers.socketWorldPos ? this.helpers.socketWorldPos(e.id, 'SOCKET_Trail_Main') : null;
+    if (sock) { bx = sock.x; bz = sock.z; }
+    else {
+      const back = (e.radius || 4) * 0.85;
+      bx = e.pos.x - cf * back;
+      bz = e.pos.z - sf * back;
+    }
     const baseA = Math.atan2(-sf, -cf);
     // outer plume: faction-hot -> dark blue, wider with throttle, jittered backward
     this._c0.set(col0); this._c1.set('#10204a');

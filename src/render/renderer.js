@@ -164,6 +164,7 @@ export const render = {
     ctx.helpers.worldToScreen = (v) => this.worldToScreen(v);
     ctx.helpers.raycastToPlane = (ndc) => this.raycastToPlane(ndc);
     ctx.helpers.addTrauma = (a) => cam.addTrauma(a);
+    ctx.helpers.socketWorldPos = (id, name) => this.socketWorldPos(id, name);
 
     bus.on('entity:spawned', ({ id, entity }) => {
       const m = vf.build(entity);
@@ -369,6 +370,19 @@ export const render = {
     _ray.setFromCamera(_v2, this.cam.obj);
     const hit = _ray.ray.intersectPlane(_plane, _pt);
     return hit ? { x: hit.x, z: hit.z } : { x: 0, z: 0 };
+  },
+
+  // World XZ of a named attachment socket on an entity's mesh, or null if the entity has no mesh or no
+  // such socket. Used by VFX to originate weapon/mining/engine effects from authored hardware (spec
+  // §9.9) instead of the entity center. Failure returns null so callers fall back to the payload origin.
+  socketWorldPos(entityId, socketName) {
+    const m = this._meshes.get(entityId);
+    if (!m) return null;
+    let socket = null;
+    m.traverse((o) => { if (!socket && o.userData && o.userData.spacefaceSocket && o.name === socketName) socket = o; });
+    if (!socket) return null;
+    socket.updateWorldMatrix(true, false);
+    return { x: socket.matrixWorld.elements[12], z: socket.matrixWorld.elements[14] };
   },
 
   onResize() {
