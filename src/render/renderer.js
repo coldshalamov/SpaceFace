@@ -7,6 +7,7 @@ import { createStarfield } from './starfield.js';
 import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
+import { projectedWidthPx } from './lod.js';
 import { installDiagnostics } from './diagnostics.js';
 import { createPlanetFactory } from './planetFactory.js';
 
@@ -147,6 +148,9 @@ export const render = {
     this._keyLight = shadowsOn ? key : null; // referenced by _updateShadowFollow() each frame
     this.planetFactory = createPlanetFactory();
     this._planetBodies = [];
+    // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
+    // frame before onResize has sane values.
+    { const dpr = renderer.getPixelRatio() || 1; this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr }; }
     try { this.bloom = createBloom(renderer, drawSize.x, drawSize.y); }
     catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
     this._meshes = new Map(); // entityId -> Object3D
@@ -313,6 +317,16 @@ export const render = {
       // modulates light groups / armor / drive from the live hull fraction so damage reads without the
       // HUD bar. Cheap no-op for non-hero meshes (no closure). Called once per frame per entity.
       if (m.userData.updateDamageState) m.userData.updateDamageState(e, now);
+
+      // Projected-screen-size LOD (spec §12.4): resolve each entity's detail level from its projected
+      // pixel width with hysteresis, so assets can drop detail at distance. The selector owns no
+      // geometry; per-asset hooks read m.userData.lod.level and decide what to show. Cheap for entities
+      // without a lod state (no closure attached).
+      if (m.userData.lod) {
+        const px = projectedWidthPx(e.pos, e.radius, this.cam.obj, this.viewport);
+        const level = m.userData.lod.resolve(px);
+        if (m.userData.updateLod) m.userData.updateLod(level);
+      }
     }
   },
 
@@ -394,6 +408,10 @@ export const render = {
     const drawSize = applyRendererSize(this.renderer, this.state);
     if (this.bloom) this.bloom.setSize(drawSize.x, drawSize.y);
     this.cam.onResize();
+    // Cache the CSS-pixel viewport for the LOD projector (projectedWidthPx expects CSS px, matching
+    // the projected-width thresholds in spec §12.4). Drawing-buffer size carries devicePixelRatio.
+    const dpr = this.renderer.getPixelRatio() || 1;
+    this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr };
   },
 };
 

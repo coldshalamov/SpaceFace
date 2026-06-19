@@ -3,6 +3,7 @@
 // +X forward, +Y up, +Z starboard, metres. The finished hull is 28 m long, ~14 m wide, ~6 m tall.
 import * as THREE from 'three';
 import { attachDamageStateDriver } from './kestrelDamage.js';
+import { attachLodState } from '../lod.js';
 
 const TAU = Math.PI * 2;
 const DESIGN_RADIUS = 14;
@@ -479,6 +480,24 @@ export function buildKestrelHero(entity) {
 
   addBorrowedTimeDecal(hull);
   addFadedSharkTeeth(hull);
+
+  // Projected-screen-size LOD (spec §12.4). The decals are the most expensive per-ship detail (canvas
+  // textures) and the first thing to drop at distance — they are storytelling flourishes, not readable
+  // from far away. Collect the decal planes now (post-creation, pre-merge) so the LOD reaction can hide
+  // them at LOD1+ while keeping the silhouette (spec §12.4: "Preserve nose, engine spacing ... across
+  // transitions"). The selector itself lives in render/lod.js and is driven by the renderer.
+  const decals = [];
+  hull.traverse((o) => { if (o.name && o.name.startsWith('Kestrel_Decal_')) decals.push(o); });
+  let lastLod = 'lod0';
+  root.userData.updateLod = function updateLod(level) {
+    if (level === lastLod) return;
+    lastLod = level;
+    // LOD0: everything. LOD1/LOD2: drop decals (they're illegible <300px and cost a texture each).
+    // Silhouette, sockets, damage state, and drive are all preserved — only flourishes drop.
+    const showDecals = level === 'lod0';
+    for (const d of decals) d.visible = showDecals;
+  };
+  attachLodState(root);
 
   // Gameplay/art contract. These marker transforms intentionally use the same canonical authored
   // space as the committed GLB reference and are available to future VFX/module integration.
