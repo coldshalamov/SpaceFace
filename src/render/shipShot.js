@@ -148,4 +148,32 @@ export async function runShipShot(SF) {
       for (const c of hidden3) c.visible = true;
     }
   } catch (err) { console.error('[shipShot] pirate build failed', err); }
+
+  // ---- Remaining faction captures (§8.3 Meridian, §8.4 Drift, §8.6 Quiet, §8.7 Vael) so the full
+  // faction-contrast set (Phase 3 §20) can be judged side-by-side from live renders. ----
+  const REMAINING = [
+    { host: 'mule_trader', name: 'meridian_trader_live', radius: 20 },
+    { host: 'bruiser_brawler', name: 'drift_barge_live', radius: 19 },
+    { host: 'corsair_raider', name: 'quiet_raider_live', radius: 16 },
+    { host: 'lancer_sniper', name: 'vael_sniper_live', radius: 17 },
+  ];
+  for (const r of REMAINING) {
+    try {
+      const ent = { id: 'shot_' + r.host, type: 'ship', team: 1, radius: r.radius, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: { defId: 'ship_x', lootTableId: r.host } };
+      const mesh = vf.build(ent);
+      if (!mesh) continue;
+      const tg = new THREE.Group(); scene.add(tg); tg.add(mesh);
+      const hid = [];
+      for (const child of scene.children) { if (child !== tg && child.userData && child.userData.kind) { child.visible = false; hid.push(child); } }
+      const pc = cam.position.clone(); cam.position.set(38, 28, 38); cam.lookAt(0, 1.2, 0);
+      renderer.render(scene, cam); await new Promise((rr) => setTimeout(rr, 30));
+      try {
+        const url = renderer.domElement.toDataURL('image/jpeg', 0.88);
+        const res = await fetch('/__shot?name=' + r.name, { method: 'POST', body: url });
+        console.log('[shipShot] captured', r.name, '->', (await res.json()).file);
+      } catch (err) { console.error('[shipShot]', r.name, 'capture failed', err); }
+      cam.position.copy(pc); scene.remove(tg);
+      for (const c of hid) c.visible = true;
+    } catch (err) { console.error('[shipShot]', r.host, 'build failed', err); }
+  }
 }

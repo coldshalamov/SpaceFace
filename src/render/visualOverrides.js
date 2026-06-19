@@ -6,28 +6,25 @@
 import { buildKestrelHero } from './ships/kestrelHero.js';
 import { buildConcordPatrol } from './ships/concordPatrol.js';
 import { buildReaverPirate } from './ships/reaverPirate.js';
+import { buildMeridianTrader } from './ships/meridianTrader.js';
+import { buildDriftBarge } from './ships/driftBarge.js';
+import { buildQuietRaider } from './ships/quietRaider.js';
+import { buildVaelSniper } from './ships/vaelSniper.js';
 
 function isPlayerKestrel(entity) {
-  return !!entity
-    && entity.type === 'ship'
-    && entity.team === 0
-    && entity.data
-    && entity.data.defId === 'ship_kestrel';
+  return !!entity && entity.type === 'ship' && entity.team === 0 && entity.data && entity.data.defId === 'ship_kestrel';
 }
 
-// The Concord (Solar Concord Navy) patrol interdictor — the lawful-authority NPC players meet early.
-function isConcordPatrol(entity) {
-  return !!entity
-    && entity.type === 'ship'
-    && entity.data
-    && entity.data.lootTableId === 'patrol_lawman'
-    && (entity.factionId === 'faction_scn' || (entity.data.ai && entity.data.ai.lawful));
-}
-
-// The Crimson Reach pirate — a stolen/converted civilian hull, the §8.5 predator (Phase 3 §20).
-function isReaverPirate(entity) {
-  return !!entity && entity.type === 'ship' && entity.data && entity.data.lootTableId === 'reaver_pirate';
-}
+// Faction bespoke ships intercept by enemy type id (data.lootTableId, set in combat.js). Each maps a
+// spec §8 faction grammar to its most thematically-appropriate NPC host visible in the first sector.
+const FACTION_BUILDERS = {
+  patrol_lawman: { build: buildConcordPatrol, label: 'Concord patrol' },     // §8.2 authority
+  reaver_pirate: { build: buildReaverPirate, label: 'Reaver pirate' },       // §8.5 pirate
+  mule_trader: { build: buildMeridianTrader, label: 'Meridian trader' },     // §8.3 corporate
+  bruiser_brawler: { build: buildDriftBarge, label: 'Drift barge' },         // §8.4 blue-collar
+  corsair_raider: { build: buildQuietRaider, label: 'Quiet raider' },        // §8.6 smuggler
+  lancer_sniper: { build: buildVaelSniper, label: 'Vael sniper' },           // §8.7 non-human
+};
 
 /**
  * Install the hero-asset registry on a live visual factory.
@@ -42,14 +39,14 @@ export function installVisualOverrides(factory) {
     if (isPlayerKestrel(entity)) {
       try { return buildKestrelHero(entity); }
       catch (error) { console.warn('[visualOverrides] Kestrel hero build failed; using procedural fallback', error); }
-    } else if (isConcordPatrol(entity)) {
-      // Bespoke Concord authority hull (spec §8.2): bilateral, serialized, chrome, regulated.
-      try { return buildConcordPatrol(entity); }
-      catch (error) { console.warn('[visualOverrides] Concord patrol build failed; using procedural fallback', error); }
-    } else if (isReaverPirate(entity)) {
-      // Bespoke pirate conversion (spec §8.5): stolen hull, altered posture, broken symmetry, hot emission.
-      try { return buildReaverPirate(entity); }
-      catch (error) { console.warn('[visualOverrides] Reaver pirate build failed; using procedural fallback', error); }
+    } else if (entity && entity.type === 'ship' && entity.data) {
+      // Faction bespoke ships (spec §8.2–§8.7, Phase 3 §20). Each is failure-isolated: any throw in
+      // the bespoke builder falls back to the procedural factory, so a broken hero never blanks an NPC.
+      const entry = FACTION_BUILDERS[entity.data.lootTableId];
+      if (entry) {
+        try { return entry.build(entity); }
+        catch (error) { console.warn(`[visualOverrides] ${entry.label} build failed; using procedural fallback`, error); }
+      }
     }
     return fallbackBuild(entity);
   };
