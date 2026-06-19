@@ -106,6 +106,18 @@ export async function runShipShot(SF) {
   scene.remove(tmp);
   for (const c of hidden) c.visible = true;
 
+  // ---- §16.3 Shipyard presentation: a controlled three-quarter angle showing prow, canopy, shoulder
+  // gaps, drive, and upgrade points (spec §16.3). This is the premium shipyard surface — tighter and
+  // lower than the flight view, no wide-angle distortion. ----
+  try {
+    cam.position.set(22, 14, 22); cam.lookAt(0, 1.2, 0);
+    renderer.render(scene, cam); await new Promise((r) => setTimeout(r, 30));
+    const url = renderer.domElement.toDataURL('image/jpeg', 0.9);
+    const res = await fetch('/__shot?name=kestrel_shipyard', { method: 'POST', body: url });
+    console.log('[shipShot] captured kestrel_shipyard.jpg ->', (await res.json()).file);
+  } catch (err) { console.error('[shipShot] shipyard capture failed', err); }
+  cam.position.copy(prevPos);
+
   // ---- Concord Patrol Interdictor capture (spec §8.2, Phase 3): the lawful-authority NPC, captured
   // alongside the player Kestrel so the faction-contrast read (§20 Phase 3) can be judged. Built via
   // the same live factory — the override seam intercepts it as a faction_scn patrol_lawman. ----
