@@ -86,6 +86,13 @@ export function createUiInput(ctx, screenManager) {
       case 'Enter':
         if (dockInRange) { ev.preventDefault(); doDock(); }
         return;
+      case 'F7': {
+        // Collision / socket / landing-contact debug overlay toggle (graphics spec §12.5).
+        ev.preventDefault();
+        const dbg = state.render && state.render.debug;
+        if (dbg) { const on = dbg.toggle(); bus.emit('audio:cue', { id: on ? 'ui_open' : 'ui_back' }); }
+        return;
+      }
       case 'b': case 'B':
         // Drill lens (V2 §7 / cut-list #27): open the ant-farm mining screen on the targeted
         // asteroid (or the mining system's soft-locked one). Bails with a toast if no asteroid.

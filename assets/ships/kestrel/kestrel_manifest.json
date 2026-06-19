@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "assetId": "SF_K0_KESTREL_BORROWED_TIME",
+  "displayName": "SF-K0 Kestrel / BORROWED TIME",
+  "role": "starter ship; graphics quality benchmark",
+  "fiction": {
+    "sentence": "A death ship that still starts every morning.",
+    "class": "Tier-0 scout / manual miner / courier",
+    "history": "Haunted ex-gangster runner nobody else would fly.",
+    "motto": "BORROWED TIME",
+    "mascot": "ghost service stencil",
+    "tally": 13
+  },
+  "coordinateSystem": {
+    "handedness": "right",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre"
+  },
+  "nominalDimensionsM": {
+    "length": 28,
+    "height": 6,
+    "beam": 14
+  },
+  "actualBoundsDimensionsM": {
+    "length": 27.69,
+    "height": 6.4851,
+    "beam": 13.6
+  },
+  "runtimeSource": "src/render/ships/kestrelHero.js",
+  "files": {
+    "referenceModel": "kestrel_reference.glb",
+    "heroSheet": "kestrel_hero.svg",
+    "blueprint": "kestrel_blueprint.svg",
+    "readme": "README.md"
+  },
+  "metrics": {
+    "geometry": {
+      "ok": true,
+      "errors": [],
+      "meshCount": 57,
+      "sourceVertexCount": 1028,
+      "triangleCount": 1844,
+      "boundsMin": [
+        -13.79,
+        -2.55,
+        -6.8
+      ],
+      "boundsMax": [
+        13.9,
+        3.9351,
+        6.8
+      ],
+      "dimensionsM": [
+        27.69,
+        6.4851,
+        13.6
+      ]
+    },
+    "glb": {
+      "triangles": 1844,
+      "meshes": 57,
+      "nodes": 64,
+      "bytes": 199028
+    }
+  },
+  "materials": [
+    {
+      "name": "Shell_Aged_Warm_Gray",
+      "color": "#817b70",
+      "metallic": 0.18,
+      "roughness": 0.58,
+      "emissive": null,
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Shell_Replacement_Dark",
+      "color": "#4e5050",
+      "metallic": 0.28,
+      "roughness": 0.62,
+      "emissive": null,
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Mechanical_Graphite",
+      "color": "#10161b",
+      "metallic": 0.78,
+      "roughness": 0.42,
+      "emissive": null,
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Load_Gunmetal",
+      "color": "#252b30",
+      "metallic": 0.88,
+      "roughness": 0.29,
+      "emissive": null,
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Frontier_Cyan",
+      "color": "#4ecbe0",
+      "metallic": 0.08,
+      "roughness": 0.52,
+      "emissive": null,
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Canopy_Smoked",
+      "color": "#061a22",
+      "metallic": 0.08,
+      "roughness": 0.14,
+      "emissive": "#0a3040",
+      "alpha": 0.92,
+      "double_sided": true
+    },
+    {
+      "name": "Sensor_Cyan",
+      "color": "#a0eef8",
+      "metallic": 0.05,
+      "roughness": 0.18,
+      "emissive": "#8adce8",
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Drive_Core",
+      "color": "#e6fdff",
+      "metallic": 0.02,
+      "roughness": 0.16,
+      "emissive": "#ffffff",
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Drive_Cyan",
+      "color": "#4ecbe0",
+      "metallic": 0.04,
+      "roughness": 0.2,
+      "emissive": "#4ecbe0",
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Practical_Amber",
+      "color": "#e9a34a",
+      "metallic": 0.04,
+      "roughness": 0.38,
+      "emissive": "#e9a34a",
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Warning_Mustard",
+      "color": "#c28b35",
+      "metallic": 0.06,
+      "roughness": 0.66,
+      "emissive": null,
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Field_Repair_Sage",
+      "color": "#53665a",
+      "metallic": 0.22,
+      "roughness": 0.72,
+      "emissive": null,
+      "alpha": 1.0,
+      "double_sided": false
+    },
+    {
+      "name": "Oxidized_Rust",
+      "color": "#6b3f2b",
+      "metallic": 0.02,
+      "roughness": 0.86,
+      "emissive": null,
+      "alpha": 1.0,
+      "double_sided": false
+    }
+  ],
+  "sockets": [
+    {
+      "name": "SOCKET_Weapon_Front",
+      "translation": [
+        12.0,
+        0.82,
+        0
+      ],
+      "role": "weapon",
+      "forward": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "SOCKET_Mining_Front",
+      "translation": [
+        12.35,
+        -0.98,
+        0
+      ],
+      "role": "mining",
+      "forward": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "SOCKET_Engine_Main",
+      "translation": [
+        -12.75,
+        -0.05,
+        0
+      ],
+      "role": "engine",
+      "forward": [
+        -1,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "SOCKET_Utility_Dorsal",
+      "translation": [
+        -1.4,
+        1.95,
+        3.75
+      ],
+      "role": "utility",
+      "forward": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "name": "SOCKET_Cargo_Ventral",
+      "translation": [
+        -0.8,
+        -2.05,
+        0
+      ],
+      "role": "cargo",
+      "forward": [
+        0,
+        -1,
+        0
+      ]
+    },
+    {
+      "name": "SOCKET_Trail_Main",
+      "translation": [
+        -13.1,
+        -0.05,
+        0
+      ],
+      "role": "vfx",
+      "forward": [
+        -1,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "SOCKET_Camera_Focus",
+      "translation": [
+        0,
+        0.3,
+        0
+      ],
+      "role": "camera",
+      "forward": [
+        1,
+        0,
+        0
+      ]
+    }
+  ],
+  "visualContract": {
+    "threeSecondRead": [
+      "guarded wedge hull",
+      "split shoulders",
+      "single axial cyan drive",
+      "broken cyan centerline",
+      "paired sensor brow"
+    ],
+    "thirtySecondRead": [
+      "port field repair",
+      "starboard utility pod",
+      "landing skids",
+      "visible pulse weapon",
+      "visible mining emitter",
+      "BORROWED TIME stencil"
+    ],
+    "wearRule": "Only contact, heat, service, leading-edge, and repair zones receive strong wear."
+  },
+  "authoring": {
+    "generator": "tools/art/generate_kestrel_reference.py",
+    "thirdPartyDependencies": [],
+    "deterministic": true
+  }
+}
