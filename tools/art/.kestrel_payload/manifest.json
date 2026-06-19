@@ -1,0 +1,31 @@
+{
+  "src/render/renderer.js": [
+    "p00.b64"
+  ],
+  "src/render/visualOverrides.js": [
+    "p01.b64"
+  ],
+  "src/render/ships/kestrelHero.js": [
+    "p02.b64",
+    "p03.b64"
+  ],
+  "tools/art/generate_kestrel_reference.py": [
+    "p04.b64",
+    "p05.b64"
+  ],
+  "docs/GRAPHICS_STYLE_GUIDE.md": [
+    "p06.b64",
+    "p07.b64",
+    "p08.b64",
+    "p09.b64"
+  ],
+  "assets/ships/kestrel/README.md": [
+    "p10.b64"
+  ],
+  "scripts/check-kestrel-asset.mjs": [
+    "p11.b64"
+  ],
+  "package.json": [
+    "p12.b64"
+  ]
+}
