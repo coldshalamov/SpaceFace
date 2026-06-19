@@ -136,7 +136,9 @@ Graffiti on the player's bulkhead (reappears, same hand): THEY KNEW THE MASS. TH
 
 The Kurtz figure's last line: "The count never ends. You know that. That's why you're here."
 
-The comms on the way out of Ashfall Reach (regardless of choice): one last popup, no sender, no channel ID, just: "Good work. Keep it clean." *(Vale's only direct line. The one the player may have heard in B5 at the Trusted station. Repeated here at the end because the ending, regardless of which one the player chose, is the kind of work Vale calls good.)*
+The comms when the player engages the jump drive from Ashfall Reach (regardless of destination): one last popup, no sender, no channel ID, just: "Good work. Keep it clean." *(Vale's only direct line. The one the player may have heard in B5 at the Trusted station. Repeated here at the end because the ending, regardless of which one the player chose, is the kind of work Vale calls good.)* 
+
+Timing note: this popup fires the moment the jump drive begins charging — before the "JUMP WITHOUT DESTINATION? Yes / No" prompt appears for Choice C. The player reads "Good work. Keep it clean." and then decides whether to jump. If they choose no, Vale's approval sits on their comms log. If they choose yes, it's the last received message before the reactor fails. The system approved the work regardless.
 
 What the player learns: the only thing that determines whether Vale says "good work" is whether the work got done. The moral content of the work is not relevant to the assessment.
 

@@ -7,7 +7,7 @@ Vietnam-era punk graffiti sprayed on a bulkhead that still smells like cordite a
 SpaceFace starts in the armpit of the solar system: a half-abandoned prison-colony called The Pit, where the UN dumped the last generation of "unreformable" debtors, hackers, and political embarrassments. Your ship is a repossessed tug with a reactor that prays to Saint Jude. Your crew is whatever three idiots will still talk to you after the last job went sideways. You are not a hero. You are the guy who knows which airlock the inspectors never check.
 
 **Voice**
-Malcolm Reynolds after five years in a penal colony and a bad tattoo artist. Short sentences. Sarcasm as punctuation. "They said the contract was clean. They lied. We still took it." No inspirational speeches. No "we can do this." Just "don't die stupid" muttered into the comms while the reactor screams.
+Eleven months on a Pit survey crew and five years of contracts that paid what they paid. Short sentences. Silence as punctuation. "They said the contract was clean. They lied. We still took it." No inspirational speeches. No "we can do this." No performance for an audience that doesn't exist. Just hands on the controls when the reactor screams, because that's what you do with your hands.
 
 **Humor Style**
 Borderlands edge sharpened on a whetstone of actual corpses. Dark, fast, zero sentiment. Killing is never glorified and never tragic—just another line item on the after-action report. "Target neutralized. Also the guy next to him. And the wall behind them. Kill feed took a second to catch up." Gallows humor that lands because the alternative is screaming into the void. Laugh or bleed; the game prefers you do both.

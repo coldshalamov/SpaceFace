@@ -85,7 +85,22 @@ The player's ship runs on recycled air from an original-equipment recycler that 
 
 ---
 
-**THE STAR THAT BURNED OUT**
+**THE OFFICIAL VERSION**
+
+The Stephenson layer. Every event in the game is recorded in at least two places. Usually four.
+
+First: the HUD log — what the system currently says happened.
+Second: the manifest — what the cargo currently says it is.
+Third: the comms archive — what was said at the time, before any corrections.
+Fourth: the graffiti — what survived the corrections.
+
+Whoever controls which record counts as "official" controls what happened. This is not a conspiracy. It is database architecture. The Concord log is the official record because Concord built the database. The graffiti is not a record; it's testimony. Testimony has no standing. The manifest is the official cargo description because the manifest is what the customs system reads; the seal codes are the official provenance because the seal code system is what Mira's employer controls write access to.
+
+The Kurtz figure's ledger is accurate. It is also inadmissible. Not because it's false — because it's not in the system. The ledger is handwritten on paper. The paper doesn't have a database entry. The entry doesn't exist. Events that don't have entries didn't happen.
+
+Director Vale's power is not that Vale is corrupt. Vale's power is that Vale determines which log is the official one. The ore contract authorization under REF 44-C is official because Vale's division is the authority of record for mid-sector logistics. The atmospheric viability score is official because Vale's division administers the scoring framework. The reversion of uninhabitable sectors to Concord is official because Vale's division files the reversion. All of these facts are in the same database. The database is internally consistent. The database is, by definition, the truth.
+
+Design application: any time there are two records that contradict each other, the game should show both without resolving the conflict. The player decides which is true. The system has already decided.
 
 Helios Prime runs on a star called Helios. The star is not referenced anywhere in the game text. This is intentional: the star predates everything, will outlast everything, and has nothing to say about what happens in its gravity well. The player starts the game orbiting something they never see.
 

@@ -36,8 +36,6 @@ When you make enough money to buy a ship and leave, the first thing you notice i
 
 ---
 
----
-
 **The Bacigalupi resource — what everything is actually about:**
 
 The economy of SpaceFace runs on ore and credits and faction rep. That is the surface economy. Beneath it is the resource everything is actually organized around: atmospheric processing capacity.
