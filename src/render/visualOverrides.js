@@ -5,6 +5,7 @@
 // throws, the original factory still produces a usable ship instead of blanking the entity.
 import { buildKestrelHero } from './ships/kestrelHero.js';
 import { buildConcordPatrol } from './ships/concordPatrol.js';
+import { buildReaverPirate } from './ships/reaverPirate.js';
 
 function isPlayerKestrel(entity) {
   return !!entity
@@ -15,13 +16,17 @@ function isPlayerKestrel(entity) {
 }
 
 // The Concord (Solar Concord Navy) patrol interdictor — the lawful-authority NPC players meet early.
-// Enemies carry the enemy type id on data.lootTableId (combat.js); data.defId is the underlying shipId.
 function isConcordPatrol(entity) {
   return !!entity
     && entity.type === 'ship'
     && entity.data
     && entity.data.lootTableId === 'patrol_lawman'
     && (entity.factionId === 'faction_scn' || (entity.data.ai && entity.data.ai.lawful));
+}
+
+// The Crimson Reach pirate — a stolen/converted civilian hull, the §8.5 predator (Phase 3 §20).
+function isReaverPirate(entity) {
+  return !!entity && entity.type === 'ship' && entity.data && entity.data.lootTableId === 'reaver_pirate';
 }
 
 /**
@@ -35,27 +40,22 @@ export function installVisualOverrides(factory) {
   const fallbackBuild = factory.build.bind(factory);
   factory.build = (entity) => {
     if (isPlayerKestrel(entity)) {
-      try {
-        return buildKestrelHero(entity);
-      } catch (error) {
-        console.warn('[visualOverrides] Kestrel hero build failed; using procedural fallback', error);
-      }
+      try { return buildKestrelHero(entity); }
+      catch (error) { console.warn('[visualOverrides] Kestrel hero build failed; using procedural fallback', error); }
     } else if (isConcordPatrol(entity)) {
-      // Bespoke Concord authority hull (spec §8.2): bilateral, serialized, chrome, regulated — the
-      // visual opposite of the Kestrel's adapted survivor grammar. Failure-isolated like the Kestrel.
-      try {
-        return buildConcordPatrol(entity);
-      } catch (error) {
-        console.warn('[visualOverrides] Concord patrol build failed; using procedural fallback', error);
-      }
+      // Bespoke Concord authority hull (spec §8.2): bilateral, serialized, chrome, regulated.
+      try { return buildConcordPatrol(entity); }
+      catch (error) { console.warn('[visualOverrides] Concord patrol build failed; using procedural fallback', error); }
+    } else if (isReaverPirate(entity)) {
+      // Bespoke pirate conversion (spec §8.5): stolen hull, altered posture, broken symmetry, hot emission.
+      try { return buildReaverPirate(entity); }
+      catch (error) { console.warn('[visualOverrides] Reaver pirate build failed; using procedural fallback', error); }
     }
     return fallbackBuild(entity);
   };
 
   Object.defineProperty(factory, '__spacefaceOverridesInstalled', {
-    value: true,
-    enumerable: false,
-    configurable: false,
+    value: true, enumerable: false, configurable: false,
   });
   return factory;
 }

@@ -127,4 +127,25 @@ export async function runShipShot(SF) {
       for (const c of hidden2) c.visible = true;
     }
   } catch (err) { console.error('[shipShot] concord build failed', err); }
+
+  // ---- Reaver Pirate capture (spec §8.5, Phase 3 §20): completes the faction-contrast triptych
+  // (Kestrel survivor / Concord authority / Reaver pirate) so the three-way contrast can be judged. ----
+  try {
+    const pirateEnt = { id: 'shot_pirate', type: 'ship', team: 1, radius: 16, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, factionId: 'faction_reach', data: { defId: 'ship_drifter', lootTableId: 'reaver_pirate' } };
+    const pirateMesh = vf.build(pirateEnt);
+    if (pirateMesh) {
+      const tmp3 = new THREE.Group(); scene.add(tmp3); tmp3.add(pirateMesh);
+      const hidden3 = [];
+      for (const child of scene.children) { if (child !== tmp3 && child.userData && child.userData.kind) { child.visible = false; hidden3.push(child); } }
+      const p3 = cam.position.clone(); cam.position.set(36, 26, 36); cam.lookAt(0, 1.2, 0);
+      renderer.render(scene, cam); await new Promise((r) => setTimeout(r, 30));
+      try {
+        const url = renderer.domElement.toDataURL('image/jpeg', 0.88);
+        const res = await fetch('/__shot?name=reaver_pirate_live', { method: 'POST', body: url });
+        console.log('[shipShot] captured reaver_pirate_live.jpg ->', (await res.json()).file);
+      } catch (err) { console.error('[shipShot] pirate capture failed', err); }
+      cam.position.copy(p3); scene.remove(tmp3);
+      for (const c of hidden3) c.visible = true;
+    }
+  } catch (err) { console.error('[shipShot] pirate build failed', err); }
 }

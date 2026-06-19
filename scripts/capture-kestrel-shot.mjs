@@ -11,7 +11,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 const PORT = Number(process.argv[2] || process.env.PORT || 8123);
 // All shots the ?dev=shipshot page produces. The diagnostics one is a JSON body, not an image.
-const SHOTS = ['kestrel_hero_live.jpg', 'kestrel_hero_critical.jpg', 'kestrel_bloom_on.jpg', 'kestrel_bloom_off.jpg', 'kestrel_topdown.jpg', 'concord_patrol_live.jpg'];
+const SHOTS = ['kestrel_hero_live.jpg', 'kestrel_hero_critical.jpg', 'kestrel_bloom_on.jpg', 'kestrel_bloom_off.jpg', 'kestrel_topdown.jpg', 'concord_patrol_live.jpg', 'reaver_pirate_live.jpg'];
 const shotPath = (f) => `.devshots/${f}`;
 
 // Locate Chrome. Prefer the system Chrome; fall back to Edge.
