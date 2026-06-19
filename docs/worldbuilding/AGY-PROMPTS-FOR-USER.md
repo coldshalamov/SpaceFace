@@ -120,6 +120,32 @@ QUESTION: Is this the right set of choices, given the tone? Le Carré's endings 
 
 **Prompt 4:** Working answer: the scarce resource is atmospheric processing capacity. Who controls the recyclers controls who breathes what. Director Vale administers the allocation queue that determines recycler maintenance budgets by sector. Ore contracts are the financial mechanism by which sectors prove viability for the next maintenance cycle. The Pit's recyclers stopped being serviced in year 3 because the Pit can't move enough ore to prove viability under the allocation formula. This is not in the organizational chart. It's in the Kurtz figure's ledger, in the column labeled "MAINTENANCE ALLOCATION — SECTOR ATMOSPHERIC."
 
+**Prompt 5:** Working answer — the correct register is operational, not observational. The character doesn't comment on their own situation. They don't acknowledge irony. They don't produce quips. What they say is: operational status, economic transactions, or flat testimony. Nothing else.
+
+Sample lines that pass the McCarthy/Le Carré test:
+
+*Combat:* "Three left." (status to nobody). Nothing else.
+
+*Docking:* Nothing. The sequence runs. If the docking AI requires verbal confirmation: "Confirmed." One word.
+
+*Finding a body:* "Log it." (Operational. To themselves or to the ship AI.) Not "what happened here," not "another one" — just the next step.
+
+*Getting paid:* "Good." Or nothing. The ledger records it. The character doesn't.
+
+*Getting stiffed:* "Noted." The Pit survivor doesn't escalate. They record. The ledger now has an entry. That is the threat and the character doesn't need to explain it. The other version: nothing at all. The gray man doesn't react. He records.
+
+*Comms popup:* Most get closed. One might get: "Wrong frequency." (Factual dismissal, not a joke.) Or nothing.
+
+**The one borderline line — "Tell your employer the rate went up":** This is in vibe-CANONICAL.md in the Humor section. The line passes the register test IF the framing stays intact: the character says it to a dead man's open channel, nobody answers, and "That's fine" is the next line. The frame strips the wit. It's not a quip. It's a price update sent to nobody because updating the rate is what contractors do when complications add cost. Remove the surrounding frame and the line fails; keep the frame and it's Le Carré — the functionary who sends the memo regardless of whether anyone can act on it.
+
+Lines that fail the register test:
+- Any line that describes the character's own emotional state ("I've been through worse")
+- Any line that signals awareness of irony ("Well, that's inconvenient")
+- Any line that performs toughness for an audience that doesn't exist ("Another day, another body")
+- Any line that implies the character is narrating their own story
+
+The agy question (what DOES this character say?) is right. These working samples are a floor. Agy should push against them — especially for the getting-stiffed and comms cases, which are the most likely to slip into either silence (too easy) or wit (wrong register).
+
 **Prompt 6:** Working answer: there is a fourth choice. Choice D: "The Ledger Continues" — the player stays at Ashfall Reach and keeps the record. Not death. Not joining the system. Not disappearing from the system. Witnessing it. The previous Kurtz figure's name eventually disappears from the station. The player's name transitions in the ledger from "COUNTERPARTY — ACTIVE" to "WITNESS — CURRENT." The airlock graffiti: "THIS ONE STAYED."
 
 ---

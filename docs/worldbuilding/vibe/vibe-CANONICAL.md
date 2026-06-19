@@ -14,6 +14,8 @@ Borderlands edge sharpened on a whetstone of actual corpses. Dark, fast, zero se
 
 When the reactor redlines and the ship AI—voice like a bored hangman—says "Power failure in three… two… probably," you don't answer. There's nothing useful to say. You keep your hands on the controls and wait to find out which fails first. When a bounty hunter hails you mid-fight with "Stand down or be destroyed," you close the channel. The kill feed resolves it. You open the channel again when it's done: "Tell your employer the rate went up." Nobody answers. That's fine.
 
+*(Note on that last line: the frame is the point. The character isn't making a quip — they're updating a price to a dead man's channel because that's what contractors do when complications add cost. "Nobody answers. That's fine." is what makes it Pit-register rather than Whedon-register. Strip those three words and the line fails. Keep them and it's Le Carré: the functionary sends the memo regardless of whether there's anyone left to act on it.)*
+
 **Visual Storytelling — HUD as Unreliable Narrator**
 Mr Robot paranoia rendered in three dimensions. Static on every long-range scan. Flickering HUD tags that sometimes read "FRIENDLY" and sometimes read "WAS FRIENDLY." Graffiti that moves when you're not looking. Ship interiors that look like someone started redecorating with a flamethrower and lost interest halfway through. Lighting is always either too bright (interrogation) or too dark (ambush). No clean hero shots. Every frame should feel like it was pulled from a body-cam that survived the operator.
 
