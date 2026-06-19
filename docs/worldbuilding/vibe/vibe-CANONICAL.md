@@ -26,7 +26,7 @@ The game never shows you becoming the villain. It simply stops correcting the HU
 **Graffiti as the Only Honest Narrator**
 Graffiti is the only honest newsfeed left. Every docking bay bulkhead is a palimpsest of last week's lies: "DON'T TRADE WITH GANYMEDE—THEY'RE EATING THE HYDROPONICS TECH," "CAPTAIN VOSS STILL OWES ME 400 CRED AND A KIDNEY," "THE BELT IS WATCHING." These messages update between visits. Sometimes they argue with each other. Sometimes they know things you haven't done yet.
 
-Every station bulkhead you dock at carries fresh paint from crews who won't live long enough to see it fade. *"This sector eats captains twice as mean as you."* *"Mal called—he wants his spine back."* *"The last honest trader hanged himself in airlock 3."*
+Every station bulkhead you dock at carries fresh paint from crews who won't live long enough to see it fade. *"This sector eats captains twice as mean as you."* *"Rook called. He wants his cut back."* *"The last honest trader hanged himself in airlock 3."*
 
 Then it escalates. A new piece of graffiti appears on your own bulkhead, painted in your own hand while you slept: *They all do.* You don't remember writing it. You don't paint over it either. One day the graffiti on your airlock reads *Welcome home, Captain.* You don't know whose hand wrote it. You don't ask.
 

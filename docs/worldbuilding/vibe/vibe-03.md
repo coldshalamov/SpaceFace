@@ -1,4 +1,4 @@
-**VIBE DOCUMENT 03 — STATIC BETWEEN THE STARS**
+**VIBE DOCUMENT 03 — STATIC BETWEEN THE STARS** *(SUPERSEDED — see vibe-CANONICAL.md. This draft contains Whedon-register elements [Malcolm Reynolds references] that were overridden in the canonical version.)*
 
 You fly with one eye on the radar and the other on the truth, except the truth keeps shorting out. The HUD stutters—range numbers flip to question marks, then to "???" that lingers like it's judging you. A targeting reticle blooms red across a hauler that's already venting atmosphere; the IFF tag tries to load, fails, and settles on "UNKNOWN / PROBABLY FUCKED." You fire anyway. The kill feed prints in clean white: +1 Bounty. Then, beneath it, smaller, almost apologetic: *They were carrying medicine.* The text glitches, rewrites itself to *Contraband detected*, then dies. You laugh once, short and ugly, because that’s what you do when the universe lies to your face and you lie right back.
 

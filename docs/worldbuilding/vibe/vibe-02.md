@@ -1,4 +1,4 @@
-**SPACEFACE VIBE DOCUMENT**
+**SPACEFACE VIBE DOCUMENT** *(SUPERSEDED — see vibe-CANONICAL.md for authoritative version, which is the v03+v02 fusion.)*
 
 SpaceFace starts in the armpit of the solar system: a half-abandoned prison-colony called The Pit, where the UN dumped the last generation of "unreformable" debtors, hackers, and political embarrassments. Your ship is a repossessed tug with a reactor that prays to Saint Jude. Your crew is whatever three idiots will still talk to you after the last job went sideways. You are not a hero. You are the guy who knows which airlock the inspectors never check.
 

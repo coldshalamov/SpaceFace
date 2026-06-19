@@ -1,4 +1,4 @@
-**VIBE DOCUMENT — SPACEFACE**
+**VIBE DOCUMENT — SPACEFACE** *(SUPERSEDED — see vibe-CANONICAL.md for authoritative version. Voice section here reflects an earlier register; the canonical document's Voice section has been updated.)*
 
 **Core Tone**
 Vietnam-era punk graffiti sprayed on a bulkhead that still smells like cordite and coolant. The game lives in the gap between "we're all gonna die" and "might as well get paid first." Every sector is a demilitarized zone that someone already lost. The player is not a hero, not a villain—just another ex-gangster with ink under the scars, flying a ship that remembers every body it used to carry.
