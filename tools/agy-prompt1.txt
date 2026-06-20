@@ -1,0 +1,13 @@
+You are helping develop the story of SpaceFace, a gritty space-western crime game.
+
+CONTEXT: The game has a mechanic where graffiti on station walls "knows things the player hasn't done yet." A station bulkhead will show graffiti referencing a job the player hasn't taken, or a contract outcome the player hasn't experienced. This is the game's most distinctive narrative element and is currently under-explained.
+
+Three possible in-world explanations under consideration:
+
+A) The dead wrote it. The graffiti is written by workers who ran the same contracts before and died. They knew what comes next because the pattern repeats. The Pit has been running the same contracts with different names for decades. The graffiti is operational wisdom from the dead, written on a loop.
+
+B) Folk memory. The Pit has a distributed oral/graffiti tradition that circulates knowledge faster than official channels. The graffiti "knows" because someone else already knows and the network propagates faster than the bureaucracy. This is empirical, not mystical.
+
+C) Leave it unexplained. Conrad's Heart of Darkness never explains Kurtz. McCarthy's The Road never explains the apocalypse. The graffiti's knowledge is simply a given. The player never learns how. The game trusts the reader to not need it resolved.
+
+QUESTION: Which approach serves the tone best, given literary influences of Le Carre, Conrad, McCarthy, and Bacigalupi? And is there a fourth option we're missing? What's the version that would make these authors specifically nod rather than wince?

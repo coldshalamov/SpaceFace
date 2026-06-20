@@ -1,0 +1,7 @@
+You are helping develop the story of SpaceFace, a gritty space-western crime game. Read the worldbuilding documents in docs/worldbuilding/ to understand the project before answering.
+
+CONTEXT: The game world has air recyclers that fail first on the lowest decks. Rich stations have warm air and full-spectrum lighting. Poor stations (and the player's starting location, The Pit) run at 60% light and 14 degrees Celsius. The Pit's lower decks have slightly elevated CO2, slightly reduced oxygen — not lethal, just metabolic. Everyone who lived there is slightly slower, slightly more tired than they should be, and doesn't know why.
+
+The key administrative figure is Director Vale (D. VALE / MID-SECTOR ADMIN / REF 44-C) who controls atmospheric recycler maintenance allocation queue. Vale is not a villain. Vale is an administrator who applies the allocation formula correctly. The Pit's recyclers stopped being serviced in year 3 because the Pit can't move enough ore to prove viability under the formula.
+
+QUESTION: What Bacigalupi element should be added to deepen this atmospheric economy layer? He always had a specific scarce resource that everything else was built around (calories, water, wind energy). What is SpaceFace's equivalent — the one thing the system is actually organized around acquiring and controlling, that everyone is pretending isn't the point? And how should that resource appear in the game's commodity tables, the faction behaviors, and the NPC dialog?

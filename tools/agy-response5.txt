@@ -1,0 +1,35 @@
+To capture the moral rot of Le Carré, the frozen indifference of Shalamov, and the spare, rhythmic weight of McCarthy, the dialogue must shift from passive observation ("Noted") or standard gaming tough-talk to **flat, unyielding declaratives of physical and economic reality**. 
+
+A survivor of [vibe-04-the-pit.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/vibe/vibe-04-the-pit.md) understands that the system does not care, and they do not perform for an audience. They speak in the register of inventory, log entries, and physical friction.
+
+Here are 7 sample lines for key in-game situations that push past the working floor samples:
+
+### 1. Getting Stiffed (Pushing against "Noted")
+* **Situation:** A client refuses to pay the full rate, citing corporate overhead or logistics losses.
+* **Line:** `"You will pay the difference to someone else. The sector does not leave ledgers open."`
+* **Why it works:** Instead of a hot-headed threat or a passive recording, this has the cold, rhythmic inevitability of McCarthy. In a financialized crime economy where Silt and Atmo debt are traded, a debt is a physical asset. The client *will* pay it—if not to the player, then to the next contractor who buys the ledger. The player is simply stating the math.
+
+### 2. The Late-Game Catalyst Grid Reveal (Pushing against silence/denial)
+* **Situation:** The player realizes their very first cargo delivery in B0 was the Pit’s primary recycler grid (as detailed in [NPC-ECOLOGY.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/NPC-ECOLOGY.md)), which condemned their home tunnels to the "Slow Gray."
+* **Line:** `"The air in Shaft 7 was heavy when I left. Now I know the weight."`
+* **Why it works:** It connects the somatic memory of labor (the physical toll of breathing degraded Silt) with the sterile bookkeeping of the manifest (the 12.4 tons). There is no moral crisis or vow of vengeance. It is a flat statement of testimony: they lived the consequence, and they delivered the cause.
+
+#
+<truncated 1348 bytes>
+he Pit's lighting runs at 60% spectrum. A survivor doesn't experience luxury as comfort; they experience it as sensory friction. It feels wrong, like an interrogation room.
+
+### 6. Interrogated about a Past Moral Betrayal
+* **Situation:** An NPC asks why the player didn't save a target or took a contract that ruined a colony.
+* **Line:** `"The fuel was already in the tanks. We had to go somewhere."`
+* **Why it works:** It reframes a moral choice as a simple inventory calculation. The ship has a vector determined by fuel and cargo; the player is just the operator executing the math. 
+
+### 7. Comms Popup / Customs Interception (Pushing against "Wrong frequency")
+* **Situation:** Concord customs (like Inspector Hale in [NPCs-CANONICAL.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/NPCs-CANONICAL.md)) orders you to power down for a cargo inspection under REG 44-C.
+* **Line:** `"The seal is Concord. If the weight is off, talk to Tycho."`
+* **Why it works:** A classic Le Carré bureaucratic defense. Instead of running or fighting, the player shelters under the system's own red tape, passing the administrative liability back to the relay where the cargo was logged.
+
+***
+
+### Summary of Work
+* Reviewed the core worldbuilding documents including [vibe-CANONICAL.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/vibe/vibe-CANONICAL.md), [vibe-04-the-pit.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/vibe/vibe-04-the-pit.md), [NPCs-CANONICAL.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/NPCs-CANONICAL.md), [NPC-ECOLOGY.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/NPC-ECOLOGY.md), and the Silt mechanics in [ATMOSPHERIC-ECONOMY.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/ATMOSPHERIC-ECONOMY.md).
+* Drafted 7 sample lines for key game events that replace generic dialogue with the specific operational, economic, and somatic reality of a Pit survivor.

@@ -1,0 +1,15 @@
+I have created a design analysis and incorporated a new worldbuilding document to address the environmental-economic layer of the game.
+
+### Proposed Bacigalupi Element: Catalytic Silt ("Silt")
+Instead of oxygen or water, the system is organized around **Catalytic Silt**—a heavy rare-earth silicate slurry that coats the interior channels of recycler grids. 
+* **The Decay Loop:** Silt degrades over time as it is poisoned by trace moisture, industrial fumes, and organic lung waste. As Silt goes inert, turning into pale **"Chalk"**, stations slowly succumb to the **"Slow Gray"**—a chronic, non-lethal carbon dioxide poisoning that induces metabolic lethargy and brain fog.
+* **The Heist Link:** This ties directly to the Ritchie-style reveal in [NPC-ECOLOGY.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/NPC-ECOLOGY.md). The 12.4 tons of "titanium alloy" the player hauled in B0 was the Pit's primary recycler catalyst grid pre-loaded with high-grade Silt. By stealing it, they triggered the Pit's metabolic decay, causing the productivity drops that Director Vale used to justify cutting the Pit's maintenance budget.
+
+---
+
+### Key Outputs & Documents
+1. **Canonical Story Doc:** I have written [ATMOSPHERIC-ECONOMY.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/ATMOSPHERIC-ECONOMY.md) to formally integrate Silt into the project files.
+2. **Analysis Report:** See the detailed artifact in [atmospheric_economy_analysis.md](file:///C:/Users/93rob/.gemini/antigravity-cli/brain/e93c19c8-a132-449a-93a4-c80f18d0c384/atmospheric_economy_analysis.md), which maps:
+   * **Commodity Boards:** *Raw Silt Ore*, *Refined Slurry*, *Spent Silt (Chalk)*, and *Atmo Tokens*.
+   * **Faction Behaviors:** Concord enforcing *REG 44-C* cargo quotas; MTS manipulating the *Clear Air Index* to trigger defaults; Reach raiding Silt to keep bases alive; and the Quiet smuggling black canisters.
+   * **NPC Jargon & Slang:** "Breathing gray", "silt-headed", and "Vale's Breath".

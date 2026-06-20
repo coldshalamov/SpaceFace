@@ -1,0 +1,7 @@
+You are helping develop the story of SpaceFace, a gritty space-western crime game. Read the worldbuilding documents in docs/worldbuilding/ to understand the project before answering.
+
+CONTEXT: The game has 8 recurring NPCs who are all corrupt in their own lanes: Kessler (scales/weights), Voss (mining claims), Mira (sealed freight), Rook (bounties/double-billing), Slate (bad welds), Drift (ore ledgers), Hale (customs clearance), Quinn (currency exchange). They don't meet. They don't coordinate. They all learned the same lesson in the same prison colony.
+
+I want to add a Guy Ritchie structural element: the player doesn't realize until late that they've been in multiple overlapping crime stories simultaneously. The 'all one story' reveal.
+
+QUESTION: In a Guy Ritchie structure (Lock Stock, Snatch, The Gentlemen), the reveal works because every character's separate problem turns out to be the same problem from a different angle. Which of these 8 NPCs should be the structural center — the thread that, when pulled, shows all 8 are involved in the same underlying transaction? And what is that transaction? Give me the Ritchie-style reveal: what does the player see if they look at all 8 NPC contracts side by side and realize they were moving the same thing all along?

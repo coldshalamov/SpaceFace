@@ -1,0 +1,65 @@
+I am going to check the workspace files to locate the worldbuilding documents mentioned in the request. Let's start by listing the directory structure of the workspace.
+
+---
+
+I see the `docs` directory in the workspace root. Let's list its contents, specifically looking for the `worldbuilding` folder and the files mentioned (`ENDGAME-B7-REDESIGN.md` and `STORY-SPINE-NARRATIVE-OVERLAY.md`).
+
+---
+
+Now let's check the contents of `docs/worldbuilding` to locate the files and see if there are any others that might provide useful context for the game's tone and narrative.
+
+---
+
+I will list the contents of the `docs/worldbuilding/story` and `docs/worldbuilding/vibe` directories, where these endgame design documents are likely stored. Let's list `story` first.
+
+---
+
+I have located the files. Let's read `docs/worldbuilding/story/ENDGAME-B7-REDESIGN.md` first to understand the context and design considerations of the endgame choices.
+
+---
+
+I've read `ENDGAME-B7-REDESIGN.md`. Now, let's read the second key document, `docs/worldbuilding/story/STORY-SPINE-NARRATIVE-OVERLAY.md`, to fully understand the story spine, narrative beats, and how the game overlays this narrative on top of its gameplay mechanics.
+
+---
+
+Here is an analysis of the proposed endings in [ENDGAME-B7-REDESIGN.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/ENDGAME-B7-REDESIGN.md) and how they align with the game's structural narrative in [STORY-SPINE-NARRATIVE-OVERLAY.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/STORY-SPINE-NARRATIVE-OVERLAY.md).
+
+---
+
+### 1. Critique of the Existing Four Choices
+
+#### **Choice A: THE CLEAN UNIFORM**
+*   **Tone Match:** **Perfect (Le Carré).**
+*   **Critique:** This is highly effective. It mirrors George Smiley’s realization that the "good guys" use the exact same methods, ledgers, and lies as their enemies. The player escapes their criminal record only to become the administrative hand that starves their home sector. 
+*   **Verdict:** Keep as is. It captures the essence of survival at the cost of dignity and self-respect.
+
+#### **Choice B: THE SAME SILENCE**
+*   **Tone Match:** **Medium (Slightly too neat).**
+*   **Critique:** In its current form, this feels a bit like a shadow-mastermind power fantasy. In a Le Carré or McCarthy universe, hiding in the routing tables doesn't grant comfort; it grants absolute, paralyzing paranoia. The coordinator who profits from every war is also the first target when a route fails.
+*   **Adjustment to earn the tone:** De-emphasize the "better insulation" and highlight the isolation. The player shouldn't feel like a smug logistics boss; they should feel like an algorithm running in a dark, windowless room, terrified of every unexpected comms ping. They profit, but they can never spend it because their identity has been erased. The system didn't liberate them—it just turned them into a pipe.
+
+#### **Choice C: THE ONLY HONEST OPTION**
+*   **Tone Match:** **Low-Medium (Too dramatic and merciful).**
+*   **Critique:** Flying into the wormhole to die in a reactor overload is a classic video game "tragic sacrifice" ending. It is too merciful because it allows the player to escape the moral consequences of their career th
+<truncated 2032 bytes>
+keep hauling.
+
+#### **How it works:**
+*   **The Setup:** The player declines Concord (A), refuses the Syndicate (B), doesn't try to escape (C), and leaves the desk (D). Instead, they meet Director Vale's courier at Ashfall Reach, hand over the ledger, and accept the payout for Contract 47-A.
+*   **The Mechanics:** 
+    *   The player receives a meager, standard transaction: `+1,200 credits`. 
+    *   The HUD line `CONTRACT 47-A: STATUS: PENDING` finally updates to `CLOSED`.
+    *   Immediately, a new line appears: `CONTRACT 47-B: STATUS: PENDING`.
+*   **The Narrative:** The transponder resets. The player flies back to the standard sector loops. They are not a Sector Baron or a shadow coordinator; they are just another tired pilot in a cheap hull. They know exactly whose air is being cut off by the cargo they carry, but they click "Accept" anyway because the reactor needs fuel and they have a debt to pay.
+*   **Bulkhead Graffiti:** The new graffiti at their home station reads:
+    *   *YOU KNEW THE MASS AND YOU TOOK THE COIN.*
+
+This ending feels earned because it refuses to let the player off the moral hook with death, authority, or isolation. It forces them to live with their complicity in the very gameplay loop they spent the entire game mastering.
+
+---
+
+### Summary of Work
+1. Reviewed [ENDGAME-B7-REDESIGN.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/ENDGAME-B7-REDESIGN.md) and [STORY-SPINE-NARRATIVE-OVERLAY.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/STORY-SPINE-NARRATIVE-OVERLAY.md).
+2. Provided a critique of all four existing choices, highlighting tone-matching issues (especially the dramatic "cop-out" of Choice C and the romanticism of Choices B and D).
+3. Proposed specific, concrete adjustments for Choices B, C, and D to align them with Le Carré, McCarthy, and Conrad.
+4. Proposed a **Fifth Choice (THE NEXT RUN)** that directly addresses the central narrative thread of Contract 47-A, delivering an ending of continuation without redemption.

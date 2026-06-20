@@ -1,0 +1,7 @@
+You are helping develop the story of SpaceFace, a gritty space-western crime game. Read the worldbuilding documents in docs/worldbuilding/ to understand the project before answering.
+
+CONTEXT: The game has 10 sectors arranged as a core-to-frontier gradient. The player starts at Helios Prime (safe, high-security, warm, full lighting) and can travel outward to Ashfall Reach (no infrastructure, radiation, complete lawlessness). This is structurally identical to Marlow's journey up the river in Heart of Darkness.
+
+At Ashfall Reach, there is a character called "the Administrator" (Kurtz equivalent) — a former Concord official who has been off-grid for 11 years, maintaining a handwritten ledger of every fraudulent transaction in the solar system. They're not hostile. They're not raving. They just have the complete record. And the player's own callsign appears in the ledger six weeks before the player's first contract.
+
+QUESTION: What Conrad element is missing from this setup? In Heart of Darkness, the horror isn't Kurtz's madness — it's Marlow's recognition of himself in Kurtz. What is the specific moment where the SpaceFace player should recognize themselves in the Administrator? What is the player carrying that the Administrator also carried? And what is the game's equivalent of "The horror. The horror."?

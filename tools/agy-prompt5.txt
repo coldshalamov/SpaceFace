@@ -1,0 +1,13 @@
+You are helping develop the story of SpaceFace, a gritty space-western crime game. Read the worldbuilding documents in docs/worldbuilding/ before answering — especially vibe-CANONICAL.md and the NPC documents.
+
+CONTEXT: The game's tone is Le Carre moral rot + Shalamov frozen indifference + McCarthy spare prose. The player character is a Pit survivor — not quippy, not heroic, not particularly funny. They endure things flatly. The correct voice register is operational/economic/testimony. Nothing self-narrating. Nothing that performs toughness for an absent audience.
+
+Working samples that pass the register test:
+- Combat: "Three left." (status to nobody)
+- Docking: Nothing, or "Confirmed."
+- Finding a body: "Log it."
+- Getting paid: "Good." or nothing
+- Getting stiffed: "Noted." (the Pit survivor doesn't escalate — they record)
+- Comms popup: "Wrong frequency." or nothing
+
+QUESTION: The above samples are a floor. What does the Le Carre / McCarthy / Shalamov character say in these situations that I'm missing — what's the line that sounds like it was said by someone who spent 11 months in a labor colony and 5 years on contracts that paid what they paid? Give me 5-8 sample lines covering different in-game situations. Push against the working samples above — especially for the getting-stiffed and late-game cases where silence might be the wrong answer and a flat declarative might be stronger.

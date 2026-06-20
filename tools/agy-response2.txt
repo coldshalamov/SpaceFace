@@ -1,0 +1,74 @@
+I will start by listing the contents of the workspace directory to locate the worldbuilding documents and find where the `docs/worldbuilding/` directory is situated.
+
+---
+
+I will list the contents of the `docs` folder to find the `worldbuilding` directory.
+
+---
+
+I will list the contents of the `docs/worldbuilding` directory to identify the worldbuilding documents available.
+
+---
+
+I will list the files in the characters subdirectory of the worldbuilding documentation to understand the character bios and roles.
+
+---
+
+I will list the files in the contracts subdirectory of the worldbuilding documentation.
+
+---
+
+I will check the story directory within worldbuilding docs to see what files exist there.
+
+---
+
+I will read the `NPCs-CANONICAL.md` file in `docs/worldbuilding/story` to understand the 8 recurring NPCs and their roles.
+
+---
+
+I will view the contents of the `NPC-ECOLOGY.md` file in `docs/worldbuilding/story` to learn how these characters are related to each other and their shared past.
+
+---
+
+I will view the `STORY-SPINE-NARRATIVE-OVERLAY.md` file in `docs/worldbuilding/story` to understand the narrative overlay and how story beats are paced.
+
+---
+
+I will view the contents of the `ENDGAME-B7-REDESIGN.md` file in `docs/worldbuilding/story` to understand the endgame details.
+
+---
+
+I will view the `CANONICAL.md` file in the `docs/worldbuilding/contracts/` directory to analyze the contracts for each NPC.
+
+---
+
+I will list the files in the vibe subdirectory of worldbuilding documents to check if there are other key narrative guidelines or details.
+
+---
+
+I will view `vibe-04-the-pit.md` to see what details are shared about the prison colony where all eight NPCs learned the same lesson.
+
+---
+
+I will create a comprehensive narrative plan for the Guy Ritchie structural reveal in `ritchie_narrative_structure.md` in the artifacts directory. This document will outline the structural center, the underlying transaction (the heist of the Pit's atmospheric recycler core), and the side-by-side contract comparison that delivers the "all one story" realization to the player.
+
+---
+
+I will correct the file path and write the narrative structure artifact directly into the authorized artifacts folder.
+
+---
+
+I have created a narrative design document outlining the Guy Ritchie structural reveal for *SpaceFace*. 
+
+The full breakdown has been written to the artifact:
+*   [ritchie_narrative_structure.md](file:///C:/Users/93rob/.gemini/antigravity-cli/brain/f1f4256b-76cb-4e8a-bc4c-e29e29f1f948/ritchie_narrative_structure.md)
+
+This proposal builds directly on the project's established worldbuilding and lore, specifically:
+*   The NPC mechanics in [NPCs-CANONICAL.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/NPCs-CANONICAL.md) and [NPC-ECOLOGY.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/NPC-ECOLOGY.md)
+*   The thematic significance of atmospheric processing described in [vibe-04-the-pit.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/vibe/vibe-04-the-pit.md)
+*   The narrative checkpoints defined in [STORY-SPINE-NARRATIVE-OVERLAY.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/STORY-SPINE-NARRATIVE-OVERLAY.md) and [ENDGAME-B7-REDESIGN.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/worldbuilding/story/ENDGAME-B7-REDESIGN.md)
+
+### Key Decisions Needed:
+1.  **Faction Integration**: How should the faction choices made at **B4: Pick a Side** influence how the player uncovers these ledger details? (e.g., does the Traders Guild route highlight Quinn's laundering, while the Patrol Authority focuses on Hale's Gate 3 scans?)
+2.  **Tracking System**: Should the game explicitly flag matching transaction codes (like `VALE-ALA-47A`) in the UI when they appear across multiple contracts, or should the clue rely entirely on the player manually comparing their contract history?
+3.  **Alternate Ending**: Would you like to introduce a fifth option at Ashfall Reach allowing the player to return the stolen recycler catalyst core to the Pit, or is the tragedy of a slow suffocation central to the game's Le Carré-inspired themes?

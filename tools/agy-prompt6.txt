@@ -1,0 +1,13 @@
+You are helping develop the story of SpaceFace, a gritty space-western crime game. Read the worldbuilding documents in docs/worldbuilding/ — especially ENDGAME-B7-REDESIGN.md and STORY-SPINE-NARRATIVE-OVERLAY.md — before answering.
+
+CONTEXT: The endgame has four choices replacing the original "Sector Baron" title reward:
+
+A) THE CLEAN UNIFORM — Player joins Concord. Record expunged. They are now the institution they hated. The first mission under their new title is a "routine customs operation" that turns out to be exactly what they used to run against.
+
+B) THE SAME SILENCE — Player becomes a routing coordinator for the smuggler syndicate. Their identity disappears from public records. They profit from every transaction without appearing on any kill feed.
+
+C) THE ONLY HONEST OPTION — Player flies into the wormhole with no destination. The reactor fails at the threshold. The HUD's last line: "CARGO: STABLE." Then black.
+
+D) THE LEDGER CONTINUES — Player stays at Ashfall Reach and keeps the Administrator's record. Not death. Not joining the system. Not disappearing. Witnessing. The airlock graffiti: "THIS ONE STAYED."
+
+QUESTION: Are any of these choices too dramatic, too neat, or too merciful given the Le Carre/McCarthy/Conrad tone? Le Carre's endings are usually about survival without dignity rather than death or victory. McCarthy's endings tend to be about continuing or not continuing. Does this set of four feel complete, or is there a fifth choice that none of the above covers — the choice that is most distinctly SpaceFace's own? What would make a Le Carre or McCarthy reader feel like the ending was earned?
