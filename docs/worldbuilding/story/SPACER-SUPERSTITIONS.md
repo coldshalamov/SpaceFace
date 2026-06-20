@@ -64,6 +64,14 @@ Never write graffiti in your own airlock. The airlock is the threshold. What you
 
 ---
 
+**AIR:**
+
+If a sector's atmospheric reading drops two cycles running, it's going to drop a third. The third drop is when the allocation review triggers. Leave before the third cycle. The review reclassifies the sector. Reclassification is what happens before administrative closure. Administrative closure means the sector reverts. You don't want your flight log to show you were there when the sector's ATMO score fell below threshold. *(Nobody says what administrative closure means for the people living there.)*
+
+If someone is selling breathable air in pressurized canisters, buy what you need and leave the booth. Don't ask who's authorizing the transfer. There is an authorization. The authorization is real. You don't want to know which column it's in. *(This is specifically about certain booths in Sectors 6 and 7. The superstition exists because spacers used to ask and then had other problems.)*
+
+---
+
 **THE PIT (surviving superstitions from the colony):**
 
 Never speak a dead warden's name inside a Concord beacon radius. The log will attribute any nearby incident to that name and close the file. *(Operational: the Concord logging system has an auto-attribution protocol for incidents in sectors with no live personnel registered. A dead warden's ID, still active in the system, becomes the responsible party. The file closes. Nobody investigates a closed file.)*
@@ -71,3 +79,7 @@ Never speak a dead warden's name inside a Concord beacon radius. The log will at
 Never ask what the Pit smells like to someone who hasn't been there. They'll describe something wrong and you'll spend the rest of the conversation knowing that what they think they know is off by exactly the amount that matters.
 
 Count your crew before jump. Count them after. If the numbers are different, don't enter a gate until you know why. *(The warden's count at shift change. Carried forward. The reason nobody says why is that everyone who needs to know already does.)*
+
+Never work below deck 6 in the recycler maintenance block during an even-numbered cycle. The access seal changes on the maintenance window. If you're supposed to be there, you already have the combination. If you don't have the combination, that means something has changed about whether you're supposed to be there. That change is not administrative. *(This is about Shaft 7. Nobody who says it knows it's about Shaft 7. The people who knew it was about Shaft 7 aren't available to say so.)*
+
+If the recycler smells wrong, it already failed. The smell comes after the failure, not before. You're not detecting the problem. You're confirming it. *(Maintenance axiom. Applied at scale: if the sector air quality is visibly degraded, the degradation has been ongoing long enough that visible symptoms are the end of the process, not the beginning.)*

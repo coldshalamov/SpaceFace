@@ -88,6 +88,8 @@ HUD on accept: "Dispute resolved. Claim transferred."
 Graffiti: "Resolved means the second crew stopped asking."  
 Reveal: kill-feed "CREW B — 4 REGISTERED / LAST PING: HOLLOW STATION SHAFT 7 / SIGNAL LOST CYCLE 3"
 
+*(Shaft 7 is where the Pit's primary atmospheric recycler catalyst grid was housed before decommissioning in year 3. The "Crew B" that went silent at Shaft 7 in Cycle 3 were the survey team who arrived to document the exhausted claim and found the recycler missing. They didn't stop asking. They disappeared. Voss filed the claim as exhausted. Slate sealed the shaft. The connection between these contracts (13, 14) and Contract 47-A's original iteration requires the player to run all three and access the secondary logs at Tycho, Hollow, and Meridian sequentially. The mass discrepancy in Contract 13 (22t total across 14 cycles; 12.4t in cycle 1) is the recycler catalyst grid mass in cycle 1. The rest is ongoing.)*
+
 ---
 
 **15 (CLEAN CONTRACT)**  

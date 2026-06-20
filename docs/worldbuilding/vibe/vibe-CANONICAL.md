@@ -9,6 +9,28 @@ SpaceFace starts in the armpit of the solar system: a half-abandoned prison-colo
 **Voice**
 Eleven months on a Pit survey crew and five years of contracts that paid what they paid. Short sentences. Silence as punctuation. "They said the contract was clean. They lied. We still took it." No inspirational speeches. No "we can do this." No performance for an audience that doesn't exist. Just hands on the controls when the reactor screams, because that's what you do with your hands.
 
+**Dialog Register — What the Pit Survivor Actually Says**
+
+Not silence. Not quips. Flat, unyielding declaratives of physical and economic reality. The Pit survivor speaks in the register of inventory, log entries, and physical friction. They do not perform for an audience that doesn't exist.
+
+*Combat (three contacts remaining):* "Three left." To nobody. Status is not commentary.
+
+*Finding a body they recognize:* Just the name. The identification is the statement. If the body is a stranger: "Another mouth closed. Log the air." Not gallows humor. Operational accounting.
+
+*Getting stiffed:* "You will pay the difference to someone else. The sector does not leave ledgers open." McCarthy-register: the debt is a physical asset. The client will pay it to the next contractor who buys the ledger. The player is not threatening. They are stating the math.
+
+*Getting paid correctly after being stiffed before:* "Correct." Not "thank you." Verification that the number matches.
+
+*Customs interception:* "The seal is Concord. If the weight is off, talk to Tycho." Le Carré bureaucratic defense — passing administrative liability back to the relay where the cargo was logged.
+
+*Asked to justify a contract that ruined a colony:* "The fuel was already in the tanks. We had to go somewhere." A moral choice reframed as inventory calculation. The ship has a vector determined by fuel and cargo. The player is the operator executing the math.
+
+*Late game — realizing what B0's cargo was:* "The air in Shaft 7 was heavy when I left. Now I know the weight." Flat testimony. Somatic memory (breathing degraded Silt) connected to manifest accounting (12.4t). No moral crisis. No vow.
+
+*Being in a fully-lit Core station:* Nothing said. The player doesn't comment on luxury. They experience warm air and full-spectrum light as sensory friction — feels like an interrogation room because that's what fully-lit rooms felt like in the Pit.
+
+Lines that fail the register test: any line that names the character's own emotional state, signals awareness of irony, performs toughness for an absent audience, or implies the character is narrating their own story.
+
 **Humor Style**
 Borderlands edge sharpened on a whetstone of actual corpses. Dark, fast, zero sentiment. Killing is never glorified and never tragic—just another line item on the after-action report. "Target neutralized. Also the guy next to him. And the wall behind them. Kill feed took a second to catch up." Gallows humor that lands because the alternative is screaming into the void. Laugh or bleed; the game prefers you do both.
 

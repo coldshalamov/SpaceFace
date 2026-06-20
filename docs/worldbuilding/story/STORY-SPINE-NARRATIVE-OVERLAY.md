@@ -44,9 +44,9 @@ Mechanic: eliminate one weak pirate.
 
 Narrative: The pirate's ship is tagged "UNKNOWN" before the kill. After the kill, it tags "BOUNTY COLLECTED." There's a third tag that appears briefly — "CIVILIAN VESSEL — REGISTERED" — and then disappears as the kill feed updates. The log shows only "BOUNTY COLLECTED."
 
-Graffiti appearing in the player's sector after the kill (on an asteroid face): THEY WERE CARRYING MEDICINE. (This is vibe-03 canon. The graffiti writer knows what the ship carried. The player just made their first kill without knowing.)*
+The target is not a pirate. The target is one Elroy, Maintenance Division, Pit Engineering. He filed a report six weeks before the player's first contract, noting that the primary atmospheric recycler catalyst grid had been decommissioned without authorization and the components were missing. The report was bounty-tagged by Rook as "PIRATE THREAT — SECTOR INTERFERENCE." The tag was double-billed (two clients, Rook's standard). The player took the job because it was on the board. Elroy was carrying the report. The graffiti says: THEY WERE CARRYING MEDICINE. What Elroy was carrying was the only evidence that the Pit's recyclers were being killed deliberately. The player is the reason the Pit's lower decks never found out what happened to the air.
 
-What the player learns: the system retroactively resolves ambiguity in the log. The HUD chose "BOUNTY COLLECTED" over the third tag. The HUD always resolves in the direction of operational convenience.
+What the player learns: nothing, at B2. The civilian tag flickers for 0.5 seconds. The graffiti appears after. Most players don't connect it until B6 or the Ashfall Reach encounter. The Kurtz figure's ledger has Elroy's name under "COUNTERPARTY — DECEASED." The player's name is in the same ledger. The same column. A different row.
 
 HUD behavior: Phase 1. The civilian tag appears for 0.5 seconds before the kill feed overwrites it. Intentional. The player may not catch it the first time.
 

@@ -112,41 +112,114 @@ QUESTION: Is this the right set of choices, given the tone? Le Carré's endings 
 
 ## CURRENT WORKING ANSWERS (developed before agy session — compare to agy's response):
 
-**Prompt 1:** Working answer is Option C (leave unexplained). Conrad/McCarthy both leave the mechanism unreported. The graffiti's prophecy is a given. The player never learns how. The alternative reading is that the graffiti is Option A (dead workers wrote it) but the game never confirms this; the ambiguity is the point.
+**Prompt 1:** Working answer was Option C (leave unexplained). **agy response upgraded this to a 3-layer hybrid (Option D):**
 
-**Prompt 2:** Working answer: the structural center is DRIFT (the ledger node). Drift is where all four operation phases converge as numbers — weight variance (Kessler), claim status (Voss), incoming freight (Mira), and funds (Quinn) all become numbers in a ledger. The single transaction: ore extracted in the Pit, under-counted at the scale (Kessler), re-logged as "moisture loss" (Drift), re-entered as sealed freight (Mira), converted to clean credits (Quinn), while the claim is pre-emptied (Voss), equipment is sabotaged (Slate), the bounty is double-billed (Rook), and the customs inspection is cleared (Hale). Eight nodes. One operation. The name of the operation is CONTRACT 47-A.
+*Layer 1 — The Leak (Le Carré/Bacigalupi):* Every contract that appears on a station board has already cleared weeks of administrative approvals, cargo routing, and atmospheric tax allocations. Low-level hackers, clerks, and dock workers see the database allocations before they're public. The graffiti isn't prophetic — it's a leaked database. The machine's decisions are made long before the player encounters them.
 
-**Prompt 3:** Working answer: the recognition moment is the player's own name in the Kurtz ledger, in the COUNTERPARTY column, six weeks before their first contract. They were in the record before they got there. The "horror" equivalent: "The count never ends. You know that. That's why you're here."
+*Layer 2 — Recurrent Typology (McCarthy):* The Pit has run the same contracts for decades. Voss always leaves his crew in Ashfall; the guild always cuts oxygen when quotas drop. The graffiti isn't predicting the player's future — it's recording a historical pattern so structural and economic that the player's future is indistinguishable from predecessors' pasts. "The loop isn't temporal; it is economic."
 
-**Prompt 4:** Working answer: the scarce resource is atmospheric processing capacity. Who controls the recyclers controls who breathes what. Director Vale administers the allocation queue that determines recycler maintenance budgets by sector. Ore contracts are the financial mechanism by which sectors prove viability for the next maintenance cycle. The Pit's recyclers stopped being serviced in year 3 because the Pit can't move enough ore to prove viability under the allocation formula. This is not in the organizational chart. It's in the Kurtz figure's ledger, in the column labeled "MAINTENANCE ALLOCATION — SECTOR ATMOSPHERIC."
+*Layer 3 — Toxic Dissociation (Conrad/Bacigalupi):* The graffiti written in the player's own hand while they slept is the result of their subconscious processing subtle clues (IFF glitches, cargo mass discrepancies, dock whispers) during micro-episodes of oxygen-deprived sleepwalking. The environment is rotting their brain.
 
-**Prompt 5:** Working answer — the correct register is operational, not observational. The character doesn't comment on their own situation. They don't acknowledge irony. They don't produce quips. What they say is: operational status, economic transactions, or flat testimony. Nothing else.
+**Synthesis:** "The HUD lies, but the graffiti is the only honest narrator." The graffiti knows because: (a) the system's database already wrote your doom, (b) the environment is rotting your brain, and (c) your predecessors already walked this exact path to the grave. The game never explains which of the three is true. All three are simultaneously true. The player is never told.
 
-Sample lines that pass the McCarthy/Le Carré test:
+**Prompt 2:** Working answer was DRIFT as structural center. **agy upgraded this to MIRA (physical pivot) + HALE (systemic anchor):**
 
-*Combat:* "Three left." (status to nobody). Nothing else.
+The dual-center is more Le Carré: Mira is where the physical goods change hands (extraction → laundering), while Hale is the non-corrupt system mechanism that makes the whole thing legal. Hale doesn't open the container. He applies REG 44-C. The double fine is paid. The log says "CLEARED." That's what makes it unkillable as a conspiracy — the mechanism is legal.
 
-*Docking:* Nothing. The sequence runs. If the docking AI requires verbal confirmation: "Confirmed." One word.
+**The underlying transaction (new, from agy):** The 8 NPCs collectively stole the Pit's primary atmospheric recycler catalyst grid. The grid weighs 12.4 tons — exactly the mass that disappeared in Contract 47-A. The player's opening run was carrying the stolen recycler components, labeled "TITANIUM ALLOY 12400KG." The manifest code is VALE-ALA-47A (Vale's Atmospheric Logistics Allocation, Contract 47-A).
 
-*Finding a body:* "Log it." (Operational. To themselves or to the ship AI.) Not "what happened here," not "another one" — just the next step.
+**Chief Engineer Elroy (new):** The Pit's chief engineer filed a report when the recycler disappeared. Rook double-billed his bounty tag as a "pirate threat." The player killed him in B2 (First Blood). "THEY WERE CARRYING MEDICINE." What Elroy was carrying was the only evidence the Pit's air was being stolen. The player is the reason the Pit never found out.
 
-*Getting paid:* "Good." Or nothing. The ledger records it. The character doesn't.
+**The Ritchie punchline:** The 12.4 tons in B0's opening contract = the weight in Mira's manifest = the weight on Kessler's scale = the recycler catalyst grid that stopped running on the Pit's lower decks in year 3. The player was the muscle in a machine that stole the Pit's air. They were in the story before they knew it was a story.
 
-*Getting stiffed:* "Noted." The Pit survivor doesn't escalate. They record. The ledger now has an entry. That is the threat and the character doesn't need to explain it. The other version: nothing at all. The gray man doesn't react. He records.
+**Prompt 3:** Working answer upgraded with full agy synthesis:
 
-*Comms popup:* Most get closed. One might get: "Wrong frequency." (Factual dismissal, not a joke.) Or nothing.
+**The missing Conrad element:** Self-recognition. In *Heart of Darkness*, the horror isn't Kurtz's external savagery — it's Marlow's recognition of Kurtz as his own reflection. The player's journey from core to frontier is not an escape from corruption but a journey inward to confront the mechanism that already marked them. They are not independent contractors operating outside the system. They are the physical enforcement of it.
 
-**The one borderline line — "Tell your employer the rate went up":** This is in vibe-CANONICAL.md in the Humor section. The line passes the register test IF the framing stays intact: the character says it to a dead man's open channel, nobody answers, and "That's fine" is the next line. The frame strips the wit. It's not a quip. It's a price update sent to nobody because updating the rate is what contractors do when complications add cost. Remove the surrounding frame and the line fails; keep the frame and it's Le Carré — the functionary who sends the memo regardless of whether anyone can act on it.
+**The recognition happens two ways simultaneously:**
 
-Lines that fail the register test:
-- Any line that describes the character's own emotional state ("I've been through worse")
-- Any line that signals awareness of irony ("Well, that's inconvenient")
-- Any line that performs toughness for an audience that doesn't exist ("Another day, another body")
-- Any line that implies the character is narrating their own story
+(1) *The Ledger Entry:* The player finds their own callsign in the COUNTERPARTY column, six weeks before their first contract, filed under the ship's transponder ID (the ID the ship had before they got it). They were a pre-allocated asset in Vale's system before they stepped into the cockpit. The entry exists. It was made by someone who knew the ship's routing before the player was ever in the seat.
 
-The agy question (what DOES this character say?) is right. These working samples are a floor. Agy should push against them — especially for the getting-stiffed and comms cases, which are the most likely to slip into either silence (too easy) or wit (wrong register).
+(2) *The Atmospheric Resonance:* Ashfall Reach — the furthest point from the lit core — runs at 14°C and smells of hydraulic fluid over something organic the undersized scrubbers can't clear. This is the exact temperature and smell of the Pit's lower decks. The darkness at the end of the river isn't alien. It's home. Conrad's Marlow arrived at Kurtz's station to feel recognition of the already-known in a new context. The player arrives at the edge of lawlessness and breathes the air they left behind.
 
-**Prompt 6:** Working answer: there is a fourth choice. Choice D: "The Ledger Continues" — the player stays at Ashfall Reach and keeps the record. Not death. Not joining the system. Not disappearing from the system. Witnessing it. The previous Kurtz figure's name eventually disappears from the station. The player's name transitions in the ledger from "COUNTERPARTY — ACTIVE" to "WITNESS — CURRENT." The airlock graffiti: "THIS ONE STAYED."
+**What the player carries (that the Administrator also carried):**
+
+*The Weight of the Recycler Catalyst Grid:* The player carried 12.4t in B0 without knowing what it was. The Administrator carried the record of it for eleven years and knew everything. Both are complicit in the same transaction: the Administrator went off-grid to record the complicity on paper; the player executed it on the board.
+
+*The Physical Record:* Choice D makes the ledger a permanent cargo item: PERSONAL EFFECTS — 1 UNIT / 0.4t. The player literally carries the documentation of the system's rot. The mass never changes, even if they jettison it. The manifest still shows it.
+
+**The game's equivalent of "The horror. The horror.":**
+
+*The Administrator's parting words:* "The count never ends. You know that. That's why you're here."
+
+*The bulkhead graffiti at Ashfall Reach, written in the player's own hand while docked:* "THEY KNEW THE MASS. THEY ALWAYS KNEW THE MASS."
+
+The second line is the Conrad element: "always" is the recognition of pre-existing complicity. The player didn't enter the system at B0. The system had them slotted before B0. The mass was always going to be 12.4t. Only the manifest was going to change.
+
+**Prompt 4:** Working answer upgraded with agy naming the core substance:
+
+**agy's contribution:** The scarce resource is **Catalytic Silt** ("Silt") — a dense, dark-gray silicate slurry that lines the channels of recycler grids and splits CO2 back into breathable oxygen when electrically stimulated. Silt degrades over time (human breath, industrial fumes, organic contaminants poison it). Degraded Silt turns inert and pale — "Chalk." When recyclers run on Chalk, CO2 rises and residents enter the "Slow Gray": chronic non-lethal carbon dioxide poisoning causing metabolic lethargy, headaches, and cognitive decline.
+
+**Jargon layer (from agy):**
+- "Breathing gray" / "Silt-headed" — experiencing Slow Gray; said about someone who seems off today
+- "The chalk" — dead Silt; symbol of deferred maintenance; "the filters in Shaft 7 are nothing but chalk"
+- "Vale's Breath" — perfectly scrubbed air from Core stations; said by Pit workers who've been to Helios Prime, not approvingly
+- "Dry scrubbers" — out of Silt, running on reserve tanks
+- "The slurry run" — The Quiet's primary high-margin business: smuggling refined Silt canisters
+
+**Commodity board** (from agy analysis): Raw Silt Ore (mined in S6-S7, low value), Refined Slurry / canisters (high value, requires REG 44-C license), Spent Silt / Chalk (waste, near-zero value), ATMO Tokens (digital derivatives tracking sector debt), ATMO Debt (the negative balance accumulated by failing sectors).
+
+**Connection to the Ritchie reveal:** The 12.4t in B0 was the recycler catalyst grid pre-loaded with high-grade Refined Silt. Removing it triggered the Pit's ATMO DEBT spiral. The theft caused the debt, not the other way around. The Pit's lower decks have been in the Slow Gray for fourteen years. The residents call it being tired.
+
+**Hale's dialog sample** (perfect register): "The manifest says titanium. The scan says 12,400 kilograms. The seal is Concord ALA. Under REG 44-C, I don't break Concord seals. If the Pit is short of Silt this cycle, they can file an appeal with Logistics Oversight. I don't change the numbers on the sheet. I just sign it." — Hale is describing the recycler catalyst grid in the B0 manifest. Hale doesn't know what's inside. Hale doesn't break Concord seals.
+
+**Prompt 5:** Working answer upgraded with agy's specific lines:
+
+**The floor (working samples — these are the minimum):**
+- Combat (three enemies): "Three left." Status to nobody.
+- Docking: Nothing. Or "Confirmed."
+- Finding a body: "Log it." Operational. Stranger: "Another mouth closed. Log the air."
+- Getting paid: "Good." Or "Correct." (After being stiffed before: "Correct" is colder.)
+- Getting stiffed: See upgraded line below.
+- Comms: "Wrong frequency." Or closed. Customs: see upgraded line below.
+
+**agy's upgraded lines:**
+
+*Getting stiffed:* "You will pay the difference to someone else. The sector does not leave ledgers open." — McCarthy-register. In a world where ATMO DEBT is traded, a debt is a physical asset. The player isn't threatening the client; they're stating the math. The ledger has an entry. Someone will collect it.
+
+*Late-game catalyst grid reveal:* "The air in Shaft 7 was heavy when I left. Now I know the weight." — The best line in this set. Connects somatic memory (breathing Slow Gray Silt) with manifest accounting (12.4t). No moral crisis. No vow of vengeance. Flat testimony.
+
+*Finding a body (stranger):* "Another mouth closed. Log the air." — Operational. The air just got fractionally cleaner because one fewer person is breathing it.
+
+*Moral betrayal:* "The fuel was already in the tanks. We had to go somewhere." — Reframes moral choice as inventory calculation.
+
+*Customs interception:* "The seal is Concord. If the weight is off, talk to Tycho." — Le Carré bureaucratic defense. Passes administrative liability back to the relay that logged the cargo.
+
+*Discovering their name in the Kurtz ledger:* Nothing said. But if the Kurtz figure says "Year 3" — the character looks at the year 3 entry and back, and says: "That was the first run." Not a question. Confirmation.
+
+*Late game, after full reveal:* "I was carrying it." Three words. The sentence isn't finished. Doesn't need to be.
+
+**The "rate went up" line:** Passes ONLY with its frame. Said to a dead channel, nobody answers, "That's fine." Strip those three words and it's a quip. Keep them and it's Le Carré: the functionary sends the memo regardless of whether there's anyone left to act on it. The frame is the difference between register and Whedon.
+
+**Prompt 6:** Working answer upgraded with agy's full critique and fifth choice:
+
+**agy's verdict on existing choices:**
+- A (Clean Uniform): PERFECT. Keep as is. Le Carré.
+- B (Same Silence): Slightly too neat — feels like shadow-mastermind power fantasy. Fix: de-emphasize "better insulation," add paranoia/isolation layer. The coordinator is an algorithm in a windowless room terrified of unexpected pings. They can never spend the profits because their identity has been erased.
+- C (Only Honest Option): TOO DRAMATIC AND TOO MERCIFUL. Reactor death is a classic video game "tragic sacrifice" exit that lets the player escape moral consequences. Fix: the wormhole doesn't kill you. You emerge at Sector 1. CONTRACT 47-A is PENDING. The system filed the jump as a return. There is no escape. McCarthy: the relentless thing isn't the job, it's the inevitability.
+- D (The Ledger Continues): Too romantic. "THIS ONE STAYED" reads as too heroic for this world. The witness ending is the most comfortable graffiti line in the game.
+
+**agy's proposed fifth choice: THE NEXT RUN**
+- Player declines all four board entries
+- Vale's courier at Ashfall Reach: "Contract settled. New one's open."
+- +1,200 credits. CONTRACT 47-A: STATUS: CLOSED.
+- Immediately: CONTRACT 47-B: STATUS: PENDING.
+- Player flies back to standard sector loops. Not a Baron. Not a coordinator. Not a witness. Just a tired pilot who needs to pay for reactor fuel.
+- They know whose air is being cut off by the cargo they carry. They click Accept anyway.
+- Graffiti: "YOU KNEW THE MASS AND YOU TOOK THE COIN."
+- This is the ending the game most specifically deserves. Continuation without redemption. The moral weight is not resolved. It is carried forward.
+
+**All five choices integrated:** A (authority), B (invisibility), C (loop-back), D (witness), E (continuation).
 
 ---
 

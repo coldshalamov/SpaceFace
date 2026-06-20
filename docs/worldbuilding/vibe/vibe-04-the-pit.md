@@ -28,7 +28,11 @@ The release changed the temperature. It didn't change the lesson.
 
 **Bacigalupi specifics — the air economy:**
 
-The Pit's recyclers fail first on the lowest residential decks. This is not an accident of engineering; it is an accident of maintenance budget allocation, which is itself not an accident. The people on the lowest decks breathe air that has been through three more cycles than the air on the upper decks. The difference is not lethal. It is metabolic — slightly elevated CO2 levels, slightly reduced oxygen saturation, consistent across years. The residents on the lower decks are slightly slower, slightly more tired, slightly more prone to headaches. They attribute it to the work. The work is hard. The work is also not why.
+The Pit's recyclers fail first on the lowest residential decks. This is not an accident of engineering; it is an accident of maintenance budget allocation, which is itself not an accident. The people on the lowest decks breathe air that has been through three more cycles than the air on the upper decks.
+
+The recycler grids run on Catalytic Silt — a dense, dark-gray silicate slurry that lines the recycler channels and splits CO2 back into breathable oxygen when electrically stimulated. Silt degrades over time. Human breath poisons it with trace organics and moisture. Industrial work adds hydraulic fumes, micro-plastics, thruster exhaust. Degraded Silt turns inert and pale — "Chalk." When Silt goes to Chalk, scrubbers saturate. CO2 rises. Residents don't suffocate; they enter the "Slow Gray" — permanent metabolic lethargy, persistent headaches, cognitive decline. The lower decks of the Pit have been in the Slow Gray for fourteen years. The residents call it being tired. The work is hard. The work is also not why.
+
+Upper decks have better Silt because upper decks house administrative staff. The administrative staff are healthier because they breathe better-scrubbed air. They attribute their health to discipline and diet. Nobody lies about this. Nobody tells the truth either. The gap is simply there, like the temperature and the lighting, and everyone has learned to live inside it.
 
 The upper decks have better filters because the upper decks house the administrative staff. The administrative staff are healthier because they breathe better air. They attribute their health to discipline, diet, and the right attitude. Nobody lies about this. Nobody tells the truth either. The gap is simply there, like the temperature and the lighting, and everyone has learned to live inside it.
 
@@ -49,6 +53,22 @@ Director Vale's administrative division is Atmospheric Logistics Allocation, whi
 The graffiti that knows this: none, explicitly. But every graffiti piece that touches on temperature, light, smell, or breath is graffiti about who controls the recyclers. "BETTER THAN THE ALTERNATIVE. BARELY. CHECK BACK NEXT QUARTER." — that's not about the food. That's about the filters. The food just makes the filter schedule visible.
 
 The player doesn't know this until they're at Ashfall Reach, where the recyclers are fully offline and they're running on reserve atmosphere and the Kurtz figure's desk has a hand-labeled chart on the wall: 20 years of atmospheric maintenance budget allocations, sector by sector, cross-referenced with faction holdings. The column marked "THE PIT" has no entries after year 3.
+
+Year 3 is when the primary recycler catalyst grid was decommissioned — not due to failure, not due to budget, but because it was physically removed from Shaft 7 and exported to Helios Prime as "INDUSTRIAL COMPONENTS (12.4t)" under manifest code VALE-ALA-47A. The eight NPCs the player has been working with across the sector map (Kessler, Drift, Voss, Slate, Mira, Hale, Quinn, Rook) each ran one piece of this transaction without knowing the whole. The transaction was Contract 47-A in its original form. The player's opening run in B0 was the latest iteration of the same contract. The 12.4 tons that disappeared from the player's first manifest was the recycler catalyst grid's weight. The Pit has been breathing year-3 air ever since.
+
+---
+
+**The debt mechanism — ATMO DEBT:**
+
+Vale's division doesn't allocate recycler maintenance based on need. It allocates based on viability scores. Viability scores are calculated from ore throughput, freight taxes, and direct atmospheric payment contributions. Sectors that contribute more to the network atmosphere receive more maintenance. Sectors that consume more than they contribute accumulate ATMO DEBT — a balance tracked in Vale's division ledger.
+
+The cycle: ATMO DEBT rises → allocation cut → recycler quality drops → productivity falls → ore throughput drops → ATMO DEBT rises faster. This is the trap. The Pit crossed the threshold in year 3 and entered it. The recycler theft in year 3 was not the consequence of the debt. It was the cause. The recycler was taken first. Then the Pit couldn't produce enough ore. Then the ATMO DEBT spiral took over. The trap was manufactured.
+
+Sectors deep in ATMO DEBT can purchase ATMO TOKENS from sectors with surplus. ATMO TOKENS are credits that reduce a sector's ATMO DEBT balance, preventing maintenance cuts. The secondary market in ATMO TOKENS is run by The Quiet, operating out of Sectors 6 and 7. The Quiet sells breathable air in pressurized canisters. The canisters are physical representations of ATMO TOKENS. Buying them proves to Vale's allocation system that the sector is solvent — that it has the resources to maintain atmospheric viability. The Quiet is not a smuggling operation that also sells air. They are an ATMO TOKEN broker that also smuggles.
+
+Vale doesn't control The Quiet. Vale's system created the gap that The Quiet exists to fill. Eliminating The Quiet would require eliminating the gap, which would require restructuring the allocation system, which would require acknowledging that the allocation system produces the outcomes it produces. The paperwork doesn't support that reading. The paperwork says the sectors that fail to maintain atmospheric viability have failed to demonstrate fiscal responsibility. The paperwork is correct.
+
+On the commodity board: ATMO CREDIT and ATMO DEBT should appear alongside ore and components. At B0-B1, the player probably ignores it — looks like an abstract number, no obvious use. By B5-B6, the player who has been watching the Pit's column in the commodity board can see the debt balance. The balance has been accumulating since year 3. It is negative by an amount that corresponds exactly to the maintenance the Pit would have received if the recycler catalyst grid had not been removed. The number is the theft expressed as an accounting entry.
 
 ---
 
