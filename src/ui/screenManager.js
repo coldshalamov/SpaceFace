@@ -51,7 +51,19 @@ export function createScreenManager(ctx) {
     const top = stack[stack.length - 1] || null;
     for (const [id, rec] of registry) {
       if (!rec.el) continue;
-      rec.el.style.display = id === top ? 'flex' : 'none';
+      if (id === top) {
+        rec.el.style.display = 'flex';
+        // Trigger enter animation: start invisible, then fade in next frame
+        rec.el.classList.remove('sf-screen--exiting');
+        rec.el.classList.add('sf-screen--entering');
+        requestAnimationFrame(() => {
+          rec.el.classList.remove('sf-screen--entering');
+          rec.el.classList.add('sf-screen--visible');
+        });
+      } else {
+        rec.el.classList.remove('sf-screen--visible', 'sf-screen--entering');
+        rec.el.style.display = 'none';
+      }
     }
     const open = stack.length > 0;
     // When no modal is open, hide the #screens container ENTIRELY — it carries a full-screen
@@ -118,8 +130,22 @@ export function createScreenManager(ctx) {
 
   function popScreen() {
     if (!stack.length) return;
+    const closingId = stack[stack.length - 1];
+    const closingRec = closingId && registry.get(closingId);
     const closing = activeDef();
     if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
+
+    // Fade out the closing screen before removing it
+    if (closingRec && closingRec.el) {
+      const el = closingRec.el;
+      el.classList.remove('sf-screen--visible', 'sf-screen--entering');
+      el.classList.add('sf-screen--exiting');
+      setTimeout(() => {
+        el.classList.remove('sf-screen--exiting');
+        el.style.display = 'none';
+      }, 200); // matches the 0.2s exiting transition
+    }
+
     stack.pop();
     syncVisibility();
     if (!stack.length) clearModalFocus();

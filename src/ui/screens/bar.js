@@ -1,42 +1,494 @@
-// src/ui/screens/bar.js — STATION "Bar" tab panel.
-// A couple of contact/dialog stubs offering lore/tips. Selecting a dialog choice emits
-// ui:talkContact {contactId, choiceId}; the missions/dialog system handles it (§4.4). Read-only.
-// Contacts are seeded deterministically from the station id so the same dock shows the same faces
-// (no Math.random in a way that affects sim — this is cosmetic UI only).
+// src/ui/screens/bar.js -- STATION "Bar" tab panel.
+// Dynamic, data-driven contact system. Generates 2-4 seeded NPCs per station
+// with role-specific dialog that pulls real game data (economy events, market
+// intel, mission boards, sector danger, asteroid fields). Read-only except for
+// the mission-accept button which emits ui:acceptMission.
 import { FACTION_META } from '../../data/factions.js';
+import { SECTORS }      from '../../data/sectors.js';
+import { COMMODITIES }  from '../../data/commodities.js';
 
-const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
+/* ── lookup tables ──────────────────────────────────────────────────── */
 
-// Small fixed roster of lore/tip contacts. Real special-mission contacts come from missions later.
-const CONTACTS = [
-  {
-    id: 'contact_barkeep', name: 'Sully', role: 'Barkeep', factionId: null,
-    line: 'New face. Drinks are cheap, information cheaper. What do you need?',
-    choices: [
-      { id: 'rumors', label: 'Any rumors?' },
-      { id: 'tips', label: 'Trading tips?' },
-      { id: 'leave', label: 'Just a drink.' },
-    ],
-  },
-  {
-    id: 'contact_broker', name: 'Vance', role: 'Fixer', factionId: 'faction_quiet',
-    line: 'I move things that need moving. Discreetly. You interested in work off the boards?',
-    choices: [
-      { id: 'work', label: 'What kind of work?' },
-      { id: 'who', label: 'Who do you run with?' },
-      { id: 'pass', label: 'Not today.' },
-    ],
-  },
-];
+const FACTION_BY_ID   = new Map(FACTION_META.map(f => [f.id, f]));
+const SECTOR_BY_ID    = new Map(SECTORS.map(s => [s.id, s]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map(c => [c.id, c]));
 
-// Deterministic hue from a string (cosmetic avatar tint).
-function hueFromStr(s) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-  return h % 360;
+// Flatten every station into a quick-lookup map: stationId -> { station, sector }
+const STATION_INDEX = new Map();
+for (const sec of SECTORS) {
+  for (const st of sec.stations) {
+    STATION_INDEX.set(st.id, { station: st, sector: sec });
+  }
 }
 
-// Draw a tiny procedural avatar into a canvas (no image assets per §1.1).
+/* ── deterministic RNG (FNV-1a hash + mulberry32 PRNG) ──────────── */
+
+function fnvHash(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h;
+}
+
+function mulberry32(seed) {
+  let t = (seed >>> 0) + 0x6d2b79f5;
+  return function next() {
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hueFromStr(s) { return fnvHash(s) % 360; }
+
+/* ── name pools ─────────────────────────────────────────────────────── */
+
+const FIRST_NAMES = [
+  'Orion','Kael','Voss','Mira','Juno','Sable','Ren','Thane','Lyra','Dax',
+  'Cira','Nev','Soren','Tova','Zara','Calder','Rhea','Vek','Inara','Koda',
+  'Maeve','Cassius','Lira','Draven','Ember','Tycho','Neve','Ash','Selene','Rook',
+  'Brynn','Orin','Callum','Vesper','Idris','Sully','Kira','Jace','Nova','Petra',
+];
+
+const LAST_NAMES = [
+  'Vance','Corsair','Ashford','Kellan','Drakon','Revik','Solari','Morrow',
+  'Quade','Theron','Aldric','Craine','Falken','Nyxos','Stroud','Varek',
+  'Holden','Rennick','Deckard','Torren','Briggs','Calloway','Sagan','Tull',
+  'Graves','Huxley','Kepler','Madsen','Oakes','Stark',
+];
+
+const ROLES = ['barkeep','merchant','pilot','smuggler','engineer','bounty_hunter','miner'];
+
+const ROLE_LABELS = {
+  barkeep:       'Barkeep',
+  merchant:      'Merchant',
+  pilot:         'Pilot',
+  smuggler:      'Smuggler',
+  engineer:      'Engineer',
+  bounty_hunter: 'Bounty Hunter',
+  miner:         'Miner',
+};
+
+const ROLE_LINES = {
+  barkeep:       'Pull up a stool. What can I do for you?',
+  merchant:      'Credits talk. What are you looking to move?',
+  pilot:         'Just docked. Got stories, if you\'ve got time.',
+  smuggler:      'Keep your voice down. You need something off-book?',
+  engineer:      'Rust and rivets. Everything on this station needs work.',
+  bounty_hunter: 'I hunt for a living. You look like you can handle yourself.',
+  miner:         'Rock dust and patience. That\'s the miner\'s life.',
+};
+
+/* ── contact generation ─────────────────────────────────────────────── */
+
+function generateContacts(stationId) {
+  const seed = fnvHash('bar_contacts_' + stationId);
+  const rng  = mulberry32(seed);
+  const count = 2 + Math.floor(rng() * 3); // 2-4 contacts
+
+  const info = STATION_INDEX.get(stationId);
+  const stationFactionId = info ? info.station.factionId : 'faction_scn';
+  const sector = info ? info.sector : SECTORS[0];
+
+  // Gather nearby factions for variety
+  const nearbyFactions = [stationFactionId];
+  for (const nId of (sector.neighbors || [])) {
+    const ns = SECTOR_BY_ID.get(nId);
+    if (ns && !nearbyFactions.includes(ns.factionId)) nearbyFactions.push(ns.factionId);
+  }
+
+  const contacts = [];
+  const usedNames = new Set();
+
+  for (let i = 0; i < count; i++) {
+    // Pick unique name
+    let first, last, fullName;
+    do {
+      first = FIRST_NAMES[Math.floor(rng() * FIRST_NAMES.length)];
+      last  = LAST_NAMES[Math.floor(rng() * LAST_NAMES.length)];
+      fullName = first + ' ' + last;
+    } while (usedNames.has(fullName));
+    usedNames.add(fullName);
+
+    // First contact always barkeep; rest random
+    const role = i === 0
+      ? 'barkeep'
+      : ROLES[1 + Math.floor(rng() * (ROLES.length - 1))];
+
+    const factionId = (role === 'barkeep')
+      ? stationFactionId
+      : nearbyFactions[Math.floor(rng() * nearbyFactions.length)];
+
+    contacts.push({
+      id: 'contact_' + stationId + '_' + i,
+      name: fullName,
+      role,
+      factionId,
+      line: ROLE_LINES[role],
+    });
+  }
+
+  return contacts;
+}
+
+/* ── dialog option builders (per role) ────────────────────────────── */
+
+function getChoices(role) {
+  switch (role) {
+    case 'barkeep':       return [
+      { id: 'rumors',    label: 'Any rumors?' },
+      { id: 'word',      label: 'What\'s the word?' },
+      { id: 'drink',     label: 'Just a drink.' },
+    ];
+    case 'merchant':      return [
+      { id: 'routes',    label: 'Any good trade routes?' },
+      { id: 'market',    label: 'Market conditions?' },
+      { id: 'dismiss',   label: 'Not interested.' },
+    ];
+    case 'pilot':         return [
+      { id: 'work',      label: 'Heard of any work?' },
+      { id: 'outside',   label: 'What\'s it like out there?' },
+      { id: 'bye',       label: 'Safe flying.' },
+    ];
+    case 'smuggler':      return [
+      { id: 'black',     label: 'Know any black markets?' },
+      { id: 'contraband',label: 'Got any contraband?' },
+      { id: 'clean',     label: 'I\'m clean.' },
+    ];
+    case 'engineer':      return [
+      { id: 'tech',      label: 'Any tech recommendations?' },
+      { id: 'fix',       label: 'What needs fixing around here?' },
+      { id: 'thanks',    label: 'Thanks.' },
+    ];
+    case 'bounty_hunter': return [
+      { id: 'bounties',  label: 'Any bounties worth chasing?' },
+      { id: 'action',    label: 'Where\'s the action?' },
+      { id: 'low',       label: 'Keep your head down.' },
+    ];
+    case 'miner':         return [
+      { id: 'fields',    label: 'Where are the rich fields?' },
+      { id: 'ore_price', label: 'Ore prices looking good?' },
+      { id: 'rocks',     label: 'Back to the rocks.' },
+    ];
+    default:              return [
+      { id: 'dismiss', label: 'See you around.' },
+    ];
+  }
+}
+
+/* ── reply generators (pull real game state) ──────────────────────── */
+
+// Helpers to safely dig into ctx.state
+function getEconEvents(state) {
+  return (state && state.economy && state.economy.econEvents) || [];
+}
+function getMarketIntel(state) {
+  return (state && state.economy && state.economy.marketIntel) || {};
+}
+function getMissionBoard(state, stationId) {
+  if (!state || !state.missions || !state.missions.boards) return null;
+  return state.missions.boards[stationId] || null;
+}
+
+function commodityName(id) {
+  const c = COMMODITY_BY_ID.get(id);
+  return c ? c.name : id;
+}
+function stationName(id) {
+  const info = STATION_INDEX.get(id);
+  return info ? info.station.name : id;
+}
+function sectorForStation(id) {
+  const info = STATION_INDEX.get(id);
+  return info ? info.sector : null;
+}
+
+/** Find the sector this stationId belongs to */
+function currentSector(stationId) {
+  const info = STATION_INDEX.get(stationId);
+  return info ? info.sector : SECTORS[0];
+}
+
+/** Find a dangerous neighbor sector */
+function dangerousSector(stationId) {
+  const sec = currentSector(stationId);
+  let worst = null;
+  for (const nId of (sec.neighbors || [])) {
+    const ns = SECTOR_BY_ID.get(nId);
+    if (ns && (!worst || ns.security < worst.security)) worst = ns;
+  }
+  return worst;
+}
+
+/** Find blackmarket stations across all sectors */
+function findBlackmarkets() {
+  const results = [];
+  for (const sec of SECTORS) {
+    for (const st of sec.stations) {
+      if (st.type === 'blackmarket') results.push({ station: st, sector: sec });
+    }
+  }
+  return results;
+}
+
+/** Find sectors with asteroid fields */
+function findMiningFields() {
+  const results = [];
+  for (const sec of SECTORS) {
+    if (sec.fields && sec.fields.length > 0) {
+      results.push({ sector: sec, fields: sec.fields });
+    }
+  }
+  return results;
+}
+
+/** Ore type human names */
+function fieldTypeName(type) {
+  const MAP = {
+    ast_metallic:     'metallic',
+    ast_common_rock:  'common rock',
+    ast_icy:          'ice',
+    ast_crystalline:  'crystalline',
+    ast_rare_exotic:  'rare exotic',
+    ast_gas_cloud:    'gas cloud',
+  };
+  return MAP[type] || type;
+}
+
+/** Find best trade spread from marketIntel */
+function bestTradeRoute(state, currentStationId) {
+  const intel = getMarketIntel(state);
+  const stations = Object.keys(intel);
+  if (stations.length < 2) return null;
+
+  let best = null;
+  const here = intel[currentStationId];
+  if (!here || !here.snapshot) return null;
+
+  for (const otherId of stations) {
+    if (otherId === currentStationId) continue;
+    const other = intel[otherId];
+    if (!other || !other.snapshot) continue;
+
+    for (const cmdtyId of Object.keys(here.snapshot)) {
+      const buyInfo  = here.snapshot[cmdtyId];
+      const sellInfo = other.snapshot[cmdtyId];
+      if (!buyInfo || !sellInfo) continue;
+      const buyPrice  = buyInfo.buy  || buyInfo.mid || 0;
+      const sellPrice = sellInfo.sell || sellInfo.mid || 0;
+      const spread = sellPrice - buyPrice;
+      if (spread > 0 && (!best || spread > best.spread)) {
+        best = { cmdtyId, buyStationId: currentStationId, sellStationId: otherId, spread, buyPrice, sellPrice };
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * Build a reply for the given role + choiceId, pulling from ctx.state.
+ * Returns { text, missionOffer? }.
+ */
+function buildReply(role, choiceId, ctx, stationId) {
+  const state = ctx.state || {};
+
+  switch (role) {
+    /* ── BARKEEP ───────────────────────────────────────── */
+    case 'barkeep': {
+      if (choiceId === 'rumors') {
+        const events = getEconEvents(state);
+        if (events.length > 0) {
+          const ev = events[0];
+          const cName = commodityName(ev.commodityId);
+          const sName = stationName(ev.stationId);
+          const dir = (ev.type === 'surplus' || ev.type === 'glut') ? 'down' : 'up';
+          return { text: 'Word is there\'s a ' + ev.type + ' affecting ' + cName + ' at ' + sName + '. Prices are ' + dir + '.' };
+        }
+        return { text: 'Things have been quiet lately. Too quiet, if you ask me. Keep your eyes open out there.' };
+      }
+      if (choiceId === 'word') {
+        const danger = dangerousSector(stationId);
+        if (danger) {
+          return { text: 'Watch the lanes near ' + danger.name + ' — security is thin out there. Patrols don\'t reach that far.' };
+        }
+        return { text: 'The usual. Ships come, ships go. Nobody says much around here.' };
+      }
+      return { text: 'Coming right up. Best synthale this side of the belt.' };
+    }
+
+    /* ── MERCHANT ──────────────────────────────────────── */
+    case 'merchant': {
+      if (choiceId === 'routes') {
+        const route = bestTradeRoute(state, stationId);
+        if (route) {
+          return { text: 'Buy ' + commodityName(route.cmdtyId) + ' here, sell at ' + stationName(route.sellStationId) + ' — good margin right now. About ' + route.spread + ' credits per unit.' };
+        }
+        return { text: 'Markets are tight everywhere. Nothing jumps out right now. Check back after a supply event shakes things up.' };
+      }
+      if (choiceId === 'market') {
+        const events = getEconEvents(state);
+        const local = events.filter(e => e.stationId === stationId);
+        if (local.length > 0) {
+          const ev = local[0];
+          const cName = commodityName(ev.commodityId);
+          const dir = (ev.type === 'surplus' || ev.type === 'glut') ? 'dropping' : 'climbing';
+          return { text: cName + ' prices are ' + dir + ' here thanks to a local ' + ev.type + '. Plan accordingly.' };
+        }
+        return { text: 'Steady as she goes. No big swings at this station — supply and demand in balance for now.' };
+      }
+      return { text: 'Your loss. Credits don\'t earn themselves.' };
+    }
+
+    /* ── PILOT ─────────────────────────────────────────── */
+    case 'pilot': {
+      if (choiceId === 'work') {
+        const board = getMissionBoard(state, stationId);
+        if (board && board.slots && board.slots.length > 0) {
+          const offer = board.slots[0];
+          const reward = offer.reward_cr || offer.rewardCr || '???';
+          return {
+            text: 'There\'s a ' + (offer.title || offer.type) + ' job on the board — pays ' + reward + ' cr. Interested?',
+            missionOffer: offer,
+          };
+        }
+        return { text: 'Board\'s empty right now. Try a bigger station or come back later — jobs cycle regularly.' };
+      }
+      if (choiceId === 'outside') {
+        const danger = dangerousSector(stationId);
+        if (danger) {
+          const sec = danger.security < 0.3 ? 'lawless' : danger.security < 0.5 ? 'rough' : 'uneasy';
+          return { text: danger.name + ' is ' + sec + ' space. Hostiles patrol the lanes — don\'t fly without shields charged.' };
+        }
+        return { text: 'It\'s calm in the core sectors, but further out the patrols thin and the pirates thicken.' };
+      }
+      return { text: 'Clear skies, friend. Watch your six.' };
+    }
+
+    /* ── SMUGGLER ──────────────────────────────────────── */
+    case 'smuggler': {
+      if (choiceId === 'black') {
+        const bms = findBlackmarkets();
+        if (bms.length > 0) {
+          const pick = bms[0];
+          return { text: pick.station.name + ' in ' + pick.sector.name + ' — they\'ll move anything, no questions asked. Don\'t mention my name.' };
+        }
+        return { text: 'Nothing running right now. The Concord has been cracking down. Check back when things cool off.' };
+      }
+      if (choiceId === 'contraband') {
+        const bms = findBlackmarkets();
+        if (bms.length > 0) {
+          return { text: 'Narcotics, weapons, stolen goods — it all flows through the black markets. ' + bms[0].station.name + ' is your best bet. Margins are fat if you dodge the scans.' };
+        }
+        return { text: 'Supply lines are dry. Nobody\'s moving product with patrols this heavy.' };
+      }
+      return { text: 'Smart. Stay clean, stay alive. Mostly.' };
+    }
+
+    /* ── ENGINEER ──────────────────────────────────────── */
+    case 'engineer': {
+      if (choiceId === 'tech') {
+        const sec = currentSector(stationId);
+        if (sec.security < 0.5) {
+          return { text: 'Out here? Shield boosters and hull reinforcement. You\'ll take hits — make sure you can soak them. A good reactor helps everything run smoother too.' };
+        }
+        return { text: 'Cargo expanders if you\'re trading, mining lasers if you\'re cracking rock. Match the module to the mission. Don\'t waste slots on weapons in safe space.' };
+      }
+      if (choiceId === 'fix') {
+        const info = STATION_INDEX.get(stationId);
+        const stType = info ? info.station.type : 'station';
+        const typeDesc = {
+          trade_hub:   'Half the docking clamps need recalibration. Trade hubs run hard.',
+          refinery:    'The smelters overheat constantly. Refinery work never ends.',
+          mining:      'Drill rigs break down weekly out here. We patch what we can.',
+          fab:         'Fabrication arms drift out of alignment. Precision work, endless maintenance.',
+          military:    'Everything runs tight on a military station. Can\'t afford failures.',
+          blackmarket: 'Nothing works right because nothing was installed right. That\'s the price of off-grid.',
+          research:    'Sensor arrays need constant tuning. Research gear is delicate stuff.',
+        };
+        return { text: typeDesc[stType] || 'Everything. If it has bolts, it needs tightening.' };
+      }
+      return { text: 'Anytime. Keep your ship in one piece out there.' };
+    }
+
+    /* ── BOUNTY HUNTER ────────────────────────────────── */
+    case 'bounty_hunter': {
+      if (choiceId === 'bounties') {
+        const board = getMissionBoard(state, stationId);
+        if (board && board.slots) {
+          const bounty = board.slots.find(m => m.type === 'bounty_hunt' || m.type === 'patrol_clear');
+          if (bounty) {
+            const reward = bounty.reward_cr || bounty.rewardCr || '???';
+            return {
+              text: 'Got one — "' + (bounty.title || bounty.type) + '." Pays ' + reward + ' cr. Dangerous work, but the credits are real.',
+              missionOffer: bounty,
+            };
+          }
+        }
+        return { text: 'Board\'s dry for combat work. Try the frontier stations — more trouble out there means more bounties.' };
+      }
+      if (choiceId === 'action') {
+        const sec = currentSector(stationId);
+        let worst = null;
+        for (const nId of (sec.neighbors || [])) {
+          const ns = SECTOR_BY_ID.get(nId);
+          if (ns && (!worst || ns.enemyDensity > worst.enemyDensity)) worst = ns;
+        }
+        if (worst && worst.enemyDensity > 0.3) {
+          return { text: worst.name + ' is crawling with hostiles. Enemy density is high — good hunting if you can handle it.' };
+        }
+        return { text: 'Core sectors are too safe for real action. Push out toward the rim if you want a fight.' };
+      }
+      return { text: 'I never do. That\'s bad for business.' };
+    }
+
+    /* ── MINER ─────────────────────────────────────────── */
+    case 'miner': {
+      if (choiceId === 'fields') {
+        const miningData = findMiningFields();
+        // Prefer sectors with rare/exotic or crystalline fields
+        const exotic = miningData.find(m => m.fields.some(f => f.type === 'ast_rare_exotic'));
+        const crystal = miningData.find(m => m.fields.some(f => f.type === 'ast_crystalline'));
+        const pick = exotic || crystal || (miningData.length > 0 ? miningData[0] : null);
+        if (pick) {
+          const fieldType = pick.fields[0].type;
+          return { text: 'The ' + pick.sector.name + ' has good ' + fieldTypeName(fieldType) + ' deposits. Watch for rocks and raiders — the good fields attract both.' };
+        }
+        return { text: 'Slim pickings around here. You\'d have to range further out for decent ore.' };
+      }
+      if (choiceId === 'ore_price') {
+        const intel = getMarketIntel(state);
+        // Check if any station is buying ore well
+        const oreIds = COMMODITIES.filter(c => c.category === 'raw ore').map(c => c.id);
+        let bestOre = null;
+        for (const sid of Object.keys(intel)) {
+          const snap = intel[sid] && intel[sid].snapshot;
+          if (!snap) continue;
+          for (const oid of oreIds) {
+            if (!snap[oid]) continue;
+            const price = snap[oid].sell || snap[oid].mid || 0;
+            const base  = (COMMODITY_BY_ID.get(oid) || {}).basePrice || 1;
+            if (!bestOre || price / base > bestOre.ratio) {
+              bestOre = { oreId: oid, stationId: sid, price, ratio: price / base };
+            }
+          }
+        }
+        if (bestOre) {
+          return { text: commodityName(bestOre.oreId) + ' is fetching good prices at ' + stationName(bestOre.stationId) + ' — ' + Math.round(bestOre.price) + ' cr per unit. Worth the haul.' };
+        }
+        return { text: 'Ore prices are flat right now. Refineries aren\'t paying premium for anything. Just steady work.' };
+      }
+      return { text: 'Always. The belt doesn\'t mine itself.' };
+    }
+
+    default:
+      return { text: 'Suit yourself.' };
+  }
+}
+
+/* ── avatar drawing ─────────────────────────────────────────────────── */
+
 function drawAvatar(canvas, contact) {
   const ctx2 = canvas.getContext('2d');
   if (!ctx2) return;
@@ -68,57 +520,97 @@ function drawAvatar(canvas, contact) {
   ctx2.stroke();
 }
 
+/* ── main panel export ──────────────────────────────────────────────── */
+
 export function createBarPanel(ctx) {
   const root = document.createElement('div');
   root.className = 'st-panel st-bar';
   root.innerHTML = '<div class="st-sub-h">The Bar</div><div class="st-bar-list"></div>';
   const list = root.querySelector('.st-bar-list');
+  let currentStationId = null;
+  let currentContacts  = [];
 
+  /* ── click handler (dialog choices + mission accept) ──────────── */
   list.addEventListener('click', (ev) => {
+    // Mission accept button
+    const acceptBtn = ev.target.closest('[data-accept-mission]');
+    if (acceptBtn) {
+      const missionId = acceptBtn.getAttribute('data-accept-mission');
+      ctx.bus.emit('ui:acceptMission', { missionId });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      // Update UI to show accepted
+      const replyEl = acceptBtn.closest('.st-bar-card').querySelector('.st-bar-reply');
+      if (replyEl) replyEl.textContent = 'Mission accepted!';
+      acceptBtn.disabled = true;
+      acceptBtn.textContent = 'Accepted';
+      return;
+    }
+
+    // Dialog choice button
     const btn = ev.target.closest('[data-choice]');
     if (!btn) return;
     const card = btn.closest('[data-contact]');
     const contactId = card.getAttribute('data-contact');
-    const choiceId = btn.getAttribute('data-choice');
+    const choiceId  = btn.getAttribute('data-choice');
     ctx.bus.emit('ui:talkContact', { contactId, choiceId });
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
-    // local stub reply so the panel feels alive even with no dialog system wired yet.
-    const reply = card.querySelector('.st-bar-reply');
-    if (reply) {
-      reply.textContent = stubReply(choiceId);
-      reply.classList.add('show');
+
+    // Find the contact and build a real reply
+    const contact = currentContacts.find(c => c.id === contactId);
+    const reply   = card.querySelector('.st-bar-reply');
+    if (!reply || !contact) return;
+
+    const result = buildReply(contact.role, choiceId, ctx, currentStationId);
+
+    // Clear any previous mission buttons
+    const oldAccept = reply.parentNode.querySelector('.st-bar-accept-btn');
+    if (oldAccept) oldAccept.remove();
+
+    reply.textContent = result.text;
+    reply.classList.add('show');
+
+    // If there is a mission offer, add an accept button
+    if (result.missionOffer) {
+      const acceptButton = document.createElement('button');
+      acceptButton.className = 'st-bar-accept-btn';
+      acceptButton.setAttribute('data-accept-mission', result.missionOffer.id);
+      acceptButton.textContent = 'ACCEPT MISSION';
+      reply.after(acceptButton);
     }
   });
 
-  function stubReply(choiceId) {
-    switch (choiceId) {
-      case 'rumors': return 'They say pirates have been hitting the lanes near the belt. Watch yourself out there.';
-      case 'tips': return 'Buy low at the source, sell where they can\'t make it. Refineries always want ore.';
-      case 'work': return 'Cargo that doesn\'t like customs. Pays well if you keep quiet.';
-      case 'who': return 'Friends of friends. The Quiet looks after its own.';
-      default: return 'Suit yourself.';
-    }
-  }
-
+  /* ── render ───────────────────────────────────────────────────── */
   function refresh() {
+    if (!currentStationId) return;
+    currentContacts = generateContacts(currentStationId);
+
     const frag = document.createDocumentFragment();
-    for (const c of CONTACTS) {
+    for (const c of currentContacts) {
       const fac = c.factionId ? FACTION_BY_ID.get(c.factionId) : null;
+      const choices = getChoices(c.role);
+
       const card = document.createElement('div');
       card.className = 'st-bar-card';
       card.setAttribute('data-contact', c.id);
+
       const canvas = document.createElement('canvas');
-      canvas.width = 64; canvas.height = 64; canvas.className = 'st-bar-avatar';
+      canvas.width = 64;
+      canvas.height = 64;
+      canvas.className = 'st-bar-avatar';
+
       const body = document.createElement('div');
       body.className = 'st-bar-body';
       body.innerHTML =
-        '<div class="st-bar-name">' + c.name + ' <span class="st-bar-role mono">' + c.role +
-          (fac ? ' · ' + (fac.short || fac.name) : '') + '</span></div>' +
+        '<div class="st-bar-name">' + c.name +
+          ' <span class="st-bar-role mono">' + ROLE_LABELS[c.role] +
+          (fac ? ' · ' + (fac.short || fac.name) : '') +
+          '</span></div>' +
         '<div class="st-bar-line">' + c.line + '</div>' +
         '<div class="st-bar-choices">' +
-          c.choices.map((ch) => '<button data-choice="' + ch.id + '">' + ch.label + '</button>').join('') +
+          choices.map(ch => '<button data-choice="' + ch.id + '">' + ch.label + '</button>').join('') +
         '</div>' +
         '<div class="st-bar-reply mono"></div>';
+
       card.appendChild(canvas);
       card.appendChild(body);
       frag.appendChild(card);
@@ -131,7 +623,13 @@ export function createBarPanel(ctx) {
   return {
     el: root,
     stationId: null,
-    onShow(c) { if (c && c.stationId) this.stationId = c.stationId; refresh(); },
+    onShow(c) {
+      if (c && c.stationId) {
+        this.stationId = c.stationId;
+        currentStationId = c.stationId;
+      }
+      refresh();
+    },
     refresh,
   };
 }

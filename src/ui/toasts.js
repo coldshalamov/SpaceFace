@@ -21,7 +21,15 @@ export function createToasts(ctx) {
     body.className = 'sf-toast__text';
     body.textContent = text;
     el.append(icon, body);
+    // Click-to-dismiss is advertised by the cursor:pointer styling; expose the same affordance to
+    // keyboard users (Enter/Space) and to AT as a dismissible control.
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('aria-label', text + ' (dismiss)');
     el.addEventListener('click', () => dismiss(rec));
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); dismiss(rec); }
+    });
     // newest on top
     root.prepend(el);
     const rec = { el, born: performance.now(), ttl: normalizeTtlMs(ttl) };

@@ -8,7 +8,7 @@
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
 // "Press Enter to dock" alert (no ttl). The dock key handling lives in input.js.
 
-const SEV_RANK = { danger: 3, warn: 2, info: 1 };
+const SEV_RANK = { danger: 3, dock: 2.5, warn: 2, info: 1 };
 
 export function createAlerts(ctx) {
   const { bus } = ctx;
@@ -19,6 +19,12 @@ export function createAlerts(ctx) {
     if (rec.el) return rec.el;
     const el = document.createElement('div');
     el.className = `sf-alert sf-alert--${rec.sev}`;
+    // Announce these to assistive tech. danger pulses visually; it must also be spoken. We use
+    // role="status" + a polite/assertive live region keyed to severity so screen readers read combat
+    // alerts ("SHIELDS DOWN", "MISSILE LOCK") as they appear.
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', rec.sev === 'danger' ? 'assertive' : 'polite');
+    el.setAttribute('aria-atomic', 'true');
     const txt = document.createElement('span');
     txt.className = 'sf-alert__text';
     el.appendChild(txt);
@@ -76,9 +82,9 @@ export function createAlerts(ctx) {
   // --- event wiring ---
   bus.on('alert', raise);
 
-  // dock prompt (persistent while in range)
+  // dock prompt (persistent while in range) — large and unmissable
   bus.on('dock:range', ({ inRange }) => {
-    if (inRange) raise({ key: 'dock', sev: 'info', text: 'PRESS ENTER TO DOCK', ttl: Infinity });
+    if (inRange) raise({ key: 'dock', sev: 'dock', text: '[ ENTER ] DOCK AT STATION', ttl: Infinity });
     else clear('dock');
   });
   bus.on('dock:docked', () => clear('dock'));

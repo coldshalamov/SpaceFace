@@ -1,8 +1,17 @@
 // Floating combat text — pooled DOM numbers that pop off entities when they take damage (and a few
-// other beats: ore yield, credits, "SHIELD DOWN"). Pure presentation: subscribes to bus events,
-// reads entity transforms via helpers.worldToScreen, never touches sim state. Gated on
-// state.settings.showDamageNumbers. Driven each frame by hud.frame() -> update().
+// other beats: ore yield, credits, "SHIELD DOWN", bounty, pickups). Pure presentation: subscribes
+// to bus events, reads entity transforms via helpers.worldToScreen, never touches sim state. Gated
+// on state.settings.showDamageNumbers. Driven each frame by hud.frame() -> update().
+import { COMMODITIES } from '../data/commodities.js';
+import { FACTION_META } from '../data/factions.js';
+
 const POOL = 56;
+
+// Lookup tables built once at module load
+const CMDTY_BY_ID = Object.create(null);
+for (const c of COMMODITIES) CMDTY_BY_ID[c.id] = c;
+const FACTION_BY_ID = Object.create(null);
+for (const f of FACTION_META) FACTION_BY_ID[f.id] = f;
 const STYLE_ID = 'sf-floattext-style';
 
 export function createFloatingText(ctx) {
@@ -65,6 +74,48 @@ export function createFloatingText(ctx) {
   // of dashing NPCs doesn't spam text.
   bus.on('ship:dash', (p) => { if (p && p.shipId === state.playerId) { const e = state.entities.get(p.shipId); if (e) spawn('DASH', 'sf-ft--dash', e.pos.x, e.pos.z, null, { life: 0.7, vy: 50 }); } });
 
+  // ---- bounty / kill credits ----------------------------------------------------------------
+  bus.on('entity:killed', (p) => {
+    if (!p || !p.pos || !p.bountyCr || p.killerId !== state.playerId) return;
+    // Gold "+800 CR" floating text at the kill site
+    spawn('+' + p.bountyCr + ' CR', 'sf-ft--bounty', p.pos.x, p.pos.z, null, { life: 1.6, vy: 30 });
+    // Toast: "Enemy Destroyed · +800 CR"
+    const label = (p.victimClass === 'capital' || p.victimClass === 'large') ? 'Capital Destroyed' : 'Enemy Destroyed';
+    bus.emit('toast', { text: label + ' · +' + p.bountyCr + ' CR', kind: 'credits', ttl: 3.5 });
+  });
+
+  // ---- pickup collected (ore / cargo / module) ----------------------------------------------
+  bus.on('pickup:collected', (p) => {
+    if (!p || p.collectorId !== state.playerId) return;
+    const qty = p.amount || 0;
+    if (qty <= 0 && p.kind !== 'module') return;
+    const def = CMDTY_BY_ID[p.commodityId];
+    const name = def ? def.name : (p.commodityId || 'Item');
+    const cat = def ? def.category : '';
+    // Pick a color class based on category
+    const cls = cat === 'raw ore' || cat === 'crystal' ? 'sf-ft--ore'
+      : cat === 'exotic' ? 'sf-ft--exotic'
+      : p.kind === 'module' ? 'sf-ft--module'
+      : 'sf-ft--pickup';
+    const text = p.kind === 'module' ? ('+1 ' + name) : ('+' + qty + ' ' + name);
+    spawn(text, cls, p.pos.x, p.pos.z, null, { life: 1.2, vy: 38 });
+  });
+
+  // ---- faction rep changes ------------------------------------------------------------------
+  bus.on('faction:repChanged', (p) => {
+    if (!p || !p.delta) return;
+    const fac = FACTION_BY_ID[p.factionId];
+    const name = fac ? fac.short : (p.factionId || 'Unknown');
+    const sign = p.delta > 0 ? '+' : '';
+    const kind = p.delta > 0 ? 'good' : 'danger';
+    bus.emit('toast', { text: sign + Math.round(p.delta) + ' REP · ' + name, kind, ttl: 3.5 });
+  });
+
+  // ---- cargo full ---------------------------------------------------------------------------
+  bus.on('cargo:full', (p) => {
+    bus.emit('toast', { text: 'CARGO FULL', kind: 'warn', ttl: 3.5 });
+  });
+
   function update(dt) {
     if (!helpers.worldToScreen) return;
     for (let i = 0; i < POOL; i++) {
@@ -105,6 +156,11 @@ function injectStyle() {
   .sf-ft--ore { color:#7af7d0; }
   .sf-ft--credits { color:#ffd84a; font-size:15px; }
   .sf-ft--dash { color:#c98cff; font-size:14px; letter-spacing:.18em; text-shadow:0 0 10px rgba(170,90,255,.8),0 0 4px #000; }
+  .sf-ft--bounty { color:#ffd84a; font-size:18px; font-weight:900; letter-spacing:.06em;
+    text-shadow:0 0 12px rgba(255,216,74,.7),0 0 4px #000; }
+  .sf-ft--exotic { color:#c98cff; font-size:15px; text-shadow:0 0 8px rgba(170,90,255,.6),0 0 4px #000; }
+  .sf-ft--module { color:#39d0ff; font-size:15px; text-shadow:0 0 8px rgba(57,208,255,.6),0 0 4px #000; }
+  .sf-ft--pickup { color:#d3e6ff; font-size:14px; }
   `;
   document.head.appendChild(s);
 }

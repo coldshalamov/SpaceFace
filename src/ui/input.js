@@ -41,6 +41,7 @@ export function createUiInput(ctx, screenManager) {
 
     // --- if a modal is open, route to its handler, ESC = back ---
     if (modalOpen) {
+      bus.emit('ui:closeCargo');
       const def = screenManager.getActiveScreenDef();
       if (key === 'Escape') {
         ev.preventDefault();
@@ -98,6 +99,10 @@ export function createUiInput(ctx, screenManager) {
         // asteroid (or the mining system's soft-locked one). Bails with a toast if no asteroid.
         ev.preventDefault();
         openDrill();
+        return;
+      case 'i': case 'I':
+        ev.preventDefault();
+        bus.emit('ui:toggleCargo');
         return;
       case 'c': case 'C':
         // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base

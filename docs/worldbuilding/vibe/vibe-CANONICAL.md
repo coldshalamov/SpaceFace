@@ -67,12 +67,20 @@ What escalates isn't your ambition. It's the realization that the entire system 
 
 You never fight the system head-on. You steal its lunch money, sell it back to them at a markup, then use the profit to buy the next layer of rot. The joke is that the only way to stay human is to keep being a criminal. The punchline is that eventually even the criminals start acting like the institutions they hate—only with worse bookkeeping.
 
+**The Player — Cipher and Person**
+The game's surface treats the player as interchangeable. The contracts don't care who you are. The NPCs don't ask about your childhood. The HUD doesn't know your name. On the surface you're a cipher: any pilot, any ship, any debt. Thread A works on anyone.
+
+Underneath, the player is someone specific. He has a name. He has a reason for being in this part of the galaxy that is not the same reason everyone else is here. He carries cargo the manifest doesn't list and a memory the game never asks about. The specificity comes out in details — a flinch at a sound, a reaction to a material, a search query run on a data terminal between contract jobs. Not exposition. Not flashback. Details that cost the character nothing to reveal and cost the attentive player everything to notice.
+
+The ghost is haunted. The cipher has a backstory. The ex-gangster has ink under the scars and some of the scars are from a place that doesn't appear on any chart. The game treats him as fungible. He is not.
+
 **Non-Negotiables**
 - Never let the player feel like the good guy.
 - Never let the player feel like the only bad guy.
 - Every joke about death must also be a confession.
 - Every pretty vista must contain at least one thing that died ugly.
 - The ship is haunted. The player is the ghost.
+- The player is someone specific. The game doesn't care.
 - Graffiti is the only honest narrator.
 - The HUD lies. Eventually it stops correcting itself in your favor.
 - The static between the stars sounds exactly like laughter if you listen long enough.

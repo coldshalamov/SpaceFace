@@ -5,6 +5,7 @@
 // entity.data.ai.archetype (swarmer/sniper/brawler/fleeing_trader/pirate/miniboss_capital).
 // Deterministic: uses state.rng for any randomness (never Math.random in sim logic, §0.5).
 import { wrapAngle } from '../core/rng.js';
+import { makeEnemySpawnSpec } from './combat.js';
 
 // FSM states.
 const S = { IDLE: 'idle', PATROL: 'patrol', PURSUE: 'pursue', ATTACK: 'attack', STRAFE: 'strafe', FLEE: 'flee' };
@@ -92,6 +93,26 @@ export const ai = {
       }
     }
 
+    // Process pending reinforcements
+    const pending = state.combat.pendingReinforcements;
+    if (pending && pending.length > 0) {
+      for (let i = pending.length - 1; i >= 0; i--) {
+        const r = pending[i];
+        if (state.simTime >= r.spawnAt) {
+          pending.splice(i, 1);
+          try {
+            const spec = makeEnemySpawnSpec(r.typeId, r.level, r.pos);
+            spec.data = spec.data || {};
+            spec.data.reinforcements = null; // reinforcements don't call their own reinforcements
+            this.helpers.spawnEntity(spec);
+            this.bus.emit('toast', { text: 'Reinforcements have arrived!', kind: 'danger', ttl: 2 });
+          } catch (err) {
+            console.warn('[ai] failed to spawn reinforcement:', err);
+          }
+        }
+      }
+    }
+
     for (const e of list) {
       if (e.type !== 'ship' || !e.alive) continue;
       if (e.id === state.playerId) continue;
@@ -146,6 +167,7 @@ export const ai = {
 
     // --- FSM transitions ---
     const hullFrac = e.hullMax > 0 ? e.hull / e.hullMax : 1;
+    this._checkReinforcements(e, data, state);
     const fleeFrac = arch.alwaysFlee ? 1.0 : (arch.fleeFrac || 0);
     const wantFlee = arch.alwaysFlee || (fleeFrac > 0 && hullFrac < fleeFrac && target != null);
 
@@ -339,6 +361,53 @@ export const ai = {
     let tbl = this._threat.get(targetId);
     if (!tbl) { tbl = new Map(); this._threat.set(targetId, tbl); }
     tbl.set(attackerId, (tbl.get(attackerId) || 0) + amount);
+  },
+
+  _checkReinforcements(e, data, state) {
+    const ai = data.ai;
+    if (ai._calledReinforcements) return; // already called once
+
+    // Look up enemy type definition to check for reinforcement config
+    const lootTableId = data.lootTableId;
+    if (!lootTableId) return;
+
+    const hullFrac = e.hullMax > 0 ? e.hull / e.hullMax : 1;
+    const reinforcements = data.reinforcements;
+    if (!reinforcements) return;
+
+    const threshold = reinforcements.hullThreshold || 0.3;
+    if (hullFrac >= threshold) return;
+
+    // Flag so we only call once
+    ai._calledReinforcements = true;
+
+    // Determine count using deterministic RNG
+    const [minCount, maxCount] = reinforcements.count || [1, 2];
+    const count = minCount + Math.floor(state.rng() * (maxCount - minCount + 1));
+
+    // Emit alert to the player
+    this.bus.emit('alert', { key: 'reinforcements', sev: 'danger', text: 'ENEMY CALLING REINFORCEMENTS', ttl: 3 });
+    this.bus.emit('toast', { text: 'Hostile is calling for backup!', kind: 'danger', ttl: 3 });
+    this.bus.emit('audio:cue', { id: 'ui_alert' });
+
+    // Queue reinforcement spawns with a brief delay using the event bus
+    const spawnPos = { x: e.pos.x, z: e.pos.z };
+    const level = data.level || 1;
+    const typeId = reinforcements.type || 'wasp_swarmer';
+
+    // Store pending reinforcements on state for the update loop to process
+    if (!state.combat.pendingReinforcements) state.combat.pendingReinforcements = [];
+    for (let i = 0; i < count; i++) {
+      const angle = state.rng() * Math.PI * 2;
+      const dist = 180 + state.rng() * 120; // spawn 180-300 units away
+      state.combat.pendingReinforcements.push({
+        typeId,
+        level,
+        pos: { x: spawnPos.x + Math.cos(angle) * dist, z: spawnPos.z + Math.sin(angle) * dist },
+        spawnAt: state.simTime + 1.5 + state.rng() * 1.0, // 1.5-2.5s delay
+        callerId: e.id,
+      });
+    }
   },
 
   // Iterative intercept solve (§ LEAD/INTERCEPT). Returns the world angle to aim at so a projectile

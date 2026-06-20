@@ -41,6 +41,9 @@ function defaultPlayer() {
     magnetRange: 90,
     miningBeam: { tierId: 'beam_mk1', range: 220, dps: 18, heat: 0, heatRate: 0, coolRate: 0, overheated: false, directToCargo: true },
     stats: { lifetimeProfit: 0, tradesCount: 0, biggestSingleProfit: 0, smuggledValue: 0, kills: 0, missionsDone: 0, totalPassiveEarnedLifetime: 0 },
+    // Contextual first-time hints (onboarding.js). Each flag starts false and flips to true once
+    // the hint has been shown; persisted across saves so returning players aren't re-taught.
+    hints: { firstFlight: false, firstCombat: false, firstShieldDrop: false, firstStation: false, firstGate: false, firstCargoFull: false },
   };
 }
 

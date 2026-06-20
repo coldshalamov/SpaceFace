@@ -199,10 +199,18 @@ export const saveLoadScreen = {
       const meta = slots[id];
       const occupied = isOccupied(meta);
       const row = el('div', 'sf-slot' + (occupied ? '' : ' empty') + (refs.selected === id ? ' sel' : ''));
+      // The slot row is a clickable surface (selects the slot) but contains real <button>s for the
+      // actual actions. Make the row itself keyboard-operable so selection isn't mouse-only.
+      row.setAttribute('role', 'button');
+      row.setAttribute('tabindex', '0');
+      row.setAttribute('aria-label', slotLabel(id) + ' — ' + fmtMeta(meta));
+      const selectSlot = () => { refs.selected = id; this._render(ctx); };
       row.addEventListener('click', (ev) => {
         if (ev.target && ev.target.closest && ev.target.closest('button,input')) return;
-        refs.selected = id;
-        this._render(ctx);
+        selectSlot();
+      });
+      row.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selectSlot(); }
       });
       const main = el('div', 'sf-slot-main');
       main.appendChild(el('div', 'sf-slot-name', slotLabel(id)));
@@ -230,10 +238,10 @@ export const saveLoadScreen = {
       row.appendChild(bSave);
       row.appendChild(bLoad);
       // Empty slots offer a direct "New Game" so the player isn't forced back to the main menu to
-      // start — addressing the confusing "only a Back button" flow.
+      // start — addressing the confusing "only a Back button" flow. Primary CTA styling so it stands
+      // out as the constructive action (the Save/Load beside it are secondary .sf-tab chips).
       if (!occupied) {
-        const bNew = el('button', 'sf-tab', 'New Game'); bNew.style.minWidth = '84px';
-        bNew.style.borderColor = 'var(--accent)'; bNew.style.color = 'var(--accent)';
+        const bNew = el('button', 'sf-btn sf-btn--primary', 'New Game');
         bNew.addEventListener('click', () => nav(ctx, 'pushScreen', 'newGame'));
         row.appendChild(bNew);
       }

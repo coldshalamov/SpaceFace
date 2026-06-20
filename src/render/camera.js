@@ -27,6 +27,10 @@ export function createChaseCamera(state) {
   const _rollQ = new THREE.Quaternion();
   const _FORWARD = new THREE.Vector3(0, 0, -1);
 
+  // dynamic zoom — smoothly adapts camera distance to gameplay context
+  let _dynamicZoom = c.zoom;
+  const ZOOM_LERP = 3.0;   // responsiveness for zoom transitions
+
   return {
     obj: cam,
     addTrauma(amount) { c.trauma = Math.min(1, c.trauma + amount); },
@@ -49,7 +53,46 @@ export function createChaseCamera(state) {
       }
       c.focus.x = damp(c.focus.x, fx, c.lerp, dt);
       c.focus.z = damp(c.focus.z, fz, c.lerp, dt);
-      computeOffset(c.zoom);
+
+      // --- dynamic zoom ---
+      const baseZoom = c.zoom;
+      let targetZoom = baseZoom;
+      if (p) {
+        const sp = Math.hypot(p.vel.x, p.vel.z);
+
+        // scan for nearby enemies (ships on a different team, alive, within 600 wu)
+        let nearbyEnemies = 0;
+        for (const e of state.entities.values()) {
+          if (e === p) continue;
+          if (e.type !== 'ship' || e.team === p.team || e.hull <= 0) continue;
+          const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
+          if (dx * dx + dz * dz < 600 * 600) nearbyEnemies++;
+        }
+
+        // collect zoom factors — we'll take the maximum zoom-out
+        let zoomFactor = 1.0;
+
+        // combat: zoom out 15% when enemies nearby or taking damage
+        if (nearbyEnemies > 0 || c.trauma > 0.1) {
+          zoomFactor = Math.max(zoomFactor, 1.15);
+        }
+        // boost: zoom out 12% for speed feel
+        if (p.flags && p.flags.boosting) {
+          zoomFactor = Math.max(zoomFactor, 1.12);
+        }
+        // dash: zoom out 20% at high speed (proxy: speed > 110% of maxSpeed)
+        if (p.maxSpeed && sp > p.maxSpeed * 1.1) {
+          zoomFactor = Math.max(zoomFactor, 1.20);
+        }
+        // idle/cruising: zoom in 8% when slow and peaceful
+        if (p.maxSpeed && sp < p.maxSpeed * 0.15 && nearbyEnemies === 0 && c.trauma <= 0.1) {
+          zoomFactor = Math.min(zoomFactor, 0.92);
+        }
+
+        targetZoom = baseZoom * zoomFactor;
+      }
+      _dynamicZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, dt);
+      computeOffset(_dynamicZoom);
       if (c.trauma > 0) {
         c.trauma = Math.max(0, c.trauma - 1.6 * dt);
         const t2 = c.trauma * c.trauma;

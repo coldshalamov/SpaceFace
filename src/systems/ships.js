@@ -424,6 +424,7 @@ export const ships = {
 
     // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits.
     bus.on('ui:buyShip', (p) => this.buyShip(p || {}));
+    bus.on('ui:buyModule', (p) => this.buyModule(p || {}));
     bus.on('ui:fitModule', (p) => this.fitModule(p || {}));
     bus.on('ui:unfitModule', (p) => this.unfitModule(p || {}));
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
@@ -568,6 +569,31 @@ export const ships = {
     if (!def) return false;
     if (!def.requiresTech) return true;
     return this.state.player.researchedNodes.includes(def.requiresTech);
+  },
+
+  // ---- module shop: buy a module/weapon into inventory -----------------------------------
+
+  /** Purchase a module or weapon by defId. Validates tech, credits, then deducts credits and
+   *  pushes a new instance into moduleInventory. Returns true on success. */
+  buyModule({ defId }) {
+    const def = defById(defId);
+    const p = this.state.player;
+    if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return false; }
+    if (!this.isUnlocked(def)) {
+      this.bus.emit('toast', { text: 'Research required: ' + (def.requiresTech || 'unknown tech'), kind: 'error', ttl: 3 });
+      return false;
+    }
+    const price = def.price || 0;
+    if (price > 0 && p.credits < price) {
+      this.bus.emit('toast', { text: 'Insufficient credits (' + price.toLocaleString('en-US') + ' cr)', kind: 'error', ttl: 3 });
+      return false;
+    }
+    // Deduct credits via the economy's sole-writer path (§0.6).
+    if (price > 0) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyModule:' + defId });
+    p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId });
+    this.bus.emit('module:purchased', { defId, price });
+    this.bus.emit('toast', { text: 'Purchased ' + def.name, kind: 'success', ttl: 3 });
+    return true;
   },
 
   // ---- shipyard: buy / sell ship ----------------------------------------------------------

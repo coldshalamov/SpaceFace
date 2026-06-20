@@ -320,6 +320,7 @@ export const stationHub = {
     bus.on('ship:sold', onActive(['shipyard', 'outfit']));
     bus.on('module:equipped', onActive(['outfit']));
     bus.on('module:unequipped', onActive(['outfit']));
+    bus.on('module:purchased', onActive(['outfit']));
     bus.on('tech:researched', onActive(['shipyard', 'outfit']));
     // services-affecting
     bus.on('fuel:changed', onActive(['services']));
@@ -415,6 +416,11 @@ const STATION_CSS = `
 .st-sell-btn { border-color: var(--warn); color: var(--warn); }
 .st-sell-btn:hover:not(:disabled) { background: var(--warn); color: #1a1000; }
 .st-market-foot { margin-top: 10px; color: var(--ink-dim); font-size: .8rem; }
+/* market footer message (e.g. "Select a quantity, then Buy or Sell." / the live trade result) —
+   referenced in market.js but never defined, so it was inheriting unstyled. */
+.st-foot-msg { font-family: var(--mono); font-size: .76rem; letter-spacing: .04em; }
+.st-foot-msg.st-foot-msg--ok { color: var(--good); }
+.st-foot-msg.st-foot-msg--bad { color: var(--danger); }
 
 /* Phase 7: Manufacturing panel */
 .st-manufacture { display: flex; flex-direction: column; gap: 6px; }
@@ -457,6 +463,10 @@ const STATION_CSS = `
 .st-heat-flat { color: var(--ink-dim); }
 
 /* shipyard */
+/* The hulls-for-sale table has 7 columns (Hull name, Tier, Hull, Shield, Cargo, Price, action) but
+   the shared .st-row grid only defines 6 tracks — so shipyard rows were misaligning / squishing the
+   last column. Scope a 7-track grid under .st-shipyard so the market table (6 cols) is unaffected. */
+.st-shipyard .st-row { grid-template-columns: 2.6fr .6fr .8fr .9fr .9fr 1.3fr 1fr; }
 .st-sy-owned { margin-bottom: 16px; }
 .st-sy-owned-list { display: flex; gap: 10px; flex-wrap: wrap; }
 .st-sy-card { border: 1px solid var(--panel-edge); border-radius: 6px; padding: 10px 12px; min-width: 180px;
@@ -468,6 +478,8 @@ const STATION_CSS = `
 .st-sy-btns button { font-size: .75rem; padding: 4px 8px; }
 
 /* outfitting */
+/* the two-column wrapper (slot grid + stat table) referenced in outfitting.js — was undefined. */
+.st-outfit-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
 .st-outfit-top { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; margin-bottom: 16px; }
 .st-slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .st-slot { border: 1px solid var(--panel-edge); border-radius: 6px; padding: 8px 10px; cursor: pointer;
@@ -475,6 +487,14 @@ const STATION_CSS = `
 .st-slot.empty { border-style: dashed; }
 .st-slot.filled { border-color: var(--panel-edge-2); }
 .st-slot.sel { border-color: var(--accent); box-shadow: 0 0 8px rgba(57,208,255,.3); }
+/* Type-coded left accent so slot kinds are scannable at a glance. The .st-slot-{type} modifier
+   is emitted by outfitting.js per cell; these cover every slotType in data/ships.js + modules.js. */
+.st-slot-weapon { border-left: 3px solid var(--danger); }
+.st-slot-shield { border-left: 3px solid var(--shield); }
+.st-slot-engine { border-left: 3px solid var(--warn); }
+.st-slot-cargo { border-left: 3px solid var(--cargo); }
+.st-slot-mining { border-left: 3px solid var(--accent-2); }
+.st-slot-utility { border-left: 3px solid var(--accent-3); }
 .st-slot-type { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); }
 .st-slot-facing { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 3px;
   background: rgba(57,208,255,.14); color: var(--accent); font-size: .58rem; letter-spacing: .08em;
@@ -496,6 +516,32 @@ const STATION_CSS = `
 .st-inv-item.incompat { opacity: .55; }
 .st-inv-name { font-size: .82rem; }
 .st-inv-meta { font-size: .64rem; color: var(--ink-mute); letter-spacing: .06em; text-transform: uppercase; }
+
+/* module shop (outfitting) */
+.st-outfit-shop { margin-top: 20px; border-top: 1px solid var(--panel-edge); padding-top: 12px; }
+.st-shop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.st-shop-credits { color: var(--energy); font-size: .92rem; }
+.st-shop-head-row.st-row { grid-template-columns: 2.2fr .8fr 2.4fr 1fr 1.2fr; }
+.st-shop-list { display: block; max-height: 340px; overflow-y: auto; }
+.st-shop-row { display: grid; grid-template-columns: 2.2fr .8fr 2.4fr 1fr 1.2fr; align-items: center;
+  gap: 8px; padding: 7px 8px; border-bottom: 1px solid rgba(29,51,80,.4); font-size: .82rem;
+  transition: background var(--dur) var(--ease); }
+.st-shop-row:hover { background: rgba(57,208,255,.05); }
+.st-shop-row.locked { opacity: .45; filter: saturate(.3); }
+.st-shop-row.noafford { opacity: .6; }
+.st-shop-row.nofit .c-name { color: var(--ink-mute); }
+.st-shop-slot { color: var(--ink-mute); text-transform: uppercase; letter-spacing: .06em; font-size: .72rem; }
+.st-shop-stats { color: var(--ink-dim); font-size: .74rem; line-height: 1.35; }
+.st-shop-price { text-align: right; color: var(--energy); }
+.st-shop-delta { margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px; }
+.st-shop-delta .st-delta { font-size: .68rem; }
+.st-shop-group { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--accent); margin: 12px 0 4px; padding: 4px 8px;
+  display: flex; align-items: center; gap: 10px; }
+.st-shop-group::after { content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--panel-edge), transparent); }
+.st-shop-row .c-act button { font-size: .74rem; padding: 3px 10px; }
+.st-shop-row .c-act button:not(:disabled) { border-color: var(--good); color: var(--good); cursor: pointer; }
+.st-shop-row .c-act button:not(:disabled):hover { background: var(--good); color: #021008; }
 
 /* services */
 .st-svc-list { display: flex; flex-direction: column; gap: 8px; }

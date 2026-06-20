@@ -29,8 +29,14 @@ function entityName(e) {
 export function createTargetPanel(ctx) {
   const { state } = ctx;
   const el = document.createElement('div');
-  el.className = 'sf-target panel';
+  // NOTE: deliberately NOT using the `.panel` class — that's the modal-screen surface (heavy
+  // 40px box-shadow + 10px radius). This is a small HUD sub-panel sitting above the radar; it
+  // gets the lighter `.sf-hudpanel` treatment instead.
+  el.className = 'sf-target sf-hudpanel';
   el.style.display = 'none';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  el.setAttribute('aria-atomic', 'true');
   el.innerHTML = `
     <div class="sf-target__head">
       <span class="sf-target__name">—</span>

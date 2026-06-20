@@ -189,6 +189,7 @@ export const render = {
     try { this.collisionDebug = createCollisionDebug(this); }
     catch (err) { console.warn('[render] collision debug unavailable:', err); this.collisionDebug = null; }
     this._meshes = new Map(); // entityId -> Object3D
+    this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
     try {
@@ -298,6 +299,7 @@ export const render = {
       if (this.starfield && this.starfield.setSectorTint) {
         this.starfield.setSectorTint(sectorNebulaTint(sector));
       }
+      this._updateHazardVisuals(sector);
     });
     bus.on('save:loaded', () => { this._meshReconcileDirty = true; });
 
@@ -309,6 +311,9 @@ export const render = {
       if (keepPlayer && id === this.state.playerId) continue;
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
     }
+    // Also clear hazard zone visuals
+    for (const obj of this._hazardVisuals) { this.scene.remove(obj); disposeObject(obj); }
+    this._hazardVisuals = [];
   },
 
   // Self-healing entity<->mesh reconciliation. Guarantees every alive, renderable entity has a
@@ -418,6 +423,92 @@ export const render = {
     for (const b of this._planetBodies) {
       b.mesh.position.x = b.basePos.x + cam.x * (1 - b.parallax);
       b.mesh.position.z = b.basePos.z + cam.z * (1 - b.parallax);
+    }
+  },
+
+  // --------------- hazard zone visuals ------------------------------------------------
+  // Create a radial gradient CanvasTexture: bright center color fading to transparent edge.
+  _makeHazardTexture(hexColor, centerAlpha, edgeAlpha) {
+    const size = 256;
+    const c = document.createElement('canvas'); c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    const half = size / 2;
+    const g = ctx.createRadialGradient(half, half, 0, half, half, half);
+    // Parse hex to r,g,b
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const gr = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    g.addColorStop(0.0, `rgba(${r},${gr},${b},${centerAlpha})`);
+    g.addColorStop(0.5, `rgba(${r},${gr},${b},${centerAlpha * 0.6})`);
+    g.addColorStop(0.85, `rgba(${r},${gr},${b},${edgeAlpha * 0.5})`);
+    g.addColorStop(1.0, `rgba(${r},${gr},${b},${edgeAlpha})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(c);
+    tex.needsUpdate = true;
+    return tex;
+  },
+
+  _updateHazardVisuals(sector) {
+    // Dispose previous hazard visuals
+    for (const obj of this._hazardVisuals) {
+      this.scene.remove(obj);
+      disposeObject(obj);
+    }
+    this._hazardVisuals = [];
+
+    if (!sector || !sector.hazards || sector.hazards.length === 0) return;
+
+    // Color/opacity config per hazard type
+    const hazardStyles = {
+      radiation:       { color: '#66ff44', centerAlpha: 0.18, edgeAlpha: 0.04, ring: true,  ringColor: 0x44ff22 },
+      nebula:          { color: '#7744ff', centerAlpha: 0.15, edgeAlpha: 0.03, ring: false, ringColor: 0x7744ff },
+      dense_asteroid:  { color: '#aa7744', centerAlpha: 0.10, edgeAlpha: 0.02, ring: false, ringColor: 0xaa7744 },
+      debris:          { color: '#778899', centerAlpha: 0.12, edgeAlpha: 0.03, ring: false, ringColor: 0x778899 },
+    };
+
+    for (const hz of sector.hazards) {
+      const style = hazardStyles[hz.type] || hazardStyles.debris;
+      const intensityScale = hz.intensity != null ? hz.intensity : 0.5;
+
+      // --- Main disc ---
+      const discGeo = new THREE.CircleGeometry(hz.radius, 64);
+      const tex = this._makeHazardTexture(style.color, style.centerAlpha * intensityScale, style.edgeAlpha * intensityScale);
+      const discMat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const disc = new THREE.Mesh(discGeo, discMat);
+      disc.rotation.x = -Math.PI / 2;
+      disc.position.set(hz.center.x, -0.5, hz.center.z);
+      disc.renderOrder = -3; // below contact shadows
+      disc.frustumCulled = false;
+      this.scene.add(disc);
+      this._hazardVisuals.push(disc);
+
+      // --- Boundary ring (radiation zones get a visible edge ring) ---
+      if (style.ring) {
+        const ringInner = hz.radius - 4;
+        const ringOuter = hz.radius + 4;
+        const ringGeo = new THREE.RingGeometry(ringInner, ringOuter, 64);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: style.ringColor,
+          transparent: true,
+          opacity: 0.25 * intensityScale,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(hz.center.x, -0.4, hz.center.z);
+        ring.renderOrder = -2;
+        ring.frustumCulled = false;
+        this.scene.add(ring);
+        this._hazardVisuals.push(ring);
+      }
     }
   },
 
