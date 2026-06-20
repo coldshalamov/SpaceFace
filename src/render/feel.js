@@ -20,6 +20,8 @@
 //
 // This is a render-phase system (no sim update). Driven from registry.renderUpdate -> feel.frame().
 // All event subscriptions are registered in init; frame() integrates the timers.
+import { damp } from '../core/math.js';
+
 const STYLE_ID = 'sf-feel-style';
 
 // Tunables — kept conservative for a space game (not a brawler). Hit-stop is short so it reads as
@@ -69,12 +71,14 @@ export const feel = {
   mix-blend-mode:screen; transition:none; }
 .sf-feel-vig--hit   { background:radial-gradient(circle at 50% 55%, rgba(255,90,70,0) 45%, rgba(255,60,50,1) 100%); }
 .sf-feel-vig--death { background:radial-gradient(circle at 50% 50%, rgba(255,30,50,0) 25%, rgba(255,20,40,1) 100%); }
+#sf-speed-lines { position:absolute; inset:0; z-index:1201; pointer-events:none; opacity:0; }
     `;
     document.head.appendChild(s);
   },
 
   _mountVignette() {
     this._ensureVignette();
+    this._mountSpeedLines();
   },
 
   _ensureVignette() {
@@ -89,6 +93,108 @@ export const feel = {
     root.appendChild(el);
     this._vigEl = el;
     return el;
+  },
+
+  _mountSpeedLines() {
+    if (this._slCanvas && this._slCanvas.isConnected) return;
+    const root = document.getElementById('hud') || document.body;
+    const cvs = document.createElement('canvas');
+    cvs.id = 'sf-speed-lines';
+    root.appendChild(cvs);
+    this._slCanvas = cvs;
+    this._slCtx = cvs.getContext('2d');
+    this._slOpacity = 0;      // current smooth-damped opacity
+    this._slW = 0;             // cached canvas width
+    this._slH = 0;             // cached canvas height
+  },
+
+  _updateSpeedLines(frameDt) {
+    // Ensure canvas is mounted
+    if (!this._slCanvas || !this._slCanvas.isConnected) {
+      this._mountSpeedLines();
+    }
+    const cvs = this._slCanvas;
+    const ctx = this._slCtx;
+    if (!cvs || !ctx) return;
+
+    // Resolve player entity
+    const ents = this.state.entities;
+    const pid = this.state.playerId;
+    const player = ents && pid != null ? ents.get(pid) : null;
+
+    let targetOpacity = 0;
+    let boosting = false;
+
+    if (player && player.vel) {
+      const vel = player.vel;
+      const maxSpd = Math.max(1, player.maxSpeed || 1);
+      const speedRatio = Math.hypot(vel.x, vel.z) / maxSpd;
+      boosting = !!(player.flags && player.flags.boosting);
+
+      if (boosting) {
+        targetOpacity = 0.5;
+      } else if (speedRatio > 0.4) {
+        // Ramp from 0 at 0.4 to ~0.3 at 1.0
+        targetOpacity = ((speedRatio - 0.4) / 0.6) * 0.3;
+      }
+    }
+
+    // Smooth-damp toward target (rate 8 = responsive but not jarring)
+    this._slOpacity = damp(this._slOpacity, targetOpacity, 8, frameDt);
+
+    if (this._slOpacity <= 0.01) {
+      // Hide canvas and skip drawing
+      if (cvs.style.opacity !== '0') {
+        cvs.style.opacity = '0';
+      }
+      return;
+    }
+
+    // Sync canvas size to window (only on change to avoid clearing needlessly)
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (this._slW !== w || this._slH !== h) {
+      cvs.width = w;
+      cvs.height = h;
+      this._slW = w;
+      this._slH = h;
+    }
+
+    // Show canvas
+    cvs.style.opacity = '1';
+
+    // Clear
+    ctx.clearRect(0, 0, w, h);
+
+    // Draw radial speed lines from center outward
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+    const maxR = Math.hypot(cx, cy);    // distance from center to corner
+    const startR = maxR * 0.4;          // lines begin ~40% out from center
+    const lineCount = boosting ? 48 : 32;
+    const lineWidth = boosting ? 2 : 1.2;
+    const alpha = this._slOpacity;
+
+    ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+
+    // Use a seeded-ish set of angles so lines don't flicker randomly every frame.
+    // Slight per-line variation in start radius and length gives organic feel.
+    const angleStep = (Math.PI * 2) / lineCount;
+    for (let i = 0; i < lineCount; i++) {
+      // Small fixed offset per line (deterministic from index) for variation
+      const jitter = ((i * 7 + 3) % 13) / 13;           // 0..1 pseudo-random per line
+      const angle = angleStep * i + (jitter - 0.5) * angleStep * 0.35;
+      const rStart = startR + jitter * maxR * 0.08;      // slight start variation
+      const rEnd = maxR * (0.92 + jitter * 0.08);        // slight end variation
+
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      ctx.moveTo(cx + cosA * rStart, cy + sinA * rStart);
+      ctx.lineTo(cx + cosA * rEnd, cy + sinA * rEnd);
+    }
+    ctx.stroke();
   },
 
   _subscribe() {
@@ -205,5 +311,8 @@ export const feel = {
       if (this._vig < 0.001) { this._vig = 0; vigEl.style.opacity = '0'; vigEl.style.display = 'none'; }
       else vigEl.style.opacity = String(this._vig);
     }
+
+    // ---- speed-lines overlay ----
+    this._updateSpeedLines(frameDt);
   },
 };

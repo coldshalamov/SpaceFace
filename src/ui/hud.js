@@ -19,6 +19,7 @@ import { createTargetPanel } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { SHIPS } from '../data/ships.js';
+import { COMMODITIES } from '../data/commodities.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -85,12 +86,12 @@ export function createHud(ctx, alerts) {
   const center = document.createElement('div');
   center.className = 'sf-cluster';
   center.innerHTML = `
-    <div class="sf-stat"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span></div>
-    <div class="sf-stat"><span class="sf-stat__k">THR</span><span class="sf-stat__v mono" data-k="throttle">0%</span></div>
-    <div class="sf-stat sf-stat--wide"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
-    <div class="sf-stat sf-stat--wide"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
-    <div class="sf-stat" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span></div>
-    <div class="sf-stat sf-stat--wide" id="sf-rolestat"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
+    <div class="sf-stat sf-stat--info"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span><div class="sf-tip" data-tip="speed"></div></div>
+    <div class="sf-stat sf-stat--info"><span class="sf-stat__k">THR</span><span class="sf-stat__v mono" data-k="throttle">0%</span><div class="sf-tip" data-tip="throttle"></div></div>
+    <div class="sf-stat sf-stat--wide sf-stat--info"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span><div class="sf-tip" data-tip="cargo"></div></div>
+    <div class="sf-stat sf-stat--wide sf-stat--info"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span><div class="sf-tip" data-tip="credits"></div></div>
+    <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
+    <div class="sf-stat sf-stat--wide sf-stat--info" id="sf-rolestat"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span><div class="sf-tip" data-tip="class"></div></div>`;
   root.appendChild(center);
   const elSpeed = center.querySelector('[data-k=speed]');
   const elThrottle = center.querySelector('[data-k=throttle]');
@@ -98,6 +99,86 @@ export function createHud(ctx, alerts) {
   const elCredits = center.querySelector('[data-k=credits]');
   const elWeapons = center.querySelector('[data-k=weapons]');
   const elRole = center.querySelector('[data-k=role]');
+
+  // ---- HUD stat tooltips: populate on hover to show detailed info ----
+  const tipEls = {};
+  for (const tip of center.querySelectorAll('.sf-tip')) tipEls[tip.dataset.tip] = tip;
+
+  function buildSpeedTip(p) {
+    if (!p) return 'No ship data';
+    const sp = Math.hypot(p.vel.x, p.vel.z);
+    const maxSp = p.maxSpeed || 1;
+    const pct = Math.round(clamp01(sp / maxSp) * 100);
+    return `Speed: ${Math.round(sp)} / ${Math.round(maxSp)} wu/s (${pct}%)\nVelocity X: ${p.vel.x.toFixed(1)}, Z: ${p.vel.z.toFixed(1)}`;
+  }
+  function buildThrottleTip(p) {
+    if (!p) return 'No ship data';
+    const sp = Math.hypot(p.vel.x, p.vel.z);
+    const maxSp = p.maxSpeed || 1;
+    const pct = Math.round(clamp01(sp / maxSp) * 100);
+    const mass = p.mass || 0;
+    const handling = p.handling != null ? p.handling.toFixed(2) : '—';
+    return `Throttle: ${pct}%\nMax speed: ${Math.round(maxSp)} wu/s\nMass: ${Math.round(mass)}\nHandling: ${handling}`;
+  }
+  function buildCargoTip() {
+    const c = state.player.cargo || {};
+    const items = c.items || {};
+    const used = Math.round(c.usedVolume || 0);
+    const cap = Math.round(c.capVolume || 40);
+    const keys = Object.keys(items);
+    if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty`;
+    const lines = [`Cargo: ${used} / ${cap} u`];
+    for (const id of keys.slice(0, 8)) {
+      const qty = items[id];
+      if (qty > 0) lines.push(`  ${id.replace('cmdty_', '').replace(/_/g, ' ')}: ${qty}`);
+    }
+    if (keys.length > 8) lines.push(`  ... +${keys.length - 8} more`);
+    return lines.join('\n');
+  }
+  function buildCreditsTip() {
+    const cr = Math.round(state.player.credits || 0);
+    const st = state.player.stats || {};
+    return `Credits: ${cr.toLocaleString()} CR\nLifetime profit: ${Math.round(st.lifetimeProfit || 0).toLocaleString()}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${Math.round(st.biggestSingleProfit || 0).toLocaleString()}`;
+  }
+  function buildWeaponsTip(p) {
+    if (!p || !p.data || !p.data.weapons || !p.data.weapons.length) return 'No weapons fitted';
+    const ws = p.data.weapons;
+    const auto = !!(state.input && state.input.autoFire);
+    const lines = [`Weapons: ${ws.length} fitted${auto ? ' [AUTO-FIRE]' : ''}`];
+    for (const w of ws) {
+      const name = w.name || w.id || 'Unknown';
+      const dps = w.dps != null ? ` ${w.dps} dps` : '';
+      const rng = w.range ? ` ${w.range}m` : '';
+      lines.push(`  ${name}${dps}${rng}`);
+    }
+    return lines.join('\n');
+  }
+  function buildClassTip(p) {
+    if (!p || !p.data) return 'No ship data';
+    const defId = p.data.defId;
+    const def = SHIP_BY_ID.get(defId);
+    if (!def) return 'Unknown hull';
+    const role = ROLE_LABEL[def.role] || def.role || '—';
+    return `${def.name} — ${role}\nTier: ${def.tier}  Hull: ${def.hull}  Shield: ${def.shield}\nCargo cap: ${def.cargo} u  Mass: ${def.mass}\nSlots: ${Object.entries(def.slots || {}).map(([k, v]) => k[0].toUpperCase() + ':' + v.length).join(' ')}`;
+  }
+
+  // Update tooltip content on mouseenter; the CSS handles show/hide.
+  for (const stat of center.querySelectorAll('.sf-stat--info')) {
+    stat.addEventListener('mouseenter', () => {
+      const tip = stat.querySelector('.sf-tip');
+      if (!tip) return;
+      const k = tip.dataset.tip;
+      const p = state.entities.get(state.playerId);
+      let text = '';
+      if (k === 'speed') text = buildSpeedTip(p);
+      else if (k === 'throttle') text = buildThrottleTip(p);
+      else if (k === 'cargo') text = buildCargoTip();
+      else if (k === 'credits') text = buildCreditsTip();
+      else if (k === 'weapons') text = buildWeaponsTip(p);
+      else if (k === 'class') text = buildClassTip(p);
+      tip.textContent = text;
+    });
+  }
 
   // ---- bottom-right: target panel + radar ----
   const rightDock = document.createElement('div');
@@ -147,6 +228,54 @@ export function createHud(ctx, alerts) {
   arrow.style.display = 'none';
   root.appendChild(arrow);
 
+  // ---- combat HUD: lock-on ring, weapon heat bars, target lock diamond ----
+
+  // Lock-on progress ring (SVG arc near reticle). Shows when a homing weapon is acquiring a lock.
+  const lockRing = document.createElement('div');
+  lockRing.className = 'sf-lockring';
+  const LOCK_R = 30, LOCK_C = Math.PI * 2 * LOCK_R;
+  lockRing.innerHTML =
+    `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
+    `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__track"/>` +
+    `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__fill" ` +
+    `stroke-dasharray="${LOCK_C}" stroke-dashoffset="${LOCK_C}" ` +
+    `transform="rotate(-90 36 36)"/>` +
+    `</svg><div class="sf-lockring__label"></div>`;
+  root.appendChild(lockRing);
+  const lockFill = lockRing.querySelector('.sf-lockring__fill');
+  const lockLabel = lockRing.querySelector('.sf-lockring__label');
+
+  // Per-weapon heat bars. Built once per ship load, updated per frame.
+  const wpnHeatsWrap = document.createElement('div');
+  wpnHeatsWrap.className = 'sf-wpn-heats';
+  wpnHeatsWrap.style.display = 'none';
+  root.appendChild(wpnHeatsWrap);
+  let wpnHeatEls = []; // [{fill, row, lastHeat}]
+  let wpnHeatShipId = null;
+
+  function rebuildWeaponHeatBars(weapons) {
+    wpnHeatsWrap.innerHTML = '';
+    wpnHeatEls = [];
+    if (!weapons || !weapons.length) { wpnHeatsWrap.style.display = 'none'; return; }
+    for (const w of weapons) {
+      const name = (w.name || w.defId || '').replace(/^wpn_/, '').replace(/_/g, ' ').slice(0, 8);
+      const row = document.createElement('div');
+      row.className = 'sf-wpn-heat';
+      row.innerHTML =
+        `<span class="sf-wpn-heat__label">${name}</span>` +
+        `<div class="sf-wpn-heat__bar"><div class="sf-wpn-heat__fill"></div></div>`;
+      wpnHeatsWrap.appendChild(row);
+      wpnHeatEls.push({ fill: row.querySelector('.sf-wpn-heat__fill'), row, lastHeat: -1 });
+    }
+    wpnHeatsWrap.style.display = 'flex';
+  }
+
+  // Target lock diamond — follows the locked target's screen position.
+  const lockDiamond = document.createElement('div');
+  lockDiamond.className = 'sf-lockdiamond';
+  lockDiamond.innerHTML = '<div class="sf-lockdiamond__inner"></div>';
+  root.appendChild(lockDiamond);
+
   // ---- death / respawn feedback banner ----
   injectDeathStyle();
   const deathBanner = document.createElement('div');
@@ -173,6 +302,156 @@ export function createHud(ctx, alerts) {
   });
   ctx.bus.on('player:respawn', () => {
     ctx.bus.emit('toast', { text: 'Hull rebuilt — fly safe, pilot. (3s shields online)', kind: 'good', ttl: 4 });
+  });
+
+  // ---- cargo panel overlay (toggled by I key or clicking CARGO stat) ----
+  const cargoPanel = document.createElement('div');
+  cargoPanel.className = 'sf-cargo-panel';
+  cargoPanel.innerHTML =
+    '<div class="sf-cargo-panel__head">' +
+      '<span class="sf-cargo-panel__title">CARGO HOLD</span>' +
+      '<button class="sf-cargo-panel__close">ESC</button>' +
+    '</div>' +
+    '<div class="sf-cargo-panel__summary">' +
+      '<span class="sf-cargo-summary-used">0 / 40 u</span>' +
+      '<span class="sf-cargo-summary-mass">0 t</span>' +
+      '<span class="sf-cargo-summary-val">~0 CR</span>' +
+    '</div>' +
+    '<div class="sf-cargo-panel__list"></div>';
+  root.appendChild(cargoPanel);
+
+  let cargoPanelOpen = false;
+  const cargoListEl = cargoPanel.querySelector('.sf-cargo-panel__list');
+  const cargoSummaryUsed = cargoPanel.querySelector('.sf-cargo-summary-used');
+  const cargoSummaryMass = cargoPanel.querySelector('.sf-cargo-summary-mass');
+  const cargoSummaryVal = cargoPanel.querySelector('.sf-cargo-summary-val');
+
+  const CMDTY_MAP = new Map();
+
+  function buildCmdtyMap() {
+    if (CMDTY_MAP.size > 0) return;
+    for (const c of COMMODITIES) CMDTY_MAP.set(c.id, c);
+  }
+
+  function refreshCargoPanel() {
+    if (!cargoPanelOpen) return;
+    buildCmdtyMap();
+    const c = state.player.cargo || {};
+    const items = c.items || {};
+    const used = Math.round(c.usedVolume || 0);
+    const cap = Math.round(c.capVolume || 40);
+    const mass = (c.usedMass || 0).toFixed(1);
+
+    cargoSummaryUsed.textContent = `${used} / ${cap} u`;
+    cargoSummaryMass.textContent = `${mass} t`;
+
+    const keys = Object.keys(items).filter(id => items[id] > 0);
+    cargoListEl.innerHTML = '';
+
+    if (!keys.length) {
+      cargoListEl.innerHTML = '<div class="sf-cargo-empty">Cargo hold is empty</div>';
+      cargoSummaryVal.textContent = '~0 CR';
+      return;
+    }
+
+    let totalVal = 0;
+    const frag = document.createDocumentFragment();
+
+    // Header row
+    const header = document.createElement('div');
+    header.className = 'sf-cargo-row';
+    header.style.color = 'var(--ink-mute)';
+    header.style.fontSize = '9px';
+    header.style.letterSpacing = '.1em';
+    header.innerHTML = '<span>ITEM</span><span style="text-align:right">QTY</span><span style="text-align:right">VOL</span><span style="text-align:right">~VALUE</span><span></span>';
+    frag.appendChild(header);
+
+    for (const id of keys) {
+      const qty = items[id];
+      const def = CMDTY_MAP.get(id);
+      const name = def ? def.name : id.replace('cmdty_', '').replace(/_/g, ' ');
+      const volPerU = def ? (def.volPerU || 1) : 1;
+      const price = def ? (def.basePrice || 0) : 0;
+      const vol = Math.round(qty * volPerU);
+      const val = qty * price;
+      totalVal += val;
+
+      const row = document.createElement('div');
+      row.className = 'sf-cargo-row';
+      row.innerHTML =
+        `<span class="sf-cargo-row__name" title="${name}">${name}</span>` +
+        `<span class="sf-cargo-row__qty">${qty}</span>` +
+        `<span class="sf-cargo-row__vol">${vol}u</span>` +
+        `<span class="sf-cargo-row__val">${val > 0 ? val.toLocaleString() : '—'}</span>` +
+        `<button class="sf-cargo-row__jet" data-id="${id}" title="Jettison 1 unit">JET</button>`;
+      frag.appendChild(row);
+    }
+
+    cargoListEl.appendChild(frag);
+    cargoSummaryVal.textContent = `~${totalVal.toLocaleString()} CR`;
+  }
+
+  // Jettison click handler (event delegation)
+  cargoListEl.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('.sf-cargo-row__jet');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!id) return;
+    ctx.bus.emit('cargo:jettison', { commodityId: id, qty: 1 });
+  });
+
+  // Listen for the jettison event in case the cargo system doesn't handle it natively
+  ctx.bus.on('cargo:jettison', ({ commodityId, qty }) => {
+    const cargoSys = ctx.registry && ctx.registry.get('cargo');
+    if (cargoSys && cargoSys.jettison) {
+      const dumped = cargoSys.jettison(commodityId, qty || 1);
+      if (dumped > 0) {
+        ctx.bus.emit('toast', { text: `Jettisoned ${dumped}x ${commodityId.replace('cmdty_', '').replace(/_/g, ' ')}`, kind: 'warn', ttl: 2 });
+      }
+    }
+  });
+
+  // Toggle function
+  function toggleCargoPanel() {
+    cargoPanelOpen = !cargoPanelOpen;
+    cargoPanel.classList.toggle('open', cargoPanelOpen);
+    if (cargoPanelOpen) refreshCargoPanel();
+    ctx.bus.emit('audio:cue', { id: cargoPanelOpen ? 'ui_open' : 'ui_back' });
+  }
+
+  function closeCargoPanel() {
+    if (!cargoPanelOpen) return;
+    cargoPanelOpen = false;
+    cargoPanel.classList.remove('open');
+    ctx.bus.emit('audio:cue', { id: 'ui_back' });
+  }
+
+  // Close button
+  cargoPanel.querySelector('.sf-cargo-panel__close').addEventListener('click', closeCargoPanel);
+
+  // Refresh when cargo changes
+  ctx.bus.on('cargo:changed', () => { if (cargoPanelOpen) refreshCargoPanel(); });
+
+  // Expose toggle/close for the input system
+  ctx.bus.on('ui:toggleCargo', toggleCargoPanel);
+  ctx.bus.on('ui:closeCargo', closeCargoPanel);
+
+  // Make the CARGO stat tile clickable to open the panel
+  const cargoStat = center.querySelector('[data-k=cargo]');
+  if (cargoStat) {
+    const statTile = cargoStat.closest('.sf-stat');
+    if (statTile) {
+      statTile.style.cursor = 'pointer';
+      statTile.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        toggleCargoPanel();
+      });
+    }
+  }
+
+  // Close on ESC when panel is open (handled via keydown on the panel)
+  cargoPanel.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') { ev.stopPropagation(); closeCargoPanel(); }
   });
 
   // ---------------------------------------------------------------------------
@@ -246,6 +525,86 @@ export function createHud(ctx, alerts) {
   }
 
   // ---------------------------------------------------------------------------
+  // Combat HUD update — lock ring + weapon heat bars + target lock diamond
+  // ---------------------------------------------------------------------------
+  function updateCombatHud(p, slow) {
+    if (!p) {
+      lockRing.classList.remove('active', 'locked');
+      lockDiamond.classList.remove('visible');
+      wpnHeatsWrap.style.display = 'none';
+      return;
+    }
+
+    const combat = p.data && p.data.combat;
+    const weapons = p.data && p.data.weapons;
+    const hasWeapons = weapons && weapons.length > 0;
+
+    // ---- Lock-on progress ring ----
+    // Show when the player has a lock-requiring weapon and is building/holding a lock.
+    const lockProgress = combat ? (combat.lockProgress || 0) : 0;
+    const isLocking = lockProgress > 0 && lockProgress < 1;
+    const isLocked = lockProgress >= 1;
+    if (isLocking || isLocked) {
+      lockRing.classList.add('active');
+      lockRing.classList.toggle('locked', isLocked);
+      const offset = LOCK_C * (1 - lockProgress);
+      lockFill.setAttribute('stroke-dashoffset', String(offset));
+      lockLabel.textContent = isLocked ? 'LOCKED' : Math.round(lockProgress * 100) + '%';
+    } else {
+      lockRing.classList.remove('active', 'locked');
+    }
+
+    // ---- Per-weapon heat bars ----
+    // Rebuild the weapon heat bar DOM when the ship or weapon loadout changes.
+    if (hasWeapons) {
+      const shipEntityId = p.id;
+      if (wpnHeatShipId !== shipEntityId || wpnHeatEls.length !== weapons.length) {
+        wpnHeatShipId = shipEntityId;
+        rebuildWeaponHeatBars(weapons);
+      }
+      // Update fills every frame (cheap transforms only).
+      for (let i = 0; i < weapons.length; i++) {
+        const w = weapons[i];
+        const el = wpnHeatEls[i];
+        if (!el) continue;
+        const hMax = w.heatMax != null ? w.heatMax : 100;
+        const hCur = w._heat || 0;
+        const frac = hMax > 0 ? clamp01(hCur / hMax) : 0;
+        el.fill.style.transform = `scaleX(${frac})`;
+        const overheated = hCur >= hMax && hMax > 0;
+        el.row.classList.toggle('overheated', overheated);
+      }
+      // Position above the status bars panel (recalc on slow ticks to track layout changes).
+      if (slow) {
+        const barsRect = bars.getBoundingClientRect();
+        wpnHeatsWrap.style.bottom = (window.innerHeight - barsRect.top + 6) + 'px';
+      }
+      wpnHeatsWrap.style.display = 'flex';
+    } else {
+      wpnHeatsWrap.style.display = 'none';
+    }
+
+    // ---- Target lock diamond (world-space overlay on locked/selected target) ----
+    const tid = state.player.targetId;
+    const tgt = tid != null ? state.entities.get(tid) : null;
+    if (tgt && tgt.alive && helpers.worldToScreen) {
+      const proj = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
+      if (proj.onScreen) {
+        lockDiamond.classList.add('visible');
+        lockDiamond.style.left = proj.x + 'px';
+        lockDiamond.style.top = proj.y + 'px';
+        // Tint: red when missile-locked, cyan when just selected/tracking.
+        const tgtLocked = isLocked && combat && combat.lockTarget === tid;
+        lockDiamond.classList.toggle('locked-tgt', tgtLocked);
+      } else {
+        lockDiamond.classList.remove('visible');
+      }
+    } else {
+      lockDiamond.classList.remove('visible');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // 60Hz cheap path
   // ---------------------------------------------------------------------------
   let tickN = 0;
@@ -263,7 +622,9 @@ export function createHud(ctx, alerts) {
       const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
       const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
       const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
-      const heat = (p.data && p.data.heat != null) ? p.data.heat : (state.player.miningBeam ? state.player.miningBeam.heat : 0);
+      // Mining beam heat is the primary heat source; fall back to entity.data.heat only if beam has none.
+      const beamHeat = (state.player.miningBeam && state.player.miningBeam.heat != null) ? state.player.miningBeam.heat : 0;
+      const heat = beamHeat > 0 ? beamHeat : ((p.data && p.data.heat != null) ? p.data.heat : 0);
       const heatMax = (p.data && p.data.heatMax) || 100;
       const heatFrac = clamp01(heat / heatMax);
 
@@ -350,6 +711,9 @@ export function createHud(ctx, alerts) {
 
     // --- target panel (every frame, cheap) ---
     targetPanel.update();
+
+    // --- combat HUD: lock ring, weapon heat bars, target diamond (every frame) ---
+    updateCombatHud(p, slow);
 
     // --- floating combat text ---
     floatingText.update(dt || 0.016);

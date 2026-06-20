@@ -1,10 +1,11 @@
 // Accessibility controller (V2 §9/§12 — vestibular/visual/cognitive support).
 //
-// WIRE-READY, NOT WIRED. The lead later: (1) imports applyAccessibility into main.js / the
-// settings screen and calls it on boot + every `settings:changed`; (2) <link>s styles/accessibility.css
-// in index.html; (3) imports SEMANTIC_PALETTE into radar.js to recolor the canvas blips (CSS cannot
-// touch a <canvas> — see the note below). Nothing here mutates sim state; it only toggles document-root
-// classes / CSS custom properties and exposes runtime booleans for vfx/feel/camera to read.
+// WIRED. main.js imports applyAccessibility and calls it on boot + every `settings:changed` +
+// `save:loaded`. styles/accessibility.css is <link>d in index.html after ui.css. radar.js imports
+// semanticColor / semanticShape to recolor canvas blips under colorblind modes and draw redundant
+// shapes. The settings screen exposes an "Access" tab with all toggles.
+// Nothing here mutates sim state; it only toggles document-root classes / CSS custom properties
+// and exposes runtime booleans for vfx/feel/camera to read.
 //
 // Why this lives in JS at all: the radar (src/ui/radar.js) draws blips with hardcoded JS hex via
 // g.fillStyle — CSS classes can never recolor it. So the colorblind-safe blip palette + redundant

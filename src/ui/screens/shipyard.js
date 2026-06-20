@@ -24,6 +24,60 @@ function slotSummary(def) {
   return parts.join('  ');
 }
 
+// Role descriptions for the comparison tooltip
+const ROLE_DESC = {
+  starter: 'Balanced beginner hull — a bit of everything.',
+  mining: 'Built to extract ores with extra mining slots.',
+  fighter: 'Fast and agile; trades cargo for firepower.',
+  freighter: 'Maximum cargo capacity; slow but tough.',
+  multirole: 'Jack-of-all-trades with flexible loadout.',
+  interceptor: 'Lightning-fast pursuit craft with heavy weapons.',
+  mining_barge: 'Industrial-grade extraction platform — slow, massive hold.',
+  corvette: 'Armored warship with broadside batteries.',
+  heavy_hauler: 'Enormous hold for bulk cargo runs.',
+  explorer: 'Long-range scout with utility and sensor slots.',
+  gunship: 'A wall of guns — overwhelming forward firepower.',
+  battlecruiser: 'Capital-class combatant, broadside duel monster.',
+  flagship: 'The ultimate command ship — unmatched in every way.',
+};
+
+function slotCount(def, type) {
+  return (def.slots && def.slots[type]) ? def.slots[type].length : 0;
+}
+
+// ---- Comparison tooltip CSS (injected once) ----
+const CMP_STYLE_ID = 'sf-sy-cmp-style';
+function injectCmpStyle() {
+  if (document.getElementById(CMP_STYLE_ID)) return;
+  const s = document.createElement('style');
+  s.id = CMP_STYLE_ID;
+  s.textContent = `
+  .st-sy-cmp { position: absolute; right: 0; top: 0; width: 296px; z-index: 20;
+    background: linear-gradient(180deg, rgba(11,18,32,.97), rgba(8,14,26,.97));
+    border: 1px solid var(--panel-edge-2); border-radius: 8px; padding: 14px 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.6); pointer-events: none; animation: sf-fadein .15s ease both; }
+  .st-sy-cmp-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .st-sy-cmp-name { font-size: .92rem; color: #fff; font-weight: 600; }
+  .st-sy-cmp-role { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+  .st-sy-cmp-desc { font-size: .74rem; color: var(--ink-dim); margin-bottom: 10px; line-height: 1.35; }
+  .st-sy-cmp-grid { display: grid; grid-template-columns: 1.1fr 1fr .3fr 1fr; gap: 3px 8px; font-size: .8rem;
+    font-family: var(--mono); }
+  .st-sy-cmp-lbl { color: var(--ink-mute); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; }
+  .st-sy-cmp-cur { text-align: right; color: var(--ink-dim); }
+  .st-sy-cmp-arr { text-align: center; color: var(--ink-mute); font-size: .7rem; }
+  .st-sy-cmp-new { text-align: right; }
+  .st-sy-cmp-better { color: var(--good); }
+  .st-sy-cmp-worse { color: var(--danger); }
+  .st-sy-cmp-same { color: var(--ink-dim); }
+  .st-sy-cmp-delta { font-size: .68rem; margin-left: 4px; }
+  .st-sy-cmp-sep { grid-column: 1 / -1; height: 1px; background: var(--panel-edge); margin: 4px 0; }
+  .st-sy-cmp-slots { font-size: .72rem; color: var(--ink-dim); margin-top: 8px; line-height: 1.5; }
+  .st-sy-cmp-slots b { color: var(--ink); font-weight: 600; }
+  .st-sy-buy { position: relative; }
+  `;
+  document.head.appendChild(s);
+}
+
 export function createShipyardPanel(ctx) {
   const root = document.createElement('div');
   root.className = 'st-panel st-shipyard';
@@ -49,6 +103,14 @@ export function createShipyardPanel(ctx) {
   const list = document.createElement('div');
   list.className = 'st-list';
   buyWrap.appendChild(list);
+
+  // ---- comparison tooltip ----
+  injectCmpStyle();
+  const cmpPanel = document.createElement('div');
+  cmpPanel.className = 'st-sy-cmp';
+  cmpPanel.style.display = 'none';
+  buyWrap.appendChild(cmpPanel);
+
   root.appendChild(buyWrap);
 
   // delegated listeners
@@ -77,6 +139,94 @@ export function createShipyardPanel(ctx) {
     ctx.bus.emit('ui:buyShip', { defId });
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
   });
+
+  // ---- comparison tooltip hover logic ----
+  list.addEventListener('mouseover', (ev) => {
+    const row = ev.target.closest('[data-ship]');
+    if (!row) { cmpPanel.style.display = 'none'; return; }
+    const defId = row.getAttribute('data-ship');
+    const hovDef = SHIP_BY_ID.get(defId);
+    if (!hovDef) { cmpPanel.style.display = 'none'; return; }
+    showComparison(hovDef, row);
+  });
+  list.addEventListener('mouseleave', () => { cmpPanel.style.display = 'none'; });
+
+  function showComparison(newDef, rowEl) {
+    const p = ctx.state.player;
+    const activeShip = (p.ownedShips || [])[p.activeShipIndex || 0];
+    const curDef = activeShip ? SHIP_BY_ID.get(activeShip.defId) : null;
+    if (!curDef) { cmpPanel.style.display = 'none'; return; }
+
+    // Position near the hovered row
+    const buyRect = buyWrap.getBoundingClientRect();
+    const rowRect = rowEl.getBoundingClientRect();
+    const topOffset = rowRect.top - buyRect.top;
+    cmpPanel.style.top = Math.max(0, topOffset - 20) + 'px';
+    cmpPanel.style.display = '';
+
+    // Build stat comparison rows
+    const STATS = [
+      { label: 'Hull',      key: 'hull',      higher: true },
+      { label: 'Shield',    key: 'shield',     higher: true },
+      { label: 'Handling',  key: 'handling',   higher: true },
+      { label: 'Cargo',     key: 'cargo',      higher: true },
+      { label: 'Mass',      key: 'mass',       higher: false },
+      { label: 'Energy',    key: 'energyCap',  higher: true },
+    ];
+
+    let gridHtml = '';
+    for (const s of STATS) {
+      const cv = curDef[s.key] || 0;
+      const nv = newDef[s.key] || 0;
+      const delta = nv - cv;
+      let cls = 'st-sy-cmp-same';
+      let arrow = '=';
+      let deltaStr = '';
+      if (delta > 0) {
+        cls = s.higher ? 'st-sy-cmp-better' : 'st-sy-cmp-worse';
+        arrow = '▶'; deltaStr = '+' + (s.key === 'handling' ? delta.toFixed(1) : delta);
+      } else if (delta < 0) {
+        cls = s.higher ? 'st-sy-cmp-worse' : 'st-sy-cmp-better';
+        arrow = '◀'; deltaStr = (s.key === 'handling' ? delta.toFixed(1) : String(delta));
+      }
+      gridHtml +=
+        '<div class="st-sy-cmp-lbl">' + s.label + '</div>' +
+        '<div class="st-sy-cmp-cur">' + (s.key === 'handling' ? cv.toFixed(1) : cv) + '</div>' +
+        '<div class="st-sy-cmp-arr">' + arrow + '</div>' +
+        '<div class="st-sy-cmp-new ' + cls + '">' + (s.key === 'handling' ? nv.toFixed(1) : nv) +
+          (deltaStr ? '<span class="st-sy-cmp-delta">' + deltaStr + '</span>' : '') + '</div>';
+    }
+
+    // Slot comparison
+    const SLOT_TYPES = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
+    let slotsHtml = '';
+    for (const st of SLOT_TYPES) {
+      const cc = slotCount(curDef, st);
+      const nc = slotCount(newDef, st);
+      const d = nc - cc;
+      let cls = '';
+      if (d > 0) cls = 'st-sy-cmp-better';
+      else if (d < 0) cls = 'st-sy-cmp-worse';
+      slotsHtml += '<span style="margin-right:10px;">' + st[0].toUpperCase() + st.slice(1) +
+        ': <b' + (cls ? ' class="' + cls + '"' : '') + '>' + nc + '</b>' +
+        (d !== 0 ? ' <span class="st-sy-cmp-delta ' + cls + '">(' + (d > 0 ? '+' : '') + d + ')</span>' : '') +
+        '</span>';
+    }
+
+    const roleDesc = ROLE_DESC[newDef.role] || '';
+    cmpPanel.innerHTML =
+      '<div class="st-sy-cmp-h">' +
+        '<div class="st-sy-cmp-name">' + newDef.name + ' vs ' + curDef.name + '</div>' +
+        '<div class="st-sy-cmp-role">T' + newDef.tier + ' ' + (newDef.role || '') + '</div>' +
+      '</div>' +
+      (roleDesc ? '<div class="st-sy-cmp-desc">' + roleDesc + '</div>' : '') +
+      '<div class="st-sy-cmp-grid">' +
+        '<div class="st-sy-cmp-lbl"></div><div class="st-sy-cmp-lbl" style="text-align:right">YOURS</div>' +
+        '<div></div><div class="st-sy-cmp-lbl" style="text-align:right">NEW</div>' +
+        gridHtml +
+      '</div>' +
+      '<div class="st-sy-cmp-slots">' + slotsHtml + '</div>';
+  }
 
   function isUnlocked(def) {
     const ships = ctx.registry && ctx.registry.get && ctx.registry.get('ships');
@@ -137,7 +287,7 @@ export function createShipyardPanel(ctx) {
     list.appendChild(frag);
   }
 
-  function refresh() { rebuildOwned(); rebuildBuyable(); }
+  function refresh() { rebuildOwned(); rebuildBuyable(); cmpPanel.style.display = 'none'; }
 
   return {
     el: root,

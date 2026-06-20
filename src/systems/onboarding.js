@@ -4,6 +4,14 @@
 // state.settings.gameplay.tutorialHints. Self-contained — it builds its own DOM (an objective
 // tracker panel + a dismissible intro card) and drives progress off real gameplay events.
 //
+// CONTEXTUAL FIRST-TIME HINTS (Phase 2): on top of the staged tutorial, the system fires one-shot
+// toast hints the first time the player encounters a new mechanic (combat, shield break, stations,
+// gates, cargo full). Tracked in state.player.hints so they persist across saves and never repeat.
+// These are independent of the tutorial chain — they fire even if the tutorial was skipped.
+//
+// CONTEXTUAL CONTROL BAR (Phase 2): the static bottom-center hint strip is updated each frame to
+// show controls relevant to the player's current activity (mining, combat, near station, open flight).
+//
 // System contract: { name, init(ctx), update(dt, state) }. Wired into registry SYSTEMS + UPDATE_ORDER.
 
 const PANEL_ID = 'sf-onboarding';
@@ -58,6 +66,65 @@ export const onboarding = {
     bus.on('pickup:collected', (p) => this._recordOreCollected(p || {}));
     bus.on('mission:accepted', () => this._complete('next'));
     bus.on('ship:purchased', () => this._complete('next'));
+
+    // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
+    // These are independent of the tutorial chain: they fire for all players whose
+    // settings.gameplay.tutorialHints is not explicitly false, including players who
+    // skipped the staged tutorial.
+
+    // First enemy encounter: triggered when the player first takes damage from a hostile.
+    bus.on('combat:damage', (p) => {
+      if (!p || !p.isPlayer) return;
+      this._showHint('firstCombat',
+        'Hostile detected! LMB or SPACE to fire. Hold aim on a target to lock on. F toggles auto-fire.');
+    });
+
+    // First shield break: triggered when shields drop to zero.
+    bus.on('combat:damage', (p) => {
+      if (!p || !p.isPlayer || !p.brokeShield) return;
+      this._showHint('firstShieldDrop',
+        'Shields down! Disengage and stay clear of fire — shields recharge automatically after a few seconds.');
+    });
+
+    // First station approach: enriches the existing dock prompt with what stations offer.
+    bus.on('dock:range', ({ inRange }) => {
+      if (!inRange) return;
+      this._showHint('firstStation',
+        'Stations offer repairs, trading, upgrades, and mission boards. Press ENTER to dock.');
+    });
+
+    // First jump gate approach: teach the player how gates work.
+    bus.on('gate:range', ({ inRange }) => {
+      if (!inRange) return;
+      this._showHint('firstGate',
+        'Jump gates connect star systems. Open the Star Map (M) to plot a jump route.');
+    });
+
+    // First cargo full: teach the player to sell.
+    bus.on('cargo:full', () => {
+      this._showHint('firstCargoFull',
+        'Cargo hold full! Dock at a station to sell your ore and free up space.');
+    });
+
+    // First flight: triggered a few seconds after the game starts (handled in update via a timer).
+    this._firstFlightTimer = 0;
+    this._firstFlightPending = false;
+    bus.on('game:started', () => { this._firstFlightPending = true; this._firstFlightTimer = 0; });
+
+    // ── Contextual control bar state ─────────────────────────────────────────────────────────
+    this._lastControlMode = null;
+  },
+
+  // Show a one-time contextual hint via the toast system. The hint key corresponds to a flag in
+  // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),
+  // this is a no-op. Respects the tutorialHints setting.
+  _showHint(key, text) {
+    const st = this.state;
+    if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return;
+    if (!st.player.hints) st.player.hints = {};
+    if (st.player.hints[key]) return;
+    st.player.hints[key] = true;
+    this.bus.emit('toast', { text, kind: 'info', ttl: 7 });
   },
 
   _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
@@ -126,8 +193,22 @@ export const onboarding = {
     }
   },
 
-  // per-frame: proximity check for the starter claim + panel fade-out. Throttled to ~5Hz.
+  // per-frame: proximity check for the starter claim + panel fade-out + contextual hints + control bar.
   update(dt, state) {
+    // ── First-flight hint (runs independently of the tutorial chain) ──────────────────────
+    if (this._firstFlightPending && state.mode === 'flight') {
+      this._firstFlightTimer += dt;
+      if (this._firstFlightTimer > 3.0) {
+        this._firstFlightPending = false;
+        this._showHint('firstFlight',
+          'W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE to fire, RMB to mine, SHIFT to boost, M for map, ENTER at stations.');
+      }
+    }
+
+    // ── Contextual control bar ───────────────────────────────────────────────────────────
+    try { this._updateControlBar(state); } catch (_) { /* non-critical */ }
+
+    // ── Tutorial chain (only while active) ───────────────────────────────────────────────
     const ob = state.onboarding;
     if (!ob || !ob.active) return;
     try {
@@ -142,6 +223,53 @@ export const onboarding = {
       const curr = this._currentStep();
       if (curr && curr.key === 'claim' && !ob.done.claim) this._completeClaimIfNear(curr);
     } catch (_) { /* never let onboarding break the loop */ }
+  },
+
+  // Determine the player's current activity and update the bottom control hint bar to show
+  // relevant keys. Modes: 'mining' (beam active), 'combat' (hostile targeted or taking fire),
+  // 'station' (near a station), 'gate' (near a gate), 'flight' (default open-space cruising).
+  _updateControlBar(state) {
+    if (state.mode !== 'flight') return;
+    const el = document.getElementById('control-hints');
+    if (!el) return;
+
+    let mode = 'flight';
+
+    // Check for mining beam active.
+    const beam = state.player.miningBeam;
+    if (beam && beam.heat > 0) mode = 'mining';
+
+    // Check for hostile target or incoming fire (combat takes priority over mining).
+    const tid = state.player.targetId;
+    if (tid != null) {
+      const target = state.entities.get(tid);
+      if (target && target.alive && target.team != null) {
+        const player = state.entities.get(state.playerId);
+        if (player && target.team !== player.team) mode = 'combat';
+      }
+    }
+
+    // Check for station/gate proximity (overrides flight, not combat/mining).
+    if (mode === 'flight') {
+      const alerts = state.ui.alerts || [];
+      // Use the alert system's dock/gate range events as a proxy — they set keys in the DOM.
+      const dockEl = document.querySelector('.sf-alert--dock');
+      const gateEl = document.querySelector('.sf-alert--info');
+      if (dockEl) mode = 'station';
+      else if (gateEl && gateEl.textContent && gateEl.textContent.includes('JUMP GATE')) mode = 'gate';
+    }
+
+    if (mode === this._lastControlMode) return;
+    this._lastControlMode = mode;
+
+    const HINTS = {
+      flight:  'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  M map',
+      mining:  'RMB hold to mine  •  Release to cool  •  Fly through ore to collect  •  B drill view  •  Tab next rock',
+      combat:  'LMB/Space fire  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
+      station: 'Enter to dock  •  Market: sell ore  •  Shipyard: buy ships  •  Missions: take contracts',
+      gate:    'M open Star Map  •  Select destination  •  Jump to travel between systems',
+    };
+    el.textContent = HINTS[mode] || HINTS.flight;
   },
 
   _completeClaimIfNear(step) {

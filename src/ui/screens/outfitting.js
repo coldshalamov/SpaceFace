@@ -3,19 +3,84 @@
 // Fitting/unfitting emits ui:fitModule / ui:unfitModule; the ships system owns the mutation and
 // re-derives stats (§0.6, §0.18, §4.4). Includes a live stat-delta preview computed with
 // ships.getDerivedStats (a pure exported builder) — preview only, never mutates state.
+// MODULE SHOP: lists purchasable modules/weapons filtered by the docked station's sector tier and
+// the player's researched tech. Emits ui:buyModule {defId}; the ships system owns the credit
+// charge + inventory push (§0.6). Comparison delta vs the currently fitted module of the same
+// slot type is shown so the player can evaluate upgrades at a glance.
 import { buildSlotList, getDerivedStats } from '../../systems/ships.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
+import { SECTORS } from '../../data/sectors.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const FITTABLE_BY_ID = new Map();
 for (const m of MODULES) FITTABLE_BY_ID.set(m.id, m);
 for (const w of WEAPONS) if (!FITTABLE_BY_ID.has(w.id)) FITTABLE_BY_ID.set(w.id, w);
 
+// All purchasable items (modules + weapons), sorted by slot type then tier then price.
+const ALL_BUYABLE = [...MODULES, ...WEAPONS].filter((d) => d.price > 0);
+ALL_BUYABLE.sort((a, b) => {
+  if (a.slotType < b.slotType) return -1;
+  if (a.slotType > b.slotType) return 1;
+  if (a.tier !== b.tier) return a.tier - b.tier;
+  return a.price - b.price;
+});
+
 const SIZE_RANK = { S: 1, M: 2, L: 3 };
 function fits(slot, def) {
   return !!slot && !!def && slot.type === def.slotType && SIZE_RANK[slot.size] >= SIZE_RANK[def.size];
+}
+
+function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
+
+/** Resolve the sector tier for the station the player is docked at. */
+function stationTier(stationId) {
+  for (const sec of SECTORS) {
+    for (const st of sec.stations || []) {
+      if (st.id === stationId) return sec.tier;
+    }
+  }
+  return 0;
+}
+
+/** Readable stat summary for a module/weapon def (compact, for the shop row). */
+function statSnippet(def) {
+  const parts = [];
+  // weapons
+  if (def.dps != null) parts.push(Math.round(def.dps) + ' dps');
+  if (def.range != null) parts.push(def.range + ' rng');
+  if (def.dmg != null && def.rof != null) parts.push(def.dmg + 'x' + def.rof.toFixed(1));
+  // modules with mods
+  const m = def.mods;
+  if (m) {
+    if (m.shieldFlat) parts.push('+' + m.shieldFlat + ' shd');
+    if (m.shieldRegenFlat) parts.push('+' + m.shieldRegenFlat + ' regen');
+    if (m.topSpeed) parts.push(m.topSpeed + ' spd');
+    if (m.accelMult != null) parts.push(m.accelMult.toFixed(1) + 'x accel');
+    if (m.cargoFlat) parts.push('+' + m.cargoFlat + ' cargo');
+    if (m.cargoCapPct) parts.push('+' + Math.round(m.cargoCapPct * 100) + '% cap');
+    if (m.damageReductionPct) parts.push('-' + Math.round(m.damageReductionPct * 100) + '% dmg');
+    if (m.boostTopSpeedPct) parts.push('+' + Math.round(m.boostTopSpeedPct * 100) + '% boost');
+    if (m.magnetRange) parts.push(m.magnetRange + ' magnet');
+    if (m.weaponRangePct) parts.push('+' + Math.round(m.weaponRangePct * 100) + '% wpn rng');
+    if (m.weaponDmgPct) parts.push('+' + Math.round(m.weaponDmgPct * 100) + '% wpn dmg');
+    if (m.radarRangePct) parts.push('+' + Math.round(m.radarRangePct * 100) + '% radar');
+    if (m.hullRepairOOC) parts.push('+' + m.hullRepairOOC + ' hull/s');
+    if (m.droneBay) parts.push('drone bay');
+    if (m.jumpDriveTier) parts.push('jump T' + m.jumpDriveTier);
+    if (m.revealCargo) parts.push('scan cargo');
+    if (m.marketIntel) parts.push('market data');
+  }
+  // mining modules
+  if (def.dps != null && def.slotType === 'mining') {
+    parts.length = 0; // clear weapon-style entries
+    parts.push(def.dps + ' ore/s');
+    if (def.range) parts.push(def.range + ' rng');
+    if (def.rareOreChance) parts.push(Math.round(def.rareOreChance * 100) + '% rare');
+    if (def.directToCargo) parts.push('direct');
+  }
+  return parts.join(' · ');
 }
 
 // Stat fields shown in the preview (label, key, higherIsBetter, suffix).
@@ -50,6 +115,26 @@ export function createOutfittingPanel(ctx) {
   invWrap.innerHTML = '<div class="st-sub-h">Module Inventory</div><div class="st-inv-list"></div>';
   root.appendChild(invWrap);
   const invList = invWrap.querySelector('.st-inv-list');
+
+  // ---- Module Shop section ----
+  const shopWrap = document.createElement('div');
+  shopWrap.className = 'st-outfit-shop';
+  shopWrap.innerHTML =
+    '<div class="st-sub-h">Module Shop</div>' +
+    '<div class="st-shop-head">' +
+      '<span class="st-shop-credits mono"></span>' +
+    '</div>' +
+    '<div class="st-shop-head-row st-row st-row-head">' +
+      '<span class="c-name">Module</span>' +
+      '<span class="c-num">Slot</span>' +
+      '<span class="c-num">Stats</span>' +
+      '<span class="c-num">Price</span>' +
+      '<span class="c-act"></span>' +
+    '</div>' +
+    '<div class="st-shop-list"></div>';
+  root.appendChild(shopWrap);
+  const shopList = shopWrap.querySelector('.st-shop-list');
+  const shopCredits = shopWrap.querySelector('.st-shop-credits');
 
   // selected slot index for fitting from inventory; null = none.
   let selectedSlot = null;
@@ -123,6 +208,17 @@ export function createOutfittingPanel(ctx) {
   });
   invList.addEventListener('mouseout', () => { if (previewFit && !previewFit.remove) { previewFit = null; renderPreview(); } });
 
+  // ---- shop delegated listener ----
+  shopList.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-act="buy"]');
+    if (!btn || btn.disabled) return;
+    const defId = btn.closest('[data-shop]').getAttribute('data-shop');
+    ctx.bus.emit('ui:buyModule', { defId });
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    // Refresh after a short delay so the credits:changed event has processed.
+    setTimeout(() => refresh(), 50);
+  });
+
   // ---- builders ----
   function rebuildSlots() {
     const owned = activeOwned();
@@ -176,6 +272,88 @@ export function createOutfittingPanel(ctx) {
     invList.appendChild(frag);
   }
 
+  function rebuildShop() {
+    const p = ctx.state.player;
+    const owned = activeOwned();
+    const shipDef = owned ? SHIP_BY_ID.get(owned.defId) : null;
+    const slots = shipDef ? buildSlotList(shipDef) : [];
+    const tier = stationTier(panel.stationId);
+    const researched = new Set(p.researchedNodes || []);
+
+    shopCredits.textContent = 'CREDITS: ' + fmtCr(p.credits);
+
+    shopList.textContent = '';
+    const frag = document.createDocumentFragment();
+    let lastSlotType = '';
+
+    for (const def of ALL_BUYABLE) {
+      // Station tier filter: station sells modules up to tier+1 (a T0 station sells T0 and T1).
+      if (def.tier > tier + 1) continue;
+
+      // Tech lock check
+      const unlocked = !def.requiresTech || researched.has(def.requiresTech);
+      const afford = p.credits >= (def.price || 0);
+      const alreadyOwned = (p.moduleInventory || []).some((m) => m.defId === def.id);
+
+      // Slot-type group header
+      if (def.slotType !== lastSlotType) {
+        lastSlotType = def.slotType;
+        const hdr = document.createElement('div');
+        hdr.className = 'st-shop-group';
+        hdr.textContent = def.slotType.toUpperCase();
+        frag.appendChild(hdr);
+      }
+
+      // Check if the ship has a compatible slot for this module
+      const hasSlot = slots.some((s) => s.type === def.slotType && SIZE_RANK[s.size] >= SIZE_RANK[def.size]);
+
+      // Comparison delta: find the first fitted module of the same slot type and compare key stats.
+      let deltaHtml = '';
+      if (owned && def.mods) {
+        const fittedSlotIdx = slots.findIndex((s, i) => s.type === def.slotType && owned.fittings[i]);
+        const fittedDef = fittedSlotIdx >= 0 ? FITTABLE_BY_ID.get(owned.fittings[fittedSlotIdx]) : null;
+        if (fittedDef && fittedDef.mods) {
+          const deltas = [];
+          const allKeys = new Set([...Object.keys(def.mods), ...Object.keys(fittedDef.mods)]);
+          for (const key of allKeys) {
+            const nv = def.mods[key]; const ov = fittedDef.mods[key];
+            if (typeof nv !== 'number' || typeof ov !== 'number') continue;
+            const d = nv - ov;
+            if (Math.abs(d) < 0.001) continue;
+            const sign = d > 0 ? '+' : '';
+            const cls = d > 0 ? 'up' : 'down';
+            deltas.push('<span class="st-delta ' + cls + '">' + sign + (Number.isInteger(d) ? d : d.toFixed(1)) + ' ' + key.replace(/([A-Z])/g, ' $1').toLowerCase() + '</span>');
+          }
+          if (deltas.length) deltaHtml = '<div class="st-shop-delta">' + deltas.join(' ') + '</div>';
+        }
+      }
+
+      const row = document.createElement('div');
+      row.className = 'st-shop-row' + (!unlocked ? ' locked' : '') + (!afford ? ' noafford' : '') + (!hasSlot ? ' nofit' : '');
+      row.setAttribute('data-shop', def.id);
+      let btnHtml;
+      if (!unlocked) btnHtml = '<button disabled title="Requires research">Locked</button>';
+      else if (!afford) btnHtml = '<button disabled>Can\'t afford</button>';
+      else btnHtml = '<button data-act="buy">Buy</button>';
+
+      row.innerHTML =
+        '<span class="c-name">' + def.name +
+          (alreadyOwned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
+          (!hasSlot && unlocked ? ' <span class="st-tag">no slot</span>' : '') +
+        '</span>' +
+        '<span class="c-num st-shop-slot mono">' + def.slotType[0].toUpperCase() + ':' + def.size + '</span>' +
+        '<span class="c-num st-shop-stats">' + statSnippet(def) + deltaHtml + '</span>' +
+        '<span class="c-num st-shop-price mono">' + fmtCr(def.price) + '</span>' +
+        '<span class="c-act">' + btnHtml + '</span>';
+      frag.appendChild(row);
+    }
+    if (!frag.childElementCount) {
+      shopList.innerHTML = '<div class="st-empty">No modules available at this station.</div>';
+    } else {
+      shopList.appendChild(frag);
+    }
+  }
+
   // Compute the hypothetical fittings array for the preview.
   function fittingsWithPreview(owned) {
     const f = (owned.fittings || []).slice();
@@ -215,12 +393,13 @@ export function createOutfittingPanel(ctx) {
     statTable.appendChild(frag);
   }
 
-  function refresh() { rebuildSlots(); rebuildInventory(); renderPreview(); }
+  function refresh() { rebuildSlots(); rebuildInventory(); rebuildShop(); renderPreview(); }
 
-  return {
+  const panel = {
     el: root,
     stationId: null,
-    onShow(c) { if (c && c.stationId) this.stationId = c.stationId; selectedSlot = null; previewFit = null; refresh(); },
+    onShow(c) { if (c && c.stationId) panel.stationId = c.stationId; selectedSlot = null; previewFit = null; refresh(); },
     refresh,
   };
+  return panel;
 }

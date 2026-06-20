@@ -56,6 +56,7 @@ const SCREEN_MODULES = [
   { path: './screens/settings.js', name: 'settingsScreen' },
   { path: './screens/saveLoad.js', name: 'saveLoadScreen' },
   { path: './screens/help.js', name: 'helpScreen' },
+  { path: './screens/missionLog.js', name: 'missionLogScreen' },
 ];
 
 const HUD_STYLE_ID = 'sf-hud-style';
@@ -101,11 +102,12 @@ export const ui = {
     reticle.innerHTML = RETICLE_SVG;
     document.getElementById('hud').appendChild(reticle);
 
-    // Always-visible (when in flight) control hints — reflects the Phase 1 flight model: arrows
-    // fly the ship (yaw + throttle) with momentum + banking; mouse independently aims & fires.
+    // Always-visible (when in flight) control hints. The default text below is the open-flight set;
+    // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
+    // hints based on the player's current activity (mining, combat, near station, near gate).
     const hints = document.createElement('div');
     hints.id = 'control-hints';
-    hints.textContent = '↑↓ throttle  •  ←→ / A D steer (banks)  •  Mouse aim  •  LMB / SPACE fire  •  RMB mine  •  SHIFT boost  •  F auto-fire';
+    hints.textContent = 'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  M map  •  I cargo';
     document.getElementById('ui-root').appendChild(hints);
 
     // Hide hints/reticle when not in pure flight (improved from initial override for robustness)
@@ -218,19 +220,59 @@ export const ui = {
     this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
     this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
 
-    // dock flow: dock:docked → open station hub; dock:undocked → restore HUD
+    // Dock transition overlay
+    const dockFade = document.createElement('div');
+    dockFade.className = 'sf-dock-fade';
+    dockFade.id = 'sf-dock-overlay';
+    document.getElementById('ui-root').appendChild(dockFade);
+
     this.bus.on('dock:docked', ({ stationId }) => {
-      this.state.ui.docked = true;
-      this.state.ui.dockedStationId = stationId || null;
-      if (this.screenManager.top() !== 'station') this.screenManager.pushScreen('station');
-      else this.screenManager.syncVisibility();
+      // Phase 1: fade to dark
+      dockFade.style.pointerEvents = 'auto'; // block input during transition
+      dockFade.classList.add('active');
+
+      // Zoom camera toward station slightly during fade
+      const prevZoom = this.state.camera.zoom;
+      this.state.camera.zoom = Math.max(45, prevZoom * 0.7);
+
+      setTimeout(() => {
+        // Phase 2: at peak darkness, do the screen swap
+        this.state.ui.docked = true;
+        this.state.ui.dockedStationId = stationId || null;
+        if (this.screenManager.top() !== 'station') this.screenManager.pushScreen('station');
+        else this.screenManager.syncVisibility();
+
+        // Phase 3: fade back in
+        setTimeout(() => {
+          dockFade.classList.remove('active');
+          // Restore zoom
+          this.state.camera.zoom = prevZoom;
+          setTimeout(() => {
+            dockFade.style.pointerEvents = 'none';
+          }, 400);
+        }, 50); // brief hold at full dark before fading back
+      }, 400); // matches the CSS transition duration
     });
     this.bus.on('dock:undocked', () => {
-      this.state.ui.docked = false;
-      this.state.ui.dockedStationId = null;
-      // pop the station hub if it is the current top
-      if (this.screenManager.top() === 'station') this.screenManager.popScreen();
-      this.screenManager.syncVisibility();
+      // Phase 1: fade to dark
+      dockFade.style.pointerEvents = 'auto';
+      dockFade.classList.add('active');
+
+      setTimeout(() => {
+        // Phase 2: at peak darkness, do the screen swap
+        this.state.ui.docked = false;
+        this.state.ui.dockedStationId = null;
+        if (this.screenManager.top() === 'station') this.screenManager.popScreen();
+        this.screenManager.syncVisibility();
+
+        // Phase 3: fade back in
+        setTimeout(() => {
+          dockFade.classList.remove('active');
+          setTimeout(() => {
+            dockFade.style.pointerEvents = 'none';
+          }, 400);
+        }, 50);
+      }, 400);
     });
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
@@ -397,12 +439,25 @@ function injectHudCss() {
     display:flex; gap:10px; align-items:stretch; }
   .sf-stat { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:62px;
     padding:7px 12px; background:rgba(8,14,24,.55); border:1px solid var(--panel-edge); border-radius:7px;
-    backdrop-filter:blur(4px); }
+    backdrop-filter:blur(4px); position:relative; }
   .sf-stat--wide { min-width:96px; }
   .sf-stat__k { font-size:9px; letter-spacing:.16em; color:var(--ink-mute); }
   .sf-stat__v { font-size:16px; color:var(--ink); }
   .sf-credits { color:var(--accent-2); }
   .sf-stat__v.sf-warn { color:var(--warn); }
+  /* Info-label styling: make it clear these are readouts, not buttons */
+  .sf-stat--info { cursor:default; user-select:none; transition:border-color .15s, background .15s; }
+  .sf-stat--info:hover { border-color:var(--accent); background:rgba(8,14,24,.75); }
+  .sf-stat--info .sf-stat__k { border-bottom:1px dotted rgba(154,168,188,.3); padding-bottom:1px; }
+  /* Hover tooltip for stat tiles */
+  .sf-tip { display:none; position:absolute; left:50%; bottom:calc(100% + 10px); transform:translateX(-50%);
+    min-width:180px; max-width:260px; padding:8px 10px; background:rgba(4,10,18,.92); border:1px solid var(--accent);
+    border-radius:6px; backdrop-filter:blur(6px); color:var(--ink); font-family:var(--mono); font-size:11px;
+    letter-spacing:.02em; line-height:1.45; white-space:pre-line; pointer-events:none; z-index:200;
+    box-shadow:0 4px 16px rgba(0,0,0,.5), 0 0 8px rgba(57,208,255,.15); }
+  .sf-tip::after { content:''; position:absolute; left:50%; top:100%; transform:translateX(-50%);
+    border:6px solid transparent; border-top-color:var(--accent); }
+  .sf-stat--info:hover .sf-tip { display:block; }
 
   /* bottom-right radar + target */
   .sf-rightdock { position:absolute; right:18px; bottom:18px; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
@@ -420,6 +475,11 @@ function injectHudCss() {
   .sf-radar-legend .rock { background:#6e7b8c; border-radius:50%; }
   .sf-radar-legend .bad { width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:7px solid var(--danger); }
   .sf-radar-legend .obj { transform:rotate(45deg); border:1px solid #ffe36b; }
+  /* HUD sub-panel surface (the target readout above the radar, and similar small HUD cards).
+     Lighter than the modal .panel: thin border, tight radius, modest shadow so it reads as a
+     piece of the HUD rather than a floating dialog. */
+  .sf-hudpanel { background:rgba(8,14,24,.82); border:1px solid var(--panel-edge);
+    border-radius:6px; box-shadow:0 2px 14px rgba(0,0,0,.45); backdrop-filter:blur(4px); }
   .sf-target { width:220px; padding:8px 10px; display:flex; flex-direction:column; gap:5px; }
   .sf-target__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
   .sf-target__name { font-size:13px; color:var(--ink); letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -462,8 +522,68 @@ function injectHudCss() {
   .sf-alert--warn { color:var(--warn); border-color:rgba(255,179,71,.5); }
   .sf-alert--danger { color:var(--danger); border-color:rgba(255,84,112,.6);
     animation:sf-alertpulse .8s ease-in-out infinite alternate; }
+  .sf-alert--dock { color:#30ffb0; border-color:rgba(48,255,176,.6); font-size:18px;
+    padding:12px 28px; letter-spacing:.18em;
+    background:rgba(8,14,24,.88); box-shadow:0 0 24px rgba(48,255,176,.3);
+    animation:sf-dockpulse 1.2s ease-in-out infinite alternate; }
+  @keyframes sf-dockpulse { from { box-shadow:0 0 12px rgba(48,255,176,.2); }
+    to { box-shadow:0 0 32px rgba(48,255,176,.5); } }
   @keyframes sf-alertpulse { from { box-shadow:0 0 0 0 rgba(255,84,112,0); transform:scale(1); }
     to { box-shadow:0 0 14px 1px rgba(255,84,112,.55); transform:scale(1.03); } }
+
+  /* ===== combat HUD overlay (lock-on, weapon heat bars, target diamond) ===== */
+
+  /* Lock-on progress arc — circular SVG indicator near reticle center */
+  .sf-lockring { position:absolute; left:50%; top:50%; width:72px; height:72px;
+    transform:translate(-50%,-50%); pointer-events:none; z-index:14; opacity:0;
+    transition:opacity .15s ease; filter:drop-shadow(0 0 6px var(--accent)); }
+  .sf-lockring.active { opacity:1; }
+  .sf-lockring.locked { filter:drop-shadow(0 0 10px var(--danger)); }
+  .sf-lockring .sf-lockring__track { fill:none; stroke:var(--panel-edge); stroke-width:2.5; }
+  .sf-lockring .sf-lockring__fill { fill:none; stroke:var(--accent); stroke-width:3;
+    stroke-linecap:round; transition:stroke .15s ease; }
+  .sf-lockring.locked .sf-lockring__fill { stroke:var(--danger); }
+  .sf-lockring__label { position:absolute; left:50%; bottom:-2px; transform:translateX(-50%);
+    font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:var(--accent);
+    text-transform:uppercase; white-space:nowrap; text-shadow:0 0 6px rgba(57,208,255,.6); }
+  .sf-lockring.locked .sf-lockring__label { color:var(--danger); text-shadow:0 0 6px rgba(255,84,112,.6); }
+
+  /* Weapon heat bars — anchored above the status bars panel (left:18px matches .sf-bars) */
+  .sf-wpn-heats { position:absolute; left:18px;
+    display:flex; flex-direction:column; gap:3px; pointer-events:none;
+    padding:6px 10px; background:rgba(8,14,24,.5); border:1px solid var(--panel-edge);
+    border-radius:6px; backdrop-filter:blur(4px); }
+  .sf-wpn-heat { display:flex; align-items:center; gap:6px; }
+  .sf-wpn-heat__label { font-family:var(--mono); font-size:9px; letter-spacing:.06em;
+    color:var(--ink-dim); width:46px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sf-wpn-heat__bar { position:relative; width:120px; height:8px; border-radius:2px;
+    background:rgba(4,9,18,.85); box-shadow:inset 0 0 0 1px rgba(57,208,255,.08); overflow:hidden; }
+  .sf-wpn-heat__fill { position:absolute; inset:0; transform-origin:left center;
+    background:linear-gradient(90deg,#a8521f,#ff8a3d); transition:transform .08s linear; }
+  .sf-wpn-heat.overheated .sf-wpn-heat__fill { background:linear-gradient(90deg,#cc2020,#ff4040); }
+  .sf-wpn-heat.overheated { animation:sf-wpnpulse .5s ease-in-out infinite alternate; }
+  @keyframes sf-wpnpulse { from { opacity:.7; } to { opacity:1; } }
+
+  /* Target lock diamond — world-space overlay on locked/selected enemy.
+     Outer div is the invisible positioning anchor (translate -50% centers on target).
+     Inner div is the visible rotated diamond with pulsing glow. */
+  .sf-lockdiamond { position:absolute; width:32px; height:32px; pointer-events:none; z-index:13;
+    transform:translate(-50%,-50%); opacity:0; transition:opacity .12s ease;
+    --dia-glow:57,208,255; }
+  .sf-lockdiamond.visible { opacity:1; }
+  .sf-lockdiamond.locked-tgt { --dia-glow:255,84,112; }
+  .sf-lockdiamond__inner { position:absolute; inset:2px;
+    transform:rotate(45deg);
+    border:2px solid rgba(var(--dia-glow),1);
+    box-shadow:0 0 10px rgba(var(--dia-glow),.5), inset 0 0 8px rgba(var(--dia-glow),.15);
+    animation:sf-diamondpulse 1s ease-in-out infinite alternate; }
+  @keyframes sf-diamondpulse {
+    from { box-shadow:0 0 6px rgba(var(--dia-glow),.3), inset 0 0 4px rgba(var(--dia-glow),.1); transform:rotate(45deg) scale(.92); }
+    to { box-shadow:0 0 16px rgba(var(--dia-glow),.7), inset 0 0 10px rgba(var(--dia-glow),.2); transform:rotate(45deg) scale(1.04); } }
+
+  /* Capacitor readout near weapon area */
+  .sf-cap-readout { position:absolute; left:18px; bottom:18px; pointer-events:none;
+    font-family:var(--mono); font-size:10px; letter-spacing:.08em; color:var(--ink-dim); }
 
   @media (max-width: 760px), (max-height: 620px) {
     #control-hints { display:none !important; }
@@ -513,7 +633,54 @@ function injectHudCss() {
     .sf-stat__k { font-size:8px; }
     .sf-stat__v { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
     #sf-rolestat { display:none; }
+    .sf-tip { display:none !important; }
+
+    .sf-lockring { width:56px; height:56px; }
+    .sf-wpn-heats { left:8px; }
+    .sf-wpn-heat__bar { width:80px; }
+    .sf-wpn-heat__label { width:34px; font-size:8px; }
+    .sf-lockdiamond { width:24px; height:24px; }
   }
+
+  /* ===== cargo panel overlay ===== */
+  .sf-cargo-panel { position:absolute; left:50%; bottom:90px; transform:translateX(-50%);
+    width:380px; max-height:60vh; display:none; flex-direction:column;
+    background:rgba(4,10,18,.94); border:1px solid var(--accent); border-radius:8px;
+    backdrop-filter:blur(8px); box-shadow:0 8px 32px rgba(0,0,0,.6), 0 0 12px rgba(57,208,255,.15);
+    z-index:200; pointer-events:auto; font-family:var(--mono, Consolas, monospace); overflow:hidden; }
+  .sf-cargo-panel.open { display:flex; }
+  .sf-cargo-panel__head { display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-bottom:1px solid var(--panel-edge); }
+  .sf-cargo-panel__title { font-size:13px; letter-spacing:.14em; color:var(--accent); text-transform:uppercase; }
+  .sf-cargo-panel__close { background:none; border:1px solid var(--ink-mute); border-radius:4px;
+    color:var(--ink-dim); font-size:11px; padding:2px 8px; cursor:pointer; font-family:var(--mono); }
+  .sf-cargo-panel__close:hover { border-color:var(--accent); color:var(--accent); }
+  .sf-cargo-panel__summary { display:flex; justify-content:space-between; padding:8px 14px;
+    font-size:11px; color:var(--ink-dim); border-bottom:1px solid rgba(57,208,255,.08); }
+  .sf-cargo-panel__list { overflow-y:auto; max-height:calc(60vh - 90px); padding:6px 0; }
+  .sf-cargo-panel__list::-webkit-scrollbar { width:4px; }
+  .sf-cargo-panel__list::-webkit-scrollbar-thumb { background:var(--accent); border-radius:2px; }
+  .sf-cargo-row { display:grid; grid-template-columns:1fr 50px 50px 60px 56px; align-items:center;
+    padding:5px 14px; font-size:11px; color:var(--ink); gap:4px; }
+  .sf-cargo-row:hover { background:rgba(57,208,255,.06); }
+  .sf-cargo-row__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
+  .sf-cargo-row__qty { text-align:right; color:var(--accent-2); }
+  .sf-cargo-row__vol { text-align:right; color:var(--ink-dim); }
+  .sf-cargo-row__val { text-align:right; color:var(--ink-dim); }
+  .sf-cargo-row__jet { background:none; border:1px solid var(--danger); border-radius:3px;
+    color:var(--danger); font-size:9px; padding:1px 6px; cursor:pointer; font-family:var(--mono);
+    letter-spacing:.06em; opacity:0.7; }
+  .sf-cargo-row__jet:hover { opacity:1; background:rgba(255,84,112,.12); }
+  .sf-cargo-empty { padding:20px 14px; text-align:center; color:var(--ink-mute); font-size:12px; }
+  @media (max-width: 760px) {
+    .sf-cargo-panel { width:calc(100vw - 24px); bottom:110px; }
+  }
+
+  /* ===== dock transition overlay ===== */
+  .sf-dock-fade { position:fixed; inset:0; z-index:2500; pointer-events:none;
+    background:radial-gradient(ellipse at 50% 60%, rgba(5,7,13,0) 0%, rgba(5,7,13,1) 70%);
+    opacity:0; transition:opacity 0.4s ease-in-out; }
+  .sf-dock-fade.active { opacity:1; }
   `;
   document.head.appendChild(s);
 }

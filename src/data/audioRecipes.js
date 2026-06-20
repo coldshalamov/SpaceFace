@@ -145,6 +145,94 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 440, filterQ: 3.0,
     repeatCount: 2, repeatIntervalS: 0.4,
   },
+
+  // --- UI hover (soft tick, higher than click) ---
+  {
+    id: 'sfx_ui_hover',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 1200, freqSweep: [1200, 1000], sweepTimeS: 0.03,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.03 },
+    filterType: 'highpass', filterFreq: 800,
+  },
+
+  // --- Docking thud/clunk (metallic impact on successful dock) ---
+  {
+    id: 'sfx_dock_clunk',
+    category: 'ui',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.25 },
+    filterType: 'bandpass', filterFreq: 350, filterQ: 1.5,
+    reverbMix: 0.4, reverbDecay: 0.8,
+  },
+
+  // --- Station ambient hum (low continuous hum when docked) ---
+  {
+    id: 'sfx_station_hum',
+    category: 'engine',
+    type: 'continuous_oscillator',
+    baseFreq: 60, freqMod: 0.01,
+    gainEnvelope: { attack: 1.0, sustain: 1.0, release: 1.5 },
+    filterType: 'lowpass', filterFreq: 180, filterQ: 0.8,
+    lfoRate: 0.3, lfoDepth: 0.03,
+  },
+
+  // --- Jump/warp charge (rising energy buildup) ---
+  {
+    id: 'sfx_jump_charge',
+    category: 'engine',
+    type: 'oscillator',
+    baseFreq: 80, freqSweep: [80, 800], sweepTimeS: 1.5,
+    wave: 'sawtooth',
+    gainEnvelope: { attack: 0.1, sustain: 0.8, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 600, filterQ: 3.0,
+    lfoRate: 12, lfoDepth: 0.15,
+  },
+
+  // --- Jump/warp arrival (decompression whoosh + shimmer) ---
+  {
+    id: 'sfx_jump_arrive',
+    category: 'engine',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.6 },
+    filterType: 'bandpass', filterFreq: 1200, filterQ: 0.6,
+    reverbMix: 0.6, reverbDecay: 1.5,
+  },
+
+  // --- Player death explosion (heavy, rumbling, dramatic) ---
+  {
+    id: 'sfx_player_death',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_explosion_large'],
+    gainMult: 3.0, filterFreqMult: 0.4,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 2.0 },
+    reverbMix: 0.8, reverbDecay: 4.0,
+  },
+
+  // --- Player respawn chime (ascending bright tones — revival) ---
+  {
+    id: 'sfx_respawn_chime',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 440, freqSweep: [440, 1320], sweepTimeS: 0.4,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.5 },
+    filterType: 'highpass', filterFreq: 300,
+    reverbMix: 0.6, reverbDecay: 1.5,
+  },
+
+  // --- Boost activation whoosh (distinct from explosion — breathy/airy) ---
+  {
+    id: 'sfx_boost_whoosh',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.02, sustain: 0.0, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 500, filterQ: 0.4,
+    pitchRange: [1.0, 1.5],
+  },
 ];
 
 // 4 adaptive music stems (A=ambient/safe, B=tension, C=combat, D=boss).

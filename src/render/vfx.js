@@ -102,6 +102,7 @@ export const vfx = {
 
     this._initEventLights();
     this._initRibbonTrails();
+    this._initMiningBeam();
     // ---- GPU point cloud ----
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(cap * 3);
@@ -189,6 +190,8 @@ export const vfx = {
     add('entity:killed', (p) => this._onKilled(p));
     add('entity:destroyed', (p) => this._onDestroyed(p));
     add('player:death', (p) => this._explode({ pos: p && p.pos, radius: 12 }, true));
+    add('mining:start', (p) => this._onMiningStart(p));
+    add('mining:stop', () => this._onMiningStop());
     add('mining:tick', (p) => this._onMiningTick(p));
     add('mining:yield', (p) => this._onMiningYield(p));
     add('ship:thrust', (p) => this._onThrust(p));
@@ -311,18 +314,22 @@ export const vfx = {
     const col = this._engineColor(owner); // weapon colour not in payload; faction accent reads well
     const burst = this._burst || 1;
     this._c0.set('#ffffff'); this._c1.set(col);
-    // muzzle flash: a hot white core punch + a coloured outer flare just ahead of the muzzle
-    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.07, 2.4, 3.8, 1.0, 0.0, '#ffffff', 0, 0);
-    const mx = origin.x + Math.cos(base) * 1.2, mz = origin.z + Math.sin(base) * 1.2;
-    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.11, 3.6, 6.0, 0.9, 0.0, col, 0, 0);
-    // dynamic muzzle light — brief white-hot flash that lights the firing ship's hull
-    this._flashLight({ x: origin.x, z: origin.z }, 0xffffff, 3.0, 14, 120);
-    // spark particles ejected forward along the aim cone +/-12deg
-    const n = Math.max(2, Math.round(5 * burst));
+    // muzzle flash: BIGGER — hot white core punch, coloured mid flare, and a wide neon outer bloom
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.09, 3.5, 6.0, 1.0, 0.0, '#ffffff', 0, 0);
+    const mx = origin.x + Math.cos(base) * 1.5, mz = origin.z + Math.sin(base) * 1.5;
+    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.14, 5.0, 9.0, 0.9, 0.0, col, 0, 0);
+    // wide neon bloom feeder behind the core — feeds into the bloom pass for a satisfying pop
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.18, 4.0, 10.0, 0.45, 0.0, col, 0, 0);
+    // dynamic muzzle light — brighter, wider radius to light surrounding geometry
+    this._flashLight({ x: origin.x, z: origin.z }, 0xffffff, 5.0, 12, 180);
+    // secondary weapon-colored light slightly ahead — paints the barrel area
+    this._flashLight({ x: mx, z: mz }, col, 3.0, 14, 100);
+    // spark particles ejected forward along the aim cone +/-15deg — more sparks, faster
+    const n = Math.max(4, Math.round(10 * burst));
     for (let k = 0; k < n; k++) {
-      const a = base + (Math.random() - 0.5) * 0.42;
-      const sp = 30 + Math.random() * 30;
-      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.15, 1.6, 0.0, this._c0, this._c1, 4.0, 0, 0);
+      const a = base + (Math.random() - 0.5) * 0.52;
+      const sp = 40 + Math.random() * 50;
+      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.18, 2.2, 0.0, this._c0, this._c1, 3.5, 0, 0);
     }
   },
 
@@ -340,8 +347,40 @@ export const vfx = {
     const pos = this._posFrom(p, p.targetId);
     if (!pos) return;
     const tgt = this._ent(p.targetId);
-    const col = tgt ? this._engineColor(tgt) : '#ffcc66';
-    this._impactSparks(pos.x, pos.z, p.pos && p.dir ? p.dir : null, col, 10);
+    const fid = (tgt && tgt.factionId) || null;
+    const hitShield = tgt && tgt.shield > 0;
+
+    if (hitShield) {
+      // Shield impact: distinct blue/cyan sparks + visible ripple so it reads differently from hull
+      const col = this._shieldColor(fid);
+      const r = (tgt && tgt.radius) || 6;
+      // expanding shield ripple ring at the hit point (smaller than _onDamage full bubble)
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.25, r * 0.6, r * 3.5, 0.7, 0.0, col, 0, 0);
+      // localized flash at the hit point
+      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, 2.5, 5.0, 0.9, 0.0, '#ffffff', 0, 0);
+      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.16, 3.5, 7.0, 0.6, 0.0, col, 0, 0);
+      // shield sparks skitter across the surface — more and faster
+      this._c0.set('#ffffff'); this._c1.set(col);
+      const sn = Math.max(6, Math.round(14 * (this._burst || 1)));
+      for (let k = 0; k < sn; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 22 + Math.random() * 28;
+        this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.22, 1.6, 0.0, this._c0, this._c1, 3.5, 0, 0);
+      }
+      this._flashLight({ x: pos.x, z: pos.z }, col, 3.0, 12, 120);
+    } else {
+      // Hull impact: hot orange/yellow sparks — directional spray, more particles
+      const col = tgt ? this._engineColor(tgt) : '#ffcc66';
+      this._impactSparks(pos.x, pos.z, p.pos && p.dir ? p.dir : null, col, 18);
+      // extra hull debris — a few slower, longer-lived chunks
+      this._c0.set('#ffa040'); this._c1.set('#301008');
+      const dn = Math.max(2, Math.round(5 * (this._burst || 1)));
+      for (let k = 0; k < dn; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 8 + Math.random() * 14;
+        this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.5 + Math.random() * 0.3, 1.4, 0.3, this._c0, this._c1, 1.2, 0, 0);
+      }
+    }
   },
 
   _onDamage(p) {
@@ -351,50 +390,93 @@ export const vfx = {
     const tgt = this._ent(p.targetId);
     const fid = (tgt && tgt.factionId) || p.factionId || null;
     // NOTE: on combat:damage, `p.type` is the DAMAGE type (kinetic/energy/…), not a shield flag — so
-    // the shield branch keys off `brokeShield` (authoritative) plus a defensive legacy `kind` alias.
-    if (p.brokeShield || p.kind === 'shield') {
-      // Shield-hit fresnel ripple. The spec's true fresnel bubble is a per-entity shieldBubble mesh
-      // owned by visualFactory — NOT this file — so we approximate it with pooled additive sprites
-      // anchored to the entity centre: a bright rim ring snapping out to the shield radius (fresnel
-      // rim feel) plus an impact flash at the hit point, tinted by the faction shield colour.
+    // the shield branch keys off `shieldAbsorbed` (authoritative: true when any shield HP absorbed
+    // damage this hit) plus `brokeShield` (shield HP just hit zero). Both trigger shield VFX.
+    if (p.shieldAbsorbed || p.brokeShield) {
+      // VISIBLE SHIELD BUBBLE — multi-layer approach: a bright fresnel rim ring at the entity center
+      // sized to the shield radius (the "bubble" outline), a second expanding RING shockwave from the
+      // hit point that reads as a ripple propagating across the bubble surface, plus a localized flash.
       const col = this._shieldColor(fid);
       const r = (tgt && tgt.radius) || 8;
       const cx = tgt ? tgt.pos.x : pos.x, cz = tgt ? tgt.pos.z : pos.z;
-      // rim ripple centred on the ship, sized to the shield bubble (radius*1.15 per spec)
-      this._spawnSprite(SPR_FRESNEL, cx, 0, cz, 0.45, r * 2.0, r * 2.55, 0.9, 0.0, col, 0, 0);
-      // localized flash at the actual hit point so the player reads WHERE it was struck
-      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.16, r * 0.7, r * 1.5, 0.8, 0.0, col, 0, 0);
-      // dynamic shield-hit light — tinted by faction shield colour, brief, snappy decay
-      this._flashLight({ x: pos.x, z: pos.z }, col, 4.0, 11, 140);
-      // a few cool sparks skittering across the shield surface
+
+      // (1) Primary fresnel rim bubble — snaps out to shield radius. BIGGER and BRIGHTER than before.
+      this._spawnSprite(SPR_FRESNEL, cx, 0, cz, 0.50, r * 2.3, r * 3.0, 1.0, 0.0, col, 0, 0);
+      // (2) Second fresnel layer slightly larger — fainter echo for depth/thickness feel
+      this._spawnSprite(SPR_FRESNEL, cx, 0, cz, 0.65, r * 2.5, r * 3.5, 0.45, 0.0, col, 0, 0);
+      // (3) Shield ripple ring expanding FROM the hit point — the "impact ripple" propagating outward
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.35, r * 0.5, r * 4.5, 0.85, 0.0, col, 0, 0);
+      // (4) Second ripple ring slightly delayed + wider for chromatic feel
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.45, r * 0.8, r * 5.5, 0.5, 0.0, '#ffffff', 0, 0);
+      // (5) Hot white impact flash at the hit point — BIGGER so it reads clearly
+      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.14, r * 1.0, r * 2.5, 1.0, 0.0, '#ffffff', 0, 0);
+      // (6) Coloured flare behind the white punch
+      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.22, r * 1.2, r * 3.0, 0.7, 0.0, col, 0, 0);
+      // dynamic shield-hit light — BRIGHTER, wider range so shield flashes illuminate the scene
+      this._flashLight({ x: pos.x, z: pos.z }, col, 6.0, 10, 200);
+      // secondary white-hot light at the center for the bubble glow
+      this._flashLight({ x: cx, z: cz }, '#ffffff', 3.0, 14, 120);
+      // shield sparks skittering across the bubble surface — MORE sparks, faster, brighter
       this._c0.set('#ffffff'); this._c1.set(col);
-      const sn = Math.max(2, Math.round(5 * (this._burst || 1)));
+      const sn = Math.max(6, Math.round(14 * (this._burst || 1)));
       for (let k = 0; k < sn; k++) {
         const a = Math.random() * Math.PI * 2;
-        const sp = 18 + Math.random() * 16;
-        this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.2, 1.3, 0.0, this._c0, this._c1, 4.0, 0, 0);
+        const sp = 24 + Math.random() * 26;
+        this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.28, 1.8, 0.0, this._c0, this._c1, 3.5, 0, 0);
+      }
+      // shield-break bonus: if the shield just popped, add a dramatic full-bubble burst
+      if (p.brokeShield) {
+        this._spawnSprite(SPR_RING, cx, 0, cz, 0.55, r * 1.0, r * 7.0, 1.0, 0.0, col, 0, 0);
+        this._spawnSprite(SPR_FRESNEL, cx, 0, cz, 0.40, r * 3.0, r * 4.5, 0.9, 0.0, '#ffffff', 0, 0);
+        this._flashLight({ x: cx, z: cz }, '#ffffff', 8.0, 8, 250);
+        // scatter of bright sparks on shield break — the bubble shattering
+        this._c0.set(col); this._c1.set('#102040');
+        const bn = Math.max(8, Math.round(20 * (this._burst || 1)));
+        for (let k = 0; k < bn; k++) {
+          const a = Math.random() * Math.PI * 2;
+          const dist = r * (0.8 + Math.random() * 0.5);
+          const sp = 30 + Math.random() * 40;
+          this._spawnParticle(cx + Math.cos(a) * dist, cz + Math.sin(a) * dist,
+            Math.cos(a) * sp, Math.sin(a) * sp, 0.4 + Math.random() * 0.2, 2.0, 0.0, this._c0, this._c1, 2.0, 0, 0);
+        }
+        this.bus.emit('camera:shake', { amount: 0.4 });
       }
     } else {
-      // hull impact sparks (hot-white -> faction accent)
+      // hull impact sparks (hot-white -> faction accent) — MORE sparks than before
       const col = this._engineColor(tgt);
-      this._impactSparks(pos.x, pos.z, p.normal || null, col, 12);
+      this._impactSparks(pos.x, pos.z, p.normal || null, col, 20);
+      // hull hits also get a small orange flash at the hit point
+      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, 2.0, 4.5, 0.7, 0.0, '#ff8040', 0, 0);
+      this._flashLight({ x: pos.x, z: pos.z }, '#ff8040', 2.5, 14, 90);
     }
-    // player hits get a small camera kick (render owns the camera; we only emit)
-    if (p.isPlayer && (p.amount || 0) > 0) this.bus.emit('camera:shake', { amount: Math.min(0.35, 0.06 + (p.amount || 0) * 0.01) });
+    // player hits get a camera kick — STRONGER, proportional to damage
+    if (p.isPlayer && (p.amount || 0) > 0) this.bus.emit('camera:shake', { amount: Math.min(0.5, 0.08 + (p.amount || 0) * 0.015) });
   },
 
   _impactSparks(x, z, dir, color, n) {
     this._c0.set('#ffffff'); this._c1.set(color);
     const base = dir ? Math.atan2(dir.z, dir.x) + Math.PI : Math.random() * Math.PI * 2; // reflect-ish
-    const count = Math.max(3, Math.round(n * (this._burst || 1)));
+    const count = Math.max(5, Math.round(n * (this._burst || 1)));
+    // primary spark spray — tighter cone along the reflection direction, fast and bright
     for (let k = 0; k < count; k++) {
-      const a = base + (Math.random() - 0.5) * 1.6;
-      const sp = 15 + Math.random() * 24;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.22 + Math.random() * 0.12, 1.6, 0.0, this._c0, this._c1, 3.0, 0, 0);
+      const a = base + (Math.random() - 0.5) * 1.4;
+      const sp = 22 + Math.random() * 40;
+      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.25 + Math.random() * 0.15, 2.0, 0.0, this._c0, this._c1, 2.8, 0, 0);
     }
-    // hot impact flash + a quick coloured halo
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.06, 1.6, 2.6, 0.95, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.12, 2.4, 4.2, 0.55, 0.0, color, 0, 0);
+    // secondary slower sparks — wider spread, dimmer, for lingering debris feel
+    this._c0.set('#ffc060'); this._c1.set('#401008');
+    const slow = Math.max(2, Math.round(count * 0.35));
+    for (let k = 0; k < slow; k++) {
+      const a = base + (Math.random() - 0.5) * 2.4;
+      const sp = 8 + Math.random() * 15;
+      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.4 + Math.random() * 0.25, 1.5, 0.3, this._c0, this._c1, 1.5, 0, 0);
+    }
+    // hot impact flash — BIGGER white core punch
+    this._spawnSprite(SPR_FLASH, x, 0, z, 0.08, 2.8, 5.0, 1.0, 0.0, '#ffffff', 0, 0);
+    // coloured outer halo — larger and longer
+    this._spawnSprite(SPR_FLASH, x, 0, z, 0.15, 4.0, 7.0, 0.65, 0.0, color, 0, 0);
+    // impact light flash
+    this._flashLight({ x, z }, color, 2.5, 14, 100);
   },
 
   _onCollision(p) {
@@ -419,62 +501,212 @@ export const vfx = {
     if (!this._scene) return;
     const pos = this._posFrom(p, p.id);
     if (!pos) return;
-    const r = Math.max(2, p.radius || 6);
+    const r = Math.max(3, p.radius || 6);
     const x = pos.x, z = pos.z;
     const burst = this._burst || 1;
+    // Scale factor: bigger entities produce bigger explosions (a frigate blowing up should dwarf a fighter)
+    const sc = big ? Math.max(1, r / 6) : Math.max(0.7, r / 8);
 
-    // (a) MULTI-LAYER FLASH — a tiny instant white core punch, a hot mid flash, and a broad neon
-    //     outer bloom-feeder. Cyberpunk-noir: push the outer bloom toward neon magenta so explosions
-    //     read as energy discharges, not just orange fire.
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.08, r * 1.4, r * 3.0, 1.0, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.18, r * 2.4, r * 6.0, 1.0, 0.0, '#ffe8a0', 0, 0);
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.30, r * 3.0, r * 8.5, 0.7, 0.0, '#ff5fa0', 0, 0);
-    // dynamic explosion light — neon-warm, scaled to blast size, longer decay so it reads as fire
-    this._flashLight({ x, z }, 0xff70a0, Math.min(14, 4 + r * 0.8), 5, 200 + r * 12);
-    // (c) TRIPLE CHROMATIC SHOCKWAVE — a fast white leading ring + a neon-cyan mid ring + a neon-
-    //     magenta outer ring. The cyan/magenta pair reads as a chromatic aberration / energy rupture,
-    //     the signature cyberpunk explosion cue (vs a plain white soap-bubble ring).
-    this._spawnSprite(SPR_RING, x, 0, z, 0.30, r * 0.5, r * 6.0, 0.9, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_RING, x, 0, z, 0.42, r * 0.7, r * 8.0, 0.8, 0.0, '#5fe0ff', 0, 0);
-    this._spawnSprite(SPR_RING, x, 0, z, 0.52, r * 0.9, r * 10.5, 0.6, 0.0, '#ff5fe0', 0, 0);
-    // (b) embers: hot-yellow -> ember-red, with a few NEON magenta embers mixed in (energy debris)
-    const embers = Math.max(8, Math.round((big ? 44 : 26) * burst));
-    this._c0.set('#ffe08a'); this._c1.set('#802010');
+    // (a) MULTI-LAYER FLASH — BIGGER, entity-radius-scaled. Instant white core, hot mid,
+    //     broad neon outer bloom-feeder, plus a MASSIVE brief overbloom that feeds the bloom pass hard.
+    this._spawnSprite(SPR_FLASH, x, 0, z, 0.10, r * 2.0 * sc, r * 4.5 * sc, 1.0, 0.0, '#ffffff', 0, 0);
+    this._spawnSprite(SPR_FLASH, x, 0, z, 0.22, r * 3.5 * sc, r * 8.0 * sc, 1.0, 0.0, '#ffe8a0', 0, 0);
+    this._spawnSprite(SPR_FLASH, x, 0, z, 0.38, r * 4.5 * sc, r * 12.0 * sc, 0.8, 0.0, '#ff5fa0', 0, 0);
+    // massive overbloom flash — short-lived, feeds bloom hard for that blinding-white moment
+    if (big) this._spawnSprite(SPR_FLASH, x, 0, z, 0.06, r * 5.0 * sc, r * 15.0 * sc, 1.0, 0.0, '#ffffff', 0, 0);
+    // dynamic explosion light — BRIGHTER, WIDER, scaled to blast size. Two lights for depth:
+    // a white-hot core flash + a neon-warm sustained glow
+    this._flashLight({ x, z }, 0xffffff, Math.min(18, 6 + r * sc * 1.0), 10, 160 + r * sc * 15);
+    this._flashLight({ x, z }, 0xff70a0, Math.min(16, 5 + r * sc * 0.9), 4, 250 + r * sc * 18);
+
+    // (c) TRIPLE CHROMATIC SHOCKWAVE — BIGGER rings, scaled to entity radius
+    this._spawnSprite(SPR_RING, x, 0, z, 0.35, r * 0.8 * sc, r * 9.0 * sc, 1.0, 0.0, '#ffffff', 0, 0);
+    this._spawnSprite(SPR_RING, x, 0, z, 0.48, r * 1.0 * sc, r * 12.0 * sc, 0.85, 0.0, '#5fe0ff', 0, 0);
+    this._spawnSprite(SPR_RING, x, 0, z, 0.60, r * 1.2 * sc, r * 15.0 * sc, 0.65, 0.0, '#ff5fe0', 0, 0);
+    // big explosions get a FOURTH outer shockwave — the "pressure wave"
+    if (big) this._spawnSprite(SPR_RING, x, 0, z, 0.70, r * 2.0 * sc, r * 20.0 * sc, 0.4, 0.0, '#ffffff', 0, 0);
+
+    // (b) embers: MORE particles, BIGGER, FASTER — hot-yellow -> ember-red + neon magenta ionized debris
+    const embers = Math.max(12, Math.round((big ? 70 : 40) * burst * sc));
     for (let k = 0; k < embers; k++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 20 + Math.random() * 50;
-      const life = 0.6 + Math.random() * 0.5;
-      // ~1 in 5 embers is neon magenta (ionized debris) for the punk-grit energy look
-      if (k % 5 === 0) { this._c0.set('#ff5fe0'); this._c1.set('#60106a'); }
+      const sp = (25 + Math.random() * 65) * sc;
+      const life = 0.7 + Math.random() * 0.6;
+      // ~1 in 4 embers is neon magenta (ionized debris)
+      if (k % 4 === 0) { this._c0.set('#ff5fe0'); this._c1.set('#60106a'); }
       else { this._c0.set('#ffe08a'); this._c1.set('#802010'); }
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, life, 2.5, 0.0, this._c0, this._c1, 1.5, 0, 0);
+      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, life, 3.0 * sc, 0.0, this._c0, this._c1, 1.3, 0, 0);
     }
-    // (b2) fast bright SPARKS — short-lived white-hot streaks for the initial flash-front snap
+
+    // (b2) fast bright SPARKS — MORE, FASTER, white-hot streaks for the initial flash-front snap
     this._c0.set('#ffffff'); this._c1.set('#ffd070');
-    const sparks = Math.max(4, Math.round((big ? 18 : 10) * burst));
+    const sparks = Math.max(8, Math.round((big ? 30 : 16) * burst * sc));
     for (let k = 0; k < sparks; k++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 70 + Math.random() * 90;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.18 + Math.random() * 0.12, 1.8, 0.0, this._c0, this._c1, 3.5, 0, 0);
+      const sp = (80 + Math.random() * 120) * sc;
+      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.18 + Math.random() * 0.12, 2.2, 0.0, this._c0, this._c1, 3.0, 0, 0);
     }
-    // (d) debris chunks (slower, longer-lived bright specks tumbling out)
+
+    // (d) debris chunks — MORE, BIGGER, LONGER-LIVED: slower tumbling specks that linger after the fire
     this._c0.set('#c9b08a'); this._c1.set('#201810');
-    const debris = Math.max(3, Math.round((big ? 10 : 6) * burst));
+    const debris = Math.max(5, Math.round((big ? 18 : 10) * burst * sc));
     for (let k = 0; k < debris; k++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 12 + Math.random() * 30;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 1.5, 2.0, 0.6, this._c0, this._c1, 0.6, 0, 0);
+      const sp = (14 + Math.random() * 35) * sc;
+      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 2.0 + Math.random() * 1.0, 2.5 * sc, 0.8, this._c0, this._c1, 0.5, 0, 0);
     }
-    // (e) SMOKE puffs that drift and grow, lingering after the fire dies
-    this._c0.set('#3a3a40'); this._c1.set('#101012');
-    const puffs = Math.max(2, Math.round((big ? 5 : 3) * burst));
+    // secondary hot debris — glowing orange chunks that cool to dark (reads as burning wreckage)
+    this._c0.set('#ff9030'); this._c1.set('#301008');
+    const hotDebris = Math.max(3, Math.round((big ? 12 : 6) * burst * sc));
+    for (let k = 0; k < hotDebris; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = (10 + Math.random() * 25) * sc;
+      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 1.8 + Math.random() * 1.2, 2.0 * sc, 0.5, this._c0, this._c1, 0.4, 0, 0);
+    }
+
+    // (e) SMOKE puffs — MORE, BIGGER, drift and grow, lingering after the fire dies
+    const puffs = Math.max(3, Math.round((big ? 8 : 5) * burst));
     for (let k = 0; k < puffs; k++) {
-      this._spawnSprite(SPR_PUFF, x + (Math.random() - 0.5) * r, 0, z + (Math.random() - 0.5) * r, 0.9 + Math.random() * 0.5, r * 0.8, r * 2.4, 0.5, 0.0, '#2a2a30',
-        (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+      this._spawnSprite(SPR_PUFF,
+        x + (Math.random() - 0.5) * r * sc,
+        0,
+        z + (Math.random() - 0.5) * r * sc,
+        1.2 + Math.random() * 0.8,
+        r * 1.2 * sc, r * 3.5 * sc,
+        0.6, 0.0, '#2a2a30',
+        (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
     }
-    // Camera shake (spec: mag ~ 0.6*radius clamped, mapped to 0..1 trauma). camera:shake STACKS and
-    // combat.js already emits 0.5 on a ship kill, so keep this contribution modest and tightly clamped.
-    this.bus.emit('camera:shake', { amount: Math.min(big ? 0.6 : 0.45, 0.1 * r) });
+
+    // Camera shake — PROPORTIONAL to explosion size: big ships produce big shakes
+    const shakeAmt = big
+      ? Math.min(0.85, 0.15 * r * sc)
+      : Math.min(0.55, 0.12 * r * sc);
+    this.bus.emit('camera:shake', { amount: shakeAmt });
+  },
+
+  // ---- mining beam visual (energy line from ship to contact point) ----------
+  _miningBeam: null,
+  _initMiningBeam() {
+    if (!this._scene) return;
+    // Flat ribbon quad stretched between two endpoints; additive-blended, ore-tinted.
+    // 4 vertices forming a thin quad (2 triangles) — width controlled per-update.
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(4 * 3); // 4 verts, xyz
+    const uv = new Float32Array([0, 0, 0, 1, 1, 0, 1, 1]);
+    const posAttr = new THREE.BufferAttribute(pos, 3);
+    posAttr.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', posAttr);
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.setIndex([0, 1, 2, 1, 3, 2]);
+
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#60d0ff'),
+      transparent: true, opacity: 0.7,
+      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 10;
+    mesh.visible = false;
+    this._scene.add(mesh);
+
+    // Core glow — a second, wider, dimmer beam layered underneath for bloom feel.
+    const geo2 = geo.clone();
+    const mat2 = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#60d0ff'),
+      transparent: true, opacity: 0.25,
+      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const glow = new THREE.Mesh(geo2, mat2);
+    glow.frustumCulled = false;
+    glow.renderOrder = 9;
+    glow.visible = false;
+    this._scene.add(glow);
+
+    this._miningBeam = { mesh, glow, active: false, t: 0, color: '#60d0ff' };
+  },
+
+  _onMiningStart(p) {
+    if (!this._miningBeam) return;
+    this._miningBeam.active = true;
+    this._miningBeam.t = 0;
+    this._miningBeam.targetId = (p && p.targetId) || null;
+    // Tint to the target asteroid's ore type if we can resolve it
+    const target = p && p.targetId ? this._ent(p.targetId) : null;
+    if (target && target.data) {
+      const def = target.data.typeId;
+      const col = oreColor(def);
+      this._miningBeam.color = col;
+      this._miningBeam.mesh.material.color.set(col);
+      this._miningBeam.glow.material.color.set(col);
+    }
+  },
+
+  _onMiningStop() {
+    if (!this._miningBeam) return;
+    this._miningBeam.active = false;
+    this._miningBeam.mesh.visible = false;
+    this._miningBeam.glow.visible = false;
+  },
+
+  // Called each frame from update() to reposition the beam quad between ship and contact.
+  _updateMiningBeam(dt) {
+    const beam = this._miningBeam;
+    if (!beam || !beam.active) return;
+    beam.t += dt;
+
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
+    if (!player || !player.alive) { this._onMiningStop(); return; }
+
+    const target = beam.targetId ? this._ent(beam.targetId) : null;
+    if (!target || !target.alive) { this._onMiningStop(); return; }
+
+    // Ship origin: use SOCKET_Trail_Main offset rotated to the ship's front (mining drill is forward)
+    const cf = Math.cos(player.rot), sf = Math.sin(player.rot);
+    const fwd = (player.radius || 6) * 0.7;
+    const sx = player.pos.x + cf * fwd, sz = player.pos.z + sf * fwd;
+
+    // Target contact point on the asteroid surface facing the ship
+    const dx = sx - target.pos.x, dz = sz - target.pos.z;
+    const dist = Math.hypot(dx, dz) || 1;
+    const r = target.radius || 6;
+    const tx = target.pos.x + (dx / dist) * r, tz = target.pos.z + (dz / dist) * r;
+
+    // Beam ribbon: perpendicular to the beam direction, thin strip
+    const nx = -(dz / dist), nz = (dx / dist); // perpendicular
+    const pulse = 1.0 + 0.3 * Math.sin(beam.t * 12); // rapid pulse
+    const w = 0.8 * pulse; // beam half-width
+    const gw = 2.5 * pulse; // glow half-width
+
+    // Update core beam quad vertices
+    const corePos = beam.mesh.geometry.attributes.position.array;
+    corePos[0] = sx + nx * w; corePos[1] = 1.5; corePos[2] = sz + nz * w;
+    corePos[3] = sx - nx * w; corePos[4] = 1.5; corePos[5] = sz - nz * w;
+    corePos[6] = tx + nx * w; corePos[7] = 1.5; corePos[8] = tz + nz * w;
+    corePos[9] = tx - nx * w; corePos[10] = 1.5; corePos[11] = tz - nz * w;
+    beam.mesh.geometry.attributes.position.needsUpdate = true;
+    beam.mesh.visible = true;
+    beam.mesh.material.opacity = 0.6 + 0.2 * Math.sin(beam.t * 8);
+
+    // Update glow quad (wider, dimmer)
+    const glowPos = beam.glow.geometry.attributes.position.array;
+    glowPos[0] = sx + nx * gw; glowPos[1] = 1.5; glowPos[2] = sz + nz * gw;
+    glowPos[3] = sx - nx * gw; glowPos[4] = 1.5; glowPos[5] = sz - nz * gw;
+    glowPos[6] = tx + nx * gw; glowPos[7] = 1.5; glowPos[8] = tz + nz * gw;
+    glowPos[9] = tx - nx * gw; glowPos[10] = 1.5; glowPos[11] = tz - nz * gw;
+    beam.glow.geometry.attributes.position.needsUpdate = true;
+    beam.glow.visible = true;
+    beam.glow.material.opacity = 0.15 + 0.1 * Math.sin(beam.t * 6);
+
+    // Emit beam trail particles along the beam length for extra energy feel
+    if (Math.random() < 0.6) {
+      const frac = Math.random();
+      const px = sx + (tx - sx) * frac, pz = sz + (tz - sz) * frac;
+      const drift = 3 + Math.random() * 5;
+      this._c0.set('#ffffff'); this._c1.set(beam.color);
+      this._spawnParticle(px, pz, (Math.random() - 0.5) * drift, (Math.random() - 0.5) * drift,
+        0.15 + Math.random() * 0.15, 1.0, 0.0, this._c0, this._c1, 4.0, 0, 0);
+    }
   },
 
   _onMiningTick(p) {
@@ -482,36 +714,62 @@ export const vfx = {
     const pos = this._posFrom(p, null);
     if (!pos) return;
     const col = oreColor(p.oreType);
-    // Bias ore sparks back toward the miner (player, if known) so they spray off the rock face like
-    // chips coming off a grinder; fall back to an omni-spray when no miner reference is available.
+    // Spray sparks outward from the contact point, biased away from the miner so they fan
+    // off the rock face like molten chips. Bigger, brighter, more numerous than before.
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     let backA = null;
     if (player) {
       const dx = player.pos.x - pos.x, dz = player.pos.z - pos.z;
       if (dx * dx + dz * dz > 1) backA = Math.atan2(dz, dx);
     }
-    this._c0.set('#fff0d0'); this._c1.set(col);
-    const n = Math.max(4, Math.round(8 * (this._burst || 1)));
+    // Hot white-to-ore sparks — wider spray, faster, longer life
+    this._c0.set('#fffaf0'); this._c1.set(col);
+    const n = Math.max(8, Math.round(16 * (this._burst || 1)));
     for (let k = 0; k < n; k++) {
-      const a = backA != null ? backA + (Math.random() - 0.5) * 1.5 : Math.random() * Math.PI * 2;
-      const sp = 12 + Math.random() * 20;
-      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.28 + Math.random() * 0.1, 1.3, 0.0, this._c0, this._c1, 3.5, 0, 0);
+      // Spray perpendicular to beam (away from rock face) for a fan effect
+      const a = backA != null
+        ? backA + Math.PI + (Math.random() - 0.5) * 2.2  // fan away from ship
+        : Math.random() * Math.PI * 2;
+      const sp = 18 + Math.random() * 35;
+      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.35 + Math.random() * 0.2, 2.0, 0.2, this._c0, this._c1, 2.5, 0, 0);
     }
-    // contact glow + drifting dust puff
-    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.12, 1.4, 2.6, 0.6, 0.0, col, 0, 0);
-    this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.4, 1.5, 3.2, 0.45, 0.0, col, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
-    // dynamic mining light — ore-tinted glow at the contact point, cool & steady-ish (slower decay
-    // than combat flashes) so it reads as a continuous cutting beam, not a strobe.
-    this._flashLight({ x: pos.x, z: pos.z }, col, 2.5, 4.5, 90);
+    // A few slow-drifting embers that linger (amber → dim)
+    this._c0.set('#ffb040'); this._c1.set('#401800');
+    for (let k = 0; k < 3; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 3 + Math.random() * 6;
+      this._spawnParticle(pos.x + (Math.random() - 0.5) * 4, pos.z + (Math.random() - 0.5) * 4,
+        Math.cos(a) * sp, Math.sin(a) * sp, 0.6 + Math.random() * 0.4, 1.8, 0.0, this._c0, this._c1, 1.5, 0, 0);
+    }
+    // Bright contact flash — bigger, punchier
+    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.15, 2.5, 5.0, 0.8, 0.0, col, 0, 0);
+    // Drifting dust / debris cloud
+    this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.5, 2.0, 4.5, 0.5, 0.0, col,
+      (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+    // Strong ore-tinted dynamic light at contact — brighter, wider
+    this._flashLight({ x: pos.x, z: pos.z }, col, 4.0, 3.5, 140);
   },
 
   _onMiningYield(p) {
     if (!this._scene) return;
     const pos = this._posFrom(p, null);
     if (!pos) return;
-    // little upward sparkle confirming ore released (the actual gem pickup is its own entity)
     const col = oreColor(p.commodityId);
-    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.25, 1.5, 3.0, 0.7, 0.0, col, 0, 0);
+    const qty = p.qty || 1;
+    // Satisfying burst of sparkles when ore pops out — scales with quantity
+    const burstN = Math.min(20, 6 + qty * 2);
+    this._c0.set('#ffffff'); this._c1.set(col);
+    for (let k = 0; k < burstN; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 15 + Math.random() * 25;
+      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.3 + Math.random() * 0.2, 2.0, 0.3, this._c0, this._c1, 2.0, 0, 4 + Math.random() * 8);
+    }
+    // Bright flash + expanding ring to punctuate the yield
+    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.3, 3.0, 6.0, 0.9, 0.0, col, 0, 0);
+    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.4, 2.0, 12.0, 0.5, 0.0, col, 0, 0);
+    this._flashLight({ x: pos.x, z: pos.z }, col, 5.0, 4.0, 180);
   },
 
   _onThrust(p) {
@@ -525,21 +783,28 @@ export const vfx = {
     const e = this._ent(p && p.shipId);
     if (!e || !this._scene) return;
     if (on) {
-      // Boost ignition: a bright flare behind the nozzles plus a backward afterburner streak of
-      // fast white-hot particles so the kick reads instantly.
+      // Boost ignition: BIGGER, PUNCHIER — bright flare behind the nozzles, backward afterburner
+      // streak, expanding ring, and a dynamic light. The moment of ignition should read clearly.
       const col = this._engineColor(e);
       const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
       const bx = e.pos.x - cf * (e.radius + 2);
       const bz = e.pos.z - sf * (e.radius + 2);
-      this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.20, 4, 9, 1.0, 0.0, '#ffffff', 0, 0);
-      this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.30, 6, 13, 0.7, 0.0, col, 0, 0);
+      // Core white flash — bigger
+      this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.22, 6, 14, 1.0, 0.0, '#ffffff', 0, 0);
+      // Coloured outer flare — wider, longer
+      this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.35, 8, 18, 0.8, 0.0, col, 0, 0);
+      // Expanding ring behind the ship — reads as the shockwave of ignition
+      this._spawnSprite(SPR_RING, bx, 0, bz, 0.30, 3, 16, 0.7, 0.0, col, -cf * 5, -sf * 5);
+      // Dynamic light at the nozzle — lights up the rear of the ship
+      this._flashLight({ x: bx, z: bz }, col, 5.0, 10, 160);
+      // Afterburner particle streak — MORE particles, FASTER
       this._c0.set('#ffffff'); this._c1.set(col);
       const baseA = Math.atan2(-sf, -cf);
-      const n = Math.max(6, Math.round(16 * (this._burst || 1)));
+      const n = Math.max(10, Math.round(24 * (this._burst || 1)));
       for (let k = 0; k < n; k++) {
-        const a = baseA + (Math.random() - 0.5) * 0.5;
-        const sp = 60 + Math.random() * 60;
-        this._spawnParticle(bx, bz, Math.cos(a) * sp, Math.sin(a) * sp, 0.3, 2.4, 0.0, this._c0, this._c1, 2.0, 0, 0);
+        const a = baseA + (Math.random() - 0.5) * 0.55;
+        const sp = 70 + Math.random() * 80;
+        this._spawnParticle(bx, bz, Math.cos(a) * sp, Math.sin(a) * sp, 0.35, 3.0, 0.0, this._c0, this._c1, 1.8, 0, 0);
       }
     }
   },
@@ -616,13 +881,20 @@ export const vfx = {
   _onPickup(p) {
     if (!this._scene || !p.pos) return;
     const col = p.kind === 'credits' ? '#ffcc44' : oreColor(p.commodityId);
-    // small sparkle burst + upward fade
-    this._spawnSprite(SPR_FLASH, p.pos.x, 0, p.pos.z, 0.3, 1.5, 3.2, 0.7, 0.0, col, 0, 6);
+    // Satisfying absorption burst — particles implode toward the player, then flash
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
+    this._spawnSprite(SPR_FLASH, p.pos.x, 0, p.pos.z, 0.25, 2.5, 5.0, 0.8, 0.0, col, 0, 0);
     this._c0.set('#ffffff'); this._c1.set(col);
-    for (let k = 0; k < 5; k++) {
+    for (let k = 0; k < 12; k++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 8 + Math.random() * 12;
-      this._spawnParticle(p.pos.x, p.pos.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.35, 1.2, 0.0, this._c0, this._c1, 2.5, 8, 12);
+      const sp = 12 + Math.random() * 18;
+      this._spawnParticle(p.pos.x, p.pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.3 + Math.random() * 0.15, 1.8, 0.0, this._c0, this._c1, 3.0, 2, 6 + Math.random() * 10);
+    }
+    // Flash at the player position too (cargo received confirmation)
+    if (player) {
+      this._spawnSprite(SPR_FLASH, player.pos.x, 0, player.pos.z, 0.15, 2.0, 4.0, 0.5, 0.0, col, 0, 0);
+      this._flashLight({ x: player.pos.x, z: player.pos.z }, col, 2.0, 6.0, 80);
     }
   },
 
@@ -631,6 +903,7 @@ export const vfx = {
     if (!this._scene) return;
     const col0 = this._engineColor(e);
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+    const boosting = e.flags && e.flags.boosting;
     // Hero assets carry SOCKET_Trail_Main at the authored nozzle; originate the plume there so it
     // leaves the real engine, not a center-derived point (spec §9.9, §14.2). Falls back to the
     // radial-behind formula for procedural ships that have no socket.
@@ -643,18 +916,43 @@ export const vfx = {
       bz = e.pos.z - sf * back;
     }
     const baseA = Math.atan2(-sf, -cf);
-    // outer plume: faction-hot -> dark blue, wider with throttle, jittered backward
-    this._c0.set(col0); this._c1.set('#10204a');
-    const sp = (20 + throttle * 22);
-    const a = baseA + (Math.random() - 0.5) * 0.35;
-    this._spawnParticle(bx + (Math.random() - 0.5) * 1.5, bz + (Math.random() - 0.5) * 1.5,
-      Math.cos(a) * sp, Math.sin(a) * sp, 0.35, 2.0 * (0.6 + throttle * 0.6), 0.0, this._c0, this._c1, 2.0, 0, 0);
-    // thin white-hot inner core right at the nozzle — small, short-lived, gives the trail a bright
-    // spine that bloom catches. Tighter cone, faster, less jitter.
+
+    // How many particles per tick: 2 normally, 3-4 when boosting (afterburner effect)
+    const pCount = boosting ? 3 + (Math.random() < 0.5 ? 1 : 0) : 2;
+    // Spread widens with throttle and boost
+    const spread = boosting ? 0.55 : 0.40;
+
+    for (let pi = 0; pi < pCount; pi++) {
+      // outer plume: faction-hot -> dark blue, wider with throttle, jittered backward
+      this._c0.set(col0); this._c1.set('#10204a');
+      const sp = (22 + throttle * 28) * (boosting ? 1.4 : 1.0);
+      const a = baseA + (Math.random() - 0.5) * spread;
+      const jitter = boosting ? 2.5 : 1.8;
+      const life = boosting ? 0.45 : 0.38;
+      const sz = (boosting ? 2.8 : 2.2) * (0.6 + throttle * 0.6);
+      this._spawnParticle(
+        bx + (Math.random() - 0.5) * jitter, bz + (Math.random() - 0.5) * jitter,
+        Math.cos(a) * sp, Math.sin(a) * sp, life, sz, 0.0, this._c0, this._c1, 1.8, 0, 0);
+    }
+
+    // white-hot inner core right at the nozzle — bigger, brighter, gives the trail a visible spine
     this._c0.set('#ffffff'); this._c1.set(col0);
-    const a2 = baseA + (Math.random() - 0.5) * 0.18;
-    const sp2 = 26 + throttle * 26;
-    this._spawnParticle(bx, bz, Math.cos(a2) * sp2, Math.sin(a2) * sp2, 0.18, 1.3 * (0.7 + throttle * 0.5), 0.0, this._c0, this._c1, 2.5, 0, 0);
+    const a2 = baseA + (Math.random() - 0.5) * 0.20;
+    const sp2 = (28 + throttle * 30) * (boosting ? 1.3 : 1.0);
+    const coreSize = (boosting ? 2.0 : 1.5) * (0.7 + throttle * 0.5);
+    this._spawnParticle(bx, bz, Math.cos(a2) * sp2, Math.sin(a2) * sp2, boosting ? 0.25 : 0.20, coreSize, 0.0, this._c0, this._c1, 2.2, 0, 0);
+
+    // AFTERBURNER: when boosting, add extra bright wide particles + a subtle sustained nozzle glow.
+    // These give the boost a visibly different, more dramatic trail.
+    if (boosting) {
+      // Extra wide bright outer particles — faction colored, bigger, slightly random y offset
+      this._c0.set(col0); this._c1.set('#ffffff');
+      const ab = baseA + (Math.random() - 0.5) * 0.7;
+      const absp = 35 + Math.random() * 30;
+      this._spawnParticle(
+        bx + (Math.random() - 0.5) * 3.0, bz + (Math.random() - 0.5) * 3.0,
+        Math.cos(ab) * absp, Math.sin(ab) * absp, 0.35, 3.2, 0.0, this._c0, this._c1, 1.5, 0, 0);
+    }
   },
 
   // -------------------------------------------------------------------------
@@ -673,6 +971,7 @@ export const vfx = {
 
     this._emitTrails(dt);
     this._updateRibbonTrails(dt);
+    this._updateMiningBeam(dt);
     this._integrateParticles(dt);
     this._integrateSprites(dt);
     this._decayEventLights(dt);

@@ -3,10 +3,11 @@
 // Blips colored by team/faction; off-range contacts clamp to the edge as hollow chevrons;
 // the current target gets a ring. Canvas is DPI-scaled so blips stay crisp on 4K/Retina.
 //
-// Formulas (§ spec): px = 90 + (e.x-p.x)/range*90 ; py = 90 - (e.z-p.z)/range*90.
-// NOTE: the vertical is negated vs. a naïve projection. The chase cam sits at +Y/-Z looking toward
-// +Z, so world +Z reads as screen UP — the minimap must mirror that (canvas +y is down), otherwise
-// everything is upside-down relative to what the player sees.
+// Formulas (§ spec): bx = C - (e.x-p.x)/range*R ; by = C - (e.z-p.z)/range*R.
+// NOTE: BOTH axes are negated vs. a naïve projection. The chase cam sits at +Y/-Z looking toward
+// +Z with up = +Y, so world +Z reads as screen UP (canvas +y is down) and world +X reads as screen
+// LEFT. Mirroring both keeps the radar oriented exactly as the player sees the world — otherwise
+// contacts (and the heading marker) flip left/right or up/down relative to the viewport.
 
 import { semanticColor, semanticShape } from './accessibility.js';
 
@@ -99,11 +100,59 @@ export function createRadar(ctx) {
     g.strokeStyle = 'rgba(57,208,255,0.12)';
     g.beginPath(); g.moveTo(C, C - R); g.lineTo(C, C + R); g.moveTo(C - R, C); g.lineTo(C + R, C); g.stroke();
 
+    // decorative outer border ring with cardinal tick marks
+    g.strokeStyle = 'rgba(57,208,255,0.25)';
+    g.lineWidth = 1;
+    g.beginPath(); g.arc(C, C, R + 6, 0, Math.PI * 2); g.stroke();
+    // tick marks at N/S/E/W (4px lines pointing inward)
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.moveTo(C, C - R - 6); g.lineTo(C, C - R - 2);           // N
+    g.moveTo(C, C + R + 6); g.lineTo(C, C + R + 2);           // S
+    g.moveTo(C + R + 6, C); g.lineTo(C + R + 2, C);           // E
+    g.moveTo(C - R - 6, C); g.lineTo(C - R - 2, C);           // W
+    g.stroke();
+    // "N" label at top
+    g.fillStyle = 'rgba(57,208,255,0.35)';
+    g.font = '7px monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'bottom';
+    g.fillText('N', C, C - R - 7);
+
+    // scan sweep effect — rotating 5-degree wedge
+    const sweepAngle = ((Date.now() % 3000) / 3000) * Math.PI * 2;
+    g.save();
+    g.beginPath();
+    g.moveTo(C, C);
+    g.arc(C, C, R, sweepAngle, sweepAngle + 0.087);  // ~5 degrees in radians
+    g.closePath();
+    g.fillStyle = 'rgba(57,208,255,0.08)';
+    g.fill();
+    g.restore();
+
     if (!p) return;
     const px = p.pos.x, pz = p.pos.z;
     const targetId = state.player.targetId;
     const playerTeam = p.team;
     const cbMode = (state.settings.accessibility && state.settings.accessibility.colorblindMode) || 'none';
+
+    // weapon/mining range ring
+    const weaponRange = state.player.weaponRange;
+    const rngRatio = weaponRange ? Math.min(weaponRange / range, 1) : 0.6;
+    const rngR = R * rngRatio;
+    g.save();
+    g.strokeStyle = 'rgba(57,208,255,0.15)';
+    g.lineWidth = 1;
+    g.setLineDash([3, 4]);
+    g.beginPath(); g.arc(C, C, rngR, 0, Math.PI * 2); g.stroke();
+    g.setLineDash([]);
+    g.restore();
+    // "RNG" label at top of range ring
+    g.fillStyle = 'rgba(57,208,255,0.22)';
+    g.font = '6px monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'bottom';
+    g.fillText('RNG', C, C - rngR - 1);
 
     const list = state.entityList;
     for (let i = 0; i < list.length; i++) {
@@ -116,34 +165,53 @@ export function createRadar(ctx) {
       let bx, by, off = false;
       if (dist > range) {
         off = true;
-        const a = Math.atan2(-dz, dx);   // -dz: match the screen (world +Z is up on screen)
+        // -dz: world +Z is up on screen. -dx: the chase cam looks toward +Z with up=+Y, so world +X
+        // projects to screen LEFT — the minimap must mirror X to match what the player sees.
+        const a = Math.atan2(-dz, -dx);
         bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
       } else {
-        bx = C + (dx / range) * R; by = C - (dz / range) * R;   // vertical mirrored to screen
+        bx = C - (dx / range) * R; by = C - (dz / range) * R;   // both axes mirrored to match the screen
       }
       g.fillStyle = col; g.strokeStyle = col;
       if (off) {
-        // hollow chevron at edge
-        const a = Math.atan2(-dz, dx);   // same -dz convention as the blip projection above
+        // hollow chevron at edge — same -dz/-dx convention as the blip projection above
+        const a = Math.atan2(-dz, -dx);
         g.save(); g.translate(bx, by); g.rotate(a);
         g.lineWidth = 1.5; g.beginPath();
         g.moveTo(-3, -3); g.lineTo(2, 0); g.lineTo(-3, 3); g.stroke();
         g.restore();
       } else if (e.type === 'pickup') {
-        g.beginPath(); g.moveTo(bx, by - 2); g.lineTo(bx + 2, by); g.lineTo(bx, by + 2); g.lineTo(bx - 2, by); g.closePath(); g.fill();
+        g.save();
+        g.globalAlpha = 0.55 + 0.45 * Math.sin(Date.now() * 0.005);
+        g.beginPath(); g.moveTo(bx, by - 3); g.lineTo(bx + 3, by); g.lineTo(bx, by + 3); g.lineTo(bx - 3, by); g.closePath(); g.fill();
+        g.restore();
       } else if (e.type === 'asteroid') {
-        g.beginPath(); g.arc(bx, by, 1.4, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.moveTo(bx, by - 1.5); g.lineTo(bx + 1.5, by); g.lineTo(bx, by + 1.5); g.lineTo(bx - 1.5, by); g.closePath(); g.fill();
       } else if (e.type === 'station') {
         if (e.data && e.data.isGate) {
-          g.lineWidth = 1.6;
-          g.beginPath(); g.arc(bx, by, 3.8, 0, Math.PI * 2); g.stroke();
+          // double ring (two concentric circles with gap)
+          g.lineWidth = 1.2;
+          g.beginPath(); g.arc(bx, by, 2.5, 0, Math.PI * 2); g.stroke();
+          g.beginPath(); g.arc(bx, by, 4.5, 0, Math.PI * 2); g.stroke();
         } else {
+          // square with inner dot
           g.fillRect(bx - 2.5, by - 2.5, 5, 5);
+          g.fillStyle = 'rgba(0,0,0,0.5)';
+          g.beginPath(); g.arc(bx, by, 1.5, 0, Math.PI * 2); g.fill();
+          g.fillStyle = col;  // restore for target ring etc.
         }
       } else {
-        // ship/drone — colorblind mode adds a redundant shape (hostile triangle / friendly diamond).
-        if (cbMode !== 'none') drawShipShape(g, bx, by, semanticShape(shipState(e, playerTeam)));
-        else g.fillRect(bx - 1.6, by - 1.6, 3.2, 3.2);
+        // ship/drone — colorblind mode uses semantic shapes; normal mode draws directional triangles
+        if (cbMode !== 'none') {
+          drawShipShape(g, bx, by, semanticShape(shipState(e, playerTeam)));
+        } else {
+          // directional triangle pointing along entity's movement/rotation
+          const eRot = (e.vel && (e.vel.x !== 0 || e.vel.z !== 0))
+            ? Math.atan2(e.vel.z, e.vel.x) : (e.rot || 0);
+          g.save(); g.translate(bx, by); g.rotate(Math.PI + eRot);
+          g.beginPath(); g.moveTo(3, 0); g.lineTo(-2.5, -2.2); g.lineTo(-2.5, 2.2); g.closePath(); g.fill();
+          g.restore();
+        }
       }
       if (e.id === targetId) {
         g.strokeStyle = '#fff'; g.lineWidth = 1.2;
@@ -160,10 +228,10 @@ export function createRadar(ctx) {
       const dist = Math.hypot(dx, dz);
       let bx, by;
       if (dist > range) {
-        const a = Math.atan2(-dz, dx);
+        const a = Math.atan2(-dz, -dx);   // same -dz/-dx convention as blips
         bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
       } else {
-        bx = C + (dx / range) * R; by = C - (dz / range) * R;
+        bx = C - (dx / range) * R; by = C - (dz / range) * R;   // both axes mirrored to match the screen
       }
       g.save();
       g.strokeStyle = COL.objective;
@@ -177,10 +245,20 @@ export function createRadar(ctx) {
       g.restore();
     }
 
-    // player marker — triangle pointing along heading. Negate rot: the minimap is vertically
-    // mirrored to match the screen (see blip projection above), so a yaw that points the nose up on
-    // screen must also point the marker up on the radar.
-    g.save(); g.translate(C, C); g.rotate(-p.rot);
+    // player marker — triangle pointing along heading. The nose faces world (cos rot, sin rot); the
+    // minimap mirrors BOTH axes to match the screen (see blip projection above), so the nose projects
+    // to canvas angle rot + π. Rotating the marker by rot + π (and drawing its tip on the +x side)
+    // points the triangle along that same canvas direction.
+    g.save(); g.translate(C, C); g.rotate(Math.PI + p.rot);
+    // forward field-of-view cone (~30 degree spread, 15px reach, very faint)
+    g.fillStyle = 'rgba(57,208,255,0.08)';
+    g.beginPath();
+    g.moveTo(5, 0);
+    g.lineTo(20, -4);   // ~15px forward, ~30deg half-spread
+    g.lineTo(20, 4);
+    g.closePath();
+    g.fill();
+    // player triangle
     g.fillStyle = COL.player;
     g.beginPath(); g.moveTo(5, 0); g.lineTo(-4, -3.5); g.lineTo(-4, 3.5); g.closePath(); g.fill();
     g.restore();

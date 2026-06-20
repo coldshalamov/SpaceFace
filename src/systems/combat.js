@@ -98,6 +98,8 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos) {
   spec.data.loot = def.loot || null;
   spec.data.lootTableId = def.id;
   spec.data.shipClass = def.shipClass || 'fighter';
+  if (def.reinforcements) spec.data.reinforcements = { ...def.reinforcements };
+  spec.data.level = level;
   // Enemy silhouette override (graphics spec Workstream D): when present, the render track
   // draws the enemy as its OWN hostile family instead of the player ship-def's family. Gameplay
   // stats still come from shipId; only the appearance changes.
@@ -138,10 +140,11 @@ export const combat = {
     const attacker = state.entities.get(ownerId);
     if (attacker && attacker.team === t.team) return; // no friendly fire
     t.lastDamageT = state.simTime;
-    let rem = damage, brokeShield = false;
+    let rem = damage, brokeShield = false, shieldAbsorbed = false;
     if (t.shieldMax > 0 && t.shield > 0) {
       const a = Math.min(t.shield, rem); t.shield -= a; rem -= a;
-      if (t.shield <= 0) { brokeShield = true; bus.emit('shieldDown', { combatantId: t.id }); }
+      shieldAbsorbed = true;
+      if (t.shield <= 0) { brokeShield = true; bus.emit('shieldDown', { combatantId: t.id, pos }); }
     }
     if (rem > 0 && t.armorHp > 0) {
       const eff = Math.max(0, rem - (t.armorFlat || 0));
@@ -152,7 +155,7 @@ export const combat = {
     const factionLawful = !!(t.data && t.data.ai && t.data.ai.lawful);
     bus.emit('combat:damage', {
       targetId: t.id, attackerId: ownerId, amount: damage, type: damageType,
-      brokeShield, isPlayer, pos, factionId: t.factionId || null, factionLawful,
+      brokeShield, shieldAbsorbed, isPlayer, pos, factionId: t.factionId || null, factionLawful,
     });
     if (isPlayer) bus.emit('camera:shake', { amount: brokeShield ? 0.4 : 0.2 });
     if (t.hull <= 0) this.kill(t, ownerId);

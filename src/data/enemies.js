@@ -82,6 +82,7 @@ export const ENEMY_TYPES = [
     hull: 260, armor: 90, armorFlat: 5, shield: 140, shieldRegen: 10, cap: 160, capRegen: 22,
     maxSpeed: 200, accel: 160, turnRate: 2.6, collisionRadius: 18, mass: 60,
     weapons: [{ id: 'wpn_autocannon_s' }, { id: 'wpn_pulse_laser_s' }, { id: 'wpn_missile_rack_m', occasional: true }],
+    reinforcements: { type: 'wasp_swarmer', count: [1, 2], hullThreshold: 0.3 },
     behavior: 'aggressive pursue+attack, calls 1-2 swarmers, flees at <20% hull',
     bountyCr: 340, shipClass: 'gunship',
     loot: {
@@ -137,6 +138,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_flak_turret_s',  count: 4, turret: true },
     ],
     subsystems: { turretHp: 300, spawnsSwarmers: true, phases: [0.66, 0.33] },
+    reinforcements: { type: 'wasp_swarmer', count: [2, 4], hullThreshold: 0.5 },
     behavior: 'slow fortress, destructible turrets, spawns swarmers, phases at 66%/33%',
     bountyCr: 12000, shipClass: 'capital',
     loot: {

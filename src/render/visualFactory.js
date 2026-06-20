@@ -2105,27 +2105,124 @@ function buildProjectile(e) {
     // neon smoke trail fringe behind the missile
     g.add(makeHalo(fringe, R * 1.4));
   } else {
-    // energy bolt: a white-hot core + an additive neon sheath + a chromatic FRINGE sheath (slightly
-    // larger, the complementary hue) so bolts shimmer two-tone. Elongated to read as a plasma streak.
-    const core = new THREE.Mesh(
-      getGeometry('proj:core', () => new THREE.CapsuleGeometry(0.28, 4.6, 4, 8).rotateZ(Math.PI / 2)),
-      basicGlowMaterial('#ffffff'),
-    );
-    core.scale.setScalar(R); g.add(core);
-    const glow = new THREE.Mesh(
-      getGeometry('proj:glow', () => new THREE.CapsuleGeometry(0.62, 5.4, 4, 8).rotateZ(Math.PI / 2)),
-      additiveGlowMaterial(color, 0.85),
-    );
-    glow.scale.setScalar(R); g.add(glow);
-    // chromatic fringe — a wider, dimmer capsule in the complementary neon hue. Through bloom this
-    // blooms as a two-color halo, the cyberpunk plasma signature.
-    const fringeMesh = new THREE.Mesh(
-      getGeometry('proj:fringe', () => new THREE.CapsuleGeometry(0.42, 5.0, 4, 8).rotateZ(Math.PI / 2)),
-      additiveGlowMaterial(fringe, 0.5),
-    );
-    fringeMesh.scale.setScalar(R); g.add(fringeMesh);
-    const halo = makeHalo(color, R * 4.2); halo.position.x = R * 1.2; g.add(halo);   // bright leading tip
-    g.add(makeHalo(fringe, R * 2.6));
+    // --- Determine weapon variant from entity data ---
+    const wid = (e.data && e.data.weaponId) || '';
+    const dtype = (e.data && e.data.damageType) || 'energy';
+    const isRailgun    = wid.includes('railgun');
+    const isSiege      = wid.includes('siege');
+    const isFlak       = wid.includes('flak');
+    const isPlasma     = dtype === 'thermal';
+    const isAutocannon = !isRailgun && !isSiege && !isFlak && dtype === 'kinetic';
+    // isPulseLaser is the default/fallback (energy bolts)
+
+    if (isSiege) {
+      // SIEGE LANCE — massive, very elongated bright streak. Brightest projectile in the game.
+      const core = new THREE.Mesh(
+        getGeometry('proj:siege:core', () => new THREE.CapsuleGeometry(0.38, 9.0, 4, 8).rotateZ(Math.PI / 2)),
+        basicGlowMaterial('#ffffff'),
+      );
+      core.scale.setScalar(R); g.add(core);
+      const glow = new THREE.Mesh(
+        getGeometry('proj:siege:glow', () => new THREE.CapsuleGeometry(0.80, 10.0, 4, 8).rotateZ(Math.PI / 2)),
+        additiveGlowMaterial(color, 0.95),
+      );
+      glow.scale.setScalar(R); g.add(glow);
+      const fringeMesh = new THREE.Mesh(
+        getGeometry('proj:siege:fringe', () => new THREE.CapsuleGeometry(0.60, 9.5, 4, 8).rotateZ(Math.PI / 2)),
+        additiveGlowMaterial(fringe, 0.6),
+      );
+      fringeMesh.scale.setScalar(R); g.add(fringeMesh);
+      // Extra-large leading halo and trailing bloom
+      const halo = makeHalo(color, R * 7.0); halo.position.x = R * 2.0; g.add(halo);
+      g.add(makeHalo('#ffffff', R * 4.5));
+      g.add(makeHalo(fringe, R * 3.5));
+    } else if (isRailgun) {
+      // RAILGUN — very long, thin white streak with heavy bloom. Fastest projectile.
+      const core = new THREE.Mesh(
+        getGeometry('proj:rail:core', () => new THREE.CapsuleGeometry(0.14, 8.0, 4, 8).rotateZ(Math.PI / 2)),
+        basicGlowMaterial('#ffffff'),
+      );
+      core.scale.setScalar(R); g.add(core);
+      const glow = new THREE.Mesh(
+        getGeometry('proj:rail:glow', () => new THREE.CapsuleGeometry(0.36, 8.6, 4, 8).rotateZ(Math.PI / 2)),
+        additiveGlowMaterial('#ccddff', 0.9),
+      );
+      glow.scale.setScalar(R); g.add(glow);
+      // Bright white leading-tip halo for the signature railgun flash
+      const halo = makeHalo('#ffffff', R * 5.0); halo.position.x = R * 2.4; g.add(halo);
+      g.add(makeHalo(color, R * 2.8));
+    } else if (isPlasma) {
+      // PLASMA CANNON — larger, rounder bolt with a big glow sphere. Orange/hot tinted.
+      // Override colors: plasma always has an orange-hot tint blended with team color.
+      const plasmaCore = e.team === 1 ? '#ff6040' : (e.team === 0 ? '#80ffcc' : '#ffcc44');
+      const plasmaGlow = e.team === 1 ? '#ff4020' : (e.team === 0 ? '#40ffa0' : '#ffaa22');
+      const core = new THREE.Mesh(
+        getGeometry('proj:plasma:core', () => new THREE.SphereGeometry(0.55, 10, 8)),
+        basicGlowMaterial('#ffffee'),
+      );
+      core.scale.setScalar(R); g.add(core);
+      const glow = new THREE.Mesh(
+        getGeometry('proj:plasma:glow', () => new THREE.SphereGeometry(1.0, 10, 8)),
+        additiveGlowMaterial(plasmaCore, 0.8),
+      );
+      glow.scale.setScalar(R); g.add(glow);
+      const outer = new THREE.Mesh(
+        getGeometry('proj:plasma:outer', () => new THREE.SphereGeometry(1.5, 10, 8)),
+        additiveGlowMaterial(plasmaGlow, 0.35),
+      );
+      outer.scale.setScalar(R); g.add(outer);
+      // Large diffuse halo for the roiling plasma look
+      g.add(makeHalo(plasmaCore, R * 5.5));
+      g.add(makeHalo(plasmaGlow, R * 3.5));
+    } else if (isFlak) {
+      // FLAK / PD — tiny, fast dots. Very small projectiles with minimal glow.
+      const core = new THREE.Mesh(
+        getGeometry('proj:flak:core', () => new THREE.SphereGeometry(0.18, 6, 4)),
+        basicGlowMaterial(color),
+      );
+      core.scale.setScalar(R); g.add(core);
+      const glow = new THREE.Mesh(
+        getGeometry('proj:flak:glow', () => new THREE.SphereGeometry(0.30, 6, 4)),
+        additiveGlowMaterial(color, 0.5),
+      );
+      glow.scale.setScalar(R); g.add(glow);
+      // Small subtle halo — just enough to see
+      g.add(makeHalo(color, R * 1.4));
+    } else if (isAutocannon) {
+      // AUTOCANNON — shorter, fatter bolt. More solid/opaque, like a physical slug.
+      const core = new THREE.Mesh(
+        getGeometry('proj:auto:core', () => new THREE.CapsuleGeometry(0.32, 1.8, 4, 8).rotateZ(Math.PI / 2)),
+        basicGlowMaterial('#eeddbb'),
+      );
+      core.scale.setScalar(R); g.add(core);
+      const shell = new THREE.Mesh(
+        getGeometry('proj:auto:shell', () => new THREE.CapsuleGeometry(0.44, 2.2, 4, 8).rotateZ(Math.PI / 2)),
+        additiveGlowMaterial(color, 0.6),
+      );
+      shell.scale.setScalar(R); g.add(shell);
+      // Compact halo — less bloom than energy weapons
+      const halo = makeHalo(color, R * 2.2); halo.position.x = R * 0.5; g.add(halo);
+    } else {
+      // PULSE LASER (default) — thin, elongated bright bolt. Classic energy-weapon look,
+      // thinner and longer than the old universal bolt.
+      const core = new THREE.Mesh(
+        getGeometry('proj:pulse:core', () => new THREE.CapsuleGeometry(0.18, 5.2, 4, 8).rotateZ(Math.PI / 2)),
+        basicGlowMaterial('#ffffff'),
+      );
+      core.scale.setScalar(R); g.add(core);
+      const glow = new THREE.Mesh(
+        getGeometry('proj:pulse:glow', () => new THREE.CapsuleGeometry(0.44, 5.8, 4, 8).rotateZ(Math.PI / 2)),
+        additiveGlowMaterial(color, 0.85),
+      );
+      glow.scale.setScalar(R); g.add(glow);
+      const fringeMesh = new THREE.Mesh(
+        getGeometry('proj:pulse:fringe', () => new THREE.CapsuleGeometry(0.32, 5.5, 4, 8).rotateZ(Math.PI / 2)),
+        additiveGlowMaterial(fringe, 0.45),
+      );
+      fringeMesh.scale.setScalar(R); g.add(fringeMesh);
+      const halo = makeHalo(color, R * 3.5); halo.position.x = R * 1.4; g.add(halo);
+      g.add(makeHalo(fringe, R * 2.0));
+    }
   }
   g.userData.kind = 'projectile';
   return g;

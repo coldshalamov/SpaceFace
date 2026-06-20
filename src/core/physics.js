@@ -246,7 +246,7 @@ export const physics = {
       for (const st of state.entityList) {
         if (!st.alive || st.type !== 'station') continue;
         const data = st.data || {};
-        const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0));
+        const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
         const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
         if (data.isGate) {
           if (d <= range + 28 && d < nextGateDist) {
