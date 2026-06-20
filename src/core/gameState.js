@@ -90,13 +90,22 @@ export function createGameState(seed) {
     factions: {},
     conflicts: {},
     missions: { boards: {}, active: [], completedLog: [], nextId: 1, config: null },
-    story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
+    // story: beatIndex/branch/flags/chainProgress are owned by missions.js; the narrative overlay
+    // fields (phase/seenComms/ambientQueue/graffiti/endgame) are owned by story.js. Both systems
+    // co-own state.story; safe empty defaults here so either can read at boot (§3).
+    story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0,
+             phase: 1, seenComms: {}, ambientQueue: [], ambientTimerS: 0, graffitiShown: {},
+             endgameChoice: null, endgameOffered: false, endgameDeclined: [], persistentCargo: [] },
     crafting: { queues: {} },
     world: { sectors: {}, currentSectorId: null, activeSector: { stations: [], fields: [], hazards: [], pois: [], gates: [] }, discovery: {}, entryPoint: { x: 0, z: 0, heading: 0 } },
     jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
     fuel: { current: 100, max: 100 },
     nav: { route: null, autoTravel: false, waypoint: null },   // waypoint = {stationId,pos:{x,z},label} set by the trade route planner
     automation: defaultAutomation(),
+    // Offscreen statistical simulation (ADR-0002 / V2 §33). Owned solely by systems/sectorSim.js.
+    // `sectors[id] = { drift:{security,enemyDensity}|null, lastEnterSimT, lastDay }` is the per-sector
+    // drift overlay + away-clock; `meta` carries the seeded-RNG continuation seed + offline baseline.
+    sectorSim: { sectors: {}, meta: { rngSeed: 0, lastTickSimT: 0, lastWallT: 0, lossLog: [] } },
     ui: { screenStack: [], docked: false, activeStationTab: 'market', radarRange: 4000, toasts: [], alerts: [], trackedMissionId: null, starmapView: { cx: 0, cy: 0, zoom: 1 } },
 
     // --- static catalogs (filled from src/data/* at boot; NOT serialized) ---

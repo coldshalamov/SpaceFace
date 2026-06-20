@@ -23,4 +23,18 @@ export const MIGRATIONS = [
       }
     },
   },
+  // v3: offscreen sector-simulation engine (ADR-0002 / V2 §33). Old saves have no data.sectorSim;
+  // seed an empty subtree so sectorSim.deserialize can overlay defaults cleanly. Pure + idempotent.
+  {
+    from: 2,
+    to: 3,
+    fn(data) {
+      if (!data.sectorSim || typeof data.sectorSim !== 'object') {
+        data.sectorSim = { sectors: {}, meta: {} };
+        return;
+      }
+      if (!data.sectorSim.sectors || typeof data.sectorSim.sectors !== 'object') data.sectorSim.sectors = {};
+      if (!data.sectorSim.meta || typeof data.sectorSim.meta !== 'object') data.sectorSim.meta = {};
+    },
+  },
 ];

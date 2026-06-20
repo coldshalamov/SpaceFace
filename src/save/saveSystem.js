@@ -95,6 +95,7 @@ export const save = {
     data.missions = this._callSerialize('missions') || this._serializeMissions();
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
+    data.sectorSim = this._callSerialize('sectorSim') || {};   // ADR-0002 / V2 §33 — offscreen sim state
     data.settings = this._serializeSettings();
     return data;
   },
@@ -432,6 +433,9 @@ export const save = {
       }
       this._restoreAutomation(data.automation);
       this._restoreCrafting(data.crafting);
+      // Offscreen sim state restores last (after world/factions/economy) so its drift overlay can
+      // read the restored sector owners + faction power. runOfflineCatchup fires on save:loaded below.
+      this._callDeserialize('sectorSim', data.sectorSim);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load) and the drill session's screen is closed on load. Clear their tracking so stale
       // cross-save references (wreck ids from the prior session) can't dangle into the loaded game.

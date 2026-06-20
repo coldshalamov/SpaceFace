@@ -995,11 +995,15 @@ export const starmapScreen = {
     const fac = FACTION_META.find((f) => f.id === s.factionId);
     const facName = fac ? fac.name : 'Unaffiliated';
     const facCol = (fac && fac.color) || '#9aa8bc';
-    const secLbl = securityLabel(s.security);
-    const secCol = securityColor(s.security);
-    const tier = dangerTier(s);
-    const dLabel = enemyDensityLabel(s.enemyDensity);
-    const dColor = enemyDensityColor(s.enemyDensity);
+    // Live hazard overlay (V2 §33/§35.3): if sectorSim has drifted this sector, show its current
+    // security/density/danger rather than the static catalog values — the map becomes live intelligence.
+    const driftRec = this._ctx.state && this._ctx.state.sectorSim && this._ctx.state.sectorSim.sectors[s.id];
+    const eff = (driftRec && driftRec.drift) ? Object.assign({}, s, { security: driftRec.drift.security, enemyDensity: driftRec.drift.enemyDensity }) : s;
+    const secLbl = securityLabel(eff.security);
+    const secCol = securityColor(eff.security);
+    const tier = dangerTier(eff);
+    const dLabel = enemyDensityLabel(eff.enemyDensity);
+    const dColor = enemyDensityColor(eff.enemyDensity);
 
     // build text lines
     const lines = [];
@@ -1127,7 +1131,13 @@ export const starmapScreen = {
     const facName = fac ? fac.name : 'Unaffiliated';
     const facCol = (fac && fac.color) || '#9aa8bc';
     const disc = this._discovery(s.id);
-    const tier = dangerTier(s);
+    // Live hazard overlay (V2 §33/§35.3): drifted values when sectorSim has evolved this sector.
+    const driftRec = this._ctx.state && this._ctx.state.sectorSim && this._ctx.state.sectorSim.sectors[s.id];
+    const eff = (driftRec && driftRec.drift) ? Object.assign({}, s, { security: driftRec.drift.security, enemyDensity: driftRec.drift.enemyDensity }) : s;
+    const tier = dangerTier(eff);
+    // Show the drift delta as a hint when the live value differs from the catalog baseline.
+    const driftDelta = (driftRec && driftRec.drift) ? (eff.security - s.security) : 0;
+    const driftHint = Math.abs(driftDelta) < 0.005 ? '' : ` (${driftDelta > 0 ? '+' : ''}${driftDelta.toFixed(2)} live)`;
 
     // hazards summary
     const hazardStr = (s.hazards && s.hazards.length > 0)
@@ -1140,13 +1150,13 @@ export const starmapScreen = {
     sel.innerHTML = `
       <div class="sm-sel-name">${s.name}</div>
       <div class="sm-sel-fac" style="color:${facCol}">${facName}</div>
-      <div class="sm-kv"><span>Security</span><b style="color:${securityColor(s.security)}">${(s.security ?? 0).toFixed(2)} (${securityLabel(s.security)})</b></div>
+      <div class="sm-kv"><span>Security</span><b style="color:${securityColor(eff.security)}">${(eff.security ?? 0).toFixed(2)} (${securityLabel(eff.security)})${driftHint}</b></div>
       <div class="sm-kv"><span>Danger Tier</span><b>${tier}/5</b></div>
       <div class="sm-kv"><span>Sector Tier</span><b>T${s.tier}</b></div>
       <div class="sm-kv"><span>Stations</span><b>${(s.stations || []).length}</b></div>
       <div class="sm-kv"><span>Hazards</span><b>${hazardStr}</b></div>
       <div class="sm-kv"><span>POIs</span><b>${poiCount}</b></div>
-      <div class="sm-kv"><span>Enemy Density</span><b style="color:${enemyDensityColor(s.enemyDensity)}">${enemyDensityLabel(s.enemyDensity)}</b></div>
+      <div class="sm-kv"><span>Enemy Density</span><b style="color:${enemyDensityColor(eff.enemyDensity)}">${enemyDensityLabel(eff.enemyDensity)}</b></div>
       <div class="sm-kv"><span>Visited</span><b>${disc && disc.visitedCount ? disc.visitedCount + '×' : '—'}</b></div>
       ${isCur ? `<div class="sm-route">▸ Current sector</div>`
         : reachable ? `<div class="sm-route">▸ Reachable via gate (1 jump)</div>`

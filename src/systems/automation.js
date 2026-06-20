@@ -539,17 +539,28 @@ export const automation = {
     return (Math.hypot(dx, dy) || 1) * SECTOR_POS_TO_WU;
   },
 
-  // pLoss = clamp(baseLoss * dangerMult * hotnessMult / guardMult, 0, 0.35).
+  // pLoss = clamp(baseLoss * dangerMult * hotnessMult * speedMult / guardMult, 0, 0.35).
+  // speedMult: a faster hauler (lower cycleTime) outruns danger — per-encounter survival advantage
+  // (V2 §33 "faster ship means less chance of damage"). Derived relative to the slowest trader so the
+  // fastest hauler (180s) gets ~40% reduction and the slowest (320s) gets none.
   _traderLossProb(t, def, a) {
     const danger = this._routeDanger(t);
     const dangerMult = 1 + danger * 2;
     const hotnessMult = 1 + (t.hotness || 0);
     const guardMult = 1 + 0.5 * this._guardCountFor('trader', t.id, a);
-    return clamp((def.baseLossPerCycle || 0.02) * dangerMult * hotnessMult / guardMult, 0, TRADER_LOSS_CAP);
+    const cycleTime = (def && def.cycleTime) || 320;
+    const speedMult = clamp((320 - cycleTime) / 320 * 0.4, 0, 0.4);   // 0..0.4 reduction
+    return clamp((def.baseLossPerCycle || 0.02) * dangerMult * hotnessMult * (1 - speedMult) / guardMult, 0, TRADER_LOSS_CAP);
   },
 
   _routeDanger(t) {
     const sid = this._routeSectorId(t);
+    // Prefer the sectorSim danger resolver (drifted security) when available so live trader-loss
+    // rolls reflect the current world state, not just the static catalog. Falls back to static
+    // dangerIndex when sectorSim isn't present (e.g. unit tests, pre-init).
+    if (this._dangerResolver) {
+      try { const d = this._dangerResolver(sid); if (typeof d === 'number') return d; } catch (_) { /* fall through */ }
+    }
     const sec = SECTOR_BY_ID.get(sid);
     return sec ? dangerIndex(sec) : 0.1;
   },
@@ -1108,6 +1119,78 @@ export const automation = {
     if (credited > 0 || cycles > 0 || lost > 0) {
       this.bus.emit('toast', { text: `While away (${hrs}h): +${credited} cr, ${cycles} cycles${lost ? `, ${lost} lost` : ''}`, kind: 'info', ttl: 6 });
     }
+  },
+
+  // ------------------------------------------------------------------------------------------
+  // OFFSCREEN SECTOR-SIM RISK PASS (ADR-0002 / V2 §33): sectorSim calls this once per day-tick with
+  // an effective-danger resolver so trader/outpost losses in non-current sectors roll against the
+  // drifted danger, not the static catalog. It owns state.automation (sole writer) and reuses the
+  // existing _traderLossProb / _outpostRaid / _loseAsset machinery — no parallel loss path.
+  //
+  // days        = in-game days to advance
+  // dangerFor   = (sectorId) => effective dangerIndex 0..1, provided by sectorSim
+  // Returns the number of assets lost this pass (for telemetry).
+  // ------------------------------------------------------------------------------------------
+  offscreenRiskPass(days, dangerFor) {
+    const a = this.state.automation;
+    if (!a) return 0;
+    // Install the resolver so _routeDanger (and _outpostRaids via the same hook) read drifted danger.
+    const prevResolver = this._dangerResolver;
+    this._dangerResolver = typeof dangerFor === 'function' ? dangerFor : null;
+    let lost = 0;
+    try {
+      // Only assets whose route/sector is NOT the player's current sector are at offscreen risk —
+      // assets in the current sector are already tick-simulated (view boundary = simulation boundary).
+      const currentId = (this.state.world && this.state.world.currentSectorId) || null;
+
+      // Traders: one aggregated survival roll over `days` worth of cycles (mirrors runOfflineCatchup).
+      for (let i = a.traders.length - 1; i >= 0; i--) {
+        const t = a.traders[i];
+        const def = TRADER_BY_ID.get(t.defId) || t;
+        if (!t.route) continue;
+        const routeSector = this._routeSectorId(t);
+        if (routeSector === currentId) continue;       // in-view: handled by the live tick
+        const cycleTime = (def && def.cycleTime) || 180;
+        const daySeconds = 600;
+        const n = Math.max(1, Math.floor((days * daySeconds) / cycleTime));
+        const pLoss = this._traderLossProb(t, def, a);
+        const survival = Math.pow(1 - pLoss, n);
+        if (this._rng() >= survival) {
+          a.traders.splice(i, 1);
+          this._loseAsset('trader', t, def.hireCost || 0, routeSector);
+          lost++;
+        }
+      }
+
+      // Outposts: a danger-driven raid roll scaled by `days` (mirrors _outpostRaids probability
+      // shape but aggregated). A raided outpost loses a fraction of stored output, not the asset.
+      for (const o of a.outposts) {
+        if (o.sectorId === currentId) continue;        // in-view
+        if (o.status === 'distressed' || o.status === 'raided') continue;
+        const danger = dangerFor ? (dangerFor(o.sectorId) || 0) : 0;
+        if (danger <= 0) continue;
+        const def = OUTPOST_BY_ID.get(o.defId) || o;
+        const level = o.level || 1;
+        const defense = (def.defense || 0) + 15 * (level - 1);
+        const guard = this._guardCountFor('outpost', o.id, a) > 0 ? 1.8 : 1;
+        const defenseMult = (defense / 20) * guard;
+        const pRaidPerDay = clamp(danger * 0.4 / (defenseMult || 1), 0, 0.5);
+        const pRaid = 1 - Math.pow(1 - pRaidPerDay, days);
+        if (this._rng() < pRaid) {
+          // Lose ~25% of stored volume — raid, not destruction (outpost survives, status flags it).
+          const lossVol = Math.floor((o.storage || 0) * 0.25);
+          if (lossVol > 0) {
+            o.storage = Math.max(0, (o.storage || 0) - lossVol);
+            o.status = 'raided';
+            o.raidCooldown = 600;                      // matches _outpostRaids cooldown
+            this.bus.emit('automation:outpostRaided', { outpostId: o.id, sectorId: o.sectorId, lossVol });
+          }
+        }
+      }
+    } finally {
+      this._dangerResolver = prevResolver;             // always restore (live tick keeps static danger)
+    }
+    return lost;
   },
 
   // ------------------------------------------------------------------------------------------

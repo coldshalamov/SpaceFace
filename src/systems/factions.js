@@ -304,6 +304,24 @@ export const factions = {
     }
   },
 
+  // Offscreen tension injection (ADR-0002 / V2 §33). sectorSim owns no conflict state; it calls this
+  // sanctioned method so factions remains the sole writer of state.conflicts (§0.6). The offscreen
+  // engine feeds NPC-vs-NPC tension from danger + faction-power imbalance, which the existing war-
+  // resolution loop (momentum → conflict:flip) then resolves into real territory shifts. Unlike
+  // _feedTensionForKill, this does NOT touch playerLean (offscreen wars don't credit the player).
+  addOffscreenTension(pairKey, delta, reason) {
+    if (!pairKey || !delta) return;
+    const c = this._ensureConflict(pairKey);
+    c.tension = Math.max(0, Math.min(100, c.tension + delta));
+    this._refreshConflictState(pairKey, c);
+  },
+
+  // Resolve which sector a contested pair key maps to. Exposed so sectorSim can read the danger of
+  // the contested sector without importing CONTESTED (keeps the contested-sector allowlist private).
+  contestedSectorFor(pairKey) {
+    return CONTESTED[pairKey] || null;
+  },
+
   _refreshConflictState(key, c) {
     const prev = c.state;
     c.state = c.tension >= WAR_THRESHOLD ? 'war' : (c.tension >= TENSE_THRESHOLD ? 'tense' : 'cold');

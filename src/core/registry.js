@@ -13,7 +13,9 @@ import { economy } from '../systems/economy.js';
 import { automation } from '../systems/automation.js';
 import { world } from '../systems/world.js';
 import { factions } from '../systems/factions.js';
+import { sectorSim } from '../systems/sectorSim.js';   // ADR-0002 / V2 §33 — offscreen stat sim
 import { missions } from '../systems/missions.js';
+import { story } from '../systems/story.js';
 import { ships } from '../systems/ships.js';
 import { crafting } from '../systems/crafting.js';
 import { heat } from '../systems/heat.js';
@@ -34,7 +36,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, input, ai, flight, weapons, physics, combat, mining, cargo, economy,
-    automation, intervention, world, factions, missions, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
+    automation, intervention, world, factions, sectorSim, missions, story, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI before flight, weapons before physics, etc.) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -46,9 +48,16 @@ export function createRegistry(ctx) {
   // intervention runs after automation (so automation:assetLost this tick has fired) and prunes
   // closed salvage wrecks.
   // claims runs late (after cargo/economy) so its refinery conversion uses fresh cargo state.
+  // story runs after missions (so story:beatAdvanced from missions this tick has a listener ready)
+  // and before ships — it only emits UI/comms/graffiti/hud events and reads state; never movement.
+  // sectorSim runs after world + factions so its day-tick drift reads settled sector owners + the
+  // freshly-recomputed faction power table; it owns ONLY state.sectorSim and affects the world by
+  // emitting sanctioned intents (economy:applyTradePressure, factions.addOffscreenTension,
+  // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
+  // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
     input, ai, flight, weapons, physics, combat, mining, cargo, crafting,
-    economy, automation, intervention, world, factions, missions, heat, traffic, drill, claims, onboarding,
+    economy, automation, intervention, world, factions, sectorSim, missions, story, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
 

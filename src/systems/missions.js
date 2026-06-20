@@ -33,6 +33,7 @@ import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING,
 } from '../data/missions.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
+import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
 import { COMMODITIES } from '../data/commodities.js';
 import { makeEnemySpawnSpec } from './combat.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
@@ -244,8 +245,17 @@ export const missions = {
     const distance = sectorDistanceWu(info.sectorId, destSectorId);
 
     // Risk tier from the destination sector's danger, clamped to the type's allowed band.
-    const destSector = SECTOR_BY_ID.get(destSectorId);
-    const sectorRisk = destSector ? dangerTier(destSector) : 1;
+    // Prefer the drifted (live) hazard so mission risk reflects the current world state (V2 §33/§35.3);
+    // fall back to the static catalog dangerTier when sectorSim hasn't drifted this sector yet.
+    const driftedTier = effectiveDangerTierFor(this.state, destSectorId);
+    const hasDrift = !!(this.state && this.state.sectorSim && this.state.sectorSim.sectors[destSectorId] && this.state.sectorSim.sectors[destSectorId].drift);
+    let sectorRisk;
+    if (hasDrift) {
+      sectorRisk = driftedTier;
+    } else {
+      const destSector = SECTOR_BY_ID.get(destSectorId);
+      sectorRisk = destSector ? dangerTier(destSector) : 1;
+    }
     const [rLo, rHi] = def.riskTierRange || [0, 1];
     const riskTier = clamp(sectorRisk, rLo, rHi);
 
@@ -981,8 +991,12 @@ export const missions = {
 
     this.bus.emit('story:beatAdvanced', { fromIndex, toIndex, branch: story.branch || undefined });
     // Direction toast: tell the player what the NEW current beat wants.
+    // NOTE: the sandbox fallback (past B7) deliberately does NOT grant a title. Per
+    // ENDGAME-B7-REDESIGN.md, "None of these choices is rewarded with a title." The story system
+    // (src/systems/story.js) presents the five endgame choices on the B7 gate; this line is only the
+    // spine's terminal state, kept neutral so the endgame overlay owns the disposition.
     const nextBeat = STORY_BEATS[story.beatIndex];
-    const dir = (nextBeat && story.beatIndex !== fromIndex) ? BEAT_HINT[nextBeat.beat] : 'You are the Sector Baron. The sandbox is yours.';
+    const dir = (nextBeat && story.beatIndex !== fromIndex) ? BEAT_HINT[nextBeat.beat] : 'The contracts continue. The count never ends.';
     if (dir) this.bus.emit('toast', { text: dir, kind: 'story', ttl: 6 });
     this.bus.emit('mission:updated', { missionId: null });
   },

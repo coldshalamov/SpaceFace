@@ -17,6 +17,7 @@
 //   gate tolls and never writes credits/cargo/rep directly. (Radiation hull drain is an
 //   environmental effect applied to the entity hull, which has no separate combat owner.)
 import { SECTORS, dangerIndex } from '../data/sectors.js';
+import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { ASTEROIDS, FIELDS } from '../data/mining.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
@@ -339,16 +340,20 @@ export const world = {
 
   // Enemy spawns sized by enemyDensity / enemyLevel via makeEnemySpawnSpec (combat).
   _spawnEnemies(sector, active, rng) {
+    // If sectorSim has drifted this sector while the player was away, use the drifted density/
+    // security so re-entering a sector reflects its current state (V2 §33/§35.3). Falls back to the
+    // passed-in sector (no drift → first visit or pre-sectorSim) so behavior is unchanged otherwise.
+    const sec = effectiveSectorFor(this.state, sector.id) || sector;
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
-    const density = sector.enemyDensity || 0;
+    const density = sec.enemyDensity || 0;
     if (density <= 0) return;
-    const di = dangerIndex(sector);
+    const di = dangerIndex(sec);
     const count = Math.min(10, Math.round(density * 8 + di * 2 + rng() * 1.5));
     const pool = this._enemyPool(sector);
     const [lvLo, lvHi] = sector.enemyLevel || [1, 2];
     for (let i = 0; i < count; i++) {
       const typeId = pool[Math.floor(rng() * pool.length)];
-      const level = Math.round(lvLo + (lvHi - lvLo) * (rng() * 0.6 + 0.4 * (1 - sector.security)));
+      const level = Math.round(lvLo + (lvHi - lvLo) * (rng() * 0.6 + 0.4 * (1 - sec.security)));
       const ang = rng() * Math.PI * 2;
       const r = wr * (0.3 + rng() * 0.5);
       const pos = { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
