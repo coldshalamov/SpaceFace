@@ -93,6 +93,14 @@ assert.equal(packageJson.scripts['check:47a:tactics'], 'node scripts/check-47a-t
   'package scripts should expose the 47-A tactic acceptance gate');
 assert(packageJson.scripts.check.includes('npm run check:47a:tactics'),
   'full check should include the 47-A tactic acceptance gate');
+assert.equal(packageJson.scripts['check:47a:counterplay'], 'node scripts/check-47a-counter-tether-live.mjs',
+  'package scripts should expose the 47-A live counterplay acceptance gate');
+assert(packageJson.scripts.check.includes('npm run check:47a:counterplay'),
+  'full check should include the 47-A live counterplay acceptance gate');
+const counterplayGate = read('scripts/check-47a-counter-tether-live.mjs');
+for (const marker of ['--tactical-ai', '--counter-tether-probe', 'action_dash', 'action_cut', "controllerId === 'sg06'"]) {
+  assert(counterplayGate.includes(marker), `47-A counterplay gate must keep live SG-06/SG-03 proof marker: ${marker}`);
+}
 
 const tape = json('test/47a.inputs.json');
 const envelope = json('test/47a.telemetry.expected.json');
@@ -139,6 +147,10 @@ assert.equal(envelope.phase0ObservedTraceCounts['scenario:dialogueLine'], 1, 'ex
 assert.equal(envelope.phase0ObservedTraceCounts['tether:attached'], 1, 'expected telemetry should pin first Massline attach evidence');
 assert.equal(envelope.acceptancePlaceholders.firstTetherAttachTickMax, 3600,
   'expected telemetry should require first Massline attach within 60s');
+assert.equal(envelope.acceptancePlaceholders.policyCompletionCountMin, 3,
+  'expected telemetry should require at least three completed tactics');
+assert.equal(envelope.acceptancePlaceholders.enemyCounterTetherBehaviorCountMin, 2,
+  'expected telemetry should require both enemy counter-tether behaviors');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
   '9af966cccaca4f9b907964482de08c12c7ec91250ad4933bacae7d582c7910ca',
   'expected telemetry envelope should pin the current Phase 0 replay hash');

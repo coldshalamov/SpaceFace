@@ -16,6 +16,9 @@ import { readCombatTrace } from '../src/combat/trace.js';
 import { scenarioRuntime } from '../src/systems/scenarioRuntime.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { presentationAdapters } from '../src/systems/presentationAdapters.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
+import { aiEncounter } from '../src/systems/aiEncounter.js';
+import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 import { actions } from '../src/systems/actions.js';
 import { flight } from '../src/systems/flight.js';
 import { weapons } from '../src/systems/weapons.js';
@@ -61,11 +64,13 @@ if (expectedEnvelope) assertEvidenceDocument(expectedEnvelope, expectPath);
 const traceEvents = command === 'trace' ? parseTraceEvents(argValue('--events', null)) : null;
 const traceLimit = command === 'trace' ? readPositiveInt('--limit', 500) : null;
 const physicsBackend = readPhysicsBackend('--physics-backend', 'rapier-dynamic');
+const tacticalAI = hasFlag('--tactical-ai');
+const counterTetherProbe = readCounterTetherProbe('--counter-tether-probe', null);
 const scenarioContractPath = argValue('--scenario-contract', 'src/data/scenarios/47a.scenario.json');
 const scenarioContract = loadScenarioContract(scenarioContractPath);
 
 if (command === 'inspect') {
-  const inspected = await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
+  const inspected = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
   const result = {
     schema: 'spaceface.sfSimInspectResult.v1',
     deterministic: true,
@@ -74,6 +79,8 @@ if (command === 'inspect') {
     seed,
     tick: ticks,
     physicsBackend,
+    tacticalAI,
+    counterTetherProbe,
     inputTape: inputPath.replace(/\\/g, '/'),
     reloadAt,
     scenarioContract: inspected.scenarioContract,
@@ -84,8 +91,8 @@ if (command === 'inspect') {
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'trace') {
-  const traced = await run47a({ seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true, physicsBackend });
-  assert47aPhase0Metrics(traced.metrics, { physicsBackend, ...(reloadAt == null ? {} : { reloadAt }) });
+  const traced = await run47a({ seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true, physicsBackend, tacticalAI, counterTetherProbe });
+  assert47aPhase0Metrics(traced.metrics, { physicsBackend, counterTetherProbe, ...(reloadAt == null ? {} : { reloadAt }) });
   const result = {
     schema: 'spaceface.sfSimTraceResult.v1',
     deterministic: true,
@@ -94,6 +101,8 @@ if (command === 'inspect') {
     seed,
     ticks,
     physicsBackend,
+    tacticalAI,
+    counterTetherProbe,
     inputTape: inputPath.replace(/\\/g, '/'),
     reloadAt,
     scenarioContract: traced.scenarioContract,
@@ -106,9 +115,9 @@ if (command === 'inspect') {
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'profile') {
-  const profiled = await profile47a({ seed, ticks, tape, reloadAt, physicsBackend });
+  const profiled = await profile47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
   const run = profiled.run;
-  assert47aPhase0Metrics(run.metrics, { physicsBackend, ...(reloadAt == null ? {} : { reloadAt }) });
+  assert47aPhase0Metrics(run.metrics, { physicsBackend, counterTetherProbe, ...(reloadAt == null ? {} : { reloadAt }) });
   if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, run, { inputPath, seed });
   const result = {
     schema: 'spaceface.sfSimProfileResult.v1',
@@ -119,6 +128,8 @@ if (command === 'inspect') {
     seed,
     ticks,
     physicsBackend,
+    tacticalAI,
+    counterTetherProbe,
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     reloadAt,
@@ -131,10 +142,10 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'compare') {
   if (reloadAt == null) usage(1, 'compare requires --reload-at');
-  const baseline = await run47a({ seed, ticks, tape, physicsBackend });
-  assert47aPhase0Metrics(baseline.metrics, { physicsBackend });
-  const candidate = await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
-  assert47aPhase0Metrics(candidate.metrics, { physicsBackend, reloadAt });
+  const baseline = await run47a({ seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe });
+  assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
+  const candidate = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
+  assert47aPhase0Metrics(candidate.metrics, { physicsBackend, reloadAt, counterTetherProbe });
   const comparison = await compareRuns(baseline, candidate, {
     expectedEnvelope,
     inputPath,
@@ -143,6 +154,8 @@ if (command === 'inspect') {
     ticks,
     reloadAt,
     physicsBackend,
+    tacticalAI,
+    counterTetherProbe,
   });
   const result = {
     schema: 'spaceface.sfSimCompareResult.v1',
@@ -153,6 +166,8 @@ if (command === 'inspect') {
     seed,
     ticks,
     physicsBackend,
+    tacticalAI,
+    counterTetherProbe,
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     baseline: runSummary('uninterrupted', baseline),
@@ -162,16 +177,16 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   process.exitCode = comparison.ok ? 0 : 1;
 } else {
-  const baseline = await run47a({ seed, ticks, tape, physicsBackend });
-  assert47aPhase0Metrics(baseline.metrics, { physicsBackend });
-  const first = reloadAt == null ? baseline : await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
-  assert47aPhase0Metrics(first.metrics, { physicsBackend, reloadAt });
+  const baseline = await run47a({ seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe });
+  assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
+  const first = reloadAt == null ? baseline : await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
+  assert47aPhase0Metrics(first.metrics, { physicsBackend, reloadAt, counterTetherProbe });
   if (reloadAt != null) {
     assert.equal(first.sha256, baseline.sha256, `reload-at ${reloadAt} hash diverged from uninterrupted baseline`);
   }
   for (let i = 1; i < repeat; i++) {
-    const next = await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
-    assert47aPhase0Metrics(next.metrics, { physicsBackend, reloadAt });
+    const next = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
+    assert47aPhase0Metrics(next.metrics, { physicsBackend, reloadAt, counterTetherProbe });
     assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
   }
   if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, first, { inputPath, seed, repeat });
@@ -184,6 +199,8 @@ if (command === 'inspect') {
     seed,
     ticks,
     physicsBackend,
+    tacticalAI,
+    counterTetherProbe,
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     repeat,
@@ -221,7 +238,38 @@ async function profile47a(options) {
   };
 }
 
-async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceLimit = null, includeTrace = false, physicsBackend = 'rapier-dynamic' }) {
+async function run47a({
+  seed,
+  ticks,
+  tape,
+  reloadAt = null,
+  traceEvents = null,
+  traceLimit = null,
+  includeTrace = false,
+  physicsBackend = 'rapier-dynamic',
+  tacticalAI = false,
+  counterTetherProbe = null,
+}) {
+  const systems = tacticalAI
+    ? [
+        scenarioRuntime,
+        presentationOrchestrator,
+        presentationAdapters,
+        createTacticalAISystem(),
+        aiEncounter,
+        actions,
+        flight,
+        aiPorts,
+        weapons,
+        physics,
+        combat,
+        cargo,
+        economy,
+        missions,
+        story,
+        save,
+      ]
+    : [scenarioRuntime, presentationOrchestrator, presentationAdapters, actions, flight, weapons, physics, combat, cargo, economy, missions, story, save];
   const sim = createSimulation({
     seed,
     helpers: {
@@ -229,10 +277,11 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
       scenarioContractPath: scenarioContract.path,
       scenarioContractHash: scenarioContract.sha256,
     },
-    systems: [scenarioRuntime, presentationOrchestrator, presentationAdapters, actions, flight, weapons, physics, combat, cargo, economy, missions, story, save],
+    systems,
   });
   const { state, bus, registry } = sim;
   state.settings.gameplay.physicsBackend = physicsBackend;
+  state.settings.gameplay.aiBackend = tacticalAI ? 'sg06-tactical' : 'legacy';
   const eventTrace = createDeterministicEventTrace(bus, state, {
     events: traceEvents || undefined,
     cap: traceLimit || undefined,
@@ -259,6 +308,12 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
     firstHostileShotTick: null,
     presentationCue: 0,
     presentationCueSuppressed: 0,
+    enemyCounterTetherBehavior: 0,
+    enemyPayloadContest: 0,
+    enemyActionAttach: 0,
+    enemyActionDash: 0,
+    enemyActionCut: 0,
+    officialRecoveryAction: 0,
   };
   bus.on('combat:fire', (event) => {
     metrics.combatFire++;
@@ -288,6 +343,49 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   bus.on('scenario:branchResolved', () => { metrics.scenarioBranchResolved++; });
   bus.on('presentation:cue', () => { metrics.presentationCue++; });
   bus.on('presentation:cueSuppressed', () => { metrics.presentationCueSuppressed++; });
+  bus.on('combat:actionStarted', (event) => {
+    const actor = event && event.actorId != null ? state.entities.get(event.actorId) : null;
+    if (!actor || actor.id === state.playerId || actor.team === 0 || !(actor.data && actor.data.scenarioActorId)) return;
+    const actionId = String(event.actionId || '');
+    const target = event.target || {};
+    const source = event.source || {};
+    const isSg06Action = source.kind === 'ai' && source.controllerId === 'sg06';
+    const targetEntity = target.kind === 'entity' && target.entityId != null ? state.entities.get(target.entityId) : null;
+    const targetScenarioActorId = targetEntity && targetEntity.data && targetEntity.data.scenarioActorId || null;
+    if (actionId === 'action_attach') {
+      if (isSg06Action) metrics.enemyActionAttach++;
+      if (isSg06Action && targetScenarioActorId === 'evidence_spindle_47a') {
+        metrics.enemyPayloadContest++;
+        metrics.enemyCounterTetherBehavior++;
+        bus.emit('ai:payloadContest', {
+          actorId: actor.id,
+          actor: actor.data.scenarioActorId,
+          actionId,
+          target: targetScenarioActorId,
+        });
+      }
+    } else if (isSg06Action && actionId === 'action_dash') {
+      metrics.enemyActionDash++;
+      metrics.enemyCounterTetherBehavior++;
+      bus.emit('ai:counterTether', {
+        actorId: actor.id,
+        actor: actor.data.scenarioActorId,
+        actionId,
+        kind: 'overload_dash',
+      });
+    } else if (isSg06Action && actionId === 'action_cut') {
+      metrics.enemyActionCut++;
+      metrics.enemyCounterTetherBehavior++;
+      bus.emit('ai:counterTether', {
+        actorId: actor.id,
+        actor: actor.data.scenarioActorId,
+        actionId,
+        kind: 'line_cut',
+      });
+    } else if (isSg06Action && actor.data.scenarioActorId === 'official_recovery_tug' && (actionId === 'action_burst' || actionId === 'action_reel')) {
+      metrics.officialRecoveryAction++;
+    }
+  });
 
   state.mode = 'flight';
   state.world.currentSectorId = 'sector_helios_prime';
@@ -326,6 +424,7 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   target.flags = Object.assign({}, target.flags, { persistent: true });
 
   spawn47aScenarioCast(sim);
+  if (counterTetherProbe) setup47aCounterTetherProbe(state, counterTetherProbe);
 
   const econ = registry.get('economy');
   if (econ && typeof econ.newGame === 'function') econ.newGame();
@@ -347,7 +446,7 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
     if (metrics.firstMeaningfulSteeringTick == null && isMeaningfulSteering(currentInput)) {
       metrics.firstMeaningfulSteeringTick = tick;
     }
-    update47aScenarioActorIntents(state);
+    update47aScenarioActorIntents(state, { counterTetherProbe });
     sim.step(SIM_DT);
     if (reloadAt != null && state.tick === reloadAt) {
       await reloadThroughSave(registry, state, metrics, reloadAt, { physicsBackend });
@@ -357,6 +456,14 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   metrics.finalPlayerCredits = state.player.credits;
   metrics.finalEntityCount = state.entityList.length;
   metrics.systems = registry.systems.map((s) => s.name);
+  const aiPortsSys = registry.get('aiPorts');
+  if (aiPortsSys && typeof aiPortsSys.inspect === 'function') {
+    metrics.aiPorts = aiPortsSys.inspect();
+  }
+  const tacticalAISys = registry.get('tacticalAI');
+  if (counterTetherProbe && tacticalAISys && typeof tacticalAISys.inspect === 'function') {
+    metrics.tacticalAI = summarizeTacticalAIInspection(tacticalAISys.inspect({ trace: { limit: 80 } }));
+  }
   const traceRecords = eventTrace.snapshot();
   const traceSummary = summarizeTrace(traceRecords);
   const snapshot = snapshotSimState(state);
@@ -642,9 +749,24 @@ async function findFirstDivergentTick(options) {
   let hi = options.ticks;
   while (lo < hi) {
     const mid = Math.floor((lo + hi) / 2);
-    const baseline = await run47a({ seed: options.seed, ticks: mid, tape: options.tape, physicsBackend: options.physicsBackend });
+    const baseline = await run47a({
+      seed: options.seed,
+      ticks: mid,
+      tape: options.tape,
+      physicsBackend: options.physicsBackend,
+      tacticalAI: options.tacticalAI,
+      counterTetherProbe: options.counterTetherProbe,
+    });
     const reloadAt = options.reloadAt <= mid ? options.reloadAt : null;
-    const candidate = await run47a({ seed: options.seed, ticks: mid, tape: options.tape, reloadAt, physicsBackend: options.physicsBackend });
+    const candidate = await run47a({
+      seed: options.seed,
+      ticks: mid,
+      tape: options.tape,
+      reloadAt,
+      physicsBackend: options.physicsBackend,
+      tacticalAI: options.tacticalAI,
+      counterTetherProbe: options.counterTetherProbe,
+    });
     if (baseline.sha256 === candidate.sha256) lo = mid + 1;
     else hi = mid;
   }
@@ -698,6 +820,7 @@ function makeEvidenceSpindleSpec({ pos, rot = 0 } = {}) {
       scenarioRole: 'tether_payload',
       assetRef: 'asset.slice.47a_spindle',
       tetherPayload: true,
+      objectiveValue: 1,
       falseMassKg: 960,
       manifestMassKg: 480,
       derived: { damageReductionMult: 1 },
@@ -751,6 +874,12 @@ function spawn47aScenarioCast(sim) {
     assetRef: 'enemy_reaver_skirmisher',
     extraData: { tacticRole: 'standoff_focus' },
   });
+  configure47aTacticalAI(harasser, {
+    squadId: '47a_scavenger_wing',
+    doctrine: 'scavenger',
+    preferredRole: 'support',
+    capabilities: ['drive', 'sensor', 'weapon', 'ranged', 'screen', 'counter_tether_cut'],
+  });
   harasser.data.combat = Object.assign({}, harasser.data.combat, { targetId: state.playerId });
 
   const thief = sim.spawn(makeShipEntitySpec('ship_mule', {
@@ -767,6 +896,12 @@ function spawn47aScenarioCast(sim) {
     assetRef: 'enemy_reaver_tug',
     extraData: { tacticRole: 'screen_tug_steal' },
   });
+  configure47aTacticalAI(thief, {
+    squadId: '47a_scavenger_wing',
+    doctrine: 'scavenger',
+    preferredRole: 'tug',
+    capabilities: ['drive', 'sensor', 'weapon', 'tether', 'tug', 'steal', 'screen', 'counter_tether_overload'],
+  });
 
   const recoveryTug = sim.spawn(makeShipEntitySpec('ship_mule', {
     team: 2,
@@ -781,6 +916,12 @@ function spawn47aScenarioCast(sim) {
     role: 'faction_pressure_tug',
     assetRef: 'asset.slice.meridian_recovery_tug',
     extraData: { tacticRole: 'contain_and_disable' },
+  });
+  configure47aTacticalAI(recoveryTug, {
+    squadId: '47a_recovery_tug',
+    doctrine: 'official',
+    preferredRole: 'tug',
+    capabilities: ['drive', 'sensor', 'weapon', 'tether', 'tug', 'ranged', 'disable', 'counter_tether_cut'],
   });
 
   sim.spawn(makePassiveScenarioSpec({
@@ -841,14 +982,97 @@ function markScenarioActor(entity, { actorId, role, assetRef, extraData = {} }) 
   });
 }
 
-function update47aScenarioActorIntents(state) {
+function configure47aTacticalAI(entity, { squadId, doctrine, preferredRole, capabilities }) {
+  entity.data = entity.data || {};
+  entity.data.ai = Object.assign({}, entity.data.ai, {
+    passive: true,
+    squadId,
+    doctrine,
+    preferredRole,
+    capabilities,
+    sensorRange: 1800,
+    formation: doctrine === 'official' ? 'line' : 'wedge',
+  });
+}
+
+function setup47aCounterTetherProbe(state, mode) {
+  const player = state.entities.get(state.playerId);
+  const spindle = resolveScenarioEntity(state, 'evidence_spindle_47a');
+  const harasser = resolveScenarioEntity(state, 'scavenger_harasser');
+  const thief = resolveScenarioEntity(state, 'scavenger_thief');
+  const recoveryTug = resolveScenarioEntity(state, 'official_recovery_tug');
+  const targetDummy = (state.entityList || []).find((entity) =>
+    entity && entity.data && entity.data.ai && entity.data.ai.role === 'target_dummy');
+  if (!player || !spindle || !harasser || !thief) return;
+  state._sfSimCounterTetherProbe = mode;
+  if (targetDummy) {
+    targetDummy.data.ai = Object.assign({}, targetDummy.data.ai, { passive: true });
+  }
+  placeEntity(player, 0, 0, 0);
+  player.vel.x = 0;
+  player.vel.z = 0;
+  placeEntity(spindle, 92, 0, 0);
+  spindle.vel.x = 0;
+  spindle.vel.z = 0;
+  if (mode === 'dash') {
+    placeEntity(thief, 118, 0, 0);
+    placeEntity(harasser, 620, 180, Math.PI);
+    if (recoveryTug) placeEntity(recoveryTug, -520, 210, -0.35);
+  } else if (mode === 'cut') {
+    placeEntity(harasser, 132, 60, Math.PI);
+    placeEntity(thief, 128, 0, Math.PI);
+    configure47aTacticalAI(thief, {
+      squadId: '47a_scavenger_wing',
+      doctrine: 'scavenger',
+      preferredRole: 'support',
+      capabilities: ['drive', 'sensor', 'weapon', 'tether', 'ranged', 'counter_tether_cut'],
+    });
+    thief.data.ai.role = '47a_counter_tether_support';
+    if (recoveryTug) placeEntity(recoveryTug, -520, 210, -0.35);
+  }
+}
+
+function placeEntity(entity, x, z, rot) {
+  if (!entity) return;
+  entity.pos.x = x;
+  entity.pos.z = z;
+  if (entity.prevPos) {
+    entity.prevPos.x = x;
+    entity.prevPos.z = z;
+  }
+  entity.rot = rot;
+  entity.angVel = 0;
+  if (entity.vel) {
+    entity.vel.x = 0;
+    entity.vel.z = 0;
+  }
+}
+
+function update47aScenarioActorIntents(state, options = {}) {
   const player = state.entities.get(state.playerId);
   const scenario = state.scenario && state.scenario.active;
   if (!player || !scenario) return;
   const harasser = resolveScenarioEntity(state, 'scavenger_harasser');
-  if (!harasser || !harasser.alive) return;
+  const thief = resolveScenarioEntity(state, 'scavenger_thief');
+  const recoveryTug = resolveScenarioEntity(state, 'official_recovery_tug');
   const activeBeat = scenario.activeBeatId;
   const simTime = state.simTime || 0;
+  if (options.counterTetherProbe === 'dash') {
+    set47aTacticalActive(harasser, false);
+    set47aTacticalActive(thief, state.tick >= 6);
+    set47aTacticalActive(recoveryTug, false);
+    return;
+  }
+  if (options.counterTetherProbe === 'cut') {
+    set47aTacticalActive(harasser, state.tick >= 6);
+    set47aTacticalActive(thief, state.tick >= 6);
+    set47aTacticalActive(recoveryTug, false);
+    return;
+  }
+  set47aTacticalActive(harasser, simTime >= 75 || activeBeat === 'scavenger_arrival');
+  set47aTacticalActive(thief, simTime >= 75 || activeBeat === 'scavenger_arrival');
+  set47aTacticalActive(recoveryTug, simTime >= 270 || activeBeat === 'recovery_tug');
+  if (!harasser || !harasser.alive) return;
   const shouldFire = (simTime >= 75 && simTime <= 76.25) || (activeBeat === 'scavenger_arrival' && simTime <= 76.25);
   harasser.data.intent = shouldFire
     ? {
@@ -856,6 +1080,11 @@ function update47aScenarioActorIntents(state) {
         aimAngle: Math.atan2(player.pos.z - harasser.pos.z, player.pos.x - harasser.pos.x),
       }
     : null;
+}
+
+function set47aTacticalActive(entity, active) {
+  if (!entity || !entity.data || !entity.data.ai) return;
+  entity.data.ai.passive = !active;
 }
 
 function loadScenarioContract(rel) {
@@ -905,6 +1134,48 @@ function summarizeCombatTrace(trace) {
     total: trace && Array.isArray(trace.events) ? trace.events.length : 0,
     kinds,
   };
+}
+
+function summarizeTacticalAIInspection(inspection) {
+  if (!inspection) return null;
+  const last = inspection.lastResult || {};
+  return clonePlain({
+    tick: inspection.tick,
+    director: inspection.director,
+    squads: (last.squads || []).map((squad) => ({
+      squadId: squad.squadId,
+      tactic: squad.tactic,
+      focusTargetId: squad.focusTargetId,
+      directives: (squad.directives || []).map((directive) => ({
+        memberId: directive.memberId,
+        role: directive.role,
+        tactic: directive.tactic,
+        focusTargetId: directive.focusTargetId,
+        objective: directive.objective,
+        breakFormation: directive.formation && directive.formation.breakFormation,
+        breakReason: directive.formation && directive.formation.breakReason,
+      })),
+    })),
+    decisions: (last.decisions || []).map((decision) => ({
+      entityId: decision.entityId,
+      squadId: decision.squadId,
+      objective: decision.directive && decision.directive.objective,
+      action: decision.action && {
+        actionId: decision.action.actionId,
+        decision: decision.action.decision,
+        reason: decision.action.reason,
+        status: decision.action.status,
+        targetId: decision.action.targetId,
+      },
+      maneuver: decision.maneuver && {
+        kind: decision.maneuver.kind,
+        targetId: decision.maneuver.targetId,
+        reason: decision.maneuver.reason,
+      },
+    })),
+    behavior: inspection.behavior,
+    trace: inspection.trace || [],
+  });
 }
 
 function summarizeScenarioContract(state) {
@@ -1005,6 +1276,13 @@ function readPhysicsBackend(name, fallback) {
   return value;
 }
 
+function readCounterTetherProbe(name, fallback) {
+  const value = argValue(name, fallback);
+  if (value == null || value === '') return null;
+  if (!['dash', 'cut'].includes(value)) throw new RangeError(`${name} must be one of dash, cut`);
+  return value;
+}
+
 function lastTapeTick(tape) {
   return Array.isArray(tape.frames) ? Math.max(0, ...tape.frames.map((f) => f.tick || 0)) : 0;
 }
@@ -1040,6 +1318,10 @@ function isMeaningfulSteering(input) {
 }
 
 function assert47aPhase0Metrics(metrics, options = {}) {
+  if (options.counterTetherProbe) {
+    assert(metrics.tetherAttached > 0, '47-A counter-tether probe should create a real Massline attachment');
+    return;
+  }
   assert(metrics.firstMeaningfulSteeringTick != null && metrics.firstMeaningfulSteeringTick <= 300,
     '47-A Phase 0 tape should produce meaningful steering within 5s');
   assert(metrics.combatFire > 0, '47-A Phase 0 tape should exercise weapon fire');
@@ -1065,6 +1347,6 @@ function usage(code, message) {
   process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--expect test/47a.telemetry.expected.json] [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  default physics backend: rapier-dynamic\n');
-  process.stderr.write('  Optional: --scenario-contract src/data/scenarios/47a.scenario.json\n');
+  process.stderr.write('  Optional: --scenario-contract src/data/scenarios/47a.scenario.json, --tactical-ai, --counter-tether-probe dash|cut\n');
   process.exit(code);
 }

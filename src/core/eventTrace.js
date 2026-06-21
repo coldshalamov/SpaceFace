@@ -18,6 +18,8 @@ export const DEFAULT_TRACE_EVENTS = Object.freeze([
   'player:death',
   'player:respawn',
   'ai:stateChange',
+  'ai:counterTether',
+  'ai:payloadContest',
   'economy:tick',
   'economy:tradeCompleted',
   'credits:changed',
