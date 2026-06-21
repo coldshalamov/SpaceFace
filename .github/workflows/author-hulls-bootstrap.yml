@@ -6,6 +6,15 @@ on:
       - codex/authored-hull-glbs-20260621
     paths:
       - .github/workflows/author-hulls-bootstrap.yml
+  pull_request:
+    branches:
+      - master
+    paths:
+      - .github/workflows/author-hulls-bootstrap.yml
+
+concurrency:
+  group: author-hulls-codex-authored-hull-glbs-20260621
+  cancel-in-progress: true
 
 permissions:
   contents: write
