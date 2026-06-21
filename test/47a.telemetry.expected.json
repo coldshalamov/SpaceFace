@@ -13,16 +13,27 @@
     "camera"
   ],
   "phase0ExpectedTraceTypes": [
+    "ship:boostStart",
+    "ship:boostStop",
     "combat:fire",
     "combat:damage",
+    "projectile:hit",
     "economy:tick",
     "story:beatAdvanced",
     "comms:popup",
     "hud:phase",
     "camera:shake"
   ],
+  "phase0ObservedTraceCounts": {
+    "ship:boostStart": 1,
+    "ship:boostStop": 1,
+    "combat:fire": 12,
+    "projectile:hit": 10,
+    "combat:damage": 10,
+    "economy:tick": 2
+  },
   "acceptancePlaceholders": {
-    "authoritativeHash": null,
+    "authoritativeHash": "c4087e90300eea0303e0b8553af15094b75f7611e54f1f52648fe42712986f46",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": null,
     "firstHostileShotTickMax": 5400,
@@ -31,7 +42,8 @@
     "cleanRunCountRequired": 5
   },
   "notes": [
-    "This starts as an empty Phase 0 envelope. SG-01 replaces null hash once replay is authoritative.",
+    "This starts as a Phase 0 envelope for the current headless 47-A smoke run.",
+    "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts only asserts events emitted by this 720-tick run.",
     "Massline-specific expectations remain null until SG-02/SG-03 define command and action schemas."
   ]
 }

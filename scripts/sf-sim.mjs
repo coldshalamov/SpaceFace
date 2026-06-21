@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { canonicalStringify, snapshotSimState } from '../src/core/simSnapshot.js';
+import { createDeterministicEventTrace } from '../src/core/eventTrace.js';
 import { flight } from '../src/systems/flight.js';
 import { weapons } from '../src/systems/weapons.js';
 import { physics } from '../src/core/physics.js';
@@ -17,6 +18,11 @@ import { combat } from '../src/systems/combat.js';
 import { cargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
 import { save } from '../src/save/saveSystem.js';
+import {
+  TELEMETRY_ENVELOPE_SCHEMA,
+  validateEvidenceDocument,
+  formatEvidenceIssue,
+} from '../src/contracts/evidenceSchemas.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
@@ -31,6 +37,7 @@ if (scenario !== '47a') usage(1, `Unknown scenario: ${scenario}`);
 
 const inputPath = argValue('--inputs', 'test/47a.inputs.json');
 const tape = readJson(inputPath);
+assertEvidenceDocument(tape, inputPath);
 const seed = readInt('--seed', tape.seed || 47);
 const ticks = readInt('--ticks', Math.max(720, lastTapeTick(tape) + 360));
 const repeat = readInt('--repeat', 1);
@@ -39,6 +46,9 @@ if (reloadAt != null && (reloadAt <= 0 || reloadAt >= ticks)) {
   throw new RangeError('--reload-at must be greater than 0 and less than --ticks');
 }
 const includeSnapshot = hasFlag('--snapshot') || !hasFlag('--hash');
+const expectPath = argValue('--expect', null);
+const expectedEnvelope = expectPath ? readJson(expectPath) : null;
+if (expectedEnvelope) assertEvidenceDocument(expectedEnvelope, expectPath);
 
 const baseline = run47a({ seed, ticks, tape });
 assert47aPhase0Metrics(baseline.metrics);
@@ -52,6 +62,7 @@ for (let i = 1; i < repeat; i++) {
   assert47aPhase0Metrics(next.metrics, { reloadAt });
   assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
 }
+if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, first, { inputPath, seed, repeat });
 
 const result = {
   schema: 'spaceface.sfSimResult.v1',
@@ -61,11 +72,13 @@ const result = {
   seed,
   ticks,
   inputTape: inputPath.replace(/\\/g, '/'),
+  expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
   repeat,
   reloadAt,
   sha256: first.sha256,
   baselineSha256: reloadAt == null ? undefined : baseline.sha256,
   metrics: first.metrics,
+  traceSummary: first.traceSummary,
 };
 if (includeSnapshot) result.snapshot = first.snapshot;
 process.stdout.write(JSON.stringify(result, null, 2) + '\n');
@@ -73,6 +86,7 @@ process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 function run47a({ seed, ticks, tape, reloadAt = null }) {
   const sim = createSimulation({ seed, systems: [flight, weapons, physics, combat, cargo, economy, save] });
   const { state, bus, registry } = sim;
+  const eventTrace = createDeterministicEventTrace(bus, state);
   const metrics = {
     combatFire: 0,
     projectileHits: 0,
@@ -137,10 +151,12 @@ function run47a({ seed, ticks, tape, reloadAt = null }) {
   metrics.finalPlayerCredits = state.player.credits;
   metrics.finalEntityCount = state.entityList.length;
   metrics.systems = registry.systems.map((s) => s.name);
+  const traceSummary = summarizeTrace(eventTrace.snapshot());
   const snapshot = snapshotSimState(state);
   const sha256 = hashSnapshot(snapshot);
+  eventTrace.dispose();
   sim.dispose();
-  return { snapshot, sha256, metrics };
+  return { snapshot, sha256, metrics, traceSummary };
 }
 
 function reloadThroughSave(registry, state, metrics, reloadAt) {
@@ -176,16 +192,38 @@ function applyInput(state, input) {
 }
 
 function normalizeTape(tape) {
-  assert.equal(tape.schema, 'spaceface.goldenInputTape.v1', 'input tape schema mismatch');
-  assert(Array.isArray(tape.frames), 'input tape requires frames[]');
   const frames = tape.frames.map((frame) => ({
-    tick: readFrameTick(frame.tick),
+    tick: frame.tick,
     input: frame.input || {},
-  })).sort((a, b) => a.tick - b.tick);
-  for (let i = 1; i < frames.length; i++) {
-    assert(frames[i].tick > frames[i - 1].tick, 'input frame ticks must strictly increase');
-  }
+  }));
   return frames;
+}
+
+function assertEvidenceDocument(doc, rel) {
+  const report = validateEvidenceDocument(doc, { file: rel });
+  assert(report.ok, `evidence schema invalid:\n${report.issues.map(formatEvidenceIssue).join('\n')}`);
+}
+
+function assertExpectedEnvelope(envelope, run, options) {
+  assert.equal(envelope.schema, TELEMETRY_ENVELOPE_SCHEMA, '--expect must point to a telemetry envelope');
+  assert.equal(envelope.seed, options.seed, 'expected telemetry seed must match run seed');
+  assert.equal(normalizePath(envelope.sourceInputTape), normalizePath(options.inputPath), 'expected telemetry sourceInputTape must match --inputs');
+  const placeholders = envelope.acceptancePlaceholders || {};
+  if (placeholders.authoritativeHash != null) {
+    assert.equal(run.sha256, placeholders.authoritativeHash, '47-A authoritative hash drifted from expected telemetry envelope');
+  }
+  if (placeholders.firstMeaningfulSteeringTickMax != null) {
+    assert(run.metrics.firstMeaningfulSteeringTick <= placeholders.firstMeaningfulSteeringTickMax,
+      'first meaningful steering tick exceeded expected telemetry ceiling');
+  }
+  if (placeholders.cleanRunCountRequired != null) {
+    assert(options.repeat >= placeholders.cleanRunCountRequired, 'repeat count is below expected clean run requirement');
+  }
+  const observedCounts = envelope.phase0ObservedTraceCounts || {};
+  for (const [type, expectedCount] of Object.entries(observedCounts)) {
+    const actualCount = run.traceSummary.types[type] || 0;
+    assert.equal(actualCount, expectedCount, `47-A observed trace count drifted for ${type}`);
+  }
 }
 
 function readJson(rel) {
@@ -194,6 +232,24 @@ function readJson(rel) {
 
 function hashSnapshot(snapshot) {
   return createHash('sha256').update(canonicalStringify(snapshot)).digest('hex');
+}
+
+function summarizeTrace(trace) {
+  const types = {};
+  const firstTick = {};
+  const lastTick = {};
+  for (const event of trace) {
+    types[event.type] = (types[event.type] || 0) + 1;
+    if (!(event.type in firstTick)) firstTick[event.type] = event.tick;
+    lastTick[event.type] = event.tick;
+  }
+  return {
+    schema: 'spaceface.traceSummary.v1',
+    total: trace.length,
+    types,
+    firstTick,
+    lastTick,
+  };
 }
 
 function argValue(name, fallback) {
@@ -223,13 +279,12 @@ function readOptionalInt(name, fallback) {
   return value;
 }
 
-function readFrameTick(value) {
-  if (!Number.isSafeInteger(value) || value < 0) throw new RangeError('input frame tick must be a non-negative integer');
-  return value;
-}
-
 function lastTapeTick(tape) {
   return Array.isArray(tape.frames) ? Math.max(0, ...tape.frames.map((f) => f.tick || 0)) : 0;
+}
+
+function normalizePath(path) {
+  return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
 }
 
 function finite(value, fallback) {
@@ -254,6 +309,6 @@ function assert47aPhase0Metrics(metrics, options = {}) {
 
 function usage(code, message) {
   if (message) process.stderr.write(message + '\n');
-  process.stderr.write('Usage: node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --hash --repeat 20 [--reload-at 600]\n');
+  process.stderr.write('Usage: node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 [--reload-at 600]\n');
   process.exit(code);
 }

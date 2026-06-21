@@ -5,6 +5,11 @@ import { join, relative, resolve } from 'node:path';
 
 import { drawSeeded, hash32 } from '../src/core/rng.js';
 import { DEFAULT_TRACE_EVENTS } from '../src/core/eventTrace.js';
+import {
+  validateEvidenceCorpus,
+  validateEvidenceDocument,
+  formatEvidenceIssue,
+} from '../src/contracts/evidenceSchemas.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
@@ -78,21 +83,74 @@ assert(contract.includes('47-A: The Mass Discrepancy'), 'slice contract should n
 assert(contract.includes('First meaningful steering input within 5s'), 'slice contract should freeze proof metrics');
 
 const tape = json('test/47a.inputs.json');
+const envelope = json('test/47a.telemetry.expected.json');
+const evidenceReport = validateEvidenceCorpus([
+  { path: 'test/47a.inputs.json', data: tape },
+  { path: 'test/47a.telemetry.expected.json', data: envelope },
+]);
+assert(evidenceReport.ok, evidenceReport.issues.map(formatEvidenceIssue).join('\n'));
+assertRejectsMalformedEvidence();
+
 assert.equal(tape.seed, 47, 'golden input tape should pin seed 47');
 assert(Array.isArray(tape.frames) && tape.frames.length >= 4, 'golden input tape should contain frames');
 for (let i = 1; i < tape.frames.length; i++) {
   assert(tape.frames[i].tick > tape.frames[i - 1].tick, 'golden input tape ticks should increase');
 }
 
-const envelope = json('test/47a.telemetry.expected.json');
 for (const family of ['flight', 'combat', 'economy', 'story', 'ai', 'camera']) {
   assert(envelope.requiredEventFamilies.includes(family), `telemetry envelope missing ${family}`);
 }
 for (const type of envelope.phase0ExpectedTraceTypes) {
   assert(DEFAULT_TRACE_EVENTS.includes(type), `event trace does not subscribe to expected type ${type}`);
 }
+for (const type of Object.keys(envelope.phase0ObservedTraceCounts)) {
+  assert(DEFAULT_TRACE_EVENTS.includes(type), `observed trace count is not subscribed by event trace: ${type}`);
+}
+assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 12, 'expected telemetry should pin observed combat fire count');
+assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 10, 'expected telemetry should pin observed projectile hit count');
+assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 10, 'expected telemetry should pin observed combat damage count');
+assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
+assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
+  'c4087e90300eea0303e0b8553af15094b75f7611e54f1f52648fe42712986f46',
+  'expected telemetry envelope should pin the current Phase 0 replay hash');
 
 console.log('Phase 0 slice contract checks OK');
+
+function assertRejectsMalformedEvidence() {
+  const badTape = {
+    schema: 'spaceface.goldenInputTape.v1',
+    id: 'bad',
+    scenario: '47-A: The Mass Discrepancy',
+    seed: 47,
+    tickRate: 60,
+    frames: [
+      { tick: 0, input: { moveZ: 1, fire: false, boost: false, aimAngle: 0 } },
+      { tick: 0, input: { moveZ: 2, surprise: true } },
+    ],
+  };
+  const badEnvelope = {
+    schema: 'spaceface.telemetryEnvelope.v1',
+    id: 'bad-envelope',
+    scenario: 'wrong',
+    seed: 48,
+    sourceInputTape: 'test/bad.inputs.json',
+    requiredEventFamilies: ['flight'],
+    phase0ExpectedTraceTypes: ['bad'],
+    phase0ObservedTraceCounts: { 'bad': -1 },
+    acceptancePlaceholders: { cleanRunCountRequired: 0 },
+  };
+  const tapeResult = validateEvidenceDocument(badTape, { file: 'bad.inputs.json' });
+  const corpusResult = validateEvidenceCorpus([
+    { path: 'test/bad.inputs.json', data: badTape },
+    { path: 'test/bad.telemetry.expected.json', data: badEnvelope },
+  ]);
+  assert(!tapeResult.ok, 'malformed golden input tape should fail schema validation');
+  assert(tapeResult.issues.some((issue) => issue.rule === 'order'), 'schema validation should catch duplicate/non-increasing ticks');
+  assert(tapeResult.issues.some((issue) => issue.rule === 'unknownKey'), 'schema validation should catch unknown input fields');
+  assert(!corpusResult.ok, 'malformed evidence corpus should fail schema validation');
+  assert(corpusResult.issues.some((issue) => issue.rule === 'crossRef'), 'schema validation should catch envelope/tape cross-reference mismatches');
+  assert(corpusResult.issues.some((issue) => issue.rule === 'count'), 'schema validation should catch invalid observed trace counts');
+}
 
 function activeMathRandomSites(relDir) {
   const root = resolve(ROOT, relDir);
