@@ -13,7 +13,8 @@
     "ai",
     "camera",
     "scenario",
-    "tether"
+    "tether",
+    "presentation"
   ],
   "phase0ExpectedTraceTypes": [
     "scenario:loaded",
@@ -30,7 +31,8 @@
     "story:beatAdvanced",
     "comms:popup",
     "hud:phase",
-    "camera:shake"
+    "camera:shake",
+    "presentation:cue"
   ],
   "phase0ObservedTraceCounts": {
     "ship:boostStart": 1,
@@ -45,7 +47,8 @@
     "combat:damage": 11,
     "economy:tick": 2,
     "graffiti:show": 1,
-    "comms:popup": 2
+    "comms:popup": 2,
+    "presentation:cue": 2
   },
   "acceptancePlaceholders": {
     "authoritativeHash": "a4d6e9539cd3b47bfe03635b86686fe9061abbd4f2b4dd90674dcecfc5b09ca5",
@@ -59,7 +62,7 @@
   "notes": [
     "This is the Phase 0 envelope for the current headless 47-A smoke run.",
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
-    "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick run.",
+    "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick run, including SG-08 semantic cue evidence.",
     "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds."
   ]
 }

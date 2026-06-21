@@ -4,7 +4,7 @@ export const GOLDEN_INPUT_TAPE_SCHEMA = 'spaceface.goldenInputTape.v1';
 export const TELEMETRY_ENVELOPE_SCHEMA = 'spaceface.telemetryEnvelope.v1';
 export const EVIDENCE_VALIDATION_RESULT_SCHEMA = 'spaceface.evidenceValidationResult.v1';
 
-const REQUIRED_EVENT_FAMILIES = ['flight', 'combat', 'economy', 'story', 'ai', 'camera', 'scenario', 'tether'];
+const REQUIRED_EVENT_FAMILIES = ['flight', 'combat', 'economy', 'story', 'ai', 'camera', 'scenario', 'tether', 'presentation'];
 const TAPE_KEYS = new Set(['schema', 'id', 'scenario', 'seed', 'tickRate', 'notes', 'frames']);
 const FRAME_KEYS = new Set(['tick', 'input', 'commands']);
 const INPUT_KEYS = new Set(['moveX', 'moveZ', 'turnIntent', 'boost', 'fire', 'fireGroup', 'aimAngle']);

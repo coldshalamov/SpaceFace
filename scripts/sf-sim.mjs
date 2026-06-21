@@ -14,6 +14,7 @@ import { DEFAULT_TRACE_EVENTS, createDeterministicEventTrace } from '../src/core
 import { formatScenarioIssue, validateScenarioDocument } from '../src/contracts/scenarioSchemas.js';
 import { readCombatTrace } from '../src/combat/trace.js';
 import { scenarioRuntime } from '../src/systems/scenarioRuntime.js';
+import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { actions } from '../src/systems/actions.js';
 import { flight } from '../src/systems/flight.js';
 import { weapons } from '../src/systems/weapons.js';
@@ -227,7 +228,7 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
       scenarioContractPath: scenarioContract.path,
       scenarioContractHash: scenarioContract.sha256,
     },
-    systems: [scenarioRuntime, actions, flight, weapons, physics, combat, cargo, economy, missions, story, save],
+    systems: [scenarioRuntime, presentationOrchestrator, actions, flight, weapons, physics, combat, cargo, economy, missions, story, save],
   });
   const { state, bus, registry } = sim;
   state.settings.gameplay.physicsBackend = physicsBackend;
@@ -253,6 +254,8 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
     scenarioFactsInitialized: 0,
     scenarioActorBindings: 0,
     firstHostileShotTick: null,
+    presentationCue: 0,
+    presentationCueSuppressed: 0,
   };
   bus.on('combat:fire', (event) => {
     metrics.combatFire++;
@@ -278,6 +281,8 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   bus.on('scenario:beatEntered', () => { metrics.scenarioBeatEntered++; });
   bus.on('scenario:factsInitialized', () => { metrics.scenarioFactsInitialized++; });
   bus.on('scenario:actorBindings', () => { metrics.scenarioActorBindings++; });
+  bus.on('presentation:cue', () => { metrics.presentationCue++; });
+  bus.on('presentation:cueSuppressed', () => { metrics.presentationCueSuppressed++; });
 
   state.mode = 'flight';
   state.world.currentSectorId = 'sector_helios_prime';

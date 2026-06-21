@@ -62,6 +62,14 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
         dependencyDisabled: !subsystem.destroyed && subsystem.effectiveDisabled,
         cueId: subsystem.effectiveDisabled ? (def && def.cueId) || null : 'combat.subsystem.restored',
       });
+      if (context.bus) {
+        context.bus.emit(subsystem.effectiveDisabled ? 'combat:subsystemDisabled' : 'combat:subsystemEnabled', {
+          targetId: entity.id,
+          subsystemId: id,
+          dependencyDisabled: !subsystem.destroyed && subsystem.effectiveDisabled,
+          cueId: subsystem.effectiveDisabled ? (def && def.cueId) || null : 'combat.subsystem.restored',
+        });
+      }
       if (subsystem.effectiveDisabled && def && def.disabledBehavior && def.disabledBehavior.breakOwnedAttachments && attachments) {
         attachments.breakOwnedBy(entity.id, 'subsystem_disabled');
       }

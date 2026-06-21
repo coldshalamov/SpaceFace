@@ -110,6 +110,7 @@ for (const family of ['flight', 'combat', 'economy', 'story', 'ai', 'camera', 't
   assert(envelope.requiredEventFamilies.includes(family), `telemetry envelope missing ${family}`);
 }
 assert(envelope.requiredEventFamilies.includes('scenario'), 'telemetry envelope missing scenario');
+assert(envelope.requiredEventFamilies.includes('presentation'), 'telemetry envelope missing presentation');
 assert.equal(envelope.sourceScenarioContract, 'src/data/scenarios/47a.scenario.json',
   'telemetry envelope should point at the canonical scenario contract');
 for (const type of envelope.phase0ExpectedTraceTypes) {
@@ -124,6 +125,7 @@ assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 11, 'expected 
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
 assert.equal(envelope.phase0ObservedTraceCounts['graffiti:show'], 1, 'expected telemetry should pin observed cold-start graffiti count');
 assert.equal(envelope.phase0ObservedTraceCounts['comms:popup'], 2, 'expected telemetry should pin observed cold-start comms count');
+assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 2, 'expected telemetry should pin SG-08 presentation cue count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected telemetry should pin scenario load count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');
@@ -241,7 +243,7 @@ const trace = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--events',
-  'scenario.*,tether.*,combat.*,story.*',
+  'scenario.*,tether.*,combat.*,story.*,presentation.*',
   '--limit',
   '200',
   '--physics-backend',
@@ -255,12 +257,15 @@ assert(trace.trace.subscribedEvents.includes('combat:fire'), 'sf-sim trace shoul
 assert(trace.trace.subscribedEvents.includes('scenario:loaded'), 'sf-sim trace should resolve scenario.* event filters');
 assert(trace.trace.subscribedEvents.includes('tether:attached'), 'sf-sim trace should resolve tether.* event filters');
 assert(trace.trace.subscribedEvents.includes('story:beatAdvanced'), 'sf-sim trace should resolve story.* event filters');
+assert(trace.trace.subscribedEvents.includes('presentation:cue'), 'sf-sim trace should resolve presentation.* event filters');
 assert.equal(trace.traceSummary.types['combat:fire'], envelope.phase0ObservedTraceCounts['combat:fire'],
   'sf-sim trace should expose filtered combat fire evidence');
 assert.equal(trace.traceSummary.types['tether:attached'], envelope.phase0ObservedTraceCounts['tether:attached'],
   'sf-sim trace should expose filtered Massline attach evidence');
 assert.equal(trace.traceSummary.types['scenario:loaded'], envelope.phase0ObservedTraceCounts['scenario:loaded'],
   'sf-sim trace should expose scenario contract load evidence');
+assert.equal(trace.traceSummary.types['presentation:cue'], envelope.phase0ObservedTraceCounts['presentation:cue'],
+  'sf-sim trace should expose SG-08 cue evidence');
 assert.equal(trace.scenarioContract.activeBeatId, 'drop_wreck_field',
   'sf-sim trace should expose the first active scenario beat');
 assert.equal(trace.scenarioContract.boundActorCount, 8, 'sf-sim trace should bind the complete 47-A actor cast');
@@ -285,7 +290,7 @@ const sfTrace = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--events',
-  'scenario.*,tether.*,combat.*,story.*',
+  'scenario.*,tether.*,combat.*,story.*,presentation.*',
   '--limit',
   '200',
   '--physics-backend',
@@ -304,6 +309,8 @@ assert.equal(sfTrace.result.traceSummary.types['tether:attached'], envelope.phas
   'canonical sf trace should expose filtered Massline attach evidence');
 assert.equal(sfTrace.result.traceSummary.types['scenario:loaded'], envelope.phase0ObservedTraceCounts['scenario:loaded'],
   'canonical sf trace should expose scenario contract load evidence');
+assert.equal(sfTrace.result.traceSummary.types['presentation:cue'], envelope.phase0ObservedTraceCounts['presentation:cue'],
+  'canonical sf trace should expose SG-08 cue evidence');
 
 const profile = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf-sim.mjs',
