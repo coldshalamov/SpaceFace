@@ -93,6 +93,10 @@ assert.equal(packageJson.scripts['check:47a:tactics'], 'node scripts/check-47a-t
   'package scripts should expose the 47-A tactic acceptance gate');
 assert(packageJson.scripts.check.includes('npm run check:47a:tactics'),
   'full check should include the 47-A tactic acceptance gate');
+assert.equal(packageJson.scripts['check:47a:live-branch'], 'node scripts/check-47a-live-branch-predicate.mjs',
+  'package scripts should expose the 47-A no-branch live predicate gate');
+assert(packageJson.scripts.check.includes('npm run check:47a:live-branch'),
+  'full check should include the 47-A no-branch live predicate gate');
 assert.equal(packageJson.scripts['check:47a:counterplay'], 'node scripts/check-47a-counter-tether-live.mjs',
   'package scripts should expose the 47-A live counterplay acceptance gate');
 assert(packageJson.scripts.check.includes('npm run check:47a:counterplay'),
@@ -101,10 +105,15 @@ const counterplayGate = read('scripts/check-47a-counter-tether-live.mjs');
 for (const marker of ['--tactical-ai', '--counter-tether-probe', 'action_dash', 'action_cut', "controllerId === 'sg06'"]) {
   assert(counterplayGate.includes(marker), `47-A counterplay gate must keep live SG-06/SG-03 proof marker: ${marker}`);
 }
+const liveBranchGate = read('scripts/check-47a-live-branch-predicate.mjs');
+for (const marker of ['assertNoScenarioBranch', 'live-state', 'kessler_handoff_beacon', 'RELOAD_AFTER_LIVE_EVIDENCE_TICK']) {
+  assert(liveBranchGate.includes(marker), `47-A live branch gate must keep no-branch predicate proof marker: ${marker}`);
+}
 
 const tape = json('test/47a.inputs.json');
 const envelope = json('test/47a.telemetry.expected.json');
 const scenarioContract = json('src/data/scenarios/47a.scenario.json');
+const expectedScenarioActorCount = scenarioContract.actors.length;
 const evidenceReport = validateEvidenceCorpus([
   { path: 'test/47a.inputs.json', data: tape },
   { path: 'test/47a.telemetry.expected.json', data: envelope },
@@ -152,7 +161,7 @@ assert.equal(envelope.acceptancePlaceholders.policyCompletionCountMin, scenarioC
 assert.equal(envelope.acceptancePlaceholders.enemyCounterTetherBehaviorCountMin, 2,
   'expected telemetry should require both enemy counter-tether behaviors');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  '9af966cccaca4f9b907964482de08c12c7ec91250ad4933bacae7d582c7910ca',
+  'ecf6dcded72935fa0d396be680435204ef07c946938215a79d7079163d7712b8',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 assert.equal(envelope.acceptancePlaceholders.canonicalLongBranchId, 'escape_with_evidence',
   'expected telemetry should pin the canonical long-run branch outcome');
@@ -249,13 +258,15 @@ assert.equal(inspect.snapshot.scenario.active.activeBeatId, 'drop_wreck_field',
 assert.deepEqual(inspect.snapshot.scenario.enteredBeatIds, ['drop_wreck_field'],
   'sf-sim snapshot should not claim later 47-A beats');
 assert.equal(inspect.scenarioContract.status, 'phase0-live', 'sf-sim inspect should load the live Phase 0 scenario timing contract');
-assert.equal(inspect.scenarioContract.boundActorCount, 8, 'sf-sim inspect should bind the complete 47-A actor cast');
+assert.equal(inspect.scenarioContract.boundActorCount, expectedScenarioActorCount, 'sf-sim inspect should bind the complete 47-A actor cast');
 assert.deepEqual(inspect.scenarioContract.unresolvedActorIds, [],
   'sf-sim inspect should not leave required 47-A actors unresolved');
 assert.equal(inspect.snapshot.scenario.actorBindings.contact_kessler.entityId, null,
   'Kessler should bind as a narrative contact, not a physics entity');
 assert.equal(inspect.snapshot.scenario.actorBindings.contact_kessler.source.kind, 'narrativeFigure',
   'Kessler should bind through canonical narrative figure data');
+assert(inspect.snapshot.scenario.actorBindings.kessler_handoff_beacon.entityId != null,
+  'Kessler handoff beacon should bind as a physical scenario handoff zone');
 const inspectPayload = inspect.snapshot.entities.find((entity) => entity.data && entity.data.scenarioActorId === 'evidence_spindle_47a');
 assert(inspectPayload, 'sf-sim inspect snapshot should include the 47-A evidence spindle payload');
 assert.equal(inspectPayload.type, 'payload', 'evidence spindle should use the payload entity primitive');
@@ -325,7 +336,7 @@ assert.equal(trace.traceSummary.types['presentation:cue'], envelope.phase0Observ
   'sf-sim trace should expose SG-08 cue evidence');
 assert.equal(trace.scenarioContract.activeBeatId, 'drop_wreck_field',
   'sf-sim trace should expose the first active scenario beat');
-assert.equal(trace.scenarioContract.boundActorCount, 8, 'sf-sim trace should bind the complete 47-A actor cast');
+assert.equal(trace.scenarioContract.boundActorCount, expectedScenarioActorCount, 'sf-sim trace should bind the complete 47-A actor cast');
 assert.deepEqual(trace.scenarioContract.unresolvedActorIds, [],
   'sf-sim trace should not leave required 47-A actors unresolved');
 assert(trace.combatTrace && trace.combatTrace.schemaVersion === 1, 'sf-sim trace should include the SG-03 combat trace');

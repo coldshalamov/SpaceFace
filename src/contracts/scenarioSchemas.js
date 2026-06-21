@@ -58,11 +58,25 @@ const BEAT_KEYS = new Set([
   'next',
   'branchIds',
 ]);
-const BRANCH_KEYS = new Set(['id', 'unlockedByBeat', 'policyId', 'summary', 'outcomeTags', 'lifecycle', 'worldFactEffects']);
+const BRANCH_KEYS = new Set(['id', 'unlockedByBeat', 'policyId', 'summary', 'outcomeTags', 'lifecycle', 'worldFactEffects', 'resolutionPredicate']);
 const BRANCH_LIFECYCLE_KEYS = new Set(['offer', 'active', 'reminder', 'fail', 'abandon', 'complete', 'aftermath']);
 const DIALOGUE_KEYS = new Set(['id', 'beatId', 'speakerActorId', 'speaker', 'channel', 'text', 'presentationEventId']);
 const DIALOGUE_CHANNELS = new Set(['comms', 'distress', 'official', 'system']);
 const EFFECT_KEYS = new Set(['factId', 'op', 'value']);
+const BRANCH_PREDICATE_KEYS = new Set(['id', 'source', 'all']);
+const BRANCH_PREDICATE_CONDITION_KEYS = new Set([
+  'kind',
+  'beatId',
+  'actorId',
+  'ownerActorId',
+  'targetActorId',
+  'actionId',
+  'eventType',
+  'minCount',
+  'maxCount',
+  'maxDistance',
+]);
+const BRANCH_PREDICATE_KINDS = new Set(['beatEntered', 'actionStarted', 'attachmentActive', 'actorDistance', 'eventCount']);
 
 export function validateScenarioDocument(doc, options = {}) {
   const file = normalizePath(options.file || '');
@@ -282,6 +296,7 @@ function validateBranches(value, issues, file) {
     validateStringArray(branch.outcomeTags, `${path}.outcomeTags`, issues, file, { minItems: 1 });
     validateBranchLifecycle(branch.lifecycle, `${path}.lifecycle`, issues, file);
     validateWorldFactEffects(branch.worldFactEffects, `${path}.worldFactEffects`, issues, file);
+    validateBranchResolutionPredicate(branch.resolutionPredicate, `${path}.resolutionPredicate`, issues, file);
   });
   return ids;
 }
@@ -316,6 +331,64 @@ function validateWorldFactEffects(value, path, issues, file) {
     requireId(effect.factId, `${epath}.factId`, issues, file);
     if (!['set', 'increment', 'append'].includes(effect.op)) addIssue(issues, file, `${epath}.op`, 'enum', 'op must be set, increment, or append');
     if (effect.value == null || (typeof effect.value === 'string' && !effect.value.trim())) addIssue(issues, file, `${epath}.value`, 'required', 'value is required');
+  });
+}
+
+function validateBranchResolutionPredicate(value, path, issues, file) {
+  if (value == null) return;
+  if (!isPlainObject(value)) {
+    addIssue(issues, file, path, 'type', 'resolutionPredicate must be an object');
+    return;
+  }
+  validateKnownKeys(value, BRANCH_PREDICATE_KEYS, path, issues, file);
+  requireId(value.id, `${path}.id`, issues, file);
+  requireId(value.source, `${path}.source`, issues, file);
+  if (!Array.isArray(value.all) || value.all.length === 0) {
+    addIssue(issues, file, `${path}.all`, 'minItems', 'resolutionPredicate.all must contain at least one condition');
+    return;
+  }
+  value.all.forEach((condition, index) => {
+    const cpath = `${path}.all[${index}]`;
+    if (!isPlainObject(condition)) {
+      addIssue(issues, file, cpath, 'type', 'predicate condition must be an object');
+      return;
+    }
+    validateKnownKeys(condition, BRANCH_PREDICATE_CONDITION_KEYS, cpath, issues, file);
+    requireString(condition.kind, `${cpath}.kind`, issues, file);
+    if (typeof condition.kind === 'string' && !BRANCH_PREDICATE_KINDS.has(condition.kind)) {
+      addIssue(issues, file, `${cpath}.kind`, 'enum', `condition kind must be one of ${[...BRANCH_PREDICATE_KINDS].join(', ')}`);
+    }
+    validateOptionalCount(condition.minCount, `${cpath}.minCount`, issues, file);
+    validateOptionalCount(condition.maxCount, `${cpath}.maxCount`, issues, file);
+    if (condition.maxDistance != null) requireNumber(condition.maxDistance, `${cpath}.maxDistance`, issues, file, { min: 0.001, max: 1000000 });
+    if (Number.isSafeInteger(condition.minCount) && Number.isSafeInteger(condition.maxCount)
+      && condition.maxCount < condition.minCount) {
+      addIssue(issues, file, `${cpath}.maxCount`, 'range', 'maxCount must be >= minCount');
+    }
+    if (condition.kind === 'beatEntered') {
+      requireId(condition.beatId, `${cpath}.beatId`, issues, file);
+    } else if (condition.kind === 'actionStarted') {
+      requireId(condition.actorId, `${cpath}.actorId`, issues, file);
+      requireId(condition.actionId, `${cpath}.actionId`, issues, file);
+      if (condition.targetActorId != null) requireId(condition.targetActorId, `${cpath}.targetActorId`, issues, file);
+      if (condition.ownerActorId != null) requireId(condition.ownerActorId, `${cpath}.ownerActorId`, issues, file);
+    } else if (condition.kind === 'attachmentActive') {
+      requireId(condition.ownerActorId, `${cpath}.ownerActorId`, issues, file);
+      requireId(condition.targetActorId, `${cpath}.targetActorId`, issues, file);
+    } else if (condition.kind === 'actorDistance') {
+      requireId(condition.actorId, `${cpath}.actorId`, issues, file);
+      requireId(condition.targetActorId, `${cpath}.targetActorId`, issues, file);
+      if (condition.maxDistance == null) addIssue(issues, file, `${cpath}.maxDistance`, 'required', 'actorDistance requires maxDistance');
+    } else if (condition.kind === 'eventCount') {
+      requireString(condition.eventType, `${cpath}.eventType`, issues, file);
+      if (typeof condition.eventType === 'string' && !/^[a-z][a-z0-9-]*:[a-zA-Z0-9_.-]+$/.test(condition.eventType)) {
+        addIssue(issues, file, `${cpath}.eventType`, 'eventType', 'eventType must use family:eventName syntax');
+      }
+      if (condition.actorId != null) requireId(condition.actorId, `${cpath}.actorId`, issues, file);
+      if (condition.ownerActorId != null) requireId(condition.ownerActorId, `${cpath}.ownerActorId`, issues, file);
+      if (condition.targetActorId != null) requireId(condition.targetActorId, `${cpath}.targetActorId`, issues, file);
+      if (condition.actionId != null) requireId(condition.actionId, `${cpath}.actionId`, issues, file);
+    }
   });
 }
 
@@ -366,6 +439,15 @@ function validateScenarioRefs(ctx) {
     for (const effect of branch.worldFactEffects || []) {
       if (effect && !facts.has(effect.factId)) addIssue(issues, file, `$.branches[${index}].worldFactEffects`, 'factRef', `missing fact ${effect.factId}`);
     }
+    const conditions = branch.resolutionPredicate && Array.isArray(branch.resolutionPredicate.all) ? branch.resolutionPredicate.all : [];
+    conditions.forEach((condition, conditionIndex) => {
+      if (!isPlainObject(condition)) return;
+      const cpath = `$.branches[${index}].resolutionPredicate.all[${conditionIndex}]`;
+      if (condition.beatId != null && !beats.has(condition.beatId)) addIssue(issues, file, `${cpath}.beatId`, 'beatRef', `missing beat ${condition.beatId}`);
+      for (const key of ['actorId', 'ownerActorId', 'targetActorId']) {
+        if (condition[key] != null && !actors.has(condition[key])) addIssue(issues, file, `${cpath}.${key}`, 'actorRef', `missing actor ${condition[key]}`);
+      }
+    });
   });
 
   dialogueList.forEach((line, index) => {
@@ -436,6 +518,11 @@ function requireNumber(value, path, issues, file, options = {}) {
   }
   if (options.min != null && value < options.min) addIssue(issues, file, path, 'minimum', `must be >= ${options.min}`);
   if (options.max != null && value > options.max) addIssue(issues, file, path, 'maximum', `must be <= ${options.max}`);
+}
+
+function validateOptionalCount(value, path, issues, file) {
+  if (value == null) return;
+  requireInteger(value, path, issues, file, { min: 0, max: 1000000 });
 }
 
 function validateStringArray(value, path, issues, file, options = {}) {

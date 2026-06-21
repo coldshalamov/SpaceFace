@@ -70,6 +70,7 @@ const tactics = [
   {
     id: 'covert_courier',
     branchId: 'deliver_to_contact',
+    livePredicate: true,
     commands: [
       frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
       frameCommand(900, combatAction('action_sling', { attachment: 'latestOwned' })),
@@ -115,6 +116,13 @@ try {
       `${tactic.id} should emit one branch resolution`);
     assert.equal(trace.metrics.scenarioFactChanged, branchById.get(tactic.branchId).worldFactEffects.length,
       `${tactic.id} should apply all branch fact effects`);
+    assert.equal(trace.scenarioContract.resolution.source,
+      tactic.livePredicate ? 'live-state' : branchById.get(tactic.branchId).policyId,
+      `${tactic.id} should resolve through the expected branch source`);
+    if (tactic.livePredicate) {
+      assert.equal(trace.scenarioContract.resolution.predicateId, 'predicate.47a.deliver_to_contact.live_state',
+        `${tactic.id} should resolve through the authored live-state predicate`);
+    }
     assert.equal(trace.metrics.firstTetherAttachTick, 4,
       `${tactic.id} should keep the canonical first Massline attach timing`);
     assert.equal(trace.metrics.combatDamage > 0, true, `${tactic.id} should preserve combat damage proof`);
@@ -159,11 +167,13 @@ function writeTacticTape(tactic) {
     commands.push(item.command);
     frame.commands = commands;
   }
-  frameAt(byTick, BRANCH_COMMAND_TICK).commands = [{
-    kind: 'scenarioBranch',
-    branchId: tactic.branchId,
-    source: branch.policyId,
-  }];
+  if (!tactic.livePredicate) {
+    frameAt(byTick, BRANCH_COMMAND_TICK).commands = [{
+      kind: 'scenarioBranch',
+      branchId: tactic.branchId,
+      source: branch.policyId,
+    }];
+  }
 
   const tape = {
     ...baseTape,

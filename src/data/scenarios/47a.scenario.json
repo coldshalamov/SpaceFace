@@ -67,6 +67,13 @@
       "required": true,
       "assetRef": "lore.contact.kessler",
       "capabilities": ["comms.instruction", "branch.delivery_contact"]
+    },
+    {
+      "id": "kessler_handoff_beacon",
+      "role": "covert_handoff_zone",
+      "required": true,
+      "assetRef": "asset.slice.kessler_handoff_beacon",
+      "capabilities": ["branch.delivery_contact", "handoff.zone", "world_fact.evidence_status"]
     }
   ],
   "facts": [
@@ -431,7 +438,34 @@
         { "factId": "fact.47a.evidence_status", "op": "set", "value": "delivered_to_kessler_contact" },
         { "factId": "fact.47a.faction_pressure", "op": "set", "value": "quiet_interest_opened" },
         { "factId": "fact.47a.contract_record", "op": "set", "value": "pending_payment_withheld" }
-      ]
+      ],
+      "resolutionPredicate": {
+        "id": "predicate.47a.deliver_to_contact.live_state",
+        "source": "live-state",
+        "all": [
+          { "kind": "beatEntered", "beatId": "resolution_branch" },
+          {
+            "kind": "actionStarted",
+            "actorId": "player_kestrel",
+            "actionId": "action_sling",
+            "targetActorId": "evidence_spindle_47a",
+            "minCount": 1
+          },
+          {
+            "kind": "attachmentActive",
+            "ownerActorId": "player_kestrel",
+            "targetActorId": "evidence_spindle_47a",
+            "minCount": 1
+          },
+          {
+            "kind": "actorDistance",
+            "actorId": "evidence_spindle_47a",
+            "targetActorId": "kessler_handoff_beacon",
+            "maxDistance": 160
+          },
+          { "kind": "eventCount", "eventType": "tether:broken", "maxCount": 0 }
+        ]
+      }
     }
   ],
   "notes": [

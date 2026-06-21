@@ -939,6 +939,21 @@ function spawn47aScenarioCast(sim) {
       rescuePriority: true,
     },
   }));
+
+  sim.spawn(makePassiveScenarioSpec({
+    type: 'beacon',
+    actorId: 'kessler_handoff_beacon',
+    role: 'covert_handoff_zone',
+    assetRef: 'asset.slice.kessler_handoff_beacon',
+    pos: { x: 282, z: -198 },
+    radius: 80,
+    mass: 1,
+    hull: 1,
+    data: {
+      handoffZone: true,
+      contactActorId: 'contact_kessler',
+    },
+  }));
 }
 
 function makePassiveScenarioSpec({ type, actorId, role, assetRef, pos, rot = 0, radius, mass, hull, data = {} }) {

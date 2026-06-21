@@ -11,6 +11,8 @@ const INPUT_PATH = 'test/47a.inputs.json';
 const ENVELOPE_PATH = 'test/47a.telemetry.expected.json';
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const envelope = readJson(ENVELOPE_PATH);
+const scenario = readJson(SCENARIO_PATH);
+const expectedActorCount = scenario.actors.length;
 
 const evidence = validateEvidenceCorpus([
   { path: INPUT_PATH, data: readJson(INPUT_PATH) },
@@ -47,8 +49,8 @@ assert.equal(result.scenarioContract.source, SCENARIO_PATH, 'trace should report
 assert.equal(result.scenarioContract.activeBeatId, 'drop_wreck_field', '720-tick smoke run should honestly enter only the first 47-A beat');
 assert.deepEqual(result.scenarioContract.enteredBeatIds, ['drop_wreck_field'], 'smoke run should not claim later beats');
 assert.equal(result.scenarioContract.factCount, 5, 'scenario runtime should initialize declared world facts');
-assert.equal(result.scenarioContract.actorCount, 8, 'scenario runtime should see every declared actor');
-assert.equal(result.scenarioContract.boundActorCount, 8, 'scenario runtime should bind the complete Phase 0 actor cast');
+assert.equal(result.scenarioContract.actorCount, expectedActorCount, 'scenario runtime should see every declared actor');
+assert.equal(result.scenarioContract.boundActorCount, expectedActorCount, 'scenario runtime should bind the complete Phase 0 actor cast');
 assert.deepEqual(result.scenarioContract.unresolvedActorIds, [], 'scenario runtime should have no unresolved required actors');
 
 const counts = result.traceSummary.types || {};
@@ -96,7 +98,7 @@ assert.equal(progressed.scenarioContract.activeBeatId, 'scavenger_arrival',
 assert.deepEqual(progressed.scenarioContract.enteredBeatIds,
   ['drop_wreck_field', 'stabilize_spindle', 'scavenger_arrival'],
   'progressed run should honestly report every entered beat through scavenger arrival');
-assert.equal(progressed.scenarioContract.boundActorCount, 8, 'progressed run should keep every actor bound');
+assert.equal(progressed.scenarioContract.boundActorCount, expectedActorCount, 'progressed run should keep every actor bound');
 assert.deepEqual(progressed.scenarioContract.unresolvedActorIds, [], 'progressed run should not lose actor bindings');
 assert((progressed.traceSummary.types['scenario:beatEntered'] || 0) >= 3,
   'progressed trace should prove the first three beat entries');
@@ -135,8 +137,8 @@ assert.equal(compare.schema, 'spaceface.sfSimCompareResult.v1', 'compare should 
 assert.equal(compare.ok, true, 'scenario runtime should preserve reload parity');
 assert.equal(compare.baseline.scenarioContract.activeBeatId, 'drop_wreck_field', 'baseline should preserve active beat');
 assert.equal(compare.candidate.scenarioContract.activeBeatId, 'drop_wreck_field', 'reload candidate should preserve active beat');
-assert.equal(compare.baseline.scenarioContract.boundActorCount, 8, 'baseline should preserve complete actor binding');
-assert.equal(compare.candidate.scenarioContract.boundActorCount, 8, 'reload candidate should preserve complete actor binding');
+assert.equal(compare.baseline.scenarioContract.boundActorCount, expectedActorCount, 'baseline should preserve complete actor binding');
+assert.equal(compare.candidate.scenarioContract.boundActorCount, expectedActorCount, 'reload candidate should preserve complete actor binding');
 assert.deepEqual(compare.comparison.diffs, [], 'scenario runtime should not introduce replay diffs');
 
 console.log('SG-05 scenario runtime bridge checks OK');

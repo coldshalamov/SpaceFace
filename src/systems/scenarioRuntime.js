@@ -2,6 +2,7 @@ import { formatScenarioIssue, validateScenarioDocument } from '../contracts/scen
 import { FIGURES } from '../data/narrative.js';
 
 export const SCENARIO_RUNTIME_SCHEMA_VERSION = 1;
+const SCENARIO_EVIDENCE_EVENT_CAP = 512;
 
 export const scenarioRuntime = {
   name: 'scenarioRuntime',
@@ -15,6 +16,11 @@ export const scenarioRuntime = {
     this._contractHash = this.helpers.scenarioContractHash || null;
     this._lastBeatId = null;
     this.helpers.applyScenarioBranch = (branchId, options = {}) => applyScenarioBranch(this, branchId, options);
+    this._subscriptions = [
+      this.bus.on('combat:actionStarted', (payload) => recordScenarioEvidenceEvent(this, 'combat:actionStarted', payload || {})),
+      this.bus.on('tether:attached', (payload) => recordScenarioEvidenceEvent(this, 'tether:attached', payload || {})),
+      this.bus.on('tether:broken', (payload) => recordScenarioEvidenceEvent(this, 'tether:broken', payload || {})),
+    ];
     ensureScenarioState(this.state);
 
     if (this._contract) {
@@ -33,6 +39,7 @@ export const scenarioRuntime = {
       activateScenario(this, this._contract);
     }
     updateActiveBeat(this, this._contract);
+    evaluateBranchPredicates(this, this._contract);
   },
 
   serialize() {
@@ -44,6 +51,13 @@ export const scenarioRuntime = {
     this._lastBeatId = this.state.scenario.active && this.state.scenario.active.activeBeatId
       ? this.state.scenario.active.activeBeatId
       : null;
+  },
+
+  dispose() {
+    while (this._subscriptions && this._subscriptions.length) {
+      const unsub = this._subscriptions.pop();
+      try { unsub(); } catch (_err) {}
+    }
   },
 };
 
@@ -91,6 +105,7 @@ function activateScenario(runtime, contract) {
     actorBindings,
     unresolvedActorIds,
     enteredBeatIds: [],
+    evidence: { schemaVersion: SCENARIO_RUNTIME_SCHEMA_VERSION, events: [] },
   };
   runtime._lastBeatId = null;
 
@@ -139,6 +154,56 @@ function updateActiveBeat(runtime, contract) {
   emitBeatDialogue(runtime, contract, beat);
 }
 
+function recordScenarioEvidenceEvent(runtime, type, payload) {
+  const scenario = ensureScenarioState(runtime.state);
+  if (!scenario.active) return;
+  const event = normalizeScenarioEvidenceEvent(runtime.state, type, payload);
+  if (!event) return;
+  const evidence = ensureScenarioEvidence(scenario);
+  evidence.events.push(event);
+  if (evidence.events.length > SCENARIO_EVIDENCE_EVENT_CAP) {
+    evidence.events.splice(0, evidence.events.length - SCENARIO_EVIDENCE_EVENT_CAP);
+  }
+}
+
+function normalizeScenarioEvidenceEvent(state, type, payload) {
+  const event = {
+    type,
+    tick: Number.isSafeInteger(state && state.tick) ? state.tick : 0,
+    simTime: Number.isFinite(state && state.simTime) ? round6(state.simTime) : 0,
+  };
+  if (type === 'combat:actionStarted') {
+    event.actionId = stableString(payload.actionId);
+    event.actorId = scenarioActorIdForEntity(state, payload.actorId);
+    const target = payload.target || {};
+    if (target.kind) event.targetKind = stableString(target.kind);
+    if (target.kind === 'entity') {
+      event.targetActorId = scenarioActorIdForEntity(state, target.entityId);
+    } else if (target.kind === 'attachment') {
+      const attachmentId = stableString(target.attachmentId);
+      const attachment = getAttachment(state, attachmentId);
+      event.attachmentId = attachmentId;
+      if (attachment) {
+        event.ownerActorId = scenarioActorIdForEntity(state, attachment.ownerId);
+        event.targetActorId = scenarioActorIdForEntity(state, attachment.targetId);
+      }
+    }
+    if (payload.source && typeof payload.source === 'object') {
+      event.sourceKind = stableString(payload.source.kind);
+      event.sourceControllerId = payload.source.controllerId == null ? null : stableString(payload.source.controllerId);
+    }
+  } else if (type === 'tether:attached' || type === 'tether:broken') {
+    event.actorId = scenarioActorIdForEntity(state, payload.actorId);
+    event.ownerActorId = event.actorId;
+    event.targetActorId = scenarioActorIdForEntity(state, payload.targetId);
+    event.attachmentId = stableString(payload.attachmentId);
+    if (payload.reason != null) event.reason = stableString(payload.reason);
+  } else {
+    return null;
+  }
+  return event;
+}
+
 function emitBeatDialogue(runtime, contract, beat) {
   const lines = Array.isArray(contract.dialogue) ? contract.dialogue : [];
   for (const line of lines) {
@@ -155,6 +220,146 @@ function emitBeatDialogue(runtime, contract, beat) {
       source: 'scenario-dialogue',
     });
   }
+}
+
+function evaluateBranchPredicates(runtime, contract) {
+  const scenario = ensureScenarioState(runtime.state);
+  if (!scenario.active || (scenario.resolution && scenario.resolution.branchId)) return;
+  const matches = [];
+  for (const branch of contract.branches || []) {
+    if (!branch || !branch.resolutionPredicate) continue;
+    if (!isBranchUnlocked(scenario, branch)) continue;
+    const result = evaluatePredicate(runtime.state, scenario, branch.resolutionPredicate);
+    if (result.ok) matches.push({ branch, predicate: branch.resolutionPredicate, evidence: result.evidence });
+  }
+  if (matches.length > 1) {
+    const branchIds = matches.map((match) => match.branch.id).sort().join(', ');
+    throw new Error(`Scenario branch predicate ambiguity: ${branchIds}`);
+  }
+  if (matches.length === 1) {
+    const match = matches[0];
+    applyScenarioBranch(runtime, match.branch.id, {
+      source: match.predicate.source || 'live-state',
+      predicateId: match.predicate.id,
+      predicateEvidence: match.evidence,
+    });
+  }
+}
+
+function evaluatePredicate(state, scenario, predicate) {
+  const evidence = [];
+  for (const condition of predicate.all || []) {
+    const result = evaluatePredicateCondition(state, scenario, condition || {});
+    if (!result.ok) return { ok: false, evidence };
+    evidence.push(result.evidence);
+  }
+  return {
+    ok: true,
+    evidence: {
+      predicateId: predicate.id || null,
+      conditions: evidence,
+    },
+  };
+}
+
+function evaluatePredicateCondition(state, scenario, condition) {
+  if (condition.kind === 'beatEntered') {
+    const entered = Array.isArray(scenario.enteredBeatIds) && scenario.enteredBeatIds.includes(condition.beatId);
+    return {
+      ok: entered,
+      evidence: { kind: condition.kind, beatId: condition.beatId, entered },
+    };
+  }
+  if (condition.kind === 'actionStarted') {
+    const events = scenarioEvidenceEvents(scenario).filter((event) =>
+      event.type === 'combat:actionStarted' && eventMatchesCondition(event, condition));
+    return countConditionResult(events.length, condition, 1, {
+      kind: condition.kind,
+      actorId: condition.actorId || null,
+      actionId: condition.actionId || null,
+      targetActorId: condition.targetActorId || null,
+      count: events.length,
+      latestTick: latestTick(events),
+    });
+  }
+  if (condition.kind === 'attachmentActive') {
+    const attachments = activeAttachmentsForCondition(state, condition);
+    return countConditionResult(attachments.length, condition, 1, {
+      kind: condition.kind,
+      ownerActorId: condition.ownerActorId || null,
+      targetActorId: condition.targetActorId || null,
+      count: attachments.length,
+      attachmentIds: attachments.map((attachment) => attachment.id).sort(),
+    });
+  }
+  if (condition.kind === 'actorDistance') {
+    const actor = entityForScenarioActor(state, condition.actorId);
+    const target = entityForScenarioActor(state, condition.targetActorId);
+    const distance = actor && target && actor.alive && target.alive
+      ? distance2d(actor.pos, target.pos)
+      : null;
+    const maxDistance = Number(condition.maxDistance);
+    return {
+      ok: Number.isFinite(distance) && Number.isFinite(maxDistance) && distance <= maxDistance,
+      evidence: {
+        kind: condition.kind,
+        actorId: condition.actorId || null,
+        targetActorId: condition.targetActorId || null,
+        distance: Number.isFinite(distance) ? round6(distance) : null,
+        maxDistance: Number.isFinite(maxDistance) ? round6(maxDistance) : null,
+      },
+    };
+  }
+  if (condition.kind === 'eventCount') {
+    const events = scenarioEvidenceEvents(scenario).filter((event) =>
+      (!condition.eventType || event.type === condition.eventType) && eventMatchesCondition(event, condition));
+    return countConditionResult(events.length, condition, condition.maxCount == null ? 1 : 0, {
+      kind: condition.kind,
+      eventType: condition.eventType || null,
+      count: events.length,
+      latestTick: latestTick(events),
+    });
+  }
+  return { ok: false, evidence: { kind: condition.kind || 'unknown', reason: 'unsupported_condition' } };
+}
+
+function countConditionResult(count, condition, defaultMin, evidence) {
+  const minCount = Number.isSafeInteger(condition.minCount) ? condition.minCount : defaultMin;
+  const maxCount = Number.isSafeInteger(condition.maxCount) ? condition.maxCount : null;
+  const ok = count >= minCount && (maxCount == null || count <= maxCount);
+  return {
+    ok,
+    evidence: {
+      ...evidence,
+      minCount,
+      maxCount,
+    },
+  };
+}
+
+function eventMatchesCondition(event, condition) {
+  if (condition.actionId && event.actionId !== condition.actionId) return false;
+  if (condition.actorId && event.actorId !== condition.actorId) return false;
+  if (condition.ownerActorId && event.ownerActorId !== condition.ownerActorId) return false;
+  if (condition.targetActorId && event.targetActorId !== condition.targetActorId) return false;
+  return true;
+}
+
+function activeAttachmentsForCondition(state, condition) {
+  const owner = entityForScenarioActor(state, condition.ownerActorId);
+  const target = entityForScenarioActor(state, condition.targetActorId);
+  if (!owner || !target) return [];
+  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId || {};
+  return Object.values(attachments).filter((attachment) =>
+    attachment && attachment.state === 'active'
+    && attachment.ownerId === owner.id
+    && attachment.targetId === target.id);
+}
+
+function isBranchUnlocked(scenario, branch) {
+  const active = scenario.active || {};
+  return active.activeBeatId === branch.unlockedByBeat
+    || (Array.isArray(scenario.enteredBeatIds) && scenario.enteredBeatIds.includes(branch.unlockedByBeat));
 }
 
 function applyScenarioBranch(runtime, branchId, options = {}) {
@@ -209,6 +414,8 @@ function applyScenarioBranch(runtime, branchId, options = {}) {
     lifecycle: clonePlain(branch.lifecycle || {}),
     effects,
   };
+  if (options.predicateId) resolution.predicateId = options.predicateId;
+  if (options.predicateEvidence) resolution.predicateEvidence = clonePlain(options.predicateEvidence);
   scenario.resolution = clonePlain(resolution);
   runtime.bus.emit('scenario:branchResolved', {
     scenarioId: contract.id,
@@ -219,6 +426,8 @@ function applyScenarioBranch(runtime, branchId, options = {}) {
     lifecycle: clonePlain(resolution.lifecycle),
     effects: clonePlain(effects),
     source: resolution.source,
+    predicateId: options.predicateId || null,
+    predicateEvidence: options.predicateEvidence ? clonePlain(options.predicateEvidence) : null,
   });
   return { ok: true, ...clonePlain(resolution) };
 }
@@ -322,6 +531,36 @@ function findActorEntity(state, actor) {
   return null;
 }
 
+function scenarioActorIdForEntity(state, entityId) {
+  if (entityId == null || !state) return null;
+  const id = Number(entityId);
+  if (!Number.isSafeInteger(id)) return null;
+  const entity = state.entities && state.entities.get(id);
+  const direct = entity && entity.data && entity.data.scenarioActorId;
+  if (typeof direct === 'string' && direct) return direct;
+  const bindings = state.scenario && state.scenario.actorBindings || {};
+  for (const [actorId, binding] of Object.entries(bindings)) {
+    if (binding && binding.entityId === id) return actorId;
+  }
+  return null;
+}
+
+function entityForScenarioActor(state, actorId) {
+  if (!state || !actorId) return null;
+  const binding = state.scenario && state.scenario.actorBindings && state.scenario.actorBindings[actorId];
+  if (binding && binding.status === 'bound' && binding.entityId != null && state.entities) {
+    const entity = state.entities.get(binding.entityId);
+    if (entity) return entity;
+  }
+  const list = Array.isArray(state.entityList) ? state.entityList : [];
+  return list.find((entity) => entity && entity.data && entity.data.scenarioActorId === actorId) || null;
+}
+
+function getAttachment(state, attachmentId) {
+  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId || {};
+  return attachmentId == null ? null : attachments[String(attachmentId)] || null;
+}
+
 function ensureScenarioState(state) {
   if (!state.scenario || typeof state.scenario !== 'object' || Array.isArray(state.scenario)) {
     state.scenario = normalizeScenarioState(null);
@@ -342,11 +581,86 @@ function normalizeScenarioState(data) {
       : {},
     unresolvedActorIds: Array.isArray(src.unresolvedActorIds) ? src.unresolvedActorIds.filter((id) => typeof id === 'string') : [],
     enteredBeatIds: Array.isArray(src.enteredBeatIds) ? src.enteredBeatIds.filter((id) => typeof id === 'string') : [],
+    evidence: normalizeScenarioEvidence(src.evidence),
   };
   if (src.resolution && typeof src.resolution === 'object' && !Array.isArray(src.resolution)) {
     out.resolution = clonePlain(src.resolution);
   }
   return out;
+}
+
+function ensureScenarioEvidence(scenario) {
+  if (!scenario.evidence || typeof scenario.evidence !== 'object' || Array.isArray(scenario.evidence)) {
+    scenario.evidence = { schemaVersion: SCENARIO_RUNTIME_SCHEMA_VERSION, events: [] };
+  } else {
+    scenario.evidence = normalizeScenarioEvidence(scenario.evidence);
+  }
+  return scenario.evidence;
+}
+
+function normalizeScenarioEvidence(data) {
+  const src = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  const events = Array.isArray(src.events)
+    ? src.events.map(normalizeStoredEvidenceEvent).filter(Boolean).slice(-SCENARIO_EVIDENCE_EVENT_CAP)
+    : [];
+  return {
+    schemaVersion: SCENARIO_RUNTIME_SCHEMA_VERSION,
+    events,
+  };
+}
+
+function normalizeStoredEvidenceEvent(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const out = {
+    type: stableString(value.type),
+    tick: Number.isSafeInteger(value.tick) ? value.tick : 0,
+    simTime: Number.isFinite(value.simTime) ? round6(value.simTime) : 0,
+  };
+  for (const key of [
+    'actionId',
+    'actorId',
+    'targetKind',
+    'targetActorId',
+    'ownerActorId',
+    'attachmentId',
+    'sourceKind',
+    'sourceControllerId',
+    'reason',
+  ]) {
+    if (value[key] != null) out[key] = stableString(value[key]);
+  }
+  return out.type ? out : null;
+}
+
+function scenarioEvidenceEvents(scenario) {
+  return scenario && scenario.evidence && Array.isArray(scenario.evidence.events)
+    ? scenario.evidence.events
+    : [];
+}
+
+function latestTick(events) {
+  let tick = null;
+  for (const event of events) {
+    if (Number.isSafeInteger(event.tick) && (tick == null || event.tick > tick)) tick = event.tick;
+  }
+  return tick;
+}
+
+function distance2d(a, b) {
+  if (!a || !b) return null;
+  const ax = Number(a.x), az = Number(a.z), bx = Number(b.x), bz = Number(b.z);
+  if (![ax, az, bx, bz].every(Number.isFinite)) return null;
+  return Math.hypot(ax - bx, az - bz);
+}
+
+function stableString(value) {
+  if (value == null) return null;
+  const text = String(value);
+  return text ? text : null;
+}
+
+function round6(value) {
+  return Number.isFinite(value) ? Math.round(value * 1e6) / 1e6 : 0;
 }
 
 function clonePlain(value) {

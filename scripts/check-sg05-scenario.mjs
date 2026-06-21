@@ -68,6 +68,13 @@ for (const branch of scenario.branches) {
   }
   assert(branch.worldFactEffects.length >= 1, `${branch.id} must change an immediate world fact`);
 }
+const deliverBranch = scenario.branches.find((branch) => branch.id === 'deliver_to_contact');
+assert(deliverBranch.resolutionPredicate, 'deliver_to_contact should expose a schema-backed live-state predicate');
+assert.equal(deliverBranch.resolutionPredicate.source, 'live-state',
+  'deliver_to_contact predicate should not rely on tape branch injection');
+assert.deepEqual(new Set(deliverBranch.resolutionPredicate.all.map((condition) => condition.kind)),
+  new Set(['beatEntered', 'actionStarted', 'attachmentActive', 'actorDistance', 'eventCount']),
+  'deliver_to_contact predicate should require beat, action, tether, handoff distance, and no-break evidence');
 
 const metricIds = new Set(scenario.proofMetrics.map((metric) => metric.id));
 for (const requiredMetric of [
@@ -115,6 +122,16 @@ function assertRejectsMalformedScenario() {
   const badDialogueCue = clone(scenario);
   badDialogueCue.dialogue[0].presentationEventId = 'scenario.comms.missing';
   assertIssue(badDialogueCue, 'cueRef', 'dialogue presentation cue references should resolve');
+
+  const emptyPredicate = clone(scenario);
+  emptyPredicate.branches.find((branch) => branch.id === 'deliver_to_contact').resolutionPredicate.all = [];
+  assertIssue(emptyPredicate, 'minItems', 'branch predicates should require at least one condition');
+
+  const badPredicateActor = clone(scenario);
+  badPredicateActor.branches.find((branch) => branch.id === 'deliver_to_contact')
+    .resolutionPredicate.all.find((condition) => condition.kind === 'actorDistance')
+    .targetActorId = 'missing_handoff_beacon';
+  assertIssue(badPredicateActor, 'actorRef', 'branch predicate actor references should resolve');
 
   const paragraphDialogue = clone(scenario);
   paragraphDialogue.dialogue[0].text = 'Press W to move toward the objective marker, then hold the interact key when the tutorial prompt tells you to attach the tether.';
