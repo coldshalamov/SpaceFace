@@ -23,6 +23,7 @@ const REQUIRED_FULL_HANDOFF = Object.freeze([
   'docs/Spec/SG-06_ACCEPTANCE.json',
   'third_party/reference-ledger-sg06.yml',
   'scripts/check-sg06-ai.mjs',
+  'scripts/check-sg06-registry-init.mjs',
 ]);
 
 const PRODUCTION_CLAIM_MARKERS = Object.freeze([
@@ -48,6 +49,10 @@ assert(scripts['check:ai'] && scripts['check:ai'].includes('check:sg06:ai'),
   'package.json check:ai must alias the SG-06 acceptance suite');
 assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:ai'),
   'package.json check:sg06 must run the SG-06 acceptance suite');
+assert(scripts['check:sg06:registry-init'] && scripts['check:sg06:registry-init'].includes('check-sg06-registry-init.mjs'),
+  'package.json must expose the SG-06 lazy registry-init gate');
+assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:registry-init'),
+  'package.json check:sg06 must run the SG-06 lazy registry-init gate');
 
 const hasProductionClaim = PRODUCTION_CLAIM_MARKERS.some(exists) || systemImportsSg06();
 
@@ -141,9 +146,10 @@ function assertAcceptanceRecord() {
 
 async function assertFailClosedProductionRegistration() {
   const registry = read('src/core/registry.js');
-  assert(!registry.includes('tacticalAI'), 'SG-06 tacticalAI must not replace the live AI registry slot before SG-02 lands');
+  assert(!registry.includes('tacticalAI'), 'SG-06 tacticalAI must not replace the live AI registry slot before live parity gates pass');
   const tactical = read('src/systems/tacticalAI.js');
   assert(tactical.includes('helpers.aiManeuver'), 'SG-06 tacticalAI must depend on helpers.aiManeuver');
+  assert(tactical.includes('function ensureStack'), 'SG-06 tacticalAI must lazy-bind ports for registry-slot initialization');
   assert(tactical.includes('new TacticalAIStack'), 'SG-06 tacticalAI must construct the validated stack');
   assert(read('src/ai/stack.js').includes('assertAIPorts'), 'SG-06 stack must fail closed on missing ports');
   assert(read('src/ai/contracts.js').includes('function requireMethod'), 'SG-06 port contract must require methods explicitly');

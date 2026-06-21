@@ -5,9 +5,10 @@ import { TacticalAIStack } from '../ai/stack.js';
 /**
  * SG-06 simulation-system factory.
  *
- * Register this in the legacy AI slot only after SG-02 installs helpers.aiManeuver and the sensor/
- * roster owners install helpers.aiSensors/helpers.aiRoster. SG-03 is adapted directly and remains
- * the sole action executor. Missing ports throw during init; no intent.fire or velocity fallback exists.
+ * Register this in the legacy AI slot only after live parity gates pass. Ports are lazy-bound on
+ * first update so registry init order can install helpers.aiManeuver/helpers.aiSensors after this
+ * system's init. SG-03 is adapted directly and remains the sole action executor. Missing ports
+ * throw before gameplay updates; no intent.fire or velocity fallback exists.
  */
 export function createTacticalAISystem({
   seed = null,
@@ -23,37 +24,50 @@ export function createTacticalAISystem({
   let inspection = null;
   let ctxRef = null;
 
+  function ensureStack(state) {
+    if (stack) return stack;
+    if (!ctxRef) throw new Error('tacticalAI used before init');
+    const helpers = ctxRef.helpers || (ctxRef.helpers = {});
+    const ports = {
+      sensors: sensors || helpers.aiSensors,
+      roster: roster || helpers.aiRoster,
+      maneuver: maneuver || helpers.aiManeuver,
+      encounter: encounter || helpers.aiEncounter || null,
+      actions: actionPortFactory(ctxRef),
+    };
+    stack = new TacticalAIStack({
+      seed: seed == null ? (state && state.meta && state.meta.seed) || 1 : seed,
+      ports,
+      config,
+    });
+    inspection = new AIInspectionEndpoint(stack);
+    return stack;
+  }
+
+  function handleInspection(request = {}) {
+    const liveStack = ensureStack(ctxRef && ctxRef.state);
+    if (!inspection || !liveStack) return Object.freeze({ version: 1, ok: false, error: { code: 'AI_NOT_INITIALIZED' } });
+    return inspection.handle(request);
+  }
+
   return {
     name: 'tacticalAI',
 
     init(ctx) {
       ctxRef = ctx;
       const helpers = ctx.helpers || (ctx.helpers = {});
-      const ports = {
-        sensors: sensors || helpers.aiSensors,
-        roster: roster || helpers.aiRoster,
-        maneuver: maneuver || helpers.aiManeuver,
-        encounter: encounter || helpers.aiEncounter || null,
-        actions: actionPortFactory(ctx),
-      };
-      stack = new TacticalAIStack({
-        seed: seed == null ? (ctx.state.meta && ctx.state.meta.seed) || 1 : seed,
-        ports,
-        config,
-      });
-      inspection = new AIInspectionEndpoint(stack);
-      helpers.inspectAI = (request = {}) => inspection.handle({ method: 'ai.inspect', params: request });
-      helpers.traceAI = (request = {}) => inspection.handle({ method: 'ai.trace', params: request });
-      helpers.inspectAIContract = () => inspection.handle({ method: 'ai.contract' });
+      helpers.inspectAI = (request = {}) => handleInspection({ method: 'ai.inspect', params: request });
+      helpers.traceAI = (request = {}) => handleInspection({ method: 'ai.trace', params: request });
+      helpers.inspectAIContract = () => handleInspection({ method: 'ai.contract' });
     },
 
     update(_dt, state) {
-      if (!stack) throw new Error('tacticalAI.update called before init');
-      const tick = Number.isInteger(state && state.tick) ? state.tick : stack.lastTick + 1;
+      const liveStack = ensureStack(state);
+      const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
       const authored = typeof authoredEncounter === 'function'
         ? authoredEncounter(tick, state, ctxRef)
         : (authoredEncounter || {});
-      stack.update(tick, authored);
+      liveStack.update(tick, authored);
     },
 
     inspect(query = {}) {
@@ -62,8 +76,8 @@ export function createTacticalAISystem({
     },
 
     handleAgentRequest(request = {}) {
-      if (!inspection) return Object.freeze({ version: 1, ok: false, error: { code: 'AI_NOT_INITIALIZED' } });
-      return inspection.handle(request);
+      if (!ctxRef) return Object.freeze({ version: 1, ok: false, error: { code: 'AI_NOT_INITIALIZED' } });
+      return handleInspection(request);
     },
 
     get stack() { return stack; },
