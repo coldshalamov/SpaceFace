@@ -251,9 +251,13 @@ export const ui = {
       dockFade.style.pointerEvents = 'auto'; // block input during transition
       dockFade.classList.add('active');
 
-      // Zoom camera toward station slightly during fade
-      const prevZoom = this.state.camera.zoom;
-      this.state.camera.zoom = Math.max(45, prevZoom * 0.7);
+      // Dock fly-in: drive a scripted push-zoom via the camera controller instead of the old
+      // hard-set on state.camera.zoom (which fought the dynamic-zoom damping and snapped). The
+      // pushZoom widens the view ~25% over the fade so the approach reads as a committed fly-in,
+      // then eases back on its own. A docking-permission comm beep precedes the clunk.
+      this.bus.emit('audio:cue', { id: 'ui_confirm' });
+      const camCtrl = this.state.render && this.state.render.cameraCtrl;
+      if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.25, 0.9);
 
       setTimeout(() => {
         // Phase 2: at peak darkness, do the screen swap
@@ -265,8 +269,6 @@ export const ui = {
         // Phase 3: fade back in
         setTimeout(() => {
           dockFade.classList.remove('active');
-          // Restore zoom
-          this.state.camera.zoom = prevZoom;
           setTimeout(() => {
             dockFade.style.pointerEvents = 'none';
           }, 400);
@@ -277,6 +279,10 @@ export const ui = {
       // Phase 1: fade to dark
       dockFade.style.pointerEvents = 'auto';
       dockFade.classList.add('active');
+
+      // Launch reveal: a brief push-zoom on undock so emerging from the station reads as momentum.
+      const camCtrl = this.state.render && this.state.render.cameraCtrl;
+      if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.18, 0.7);
 
       setTimeout(() => {
         // Phase 2: at peak darkness, do the screen swap
@@ -445,7 +451,14 @@ function injectHudCss() {
     background:rgba(4,9,18,.85); box-shadow:inset 0 0 0 1px rgba(57,208,255,.08); }
   .sf-bar--sm { height:8px; width:100%; }
   .sf-bar__fill { position:absolute; inset:0; transform-origin:left center; transform:scaleX(1);
-    transition:transform .12s linear; }
+    transition:transform .1s linear; }
+  /* Hit-flash: a brief overlay pulse on the bar when the player takes damage to that pool. The flash
+     sits above the fill (z-index) and animates opacity via the sf-barhit keyframe; toggled from
+     hud.js on combat:damage for the affected pool (hull/shield). */
+  .sf-bar__flash { position:absolute; inset:0; pointer-events:none; opacity:0; z-index:2;
+    background:#fff; mix-blend-mode:screen; }
+  .sf-bar--hit .sf-bar__flash { animation:sf-barhit .32s ease-out forwards; }
+  @keyframes sf-barhit { 0%{opacity:.85;} 30%{opacity:.4;} 100%{opacity:0;} }
   .sf-bar--hull .sf-bar__fill { background:linear-gradient(90deg,#b8324a,var(--hull)); }
   .sf-bar--shield .sf-bar__fill { background:linear-gradient(90deg,#1d6fa8,var(--shield)); }
   .sf-bar--energy .sf-bar__fill { background:linear-gradient(90deg,#b8932a,var(--energy)); }
@@ -557,6 +570,11 @@ function injectHudCss() {
   .sf-toast--warn { border-left-color:var(--warn); }
   .sf-toast--warn .sf-toast__icon { color:var(--warn); }
   .sf-toast--credits .sf-toast__icon, .sf-toast--rep .sf-toast__icon { color:var(--accent-2); }
+  /* GF-10: count badge for grouped identical toasts ("Platinum x1 ×5"). Sits after the text,
+     monospace + accent-colored so it reads as a multiplier, not part of the message. */
+  .sf-toast__count { font-family:var(--mono); font-size:11px; color:var(--accent); margin-left:6px;
+    padding:0 5px; border:1px solid var(--panel-edge-2); border-radius:var(--r-pill);
+    background:rgba(57,208,255,.1); letter-spacing:.04em; }
 
   /* ===== alerts ===== */
   .sf-alert { display:flex; align-items:center; gap:8px; padding:6px 16px; border-radius:999px;

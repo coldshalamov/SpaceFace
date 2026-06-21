@@ -135,7 +135,7 @@ export function createHud(ctx, alerts) {
     row.className = 'sf-barrow';
     row.innerHTML = `
       <span class="sf-barrow__label">${label}</span>
-      <div class="sf-bar sf-bar--${mod}"><div class="sf-bar__fill"></div></div>
+      <div class="sf-bar sf-bar--${mod}"><div class="sf-bar__fill"></div><div class="sf-bar__flash"></div></div>
       <span class="sf-barrow__num mono">0</span>`;
     bars.appendChild(row);
     fillEls[key] = row.querySelector('.sf-bar__fill');
@@ -143,6 +143,26 @@ export function createHud(ctx, alerts) {
     rowEls[key] = row;
   }
   root.appendChild(bars);
+
+  // Hit-flash helper: briefly pulse the affected bar (hull/shield) when the player takes damage.
+  // Re-triggering the CSS animation requires removing + reflow + re-adding the class; we do it once
+  // per damage event, gated to the player. The flash reads at the periphery without watching numbers.
+  const _barFlashTimers = {};
+  function flashBar(key) {
+    const bar = fillEls[key] && fillEls[key].parentElement;   // .sf-bar
+    if (!bar) return;
+    bar.classList.remove('sf-bar--hit');
+    void bar.offsetWidth;   // force reflow so the animation restarts
+    bar.classList.add('sf-bar--hit');
+    clearTimeout(_barFlashTimers[key]);
+    _barFlashTimers[key] = setTimeout(() => bar.classList.remove('sf-bar--hit'), 340);
+  }
+  ctx.bus.on('combat:damage', (p) => {
+    if (!p || p.targetId !== state.playerId) return;
+    if (p.brokeShield || p.kind === 'shield') flashBar('shield');
+    if (!p.brokeShield && p.kind !== 'shield') flashBar('hull');
+    else flashBar('hull');   // a shield-break also lands on hull afterwards — flash both
+  });
 
   // ---- top-left: mission tracker (shows the tracked mission objective + timer) ----
   const missionTracker = document.createElement('div');
@@ -322,6 +342,7 @@ export function createHud(ctx, alerts) {
   root.appendChild(lockRing);
   const lockFill = lockRing.querySelector('.sf-lockring__fill');
   const lockLabel = lockRing.querySelector('.sf-lockring__label');
+  let _wasLocked = false;   // rising-edge tracker for the lock-acquired audio cue
 
   // Per-weapon heat bars. Built once per ship load, updated per frame.
   const wpnHeatsWrap = document.createElement('div');
@@ -555,6 +576,16 @@ export function createHud(ctx, alerts) {
   ctx.bus.on('mission:completed', () => { objDirty = true; });
   ctx.bus.on('mission:abandoned', () => { objDirty = true; });
 
+  // Reticle accuracy bloom: the crosshair expands with sustained fire and contracts when cool — a
+  // classic combat-readability cue. Driven by the player's own combat:fire events; _recoilBloom
+  // spikes on each shot and decays each frame. Applied as a scale on the reticle's inner SVG (not
+  // the reticle div, whose transform centers it — scaling the div would recenter awkwardly).
+  let _recoilBloom = 0;   // 0 = rested (scale 1), up to ~1 (scale ~1.25) under sustained fire
+  ctx.bus.on('combat:fire', (p) => {
+    if (!p || p.ownerId !== state.playerId) return;
+    _recoilBloom = Math.min(1, _recoilBloom + 0.35);
+  });
+
   // WANTED indicator (V2 §20b / cut-list #15): a persistent red alert when the player's heat is
   // above the lawful-engagement threshold. Event-driven from the heat system's heat:changed.
   let wantedActive = false;
@@ -576,9 +607,33 @@ export function createHud(ctx, alerts) {
     });
   }
 
+  // Credit count-up tween. Instead of snapping the digits to the new value on a credits:changed
+  // event, we ease the displayed number from the previously-shown value toward the target over
+  // CRED_TWEEN seconds. This makes a bounty / sale land as a fast count-up rather than an instant
+  // digit jump — the classic "numbers feel alive" polish. Retargets smoothly if credits change
+  // again mid-tween (animates from whatever is currently displayed).
+  let _credFrom = 0, _credTo = 0, _credT = 1;   // _credT in [0,1]; 1 = at rest at target
+  const CRED_TWEEN = 0.4;                        // seconds
+  function _credCurrent() {
+    // value currently shown (eases _credFrom -> _credTo)
+    if (_credT >= 1) return _credTo;
+    const e = 1 - (1 - _credT) * (1 - _credT);   // ease-out quad
+    return _credFrom + (_credTo - _credFrom) * e;
+  }
   function refreshCredits() {
+    const target = Math.round(state.player.credits || 0);
+    // Retarget from the value currently displayed (not the old target) so chained changes stay smooth
+    _credFrom = _credCurrent();
+    _credTo = target;
+    _credT = 0;
     creditsDirty = false;
-    setText(elCredits, Math.round(state.player.credits || 0).toLocaleString());
+    setText(elCredits, Math.round(_credFrom).toLocaleString());
+  }
+  // Advance the tween on the 10Hz slow tick while a tween is in flight. When at rest this is a no-op.
+  function tickCreditsTween(dt) {
+    if (_credT >= 1) return;
+    _credT = Math.min(1, _credT + (dt || 0.016) / CRED_TWEEN);
+    setText(elCredits, Math.round(_credCurrent()).toLocaleString());
   }
   function refreshCargo() {
     cargoDirty = false;
@@ -642,6 +697,10 @@ export function createHud(ctx, alerts) {
     } else {
       lockRing.classList.remove('active', 'locked');
     }
+    // Lock-acquired tone: fire a two-note ascending cue on the rising edge (not-locked → locked).
+    // Locking a missile target was visually indicated but sonically silent — a clear cue closes that.
+    if (isLocked && !_wasLocked) ctx.bus.emit('audio:cue', { id: 'lock_acquired' });
+    _wasLocked = isLocked;
 
     // ---- Per-weapon heat bars ----
     // Rebuild the weapon heat bar DOM when the ship or weapon loadout changes.
@@ -797,6 +856,13 @@ export function createHud(ctx, alerts) {
       // cyan when you're aiming/firing manually. Purely a visual cue.
       if (!elReticle) elReticle = document.getElementById('aim-reticle');
       if (elReticle) elReticle.classList.toggle('autofire', auto);
+      // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
+      // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
+      _recoilBloom = Math.max(0, _recoilBloom - (dt || 0.016) * 2.2);
+      if (elReticle) {
+        const inner = elReticle.firstElementChild;
+        if (inner) inner.style.transform = `scale(${1 + _recoilBloom * 0.25})`;
+      }
       // Class/archetype label: surfaces the ship's role so the player feels the archetype switch
       // when they buy a new hull (Phase 3). Updates cheaply each slow tick.
       const defId = p.data && p.data.defId;
@@ -828,6 +894,8 @@ export function createHud(ctx, alerts) {
     if (creditsDirty) refreshCredits();
     if (cargoDirty) refreshCargo();
     if (objDirty) refreshObjectives();
+    // advance the credit count-up tween (no-op when at rest)
+    if (slow) tickCreditsTween(dt || 0.016);
 
     // --- target panel (every frame, cheap) ---
     targetPanel.update();

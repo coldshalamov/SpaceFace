@@ -21,6 +21,28 @@
 // This is a render-phase system (no sim update). Driven from registry.renderUpdate -> feel.frame().
 // All event subscriptions are registered in init; frame() integrates the timers.
 import { damp } from '../core/math.js';
+import { WEAPONS } from '../data/weapons.js';
+
+// Weapon recoil weight lookup (built once). The player's own gun firing produces zero camera
+// response today — that inertness is the #1 "combat feels flat" tell. We scale the recoil kick by
+// weapon size (S/M/L) and damage type (explosive/kinetic hit harder than energy/thermal), and by
+// how slow the rate-of-fire is (a single railgun shot should punch more than a pulse laser tick).
+// Fully data-driven: new weapons in WEAPONS[] get scaled automatically, no hardcoded IDs.
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+function recoilWeight(weaponId) {
+  const w = WEAPON_BY_ID.get(weaponId);
+  if (!w) return 0.08;   // unknown weapon — small default kick
+  let weight = 0.06;     // baseline
+  if (w.size === 'M') weight = 0.10;
+  if (w.size === 'L') weight = 0.14;
+  if (w.damageType === 'explosive') weight *= 1.6;   // missiles/torpedoes
+  if (w.damageType === 'kinetic') weight *= 1.25;    // railgun/autocannon
+  if (w.damageType === 'thermal') weight *= 0.9;     // plasma
+  // slow heavy hitters (low rof) punch harder per shot; fast weapons stay light to avoid nausea
+  const rof = w.rof || 0;
+  if (rof > 0 && rof < 1.5) weight *= 1.3;
+  return Math.min(0.2, weight);
+}
 
 const STYLE_ID = 'sf-feel-style';
 
@@ -29,12 +51,17 @@ const STYLE_ID = 'sf-feel-style';
 const HS_HEAVY = 0.055;   // s — timeScale dip duration for a heavy hit (big damage / shield break)
 const HS_KILL  = 0.090;   // s — dip duration for a kill
 const HS_DEATH = 0.160;   // s — dip duration for the player dying (the biggest beat)
+const HS_RAMP_TIME = 0.25; // s — cinematic ease-IN for the death dip (1 -> floor over this window)
 const HS_DEPTH = 0.12;    // timeScale floor during a dip (0.12 = near-frozen but not fully, so the
                           // camera/particles still creep — feels heavier than a hard freeze)
 const FOV_PUNCH_HEAVY = 2.2;   // deg additive on heavy hit
 const FOV_PUNCH_KILL  = 4.0;   // deg additive on kill
 const FOV_PUNCH_DEATH = 7.0;   // deg additive on player death
 const FOV_DECAY = 6.5;         // exponential decay rate (higher = snappier return)
+// Weapon-recoil fov kick (per player shot). Smaller than a heavy-hit punch since it fires often; a
+// quick 0.5-1.5° kick that decays fast reads as "kickback" without going seasick on auto fire.
+const RECOIL_FOV_MAX = 1.5;    // deg additive per shot (scaled down by recoilWeight)
+const RECOIL_FOV_MIN = 0.4;    // floor so even the lightest weapon nudges the fov a touch
 
 const VIG_HEAVY = 0.18;   // peak vignette opacity for a heavy hit on the player
 const VIG_DEATH = 0.55;   // peak vignette opacity for player death
@@ -49,6 +76,7 @@ export const feel = {
     // live state
     this._hsTimer = 0;        // remaining hit-stop seconds (0 = no active dip)
     this._hsReturn = 1;       // timeScale we ease back toward when the dip ends
+    this._hsRampIn = 0;       // >0 = cinematic ease-in window (death); timeScale ramps 1 -> floor
     this._fovPunch = 0;       // current additive fov offset (deg)
     this._vig = 0;            // current vignette opacity (0..1)
     // (FOV base is derived live from settings.video.fov each frame — no cached field, so the FOV
@@ -226,6 +254,69 @@ export const feel = {
     bus.on('player:death', () => {
       this._trigger(HS_DEATH, FOV_PUNCH_DEATH, VIG_DEATH, 'death');
     });
+
+    // Weapon recoil on the player's own shots. Firing currently produces VFX + audio but ZERO camera
+    // response, so every shot feels like a laser pointer. We add a small weapon-class-scaled fov kick
+    // (via the shared punch mechanism) + a tiny camera shake via the controller's addTrauma. No
+    // hit-stop/vignette — those belong to impacts, not muzzle. Gated to the player's shots only so an
+    // NPC furball doesn't jitter your view.
+    bus.on('combat:fire', (p) => {
+      if (!p || p.ownerId !== state.playerId) return;
+      if (this.state.mode !== 'flight' || !this._modalClear()) return;
+      const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+      if (mr) return;
+      const w = recoilWeight(p.weaponId);
+      // fov punch scaled by weapon weight, clamped to [min, max]
+      const fov = RECOIL_FOV_MIN + (RECOIL_FOV_MAX - RECOIL_FOV_MIN) * (w / 0.2);
+      this._fovPunch = Math.min(this._fovPunch + fov, FOV_PUNCH_DEATH + 1);
+      // small camera shake via the controller (trauma is squared internally → 0.04 reads as a nudge)
+      const ctrl = this.state.render && this.state.render.cameraCtrl;
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(w * 0.4);
+    });
+
+    // Jump / warp camera response. The warp particle VFX + audio already fire on charge→start→arrive,
+    // but the camera is completely inert through the signature traversal moment — the single biggest
+    // spectacle in the game reads as "particles, no camera". We add a 3-beat fov arc:
+    //   chargeStart → small forward fov kick (anticipation, the spool winding up)
+    //   start        → bigger fov kick (the warp-out punch)
+    //   arrive       → snap-down fov dip then ease + a trauma kick (the drop-out-of-warp thud)
+    // All gated on flight + no-modal + motion-reduce like the rest of the feel layer.
+    const _warpGate = () => this.state.mode === 'flight' && this._modalClear()
+      && !(this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce);
+    const _warpCtrl = () => this.state.render && this.state.render.cameraCtrl;
+    bus.on('jump:chargeStart', () => {
+      if (!_warpGate()) return;
+      this._fovPunch = Math.min(this._fovPunch + 2.5, FOV_PUNCH_DEATH + 1);   // anticipation kick
+    });
+    bus.on('jump:start', () => {
+      if (!_warpGate()) return;
+      this._fovPunch = Math.min(this._fovPunch + 6.0, FOV_PUNCH_DEATH + 1);   // warp-out punch
+      const ctrl = _warpCtrl();
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.18);
+    });
+    bus.on('jump:arrive', (p) => {
+      if (!_warpGate()) return;
+      // arrival: a brief fov DIP (negative punch) then it eases back — reads as decelerating out of warp.
+      // We model the dip as a negative fov offset clamped so the composite never goes below ~0.5° floor.
+      this._fovPunch = Math.max(-3.0, this._fovPunch - 3.0);
+      const ctrl = _warpCtrl();
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(p && p.interdicted ? 0.28 : 0.15);
+    });
+
+    // Mining-yield haptic. Mining has rich VFX (beam, spark fan, yield burst) but no camera/UI pulse,
+    // so popping ore feels soft. A tiny fov kick + micro-trauma on the player's yields (scaled by qty)
+    // gives the economy loop a heartbeat. Kept very light — mining yields repeatedly, so a heavy kick
+    // here would be nauseating. The floating "+qty" number already gets the GF-2 spawn-pop.
+    bus.on('mining:yield', (p) => {
+      if (!p || p.minerId !== state.playerId) return;
+      if (!_warpGate()) return;
+      const qty = Math.max(1, p.qty || 1);
+      // scale gently with qty: 1 unit → ~0.6°, big strike (8+) → capped ~1.4°
+      const fov = Math.min(1.4, 0.4 + Math.log2(qty) * 0.35);
+      this._fovPunch = Math.min(this._fovPunch + fov, FOV_PUNCH_DEATH + 1);
+      const ctrl = _warpCtrl();
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(Math.min(0.08, 0.03 + qty * 0.005));
+    });
   },
 
   // Arm a punch. `vigCls` selects which vignette gradient ('hit'|'death'|null).
@@ -242,6 +333,10 @@ export const feel = {
     // death punch with a late small hit). Floor the timeScale for the dip duration.
     if (hsDur > this._hsTimer) {
       this._hsTimer = hsDur;
+      // Death gets a cinematic RAMP-IN (timeScale eases 1 -> floor over ~0.25s) instead of the
+      // snappy snap-to-floor normal hits use. Reads as slow-motion rather than a stutter. Only set
+      // when this is the death beat (vigCls === 'death').
+      this._hsRampIn = (vigCls === 'death') ? HS_RAMP_TIME : 0;
     }
     // FOV punch: add on top of any in-flight punch (they decay together), then clamp.
     this._fovPunch = Math.min(this._fovPunch + fovAdd, FOV_PUNCH_DEATH + 1);
@@ -272,23 +367,36 @@ export const feel = {
       this._hsTimer -= frameDt;
       if (this._hsTimer <= 0) {
         this._hsTimer = 0;
+        this._hsRampIn = 0;
         // Only restore to normal if we're still in flight with no modal. If a modal opened during
         // the dip, leave timeScale alone — the modal owns it now.
         if (this.state.mode === 'flight' && this._modalClear()) {
           this.state.timeScale = 1;
         }
       } else if (this.state.mode === 'flight' && this._modalClear()) {
-        // Ease toward the floor at the start of the dip, then it'll snap back when the timer ends.
-        // A simple lerp reads as a fast-in/slow-out freeze without per-frame oscillation.
-        this.state.timeScale = this._hsReturn = HS_DEPTH;
+        if (this._hsRampIn > 0) {
+          // Cinematic death ease-in: ramp timeScale 1 -> HS_DEPTH over the ramp window. The ramp
+          // amount is how far into the window we are (0 = just died, 1 = ramp done). Eased so the
+          // slowdown accelerates — reads as the world bleeding off speed rather than a hard cut.
+          this._hsRampIn -= frameDt;
+          const r = Math.max(0, this._hsRampIn) / HS_RAMP_TIME;   // 1 -> 0
+          const eased = 1 - (1 - r) * (1 - r);                     // ease-in quad (slow start, fast finish)
+          this.state.timeScale = this._hsReturn = 1 - (1 - HS_DEPTH) * eased;
+          if (this._hsRampIn <= 0) this._hsRampIn = 0;
+        } else {
+          // Normal hit: snap to the floor (reads as "weight", not "lag").
+          this.state.timeScale = this._hsReturn = HS_DEPTH;
+        }
       }
     }
 
     // ---- FOV punch integration ----
-    if (this._fovPunch > 0.001) {
-      // exponential decay toward 0
+    // Sign-symmetric exponential decay toward 0: a punch can be positive (kick out — impacts,
+    // recoil, warp-out) or negative (dip in — warp arrival deceleration). The decay rate is the same
+    // either way; we snap to 0 once within epsilon so the camera settles exactly on the settings FOV.
+    if (Math.abs(this._fovPunch) > 0.001) {
       this._fovPunch += -this._fovPunch * FOV_DECAY * frameDt;
-      if (this._fovPunch < 0.001) this._fovPunch = 0;
+      if (Math.abs(this._fovPunch) < 0.001) this._fovPunch = 0;
     }
     const cam = this.state.render && this.state.render.camera;
     if (cam && cam.isPerspectiveCamera) {

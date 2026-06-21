@@ -211,7 +211,7 @@ export const mining = {
       buckets.set(id, (buckets.get(id) || 0) + 1);
     }
     for (const [commodityId, qty] of buckets) {
-      this.bus.emit('mining:yield', { commodityId, qty, pos: { x: ast.pos.x, z: ast.pos.z } });
+      this.bus.emit('mining:yield', { commodityId, qty, pos: { x: ast.pos.x, z: ast.pos.z }, minerId: miner ? miner.id : null });
       if (direct) this._giveCargo(commodityId, qty, miner.id);
       else this._spawnPickup(ast, commodityId, qty);
     }
@@ -334,7 +334,7 @@ export const mining = {
       if (take > 0) { pool[id] -= take; got[id] = (got[id] || 0) + take; n -= take; d._carry -= take; }
     }
     for (const id in got) {
-      this.bus.emit('mining:yield', { commodityId: id, qty: got[id], pos: { x: wreck.pos.x, z: wreck.pos.z } });
+      this.bus.emit('mining:yield', { commodityId: id, qty: got[id], pos: { x: wreck.pos.x, z: wreck.pos.z }, minerId: player ? player.id : null });
       this._spawnPickup(wreck, id, got[id]);
     }
 

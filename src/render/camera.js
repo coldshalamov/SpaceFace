@@ -119,10 +119,28 @@ export function createChaseCamera(state) {
   let _dynamicZoom = c.zoom;
   const ZOOM_LERP = 3.0;   // responsiveness for zoom transitions
 
+  // Push-zoom: a transient multiplicative nudge to the camera distance for scripted moments (docking
+  // fly-in, jump, cutscenes). set with pushZoom(factor, duration): the factor eases in then back out
+  // over the duration, multiplying targetZoom during its active window. 0 = inactive. This cooperates
+  // with the dynamic-zoom system (it biases the SAME _dynamicZoom the rest of the game uses) instead
+  // of clobbering c.zoom the way the old uiRoot hard-set did.
+  let _pushZoom = 0;          // current multiplicative offset added to the zoom factor (0 = none)
+  let _pushZoomDecay = 0;     // per-second decay rate (derived from duration at push time)
+
   return {
     obj: cam,
     addTrauma(amount) { c.trauma = Math.min(1, c.trauma + amount); },
     setZoom(z) { c.zoom = Math.max(45, Math.min(220, z)); },
+    // pushZoom(factor, durationS): factor>0 pushes the camera OUT (wider) for `durationS`, easing in
+    // and out. e.g. pushZoom(0.25, 0.8) widens the view 25% over 0.8s for a dock approach reveal.
+    // The effect is additive on top of the dynamic zoom and decays smoothly.
+    pushZoom(factor, durationS) {
+      const f = Math.max(0, factor || 0);
+      const d = Math.max(0.1, durationS || 0.5);
+      _pushZoom = f;
+      // ease in over ~half the duration, out over the other half → symmetric decay rate
+      _pushZoomDecay = 4.0 / d;
+    },
     follow(dt) {
       const p = state.entities.get(state.playerId);
       let fx = c.focus.x, fz = c.focus.z;
@@ -174,6 +192,14 @@ export function createChaseCamera(state) {
         }
 
         targetZoom = baseZoom * zoomFactor;
+      }
+      // scripted push-zoom (dock fly-in / jump): widens the view multiplicatively while active, then
+      // decays. Applied to targetZoom so it eases through the same _dynamicZoom damping as everything
+      // else — no jarring snap, no fight with the dynamic-zoom logic.
+      if (_pushZoom > 0.0001) {
+        targetZoom *= (1 + _pushZoom);
+        _pushZoom += -_pushZoom * _pushZoomDecay * dt;
+        if (_pushZoom < 0.0001) _pushZoom = 0;
       }
       _dynamicZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, dt);
       computeOffset(_dynamicZoom);

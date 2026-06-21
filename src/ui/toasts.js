@@ -12,6 +12,29 @@ export function createToasts(ctx) {
 
   function push({ text = '', kind = 'info', ttl = 4 } = {}) {
     if (!root || !text) return;
+    // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
+    // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
+    // copies ("Platinum x1" five times becomes "Platinum x1 ×5"). Keeps the feed readable under
+    // burst events (mining yields, repeated rep changes, cargo-full spam).
+    const GROUP_WINDOW = 2500;
+    const now = performance.now();
+    for (let i = 0; i < live.length; i++) {
+      const r = live[i];
+      if (r.text === text && r.kind === kind && (now - r.born) < GROUP_WINDOW) {
+        r.count = (r.count || 1) + 1;
+        r.born = now;                       // refresh so the grouped toast gets a fresh TTL window
+        r.ttl = normalizeTtlMs(ttl);
+        if (!r.badge) {
+          const badge = document.createElement('span');
+          badge.className = 'sf-toast__count';
+          r.el.appendChild(badge);
+          r.badge = badge;
+        }
+        r.badge.textContent = '×' + r.count;
+        r.el.setAttribute('aria-label', text + ' (×' + r.count + ', dismiss)');
+        return;
+      }
+    }
     const el = document.createElement('div');
     el.className = `sf-toast sf-toast--${kind}`;
     const icon = document.createElement('span');
@@ -32,7 +55,7 @@ export function createToasts(ctx) {
     });
     // newest on top
     root.prepend(el);
-    const rec = { el, born: performance.now(), ttl: normalizeTtlMs(ttl) };
+    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1 };
     live.unshift(rec);
     // animate in next frame
     requestAnimationFrame(() => el.classList.add('sf-toast--in'));

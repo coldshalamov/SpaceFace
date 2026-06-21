@@ -221,6 +221,7 @@ export const render = {
     state.render.scene = scene;
     state.render.renderer = renderer;
     state.render.camera = cam.obj;
+    state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     // Collision/socket/landing debug toggle (spec §12.5), bound to F7 in ui/input.js. Capture the
     // render-system `this` once so the handle closures resolve the live collisionDebug regardless of

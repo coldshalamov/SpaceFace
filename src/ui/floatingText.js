@@ -137,6 +137,19 @@ export function createFloatingText(ctx) {
     bus.emit('toast', { text: 'Market event ended', kind: 'info', ttl: 3 });
   });
 
+  // Spawn-pop: numbers overshoot from 1.3 -> 1.0 over POP_TIME seconds, then hold 1.0.
+  // A cheap ease-out (1 - (1-x)^2) gives a snappy "pop" so hits feel weighty instead of
+  // appearing flat at full size. Driven here (not via a CSS keyframe) because the per-frame
+  // transform update already owns the element's transform — folding the scale in keeps a
+  // single source of truth and never fights the position transform.
+  const POP_TIME = 0.08;
+  function popScale(age) {
+    if (age >= POP_TIME) return 1;
+    const x = age / POP_TIME;          // 0 -> 1 over the pop window
+    const e = 1 - (1 - x) * (1 - x);   // ease-out quad
+    return 1.3 - 0.3 * e;              // 1.3 -> 1.0
+  }
+
   function update(dt) {
     if (!helpers.worldToScreen) return;
     for (let i = 0; i < POOL; i++) {
@@ -151,7 +164,8 @@ export function createFloatingText(ctx) {
       const t = n.age / n.life;
       const rise = n.vy * n.age;            // integrated rise (px)
       const drift = n.vx * n.age;
-      n.el.style.transform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%)`;
+      const sc = popScale(n.age);           // spawn-pop scale (overshoot -> 1.0)
+      n.el.style.transform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%) scale(${sc})`;
       n.el.style.opacity = String(s.onScreen ? (1 - t * t) : 0);
     }
   }

@@ -145,6 +145,38 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 440, filterQ: 3.0,
     repeatCount: 2, repeatIntervalS: 0.4,
   },
+  // Missile / homing lock acquired — a crisp two-note ascending blip (the classic targeting cue).
+  // Higher + faster than confirm so it reads as "weapons locked", distinct from a UI confirm.
+  {
+    id: 'sfx_lock_acquired',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 990, freqSweep: [990, 1320], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.05 },
+    repeatCount: 2, repeatIntervalS: 0.07,
+    gainMult: 0.8,
+  },
+  // Mission accepted — a bright ascending triad (anticipation / commitment). Distinct from confirm
+  // so accepting a contract feels like a meaningful story beat, not a button click.
+  {
+    id: 'sfx_mission_accept',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 523, freqSweep: [523, 1047], sweepTimeS: 0.18,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.18 },
+    repeatCount: 2, repeatIntervalS: 0.09,
+    gainMult: 0.7,
+  },
+  // Mission complete — a triumphant major chord arpeggio (the payoff). Slower + warmer than accept.
+  {
+    id: 'sfx_mission_complete',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 659, freqSweep: [659, 988], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.22 },
+    repeatCount: 3, repeatIntervalS: 0.11,
+    gainMult: 0.75,
+  },
 
   // --- UI hover (soft tick, higher than click) ---
   {

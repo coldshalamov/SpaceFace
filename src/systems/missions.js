@@ -423,6 +423,16 @@ export const missions = {
     this.bus.emit('mission:accepted', { missionId: inst.id, type: inst.type, storyTag: inst.storyTag || undefined });
     this.bus.emit('mission:updated', { missionId: inst.id });
     this.bus.emit('toast', { text: `Mission accepted: ${inst.title}`, kind: 'success', ttl: 3 });
+    // GF-4: a gold echo-ring + light flash at the player so accepting a contract has a visible beat
+    // (the audio stinger fires from audioSystem's mission:accepted subscription). 'objective' lane
+    // resolves to a warm gold radial ring in vfx._presentationStyle.
+    const _p = this.state.entities && this.state.playerId != null ? this.state.entities.get(this.state.playerId) : null;
+    this.bus.emit('presentation:vfxCue', {
+      id: 'mission.accept', lane: 'objective', material: 'objective',
+      particles: 24, lights: 1, magnitude: 1,
+      position: _p ? { x: _p.pos.x, z: _p.pos.z } : null,
+      targetId: this.state.playerId,
+    });
 
     // B4 branch: accepting a faction intro contract sets the story branch.
     this._maybeSetBranch(inst);
@@ -670,6 +680,16 @@ export const missions = {
     this._advanceStoryChain(m);
 
     this.bus.emit('mission:completed', completedPayload);
+    // GF-4: a bigger celebratory ring + light burst at the player on completion (the triumphant
+    // chord + music duck fire from audioSystem's mission:completed subscription). 'branch' lane
+    // resolves to a gold echo-ring in vfx._presentationStyle — reads as a resolved/rewarded beat.
+    const _cp = this.state.entities && this.state.playerId != null ? this.state.entities.get(this.state.playerId) : null;
+    this.bus.emit('presentation:vfxCue', {
+      id: 'mission.complete', lane: 'branch', material: 'branch',
+      particles: 48, lights: 2, magnitude: 1.4,
+      position: _cp ? { x: _cp.pos.x, z: _cp.pos.z } : null,
+      targetId: this.state.playerId,
+    });
   },
 
   _failMission(m, index, reason) {

@@ -66,6 +66,7 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   confirm: 'sfx_ui_confirm', ui_confirm: 'sfx_ui_confirm', buy: 'sfx_ui_confirm', sell: 'sfx_ui_confirm',
   deny: 'sfx_ui_click', error: 'sfx_ui_alert', alert: 'sfx_ui_alert', warning: 'sfx_ui_alert',
   pickup: 'sfx_mining_impact', cash: 'sfx_ui_confirm',
+  lock_acquired: 'sfx_lock_acquired', lock: 'sfx_lock_acquired',
   'presentation.tether.attach': 'sfx_boost_whoosh',
   'presentation.tether.near_break': 'sfx_ui_alert',
   'presentation.tether.break': 'sfx_explosion_small',
@@ -165,6 +166,11 @@ export const audio = {
     bus.on('pickup:collected', (p) => this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.8 }));
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
+    // Mission accept/complete: previously TOTAL silence on the core progression loop. Accept gets a
+    // bright rising stinger; complete gets a triumphant two-note chord + a brief music duck so the
+    // payoff lands above the bed.
+    bus.on('mission:accepted', () => { this.play('sfx_mission_accept', { gain: 0.7 }); });
+    bus.on('mission:completed', () => { this._duckMusic(); this.play('sfx_mission_complete', { gain: 0.8 }); });
     bus.on('dock:docked', (p) => this._onDocked(p));
     bus.on('dock:undocked', () => this._onUndocked());
     bus.on('jump:chargeStart', () => {
