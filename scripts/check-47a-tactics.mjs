@@ -67,6 +67,22 @@ const tactics = [
         'control specialist should not cut the controlled tether');
     },
   },
+  {
+    id: 'covert_courier',
+    branchId: 'deliver_to_contact',
+    commands: [
+      frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
+      frameCommand(900, combatAction('action_sling', { attachment: 'latestOwned' })),
+    ],
+    assert(trace) {
+      assert(trace.metrics.tetherReel >= 4, 'covert courier should keep positive Massline control before diversion');
+      assert.equal(trace.metrics.tetherBroken, 0, 'covert courier should preserve the evidence tether for delivery');
+      assert(combatTraceHas(trace, 'physics.impulse', { actionId: 'action_sling' }),
+        'covert courier should use SG-02 impulse routing without destroying the payload');
+      assert(!combatTraceHas(trace, 'attachment.broken', { reason: 'action_cut' }),
+        'covert courier should not convert covert delivery into evidence destruction');
+    },
+  },
 ];
 
 try {
@@ -113,6 +129,12 @@ try {
     '47-A tactic suite should contain distinct tactic IDs');
   assert.equal(new Set(completed.map((item) => item.branchId)).size, tactics.length,
     '47-A tactic suite should complete distinct authored branches');
+  assert.equal(new Set(completed.map((item) => item.branchId)).size, branchById.size,
+    '47-A tactic suite should cover every authored branch, not only the minimum tactic count');
+  for (const branchId of branchById.keys()) {
+    assert(completed.some((item) => item.branchId === branchId),
+      `47-A tactic suite should include authored branch ${branchId}`);
+  }
   console.log(`47-A tactic checks OK (${completed.map((item) => `${item.id}:${item.branchId}`).join(', ')})`);
 } finally {
   rmSync(tempDir, { recursive: true, force: true });

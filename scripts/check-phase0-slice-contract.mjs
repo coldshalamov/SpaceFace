@@ -147,8 +147,8 @@ assert.equal(envelope.phase0ObservedTraceCounts['scenario:dialogueLine'], 1, 'ex
 assert.equal(envelope.phase0ObservedTraceCounts['tether:attached'], 1, 'expected telemetry should pin first Massline attach evidence');
 assert.equal(envelope.acceptancePlaceholders.firstTetherAttachTickMax, 3600,
   'expected telemetry should require first Massline attach within 60s');
-assert.equal(envelope.acceptancePlaceholders.policyCompletionCountMin, 3,
-  'expected telemetry should require at least three completed tactics');
+assert.equal(envelope.acceptancePlaceholders.policyCompletionCountMin, scenarioContract.branches.length,
+  'expected telemetry should require every authored branch policy/tactic outcome');
 assert.equal(envelope.acceptancePlaceholders.enemyCounterTetherBehaviorCountMin, 2,
   'expected telemetry should require both enemy counter-tether behaviors');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,

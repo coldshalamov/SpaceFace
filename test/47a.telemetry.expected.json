@@ -72,7 +72,7 @@
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
-    "policyCompletionCountMin": 3,
+    "policyCompletionCountMin": 4,
     "enemyCounterTetherBehaviorCountMin": 2,
     "cleanRunCountRequired": 5,
     "canonicalLongBranchId": "escape_with_evidence",
