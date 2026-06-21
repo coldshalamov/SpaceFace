@@ -71,6 +71,68 @@ const HOTNESS_GAIN = 0.05;     // per consecutive cycle on the same route
 const HOTNESS_DECAY = 0.1;     // per minute when idle
 const ROUTE_FUEL_PER_WU = 0.4; // cr per wu (sector-position distance proxy)
 const SECTOR_POS_TO_WU = 600;  // sector graph spacing -> rough wu so route fuel is non-trivial
+const OUTPOST_AUTOSELL_MULT = 0.8; // local surplus sale penalty.
+
+export const AUTOMATION_PASSIVE_TUNING = Object.freeze({
+  droneOreId: DRONE_ORE_ID,
+  droneOreFallbackValue: DRONE_ORE_FALLBACK_VALUE,
+  outpostAutosellMult: OUTPOST_AUTOSELL_MULT,
+});
+
+export function passiveCapPerMinForTier(balance = AUTO_BALANCE, tier = 1) {
+  const bal = balance || AUTO_BALANCE;
+  const ref = bal.activeRefByTier || AUTO_BALANCE.activeRefByTier || [];
+  const maxTier = Math.max(1, ref.length);
+  const safeTier = clamp(Math.round(tier) || 1, 1, maxTier);
+  const active = ref[safeTier - 1] || ref[0] || 0;
+  const frac = bal.passiveCapFrac != null ? bal.passiveCapFrac
+    : (AUTO_BALANCE.passiveCapFrac != null ? AUTO_BALANCE.passiveCapFrac : 0.45);
+  return active * frac;
+}
+
+export function creditPassiveFromBudget(grossAmount, capBudget) {
+  const gross = Math.max(0, grossAmount || 0);
+  const budget = Math.max(0, capBudget || 0);
+  const take = Math.min(gross, budget);
+  return {
+    credited: Math.round(take),
+    debitedBudget: take,
+    remainingBudget: budget - take,
+    overflow: Math.max(0, gross - take),
+  };
+}
+
+export function droneGrossCrPerMin(def, orePrice, count = 1) {
+  return Math.round(((def && def.mineRate) || 0) * (count || 1) * 60 * (orePrice || 0));
+}
+
+export function outpostOutputGoodId(def) {
+  return def && def.recipe && def.recipe.output ? Object.keys(def.recipe.output)[0] : DRONE_ORE_ID;
+}
+
+export function outpostGrossValue(def, quantity, orePriceForGood) {
+  const qty = Math.max(0, quantity || 0);
+  if (def && def.recipe && def.recipe.passive) return qty;
+  const goodId = outpostOutputGoodId(def);
+  const price = typeof orePriceForGood === 'function' ? orePriceForGood(goodId) : orePriceForGood;
+  return qty * (price || 0) * OUTPOST_AUTOSELL_MULT;
+}
+
+export function outpostGrossCrPerMin(def, orePriceForGood, opts = {}) {
+  const level = opts.level || 1;
+  const outRate = opts.outRate != null
+    ? opts.outRate
+    : ((def && def.outRate) || 0) * Math.pow(1.6, level - 1);
+  return Math.round(outpostGrossValue(def, outRate * 60, orePriceForGood));
+}
+
+export function traderProfitPerCycle(def, buyA, sellB, opts = {}) {
+  const spread = Math.max(0, (sellB || 0) - (buyA || 0));
+  const hotPenalty = opts.hotPenalty != null ? opts.hotPenalty : (1 - 0.5 * (opts.hotness || 0));
+  const units = opts.units != null ? opts.units : ((def && def.cargoVol) || 0);
+  const tradeEff = def && def.tradeEff != null ? def.tradeEff : 0.9;
+  return Math.max(0, units * spread * tradeEff * hotPenalty - (opts.routeFuelCost || 0));
+}
 
 export const automation = {
   name: 'automation',
@@ -437,7 +499,7 @@ export const automation = {
   // converted to cr/min (pre-cap; the header shows the headline, the cap bar shows throttling).
   _droneRatePerMin(g, def) {
     const orePrice = this._orePrice(g.oreType || DRONE_ORE_ID);
-    return Math.round((def.mineRate || 0) * (g.count || 1) * 60 * orePrice);
+    return droneGrossCrPerMin(def, orePrice, g.count || 1);
   },
 
   _droneBufferValue(g) {
@@ -500,11 +562,8 @@ export const automation = {
   _computeTraderProfit(t, def) {
     const buyA = this._stationPrice(t.route.from, DRONE_ORE_ID, 'buy', def.cargoVol);
     const sellB = this._stationPrice(t.route.to, t.route.good || DRONE_ORE_ID, 'sell', def.cargoVol);
-    const spread = Math.max(0, sellB - buyA);
     // hotness collapses the realized spread (route fatigue), on top of the economy's price move.
-    const hotPenalty = 1 - 0.5 * (t.hotness || 0);
-    const gross = (def.cargoVol || 0) * spread * (def.tradeEff || 0.9) * hotPenalty;
-    return Math.max(0, gross - this._routeFuelCost(t));
+    return traderProfitPerCycle(def, buyA, sellB, { hotness: t.hotness || 0, routeFuelCost: this._routeFuelCost(t) });
   },
 
   // cheap pre-roll estimate for the header (no qty-impact integral, just last prices).
@@ -513,9 +572,7 @@ export const automation = {
     const good = t.route.good || DRONE_ORE_ID;
     const buyA = econ ? (econ.priceOf(t.route.from, good, 'buy') || 0) : 0;
     const sellB = econ ? (econ.priceOf(t.route.to, good, 'sell') || 0) : 0;
-    const spread = Math.max(0, sellB - buyA);
-    const hotPenalty = 1 - 0.5 * (t.hotness || 0);
-    return Math.max(0, (def.cargoVol || 0) * spread * (def.tradeEff || 0.9) * hotPenalty - this._routeFuelCost(t));
+    return traderProfitPerCycle(def, buyA, sellB, { hotness: t.hotness || 0, routeFuelCost: this._routeFuelCost(t) });
   },
 
   _routeFuelCost(t) {
@@ -607,9 +664,7 @@ export const automation = {
 
   _outpostRatePerMin(o, def, outRate) {
     // Hab/trade hub generates credits directly; production outposts bank goods at the local price -20%.
-    if (def.recipe && def.recipe.passive) return Math.round((outRate) * 60);
-    const goodId = def.recipe && def.recipe.output ? Object.keys(def.recipe.output)[0] : DRONE_ORE_ID;
-    return Math.round(outRate * 60 * this._orePrice(goodId) * 0.8);
+    return outpostGrossCrPerMin(def, (goodId) => this._orePrice(goodId), { outRate, level: o.level || 1 });
   },
 
   _outpostAutosell(a) {
@@ -619,13 +674,7 @@ export const automation = {
       const def = OUTPOST_BY_ID.get(o.defId) || o;
       const sellable = o.storage || 0;
       if (sellable <= 0) continue;
-      let income;
-      if (def.recipe && def.recipe.passive) {
-        income = sellable; // credit-gen hub: storage IS credits
-      } else {
-        const goodId = def.recipe && def.recipe.output ? Object.keys(def.recipe.output)[0] : DRONE_ORE_ID;
-        income = sellable * this._orePrice(goodId) * 0.8; // 20% local-sale penalty (spec)
-      }
+      const income = outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId));
       o.storage = 0;
       if (income > 0) this.creditPassive(income, 'outpost');
     }
@@ -751,8 +800,8 @@ export const automation = {
   creditPassive(grossAmount, source) {
     let gross = Math.max(0, grossAmount);
     if (gross <= 0) return 0;
-    const take = Math.min(gross, Math.max(0, this._capBudget));
-    this._capBudget -= take;
+    const settlement = creditPassiveFromBudget(gross, this._capBudget);
+    this._capBudget = settlement.remainingBudget;
     // HARD CLAMP (not the spec's overflowEff credit): the spec's `credited = cap + (net-cap)*0.25`
     // clause is mathematically incompatible with the cap for sustained large gross — 25% of a big
     // lump dwarfs the cap and breaks the upper bound (verified: a full build credited 310/min vs a
@@ -762,7 +811,7 @@ export const automation = {
     // tier. (A pending-overflow reservoir was rejected: under sustained over-cap income it never
     // drains, grows unboundedly, and — being serialized in accumulators — would breach the cap in a
     // later session.)
-    const credited = Math.round(take);
+    const credited = settlement.credited;
     if (credited <= 0) return 0;
     this.bus.emit('economy:grantCredits', { amount: credited, reason: 'automation:' + (source || 'passive') });
     this.meta().totalPassiveEarnedLifetime = (this.meta().totalPassiveEarnedLifetime || 0) + credited;
@@ -773,12 +822,7 @@ export const automation = {
   },
 
   passiveCapPerMin() {
-    const bal = this.balance();
-    const ref = bal.activeRefByTier || AUTO_BALANCE.activeRefByTier;
-    const tier = this.playerTier();
-    const active = ref[Math.min(tier, ref.length) - 1] || ref[0];
-    const frac = bal.passiveCapFrac != null ? bal.passiveCapFrac : 0.45;
-    return active * frac;
+    return passiveCapPerMinForTier(this.balance(), this.playerTier());
   },
 
   // Matches the panel's _playerTier(): clamp(droneTierCap, 1, 5) so the enforced cap == the shown cap.

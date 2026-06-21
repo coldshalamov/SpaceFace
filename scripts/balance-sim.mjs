@@ -3,11 +3,9 @@
 // (a balance WARN/FAIL is a SUCCESSFUL audit run, not a process failure — see check-data.mjs
 // for the opposite convention, deliberately NOT copied here).
 //
-// Imports ONLY pure data tables (weapons, ships, mining, commodities, missions, automation).
-// Economy/automation SYSTEM formulas are re-implemented inline with file:line citations — the
-// system modules transitively import three/DOM-coupled siblings (economy.js -> cargo.js) and the
-// tunables we need are module-local, not exported. No DOM, no three, no Date, no Math.random:
-// every number is derived by iterating the full data space, so output is byte-stable.
+// Imports pure data tables plus production-owned pure system math helpers. No DOM, no three,
+// no Date, no Math.random: every number is derived by iterating the full data space, so output is
+// byte-stable while staying wired to the live economy/automation formulas.
 //
 // Checks (each prints a PASS/WARN/FAIL row):
 //   1. Per-slot (S/M/L) weapon DPS spread + dominant(>1.2x median)/dead(<0.8x median) flags.
@@ -21,6 +19,14 @@ import { ORES, ASTEROIDS, BEAMS } from '../src/data/mining.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { MISSION_TUNING, MISSION_TYPES } from '../src/data/missions.js';
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../src/data/automation.js';
+import { economySpotPriceForRole } from '../src/systems/economy.js';
+import {
+  AUTOMATION_PASSIVE_TUNING,
+  droneGrossCrPerMin,
+  outpostGrossCrPerMin,
+  passiveCapPerMinForTier,
+  traderProfitPerCycle,
+} from '../src/systems/automation.js';
 
 // ---- tiny deterministic helpers -------------------------------------------------------------
 const round = (n) => Math.round(n);
@@ -39,6 +45,18 @@ function median(nums) {
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 function basePriceOf(id) { const c = CMDTY_BY_ID.get(id); return c ? c.basePrice : 0; }
+
+function bestLegalCommodityRouteMargin() {
+  let best = null;
+  for (const c of COMMODITIES) {
+    if (c.legality !== 'legal') continue;
+    const buy = economySpotPriceForRole(c, 'produce', 'buy');
+    const sell = economySpotPriceForRole(c, 'consume', 'sell');
+    const margin = sell - buy;
+    if (!best || margin > best.margin) best = { c, buy, sell, margin };
+  }
+  return best;
+}
 
 // status helpers — worst() lets a check aggregate many sub-results into one row status.
 const RANK = { PASS: 0, WARN: 1, FAIL: 2 };
@@ -152,7 +170,7 @@ function checkShipProgression() {
 // =============================================================================================
 // CHECK 3 — Earn-rate parity: mining vs trading vs missions, rough cr/min.
 // PRIMARY reference is the game's own A(T) = AUTO_BALANCE.activeRefByTier ("sustained active
-// cr/min at tier T", automation.js:7) — each path is reported as a multiple of A(T) at its
+// cr/min at tier T") — each path is reported as a multiple of A(T) at its
 // CHARACTERISTIC tier (mining beam_mk2 -> T2, trader freighter_m -> T2, missions riskTier1 -> T1),
 // because median-of-three is fragile when one path is idealized. The task's ±25% cross-path flag
 // is still computed (against the 3-path median), but the A(T) lens is the binding read.
@@ -202,33 +220,18 @@ function checkEarnRates() {
   log('    => ' + fmt(round(miningCrPerMin)) + ' cr/min (sell at commodity basePrice)');
 
   // ---- TRADING: a producer->consumer cycle on a mid hauler (freighter_m, T2). ----
-  // Throughput is anchored to the data's OWN cycle time (TRADERS.cycleTime, automation.js:25),
+  // Throughput is anchored to the data's OWN cycle time (TRADERS.cycleTime),
   // NOT an invented trip distance — this is exactly the basis check 4 uses, so the two checks agree.
-  // Per-unit margin from the price model re-implemented from economy.js:29-34,117-119:
-  //   producer stock = baseEq*2.0, consumer stock = baseEq*0.35 (ROLE_FACTOR, economy.js:30)
-  //   mid = basePrice * clamp((stock/baseEq)^(-elasticity), 0.40, 2.60); buy/sell add ±spread/2.
-  const ROLE_PRODUCE = 2.0, ROLE_CONSUME = 0.35;            // economy.js:30 (stock/baseEq ratios)
-  const SPREAD = 0.08, MULT_LO = 0.40, MULT_HI = 2.60;      // economy.js:32-34
-  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
-  // pick the best legal commodity margin across the catalog (what a route-planner would chase)
-  let best = null;
-  for (const c of COMMODITIES) {
-    if (c.legality !== 'legal') continue;
-    const midBuy = c.basePrice * clamp(Math.pow(ROLE_PRODUCE, -c.elasticity), MULT_LO, MULT_HI);
-    const midSell = c.basePrice * clamp(Math.pow(ROLE_CONSUME, -c.elasticity), MULT_LO, MULT_HI);
-    const buy = midBuy * (1 + SPREAD / 2);   // buy cheap at producer (surplus stock -> low mid)
-    const sell = midSell * (1 - SPREAD / 2); // sell dear at consumer (shortage stock -> high mid)
-    const margin = sell - buy;               // cr per unit
-    if (!best || margin > best.margin) best = { c, buy, sell, margin };
-  }
+  // Per-unit margin comes from the production economy spot-pricing helper for producer/consumer roles.
+  const best = bestLegalCommodityRouteMargin(); // what a route-planner would chase
   const tdr = TRADERS.find((t) => t.id === 'trader_freighter_m'); // T2 hauler, the characteristic hull
   const tradeTier = tdr.tier;
-  const unitsPerLoad = tdr.cargoVol / (best.c.volPerU > 0 ? best.c.volPerU : 1);
-  const profitPerCycle = unitsPerLoad * best.margin * tdr.tradeEff;
+  const unitsPerLoad = tdr.cargoVol;
+  const profitPerCycle = traderProfitPerCycle(tdr, best.buy, best.sell);
   const tradingCrPerMin = profitPerCycle / (tdr.cycleTime / 60);
   log('\n  TRADING (best legal margin = ' + best.c.name + '; hull ' + tdr.id + ', T' + tradeTier + '):');
   log('    buy=' + r1(best.buy) + '  sell=' + r1(best.sell) + '  margin=' + r1(best.margin) + 'cr/u  tradeEff=' + tdr.tradeEff);
-  log('    hold=' + tdr.cargoVol + 'vol -> ' + r1(unitsPerLoad) + 'u  cycle=' + tdr.cycleTime + 's  profit/cycle=' + fmt(round(profitPerCycle)));
+  log('    hold=' + r1(unitsPerLoad) + 'u  cycle=' + tdr.cycleTime + 's  profit/cycle=' + fmt(round(profitPerCycle)));
   log('    => ' + fmt(round(tradingCrPerMin)) + ' cr/min');
 
   // ---- MISSIONS: average cr/min over the 10 mission types using BASE + the reward/time formulas ----
@@ -309,7 +312,7 @@ function checkEarnRates() {
 
   // CAVEAT — these are PEAK first-cycle upper bounds, not realized steady-state rates.
   log('\n  CAVEAT: mining/trading are best-case first-cycle PEAKS, not steady-state. The economy\'s');
-  log('    price-impact integral (avgMid over the traded qty, economy.js:124-133) and stock drift +');
+  log('    price-impact integral (avgMid over the traded qty) and stock drift +');
   log('    trader hotness collapse sustained rates well below these. Missions (~A(T)) is the');
   log('    calibrated path; mining/trading peaks read high precisely because no decay is modeled.');
 
@@ -327,10 +330,10 @@ function checkEarnRates() {
 // =============================================================================================
 // CHECK 4 — Passive-income cap. Build a FULL automation stack (every drone + trader + outpost),
 // compute its RAW cr/min (no cap), then apply the LIVE cap and assert it binds.
-// Live cap: passiveCapPerMin() = activeRefByTier[tier-1] * passiveCapFrac  (automation.js:677-684).
+// Live cap comes from passiveCapPerMinForTier(), the same pure helper used by automation.passiveCapPerMin().
 // creditPassive HARD-CLAMPS to that per-minute bucket — overflowEff (0.25) is NOT applied in the
-// live path; the spec's `cap + (net-cap)*overflowEff` clause was explicitly rejected
-// (automation.js:653-666). So the effective ceiling = passiveCapFrac * A(T), full stop.
+// live path; the spec's overflow-credit clause was explicitly rejected. So the effective ceiling
+// is the passive cap helper's A(T) fraction, full stop.
 // =============================================================================================
 function checkPassiveCap() {
   log(HR);
@@ -341,52 +344,37 @@ function checkPassiveCap() {
       '  activeRefByTier=[' + bal.activeRefByTier.join(', ') + ']');
   log('  VERIFY: synthesis cites passiveCapFrac 0.45 / overflowEff 0.25 — passiveCapFrac matches; but');
   log('          overflowEff is NOT used in the live cap path (creditPassive hard-clamps; the spec\'s');
-  log('          overflow-credit clause was rejected, automation.js:653-666). Effective ceiling = frac*A(T).');
+  log('          overflow-credit clause was rejected). Effective ceiling = passiveCapPerMinForTier().');
 
-  // ore value the buffers bank at: cmdty_ore_iron basePrice (DRONE_ORE_ID, automation.js:49-50).
-  const orePrice = basePriceOf('cmdty_ore_iron') || 28;
+  // ore value the buffers bank at: the automation system's nominal drone ore.
+  const orePrice = basePriceOf(AUTOMATION_PASSIVE_TUNING.droneOreId) || AUTOMATION_PASSIVE_TUNING.droneOreFallbackValue;
 
   // RAW passive cr/min from the whole catalog of assets (one of each tier of every kind):
-  // - DRONES: mineRate is PER-SECOND (automation.js:179) -> *60 *orePrice cr/min (automation.js:351-353).
-  // - TRADERS: ratePerMin ~ profit/cycle / (cycleTime/60); use the spec profit formula
-  //     cargoVol * margin * tradeEff / (cycleTime/60). Margin from the same producer/consumer
-  //     spread as check 3 (best legal commodity), since the live router chases the best pair.
-  // - OUTPOSTS: outRate is per-second; passive hub banks creditGen directly, producers bank
-  //     output*orePrice*0.8 (automation.js:510-515).
+  // - DRONES: droneGrossCrPerMin()
+  // - TRADERS: traderProfitPerCycle(), then reported against authored cycleTime.
+  // - OUTPOSTS: outpostGrossCrPerMin()
   let raw = 0;
   const lines = [];
 
   for (const d of DRONES) {
-    const crMin = d.mineRate * 60 * orePrice;
+    const crMin = droneGrossCrPerMin(d, orePrice);
     raw += crMin;
-    lines.push('    drone   ' + pad(d.id, 16) + 'mineRate=' + d.mineRate + '/s -> ' + padL(fmt(round(crMin)), 8) + ' cr/min');
+    lines.push('    drone   ' + pad(d.id, 20) + 'mineRate=' + d.mineRate + '/s -> ' + padL(fmt(round(crMin)), 8) + ' cr/min');
   }
 
   // best legal margin (mirror of check 3's producer->consumer spread) for trader profit.
-  const BASE_EQ_DEFAULT = 1000, ROLE_PRODUCE = 2.0, ROLE_CONSUME = 0.35, SPREAD = 0.08, MULT_LO = 0.40, MULT_HI = 2.60;
-  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
-  const baseEq = BASE_EQ_DEFAULT;
-  let bestMargin = 0;
-  for (const c of COMMODITIES) {
-    if (c.legality !== 'legal') continue;
-    const midBuy = c.basePrice * clamp(Math.pow(ROLE_PRODUCE, -c.elasticity), MULT_LO, MULT_HI);
-    const midSell = c.basePrice * clamp(Math.pow(ROLE_CONSUME, -c.elasticity), MULT_LO, MULT_HI);
-    const margin = midSell * (1 - SPREAD / 2) - midBuy * (1 + SPREAD / 2);
-    if (margin > bestMargin) bestMargin = margin;
-  }
+  const best = bestLegalCommodityRouteMargin();
   for (const t of TRADERS) {
-    const profitPerCycle = t.cargoVol * bestMargin * t.tradeEff;
+    const profitPerCycle = traderProfitPerCycle(t, best.buy, best.sell);
     const crMin = profitPerCycle / (t.cycleTime / 60);
     raw += crMin;
-    lines.push('    trader  ' + pad(t.id, 16) + 'cargo=' + t.cargoVol + ' cyc=' + t.cycleTime + 's -> ' + padL(fmt(round(crMin)), 8) + ' cr/min');
+    lines.push('    trader  ' + pad(t.id, 20) + 'cargo=' + t.cargoVol + ' cyc=' + t.cycleTime + 's -> ' + padL(fmt(round(crMin)), 8) + ' cr/min');
   }
 
   for (const o of OUTPOSTS) {
-    let crMin;
-    if (o.recipe && o.recipe.passive) crMin = o.outRate * 60;                 // hub: creditGen/s
-    else crMin = o.outRate * 60 * orePrice * 0.8;                              // producer: -20% local sale
+    const crMin = outpostGrossCrPerMin(o, (goodId) => basePriceOf(goodId) || orePrice);
     raw += crMin;
-    lines.push('    outpost ' + pad(o.id, 16) + 'outRate=' + o.outRate + '/s -> ' + padL(fmt(round(crMin)), 8) + ' cr/min');
+    lines.push('    outpost ' + pad(o.id, 20) + 'outRate=' + o.outRate + '/s -> ' + padL(fmt(round(crMin)), 8) + ' cr/min');
   }
 
   log('\n  FULL STACK (raw, uncapped cr/min — one of every asset):');
@@ -399,7 +387,7 @@ function checkPassiveCap() {
   let topCap = 0;
   for (let tier = 1; tier <= bal.activeRefByTier.length; tier++) {
     const active = bal.activeRefByTier[tier - 1];
-    const cap = active * bal.passiveCapFrac;
+    const cap = passiveCapPerMinForTier(bal, tier);
     topCap = cap;
     const bounds = raw > cap;
     log('    T' + tier + ': A=' + padL(fmt(active), 6) + ' cr/min  cap=' + padL(fmt(round(cap)), 6) +

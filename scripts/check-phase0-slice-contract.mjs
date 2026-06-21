@@ -114,6 +114,31 @@ assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
   'c4087e90300eea0303e0b8553af15094b75f7611e54f1f52648fe42712986f46',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 
+const balanceSim = read('scripts/balance-sim.mjs');
+for (const helper of [
+  'economySpotPriceForRole',
+  'droneGrossCrPerMin',
+  'outpostGrossCrPerMin',
+  'passiveCapPerMinForTier',
+  'traderProfitPerCycle',
+]) {
+  assert(balanceSim.includes(helper), `balance-sim must import/use production helper: ${helper}`);
+}
+for (const forbidden of [
+  'ROLE_PRODUCE',
+  'ROLE_CONSUME',
+  'MULT_LO',
+  'MULT_HI',
+  'SPREAD = 0.08',
+  'BASE_EQ_DEFAULT = 1000',
+  're-implemented inline',
+  'reimplemented inline',
+  'active * bal.passiveCapFrac',
+]) {
+  assert(!balanceSim.includes(forbidden), `balance-sim must not carry shadow formula marker: ${forbidden}`);
+}
+assert(!/\b(?:economy|automation)\.js:\d+\b/.test(balanceSim), 'balance-sim should cite production helper names, not stale line numbers');
+
 console.log('Phase 0 slice contract checks OK');
 
 function assertRejectsMalformedEvidence() {

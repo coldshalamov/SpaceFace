@@ -45,6 +45,17 @@ const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
 const REP_HIT_LO = 2, REP_HIT_HI = 25;
 const BRIBE_FRAC = 0.30;
 
+export const ECONOMY_PRICE_TUNING = Object.freeze({
+  baseEqDefault: BASE_EQ_DEFAULT,
+  roleFactor: Object.freeze({ ...ROLE_FACTOR }),
+  sizeFactor: Object.freeze({ ...SIZE_FACTOR }),
+  priceMultLo: PRICE_MULT_LO,
+  priceMultHi: PRICE_MULT_HI,
+  spreadBase: SPREAD_BASE,
+  spreadLo: SPREAD_LO,
+  spreadHi: SPREAD_HI,
+});
+
 // service prices (per unit) — used by ui:service refuel/repair/ammo
 const FUEL_UNIT_CR = 6;            // cr per fuel unit
 const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
@@ -115,14 +126,14 @@ function roleFor(def, stationType) {
 }
 
 // ---- price math ---------------------------------------------------------------------------
-function priceMult(stock, baseEq, elasticity) {
+export function priceMult(stock, baseEq, elasticity) {
   return clamp(Math.pow(Math.max(stock, 1) / baseEq, -elasticity), PRICE_MULT_LO, PRICE_MULT_HI);
 }
 
 /** Closed-form average mid over a stock interval [sLo, sHi] (the price-impact integral).
  *  mid(s) = basePrice * baseEq^el * s^(-el); ∫ s^-el ds = s^(1-el)/(1-el).
  *  avg = basePrice*baseEq^el/((1-el)*ΔN) * (sHi^(1-el) - sLo^(1-el)); el==1 -> ln form. */
-function avgMid(basePrice, baseEq, el, sLo, sHi) {
+export function avgMid(basePrice, baseEq, el, sLo, sHi) {
   sLo = Math.max(sLo, 1); sHi = Math.max(sHi, sLo);
   const N = sHi - sLo;
   if (N <= 0) return basePrice * priceMult(sLo, baseEq, el);
@@ -139,6 +150,29 @@ function eventModMult(entry, field) {
   const mods = entry.eventMods;
   if (mods) for (let i = 0; i < mods.length; i++) if (mods[i].field === field) m *= mods[i].mult;
   return m;
+}
+
+export function economyBaseEqForSize(size) {
+  return BASE_EQ_DEFAULT * (SIZE_FACTOR[size] || 1);
+}
+
+export function economyStockTargetForRole(role, baseEq = BASE_EQ_DEFAULT) {
+  return baseEq * (ROLE_FACTOR[role] || 0);
+}
+
+export function economyMidPrice(def, stock, baseEq = BASE_EQ_DEFAULT) {
+  if (!def) return 0;
+  return def.basePrice * priceMult(stock, baseEq, def.elasticity);
+}
+
+export function economySpotPriceForRole(def, role, side = 'mid', opts = {}) {
+  const baseEq = opts.baseEq || BASE_EQ_DEFAULT;
+  const stock = opts.stock != null ? opts.stock : economyStockTargetForRole(role, baseEq);
+  const spread = opts.spread != null ? opts.spread : SPREAD_BASE;
+  const mid = economyMidPrice(def, stock, baseEq);
+  if (side === 'buy') return mid * (1 + spread / 2);
+  if (side === 'sell') return mid * (1 - spread / 2);
+  return mid;
 }
 
 /** Effective stock drift target = equilibrium (role*size*BASE_EQ) * event eq mods, clamped. */
@@ -283,7 +317,7 @@ export const economy = {
 
   /** Cache lastMid/lastBuy/lastSell on an entry from its current stock. */
   recomputePrices(entry, def, frontierPenalty) {
-    const mid = def.basePrice * priceMult(entry.stock, entry.baseEq, def.elasticity);
+    const mid = economyMidPrice(def, entry.stock, entry.baseEq);
     const spread = spreadOf(entry, frontierPenalty);
     entry.lastMid = mid;
     entry.lastBuy = round(mid * (1 + spread / 2));
@@ -310,8 +344,7 @@ export const economy = {
     const info = stationInfo(state, stationId);
     const type = stationTypeId || (info && info.type) || 'trade_hub';
     const sz = size || (info && info.size) || 'M';
-    const sizeFactor = SIZE_FACTOR[sz] || 1;
-    const baseEqRef = BASE_EQ_DEFAULT * sizeFactor; // fixed pricing reference
+    const baseEqRef = economyBaseEqForSize(sz); // fixed pricing reference
     const allowContraband = toleratesContraband(info);
 
     const market = {};
@@ -322,7 +355,7 @@ export const economy = {
       if (def.legality === 'contraband' || def.legality === 'illegal') {
         if (!allowContraband) continue;
       }
-      const equilibrium = baseEqRef * (ROLE_FACTOR[role] || 0); // stock drift target
+      const equilibrium = economyStockTargetForRole(role, baseEqRef); // stock drift target
       const stock = equilibrium;                                 // start at rest
       const entry = {
         stock, equilibrium, baseEq: baseEqRef, role,
@@ -400,8 +433,8 @@ export const economy = {
     }
     const unitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
     const total = round(unitAvg * qty);
-    const beforeMid = def.basePrice * priceMult(entry.stock, entry.baseEq, el);
-    const afterMid = def.basePrice * priceMult(stockAfter, entry.baseEq, el);
+    const beforeMid = economyMidPrice(def, entry.stock, entry.baseEq);
+    const afterMid = economyMidPrice(def, stockAfter, entry.baseEq);
     const priceImpactPct = beforeMid > 0 ? ((afterMid - beforeMid) / beforeMid) * 100 : 0;
     return {
       ok: true, stationId, commodityId, side, qty,
