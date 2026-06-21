@@ -29,6 +29,20 @@ const CATEGORY_STYLE = {
 const MAX_LIVE = 4;          // max simultaneous live comms entries on the feed
 const MAX_BACKLOG = 80;      // retained history for the 'C' backlog view
 
+export function branchLifecycleCommsPayload(payload) {
+  const lifecycle = payload && payload.lifecycle && typeof payload.lifecycle === 'object' ? payload.lifecycle : {};
+  const complete = cleanLifecycleText(lifecycle.complete || (payload && payload.summary));
+  const aftermath = cleanLifecycleText(lifecycle.aftermath);
+  if (!complete && !aftermath) return null;
+  return {
+    sender: 'CONTRACT 47-A',
+    category: 'story',
+    text: complete || aftermath,
+    note: aftermath && aftermath !== complete ? aftermath : null,
+    persist: true,
+  };
+}
+
 export function createComms(ctx) {
   const { bus, state } = ctx;
   injectCommsCss();
@@ -109,6 +123,10 @@ export function createComms(ctx) {
   }
 
   bus.on('comms:popup', pushComms);
+  bus.on('scenario:branchResolved', (payload) => {
+    const comms = branchLifecycleCommsPayload(payload || {});
+    if (comms) pushComms(comms);
+  });
 
   // ── 2. Backlog view (toggle with 'C') ────────────────────────────────────────────────────
   const backlogBtn = document.createElement('button');
@@ -332,6 +350,10 @@ function normalizeTtlMs(ttl) {
   const n = Number(ttl);
   if (!Number.isFinite(n) || n <= 0) return 7000;
   return n > 60 ? n : n * 1000;
+}
+
+function cleanLifecycleText(value) {
+  return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
 }
 
 function escapeHtml(s) {
