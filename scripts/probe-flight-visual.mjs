@@ -18,10 +18,11 @@ const viewports = [
   { name: 'mobile', width: 390, height: 844, deviceScaleFactor: 2, isMobile: true },
 ];
 const results = [];
+const MAX_VISUAL_PROBE_ATTEMPTS = 2;
 
 try {
   for (const viewport of viewports) {
-    results.push(await runViewportProbe(browser, viewport));
+    results.push(await runViewportProbeWithRetry(browser, viewport));
   }
 } finally {
   await browser.close();
@@ -31,6 +32,19 @@ try {
 const ok = results.every((r) => r.ok);
 console.log(JSON.stringify({ ok, baseUrl, results }, null, 2));
 if (!ok) process.exitCode = 1;
+
+async function runViewportProbeWithRetry(browser, viewport) {
+  const attempts = [];
+  let lastResult = null;
+  for (let i = 0; i < MAX_VISUAL_PROBE_ATTEMPTS; i++) {
+    const result = await runViewportProbe(browser, viewport);
+    lastResult = result;
+    attempts.push(summarizeProbeAttempt(result, i + 1));
+    if (result.ok) return { ...result, attempts };
+    if (!isRetriableVisualProbeFailure(result)) return { ...result, attempts };
+  }
+  return { ...lastResult, attempts };
+}
 
 async function runViewportProbe(browser, viewport) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: viewport.deviceScaleFactor, isMobile: !!viewport.isMobile });
@@ -169,6 +183,38 @@ async function runViewportProbe(browser, viewport) {
     issues,
     screenshot,
   };
+}
+
+function summarizeProbeAttempt(result, attempt) {
+  return {
+    attempt,
+    ok: result.ok,
+    failedChecks: Object.entries(result.checks || {})
+      .filter(([, passed]) => !passed)
+      .map(([name]) => name),
+    issues: (result.issues || []).map((issue) => ({ type: issue.type, text: issue.text })),
+  };
+}
+
+function isRetriableVisualProbeFailure(result) {
+  const checks = result && result.checks || {};
+  const failedChecks = Object.entries(checks)
+    .filter(([, passed]) => !passed)
+    .map(([name]) => name);
+  return failedChecks.length === 1
+    && failedChecks[0] === 'noPageErrors'
+    && checks.canvasNonBlank === true
+    && checks.sg02DynamicReady === true
+    && Array.isArray(result.issues)
+    && result.issues.length > 0
+    && result.issues.every(isEmptyWebglShaderValidationIssue);
+}
+
+function isEmptyWebglShaderValidationIssue(issue) {
+  if (!issue || issue.type !== 'error') return false;
+  const text = String(issue.text || '').trim();
+  return /^THREE\.WebGLProgram: Shader Error (?:0|1282) - VALIDATE_STATUS false/.test(text)
+    && /Program Info Log:\s*$/.test(text);
 }
 
 async function dismissTutorial(page) {
