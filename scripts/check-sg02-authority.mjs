@@ -26,8 +26,12 @@ const helpers = {};
 const bus = createBus();
 const pickupsCollected = [];
 const projectileHits = [];
+const dockRanges = [];
+const gateRanges = [];
 bus.on('pickup:collected', (payload) => pickupsCollected.push(payload));
 bus.on('projectile:hit', (payload) => projectileHits.push(payload));
+bus.on('dock:range', (payload) => dockRanges.push(payload));
+bus.on('gate:range', (payload) => gateRanges.push(payload));
 
 physics.init({ state, bus, helpers });
 assert.equal(typeof helpers.combatPhysics.applyImpulse, 'function', 'physics.init should install a stable SG-03 combat physics port');
@@ -113,6 +117,29 @@ assert.equal(projectileHits[0].damagePacket.hit.pos.z, projectileHits[0].pos.z, 
 assert.equal(state.physicsRuntime.diagnostics.sweptProjectileHits, 1, 'physics diagnostics should count dynamic projectile contacts');
 assert(!state.physicsRuntime.sg02Snapshot.some((body) => body.id === projectile.id), 'consumed projectiles should be filtered out of the published SG-02 snapshot');
 
+const station = makeStation(4, ship.pos.x - 72, ship.pos.z);
+const gate = makeGate(5, ship.pos.x - 74, ship.pos.z + 1);
+for (const entity of [station, gate]) {
+  state.entities.set(entity.id, entity);
+  state.entityList.push(entity);
+}
+
+physics.update(DT, state);
+assert(dockRanges.some((event) => event.stationId === 'station_sg02_dynamic_dock' && event.shipId === ship.id && event.inRange === true),
+  'rapier-dynamic mode should emit dock range enter events from dynamic body positions');
+assert(gateRanges.some((event) => event.gateId === gate.id && event.shipId === ship.id && event.inRange === true && event.gateTo === 'sector_sg02_dynamic_target'),
+  'rapier-dynamic mode should emit gate range enter events from dynamic body positions');
+
+const dockEnterX = ship.pos.x;
+assert.equal(helpers.combatPhysics.applyImpulse({ entityId: ship.id, impulse: { x: 220000, y: 0, z: 0 } }), true,
+  'dynamic body should accept an SG-03 impulse before proving range exits');
+for (let i = 0; i < 8; i++) physics.update(DT, state);
+assert(ship.pos.x > dockEnterX + 180, 'SG-02 body movement should carry the player out of dock/gate range');
+assert(dockRanges.some((event) => event.stationId === 'station_sg02_dynamic_dock' && event.shipId === ship.id && event.inRange === false),
+  'rapier-dynamic mode should emit dock range exit events after dynamic body movement');
+assert(gateRanges.some((event) => event.gateId === gate.id && event.shipId === ship.id && event.inRange === false),
+  'rapier-dynamic mode should emit gate range exit events after dynamic body movement');
+
 physics._disableSg02DynamicAuthority();
 
 console.log('SG-02 production authority checks OK');
@@ -184,6 +211,40 @@ function makeProjectile(id, x, z) {
         source: { kind: 'weapon', weaponId: 'wpn_sg02_dynamic_probe' },
       }),
     },
+  };
+}
+
+function makeStation(id, x, z) {
+  return {
+    id,
+    type: 'station',
+    alive: true,
+    collides: true,
+    radius: 32,
+    mass: 1e6,
+    pos: { x, z },
+    prevPos: { x, z },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    collisionMask: Masks.SHIP,
+    data: { stationId: 'station_sg02_dynamic_dock', dockRadius: 55 },
+  };
+}
+
+function makeGate(id, x, z) {
+  return {
+    id,
+    type: 'station',
+    alive: true,
+    collides: true,
+    radius: 32,
+    mass: 1e6,
+    pos: { x, z },
+    prevPos: { x, z },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    collisionMask: Masks.SHIP,
+    data: { isGate: true, gateTo: 'sector_sg02_dynamic_target', name: 'SG-02 Dynamic Gate', dockRadius: 55 },
   };
 }
 

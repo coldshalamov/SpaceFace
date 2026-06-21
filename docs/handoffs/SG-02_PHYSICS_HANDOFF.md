@@ -32,8 +32,7 @@ Save schema v5 persists SG-03 semantic combat state: combatants, active/queued a
 
 Follow-up before making `rapier-dynamic` the default:
 
-- use the folded quantized SG-02 body snapshot in the 47-A reload/default-backend replay gate.
-- close remaining docking/range contact-event parity under dynamic authority. Pickup and live projectile contact parity are now covered by `scripts/check-sg02-authority.mjs`.
+- run the 47-A reload/default-backend replay gate with the dynamic backend and folded quantized SG-02 body snapshot. Pickup, live projectile, docking, and gate range contact parity are now covered by `scripts/check-sg02-authority.mjs`.
 
 ## Acceptance Scripts
 
@@ -56,5 +55,5 @@ The old kinematic Rapier observer authority was removed from `src/core/rapierCol
 ## Known Limitations
 
 - `rapier-dynamic` is explicit opt-in, not the default 47-A replay backend yet.
-- Docking range parity still depends on legacy projections and needs deeper SG-01 save/replay work before default activation. Pickup collection and live projectile hit parity are live in the explicit `rapier-dynamic` backend and covered by `npm run check:sg02:authority`.
+- `rapier-dynamic` still needs the 47-A/default-backend replay gate before it becomes the default backend. Pickup collection, live projectile hits, dock range events, and gate range events are live in the explicit backend and covered by `npm run check:sg02:authority`.
 - SG-06 tactical AI remains registry-gated until the production ports are exercised by the live tactical system with encounter ownership and legacy intent/fire path deletion in the same milestone.
