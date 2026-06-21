@@ -196,6 +196,34 @@ assert(trace.combatTrace.digest && /^[a-f0-9]{8}$/.test(trace.combatTrace.digest
 assert((trace.combatTraceSummary.kinds['damage.routed'] || 0) > 0, 'SG-03 combat trace should expose routed damage events');
 assert(trace.metrics.systems.includes('actions'), 'sf-sim trace should run the real action system');
 
+const profile = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf-sim.mjs',
+  'profile',
+  '47a',
+  '--seed',
+  '47',
+  '--ticks',
+  '720',
+  '--inputs',
+  'test/47a.inputs.json',
+  '--expect',
+  'test/47a.telemetry.expected.json',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(profile.schema, 'spaceface.sfSimProfileResult.v1', 'sf-sim profile should emit a versioned profile result');
+assert.equal(profile.command, 'profile', 'sf-sim profile command should round-trip in JSON');
+assert.equal(profile.timingAuthoritative, false, 'sf-sim profile timing must not become authoritative replay state');
+assert.equal(profile.sha256, envelope.acceptancePlaceholders.authoritativeHash, 'sf-sim profile should preserve the authoritative replay hash');
+assert(profile.profile && profile.profile.schema === 'spaceface.simProfile.v1', 'sf-sim profile should include a versioned timing payload');
+assert.equal(profile.profile.timingAuthoritative, false, 'profile timing payload should be diagnostic only');
+assert.equal(profile.profile.replayHashAuthoritative, true, 'profile should identify the replay hash as authoritative');
+assert(profile.profile.elapsedMs >= 0, 'profile should report non-negative elapsed time');
+assert(profile.profile.simMsPerTick >= 0, 'profile should report non-negative sim cost per tick');
+assert(profile.profile.ticksPerSecond == null || profile.profile.ticksPerSecond > 0,
+  'profile should report a positive tick rate when timing resolution permits');
+assert.equal(profile.profile.eventCount, profile.traceSummary.total, 'profile event count should mirror deterministic trace summary');
+assert.equal(profile.profile.entityCount, profile.metrics.finalEntityCount, 'profile entity count should mirror deterministic metrics');
+assert(profile.profile.systems.includes('actions'), 'sf-sim profile should run the real action system');
+
 const compare = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf-sim.mjs',
   'compare',

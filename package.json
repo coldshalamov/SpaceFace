@@ -13,6 +13,7 @@
     "check:contracts": "node scripts/sf.mjs validate test/47a.inputs.json test/47a.telemetry.expected.json",
     "check:sim": "node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 --reload-at 600",
     "check:sim:compare": "node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600",
+    "check:sim:profile": "node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json",
     "check:sim:long": "node scripts/sf-sim.mjs run 47a --seed 47 --ticks 36000 --inputs test/47a.inputs.json --hash --reload-at 12000",
     "check:balance": "node scripts/balance-sim.mjs",
     "check:presentation": "node scripts/check-presentation-cues.mjs",
@@ -23,7 +24,7 @@
     "bench:combat": "node scripts/bench-combat.mjs",
     "check:flight": "node scripts/flight-lab-sim.mjs && node scripts/probe-flight-visual.mjs",
     "check:art": "node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs && node scripts/check-kestrel-damage.mjs && node scripts/check-kestrel-leak.mjs && node scripts/check-lod.mjs && node scripts/check-collision-debug.mjs && node scripts/check-concord-patrol.mjs && node scripts/check-reaver-pirate.mjs && node scripts/check-faction-ships.mjs",
-    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && npm run check:balance && npm run check:sg02 && npm run check:combat && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && npm run check:contracts && npm run check:presentation && node scripts/check-gameplay-core.mjs && npm run check:sim && npm run check:sim:compare && npm run check:sim:long && node scripts/check-phase0-slice-contract.mjs && node scripts/check-sectorSim.mjs && node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs && node scripts/check-kestrel-damage.mjs && node scripts/check-kestrel-leak.mjs && node scripts/check-lod.mjs && node scripts/check-collision-debug.mjs && node scripts/check-concord-patrol.mjs && node scripts/check-reaver-pirate.mjs && node scripts/check-faction-ships.mjs"
+    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && npm run check:balance && npm run check:sg02 && npm run check:combat && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && npm run check:contracts && npm run check:presentation && node scripts/check-gameplay-core.mjs && npm run check:sim && npm run check:sim:compare && npm run check:sim:profile && npm run check:sim:long && node scripts/check-phase0-slice-contract.mjs && node scripts/check-sectorSim.mjs && node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs && node scripts/check-kestrel-damage.mjs && node scripts/check-kestrel-leak.mjs && node scripts/check-lod.mjs && node scripts/check-collision-debug.mjs && node scripts/check-concord-patrol.mjs && node scripts/check-reaver-pirate.mjs && node scripts/check-faction-ships.mjs"
   },
   "private": true,
   "devDependencies": {

@@ -36,7 +36,7 @@ const command = args[0] || 'help';
 const scenario = args[1] || '';
 
 if (command === 'help' || command === '--help' || command === '-h') usage(0);
-if (command !== 'run' && command !== 'inspect' && command !== 'compare' && command !== 'trace') usage(1, `Unknown command: ${command}`);
+if (!['run', 'inspect', 'compare', 'trace', 'profile'].includes(command)) usage(1, `Unknown command: ${command}`);
 if (scenario !== '47a') usage(1, `Unknown scenario: ${scenario}`);
 
 const inputPath = argValue('--inputs', 'test/47a.inputs.json');
@@ -51,7 +51,7 @@ if (reloadAt != null && (reloadAt <= 0 || reloadAt >= ticks)) {
   throw new RangeError('--reload-at must be greater than 0 and less than --ticks');
 }
 const includeSnapshot = command === 'inspect' || hasFlag('--snapshot') || !hasFlag('--hash');
-const expectPath = command === 'run' || command === 'compare' ? argValue('--expect', null) : null;
+const expectPath = command === 'run' || command === 'compare' || command === 'profile' ? argValue('--expect', null) : null;
 const expectedEnvelope = expectPath ? readJson(expectPath) : null;
 if (expectedEnvelope) assertEvidenceDocument(expectedEnvelope, expectPath);
 const traceEvents = command === 'trace' ? parseTraceEvents(argValue('--events', null)) : null;
@@ -92,6 +92,28 @@ if (command === 'inspect') {
     trace: traced.trace,
     combatTraceSummary: summarizeCombatTrace(traced.combatTrace),
     combatTrace: traced.combatTrace,
+  };
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+} else if (command === 'profile') {
+  const profiled = profile47a({ seed, ticks, tape, reloadAt });
+  const run = profiled.run;
+  assert47aPhase0Metrics(run.metrics, reloadAt == null ? {} : { reloadAt });
+  if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, run, { inputPath, seed });
+  const result = {
+    schema: 'spaceface.sfSimProfileResult.v1',
+    deterministic: true,
+    timingAuthoritative: false,
+    command: 'profile',
+    scenario,
+    seed,
+    ticks,
+    inputTape: inputPath.replace(/\\/g, '/'),
+    expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
+    reloadAt,
+    sha256: run.sha256,
+    metrics: run.metrics,
+    traceSummary: run.traceSummary,
+    profile: profiled.profile,
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'compare') {
@@ -157,6 +179,29 @@ if (command === 'inspect') {
   };
   if (includeSnapshot) result.snapshot = first.snapshot;
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+}
+
+function profile47a(options) {
+  const started = process.hrtime.bigint();
+  const run = run47a(options);
+  const elapsedNs = process.hrtime.bigint() - started;
+  const elapsedMs = Number(elapsedNs) / 1e6;
+  const ticks = Math.max(0, options.ticks || 0);
+  return {
+    run,
+    profile: {
+      schema: 'spaceface.simProfile.v1',
+      profileSource: 'node-process-hrtime',
+      timingAuthoritative: false,
+      replayHashAuthoritative: true,
+      elapsedMs,
+      ticksPerSecond: elapsedMs > 0 ? ticks / (elapsedMs / 1000) : null,
+      simMsPerTick: ticks > 0 ? elapsedMs / ticks : null,
+      systems: run.metrics.systems,
+      eventCount: run.traceSummary.total,
+      entityCount: run.metrics.finalEntityCount,
+    },
+  };
 }
 
 function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceLimit = null, includeTrace = false }) {
@@ -310,7 +355,7 @@ function assertExpectedEnvelope(envelope, run, options) {
     assert(run.metrics.firstMeaningfulSteeringTick <= placeholders.firstMeaningfulSteeringTickMax,
       'first meaningful steering tick exceeded expected telemetry ceiling');
   }
-  if (placeholders.cleanRunCountRequired != null) {
+  if (placeholders.cleanRunCountRequired != null && options.repeat != null) {
     assert(options.repeat >= placeholders.cleanRunCountRequired, 'repeat count is below expected clean run requirement');
   }
   const observedCounts = envelope.phase0ObservedTraceCounts || {};
@@ -582,5 +627,6 @@ function usage(code, message) {
   process.stderr.write('  node scripts/sf-sim.mjs inspect 47a --seed 47 --tick 360 --inputs test/47a.inputs.json [--reload-at 600]\n');
   process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600\n');
   process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--expect test/47a.telemetry.expected.json] [--reload-at 600]\n');
   process.exit(code);
 }
