@@ -22,7 +22,7 @@ globalThis.document = {
 };
 globalThis.window = { addEventListener: () => {}, devicePixelRatio: 1 };
 
-const THREE = await import('../vendor/three.module.js');
+const THREE = await import('three');
 globalThis.THREE = THREE;
 const { buildReaverPirate } = await import('../src/render/ships/reaverPirate.js');
 const { installVisualOverrides } = await import('../src/render/visualOverrides.js');

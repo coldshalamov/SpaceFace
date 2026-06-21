@@ -29,7 +29,7 @@ globalThis.document = {
 };
 globalThis.window = { addEventListener: () => {}, devicePixelRatio: 1 };
 
-const THREE = await import('../vendor/three.module.js');
+const THREE = await import('three');
 globalThis.THREE = THREE;
 
 const { buildKestrelHero } = await import('../src/render/ships/kestrelHero.js');
@@ -119,11 +119,21 @@ check('non-Kestrel entity uses procedural path', !!npcMesh && !(npcMesh.userData
 // Failure isolation: if the hero builder throws in development, the seam must fall back to the
 // procedural factory and never null/blank the entity. In release mode the same failure is fatal.
 const vfDevFailure = createVisualFactory();
-installVisualOverrides(vfDevFailure, { releaseMode: false, kestrelBuilder: () => { throw new Error('synthetic dev hero failure'); } });
+const devWarnings = [];
+installVisualOverrides(vfDevFailure, {
+  releaseMode: false,
+  kestrelBuilder: () => { throw new Error('synthetic dev hero failure'); },
+  onWarning: (message, error) => { devWarnings.push({ message, error }); },
+});
 let devFallback, devThrow;
 try { devFallback = vfDevFailure.build(mkKestrelEntity()); } catch (e) { devThrow = e; }
 check('dev seam catches hero-builder exceptions', !devThrow, devThrow && devThrow.message);
 check('dev seam returns procedural fallback on hero failure', !!devFallback && devFallback.isObject3D && !(devFallback.userData && devFallback.userData.assetId === 'SF_K0_KESTREL_BORROWED_TIME'));
+check('dev seam reports expected fallback warning without console noise',
+  devWarnings.length === 1
+  && /Kestrel hero build failed/.test(devWarnings[0].message)
+  && /synthetic dev hero failure/.test(devWarnings[0].error && devWarnings[0].error.message),
+  `warnings=${devWarnings.length}`);
 
 const vfReleaseFailure = createVisualFactory();
 installVisualOverrides(vfReleaseFailure, { releaseMode: true, kestrelBuilder: () => { throw new Error('synthetic release hero failure'); } });

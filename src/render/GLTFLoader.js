@@ -6,7 +6,7 @@
 // PBR metallic/roughness materials, texture transforms through ordinary UVs, and node hierarchies.
 // It is intentionally failure-explicit: unsupported compression, sparse accessors, or animation data
 // throw a useful error so the visual override can retain the procedural fallback.
-import * as THREE from '../../vendor/three.module.js';
+import * as THREE from 'three';
 
 const COMPONENT = Object.freeze({
   5120: Int8Array,

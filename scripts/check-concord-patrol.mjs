@@ -26,7 +26,7 @@ globalThis.document = {
 };
 globalThis.window = { addEventListener: () => {}, devicePixelRatio: 1 };
 
-const THREE = await import('../vendor/three.module.js');
+const THREE = await import('three');
 globalThis.THREE = THREE;
 const { buildConcordPatrol } = await import('../src/render/ships/concordPatrol.js');
 const { installVisualOverrides } = await import('../src/render/visualOverrides.js');

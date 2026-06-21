@@ -51,6 +51,15 @@ function assertReleaseHeroVisual(entity, visual, releaseMode) {
   throw releaseAssetError('[visualOverrides] release mode requires Kestrel hero asset; procedural fallback is forbidden');
 }
 
+function reportVisualWarning(options, message, error) {
+  if (typeof options.onWarning === 'function') {
+    options.onWarning(message, error);
+    return;
+  }
+  if (error) console.warn(message, error);
+  else console.warn(message);
+}
+
 // Faction bespoke ships intercept by enemy type id (data.lootTableId, set in combat.js). Each maps a
 // spec §8 faction grammar to its most thematically-appropriate NPC host visible in the first sector.
 const FACTION_BUILDERS = {
@@ -81,7 +90,7 @@ export function installVisualOverrides(factory, options = {}) {
         if (releaseMode) {
           throw releaseAssetError('[visualOverrides] release mode requires Kestrel hero asset; hero build failed', error);
         }
-        console.warn('[visualOverrides] Kestrel hero build failed; using procedural fallback', error);
+        reportVisualWarning(options, '[visualOverrides] Kestrel hero build failed; using procedural fallback', error);
       }
       assertReleaseHeroVisual(entity, visual, releaseMode);
     } else if (entity && entity.type === 'ship' && entity.data) {
@@ -90,7 +99,7 @@ export function installVisualOverrides(factory, options = {}) {
       const entry = FACTION_BUILDERS[entity.data.lootTableId];
       if (entry) {
         try { visual = entry.build(entity); }
-        catch (error) { console.warn(`[visualOverrides] ${entry.label} build failed; using procedural fallback`, error); }
+        catch (error) { reportVisualWarning(options, `[visualOverrides] ${entry.label} build failed; using procedural fallback`, error); }
       }
     }
 
@@ -102,7 +111,7 @@ export function installVisualOverrides(factory, options = {}) {
     // the selected procedural/bespoke visual mounted and alive.
     try { return wrapShipWithAuthoredParts(entity, visual); }
     catch (error) {
-      console.warn('[visualOverrides] authored-asset boundary failed; using selected ship visual', error);
+      reportVisualWarning(options, '[visualOverrides] authored-asset boundary failed; using selected ship visual', error);
       return visual;
     }
   };

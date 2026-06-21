@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from 'three';
 import { PART_LIBRARY_CONTRACT } from '../src/render/partsLibrary.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');

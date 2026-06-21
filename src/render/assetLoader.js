@@ -4,7 +4,7 @@
 // `partsLibrary.js` consumes immutable part blueprints from here and decides where parts mount.
 // The game keeps a synchronous visual-factory contract, so loads are started only after a real
 // renderer is available; callers always retain their procedural fallback while this Promise resolves.
-import * as THREE from '../../vendor/three.module.js';
+import * as THREE from 'three';
 
 export const ASSET_AUTHORING_CONTRACT = Object.freeze({
   version: 1,

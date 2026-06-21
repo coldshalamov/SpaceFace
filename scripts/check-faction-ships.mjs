@@ -23,7 +23,7 @@ globalThis.document = {
 };
 globalThis.window = { addEventListener: () => {}, devicePixelRatio: 1 };
 
-const THREE = await import('../vendor/three.module.js');
+const THREE = await import('three');
 globalThis.THREE = THREE;
 const { buildMeridianTrader } = await import('../src/render/ships/meridianTrader.js');
 const { buildDriftBarge } = await import('../src/render/ships/driftBarge.js');

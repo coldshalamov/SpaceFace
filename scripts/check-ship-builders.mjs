@@ -38,7 +38,7 @@ globalThis.document = {
 };
 globalThis.window = { addEventListener: () => {}, devicePixelRatio: 1 };
 
-const THREE = await import('../vendor/three.module.js');
+const THREE = await import('three');
 globalThis.THREE = THREE;
 
 const { createVisualFactory } = await import('../src/render/visualFactory.js');

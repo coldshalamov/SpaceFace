@@ -4,7 +4,7 @@
 // the existing procedural/bespoke ship mounted inside it, then hot-swap only the payload after the
 // first real render exposes WebGLRenderer + Scene. Entity identity, contact shadows, banking, sockets,
 // damage and LOD stay on the stable root for the entire lifetime of the entity.
-import * as THREE from '../../vendor/three.module.js';
+import * as THREE from 'three';
 import { FACTION_PALETTES } from '../data/palettes.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import * as kit from './ships/shipKit.js';
