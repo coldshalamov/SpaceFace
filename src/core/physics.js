@@ -14,6 +14,7 @@ const DEFAULT_MATERIAL = Object.freeze({
 const COLLISION_MATERIALS = Object.freeze({
   ship: DEFAULT_MATERIAL,
   drone: { push: 0.9, restitution: 0.16, tangentDamping: 0.06, impactScale: 0.7 },
+  payload: { push: 0.75, restitution: 0.08, tangentDamping: 0.18, impactScale: 0.5 },
   asteroid: { push: 1, restitution: 0.24, tangentDamping: 0.08, impactScale: 1.1 },
   station: { push: 0.48, restitution: 0.05, tangentDamping: 0.35, impactScale: 0.35 },
 });
@@ -523,6 +524,7 @@ function maskOf(e) {
     case 'projectile': return Masks.PROJECTILE;
     case 'pickup': return Masks.PICKUP;
     case 'drone': return Masks.DRONE;
+    case 'payload': return Masks.PAYLOAD;
     case 'wreck': return Masks.WRECK;
     default: return 0;
   }

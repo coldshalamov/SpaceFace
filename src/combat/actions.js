@@ -5,7 +5,6 @@ import { appendCombatTrace } from './trace.js';
 
 export function createActionService(context, attachments, routeDamage) {
   const { state, catalog, bus, helpers } = context;
-  const physics = helpers && helpers.combatPhysics;
 
   function requestAction(request = {}) {
     const actionDef = catalog.actions.get(request.actionId);
@@ -80,7 +79,7 @@ export function createActionService(context, attachments, routeDamage) {
     const runtime = ensureCombatant(state, actor, catalog);
     const blocked = actionBlockedByCombatant(runtime, def);
     if (blocked) return reject(request, `disabled:${blocked}`);
-    const missingPhysics = missingPhysicsOperation(def, physics);
+    const missingPhysics = missingPhysicsOperation(def, combatPhysics());
     if (missingPhysics) return reject(request, `physics_port_unavailable:${missingPhysics}`);
     const targetCheck = validateTarget(actor, request.target, def.target);
     if (!targetCheck.ok) return reject(request, targetCheck.reason);
@@ -164,6 +163,7 @@ export function createActionService(context, attachments, routeDamage) {
   }
 
   function executeMovement(actor, instance, movement) {
+    const physics = combatPhysics();
     let impulse = null;
     if (movement.kind === 'forwardImpulse') {
       const magnitude = Math.max(0, Number(movement.magnitude) || 0) * movementMultiplier(actor.id);
@@ -333,6 +333,10 @@ export function createActionService(context, attachments, routeDamage) {
   }
 
   return Object.freeze({ requestAction, advance, inspect, phaseAt: (actionId, tick) => phaseAt(catalog.actions.get(actionId), tick) });
+
+  function combatPhysics() {
+    return helpers && helpers.combatPhysics;
+  }
 
   function validateTarget(actor, target, targetDef = {}) {
     if (!targetDef.required && (!target || target.kind === 'none')) return { ok: true };

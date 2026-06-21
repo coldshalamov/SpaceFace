@@ -83,7 +83,7 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'trace') {
   const traced = await run47a({ seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true, physicsBackend });
-  assert47aPhase0Metrics(traced.metrics, reloadAt == null ? {} : { reloadAt });
+  assert47aPhase0Metrics(traced.metrics, { physicsBackend, ...(reloadAt == null ? {} : { reloadAt }) });
   const result = {
     schema: 'spaceface.sfSimTraceResult.v1',
     deterministic: true,
@@ -106,7 +106,7 @@ if (command === 'inspect') {
 } else if (command === 'profile') {
   const profiled = await profile47a({ seed, ticks, tape, reloadAt, physicsBackend });
   const run = profiled.run;
-  assert47aPhase0Metrics(run.metrics, reloadAt == null ? {} : { reloadAt });
+  assert47aPhase0Metrics(run.metrics, { physicsBackend, ...(reloadAt == null ? {} : { reloadAt }) });
   if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, run, { inputPath, seed });
   const result = {
     schema: 'spaceface.sfSimProfileResult.v1',
@@ -130,9 +130,9 @@ if (command === 'inspect') {
 } else if (command === 'compare') {
   if (reloadAt == null) usage(1, 'compare requires --reload-at');
   const baseline = await run47a({ seed, ticks, tape, physicsBackend });
-  assert47aPhase0Metrics(baseline.metrics);
+  assert47aPhase0Metrics(baseline.metrics, { physicsBackend });
   const candidate = await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
-  assert47aPhase0Metrics(candidate.metrics, { reloadAt });
+  assert47aPhase0Metrics(candidate.metrics, { physicsBackend, reloadAt });
   const comparison = await compareRuns(baseline, candidate, {
     expectedEnvelope,
     inputPath,
@@ -161,15 +161,15 @@ if (command === 'inspect') {
   process.exitCode = comparison.ok ? 0 : 1;
 } else {
   const baseline = await run47a({ seed, ticks, tape, physicsBackend });
-  assert47aPhase0Metrics(baseline.metrics);
+  assert47aPhase0Metrics(baseline.metrics, { physicsBackend });
   const first = reloadAt == null ? baseline : await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
-  assert47aPhase0Metrics(first.metrics, { reloadAt });
+  assert47aPhase0Metrics(first.metrics, { physicsBackend, reloadAt });
   if (reloadAt != null) {
     assert.equal(first.sha256, baseline.sha256, `reload-at ${reloadAt} hash diverged from uninterrupted baseline`);
   }
   for (let i = 1; i < repeat; i++) {
     const next = await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
-    assert47aPhase0Metrics(next.metrics, { reloadAt });
+    assert47aPhase0Metrics(next.metrics, { physicsBackend, reloadAt });
     assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
   }
   if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, first, { inputPath, seed, repeat });
@@ -240,6 +240,10 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
     projectileHits: 0,
     combatDamage: 0,
     entityKilled: 0,
+    tetherAttached: 0,
+    tetherReel: 0,
+    tetherBroken: 0,
+    firstTetherAttachTick: null,
     economyTicks: 0,
     saveReloads: 0,
     firstMeaningfulSteeringTick: null,
@@ -252,6 +256,12 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   bus.on('projectile:hit', () => { metrics.projectileHits++; });
   bus.on('combat:damage', () => { metrics.combatDamage++; });
   bus.on('entity:killed', () => { metrics.entityKilled++; });
+  bus.on('tether:attached', () => {
+    metrics.tetherAttached++;
+    if (metrics.firstTetherAttachTick == null) metrics.firstTetherAttachTick = state.tick;
+  });
+  bus.on('tether:reel', () => { metrics.tetherReel++; });
+  bus.on('tether:broken', () => { metrics.tetherBroken++; });
   bus.on('economy:tick', () => { metrics.economyTicks++; });
   bus.on('scenario:loaded', () => { metrics.scenarioLoaded++; });
   bus.on('scenario:beatEntered', () => { metrics.scenarioBeatEntered++; });
@@ -274,10 +284,20 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   state.playerId = player.id;
   player.data = Object.assign({}, player.data, { scenarioActorId: 'player_kestrel', scenarioRole: 'player_ship' });
 
+  const spindle = sim.spawn(makeEvidenceSpindleSpec({
+    pos: { x: 92, z: 0 },
+    rot: 0,
+  }));
+  spindle.data = Object.assign({}, spindle.data, {
+    scenarioActorId: 'evidence_spindle_47a',
+    scenarioRole: 'tether_payload',
+    assetRef: 'asset.slice.47a_spindle',
+  });
+
   const target = sim.spawn(makeShipEntitySpec('ship_wasp', {
     team: 1,
     factionId: 'faction_reavers',
-    pos: { x: 620, z: 245 },
+    pos: { x: 620, z: -18 },
     rot: Math.PI,
     ai: { role: 'target_dummy' },
   }));
@@ -295,7 +315,9 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
 
   for (let tick = 0; tick < ticks; tick++) {
     while (frameIndex < frames.length && frames[frameIndex].tick <= tick) {
-      currentInput = frames[frameIndex].input || {};
+      const frame = frames[frameIndex];
+      currentInput = frame.input || {};
+      applyTapeCommands(state, sim.helpers, frame.commands || []);
       frameIndex++;
     }
     applyInput(state, currentInput);
@@ -367,12 +389,63 @@ function applyInput(state, input) {
   });
 }
 
+function applyTapeCommands(state, helpers, commands) {
+  if (!Array.isArray(commands) || commands.length === 0) return;
+  for (const command of commands) {
+    if (!command || command.kind !== 'combatAction') continue;
+    assert(helpers && typeof helpers.requestCombatAction === 'function',
+      'golden tape combatAction commands require the SG-03 requestCombatAction helper');
+    const actor = resolveScenarioEntity(state, command.actor);
+    assert(actor, `golden tape command actor did not resolve: ${command.actor}`);
+    const request = {
+      actorId: actor.id,
+      actionId: command.actionId,
+      source: { kind: command.source || 'player', controllerId: 'golden-tape' },
+    };
+    if (command.target != null) {
+      const target = resolveScenarioEntity(state, command.target);
+      assert(target, `golden tape command target did not resolve: ${command.target}`);
+      request.targetId = target.id;
+    }
+    if (command.attachment != null) {
+      request.attachmentId = resolveAttachmentRef(state, command.attachment, actor.id);
+    }
+    const result = helpers.requestCombatAction(request);
+    assert(result && result.ok, `golden tape combatAction rejected: ${command.actionId} (${result && result.reason || 'unknown'})`);
+  }
+}
+
 function normalizeTape(tape) {
   const frames = tape.frames.map((frame) => ({
     tick: frame.tick,
     input: frame.input || {},
+    commands: Array.isArray(frame.commands) ? frame.commands.map((command) => ({ ...command })) : [],
   }));
   return frames;
+}
+
+function resolveScenarioEntity(state, ref) {
+  if (ref == null) return null;
+  if (Number.isSafeInteger(ref)) return state.entities.get(ref) || null;
+  const id = String(ref);
+  if (id === 'player' || id === 'player_kestrel') return state.entities.get(state.playerId) || null;
+  const binding = state.scenario && state.scenario.actorBindings && state.scenario.actorBindings[id];
+  if (binding && binding.status === 'bound') return state.entities.get(binding.entityId) || null;
+  return (state.entityList || []).find((entity) => {
+    const data = entity && entity.data || {};
+    return data.scenarioActorId === id || data.scenarioRole === id || data.assetRef === id || data.defId === id;
+  }) || null;
+}
+
+function resolveAttachmentRef(state, ref, ownerId) {
+  const id = String(ref);
+  if (id !== 'latestOwned') return id;
+  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId || {};
+  const latest = Object.values(attachments)
+    .filter((attachment) => attachment && attachment.state === 'active' && attachment.ownerId === ownerId)
+    .sort((a, b) => String(b.id).localeCompare(String(a.id)))[0];
+  assert(latest, `golden tape attachment ref did not resolve: ${ref}`);
+  return latest.id;
 }
 
 function assertEvidenceDocument(doc, rel) {
@@ -395,6 +468,10 @@ function assertExpectedEnvelope(envelope, run, options) {
   if (placeholders.firstMeaningfulSteeringTickMax != null) {
     assert(run.metrics.firstMeaningfulSteeringTick <= placeholders.firstMeaningfulSteeringTickMax,
       'first meaningful steering tick exceeded expected telemetry ceiling');
+  }
+  if (placeholders.firstTetherAttachTickMax != null) {
+    assert(run.metrics.firstTetherAttachTick != null && run.metrics.firstTetherAttachTick <= placeholders.firstTetherAttachTickMax,
+      'first tether attach tick exceeded expected telemetry ceiling');
   }
   if (placeholders.cleanRunCountRequired != null && options.repeat != null) {
     assert(options.repeat >= placeholders.cleanRunCountRequired, 'repeat count is below expected clean run requirement');
@@ -507,6 +584,15 @@ function compareExpectedEnvelope(envelope, run, options) {
       actual: run.metrics.firstMeaningfulSteeringTick,
     });
   }
+  if (placeholders.firstTetherAttachTickMax != null
+    && !(run.metrics.firstTetherAttachTick != null && run.metrics.firstTetherAttachTick <= placeholders.firstTetherAttachTickMax)) {
+    diffs.push({
+      kind: 'expectedMetric',
+      path: '$.acceptancePlaceholders.firstTetherAttachTickMax',
+      expected: `<=${placeholders.firstTetherAttachTickMax}`,
+      actual: run.metrics.firstTetherAttachTick,
+    });
+  }
   const observedCounts = envelope.phase0ObservedTraceCounts || {};
   for (const [type, expectedCount] of Object.entries(observedCounts)) {
     const actualCount = run.traceSummary.types[type] || 0;
@@ -546,6 +632,55 @@ async function preparePhysicsBackend(registry, state, physicsBackend, options = 
 
 function readJson(rel) {
   return JSON.parse(readFileSync(resolve(ROOT, rel), 'utf8'));
+}
+
+function makeEvidenceSpindleSpec({ pos, rot = 0 } = {}) {
+  return {
+    type: 'payload',
+    alive: true,
+    collides: false,
+    radius: 10,
+    mass: 960,
+    flightModel: { inertia: 1200 },
+    pos: pos || { x: 92, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot,
+    angVel: 0,
+    team: 0,
+    factionId: 'faction_free',
+    hull: 180,
+    hullMax: 180,
+    armorHp: 120,
+    armorMax: 120,
+    armorFlat: 6,
+    shield: 0,
+    shieldMax: 0,
+    cap: 0,
+    capMax: 0,
+    capRegen: 0,
+    flags: { persistent: true },
+    data: {
+      scenarioActorId: 'evidence_spindle_47a',
+      scenarioRole: 'tether_payload',
+      assetRef: 'asset.slice.47a_spindle',
+      tetherPayload: true,
+      falseMassKg: 960,
+      manifestMassKg: 480,
+      derived: { damageReductionMult: 1 },
+      combatProfileId: 'combat_profile_tether_payload',
+    },
+    physicsBody: {
+      schemaVersion: 1,
+      radius: 10,
+      mass: 960,
+      inertiaY: 1200,
+      dynamic: true,
+      ccd: true,
+      material: 'sensor',
+      attachmentPoints: { massline: { x: 0, y: 0, z: 0 } },
+      revision: 0,
+    },
+  };
 }
 
 function loadScenarioContract(rel) {
@@ -711,6 +846,11 @@ function assert47aPhase0Metrics(metrics, options = {}) {
   assert(metrics.projectileHits > 0, '47-A Phase 0 tape should exercise projectile collision');
   assert(metrics.combatDamage > 0, '47-A Phase 0 tape should exercise combat damage');
   assert(metrics.economyTicks > 0, '47-A Phase 0 tape should advance economy cadence');
+  if (options.physicsBackend === 'rapier-dynamic') {
+    assert(metrics.firstTetherAttachTick != null && metrics.firstTetherAttachTick <= 3600,
+      '47-A dynamic Phase 0 tape should attach the Massline within 60s');
+    assert(metrics.tetherAttached > 0, '47-A dynamic Phase 0 tape should emit real tether attachment evidence');
+  }
   if (options.reloadAt != null) {
     assert.equal(metrics.saveReloads, 1, '47-A reload check should perform exactly one save/load cycle');
   }

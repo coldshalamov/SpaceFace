@@ -51,7 +51,7 @@ export function createCombatKernel(ctx, options = {}) {
       const entity = payload && (payload.entity || getEntity(payload.id));
       if (entity) initializeEntity(entity);
     }));
-    subscriptions.push(bus.on('entity:destroyed', (payload) => onEntityGone(payload && payload.id)));
+    subscriptions.push(bus.on('entity:destroyed', (payload) => onEntityGone(payload)));
     subscriptions.push(bus.on('physics:attachmentBroken', (payload) => attachments.onPhysicsBreak(payload)));
     subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
     subscriptions.push(bus.on('combat:routeDamage', (payload) => routeDamage(payload || {})));
@@ -127,8 +127,10 @@ export function createCombatKernel(ctx, options = {}) {
     return runtime;
   }
 
-  function onEntityGone(entityId) {
+  function onEntityGone(payload) {
+    const entityId = payload && payload.id;
     if (entityId == null) return;
+    if (payload && payload.reason === 'save_restore') return;
     for (const attachment of attachments.listForEntity(entityId, true)) attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
     removeCombatantRuntime(state, entityId);
     appendCombatTrace(state.combat, state.tick, 'combat.entityRemoved', { targetId: entityId });

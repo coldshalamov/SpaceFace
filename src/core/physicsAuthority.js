@@ -230,13 +230,13 @@ function normalizeAttachmentPoints(points) {
 }
 
 function defaultDynamic(entity) {
-  return entity.type === 'ship' || entity.type === 'drone' || entity.type === 'projectile' ||
+  return entity.type === 'ship' || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'projectile' ||
     entity.type === 'pickup' || entity.type === 'wreck' ||
     !!(entity.data && (entity.data.majorDebris || entity.data.tetherPayload));
 }
 
 function defaultCcd(entity) {
-  return entity.type === 'ship' || entity.type === 'drone' || entity.type === 'projectile';
+  return entity.type === 'ship' || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'projectile';
 }
 
 function defaultMaterial(entity) {
@@ -245,6 +245,7 @@ function defaultMaterial(entity) {
   if (entity.type === 'asteroid') return 'rock';
   if (entity.type === 'wreck') return 'debris';
   if (entity.type === 'pickup') return 'sensor';
+  if (entity.type === 'payload') return 'payload';
   return entity.type === 'ship' || entity.type === 'drone' ? 'ship' : 'default';
 }
 

@@ -3,8 +3,7 @@ import { ensureCombatant, entityKey } from './runtime.js';
 import { appendCombatTrace } from './trace.js';
 
 export function createAttachmentService(context) {
-  const { state, catalog, helpers } = context;
-  const physics = helpers && helpers.combatPhysics;
+  const { state, catalog, helpers, bus } = context;
 
   function get(attachmentId) {
     return state.combat.attachments.byId[String(attachmentId)] || null;
@@ -14,6 +13,7 @@ export function createAttachmentService(context) {
     const def = catalog.attachments.get(spec && spec.defId);
     const owner = entity(spec && spec.ownerId);
     const target = entity(spec && spec.targetId);
+    const physics = combatPhysics();
     if (!def) return fail('unknown_attachment_def');
     if (!owner || !owner.alive) return fail('owner_missing');
     if (!target || !target.alive || target.id === owner.id) return fail('target_missing');
@@ -65,11 +65,22 @@ export function createAttachmentService(context) {
       restLength,
       cueId: def.cues && def.cues.created,
     });
+    if (bus) bus.emit('tether:attached', {
+      actorId: owner.id,
+      targetId: target.id,
+      attachmentId: id,
+      attachmentDefId: def.id,
+      sourceSocketId: sourceSocket.id,
+      targetSocketId: targetSocket.id,
+      restLength,
+      cueId: def.cues && def.cues.created,
+    });
     return { ok: true, attachment };
   }
 
   function reel(attachmentId, restLengthDelta, minRestLength = 0) {
     const attachment = get(attachmentId);
+    const physics = combatPhysics();
     if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
     if (!physics || typeof physics.setAttachmentReel !== 'function') return fail('physics_port_unavailable');
     const next = Math.max(Math.max(0, Number(minRestLength) || 0), attachment.restLength + (Number(restLengthDelta) || 0));
@@ -94,6 +105,13 @@ export function createAttachmentService(context) {
       before,
       after: next,
     });
+    if (bus) bus.emit('tether:reel', {
+      actorId: attachment.ownerId,
+      targetId: attachment.targetId,
+      attachmentId: attachment.id,
+      before,
+      after: next,
+    });
     return { ok: true, attachment };
   }
 
@@ -106,6 +124,7 @@ export function createAttachmentService(context) {
 
   function breakAttachment(attachmentOrId, reason = 'break', actorId = null, telemetry = null) {
     const attachment = typeof attachmentOrId === 'string' ? get(attachmentOrId) : attachmentOrId;
+    const physics = combatPhysics();
     if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
     if (physics && typeof physics.cutAttachment === 'function') {
       try {
@@ -138,6 +157,15 @@ export function createAttachmentService(context) {
       impulse: attachment.lastImpulse,
       cueId: def && def.cues && def.cues.broken,
     });
+    if (bus) bus.emit('tether:broken', {
+      actorId: actorId == null ? attachment.ownerId : actorId,
+      targetId: attachment.targetId,
+      attachmentId: attachment.id,
+      reason,
+      tension: attachment.lastTension,
+      impulse: attachment.lastImpulse,
+      cueId: def && def.cues && def.cues.broken,
+    });
     return { ok: true, attachment };
   }
 
@@ -152,6 +180,7 @@ export function createAttachmentService(context) {
   }
 
   function reconcilePhysics() {
+    const physics = combatPhysics();
     if (!physics || typeof physics.createAttachment !== 'function' || typeof physics.getAttachmentTelemetry !== 'function') {
       return { recreated: 0, pending: 0 };
     }
@@ -203,6 +232,7 @@ export function createAttachmentService(context) {
   }
 
   function updateTelemetryAndBreak() {
+    const physics = combatPhysics();
     if (!physics || typeof physics.getAttachmentTelemetry !== 'function') return;
     for (const attachment of Object.values(state.combat.attachments.byId).sort(byId)) {
       if (attachment.state !== 'active') continue;
@@ -240,7 +270,12 @@ export function createAttachmentService(context) {
 
   return Object.freeze({ get, create, reel, cut, breakAttachment, breakOwnedBy, reconcilePhysics, transfer, updateTelemetryAndBreak, onPhysicsBreak, listForEntity });
 
+  function combatPhysics() {
+    return helpers && helpers.combatPhysics;
+  }
+
   function createPhysicsAttachment(attachment, def) {
+    const physics = combatPhysics();
     if (!physics || typeof physics.createAttachment !== 'function') return { ok: false, reason: 'physics_port_unavailable' };
     const owner = entity(attachment.ownerId);
     const target = entity(attachment.targetId);

@@ -29,9 +29,11 @@ const trace = runJson([
   '--inputs',
   INPUT_PATH,
   '--events',
-  'scenario.*,combat.*,story.*',
+  'scenario.*,tether.*,combat.*,story.*',
   '--limit',
   '300',
+  '--physics-backend',
+  'rapier-dynamic',
 ]);
 
 assert.equal(trace.schema, 'spaceface.sfCliResult.v1', 'sf trace should use the canonical CLI envelope');
@@ -45,17 +47,20 @@ assert.equal(result.scenarioContract.activeBeatId, 'drop_wreck_field', '720-tick
 assert.deepEqual(result.scenarioContract.enteredBeatIds, ['drop_wreck_field'], 'smoke run should not claim later beats');
 assert.equal(result.scenarioContract.factCount, 5, 'scenario runtime should initialize declared world facts');
 assert.equal(result.scenarioContract.actorCount, 8, 'scenario runtime should see every declared actor');
-assert(result.scenarioContract.boundActorCount >= 1, 'scenario runtime should bind the player actor');
-assert(result.scenarioContract.unresolvedActorIds.includes('evidence_spindle_47a'),
-  'runtime should report unresolved slice actors instead of silently inventing them');
+assert.equal(result.scenarioContract.boundActorCount, 2, 'scenario runtime should bind the player and evidence spindle actors');
+assert(!result.scenarioContract.unresolvedActorIds.includes('evidence_spindle_47a'),
+  'runtime should bind the 47-A evidence spindle to a real payload entity');
 
 const counts = result.traceSummary.types || {};
 assert.equal(counts['scenario:loaded'], 1, 'scenario trace should prove contract load');
 assert.equal(counts['scenario:factsInitialized'], 1, 'scenario trace should prove fact initialization');
 assert.equal(counts['scenario:actorBindings'], 1, 'scenario trace should prove actor binding audit');
 assert.equal(counts['scenario:beatEntered'], 1, 'scenario trace should prove beat entry');
+assert.equal(counts['tether:attached'], 1, 'scenario trace should prove the first Massline attach');
 assert(result.trace.records.some((record) => record.type === 'scenario:beatEntered'
   && record.payload.beatId === 'drop_wreck_field'), 'trace records should name the first beat');
+assert(result.trace.records.some((record) => record.type === 'tether:attached'
+  && record.payload.targetId != null), 'trace records should include the tether target payload');
 
 const compare = runJson([
   'scripts/sf-sim.mjs',
@@ -71,6 +76,8 @@ const compare = runJson([
   ENVELOPE_PATH,
   '--reload-at',
   '600',
+  '--physics-backend',
+  'rapier-dynamic',
 ]);
 assert.equal(compare.schema, 'spaceface.sfSimCompareResult.v1', 'compare should emit a versioned result');
 assert.equal(compare.ok, true, 'scenario runtime should preserve reload parity');

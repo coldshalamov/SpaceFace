@@ -104,7 +104,7 @@ for (let i = 1; i < tape.frames.length; i++) {
   assert(tape.frames[i].tick > tape.frames[i - 1].tick, 'golden input tape ticks should increase');
 }
 
-for (const family of ['flight', 'combat', 'economy', 'story', 'ai', 'camera']) {
+for (const family of ['flight', 'combat', 'economy', 'story', 'ai', 'camera', 'tether']) {
   assert(envelope.requiredEventFamilies.includes(family), `telemetry envelope missing ${family}`);
 }
 assert(envelope.requiredEventFamilies.includes('scenario'), 'telemetry envelope missing scenario');
@@ -117,8 +117,8 @@ for (const type of Object.keys(envelope.phase0ObservedTraceCounts)) {
   assert(DEFAULT_TRACE_EVENTS.includes(type), `observed trace count is not subscribed by event trace: ${type}`);
 }
 assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 12, 'expected telemetry should pin observed combat fire count');
-assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 12, 'expected telemetry should pin observed projectile hit count');
-assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 12, 'expected telemetry should pin observed combat damage count');
+assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 11, 'expected telemetry should pin observed projectile hit count');
+assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 11, 'expected telemetry should pin observed combat damage count');
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
 assert.equal(envelope.phase0ObservedTraceCounts['graffiti:show'], 1, 'expected telemetry should pin observed cold-start graffiti count');
 assert.equal(envelope.phase0ObservedTraceCounts['comms:popup'], 2, 'expected telemetry should pin observed cold-start comms count');
@@ -126,8 +126,11 @@ assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:beatEntered'], 1, 'expected telemetry should pin scenario beat entry count');
+assert.equal(envelope.phase0ObservedTraceCounts['tether:attached'], 1, 'expected telemetry should pin first Massline attach evidence');
+assert.equal(envelope.acceptancePlaceholders.firstTetherAttachTickMax, 3600,
+  'expected telemetry should require first Massline attach within 60s');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  'bfdab9bc8334f8036b107c90376557e4aaa13fd155861f030414b4424fc54c7e',
+  '817de49bb6ab24acee39e56bc722508fe8c63ac89243522890003944bbc30a12',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 
 const balanceSim = read('scripts/balance-sim.mjs');
@@ -165,6 +168,8 @@ const inspect = JSON.parse(execFileSync(process.execPath, [
   '360',
   '--inputs',
   'test/47a.inputs.json',
+  '--physics-backend',
+  'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(inspect.schema, 'spaceface.sfSimInspectResult.v1', 'sf-sim inspect should emit a versioned inspect result');
 assert.equal(inspect.command, 'inspect', 'sf-sim inspect command should round-trip in JSON');
@@ -184,8 +189,19 @@ assert.equal(inspect.snapshot.scenario.active.activeBeatId, 'drop_wreck_field',
   'sf-sim snapshot should include the active 47-A beat');
 assert.deepEqual(inspect.snapshot.scenario.enteredBeatIds, ['drop_wreck_field'],
   'sf-sim snapshot should not claim later 47-A beats');
+assert.equal(inspect.scenarioContract.boundActorCount, 2, 'sf-sim inspect should bind player and evidence spindle actors');
+assert(!inspect.scenarioContract.unresolvedActorIds.includes('evidence_spindle_47a'),
+  'sf-sim inspect should bind the evidence spindle instead of leaving it unresolved');
+const inspectPayload = inspect.snapshot.entities.find((entity) => entity.data && entity.data.scenarioActorId === 'evidence_spindle_47a');
+assert(inspectPayload, 'sf-sim inspect snapshot should include the 47-A evidence spindle payload');
+assert.equal(inspectPayload.type, 'payload', 'evidence spindle should use the payload entity primitive');
+assert(inspect.snapshot.physics.ready, 'sf-sim inspect should report the dynamic physics backend ready');
+assert(inspect.snapshot.physics.bodies.some((body) => body.id === inspectPayload.id),
+  'evidence spindle should have an SG-02 dynamic physics body');
 assert((inspect.traceSummary.types['graffiti:show'] || 0) > 0, 'sf-sim inspect should expose cold-start graffiti evidence');
 assert((inspect.traceSummary.types['comms:popup'] || 0) > 0, 'sf-sim inspect should expose cold-start comms evidence');
+assert.equal(inspect.traceSummary.types['tether:attached'], envelope.phase0ObservedTraceCounts['tether:attached'],
+  'sf-sim inspect should expose Massline attach evidence');
 
 const sfInspect = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf.mjs',
@@ -197,6 +213,8 @@ const sfInspect = JSON.parse(execFileSync(process.execPath, [
   '360',
   '--inputs',
   'test/47a.inputs.json',
+  '--physics-backend',
+  'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(sfInspect.schema, 'spaceface.sfCliResult.v1', 'canonical sf inspect should emit a versioned CLI result');
 assert.equal(sfInspect.ok, true, 'canonical sf inspect should report a successful delegated inspect run');
@@ -216,9 +234,11 @@ const trace = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--events',
-  'scenario.*,combat.*,story.*',
+  'scenario.*,tether.*,combat.*,story.*',
   '--limit',
   '200',
+  '--physics-backend',
+  'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(trace.schema, 'spaceface.sfSimTraceResult.v1', 'sf-sim trace should emit a versioned trace result');
 assert.equal(trace.command, 'trace', 'sf-sim trace command should round-trip in JSON');
@@ -226,19 +246,26 @@ assert.equal(trace.sha256, envelope.acceptancePlaceholders.authoritativeHash, 's
 assert(trace.trace && trace.trace.schema === 'spaceface.eventTrace.v1', 'sf-sim trace should include deterministic event records');
 assert(trace.trace.subscribedEvents.includes('combat:fire'), 'sf-sim trace should resolve combat.* event filters');
 assert(trace.trace.subscribedEvents.includes('scenario:loaded'), 'sf-sim trace should resolve scenario.* event filters');
+assert(trace.trace.subscribedEvents.includes('tether:attached'), 'sf-sim trace should resolve tether.* event filters');
 assert(trace.trace.subscribedEvents.includes('story:beatAdvanced'), 'sf-sim trace should resolve story.* event filters');
 assert.equal(trace.traceSummary.types['combat:fire'], envelope.phase0ObservedTraceCounts['combat:fire'],
   'sf-sim trace should expose filtered combat fire evidence');
+assert.equal(trace.traceSummary.types['tether:attached'], envelope.phase0ObservedTraceCounts['tether:attached'],
+  'sf-sim trace should expose filtered Massline attach evidence');
 assert.equal(trace.traceSummary.types['scenario:loaded'], envelope.phase0ObservedTraceCounts['scenario:loaded'],
   'sf-sim trace should expose scenario contract load evidence');
 assert.equal(trace.scenarioContract.activeBeatId, 'drop_wreck_field',
   'sf-sim trace should expose the first active scenario beat');
-assert(trace.scenarioContract.unresolvedActorIds.includes('evidence_spindle_47a'),
-  'sf-sim trace should expose unresolved scenario actor ids instead of silently inventing missing actors');
+assert.equal(trace.scenarioContract.boundActorCount, 2, 'sf-sim trace should bind player and evidence spindle actors');
+assert(!trace.scenarioContract.unresolvedActorIds.includes('evidence_spindle_47a'),
+  'sf-sim trace should bind the evidence spindle actor');
 assert(trace.combatTrace && trace.combatTrace.schemaVersion === 1, 'sf-sim trace should include the SG-03 combat trace');
 assert(trace.combatTrace.digest && /^[a-f0-9]{8}$/.test(trace.combatTrace.digest), 'SG-03 combat trace should include a deterministic digest');
 assert((trace.combatTraceSummary.kinds['damage.routed'] || 0) > 0, 'SG-03 combat trace should expose routed damage events');
+assert((trace.combatTraceSummary.kinds['attachment.created'] || 0) === 1, 'SG-03 combat trace should expose one attachment creation');
 assert(trace.metrics.systems.includes('actions'), 'sf-sim trace should run the real action system');
+assert(trace.metrics.firstTetherAttachTick <= envelope.acceptancePlaceholders.firstTetherAttachTickMax,
+  'sf-sim trace should attach the Massline within the expected ceiling');
 
 const sfTrace = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf.mjs',
@@ -251,9 +278,11 @@ const sfTrace = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--events',
-  'scenario.*,combat.*,story.*',
+  'scenario.*,tether.*,combat.*,story.*',
   '--limit',
   '200',
+  '--physics-backend',
+  'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(sfTrace.schema, 'spaceface.sfCliResult.v1', 'canonical sf trace should emit a versioned CLI result');
 assert.equal(sfTrace.ok, true, 'canonical sf trace should report a successful delegated trace run');
@@ -264,6 +293,8 @@ assert.equal(sfTrace.result.sha256, envelope.acceptancePlaceholders.authoritativ
   'canonical sf trace should preserve the authoritative replay hash');
 assert.equal(sfTrace.result.traceSummary.types['combat:fire'], envelope.phase0ObservedTraceCounts['combat:fire'],
   'canonical sf trace should expose filtered combat fire evidence');
+assert.equal(sfTrace.result.traceSummary.types['tether:attached'], envelope.phase0ObservedTraceCounts['tether:attached'],
+  'canonical sf trace should expose filtered Massline attach evidence');
 assert.equal(sfTrace.result.traceSummary.types['scenario:loaded'], envelope.phase0ObservedTraceCounts['scenario:loaded'],
   'canonical sf trace should expose scenario contract load evidence');
 
@@ -279,6 +310,8 @@ const profile = JSON.parse(execFileSync(process.execPath, [
   'test/47a.inputs.json',
   '--expect',
   'test/47a.telemetry.expected.json',
+  '--physics-backend',
+  'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(profile.schema, 'spaceface.sfSimProfileResult.v1', 'sf-sim profile should emit a versioned profile result');
 assert.equal(profile.command, 'profile', 'sf-sim profile command should round-trip in JSON');
@@ -307,6 +340,8 @@ const sfProfile = JSON.parse(execFileSync(process.execPath, [
   'test/47a.inputs.json',
   '--expect',
   'test/47a.telemetry.expected.json',
+  '--physics-backend',
+  'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(sfProfile.schema, 'spaceface.sfCliResult.v1', 'canonical sf profile should emit a versioned CLI result');
 assert.equal(sfProfile.ok, true, 'canonical sf profile should report a successful delegated sim run');
@@ -332,6 +367,8 @@ const sfReplayVerify = JSON.parse(execFileSync(process.execPath, [
   '20',
   '--reload-at',
   '600',
+  '--physics-backend',
+  'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(sfReplayVerify.schema, 'spaceface.sfCliResult.v1', 'canonical sf replay verify should emit a versioned CLI result');
 assert.equal(sfReplayVerify.ok, true, 'canonical sf replay verify should report successful replay verification');
@@ -360,6 +397,8 @@ const sfDiffReplay = JSON.parse(execFileSync(process.execPath, [
   'test/47a.telemetry.expected.json',
   '--reload-at',
   '600',
+  '--physics-backend',
+  'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(sfDiffReplay.schema, 'spaceface.sfCliResult.v1', 'canonical sf diff replay should emit a versioned CLI result');
 assert.equal(sfDiffReplay.ok, true, 'canonical sf diff replay should report clean replay parity');
@@ -403,6 +442,8 @@ const compare = JSON.parse(execFileSync(process.execPath, [
   'test/47a.telemetry.expected.json',
   '--reload-at',
   '600',
+  '--physics-backend',
+  'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(compare.schema, 'spaceface.sfSimCompareResult.v1', 'sf-sim compare should emit a versioned compare result');
 assert.equal(compare.command, 'compare', 'sf-sim compare command should round-trip in JSON');

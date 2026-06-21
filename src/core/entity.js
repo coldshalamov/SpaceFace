@@ -6,10 +6,10 @@
 // entity graph. Legacy render code may still address entity.mesh/entity.view while it migrates to
 // its own id -> view registry, but those references are never enumerable, cloneable, or serializable.
 
-export const EntityTypes = ['ship', 'asteroid', 'station', 'projectile', 'pickup', 'drone', 'wreck', 'fx'];
+export const EntityTypes = ['ship', 'asteroid', 'station', 'projectile', 'pickup', 'drone', 'payload', 'wreck', 'fx'];
 
 export const Masks = {
-  SHIP: 1, ASTEROID: 2, STATION: 4, PROJECTILE: 8, PICKUP: 16, DRONE: 32, WRECK: 64,
+  SHIP: 1, ASTEROID: 2, STATION: 4, PROJECTILE: 8, PICKUP: 16, DRONE: 32, WRECK: 64, PAYLOAD: 128,
 };
 
 // Default collision mask per type (what each type is broad-phased against).
@@ -20,6 +20,7 @@ export const DEFAULT_MASK = {
   projectile: Masks.SHIP | Masks.ASTEROID | Masks.STATION,
   pickup: Masks.SHIP | Masks.DRONE,
   drone: Masks.ASTEROID | Masks.PROJECTILE,
+  payload: Masks.SHIP | Masks.ASTEROID | Masks.STATION,
   wreck: 0,
   fx: 0,
 };

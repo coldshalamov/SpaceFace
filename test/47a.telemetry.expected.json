@@ -12,13 +12,15 @@
     "story",
     "ai",
     "camera",
-    "scenario"
+    "scenario",
+    "tether"
   ],
   "phase0ExpectedTraceTypes": [
     "scenario:loaded",
     "scenario:factsInitialized",
     "scenario:actorBindings",
     "scenario:beatEntered",
+    "tether:attached",
     "ship:boostStart",
     "ship:boostStop",
     "combat:fire",
@@ -37,17 +39,18 @@
     "scenario:factsInitialized": 1,
     "scenario:actorBindings": 1,
     "scenario:beatEntered": 1,
+    "tether:attached": 1,
     "combat:fire": 12,
-    "projectile:hit": 12,
-    "combat:damage": 12,
+    "projectile:hit": 11,
+    "combat:damage": 11,
     "economy:tick": 2,
     "graffiti:show": 1,
     "comms:popup": 2
   },
   "acceptancePlaceholders": {
-    "authoritativeHash": "bfdab9bc8334f8036b107c90376557e4aaa13fd155861f030414b4424fc54c7e",
+    "authoritativeHash": "817de49bb6ab24acee39e56bc722508fe8c63ac89243522890003944bbc30a12",
     "firstMeaningfulSteeringTickMax": 300,
-    "firstTetherAttachTickMax": null,
+    "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
     "policyCompletionCountMin": 3,
     "enemyCounterTetherBehaviorCountMin": 2,
@@ -56,7 +59,7 @@
   "notes": [
     "This starts as a Phase 0 envelope for the current headless 47-A smoke run.",
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
-    "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this 720-tick run.",
-    "Massline-specific expectations remain null until SG-02/SG-03 define command and action schemas."
+    "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick run.",
+    "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds."
   ]
 }

@@ -604,6 +604,7 @@ export const save = {
       try {
         this.bus.emit('entity:destroyed', {
           id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId,
+          reason: 'save_restore',
         });
       } catch (err) { /* a render/vfx handler must not abort the clear */ }
     }

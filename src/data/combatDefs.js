@@ -211,6 +211,14 @@ export const COMBAT_PROFILES = Object.freeze([
     capabilities: { drive: true, weapon: true, sensor: true, tether: true, power: true },
   },
   {
+    id: 'combat_profile_tether_payload', version: 1, entityTypes: ['payload'],
+    heat: { max: 0, dissipationPerTick: 0 },
+    immunityTags: [],
+    subsystemIds: [],
+    sockets: [{ id: 'socket_tether_payload', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 }],
+    capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
+  },
+  {
     id: 'combat_profile_standard_station', version: 1, entityTypes: ['station'],
     heat: { max: 200, dissipationPerTick: 0.30 },
     immunityTags: [],
@@ -223,5 +231,6 @@ export const COMBAT_PROFILES = Object.freeze([
 export const DEFAULT_COMBAT_PROFILE_BY_TYPE = Object.freeze({
   ship: 'combat_profile_standard_ship',
   drone: 'combat_profile_standard_ship',
+  payload: 'combat_profile_tether_payload',
   station: 'combat_profile_standard_station',
 });

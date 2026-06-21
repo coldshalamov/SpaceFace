@@ -4,10 +4,11 @@ export const GOLDEN_INPUT_TAPE_SCHEMA = 'spaceface.goldenInputTape.v1';
 export const TELEMETRY_ENVELOPE_SCHEMA = 'spaceface.telemetryEnvelope.v1';
 export const EVIDENCE_VALIDATION_RESULT_SCHEMA = 'spaceface.evidenceValidationResult.v1';
 
-const REQUIRED_EVENT_FAMILIES = ['flight', 'combat', 'economy', 'story', 'ai', 'camera', 'scenario'];
+const REQUIRED_EVENT_FAMILIES = ['flight', 'combat', 'economy', 'story', 'ai', 'camera', 'scenario', 'tether'];
 const TAPE_KEYS = new Set(['schema', 'id', 'scenario', 'seed', 'tickRate', 'notes', 'frames']);
-const FRAME_KEYS = new Set(['tick', 'input']);
+const FRAME_KEYS = new Set(['tick', 'input', 'commands']);
 const INPUT_KEYS = new Set(['moveX', 'moveZ', 'turnIntent', 'boost', 'fire', 'fireGroup', 'aimAngle']);
+const COMMAND_KEYS = new Set(['kind', 'actionId', 'actor', 'target', 'attachment', 'source']);
 const ENVELOPE_KEYS = new Set([
   'schema',
   'id',
@@ -121,6 +122,7 @@ function validateGoldenInputTape(tape, issues, file) {
       prevTick = frame.tick;
     }
     validateInputFrame(frame.input, `${path}.input`, issues, file);
+    validateTapeCommands(frame.commands, `${path}.commands`, issues, file);
   }
 }
 
@@ -141,6 +143,33 @@ function validateInputFrame(input, path, issues, file) {
   if (input.aimAngle != null && (!Number.isFinite(input.aimAngle) || Math.abs(input.aimAngle) > Math.PI * 2)) {
     addIssue(issues, file, `${path}.aimAngle`, 'range', 'aimAngle must be finite radians in [-2pi, 2pi]');
   }
+}
+
+function validateTapeCommands(commands, path, issues, file) {
+  if (commands == null) return;
+  if (!Array.isArray(commands)) {
+    addIssue(issues, file, path, 'type', 'commands must be an array when present');
+    return;
+  }
+  if (commands.length > 8) addIssue(issues, file, path, 'maxItems', 'a frame may issue at most 8 commands');
+  commands.forEach((command, index) => {
+    const itemPath = `${path}[${index}]`;
+    if (!isPlainObject(command)) {
+      addIssue(issues, file, itemPath, 'type', 'command must be an object');
+      return;
+    }
+    validateKnownKeys(command, COMMAND_KEYS, itemPath, issues, file);
+    if (command.kind !== 'combatAction') {
+      addIssue(issues, file, `${itemPath}.kind`, 'enum', 'command kind must be combatAction');
+    }
+    requireString(command.actionId, `${itemPath}.actionId`, issues, file, { pattern: /^action_[a-z0-9_:-]+$/ });
+    validateActorRef(command.actor, `${itemPath}.actor`, issues, file, { required: true });
+    validateActorRef(command.target, `${itemPath}.target`, issues, file, { required: false });
+    validateActorRef(command.attachment, `${itemPath}.attachment`, issues, file, { required: false });
+    if (command.source != null && !/^[a-z][a-z0-9_.:-]*$/.test(String(command.source))) {
+      addIssue(issues, file, `${itemPath}.source`, 'pattern', 'source must be a stable lowercase token');
+    }
+  });
 }
 
 function validateTelemetryEnvelope(envelope, issues, file) {
@@ -187,6 +216,16 @@ function validateTraceCountMap(value, path, issues, file) {
     if (!Number.isSafeInteger(count) || count < 0) {
       addIssue(issues, file, `${path}.${type}`, 'count', 'observed trace count must be a non-negative safe integer');
     }
+  }
+}
+
+function validateActorRef(value, path, issues, file, options = {}) {
+  if (value == null) {
+    if (options.required) addIssue(issues, file, path, 'required', 'actor reference is required');
+    return;
+  }
+  if (typeof value !== 'string' || !/^[a-z0-9][a-z0-9_.:-]*$/.test(value)) {
+    addIssue(issues, file, path, 'pattern', 'actor reference must be a stable scenario id');
   }
 }
 

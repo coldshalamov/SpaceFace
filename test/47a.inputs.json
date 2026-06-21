@@ -5,15 +5,28 @@
   "seed": 47,
   "tickRate": 60,
   "notes": [
-    "Phase 0 tape stub: proves deterministic tape shape before SG-01 owns full replay.",
-    "Inputs intentionally cover current shipped verbs only; Massline commands are added by SG-02/SG-03."
+    "Phase 0 tape proves deterministic movement/fire plus the first SG-03 Massline command.",
+    "CombatAction commands resolve scenario actor IDs, not raw entity IDs, so replay survives save/load remap."
   ],
   "frames": [
     { "tick": 0, "input": { "moveZ": 1, "moveX": 0, "boost": false, "fire": false, "fireGroup": null, "aimAngle": 0 } },
+    {
+      "tick": 2,
+      "input": { "moveZ": 1, "moveX": 0, "boost": false, "fire": false, "fireGroup": null, "aimAngle": 0 },
+      "commands": [
+        {
+          "kind": "combatAction",
+          "actor": "player_kestrel",
+          "actionId": "action_attach",
+          "target": "evidence_spindle_47a",
+          "source": "player"
+        }
+      ]
+    },
     { "tick": 60, "input": { "moveZ": 1, "moveX": 0.25, "boost": false, "fire": false, "fireGroup": null, "aimAngle": 0.2 } },
     { "tick": 120, "input": { "moveZ": 1, "moveX": 0, "boost": true, "fire": false, "fireGroup": null, "aimAngle": 0.2 } },
-    { "tick": 180, "input": { "moveZ": 0.5, "moveX": -0.25, "boost": false, "fire": true, "fireGroup": 1, "aimAngle": 0.3 } },
-    { "tick": 240, "input": { "moveZ": 0.25, "moveX": 0, "boost": false, "fire": true, "fireGroup": 2, "aimAngle": 0.3 } },
+    { "tick": 180, "input": { "moveZ": 0.5, "moveX": -0.25, "boost": false, "fire": true, "fireGroup": 1, "aimAngle": 0.62 } },
+    { "tick": 240, "input": { "moveZ": 0.25, "moveX": 0, "boost": false, "fire": true, "fireGroup": 2, "aimAngle": 0.62 } },
     { "tick": 360, "input": { "moveZ": 0, "moveX": 0, "boost": false, "fire": false, "fireGroup": null, "aimAngle": 0 } }
   ]
 }
