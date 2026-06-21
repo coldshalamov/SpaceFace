@@ -137,6 +137,43 @@ assert.equal(envelope.acceptancePlaceholders.firstTetherAttachTickMax, 3600,
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
   '9af966cccaca4f9b907964482de08c12c7ec91250ad4933bacae7d582c7910ca',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
+assert.equal(envelope.acceptancePlaceholders.canonicalLongBranchId, 'escape_with_evidence',
+  'expected telemetry should pin the canonical long-run branch outcome');
+assert.equal(envelope.acceptancePlaceholders.canonicalLongBranchFactChanges, 3,
+  'expected telemetry should pin the canonical long-run branch fact-change count');
+
+const canonicalLongBranch = scenarioContract.branches.find((branch) =>
+  branch.id === envelope.acceptancePlaceholders.canonicalLongBranchId);
+assert(canonicalLongBranch, 'canonical long-run branch must exist in the scenario contract');
+const longBranchInspect = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf-sim.mjs',
+  'inspect',
+  '47a',
+  '--seed',
+  '47',
+  '--tick',
+  '36120',
+  '--inputs',
+  'test/47a.inputs.json',
+  '--physics-backend',
+  'rapier-dynamic',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }));
+assert.equal(longBranchInspect.scenarioContract.activeBeatId, 'resolution_branch',
+  'canonical long run should reach the 47-A resolution beat');
+assert.equal(longBranchInspect.scenarioContract.resolvedBranchId, canonicalLongBranch.id,
+  'canonical long run should resolve the pinned branch');
+assert.equal(longBranchInspect.metrics.scenarioBranchResolved, 1,
+  'canonical long run should emit one branch resolution');
+assert.equal(longBranchInspect.metrics.scenarioFactChanged, envelope.acceptancePlaceholders.canonicalLongBranchFactChanges,
+  'canonical long run should emit the pinned branch fact-change count');
+assert.equal(longBranchInspect.traceSummary.types['scenario:branchResolved'], 1,
+  'canonical long run should trace branch resolution evidence');
+assert.deepEqual(longBranchInspect.scenarioContract.resolution.lifecycle, canonicalLongBranch.lifecycle,
+  'canonical long run should preserve authored branch lifecycle text');
+for (const effect of canonicalLongBranch.worldFactEffects) {
+  assert.equal(longBranchInspect.scenarioContract.factValues[effect.factId], effect.value,
+    `canonical long run should set ${effect.factId} to ${effect.value}`);
+}
 
 const balanceSim = read('scripts/balance-sim.mjs');
 for (const helper of [

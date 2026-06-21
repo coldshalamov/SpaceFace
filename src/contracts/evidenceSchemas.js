@@ -30,6 +30,8 @@ const ACCEPTANCE_KEYS = new Set([
   'policyCompletionCountMin',
   'enemyCounterTetherBehaviorCountMin',
   'cleanRunCountRequired',
+  'canonicalLongBranchId',
+  'canonicalLongBranchFactChanges',
 ]);
 
 export function validateEvidenceDocument(doc, options = {}) {

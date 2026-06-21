@@ -74,7 +74,9 @@
     "firstHostileShotTickMax": 5400,
     "policyCompletionCountMin": 3,
     "enemyCounterTetherBehaviorCountMin": 2,
-    "cleanRunCountRequired": 5
+    "cleanRunCountRequired": 5,
+    "canonicalLongBranchId": "escape_with_evidence",
+    "canonicalLongBranchFactChanges": 3
   },
   "notes": [
     "This is the Phase 0 envelope for the current headless 47-A smoke run.",

@@ -115,6 +115,30 @@ try {
 
 function writePolicyTape(branch) {
   const lastFrame = baseTape.frames[baseTape.frames.length - 1] || { input: {} };
+  let wroteBranchFrame = false;
+  const frames = baseTape.frames.map((frame) => {
+    const commands = (frame.commands || [])
+      .filter((command) => command && command.kind !== 'scenarioBranch')
+      .map((command) => ({ ...command }));
+    const out = {
+      tick: frame.tick,
+      input: { ...(frame.input || {}) },
+      ...(commands.length ? { commands } : {}),
+    };
+    if (frame.tick === BRANCH_COMMAND_TICK) {
+      out.commands = [branchCommand(branch)];
+      wroteBranchFrame = true;
+    }
+    return out;
+  });
+  if (!wroteBranchFrame) {
+    frames.push({
+      tick: BRANCH_COMMAND_TICK,
+      input: { ...(lastFrame.input || {}) },
+      commands: [branchCommand(branch)],
+    });
+  }
+
   const tape = {
     ...baseTape,
     id: `47a-policy-${branch.id}`,
@@ -122,28 +146,21 @@ function writePolicyTape(branch) {
       ...(baseTape.notes || []),
       `Generated SG-05 branch policy tape for ${branch.id}.`,
     ],
-    frames: [
-      ...baseTape.frames.map((frame) => ({
-        tick: frame.tick,
-        input: { ...(frame.input || {}) },
-        ...(Array.isArray(frame.commands) ? { commands: frame.commands.map((command) => ({ ...command })) } : {}),
-      })),
-      {
-        tick: BRANCH_COMMAND_TICK,
-        input: { ...(lastFrame.input || {}) },
-        commands: [{
-          kind: 'scenarioBranch',
-          branchId: branch.id,
-          source: branch.policyId,
-        }],
-      },
-    ],
+    frames,
   };
   const report = validateEvidenceDocument(tape, { file: `${tape.id}.json` });
   assert(report.ok, report.issues.map(formatEvidenceIssue).join('\n'));
   const tapePath = join(tempDir, `${branch.id}.json`);
   writeFileSync(tapePath, JSON.stringify(tape, null, 2));
   return tapePath;
+}
+
+function branchCommand(branch) {
+  return {
+    kind: 'scenarioBranch',
+    branchId: branch.id,
+    source: branch.policyId,
+  };
 }
 
 function runJson(args) {
