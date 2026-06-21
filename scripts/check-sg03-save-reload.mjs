@@ -73,8 +73,7 @@ const ok = withSaveRuntime(restored, () => save.loadEnvelope(saved, 'sg03-combat
 assert.equal(ok, true, 'SG-03 combat save envelope should load');
 
 initCombatRuntime(restored);
-await ensurePhysicsReady(restored);
-restored.kernel.postPhysics(DT);
+await preparePhysicsReset(restored);
 
 const restoredPlayer = restored.state.entities.get(restored.state.playerId);
 const restoredTarget = restored.state.entityList.find((entity) => entity.data && entity.data.scenarioRole === 'massline_target');
@@ -86,8 +85,8 @@ const restoredAttachment = restored.state.combat.attachments.byId[attachmentId];
 assert(restoredAttachment, 'load should restore the semantic attachment');
 assert.equal(restoredAttachment.ownerId, restoredPlayer.id, 'attachment owner should remap to the loaded player id');
 assert.equal(restoredAttachment.targetId, restoredTarget.id, 'attachment target should remap to the loaded persistent target id');
-assert(restoredAttachment.physicsHandle, 'post-load reconcile should recreate the SG-02 physical rope handle');
-assert.equal(restored.physics._sg02.diagnostics().attachments, 1, 'SG-02 owner should contain the reconciled physical rope');
+assert(restoredAttachment.physicsHandle, 'SG-02 reset should recreate the physical rope before the next physics tick');
+assert.equal(restored.physics._sg02.diagnostics().attachments, 1, 'SG-02 owner should contain the pre-step reconciled physical rope');
 
 const restoredActive = restored.state.combat.actions.activeByActor[String(restoredPlayer.id)];
 assert(restoredActive, 'active action should restore under the loaded actor id');
@@ -139,6 +138,11 @@ async function ensurePhysicsReady(harness) {
   if (harness.physics._sg02Init) await harness.physics._sg02Init;
   harness.physics.update(DT, harness.state);
   assert(harness.physics._sg02, 'rapier-dynamic owner should initialize for SG-03 save/reload fixture');
+}
+
+async function preparePhysicsReset(harness) {
+  const ready = await harness.physics.prepareBackend(harness.state, { reset: true });
+  assert.equal(ready, true, 'rapier-dynamic owner should reset cleanly for SG-03 save/reload fixture');
 }
 
 function requestAndStep(harness, tick, request) {

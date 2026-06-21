@@ -66,6 +66,7 @@ export function createCombatKernel(ctx, options = {}) {
     inspectCombat: (request) => inspect(request || {}),
     repairCombatSubsystem: (request) => repair(request && request.entityId, request && request.subsystemId, request && request.amount, request && request.reason),
     getCombatCapabilities: (entityId) => capabilities(entityId),
+    reconcileCombatPhysicsAttachments: () => reconcilePhysicsAttachments(),
   });
 
   const kernel = Object.freeze({
@@ -77,6 +78,7 @@ export function createCombatKernel(ctx, options = {}) {
     routeDamage,
     prePhysics,
     postPhysics,
+    reconcilePhysicsAttachments,
     inspect,
     repair,
     capabilities,
@@ -106,13 +108,17 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function postPhysics() {
-    attachments.reconcilePhysics();
+    reconcilePhysicsAttachments();
     attachments.updateTelemetryAndBreak();
     for (const entity of sortedEntities(state)) {
       if (!entity.alive || !isCombatantType(entity.type)) continue;
       const runtime = ensureCombatant(state, entity, catalog);
       syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
     }
+  }
+
+  function reconcilePhysicsAttachments() {
+    return attachments.reconcilePhysics();
   }
 
   function initializeEntity(entity) {

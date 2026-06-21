@@ -24,6 +24,7 @@ export const physics = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.helpers = ctx.helpers || {};
     this._scratch = [];
     this._statics = [];
     this._pairMarks = new Map(); // low id -> Map<high id, stamp>; avoids per-frame string pair keys
@@ -38,6 +39,9 @@ export const physics = {
     this._sg02Token = 0;
     this._sg02CombatPhysics = createDeferredSg02CombatPhysicsPort(this);
     if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('save:loaded', () => this._resetSg02AfterLoad());
+    }
     this._diag = {
       backend: 'custom',
       rapierReady: false,
@@ -167,6 +171,7 @@ export const physics = {
     }
 
     this._sg02.syncFromEntities(state.entityList);
+    this._reconcileCombatPhysicsBeforeStep();
     const sdiag = this._sg02.step(dt);
     this._diag.rapierReady = true;
     this._diag.sg02Ready = true;
@@ -187,6 +192,16 @@ export const physics = {
     this._diag.sg02Ready = false;
     this._diag.sg02Bodies = 0;
     this._diag.sg02Attachments = 0;
+  },
+
+  _resetSg02AfterLoad() {
+    this._disableSg02DynamicAuthority();
+    if (this.state) this._publishRuntime(this.state);
+  },
+
+  _reconcileCombatPhysicsBeforeStep() {
+    const reconcile = this.helpers && this.helpers.reconcileCombatPhysicsAttachments;
+    if (typeof reconcile === 'function') reconcile();
   },
 
   integrate(dt, state) {
