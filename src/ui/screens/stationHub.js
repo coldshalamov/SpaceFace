@@ -71,6 +71,16 @@ export const stationHub = {
       '<button class="st-undock">⏏ UNDOCK</button>';
     screen.appendChild(topbar);
 
+    // airlock graffiti strip: the threshold the player crosses on entry. Populated from
+    // state.ui.graffiti (the comms/narrative overlay stashes airlock/shipyard/clearing/chain_dest
+    // lines here as the story advances). Per the worldbuilding: graffiti knows things the HUD won't
+    // record. It reads as vandalism; it is the most accurate text in the game.
+    const airlock = document.createElement('div');
+    airlock.className = 'st-airlock';
+    airlock.innerHTML = '<div class="st-airlock__label mono">AIRLOCK</div><div class="st-airlock__graffiti"></div>';
+    screen.appendChild(airlock);
+    this._airlockEl = airlock.querySelector('.st-airlock__graffiti');
+
     // body: rail + content
     const body = document.createElement('div');
     body.className = 'st-body';
@@ -283,6 +293,7 @@ export const stationHub = {
     if (ctx) this._ctx = ctx;
     this._resolveStation();
     this._refreshTopbar();
+    this._refreshGraffiti();
     // restore the last active tab (or default 'market')
     const tab = this._activePanelId();
     this.setTab(tab); // also refreshes the active panel via onShow
@@ -295,7 +306,31 @@ export const stationHub = {
     if (ctx) this._ctx = ctx;
     if (!this._el) return;
     this._refreshTopbar();
+    this._refreshGraffiti();
     this._refreshActive(false);
+  },
+
+  /** Render the airlock graffiti from state.ui.graffiti (stashed by the narrative overlay).
+   *  Lines accumulate across beats — the airlock remembers everything painted on it. */
+  _refreshGraffiti() {
+    if (!this._airlockEl) return;
+    const ctx = this._ctx;
+    const stash = (ctx.state.ui && ctx.state.ui.graffiti) || [];
+    // only surface non-bulkhead graffiti at the airlock (bulkhead is the player's own ship)
+    const lines = stash.filter((g) => g.where !== 'bulkhead');
+    if (!lines.length) { this._airlockEl.innerHTML = '<span class="st-airlock__empty">clean bulkhead</span>'; return; }
+    const frag = document.createDocumentFragment();
+    for (const g of lines) {
+      const ln = document.createElement('div');
+      ln.className = 'st-airlock__line';
+      ln.textContent = g.line;
+      // vary the skew/offset slightly per line so it reads as hand-sprayed, not typeset
+      ln.style.setProperty('--graffiti-skew', ((g.line.length % 5) - 2) * 0.4 + 'deg');
+      ln.title = g.author ? ('— ' + g.author) : '';
+      frag.appendChild(ln);
+    }
+    this._airlockEl.innerHTML = '';
+    this._airlockEl.appendChild(frag);
   },
 
   /** Subscribe to the data-change events that should rebuild the relevant panel (§5.5). Only the
@@ -366,6 +401,17 @@ const STATION_CSS = `
   letter-spacing: .14em; text-transform: uppercase; padding: 2px 10px; border-radius: var(--r-pill);
   border: 1px solid rgba(57,208,255,.3); background: rgba(57,208,255,.08); }
 .st-undock { border-color: var(--accent); color: var(--accent); letter-spacing: .08em; font-weight: 600; }
+/* airlock graffiti strip — the threshold on entry. Reads as vandalism; is the most accurate text. */
+.st-airlock { display:flex; align-items:stretch; gap:0; border-bottom:1px solid var(--panel-edge);
+  background:linear-gradient(180deg, rgba(6,10,18,.6), rgba(4,7,14,.4)); min-height:0; }
+.st-airlock__label { writing-mode:vertical-rl; transform:rotate(180deg); padding:6px 4px; font-size:8px;
+  letter-spacing:.2em; color:var(--ink-mute); border-right:1px solid var(--panel-edge); align-self:stretch; }
+.st-airlock__graffiti { flex:1; padding:7px 12px; display:flex; flex-direction:column; gap:3px;
+  overflow:hidden; }
+.st-airlock__line { --graffiti-skew:0deg; font-family:var(--mono); font-size:11px; letter-spacing:.14em;
+  color:#9aa6b8; text-transform:uppercase; opacity:.82; transform:rotate(var(--graffiti-skew));
+  text-shadow:0 1px 2px #000; line-height:1.3; }
+.st-airlock__empty { font-size:10px; color:var(--ink-mute); font-style:italic; opacity:.5; }
 .st-undock:hover { background: var(--grad-accent); color: #04121a; box-shadow: 0 0 16px rgba(57,208,255,.4); }
 .st-body { display: flex; flex: 1; min-height: 0; }
 .st-rail { width: 176px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-3) var(--sp-2);

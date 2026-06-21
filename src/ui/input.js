@@ -1,6 +1,6 @@
 // UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
 //
-// UI owns: ESC (back/pause), M (star-map), T (tech), J (automation), F1/H (help),
+// UI owns: ESC (back/pause), M (star-map), T (tech), J (mission log), F1/H (help),
 //          Tab (cycle target), P (pause), Enter (dock when in range), F5/F9 (quick save/load),
 //          mouse-wheel (camera zoom passthrough → camera:zoom).
 // Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
@@ -77,7 +77,7 @@ export function createUiInput(ctx, screenManager) {
       case 't': case 'T':
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;
       case 'j': case 'J':
-        ev.preventDefault(); screenManager.pushScreen('automation'); return;
+        ev.preventDefault(); screenManager.pushScreen('missionLog'); return;
       case 'F1': case 'h': case 'H':
         ev.preventDefault(); screenManager.pushScreen('help'); return;
       case 'Tab':
@@ -103,6 +103,12 @@ export function createUiInput(ctx, screenManager) {
       case 'i': case 'I':
         ev.preventDefault();
         bus.emit('ui:toggleCargo');
+        return;
+      case 'l': case 'L':
+        // Comms log (narrative overlay): open the channel backlog. 'L' for Log. The feed itself
+        // streams on the left edge continuously; this opens the full searchable history.
+        ev.preventDefault();
+        bus.emit('ui:toggleComms');
         return;
       case 'c': case 'C':
         // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base

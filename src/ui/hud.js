@@ -18,8 +18,10 @@ import { createRadar } from './radar.js';
 import { createTargetPanel } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
+import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { SHIPS } from '../data/ships.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { SECTORS } from '../data/sectors.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -29,6 +31,60 @@ const ROLE_LABEL = {
   corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
   gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship',
 };
+
+// ── Mission tracker helpers ──────────────────────────────────────────────────────────────────
+const MT_STATION_BY_ID = new Map();
+for (const sec of SECTORS) {
+  for (const st of sec.stations || []) {
+    MT_STATION_BY_ID.set(st.id, st.name);
+  }
+}
+const MT_CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+
+function mtCmdtyName(id) {
+  const c = MT_CMDTY_BY_ID.get(id);
+  return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
+}
+
+function mtStationName(id) {
+  return MT_STATION_BY_ID.get(id) || 'destination';
+}
+
+function mtObjectiveText(m) {
+  const p = m.params || {};
+  const prog = m.objectiveProgress || 0;
+  const tgt = m.objectiveTarget || 1;
+  const dest = mtStationName(m.destStationId);
+  switch (m.type) {
+    case 'cargo_delivery':
+    case 'salvage_retrieval':
+    case 'passenger_transport':
+      return `Deliver to ${dest}`;
+    case 'bulk_trade':
+      return `Sell ${prog}/${tgt} ${mtCmdtyName(p.cmdtyId)}`;
+    case 'mining_quota':
+      return `Mine ${prog}/${tgt} ${mtCmdtyName(p.cmdtyId)}`;
+    case 'bounty_hunt':
+      return 'Eliminate target';
+    case 'patrol_clear':
+      return `Clear ${prog}/${tgt} hostiles`;
+    case 'escort':
+      return `Escort to ${dest}`;
+    case 'recon_scan':
+      return `Scan ${prog}/${tgt} targets`;
+    case 'smuggling_run':
+      return `Deliver contraband to ${dest}`;
+    default:
+      return `${prog}/${tgt}`;
+  }
+}
+
+function mtFmtTime(s) {
+  s = Math.max(0, Math.floor(s));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}m ${sec < 10 ? '0' : ''}${sec}s`;
+}
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
@@ -87,6 +143,19 @@ export function createHud(ctx, alerts) {
     rowEls[key] = row;
   }
   root.appendChild(bars);
+
+  // ---- top-left: mission tracker (shows the tracked mission objective + timer) ----
+  const missionTracker = document.createElement('div');
+  missionTracker.className = 'sf-mission-tracker';
+  missionTracker.style.display = 'none';
+  missionTracker.innerHTML =
+    '<div class="sf-mt-title mono"></div>' +
+    '<div class="sf-mt-obj mono"></div>' +
+    '<div class="sf-mt-time mono"></div>';
+  root.appendChild(missionTracker);
+  const mtTitle = missionTracker.querySelector('.sf-mt-title');
+  const mtObj = missionTracker.querySelector('.sf-mt-obj');
+  const mtTime = missionTracker.querySelector('.sf-mt-time');
 
   // ---- bottom-center: throttle / speed / cargo / credits / weapons ----
   const center = document.createElement('div');
@@ -312,6 +381,17 @@ export function createHud(ctx, alerts) {
   ctx.bus.on('player:respawn', () => {
     ctx.bus.emit('toast', { text: 'Hull rebuilt — fly safe, pilot. (3s shields online)', kind: 'good', ttl: 4 });
   });
+
+  // ---- HUD meta-arc: the three phases of complicity (STABLE LOAD, tag flicker, manifest ghost) ----
+  // Mounted as a HUD sub-component (like the death banner). Driven by hud:phase / hud:tagFlicker
+  // events the story system emits. Inject its CSS once, then create + tick it.
+  if (!document.getElementById('sf-hudmeta-style')) {
+    const ms = document.createElement('style');
+    ms.id = 'sf-hudmeta-style';
+    ms.textContent = HUD_META_CSS;
+    document.head.appendChild(ms);
+  }
+  const hudMeta = createHudMeta(ctx);
 
   // ---- cargo panel overlay (toggled by I key or clicking CARGO stat) ----
   const cargoPanel = document.createElement('div');
@@ -726,6 +806,23 @@ export function createHud(ctx, alerts) {
       }
     }
 
+    // --- mission tracker @10Hz ---
+    if (slow) {
+      const trackedId = state.ui && state.ui.trackedMissionId;
+      const active = (state.missions && state.missions.active) || [];
+      const tracked = trackedId ? active.find((m) => m.id === trackedId && m.status === 'active') : null;
+      if (tracked) {
+        const remaining = Math.max(0, (tracked.deadline_s || 0) - (state.simTime || 0));
+        setText(mtTitle, tracked.title || 'Mission');
+        setText(mtObj, mtObjectiveText(tracked));
+        setText(mtTime, mtFmtTime(remaining));
+        mtTime.classList.toggle('sf-mt-urgent', remaining < 120);
+        setDisplay(missionTracker, true);
+      } else {
+        setDisplay(missionTracker, false);
+      }
+    }
+
     // --- credits / cargo / objectives (event-driven, applied lazily) ---
     if (creditsDirty) refreshCredits();
     if (cargoDirty) refreshCargo();
@@ -751,6 +848,8 @@ export function createHud(ctx, alerts) {
 
     // --- toasts/alerts expiry sweep ---
     if (alerts && alerts.tick) alerts.tick();
+    // --- HUD meta-arc (STABLE LOAD line, tag flicker, manifest ghost) ---
+    if (hudMeta && hudMeta.tick) hudMeta.tick(dt || 0.016);
   }
 
   function tickHidden(dt) {
@@ -835,7 +934,10 @@ export function createHud(ctx, alerts) {
     arrow.style.transform = `translate3d(${ex}px,${ey}px,0) translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`;
   }
 
-  function setVisible(v) { root.style.display = v ? 'block' : 'none'; }
+  function setVisible(v) {
+    root.style.display = v ? 'block' : 'none';
+    if (hudMeta && hudMeta.setVisible) hudMeta.setVisible(v);
+  }
 
   function forceRefresh() {
     creditsDirty = true;

@@ -41,6 +41,7 @@ const PILOT_AVATAR_SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000
 import { createHud } from './hud.js';
 import { createToasts } from './toasts.js';
 import { createAlerts } from './alerts.js';
+import { createComms } from './comms.js';
 
 // id-of-export → { path, export }. Order matters only for nicer console logs.
 const SCREEN_MODULES = [
@@ -76,6 +77,9 @@ export const ui = {
     this.toasts = createToasts(ctx);
     this.alerts = createAlerts(ctx);
 
+    // comms / graffiti / endgame narrative overlay (story system drives it via events)
+    this.comms = createComms(ctx);
+
     // screen manager — expose on ctx + on this system so screens can reach it (§ screens
     // resolve ctx.screenManager / registry.get('ui').screenManager / .manager).
     this.screenManager = createScreenManager(ctx);
@@ -107,7 +111,7 @@ export const ui = {
     // hints based on the player's current activity (mining, combat, near station, near gate).
     const hints = document.createElement('div');
     hints.id = 'control-hints';
-    hints.textContent = 'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  M map  •  I cargo';
+    hints.textContent = 'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  M map  •  I cargo  •  L comms';
     document.getElementById('ui-root').appendChild(hints);
 
     // Hide hints/reticle when not in pure flight (improved from initial override for robustness)
@@ -337,11 +341,13 @@ export const ui = {
         this._hudVisibleLast = hudVisible;
       }
       if (this.toasts && this.toasts.tick) this.toasts.tick();
+      // comms feed fade sweep + graffiti (narrative overlay; cheap, runs every frame)
+      if (this.comms && this.comms.tick) this.comms.tick();
       // refresh the active modal screen at a low cadence (event-driven screens also self-update)
       this._rt = (this._rt || 0) + 1;
       if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {
         const def = this.screenManager.getActiveScreenDef && this.screenManager.getActiveScreenDef();
-        if (def && (def.id === 'automation' || def.id === 'starmap' || def.id === 'techTree') && def.refresh) {
+        if (def && (def.id === 'automation' || def.id === 'starmap' || def.id === 'techTree' || def.id === 'missionLog') && def.refresh) {
           def.refresh(this.ctx, { periodic: true });
         } else {
           this.screenManager.refreshTop();
@@ -692,6 +698,23 @@ function injectHudCss() {
   .sf-cargo-empty { padding:20px 14px; text-align:center; color:var(--ink-mute); font-size:12px; }
   @media (max-width: 760px) {
     .sf-cargo-panel { width:calc(100vw - 24px); bottom:110px; }
+  }
+
+  /* ===== HUD mission tracker (top-left, shows tracked mission) ===== */
+  .sf-mission-tracker { position:absolute; top:52px; left:18px; max-width:260px;
+    padding:8px 12px; background:rgba(8,14,24,.7); border:1px solid var(--panel-edge);
+    border-left:3px solid var(--accent); border-radius:0 6px 6px 0;
+    backdrop-filter:blur(4px); pointer-events:none; z-index:10; }
+  .sf-mt-title { font-size:12px; color:var(--ink); letter-spacing:.04em; margin-bottom:3px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sf-mt-obj { font-size:11px; color:var(--ink-dim); margin-bottom:2px; }
+  .sf-mt-time { font-size:10px; color:var(--ink-mute); letter-spacing:.08em; }
+  .sf-mt-time.sf-mt-urgent { color:var(--warn); font-weight:600; }
+  @media (max-width: 760px) {
+    .sf-mission-tracker { top:44px; left:8px; max-width:200px; padding:6px 8px; }
+    .sf-mt-title { font-size:10px; }
+    .sf-mt-obj { font-size:9px; }
+    .sf-mt-time { font-size:9px; }
   }
 
   /* ===== dock transition overlay ===== */

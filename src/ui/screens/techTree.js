@@ -58,6 +58,9 @@ const CSS = `
 #sf-techtree .tt-foot span { display: inline-flex; align-items: center; gap: 5px; }
 #sf-techtree .tt-sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
 #sf-techtree .tt-hint { font-size: .78em; color: var(--ink-mute); }
+#sf-techtree .tt-zoom-badge { position: absolute; bottom: 8px; right: 8px; font-family: var(--mono, monospace);
+  font-size: 11px; color: var(--ink-dim); background: rgba(8,14,26,.85); border: 1px solid var(--panel-edge);
+  border-radius: 4px; padding: 3px 8px; pointer-events: none; z-index: 2; letter-spacing: .04em; }
 `;
 
 function injectStyle() {
@@ -144,6 +147,8 @@ export const techTreeScreen = {
   _els: null,
   _drawSig: '',
   _sidebarSig: '',
+  _zoom: 1.0,
+  _zoomBadge: null,
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -186,6 +191,39 @@ export const techTreeScreen = {
     this._canvas.addEventListener('click', (e) => this._onCanvasClick(e));
     this._canvas.addEventListener('mousemove', (e) => this._onCanvasMove(e));
     this._canvas.addEventListener('mouseleave', () => { this._hoverId = null; this._draw(); });
+
+    // Zoom badge
+    const scrollEl = rootEl.querySelector('.tt-scroll');
+    const zoomBadge = document.createElement('div');
+    zoomBadge.className = 'tt-zoom-badge';
+    zoomBadge.textContent = '100%';
+    scrollEl.appendChild(zoomBadge);
+    this._zoomBadge = zoomBadge;
+    this._zoom = 1.0;
+
+    // Mouse-wheel zoom
+    scrollEl.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      const delta = ev.deltaY > 0 ? -0.1 : 0.1;
+      const prevZoom = this._zoom;
+      this._zoom = Math.round(Math.min(2.0, Math.max(0.5, this._zoom + delta)) * 10) / 10;
+      if (this._zoom === prevZoom) return;
+
+      // Zoom toward cursor: adjust scroll position so the point under the cursor stays fixed
+      const rect = scrollEl.getBoundingClientRect();
+      const mx = ev.clientX - rect.left + scrollEl.scrollLeft;
+      const my = ev.clientY - rect.top + scrollEl.scrollTop;
+      const ratio = this._zoom / prevZoom;
+
+      this._canvas.style.transformOrigin = '0 0';
+      this._canvas.style.transform = `scale(${this._zoom})`;
+
+      // After scaling, adjust scroll to keep cursor-point stable
+      scrollEl.scrollLeft = mx * ratio - (ev.clientX - rect.left);
+      scrollEl.scrollTop = my * ratio - (ev.clientY - rect.top);
+
+      this._zoomBadge.textContent = Math.round(this._zoom * 100) + '%';
+    }, { passive: false });
 
     this._els.actions.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
@@ -387,8 +425,9 @@ export const techTreeScreen = {
 
   _hitTest(e) {
     const rect = this._canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    // Account for CSS transform scale: divide by zoom to get canvas-space coordinates
+    const mx = (e.clientX - rect.left) / this._zoom;
+    const my = (e.clientY - rect.top) / this._zoom;
     const pos = this._layout.positions;
     for (const n of this._nodes()) {
       const p = pos[n.id];

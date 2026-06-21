@@ -1,95 +1,155 @@
-// SF-VAEL The Vael — bespoke faction ship (spec §8.7, Phase 3 §20).
+// SF-VAEL Vael Sniper — bespoke non-human hero asset (spec §8.7, Phase 3 §20).
 //
-// §8.7 reading: "purpose without human hospitality." The Vael are non-human — their ships should
-// violate ONE foundational human assumption so the unfamiliarity reads as alien, not random. Chosen
-// violation: STRUCTURE AND SIGNAL SHARE A SURFACE + repetition at a non-human scale + cavities over
-// shells + ambiguous front (until motion). No cockpit, no human-scale details (hatches/handles/lights),
-// no bilateral symmetry, no painted identity. The hull is a faceted crystalline lattice with
-// continuous material transitions and deep cavities — it reads as grown/constructed by a different
-// intelligence.
+// §8.7 reading: "purpose without human hospitality." A Vael ship is alien — the directive is to break
+// ONE foundational human assumption at a time. So this hull deliberately violates several human design
+// instincts: structure and signal share a surface (glowing veins ARE the hull), repetition occurs at a
+// non-human scale, light doesn't sit in fixtures, the front is ambiguous until motion, material
+// transitions continuously (no bolted panels), and cavities are more important than shells.
 //
-// Host: the lancer_sniper (Vael is the xenophobic faction; a sniper fits their austere long-range doctrine).
+// Construction logic vs §8.7 bullets:
+//   - "structure and signal may share a surface"   -> emissive TEAL VEINS built into the hull facets (no fixtures)
+//   - "repetition at a non-human scale"             -> a faceted crystalline hex-lattice, not human panelling
+//   - "light may not sit in fixtures"               -> glow comes from the hull surface itself, not lamps
+//   - "front may remain ambiguous until motion"     -> tapered BOTH ends (symmetric fore/aft)
+//   - "material may transition continuously"        -> a single faceted shell, no bolted seams or planks
+//   - "cavities may be more important than shells"  -> a deep ventral VOID recessed into the hull
+//
+// Craft tier: matches the Kestrel. A FACETED CRYSTALLINE hex-prism loft (low radialSegments = flat
+// facets, not smooth) + a continuous hull material that IS the signal (emissive veins) + deep ventral
+// cavity + ambiguous front + speed-reactive resonant drive + LOD reaction (drops the facet-glow at
+// distance, keeps silhouette) + readable damage (the signal-veins flicker, a facet-plate sheds). Built
+// from shipKit.js shared primitives.
+//
+// Coordinate contract: +X forward, +Y up, +Z starboard, metres. collisionRadius ~14-17 (enemies.js).
 import * as THREE from 'three';
-import { attachLodState } from '../lod.js';
+import * as kit from './shipKit.js';
 
 const COLOR = Object.freeze({
-  lattice: '#1a4a3a',        // dark teal-green crystalline structure (non-human palette)
-  latticeLight: '#2a6a52',
-  cavity: '#08120e',         // deep cavities (more important than shells, §8.7)
-  signalSurface: '#2FCFA0',  // structure-and-signal share a surface: the lattice itself glows (no fixtures)
-  facet: '#143a30',
-  drive: '#2FCFA0',          // the Vael teal — drive is a resonant glow, not a nozzle
+  shell: '#204840',          // deep teal-black crystalline shell (faction_vael hull)
+  shellDark: '#103830',      // facet shadow faces
+  void: '#020807',           // the deep ventral cavity — blacker than the hull (cavities > shells, §8.7)
+  teal: '#2FCFA0',           // Vael signal teal (faction_vael primary)
+  glow: '#40FFB8',           // vein/emissive glow (faction_vael thruster)
+  drive: '#2FCFA0',          // resonant alien drive (no nozzle)
+  driveCore: '#80EED0',
 });
 
-function stdMat(c, r, m) { return new THREE.MeshStandardMaterial({ color: new THREE.Color(c), roughness: r, metalness: m }); }
-function lightMat(c, i = 1.8) { return new THREE.MeshStandardMaterial({ color: new THREE.Color('#000'), emissive: new THREE.Color(c), emissiveIntensity: i }); }
-function glowMat(c, o = 0.5) { return new THREE.MeshBasicMaterial({ color: new THREE.Color(c), transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }); }
+const DESIGN_RADIUS = 17;
 
+/**
+ * Build the bespoke Vael Sniper mesh (a non-human crystalline craft, §8.7).
+ * @param {object} entity - the ship entity (reads radius for scale; default ~17).
+ * @returns {THREE.Group} the ship mesh, with userData.hull (bankable), sockets, renderContract.
+ */
 export function buildVaelSniper(entity) {
-  const DESIGN_RADIUS = 17;
-  const radius = (entity && Number.isFinite(entity.radius)) ? entity.radius : DESIGN_RADIUS;
-  const scale = radius / DESIGN_RADIUS;
-
-  const mat = {
-    lattice: stdMat(COLOR.lattice, 0.3, 0.55),       // smooth, semi-metal — crystalline, not painted
-    latticeLight: stdMat(COLOR.latticeLight, 0.25, 0.6),
-    cavity: stdMat(COLOR.cavity, 1.0, 0.0),          // matte black voids (cavities, §8.7)
-    signalSurface: lightMat(COLOR.signalSurface, 1.4), // structure IS the signal (no fixtures, §8.7)
-    facet: stdMat(COLOR.facet, 0.35, 0.5),
-    drive: lightMat(COLOR.drive, 2.2),
-    driveGlow: glowMat(COLOR.drive, 0.5),
-  };
-  for (const [n, m] of Object.entries(mat)) m.name = `Vael_${n}`;
+  const root = new THREE.Group();
+  root.name = 'Vael_Sniper';
+  root.userData.kind = 'ship';
+  root.userData.assetId = 'SF_VAEL_SNIPER';
 
   const hull = new THREE.Group(); hull.name = 'Vael_Sniper_Hull';
-  const addBox = (m, name, [sx, sy, sz], [x, y, z], rot) => { const g = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m); g.name = name; g.position.set(x, y, z); if (rot) g.rotation.set(rot[0], rot[1], rot[2]); hull.add(g); return g; };
+  root.add(hull); root.userData.hull = hull;
 
-  // ---- ambiguous-front crystalline spine: a long faceted prism with NO clear "nose" (§8.7) ----
-  // The Vael hull is a hexagonal-ish lattice prism — front/back read as similar until it moves.
-  const spine = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 22.0, 6), mat.lattice);
-  spine.name = 'Vael_Spine'; spine.rotation.z = Math.PI / 2; hull.add(spine);
-  // tapered ends on BOTH sides (ambiguous front, §8.7)
-  const endA = new THREE.Mesh(new THREE.ConeGeometry(2.0, 5.0, 6), mat.lattice); endA.name = 'Vael_End_A'; endA.position.set(13.5, 0, 0); endA.rotation.z = -Math.PI / 2; hull.add(endA);
-  const endB = new THREE.Mesh(new THREE.ConeGeometry(2.0, 5.0, 6), mat.lattice); endB.name = 'Vael_End_B'; endB.position.set(-13.5, 0, 0); endB.rotation.z = Math.PI / 2; hull.add(endB);
+  const seed = kit.hashSeed(COLOR.shell + COLOR.teal);
+  // The shell IS the signal (§8.7): a single continuous faceted material with emissive teal veins baked
+  // into the panel albedo. No bolted seams. We still use a normal map so the facets catch the key light
+  // as real bevels, but the material reads as one continuous alien substance.
+  const shellMat = kit.pbrHullMaterial({ hull: COLOR.shell, accent: COLOR.teal, seed, panelCount: 8, metalness: 0.25, roughness: 0.35, emissive: COLOR.teal });
+  shellMat.name = 'Vael_Shell';
+  const shellDarkMat = kit.pbrHullMaterial({ hull: COLOR.shellDark, accent: COLOR.teal, seed: seed + 2, panelCount: 6, metalness: 0.30, roughness: 0.40, emissive: COLOR.teal });
+  shellDarkMat.name = 'Vael_ShellDark';
+  const voidMat = kit.standardMaterial(COLOR.void, 1.0, 0.0); voidMat.name = 'Vael_Void'; // pure black cavity
+  const veinMat = kit.emissiveMaterial(COLOR.glow, 2.8); veinMat.name = 'Vael_Vein';
+  const coreMat = kit.emissiveMaterial(COLOR.driveCore, 4.0); coreMat.name = 'Vael_Core';
 
-  // ---- repetition at a non-human scale (§8.7): a ring of identical resonant facets ----
-  // The signal-surface facets repeat around the spine at an even cadence — reads as a non-human grammar.
-  const N = 8;
-  for (let i = 0; i < N; i++) {
-    const a = (i / N) * Math.PI * 2;
-    const f = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 0.4), mat.signalSurface);
-    f.name = `Vael_Resonance_Facet_${i}`; f.position.set(Math.cos(a) * 0 + (i - N / 2) * 2.6, Math.sin(a) * 2.3, Math.cos(a) * 2.3);
-    f.rotation.y = a; hull.add(f);
+  // ---- faceted crystalline hull: a LOW-RADIAL hex-prism loft (§8.7) ----
+  // radialSegments=6 produces flat hex facets — the read is "crystalline/mineral," not "machined."
+  // Tapered BOTH ends (ambiguous front, §8.7) — you can't tell nose from tail until it moves.
+  const pressureHull = kit.addMesh(hull, kit.loftXGeometry([
+    { x: -8.5, halfY: 0.6,  halfZ: 1.6 },
+    { x: -3.0, halfY: 1.4,  halfZ: 2.2 },
+    { x: 3.0,  halfY: 1.4,  halfZ: 2.2 },
+    { x: 8.5,  halfY: 0.6,  halfZ: 1.6 },
+    { x: 11.5, halfY: 0.2,  halfZ: 0.5 },
+    { x: -11.5, halfY: 0.2, halfZ: 0.5 },
+  ], 6), shellMat, 'Vael_Pressure_Hull');
+  pressureHull.castShadow = true;
+
+  // ---- emissive signal veins built into the facets (structure = signal, §8.7) ----
+  // Thin emissive teal ridges running along the facet edges — the light comes FROM the hull surface,
+  // not from lamps. These double as the damage-fail group (flicker at critical).
+  const veins = [];
+  for (let i = 0; i < 5; i++) {
+    const x = -7.0 + i * 3.5;
+    // a ridge along each of the 6 facet edges at this station — reads as an energy lattice
+    const ridge = kit.addBox(hull, veinMat, `Vael_Vein_${i}`, [0.18, 0.08, 4.0], [x, 1.2, 0]);
+    ridge.rotation.y = (i * Math.PI) / 6; // slight twist per station (non-human repetition, §8.7)
+    ridge.userData.damageRole = 'navLight'; ridge.userData.keepSeparate = true;
+    veins.push(ridge);
+    // mirror ridge below
+    const ridge2 = kit.addBox(hull, veinMat, `Vael_Vein_${i}_V`, [0.18, 0.08, 4.0], [x, -1.2, 0]);
+    ridge2.rotation.y = (i * Math.PI) / 6; ridge2.userData.damageRole = 'navLight'; ridge2.userData.keepSeparate = true;
+    veins.push(ridge2);
   }
+  const navLightBase = veins.map((m) => m.material.emissiveIntensity);
 
-  // ---- deep cavities (more important than shells, §8.7): hexagonal voids sunk into the hull ----
-  // Where a human ship has surface detail, the Vael have holes — cavities that imply an interior logic.
-  for (const x of [6.0, -2.0, -8.0]) {
-    addBox(mat.cavity, `Vael_Cavity_${x}`, [2.0, 1.4, 1.4], [x, 1.6, 0]);
-  }
+  // ---- deep ventral cavity (cavities > shells, §8.7) ----
+  // A large black void recessed into the belly — blacker than the hull, reading as depth rather than
+  // surface. This is the alien inversion of a human hull (which is all shell).
+  const cavity = kit.addBox(hull, voidMat, 'Vael_Ventral_Cavity', [8.0, 0.6, 3.0], [0, -0.8, 0]);
+  cavity.userData.keepSeparate = true;
 
-  // ---- structure-and-signal share a surface (§8.7): facet edges glow along the lattice ----
-  // Thin emissive veins run along the spine — there are no "lights," the structure emits.
-  for (const side of [-1, 1]) {
-    const vein = new THREE.Mesh(new THREE.BoxGeometry(18.0, 0.08, 0.08), mat.signalSurface);
-    vein.name = `Vael_Signal_Vein_${side}`; vein.position.set(0, side * 1.8, 0); hull.add(vein);
-  }
+  // ---- a facet plate that can shed at critical (§9.11 asymmetric debris) ----
+  const facetPlate = kit.addBox(hull, shellDarkMat, 'Vael_Facet_Plate', [2.5, 0.15, 2.0], [4.0, 1.35, 0]);
+  facetPlate.rotation.y = 0.4;
+  facetPlate.userData.damageRole = 'secondary';
+  facetPlate.userData.keepSeparate = true;
 
-  // ---- resonant drive: a glow that suffuses the aft facet, not a nozzle (non-human propulsion) ----
-  const driveGlow = new THREE.Mesh(new THREE.CircleGeometry(2.2, 6), mat.driveGlow);
-  driveGlow.name = 'Vael_Drive_Glow'; driveGlow.position.set(-13.0, 0, 0); driveGlow.rotation.y = -Math.PI / 2; hull.add(driveGlow);
+  // ---- resonant alien drive: NO NOZZLE, just a glowing facet (§8.7 ambiguous) ----
+  // No housing, no turbine fan, no metal nozzle — the drive is a pure resonant glow on the aft facet.
+  // This deliberately breaks the human assumption that a drive is a recognizable machine part.
+  const driveCore = kit.addMesh(hull, new THREE.CircleGeometry(1.4, 6), coreMat, 'Vael_Drive_Resonator', [-10.5, 0, 0], [0, -Math.PI / 2, 0]);
+  driveCore.userData.keepSeparate = true; driveCore.userData.damageRole = 'driveCore';
+  const drivePlume = kit.addMesh(hull, new THREE.CircleGeometry(2.0, 6), kit.glowMaterial(COLOR.drive, 0.4), 'Vael_Drive_Plume', [-10.8, 0, 0], [0, -Math.PI / 2, 0]);
+  drivePlume.userData.keepSeparate = true; drivePlume.userData.damageRole = 'plume'; drivePlume.renderOrder = 2;
+  // a fake "fan" stub so finalizeShip's drive micro-motion path has a spinner to drive (here: a slow
+  // resonant pulse rather than a spin, since there's no turbine)
+  const resonator = kit.addMesh(hull, new THREE.CircleGeometry(0.9, 6), veinMat, 'Vael_Drive_Pulse', [-10.2, 0, 0], [0, -Math.PI / 2, 0]);
+  resonator.userData.keepSeparate = true;
 
-  // ---- sockets (minimal — the Vael don't expose human-style hardpoints) ----
-  const addSocket = (name, pos, role) => { const s = new THREE.Object3D(); s.name = name; s.position.set(pos[0], pos[1], pos[2]); s.userData.spacefaceSocket = true; s.userData.role = role; hull.add(s); };
-  addSocket('SOCKET_Weapon_Front', [13.5, 0, 0], 'weapon');
-  addSocket('SOCKET_Engine_Main', [-13.0, 0, 0], 'engine', [-1, 0, 0]);
-  addSocket('SOCKET_Trail_Main', [-13.3, 0, 0], 'vfx', [-1, 0, 0]);
-  addSocket('SOCKET_Camera_Focus', [0, 0, 0], 'camera');
+  const driveParts = {
+    fan: resonator, driveCore, plume: drivePlume,
+    plumeMat: drivePlume.material, basePlumeOpacity: 0.40, flicker: false,
+  };
 
-  const outer = new THREE.Group(); outer.name = 'Vael_Sniper';
-  outer.add(hull); outer.userData.hull = hull; outer.scale.setScalar(scale);
-  outer.userData.assetId = 'SF_VAEL_SNIPER';
-  outer.userData.renderContract = { coordinateSystem: '+X forward, +Y up, +Z starboard', authoredMetres: true, nominalDimensions: [32, 5, 5], sockets: 4, drawCallTarget: '<= 14 before post-processing', factionGrammar: '§8.7 non-human — ambiguous front, cavities, structure-is-signal, crystalline', version: 1 };
-  attachLodState(outer);
-  return outer;
+  // ---- greeble: NONE. Alien hulls transition continuously (§8.7) — no human vent/hatch detail. ----
+  // (Deliberately omitted. Adding greeble would make it read as human-machined.)
+
+  // ---- sockets (front ambiguous, but the combat system still needs a forward reference) ----
+  kit.addSocket(hull, 'SOCKET_Weapon_Front', [11.5, 0, 0], 'weapon');
+  kit.addSocket(hull, 'SOCKET_Engine_Main', [-10.5, 0, 0], 'engine', [-1, 0, 0]);
+  kit.addSocket(hull, 'SOCKET_Trail_Main', [-10.8, 0, 0], 'vfx', [-1, 0, 0]);
+  kit.addSocket(hull, 'SOCKET_Camera_Focus', [0, 0.5, 0], 'camera');
+
+  // ---- finalize ----
+  kit.mergeStaticByMaterial(hull, new Set([cavity, facetPlate, driveCore, drivePlume, resonator, ...veins]));
+
+  kit.finalizeShip({
+    root, hull, entity, designRadius: DESIGN_RADIUS,
+    decals: [], // no human-style decals on an alien hull
+    driveParts,
+    damageParts: { navLights: veins, navLightBase, driveCore, plume: drivePlume, secondary: [facetPlate], armor: [] },
+  });
+
+  root.userData.renderContract = {
+    coordinateSystem: '+X forward, +Y up, +Z starboard',
+    authoredMetres: true,
+    nominalDimensions: [24, 4, 7],
+    sockets: 4,
+    drawCallTarget: '<= 14 before post-processing',
+    factionGrammar: '§8.7 non-human — crystalline facets, signal-surface, deep cavity, ambiguous front',
+    damageStates: ['operational', 'stressed', 'damaged', 'critical', 'destruction'],
+    version: 2,
+  };
+  return root;
 }

@@ -4,6 +4,7 @@
 // on state.settings.showDamageNumbers. Driven each frame by hud.frame() -> update().
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
+import { SECTORS } from '../data/sectors.js';
 
 const POOL = 56;
 
@@ -12,6 +13,10 @@ const CMDTY_BY_ID = Object.create(null);
 for (const c of COMMODITIES) CMDTY_BY_ID[c.id] = c;
 const FACTION_BY_ID = Object.create(null);
 for (const f of FACTION_META) FACTION_BY_ID[f.id] = f;
+const STATION_BY_ID = Object.create(null);
+for (const sec of SECTORS) {
+  if (sec.stations) for (const st of sec.stations) STATION_BY_ID[st.id] = st;
+}
 const STYLE_ID = 'sf-floattext-style';
 
 export function createFloatingText(ctx) {
@@ -114,6 +119,22 @@ export function createFloatingText(ctx) {
   // ---- cargo full ---------------------------------------------------------------------------
   bus.on('cargo:full', (p) => {
     bus.emit('toast', { text: 'CARGO FULL', kind: 'warn', ttl: 3.5 });
+  });
+
+  // ---- economy events (market alerts) -------------------------------------------------------
+  bus.on('economy:eventStarted', (p) => {
+    if (!p) return;
+    const cmdty = CMDTY_BY_ID[p.commodityId];
+    const station = STATION_BY_ID[p.stationId];
+    const cmdtyName = cmdty ? cmdty.name : (p.commodityId || 'Unknown');
+    const stationName = station ? station.name : (p.stationId || 'Unknown');
+    const typeLabel = p.type ? p.type.toUpperCase() : 'EVENT';
+    const kind = (p.type === 'shortage' || p.type === 'blockade' || p.type === 'piracy') ? 'warn' : 'info';
+    bus.emit('toast', { text: 'MARKET ALERT: ' + cmdtyName + ' ' + typeLabel + ' at ' + stationName, kind, ttl: 5 });
+  });
+
+  bus.on('economy:eventEnded', (p) => {
+    bus.emit('toast', { text: 'Market event ended', kind: 'info', ttl: 3 });
   });
 
   function update(dt) {

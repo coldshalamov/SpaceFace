@@ -1,99 +1,176 @@
-// SF-DMC Drift Miners Barge — bespoke faction ship (spec §8.4, Phase 3 §20).
+// SF-DMC Drift Barge — bespoke industrial hauler hero asset (spec §8.4, Phase 3 §20).
 //
-// §8.4 reading: "honest load, repair, and abrasion." Drift Miners are blue-collar industrial — ships
-// read as working machinery: broad load paths, external braces/scoops/clamps/service platforms, safety
-// color near moving/hot systems, dust/abrasion stronger than combat scarring, replaceable tools with
-// unmistakable mount geometry, work lights rather than decorative glow. Not clean (corporate) nor
-// predatory (pirate): this is a WORK VEHICLE that earns its keep.
+// §8.4 reading: "honest load, repair, and abrasion." A Drift Miners ship is a working machine, not a
+// warship or a product. Where the Meridian is brand-merchandise and the Concord is institutional, the
+// Drift is honest labor: broad load paths, external braces and clamps, safety color near moving parts,
+// dust and abrasion (NOT combat scarring), and work lights instead of decorative glow.
 //
-// Host: the bruiser_brawler (a mining-barge-derived heavy combatant).
+// Construction logic vs §8.4 bullets:
+//   - "broad load paths"                     -> a wide squat barge loft with a flat reinforced deck
+//   - "external braces, scoops, clamps, platforms"-> visible structural cross-braces + cargo clamps on the deck
+//   - "safety color near moving or hot systems"-> hazard-yellow clamps + the moving crusher scoop
+//   - "dust and abrasion stronger than combat scarring"-> a heavy ore-stain grime band on the deck + bow
+//   - "replaceable tools with unmistakable mount geometry"-> a bolted crusher scoop with a clear mounting collar
+//   - "work lights rather than decorative glow"-> warm flood lights (white-ish, not colored show-lights)
+//
+// Craft tier: matches the Kestrel. Lofted industrial barge hull + PBR materials (panel albedo + normal
+// map + heavy ore-grime) + bolted crusher scoop + external braces + speed-reactive crude drive + LOD
+// reaction (drops the hazard chevrons at distance) + readable damage (work-light groups fail, the
+// crusher scoop sheds at critical). Built from shipKit.js shared primitives.
+//
+// Coordinate contract: +X forward, +Y up, +Z starboard, metres. collisionRadius ~19-20 (enemies.js).
 import * as THREE from 'three';
-import { attachLodState } from '../lod.js';
+import * as kit from './shipKit.js';
 
 const COLOR = Object.freeze({
-  hull: '#a08050',          // dusty industrial ochre — abraded working paint
-  hullDark: '#705038',
-  safety: '#ffaa22',        // safety color near moving/hot systems (§8.4)
-  rust: '#8a5028',          // abrasion/dust stronger than combat scarring
-  graphite: '#1f1810',
-  ore: '#5a4030',           // raw ore staining (mining residue)
-  drive: '#ff8844',         // work-drive (warm industrial)
+  hull: '#a08050',          // honest industrial tan (faction_dmc hull)
+  hullDark: '#6a5238',      // shadow panels / structural members
+  rust: '#7a4010',          // faction_dmc secondary — oxidized structural steel
+  graphite: '#1a140e',      // bare mechanical structure
+  hazard: '#e8a030',        // safety color near moving/hot systems (§8.4)
+  warning: '#d8c030',       // hazard chevron yellow
+  workLight: '#ffeac0',     // warm work flood-light (not decorative glow, §8.4)
+  drive: '#FF8844',         // crude industrial drive (faction_dmc thruster)
   driveCore: '#ffcc88',
-  workLight: '#fff0a0',     // work lights, not decorative glow (§8.4)
 });
 
-function stdMat(c, r, m) { return new THREE.MeshStandardMaterial({ color: new THREE.Color(c), roughness: r, metalness: m }); }
-function lightMat(c, i = 2.4) { return new THREE.MeshStandardMaterial({ color: new THREE.Color('#000'), emissive: new THREE.Color(c), emissiveIntensity: i }); }
-function glowMat(c, o = 0.6) { return new THREE.MeshBasicMaterial({ color: new THREE.Color(c), transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }); }
+const DESIGN_RADIUS = 19;
 
+/**
+ * Build the bespoke Drift Barge mesh (an honest industrial working machine, §8.4).
+ * @param {object} entity - the ship entity (reads radius for scale; default ~19).
+ * @returns {THREE.Group} the ship mesh, with userData.hull (bankable), sockets, renderContract.
+ */
 export function buildDriftBarge(entity) {
-  const DESIGN_RADIUS = 19;
-  const radius = (entity && Number.isFinite(entity.radius)) ? entity.radius : DESIGN_RADIUS;
-  const scale = radius / DESIGN_RADIUS;
-
-  const mat = {
-    hull: stdMat(COLOR.hull, 0.85, 0.25),       // dusty, rough — abraded working paint
-    hullDark: stdMat(COLOR.hullDark, 0.88, 0.3),
-    safety: stdMat(COLOR.safety, 0.5, 0.2),     // safety color (functional, not decorative)
-    rust: stdMat(COLOR.rust, 0.95, 0.05),       // heavy abrasion (stronger than combat scarring, §8.4)
-    graphite: stdMat(COLOR.graphite, 0.65, 0.72),
-    ore: stdMat(COLOR.ore, 0.98, 0.02),         // ore staining (mining residue)
-    drive: lightMat(COLOR.drive, 2.8),
-    driveCore: lightMat(COLOR.driveCore, 3.8),
-    driveGlow: glowMat(COLOR.drive, 0.6),
-    workLight: lightMat(COLOR.workLight, 2.2),
-  };
-  for (const [n, m] of Object.entries(mat)) m.name = `Drift_${n}`;
+  const root = new THREE.Group();
+  root.name = 'Drift_Barge';
+  root.userData.kind = 'ship';
+  root.userData.assetId = 'SF_DMC_DRIFT_BARGE';
 
   const hull = new THREE.Group(); hull.name = 'Drift_Barge_Hull';
-  const addBox = (m, name, [sx, sy, sz], [x, y, z], rot) => { const g = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m); g.name = name; g.position.set(x, y, z); if (rot) g.rotation.set(rot[0], rot[1], rot[2]); hull.add(g); return g; };
-  const addCylX = (m, name, r, h, [x, y, z]) => { const g = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 10), m); g.name = name; g.position.set(x, y, z); g.rotation.z = Math.PI / 2; hull.add(g); return g; };
+  root.add(hull); root.userData.hull = hull;
 
-  // ---- broad load-path hull: a wide, squat industrial barge (honest load, §8.4) ----
-  addBox(mat.hull, 'Drift_Fuselage', [18.0, 4.5, 8.0], [0, 0, 0]);
-  addBox(mat.hullDark, 'Drift_Bow_Dozer', [5.0, 3.0, 7.0], [11.0, -0.5, 0]); // a dozer/plow bow for clearing rock
+  const seed = kit.hashSeed(COLOR.hull + COLOR.hazard);
+  const hullMat = kit.pbrHullMaterial({ hull: COLOR.hull, accent: COLOR.hazard, seed, panelCount: 10, metalness: 0.40, roughness: 0.72 });
+  hullMat.name = 'Drift_Hull';
+  const hullDarkMat = kit.pbrHullMaterial({ hull: COLOR.hullDark, accent: COLOR.hazard, seed: seed + 2, panelCount: 8, metalness: 0.45, roughness: 0.78 });
+  hullDarkMat.name = 'Drift_HullDark';
+  const rustMat = kit.standardMaterial(COLOR.rust, 0.88, 0.20); rustMat.name = 'Drift_Rust';
+  const graphiteMat = kit.machineryMaterial(COLOR.graphite, 0.55, 0.75); graphiteMat.name = 'Drift_Graphite';
+  const hazardMat = kit.emissiveMaterial(COLOR.hazard, 1.4); hazardMat.name = 'Drift_Hazard';
+  const workLightMat = kit.emissiveMaterial(COLOR.workLight, 2.2); workLightMat.name = 'Drift_WorkLight';
 
-  // ---- external braces + clamps (load-bearing external structure, §8.4) ----
+  // ---- industrial barge hull: a WIDE SQUAT lofted shell with a flat reinforced deck (§8.4) ----
+  // Broader than it is tall — a working barge, not a sleek hull. The flat top is the cargo/ore deck.
+  const pressureHull = kit.addMesh(hull, kit.loftXGeometry([
+    { x: -8.5, halfY: 1.6, halfZ: 3.2 },
+    { x: -2.0, halfY: 1.8, halfZ: 3.5 },
+    { x: 5.0,  halfY: 1.7, halfZ: 3.3 },
+    { x: 10.0, halfY: 1.3, halfZ: 2.6 },
+    { x: 13.5, halfY: 0.5, halfZ: 1.0 },
+  ], 10), hullMat, 'Drift_Pressure_Hull');
+  pressureHull.castShadow = true;
+
+  // reinforced flat deck plate on top (broad load path, §8.4)
+  kit.addBox(hull, hullDarkMat, 'Drift_Deck_Plate', [16.0, 0.4, 6.4], [-0.5, 1.7, 0]);
+
+  // ---- external structural cross-braces (external braces, §8.4) ----
+  // Visible truss-like members spanning the hull — honest load-bearing structure, not hidden inside.
+  for (let i = 0; i < 4; i++) {
+    const x = -5.0 + i * 3.5;
+    kit.addBox(hull, rustMat, `Drift_Brace_${i}`, [0.5, 1.8, 6.0], [x, 0.5, 0]).castShadow = true;
+  }
+
+  // ---- crusher scoop with unmistakable mount geometry (replaceable tool, §8.4) ----
+  // A bolted bucket on the nose with a clear mounting collar — reads as a detachable mining tool.
+  const scoop = new THREE.Group(); scoop.name = 'Drift_Crusher_Scoop';
+  scoop.userData.keepSeparate = true; // group survives merge (shed at critical)
+  kit.addBox(scoop, rustMat, 'Drift_Scoop_Bucket', [2.8, 2.8, 4.4], [0, 0, 0]).castShadow = true;
+  // the mounting collar (unmistakable mount geometry)
+  kit.addCylinderX(scoop, graphiteMat, 'Drift_Scoop_Collar', 1.2, 1.4, [-1.6, 0, 0], 12);
+  // hazard-yellow jaw teeth (safety color near moving systems, §8.4)
   for (const side of [-1, 1]) {
-    addBox(mat.graphite, `Drift_Brace_${side < 0 ? 'Port' : 'Starboard'}`, [10.0, 0.6, 0.8], [0, 2.2, side * 4.0]);
-    addBox(mat.safety, `Drift_Clamp_${side < 0 ? 'Port' : 'Starboard'}`, [1.5, 1.2, 1.5], [4.0, 2.6, side * 3.8]); // safety-colored tool clamp
+    for (let t = 0; t < 3; t++) {
+      kit.addBox(scoop, hazardMat, `Drift_Scoop_Tooth_${side < 0 ? 'P' : 'S'}${t}`, [0.3, 0.6, 0.4], [1.2, 0.9 - t * 0.7, side * (1.2 + t * 0.4)]);
+    }
+  }
+  hull.add(scoop);
+  scoop.position.set(12.0, -0.2, 0);
+
+  // ---- cargo clamps on the deck (external clamps, §8.4) — hazard-yellow, pairs ----
+  const clamps = [];
+  for (let i = 0; i < 4; i++) {
+    for (const side of [-1, 1]) {
+      const c = kit.addBox(hull, hazardMat, `Drift_Clamp_${i}_${side < 0 ? 'P' : 'S'}`, [0.8, 1.0, 0.8], [-3.0 + i * 2.5, 2.2, side * 2.0]);
+      c.castShadow = true;
+      clamps.push(c);
+    }
   }
 
-  // ---- ore-stained dorsal deck (mining residue, abrasion, §8.4) ----
-  addBox(mat.ore, 'Drift_Ore_Deck', [12.0, 0.4, 6.0], [-2.0, 2.05, 0]);
-  addBox(mat.rust, 'Drift_Abrasion_Band', [2.0, 4.4, 7.8], [2.0, 0, 0]); // abrasion band across the hull
+  // ---- dust + abrasion: a heavy ore-stain grime band on the deck (§8.4 — not combat scarring) ----
+  // Higher grime intensity than corporate/authority, concentrated on the dorsal deck where ore is
+  // loaded. This is wear-from-work, not battle damage.
+  const oreGrimeMat = kit.grimeMaterial({ hull: COLOR.hull, seed: seed + 17, intensity: 0.65 });
+  kit.addDecal(hull, oreGrimeMat, 'Drift_Ore_Stain', [14.0, 5.0], [-1.0, 1.72, 0], [-Math.PI / 2, 0, 0]);
 
-  // ---- replaceable mining tool: a big scoop/crusher with unmistakable mount geometry (§8.4) ----
-  const scoop = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 1.6, 4.0, 8), mat.graphite);
-  scoop.name = 'Drift_Mining_Scoop'; scoop.position.set(12.5, 1.0, 0); scoop.rotation.z = Math.PI / 2; hull.add(scoop);
-  // safety-color hazard stripes on the moving crusher (§8.4: safety color near moving systems)
-  addBox(mat.safety, 'Drift_Scoop_Hazard', [0.4, 4.4, 4.4], [12.5, 1.0, 0]);
-
-  // ---- work lights (not decorative glow, §8.4): bright flood lamps over the work deck ----
-  for (const x of [6.0, -2.0, -8.0]) {
-    const l = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), mat.workLight);
-    l.name = `Drift_WorkLight_${x}`; l.position.set(x, 2.6, 2.5); hull.add(l);
-    const l2 = l.clone(); l2.position.z = -2.5; l2.name = `Drift_WorkLight_${x}_2`; hull.add(l2);
+  // ---- hazard chevron decals on the bow (safety color, §8.4) — dropped at LOD1+ ----
+  const chevronDecalMat = kit.decalMaterial({ hull: COLOR.hull, accent: COLOR.warning, seed: seed + 21, kind: 'decal' });
+  const chevronDecals = [];
+  for (const side of [-1, 1]) {
+    const d = kit.addDecal(hull, chevronDecalMat, `Drift_Chevron_${side < 0 ? 'Port' : 'Starboard'}`, [4.0, 2.0], [8.0, 0.5, side * 3.21], [0, side < 0 ? -Math.PI / 2 : Math.PI / 2, 0]);
+    chevronDecals.push(d);
   }
 
-  // ---- heavy industrial drive: a single big crude nozzle (work-drive) ----
-  const driveGlow = new THREE.Mesh(new THREE.CircleGeometry(2.8, 22), mat.driveGlow);
-  driveGlow.name = 'Drift_Drive_Glow'; driveGlow.position.set(-15.5, 0, 0); driveGlow.rotation.y = -Math.PI / 2; hull.add(driveGlow);
-  addCylX(mat.driveCore, 'Drift_Drive_Core', 1.4, 0.5, [-15.3, 0, 0]);
+  // ---- crude industrial drive: a single big rough nozzle (workhorse, not showy) ----
+  const drive = kit.buildDrive(hull, {
+    name: 'Drift_Drive', position: [-9.0, 0.6, 0], radius: 1.25, length: 1.6,
+    materials: { dark: graphiteMat, accent: hazardMat },
+    driveColor: COLOR.drive, coreColor: COLOR.driveCore, driveGlowOpacity: 0.48, flicker: true,
+  });
+
+  // ---- work flood-lights (not decorative glow, §8.4) ----
+  // Warm white-ish floods illuminating the deck for night ops. Tagged as the navLight damage group.
+  const navLights = [];
+  for (const x of [3.0, -3.0]) {
+    const l = kit.addBox(hull, workLightMat, `Drift_WorkLight_${x}`, [0.5, 0.4, 0.5], [x, 2.5, 0]);
+    l.userData.damageRole = 'navLight'; l.userData.keepSeparate = true;
+    navLights.push(l);
+  }
+  const navLightBase = navLights.map((m) => m.material.emissiveIntensity);
+
+  // ---- greeble: honest industrial detail (external pipes, vents — denser than corporate) ----
+  kit.scatterGreeble(hull, {
+    R: DESIGN_RADIUS, length: 1.8, halfWidth: 0.16, height: 0.14, density: 0.45, seed: seed + 7,
+    materials: { primary: hullDarkMat, dark: graphiteMat, glow: hazardMat }, xMin: -0.30, xMax: 0.20,
+  });
 
   // ---- sockets ----
-  const addSocket = (name, pos, role) => { const s = new THREE.Object3D(); s.name = name; s.position.set(pos[0], pos[1], pos[2]); s.userData.spacefaceSocket = true; s.userData.role = role; hull.add(s); };
-  addSocket('SOCKET_Weapon_Front', [14.5, 1.0, 0], 'weapon');
-  addSocket('SOCKET_Mining_Front', [14.5, 1.0, 0], 'mining'); // the scoop doubles as mining emitter
-  addSocket('SOCKET_Engine_Main', [-15.5, 0, 0], 'engine', [-1, 0, 0]);
-  addSocket('SOCKET_Trail_Main', [-15.8, 0, 0], 'vfx', [-1, 0, 0]);
-  addSocket('SOCKET_Cargo_Ventral', [-2.0, -2.2, 0], 'cargo', [0, -1, 0]);
-  addSocket('SOCKET_Camera_Focus', [0, 0.5, 0], 'camera');
+  kit.addSocket(hull, 'SOCKET_Weapon_Front', [14.5, 0, 0], 'weapon'); // the crusher scoop
+  kit.addSocket(hull, 'SOCKET_Mining_Front', [14.5, -0.2, 0], 'mining'); // dual-purpose scoop
+  kit.addSocket(hull, 'SOCKET_Engine_Main', [-9.3, 0.6, 0], 'engine', [-1, 0, 0]);
+  kit.addSocket(hull, 'SOCKET_Trail_Main', [-9.6, 0.6, 0], 'vfx', [-1, 0, 0]);
+  kit.addSocket(hull, 'SOCKET_Camera_Focus', [0, 0.5, 0], 'camera');
+  kit.addSocket(hull, 'SOCKET_Cargo_Ventral', [-2.0, -1.8, 0], 'cargo');
 
-  const outer = new THREE.Group(); outer.name = 'Drift_Barge';
-  outer.add(hull); outer.userData.hull = hull; outer.scale.setScalar(scale);
-  outer.userData.assetId = 'SF_DMC_DRIFT_BARGE';
-  outer.userData.renderContract = { coordinateSystem: '+X forward, +Y up, +Z starboard', authoredMetres: true, nominalDimensions: [34, 6, 17], sockets: 6, drawCallTarget: '<= 18 before post-processing', factionGrammar: '§8.4 blue-collar industrial — honest load, braces, abrasion, work lights', version: 1 };
-  attachLodState(outer);
-  return outer;
+  // ---- finalize ----
+  kit.mergeStaticByMaterial(hull, new Set([scoop, ...chevronDecals, ...navLights, ...clamps, drive.fan, drive.driveCore, drive.plume]));
+
+  kit.finalizeShip({
+    root, hull, entity, designRadius: DESIGN_RADIUS,
+    decals: chevronDecals,
+    driveParts: drive,
+    damageParts: { navLights, navLightBase, driveCore: drive.driveCore, plume: drive.plume, secondary: [scoop], armor: [] },
+  });
+
+  root.userData.renderContract = {
+    coordinateSystem: '+X forward, +Y up, +Z starboard',
+    authoredMetres: true,
+    nominalDimensions: [26, 6, 13],
+    sockets: 6,
+    drawCallTarget: '<= 18 before post-processing',
+    factionGrammar: '§8.4 industrial — broad load paths, external braces, ore abrasion, work lights',
+    damageStates: ['operational', 'stressed', 'damaged', 'critical', 'destruction'],
+    version: 2,
+  };
+  return root;
 }

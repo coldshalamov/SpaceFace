@@ -7,7 +7,6 @@
 import { SECTORS } from '../../data/sectors.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { FACTION_META } from '../../data/factions.js';
-import { MISSION_TUNING } from '../../data/missions.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -22,7 +21,7 @@ for (const sec of SECTORS) {
   }
 }
 
-const STYLE_ID = 'sf-mlog-style';
+const STYLE_ID = 'sf-missionlog-style';
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
@@ -73,30 +72,34 @@ function objectiveText(m) {
   const p = m.params || {};
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
+  const dest = m.destStationId ? destStationName(m.destStationId) : 'destination';
   switch (m.type) {
     case 'cargo_delivery':
-      return `Deliver ${p.qty || tgt}u ${cmdtyName(p.cmdtyId)} (${prog}/${tgt})`;
-    case 'bulk_trade':
-      return `Sell ${p.qty || tgt}u ${cmdtyName(p.cmdtyId)} (${prog}/${tgt})`;
-    case 'mining_quota':
-      return `Mine ${p.qty || tgt}u ${cmdtyName(p.cmdtyId)} (${prog}/${tgt})`;
     case 'salvage_retrieval':
-      return `Recover ${p.qty || tgt}u ${cmdtyName(p.cmdtyId)} (${prog}/${tgt})`;
-    case 'smuggling_run':
-      return `Smuggle ${p.qty || tgt}u ${cmdtyName(p.cmdtyId)} (${prog}/${tgt})`;
-    case 'bounty_hunt':
-      return `Eliminate target (${prog}/${tgt})`;
-    case 'escort':
-      return `Escort convoy to destination (${prog}/${tgt})`;
-    case 'patrol_clear':
-      return `Clear ${p.clearCount || tgt} hostiles (${prog}/${tgt})`;
-    case 'recon_scan':
-      return `Scan ${p.scanTargets || tgt} site(s) (${prog}/${tgt})`;
     case 'passenger_transport':
-      return `Transport passenger to destination (${prog}/${tgt})`;
+      return `Deliver to ${dest}`;
+    case 'bulk_trade':
+      return `Sell ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
+    case 'mining_quota':
+      return `Mine ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
+    case 'bounty_hunt':
+      return 'Eliminate target';
+    case 'patrol_clear':
+      return `Clear ${prog}/${tgt} hostiles`;
+    case 'escort':
+      return `Escort to ${dest}`;
+    case 'recon_scan':
+      return `Scan ${prog}/${tgt} targets`;
+    case 'smuggling_run':
+      return `Deliver contraband to ${dest}`;
     default:
-      return `Complete objective (${prog}/${tgt})`;
+      return `${prog}/${tgt}`;
   }
+}
+
+function destStationName(id) {
+  const info = STATION_INFO.get(id);
+  return info ? info.name : 'destination';
 }
 
 function destLabel(m) {
@@ -269,12 +272,11 @@ export const missionLogScreen = {
       // Meta row: destination, time, rewards
       const meta = el('div', 'sf-mlog-meta mono');
       const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
-      const baseRep = (MISSION_TUNING.BASE_REP && MISSION_TUNING.BASE_REP[m.type]) || 0;
       meta.innerHTML =
         '<span class="sf-mlog-dest">' + destLabel(m) + '</span>' +
         (remaining > 0 ? '<span class="sf-mlog-time' + (urgent ? ' urgent' : '') + '">' + fmtTime(remaining) + '</span>' : '') +
         '<span class="sf-mlog-cr">+' + (m.reward_cr || 0).toLocaleString() + ' cr</span>' +
-        (fac ? '<span class="sf-mlog-fac" style="color:' + (fac.color || 'var(--accent-2)') + '">+' + baseRep + ' ' + (fac.short || fac.name) + '</span>' : '');
+        (fac ? '<span class="sf-mlog-fac" style="color:' + (fac.color || 'var(--accent-2)') + '">' + (fac.short || fac.name) + '</span>' : '');
       card.appendChild(meta);
 
       // Buttons: Track / Abandon
