@@ -57,7 +57,8 @@ const BEAT_KEYS = new Set([
   'next',
   'branchIds',
 ]);
-const BRANCH_KEYS = new Set(['id', 'unlockedByBeat', 'policyId', 'summary', 'outcomeTags', 'worldFactEffects']);
+const BRANCH_KEYS = new Set(['id', 'unlockedByBeat', 'policyId', 'summary', 'outcomeTags', 'lifecycle', 'worldFactEffects']);
+const BRANCH_LIFECYCLE_KEYS = new Set(['offer', 'active', 'reminder', 'fail', 'abandon', 'complete', 'aftermath']);
 const EFFECT_KEYS = new Set(['factId', 'op', 'value']);
 
 export function validateScenarioDocument(doc, options = {}) {
@@ -242,9 +243,25 @@ function validateBranches(value, issues, file) {
     requireId(branch.policyId, `${path}.policyId`, issues, file);
     requireString(branch.summary, `${path}.summary`, issues, file);
     validateStringArray(branch.outcomeTags, `${path}.outcomeTags`, issues, file, { minItems: 1 });
+    validateBranchLifecycle(branch.lifecycle, `${path}.lifecycle`, issues, file);
     validateWorldFactEffects(branch.worldFactEffects, `${path}.worldFactEffects`, issues, file);
   });
   return ids;
+}
+
+function validateBranchLifecycle(value, path, issues, file) {
+  if (!isPlainObject(value)) {
+    addIssue(issues, file, path, 'type', 'branch lifecycle must be an object');
+    return;
+  }
+  validateKnownKeys(value, BRANCH_LIFECYCLE_KEYS, path, issues, file);
+  for (const key of BRANCH_LIFECYCLE_KEYS) {
+    const itemPath = `${path}.${key}`;
+    requireString(value[key], itemPath, issues, file);
+    if (typeof value[key] === 'string' && value[key].length > 220) {
+      addIssue(issues, file, itemPath, 'maxLength', 'branch lifecycle text must be <= 220 characters');
+    }
+  }
 }
 
 function validateWorldFactEffects(value, path, issues, file) {

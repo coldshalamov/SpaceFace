@@ -55,6 +55,13 @@ try {
       `${branch.id} trace should include branch resolution evidence`);
     assert.equal(trace.traceSummary.types['scenario:factChanged'], branch.worldFactEffects.length,
       `${branch.id} trace should include fact delta evidence`);
+    const branchRecord = trace.trace.records.find((record) => record.type === 'scenario:branchResolved'
+      && record.payload.branchId === branch.id);
+    assert(branchRecord, `${branch.id} trace should carry the branch resolution payload`);
+    assert.deepEqual(branchRecord.payload.lifecycle, branch.lifecycle,
+      `${branch.id} trace should carry authored lifecycle text`);
+    assert.equal(branchRecord.payload.lifecycle.aftermath, branch.lifecycle.aftermath,
+      `${branch.id} trace should carry authored aftermath text`);
     assert(trace.trace.records.some((record) => record.type === 'presentation:cue'
       && record.payload.id === 'scenario.branch.resolved'
       && record.payload.sourceEvent === 'scenario:branchResolved'),
@@ -88,6 +95,8 @@ try {
       `${branch.id} reload should preserve the resolution beat`);
     assert.equal(reloadInspect.scenarioContract.resolvedBranchId, branch.id,
       `${branch.id} reload should preserve resolved branch`);
+    assert.deepEqual(reloadInspect.scenarioContract.resolution.lifecycle, branch.lifecycle,
+      `${branch.id} reload should preserve branch lifecycle text`);
     for (const effect of branch.worldFactEffects) {
       assert.equal(reloadInspect.scenarioContract.factValues[effect.factId], effect.value,
         `${branch.id} reload should preserve ${effect.factId} as ${effect.value}`);

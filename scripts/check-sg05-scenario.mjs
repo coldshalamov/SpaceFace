@@ -14,6 +14,7 @@ import { CRITICAL_SLICE_EVENT_IDS } from '../src/presentation/cueSchema.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
+const BRANCH_LIFECYCLE_KEYS = ['abandon', 'active', 'aftermath', 'complete', 'fail', 'offer', 'reminder'];
 
 const scenario = readJson(SCENARIO_PATH);
 const report = validateScenarioDocument(scenario, { file: SCENARIO_PATH });
@@ -40,6 +41,10 @@ for (const beat of scenario.beats) {
 
 for (const branch of scenario.branches) {
   assert(branch.policyId.startsWith('policy.47a.'), `${branch.id} should have a 47-A policy id`);
+  assert.deepEqual(Object.keys(branch.lifecycle || {}).sort(), BRANCH_LIFECYCLE_KEYS, `${branch.id} should supply complete branch lifecycle text`);
+  for (const key of BRANCH_LIFECYCLE_KEYS) {
+    assert(branch.lifecycle[key].length <= 220, `${branch.id}.${key} should stay inside the lifecycle text budget`);
+  }
   assert(branch.worldFactEffects.length >= 1, `${branch.id} must change an immediate world fact`);
 }
 
@@ -65,6 +70,10 @@ function assertRejectsMalformedScenario() {
   const missingBranchEffects = clone(scenario);
   missingBranchEffects.branches[0].worldFactEffects = [];
   assertIssue(missingBranchEffects, 'minItems', 'branch without world fact effects should fail');
+
+  const missingBranchLifecycle = clone(scenario);
+  delete missingBranchLifecycle.branches[0].lifecycle.aftermath;
+  assertIssue(missingBranchLifecycle, 'type', 'branch without aftermath lifecycle text should fail');
 
   const missingActorRef = clone(scenario);
   missingActorRef.beats[0].requiredActors.push('actor_missing');

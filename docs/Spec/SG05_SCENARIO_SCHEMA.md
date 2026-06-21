@@ -29,19 +29,21 @@ node scripts/sf.mjs validate scenario src/data/scenarios/47a.scenario.json
 - the four resolution branches: escape, surrender, destroy, deliver;
 - every beat to reference declared actors, proof metrics, world facts, and presentation lanes;
 - every branch to change at least one immediate world fact;
+- every branch to supply offer, active, reminder, fail, abandon, complete, and aftermath lifecycle text;
 - critical SG-08 cue ids to be reserved by the scenario contract.
 - the canonical `sf-sim 47a` run to load this contract, emit deterministic `scenario:*` trace
   evidence, snapshot/save/reload the scenario state, bind all required Phase 0 actors, and prove
   beat progression through `scavenger_arrival` in a longer replay.
 - four generated branch policy tapes to resolve escape, surrender, destroy, and deliver outcomes,
   mutate the authored world facts, route aftermath through SG-08, and preserve branch resolution
-  across save/load.
+  plus lifecycle payloads across save/load.
 
 ## Boundary
 
 This contract deliberately stops before implementing the full SG-05 DSL runtime, localization,
-content hot reload, authored dialogue execution, or rich fail/abandon/aftermath handling. The Phase 0
-runtime bridge is an evidence layer: it consumes this same file, initializes facts and actor
+content hot reload, authored dialogue execution, or UI/runtime rendering of lifecycle text. The
+Phase 0 runtime bridge is an evidence layer: it consumes this same file, initializes facts and actor
 bindings, proves live beat transitions, and applies replayed branch policies without adding a
 parallel encounter format. Future SG-05 work should extend this schema and consume the same file for
-dialogue, localization, richer policy conditions, and branch aftermath.
+dialogue, localization, and richer policy conditions while preserving the validated branch lifecycle
+contract.

@@ -308,6 +308,15 @@
       "policyId": "policy.47a.escape_with_evidence",
       "summary": "Player leaves with the sealed spindle and keeps the contract open under pursuit.",
       "outcomeTags": ["evidence_retained", "pursuit_pressure", "contract_pending"],
+      "lifecycle": {
+        "offer": "Keep the spindle sealed and burn out of the wreck field.",
+        "active": "Concord marks you noncompliant while Kessler keeps the private channel open.",
+        "reminder": "The tug is still painting you. Leave with the spindle before they bracket the drive.",
+        "fail": "The recovery cordon pins the Kestrel and repossesses the spindle.",
+        "abandon": "You cut the job loose; the spindle remains in the disputed debris ledger.",
+        "complete": "You escape with the evidence intact.",
+        "aftermath": "Contract 47-A stays open, Concord issues a recovery warrant, and the manifest remains unreconciled."
+      },
       "worldFactEffects": [
         { "factId": "fact.47a.evidence_status", "op": "set", "value": "escaped_with_player" },
         { "factId": "fact.47a.faction_pressure", "op": "set", "value": "concord_recovery_warrant" },
@@ -320,6 +329,15 @@
       "policyId": "policy.47a.surrender_evidence",
       "summary": "Player hands the spindle to the official tug and receives a clean public record with a private debt.",
       "outcomeTags": ["evidence_surrendered", "official_record_clean", "private_debt"],
+      "lifecycle": {
+        "offer": "Hand the spindle to the official tug and accept the clean public record.",
+        "active": "The tug opens its cradle and asks you to keep the seal camera-facing.",
+        "reminder": "Hold position near the tug; any cut-and-run will reopen the warrant.",
+        "fail": "The transfer breaks under fire and Concord treats the loss as your negligence.",
+        "abandon": "You refuse the handoff after signaling compliance; the tug turns hostile.",
+        "complete": "The spindle transfers to Concord custody.",
+        "aftermath": "Your public record is clean, but Concord flags you as a private asset."
+      },
       "worldFactEffects": [
         { "factId": "fact.47a.evidence_status", "op": "set", "value": "held_by_concord" },
         { "factId": "fact.47a.faction_pressure", "op": "set", "value": "concord_asset_flag" },
@@ -332,6 +350,15 @@
       "policyId": "policy.47a.destroy_evidence",
       "summary": "Player destroys the spindle, closing the physical problem while making the accounting impossible.",
       "outcomeTags": ["evidence_destroyed", "hazard_spike", "contract_unpayable"],
+      "lifecycle": {
+        "offer": "Destroy the spindle before anyone can inventory what is inside it.",
+        "active": "The Massline reads the payload as unstable; every shot risks the carrier frame.",
+        "reminder": "Break the seal or cut away now; the wreck is starting to answer the mass.",
+        "fail": "The spindle ruptures uncontrolled and throws secondary debris across the lane.",
+        "abandon": "You stop short of destruction and leave the evidence problem alive.",
+        "complete": "The spindle is destroyed.",
+        "aftermath": "The evidence is gone, the carrier sheds debris, and the contract becomes unpayable."
+      },
       "worldFactEffects": [
         { "factId": "fact.47a.evidence_status", "op": "set", "value": "destroyed" },
         { "factId": "fact.47a.carrier_hazard", "op": "set", "value": "secondary_debris_release" },
@@ -344,6 +371,15 @@
       "policyId": "policy.47a.deliver_to_contact",
       "summary": "Player delivers the spindle to Kessler's contact and turns the job into a hidden chain.",
       "outcomeTags": ["evidence_diverted", "kessler_chain", "npc_availability_changed"],
+      "lifecycle": {
+        "offer": "Divert the spindle to Kessler's contact and keep the official board blind.",
+        "active": "Kessler's contact is moving; the official tug is already auditing your vector.",
+        "reminder": "Stay off the recovery beacon and keep the seal intact for the handoff.",
+        "fail": "The contact burns the channel when the recovery tug gets a clean lock.",
+        "abandon": "You drop the covert route and leave Kessler without the evidence.",
+        "complete": "The spindle reaches Kessler's contact.",
+        "aftermath": "The evidence leaves the ledger, payment is withheld, and a hidden chain opens."
+      },
       "worldFactEffects": [
         { "factId": "fact.47a.evidence_status", "op": "set", "value": "delivered_to_kessler_contact" },
         { "factId": "fact.47a.faction_pressure", "op": "set", "value": "quiet_interest_opened" },

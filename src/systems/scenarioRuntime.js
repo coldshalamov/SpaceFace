@@ -187,6 +187,7 @@ function applyScenarioBranch(runtime, branchId, options = {}) {
     tick: Number.isSafeInteger(runtime.state.tick) ? runtime.state.tick : 0,
     simTime: Number.isFinite(runtime.state.simTime) ? runtime.state.simTime : 0,
     outcomeTags: Array.isArray(branch.outcomeTags) ? branch.outcomeTags.slice() : [],
+    lifecycle: clonePlain(branch.lifecycle || {}),
     effects,
   };
   scenario.resolution = clonePlain(resolution);
@@ -196,6 +197,7 @@ function applyScenarioBranch(runtime, branchId, options = {}) {
     policyId: branch.policyId,
     summary: branch.summary,
     outcomeTags: resolution.outcomeTags.slice(),
+    lifecycle: clonePlain(resolution.lifecycle),
     effects: clonePlain(effects),
     source: resolution.source,
   });

@@ -134,7 +134,7 @@ assert.equal(envelope.phase0ObservedTraceCounts['tether:attached'], 1, 'expected
 assert.equal(envelope.acceptancePlaceholders.firstTetherAttachTickMax, 3600,
   'expected telemetry should require first Massline attach within 60s');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  'a4d6e9539cd3b47bfe03635b86686fe9061abbd4f2b4dd90674dcecfc5b09ca5',
+  'c57bd7d52b39ad5a82fbf5a5a58fc2d69bbb9f88b2f5e82c92acc6f5d561003a',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 
 const balanceSim = read('scripts/balance-sim.mjs');
