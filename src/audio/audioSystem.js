@@ -37,14 +37,15 @@ const STEM_WEIGHTS = {
   docked: { A: 0.2, B: 0.2, C: 0.0, D: 0.9 },
 };
 
-const MAX_VOICES = 24;
+export const MAX_AUDIO_VOICES = 24;
 
 function linearGain(v) { const c = v < 0 ? 0 : v > 1 ? 1 : v; return c * c; }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
 // Build a fast id->recipe lookup over the data array.
-const RECIPE_BY_ID = {};
-for (const r of RECIPES) RECIPE_BY_ID[r.id] = r;
+const recipeById = {};
+for (const r of RECIPES) recipeById[r.id] = r;
+export const AUDIO_RECIPE_BY_ID = Object.freeze(recipeById);
 
 // Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
 // payload carries weaponId. We classify by substring so any catalog id resolves.
@@ -59,7 +60,7 @@ function recipeForWeapon(weaponId) {
 }
 
 // Semantic cue ids (audio:cue / toast / ui:*) -> recipe id.
-const CUE_TO_RECIPE = {
+export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   click: 'sfx_ui_click', ui_click: 'sfx_ui_click', uiClick: 'sfx_ui_click',
   hover: 'sfx_ui_hover', ui_hover: 'sfx_ui_hover', uiHover: 'sfx_ui_hover',
   confirm: 'sfx_ui_confirm', ui_confirm: 'sfx_ui_confirm', buy: 'sfx_ui_confirm', sell: 'sfx_ui_confirm',
@@ -74,7 +75,22 @@ const CUE_TO_RECIPE = {
   'presentation.comms.priority': 'sfx_ui_alert',
   'presentation.objective.split': 'sfx_ui_alert',
   'presentation.branch.resolved': 'sfx_ui_confirm',
-};
+});
+
+export function resolveAudioCueRecipeId(cueId) {
+  return AUDIO_CUE_TO_RECIPE[cueId] || (AUDIO_RECIPE_BY_ID[cueId] ? cueId : 'sfx_ui_click');
+}
+
+export function audioRecipeBasePeak(recipe) {
+  switch (recipe && recipe.category) {
+    case 'explosion': return 0.85;
+    case 'weapon': return 0.3;
+    case 'mining': return 0.3;
+    case 'ui': return 0.16;
+    case 'engine': return 0.25;
+    default: return 0.4;
+  }
+}
 
 export const audio = {
   name: 'audio',
@@ -88,7 +104,7 @@ export const audio = {
     const rt = this.state.audioRuntime = this.state.audioRuntime || {};
     rt.ctx = null;
     rt.masterGain = null; rt.limiter = null; rt.sfxBus = null; rt.musicBus = null;
-    rt.voices = [];               // active SFX voices (pooled, cap MAX_VOICES)
+    rt.voices = [];               // active SFX voices (pooled, cap MAX_AUDIO_VOICES)
     rt.loops = {};                // keyed sustained voices: beam/mining/per-owner weapon beams
     rt.stems = { A: null, B: null, C: null, D: null };
     rt.stemGains = { A: null, B: null, C: null, D: null };
@@ -303,7 +319,7 @@ export const audio = {
     const rt = this.rt;
     const ctx = rt.ctx;
     if (!ctx || ctx.state !== 'running') return null; // graceful skip when suspended
-    const recipe = RECIPE_BY_ID[recipeId];
+    const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
     opts = opts || {};
 
@@ -342,20 +358,13 @@ export const audio = {
 
   _ampFor(recipe) {
     // recipes don't carry an explicit amp; derive a sane per-category peak.
-    switch (recipe.category) {
-      case 'explosion': return 0.85;
-      case 'weapon': return 0.3;
-      case 'mining': return 0.3;
-      case 'ui': return 0.16;
-      case 'engine': return 0.25;
-      default: return 0.4;
-    }
+    return audioRecipeBasePeak(recipe);
   },
 
   _evictIfFull() {
     const rt = this.rt;
     // count only non-loop voices toward the cap; steal oldest if at cap
-    if (rt.voices.length < MAX_VOICES) return;
+    if (rt.voices.length < MAX_AUDIO_VOICES) return;
     let oldest = -1, oldestT = Infinity;
     for (let i = 0; i < rt.voices.length; i++) {
       const v = rt.voices[i];
@@ -498,7 +507,7 @@ export const audio = {
   _startLoopVoice(recipeId, position, gain) {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || ctx.state !== 'running') return null;
-    const recipe = RECIPE_BY_ID[recipeId];
+    const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
     let att = 1, pan = 0;
     if (position) {
@@ -618,7 +627,7 @@ export const audio = {
   _onCue(cue) {
     const id = typeof cue === 'string' ? cue : cue && cue.id;
     if (!id) { this.play('sfx_ui_click', { gain: 0.7 }); return; }
-    const rid = CUE_TO_RECIPE[id] || (RECIPE_BY_ID[id] ? id : 'sfx_ui_click');
+    const rid = resolveAudioCueRecipeId(id);
     const opts = (cue && typeof cue === 'object') ? cue : {};
     if (opts.duck) this._duckMusic(opts.duckSeconds || 0.8);
     this.play(rid, {

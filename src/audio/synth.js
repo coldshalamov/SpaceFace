@@ -57,7 +57,7 @@ export function applyEnvelope(param, t0, peak, env, sustainHold) {
   // decay toward sustain (or toward release if no sustain)
   const dEnd = t0 + a + 0.04;
   param.linearRampToValueAtTime(Math.max(0.0001, decayTo), dEnd);
-  if (sustainHold || s > 0) {
+  if (sustainHold) {
     // hold at sustain level; release handled later by releaseEnvelope()
     return { stopAt: Infinity, releaseDur: r, peak };
   }

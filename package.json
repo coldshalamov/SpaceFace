@@ -18,7 +18,7 @@
     "check:sim:profile": "node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json",
     "check:sim:long": "node scripts/sf-sim.mjs run 47a --seed 47 --ticks 36000 --inputs test/47a.inputs.json --hash",
     "check:balance": "node scripts/balance-sim.mjs",
-    "check:presentation": "node scripts/check-presentation-cues.mjs && node scripts/check-sg08-golden-trace.mjs",
+    "check:presentation": "node scripts/check-presentation-cues.mjs && node scripts/check-sg08-golden-trace.mjs && node scripts/check-sg08-mix-profile.mjs",
     "check:camera": "node scripts/check-camera-composition.mjs",
     "check:sg05": "node scripts/check-sg05-scenario.mjs && node scripts/check-sg05-runtime.mjs && node scripts/check-sg05-branch-policies.mjs",
     "check:sg02:intake": "node scripts/check-sg02-intake.mjs",

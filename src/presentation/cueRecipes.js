@@ -37,7 +37,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.tension_warning',
       accessibility: 'accessibility.tension_alt',
     },
-    budgets: { cameraTrauma: 0.08, particles: 24, voices: 1, uiPulses: 1 },
+    budgets: { cameraTrauma: 0.08, particles: 24, voices: 2, uiPulses: 1 },
     tags: ['critical', 'tether', 'warning'],
   }),
   'tether.break': recipe({
@@ -93,7 +93,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.spatial_objective',
       accessibility: 'accessibility.shape_coded_signal',
     },
-    budgets: { particles: 40, voices: 1, uiPulses: 1 },
+    budgets: { particles: 40, voices: 2, uiPulses: 1 },
     tags: ['scenario', 'objective', 'slice'],
   }),
   'scenario.comms.kessler': recipe({
@@ -107,7 +107,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.comms_priority',
       accessibility: 'accessibility.caption_priority',
     },
-    budgets: { voices: 1, uiPulses: 1 },
+    budgets: { voices: 2, uiPulses: 1 },
     tags: ['scenario', 'comms', 'kessler'],
   }),
   'scenario.comms.denial': recipe({
@@ -121,7 +121,7 @@ export const PRESENTATION_RECIPES = Object.freeze({
       ui: 'ui.comms_priority',
       accessibility: 'accessibility.caption_priority',
     },
-    budgets: { voices: 1, uiPulses: 1 },
+    budgets: { voices: 2, uiPulses: 1 },
     tags: ['scenario', 'comms', 'denial'],
   }),
   'scenario.objective.priority_split': recipe({

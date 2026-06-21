@@ -4,7 +4,7 @@
 
 export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
 
-const AUDIO_CUE_BY_ID = Object.freeze({
+export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.attach': 'presentation.tether.attach',
   'tether.near_break': 'presentation.tether.near_break',
   'tether.break': 'presentation.tether.break',
@@ -151,7 +151,7 @@ export const presentationAdapters = {
   },
 
   _applyAudio(cue) {
-    const audioId = AUDIO_CUE_BY_ID[cue && cue.id];
+    const audioId = PRESENTATION_AUDIO_CUE_BY_ID[cue && cue.id];
     if (!audioId) return null;
     const payload = {
       id: audioId,
