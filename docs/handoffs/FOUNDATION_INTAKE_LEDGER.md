@@ -10,13 +10,14 @@ This ledger records external SG handoff intake status for the active 47-A vertic
 | --- | --- | --- | --- |
 | SG-08 presentation orchestration | `origin/commission/sg-08-presentation-orchestration` | Landed as received | The received GitHub branch contributed the presentation cue schema/validator surface now on master. Full SG-08 runtime orchestration remains gated by later semantic event mapping, budget enforcement, and golden cue/mix traces. |
 | SG-03 combat/action/subsystem framework | `SpaceFace-SG-03-handoff.zip` plus current master integration | Landed | Shared ActionDef runtime, combat grammar, damage routing, subsystem/status/attachment semantics, and deterministic combat trace are integrated. Live movement/constraint effects intentionally reject until SG-02 installs the `helpers.combatPhysics` port. |
-| SG-02 dynamic Rapier authority | `origin/sg-02-rapier-dynamic-authority` | Pending usable artifact | The inspected branch contained only incomplete bootstrap payload shards. Current master still lacks authoritative dynamic bodies/tether constraints. Do not build a compatibility physics authority around kinematic observers. |
+| SG-02 dynamic Rapier authority | `origin/sg-02-rapier-dynamic-authority`; recovered zip `6D3FE3C...E474AF` | Partial intake accepted | The recovered package produced a complete additive physics command/telemetry membrane, now gated by `npm run check:sg02`. Dynamic Rapier body authority, tether constraints, SG-03 `helpers.combatPhysics`, save/schema changes, and acceptance tests remain pending. Do not build a compatibility physics authority around kinematic observers. |
 | SG-06 layered tactical AI | `origin/sg-06-layered-tactical-ai` and external completion report | Pending usable artifact | The inspected branch pointed at master and did not contain the reported local implementation. Do not wire AI-only damage, motion, or hidden-state paths. SG-06 may integrate after a real artifact is available and, for physical parity, after SG-02 lands. |
 
 ## Accepted Evidence On Master
 
 - SG-08 schema gate: `npm run check:presentation`.
 - SG-03 grammar gate: `npm run check:combat`.
+- SG-02 partial intake + command membrane gate: `npm run check:sg02`.
 - 47-A replay gate: `npm run check:sim`.
 - Save/reload parity gate: `npm run check:sim:compare`.
 - Long replay gate: `npm run check:sim:long`.
