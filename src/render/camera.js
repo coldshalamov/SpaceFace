@@ -5,6 +5,94 @@
 import * as THREE from 'three';
 import { damp } from '../core/math.js';
 
+const THREAT_COMPOSE_RANGE = 600;
+const THREAT_COMPOSE_MAX_BIAS = 90;
+const THREAT_COMPOSE_FRACTION = 0.18;
+const TETHER_COMPOSE_MAX_BIAS = 130;
+const TETHER_COMPOSE_FRACTION = 0.24;
+
+export function resolveChaseComposition(state, player, focus) {
+  let fx = focus && Number.isFinite(focus.x) ? focus.x : (player && player.pos ? player.pos.x : 0);
+  let fz = focus && Number.isFinite(focus.z) ? focus.z : (player && player.pos ? player.pos.z : 0);
+  let nearbyEnemies = 0;
+  let nearestThreat = null;
+  let nearestThreatD2 = Infinity;
+
+  if (!state || !player || !player.pos || !state.entities || typeof state.entities.values !== 'function') {
+    return { x: fx, z: fz, nearbyEnemies, hasThreatFocus: false, hasTetherFocus: false };
+  }
+
+  // Combat composes player + nearest threat instead of only following the player.
+  for (const e of state.entities.values()) {
+    if (e === player) continue;
+    if (e.type !== 'ship' || e.alive === false || e.team === player.team || e.hull <= 0 || !e.pos) continue;
+    const dx = e.pos.x - player.pos.x;
+    const dz = e.pos.z - player.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < THREAT_COMPOSE_RANGE * THREAT_COMPOSE_RANGE) {
+      nearbyEnemies++;
+      if (d2 < nearestThreatD2) {
+        nearestThreat = e;
+        nearestThreatD2 = d2;
+      }
+    }
+  }
+
+  if (nearestThreat && nearestThreatD2 > 1) {
+    const d = Math.sqrt(nearestThreatD2);
+    const bias = Math.min(THREAT_COMPOSE_MAX_BIAS, d * THREAT_COMPOSE_FRACTION);
+    fx += ((nearestThreat.pos.x - player.pos.x) / d) * bias;
+    fz += ((nearestThreat.pos.z - player.pos.z) / d) * bias;
+  }
+
+  const tetherAnchor = resolveTetherCompositionAnchor(state, player);
+  if (tetherAnchor) {
+    const dx = tetherAnchor.x - player.pos.x;
+    const dz = tetherAnchor.z - player.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 1) {
+      const bias = Math.min(TETHER_COMPOSE_MAX_BIAS, d * TETHER_COMPOSE_FRACTION);
+      fx += (dx / d) * bias;
+      fz += (dz / d) * bias;
+    }
+  }
+
+  return {
+    x: fx,
+    z: fz,
+    nearbyEnemies,
+    hasThreatFocus: !!nearestThreat,
+    hasTetherFocus: !!tetherAnchor,
+  };
+}
+
+function resolveTetherCompositionAnchor(state, player) {
+  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!attachments || !state.entities || typeof state.entities.get !== 'function') return null;
+
+  let x = 0;
+  let z = 0;
+  let weightTotal = 0;
+  for (const attachment of Object.values(attachments)) {
+    if (!attachment || attachment.state !== 'active') continue;
+    let otherId = null;
+    if (attachment.ownerId === player.id) otherId = attachment.targetId;
+    else if (attachment.targetId === player.id) otherId = attachment.ownerId;
+    if (otherId == null) continue;
+
+    const other = state.entities.get(otherId);
+    if (!other || !other.alive || !other.pos) continue;
+    const isPayload = other.type === 'payload' || !!(other.data && other.data.tetherPayload);
+    const weight = isPayload ? 1.35 : 1.0;
+    x += other.pos.x * weight;
+    z += other.pos.z * weight;
+    weightTotal += weight;
+  }
+
+  if (weightTotal <= 0) return null;
+  return { x: x / weightTotal, z: z / weightTotal };
+}
+
 export function createChaseCamera(state) {
   // Far plane is deep (14k) so distant planets + far star layers render; fog still fades mid-distance.
   const cam = new THREE.PerspectiveCamera(state.settings.video.fov || 50, window.innerWidth / window.innerHeight, 1, 14000);
@@ -41,6 +129,7 @@ export function createChaseCamera(state) {
       let bankForLean = 0;
       let playerSpeed = 0;
       let nearbyEnemies = 0;
+      let hasTetherFocus = false;
       if (p) {
         fx = p.pos.x; fz = p.pos.z;
         playerSpeed = Math.hypot(p.vel.x, p.vel.z);
@@ -50,27 +139,11 @@ export function createChaseCamera(state) {
         }
         fx += (state.input.aimWorld.x - p.pos.x) * 0.05;
         fz += (state.input.aimWorld.z - p.pos.z) * 0.05;
-        // scan for nearby threats (ships on a different team, alive, within 600 wu)
-        let nearestThreat = null;
-        let nearestThreatD2 = Infinity;
-        for (const e of state.entities.values()) {
-          if (e === p) continue;
-          if (e.type !== 'ship' || e.team === p.team || e.hull <= 0) continue;
-          const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
-          const d2 = dx * dx + dz * dz;
-          if (d2 < 600 * 600) {
-            nearbyEnemies++;
-            if (d2 < nearestThreatD2) { nearestThreat = e; nearestThreatD2 = d2; }
-          }
-        }
-        // Combat composes player + nearest threat instead of only following the player. This is the
-        // first slice-safe step toward tether/payload framing without creating a parallel camera mode.
-        if (nearestThreat && nearestThreatD2 > 1) {
-          const d = Math.sqrt(nearestThreatD2);
-          const bias = Math.min(90, d * 0.18);
-          fx += ((nearestThreat.pos.x - p.pos.x) / d) * bias;
-          fz += ((nearestThreat.pos.z - p.pos.z) / d) * bias;
-        }
+        const composition = resolveChaseComposition(state, p, { x: fx, z: fz });
+        fx = composition.x;
+        fz = composition.z;
+        nearbyEnemies = composition.nearbyEnemies;
+        hasTetherFocus = composition.hasTetherFocus;
         // counter-lean uses the ship's bank (already smoothed); a fraction keeps it tasteful
         bankForLean = (p.bank || 0) * 0.07;
       }
@@ -87,6 +160,8 @@ export function createChaseCamera(state) {
         // making fights feel detached; 47-A needs pressure, line tension, and target geometry.
         if (nearbyEnemies > 0) {
           zoomFactor = 0.90;
+        } else if (hasTetherFocus) {
+          zoomFactor = 0.93;
         } else {
           // boost: zoom out 12% for speed feel when not actively composing combat
           if (p.flags && p.flags.boosting) zoomFactor = Math.max(zoomFactor, 1.12);

@@ -74,6 +74,8 @@ const camera = read('src/render/camera.js');
 assert(camera.includes('zoomFactor = 0.90'), 'combat camera should push in, not zoom out');
 assert(!camera.includes('zoomFactor = Math.max(zoomFactor, 1.15)'), 'old combat zoom-out must not return');
 assert(camera.includes('nearest threat') || camera.includes('nearestThreat'), 'camera should compose player plus threat');
+assert(camera.includes('resolveTetherCompositionAnchor'), 'camera should compose active player tethers/payloads');
+assert(camera.includes('hasTetherFocus'), 'camera zoom should treat active tether composition as a first-class state');
 
 const onboarding = read('src/systems/onboarding.js');
 for (const forbidden of ['turn rocks into credits', 'Reach the starter claim', 'Mine and collect 3 units of ore', 'ORE:', 'mineable rocks', 'RMB samples ore']) {
