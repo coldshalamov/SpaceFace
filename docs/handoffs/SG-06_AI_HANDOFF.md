@@ -265,11 +265,15 @@ npm run check:ai
 node scripts/check-sg06-ai.mjs --runs=100 --ticks=600
 
 npm run check:sg06:production-ports
+
+npm run check:sg06:live-shadow
 ```
 
 Checked-in result: `docs/Spec/SG-06_ACCEPTANCE.json`.
 
 The production-port gate proves sensor frames are exact SG-06 whitelists, hidden state getters are not read, roster signatures and roles are stable across unchanged ticks, duplicate membership is rejected by `TacticalAIStack`, maneuvers fail closed outside `rapier-dynamic`, and accepted maneuvers move craft only after SG-02 consumes the command.
+
+The live-shadow gate constructs `createTacticalAISystem(...)` against production `helpers.aiSensors` and `helpers.aiRoster`, uses the default live SG-03 action adapter, captures maneuver requests at the port boundary, and proves SG-06 can submit a canonical `action_burst` AI request that SG-03 starts and applies without touching the legacy `entity.data.intent.fire` path. It intentionally does not register `tacticalAI` in the production registry yet; the intake guard remains responsible for preventing premature live replacement.
 
 The final 100-seed run on 2026-06-21 produced:
 
@@ -303,10 +307,11 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 1. Done: land SG-02 dynamic-body authority and its thruster/constraint request adapter.
 2. Done: install production `helpers.aiSensors` and `helpers.aiRoster` providers; do not hand SG-06 `state.entities`.
 3. Done: install `helpers.aiManeuver` over SG-02 force/torque/thruster allocation.
-4. Next: construct `createTacticalAISystem(...)` in the registry in the existing AI slot, before `actions` and before the AI maneuver port flushes to SG-02.
-5. Run the suite against the real registry slot, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
-6. Verify physical formation convergence, constraint break telemetry, no stationary bodies, replay parity, action/resource equivalence, and encounter-command ownership.
-7. Delete the legacy path only after all production acceptance checks pass in the same milestone.
+4. Done at harness level: construct `createTacticalAISystem(...)` with production sensor/roster helpers and the live SG-03 action adapter; verify canonical AI ActionDef requests without legacy intent mutation.
+5. Next: construct `createTacticalAISystem(...)` in the registry in the existing AI slot, before `actions` and before the AI maneuver port flushes to SG-02.
+6. Run the suite against the real registry slot, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
+7. Verify physical formation convergence, constraint break telemetry, no stationary bodies, replay parity, action/resource equivalence, and encounter-command ownership.
+8. Delete the legacy path only after all production acceptance checks pass in the same milestone.
 
 ## Explicit legacy deletion list
 
