@@ -17,23 +17,30 @@ const libraryByRenderer = new WeakMap();
 const sharedMaterialVariants = new Map();
 const ownerReleaseState = new WeakMap();
 
-function canonicalVariants(stem, count = 4) {
-  return Object.freeze([
-    `${stem}.glb`,
-    ...Array.from({ length: Math.max(0, count - 1) }, (_, index) => `${stem}_${String(index + 1).padStart(2, '0')}.glb`),
-  ]);
-}
-
-// Canonical filenames are the zero-code manifest: artists can add/replace these GLBs without touching
-// JS or ship data. Numbered variants are probed once, cached, and selected deterministically per entity.
+// Runtime slots mirror assets/ships/parts/parts_manifest.json. Only list files that are actually
+// vendored; missing slots fall back procedurally instead of producing browser 404s.
 export const PART_LIBRARY_CONTRACT = Object.freeze({
   version: 1,
   root: PART_ROOT,
   slots: Object.freeze({
-    hull: canonicalVariants('hull_spine'),
-    cockpit: canonicalVariants('cockpit_dome'),
-    engine: canonicalVariants('engine_ion'),
-    fin: canonicalVariants('fin_wedge'),
+    hull: Object.freeze([]),
+    cockpit: Object.freeze([
+      'cockpits/cockpit_dome.glb',
+      'cockpits/cockpit_slab.glb',
+      'cockpits/cockpit_recessed.glb',
+    ]),
+    engine: Object.freeze([
+      'engines/engine_ion_small.glb',
+      'engines/engine_ion_twin.glb',
+      'engines/engine_industrial.glb',
+      'engines/engine_resonator.glb',
+    ]),
+    fin: Object.freeze([
+      'fins/fin_wedge.glb',
+      'fins/fin_radiator_grid.glb',
+      'fins/fin_swept_smuggler.glb',
+      'fins/fin_crystalline.glb',
+    ]),
   }),
   assembly: Object.freeze({
     coordinateSystem: '+X forward, +Y up, +Z starboard; metres',

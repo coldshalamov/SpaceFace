@@ -148,18 +148,10 @@ async function createRuntime(renderer) {
   const { GLTFLoader } = await import('./GLTFLoader.js');
   const gltf = new GLTFLoader();
 
-  // Optionally wire KTX2 if the transcoder is vendored. Wrapped so its absence is non-fatal.
-  let ktx2 = null;
-  try {
-    const KTX2Module = await import('../vendor/addons/loaders/KTX2Loader.js').catch(() => null);
-    if (KTX2Module && KTX2Module.KTX2Loader && renderer) {
-      ktx2 = new KTX2Module.KTX2Loader()
-        .setTranscoderPath('./vendor/addons/libs/basis/')
-        .setWorkerLimit(2)
-        .detectSupport(renderer);
-      if (typeof gltf.setKTX2Loader === 'function') gltf.setKTX2Loader(ktx2);
-    }
-  } catch (_) { /* KTX2 optional — embedded-PNG GLBs need no transcoder */ }
+  // KTX2/BasisU remains an authoring target, but this zero-bundle runtime does not vendor the
+  // decoder yet. Do not dynamically import a missing optional module: browsers report that 404 as
+  // a page error, which breaks the visual QA gate even though embedded-PNG GLBs are valid today.
+  const ktx2 = null;
 
   return { gltf, ktx2, assets: new Map(), failures: new Map(), source: './GLTFLoader.js' };
 }
