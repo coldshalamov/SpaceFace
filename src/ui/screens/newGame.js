@@ -63,6 +63,12 @@ function injectStyle() {
   .sf-title-logo { font-family:var(--mono); letter-spacing:.5em; font-size:46px; color:var(--accent);
     text-shadow:0 0 40px rgba(57,208,255,.5); text-align:center; margin:0; }
   .sf-title-tag { text-align:center; color:var(--ink-dim); letter-spacing:.28em; font-size:12px; margin-bottom:18px; }
+  /* ship history lore block on new game screen */
+  .sf-ng-lore { margin-top:10px; padding:10px 12px; border-left:2px solid var(--danger);
+    background:rgba(255,84,112,.04); border-radius:0 5px 5px 0; display:flex; flex-direction:column; gap:4px; }
+  .sf-ng-lore__line { font-size:11px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.06em; }
+  .sf-ng-lore__quote { font-size:12px; color:var(--ink); font-style:italic; line-height:1.5; }
+  .sf-ng-lore__attr { font-size:10px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.1em; text-align:right; }
   `;
   document.head.appendChild(s);
 }
@@ -97,7 +103,7 @@ export const newGameScreen = {
     const nameRow = el('div', 'sf-row');
     nameRow.appendChild(el('label', null, 'Pilot name'));
     const nameCtl = el('div', 'sf-ctl');
-    const name = el('input'); name.type = 'text'; name.maxLength = 20; name.value = 'Drift'; name.style.flex = '1';
+    const name = el('input'); name.type = 'text'; name.maxLength = 20; name.value = 'Wren'; name.style.flex = '1';
     nameCtl.appendChild(name); nameRow.appendChild(nameCtl); rootEl.appendChild(nameRow);
 
     // Difficulty
@@ -112,18 +118,29 @@ export const newGameScreen = {
     const setDesc = () => { const d = DIFFICULTIES.find((x) => x[0] === diff.value); diffDesc.textContent = d ? d[2] : ''; };
     diff.addEventListener('change', setDesc); setDesc();
 
-    // Starter ship preview
+    // Starter ship preview — ship identity comes first, then stats.
+    // The Tessera has a history. The player should feel it before they click Launch.
     rootEl.appendChild(el('h2', null, 'Starting Ship'));
     const ship = starterShip(ctx);
     const grid = el('div', 'sf-grid2');
     const addStat = (k, v) => { grid.appendChild(el('div', 'k', k)); grid.appendChild(el('div', 'v', v)); };
-    addStat('Class', ship ? ship.name : 'Kestrel');
+    addStat('Designation', 'TESSERA');
+    addStat('Registry', 'VHL-4471-T');
     addStat('Hull', ship ? String(ship.hull) : '120');
     addStat('Shield', ship ? String(ship.shield) : '40');
     addStat('Cargo', (ship ? ship.cargo : 40) + ' u');
-    addStat('Energy', ship ? String(ship.energyCap) : '80');
+    addStat('Prev. Operator', 'REDACTED — INCIDENT 7741');
+    addStat('Crew Status', 'NO SURVIVORS ON RECORD');
     addStat('Credits', '5,000 cr');
     rootEl.appendChild(grid);
+
+    // The friend's favor, in two lines. No cutscene. Just the facts.
+    const lore = el('div', 'sf-ng-lore');
+    lore.innerHTML =
+      '<span class="sf-ng-lore__line">Impounded 14 months. Nobody touched it.</span>' +
+      '<span class="sf-ng-lore__quote">“She’s yours. Don’t ask what happened to the last crew.”</span>' +
+      '<span class="sf-ng-lore__attr">— KAEL</span>';
+    rootEl.appendChild(lore);
 
     // Foot: Back / Launch
     const foot = el('div', 'sf-foot');

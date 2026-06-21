@@ -14,6 +14,8 @@
 // EXISTING salvage beam (mining.js drains wrecks) — no new mechanic, just content wiring. Keeps a
 // rolling log of interventions for the "your save is your story" law.
 
+import { drawSeeded, hash32 } from '../core/rng.js';
+
 const MAX_ACTIVE = 4;        // cap concurrent interventions so a mass-loss event doesn't spam wrecks
 const ALERT_TTL = 12;        // seconds the "intervention available" alert stays on the HUD
 
@@ -26,6 +28,9 @@ export const intervention = {
     this.helpers = ctx.helpers;
     // active interventions: { id, kind, sectorId, wreckEntityId, value, t }
     if (!this.state.interventions) this.state.interventions = [];
+    if (!this.state.interventionMeta) {
+      this.state.interventionMeta = { rngSeed: hash32(this.state.meta && this.state.meta.seed, 'intervention') };
+    }
     this._nextId = 1;
 
     // The trigger: an automation asset was lost. Spawn salvage + raise the alert.
@@ -53,13 +58,13 @@ export const intervention = {
 
     // Spawn the wreck near the player (the player is the one who'd fly out to recover it; cross-
     // sector wreck persistence is a later milestone). Place it at a recoverable distance.
-    const ang = Math.random() * Math.PI * 2;
-    const dist = 280 + Math.random() * 220;
+    const ang = this._rng() * Math.PI * 2;
+    const dist = 280 + this._rng() * 220;
     const pos = { x: player.pos.x + Math.cos(ang) * dist, z: player.pos.z + Math.sin(ang) * dist };
 
     // Build the salvage pool: ~50% of the lost value as ore (iron baseline), plus scrap.
     const oreUnits = Math.max(2, Math.floor(value / 28 / 2)); // 28 = iron baseline; /2 = 50% recovery
-    const pool = { cmdty_scrap_metal: 1 + Math.floor(Math.random() * 3) };
+    const pool = { cmdty_scrap_metal: 1 + Math.floor(this._rng() * 3) };
     if (oreUnits > 0) pool.cmdty_ore_iron = oreUnits;
 
     const wreck = this.helpers.spawnEntity({
@@ -120,4 +125,13 @@ export const intervention = {
 
   // Public read API for UI (a future interventions log). Returns active interventions.
   active() { return (this.state.interventions || []).slice(); },
+
+  _rng() {
+    if (!this.state.interventionMeta) this.state.interventionMeta = {};
+    return drawSeeded(
+      this.state.interventionMeta,
+      'rngSeed',
+      hash32(this.state.meta && this.state.meta.seed, 'intervention'),
+    );
+  },
 };

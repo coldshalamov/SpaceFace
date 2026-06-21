@@ -1,0 +1,37 @@
+{
+  "schema": "spaceface.telemetryEnvelope.v1",
+  "id": "47a-phase0-empty-envelope",
+  "scenario": "47-A: The Mass Discrepancy",
+  "seed": 47,
+  "sourceInputTape": "test/47a.inputs.json",
+  "requiredEventFamilies": [
+    "flight",
+    "combat",
+    "economy",
+    "story",
+    "ai",
+    "camera"
+  ],
+  "phase0ExpectedTraceTypes": [
+    "combat:fire",
+    "combat:damage",
+    "economy:tick",
+    "story:beatAdvanced",
+    "comms:popup",
+    "hud:phase",
+    "camera:shake"
+  ],
+  "acceptancePlaceholders": {
+    "authoritativeHash": null,
+    "firstMeaningfulSteeringTickMax": 300,
+    "firstTetherAttachTickMax": null,
+    "firstHostileShotTickMax": 5400,
+    "policyCompletionCountMin": 3,
+    "enemyCounterTetherBehaviorCountMin": 2,
+    "cleanRunCountRequired": 5
+  },
+  "notes": [
+    "This starts as an empty Phase 0 envelope. SG-01 replaces null hash once replay is authoritative.",
+    "Massline-specific expectations remain null until SG-02/SG-03 define command and action schemas."
+  ]
+}

@@ -17,20 +17,20 @@
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
 
-// Objective chain. The first-session contract is intentionally concrete:
-// fly to the nearby claim -> mine cargo -> dock -> sell -> choose the next risk.
+// Objective chain. This is a bridge until the SG-05 scenario DSL owns the full 47-A opening:
+// follow a suspicious mass signal, verify the Kestrel's tools, dock, and choose who gets the answer.
 // Steps may complete out of order; the panel always shows the first incomplete one.
 const STEPS = [
-  { key: 'claim', title: 'Reach the starter claim', target: 'asteroid', range: 420,
-    hint: 'Follow the yellow nav arrow to the nearby gray asteroid cluster. W / Up thrusts, A D / arrows steer, and the mouse aims.' },
-  { key: 'mine', title: 'Mine and collect 3 units of ore', target: 'asteroid', qty: 3,
-    hint: 'Point the reticle at a gray rock and hold Right Mouse Button. Fly through the yellow ore gems if they drift away; your CARGO readout should climb.' },
+  { key: 'claim', title: 'Reach the 47-A mass signal', target: 'asteroid', range: 420,
+    hint: 'Follow the yellow nav arrow to the bad reading. W / Up thrusts, A D / arrows steer, and the mouse aims.' },
+  { key: 'mine', title: 'Verify the signal and live tools', target: 'asteroid', qty: 3,
+    hint: 'The Kestrel is armed: LMB or Space fires the Pulse Laser S. Hold RMB on the marked rock to sample the mass reading, then collect the drift.' },
   { key: 'dock', title: 'Dock at Helios Station', target: 'station',
-    hint: 'Follow the cyan station arrow. When the dock prompt appears, press Enter. Donut rings are jump gates for later, not shops.' },
-  { key: 'sell', title: 'Sell your ore in the Market',
-    hint: 'In the Market tab, sell the ore you mined. That closes the basic loop: rocks become credits, credits become better ships and tools.' },
-  { key: 'next', title: 'Choose the next risk',
-    hint: 'Use the station Missions tab for a contract, or browse Shipyard/Outfitting for an upgrade goal. Leave when you know what you want next.' },
+    hint: 'Follow the cyan station arrow. Press Enter at the dock prompt. Bring the discrepancy back before someone edits it out.' },
+  { key: 'sell', title: 'Push the sample through the market',
+    hint: 'In the Market tab, sell the recovered sample. Watch what the ledger calls ordinary cargo.' },
+  { key: 'next', title: 'Choose who gets the next answer',
+    hint: 'Use Missions for a contract, or browse Shipyard/Outfitting before leaving. The ship has a gun for a reason.' },
 ];
 
 const ORE_PREFIXES = [
@@ -188,7 +188,7 @@ export const onboarding = {
     this._clearObjectiveWaypoint();
     if (this._panel) {
       const body = this._panel.querySelector('.sf-ob-body');
-      if (body) body.innerHTML = '<div class="sf-ob-title">You’re ready, pilot.</div><div class="sf-ob-hint">Mine, trade, fight, and grow your fleet. Press H for help anytime.</div>';
+      if (body) body.innerHTML = '<div class="sf-ob-title">You have the first discrepancy.</div><div class="sf-ob-hint">Trade, fight, audit the ledger, and keep the Pulse Laser warm. Press H for help anytime.</div>';
       this._fadeT = 6; // seconds until the panel fades out (handled in update)
     }
   },
@@ -201,7 +201,7 @@ export const onboarding = {
       if (this._firstFlightTimer > 3.0) {
         this._firstFlightPending = false;
         this._showHint('firstFlight',
-          'W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE to fire, RMB to mine, SHIFT to boost, M for map, ENTER at stations.');
+          'W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE fires the Pulse Laser S, RMB samples ore, SHIFT boosts, M maps, ENTER docks.');
       }
     }
 
@@ -263,10 +263,10 @@ export const onboarding = {
     this._lastControlMode = mode;
 
     const HINTS = {
-      flight:  'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  M map',
-      mining:  'RMB hold to mine  •  Release to cool  •  Fly through ore to collect  •  B drill view  •  Tab next rock',
-      combat:  'LMB/Space fire  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
-      station: 'Enter to dock  •  Market: sell ore  •  Shipyard: buy ships  •  Missions: take contracts',
+      flight:  'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space Pulse Laser  •  RMB sample  •  Shift boost  •  Tab target  •  M map',
+      mining:  'RMB hold to sample  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
+      combat:  'LMB/Space Pulse Laser  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
+      station: 'Enter to dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts',
       gate:    'M open Star Map  •  Select destination  •  Jump to travel between systems',
     };
     el.textContent = HINTS[mode] || HINTS.flight;
@@ -426,10 +426,10 @@ export const onboarding = {
     const el = document.createElement('div');
     el.className = 'sf-ob-intro';
     el.innerHTML = ''
-      + '<h2>Helios System · Free Pilot</h2>'
-      + '<h1>Your first job: turn rocks into credits.</h1>'
-      + '<p>Follow the yellow nav arrow to the starter claim, mine a few units of ore, then dock at Helios Station and sell it. That is the first loop.</p>'
-      + '<p>Radar basics: gray dots are asteroids, cyan/green squares are stations, purple rings are jump gates, red triangles are trouble, and yellow diamonds are pickups or objectives.</p>'
+      + '<h2>Helios System · Contract 47-A</h2>'
+      + '<h1>The manifest says one mass. Your instruments say another.</h1>'
+      + '<p>Follow the yellow signal, verify the discrepancy, and get back to Helios before the registry decides the shipment never existed.</p>'
+      + '<p>The Kestrel carries a Pulse Laser S and a sampling beam. Gray dots are rocks, cyan/green squares are stations, purple rings are gates, red triangles are trouble, and yellow diamonds are cargo or objectives.</p>'
       + '<div class="sf-ob-row"><a class="sf-ob-skip">Skip tutorial</a><button class="sf-ob-go">Begin →</button></div>';
     root.appendChild(el);
     this._intro = el;

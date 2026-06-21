@@ -324,7 +324,7 @@ function makeWeaponRuntime(def, slot, slotIndex) {
   const gimbalArc = isTurret ? (turretArc || Math.PI) : (isHoming ? Math.PI : GIMBAL_ARC_DEFAULT);
   const muzzleOffset = FACING_OFFSET[facing] || FACING_OFFSET.front;
   return {
-    slotIndex, defId: def.id, facing, facingAngle, gimbalArc, muzzleOffset,
+    slotIndex, defId: def.id, name: def.name, facing, facingAngle, gimbalArc, muzzleOffset,
     dmg: def.dmg, rof: def.rof, energyCost: def.energyCost,
     heat: def.heatPerShot || def.heatPerSec || 0, heatMax: def.heatMax || 100,
     projSpeed: def.projSpeed, range: def.range, spread: def.spreadDeg || 0,

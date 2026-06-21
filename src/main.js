@@ -10,6 +10,7 @@ import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
 import { NEW_GAME } from './data/newGameDefaults.js';
 import { createTelemetry } from './systems/telemetry.js';
+import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { applyAccessibility } from './ui/accessibility.js';
 
 // Debug surfaces (the mutable window.SF handle + boot logs) are exposed only OUTSIDE a packaged build.
@@ -33,6 +34,7 @@ async function boot() {
     // Local telemetry sink (privacy-safe, no network): onboarding funnel, balance/career stats,
     // death heatmap. Subscribes to the live bus; mirrored to window.__SF_TELEMETRY__ for dev.
     const telemetry = createTelemetry(bus, state);
+    const eventTrace = createDeterministicEventTrace(bus, state);
     // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
     applyAccessibility(state.settings);
     bus.on('settings:changed', () => applyAccessibility(state.settings));
@@ -50,7 +52,7 @@ async function boot() {
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     if (SF_DEBUG) {
-      window.SF = { state, bus, registry, ctx, helpers, THREE, telemetry };
+      window.SF = { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace };
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
     }
 

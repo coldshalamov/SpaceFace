@@ -20,6 +20,7 @@
 //     never touches player state. Economy impact is via the event bus.
 
 import { makeShipEntitySpec } from './ships.js';
+import { drawSeeded, hash32 } from '../core/rng.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 const MAX_PER_SECTOR = 6;
@@ -36,7 +37,7 @@ export const traffic = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     // live freighter records: id -> {targetId, waitT, nextTradeT}
-    this.state.traffic = { freighters: [] };
+    this.state.traffic = { freighters: [], rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot') };
     this._active = []; // entity ids we spawned (for cleanup)
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
@@ -47,6 +48,7 @@ export const traffic = {
     this._cleanup(); // wipe previous sector's freighters (view-gated)
     const sector = p && p.sector;
     if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
+    this._resetRngForSector(sector.id || (p && p.sectorId) || (this.state.world && this.state.world.currentSectorId) || 'unknown');
     // No freighters in the player's home on a brand-new game (feels dead before the economy warms),
     // and none where the sector explicitly says so. Otherwise a small ambient count.
     const tpm = sector.trafficPerMin;
@@ -58,12 +60,11 @@ export const traffic = {
     const stations = this._sectorStations();
     if (stations.length < 1) return; // nowhere to haul to
 
-    const rng = this.state.rng || Math.random;
     for (let i = 0; i < count; i++) {
-      const station = stations[Math.floor((rng.next ? rng.next() : rng()) * stations.length)] || stations[0];
+      const station = stations[Math.floor(this._rng() * stations.length)] || stations[0];
       // spawn near the station but offset so they don't overlap it
-      const ang = (rng.next ? rng.next() : rng()) * Math.PI * 2;
-      const r = 140 + (rng.next ? rng.next() : rng()) * 120;
+      const ang = this._rng() * Math.PI * 2;
+      const r = 140 + this._rng() * 120;
       const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
       const spec = makeShipEntitySpec(FREIGHTER_SHIP, {
         team: 2,                       // neutral (gold) — distinct from player/hostile
@@ -76,7 +77,7 @@ export const traffic = {
       this._active.push(ent.id);
       this.state.traffic.freighters.push({
         id: ent.id,
-        targetId: this._pickStation(stations, rng).id,
+        targetId: this._pickStation(stations).id,
         waitT: 0,
         nextTradeT: 2 + i * 1.5, // stagger trades so they don't all hit the market at once
       });
@@ -92,8 +93,8 @@ export const traffic = {
     return out;
   },
 
-  _pickStation(stations, rng) {
-    return stations[Math.floor((rng.next ? rng.next() : rng()) * stations.length)] || stations[0];
+  _pickStation(stations) {
+    return stations[Math.floor(this._rng() * stations.length)] || stations[0];
   },
 
   _cleanup() {
@@ -111,9 +112,9 @@ export const traffic = {
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    this._ensureState();
     const list = state.traffic.freighters;
     if (!list || list.length === 0) return;
-    const rng = state.rng || Math.random;
     const stations = this._sectorStations();
     if (stations.length === 0) return;
 
@@ -125,7 +126,7 @@ export const traffic = {
       // resolve current target (it may have despawned)
       let target = state.entities.get(rec.targetId);
       if (!target || !target.alive) {
-        target = this._pickStation(stations, rng);
+        target = this._pickStation(stations);
         rec.targetId = target ? target.id : null;
         if (!target) continue;
       }
@@ -147,10 +148,10 @@ export const traffic = {
         rec.nextTradeT -= dt;
         if (rec.nextTradeT <= 0) {
           this._emitTrade(target);
-          rec.nextTradeT = TRADE_INTERVAL_S + (rng.next ? rng.next() : rng()) * 6;
+          rec.nextTradeT = TRADE_INTERVAL_S + this._rng() * 6;
         }
-        rec.waitT = 2.5 + (rng.next ? rng.next() : rng()) * 2;
-        rec.targetId = this._pickStation(stations, rng).id;
+        rec.waitT = 2.5 + this._rng() * 2;
+        rec.targetId = this._pickStation(stations).id;
         setIntent(e, 0, 0, false, false, null, aimAngle);
         continue;
       }
@@ -169,10 +170,28 @@ export const traffic = {
     if (!market) return;
     const ids = Object.keys(market);
     if (!ids.length) return;
-    const commodityId = ids[Math.floor(Math.random() * ids.length)];
-    const side = Math.random() < 0.5 ? 'buy' : 'sell';
-    const qty = 3 + Math.floor(Math.random() * 18);
+    const commodityId = ids[Math.floor(this._rng() * ids.length)];
+    const side = this._rng() < 0.5 ? 'buy' : 'sell';
+    const qty = 3 + Math.floor(this._rng() * 18);
     this.bus.emit('aiTrader:requestTrade', { stationId, commodityId, side, qty });
+  },
+
+  _ensureState() {
+    if (!this.state.traffic) this.state.traffic = { freighters: [] };
+    if (!Array.isArray(this.state.traffic.freighters)) this.state.traffic.freighters = [];
+    if (!Number.isFinite(this.state.traffic.rngSeed) || (this.state.traffic.rngSeed >>> 0) === 0) {
+      this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', this.state.world && this.state.world.currentSectorId);
+    }
+  },
+
+  _resetRngForSector(sectorId) {
+    this._ensureState();
+    this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', sectorId, this.state.tick || 0);
+  },
+
+  _rng() {
+    this._ensureState();
+    return drawSeeded(this.state.traffic, 'rngSeed', hash32(this.state.meta && this.state.meta.seed, 'traffic'));
   },
 };
 

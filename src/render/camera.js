@@ -39,15 +39,38 @@ export function createChaseCamera(state) {
       const p = state.entities.get(state.playerId);
       let fx = c.focus.x, fz = c.focus.z;
       let bankForLean = 0;
+      let playerSpeed = 0;
+      let nearbyEnemies = 0;
       if (p) {
         fx = p.pos.x; fz = p.pos.z;
-        const sp = Math.hypot(p.vel.x, p.vel.z);
-        if (sp > 1) {
-          const la = Math.min(c.lookAhead, sp * 0.35);
-          fx += (p.vel.x / sp) * la; fz += (p.vel.z / sp) * la;
+        playerSpeed = Math.hypot(p.vel.x, p.vel.z);
+        if (playerSpeed > 1) {
+          const la = Math.min(c.lookAhead, playerSpeed * 0.35);
+          fx += (p.vel.x / playerSpeed) * la; fz += (p.vel.z / playerSpeed) * la;
         }
         fx += (state.input.aimWorld.x - p.pos.x) * 0.05;
         fz += (state.input.aimWorld.z - p.pos.z) * 0.05;
+        // scan for nearby threats (ships on a different team, alive, within 600 wu)
+        let nearestThreat = null;
+        let nearestThreatD2 = Infinity;
+        for (const e of state.entities.values()) {
+          if (e === p) continue;
+          if (e.type !== 'ship' || e.team === p.team || e.hull <= 0) continue;
+          const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
+          const d2 = dx * dx + dz * dz;
+          if (d2 < 600 * 600) {
+            nearbyEnemies++;
+            if (d2 < nearestThreatD2) { nearestThreat = e; nearestThreatD2 = d2; }
+          }
+        }
+        // Combat composes player + nearest threat instead of only following the player. This is the
+        // first slice-safe step toward tether/payload framing without creating a parallel camera mode.
+        if (nearestThreat && nearestThreatD2 > 1) {
+          const d = Math.sqrt(nearestThreatD2);
+          const bias = Math.min(90, d * 0.18);
+          fx += ((nearestThreat.pos.x - p.pos.x) / d) * bias;
+          fz += ((nearestThreat.pos.z - p.pos.z) / d) * bias;
+        }
         // counter-lean uses the ship's bank (already smoothed); a fraction keeps it tasteful
         bankForLean = (p.bank || 0) * 0.07;
       }
@@ -58,35 +81,21 @@ export function createChaseCamera(state) {
       const baseZoom = c.zoom;
       let targetZoom = baseZoom;
       if (p) {
-        const sp = Math.hypot(p.vel.x, p.vel.z);
-
-        // scan for nearby enemies (ships on a different team, alive, within 600 wu)
-        let nearbyEnemies = 0;
-        for (const e of state.entities.values()) {
-          if (e === p) continue;
-          if (e.type !== 'ship' || e.team === p.team || e.hull <= 0) continue;
-          const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
-          if (dx * dx + dz * dz < 600 * 600) nearbyEnemies++;
-        }
-
-        // collect zoom factors — we'll take the maximum zoom-out
         let zoomFactor = 1.0;
 
-        // combat: zoom out 15% when enemies nearby or taking damage
-        if (nearbyEnemies > 0 || c.trauma > 0.1) {
-          zoomFactor = Math.max(zoomFactor, 1.15);
-        }
-        // boost: zoom out 12% for speed feel
-        if (p.flags && p.flags.boosting) {
-          zoomFactor = Math.max(zoomFactor, 1.12);
-        }
-        // dash: zoom out 20% at high speed (proxy: speed > 110% of maxSpeed)
-        if (p.maxSpeed && sp > p.maxSpeed * 1.1) {
-          zoomFactor = Math.max(zoomFactor, 1.20);
-        }
-        // idle/cruising: zoom in 8% when slow and peaceful
-        if (p.maxSpeed && sp < p.maxSpeed * 0.15 && nearbyEnemies === 0 && c.trauma <= 0.1) {
-          zoomFactor = Math.min(zoomFactor, 0.92);
+        // combat: push in slightly and preserve threat readability. The old behavior zoomed out,
+        // making fights feel detached; 47-A needs pressure, line tension, and target geometry.
+        if (nearbyEnemies > 0) {
+          zoomFactor = 0.90;
+        } else {
+          // boost: zoom out 12% for speed feel when not actively composing combat
+          if (p.flags && p.flags.boosting) zoomFactor = Math.max(zoomFactor, 1.12);
+          // dash: zoom out 20% at high speed (proxy: speed > 110% of maxSpeed)
+          if (p.maxSpeed && playerSpeed > p.maxSpeed * 1.1) zoomFactor = Math.max(zoomFactor, 1.20);
+          // damage without a visible threat gets a small emergency reveal
+          if (c.trauma > 0.1) zoomFactor = Math.max(zoomFactor, 1.05);
+          // idle/cruising: zoom in 8% when slow and peaceful
+          if (p.maxSpeed && playerSpeed < p.maxSpeed * 0.15 && c.trauma <= 0.1) zoomFactor = Math.min(zoomFactor, 0.92);
         }
 
         targetZoom = baseZoom * zoomFactor;

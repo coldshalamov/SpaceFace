@@ -11,6 +11,56 @@
 // DESIGN PRINCIPLE (from COMMS doc): "Most popups are not for the player. Some are. The ones that
 // are for the player are the ones that don't address them by name." Everything here honours that.
 
+// ── The Tessera — starting ship history ──────────────────────────────────────────────────────
+// The ghost ship. You just got out of a galactic prison colony. Your friend owed you a favor.
+// Nobody else would touch it. Spacers, like sailors, get superstitious on long runs. You're no
+// different. But you take what you can get.
+//
+// The Tessera was running for a Crimson Reach gang affiliate — smuggling for The Quiet, the
+// shadow logistics network that routes everything nobody is supposed to move. At Waypoint 9 it
+// was boarded. Crew of five. No survivors. The ship held together. They didn't.
+// Impounded 14 months. Unclaimed. Then your friend made a call.
+//
+// The gang left their mark on the bulkhead. It's still there.
+export const SHIP = {
+  name:             'Tessera',
+  registration:     'VHL-4471-T',
+  incident:         '7741',
+  incidentRef:      'REF 44-C',
+  previousOperator: 'REDACTED — INCIDENT 7741',
+  crewStatus:       'NO SURVIVORS ON RECORD',
+  impoundMonths:    14,
+  friend:           { callsign: 'KAEL', debt: 'six months in the colony' },
+};
+
+// ── Cold start — what the player encounters in the first 20 seconds ──────────────────────────
+// Fires ONLY on new game (not on load). The friend hands the ship over. The registry notices.
+// A dock worker recognizes the hull. All of this arrives without explanation.
+// The previous crew's bulkhead graffiti is already there when the engines wake up.
+export const COLD_START = [
+  // t=0: the favor. One line. No explanation.
+  {
+    id: 'cold_friend', sender: 'KAEL', delayS: 0,
+    text: "She's yours. Don't ask what happened to the last crew. I mean it.",
+    category: 'personal', ttl: 14,
+    note: "KAEL. Old debt. You were in the colony six months; he had the ship sitting in a Pit berth nobody would rent. He made sure of that.",
+  },
+  // t=8: the registry auto-pings on engine start. The transfer was never formally filed.
+  {
+    id: 'cold_registry', sender: 'CONCORD VESSEL REGISTRY', delayS: 8,
+    text: 'VESSEL PING: TESSERA / VHL-4471-T / OPERATOR: UNKNOWN / INCIDENT 7741: SEALED / REF 44-C.',
+    category: 'ambient', ttl: 9,
+    note: "OPERATOR: UNKNOWN because the handoff was informal. That was intentional. Your friend didn't mention the paperwork wasn't done.",
+  },
+  // t=18: dock worker recognizes the hull by silhouette. They all do.
+  {
+    id: 'cold_dockmaster', sender: 'HELIOS DOCKMASTER', delayS: 18,
+    text: "That's the 7741 ship. Keep your fees current and we won't have a problem.",
+    category: 'ambient', ttl: 9,
+    note: "Recognized by hull profile. Incident 7741 was not a quiet incident. His crew moved to a different berth by morning.",
+  },
+];
+
 // ── Reference codes that recur across the world ──────────────────────────────────────────────
 // These are not flavor — they are cross-references the player learns to recognise. REF 44-C is the
 // same code for customs (Hale), contract authorization (Vale), atmospheric allocation (the Silt
@@ -46,7 +96,18 @@ export const FIGURES = {
 // + condition. Personal/late/story lines fire exactly once on their beat and set a seen-flag.
 export const COMMS = {
   // AMBIENT NOISE — appears early game, random cycle. The migraine of the channel.
+  // Ghost-ship entries: seeded into the normal rotation. The Tessera is known.
+  // Players who aren't paying attention will miss them. That's fine.
   ambient: [
+    { id: 'amb_ghost_vhl', sender: 'FREE FRONTIER RELAY',
+      text: 'VESSEL SIGHTING: VHL-4471-T — TESSERA. OPERATOR: UNKNOWN. INCIDENT 7741. CAUTION ADVISED.',
+      note: "Auto-flag on registry ping. The Tessera is on a watch-list that technically closed 14 months ago. The flag was never cleared because the transfer was never filed." },
+    { id: 'amb_berth_avoid', sender: 'HELIOS DOCKMASTER — BERTH 4',
+      text: 'NOTICE TO VHL-4471-T: ADJACENT BERTH CREW REQUESTS ALTERNATE ASSIGNMENT.',
+      note: "Spacers. Standard superstition. They moved before you could respond. You don't blame them." },
+    { id: 'amb_spacer_talk', sender: 'OPEN CHANNEL — FREQ 9',
+      text: 'ANYONE KNOW WHO\'S FLYING THE 7741 SHIP OUT OF HELIOS? THOUGHT THAT THING WAS IMPOUNDED.',
+      note: "No reply on the channel. The question stays unanswered. You don't answer it either." },
     { id: 'amb_meridian_ore',   sender: 'MERIDIAN EXCHANGE', text: 'COMMODITY ALERT: ORE PRICES ADJUSTED. EFFECTIVE IMMEDIATELY.',
       note: 'The adjustment is downward. The adjustment was made four cycles ago. The alert is for the old price.' },
     { id: 'amb_concord_gate3',  sender: 'CONCORD GATE 3', text: 'NOTICE: INSPECTION PROTOCOL UPDATED. REF 44-C.',
@@ -127,8 +188,18 @@ export const COMMS = {
 // Driven by `graffiti:show` { line, where, author?, beat }. `where` = 'airlock' | 'shipyard' |
 // 'clearing' | 'chain_dest' | 'bulkhead' (player's own). The through-line: "THEY KNEW THE MASS."
 export const GRAFFITI = {
-  // The recurring callback. Appears first at B0 home airlock; returns on the bulkhead at B6; the
-  // doubled form at B7. Never repainted over for long.
+  // Previous crew — Tessera gang markings. Still on the bulkhead. Never coming off.
+  // Dark humor. Short. Punk. The dead talking.
+  // Written by a crew who knew their odds and went anyway. You inherit their handwriting.
+  GANG_DIDNT_MAKE_IT:  "IF YOU'RE READING THIS WE DIDN'T MAKE IT. DON'T TAKE IT PERSONALLY.",
+  GANG_SHE_HELD:       'SHE HELD TOGETHER. WE DIDN\'T.',
+  GANG_SEVEN_RUNS:     'SEVEN RUNS. ONE WE DON\'T TALK ABOUT.',
+  GANG_QUIET_PAYS:     'THE QUIET PAYS WELL UNTIL IT DOESN\'T.',
+  GANG_COUNT_EXITS:    'COUNT YOUR EXITS BEFORE YOU COUNT YOUR CREDITS.',
+  GANG_STILL_FLYING:   'DEAD MEN\'S SHIP. STILL FLYING. MAKE SOMETHING OF IT.',
+
+  // The recurring callback. Appears first at B0 home airlock; returns on the bulkhead at B3+.
+  // By B6 it's in the player's own hand — they wrote it without remembering they did.
   THEY_KNEW_THE_MASS:        'THEY KNEW THE MASS.',
   THEY_ALWAYS_KNEW:          'THEY KNEW THE MASS. THEY ALWAYS KNEW THE MASS.',
 
@@ -164,6 +235,9 @@ export const BEAT_CONTENT = [
   { // B0 — COLD START
     beat: 0, phase: 1,
     hint: 'Contract 47-A. Mine the ore. Deliver it. The weight on accept will not be the weight on delivery. That is not your problem.',
+    // Bulkhead: the previous crew's last words. Set by _fireColdStart() on game:started so it's there
+    // from the first frame. This beat's graffiti only adds the airlock line (seen on first dock).
+    // The gang line stays on the bulkhead through B2; at B3 the story takes it over.
     graffiti: [{ line: GRAFFITI.THEY_KNEW_THE_MASS, where: 'airlock' }],
     comms: [], // 47-A authorisation line is ambient (Tycho relay) — player "almost certainly doesn't read it"
     hudLie: 'stable_load', // CARGO shows STABLE LOAD after the cargo is gone
@@ -188,6 +262,9 @@ export const BEAT_CONTENT = [
     graffiti: [
       { line: GRAFFITI.WELD_KNOWS, where: 'shipyard' },
       { line: GRAFFITI.VARIANCE_ADJUSTMENT, where: 'shipyard', author: 'hull stencil' },
+      // The story's refrain takes over the bulkhead at B3: the board noticed you.
+      // The gang's voice is gone. You're no longer just flying a dead crew's ship.
+      { line: GRAFFITI.THEY_KNEW_THE_MASS, where: 'bulkhead' },
     ],
     comms: ['pers_good_haul'], // "GOOD HAUL LAST CYCLE. THE BOARD NOTICED." — the Vale popup
     hudLie: null,

@@ -790,7 +790,8 @@ export function createHud(ctx, alerts) {
       const ws = p.data && p.data.weapons;
       const nGuns = ws ? ws.length : 0;
       const auto = !!(state.input && state.input.autoFire);
-      setText(elWeapons, nGuns + ' gun' + (nGuns === 1 ? '' : 's') + (auto ? ' · AUTO' : ''));
+      const primary = nGuns === 1 ? (ws[0].name || ws[0].defId || '1 gun') : (nGuns + ' guns');
+      setText(elWeapons, primary + (auto ? ' · AUTO' : ''));
       elWeapons.classList.toggle('sf-warn', auto);
       // Reticle reflects fire mode: amber ring when auto-fire is engaged (guns auto-target hostiles),
       // cyan when you're aiming/firing manually. Purely a visual cue.

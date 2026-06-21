@@ -22,6 +22,8 @@
 //     seenComms: { <id>: true },                       // comms that fired once and shouldn't repeat
 //     ambientQueue: [..ids..],                         // shuffled ambient comms pool (this session)
 //     ambientTimerS: number,                           // time until next ambient comms
+//     rngSeed: uint32,                                  // serialized narrative/ambient RNG stream
+//     scheduled: [{ at, kind, ... }],                   // deterministic sim-time narrative queue
 //     graffitiShown: { <where:line>: true },           // dedupe (bulkhead graffiti can re-show per beat)
 //     endgameChoice: null | 'A'|'B'|'C'|'D'|'E',       // which ending the player took (null until chosen)
 //     endgameOffered: false,                           // B7 choice has been presented
@@ -32,7 +34,9 @@
 // the base fields; we add the narrative fields defensively in deserialize).
 import {
   COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, KURTZ, REFS, COND,
+  COLD_START,
 } from '../data/narrative.js';
+import { drawSeeded, hash32 } from '../core/rng.js';
 
 const ASHFALL = 'sector_ashfall_reach';
 
@@ -84,6 +88,7 @@ export const story = {
     if (state.ui && state.ui.docked) return; // comms go quiet in the dock (the board talks there)
     const s = state.story;
     if (!s) return;
+    this._pumpScheduled();
     s.ambientTimerS = (s.ambientTimerS || 0) - dt;
     if (s.ambientTimerS <= 0) {
       this._fireAmbient();
@@ -151,7 +156,13 @@ export const story = {
     //    firing here guarantees it lands even if the player is in flight.
     for (const g of (content.graffiti || [])) {
       if (g.delayS) {
-        setTimeout(() => this._showGraffiti(g.line, g.where, toIndex, g.author), Math.max(0, g.delayS) * 1000);
+        this._scheduleNarrative(g.delayS, {
+          kind: 'graffiti',
+          line: g.line,
+          where: g.where,
+          beat: toIndex,
+          author: g.author,
+        });
       } else {
         this._showGraffiti(g.line, g.where, toIndex, g.author);
       }
@@ -223,18 +234,24 @@ export const story = {
     const p3 = (s.phase || 1) >= 3;
     const lo = p3 ? AMBIENT_MIN_S_P3 : AMBIENT_MIN_S;
     const hi = p3 ? AMBIENT_MAX_S_P3 : AMBIENT_MAX_S;
-    s.ambientTimerS = lo + Math.random() * (hi - lo);
+    s.ambientTimerS = lo + this._rng() * (hi - lo);
   },
 
   _rebuildAmbientQueue() {
     const s = this.state.story;
     const ids = COMMS.ambient.map((c) => c.id);
-    // Fisher-Yates shuffle (ambient order is non-deterministic by design — "the channel's migraine").
+    // Fisher-Yates shuffle from the serialized story stream: same seed/replay, same migraine.
     for (let i = ids.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(this._rng() * (i + 1));
       [ids[i], ids[j]] = [ids[j], ids[i]];
     }
     s.ambientQueue = ids;
+  },
+
+  _rng() {
+    const state = this.state;
+    const s = state.story || (state.story = {});
+    return drawSeeded(s, 'rngSeed', hash32(state.meta && state.meta.seed, 'story'));
   },
 
   // =========================================================================================
@@ -465,6 +482,72 @@ export const story = {
   _onNewGame() {
     this._ensureState(true);
     this._rescheduleAmbient();
+    // Fire the cold start sequence: the friend's handoff, the registry ping, the dock recognition.
+    // Also set the initial bulkhead graffiti: the previous crew's last words, still on the wall.
+    this._fireColdStart();
+  },
+
+  // ── COLD START — the Tessera's first 20 seconds ──────────────────────────────────────────
+  // The previous gang crew left graffiti on the bulkhead. It's there before you look.
+  // The friend's message arrives at t=0. The registry and the dock follow without explanation.
+  // No cutscene. No intro. The world just starts talking before you're ready.
+  _fireColdStart() {
+    // Set the previous crew's graffiti on the bulkhead immediately.
+    // Dark humor. They knew they might not make it. They were right.
+    this.bus.emit('graffiti:show', {
+      line: GRAFFITI.GANG_DIDNT_MAKE_IT,
+      where: 'bulkhead', beat: -1,
+    });
+    // Then the cold start comms arrive over the first ~20 seconds.
+    for (const entry of COLD_START) {
+      const event = {
+        kind: 'comms',
+        id: entry.id, sender: entry.sender, text: entry.text,
+        category: entry.category, ttl: entry.ttl, note: entry.note,
+      };
+      if (!entry.delayS || entry.delayS <= 0) {
+        this._fireScheduled(event);
+      } else {
+        this._scheduleNarrative(entry.delayS, event);
+      }
+    }
+  },
+
+  _scheduleNarrative(delayS, event) {
+    this._ensureState();
+    const s = this.state.story;
+    const at = (this.state.simTime || 0) + Math.max(0, Number(delayS) || 0);
+    s.scheduled.push(Object.assign({ at }, event));
+    s.scheduled.sort((a, b) => (a.at || 0) - (b.at || 0));
+  },
+
+  _pumpScheduled() {
+    const s = this.state.story;
+    if (!s || !Array.isArray(s.scheduled) || !s.scheduled.length) return;
+    const now = this.state.simTime || 0;
+    while (s.scheduled.length && (s.scheduled[0].at || 0) <= now) {
+      const event = s.scheduled.shift();
+      this._fireScheduled(event);
+    }
+  },
+
+  _fireScheduled(event) {
+    if (!event) return;
+    if (event.kind === 'graffiti') {
+      this._showGraffiti(event.line, event.where, event.beat, event.author);
+      return;
+    }
+    if (event.kind === 'comms') {
+      this._fireComms({
+        id: event.id,
+        sender: event.sender,
+        text: event.text,
+        category: event.category,
+        ttl: event.ttl,
+        persist: !!event.persist,
+        note: event.note,
+      });
+    }
   },
 
   _onLoaded() {
@@ -481,6 +564,8 @@ export const story = {
       s.seenComms = {};
       s.ambientQueue = [];
       s.ambientTimerS = 0;
+      s.rngSeed = hash32(state.meta && state.meta.seed, 'story');
+      s.scheduled = [];
       s.graffitiShown = {};
       s.endgameChoice = null;
       s.endgameOffered = false;
@@ -491,6 +576,8 @@ export const story = {
       if (!s.seenComms) s.seenComms = {};
       if (!Array.isArray(s.ambientQueue)) s.ambientQueue = [];
       if (typeof s.ambientTimerS !== 'number') s.ambientTimerS = 0;
+      if (!Number.isFinite(s.rngSeed) || (s.rngSeed >>> 0) === 0) s.rngSeed = hash32(state.meta && state.meta.seed, 'story');
+      if (!Array.isArray(s.scheduled)) s.scheduled = [];
       if (!s.graffitiShown) s.graffitiShown = {};
       if (s.endgameChoice == null) s.endgameChoice = null;
       if (!s.endgameOffered) s.endgameOffered = false;
@@ -518,6 +605,7 @@ export const story = {
       if (carried.seenComms) s.seenComms = Object.assign({}, carried.seenComms);
       if (Array.isArray(carried.ambientQueue)) s.ambientQueue = carried.ambientQueue.slice();
       if (typeof carried.ambientTimerS === 'number') s.ambientTimerS = carried.ambientTimerS;
+      if (Array.isArray(carried.scheduled)) s.scheduled = carried.scheduled.slice();
       if (carried.graffitiShown) s.graffitiShown = Object.assign({}, carried.graffitiShown);
       if (carried.endgameChoice) s.endgameChoice = carried.endgameChoice;
       if (carried.endgameOffered) s.endgameOffered = true;
