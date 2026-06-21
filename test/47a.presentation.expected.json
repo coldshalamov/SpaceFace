@@ -1,0 +1,85 @@
+{
+  "schema": "spaceface.presentationGoldenTrace.v1",
+  "scenario": "47a",
+  "seed": 47,
+  "ticks": 720,
+  "inputTape": "test/47a.inputs.json",
+  "stateHash": "a4d6e9539cd3b47bfe03635b86686fe9061abbd4f2b4dd90674dcecfc5b09ca5",
+  "traceLimit": 120,
+  "events": [
+    "scenario.*",
+    "tether.*",
+    "presentation.*",
+    "audio:cue",
+    "camera:shake",
+    "alert"
+  ],
+  "summaryCounts": {
+    "scenario:beatEntered": 1,
+    "tether:attached": 1,
+    "presentation:cue": 2,
+    "presentation:cueApplied": 2,
+    "presentation:cameraCue": 1,
+    "camera:shake": 1,
+    "presentation:vfxCue": 2,
+    "presentation:audioCue": 2,
+    "audio:cue": 2,
+    "presentation:uiCue": 2,
+    "alert": 2,
+    "presentation:caption": 2
+  },
+  "cues": [
+    {
+      "id": "scenario.signal.pulse",
+      "sourceEvent": "scenario:beatEntered",
+      "tick": 1,
+      "sourceToAppliedTicks": 0,
+      "orderedTypes": [
+        "scenario:beatEntered",
+        "presentation:vfxCue",
+        "presentation:audioCue",
+        "audio:cue",
+        "presentation:uiCue",
+        "alert",
+        "presentation:caption",
+        "presentation:cueApplied",
+        "presentation:cue"
+      ],
+      "outputLanes": ["accessibility", "audio", "ui", "vfx"],
+      "audioId": "presentation.scenario.signal",
+      "audioGain": 0.688,
+      "uiKey": "presentation:scenario:signal",
+      "shape": "pulse",
+      "particles": 40,
+      "lights": 0,
+      "cameraAmount": null
+    },
+    {
+      "id": "tether.attach",
+      "sourceEvent": "tether:attached",
+      "tick": 4,
+      "sourceToAppliedTicks": 0,
+      "orderedTypes": [
+        "tether:attached",
+        "presentation:cameraCue",
+        "camera:shake",
+        "presentation:vfxCue",
+        "presentation:audioCue",
+        "audio:cue",
+        "presentation:uiCue",
+        "alert",
+        "presentation:caption",
+        "presentation:cueApplied",
+        "presentation:cue"
+      ],
+      "outputLanes": ["accessibility", "audio", "camera", "ui", "vfx"],
+      "audioId": "presentation.tether.attach",
+      "audioGain": 0.723,
+      "uiKey": "presentation:tether:attach",
+      "shape": "arc",
+      "particles": 48,
+      "lights": 0,
+      "cameraAmount": 0.12
+    }
+  ]
+}
