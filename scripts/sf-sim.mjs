@@ -602,20 +602,20 @@ function assertExpectedEnvelope(envelope, run, options) {
     'expected telemetry sourceScenarioContract must match the loaded scenario contract');
   assert(run.scenarioContract && run.scenarioContract.sha256 === scenarioContract.sha256,
     'loaded scenario contract hash must match the canonical scenario contract');
-  const placeholders = envelope.acceptancePlaceholders || {};
-  if (placeholders.authoritativeHash != null) {
-    assert.equal(run.sha256, placeholders.authoritativeHash, '47-A authoritative hash drifted from expected telemetry envelope');
+  const criteria = envelope.acceptanceCriteria || {};
+  if (criteria.authoritativeHash != null) {
+    assert.equal(run.sha256, criteria.authoritativeHash, '47-A authoritative hash drifted from expected telemetry envelope');
   }
-  if (placeholders.firstMeaningfulSteeringTickMax != null) {
-    assert(run.metrics.firstMeaningfulSteeringTick <= placeholders.firstMeaningfulSteeringTickMax,
+  if (criteria.firstMeaningfulSteeringTickMax != null) {
+    assert(run.metrics.firstMeaningfulSteeringTick <= criteria.firstMeaningfulSteeringTickMax,
       'first meaningful steering tick exceeded expected telemetry ceiling');
   }
-  if (placeholders.firstTetherAttachTickMax != null) {
-    assert(run.metrics.firstTetherAttachTick != null && run.metrics.firstTetherAttachTick <= placeholders.firstTetherAttachTickMax,
+  if (criteria.firstTetherAttachTickMax != null) {
+    assert(run.metrics.firstTetherAttachTick != null && run.metrics.firstTetherAttachTick <= criteria.firstTetherAttachTickMax,
       'first tether attach tick exceeded expected telemetry ceiling');
   }
-  if (placeholders.cleanRunCountRequired != null && options.repeat != null) {
-    assert(options.repeat >= placeholders.cleanRunCountRequired, 'repeat count is below expected clean run requirement');
+  if (criteria.cleanRunCountRequired != null && options.repeat != null) {
+    assert(options.repeat >= criteria.cleanRunCountRequired, 'repeat count is below expected clean run requirement');
   }
   const observedCounts = envelope.phase0ObservedTraceCounts || {};
   for (const [type, expectedCount] of Object.entries(observedCounts)) {
@@ -707,30 +707,30 @@ function compareExpectedEnvelope(envelope, run, options) {
       actual: normalizePath(envelope.sourceInputTape),
     });
   }
-  const placeholders = envelope.acceptancePlaceholders || {};
-  if (placeholders.authoritativeHash != null && run.sha256 !== placeholders.authoritativeHash) {
+  const criteria = envelope.acceptanceCriteria || {};
+  if (criteria.authoritativeHash != null && run.sha256 !== criteria.authoritativeHash) {
     diffs.push({
       kind: 'expectedHash',
-      path: '$.acceptancePlaceholders.authoritativeHash',
-      expected: placeholders.authoritativeHash,
+      path: '$.acceptanceCriteria.authoritativeHash',
+      expected: criteria.authoritativeHash,
       actual: run.sha256,
     });
   }
-  if (placeholders.firstMeaningfulSteeringTickMax != null
-    && run.metrics.firstMeaningfulSteeringTick > placeholders.firstMeaningfulSteeringTickMax) {
+  if (criteria.firstMeaningfulSteeringTickMax != null
+    && run.metrics.firstMeaningfulSteeringTick > criteria.firstMeaningfulSteeringTickMax) {
     diffs.push({
       kind: 'expectedMetric',
-      path: '$.acceptancePlaceholders.firstMeaningfulSteeringTickMax',
-      expected: `<=${placeholders.firstMeaningfulSteeringTickMax}`,
+      path: '$.acceptanceCriteria.firstMeaningfulSteeringTickMax',
+      expected: `<=${criteria.firstMeaningfulSteeringTickMax}`,
       actual: run.metrics.firstMeaningfulSteeringTick,
     });
   }
-  if (placeholders.firstTetherAttachTickMax != null
-    && !(run.metrics.firstTetherAttachTick != null && run.metrics.firstTetherAttachTick <= placeholders.firstTetherAttachTickMax)) {
+  if (criteria.firstTetherAttachTickMax != null
+    && !(run.metrics.firstTetherAttachTick != null && run.metrics.firstTetherAttachTick <= criteria.firstTetherAttachTickMax)) {
     diffs.push({
       kind: 'expectedMetric',
-      path: '$.acceptancePlaceholders.firstTetherAttachTickMax',
-      expected: `<=${placeholders.firstTetherAttachTickMax}`,
+      path: '$.acceptanceCriteria.firstTetherAttachTickMax',
+      expected: `<=${criteria.firstTetherAttachTickMax}`,
       actual: run.metrics.firstTetherAttachTick,
     });
   }
@@ -907,7 +907,7 @@ function spawn47aScenarioCast(sim) {
     team: 2,
     factionId: 'faction_scn',
     fittings: fittingsFromDefaultModules('ship_mule', ['wpn_pulse_laser_s']),
-    pos: { x: -520, z: 210 },
+    pos: { x: 500, z: -100 },
     rot: -0.35,
     ai: { role: '47a_recovery_tug', dormantUntilBeat: 'recovery_tug' },
   }));
@@ -1032,7 +1032,7 @@ function setup47aCounterTetherProbe(state, mode) {
   if (mode === 'dash') {
     placeEntity(thief, 118, 0, 0);
     placeEntity(harasser, 620, 180, Math.PI);
-    if (recoveryTug) placeEntity(recoveryTug, -520, 210, -0.35);
+    if (recoveryTug) placeEntity(recoveryTug, 500, -100, -0.35);
   } else if (mode === 'cut') {
     placeEntity(harasser, 132, 60, Math.PI);
     placeEntity(thief, 128, 0, Math.PI);
@@ -1043,7 +1043,7 @@ function setup47aCounterTetherProbe(state, mode) {
       capabilities: ['drive', 'sensor', 'weapon', 'tether', 'ranged', 'counter_tether_cut'],
     });
     thief.data.ai.role = '47a_counter_tether_support';
-    if (recoveryTug) placeEntity(recoveryTug, -520, 210, -0.35);
+    if (recoveryTug) placeEntity(recoveryTug, 500, -100, -0.35);
   }
 }
 

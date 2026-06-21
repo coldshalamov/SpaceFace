@@ -14,33 +14,66 @@ const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const LIVE_TICKS = 36120;
 const RELOAD_AFTER_LIVE_EVIDENCE_TICK = 12000;
 const TRACE_EVENTS = 'combat:actionStarted,combat.*,tether.*,scenario.*,presentation.*';
-const LIVE_BRANCH_ID = 'deliver_to_contact';
-const LIVE_PREDICATE_ID = 'predicate.47a.deliver_to_contact.live_state';
+const LIVE_CASES = [
+  {
+    id: 'surrender',
+    branchId: 'surrender_evidence',
+    predicateId: 'predicate.47a.surrender_evidence.live_state',
+    commands: [
+      frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
+    ],
+    requiredActionId: 'action_reel',
+    distanceTargetActorId: 'official_recovery_tug',
+    forbiddenActionIds: ['action_sling', 'action_cut'],
+    expectSlingImpulse: false,
+  },
+  {
+    id: 'deliver',
+    branchId: 'deliver_to_contact',
+    predicateId: 'predicate.47a.deliver_to_contact.live_state',
+    commands: [
+      frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
+      frameCommand(900, combatAction('action_sling', { attachment: 'latestOwned' })),
+    ],
+    requiredActionId: 'action_sling',
+    distanceTargetActorId: 'kessler_handoff_beacon',
+    forbiddenActionIds: ['action_cut'],
+    expectSlingImpulse: true,
+  },
+];
 
 const baseTape = readJson(BASE_TAPE_PATH);
 const scenario = readJson(SCENARIO_PATH);
-const branch = (scenario.branches || []).find((item) => item.id === LIVE_BRANCH_ID);
-assert(branch, `scenario should include ${LIVE_BRANCH_ID}`);
+const branchById = new Map((scenario.branches || []).map((branch) => [branch.id, branch]));
+for (const liveCase of LIVE_CASES) {
+  assert(branchById.has(liveCase.branchId), `scenario should include ${liveCase.branchId}`);
+}
 
 const tempDir = mkdtempSync(join(tmpdir(), 'spaceface-47a-live-branch-'));
 
 try {
-  const tapePath = writeLivePredicateTape();
-  const trace = runTrace(tapePath);
-  assertLivePredicateResolution(trace, 'uninterrupted', { expectCombatTraceImpulse: true });
+  const completed = [];
+  for (const liveCase of LIVE_CASES) {
+    const tapePath = writeLivePredicateTape(liveCase);
+    const trace = runTrace(tapePath);
+    assertLivePredicateResolution(trace, `${liveCase.id}:uninterrupted`, liveCase);
 
-  const reloadTrace = runTrace(tapePath, RELOAD_AFTER_LIVE_EVIDENCE_TICK);
-  assert.equal(reloadTrace.metrics.saveReloads, 1, 'live branch predicate check should execute one save/reload');
-  assertLivePredicateResolution(reloadTrace, `reload@${RELOAD_AFTER_LIVE_EVIDENCE_TICK}`, { expectCombatTraceImpulse: false });
-  assert.equal(reloadTrace.sha256, trace.sha256,
-    'live branch predicate should survive save/reload without hash drift');
+    const reloadTrace = runTrace(tapePath, RELOAD_AFTER_LIVE_EVIDENCE_TICK);
+    assert.equal(reloadTrace.metrics.saveReloads, 1, `${liveCase.id} live branch predicate check should execute one save/reload`);
+    assertLivePredicateResolution(reloadTrace, `${liveCase.id}:reload@${RELOAD_AFTER_LIVE_EVIDENCE_TICK}`, liveCase, {
+      afterReload: true,
+    });
+    assert.equal(reloadTrace.sha256, trace.sha256,
+      `${liveCase.id} live branch predicate should survive save/reload without hash drift`);
+    completed.push(`${liveCase.branchId}:${liveCase.predicateId}`);
+  }
 
-  console.log(`47-A live branch predicate OK (${LIVE_BRANCH_ID}, ${LIVE_PREDICATE_ID})`);
+  console.log(`47-A live branch predicates OK (${completed.join(', ')})`);
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }
 
-function writeLivePredicateTape() {
+function writeLivePredicateTape(liveCase) {
   const byTick = new Map();
   for (const frame of baseTape.frames || []) {
     const commands = (frame.commands || [])
@@ -53,15 +86,14 @@ function writeLivePredicateTape() {
     });
   }
 
-  addCommand(byTick, 720, combatAction('action_reel', { attachment: 'latestOwned' }));
-  addCommand(byTick, 900, combatAction('action_sling', { attachment: 'latestOwned' }));
+  for (const item of liveCase.commands) addCommand(byTick, item.tick, item.command);
 
   const tape = {
     ...baseTape,
-    id: '47a-live-branch-predicate-deliver-to-contact',
+    id: `47a-live-branch-predicate-${liveCase.id}`,
     notes: [
       ...(baseTape.notes || []),
-      'Generated no-scenarioBranch tape: covert courier must resolve from live combat/tether/handoff state.',
+      `Generated no-scenarioBranch tape: ${liveCase.branchId} must resolve from live combat/tether/handoff state.`,
     ],
     frames: [...byTick.values()].sort((a, b) => a.tick - b.tick),
   };
@@ -95,14 +127,15 @@ function runTrace(tapePath, reloadAt = null) {
   return runJson(args);
 }
 
-function assertLivePredicateResolution(trace, label, options = {}) {
+function assertLivePredicateResolution(trace, label, liveCase, options = {}) {
+  const branch = branchById.get(liveCase.branchId);
   assert.equal(trace.scenarioContract.activeBeatId, 'resolution_branch',
     `${label} should reach the 47-A resolution beat`);
-  assert.equal(trace.scenarioContract.resolvedBranchId, LIVE_BRANCH_ID,
-    `${label} should resolve ${LIVE_BRANCH_ID} without a scenarioBranch command`);
+  assert.equal(trace.scenarioContract.resolvedBranchId, liveCase.branchId,
+    `${label} should resolve ${liveCase.branchId} without a scenarioBranch command`);
   assert.equal(trace.scenarioContract.resolution.source, 'live-state',
     `${label} should mark the resolution as live-state`);
-  assert.equal(trace.scenarioContract.resolution.predicateId, LIVE_PREDICATE_ID,
+  assert.equal(trace.scenarioContract.resolution.predicateId, liveCase.predicateId,
     `${label} should name the live-state predicate`);
   assert.equal(trace.metrics.scenarioBranchResolved, 1,
     `${label} should emit one branch resolution`);
@@ -112,35 +145,54 @@ function assertLivePredicateResolution(trace, label, options = {}) {
   assert.equal(trace.traceSummary.types['scenario:branchResolved'], 1,
     `${label} trace should include branch resolution evidence`);
   assert(trace.trace.records.some((record) => record.type === 'combat:actionStarted'
-    && record.payload.actionId === 'action_sling'),
-  `${label} trace should include the SG-03 action that unlocked covert delivery`);
+    && record.payload.actionId === liveCase.requiredActionId),
+  `${label} trace should include the SG-03 action that unlocked ${liveCase.branchId}`);
   assert(trace.trace.records.some((record) => record.type === 'scenario:branchResolved'
-    && record.payload.branchId === LIVE_BRANCH_ID
+    && record.payload.branchId === liveCase.branchId
     && record.payload.source === 'live-state'),
   `${label} trace should carry live-state branch payload`);
 
-  const conditionByKind = new Map((trace.scenarioContract.resolution.predicateEvidence.conditions || [])
-    .map((condition) => [condition.kind, condition]));
-  assert.equal(conditionByKind.get('actionStarted').actionId, 'action_sling',
-    `${label} predicate should require the live sling action`);
-  assert.equal(conditionByKind.get('actionStarted').targetActorId, 'evidence_spindle_47a',
+  const conditions = trace.scenarioContract.resolution.predicateEvidence.conditions || [];
+  const actionCondition = conditions.find((condition) =>
+    condition.kind === 'actionStarted' && condition.actionId === liveCase.requiredActionId);
+  assert(actionCondition, `${label} predicate should require ${liveCase.requiredActionId}`);
+  assert.equal(actionCondition.targetActorId, 'evidence_spindle_47a',
     `${label} predicate should target the evidence spindle`);
-  assert.equal(conditionByKind.get('attachmentActive').count, 1,
+  const attachmentCondition = conditions.find((condition) =>
+    condition.kind === 'attachmentActive' && condition.targetActorId === 'evidence_spindle_47a');
+  assert(attachmentCondition, `${label} predicate should require an active Massline`);
+  assert.equal(attachmentCondition.count, 1,
     `${label} predicate should require a final active player-owned Massline`);
-  assert.equal(conditionByKind.get('actorDistance').targetActorId, 'kessler_handoff_beacon',
-    `${label} predicate should require the authored handoff beacon`);
-  assert(conditionByKind.get('actorDistance').distance <= conditionByKind.get('actorDistance').maxDistance,
+  const distanceCondition = conditions.find((condition) =>
+    condition.kind === 'actorDistance' && condition.targetActorId === liveCase.distanceTargetActorId);
+  assert(distanceCondition, `${label} predicate should require ${liveCase.distanceTargetActorId} proximity`);
+  assert(distanceCondition.distance <= distanceCondition.maxDistance,
     `${label} predicate should prove final handoff proximity`);
-  assert.equal(conditionByKind.get('eventCount').count, 0,
+  const tetherBreakCondition = conditions.find((condition) =>
+    condition.kind === 'eventCount' && condition.eventType === 'tether:broken');
+  assert(tetherBreakCondition, `${label} predicate should include no-break evidence`);
+  assert.equal(tetherBreakCondition.count, 0,
     `${label} predicate should prove no tether break occurred`);
+  for (const actionId of liveCase.forbiddenActionIds || []) {
+    const forbidden = conditions.find((condition) =>
+      condition.kind === 'eventCount'
+      && condition.eventType === 'combat:actionStarted'
+      && condition.actionId === actionId
+      && condition.count === 0
+      && condition.latestTick == null);
+    assert(forbidden, `${label} predicate should reject forbidden action ${actionId}`);
+  }
 
   assertNoRejectedActions(trace, label);
-  if (options.expectCombatTraceImpulse) {
+  if (liveCase.expectSlingImpulse && !options.afterReload) {
     assert(combatTraceHas(trace, 'physics.impulse', { actionId: 'action_sling' }),
       `${label} should route sling through SG-02 physics`);
+  } else {
+    assert(!combatTraceHas(trace, 'physics.impulse', { actionId: 'action_sling' }),
+      `${label} should not rely on a sling impulse in this evidence path`);
   }
   assert(!combatTraceHas(trace, 'attachment.broken', { reason: 'action_cut' }),
-    `${label} should not convert covert delivery into evidence destruction`);
+    `${label} should not convert live branch resolution into evidence destruction`);
   for (const effect of branch.worldFactEffects) {
     assert.equal(trace.scenarioContract.factValues[effect.factId], effect.value,
       `${label} should set ${effect.factId} to ${effect.value}`);
@@ -163,6 +215,10 @@ function frameAt(byTick, tick) {
   };
   byTick.set(tick, frame);
   return frame;
+}
+
+function frameCommand(tick, command) {
+  return { tick, command };
 }
 
 function combatAction(actionId, options = {}) {

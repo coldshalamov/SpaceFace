@@ -316,6 +316,10 @@ function evaluatePredicateCondition(state, scenario, condition) {
     return countConditionResult(events.length, condition, condition.maxCount == null ? 1 : 0, {
       kind: condition.kind,
       eventType: condition.eventType || null,
+      actorId: condition.actorId || null,
+      ownerActorId: condition.ownerActorId || null,
+      targetActorId: condition.targetActorId || null,
+      actionId: condition.actionId || null,
       count: events.length,
       latestTick: latestTick(events),
     });

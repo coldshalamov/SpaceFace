@@ -52,8 +52,8 @@
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
     "combat:fire": 12,
-    "projectile:hit": 11,
-    "combat:damage": 11,
+    "projectile:hit": 12,
+    "combat:damage": 12,
     "economy:tick": 2,
     "graffiti:show": 1,
     "comms:popup": 2,
@@ -67,8 +67,8 @@
     "presentation:cue": 2,
     "audio:cue": 2
   },
-  "acceptancePlaceholders": {
-    "authoritativeHash": "ecf6dcded72935fa0d396be680435204ef07c946938215a79d7079163d7712b8",
+  "acceptanceCriteria": {
+    "authoritativeHash": "7f9a865cdcaa65fad851a78345325db1e83af8a74dc32a688aaf794500f1329c",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,

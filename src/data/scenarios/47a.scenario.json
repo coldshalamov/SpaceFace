@@ -396,7 +396,46 @@
         { "factId": "fact.47a.evidence_status", "op": "set", "value": "held_by_concord" },
         { "factId": "fact.47a.faction_pressure", "op": "set", "value": "concord_asset_flag" },
         { "factId": "fact.47a.contract_record", "op": "set", "value": "closed_public_pending_private" }
-      ]
+      ],
+      "resolutionPredicate": {
+        "id": "predicate.47a.surrender_evidence.live_state",
+        "source": "live-state",
+        "all": [
+          { "kind": "beatEntered", "beatId": "resolution_branch" },
+          {
+            "kind": "actionStarted",
+            "actorId": "player_kestrel",
+            "actionId": "action_reel",
+            "targetActorId": "evidence_spindle_47a",
+            "minCount": 1
+          },
+          {
+            "kind": "attachmentActive",
+            "ownerActorId": "player_kestrel",
+            "targetActorId": "evidence_spindle_47a",
+            "minCount": 1
+          },
+          {
+            "kind": "actorDistance",
+            "actorId": "evidence_spindle_47a",
+            "targetActorId": "official_recovery_tug",
+            "maxDistance": 180
+          },
+          {
+            "kind": "eventCount",
+            "eventType": "combat:actionStarted",
+            "actionId": "action_sling",
+            "maxCount": 0
+          },
+          {
+            "kind": "eventCount",
+            "eventType": "combat:actionStarted",
+            "actionId": "action_cut",
+            "maxCount": 0
+          },
+          { "kind": "eventCount", "eventType": "tether:broken", "maxCount": 0 }
+        ]
+      }
     },
     {
       "id": "destroy_evidence",
@@ -462,6 +501,12 @@
             "actorId": "evidence_spindle_47a",
             "targetActorId": "kessler_handoff_beacon",
             "maxDistance": 160
+          },
+          {
+            "kind": "eventCount",
+            "eventType": "combat:actionStarted",
+            "actionId": "action_cut",
+            "maxCount": 0
           },
           { "kind": "eventCount", "eventType": "tether:broken", "maxCount": 0 }
         ]

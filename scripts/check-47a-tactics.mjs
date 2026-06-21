@@ -55,6 +55,8 @@ const tactics = [
   {
     id: 'control_specialist',
     branchId: 'surrender_evidence',
+    livePredicate: true,
+    predicateId: 'predicate.47a.surrender_evidence.live_state',
     commands: [
       frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
     ],
@@ -71,6 +73,7 @@ const tactics = [
     id: 'covert_courier',
     branchId: 'deliver_to_contact',
     livePredicate: true,
+    predicateId: 'predicate.47a.deliver_to_contact.live_state',
     commands: [
       frameCommand(720, combatAction('action_reel', { attachment: 'latestOwned' })),
       frameCommand(900, combatAction('action_sling', { attachment: 'latestOwned' })),
@@ -120,7 +123,7 @@ try {
       tactic.livePredicate ? 'live-state' : branchById.get(tactic.branchId).policyId,
       `${tactic.id} should resolve through the expected branch source`);
     if (tactic.livePredicate) {
-      assert.equal(trace.scenarioContract.resolution.predicateId, 'predicate.47a.deliver_to_contact.live_state',
+      assert.equal(trace.scenarioContract.resolution.predicateId, tactic.predicateId,
         `${tactic.id} should resolve through the authored live-state predicate`);
     }
     assert.equal(trace.metrics.firstTetherAttachTick, 4,

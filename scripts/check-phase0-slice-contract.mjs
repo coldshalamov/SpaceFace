@@ -106,7 +106,7 @@ for (const marker of ['--tactical-ai', '--counter-tether-probe', 'action_dash', 
   assert(counterplayGate.includes(marker), `47-A counterplay gate must keep live SG-06/SG-03 proof marker: ${marker}`);
 }
 const liveBranchGate = read('scripts/check-47a-live-branch-predicate.mjs');
-for (const marker of ['assertNoScenarioBranch', 'live-state', 'kessler_handoff_beacon', 'RELOAD_AFTER_LIVE_EVIDENCE_TICK']) {
+for (const marker of ['assertNoScenarioBranch', 'live-state', 'official_recovery_tug', 'kessler_handoff_beacon', 'RELOAD_AFTER_LIVE_EVIDENCE_TICK']) {
   assert(liveBranchGate.includes(marker), `47-A live branch gate must keep no-branch predicate proof marker: ${marker}`);
 }
 
@@ -142,8 +142,8 @@ for (const type of Object.keys(envelope.phase0ObservedTraceCounts)) {
   assert(DEFAULT_TRACE_EVENTS.includes(type), `observed trace count is not subscribed by event trace: ${type}`);
 }
 assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 12, 'expected telemetry should pin observed combat fire count');
-assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 11, 'expected telemetry should pin observed projectile hit count');
-assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 11, 'expected telemetry should pin observed combat damage count');
+assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 12, 'expected telemetry should pin observed projectile hit count');
+assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 12, 'expected telemetry should pin observed combat damage count');
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
 assert.equal(envelope.phase0ObservedTraceCounts['graffiti:show'], 1, 'expected telemetry should pin observed cold-start graffiti count');
 assert.equal(envelope.phase0ObservedTraceCounts['comms:popup'], 2, 'expected telemetry should pin observed cold-start comms count');
@@ -154,22 +154,26 @@ assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'e
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:beatEntered'], 1, 'expected telemetry should pin scenario beat entry count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:dialogueLine'], 1, 'expected telemetry should pin authored scenario dialogue execution');
 assert.equal(envelope.phase0ObservedTraceCounts['tether:attached'], 1, 'expected telemetry should pin first Massline attach evidence');
-assert.equal(envelope.acceptancePlaceholders.firstTetherAttachTickMax, 3600,
+assert(!Object.prototype.hasOwnProperty.call(envelope, 'acceptancePlaceholders'),
+  'telemetry envelope must use acceptanceCriteria, not placeholder acceptance fields');
+assert(envelope.acceptanceCriteria && typeof envelope.acceptanceCriteria === 'object' && !Array.isArray(envelope.acceptanceCriteria),
+  'telemetry envelope must declare concrete acceptanceCriteria');
+assert.equal(envelope.acceptanceCriteria.firstTetherAttachTickMax, 3600,
   'expected telemetry should require first Massline attach within 60s');
-assert.equal(envelope.acceptancePlaceholders.policyCompletionCountMin, scenarioContract.branches.length,
+assert.equal(envelope.acceptanceCriteria.policyCompletionCountMin, scenarioContract.branches.length,
   'expected telemetry should require every authored branch policy/tactic outcome');
-assert.equal(envelope.acceptancePlaceholders.enemyCounterTetherBehaviorCountMin, 2,
+assert.equal(envelope.acceptanceCriteria.enemyCounterTetherBehaviorCountMin, 2,
   'expected telemetry should require both enemy counter-tether behaviors');
-assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  'ecf6dcded72935fa0d396be680435204ef07c946938215a79d7079163d7712b8',
+assert.equal(envelope.acceptanceCriteria.authoritativeHash,
+  '7f9a865cdcaa65fad851a78345325db1e83af8a74dc32a688aaf794500f1329c',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
-assert.equal(envelope.acceptancePlaceholders.canonicalLongBranchId, 'escape_with_evidence',
+assert.equal(envelope.acceptanceCriteria.canonicalLongBranchId, 'escape_with_evidence',
   'expected telemetry should pin the canonical long-run branch outcome');
-assert.equal(envelope.acceptancePlaceholders.canonicalLongBranchFactChanges, 3,
+assert.equal(envelope.acceptanceCriteria.canonicalLongBranchFactChanges, 3,
   'expected telemetry should pin the canonical long-run branch fact-change count');
 
 const canonicalLongBranch = scenarioContract.branches.find((branch) =>
-  branch.id === envelope.acceptancePlaceholders.canonicalLongBranchId);
+  branch.id === envelope.acceptanceCriteria.canonicalLongBranchId);
 assert(canonicalLongBranch, 'canonical long-run branch must exist in the scenario contract');
 const longBranchInspect = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf-sim.mjs',
@@ -190,7 +194,7 @@ assert.equal(longBranchInspect.scenarioContract.resolvedBranchId, canonicalLongB
   'canonical long run should resolve the pinned branch');
 assert.equal(longBranchInspect.metrics.scenarioBranchResolved, 1,
   'canonical long run should emit one branch resolution');
-assert.equal(longBranchInspect.metrics.scenarioFactChanged, envelope.acceptancePlaceholders.canonicalLongBranchFactChanges,
+assert.equal(longBranchInspect.metrics.scenarioFactChanged, envelope.acceptanceCriteria.canonicalLongBranchFactChanges,
   'canonical long run should emit the pinned branch fact-change count');
 assert.equal(longBranchInspect.traceSummary.types['scenario:branchResolved'], 1,
   'canonical long run should trace branch resolution evidence');
@@ -317,7 +321,7 @@ const trace = JSON.parse(execFileSync(process.execPath, [
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
 assert.equal(trace.schema, 'spaceface.sfSimTraceResult.v1', 'sf-sim trace should emit a versioned trace result');
 assert.equal(trace.command, 'trace', 'sf-sim trace command should round-trip in JSON');
-assert.equal(trace.sha256, envelope.acceptancePlaceholders.authoritativeHash, 'sf-sim trace should preserve the authoritative replay hash');
+assert.equal(trace.sha256, envelope.acceptanceCriteria.authoritativeHash, 'sf-sim trace should preserve the authoritative replay hash');
 assert(trace.trace && trace.trace.schema === 'spaceface.eventTrace.v1', 'sf-sim trace should include deterministic event records');
 assert(trace.trace.subscribedEvents.includes('combat:fire'), 'sf-sim trace should resolve combat.* event filters');
 assert(trace.trace.subscribedEvents.includes('scenario:loaded'), 'sf-sim trace should resolve scenario.* event filters');
@@ -344,7 +348,7 @@ assert(trace.combatTrace.digest && /^[a-f0-9]{8}$/.test(trace.combatTrace.digest
 assert((trace.combatTraceSummary.kinds['damage.routed'] || 0) > 0, 'SG-03 combat trace should expose routed damage events');
 assert((trace.combatTraceSummary.kinds['attachment.created'] || 0) === 1, 'SG-03 combat trace should expose one attachment creation');
 assert(trace.metrics.systems.includes('actions'), 'sf-sim trace should run the real action system');
-assert(trace.metrics.firstTetherAttachTick <= envelope.acceptancePlaceholders.firstTetherAttachTickMax,
+assert(trace.metrics.firstTetherAttachTick <= envelope.acceptanceCriteria.firstTetherAttachTickMax,
   'sf-sim trace should attach the Massline within the expected ceiling');
 
 const sfTrace = JSON.parse(execFileSync(process.execPath, [
@@ -369,7 +373,7 @@ assert.equal(sfTrace.ok, true, 'canonical sf trace should report a successful de
 assert.equal(sfTrace.command, 'trace', 'canonical sf trace should preserve its command name');
 assert.equal(sfTrace.forwardedCommand, 'trace', 'canonical sf trace should delegate to the trace sim command');
 assert.equal(sfTrace.result.schema, 'spaceface.sfSimTraceResult.v1', 'canonical sf trace should wrap the versioned trace result');
-assert.equal(sfTrace.result.sha256, envelope.acceptancePlaceholders.authoritativeHash,
+assert.equal(sfTrace.result.sha256, envelope.acceptanceCriteria.authoritativeHash,
   'canonical sf trace should preserve the authoritative replay hash');
 assert.equal(sfTrace.result.traceSummary.types['combat:fire'], envelope.phase0ObservedTraceCounts['combat:fire'],
   'canonical sf trace should expose filtered combat fire evidence');
@@ -400,7 +404,7 @@ const profile = JSON.parse(execFileSync(process.execPath, [
 assert.equal(profile.schema, 'spaceface.sfSimProfileResult.v1', 'sf-sim profile should emit a versioned profile result');
 assert.equal(profile.command, 'profile', 'sf-sim profile command should round-trip in JSON');
 assert.equal(profile.timingAuthoritative, false, 'sf-sim profile timing must not become authoritative replay state');
-assert.equal(profile.sha256, envelope.acceptancePlaceholders.authoritativeHash, 'sf-sim profile should preserve the authoritative replay hash');
+assert.equal(profile.sha256, envelope.acceptanceCriteria.authoritativeHash, 'sf-sim profile should preserve the authoritative replay hash');
 assert(profile.profile && profile.profile.schema === 'spaceface.simProfile.v1', 'sf-sim profile should include a versioned timing payload');
 assert.equal(profile.profile.timingAuthoritative, false, 'profile timing payload should be diagnostic only');
 assert.equal(profile.profile.replayHashAuthoritative, true, 'profile should identify the replay hash as authoritative');
@@ -432,7 +436,7 @@ assert.equal(sfProfile.ok, true, 'canonical sf profile should report a successfu
 assert.equal(sfProfile.command, 'profile', 'canonical sf profile should preserve its command name');
 assert.equal(sfProfile.forwardedCommand, 'profile', 'canonical sf profile should delegate to the profile sim command');
 assert.equal(sfProfile.result.schema, 'spaceface.sfSimProfileResult.v1', 'canonical sf profile should wrap the versioned sim result');
-assert.equal(sfProfile.result.sha256, envelope.acceptancePlaceholders.authoritativeHash,
+assert.equal(sfProfile.result.sha256, envelope.acceptanceCriteria.authoritativeHash,
   'canonical sf profile should preserve the authoritative replay hash');
 
 const sfReplayVerify = JSON.parse(execFileSync(process.execPath, [
@@ -461,7 +465,7 @@ assert.equal(sfReplayVerify.action, 'verify', 'canonical sf replay verify should
 assert.equal(sfReplayVerify.forwardedCommand, 'run', 'canonical sf replay verify should delegate to the repeat-checking run command');
 assert.equal(sfReplayVerify.result.schema, 'spaceface.sfSimResult.v1', 'canonical sf replay verify should wrap the sim run output');
 assert.equal(sfReplayVerify.result.repeat, 20, 'canonical sf replay verify should enforce the golden repeat count');
-assert.equal(sfReplayVerify.result.sha256, envelope.acceptancePlaceholders.authoritativeHash,
+assert.equal(sfReplayVerify.result.sha256, envelope.acceptanceCriteria.authoritativeHash,
   'canonical sf replay verify should preserve the authoritative replay hash');
 assert.equal(sfReplayVerify.result.baselineSha256, sfReplayVerify.result.sha256,
   'canonical sf replay verify should preserve reload parity against baseline');
@@ -558,7 +562,7 @@ function assertRejectsMalformedEvidence() {
     requiredEventFamilies: ['flight'],
     phase0ExpectedTraceTypes: ['bad'],
     phase0ObservedTraceCounts: { 'bad': -1 },
-    acceptancePlaceholders: { cleanRunCountRequired: 0 },
+    acceptanceCriteria: { cleanRunCountRequired: 0 },
   };
   const tapeResult = validateEvidenceDocument(badTape, { file: 'bad.inputs.json' });
   const corpusResult = validateEvidenceCorpus([

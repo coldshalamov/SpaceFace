@@ -69,12 +69,27 @@ for (const branch of scenario.branches) {
   assert(branch.worldFactEffects.length >= 1, `${branch.id} must change an immediate world fact`);
 }
 const deliverBranch = scenario.branches.find((branch) => branch.id === 'deliver_to_contact');
-assert(deliverBranch.resolutionPredicate, 'deliver_to_contact should expose a schema-backed live-state predicate');
-assert.equal(deliverBranch.resolutionPredicate.source, 'live-state',
-  'deliver_to_contact predicate should not rely on tape branch injection');
-assert.deepEqual(new Set(deliverBranch.resolutionPredicate.all.map((condition) => condition.kind)),
-  new Set(['beatEntered', 'actionStarted', 'attachmentActive', 'actorDistance', 'eventCount']),
-  'deliver_to_contact predicate should require beat, action, tether, handoff distance, and no-break evidence');
+assertLivePredicate(
+  deliverBranch,
+  'deliver_to_contact',
+  'predicate.47a.deliver_to_contact.live_state',
+  'action_sling',
+  'kessler_handoff_beacon',
+);
+const surrenderBranch = scenario.branches.find((branch) => branch.id === 'surrender_evidence');
+assertLivePredicate(
+  surrenderBranch,
+  'surrender_evidence',
+  'predicate.47a.surrender_evidence.live_state',
+  'action_reel',
+  'official_recovery_tug',
+);
+assert(surrenderBranch.resolutionPredicate.all.some((condition) =>
+  condition.kind === 'eventCount' && condition.eventType === 'combat:actionStarted' && condition.actionId === 'action_sling' && condition.maxCount === 0),
+'surrender_evidence predicate should reject covert sling delivery');
+assert(surrenderBranch.resolutionPredicate.all.some((condition) =>
+  condition.kind === 'eventCount' && condition.eventType === 'combat:actionStarted' && condition.actionId === 'action_cut' && condition.maxCount === 0),
+'surrender_evidence predicate should reject destructive cut-away tactics');
 
 const metricIds = new Set(scenario.proofMetrics.map((metric) => metric.id));
 for (const requiredMetric of [
@@ -93,6 +108,26 @@ assertRejectsMalformedScenario();
 assertCliValidation();
 
 console.log('SG-05 scenario contract checks OK');
+
+function assertLivePredicate(branch, branchId, predicateId, actionId, distanceTargetActorId) {
+  assert(branch, `${branchId} should exist`);
+  assert(branch.resolutionPredicate, `${branchId} should expose a schema-backed live-state predicate`);
+  assert.equal(branch.resolutionPredicate.id, predicateId, `${branchId} should name its live-state predicate`);
+  assert.equal(branch.resolutionPredicate.source, 'live-state',
+    `${branchId} predicate should not rely on tape branch injection`);
+  assert.deepEqual(new Set(branch.resolutionPredicate.all.map((condition) => condition.kind)),
+    new Set(['beatEntered', 'actionStarted', 'attachmentActive', 'actorDistance', 'eventCount']),
+    `${branchId} predicate should require beat, action, tether, handoff distance, and no-break evidence`);
+  assert(branch.resolutionPredicate.all.some((condition) =>
+    condition.kind === 'actionStarted' && condition.actionId === actionId && condition.targetActorId === 'evidence_spindle_47a'),
+  `${branchId} predicate should require ${actionId} against the evidence spindle`);
+  assert(branch.resolutionPredicate.all.some((condition) =>
+    condition.kind === 'actorDistance' && condition.actorId === 'evidence_spindle_47a' && condition.targetActorId === distanceTargetActorId),
+  `${branchId} predicate should require final proximity to ${distanceTargetActorId}`);
+  assert(branch.resolutionPredicate.all.some((condition) =>
+    condition.kind === 'eventCount' && condition.eventType === 'tether:broken' && condition.maxCount === 0),
+  `${branchId} predicate should reject broken-tether outcomes`);
+}
 
 function assertRejectsMalformedScenario() {
   const missingBranchEffects = clone(scenario);

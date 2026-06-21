@@ -105,7 +105,7 @@ try {
     completions.push(branch.id);
   }
 
-  assert(completions.length >= envelope.acceptancePlaceholders.policyCompletionCountMin,
+  assert(completions.length >= envelope.acceptanceCriteria.policyCompletionCountMin,
     '47-A policy suite should complete the minimum authored policy count');
   assert.equal(completions.length, branches.length, '47-A policy suite should cover every authored branch');
   console.log(`SG-05 branch policy checks OK (${completions.join(', ')})`);

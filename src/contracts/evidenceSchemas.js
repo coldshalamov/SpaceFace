@@ -19,7 +19,7 @@ const ENVELOPE_KEYS = new Set([
   'requiredEventFamilies',
   'phase0ExpectedTraceTypes',
   'phase0ObservedTraceCounts',
-  'acceptancePlaceholders',
+  'acceptanceCriteria',
   'notes',
 ]);
 const ACCEPTANCE_KEYS = new Set([
@@ -213,7 +213,7 @@ function validateTelemetryEnvelope(envelope, issues, file) {
     });
   }
 
-  validateAcceptancePlaceholders(envelope.acceptancePlaceholders, issues, file);
+  validateAcceptanceCriteria(envelope.acceptanceCriteria, issues, file);
 }
 
 function validateTraceCountMap(value, path, issues, file) {
@@ -246,15 +246,15 @@ function validateAttachmentRef(value, path, issues, file, options = {}) {
   validateActorRef(value, path, issues, file, options);
 }
 
-function validateAcceptancePlaceholders(value, issues, file) {
-  const path = '$.acceptancePlaceholders';
+function validateAcceptanceCriteria(value, issues, file) {
+  const path = '$.acceptanceCriteria';
   if (!isPlainObject(value)) {
-    addIssue(issues, file, path, 'type', 'acceptancePlaceholders must be an object');
+    addIssue(issues, file, path, 'type', 'acceptanceCriteria must be an object');
     return;
   }
   validateKnownKeys(value, ACCEPTANCE_KEYS, path, issues, file);
   for (const key of ACCEPTANCE_KEYS) {
-    if (!(key in value)) addIssue(issues, file, `${path}.${key}`, 'required', 'required acceptance placeholder is missing');
+    if (!(key in value)) addIssue(issues, file, `${path}.${key}`, 'required', 'required acceptance criterion is missing');
   }
   if (value.authoritativeHash != null && !/^[a-f0-9]{64}$/.test(value.authoritativeHash)) {
     addIssue(issues, file, `${path}.authoritativeHash`, 'hash', 'authoritativeHash must be null or a 64-character lowercase sha256 hex string');

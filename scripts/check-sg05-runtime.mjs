@@ -112,7 +112,7 @@ assert(progressed.trace.records.some((record) => record.type === 'presentation:c
 assert(progressed.trace.records.some((record) => record.type === 'scenario:dialogueLine'
   && record.payload.lineId === 'dialogue.47a.kessler.scavengers'), 'progressed trace should include the scavenger-arrival authored line');
 assert(progressed.metrics.firstHostileShotTick != null
-  && progressed.metrics.firstHostileShotTick <= envelope.acceptancePlaceholders.firstHostileShotTickMax,
+  && progressed.metrics.firstHostileShotTick <= envelope.acceptanceCriteria.firstHostileShotTickMax,
   'progressed run should prove first hostile fire inside the authored 90s window');
 assert(progressed.metrics.hostileCombatFire > 0, 'progressed run should count hostile scenario fire');
 
