@@ -27,6 +27,7 @@ const ACCEPTANCE_KEYS = new Set([
   'firstMeaningfulSteeringTickMax',
   'firstTetherAttachTickMax',
   'firstHostileShotTickMax',
+  'deathToRetryTickMax',
   'policyCompletionCountMin',
   'enemyCounterTetherBehaviorCountMin',
   'cleanRunCountRequired',
@@ -262,6 +263,7 @@ function validateAcceptanceCriteria(value, issues, file) {
   requireIntegerOrNull(value.firstMeaningfulSteeringTickMax, `${path}.firstMeaningfulSteeringTickMax`, issues, file, { min: 0 });
   requireIntegerOrNull(value.firstTetherAttachTickMax, `${path}.firstTetherAttachTickMax`, issues, file, { min: 0 });
   requireIntegerOrNull(value.firstHostileShotTickMax, `${path}.firstHostileShotTickMax`, issues, file, { min: 0 });
+  requireIntegerOrNull(value.deathToRetryTickMax, `${path}.deathToRetryTickMax`, issues, file, { min: 0 });
   requireIntegerOrNull(value.policyCompletionCountMin, `${path}.policyCompletionCountMin`, issues, file, { min: 1 });
   requireIntegerOrNull(value.enemyCounterTetherBehaviorCountMin, `${path}.enemyCounterTetherBehaviorCountMin`, issues, file, { min: 0 });
   requireIntegerOrNull(value.cleanRunCountRequired, `${path}.cleanRunCountRequired`, issues, file, { min: 1 });

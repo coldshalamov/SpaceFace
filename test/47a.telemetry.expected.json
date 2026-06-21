@@ -72,6 +72,7 @@
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
+    "deathToRetryTickMax": 360,
     "policyCompletionCountMin": 4,
     "enemyCounterTetherBehaviorCountMin": 2,
     "cleanRunCountRequired": 5,
@@ -82,6 +83,7 @@
     "This is the Phase 0 envelope for the current headless 47-A smoke run.",
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
     "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick run, including SG-05 authored dialogue plus SG-08 semantic cue and adapter-output evidence.",
-    "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds."
+    "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds.",
+    "deathToRetryTickMax pins the spec's under-6s failure-to-retry requirement at the canonical 60Hz tick rate."
   ]
 }

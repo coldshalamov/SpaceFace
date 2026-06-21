@@ -10,7 +10,7 @@ const outDir = join(ROOT, '.devshots');
 const { chromium } = await loadPlaywright();
 
 const requestedBaseUrl = process.env.SF_PROBE_URL || '';
-const server = requestedBaseUrl ? await ensureServer(requestedBaseUrl) : await startFreshServer();
+let server = requestedBaseUrl ? await ensureServer(requestedBaseUrl) : await startFreshServer();
 const baseUrl = requestedBaseUrl || server.baseUrl;
 const browser = await chromium.launch({ headless: true });
 const viewports = [
@@ -592,16 +592,28 @@ function readPositiveIntArg(names, fallback) {
 
 async function gotoWithRetry(page, url, opts) {
   let lastErr = null;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     try {
       return await page.goto(url, opts);
     } catch (err) {
       lastErr = err;
-      if (!String(err && err.message || err).includes('ERR_CONNECTION_REFUSED') || i === 2) throw err;
+      if (!String(err && err.message || err).includes('ERR_CONNECTION_REFUSED') || i === 4) throw err;
+      await recoverProbeServer(url);
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }
   throw lastErr;
+}
+
+async function recoverProbeServer(url) {
+  if (await reachable(url)) return;
+  const u = new URL(url);
+  if (!['127.0.0.1', 'localhost'].includes(u.hostname)) return;
+  const port = u.port || '8124';
+  if (server && server.kill) server.kill();
+  const child = spawnProbeServer(port);
+  await waitForReachable(`${u.protocol}//${u.hostname}:${port}/`, child);
+  server = requestedBaseUrl ? child : { baseUrl, kill: () => child.kill() };
 }
 
 async function loadPlaywright() {
