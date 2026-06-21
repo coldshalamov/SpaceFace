@@ -1,0 +1,90 @@
+schema: spaceface.reference-ledger.v1
+job: SG-06
+implementation_date: 2026-06-21
+implementation_author: OpenAI GPT-5.5 Pro
+clean_room_policy:
+  method: behavioral-extraction-only
+  copied_code: false
+  copied_identifiers: false
+  copied_comments: false
+  copied_constants_or_tables: false
+  notes: >-
+    The implementation is original SpaceFace code. References were used only to state broad behavior
+    laws, invariants, and black-box expectations. No external implementation was pasted or translated.
+references:
+  - project: Naev
+    repository: https://github.com/naev/naev
+    revision: v0.13.4 release line; exact commit not incorporated
+    license: GPL-3.0-or-later
+    files_or_areas_reviewed:
+      - src/ai.c and src/ai.h names/catalogue described by the SpaceFace master plan
+      - dat/ai behavior families described by public project documentation
+      - pilot maneuver concepts described by the SpaceFace master plan
+    extracted_laws:
+      - Separate desired tactical state from steering execution.
+      - Use intercept, range error, braking, orbit, evade, and disengage as distinct movement laws.
+      - Keep steering deterministic and bounded rather than directly setting position.
+    exclusions:
+      - No source code, constants, identifiers, tables, or control-flow structure copied.
+    legal_boundary: Architectural and behavioral reference only unless SpaceFace adopts compatible licensing.
+
+  - project: FreeSpace 2 Source Code Project
+    repository: https://github.com/scp-fs2open/fs2open.github.com
+    revision: release 25.0 design reference; exact commit not incorporated
+    license: Volition noncommercial source license
+    files_or_areas_reviewed:
+      - code/ai/aicode.cpp and aigoals.cpp areas identified by the SpaceFace master plan
+      - wing, turret, escort, and AI-goal concepts from public design documentation
+    extracted_laws:
+      - A wing commander assigns goals and formation roles separately from per-ship execution.
+      - Formation departure must follow an explicit order, emergency, or goal transition.
+      - Focus, escort, screen, disable, and retreat are command-level objectives rather than steering states.
+    exclusions:
+      - No implementation code used; no commercial-use source incorporated.
+    legal_boundary: NONCOMMERCIAL design reference only.
+
+  - project: Oolite
+    repository: https://github.com/OoliteProject/oolite
+    revision: 0b1ff49 (1.90 stable release reference)
+    license: GPL-2.0-or-later for core; assets and OXPs vary
+    files_or_areas_reviewed:
+      - Resources/Scripts/oolite-priorityai.js behavior model identified by the SpaceFace master plan
+      - Debug/inspection and schema-validation concepts
+    extracted_laws:
+      - Evaluate ordered/weighted priorities from an explicit perceived context.
+      - Expose selected option, rejected candidates, and blocking conditions for inspection.
+      - Add dwell and switch margins so nearby utilities do not chatter.
+    exclusions:
+      - No priority table, function name, constant, comment, or source structure copied.
+    legal_boundary: Behavioral extraction only.
+
+  - project: Left 4 Dead AI Director principles
+    repository: not_applicable
+    revision: Valve Developer Community pages retrieved 2026-06-21
+    license: Documentation/design reference; no source implementation used
+    files_or_areas_reviewed:
+      - info_director documentation
+      - public descriptions of automated pacing, panic events, and behavior options
+    extracted_laws:
+      - Authoring defines a threat envelope; the director controls tempo within it.
+      - Escalation, peak, respite, and retreat need minimum dwell and cooldowns.
+      - Intervention should depend on observable encounter telemetry, not hidden player variables.
+    exclusions:
+      - No proprietary source, scripts, tuning constants, or encounter tables used.
+    legal_boundary: High-level design principle only.
+
+spaceface_sources:
+  - path: docs/Spec/MASTER_MAKEOVER_PLAN.md
+    sections:
+      - I. Clean-room cannibalization map
+      - C. SG-06 — Layered tactical AI, squad logic, encounter director
+      - D. Required handoff package
+  - path: docs/handoffs/SG-03_COMBAT_HANDOFF.md
+    purpose: Canonical ActionDef and physics-port integration contract.
+  - path: src/data/combatDefs.js
+    purpose: Canonical SpaceFace action definitions consumed without modification.
+review_assertions:
+  - No external source file is vendored by this job.
+  - SG-06 owns no duplicate combat grammar or physics formula.
+  - Reference-derived laws are documented independently of implementation structure.
+  - Any future deeper source study must add a pinned commit before extraction.

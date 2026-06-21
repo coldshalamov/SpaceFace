@@ -1,0 +1,49 @@
+{
+  "schema": "spaceface.sg06.acceptance.v1",
+  "contract": "SG-06",
+  "mode": "canonical-sg03-actiondef-port-harness",
+  "integrationStatus": {
+    "sg02DynamicBodies": "required_on_master",
+    "sg03ActionRuntime": "integrated_on_master_canonical_actiondefs_consumed",
+    "sg03LiveAdapter": "delivered_createSG03ActionPort",
+    "productionRegistration": "fail_closed_until_dependencies_exist"
+  },
+  "deterministic": true,
+  "determinismSamples": 5,
+  "seeds": 100,
+  "ticksPerSeed": 600,
+  "tactics": [
+    "contain_and_disable",
+    "cut_and_scatter",
+    "hold_formation",
+    "overload_and_break",
+    "screen_tug_steal",
+    "standoff_focus",
+    "swarm_pincer"
+  ],
+  "counterTetherActions": [
+    "action_cut",
+    "action_dash"
+  ],
+  "maxActionTransitions": 4,
+  "maxCommandedStationaryTicks": 1,
+  "formationRecoveryRequests": 14387,
+  "physicalFormationConvergence": "blocked_on_sg02_dynamic_body_integration",
+  "directorPressure": {
+    "minimum": 0.22,
+    "maximum": 0.698987,
+    "authoredEnvelope": [
+      0.16,
+      0.76
+    ]
+  },
+  "traceLayers": [
+    "behavior",
+    "director",
+    "maneuver",
+    "perception",
+    "squad",
+    "utility"
+  ],
+  "elapsedMs": 28551.13525
+}

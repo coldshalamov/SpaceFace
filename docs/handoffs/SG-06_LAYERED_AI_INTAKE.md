@@ -4,46 +4,20 @@ Snapshot date: 2026-06-21.
 
 ## Artifact inspected
 
-- Remote branch: `origin/sg-06-layered-tactical-ai`
-- Latest inspected SHA: `c543cfbab576f85f7c4bc5145367ed764bd713a0`
-- Merge base against current `master`: `5a5fc943488341242e01c8ad5e996aa1c1928cf1`
+- Final archive: `C:\Users\93rob\Downloads\SpaceFace-SG-06.zip`
+- Archive SHA-256: `F10CC6B0FF01339EA90522D0C969DFE049DAF8788203580D3851B56220A358D5`
+- Prior rejected branch: `origin/sg-06-layered-tactical-ai` at `c543cfbab576f85f7c4bc5145367ed764bd713a0`
 
 ## Current verdict
 
-Not accepted.
+Accepted at port level.
 
-The refreshed branch is a partial artifact, not a production SG-06 handoff. Its merge-base diff adds only:
+The final archive provides the missing five-layer stack, canonical SG-03 action adapter, fail-closed tactical system wrapper, explainability trace, inspection endpoint, clean-room ledger, handoff document, checked acceptance evidence, and the deterministic 100-seed SG-06 acceptance harness.
 
-- `src/ai/index.js`
-- `src/ai/inspection.js`
-- `src/ai/trace.js`
-- `src/systems/tacticalAI.js`
-
-`src/ai/index.js` re-exports `contracts`, `director`, `maneuver`, `perception`, `shipDecision`, `sg03ActionPort`, `squad`, and `stack`, but those modules are absent from the branch. The inspection and trace files import `contracts.js`, which is also absent. The branch has no handoff document, reference ledger, seeded acceptance fixture, package script, or live integration proof.
+This is not a live replacement for `src/systems/ai.js` yet. SG-02 dynamic-body authority is still absent on master, so physical formation convergence, real Massline break telemetry, and production maneuver parity remain gated. `src/systems/tacticalAI.js` must stay unregistered until `helpers.aiManeuver`, `helpers.aiSensors`, and `helpers.aiRoster` are production ports over SG-02/SG-03 systems.
 
 ## Accepted now
 
-Nothing from SG-06 is accepted on `master` yet.
-
-The existing live AI remains the pre-SG-06 deterministic single-ship FSM in `src/systems/ai.js`. It is not the layered director/squad/perception/utility/maneuver stack described by the master plan, and it should not be relabeled as SG-06.
-
-## Not accepted yet
-
-- Director pressure/escalation/respite/reinforcement/retreat layer.
-- Squad commander roles, formations, focus target, and objective handoff.
-- Sensor/perception memory with no hidden player-state reads.
-- Utility or behavior selector that submits SG-03 `ActionDef` requests with `source.kind='ai'`.
-- Maneuver planner that emits physical thruster/body intent instead of legacy fire/motion shortcuts.
-- Circular explainability trace and inspection endpoint backed by the full stack.
-- 100-seed acceptance harness proving tactics, counter-tether behavior, stationarity, oscillation, formation bounds, and director pressure envelope.
-- SG-02 physical parity for tether/counter-tether actions.
-
-## Required before integration
-
-A real SG-06 package must provide all of the following in this repository:
-
-- `docs/handoffs/SG-06_LAYERED_AI_HANDOFF.md`
-- `third_party/reference-ledger-sg06.yml`
 - `src/ai/contracts.js`
 - `src/ai/director.js`
 - `src/ai/inspection.js`
@@ -54,13 +28,30 @@ A real SG-06 package must provide all of the following in this repository:
 - `src/ai/squad.js`
 - `src/ai/stack.js`
 - `src/ai/trace.js`
-- `scripts/check-sg06-layered-ai.mjs`
-- `scripts/check-sg06-action-port.mjs`
-- `scripts/check-sg06-seed-suite.mjs`
-- At least one `test/sg06` fixture.
+- `src/ai/index.js`
+- `src/systems/tacticalAI.js`
+- `scripts/check-sg06-ai.mjs`
+- `docs/Spec/SG-06_ACCEPTANCE.json`
+- `docs/handoffs/SG-06_AI_HANDOFF.md`
+- `third_party/reference-ledger-sg06.yml`
 
-`check:sg06` must run the intake guard and the production SG-06 acceptance suites. Production SG-06 code must not call damage routing directly, mutate HP directly, use legacy `intent.fire` shortcuts, or read hidden player state. Live AI actions must enter the same SG-03 ActionDef request path as the player.
+`check:sg06` now runs the intake guard and the 100-seed AI acceptance suite. `check:ai` is an alias for the SG-06 suite.
 
-## Next useful action
+## Still blocked
 
-Ask the SG-06 producer for a complete artifact or a corrected PR. Do not create a privileged compatibility path and do not wire the current partial branch into live gameplay.
+- Replacing the legacy live FSM in `src/systems/ai.js`.
+- Registering `src/systems/tacticalAI.js` in `src/core/registry.js`.
+- Deleting legacy `entity.data.intent.fire`, `fireGroup`, lead-angle, and direct NPC flight paths.
+- Claiming physical formation convergence.
+- Claiming real tether overload/break telemetry.
+- Claiming SG-02/SG-06 shared physics authority in production.
+
+These are blocked until SG-02 installs dynamic Rapier body authority and the production `helpers.aiManeuver`/sensor/roster ports described in `docs/handoffs/SG-06_AI_HANDOFF.md`.
+
+## Evidence
+
+- `npm run check:sg06:intake`
+- `npm run check:sg06:ai`
+- `npm run check:sg06`
+
+The checked evidence record is `docs/Spec/SG-06_ACCEPTANCE.json`. It records 100 seeds x 600 ticks, seven tactics, both canonical counter-tether actions (`action_cut`, `action_dash`), no privileged action path, bounded stationarity, pressure within the authored envelope, and the explicit `blocked_on_sg02_dynamic_body_integration` physical-convergence status.

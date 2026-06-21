@@ -19,17 +19,16 @@ const REQUIRED_MODULES = Object.freeze([
 ]);
 
 const REQUIRED_FULL_HANDOFF = Object.freeze([
-  'docs/handoffs/SG-06_LAYERED_AI_HANDOFF.md',
+  'docs/handoffs/SG-06_AI_HANDOFF.md',
+  'docs/Spec/SG-06_ACCEPTANCE.json',
   'third_party/reference-ledger-sg06.yml',
-  'scripts/check-sg06-layered-ai.mjs',
-  'scripts/check-sg06-action-port.mjs',
-  'scripts/check-sg06-seed-suite.mjs',
+  'scripts/check-sg06-ai.mjs',
 ]);
 
 const PRODUCTION_CLAIM_MARKERS = Object.freeze([
   'src/ai/index.js',
   'src/systems/tacticalAI.js',
-  'docs/handoffs/SG-06_LAYERED_AI_HANDOFF.md',
+  'docs/handoffs/SG-06_AI_HANDOFF.md',
 ]);
 
 const packageJson = json('package.json');
@@ -37,11 +36,18 @@ const scripts = packageJson.scripts || {};
 
 assert(exists('docs/handoffs/SG-06_LAYERED_AI_INTAKE.md'), 'SG-06 intake guard requires docs/handoffs/SG-06_LAYERED_AI_INTAKE.md');
 const intake = read('docs/handoffs/SG-06_LAYERED_AI_INTAKE.md');
-assert(intake.includes('c543cfb'), 'SG-06 intake doc must record the latest inspected remote SHA');
-assert(intake.includes('Not accepted'), 'SG-06 intake doc must clearly mark the current artifact as not accepted');
+assert(intake.includes('F10CC6B0FF01339EA90522D0C969DFE049DAF8788203580D3851B56220A358D5'),
+  'SG-06 intake doc must record the accepted zip SHA-256');
+assert(intake.includes('Accepted at port level'), 'SG-06 intake doc must mark the final artifact as accepted at port level');
 assert(scripts['check:sg06:intake'], 'package.json must expose check:sg06:intake');
 assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:intake'),
   'package.json check:sg06 must include the SG-06 intake guard');
+assert(scripts['check:sg06:ai'] && scripts['check:sg06:ai'].includes('check-sg06-ai.mjs'),
+  'package.json must expose the SG-06 100-seed AI acceptance suite');
+assert(scripts['check:ai'] && scripts['check:ai'].includes('check:sg06:ai'),
+  'package.json check:ai must alias the SG-06 acceptance suite');
+assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:ai'),
+  'package.json check:sg06 must run the SG-06 acceptance suite');
 
 const hasProductionClaim = PRODUCTION_CLAIM_MARKERS.some(exists) || systemImportsSg06();
 
@@ -54,15 +60,11 @@ if (hasProductionClaim) {
   for (const rel of REQUIRED_FULL_HANDOFF) {
     assert(exists(rel), `SG-06 production landing requires ${rel}`);
   }
-  assert(hasFixtureFiles('test/sg06'), 'SG-06 production landing requires at least one test/sg06 fixture');
-  assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check-sg06-layered-ai'),
-    'SG-06 production landing requires check:sg06 to run the layered AI acceptance suite');
-  assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check-sg06-action-port'),
-    'SG-06 production landing requires check:sg06 to prove SG-03 ActionDef parity');
-  assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check-sg06-seed-suite'),
-    'SG-06 production landing requires check:sg06 to run the seeded tactics suite');
+  assertAcceptanceRecord();
   assertAiActionPort();
   assertNoPrivilegedAiMutation();
+  assertSourceHygiene();
+  await assertFailClosedProductionRegistration();
 }
 
 console.log('SG-06 intake checks OK');
@@ -103,10 +105,51 @@ function assertNoPrivilegedAiMutation() {
   for (const rel of existingFiles(['src/ai', 'src/systems/tacticalAI.js'])) {
     const text = stripComments(read(rel));
     assert(!/\brouteDamage\s*\(/.test(text), `${rel} must not call combat damage routing directly`);
-    assert(!/\.hp\s*(?:=|\+=|-=|--|\+\+)/.test(text), `${rel} must not mutate HP directly`);
+    assert(!/\.(?:hp|hull|shield|armor|cap)\s*(?:=|\+=|-=|--|\+\+)/.test(text), `${rel} must not mutate combat resources directly`);
     assert(!/\bintent\s*\.\s*(?:fire|fireGroup)\s*=/.test(text), `${rel} must not use legacy intent fire shortcuts`);
     assert(!/\bstate\s*\.\s*player\b/.test(text), `${rel} must not read hidden player state directly`);
   }
+}
+
+function assertSourceHygiene() {
+  for (const rel of existingFiles(['src/ai', 'src/systems/tacticalAI.js'])) {
+    const text = stripComments(read(rel));
+    assert(!/\bMath\s*\.\s*random\s*\(/.test(text), `${rel} must not use Math.random`);
+    assert(!/\bDate\s*\.\s*now\s*\(/.test(text), `${rel} must not use Date.now`);
+    assert(!/\bperformance\s*\.\s*now\s*\(/.test(text), `${rel} must not use wall-clock timing`);
+    assert(!/\bdocument\s*\./.test(text), `${rel} must stay renderer/DOM independent`);
+    assert(!/\bTHREE\s*\./.test(text), `${rel} must stay renderer/DOM independent`);
+    assert(!/\bglobalThis\s*\.\s*window\b/.test(text), `${rel} must stay renderer/DOM independent`);
+    assert(!/\bwindow\s*\.\s*(?:document|addEventListener|requestAnimationFrame|localStorage|sessionStorage|location|navigator)\b/.test(text),
+      `${rel} must stay renderer/DOM independent`);
+  }
+}
+
+function assertAcceptanceRecord() {
+  const acceptance = json('docs/Spec/SG-06_ACCEPTANCE.json');
+  assert.equal(acceptance.schema, 'spaceface.sg06.acceptance.v1', 'SG-06 acceptance record schema mismatch');
+  assert.equal(acceptance.contract, 'SG-06', 'SG-06 acceptance record contract mismatch');
+  assert.equal(acceptance.deterministic, true, 'SG-06 acceptance record must declare deterministic replay');
+  assert.equal(acceptance.seeds, 100, 'SG-06 acceptance record must cover 100 seeded runs');
+  assert.ok(Array.isArray(acceptance.tactics) && acceptance.tactics.length >= 3,
+    'SG-06 acceptance record must demonstrate at least three tactics');
+  assert.deepEqual(new Set(acceptance.counterTetherActions), new Set(['action_cut', 'action_dash']),
+    'SG-06 acceptance record must cover both canonical counter-tether actions');
+  assert.equal(acceptance.physicalFormationConvergence, 'blocked_on_sg02_dynamic_body_integration',
+    'SG-06 acceptance must not claim physical convergence before SG-02 dynamic bodies land');
+}
+
+async function assertFailClosedProductionRegistration() {
+  const registry = read('src/core/registry.js');
+  assert(!registry.includes('tacticalAI'), 'SG-06 tacticalAI must not replace the live AI registry slot before SG-02 lands');
+  const tactical = read('src/systems/tacticalAI.js');
+  assert(tactical.includes('helpers.aiManeuver'), 'SG-06 tacticalAI must depend on helpers.aiManeuver');
+  assert(tactical.includes('new TacticalAIStack'), 'SG-06 tacticalAI must construct the validated stack');
+  assert(read('src/ai/stack.js').includes('assertAIPorts'), 'SG-06 stack must fail closed on missing ports');
+  assert(read('src/ai/contracts.js').includes('function requireMethod'), 'SG-06 port contract must require methods explicitly');
+  const { TacticalAIStack } = await import('../src/ai/stack.js');
+  assert.throws(() => new TacticalAIStack({ ports: {} }), /required/,
+    'SG-06 stack must throw when required ports are missing');
 }
 
 function existingFiles(relOrFiles) {
@@ -120,11 +163,6 @@ function existingFiles(relOrFiles) {
     });
   }
   return out;
-}
-
-function hasFixtureFiles(rel) {
-  if (!exists(rel) || !isDirectory(rel)) return false;
-  return readdirSync(abs(rel), { withFileTypes: true }).some((entry) => entry.isFile());
 }
 
 function walk(rel, visit) {
