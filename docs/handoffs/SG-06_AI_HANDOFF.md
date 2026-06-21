@@ -2,13 +2,13 @@
 
 **Job:** SG-06  
 **Patch base inspected:** `master` on 2026-06-21  
-**Implementation status:** five-layer AI stack, canonical SG-03 adapter, explainability trace, inspection endpoint, clean-room ledger, and 100-seed contract suite complete. Production registration and physical convergence remain hard-gated on SG-02 dynamic-body authority.
+**Implementation status:** five-layer AI stack, canonical SG-03 adapter, explainability trace, inspection endpoint, clean-room ledger, production-shaped sensor/roster/maneuver ports, and 100-seed contract suite complete. Production registration and physical convergence remain hard-gated on live parity evidence in the real registry slot.
 
 ## Dependency gate
 
 SG-03 is integrated on the inspected `master`. The canonical combat runtime lives under `src/combat/`, and `src/data/combatDefs.js` owns the authored `ActionDef` records. `createSG03ActionPort(ctx)` consumes those definitions and submits AI requests through `kernel.actions.requestAction(...)` with `source.kind = 'ai'`. There is no AI-only damage, cooldown, heat, capacitor, subsystem, attachment, or cancellation path.
 
-SG-02 is not integrated on the inspected `master`. `src/core/rapierCollisionWorld.js` still creates position-driven kinematic bodies and calls `setNextKinematicTranslation`. Therefore SG-06 does not register itself in the production registry and does not translate maneuver output back into direct velocity or legacy flight intent. `createTacticalAISystem(...)` fails closed unless `helpers.aiSensors`, `helpers.aiRoster`, and `helpers.aiManeuver` are installed. This prevents a temporary second physics authority from becoming permanent architecture.
+SG-02 is integrated on `master` as the explicit `rapier-dynamic` backend. `src/systems/aiPorts.js` now installs production-shaped `helpers.aiSensors`, `helpers.aiRoster`, and `helpers.aiManeuver` ports. The maneuver port fails closed until `rapier-dynamic` is selected and SG-02 readiness telemetry is present, then compiles normalized SG-06 local force/yaw requests into `writePhysicsControl(...)` for the SG-02 owner to consume. SG-06 still does not register itself in the production registry, does not write legacy flight intent, and does not mutate velocity or transforms.
 
 ## Delivered files
 
@@ -24,7 +24,9 @@ SG-02 is not integrated on the inspected `master`. `src/core/rapierCollisionWorl
 | `src/ai/trace.js` | Deterministic bounded explainability trace for perception and all five decision layers. |
 | `src/ai/stack.js` | Ordered five-layer host and roster lifecycle. |
 | `src/ai/inspection.js` | Transport-neutral `ai.contract`, `ai.inspect`, and `ai.trace` endpoint. |
+| `src/systems/aiPorts.js` | Production provider for SG-06 sensor frames, stable tactical rosters, and SG-02-backed maneuver requests. |
 | `src/systems/tacticalAI.js` | Fail-closed simulation-system adapter for the future production registry. |
+| `scripts/check-sg06-production-ports.mjs` | Production-port gate for whitelist sensors, roster stability, hidden-state exclusion, and SG-02 maneuver consumption. |
 | `scripts/check-sg06-ai.mjs` | Canonical-SG-03, 100-seed deterministic acceptance harness. |
 | `docs/Spec/SG-06_ACCEPTANCE.json` | Checked-in evidence from the 100-seed run. |
 | `third_party/reference-ledger-sg06.yml` | Clean-room reference and extracted-law ledger. |
@@ -132,7 +134,7 @@ helpers.aiManeuver.request({
 })
 ```
 
-This is a request for available physical authority, not a velocity/transform command. SG-02 must allocate damaged thrusters, apply force/torque, enforce constraints, and own resulting motion. A drive-damaged ship may deliver less force than requested; SG-06 receives that consequence through subsequent sensor frames.
+This is a request for available physical authority, not a velocity/transform command. The production provider translates the normalized local request through authored flight profiles and measured thruster authority, then SG-02 applies force/torque, enforces constraints, and owns resulting motion. A drive-damaged ship may deliver less force than requested; SG-06 receives that consequence through subsequent sensor frames.
 
 ### Encounter command sink
 
@@ -261,9 +263,13 @@ Run:
 npm run check:ai
 # equivalent:
 node scripts/check-sg06-ai.mjs --runs=100 --ticks=600
+
+npm run check:sg06:production-ports
 ```
 
 Checked-in result: `docs/Spec/SG-06_ACCEPTANCE.json`.
+
+The production-port gate proves sensor frames are exact SG-06 whitelists, hidden state getters are not read, roster signatures and roles are stable across unchanged ticks, duplicate membership is rejected by `TacticalAIStack`, maneuvers fail closed outside `rapier-dynamic`, and accepted maneuvers move craft only after SG-02 consumes the command.
 
 The final 100-seed run on 2026-06-21 produced:
 
@@ -288,19 +294,19 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 | No unintended stationary >180 ticks | maneuver watchdog and seeded assertion; max 1 | pass at request level; physical pass requires SG-02 |
 | No action-state oscillation above threshold | commit windows, switch margins, SG-03 cancel prediction, seeded assertions | pass |
 | Role/formation bounds until explicit break | stable roles, explicit reasons, recovery request assertion | pass at request level; physical convergence requires SG-02 |
-| Same sensors/actions/heat/energy/subsystems/physics as player | sensor boundary + live SG-03 adapter; no fallback | SG-03 pass; SG-02 blocked |
+| Same sensors/actions/heat/energy/subsystems/physics as player | production sensor/roster/maneuver ports + live SG-03 adapter; no fallback | port pass; live registry parity still gated |
 | Director pressure inside authored envelope | per-tick clamp and 100-seed assertion | pass |
 | Every decision explainable | six-layer trace assertions | pass |
 
 ## Production integration sequence
 
-1. Land SG-02 dynamic-body authority and its thruster/constraint request adapter.
-2. Install production `helpers.aiSensors` and `helpers.aiRoster` providers; do not hand SG-06 `state.entities`.
-3. Install `helpers.aiManeuver` over SG-02 force/torque/thruster allocation.
-4. Construct `createTacticalAISystem(...)` in the registry in the existing AI slot, before `actions` and SG-02 force application.
-5. Run the 100-seed suite against real dynamic bodies, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
-6. Verify physical formation convergence, constraint break telemetry, no stationary bodies, replay parity, and action/resource equivalence.
-7. Delete the legacy path only after all production acceptance checks pass.
+1. Done: land SG-02 dynamic-body authority and its thruster/constraint request adapter.
+2. Done: install production `helpers.aiSensors` and `helpers.aiRoster` providers; do not hand SG-06 `state.entities`.
+3. Done: install `helpers.aiManeuver` over SG-02 force/torque/thruster allocation.
+4. Next: construct `createTacticalAISystem(...)` in the registry in the existing AI slot, before `actions` and before the AI maneuver port flushes to SG-02.
+5. Run the suite against the real registry slot, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
+6. Verify physical formation convergence, constraint break telemetry, no stationary bodies, replay parity, action/resource equivalence, and encounter-command ownership.
+7. Delete the legacy path only after all production acceptance checks pass in the same milestone.
 
 ## Explicit legacy deletion list
 
@@ -313,4 +319,4 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 7. Migrate/delete old per-archetype FSM steering tables. Doctrine/capability and canonical action metadata replace duplicated combat/movement definitions.
 8. Delete tests/docs that assert `idle/patrol/pursue/attack/strafe/flee`, direct `intent.fire`, or direct velocity steering.
 
-Do not execute this deletion before SG-02 lands. Until then, the old FSM remains the only production movement path and the new adapter intentionally remains unregistered.
+Do not execute this deletion until live tacticalAI parity passes. Until then, the old FSM remains the production AI movement/fire path and the new tactical adapter intentionally remains unregistered.

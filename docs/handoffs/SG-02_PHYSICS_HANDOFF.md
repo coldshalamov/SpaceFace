@@ -55,4 +55,4 @@ The old kinematic Rapier observer authority was removed from `src/core/rapierCol
 
 - `rapier-dynamic` is explicit opt-in, not the default 47-A replay backend yet.
 - Projectile hit/pickup/docking parity still depends on legacy projections and needs deeper SG-01 save/replay work before default activation.
-- SG-06 tactical AI remains registry-gated until production sensors, roster, maneuver, and encounter ports land.
+- SG-06 tactical AI remains registry-gated until the production ports are exercised by the live tactical system with encounter ownership, physical formation convergence, and legacy intent/fire path deletion in the same milestone.

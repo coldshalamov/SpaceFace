@@ -3,6 +3,7 @@
 import { core } from './coreSystem.js';
 import { physics } from './physics.js';
 import { input } from '../systems/input.js';
+import { aiPorts } from '../systems/aiPorts.js';
 import { ai } from '../systems/ai.js';
 import { actions } from '../systems/actions.js';
 import { flight } from '../systems/flight.js';
@@ -36,7 +37,7 @@ import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
-    core, input, ai, physics, actions, flight, weapons, combat, mining, cargo, economy,
+    core, input, ai, physics, aiPorts, actions, flight, weapons, combat, mining, cargo, economy,
     automation, intervention, world, factions, sectorSim, missions, story, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -57,7 +58,7 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, ai, actions, flight, weapons, physics, combat, mining, cargo, crafting,
+    input, ai, actions, flight, aiPorts, weapons, physics, combat, mining, cargo, crafting,
     economy, automation, intervention, world, factions, sectorSim, missions, story, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
