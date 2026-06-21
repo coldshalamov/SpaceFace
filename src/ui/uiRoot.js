@@ -111,7 +111,7 @@ export const ui = {
     // hints based on the player's current activity (mining, combat, near station, near gate).
     const hints = document.createElement('div');
     hints.id = 'control-hints';
-    hints.textContent = 'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  M map  •  I cargo  •  L comms';
+    hints.textContent = 'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB sample  •  Shift boost  •  Tab target  •  M map  •  I cargo  •  L comms';
     document.getElementById('ui-root').appendChild(hints);
 
     // Hide hints/reticle when not in pure flight (improved from initial override for robustness)
@@ -175,8 +175,8 @@ export const ui = {
           <div style="font-size:13px;letter-spacing:8px;opacity:0.7;margin-bottom:10px;">A HARD SCI-FI SPACE ODYSSEY</div>
           <div style="font-size:clamp(48px,9vw,92px);line-height:1;letter-spacing:.12em;margin-bottom:14px;color:#39d0ff;font-weight:700;">SPACEFACE</div>
           <div style="margin:14px auto 26px;max-width:640px;opacity:0.85;font-size:15px;line-height:1.45;font-family:var(--font,sans-serif);letter-spacing:.02em;">
-            Mine the glowing veins. Outrun the pirates. Build your empire.<br>
-            Your face is your legend.
+            Follow the mass discrepancy. Outrun the auditors. Decide who owns the evidence.<br>
+            Contract 47-A is open.
           </div>
           <div style="font-size:12px;opacity:0.6;margin-bottom:20px;letter-spacing:.08em;">↑↓ THROTTLE &nbsp;•&nbsp; ←→ STEER (BANKS) &nbsp;•&nbsp; MOUSE AIM &nbsp;•&nbsp; LMB FIRE &nbsp;•&nbsp; F AUTO-FIRE &nbsp;•&nbsp; SHIFT BOOST/DASH</div>
           <div style="font-size:11px;letter-spacing:4px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>

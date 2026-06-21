@@ -103,7 +103,7 @@ export const onboarding = {
     // First cargo full: teach the player to sell.
     bus.on('cargo:full', () => {
       this._showHint('firstCargoFull',
-        'Cargo hold full! Dock at a station to sell your ore and free up space.');
+        'Cargo hold full! Dock at a station to audit or sell the sample and free up space.');
     });
 
     // First flight: triggered a few seconds after the game starts (handled in update via a timer).
@@ -201,7 +201,7 @@ export const onboarding = {
       if (this._firstFlightTimer > 3.0) {
         this._firstFlightPending = false;
         this._showHint('firstFlight',
-          'W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE fires the Pulse Laser S, RMB samples ore, SHIFT boosts, M maps, ENTER docks.');
+          'W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE fires the Pulse Laser S, RMB samples the mass reading, SHIFT boosts, M maps, ENTER docks.');
       }
     }
 
@@ -263,7 +263,7 @@ export const onboarding = {
     this._lastControlMode = mode;
 
     const HINTS = {
-      flight:  'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space Pulse Laser  •  RMB sample  •  Shift boost  •  Tab target  •  M map',
+      flight:  'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space Pulse Laser  •  RMB mass sample  •  Shift boost  •  Tab target  •  M map',
       mining:  'RMB hold to sample  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
       combat:  'LMB/Space Pulse Laser  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
       station: 'Enter to dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts',
@@ -338,7 +338,7 @@ export const onboarding = {
       const name = best.data && (best.data.name || best.data.stationName || best.data.stationId);
       return { pos: best.pos, label: name || 'Station' };
     }
-    return { pos: best.pos, label: 'Starter Claim - mineable rocks' };
+    return { pos: best.pos, label: '47-A Mass Signal' };
   },
 
   // ---- DOM ------------------------------------------------------------------------------------
@@ -406,7 +406,7 @@ export const onboarding = {
     if (count) count.textContent = Math.min(idx + 1, STEPS.length) + ' / ' + STEPS.length;
     if (body && curr) {
       const progress = curr.key === 'mine'
-        ? '<div class="sf-ob-progress">ORE: ' + Math.min((ob.minedUnits || 0), curr.qty || 3) + ' / ' + (curr.qty || 3) + ' u</div>'
+        ? '<div class="sf-ob-progress">SAMPLE: ' + Math.min((ob.minedUnits || 0), curr.qty || 3) + ' / ' + (curr.qty || 3) + ' u</div>'
         : '';
       body.innerHTML = '<div class="sf-ob-title">' + curr.title + '</div><div class="sf-ob-hint">' + curr.hint + '</div>' + progress;
     }

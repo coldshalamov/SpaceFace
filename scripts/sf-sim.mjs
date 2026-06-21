@@ -27,7 +27,7 @@ import {
   validateEvidenceDocument,
   formatEvidenceIssue,
 } from '../src/contracts/evidenceSchemas.js';
-import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -235,6 +235,7 @@ function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceL
     factionId: 'faction_free',
     isPlayer: true,
     player: state.player,
+    fittings: fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
     pos: { x: 0, z: 0 },
     rot: 0,
   }));

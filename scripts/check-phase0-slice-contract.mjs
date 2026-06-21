@@ -11,7 +11,7 @@ import {
   validateEvidenceDocument,
   formatEvidenceIssue,
 } from '../src/contracts/evidenceSchemas.js';
-import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -63,7 +63,10 @@ const player = {
     tradeFeeMult: 1,
   },
 };
-const spec = makeShipEntitySpec(NEW_GAME.shipId, { isPlayer: true, player, fittings: [] });
+assert(NEW_GAME.fittedModules.includes('wpn_pulse_laser_s'), 'new-game source loadout must explicitly fit the starter weapon');
+const starterFittings = fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules || []);
+assert(starterFittings.includes('wpn_pulse_laser_s'), 'starter fitting resolver must place Pulse Laser S in the weapon slot');
+const spec = makeShipEntitySpec(NEW_GAME.shipId, { isPlayer: true, player, fittings: starterFittings });
 assert.equal(spec.data.weapons[0].defId, 'wpn_pulse_laser_s', 'fresh Kestrel should still get starter weapon');
 assert.equal(spec.data.weapons[0].name, 'Pulse Laser S', 'starter weapon must be surfaced by name');
 
@@ -73,11 +76,12 @@ assert(!camera.includes('zoomFactor = Math.max(zoomFactor, 1.15)'), 'old combat 
 assert(camera.includes('nearest threat') || camera.includes('nearestThreat'), 'camera should compose player plus threat');
 
 const onboarding = read('src/systems/onboarding.js');
-for (const forbidden of ['turn rocks into credits', 'Reach the starter claim', 'Mine and collect 3 units of ore']) {
+for (const forbidden of ['turn rocks into credits', 'Reach the starter claim', 'Mine and collect 3 units of ore', 'ORE:', 'mineable rocks', 'RMB samples ore']) {
   assert(!onboarding.includes(forbidden), `onboarding must not keep mining-first copy: ${forbidden}`);
 }
 assert(onboarding.includes('Contract 47-A'), 'onboarding intro should carry 47-A cold-open intent');
 assert(onboarding.includes('Pulse Laser S'), 'onboarding should expose the starter weapon');
+assert(onboarding.includes('SAMPLE:'), 'onboarding progress should frame the first collection as a 47-A sample');
 
 const contract = read('docs/Spec/47A_SLICE_CONTRACT.md');
 assert(contract.includes('47-A: The Mass Discrepancy'), 'slice contract should name the target encounter');
@@ -108,13 +112,13 @@ for (const type of Object.keys(envelope.phase0ObservedTraceCounts)) {
   assert(DEFAULT_TRACE_EVENTS.includes(type), `observed trace count is not subscribed by event trace: ${type}`);
 }
 assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 12, 'expected telemetry should pin observed combat fire count');
-assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 10, 'expected telemetry should pin observed projectile hit count');
-assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 10, 'expected telemetry should pin observed combat damage count');
+assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 12, 'expected telemetry should pin observed projectile hit count');
+assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 12, 'expected telemetry should pin observed combat damage count');
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
 assert.equal(envelope.phase0ObservedTraceCounts['graffiti:show'], 1, 'expected telemetry should pin observed cold-start graffiti count');
 assert.equal(envelope.phase0ObservedTraceCounts['comms:popup'], 2, 'expected telemetry should pin observed cold-start comms count');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  '083e11d9e2ce2dfed7987ffb4294f515f88b81aac9f66ef14654369d906004cc',
+  '59765bf146a7290ff1a83a1634e4b2dc7cbe71edb63e4b0e360db7a028d8139e',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 
 const balanceSim = read('scripts/balance-sim.mjs');

@@ -25,8 +25,8 @@ function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || nu
 const SIZE_RANK = { S: 1, M: 2, L: 3 };
 const SLOT_TYPES = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
 
-// Default starter weapon for a fresh player Kestrel (NEW_GAME fits no weapon; the Kestrel has a
-// weapon-S slot, so the player must be able to shoot immediately — §ships task).
+// Legacy fallback for pre-explicit-loadout saves. NEW_GAME now fits this weapon directly; the
+// fallback keeps old saves playable without letting the current starter gun hide from loadout UI.
 const STARTER_WEAPON_ID = 'wpn_pulse_laser_s';
 const DEFAULT_MINING_BEAM_TIER = 'beam_mk1'; // §0.10 Kestrel mines at 18 ore-HP/s
 
@@ -97,11 +97,9 @@ function resolveFittings(shipDef, fittings) {
   return { slots, equipped: out };
 }
 
-/** Build a render-facing fittings array (defId | null, parallel to buildSlotList order) that also
- *  reflects the synthetic starter weapon given to a fresh player Kestrel (NEW_GAME fits none), so
- *  the player ship visibly shows a barrel for the gun they actually fire. NPC fittings pass through
- *  unchanged; their weapons[] are already real fittings. Non-player ships with an empty weapon slot
- *  and no weapons[] just get nulls there (correct — they have no gun to show). */
+/** Build a render-facing fittings array (defId | null, parallel to buildSlotList order).
+ *  NPC fittings pass through unchanged; their weapons[] are already real fittings. The only
+ *  backfill path is the legacy pre-explicit starter-gun fallback for old player saves. */
 function fittingsForView(shipDef, fittings, weapons) {
   const slots = buildSlotList(shipDef);
   const view = new Array(slots.length).fill(null);
@@ -109,8 +107,8 @@ function fittingsForView(shipDef, fittings, weapons) {
     const id = fittings && fittings[i];
     if (id) view[i] = id;
   }
-  // If there are resolved weapons but the weapon slot is empty in fittings (the starter-gun case),
-  // backfill the first matching weapon slot with that weapon's defId so the barrel renders.
+  // If a legacy fallback weapon resolved but the weapon slot is empty in fittings, backfill the
+  // first matching weapon slot so the barrel renders. Current NEW_GAME loadouts fit it directly.
   if (weapons && weapons.length) {
     for (let i = 0; i < slots.length; i++) {
       if (slots[i].type !== 'weapon' || view[i]) continue;
@@ -299,9 +297,8 @@ function buildWeaponList(shipDef, fittings, isPlayer) {
     if (!d || d.slotType !== 'weapon') continue;
     weapons.push(makeWeaponRuntime(d, slots[i], i));
   }
-  // Fresh player Kestrel: NEW_GAME fits no weapon, so give a starter so the player can shoot (§task).
-  // Prefer a front-facing slot — a hull whose only hardpoint faces rear/turret shouldn't fire its
-  // free starter gun backward or as an unturreted fixed mount.
+  // Legacy player saves before the explicit NEW_GAME weapon may still have no weapon fitted. Prefer
+  // a front-facing slot so the fallback starter gun never fires backward or as an unturreted mount.
   if (weapons.length === 0 && isPlayer) {
     const wslot = slots.find((s) => s.type === 'weapon' && (s.facing === 'front' || !s.facing))
                || slots.find((s) => s.type === 'weapon');
@@ -332,6 +329,20 @@ function makeWeaponRuntime(def, slot, slotIndex) {
     damageType: def.damageType, arc: turretArc ? { turret: turretArc } : (gimbalArc ? { gimbal: gimbalArc } : 'fixed'),
     _cooldown: 0, _heat: 0,
   };
+}
+
+/** Place each default-fitted module/weapon defId into its first compatible empty slot. */
+export function fittingsFromDefaultModules(defId, moduleIds) {
+  const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
+  const slots = buildSlotList(shipDef);
+  const fittings = new Array(slots.length).fill(null);
+  for (const mid of moduleIds || []) {
+    const def = defById(mid);
+    if (!def) continue;
+    const idx = slots.findIndex((s, i) => fittings[i] == null && fits(s, def));
+    if (idx >= 0) fittings[idx] = mid;
+  }
+  return fittings;
 }
 
 /** Resolve the equipped mining laser into data.miningBeam, defaulting the player Kestrel to mk1. */
@@ -394,8 +405,8 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
       weapons,
       miningBeam,
       // Effective loadout (defId | null, parallel to buildSlotList order) for the render track to
-      // read tier + place visible props. Includes the synthetic starter weapon for a fresh player
-      // Kestrel so the free gun shows a barrel. NPCs pass their fittings through verbatim.
+      // read tier + place visible props. Current starter weapons are explicit fittings; legacy
+      // fallback weapons are still backfilled here so old saves show the barrel they can fire.
       fittings: fittingsForView(shipDef, fittings, weapons),
       combat: { targetId: null, lockTarget: null, lockProgress: 0 },
       intent: null,
@@ -787,18 +798,9 @@ export const ships = {
     p.efficiencyMods = { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 };
   },
 
-  /** Place each default-fitted module defId into its first compatible empty slot. */
+  /** Place each default-fitted module/weapon defId into its first compatible empty slot. */
   fittingsFromDefaults(defId, moduleIds) {
-    const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
-    const slots = buildSlotList(shipDef);
-    const fittings = new Array(slots.length).fill(null);
-    for (const mid of moduleIds) {
-      const def = defById(mid);
-      if (!def) continue;
-      const idx = slots.findIndex((s, i) => fittings[i] == null && fits(s, def));
-      if (idx >= 0) fittings[idx] = mid;
-    }
-    return fittings;
+    return fittingsFromDefaultModules(defId, moduleIds);
   },
 };
 

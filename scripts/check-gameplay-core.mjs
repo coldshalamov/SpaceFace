@@ -16,7 +16,7 @@ import * as FlightDynamics from '../src/core/flightDynamics.js';
 import { heat } from '../src/systems/heat.js';
 import { missions } from '../src/systems/missions.js';
 import { DEFAULTS as INPUT_DEFAULTS } from '../src/systems/input.js';
-import { ships, buildSlotList, getDerivedStats, makeShipEntitySpec } from '../src/systems/ships.js';
+import { ships, buildSlotList, fittingsFromDefaultModules, getDerivedStats, makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 import { SHIPS } from '../src/data/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
@@ -998,9 +998,15 @@ function checkNewGameOwnedShipDefaultsAreFitted() {
 
   const owned = state.player.ownedShips[state.player.activeShipIndex];
   assert.equal(owned.defId, NEW_GAME.shipId, 'new game should own the configured starter ship');
+  assert(NEW_GAME.fittedModules.includes('wpn_pulse_laser_s'), 'new-game source loadout should explicitly include the starter weapon');
   for (const defId of NEW_GAME.fittedModules) {
     assert(owned.fittings.includes(defId), `new game should fit default module ${defId}`);
   }
+  assert.deepEqual(
+    owned.fittings,
+    fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules),
+    'new game should use the canonical default fitting resolver',
+  );
 
   const spec = makeShipEntitySpec(owned.defId, {
     team: 0,
@@ -1009,6 +1015,8 @@ function checkNewGameOwnedShipDefaultsAreFitted() {
     fittings: owned.fittings,
   });
   assert(spec.data.weapons.length >= 1, 'starter player ship should have a weapon runtime');
+  assert.equal(spec.data.weapons[0].defId, 'wpn_pulse_laser_s', 'starter weapon runtime should come from the explicit fitting');
+  assert(spec.data.fittings.includes('wpn_pulse_laser_s'), 'render-facing loadout should expose the starter weapon fitting');
   assert.equal(spec.data.miningBeam.tierId, 'beam_mk1', 'starter mining laser should resolve to beam_mk1');
   assert.equal(spec.data.derived.cargoCap, NEW_GAME.cargoCapacity, 'starter cargo cap should match new-game data');
 }

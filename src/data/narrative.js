@@ -234,7 +234,7 @@ export const GRAFFITI = {
 export const BEAT_CONTENT = [
   { // B0 — COLD START
     beat: 0, phase: 1,
-    hint: 'Contract 47-A. Mine the ore. Deliver it. The weight on accept will not be the weight on delivery. That is not your problem.',
+    hint: 'Contract 47-A. Recover the sample. Deliver it. The weight on accept will not be the weight on delivery. That is not your problem.',
     // Bulkhead: the previous crew's last words. Set by _fireColdStart() on game:started so it's there
     // from the first frame. This beat's graffiti only adds the airlock line (seen on first dock).
     // The gang line stays on the bulkhead through B2; at B3 the story takes it over.

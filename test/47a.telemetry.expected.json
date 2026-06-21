@@ -28,14 +28,14 @@
     "ship:boostStart": 1,
     "ship:boostStop": 1,
     "combat:fire": 12,
-    "projectile:hit": 10,
-    "combat:damage": 10,
+    "projectile:hit": 12,
+    "combat:damage": 12,
     "economy:tick": 2,
     "graffiti:show": 1,
     "comms:popup": 2
   },
   "acceptancePlaceholders": {
-    "authoritativeHash": "083e11d9e2ce2dfed7987ffb4294f515f88b81aac9f66ef14654369d906004cc",
+    "authoritativeHash": "59765bf146a7290ff1a83a1634e4b2dc7cbe71edb63e4b0e360db7a028d8139e",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": null,
     "firstHostileShotTickMax": 5400,

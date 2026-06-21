@@ -1,9 +1,14 @@
 // New Game screen (ARCHITECTURE §1.3 step 7, §5; design/specs/09).
 // Pilot name + starter-ship (Kestrel) preview + difficulty -> emit game:new {name,shipId,difficulty}.
 // The save system handles game:new (newGame()), seeds GameState and switches to flight.
+import { MODULES } from '../../data/modules.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { WEAPONS } from '../../data/weapons.js';
 
 const STYLE_ID = 'sf-menu-style';
 const STARTER_SHIP = 'ship_kestrel';
+const FITTABLE_BY_ID = new Map();
+for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
 const DIFFICULTIES = [
   ['casual', 'Casual', 'Damage x0.7, prices x0.9, no rep decay.'],
   ['standard', 'Standard', 'The baseline experience.'],
@@ -88,6 +93,21 @@ function starterShip(ctx) {
   return null;
 }
 
+function starterLoadoutRows() {
+  const labels = {
+    weapon: 'Primary',
+    mining: 'Sampler',
+    engine: 'Drive',
+    shield: 'Shield',
+    cargo: 'Cargo',
+    utility: 'Utility',
+  };
+  return (NEW_GAME.fittedModules || [])
+    .map((id) => FITTABLE_BY_ID.get(id))
+    .filter(Boolean)
+    .map((def) => [labels[def.slotType] || def.slotType, def.name]);
+}
+
 let refs = null;
 
 export const newGameScreen = {
@@ -132,6 +152,7 @@ export const newGameScreen = {
     addStat('Prev. Operator', 'REDACTED — INCIDENT 7741');
     addStat('Crew Status', 'NO SURVIVORS ON RECORD');
     addStat('Credits', '5,000 cr');
+    for (const [slot, name] of starterLoadoutRows()) addStat(slot, name);
     rootEl.appendChild(grid);
 
     // The friend's favor, in two lines. No cutscene. Just the facts.

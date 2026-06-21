@@ -22,6 +22,7 @@ export const NEW_GAME = {
 
   // Starting equipment fitted to ship_kestrel.
   fittedModules: [
+    'wpn_pulse_laser_s',   // weapon slot S (starter gun, visible in loadout)
     'mod_mining_laser_s',   // mining slot S (starter laser, price 0)
     'mod_engine_ion_m',     // engine slot M
     'mod_shield_booster_s', // shield slot S
