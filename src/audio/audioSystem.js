@@ -124,7 +124,7 @@ export const audio = {
       // Shield break: a sharp energy crackle at the target's position. Use the explosion-small recipe
       // with a high pitch shift so it reads as an energy discharge, not a kinetic blast.
       const pos = p && p.pos;
-      const target = p && p.combatantId ? state.entities.get(p.combatantId) : null;
+      const target = p && p.combatantId ? this.state.entities.get(p.combatantId) : null;
       const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
       this.play('sfx_explosion_small', { position, gain: 0.7, rate: 1.6 });
     });
