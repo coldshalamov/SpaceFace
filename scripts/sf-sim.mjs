@@ -34,7 +34,7 @@ const command = args[0] || 'help';
 const scenario = args[1] || '';
 
 if (command === 'help' || command === '--help' || command === '-h') usage(0);
-if (command !== 'run' && command !== 'inspect') usage(1, `Unknown command: ${command}`);
+if (command !== 'run' && command !== 'inspect' && command !== 'compare') usage(1, `Unknown command: ${command}`);
 if (scenario !== '47a') usage(1, `Unknown scenario: ${scenario}`);
 
 const inputPath = argValue('--inputs', 'test/47a.inputs.json');
@@ -49,7 +49,7 @@ if (reloadAt != null && (reloadAt <= 0 || reloadAt >= ticks)) {
   throw new RangeError('--reload-at must be greater than 0 and less than --ticks');
 }
 const includeSnapshot = command === 'inspect' || hasFlag('--snapshot') || !hasFlag('--hash');
-const expectPath = command === 'run' ? argValue('--expect', null) : null;
+const expectPath = command === 'run' || command === 'compare' ? argValue('--expect', null) : null;
 const expectedEnvelope = expectPath ? readJson(expectPath) : null;
 if (expectedEnvelope) assertEvidenceDocument(expectedEnvelope, expectPath);
 
@@ -70,6 +70,36 @@ if (command === 'inspect') {
     snapshot: inspected.snapshot,
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+} else if (command === 'compare') {
+  if (reloadAt == null) usage(1, 'compare requires --reload-at');
+  const baseline = run47a({ seed, ticks, tape });
+  assert47aPhase0Metrics(baseline.metrics);
+  const candidate = run47a({ seed, ticks, tape, reloadAt });
+  assert47aPhase0Metrics(candidate.metrics, { reloadAt });
+  const comparison = compareRuns(baseline, candidate, {
+    expectedEnvelope,
+    inputPath,
+    seed,
+    tape,
+    ticks,
+    reloadAt,
+  });
+  const result = {
+    schema: 'spaceface.sfSimCompareResult.v1',
+    ok: comparison.ok,
+    deterministic: true,
+    command: 'compare',
+    scenario,
+    seed,
+    ticks,
+    inputTape: inputPath.replace(/\\/g, '/'),
+    expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
+    baseline: runSummary('uninterrupted', baseline),
+    candidate: runSummary(`reload@${reloadAt}`, candidate),
+    comparison,
+  };
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+  process.exitCode = comparison.ok ? 0 : 1;
 } else {
   const baseline = run47a({ seed, ticks, tape });
   assert47aPhase0Metrics(baseline.metrics);
@@ -249,6 +279,129 @@ function assertExpectedEnvelope(envelope, run, options) {
   }
 }
 
+function compareRuns(baseline, candidate, options) {
+  const diffs = [];
+  const hashEqual = baseline.sha256 === candidate.sha256;
+  if (!hashEqual) {
+    diffs.push({
+      kind: 'hash',
+      path: '$.sha256',
+      expected: baseline.sha256,
+      actual: candidate.sha256,
+    });
+  }
+
+  for (const diff of compareMetrics(baseline.metrics, candidate.metrics)) diffs.push(diff);
+  for (const diff of compareTraceCounts(baseline.traceSummary, candidate.traceSummary)) diffs.push(diff);
+  if (options.expectedEnvelope) {
+    for (const diff of compareExpectedEnvelope(options.expectedEnvelope, candidate, options)) diffs.push(diff);
+  }
+
+  return {
+    schema: 'spaceface.sfSimComparison.v1',
+    ok: diffs.length === 0,
+    mode: 'uninterrupted-vs-reload',
+    reloadAt: options.reloadAt,
+    hashEqual,
+    firstDivergentTick: hashEqual ? null : findFirstDivergentTick(options),
+    diffs,
+  };
+}
+
+function runSummary(label, run) {
+  return {
+    label,
+    sha256: run.sha256,
+    metrics: run.metrics,
+    traceSummary: run.traceSummary,
+  };
+}
+
+function compareMetrics(expected, actual) {
+  const diffs = [];
+  const keys = new Set([...Object.keys(expected || {}), ...Object.keys(actual || {})]);
+  keys.delete('saveReloads');
+  for (const key of [...keys].sort()) {
+    const a = expected[key];
+    const b = actual[key];
+    if (canonicalStringify(a) !== canonicalStringify(b)) {
+      diffs.push({ kind: 'metric', path: `$.metrics.${key}`, expected: a, actual: b });
+    }
+  }
+  return diffs;
+}
+
+function compareTraceCounts(expected, actual) {
+  const diffs = [];
+  const expectedTypes = (expected && expected.types) || {};
+  const actualTypes = (actual && actual.types) || {};
+  const keys = new Set([...Object.keys(expectedTypes), ...Object.keys(actualTypes)]);
+  for (const type of [...keys].sort()) {
+    const a = expectedTypes[type] || 0;
+    const b = actualTypes[type] || 0;
+    if (a !== b) diffs.push({ kind: 'traceCount', path: `$.traceSummary.types.${type}`, expected: a, actual: b });
+  }
+  return diffs;
+}
+
+function compareExpectedEnvelope(envelope, run, options) {
+  const diffs = [];
+  if (envelope.schema !== TELEMETRY_ENVELOPE_SCHEMA) {
+    diffs.push({ kind: 'expectedEnvelope', path: '$.schema', expected: TELEMETRY_ENVELOPE_SCHEMA, actual: envelope.schema });
+  }
+  if (envelope.seed !== options.seed) {
+    diffs.push({ kind: 'expectedEnvelope', path: '$.seed', expected: options.seed, actual: envelope.seed });
+  }
+  if (normalizePath(envelope.sourceInputTape) !== normalizePath(options.inputPath)) {
+    diffs.push({
+      kind: 'expectedEnvelope',
+      path: '$.sourceInputTape',
+      expected: normalizePath(options.inputPath),
+      actual: normalizePath(envelope.sourceInputTape),
+    });
+  }
+  const placeholders = envelope.acceptancePlaceholders || {};
+  if (placeholders.authoritativeHash != null && run.sha256 !== placeholders.authoritativeHash) {
+    diffs.push({
+      kind: 'expectedHash',
+      path: '$.acceptancePlaceholders.authoritativeHash',
+      expected: placeholders.authoritativeHash,
+      actual: run.sha256,
+    });
+  }
+  if (placeholders.firstMeaningfulSteeringTickMax != null
+    && run.metrics.firstMeaningfulSteeringTick > placeholders.firstMeaningfulSteeringTickMax) {
+    diffs.push({
+      kind: 'expectedMetric',
+      path: '$.acceptancePlaceholders.firstMeaningfulSteeringTickMax',
+      expected: `<=${placeholders.firstMeaningfulSteeringTickMax}`,
+      actual: run.metrics.firstMeaningfulSteeringTick,
+    });
+  }
+  const observedCounts = envelope.phase0ObservedTraceCounts || {};
+  for (const [type, expectedCount] of Object.entries(observedCounts)) {
+    const actualCount = run.traceSummary.types[type] || 0;
+    if (actualCount !== expectedCount) {
+      diffs.push({ kind: 'expectedTraceCount', path: `$.phase0ObservedTraceCounts.${type}`, expected: expectedCount, actual: actualCount });
+    }
+  }
+  return diffs;
+}
+
+function findFirstDivergentTick(options) {
+  let lo = 0;
+  let hi = options.ticks;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const baseline = run47a({ seed: options.seed, ticks: mid, tape: options.tape });
+    const reloadAt = options.reloadAt <= mid ? options.reloadAt : null;
+    const candidate = run47a({ seed: options.seed, ticks: mid, tape: options.tape, reloadAt });
+    if (baseline.sha256 === candidate.sha256) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
 function readJson(rel) {
   return JSON.parse(readFileSync(resolve(ROOT, rel), 'utf8'));
 }
@@ -343,5 +496,6 @@ function usage(code, message) {
   process.stderr.write('Usage:\n');
   process.stderr.write('  node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 [--reload-at 600]\n');
   process.stderr.write('  node scripts/sf-sim.mjs inspect 47a --seed 47 --tick 360 --inputs test/47a.inputs.json [--reload-at 600]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600\n');
   process.exit(code);
 }

@@ -168,6 +168,27 @@ assert(inspect.snapshot.story && inspect.snapshot.story.beatIndex === 0, 'sf-sim
 assert((inspect.traceSummary.types['graffiti:show'] || 0) > 0, 'sf-sim inspect should expose cold-start graffiti evidence');
 assert((inspect.traceSummary.types['comms:popup'] || 0) > 0, 'sf-sim inspect should expose cold-start comms evidence');
 
+const compare = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf-sim.mjs',
+  'compare',
+  '47a',
+  '--seed',
+  '47',
+  '--ticks',
+  '720',
+  '--inputs',
+  'test/47a.inputs.json',
+  '--expect',
+  'test/47a.telemetry.expected.json',
+  '--reload-at',
+  '600',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(compare.schema, 'spaceface.sfSimCompareResult.v1', 'sf-sim compare should emit a versioned compare result');
+assert.equal(compare.command, 'compare', 'sf-sim compare command should round-trip in JSON');
+assert.equal(compare.ok, true, 'sf-sim compare should report clean replay parity');
+assert.equal(compare.comparison && compare.comparison.hashEqual, true, 'sf-sim compare should prove reload hash parity');
+assert.deepEqual(compare.comparison.diffs, [], 'sf-sim compare should emit no diffs for the golden tape');
+
 console.log('Phase 0 slice contract checks OK');
 
 function assertRejectsMalformedEvidence() {
