@@ -2,7 +2,7 @@
 
 **Job:** SG-06  
 **Patch base inspected:** `master` on 2026-06-21  
-**Implementation status:** five-layer AI stack, canonical SG-03 adapter, explainability trace, inspection endpoint, clean-room ledger, production-shaped sensor/roster/maneuver ports, and 100-seed contract suite complete. Production registration is now available only through the explicit `sg06-tactical` AI backend with `rapier-dynamic`; default replacement remains hard-gated on the remaining live parity evidence.
+**Implementation status:** five-layer AI stack, canonical SG-03 adapter, explainability trace, inspection endpoint, clean-room ledger, production-shaped sensor/roster/maneuver/encounter ports, active encounter owner, and 100-seed contract suite complete. Production registration is now available only through the explicit `sg06-tactical` AI backend with `rapier-dynamic`; default replacement remains hard-gated on the remaining live parity evidence.
 
 ## Dependency gate
 
@@ -27,8 +27,10 @@ The SG-02 foundation gate `npm run check:sg02:tether-break` proves SG-03 semanti
 | `src/ai/stack.js` | Ordered five-layer host and roster lifecycle. |
 | `src/ai/inspection.js` | Transport-neutral `ai.contract`, `ai.inspect`, and `ai.trace` endpoint. |
 | `src/systems/aiPorts.js` | Production provider for SG-06 sensor frames, stable tactical rosters, and SG-02-backed maneuver requests. |
+| `src/systems/aiEncounter.js` | Active owner for whitelisted SG-06 director commands, reinforcement scheduling/spawn metadata, and encounter evidence events. |
 | `src/systems/tacticalAI.js` | Fail-closed, lazy-binding simulation-system adapter for the production registry. |
 | `scripts/check-sg06-production-ports.mjs` | Production-port gate for whitelist sensors, roster stability, hidden-state exclusion, and SG-02 maneuver consumption. |
+| `scripts/check-sg06-encounter-owner.mjs` | Active encounter-owner gate proving deterministic command consumption and SG-06-owned reinforcement spawns. |
 | `scripts/check-sg06-registry-init.mjs` | Lazy registry-slot init gate proving ports can install after tacticalAI init. |
 | `scripts/check-sg06-live-registry.mjs` | Production registry gate proving the opted-in `sg06-tactical` AI slot runs through `registry.step()`. |
 | `scripts/check-sg06-live-tether-break.mjs` | Opted-in production registry gate proving SG-06 commits `action_dash` before SG-03/SG-02 Massline threshold break/release telemetry. |
@@ -141,7 +143,7 @@ helpers.aiManeuver.request({
 
 This is a request for available physical authority, not a velocity/transform command. The production provider translates the normalized local request through authored flight profiles and measured thruster authority, then SG-02 applies force/torque, enforces constraints, and owns resulting motion. A drive-damaged ship may deliver less force than requested; SG-06 receives that consequence through subsequent sensor frames.
 
-### Encounter command sink
+### Encounter command port and owner
 
 ```js
 helpers.aiEncounter?.issue(command)
@@ -149,7 +151,9 @@ helpers.aiEncounter?.issue(command)
 
 Commands are limited to pace/phase, reinforcement request, coordinated retreat, and narrative-beat timing. Spawn ownership and narrative DSL mutation stay outside SG-06.
 
-Production `aiPorts` now installs an inert `helpers.aiEncounter` recorder. It accepts only `phase`, `request_reinforcement`, `order_retreat`, and `narrative_beat` commands, normalizes them into a bounded `state.aiEncounter.commands` ring, emits `ai:encounterCommand`, and returns `false` for invalid or spawn-shaped commands. It does not call `spawnEntity`, `spawn:request`, missions, story, or any legacy reinforcement path.
+Production `aiPorts` installs `helpers.aiEncounter` as a strict recorder. It accepts only `phase`, `request_reinforcement`, `order_retreat`, and `narrative_beat` commands, normalizes them into a bounded `state.aiEncounter.commands` ring, emits `ai:encounterCommand`, and returns `false` for invalid or spawn-shaped commands. It does not call `spawnEntity`, `spawn:request`, missions, story, or any legacy reinforcement path.
+
+`src/systems/aiEncounter.js` is the active owner. It consumes unapplied command records by sequence, records phase/retreat/narrative evidence, and schedules approved reinforcement packages in `state.aiEncounter.owner.pendingReinforcements`. Due reinforcements spawn through the existing `makeEnemySpawnSpec(...)` path, receive `data.encounter.owner = 'sg06'`, and are grouped under deterministic SG-06 squad ids. Unknown packages are rejected by the owner, and the legacy `state.combat.pendingReinforcements` queue is not used.
 
 ## Tactical laws and materially different tactics
 
@@ -275,6 +279,8 @@ npm run check:sg06:production-ports
 
 npm run check:sg06:encounter-sink
 
+npm run check:sg06:encounter-owner
+
 npm run check:sg06:live-shadow
 
 npm run check:sg06:registry-init
@@ -293,6 +299,8 @@ Checked-in result: `docs/Spec/SG-06_ACCEPTANCE.json`.
 The production-port gate proves sensor frames are exact SG-06 whitelists, hidden state getters are not read, roster signatures and roles are stable across unchanged ticks, duplicate membership is rejected by `TacticalAIStack`, maneuvers fail closed outside `rapier-dynamic`, and accepted maneuvers move craft only after SG-02 consumes the command.
 
 The encounter-sink gate proves production `helpers.aiEncounter` records only whitelisted director commands, rejects invalid/spawn-shaped commands, replays deterministically, mirrors commands through `ai:encounterCommand`, and does not mutate entity count, `state.combat.pendingReinforcements`, missions, or story state.
+
+The encounter-owner gate proves the recorder and owner stay separate: direct commands are recorded without spawning until `aiEncounter` consumes them, valid reinforcement packages schedule and spawn exactly owned ships, unknown packages are rejected, story/missions remain unchanged, and `state.combat.pendingReinforcements` stays unused. It also runs a tacticalAI director fixture that emits `request_reinforcement` through `helpers.aiEncounter`, then proves the active owner consumes that command and spawns deterministic SG-06-owned reinforcements.
 
 The live-shadow gate constructs `createTacticalAISystem(...)` against production `helpers.aiSensors` and `helpers.aiRoster`, uses the default live SG-03 action adapter, captures maneuver requests at the port boundary, and proves SG-06 can submit a canonical `action_burst` AI request that SG-03 starts and applies without touching the legacy `entity.data.intent.fire` path.
 
@@ -333,7 +341,7 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 | Role/formation bounds until explicit break | stable roles, explicit reasons, recovery request assertion, Rapier formation convergence gate | pass at request and standalone SG-02 physical level; default production slot still gated |
 | Massline threshold break telemetry | SG-02/SG-03 `check:sg02:tether-break` and SG-06 `check:sg06:tether-break` gates | pass at foundation and opted-in production-registry level; default replacement still gated |
 | Same sensors/actions/heat/energy/subsystems/physics as player | production sensor/roster/maneuver ports + live SG-03 adapter; no fallback | opted-in registry pass; default replacement still gated |
-| Director commands cannot spawn or mutate story/missions | inert production encounter sink + deterministic isolation gate | pass at recorder level; active encounter owner still gated |
+| Director commands cannot spawn or mutate story/missions | strict production encounter recorder plus active `aiEncounter` owner gate | pass; owner spawns only approved reinforcement packages and does not mutate story/missions |
 | Director pressure inside authored envelope | per-tick clamp and 100-seed assertion | pass |
 | Every decision explainable | six-layer trace assertions | pass |
 
@@ -344,14 +352,15 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 3. Done: install `helpers.aiManeuver` over SG-02 force/torque/thruster allocation.
 4. Done at harness level: construct `createTacticalAISystem(...)` with production sensor/roster helpers and the live SG-03 action adapter; verify canonical AI ActionDef requests without legacy intent mutation.
 5. Done at recorder level: install production `helpers.aiEncounter` for deterministic, whitelisted director command recording without spawn/story/mission side effects.
-6. Done at standalone SG-02 level: prove Rapier dynamic formation convergence and no commanded-stationary breach through production `helpers.aiManeuver`.
-7. Done at SG-02/SG-03 foundation level: prove Massline threshold break telemetry and physical rope release through `check:sg02:tether-break`.
-8. Done at harness level: prove lazy registry-slot initialization can bind production ports after tacticalAI init.
-9. Done at opted-in production level: construct `createTacticalAISystem(...)` in the actual production registry AI slot with `sg06-tactical` + `rapier-dynamic` and prove it through `registry.step()`.
-10. Done at opted-in production level: prove SG-06 commits canonical `action_dash` before SG-03/SG-02 Massline overload telemetry breaks and releases the rope.
-11. Next: run the suite against default gameplay activation, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
-12. Verify no stationary bodies in default live slot, replay parity, action/resource equivalence, default-production Massline break parity, and active encounter-command ownership.
-13. Delete the legacy path only after all default-production acceptance checks pass in the same milestone.
+6. Done at owner level: install active `aiEncounter` consumption of whitelisted director commands and approved SG-06-owned reinforcement spawns.
+7. Done at standalone SG-02 level: prove Rapier dynamic formation convergence and no commanded-stationary breach through production `helpers.aiManeuver`.
+8. Done at SG-02/SG-03 foundation level: prove Massline threshold break telemetry and physical rope release through `check:sg02:tether-break`.
+9. Done at harness level: prove lazy registry-slot initialization can bind production ports after tacticalAI init.
+10. Done at opted-in production level: construct `createTacticalAISystem(...)` in the actual production registry AI slot with `sg06-tactical` + `rapier-dynamic` and prove it through `registry.step()`.
+11. Done at opted-in production level: prove SG-06 commits canonical `action_dash` before SG-03/SG-02 Massline overload telemetry breaks and releases the rope.
+12. Next: run the suite against default gameplay activation, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
+13. Verify no stationary bodies in default live slot, replay parity, action/resource equivalence, and default-production Massline break parity.
+14. Delete the legacy path only after all default-production acceptance checks pass in the same milestone.
 
 ## Explicit legacy deletion list
 

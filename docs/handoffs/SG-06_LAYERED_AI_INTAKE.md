@@ -30,8 +30,10 @@ This is not the default replacement for `src/systems/ai.js` yet. SG-02 dynamic-b
 - `src/ai/trace.js`
 - `src/ai/index.js`
 - `src/systems/aiPorts.js`
+- `src/systems/aiEncounter.js`
 - `src/systems/tacticalAI.js`
 - `scripts/check-sg06-production-ports.mjs`
+- `scripts/check-sg06-encounter-owner.mjs`
 - `scripts/check-sg06-registry-init.mjs`
 - `scripts/check-sg06-live-registry.mjs`
 - `scripts/check-sg06-ai.mjs`
@@ -40,7 +42,7 @@ This is not the default replacement for `src/systems/ai.js` yet. SG-02 dynamic-b
 - `third_party/reference-ledger-sg06.yml`
 - `scripts/check-sg06-live-tether-break.mjs`
 
-`check:sg06` now runs the intake guard, the production-port contract gate, the encounter-sink gate, the live-shadow ActionDef gate, the lazy registry-init gate, the live production-registry gate, the live tether-break gate, the Rapier formation-convergence gate, and the 100-seed AI acceptance suite. `check:ai` remains an alias for the SG-06 seeded suite.
+`check:sg06` now runs the intake guard, the production-port contract gate, the encounter-sink gate, the active encounter-owner gate, the live-shadow ActionDef gate, the lazy registry-init gate, the live production-registry gate, the live tether-break gate, the Rapier formation-convergence gate, and the 100-seed AI acceptance suite. `check:ai` remains an alias for the SG-06 seeded suite.
 
 ## Still blocked
 
@@ -49,13 +51,14 @@ This is not the default replacement for `src/systems/ai.js` yet. SG-02 dynamic-b
 - Claiming the opted-in tacticalAI Massline overload proof as default-production behavior.
 - Claiming full SG-02/SG-06 live AI replacement in production.
 
-These are blocked until the tactical stack owns the default gameplay path with production sensors, SG-03 actions, SG-02 dynamic bodies, active encounter commands, and legacy weapon/intent dependencies removed in the same milestone.
+These are blocked until the tactical stack owns the default gameplay path with production sensors, SG-03 actions, SG-02 dynamic bodies, and legacy weapon/intent dependencies removed in the same milestone.
 
 ## Evidence
 
 - `npm run check:sg06:intake`
 - `npm run check:sg06:production-ports`
 - `npm run check:sg06:encounter-sink`
+- `npm run check:sg06:encounter-owner`
 - `npm run check:sg06:live-shadow`
 - `npm run check:sg06:registry-init`
 - `npm run check:sg06:live-registry`
@@ -65,4 +68,4 @@ These are blocked until the tactical stack owns the default gameplay path with p
 - `npm run check:sg06`
 - `npm run check:sg02:tether-break`
 
-The checked evidence record is `docs/Spec/SG-06_ACCEPTANCE.json`. It records 100 seeds x 600 ticks, seven tactics, both canonical counter-tether actions (`action_cut`, `action_dash`), no privileged action path, bounded stationarity, pressure within the authored envelope, `covered_by_check_sg06_formation` physical-convergence status, and `opted_in_sg06_dash_armed_overload_proved_default_replacement_gated` Massline threshold-break status. The SG-06 live-registry gate proves the opted-in production AI slot can drive SG-03 actions and SG-02 maneuvers without legacy intent. The SG-06 live tether-break gate proves SG-06 first commits canonical `action_dash` in the opted-in production registry, then a fixture loads the Massline through SG-03/SG-02 so threshold tension/impulse telemetry breaks the rope and releases the physical constraint. SG-06 still needs that proof promoted through default gameplay activation before legacy AI deletion.
+The checked evidence record is `docs/Spec/SG-06_ACCEPTANCE.json`. It records 100 seeds x 600 ticks, seven tactics, both canonical counter-tether actions (`action_cut`, `action_dash`), no privileged action path, bounded stationarity, pressure within the authored envelope, `covered_by_check_sg06_formation` physical-convergence status, `opted_in_sg06_dash_armed_overload_proved_default_replacement_gated` Massline threshold-break status, and `covered_by_check_sg06_encounter_owner` active encounter-owner status. The SG-06 live-registry gate proves the opted-in production AI slot can drive SG-03 actions and SG-02 maneuvers without legacy intent. The SG-06 encounter-owner gate proves whitelisted director commands are recorded by `aiPorts`, consumed by `src/systems/aiEncounter.js`, and can spawn owned reinforcements without mutating story, missions, or `state.combat.pendingReinforcements`. The SG-06 live tether-break gate proves SG-06 first commits canonical `action_dash` in the opted-in production registry, then a fixture loads the Massline through SG-03/SG-02 so threshold tension/impulse telemetry breaks the rope and releases the physical constraint. SG-06 still needs that proof promoted through default gameplay activation before legacy AI deletion.

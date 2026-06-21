@@ -23,9 +23,11 @@ const REQUIRED_FULL_HANDOFF = Object.freeze([
   'docs/Spec/SG-06_ACCEPTANCE.json',
   'third_party/reference-ledger-sg06.yml',
   'scripts/check-sg06-ai.mjs',
+  'scripts/check-sg06-encounter-owner.mjs',
   'scripts/check-sg06-registry-init.mjs',
   'scripts/check-sg06-live-registry.mjs',
   'scripts/check-sg06-live-tether-break.mjs',
+  'src/systems/aiEncounter.js',
 ]);
 
 const PRODUCTION_CLAIM_MARKERS = Object.freeze([
@@ -59,6 +61,10 @@ assert(scripts['check:sg06:live-registry'] && scripts['check:sg06:live-registry'
   'package.json must expose the SG-06 production registry gate');
 assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:live-registry'),
   'package.json check:sg06 must run the SG-06 production registry gate');
+assert(scripts['check:sg06:encounter-owner'] && scripts['check:sg06:encounter-owner'].includes('check-sg06-encounter-owner.mjs'),
+  'package.json must expose the SG-06 active encounter owner gate');
+assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:encounter-owner'),
+  'package.json check:sg06 must run the SG-06 active encounter owner gate');
 assert(scripts['check:sg06:tether-break'] && scripts['check:sg06:tether-break'].includes('check-sg06-live-tether-break.mjs'),
   'package.json must expose the SG-06 live tether-break gate');
 assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:tether-break'),
@@ -158,11 +164,15 @@ function assertAcceptanceRecord() {
   assert.equal(acceptance.integrationStatus && acceptance.integrationStatus.masslineThresholdBreak,
     'opted_in_sg06_dash_armed_overload_proved_default_replacement_gated',
     'SG-06 acceptance should record the opted-in Massline threshold-break gate status');
+  assert.equal(acceptance.integrationStatus && acceptance.integrationStatus.activeEncounterOwner,
+    'covered_by_check_sg06_encounter_owner',
+    'SG-06 acceptance should record the active encounter owner gate status');
 }
 
 async function assertGatedProductionRegistration() {
   const registry = read('src/core/registry.js');
   assert(registry.includes('createTacticalAISystem'), 'SG-06 registry gate must construct tacticalAI through the production registry');
+  assert(registry.includes('aiEncounter'), 'SG-06 registry gate must register the active encounter owner');
   assert(registry.includes("aiBackend === 'sg06-tactical'"), 'SG-06 tacticalAI must stay behind the explicit AI backend selector');
   assert(registry.includes("physicsBackend === 'rapier-dynamic'"), 'SG-06 tacticalAI must require SG-02 dynamic authority in the production registry');
   assert(registry.includes("byName.set('ai', aiSlot)"), 'production registry must preserve the ai slot alias for the selected backend');
@@ -175,6 +185,9 @@ async function assertGatedProductionRegistration() {
   assert(tactical.includes('helpers.aiManeuver'), 'SG-06 tacticalAI must depend on helpers.aiManeuver');
   assert(tactical.includes('function ensureStack'), 'SG-06 tacticalAI must lazy-bind ports for registry-slot initialization');
   assert(tactical.includes('new TacticalAIStack'), 'SG-06 tacticalAI must construct the validated stack');
+  const encounterOwner = read('src/systems/aiEncounter.js');
+  assert(encounterOwner.includes('request_reinforcement'), 'SG-06 encounter owner must consume reinforcement commands');
+  assert(encounterOwner.includes('makeEnemySpawnSpec'), 'SG-06 encounter owner must route spawns through the existing combat spawn factory');
   assert(read('src/ai/stack.js').includes('assertAIPorts'), 'SG-06 stack must fail closed on missing ports');
   assert(read('src/ai/contracts.js').includes('function requireMethod'), 'SG-06 port contract must require methods explicitly');
   const { TacticalAIStack } = await import('../src/ai/stack.js');

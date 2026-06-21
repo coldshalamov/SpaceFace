@@ -6,6 +6,7 @@ import { input } from '../systems/input.js';
 import { aiPorts } from '../systems/aiPorts.js';
 import { ai } from '../systems/ai.js';
 import { createTacticalAISystem } from '../systems/tacticalAI.js';
+import { aiEncounter } from '../systems/aiEncounter.js';
 import { actions } from '../systems/actions.js';
 import { flight } from '../systems/flight.js';
 import { weapons } from '../systems/weapons.js';
@@ -39,7 +40,7 @@ export function createRegistry(ctx) {
   const aiSlot = selectAISystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, input, aiSlot, physics, aiPorts, actions, flight, weapons, combat, mining, cargo, economy,
+    core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flight, weapons, combat, mining, cargo, economy,
     automation, intervention, world, factions, sectorSim, missions, story, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -60,7 +61,7 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, aiSlot, actions, flight, aiPorts, weapons, physics, combat, mining, cargo, crafting,
+    input, aiSlot, aiEncounter, actions, flight, aiPorts, weapons, physics, combat, mining, cargo, crafting,
     economy, automation, intervention, world, factions, sectorSim, missions, story, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
