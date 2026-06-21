@@ -168,6 +168,24 @@ assert(inspect.snapshot.story && inspect.snapshot.story.beatIndex === 0, 'sf-sim
 assert((inspect.traceSummary.types['graffiti:show'] || 0) > 0, 'sf-sim inspect should expose cold-start graffiti evidence');
 assert((inspect.traceSummary.types['comms:popup'] || 0) > 0, 'sf-sim inspect should expose cold-start comms evidence');
 
+const sfInspect = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf.mjs',
+  'inspect',
+  '47a',
+  '--seed',
+  '47',
+  '--tick',
+  '360',
+  '--inputs',
+  'test/47a.inputs.json',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(sfInspect.schema, 'spaceface.sfCliResult.v1', 'canonical sf inspect should emit a versioned CLI result');
+assert.equal(sfInspect.ok, true, 'canonical sf inspect should report a successful delegated inspect run');
+assert.equal(sfInspect.command, 'inspect', 'canonical sf inspect should preserve its command name');
+assert.equal(sfInspect.forwardedCommand, 'inspect', 'canonical sf inspect should delegate to the inspect sim command');
+assert.equal(sfInspect.result.schema, 'spaceface.sfSimInspectResult.v1', 'canonical sf inspect should wrap the versioned inspect result');
+assert.equal(sfInspect.result.tick, 360, 'canonical sf inspect should expose the requested tick');
+
 const trace = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf-sim.mjs',
   'trace',
@@ -196,6 +214,31 @@ assert(trace.combatTrace.digest && /^[a-f0-9]{8}$/.test(trace.combatTrace.digest
 assert((trace.combatTraceSummary.kinds['damage.routed'] || 0) > 0, 'SG-03 combat trace should expose routed damage events');
 assert(trace.metrics.systems.includes('actions'), 'sf-sim trace should run the real action system');
 
+const sfTrace = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf.mjs',
+  'trace',
+  '47a',
+  '--seed',
+  '47',
+  '--ticks',
+  '720',
+  '--inputs',
+  'test/47a.inputs.json',
+  '--events',
+  'combat.*,story.*',
+  '--limit',
+  '200',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(sfTrace.schema, 'spaceface.sfCliResult.v1', 'canonical sf trace should emit a versioned CLI result');
+assert.equal(sfTrace.ok, true, 'canonical sf trace should report a successful delegated trace run');
+assert.equal(sfTrace.command, 'trace', 'canonical sf trace should preserve its command name');
+assert.equal(sfTrace.forwardedCommand, 'trace', 'canonical sf trace should delegate to the trace sim command');
+assert.equal(sfTrace.result.schema, 'spaceface.sfSimTraceResult.v1', 'canonical sf trace should wrap the versioned trace result');
+assert.equal(sfTrace.result.sha256, envelope.acceptancePlaceholders.authoritativeHash,
+  'canonical sf trace should preserve the authoritative replay hash');
+assert.equal(sfTrace.result.traceSummary.types['combat:fire'], envelope.phase0ObservedTraceCounts['combat:fire'],
+  'canonical sf trace should expose filtered combat fire evidence');
+
 const profile = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf-sim.mjs',
   'profile',
@@ -223,6 +266,80 @@ assert(profile.profile.ticksPerSecond == null || profile.profile.ticksPerSecond 
 assert.equal(profile.profile.eventCount, profile.traceSummary.total, 'profile event count should mirror deterministic trace summary');
 assert.equal(profile.profile.entityCount, profile.metrics.finalEntityCount, 'profile entity count should mirror deterministic metrics');
 assert(profile.profile.systems.includes('actions'), 'sf-sim profile should run the real action system');
+
+const sfProfile = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf.mjs',
+  'profile',
+  '47a',
+  '--seed',
+  '47',
+  '--ticks',
+  '720',
+  '--inputs',
+  'test/47a.inputs.json',
+  '--expect',
+  'test/47a.telemetry.expected.json',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(sfProfile.schema, 'spaceface.sfCliResult.v1', 'canonical sf profile should emit a versioned CLI result');
+assert.equal(sfProfile.ok, true, 'canonical sf profile should report a successful delegated sim run');
+assert.equal(sfProfile.command, 'profile', 'canonical sf profile should preserve its command name');
+assert.equal(sfProfile.forwardedCommand, 'profile', 'canonical sf profile should delegate to the profile sim command');
+assert.equal(sfProfile.result.schema, 'spaceface.sfSimProfileResult.v1', 'canonical sf profile should wrap the versioned sim result');
+assert.equal(sfProfile.result.sha256, envelope.acceptancePlaceholders.authoritativeHash,
+  'canonical sf profile should preserve the authoritative replay hash');
+
+const sfReplayVerify = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf.mjs',
+  'replay',
+  'verify',
+  'test/47a.inputs.json',
+  '--seed',
+  '47',
+  '--ticks',
+  '720',
+  '--expect',
+  'test/47a.telemetry.expected.json',
+  '--hash',
+  '--repeat',
+  '20',
+  '--reload-at',
+  '600',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(sfReplayVerify.schema, 'spaceface.sfCliResult.v1', 'canonical sf replay verify should emit a versioned CLI result');
+assert.equal(sfReplayVerify.ok, true, 'canonical sf replay verify should report successful replay verification');
+assert.equal(sfReplayVerify.command, 'replay', 'canonical sf replay verify should preserve its command name');
+assert.equal(sfReplayVerify.action, 'verify', 'canonical sf replay verify should preserve its action');
+assert.equal(sfReplayVerify.forwardedCommand, 'run', 'canonical sf replay verify should delegate to the repeat-checking run command');
+assert.equal(sfReplayVerify.result.schema, 'spaceface.sfSimResult.v1', 'canonical sf replay verify should wrap the sim run output');
+assert.equal(sfReplayVerify.result.repeat, 20, 'canonical sf replay verify should enforce the golden repeat count');
+assert.equal(sfReplayVerify.result.sha256, envelope.acceptancePlaceholders.authoritativeHash,
+  'canonical sf replay verify should preserve the authoritative replay hash');
+assert.equal(sfReplayVerify.result.baselineSha256, sfReplayVerify.result.sha256,
+  'canonical sf replay verify should preserve reload parity against baseline');
+
+const sfDiffReplay = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf.mjs',
+  'diff',
+  'replay',
+  '47a',
+  '--seed',
+  '47',
+  '--ticks',
+  '720',
+  '--inputs',
+  'test/47a.inputs.json',
+  '--expect',
+  'test/47a.telemetry.expected.json',
+  '--reload-at',
+  '600',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(sfDiffReplay.schema, 'spaceface.sfCliResult.v1', 'canonical sf diff replay should emit a versioned CLI result');
+assert.equal(sfDiffReplay.ok, true, 'canonical sf diff replay should report clean replay parity');
+assert.equal(sfDiffReplay.command, 'diff', 'canonical sf diff replay should preserve its command name');
+assert.equal(sfDiffReplay.diffKind, 'replay', 'canonical sf diff replay should preserve its diff kind');
+assert.equal(sfDiffReplay.forwardedCommand, 'compare', 'canonical sf diff replay should delegate to the compare sim command');
+assert.equal(sfDiffReplay.result.schema, 'spaceface.sfSimCompareResult.v1', 'canonical sf diff replay should wrap compare output');
+assert.deepEqual(sfDiffReplay.result.comparison.diffs, [], 'canonical sf diff replay should expose no replay diffs');
 
 const compare = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf-sim.mjs',
