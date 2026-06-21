@@ -1,0 +1,359 @@
+{
+  "schema": "spaceface.scenarioContract.v1",
+  "id": "scenario.47a.mass-discrepancy",
+  "scenario": "47-A: The Mass Discrepancy",
+  "version": 1,
+  "sourceSpec": "docs/Spec/47A_SLICE_CONTRACT.md",
+  "tickRate": 60,
+  "durationSeconds": 720,
+  "status": "skeleton",
+  "actors": [
+    {
+      "id": "player_kestrel",
+      "role": "player_ship",
+      "required": true,
+      "assetRef": "ship_kestrel",
+      "factionId": "faction_free",
+      "capabilities": ["flight.force_torque", "weapon.pulse_laser", "massline.attach", "massline.cut"]
+    },
+    {
+      "id": "evidence_spindle_47a",
+      "role": "tether_payload",
+      "required": true,
+      "assetRef": "asset.slice.47a_spindle",
+      "capabilities": ["body.false_mass", "massline.attachment_target", "world_fact.evidence_status"]
+    },
+    {
+      "id": "carrier_wreck_bourse",
+      "role": "arena_landmark",
+      "required": true,
+      "assetRef": "asset.slice.bourse_carrier_wreck",
+      "capabilities": ["hazard.fracture", "cover.debris", "camera.framing_anchor"]
+    },
+    {
+      "id": "scavenger_harasser",
+      "role": "enemy_light_harass",
+      "required": true,
+      "assetRef": "enemy_reaver_skirmisher",
+      "factionId": "faction_reavers",
+      "capabilities": ["ai.standoff_focus", "weapon.fire", "counter_tether.cut"]
+    },
+    {
+      "id": "scavenger_thief",
+      "role": "enemy_light_steal",
+      "required": true,
+      "assetRef": "enemy_reaver_tug",
+      "factionId": "faction_reavers",
+      "capabilities": ["ai.screen_tug_steal", "massline.attach", "counter_tether.dash"]
+    },
+    {
+      "id": "official_recovery_tug",
+      "role": "faction_pressure_tug",
+      "required": true,
+      "assetRef": "asset.slice.meridian_recovery_tug",
+      "factionId": "faction_concord",
+      "capabilities": ["ai.contain_and_disable", "massline.attach", "subsystem.targeting"]
+    },
+    {
+      "id": "civilian_pod",
+      "role": "narrative_priority_conflict",
+      "required": true,
+      "assetRef": "asset.slice.civilian_pod",
+      "capabilities": ["rescue.priority", "massline.attachment_target", "world_fact.civilian_status"]
+    },
+    {
+      "id": "contact_kessler",
+      "role": "remote_contact",
+      "required": true,
+      "assetRef": "lore.contact.kessler",
+      "capabilities": ["comms.instruction", "branch.delivery_contact"]
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.47a.evidence_status",
+      "description": "Immediate status of the sealed 47-A evidence spindle after the encounter.",
+      "owner": "scenario.47a",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.47a.civilian_status",
+      "description": "Whether the civilian pod was rescued, ignored, or lost.",
+      "owner": "scenario.47a",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.47a.faction_pressure",
+      "description": "Faction response to the player's handling of the evidence.",
+      "owner": "scenario.47a",
+      "initial": "none"
+    },
+    {
+      "id": "fact.47a.carrier_hazard",
+      "description": "Whether the fractured Bourse carrier section remains stable.",
+      "owner": "scenario.47a",
+      "initial": "stable"
+    },
+    {
+      "id": "fact.47a.contract_record",
+      "description": "The contract board state for Contract 47-A after the encounter.",
+      "owner": "scenario.47a",
+      "initial": "open"
+    }
+  ],
+  "presentationEventIds": [
+    "tether.attach",
+    "tether.near_break",
+    "tether.break",
+    "shield.collapse",
+    "subsystem.disabled",
+    "scenario.signal.pulse",
+    "scenario.comms.kessler",
+    "scenario.comms.denial",
+    "scenario.objective.priority_split",
+    "scenario.branch.resolved"
+  ],
+  "proofMetrics": [
+    {
+      "id": "first_meaningful_steering",
+      "target": "<= 5s",
+      "evidence": "golden input tape and deterministic replay metrics",
+      "required": true,
+      "beatIds": ["drop_wreck_field"]
+    },
+    {
+      "id": "first_tether_attach",
+      "target": "<= 60s",
+      "evidence": "Massline action trace and presentation cue trace",
+      "required": true,
+      "beatIds": ["stabilize_spindle"]
+    },
+    {
+      "id": "first_hostile_shot",
+      "target": "<= 90s",
+      "evidence": "combat:fire trace from hostile actor",
+      "required": true,
+      "beatIds": ["scavenger_arrival"]
+    },
+    {
+      "id": "tutorial_line_cap",
+      "target": "no uninterrupted tutorial text over two short lines",
+      "evidence": "HUD/comms cue trace with text-length audit",
+      "required": true,
+      "beatIds": ["drop_wreck_field", "stabilize_spindle"]
+    },
+    {
+      "id": "policy_completion_count",
+      "target": ">= 3 scripted policies complete",
+      "evidence": "headless scenario policy suite",
+      "required": true,
+      "beatIds": ["resolution_branch"]
+    },
+    {
+      "id": "enemy_counter_tether_count",
+      "target": ">= 2 counter-tether behaviors across seed suite",
+      "evidence": "SG-06 tactical trace and SG-03 action trace",
+      "required": true,
+      "beatIds": ["scavenger_arrival", "recovery_tug"]
+    },
+    {
+      "id": "branch_world_fact_delta",
+      "target": "each branch changes at least one immediate world fact",
+      "evidence": "scenario branch validation and replay aftermath snapshot",
+      "required": true,
+      "beatIds": ["resolution_branch"]
+    },
+    {
+      "id": "critical_beat_presentation",
+      "target": "every critical beat has audio, VFX, camera, UI, and accessibility evidence",
+      "evidence": "SG-08 cue trace and accessibility transforms",
+      "required": true,
+      "beatIds": ["drop_wreck_field", "stabilize_spindle", "scavenger_arrival", "debris_sling", "recovery_tug", "carrier_destabilizes", "civilian_pod_choice", "resolution_branch"]
+    }
+  ],
+  "beats": [
+    {
+      "id": "drop_wreck_field",
+      "order": 1,
+      "timeStartS": 0,
+      "timeEndS": 15,
+      "title": "Drop into wreck field; spindle signal pulses",
+      "intent": "Start in the job, not in a tutorial. The player sees a spatial signal and moves.",
+      "requiredActors": ["player_kestrel", "evidence_spindle_47a", "carrier_wreck_bourse"],
+      "requiredMechanics": ["flight.force_torque", "spatial_objective.signal"],
+      "requiredPresentation": ["camera.threat_composition", "ui.spatial_objective", "vfx.signal_pulse", "audio.signal_pulse", "accessibility.shape_coded_signal"],
+      "presentationEventIds": ["scenario.signal.pulse"],
+      "proofMetricIds": ["first_meaningful_steering", "tutorial_line_cap", "critical_beat_presentation"],
+      "worldFactRefs": ["fact.47a.contract_record", "fact.47a.evidence_status"],
+      "next": ["stabilize_spindle"],
+      "branchIds": []
+    },
+    {
+      "id": "stabilize_spindle",
+      "order": 2,
+      "timeStartS": 15,
+      "timeEndS": 75,
+      "title": "Attach and stabilize spindle; mass overloads spool",
+      "intent": "The false mass becomes physical through the Massline, tension, and spool behavior.",
+      "requiredActors": ["player_kestrel", "evidence_spindle_47a"],
+      "requiredMechanics": ["massline.attach", "massline.reel", "tension.telemetry"],
+      "requiredPresentation": ["ui.tension_arc", "vfx.tether_strain", "audio.tether_strain", "camera.payload_composition", "accessibility.tension_alt"],
+      "presentationEventIds": ["tether.attach", "tether.near_break", "scenario.comms.kessler", "scenario.comms.denial"],
+      "proofMetricIds": ["first_tether_attach", "tutorial_line_cap", "critical_beat_presentation"],
+      "worldFactRefs": ["fact.47a.evidence_status"],
+      "next": ["scavenger_arrival"],
+      "branchIds": []
+    },
+    {
+      "id": "scavenger_arrival",
+      "order": 3,
+      "timeStartS": 75,
+      "timeEndS": 165,
+      "title": "Two scavengers arrive, one harasses and one steals",
+      "intent": "Combat starts as a contest over the spindle, not a detached DPS race.",
+      "requiredActors": ["player_kestrel", "evidence_spindle_47a", "scavenger_harasser", "scavenger_thief"],
+      "requiredMechanics": ["combat.weapon_fire", "ai.screen_tug_steal", "counter_tether.cut", "counter_tether.dash"],
+      "requiredPresentation": ["ui.counter_tether_warning", "audio.hostile_lock", "vfx.weapon_hits", "camera.threat_composition", "accessibility.directional_warning"],
+      "presentationEventIds": ["tether.break", "shield.collapse"],
+      "proofMetricIds": ["first_hostile_shot", "enemy_counter_tether_count", "critical_beat_presentation"],
+      "worldFactRefs": ["fact.47a.faction_pressure", "fact.47a.evidence_status"],
+      "next": ["debris_sling"],
+      "branchIds": []
+    },
+    {
+      "id": "debris_sling",
+      "order": 4,
+      "timeStartS": 165,
+      "timeEndS": 270,
+      "title": "Debris can be swung, shielded, and released",
+      "intent": "The Massline becomes a readable momentum weapon with commitment and release timing.",
+      "requiredActors": ["player_kestrel", "evidence_spindle_47a", "carrier_wreck_bourse", "scavenger_harasser"],
+      "requiredMechanics": ["massline.sling", "debris.collision", "shield.collapse"],
+      "requiredPresentation": ["camera.arc_composition", "vfx.debris_trail", "audio.impact_transient", "ui.release_prompt", "accessibility.predicted_arc"],
+      "presentationEventIds": ["shield.collapse", "tether.near_break"],
+      "proofMetricIds": ["critical_beat_presentation"],
+      "worldFactRefs": ["fact.47a.carrier_hazard", "fact.47a.faction_pressure"],
+      "next": ["recovery_tug"],
+      "branchIds": []
+    },
+    {
+      "id": "recovery_tug",
+      "order": 5,
+      "timeStartS": 270,
+      "timeEndS": 390,
+      "title": "Recovery tug and escorts demand surrender",
+      "intent": "Faction pressure arrives with subsystem targets and a coordinated physical tug-of-war.",
+      "requiredActors": ["player_kestrel", "evidence_spindle_47a", "official_recovery_tug", "scavenger_thief"],
+      "requiredMechanics": ["ai.contain_and_disable", "subsystem.targeting", "massline.contested_payload"],
+      "requiredPresentation": ["comms.faction_demand", "ui.subsystem_brackets", "audio.ducked_comms", "camera.tug_of_war", "accessibility.caption_priority"],
+      "presentationEventIds": ["subsystem.disabled", "scenario.comms.denial", "tether.attach"],
+      "proofMetricIds": ["enemy_counter_tether_count", "critical_beat_presentation"],
+      "worldFactRefs": ["fact.47a.faction_pressure", "fact.47a.evidence_status"],
+      "next": ["carrier_destabilizes"],
+      "branchIds": []
+    },
+    {
+      "id": "carrier_destabilizes",
+      "order": 6,
+      "timeStartS": 390,
+      "timeEndS": 510,
+      "title": "Evidence destabilizes fractured carrier section",
+      "intent": "The arena changes because of the evidence mass and player choices.",
+      "requiredActors": ["player_kestrel", "evidence_spindle_47a", "carrier_wreck_bourse", "official_recovery_tug"],
+      "requiredMechanics": ["hazard.fracture", "physics.debris_shift", "camera.hazard_framing"],
+      "requiredPresentation": ["vfx.fracture_sparks", "audio.structural_groan", "ui.hazard_vector", "camera.spatial_hazard", "accessibility.reduced_motion_hazard"],
+      "presentationEventIds": ["scenario.signal.pulse", "tether.near_break"],
+      "proofMetricIds": ["critical_beat_presentation"],
+      "worldFactRefs": ["fact.47a.carrier_hazard", "fact.47a.evidence_status"],
+      "next": ["civilian_pod_choice"],
+      "branchIds": []
+    },
+    {
+      "id": "civilian_pod_choice",
+      "order": 7,
+      "timeStartS": 510,
+      "timeEndS": 600,
+      "title": "Civilian pod competes with evidence priority",
+      "intent": "The narrative choice is expressed through incompatible physical priorities.",
+      "requiredActors": ["player_kestrel", "evidence_spindle_47a", "civilian_pod", "contact_kessler"],
+      "requiredMechanics": ["rescue.priority", "massline.cut_or_reanchor", "objective.priority_split"],
+      "requiredPresentation": ["ui.dual_objective", "audio.distress_call", "vfx.pod_beacon", "camera.priority_split", "accessibility.objective_shapes"],
+      "presentationEventIds": ["scenario.objective.priority_split", "scenario.comms.kessler"],
+      "proofMetricIds": ["critical_beat_presentation"],
+      "worldFactRefs": ["fact.47a.civilian_status", "fact.47a.evidence_status"],
+      "next": ["resolution_branch"],
+      "branchIds": []
+    },
+    {
+      "id": "resolution_branch",
+      "order": 8,
+      "timeStartS": 600,
+      "timeEndS": 720,
+      "title": "Escape, surrender, destroy, or deliver",
+      "intent": "The branch result immediately mutates world facts and can be replayed by policy.",
+      "requiredActors": ["player_kestrel", "evidence_spindle_47a", "official_recovery_tug", "contact_kessler"],
+      "requiredMechanics": ["scenario.branch_resolution", "world_fact.apply", "replay.branch_policy"],
+      "requiredPresentation": ["ui.aftermath_summary", "audio.aftermath_state", "vfx.branch_signal", "camera.exit_composition", "accessibility.branch_caption"],
+      "presentationEventIds": ["scenario.branch.resolved"],
+      "proofMetricIds": ["policy_completion_count", "branch_world_fact_delta", "critical_beat_presentation"],
+      "worldFactRefs": ["fact.47a.evidence_status", "fact.47a.civilian_status", "fact.47a.faction_pressure", "fact.47a.contract_record"],
+      "next": [],
+      "branchIds": ["escape_with_evidence", "surrender_evidence", "destroy_evidence", "deliver_to_contact"]
+    }
+  ],
+  "branches": [
+    {
+      "id": "escape_with_evidence",
+      "unlockedByBeat": "resolution_branch",
+      "policyId": "policy.47a.escape_with_evidence",
+      "summary": "Player leaves with the sealed spindle and keeps the contract open under pursuit.",
+      "outcomeTags": ["evidence_retained", "pursuit_pressure", "contract_pending"],
+      "worldFactEffects": [
+        { "factId": "fact.47a.evidence_status", "op": "set", "value": "escaped_with_player" },
+        { "factId": "fact.47a.faction_pressure", "op": "set", "value": "concord_recovery_warrant" },
+        { "factId": "fact.47a.contract_record", "op": "set", "value": "pending_evidence_unreconciled" }
+      ]
+    },
+    {
+      "id": "surrender_evidence",
+      "unlockedByBeat": "resolution_branch",
+      "policyId": "policy.47a.surrender_evidence",
+      "summary": "Player hands the spindle to the official tug and receives a clean public record with a private debt.",
+      "outcomeTags": ["evidence_surrendered", "official_record_clean", "private_debt"],
+      "worldFactEffects": [
+        { "factId": "fact.47a.evidence_status", "op": "set", "value": "held_by_concord" },
+        { "factId": "fact.47a.faction_pressure", "op": "set", "value": "concord_asset_flag" },
+        { "factId": "fact.47a.contract_record", "op": "set", "value": "closed_public_pending_private" }
+      ]
+    },
+    {
+      "id": "destroy_evidence",
+      "unlockedByBeat": "resolution_branch",
+      "policyId": "policy.47a.destroy_evidence",
+      "summary": "Player destroys the spindle, closing the physical problem while making the accounting impossible.",
+      "outcomeTags": ["evidence_destroyed", "hazard_spike", "contract_unpayable"],
+      "worldFactEffects": [
+        { "factId": "fact.47a.evidence_status", "op": "set", "value": "destroyed" },
+        { "factId": "fact.47a.carrier_hazard", "op": "set", "value": "secondary_debris_release" },
+        { "factId": "fact.47a.contract_record", "op": "set", "value": "pending_manifest_disputed" }
+      ]
+    },
+    {
+      "id": "deliver_to_contact",
+      "unlockedByBeat": "resolution_branch",
+      "policyId": "policy.47a.deliver_to_contact",
+      "summary": "Player delivers the spindle to Kessler's contact and turns the job into a hidden chain.",
+      "outcomeTags": ["evidence_diverted", "kessler_chain", "npc_availability_changed"],
+      "worldFactEffects": [
+        { "factId": "fact.47a.evidence_status", "op": "set", "value": "delivered_to_kessler_contact" },
+        { "factId": "fact.47a.faction_pressure", "op": "set", "value": "quiet_interest_opened" },
+        { "factId": "fact.47a.contract_record", "op": "set", "value": "pending_payment_withheld" }
+      ]
+    }
+  ],
+  "notes": [
+    "This is an SG-05 skeleton contract, not the full mission runtime.",
+    "All branch effects are immediate world facts so no outcome can be menu-only.",
+    "Future content work must extend this file or its schema instead of adding bespoke 47-A logic in UI, renderer, or ad hoc mission code."
+  ]
+}

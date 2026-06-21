@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 
 import { validateShipAsset } from '../src/contracts/assetValidation.js';
 import { validateEvidenceCorpus } from '../src/contracts/evidenceSchemas.js';
+import { formatScenarioIssue, validateScenarioDocument } from '../src/contracts/scenarioSchemas.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
@@ -36,6 +37,9 @@ function runValidate(validateArgs) {
   if (validateArgs[0] === 'asset') {
     return runValidateAsset(validateArgs.slice(1));
   }
+  if (validateArgs[0] === 'scenario') {
+    return runValidateScenario(validateArgs.slice(1));
+  }
 
   const paths = validateArgs.filter((arg) => !arg.startsWith('--'));
   if (paths.length === 0) {
@@ -51,6 +55,30 @@ function runValidate(validateArgs) {
     result: validation,
   };
 
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+  process.exit(validation.ok ? 0 : 1);
+}
+
+function runValidateScenario(scenarioArgs) {
+  const scenarioPath = scenarioArgs.find((arg) => !arg.startsWith('--')) || 'src/data/scenarios/47a.scenario.json';
+  const entry = readJsonEntry(scenarioPath);
+  const validation = entry.error
+    ? {
+        schema: 'spaceface.scenarioValidationResult.v1',
+        ok: false,
+        documentSchema: null,
+        issueCount: 1,
+        issues: [{ file: scenarioPath.replace(/\\/g, '/'), path: '$', rule: 'parse', message: entry.error }],
+      }
+    : validateScenarioDocument(entry.data, { file: scenarioPath });
+  const result = {
+    schema: 'spaceface.sfCliResult.v1',
+    ok: validation.ok,
+    command: 'validate',
+    validateKind: 'scenario',
+    result: validation,
+  };
+  if (!validation.ok) result.stderr = validation.issues.map(formatScenarioIssue).join('\n');
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   process.exit(validation.ok ? 0 : 1);
 }
@@ -129,6 +157,7 @@ function usage(code, message) {
   process.stderr.write('Usage:\n');
   process.stderr.write('  node scripts/sf.mjs validate [test/47a.inputs.json test/47a.telemetry.expected.json]\n');
   process.stderr.write('  node scripts/sf.mjs validate asset assets/ships/kestrel/kestrel_reference.glb\n');
+  process.stderr.write('  node scripts/sf.mjs validate scenario src/data/scenarios/47a.scenario.json\n');
   process.stderr.write('  node scripts/sf.mjs run|inspect|compare|trace|profile 47a [...sf-sim args]\n');
   process.stderr.write('  node scripts/sf.mjs replay verify [47a|test/47a.inputs.json] [...sf-sim run args]\n');
   process.stderr.write('  node scripts/sf.mjs diff replay [47a|test/47a.inputs.json] [...sf-sim compare args]\n');
