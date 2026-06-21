@@ -9,6 +9,20 @@ const RECENT_EVENT_TICKS = 90;
 const ENCOUNTER_COMMAND_RING_CAPACITY = 128;
 const ENCOUNTER_COMMAND_TYPES = new Set(['phase', 'request_reinforcement', 'order_retreat', 'narrative_beat']);
 const DIRECTOR_PHASES = new Set(Object.values(DirectorPhase));
+const CAPABILITY_DEPENDENCIES = Object.freeze({
+  drive: Object.freeze(['drive']),
+  weapon: Object.freeze(['weapon']),
+  sensor: Object.freeze(['sensor']),
+  tether: Object.freeze(['tether']),
+  power: Object.freeze(['power']),
+  ranged: Object.freeze(['weapon', 'sensor']),
+  disable: Object.freeze(['weapon', 'sensor']),
+  screen: Object.freeze(['drive']),
+  steal: Object.freeze(['drive']),
+  tug: Object.freeze(['tether']),
+  counter_tether_cut: Object.freeze(['sensor']),
+  counter_tether_overload: Object.freeze(['drive']),
+});
 
 export const aiPorts = {
   name: 'aiPorts',
@@ -432,16 +446,28 @@ function capabilitiesFor(state, entity) {
   const runtime = combatRuntimeFor(state, entity.id);
   const out = new Set();
   const base = runtime && runtime.capabilities || {};
+  const disabled = new Set();
+  for (const [name, enabled] of Object.entries(base)) if (enabled === false) disabled.add(name);
+  const add = (capability) => {
+    if (typeof capability !== 'string') return;
+    if (capabilityBlocked(capability, disabled)) return;
+    out.add(capability);
+  };
   for (const [name, enabled] of Object.entries(base)) if (enabled !== false) out.add(name);
   const ai = entity.data && entity.data.ai || {};
-  for (const capability of ai.capabilities || []) if (typeof capability === 'string') out.add(capability);
+  for (const capability of ai.capabilities || []) add(capability);
   const role = String(ai.role || ai.preferredRole || ai.archetype || '').toLowerCase();
-  if (role.includes('sniper')) out.add('ranged');
-  if (role.includes('tug')) out.add('tug');
-  if (role.includes('thief')) out.add('steal');
-  if (role.includes('screen')) out.add('screen');
-  if (role.includes('support')) out.add('disable');
+  if (role.includes('sniper')) add('ranged');
+  if (role.includes('tug')) add('tug');
+  if (role.includes('thief')) add('steal');
+  if (role.includes('screen')) add('screen');
+  if (role.includes('support')) add('disable');
   return [...out].sort();
+}
+
+function capabilityBlocked(capability, disabled) {
+  const dependencies = CAPABILITY_DEPENDENCIES[capability] || [capability];
+  return dependencies.some((dependency) => disabled.has(dependency));
 }
 
 function subsystemFractions(runtime) {

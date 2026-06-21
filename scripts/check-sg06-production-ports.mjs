@@ -62,6 +62,21 @@ for (const member of rosterA[0].members) {
   assert.deepEqual(member.capabilities, [...member.capabilities].sort(), 'member capabilities should be sorted');
 }
 
+const wingARuntime = combatRuntime(state, wingA.id);
+const wingAOriginalCaps = { ...wingARuntime.capabilities };
+wingARuntime.capabilities = { ...wingARuntime.capabilities, weapon: false, sensor: false };
+const disabledFrame = helpers.aiSensors.frameFor(wingA.id, 9);
+assert(!disabledFrame.self.capabilities.includes('weapon'), 'disabled weapon subsystem should be absent from sensor self capabilities');
+assert(!disabledFrame.self.capabilities.includes('sensor'), 'disabled sensor subsystem should be absent from sensor self capabilities');
+assert(!disabledFrame.self.capabilities.includes('ranged'), 'authored ranged tag must not override disabled weapon/sensor capability');
+assert(!disabledFrame.self.capabilities.includes('disable'), 'authored disable tag must not override disabled weapon/sensor capability');
+const disabledRoster = helpers.aiRoster.listSquads(9);
+const disabledMember = disabledRoster[0].members.find((member) => member.id === wingA.id);
+assert(disabledMember, 'disabled test ship should remain in the tactical roster');
+assert(!disabledMember.capabilities.includes('ranged'), 'roster capabilities must reflect disabled weapon/sensor state');
+assert(!disabledMember.capabilities.includes('disable'), 'roster capabilities must not re-add authored tags blocked by runtime capabilities');
+wingARuntime.capabilities = wingAOriginalCaps;
+
 const shadowManeuvers = [];
 const stack = new TacticalAIStack({
   seed: state.meta.seed,
@@ -296,6 +311,12 @@ function assertUniqueRosterMembers(roster) {
       seen.add(key);
     }
   }
+}
+
+function combatRuntime(state, entityId) {
+  const runtime = state.combat && state.combat.entities && state.combat.entities[String(entityId)];
+  assert(runtime, `expected SG-03 combat runtime for entity ${entityId}`);
+  return runtime;
 }
 
 function roleMap(result) {

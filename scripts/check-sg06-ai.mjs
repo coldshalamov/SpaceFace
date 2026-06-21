@@ -64,6 +64,7 @@ const report = {
     masslineThresholdBreak: 'opted_in_sg06_dash_armed_overload_proved_default_replacement_gated',
     activeEncounterOwner: 'covered_by_check_sg06_encounter_owner',
     transientEncounterSaveLoadReset: 'covered_by_check_gameplay_core',
+    runtimeCapabilityGating: 'covered_by_check_sg06_production_ports',
   },
   deterministic: true,
   determinismSamples,

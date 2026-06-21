@@ -170,6 +170,9 @@ function assertAcceptanceRecord() {
   assert.equal(acceptance.integrationStatus && acceptance.integrationStatus.transientEncounterSaveLoadReset,
     'covered_by_check_gameplay_core',
     'SG-06 acceptance should record the transient save/load reset gate status');
+  assert.equal(acceptance.integrationStatus && acceptance.integrationStatus.runtimeCapabilityGating,
+    'covered_by_check_sg06_production_ports',
+    'SG-06 acceptance should record the runtime capability gating status');
 }
 
 async function assertGatedProductionRegistration() {
@@ -188,6 +191,8 @@ async function assertGatedProductionRegistration() {
     'save restore must clear transient SG-06 encounter commands and owner state');
   assert(read('scripts/check-sg06-ai.mjs').includes('transientEncounterSaveLoadReset'),
     'SG-06 acceptance report generator must include the transient save/load reset status');
+  assert(read('scripts/check-sg06-ai.mjs').includes('runtimeCapabilityGating'),
+    'SG-06 acceptance report generator must include the runtime capability gating status');
   const tactical = read('src/systems/tacticalAI.js');
   assert(tactical.includes('helpers.aiManeuver'), 'SG-06 tacticalAI must depend on helpers.aiManeuver');
   assert(tactical.includes('function ensureStack'), 'SG-06 tacticalAI must lazy-bind ports for registry-slot initialization');
