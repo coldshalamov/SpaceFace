@@ -16,6 +16,7 @@ const checks = [
   ['../src/data/audioRecipes.js', ['RECIPES', 'MUSIC_STEMS']],
   ['../src/data/palettes.js', ['FACTION_PALETTES', 'SECTOR_PALETTES', 'SHIP_RECIPES']],
   ['../src/data/newGameDefaults.js', ['NEW_GAME']],
+  ['../src/data/combatDefs.js', ['ACTION_DEFS', 'STATUS_DEFS', 'SUBSYSTEM_DEFS', 'ATTACHMENT_DEFS', 'COMBAT_PROFILES']],
 ];
 
 let ok = 0, fail = 0;

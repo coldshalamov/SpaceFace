@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spaceface.game/schemas/combat/status-def.schema.json",
+  "title": "SpaceFace StatusDef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "version", "tags", "durationTicks", "stacking", "immunityTags", "effects", "interactions", "periodic", "cueId"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^status_[a-z0-9_]+$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "tags": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+    "durationTicks": { "type": "integer", "minimum": 1 },
+    "stacking": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode", "maxStacks"],
+      "properties": {
+        "mode": { "enum": ["refresh", "stack", "replace", "ignore"] },
+        "maxStacks": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "immunityTags": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+    "effects": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "capabilities": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "multipliers": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } },
+        "blockedActionTags": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+      }
+    },
+    "interactions": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["with", "apply", "consumeWith"],
+        "properties": {
+          "with": { "type": "string", "pattern": "^status_" },
+          "apply": { "type": "string", "pattern": "^status_" },
+          "consumeWith": { "type": "boolean" }
+        }
+      }
+    },
+    "periodic": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["everyTicks", "packet"],
+          "properties": {
+            "everyTicks": { "type": "integer", "minimum": 1 },
+            "packet": { "$ref": "damage-packet.schema.json" }
+          }
+        }
+      ]
+    },
+    "cueId": { "type": "string", "minLength": 1 }
+  }
+}

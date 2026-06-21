@@ -8,6 +8,8 @@ import { MODULES } from '../data/modules.js';
 import { makeShipEntitySpec, fittingsFromWeapons } from './ships.js';
 import { removeCargo } from './cargo.js';
 import { mulberry32, hash32 } from '../core/rng.js';
+import { getCombatKernel } from '../combat/kernel.js';
+import { legacyHitToDamagePacket } from '../combat/damage.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -126,39 +128,38 @@ export const combat = {
   name: 'combat',
   init(ctx) {
     this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
+    this.registry = ctx.registry || null;
     this.rng = mulberry32(hash32(ctx.state.meta.seed, 'combat'));
+    this.kernel = getCombatKernel(ctx, { onKill: (target, killerId) => this.kill(target, killerId) });
     ctx.bus.on('projectile:hit', (p) => this.onHit(p));
     ctx.bus.on('dock:docked', (p) => this.rememberRespawnStation(p && p.stationId));
   },
 
-  onHit({ targetId, ownerId, damage, damageType, pos }) {
-    const state = this.state, bus = this.bus;
-    const t = state.entities.get(targetId);
-    if (!t || !t.alive) return;
-    if (t.type !== 'ship' && t.type !== 'station' && t.type !== 'drone') return; // asteroids are mined, not shot
-    if (t.flags.invuln) return;
-    const attacker = state.entities.get(ownerId);
-    if (attacker && attacker.team === t.team) return; // no friendly fire
-    t.lastDamageT = state.simTime;
-    let rem = damage, brokeShield = false, shieldAbsorbed = false;
-    if (t.shieldMax > 0 && t.shield > 0) {
-      const a = Math.min(t.shield, rem); t.shield -= a; rem -= a;
-      shieldAbsorbed = true;
-      if (t.shield <= 0) { brokeShield = true; bus.emit('shieldDown', { combatantId: t.id, pos }); }
-    }
-    if (rem > 0 && t.armorHp > 0) {
-      const eff = Math.max(0, rem - (t.armorFlat || 0));
-      const a = Math.min(t.armorHp, eff); t.armorHp -= a; rem = eff - a;
-    }
-    if (rem > 0) t.hull -= rem;
-    const isPlayer = t.id === state.playerId;
-    const factionLawful = !!(t.data && t.data.ai && t.data.ai.lawful);
-    bus.emit('combat:damage', {
-      targetId: t.id, attackerId: ownerId, amount: damage, type: damageType,
-      brokeShield, shieldAbsorbed, isPlayer, pos, factionId: t.factionId || null, factionLawful,
+  // Transitional adapter: every legacy projectile/beam hit becomes a DamagePacket and enters the
+  // same route used by authored actions and status ticks. Delete after all producers carry packets.
+  onHit({ targetId, ownerId, damage, damageType, pos, penetration = 0, impulse = null, heat = 0, statuses = [] }) {
+    const result = this.ensureKernel().routeDamage({
+      attackerId: ownerId,
+      targetId,
+      packet: legacyHitToDamagePacket({ damage, damageType, pos, penetration, impulse, heat, statuses }),
+      origin: { kind: 'legacy', id: 'projectile:hit' },
     });
-    if (isPlayer) bus.emit('camera:shake', { amount: brokeShield ? 0.4 : 0.2 });
-    if (t.hull <= 0) this.kill(t, ownerId);
+    if (result.ok && targetId === this.state.playerId) {
+      this.bus.emit('camera:shake', { amount: result.shieldBroke ? 0.4 : 0.2 });
+    }
+    return result;
+  },
+
+  ensureKernel() {
+    if (this.kernel) return this.kernel;
+    const helpers = this.helpers || (this.helpers = {});
+    this.kernel = getCombatKernel({
+      state: this.state,
+      bus: this.bus,
+      helpers,
+      registry: this.registry || null,
+    }, { onKill: (target, killerId) => this.kill(target, killerId) });
+    return this.kernel;
   },
 
   kill(t, killerId) {
@@ -287,9 +288,13 @@ export const combat = {
       if (e.shieldMax > 0 && e.shield < e.shieldMax && state.simTime - (e.lastDamageT || -1e9) >= (e.shieldRegenDelay || 3)) {
         e.shield = Math.min(e.shieldMax, e.shield + (e.shieldRegenRate || 0) * dt);
       }
-      if (e.capMax > 0 && e.cap < e.capMax) e.cap = Math.min(e.capMax, e.cap + (e.capRegen || 0) * dt);
+      if (e.capMax > 0 && e.cap < e.capMax) {
+        const regenMult = this.kernel ? this.kernel.capRegenMultiplier(e.id) : 1;
+        e.cap = Math.min(e.capMax, e.cap + (e.capRegen || 0) * regenMult * dt);
+      }
     }
     this._applyBeamDamage(state);
+    if (this.kernel) this.kernel.postPhysics(dt);
   },
 
   // Continuous beam weapons (weapons.js) push a ray per firing beam into state.combat.beams each tick

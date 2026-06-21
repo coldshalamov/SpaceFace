@@ -4,6 +4,7 @@ import { core } from './coreSystem.js';
 import { physics } from './physics.js';
 import { input } from '../systems/input.js';
 import { ai } from '../systems/ai.js';
+import { actions } from '../systems/actions.js';
 import { flight } from '../systems/flight.js';
 import { weapons } from '../systems/weapons.js';
 import { combat } from '../systems/combat.js';
@@ -35,10 +36,10 @@ import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
-    core, input, ai, flight, weapons, physics, combat, mining, cargo, economy,
+    core, input, ai, actions, flight, weapons, physics, combat, mining, cargo, economy,
     automation, intervention, world, factions, sectorSim, missions, story, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
-  // sim step order (AI before flight, weapons before physics, etc.) — render-phase systems excluded.
+  // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
   // heat runs late so piracy events from combat/factions this tick have landed before decay.
   // traffic runs after world (sector:enter has spawned stations) and after heat (so piracy on a
@@ -56,7 +57,7 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, ai, flight, weapons, physics, combat, mining, cargo, crafting,
+    input, ai, actions, flight, weapons, physics, combat, mining, cargo, crafting,
     economy, automation, intervention, world, factions, sectorSim, missions, story, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spaceface.game/schemas/combat/subsystem-def.schema.json",
+  "title": "SpaceFace SubsystemDef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "version", "tags", "volume", "health", "armor", "dependencies", "disabledBehavior", "repair", "cueId"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^subsystem_[a-z0-9_]+$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "tags": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+    "volume": {
+      "type": "object",
+      "required": ["shape", "space", "center"],
+      "properties": {
+        "shape": { "enum": ["circle", "box", "capsule"] },
+        "space": { "enum": ["normalized", "world"] },
+        "center": { "$ref": "#/$defs/pair" },
+        "radius": { "type": "number", "minimum": 0 },
+        "halfExtents": { "$ref": "#/$defs/pair" },
+        "a": { "$ref": "#/$defs/pair" },
+        "b": { "$ref": "#/$defs/pair" }
+      },
+      "additionalProperties": false
+    },
+    "health": { "type": "number", "exclusiveMinimum": 0 },
+    "armor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["flat", "multipliers"],
+      "properties": {
+        "flat": { "type": "number", "minimum": 0 },
+        "multipliers": { "$ref": "#/$defs/channelMultipliers" }
+      }
+    },
+    "dependencies": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^subsystem_" } },
+    "disabledBehavior": {
+      "type": "object",
+      "properties": {
+        "capabilities": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "multipliers": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } },
+        "blockedActionTags": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "breakOwnedAttachments": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "repair": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "fieldRatePerTick": { "type": "number", "minimum": 0 },
+        "dockRatePerTick": { "type": "number", "minimum": 0 }
+      }
+    },
+    "cueId": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "pair": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
+    "channelMultipliers": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "kinetic": { "type": "number", "minimum": 0 }, "thermal": { "type": "number", "minimum": 0 },
+        "ion": { "type": "number", "minimum": 0 }, "plasma": { "type": "number", "minimum": 0 },
+        "phase": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}
