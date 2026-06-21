@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,34 +33,52 @@ const SCENARIO_47A_ASSET_COVERAGE = Object.freeze({
     ],
   },
   'asset.slice.47a_spindle': {
-    status: 'pending-authored-asset',
+    status: 'authored-runtime-asset',
     kind: 'story-prop',
-    note: '47-A evidence spindle is required visible slice art; sim placeholder is dev-only.',
+    releaseReady: true,
+    evidence: ['src/render/scenarioProps47a.js', 'scripts/check-47a-visual-assets.mjs'],
+    assetId: 'SF_47A_EVIDENCE_SPINDLE',
+    note: '47-A evidence spindle is backed by deterministic runtime prop art and an assetRef seam test.',
   },
   'asset.slice.bourse_carrier_wreck': {
-    status: 'pending-authored-asset',
+    status: 'authored-runtime-asset',
     kind: 'arena-landmark',
-    note: 'Bourse carrier wreck modules need authored asset coverage before release.',
+    releaseReady: true,
+    evidence: ['src/render/scenarioProps47a.js', 'scripts/check-47a-visual-assets.mjs'],
+    assetId: 'SF_47A_BOURSE_CARRIER_WRECK',
+    note: 'Bourse carrier wreck is backed by deterministic runtime landmark art and an assetRef seam test.',
   },
   enemy_reaver_skirmisher: {
-    status: 'pending-authored-asset',
+    status: 'authored-runtime-asset',
     kind: 'enemy-ship',
-    note: 'Current Reaver ship visual coverage is a procedural/bespoke fallback, not this scenario assetRef.',
+    releaseReady: true,
+    evidence: ['src/render/ships/reaverPirate.js', 'src/render/visualOverrides.js', 'scripts/check-47a-visual-assets.mjs', 'scripts/check-reaver-pirate.mjs'],
+    assetId: 'SF_REACH_REAVER_PIRATE',
+    note: '47-A Reaver skirmisher assetRef routes to the bespoke Reaver pirate runtime asset.',
   },
   enemy_reaver_tug: {
-    status: 'pending-authored-asset',
+    status: 'authored-runtime-asset',
     kind: 'enemy-ship',
-    note: 'Counter-tether tug needs a release asset tied to the scenario assetRef.',
+    releaseReady: true,
+    evidence: ['src/render/ships/reaverPirate.js', 'src/render/visualOverrides.js', 'scripts/check-47a-visual-assets.mjs', 'scripts/check-reaver-pirate.mjs'],
+    assetId: 'SF_REACH_REAVER_PIRATE',
+    note: '47-A Reaver tug assetRef routes to the bespoke Reaver runtime asset with tether-capable live actor data.',
   },
   'asset.slice.meridian_recovery_tug': {
-    status: 'pending-authored-asset',
+    status: 'authored-runtime-asset',
     kind: 'faction-ship',
-    note: 'Official recovery tug is visible hero slice art and cannot ship as a placeholder.',
+    releaseReady: true,
+    evidence: ['src/render/ships/concordPatrol.js', 'src/render/visualOverrides.js', 'scripts/check-47a-visual-assets.mjs', 'scripts/check-concord-patrol.mjs'],
+    assetId: 'SF_SCN_CONCORD_INTERDICTOR',
+    note: '47-A recovery tug assetRef routes to the bespoke Concord authority runtime asset.',
   },
   'asset.slice.civilian_pod': {
-    status: 'pending-authored-asset',
+    status: 'authored-runtime-asset',
     kind: 'story-prop',
-    note: 'Civilian pod is a narrative-priority visible prop and needs authored release art.',
+    releaseReady: true,
+    evidence: ['src/render/scenarioProps47a.js', 'scripts/check-47a-visual-assets.mjs'],
+    assetId: 'SF_47A_CIVILIAN_POD',
+    note: 'Civilian pod is backed by deterministic runtime rescue-pod art and an assetRef seam test.',
   },
   'lore.contact.kessler': {
     status: 'narrative-ref',
@@ -69,9 +87,12 @@ const SCENARIO_47A_ASSET_COVERAGE = Object.freeze({
     note: 'Remote contact reference; not a visible render asset.',
   },
   'asset.slice.kessler_handoff_beacon': {
-    status: 'pending-authored-asset',
+    status: 'authored-runtime-asset',
     kind: 'story-prop',
-    note: 'Handoff beacon is a visible spatial objective and needs authored release art.',
+    releaseReady: true,
+    evidence: ['src/render/scenarioProps47a.js', 'scripts/check-47a-visual-assets.mjs'],
+    assetId: 'SF_47A_KESSLER_HANDOFF_BEACON',
+    note: 'Handoff beacon is backed by deterministic runtime objective-zone art and an assetRef seam test.',
   },
 });
 
@@ -141,6 +162,7 @@ for (const asset of devOnlyAssets) {
 
 const scenarioSummary = [
   `authored=${scenarioCoverage.counts.authored}`,
+  `runtime=${scenarioCoverage.counts.runtime}`,
   `pending=${scenarioCoverage.counts.pending}`,
   `narrative=${scenarioCoverage.counts.narrative}`,
 ].join(' ');
@@ -197,25 +219,31 @@ function inspect47aScenarioAssetCoverage(scenario, inspectedAssets = []) {
       kind: 'unknown',
       note: 'No SG-04 coverage classification exists for this scenario assetRef.',
     };
-    const authored = coverage.status === 'authored-glb';
+    const authoredGlb = coverage.status === 'authored-glb';
+    const authoredRuntime = coverage.status === 'authored-runtime-asset';
     const narrative = coverage.status === 'narrative-ref';
     const evidence = (coverage.evidence || []).map(normalizeRel);
+    const evidenceFiles = evidence.map((path) => ({ path, exists: existsSync(resolve(ROOT, path)) }));
     const evidenceGlbs = evidence.filter((path) => path.endsWith('.glb'));
     const inspectedGlbs = evidenceGlbs
       .map((path) => inspectedAssetMap.get(path))
       .filter(Boolean);
-    const evidenceReady = !authored || (evidenceGlbs.length > 0 && inspectedGlbs.length === evidenceGlbs.length);
+    const evidenceReady = authoredGlb
+      ? (evidenceGlbs.length > 0 && inspectedGlbs.length === evidenceGlbs.length)
+      : (!authoredRuntime || (evidence.length > 0 && evidenceFiles.every((file) => file.exists)));
     const releaseReady = coverage.releaseReady === true
       || narrative
-      || (authored && evidenceReady);
+      || (authoredGlb && evidenceReady);
     return {
       assetRef,
       actors,
       status: coverage.status,
       kind: coverage.kind,
+      assetId: coverage.assetId || '',
       evidenceReady,
       releaseReady,
       evidence,
+      evidenceFiles,
       inspectedGlbs: inspectedGlbs.map((asset) => ({
         path: asset.assetPath,
         ok: asset.ok,
@@ -234,7 +262,7 @@ function inspect47aScenarioAssetCoverage(scenario, inspectedAssets = []) {
       detail: `${entry.assetRef} (${entry.actors.map((actor) => actor.actorId).join(',')})`,
     }));
   const authoredEvidenceIssues = entries
-    .filter((entry) => entry.status === 'authored-glb' && !entry.evidenceReady)
+    .filter((entry) => (entry.status === 'authored-glb' || entry.status === 'authored-runtime-asset') && !entry.evidenceReady)
     .map((entry) => ({
       rule: 'scenario.assetRef.authoredEvidence',
       path: 'src/data/scenarios/47a.scenario.json',
@@ -251,7 +279,8 @@ function inspect47aScenarioAssetCoverage(scenario, inspectedAssets = []) {
     }));
 
   const counts = {
-    authored: entries.filter((entry) => entry.status === 'authored-glb').length,
+    authored: entries.filter((entry) => entry.status === 'authored-glb' || entry.status === 'authored-runtime-asset').length,
+    runtime: entries.filter((entry) => entry.status === 'authored-runtime-asset').length,
     pending: entries.filter((entry) => entry.status === 'pending-authored-asset').length,
     narrative: entries.filter((entry) => entry.status === 'narrative-ref').length,
     unknown: entries.filter((entry) => entry.status === 'unknown').length,

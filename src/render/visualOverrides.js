@@ -10,6 +10,7 @@ import { buildMeridianTrader } from './ships/meridianTrader.js';
 import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
+import { build47aScenarioProp } from './scenarioProps47a.js';
 import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
@@ -71,6 +72,12 @@ const FACTION_BUILDERS = {
   lancer_sniper: { build: buildVaelSniper, label: 'Vael sniper' },           // §8.7 non-human
 };
 
+const SCENARIO_47A_SHIP_BUILDERS = {
+  enemy_reaver_skirmisher: { build: buildReaverPirate, label: '47-A Reaver skirmisher' },
+  enemy_reaver_tug: { build: buildReaverPirate, label: '47-A Reaver tug' },
+  'asset.slice.meridian_recovery_tug': { build: buildConcordPatrol, label: '47-A Concord recovery tug' },
+};
+
 /**
  * Install the hero-asset registry and authored-part boundary on a live visual factory.
  * Mutating the existing factory object is intentional: renderer event closures, rebuild paths,
@@ -84,7 +91,10 @@ export function installVisualOverrides(factory, options = {}) {
   const kestrelBuilder = typeof options.kestrelBuilder === 'function' ? options.kestrelBuilder : buildKestrelHero;
   factory.build = (entity) => {
     let visual = null;
-    if (isPlayerKestrel(entity)) {
+    const scenarioProp = build47aScenarioProp(entity);
+    if (scenarioProp) {
+      visual = scenarioProp;
+    } else if (isPlayerKestrel(entity)) {
       try { visual = kestrelBuilder(entity); }
       catch (error) {
         if (releaseMode) {
@@ -96,7 +106,7 @@ export function installVisualOverrides(factory, options = {}) {
     } else if (entity && entity.type === 'ship' && entity.data) {
       // Faction bespoke ships (spec §8.2–§8.7, Phase 3 §20). Each is failure-isolated: any throw in
       // the bespoke builder falls back to the procedural factory, so a broken hero never blanks an NPC.
-      const entry = FACTION_BUILDERS[entity.data.lootTableId];
+      const entry = SCENARIO_47A_SHIP_BUILDERS[entity.data.assetRef] || FACTION_BUILDERS[entity.data.lootTableId];
       if (entry) {
         try { visual = entry.build(entity); }
         catch (error) { reportVisualWarning(options, `[visualOverrides] ${entry.label} build failed; using procedural fallback`, error); }
