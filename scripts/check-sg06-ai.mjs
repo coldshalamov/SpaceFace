@@ -61,6 +61,7 @@ const report = {
     sg03ActionRuntime: 'integrated_on_master_canonical_actiondefs_consumed',
     sg03LiveAdapter: 'delivered_createSG03ActionPort',
     productionRegistration: 'explicit_sg06_tactical_backend_proved_default_replacement_gated',
+    masslineThresholdBreak: 'opted_in_sg06_dash_armed_overload_proved_default_replacement_gated',
   },
   deterministic: true,
   determinismSamples,

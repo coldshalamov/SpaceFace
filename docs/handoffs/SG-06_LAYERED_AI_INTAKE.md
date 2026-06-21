@@ -38,14 +38,15 @@ This is not the default replacement for `src/systems/ai.js` yet. SG-02 dynamic-b
 - `docs/Spec/SG-06_ACCEPTANCE.json`
 - `docs/handoffs/SG-06_AI_HANDOFF.md`
 - `third_party/reference-ledger-sg06.yml`
+- `scripts/check-sg06-live-tether-break.mjs`
 
-`check:sg06` now runs the intake guard, the production-port contract gate, the encounter-sink gate, the live-shadow ActionDef gate, the lazy registry-init gate, the live production-registry gate, the Rapier formation-convergence gate, and the 100-seed AI acceptance suite. `check:ai` remains an alias for the SG-06 seeded suite.
+`check:sg06` now runs the intake guard, the production-port contract gate, the encounter-sink gate, the live-shadow ActionDef gate, the lazy registry-init gate, the live production-registry gate, the live tether-break gate, the Rapier formation-convergence gate, and the 100-seed AI acceptance suite. `check:ai` remains an alias for the SG-06 seeded suite.
 
 ## Still blocked
 
 - Making `sg06-tactical` the default AI backend.
 - Deleting legacy `entity.data.intent.fire`, `fireGroup`, lead-angle, and direct NPC flight paths.
-- Claiming tacticalAI-triggered tether overload/break behavior in the default production slot.
+- Claiming the opted-in tacticalAI Massline overload proof as default-production behavior.
 - Claiming full SG-02/SG-06 live AI replacement in production.
 
 These are blocked until the tactical stack owns the default gameplay path with production sensors, SG-03 actions, SG-02 dynamic bodies, active encounter commands, and legacy weapon/intent dependencies removed in the same milestone.
@@ -58,9 +59,10 @@ These are blocked until the tactical stack owns the default gameplay path with p
 - `npm run check:sg06:live-shadow`
 - `npm run check:sg06:registry-init`
 - `npm run check:sg06:live-registry`
+- `npm run check:sg06:tether-break`
 - `npm run check:sg06:formation`
 - `npm run check:sg06:ai`
 - `npm run check:sg06`
 - `npm run check:sg02:tether-break`
 
-The checked evidence record is `docs/Spec/SG-06_ACCEPTANCE.json`. It records 100 seeds x 600 ticks, seven tactics, both canonical counter-tether actions (`action_cut`, `action_dash`), no privileged action path, bounded stationarity, pressure within the authored envelope, and the explicit `covered_by_check_sg06_formation` physical-convergence status. The SG-06 live-registry gate now proves the opted-in production AI slot can drive SG-03 actions and SG-02 maneuvers without legacy intent; the SG-02 foundation gate `check:sg02:tether-break` proves the Massline threshold telemetry path separately. SG-06 still needs tactical decisions to trigger that tether overload path from the default live slot.
+The checked evidence record is `docs/Spec/SG-06_ACCEPTANCE.json`. It records 100 seeds x 600 ticks, seven tactics, both canonical counter-tether actions (`action_cut`, `action_dash`), no privileged action path, bounded stationarity, pressure within the authored envelope, `covered_by_check_sg06_formation` physical-convergence status, and `opted_in_sg06_dash_armed_overload_proved_default_replacement_gated` Massline threshold-break status. The SG-06 live-registry gate proves the opted-in production AI slot can drive SG-03 actions and SG-02 maneuvers without legacy intent. The SG-06 live tether-break gate proves SG-06 first commits canonical `action_dash` in the opted-in production registry, then a fixture loads the Massline through SG-03/SG-02 so threshold tension/impulse telemetry breaks the rope and releases the physical constraint. SG-06 still needs that proof promoted through default gameplay activation before legacy AI deletion.

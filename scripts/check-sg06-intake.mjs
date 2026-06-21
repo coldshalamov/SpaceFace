@@ -25,6 +25,7 @@ const REQUIRED_FULL_HANDOFF = Object.freeze([
   'scripts/check-sg06-ai.mjs',
   'scripts/check-sg06-registry-init.mjs',
   'scripts/check-sg06-live-registry.mjs',
+  'scripts/check-sg06-live-tether-break.mjs',
 ]);
 
 const PRODUCTION_CLAIM_MARKERS = Object.freeze([
@@ -58,6 +59,10 @@ assert(scripts['check:sg06:live-registry'] && scripts['check:sg06:live-registry'
   'package.json must expose the SG-06 production registry gate');
 assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:live-registry'),
   'package.json check:sg06 must run the SG-06 production registry gate');
+assert(scripts['check:sg06:tether-break'] && scripts['check:sg06:tether-break'].includes('check-sg06-live-tether-break.mjs'),
+  'package.json must expose the SG-06 live tether-break gate');
+assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:tether-break'),
+  'package.json check:sg06 must run the SG-06 live tether-break gate');
 
 const hasProductionClaim = PRODUCTION_CLAIM_MARKERS.some(exists) || systemImportsSg06();
 
@@ -150,6 +155,9 @@ function assertAcceptanceRecord() {
   assert.equal(acceptance.integrationStatus && acceptance.integrationStatus.productionRegistration,
     'explicit_sg06_tactical_backend_proved_default_replacement_gated',
     'SG-06 acceptance should record the opted-in production registry gate status');
+  assert.equal(acceptance.integrationStatus && acceptance.integrationStatus.masslineThresholdBreak,
+    'opted_in_sg06_dash_armed_overload_proved_default_replacement_gated',
+    'SG-06 acceptance should record the opted-in Massline threshold-break gate status');
 }
 
 async function assertGatedProductionRegistration() {
