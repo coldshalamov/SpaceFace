@@ -111,8 +111,10 @@ assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 12, 'expected te
 assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 10, 'expected telemetry should pin observed projectile hit count');
 assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 10, 'expected telemetry should pin observed combat damage count');
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
+assert.equal(envelope.phase0ObservedTraceCounts['graffiti:show'], 1, 'expected telemetry should pin observed cold-start graffiti count');
+assert.equal(envelope.phase0ObservedTraceCounts['comms:popup'], 2, 'expected telemetry should pin observed cold-start comms count');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  'c4087e90300eea0303e0b8553af15094b75f7611e54f1f52648fe42712986f46',
+  '083e11d9e2ce2dfed7987ffb4294f515f88b81aac9f66ef14654369d906004cc',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 
 const balanceSim = read('scripts/balance-sim.mjs');
@@ -158,6 +160,13 @@ assert.equal(inspect.snapshot && inspect.snapshot.schema, 'spaceface.simSnapshot
 assert.equal(inspect.snapshot.tick, 360, 'sf-sim inspect snapshot should be from the requested tick');
 assert(inspect.sha256 && /^[a-f0-9]{64}$/.test(inspect.sha256), 'sf-sim inspect should include a snapshot hash');
 assert((inspect.traceSummary.types['combat:fire'] || 0) > 0, 'sf-sim inspect should expose trace evidence up to the inspected tick');
+for (const systemName of ['missions', 'story']) {
+  assert(inspect.metrics.systems.includes(systemName), `sf-sim should run the real ${systemName} system`);
+}
+assert(inspect.snapshot.missions && inspect.snapshot.missions.nextId === 1, 'sf-sim snapshot should include mission state');
+assert(inspect.snapshot.story && inspect.snapshot.story.beatIndex === 0, 'sf-sim snapshot should include story state');
+assert((inspect.traceSummary.types['graffiti:show'] || 0) > 0, 'sf-sim inspect should expose cold-start graffiti evidence');
+assert((inspect.traceSummary.types['comms:popup'] || 0) > 0, 'sf-sim inspect should expose cold-start comms evidence');
 
 console.log('Phase 0 slice contract checks OK');
 

@@ -17,6 +17,8 @@ import { physics } from '../src/core/physics.js';
 import { combat } from '../src/systems/combat.js';
 import { cargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
+import { missions } from '../src/systems/missions.js';
+import { story } from '../src/systems/story.js';
 import { save } from '../src/save/saveSystem.js';
 import {
   TELEMETRY_ENVELOPE_SCHEMA,
@@ -104,7 +106,7 @@ if (command === 'inspect') {
 }
 
 function run47a({ seed, ticks, tape, reloadAt = null }) {
-  const sim = createSimulation({ seed, systems: [flight, weapons, physics, combat, cargo, economy, save] });
+  const sim = createSimulation({ seed, systems: [flight, weapons, physics, combat, cargo, economy, missions, story, save] });
   const { state, bus, registry } = sim;
   const eventTrace = createDeterministicEventTrace(bus, state);
   const metrics = {
@@ -148,6 +150,7 @@ function run47a({ seed, ticks, tape, reloadAt = null }) {
 
   const econ = registry.get('economy');
   if (econ && typeof econ.newGame === 'function') econ.newGame();
+  bus.emit('game:started', { source: 'sf-sim', scenario: '47a' });
 
   const frames = normalizeTape(tape);
   let frameIndex = 0;

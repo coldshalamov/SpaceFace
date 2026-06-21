@@ -27,6 +27,8 @@ export function snapshotSimState(state) {
     player: sanitize(state.player),
     input: sanitize(state.input),
     economy: sanitize(state.economy),
+    missions: sanitize(state.missions),
+    story: sanitize(state.story),
     combat: {
       beams: Array.isArray(state.combat && state.combat.beams) ? state.combat.beams.length : 0,
     },

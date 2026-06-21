@@ -30,10 +30,12 @@
     "combat:fire": 12,
     "projectile:hit": 10,
     "combat:damage": 10,
-    "economy:tick": 2
+    "economy:tick": 2,
+    "graffiti:show": 1,
+    "comms:popup": 2
   },
   "acceptancePlaceholders": {
-    "authoritativeHash": "c4087e90300eea0303e0b8553af15094b75f7611e54f1f52648fe42712986f46",
+    "authoritativeHash": "083e11d9e2ce2dfed7987ffb4294f515f88b81aac9f66ef14654369d906004cc",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": null,
     "firstHostileShotTickMax": 5400,
@@ -43,7 +45,7 @@
   },
   "notes": [
     "This starts as a Phase 0 envelope for the current headless 47-A smoke run.",
-    "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts only asserts events emitted by this 720-tick run.",
+    "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this 720-tick run.",
     "Massline-specific expectations remain null until SG-02/SG-03 define command and action schemas."
   ]
 }
