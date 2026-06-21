@@ -8,6 +8,7 @@ This ledger records external SG handoff intake status for the active 47-A vertic
 
 | Job | Artifact inspected | Status | Integration boundary |
 | --- | --- | --- | --- |
+| SG-04 authored asset pipeline | Current master GLTFLoader/asset pipeline + Kestrel reference asset | Partial validation accepted | The Kestrel hero GLB and manifest are validated by both the legacy art checks and the agent-facing `sf validate asset` JSON contract. KTX2/Draco/Meshopt release gating, wider prefab validation, and release-mode procedural-fallback failure remain pending. |
 | SG-08 presentation orchestration | `origin/commission/sg-08-presentation-orchestration` | Landed as received | The received GitHub branch contributed the presentation cue schema/validator surface now on master. Full SG-08 runtime orchestration remains gated by later semantic event mapping, budget enforcement, and golden cue/mix traces. |
 | SG-03 combat/action/subsystem framework | `SpaceFace-SG-03-handoff.zip` plus current master integration | Landed | Shared ActionDef runtime, combat grammar, damage routing, subsystem/status/attachment semantics, and deterministic combat trace are integrated. Live movement/constraint effects intentionally reject until SG-02 installs the `helpers.combatPhysics` port. |
 | SG-02 dynamic Rapier authority | `origin/sg-02-rapier-dynamic-authority`; recovered zip `6D3FE3C...E474AF` | Partial intake accepted | The recovered package produced a complete additive physics command/telemetry membrane, now gated by `npm run check:sg02`. Dynamic Rapier body authority, tether constraints, SG-03 `helpers.combatPhysics`, save/schema changes, and acceptance tests remain pending. Do not build a compatibility physics authority around kinematic observers. |
@@ -17,6 +18,7 @@ This ledger records external SG handoff intake status for the active 47-A vertic
 
 - SG-08 schema gate: `npm run check:presentation`.
 - SG-03 grammar gate: `npm run check:combat`.
+- SG-04 asset CLI gate: `node scripts/sf.mjs validate asset assets/ships/kestrel/kestrel_reference.glb`.
 - SG-02 partial intake + command membrane gate: `npm run check:sg02`.
 - SG-06 intake honesty gate: `npm run check:sg06`.
 - 47-A replay gate: `npm run check:sim`.

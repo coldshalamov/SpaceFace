@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
+import { validateShipAsset } from '../src/contracts/assetValidation.js';
 import { validateEvidenceCorpus } from '../src/contracts/evidenceSchemas.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -32,6 +33,10 @@ if (command === 'validate') {
 }
 
 function runValidate(validateArgs) {
+  if (validateArgs[0] === 'asset') {
+    return runValidateAsset(validateArgs.slice(1));
+  }
+
   const paths = validateArgs.filter((arg) => !arg.startsWith('--'));
   if (paths.length === 0) {
     paths.push('test/47a.inputs.json', 'test/47a.telemetry.expected.json');
@@ -46,6 +51,20 @@ function runValidate(validateArgs) {
     result: validation,
   };
 
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+  process.exit(validation.ok ? 0 : 1);
+}
+
+function runValidateAsset(assetArgs) {
+  const assetPath = assetArgs.find((arg) => !arg.startsWith('--')) || 'assets/ships/kestrel/kestrel_reference.glb';
+  const validation = validateShipAsset(assetPath, { root: ROOT });
+  const result = {
+    schema: 'spaceface.sfCliResult.v1',
+    ok: validation.ok,
+    command: 'validate',
+    validateKind: 'asset',
+    result: validation,
+  };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   process.exit(validation.ok ? 0 : 1);
 }
@@ -109,6 +128,7 @@ function usage(code, message) {
   if (message) process.stderr.write(message + '\n');
   process.stderr.write('Usage:\n');
   process.stderr.write('  node scripts/sf.mjs validate [test/47a.inputs.json test/47a.telemetry.expected.json]\n');
+  process.stderr.write('  node scripts/sf.mjs validate asset assets/ships/kestrel/kestrel_reference.glb\n');
   process.stderr.write('  node scripts/sf.mjs run|inspect|compare|trace|profile 47a [...sf-sim args]\n');
   process.stderr.write('  node scripts/sf.mjs replay verify [47a|test/47a.inputs.json] [...sf-sim run args]\n');
   process.stderr.write('  node scripts/sf.mjs diff replay [47a|test/47a.inputs.json] [...sf-sim compare args]\n');

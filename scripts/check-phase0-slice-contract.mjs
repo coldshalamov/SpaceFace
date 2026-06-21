@@ -341,6 +341,26 @@ assert.equal(sfDiffReplay.forwardedCommand, 'compare', 'canonical sf diff replay
 assert.equal(sfDiffReplay.result.schema, 'spaceface.sfSimCompareResult.v1', 'canonical sf diff replay should wrap compare output');
 assert.deepEqual(sfDiffReplay.result.comparison.diffs, [], 'canonical sf diff replay should expose no replay diffs');
 
+const sfValidateAsset = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf.mjs',
+  'validate',
+  'asset',
+  'assets/ships/kestrel/kestrel_reference.glb',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(sfValidateAsset.schema, 'spaceface.sfCliResult.v1', 'canonical sf validate asset should emit a versioned CLI result');
+assert.equal(sfValidateAsset.ok, true, 'canonical sf validate asset should report a valid hero asset');
+assert.equal(sfValidateAsset.command, 'validate', 'canonical sf validate asset should preserve its command name');
+assert.equal(sfValidateAsset.validateKind, 'asset', 'canonical sf validate asset should classify asset validation');
+assert.equal(sfValidateAsset.result.schema, 'spaceface.assetValidationResult.v1', 'asset validation should emit a versioned result');
+assert.equal(sfValidateAsset.result.assetPath, 'assets/ships/kestrel/kestrel_reference.glb', 'asset validation should report the validated path');
+assert.equal(sfValidateAsset.result.manifestPath, 'assets/ships/kestrel/kestrel_manifest.json', 'asset validation should report the manifest path');
+assert.equal(sfValidateAsset.result.issueCount, 0, 'asset validation should expose zero issues');
+assert.equal(sfValidateAsset.result.assetId, 'SF_K0_KESTREL_BORROWED_TIME', 'asset validation should preserve Kestrel asset id');
+assert.equal(sfValidateAsset.result.metrics.triangles, 1844, 'asset validation should expose Kestrel triangle count');
+assert.equal(sfValidateAsset.result.metrics.nodes, 64, 'asset validation should expose Kestrel node count');
+assert(sfValidateAsset.result.checks.some((check) => check.rule === 'sockets.glbRequired' && check.ok),
+  'asset validation should prove required socket nodes exist in the GLB');
+
 const compare = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf-sim.mjs',
   'compare',
