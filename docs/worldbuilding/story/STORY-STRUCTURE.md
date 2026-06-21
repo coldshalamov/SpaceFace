@@ -6,9 +6,9 @@ Two stories run simultaneously. Neither explains the other. Neither resolves the
 
 **THREAD A: THE SYSTEM (existing worldbuilding)**
 
-This is the world: Contract 47-A, the recycler theft, the 8-NPC ecology, ATMO DEBT, Director Vale, the Silt economy, the five endgame choices. The systemic story happens to Wren the way it happens to everyone who works the contracts. He runs jobs. He gets stiffed. He reads the graffiti. The HUD lies. The weight never matches. The system is rotting and he is part of the rot because participating is the price of breathing.
+This is the world: Contract 47-A, the recycler theft, the 8-NPC ecology, ATMO DEBT, Director Vale, the Silt economy, the five endgame choices. The systemic story happens to Wren the way it happens to everyone who works the contracts. He runs jobs, gets stiffed, reads the graffiti. The HUD lies and the weight never matches. The system is rotting and he is part of the rot because participating is the price of breathing.
 
-Thread A does not require the protagonist to have a backstory. It functions on anyone who runs the contracts long enough. This is its strength and its horror — the system doesn't care who you are. It processes you regardless.
+Thread A does not require the protagonist to have a backstory. It functions on anyone who runs the contracts long enough. The system doesn't care who you are. It processes you regardless.
 
 **THREAD B: THE SEARCH (protagonist's personal story)**
 
@@ -72,11 +72,11 @@ The player who is tracking both threads sees this convergence as structural, not
 
 The coordinates are not for a planet in this system. They are for a location that the Kurtz figure logged eleven years ago from an intercepted Concord transmission — a set of numbers in a format Wren does not recognize. Not Concord notation. Not standard galactic. Not the agricultural system his mother used. Something else entirely. A coordinate format that appears in no navigation database Wren can access.
 
-The numbers could be for his home planet. They could be for any of the systems the Vethari ship visited over twelve hundred years. They could be for a research facility. They could be for nothing — a test string, a calibration artifact, a dead entry in a dead database. Wren cannot tell. The format doesn't match anything he knows. He can feel the possibility the way you feel a card you haven't turned over yet: it could be the hand. It could be nothing. You don't know until you have the translation key, and the translation key is not in the ledger.
+The numbers could point to his home planet, to any of the systems the Vethari ship visited, to nothing — a test string, a dead entry in a dead database. Wren cannot tell. The format doesn't match anything he knows. He can feel the possibility the way you feel a card you haven't turned over yet: it could be the hand. It could be nothing. You don't know until you have the translation key, and the translation key is not in the ledger.
 
 The game does not resolve this. The coordinates are a cargo item: "NAVIGATIONAL DATA — 1 FILE / 0.01t." The player carries it. The game's endgame choices still apply. None of them include "go home." Going home is not one of the five options because the game is about what you do in the system you're in, not about escaping to a system that may no longer exist.
 
-But the coordinates are there. In the cargo hold. In the data file. After the credits. After the choice. The Tessera's navigation computer has a file it can't process because the format requires a translation key the computer doesn't have. Wren doesn't know if decoding the format would give him home or just another empty system on a twelve-hundred-year-old survey route. The file sits in the ship's memory alongside the transponder history and the manifests and the logs. It weighs 0.01 tonnes. It might weigh everything.
+But the coordinates are there. In the cargo hold. In the data file. After the credits. After the choice. The Tessera's navigation computer has a file it can't process because the format requires a translation key the computer doesn't have. Wren doesn't know if decoding the format would give him home or just another empty system on a twelve-hundred-year-old survey route. The file sits in the ship's memory alongside the transponder history and the manifests and the logs. It weighs 0.01 tonnes.
 
 The graffiti in the player's airlock after the endgame, regardless of which choice they made, adds one new line beneath THEY KNEW THE MASS:
 
@@ -104,28 +104,26 @@ What Thread B does to each choice:
 
 **WHAT THREAD B IS NOT:**
 
-Thread B is not the "real" story that Thread A was hiding. Thread A is the story of the world. Thread B is the story of one person in it. The world does not care about Wren's backstory. The world processes him through the same contracts and the same graffiti and the same HUD lies as everyone else. His personal tragedy does not exempt him from the systemic rot. His search for his sister does not make him noble. It makes him a person with a private reason to run the same jobs everyone runs for money.
+Thread B is not the "real" story that Thread A was hiding. The world does not care about Wren's backstory. It processes him through the same contracts and the same graffiti and the same HUD lies as everyone else. His search for his sister does not make him noble. It makes him a person with a private reason to run the same jobs everyone runs for money.
 
-The Vethari are not the secret behind the system. The system's secret is that it has no secret — it operates exactly as designed. The Vethari are a separate horror that exists independently, off-frame: always present, never the immediate problem, the thing that makes the smaller problems feel both more urgent and more futile.
+The Vethari have nothing to do with the system. The system operates exactly as designed. The Vethari are a separate horror that exists independently, off-frame: always present, never the immediate problem, the thing that makes the smaller problems feel both more urgent and more futile.
 
-Thread B gives every contract a double weight: the weight the manifest lists and the weight Wren carries from a planet nobody's heard of. The two weights never reconcile. The mass is always different depending on who's counting.
-
----
-
-**DOES THE STORY EARN ITS VIOLENCE?**
-
-The Vethari violence is not action-movie violence. It is the violence of a system failure — a neurological architecture collapsing under the weight of shared perception. The Vethari don't choose to destroy planets. They can't choose not to. The fungus doesn't choose to corrupt them. The fungus is an organism doing what organisms do. The result is catastrophic and nobody is responsible and the only moral act available to an individual Vethari is self-destruction, which is both the most precise act of the old ledger-system and the most complete repudiation of it.
-
-Violence with grammar before it has cause. The Vethari grammar is the ledger. The cause is the fungus. The grammar predates the cause by millennia. The violence is the grammar operating without the moral framework that once constrained it.
-
-The human violence — the contracts, the kills, the systemic rot — is the same structure at a smaller scale. The grammar is the administrative code. The cause is the economic incentive. REF 44-C predates every corrupt transaction it governs. The system's grammar produces the violence. The violence is correct, by the grammar, every time.
+Thread B gives every contract a double weight: the weight the manifest lists and the weight Wren carries from a planet nobody's heard of. The two weights never reconcile.
 
 ---
 
-**DOES THE STORY EARN ITS SADNESS?**
+**THE VIOLENCE**
+
+The Vethari violence is the violence of a system failure — a neurological architecture collapsing under the weight of shared perception. The Vethari don't choose to destroy planets. They can't choose not to. The fungus doesn't choose to corrupt them. The fungus is an organism doing what organisms do. The result is catastrophic and nobody is responsible and the only moral act available to an individual Vethari is self-destruction, which is both the most precise act of the old ledger-system and the most complete repudiation of it.
+
+The human violence — the contracts, the kills, the systemic rot — is the same structure at a smaller scale. REF 44-C predates every corrupt transaction it governs. The system produces the violence. The violence is authorized, every time.
+
+---
+
+**THE SADNESS**
 
 The sadness is not about losing. It's about winning at a game that costs more than winning is worth and playing it anyway because the alternative is admitting the game was never worth the cost. The search for coordinates that may lead to a planet that may no longer exist, containing a grain silo that may have a crawlspace that may still hold a girl who would now be twenty-eight and who has been alone for nineteen years if she's alive at all.
 
-The sadness earns its place because the story never confirms or denies the outcome. Lida is not rescued. Lida is not confirmed dead. The game refuses to answer because answering would end the weight, and the weight is the point.
+Lida is neither rescued nor confirmed dead. The game refuses to answer.
 
-The coordinates exist. The player carries them. The game ends. The question remains open. The mass of the question is 0.01 tonnes and the manifest calls it NAVIGATIONAL DATA and the ship carries it alongside everything else.
+The coordinates exist. The player carries them. The game ends. The manifest calls it NAVIGATIONAL DATA and the ship carries it alongside everything else.

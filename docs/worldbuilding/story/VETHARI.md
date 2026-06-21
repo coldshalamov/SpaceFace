@@ -12,7 +12,7 @@ The superstitions persist. Spacers talk about ghost ships, dead-channel transmis
 
 The people who know the truth are the people who are paid to manage the truth's filing status. The truth is filed under REF 44-C in a Concord evidence processing system that has been moving sealed containers between facilities for fourteen years. The containers hold fragments of hull material that doesn't match any known manufacturing process. The fragments contain traces of biological material from a species that doesn't appear in any database. The filing status is "UNRESOLVED." It has been unresolved for fourteen years. It will remain unresolved because resolving it would require an administrative action that nobody with the authority to take it has any incentive to take.
 
-This is not a cover-up. A cover-up implies active suppression. This is bureaucratic inertia applied to a problem that the bureaucracy was never designed to solve. The system handles customs fraud. It handles atmospheric allocation. It handles evidence storage. It handles non-human biological material the same way it handles everything else: file it, move it, initial the transfer log, don't open the container.
+Nobody suppresses it. The system handles customs fraud. It handles atmospheric allocation. It handles evidence storage. It handles non-human biological material the same way it handles everything else: file it, move it, initial the transfer log, don't open the container.
 
 ---
 
@@ -32,7 +32,7 @@ The survivors scattered. Most ended up in systems where nobody had heard of thei
 
 **What the Vethari are:**
 
-The Vethari are not a military force. They are not an empire. They are not invaders in any sense that implies territorial ambition or strategic planning. They are a species in a state of continuous neurological crisis, operating a ship that their ancestors built during a period of coherence that ended before human civilization began.
+The Vethari are not invaders. They are a species in a state of continuous neurological crisis, operating a ship that their ancestors built during a period of coherence that ended before human civilization began.
 
 The ship navigates autonomously. The Vethari did not design it to navigate autonomously — they designed it to be piloted by a crew of three hundred operating in the shared-perception mode that the fungus originally facilitated. The shared perception was, before the corruption, a tool: a navigation interface that allowed three hundred minds to process stellar cartography simultaneously. The ship's control systems are calibrated for three hundred inputs arriving in concert. The fungus provided the concert. When the fungus corrupted the perception into psychosis, the navigation systems continued to receive three hundred inputs. The inputs were no longer coherent. The ship's autonomous routines — designed as emergency backups — took over. The backups follow the last coherent flight plan, which was a survey route plotted before the corruption. The route visits systems. The ship arrives. The Vethari emerge. The backups do not have a protocol for what happens when the crew exits the ship and kills everything on the nearest planet. The backups were not designed for that scenario. Nobody was.
 
@@ -56,7 +56,7 @@ The fungus is transmissible to humans. This is in the classified file. The colon
 
 **What this means for the game:**
 
-The Vethari never appear on screen. They are Karla. They are the thing in the next room that you can hear through the wall.
+The Vethari never appear on screen. They are the thing in the next room that you can hear through the wall.
 
 The evidence of their existence appears as:
 - Fragments of hull material in Concord evidence storage (the artifact)
@@ -75,9 +75,9 @@ The Vethari are not a quest. There is no mission to fight them, find them, or st
 
 There is no connection. The Vethari did not cause the Silt economy. The recycler theft was a human crime for human profit. The atmospheric collapse of the Pit was manufactured by the same system that suppresses the Vethari evidence — not because the two are related, but because the system suppresses everything inconvenient with the same tools.
 
-This parallel is the point. The Vethari fungus corrupts a species-wide neural architecture. ATMO DEBT corrupts a system-wide economic architecture. Both produce violence without intent. Both are managed by ledgers. Both are recorded by systems that were never designed to stop them.
+The Vethari fungus corrupts a species-wide neural architecture. ATMO DEBT corrupts a system-wide economic architecture. Both produce violence without intent. Both are managed by ledgers. Both are recorded by systems that were never designed to stop them.
 
-The Vethari are what happens when a biological system optimized for connection exceeds its parameters. The Pit is what happens when an economic system optimized for allocation exceeds its parameters. Nobody designed either outcome. Both are correct, by the grammar of the system that produced them.
+The Vethari are what happens when a biological system optimized for connection exceeds its parameters. The Pit is what happens when an economic system optimized for allocation exceeds its parameters. Nobody designed either outcome.
 
 ---
 

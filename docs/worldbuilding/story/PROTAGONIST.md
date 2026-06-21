@@ -6,7 +6,7 @@
 
 Wren flies a ship called the Tessera that someone else stole and someone else abandoned and someone else gave him because they owed him a debt that couldn't be paid any other way. He is a hacker who learned to pilot because hacking requires a ship and piloting requires not dying. He is not good at violence. He is good at not being where violence happens, which is a different skill that looks the same from the outside.
 
-He talks like a card dealer: steady, precise, slightly too fast for you to catch the tell. When he's comfortable he talks too much. When he's working he says nothing. There is no middle register. People mistake the talking for friendliness and the silence for hostility. Both are wrong. The talking is how he reads the room. The silence is how he survives it.
+He talks like a card dealer: steady, precise, slightly too fast for you to catch the tell. When he's comfortable he talks too much. When he's working he says nothing. There is no middle register. People mistake the talking for friendliness and the silence for hostility. Both are wrong.
 
 He is thirty-one years old. He has been in this part of the galaxy for nineteen years. He does not know the name of this part of the galaxy in any language that was spoken where he grew up. He knows the trade routes, the gate sequences, the dock codes, the price of reactor fuel at Tycho on a Tuesday, the way Kessler's thumb sits on the scale when the load is heavy. He does not know how to get home. He stopped trying to find out eleven years ago. He started again six months ago, when a job went wrong and something he hadn't seen since he was twelve years old was sitting in the cargo hold wrapped in packing foam and mislabeled as industrial composite.
 
@@ -14,9 +14,9 @@ He is thirty-one years old. He has been in this part of the galaxy for nineteen 
 
 **Where he's from:**
 
-A planet that doesn't appear on any chart in this part of the galaxy. Not classified, not redacted — simply not indexed. Humanity spread far enough that the places it started from became trivia, then rumor, then nothing. His planet was an agricultural world with one city and a university and weather that made people complain in the way people complain about weather when nothing worse has happened yet. He was twelve when something worse happened.
+A planet that doesn't appear on any chart in this part of the galaxy. Humanity spread far enough that the places it started from became trivia, then rumor, then nothing. His planet was an agricultural world with one city and a university and weather that made people complain in the way people complain about weather when nothing worse has happened yet. He was twelve when something worse happened.
 
-They came in a ship that blotted the sun. Not a metaphor — the ship was large enough that its shadow crossed the horizon and the temperature dropped three degrees in the time it took to look up. The ship did not communicate. The ship did not demand surrender. The ship opened and things came out of it.
+They came in a ship that blotted the sun. Not a metaphor — the ship was large enough that its shadow crossed the horizon and the temperature dropped three degrees in the time it took to look up. The ship did not transmit. It opened and things came out of it.
 
 ---
 
@@ -34,7 +34,7 @@ The problem is that the connection doesn't discriminate. Every sensation, every 
 
 The result is not an army. It is a species-wide psychotic break that has been ongoing for longer than anyone can date. Individual Vethari retain consciousness. They know what they are doing. They cannot stop doing it because stopping requires a moment of neurological isolation that the fungus will not permit. The filaments maintain the connection even during sleep. Especially during sleep.
 
-What they do to planets is not conquest. Conquest implies intent. What the Vethari do is what happens when a hundred thousand minds share every killing impulse simultaneously and the architecture that once measured violence to the gram can no longer measure anything at all. They don't occupy. They swarm, they break, they move on. The ship stays in orbit. The things that come out of it do what the fungus makes them do. When the planet is used up — when there is nothing left to trigger the rage-loss-rage cycle — the ship moves. The Vethari inside return to something that looks like catatonia until the next world.
+What the Vethari do to planets is what happens when a hundred thousand minds share every killing impulse simultaneously and the architecture that once measured violence to the gram can no longer measure anything at all. They don't occupy. They swarm, they break, they move on. The ship stays in orbit. The things that come out of it do what the fungus makes them do. When the planet is used up — when there is nothing left to trigger the rage-loss-rage cycle — the ship moves. The Vethari inside return to something that looks like catatonia until the next world.
 
 Between the violence, in the ship, they sit with images of what they were. Wren has seen this. They hold objects — small things, carvings, data wafers — and the sound they make is the sound of their own name, repeated, which is also the word for what is owed, which is also the word for what was lost. The sound does not stop. The fungus transmits it.
 
@@ -62,7 +62,7 @@ The escape: he found a maintenance shaft that opened to an exterior hull access 
 
 The Vethari killed itself. It broke its own cervical structure with its hands. The motion was precise — the ledger-precision that the species once applied to everything. It did this because the shared field would have transmitted its awareness of Wren's position to every connected individual on the ship within seconds. The only way to prevent the transmission was to sever the connection. The only way to sever the connection was to die.
 
-Wren went through the hatch. He was twelve years old. He does not talk about the nine weeks. He does not talk about the Vethari who killed itself. If pressed — and nobody presses, because nobody in this part of the galaxy believes the story and the few who would believe it are the kind of people you don't tell — he says "I was on a ship and then I wasn't." This is the complete truth.
+Wren went through the hatch. He was twelve years old. He does not talk about the nine weeks. He does not talk about the Vethari who killed itself. If pressed — and nobody presses, because nobody in this part of the galaxy believes the story and the few who would believe it are the kind of people you don't tell — he says "I was on a ship and then I wasn't."
 
 ---
 
@@ -72,7 +72,7 @@ He was picked up by a freight hauler two days after the escape. The hauler's cre
 
 He was twelve. He didn't speak the language. He had no money, no identification, no legal status, no records in any system. He was a child standing on a dock in a station where the air tasted like metal and the lighting was 60% spectrum and nobody asked where he came from because nobody on that dock had come from anywhere worth asking about.
 
-He lived on stations for twelve years. He learned the language by listening to dock workers argue about cargo weights. He learned to hack by watching maintenance techs leave diagnostic ports open. He learned to read people by sitting in bars where the clientele paid for drinks with scrip and left with information. He was good at cards because cards are pattern recognition and Wren's pattern recognition had been calibrated by nine weeks of tracking Vethari grief cycles to predict windows of safety. A card table is a simpler system.
+He lived on stations for twelve years. He learned the language listening to dock workers argue about cargo weights. Watching maintenance techs leave diagnostic ports open taught him to hack. The bars where the clientele paid for drinks with scrip and left with information taught him to read people. He was good at cards because cards are pattern recognition and Wren's pattern recognition had been calibrated by nine weeks of tracking Vethari grief cycles to predict windows of safety. A card table is a simpler system.
 
 By twenty he was running with a crew. Five people: Wren (the tech), a pilot named Sable who taught him to fly and who is now dead of something unrelated, a fixer named Caro who is somewhere in the outer sectors and hasn't been seen in three years, a muscle named Dak who was exiled from Concord space for something he won't discuss, and the boss — a man called Torren who ran the crew the way a good card player runs a table: loose, fast, and always one hand ahead of the room.
 
@@ -112,13 +112,13 @@ He was recovered by a salvage crew that was scanning debris fields for hull mate
 
 The salvage crew dropped him at a station. A different station than the one where he'd started as a twelve-year-old, but the same kind of station: outer industrial, bad air, 60% spectrum. A woman who ran cargo out of the station's secondary dock owed a debt to the salvage crew's captain. The debt was settled by giving Wren a ship. The ship was the Tessera. It had a reactor that worked and a hull that held and a transponder ID that had been through enough owners that the registry entry was a palimpsest of names nobody remembered.
 
-Wren was twenty-six. He had been alive for twenty-six years and awake for twenty-two of them and none of those years had been easy and he did not expect the remaining ones to be different.
+Wren was twenty-six, and had been awake for twenty-two of those years.
 
 ---
 
 **Six months ago:**
 
-A cargo job through the outer industrial belt. Standard manifest: components, labeled and sealed, origin Meridian Exchange, destination a station Wren had visited before. The seals were Concord. The weight was right. The job was right. The pay was fifteen percent above market rate for the route, which Wren noticed and filed under the part of his brain that tracks tells.
+A cargo job through the outer industrial belt. Standard manifest: components, labeled and sealed, origin Meridian Exchange, destination a station Wren had visited before. The seals were Concord. The weight was right. The pay was fifteen percent above market rate for the route, which Wren noticed and filed under the part of his brain that tracks tells.
 
 Midway through transit, a scan anomaly flagged one crate. The anomaly was minor — a material density reading that didn't match the manifest description. Wren opened the crate because a density mismatch on a Concord-sealed crate is the kind of thing that gets you arrested at the next gate if the customs officer is having a bad day.
 
@@ -210,6 +210,6 @@ The two stories intersect at REF 44-C. The same administrative code that governs
 
 Wren doesn't know about Contract 47-A's real nature. He doesn't know about the recycler theft. He doesn't know about ATMO DEBT or the Slow Gray or the Silt economy. He is running the same contracts as everyone else, getting stiffed the same way, reading the same graffiti. The systemic story happens to him the way it happens to everyone. His personal story — the artifact, the search for Callum, the search for coordinates that might lead to a planet that might still have a grain silo with a crawlspace beneath it — runs underneath, visible only to him.
 
-The game's two stories never merge into one revelation. The player can pursue both. Neither resolves the other. The systemic rot is not caused by the aliens. The aliens are not explained by the systemic rot. They coexist the way real problems coexist: independently, simultaneously, and with no shared solution.
+The game's two stories never merge into one revelation. The player can pursue both. Neither resolves the other. The systemic rot is not caused by the aliens. The aliens have nothing to do with the systemic rot. They share a bureaucracy, not a cause.
 
-The Vethari are always off-frame. Always present. The fungus is the system. The ledger is the only honest record. The mass is always the same. Only the manifest changes.
+The Vethari are always off-frame.
