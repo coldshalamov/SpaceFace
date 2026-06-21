@@ -20,6 +20,7 @@ import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';   // ADR-0002 / V2 §33 — offscreen stat sim
 import { missions } from '../systems/missions.js';
 import { story } from '../systems/story.js';
+import { scenarioRuntime } from '../systems/scenarioRuntime.js';
 import { presentationOrchestrator } from '../systems/presentationOrchestrator.js';
 import { presentationAdapters } from '../systems/presentationAdapters.js';
 import { ships } from '../systems/ships.js';
@@ -43,7 +44,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flight, weapons, combat, mining, cargo, economy,
-    automation, intervention, world, factions, sectorSim, missions, story, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
+    automation, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -64,7 +65,7 @@ export function createRegistry(ctx) {
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
     input, aiSlot, aiEncounter, actions, flight, aiPorts, weapons, physics, combat, mining, cargo, crafting,
-    economy, automation, intervention, world, factions, sectorSim, missions, story, heat, traffic, drill, claims, onboarding,
+    economy, automation, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
   byName.set('ai', aiSlot);

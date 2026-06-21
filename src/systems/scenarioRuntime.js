@@ -33,6 +33,7 @@ export const scenarioRuntime = {
 
   update() {
     if (!this._contract) return;
+    if (this.state.mode !== 'flight' || !this.state.playerId) return;
     const scenario = ensureScenarioState(this.state);
     const active = scenario.active;
     if (!active || active.id !== this._contract.id || active.contractHash !== this._contractHash) {

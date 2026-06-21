@@ -6,12 +6,18 @@ import { createGameState } from './core/gameState.js';
 import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
 import { startLoop } from './core/loop.js';
+import { canonicalStringify } from './core/simSnapshot.js';
 import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
 import { NEW_GAME } from './data/newGameDefaults.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { applyAccessibility } from './ui/accessibility.js';
+import {
+  SCENARIO_47A_CONTRACT_PATH,
+  mark47aPlayerActor,
+  spawn47aOpeningScene,
+} from './data/scenarios/47aLiveScene.js';
 
 // Debug surfaces (the mutable window.SF handle + boot logs) are exposed only OUTSIDE a packaged build.
 // The packaged app loads the page with ?prod=1 (electron/main.cjs); dev servers, the preview, and a
@@ -24,7 +30,12 @@ async function boot() {
     const seed = (Date.now() & 0x7fffffff) >>> 0;
     const state = createGameState(seed);
     const bus = createBus();
-    const helpers = {};
+    const contract = await loadScenarioContract(new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
+    const helpers = {
+      scenarioContract: contract.document,
+      scenarioContractPath: contract.path,
+      scenarioContractHash: contract.sha256,
+    };
     const ctx = { state, bus, three: THREE, registry: null, helpers };
 
     const registry = createRegistry(ctx);
@@ -86,6 +97,7 @@ function bootstrapScene(state, helpers, bus, registry) {
   });
   const player = helpers.spawnEntity(playerSpec);
   state.playerId = player.id;
+  mark47aPlayerActor(player);
   state.player.credits = NEW_GAME.credits || 5000;
   const ships = registry.get('ships');
   if (ships && typeof ships.recomputeActiveShip === 'function') ships.recomputeActiveShip();
@@ -99,6 +111,7 @@ function bootstrapScene(state, helpers, bus, registry) {
     helpers.spawnEntity({ type: 'station', factionId: 'faction_scn', pos: { x: 280, z: -140 }, radius: 42, mass: 1e6, hull: 1e6, hullMax: 1e6, data: { stationId: 'station_helios', dockRadius: 72, services: ['market', 'shipyard', 'missions'] } });
     for (let i = 0; i < 12; i++) { const a = (Math.PI * 2 * i) / 12; const r = 360 + state.rng() * 200; helpers.spawnEntity({ type: 'asteroid', pos: { x: Math.cos(a) * r, z: Math.sin(a) * r }, radius: 12, mass: 500, hull: 240, hullMax: 240, data: { typeId: 'ast_rock', oreHP: 240, oreHPMax: 240 } }); }
   }
+  spawn47aOpeningScene({ state, helpers });
 }
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
@@ -166,6 +179,7 @@ function resetRunState(state, opts = {}) {
   state.factions = fresh.factions;
   state.conflicts = fresh.conflicts;
   state.missions = fresh.missions;
+  state.scenario = fresh.scenario;
   state.story = fresh.story;
   state.world = fresh.world;
   state.jump = fresh.jump;
@@ -187,6 +201,23 @@ function showBootError(err) {
   const o = document.getElementById('boot-overlay');
   if (o) o.innerHTML = '<div class="boot-error">BOOT ERROR\n\n' + ((err && err.stack) || err) + '</div>';
   console.error('[boot]', err);
+}
+
+async function loadScenarioContract(url, path) {
+  const response = await fetch(url, { cache: 'no-cache' });
+  if (!response.ok) throw new Error(`Unable to load scenario contract ${path}: HTTP ${response.status}`);
+  const document = await response.json();
+  return {
+    document,
+    path,
+    sha256: await sha256Hex(canonicalStringify(document)),
+  };
+}
+
+async function sha256Hex(text) {
+  const bytes = new TextEncoder().encode(String(text || ''));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 boot();
