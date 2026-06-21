@@ -22,6 +22,8 @@ state.entityList.push(ship);
 
 const helpers = {};
 const bus = createBus();
+const pickupsCollected = [];
+bus.on('pickup:collected', (payload) => pickupsCollected.push(payload));
 
 physics.init({ state, bus, helpers });
 assert.equal(typeof helpers.combatPhysics.applyImpulse, 'function', 'physics.init should install a stable SG-03 combat physics port');
@@ -65,6 +67,23 @@ assert.equal(helpers.combatPhysics.applyImpulse({ entityId: ship.id, impulse: { 
 physics.update(DT, state);
 assert(readPhysicsTelemetry(ship).force.x === 0, 'one-shot combat impulse should not masquerade as continuous flight force');
 
+const pickup = makePickup(2, ship.pos.x, ship.pos.z);
+state.entities.set(pickup.id, pickup);
+state.entityList.push(pickup);
+
+physics.update(DT, state);
+assert.equal(pickup.alive, false, 'rapier-dynamic mode should emit pickup collection contacts');
+assert.equal(pickupsCollected.length, 1, 'rapier-dynamic mode should collect a pickup exactly once');
+assert.deepEqual(pickupsCollected[0], {
+  pickupId: pickup.id,
+  collectorId: ship.id,
+  kind: 'cargo',
+  amount: 2,
+  commodityId: 'cmdty_scrap_metal',
+  pos: { x: pickup.pos.x, z: pickup.pos.z },
+});
+assert.equal(state.physicsRuntime.diagnostics.pickupCollections, 1, 'physics diagnostics should count dynamic pickup contact events');
+
 physics._disableSg02DynamicAuthority();
 
 console.log('SG-02 production authority checks OK');
@@ -91,6 +110,23 @@ function makeShip(id) {
     flags: {},
     collisionMask: Masks.ASTEROID | Masks.STATION | Masks.SHIP,
     data: {},
+  };
+}
+
+function makePickup(id, x, z) {
+  return {
+    id,
+    type: 'pickup',
+    alive: true,
+    collides: true,
+    radius: 6,
+    mass: 1,
+    pos: { x, z },
+    prevPos: { x, z },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    collisionMask: Masks.SHIP | Masks.DRONE,
+    data: { kind: 'cargo', commodityId: 'cmdty_scrap_metal', amount: 2 },
   };
 }
 

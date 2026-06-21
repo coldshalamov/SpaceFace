@@ -50,6 +50,7 @@ export const physics = {
       sg02Attachments: 0,
       sweptShipContacts: 0,
       sweptProjectileHits: 0,
+      pickupCollections: 0,
       tickMs: 0,
     };
   },
@@ -58,11 +59,13 @@ export const physics = {
     const t0 = nowMs();
     this._diag.sweptShipContacts = 0;
     this._diag.sweptProjectileHits = 0;
+    this._diag.pickupCollections = 0;
     if (usesSg02DynamicAuthority(state)) {
       this._updateSg02DynamicAuthority(dt, state);
       if (state.spatialHash) state.spatialHash.rebuild(state.entityList);
+      this.collectPickups(state);
       this.sweepProjectiles(dt, state);
-      if (state.spatialHash && this._diag.sweptProjectileHits > 0) state.spatialHash.rebuild(state.entityList);
+      if (state.spatialHash && (this._diag.sweptProjectileHits > 0 || this._diag.pickupCollections > 0)) state.spatialHash.rebuild(state.entityList);
       this.updateDockRange(state);
       this._diag.tickMs = Math.max(0, nowMs() - t0);
       state.physicsRuntime = state.physicsRuntime || {};
@@ -74,13 +77,34 @@ export const physics = {
     if (state.spatialHash) state.spatialHash.rebuild(state.entityList);
     this.sweepShipStatics(dt, state);
     this.sweepProjectiles(dt, state);
-    if (state.spatialHash && this._diag.sweptShipContacts > 0) state.spatialHash.rebuild(state.entityList);
+    this.collectPickups(state);
+    if (state.spatialHash && (this._diag.sweptShipContacts > 0 || this._diag.pickupCollections > 0)) state.spatialHash.rebuild(state.entityList);
     this.collide(dt, state);
     this._syncOptionalBackend(dt, state);
     this.updateDockRange(state);
     this._diag.tickMs = Math.max(0, nowMs() - t0);
     state.physicsRuntime = state.physicsRuntime || {};
     state.physicsRuntime.diagnostics = this._diag;
+  },
+
+  collectPickups(state) {
+    const pickups = (state.entityIndex && state.entityIndex.pickups) || state.entityList;
+    const collectors = (state.entityIndex && state.entityIndex.shipLike) || state.entityList;
+    for (const pk of pickups) {
+      if (!pk.alive || !pk.collides || pk.type !== 'pickup') continue;
+      for (const col of collectors) {
+        if (!pk.alive) break;
+        if (!col.alive || !col.collides || (col.type !== 'ship' && col.type !== 'drone')) continue;
+        if (!canCollide(pk, col) && !canCollide(col, pk)) continue;
+        const dx = col.pos.x - pk.pos.x;
+        const dz = col.pos.z - pk.pos.z;
+        const rsum = (col.radius || 0) + (pk.radius || 0);
+        if (dx * dx + dz * dz > rsum * rsum) continue;
+        emitPickupCollected(this.bus, pk, col);
+        pk.alive = false;
+        this._diag.pickupCollections++;
+      }
+    }
   },
 
   _updateSg02DynamicAuthority(dt, state) {
@@ -278,8 +302,7 @@ export const physics = {
       const pk = ta === 'pickup' ? a : b;
       const col = ta === 'pickup' ? b : a;
       if (col.type !== 'ship' && col.type !== 'drone') return;
-      const d = pk.data || {};
-      bus.emit('pickup:collected', { pickupId: pk.id, collectorId: col.id, kind: d.kind, amount: d.amount, commodityId: d.commodityId, pos: { x: pk.pos.x, z: pk.pos.z } });
+      emitPickupCollected(bus, pk, col);
       pk.alive = false;
       return;
     }
@@ -512,6 +535,18 @@ function cloneDamagePacketWithHit(packet, pos) {
   };
   if (packet.impulse) out.impulse = { ...packet.impulse };
   return out;
+}
+
+function emitPickupCollected(bus, pk, col) {
+  const d = pk.data || {};
+  bus.emit('pickup:collected', {
+    pickupId: pk.id,
+    collectorId: col.id,
+    kind: d.kind,
+    amount: d.amount,
+    commodityId: d.commodityId,
+    pos: { x: pk.pos.x, z: pk.pos.z },
+  });
 }
 
 function invMass(e) { return (e.type === 'station' || e.type === 'asteroid') ? 0 : 1 / Math.max(0.1, e.mass); }
