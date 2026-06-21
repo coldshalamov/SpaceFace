@@ -16,6 +16,13 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const BRANCH_LIFECYCLE_KEYS = ['abandon', 'active', 'aftermath', 'complete', 'fail', 'offer', 'reminder'];
 const REQUIRED_DIALOGUE_BEATS = ['drop_wreck_field', 'stabilize_spindle', 'scavenger_arrival'];
+const VISIBLE_DIALOGUE_BUDGET = Object.freeze({
+  maxChars: 96,
+  maxWords: 18,
+  wrapColumn: 48,
+  maxWrappedLines: 2,
+});
+const FORBIDDEN_VISIBLE_TUTORIAL_TERMS = /\b(tutorial|press|click|wasd|arrow keys|left mouse|right mouse|spacebar|hotkey)\b/i;
 
 const scenario = readJson(SCENARIO_PATH);
 const report = validateScenarioDocument(scenario, { file: SCENARIO_PATH });
@@ -50,6 +57,8 @@ for (const line of scenario.dialogue) {
 for (const beatId of REQUIRED_DIALOGUE_BEATS) {
   assert((dialogueByBeat.get(beatId) || 0) >= 1, `${beatId} should execute at least one authored dialogue line`);
 }
+const dialogueBudgetIssues = collectDialogueBudgetIssues(scenario.dialogue);
+assert.deepEqual(dialogueBudgetIssues, [], `47-A visible dialogue violates the tutorial line-cap budget:\n${dialogueBudgetIssues.join('\n')}`);
 
 for (const branch of scenario.branches) {
   assert(branch.policyId.startsWith('policy.47a.'), `${branch.id} should have a 47-A policy id`);
@@ -106,6 +115,11 @@ function assertRejectsMalformedScenario() {
   const badDialogueCue = clone(scenario);
   badDialogueCue.dialogue[0].presentationEventId = 'scenario.comms.missing';
   assertIssue(badDialogueCue, 'cueRef', 'dialogue presentation cue references should resolve');
+
+  const paragraphDialogue = clone(scenario);
+  paragraphDialogue.dialogue[0].text = 'Press W to move toward the objective marker, then hold the interact key when the tutorial prompt tells you to attach the tether.';
+  assert(collectDialogueBudgetIssues(paragraphDialogue.dialogue).length >= 1,
+    'visible dialogue budget should reject paragraph/tutorial-control copy');
 }
 
 function assertCliValidation() {
@@ -133,4 +147,43 @@ function readJson(rel) {
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function collectDialogueBudgetIssues(dialogue = []) {
+  const issues = [];
+  for (const line of dialogue || []) {
+    const id = line && line.id || '<unknown>';
+    const text = String(line && line.text || '').trim().replace(/\s+/g, ' ');
+    const words = text ? text.split(/\s+/).length : 0;
+    const wrappedLines = countWrappedLines(text, VISIBLE_DIALOGUE_BUDGET.wrapColumn);
+    if (text.length > VISIBLE_DIALOGUE_BUDGET.maxChars) {
+      issues.push(`${id}: ${text.length} chars exceeds ${VISIBLE_DIALOGUE_BUDGET.maxChars}`);
+    }
+    if (words > VISIBLE_DIALOGUE_BUDGET.maxWords) {
+      issues.push(`${id}: ${words} words exceeds ${VISIBLE_DIALOGUE_BUDGET.maxWords}`);
+    }
+    if (wrappedLines > VISIBLE_DIALOGUE_BUDGET.maxWrappedLines) {
+      issues.push(`${id}: wraps to ${wrappedLines} lines at ${VISIBLE_DIALOGUE_BUDGET.wrapColumn} cols`);
+    }
+    if (FORBIDDEN_VISIBLE_TUTORIAL_TERMS.test(text)) {
+      issues.push(`${id}: visible 47-A copy must stay in-world, not tutorial/control language`);
+    }
+  }
+  return issues;
+}
+
+function countWrappedLines(text, width) {
+  if (!text) return 0;
+  let lines = 1;
+  let col = 0;
+  for (const word of text.split(/\s+/)) {
+    const extra = col === 0 ? word.length : word.length + 1;
+    if (col > 0 && col + extra > width) {
+      lines += 1;
+      col = word.length;
+    } else {
+      col += extra;
+    }
+  }
+  return lines;
 }
