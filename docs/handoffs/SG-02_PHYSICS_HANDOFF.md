@@ -39,13 +39,14 @@ Follow-up before making `rapier-dynamic` the default:
 - `scripts/check-sg02-authority.mjs`
 - `scripts/check-sg02-production-combat-port.mjs`
 - `scripts/check-sg02-tether.mjs`
+- `scripts/check-sg02-tether-break.mjs`
 - `scripts/check-sg02-dash-collision.mjs`
 - `scripts/check-sg02-save-reload.mjs`
 - `scripts/check-sg02-dynamic-body-owner.mjs`
 - `scripts/check-physics-authority.mjs`
 - Cross-SG reload gate: `scripts/check-sg03-save-reload.mjs` via `npm run check:combat`
 
-`npm run check:sg02` runs the SG-02 intake, membrane, lab, production-authority, production-combat-port, tether, dash-collision, and save/reload gates.
+`npm run check:sg02` runs the SG-02 intake, membrane, lab, production-authority, production-combat-port, tether, Massline break telemetry, dash-collision, and save/reload gates.
 
 ## Superseded Legacy Code
 
@@ -55,4 +56,4 @@ The old kinematic Rapier observer authority was removed from `src/core/rapierCol
 
 - `rapier-dynamic` is explicit opt-in, not the default 47-A replay backend yet.
 - Projectile hit/pickup/docking parity still depends on legacy projections and needs deeper SG-01 save/replay work before default activation.
-- SG-06 tactical AI remains registry-gated until the production ports are exercised by the live tactical system with encounter ownership, physical formation convergence, and legacy intent/fire path deletion in the same milestone.
+- SG-06 tactical AI remains registry-gated until the production ports are exercised by the live tactical system with encounter ownership and legacy intent/fire path deletion in the same milestone.

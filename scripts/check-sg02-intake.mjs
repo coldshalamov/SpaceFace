@@ -11,6 +11,7 @@ const REQUIRED_FULL_HANDOFF = Object.freeze([
   'third_party/reference-ledger-sg02.yml',
   'scripts/check-sg02-authority.mjs',
   'scripts/check-sg02-tether.mjs',
+  'scripts/check-sg02-tether-break.mjs',
   'scripts/check-sg02-dash-collision.mjs',
 ]);
 
@@ -66,6 +67,8 @@ if (dynamicMarkers.length || hasFullHandoff) {
     'dynamic SG-02 landing requires check:sg02 to run the authority acceptance suite');
   assert(scripts['check:sg02'] && scripts['check:sg02'].includes('check-sg02-tether'),
     'dynamic SG-02 landing requires check:sg02 to run the tether acceptance suite');
+  assert(scripts['check:sg02'] && scripts['check:sg02'].includes('check-sg02-tether-break'),
+    'dynamic SG-02 landing requires check:sg02 to run the Massline break telemetry suite');
   assert(hasFixtureFiles('test/sg02'), 'dynamic SG-02 landing requires at least one test/sg02 fixture');
   assertNoKinematicAuthority();
 }

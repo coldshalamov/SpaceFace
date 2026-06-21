@@ -14,7 +14,7 @@ Accepted at port level.
 
 The final archive provides the missing five-layer stack, canonical SG-03 action adapter, fail-closed tactical system wrapper, explainability trace, inspection endpoint, clean-room ledger, handoff document, checked acceptance evidence, and the deterministic 100-seed SG-06 acceptance harness.
 
-This is not a live replacement for `src/systems/ai.js` yet. SG-02 dynamic-body authority is now present as the explicit `rapier-dynamic` backend, and `src/systems/aiPorts.js` installs production-shaped `helpers.aiSensors`, `helpers.aiRoster`, `helpers.aiManeuver`, and `helpers.aiEncounter` ports. `src/systems/tacticalAI.js` still stays unregistered until the live parity gates prove real-registry convergence, Massline break telemetry, active encounter-command ownership, and removal of legacy `entity.data.intent`/weapon dependencies.
+This is not a live replacement for `src/systems/ai.js` yet. SG-02 dynamic-body authority is now present as the explicit `rapier-dynamic` backend, and `src/systems/aiPorts.js` installs production-shaped `helpers.aiSensors`, `helpers.aiRoster`, `helpers.aiManeuver`, and `helpers.aiEncounter` ports. `src/systems/tacticalAI.js` still stays unregistered until the live parity gates prove real-registry convergence, tacticalAI-triggered Massline overload behavior, active encounter-command ownership, and removal of legacy `entity.data.intent`/weapon dependencies.
 
 ## Accepted now
 
@@ -45,7 +45,7 @@ This is not a live replacement for `src/systems/ai.js` yet. SG-02 dynamic-body a
 - Registering `src/systems/tacticalAI.js` in `src/core/registry.js`.
 - Deleting legacy `entity.data.intent.fire`, `fireGroup`, lead-angle, and direct NPC flight paths.
 - Claiming physical formation convergence in the real registry slot.
-- Claiming real tether overload/break telemetry.
+- Claiming tacticalAI-triggered tether overload/break behavior in the real registry slot.
 - Claiming full SG-02/SG-06 live AI replacement in production.
 
 These are blocked until the tactical stack is run against the real registry slot with production sensors, SG-03 actions, SG-02 dynamic bodies, encounter commands, and legacy weapon/intent dependencies removed in the same milestone.
@@ -59,5 +59,6 @@ These are blocked until the tactical stack is run against the real registry slot
 - `npm run check:sg06:formation`
 - `npm run check:sg06:ai`
 - `npm run check:sg06`
+- `npm run check:sg02:tether-break`
 
-The checked evidence record is `docs/Spec/SG-06_ACCEPTANCE.json`. It records 100 seeds x 600 ticks, seven tactics, both canonical counter-tether actions (`action_cut`, `action_dash`), no privileged action path, bounded stationarity, pressure within the authored envelope, and the explicit `covered_by_check_sg06_formation` physical-convergence status.
+The checked evidence record is `docs/Spec/SG-06_ACCEPTANCE.json`. It records 100 seeds x 600 ticks, seven tactics, both canonical counter-tether actions (`action_cut`, `action_dash`), no privileged action path, bounded stationarity, pressure within the authored envelope, and the explicit `covered_by_check_sg06_formation` physical-convergence status. The SG-02 foundation gate `check:sg02:tether-break` now proves the Massline threshold telemetry path separately; SG-06 still needs the live registry slot to trigger that path from tactical decisions.

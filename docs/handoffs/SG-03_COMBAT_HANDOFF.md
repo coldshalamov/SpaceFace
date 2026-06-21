@@ -339,7 +339,7 @@ The save/reload fixture creates a real SG-02 Massline, saves while `action_reel`
 
 ## Migration plan
 
-1. **Land SG-02 on master.** Confirm authoritative dynamic bodies, tether constraints, break telemetry, stable body IDs, and no `setNextKinematicTranslation` gameplay authority.
+1. **Land SG-02 on master.** Confirm authoritative dynamic bodies, tether constraints, break telemetry, stable body IDs, and no `setNextKinematicTranslation` gameplay authority. Current master covers this through `npm run check:sg02`, including `check:sg02:tether-break`.
 2. **Implement `helpers.combatPhysics`.** Adapt SG-02 bodies/constraints to the port above. Do not pass Rapier objects into `state.combat`.
 3. **Apply this patch.** Run `npm run check:combat`, then the complete `npm run check`.
 4. **Wire player controls.** Translate dash/attach/reel/sling/cut/burst inputs into `requestCombatAction`. Do not mutate combat state from UI.

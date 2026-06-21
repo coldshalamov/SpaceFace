@@ -2,13 +2,15 @@
 
 **Job:** SG-06  
 **Patch base inspected:** `master` on 2026-06-21  
-**Implementation status:** five-layer AI stack, canonical SG-03 adapter, explainability trace, inspection endpoint, clean-room ledger, production-shaped sensor/roster/maneuver ports, and 100-seed contract suite complete. Production registration and physical convergence remain hard-gated on live parity evidence in the real registry slot.
+**Implementation status:** five-layer AI stack, canonical SG-03 adapter, explainability trace, inspection endpoint, clean-room ledger, production-shaped sensor/roster/maneuver ports, and 100-seed contract suite complete. Production registration remains hard-gated on live parity evidence in the real registry slot.
 
 ## Dependency gate
 
 SG-03 is integrated on the inspected `master`. The canonical combat runtime lives under `src/combat/`, and `src/data/combatDefs.js` owns the authored `ActionDef` records. `createSG03ActionPort(ctx)` consumes those definitions and submits AI requests through `kernel.actions.requestAction(...)` with `source.kind = 'ai'`. There is no AI-only damage, cooldown, heat, capacitor, subsystem, attachment, or cancellation path.
 
 SG-02 is integrated on `master` as the explicit `rapier-dynamic` backend. `src/systems/aiPorts.js` now installs production-shaped `helpers.aiSensors`, `helpers.aiRoster`, and `helpers.aiManeuver` ports. The maneuver port fails closed until `rapier-dynamic` is selected and SG-02 readiness telemetry is present, then compiles normalized SG-06 local force/yaw requests into `writePhysicsControl(...)` for the SG-02 owner to consume. SG-06 still does not register itself in the production registry, does not write legacy flight intent, and does not mutate velocity or transforms.
+
+The SG-02 foundation gate `npm run check:sg02:tether-break` proves SG-03 semantic Massline state can receive SG-02 threshold tension/impulse telemetry, break with reason `threshold`, emit the break trace, and remove the physical rope. SG-06 still has to prove tacticalAI can trigger that path from the real registry slot.
 
 ## Delivered files
 
@@ -273,6 +275,8 @@ npm run check:sg06:encounter-sink
 npm run check:sg06:live-shadow
 
 npm run check:sg06:formation
+
+npm run check:sg02:tether-break
 ```
 
 Checked-in result: `docs/Spec/SG-06_ACCEPTANCE.json`.
@@ -285,13 +289,15 @@ The live-shadow gate constructs `createTacticalAISystem(...)` against production
 
 The formation gate runs `createTacticalAISystem(...)` with production `helpers.aiSensors`, `helpers.aiRoster`, and `helpers.aiManeuver` against the real SG-02 `rapier-dynamic` owner. It proves three dynamic AI ships receive and flush maneuver requests through `aiPorts`, follower slot error enters the authored formation bound, commanded-stationary time stays below the watchdog threshold, and the run replays deterministically. The maneuver planner now slows formation/hold approaches over a formation-sized radius so dynamic bodies converge instead of overshooting the slot.
 
+The Massline break gate is owned by SG-02/SG-03. It shortens a semantic Massline through the SG-03 attachment service, lets SG-02 publish threshold tension/impulse telemetry, and proves SG-03 breaks the attachment with trace evidence and releases the physical rope.
+
 The final 100-seed run on 2026-06-21 produced:
 
 - seven materially distinct tactics across scavenger and official wings;
 - both tether counters through canonical IDs `action_cut` and `action_dash`;
 - maximum four material action transitions per ship and no A/B/A/B/A oscillation;
 - maximum one commanded-stationary tick, below the 180-tick threshold;
-- 14,387 formation-recovery requests when non-broken members exceeded the authored rejoin threshold;
+- 17,088 formation-recovery requests when non-broken members exceeded the authored rejoin threshold;
 - pressure range `0.22..0.698987` inside authored `0.16..0.76`;
 - all six trace layers for every decision tick;
 - deterministic replay equality for five sampled seeds;
@@ -308,6 +314,7 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 | No unintended stationary >180 ticks | maneuver watchdog and seeded assertion; max 1 | pass at request level; physical pass requires SG-02 |
 | No action-state oscillation above threshold | commit windows, switch margins, SG-03 cancel prediction, seeded assertions | pass |
 | Role/formation bounds until explicit break | stable roles, explicit reasons, recovery request assertion, Rapier formation convergence gate | pass at request and standalone SG-02 physical level; live registry slot still gated |
+| Massline threshold break telemetry | SG-02/SG-03 `check:sg02:tether-break` gate | pass at foundation level; tacticalAI-triggered live-slot proof still gated |
 | Same sensors/actions/heat/energy/subsystems/physics as player | production sensor/roster/maneuver ports + live SG-03 adapter; no fallback | port pass; live registry parity still gated |
 | Director commands cannot spawn or mutate story/missions | inert production encounter sink + deterministic isolation gate | pass at recorder level; active encounter owner still gated |
 | Director pressure inside authored envelope | per-tick clamp and 100-seed assertion | pass |
@@ -321,10 +328,11 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 4. Done at harness level: construct `createTacticalAISystem(...)` with production sensor/roster helpers and the live SG-03 action adapter; verify canonical AI ActionDef requests without legacy intent mutation.
 5. Done at recorder level: install production `helpers.aiEncounter` for deterministic, whitelisted director command recording without spawn/story/mission side effects.
 6. Done at standalone SG-02 level: prove Rapier dynamic formation convergence and no commanded-stationary breach through production `helpers.aiManeuver`.
-7. Next: construct `createTacticalAISystem(...)` in the registry in the existing AI slot, before `actions` and before the AI maneuver port flushes to SG-02.
-8. Run the suite against the real registry slot, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
-9. Verify constraint break telemetry, no stationary bodies in live slot, replay parity, action/resource equivalence, and active encounter-command ownership.
-10. Delete the legacy path only after all production acceptance checks pass in the same milestone.
+7. Done at SG-02/SG-03 foundation level: prove Massline threshold break telemetry and physical rope release through `check:sg02:tether-break`.
+8. Next: construct `createTacticalAISystem(...)` in the registry in the existing AI slot, before `actions` and before the AI maneuver port flushes to SG-02.
+9. Run the suite against the real registry slot, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
+10. Verify tacticalAI-triggered constraint break behavior, no stationary bodies in live slot, replay parity, action/resource equivalence, and active encounter-command ownership.
+11. Delete the legacy path only after all production acceptance checks pass in the same milestone.
 
 ## Explicit legacy deletion list
 
