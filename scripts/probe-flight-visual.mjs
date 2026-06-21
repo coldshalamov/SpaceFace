@@ -111,7 +111,7 @@ async function runViewportProbe(browser, viewport) {
   await page.waitForTimeout(150);
 
   const diagnostics = await getFlightDiagnostics(page);
-  const rapierDiagnostics = await enableRapierBackend(page);
+  const sg02Diagnostics = await enableSg02DynamicBackend(page);
   const pixels = await sampleCanvas(page);
   await mkdir(outDir, { recursive: true });
   const screenshot = join(outDir, `flight-probe-${viewport.name}.png`);
@@ -135,7 +135,12 @@ async function runViewportProbe(browser, viewport) {
       && diagnostics.mode === 'assisted'
       && modeDiagnostics.assistStrength < diagnostics.assistStrength * 0.25,
     diagnosticsAvailable: !!diagnostics && diagnostics.mode === 'assisted',
-    rapierBackendReady: !!rapierDiagnostics && rapierDiagnostics.backend === 'rapier' && rapierDiagnostics.rapierReady && rapierDiagnostics.bodies > 0,
+    sg02DynamicReady: !!sg02Diagnostics
+      && sg02Diagnostics.backend === 'rapier-dynamic'
+      && sg02Diagnostics.rapierReady === true
+      && sg02Diagnostics.sg02Ready === true
+      && sg02Diagnostics.sg02Bodies > 0
+      && sg02Diagnostics.snapshotBodies > 0,
     canvasNonBlank: pixels.nonDark > 0 && pixels.maxLum > 45 && pixels.dataUrlLen > 10000,
     noPageErrors: issues.length === 0,
   };
@@ -159,7 +164,7 @@ async function runViewportProbe(browser, viewport) {
     newtonianMode,
     modeDiagnostics,
     diagnostics,
-    rapierDiagnostics,
+    sg02Diagnostics,
     pixels,
     issues,
     screenshot,
@@ -260,15 +265,22 @@ async function getFlightDiagnostics(page) {
   });
 }
 
-async function enableRapierBackend(page) {
+async function enableSg02DynamicBackend(page) {
   await page.evaluate(() => {
-    window.SF.state.settings.gameplay.physicsBackend = 'rapier';
+    window.SF.state.settings.gameplay.physicsBackend = 'rapier-dynamic';
   });
   try {
     await page.waitForFunction(
       () => {
         const diag = window.SF && window.SF.state && window.SF.state.physicsRuntime && window.SF.state.physicsRuntime.diagnostics;
-        return !!(diag && diag.backend === 'rapier' && diag.rapierReady && diag.bodies > 0);
+        const snapshot = window.SF && window.SF.state && window.SF.state.physicsRuntime && window.SF.state.physicsRuntime.sg02Snapshot;
+        return !!(diag
+          && diag.backend === 'rapier-dynamic'
+          && diag.rapierReady === true
+          && diag.sg02Ready === true
+          && diag.sg02Bodies > 0
+          && Array.isArray(snapshot)
+          && snapshot.length > 0);
       },
       null,
       { timeout: 15000 },
@@ -277,8 +289,15 @@ async function enableRapierBackend(page) {
     // Return the best diagnostics snapshot below so the failing report shows why readiness did not land.
   }
   return page.evaluate(() => {
-    const diag = window.SF && window.SF.state && window.SF.state.physicsRuntime && window.SF.state.physicsRuntime.diagnostics;
-    return diag ? { ...diag } : null;
+    const state = window.SF && window.SF.state;
+    const runtime = state && state.physicsRuntime;
+    const diag = runtime && runtime.diagnostics;
+    const snapshot = runtime && Array.isArray(runtime.sg02Snapshot) ? runtime.sg02Snapshot : [];
+    return diag ? {
+      ...diag,
+      snapshotBodies: snapshot.length,
+      playerBody: snapshot.find((body) => body && body.id === state.playerId) || null,
+    } : null;
   });
 }
 
