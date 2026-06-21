@@ -11,11 +11,18 @@ import { economy } from '../src/systems/economy.js';
 
 const seed = readIntegerArg('--seed', 0x5face);
 const ticks = readIntegerArg('--ticks', 720);
-if (ticks < 2) throw new RangeError('--ticks must be at least 2');
+if (ticks < 301) throw new RangeError('--ticks must be at least 301 so economy and combat both advance');
 
 const first = runScenario(seed, ticks);
 const second = runScenario(seed, ticks);
 assert.deepStrictEqual(second, first, 'same seed + inputs must produce identical simulation state');
+assert.equal(first.combat.damageEvents, 1, 'real combat path must resolve one hit');
+assert.equal(first.combat.killedEvents, 1, 'real combat path must emit one kill');
+assert.equal(first.combat.targetPresent, false, 'core lifetime sweep must remove the killed target');
+assert.equal(first.player.credits, 1321, 'economy must be the bounty credit writer');
+assert.ok(first.economy.ticksElapsed > 0, 'real economy cadence must advance');
+assert.equal(first.economy.emittedTicks, first.economy.ticksElapsed, 'economy event count must match its clock');
+assert.equal(first.authoritativeGraphOwnsRenderRefs, false, 'authoritative entities must not own mesh/view refs');
 
 const canonical = JSON.stringify(first);
 const digest = createHash('sha256').update(canonical).digest('hex');
@@ -83,6 +90,7 @@ function runScenario(runSeed, runTicks) {
       stationId,
       commodityId,
       ticksElapsed: state.economy.econClock.ticksElapsed,
+      emittedTicks: events.economyTicks,
       stock: round6(entry.stock),
       buy: entry.lastBuy,
       sell: entry.lastSell,
