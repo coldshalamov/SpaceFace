@@ -444,8 +444,8 @@ function normalizeBreak(value = {}) {
   return {
     maxTension: positive(value.maxTension, Infinity),
     maxImpulse: positive(value.maxImpulse, Infinity),
-    stiffness: positive(value.stiffness, 120),
-    damping: positive(value.damping, 8),
+    stiffness: positive(value.stiffness, 10),
+    damping: positive(value.damping, 0),
   };
 }
 

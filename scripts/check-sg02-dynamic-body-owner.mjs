@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 
+import { createCombatKernel } from '../src/combat/kernel.js';
 import {
   consumePhysicsCommand,
   damageThruster,
@@ -19,11 +20,15 @@ const first = await runScenario();
 const second = await runScenario();
 const tetherFirst = await runTetherScenario();
 const tetherSecond = await runTetherScenario();
+const combatFirst = await runCombatKernelScenario();
+const combatSecond = await runCombatKernelScenario();
 
 assert.deepEqual(second.hash, first.hash, 'SG-02 dynamic owner lab should replay to the same quantized hash');
 assert.deepEqual(second.snapshot, first.snapshot, 'SG-02 dynamic owner lab snapshots should be stable');
 assert.deepEqual(tetherSecond.hash, tetherFirst.hash, 'SG-02 tether lab should replay to the same quantized hash');
 assert.deepEqual(tetherSecond.snapshot, tetherFirst.snapshot, 'SG-02 tether lab snapshots should be stable');
+assert.deepEqual(combatSecond.compactTrace, combatFirst.compactTrace, 'SG-03 kernel trace over SG-02 port should be deterministic');
+assert.deepEqual(combatSecond.snapshot, combatFirst.snapshot, 'SG-03 kernel over SG-02 port should replay to the same body snapshot');
 
 console.log('SG-02 dynamic body owner checks OK');
 
@@ -162,6 +167,62 @@ async function runTetherScenario() {
   }
 }
 
+async function runCombatKernelScenario() {
+  const actor = makeCombatShip(1, 0, 0);
+  const target = makeCombatShip(2, 1, 40);
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, quantum: 1e-5 });
+  owner.syncFromEntities([actor, target]);
+  const state = {
+    tick: 0,
+    simTime: 0,
+    mode: 'flight',
+    playerId: actor.id,
+    entities: new Map([[actor.id, actor], [target.id, target]]),
+    entityList: [actor, target],
+    combat: { beams: [], threatTables: new Map() },
+    meta: { seed: 0x4702 },
+  };
+  const ctx = {
+    state,
+    bus: createBus(),
+    helpers: { combatPhysics: createSg02CombatPhysicsPort(owner) },
+    registry: { get() { return null; } },
+  };
+  const kernel = createCombatKernel(ctx);
+
+  try {
+    requestAndStep({ kernel, owner, state }, 0, { actorId: actor.id, actionId: 'action_dash', source: { kind: 'player' } });
+    stepCombat({ kernel, owner, state }, 1);
+    requestAndStep({ kernel, owner, state }, 2, { actorId: actor.id, actionId: 'action_attach', targetId: target.id, source: { kind: 'player' } });
+    stepCombat({ kernel, owner, state }, 3);
+    const attachmentId = Object.keys(state.combat.attachments.byId)[0];
+    assert(attachmentId, 'SG-03 attachment action should create a semantic attachment through the SG-02 port');
+
+    requestAndStep({ kernel, owner, state }, 4, { actorId: actor.id, actionId: 'action_reel', attachmentId, source: { kind: 'player' } });
+    stepCombat({ kernel, owner, state }, 5);
+    requestAndStep({ kernel, owner, state }, 6, { actorId: actor.id, actionId: 'action_sling', attachmentId, source: { kind: 'player' } });
+    stepCombat({ kernel, owner, state }, 7);
+    requestAndStep({ kernel, owner, state }, 8, { actorId: actor.id, actionId: 'action_cut', attachmentId, source: { kind: 'player' } });
+
+    const compactTrace = state.combat.trace.events.map(compactCombatEvent).filter(Boolean);
+    assert(compactTrace.includes('3:attachment:create'), 'SG-03 attach should reach the SG-02 createAttachment port');
+    assert(compactTrace.includes('4:attachment:reel'), 'SG-03 reel should reach the SG-02 setAttachmentReel port');
+    assert(compactTrace.includes('7:impulse:action_sling'),
+      `SG-03 sling should reach the SG-02 applyImpulse port:\n${compactTrace.join('\n')}`);
+    assert(compactTrace.includes('8:attachment:break'), 'SG-03 cut should reach the SG-02 cutAttachment port');
+    assert(!state.combat.trace.events.some((event) => String(event.reason || '').includes('physics_port_unavailable')),
+      'SG-03 kernel should not report physics port unavailability against the SG-02 lab port');
+    assert.equal(state.combat.attachments.byId[attachmentId].state, 'broken', 'SG-03 cut should break the semantic attachment');
+    assert.equal(owner.diagnostics().attachments, 0, 'SG-02 port should clear the physical rope after SG-03 cut');
+    assert(Math.hypot(actor.vel.x, actor.vel.z) > 0, 'SG-02 port should move the actor body through SG-03 actions');
+
+    return { compactTrace, snapshot: owner.quantizedSnapshot() };
+  } finally {
+    kernel.dispose();
+    owner.dispose();
+  }
+}
+
 function makeShip(id = 47, x = 0) {
   return {
     id,
@@ -176,6 +237,60 @@ function makeShip(id = 47, x = 0) {
     angVel: 0,
     data: {},
   };
+}
+
+function makeCombatShip(id, team, x) {
+  return {
+    ...makeShip(id, x),
+    team,
+    factionId: `faction_sg02_${team}`,
+    hull: 150,
+    hullMax: 150,
+    armorHp: 40,
+    armorMax: 40,
+    armorFlat: 2,
+    shield: 50,
+    shieldMax: 50,
+    cap: 100,
+    capMax: 100,
+    capRegen: 5,
+    lastDamageT: -1e9,
+    flags: {},
+    data: {
+      derived: { damageReductionMult: 1 },
+      combatProfileId: 'combat_profile_standard_ship',
+    },
+  };
+}
+
+function requestAndStep(fixture, tick, request) {
+  fixture.state.tick = tick;
+  fixture.state.simTime = tick / 60;
+  fixture.kernel.actions.requestAction(request);
+  stepCombat(fixture, tick);
+}
+
+function stepCombat({ kernel, owner, state }, tick) {
+  state.tick = tick;
+  state.simTime = tick / 60;
+  kernel.prePhysics(1 / 60);
+  owner.step(1 / 60);
+  kernel.postPhysics(1 / 60);
+}
+
+function compactCombatEvent(event) {
+  switch (event.kind) {
+    case 'action.requested': return `${event.tick}:request:${event.actionId}`;
+    case 'action.started': return `${event.tick}:start:${event.actionId}`;
+    case 'action.phase': return `${event.tick}:phase:${event.actionId}:${event.phase}`;
+    case 'action.cancelled': return `${event.tick}:cancel:${event.actionId}`;
+    case 'action.effect': return `${event.tick}:effect:${event.actionId}:${event.effectType}`;
+    case 'physics.impulse': return event.reason === 'action' ? `${event.tick}:impulse:${event.actionId}` : null;
+    case 'attachment.created': return `${event.tick}:attachment:create`;
+    case 'attachment.reel': return `${event.tick}:attachment:reel`;
+    case 'attachment.broken': return `${event.tick}:attachment:break`;
+    default: return null;
+  }
 }
 
 function assertAttachmentTelemetry(value, restLength) {
@@ -216,4 +331,19 @@ function assertVectorFinite(vector, message) {
 
 function hashSnapshot(snapshot) {
   return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+}
+
+function createBus() {
+  const listeners = new Map();
+  return {
+    on(event, fn) {
+      let set = listeners.get(event);
+      if (!set) listeners.set(event, set = new Set());
+      set.add(fn);
+      return () => set.delete(fn);
+    },
+    emit(event, payload) {
+      for (const fn of [...(listeners.get(event) || [])]) fn(payload, event);
+    },
+  };
 }
