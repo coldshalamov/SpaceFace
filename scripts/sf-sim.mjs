@@ -56,9 +56,10 @@ const expectedEnvelope = expectPath ? readJson(expectPath) : null;
 if (expectedEnvelope) assertEvidenceDocument(expectedEnvelope, expectPath);
 const traceEvents = command === 'trace' ? parseTraceEvents(argValue('--events', null)) : null;
 const traceLimit = command === 'trace' ? readPositiveInt('--limit', 500) : null;
+const physicsBackend = readPhysicsBackend('--physics-backend', 'custom');
 
 if (command === 'inspect') {
-  const inspected = run47a({ seed, ticks, tape, reloadAt });
+  const inspected = await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
   const result = {
     schema: 'spaceface.sfSimInspectResult.v1',
     deterministic: true,
@@ -66,6 +67,7 @@ if (command === 'inspect') {
     scenario,
     seed,
     tick: ticks,
+    physicsBackend,
     inputTape: inputPath.replace(/\\/g, '/'),
     reloadAt,
     sha256: inspected.sha256,
@@ -75,7 +77,7 @@ if (command === 'inspect') {
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'trace') {
-  const traced = run47a({ seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true });
+  const traced = await run47a({ seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true, physicsBackend });
   assert47aPhase0Metrics(traced.metrics, reloadAt == null ? {} : { reloadAt });
   const result = {
     schema: 'spaceface.sfSimTraceResult.v1',
@@ -84,6 +86,7 @@ if (command === 'inspect') {
     scenario,
     seed,
     ticks,
+    physicsBackend,
     inputTape: inputPath.replace(/\\/g, '/'),
     reloadAt,
     sha256: traced.sha256,
@@ -95,7 +98,7 @@ if (command === 'inspect') {
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'profile') {
-  const profiled = profile47a({ seed, ticks, tape, reloadAt });
+  const profiled = await profile47a({ seed, ticks, tape, reloadAt, physicsBackend });
   const run = profiled.run;
   assert47aPhase0Metrics(run.metrics, reloadAt == null ? {} : { reloadAt });
   if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, run, { inputPath, seed });
@@ -107,6 +110,7 @@ if (command === 'inspect') {
     scenario,
     seed,
     ticks,
+    physicsBackend,
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     reloadAt,
@@ -118,17 +122,18 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'compare') {
   if (reloadAt == null) usage(1, 'compare requires --reload-at');
-  const baseline = run47a({ seed, ticks, tape });
+  const baseline = await run47a({ seed, ticks, tape, physicsBackend });
   assert47aPhase0Metrics(baseline.metrics);
-  const candidate = run47a({ seed, ticks, tape, reloadAt });
+  const candidate = await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
   assert47aPhase0Metrics(candidate.metrics, { reloadAt });
-  const comparison = compareRuns(baseline, candidate, {
+  const comparison = await compareRuns(baseline, candidate, {
     expectedEnvelope,
     inputPath,
     seed,
     tape,
     ticks,
     reloadAt,
+    physicsBackend,
   });
   const result = {
     schema: 'spaceface.sfSimCompareResult.v1',
@@ -138,6 +143,7 @@ if (command === 'inspect') {
     scenario,
     seed,
     ticks,
+    physicsBackend,
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     baseline: runSummary('uninterrupted', baseline),
@@ -147,15 +153,15 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   process.exitCode = comparison.ok ? 0 : 1;
 } else {
-  const baseline = run47a({ seed, ticks, tape });
+  const baseline = await run47a({ seed, ticks, tape, physicsBackend });
   assert47aPhase0Metrics(baseline.metrics);
-  const first = reloadAt == null ? baseline : run47a({ seed, ticks, tape, reloadAt });
+  const first = reloadAt == null ? baseline : await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
   assert47aPhase0Metrics(first.metrics, { reloadAt });
   if (reloadAt != null) {
     assert.equal(first.sha256, baseline.sha256, `reload-at ${reloadAt} hash diverged from uninterrupted baseline`);
   }
   for (let i = 1; i < repeat; i++) {
-    const next = run47a({ seed, ticks, tape, reloadAt });
+    const next = await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
     assert47aPhase0Metrics(next.metrics, { reloadAt });
     assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
   }
@@ -168,6 +174,7 @@ if (command === 'inspect') {
     scenario,
     seed,
     ticks,
+    physicsBackend,
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     repeat,
@@ -181,9 +188,9 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 }
 
-function profile47a(options) {
+async function profile47a(options) {
   const started = process.hrtime.bigint();
-  const run = run47a(options);
+  const run = await run47a(options);
   const elapsedNs = process.hrtime.bigint() - started;
   const elapsedMs = Number(elapsedNs) / 1e6;
   const ticks = Math.max(0, options.ticks || 0);
@@ -204,9 +211,10 @@ function profile47a(options) {
   };
 }
 
-function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceLimit = null, includeTrace = false }) {
+async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceLimit = null, includeTrace = false, physicsBackend = 'custom' }) {
   const sim = createSimulation({ seed, systems: [actions, flight, weapons, physics, combat, cargo, economy, missions, story, save] });
   const { state, bus, registry } = sim;
+  state.settings.gameplay.physicsBackend = physicsBackend;
   const eventTrace = createDeterministicEventTrace(bus, state, {
     events: traceEvents || undefined,
     cap: traceLimit || undefined,
@@ -254,6 +262,7 @@ function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceL
   const econ = registry.get('economy');
   if (econ && typeof econ.newGame === 'function') econ.newGame();
   bus.emit('game:started', { source: 'sf-sim', scenario: '47a' });
+  await preparePhysicsBackend(registry, state, physicsBackend);
 
   const frames = normalizeTape(tape);
   let frameIndex = 0;
@@ -270,7 +279,7 @@ function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceL
     }
     sim.step(SIM_DT);
     if (reloadAt != null && state.tick === reloadAt) {
-      reloadThroughSave(registry, state, metrics, reloadAt);
+      await reloadThroughSave(registry, state, metrics, reloadAt, { physicsBackend });
     }
   }
 
@@ -295,11 +304,11 @@ function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceL
   eventTrace.dispose();
   sim.dispose();
   return includeTrace
-    ? { snapshot, sha256, metrics, traceSummary, trace, combatTrace }
-    : { snapshot, sha256, metrics, traceSummary };
+    ? { snapshot, sha256, metrics, traceSummary, trace, combatTrace, physicsBackend }
+    : { snapshot, sha256, metrics, traceSummary, physicsBackend };
 }
 
-function reloadThroughSave(registry, state, metrics, reloadAt) {
+async function reloadThroughSave(registry, state, metrics, reloadAt, options = {}) {
   const saveSys = registry.get('save');
   assert(saveSys && typeof saveSys.serialize === 'function' && typeof saveSys.loadEnvelope === 'function',
     '47-A reload check requires the real save system');
@@ -309,6 +318,7 @@ function reloadThroughSave(registry, state, metrics, reloadAt) {
   const persistentAfter = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
   assert.equal(state.tick, reloadAt, '47-A reload should preserve sim tick');
   assert.equal(persistentAfter, persistentBefore, '47-A reload should preserve persistent live actors');
+  await preparePhysicsBackend(registry, state, options.physicsBackend || 'custom', { reset: true });
   metrics.saveReloads++;
 }
 
@@ -366,7 +376,7 @@ function assertExpectedEnvelope(envelope, run, options) {
   }
 }
 
-function compareRuns(baseline, candidate, options) {
+async function compareRuns(baseline, candidate, options) {
   const diffs = [];
   const hashEqual = baseline.sha256 === candidate.sha256;
   if (!hashEqual) {
@@ -390,7 +400,7 @@ function compareRuns(baseline, candidate, options) {
     mode: 'uninterrupted-vs-reload',
     reloadAt: options.reloadAt,
     hashEqual,
-    firstDivergentTick: hashEqual ? null : findFirstDivergentTick(options),
+    firstDivergentTick: hashEqual ? null : await findFirstDivergentTick(options),
     diffs,
   };
 }
@@ -398,6 +408,7 @@ function compareRuns(baseline, candidate, options) {
 function runSummary(label, run) {
   return {
     label,
+    physicsBackend: run.physicsBackend || 'custom',
     sha256: run.sha256,
     metrics: run.metrics,
     traceSummary: run.traceSummary,
@@ -475,18 +486,31 @@ function compareExpectedEnvelope(envelope, run, options) {
   return diffs;
 }
 
-function findFirstDivergentTick(options) {
+async function findFirstDivergentTick(options) {
   let lo = 0;
   let hi = options.ticks;
   while (lo < hi) {
     const mid = Math.floor((lo + hi) / 2);
-    const baseline = run47a({ seed: options.seed, ticks: mid, tape: options.tape });
+    const baseline = await run47a({ seed: options.seed, ticks: mid, tape: options.tape, physicsBackend: options.physicsBackend });
     const reloadAt = options.reloadAt <= mid ? options.reloadAt : null;
-    const candidate = run47a({ seed: options.seed, ticks: mid, tape: options.tape, reloadAt });
+    const candidate = await run47a({ seed: options.seed, ticks: mid, tape: options.tape, reloadAt, physicsBackend: options.physicsBackend });
     if (baseline.sha256 === candidate.sha256) lo = mid + 1;
     else hi = mid;
   }
   return lo;
+}
+
+async function preparePhysicsBackend(registry, state, physicsBackend, options = {}) {
+  if (physicsBackend !== 'rapier-dynamic') return;
+  const physicsSys = registry.get('physics');
+  assert(physicsSys, '47-A dynamic replay requires the physics system');
+  assert.equal(typeof physicsSys.prepareBackend, 'function',
+    '47-A dynamic replay requires physics.prepareBackend');
+  const ready = await physicsSys.prepareBackend(state, options);
+  assert.equal(ready, true, '47-A dynamic replay requires SG-02 dynamic authority to be ready before ticking');
+  assert.equal(state.physicsRuntime && state.physicsRuntime.diagnostics && state.physicsRuntime.diagnostics.sg02Ready,
+    true,
+    '47-A dynamic replay should publish ready SG-02 diagnostics before ticking');
 }
 
 function readJson(rel) {
@@ -593,6 +617,14 @@ function readOptionalInt(name, fallback) {
   return value;
 }
 
+function readPhysicsBackend(name, fallback) {
+  const value = argValue(name, fallback);
+  if (!['custom', 'rapier', 'rapier-dynamic'].includes(value)) {
+    throw new RangeError(`${name} must be one of custom, rapier, rapier-dynamic`);
+  }
+  return value;
+}
+
 function lastTapeTick(tape) {
   return Array.isArray(tape.frames) ? Math.max(0, ...tape.frames.map((f) => f.tick || 0)) : 0;
 }
@@ -624,10 +656,10 @@ function assert47aPhase0Metrics(metrics, options = {}) {
 function usage(code, message) {
   if (message) process.stderr.write(message + '\n');
   process.stderr.write('Usage:\n');
-  process.stderr.write('  node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 [--reload-at 600]\n');
-  process.stderr.write('  node scripts/sf-sim.mjs inspect 47a --seed 47 --tick 360 --inputs test/47a.inputs.json [--reload-at 600]\n');
-  process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600\n');
-  process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500]\n');
-  process.stderr.write('  node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--expect test/47a.telemetry.expected.json] [--reload-at 600]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs inspect 47a --seed 47 --tick 360 --inputs test/47a.inputs.json [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600 [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500] [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--expect test/47a.telemetry.expected.json] [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.exit(code);
 }

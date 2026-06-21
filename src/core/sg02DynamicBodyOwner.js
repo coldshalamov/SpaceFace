@@ -217,6 +217,7 @@ export class Sg02DynamicBodyOwner {
       rec.appliedForce = zero3();
       rec.appliedTorque = zero3();
       rec.maxSpeed = Infinity;
+      resetBodyForces(rec.body);
       const command = consumePhysicsCommand(rec.entity);
       if (command) this._applyCommand(rec, command);
     }
@@ -413,6 +414,12 @@ function isPlaneLocked(body) {
   const v = body.linvel();
   const w = body.angvel();
   return Math.abs(p.y) < 1e-9 && Math.abs(v.y) < 1e-9 && Math.abs(w.x) < 1e-9 && Math.abs(w.z) < 1e-9;
+}
+
+function resetBodyForces(body) {
+  if (!body) return;
+  if (typeof body.resetForces === 'function') body.resetForces(true);
+  if (typeof body.resetTorques === 'function') body.resetTorques(true);
 }
 
 function worldPoint(source, fallback = zero3()) {

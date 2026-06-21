@@ -96,6 +96,22 @@ export const physics = {
     }
   },
 
+  async prepareBackend(state, options = {}) {
+    const reset = options.reset === true;
+    if (!usesSg02DynamicAuthority(state)) {
+      if (reset) this._disableSg02DynamicAuthority();
+      return true;
+    }
+
+    if (reset) this._disableSg02DynamicAuthority();
+    this._updateSg02DynamicAuthority(0, state);
+    if (this._sg02Init) await this._sg02Init;
+    this._updateSg02DynamicAuthority(0, state);
+    this._diag.tickMs = 0;
+    this._publishRuntime(state);
+    return this._diag.sg02Ready === true;
+  },
+
   collectPickups(state) {
     const pickups = (state.entityIndex && state.entityIndex.pickups) || state.entityList;
     const collectors = (state.entityIndex && state.entityIndex.shipLike) || state.entityList;
