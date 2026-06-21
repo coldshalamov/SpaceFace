@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { canonicalStringify, snapshotSimState } from '../src/core/simSnapshot.js';
 import { createDeterministicEventTrace } from '../src/core/eventTrace.js';
+import { actions } from '../src/systems/actions.js';
 import { flight } from '../src/systems/flight.js';
 import { weapons } from '../src/systems/weapons.js';
 import { physics } from '../src/core/physics.js';
@@ -136,7 +137,7 @@ if (command === 'inspect') {
 }
 
 function run47a({ seed, ticks, tape, reloadAt = null }) {
-  const sim = createSimulation({ seed, systems: [flight, weapons, physics, combat, cargo, economy, missions, story, save] });
+  const sim = createSimulation({ seed, systems: [actions, flight, weapons, physics, combat, cargo, economy, missions, story, save] });
   const { state, bus, registry } = sim;
   const eventTrace = createDeterministicEventTrace(bus, state);
   const metrics = {

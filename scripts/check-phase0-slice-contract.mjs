@@ -160,7 +160,7 @@ assert.equal(inspect.snapshot && inspect.snapshot.schema, 'spaceface.simSnapshot
 assert.equal(inspect.snapshot.tick, 360, 'sf-sim inspect snapshot should be from the requested tick');
 assert(inspect.sha256 && /^[a-f0-9]{64}$/.test(inspect.sha256), 'sf-sim inspect should include a snapshot hash');
 assert((inspect.traceSummary.types['combat:fire'] || 0) > 0, 'sf-sim inspect should expose trace evidence up to the inspected tick');
-for (const systemName of ['missions', 'story']) {
+for (const systemName of ['actions', 'missions', 'story']) {
   assert(inspect.metrics.systems.includes(systemName), `sf-sim should run the real ${systemName} system`);
 }
 assert(inspect.snapshot.missions && inspect.snapshot.missions.nextId === 1, 'sf-sim snapshot should include mission state');
