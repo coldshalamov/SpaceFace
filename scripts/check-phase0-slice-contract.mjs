@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative, resolve } from 'node:path';
@@ -138,6 +139,25 @@ for (const forbidden of [
   assert(!balanceSim.includes(forbidden), `balance-sim must not carry shadow formula marker: ${forbidden}`);
 }
 assert(!/\b(?:economy|automation)\.js:\d+\b/.test(balanceSim), 'balance-sim should cite production helper names, not stale line numbers');
+
+const inspect = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf-sim.mjs',
+  'inspect',
+  '47a',
+  '--seed',
+  '47',
+  '--tick',
+  '360',
+  '--inputs',
+  'test/47a.inputs.json',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(inspect.schema, 'spaceface.sfSimInspectResult.v1', 'sf-sim inspect should emit a versioned inspect result');
+assert.equal(inspect.command, 'inspect', 'sf-sim inspect command should round-trip in JSON');
+assert.equal(inspect.tick, 360, 'sf-sim inspect should report the requested tick');
+assert.equal(inspect.snapshot && inspect.snapshot.schema, 'spaceface.simSnapshot.v1', 'sf-sim inspect should include a canonical snapshot');
+assert.equal(inspect.snapshot.tick, 360, 'sf-sim inspect snapshot should be from the requested tick');
+assert(inspect.sha256 && /^[a-f0-9]{64}$/.test(inspect.sha256), 'sf-sim inspect should include a snapshot hash');
+assert((inspect.traceSummary.types['combat:fire'] || 0) > 0, 'sf-sim inspect should expose trace evidence up to the inspected tick');
 
 console.log('Phase 0 slice contract checks OK');
 

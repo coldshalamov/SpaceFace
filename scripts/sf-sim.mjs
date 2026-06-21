@@ -32,56 +32,76 @@ const command = args[0] || 'help';
 const scenario = args[1] || '';
 
 if (command === 'help' || command === '--help' || command === '-h') usage(0);
-if (command !== 'run') usage(1, `Unknown command: ${command}`);
+if (command !== 'run' && command !== 'inspect') usage(1, `Unknown command: ${command}`);
 if (scenario !== '47a') usage(1, `Unknown scenario: ${scenario}`);
 
 const inputPath = argValue('--inputs', 'test/47a.inputs.json');
 const tape = readJson(inputPath);
 assertEvidenceDocument(tape, inputPath);
 const seed = readInt('--seed', tape.seed || 47);
-const ticks = readInt('--ticks', Math.max(720, lastTapeTick(tape) + 360));
-const repeat = readInt('--repeat', 1);
+const inspectTick = command === 'inspect' ? readRequiredInt('--tick') : null;
+const ticks = inspectTick == null ? readInt('--ticks', Math.max(720, lastTapeTick(tape) + 360)) : inspectTick;
+const repeat = command === 'run' ? readInt('--repeat', 1) : 1;
 const reloadAt = readOptionalInt('--reload-at', null);
 if (reloadAt != null && (reloadAt <= 0 || reloadAt >= ticks)) {
   throw new RangeError('--reload-at must be greater than 0 and less than --ticks');
 }
-const includeSnapshot = hasFlag('--snapshot') || !hasFlag('--hash');
-const expectPath = argValue('--expect', null);
+const includeSnapshot = command === 'inspect' || hasFlag('--snapshot') || !hasFlag('--hash');
+const expectPath = command === 'run' ? argValue('--expect', null) : null;
 const expectedEnvelope = expectPath ? readJson(expectPath) : null;
 if (expectedEnvelope) assertEvidenceDocument(expectedEnvelope, expectPath);
 
-const baseline = run47a({ seed, ticks, tape });
-assert47aPhase0Metrics(baseline.metrics);
-const first = reloadAt == null ? baseline : run47a({ seed, ticks, tape, reloadAt });
-assert47aPhase0Metrics(first.metrics, { reloadAt });
-if (reloadAt != null) {
-  assert.equal(first.sha256, baseline.sha256, `reload-at ${reloadAt} hash diverged from uninterrupted baseline`);
-}
-for (let i = 1; i < repeat; i++) {
-  const next = run47a({ seed, ticks, tape, reloadAt });
-  assert47aPhase0Metrics(next.metrics, { reloadAt });
-  assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
-}
-if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, first, { inputPath, seed, repeat });
+if (command === 'inspect') {
+  const inspected = run47a({ seed, ticks, tape, reloadAt });
+  const result = {
+    schema: 'spaceface.sfSimInspectResult.v1',
+    deterministic: true,
+    command: 'inspect',
+    scenario,
+    seed,
+    tick: ticks,
+    inputTape: inputPath.replace(/\\/g, '/'),
+    reloadAt,
+    sha256: inspected.sha256,
+    metrics: inspected.metrics,
+    traceSummary: inspected.traceSummary,
+    snapshot: inspected.snapshot,
+  };
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+} else {
+  const baseline = run47a({ seed, ticks, tape });
+  assert47aPhase0Metrics(baseline.metrics);
+  const first = reloadAt == null ? baseline : run47a({ seed, ticks, tape, reloadAt });
+  assert47aPhase0Metrics(first.metrics, { reloadAt });
+  if (reloadAt != null) {
+    assert.equal(first.sha256, baseline.sha256, `reload-at ${reloadAt} hash diverged from uninterrupted baseline`);
+  }
+  for (let i = 1; i < repeat; i++) {
+    const next = run47a({ seed, ticks, tape, reloadAt });
+    assert47aPhase0Metrics(next.metrics, { reloadAt });
+    assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
+  }
+  if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, first, { inputPath, seed, repeat });
 
-const result = {
-  schema: 'spaceface.sfSimResult.v1',
-  deterministic: true,
-  command: 'run',
-  scenario,
-  seed,
-  ticks,
-  inputTape: inputPath.replace(/\\/g, '/'),
-  expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
-  repeat,
-  reloadAt,
-  sha256: first.sha256,
-  baselineSha256: reloadAt == null ? undefined : baseline.sha256,
-  metrics: first.metrics,
-  traceSummary: first.traceSummary,
-};
-if (includeSnapshot) result.snapshot = first.snapshot;
-process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+  const result = {
+    schema: 'spaceface.sfSimResult.v1',
+    deterministic: true,
+    command: 'run',
+    scenario,
+    seed,
+    ticks,
+    inputTape: inputPath.replace(/\\/g, '/'),
+    expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
+    repeat,
+    reloadAt,
+    sha256: first.sha256,
+    baselineSha256: reloadAt == null ? undefined : baseline.sha256,
+    metrics: first.metrics,
+    traceSummary: first.traceSummary,
+  };
+  if (includeSnapshot) result.snapshot = first.snapshot;
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+}
 
 function run47a({ seed, ticks, tape, reloadAt = null }) {
   const sim = createSimulation({ seed, systems: [flight, weapons, physics, combat, cargo, economy, save] });
@@ -271,6 +291,14 @@ function readInt(name, fallback) {
   return value;
 }
 
+function readRequiredInt(name) {
+  const raw = argValue(name, null);
+  if (raw == null) usage(1, `${name} is required`);
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 0) throw new RangeError(`${name} must be a non-negative integer`);
+  return value;
+}
+
 function readOptionalInt(name, fallback) {
   const raw = argValue(name, null);
   if (raw == null) return fallback;
@@ -309,6 +337,8 @@ function assert47aPhase0Metrics(metrics, options = {}) {
 
 function usage(code, message) {
   if (message) process.stderr.write(message + '\n');
-  process.stderr.write('Usage: node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 [--reload-at 600]\n');
+  process.stderr.write('Usage:\n');
+  process.stderr.write('  node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 [--reload-at 600]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs inspect 47a --seed 47 --tick 360 --inputs test/47a.inputs.json [--reload-at 600]\n');
   process.exit(code);
 }
