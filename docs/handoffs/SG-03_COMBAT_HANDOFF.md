@@ -322,6 +322,21 @@ This is a microbenchmark, not a frame-budget guarantee. Re-run on the project CI
 
 Verification boundary: the focused SG-03 suite, syntax checks, JSON parsing, and patch-application check were run in the isolated handoff build. The repository-wide `npm run check` was not run there because the build host did not have a complete SpaceFace checkout; it remains a required integration gate after applying the patch to the real repository.
 
+## Master integration addendum
+
+As of the current master integration, SG-02 is present as the explicit `rapier-dynamic` backend and installs the `helpers.combatPhysics` port before SG-03 initializes. Movement and Massline actions now execute through the live SG-02 port in production checks.
+
+Save schema v5 persists SG-03 semantic combat state for save-restored actors: combatant runtime, active/queued actions, cooldowns, statuses, and active semantic attachments. Entity ids are saved as semantic refs (`player` or saved persistent id) and remapped after load; Rapier handles and joints remain transient. `src/combat/attachments.js` reconciles restored active attachments through the SG-02 port after bodies exist.
+
+Current acceptance:
+
+```text
+npm run check:combat
+node scripts/check-sg03-save-reload.mjs
+```
+
+The save/reload fixture creates a real SG-02 Massline, saves while `action_reel` and status state are live, reloads with intentionally shifted entity ids, rebuilds the physical rope from semantic attachment state, and continues through `action_sling` -> `action_cut`.
+
 ## Migration plan
 
 1. **Land SG-02 on master.** Confirm authoritative dynamic bodies, tether constraints, break telemetry, stable body IDs, and no `setNextKinematicTranslation` gameplay authority.
@@ -330,7 +345,7 @@ Verification boundary: the focused SG-03 suite, syntax checks, JSON parsing, and
 4. **Wire player controls.** Translate dash/attach/reel/sling/cut/burst inputs into `requestCombatAction`. Do not mutate combat state from UI.
 5. **Wire tactical AI.** Existing AI or SG-06 submits identical requests with `source.kind='ai'`. Do not add AI-only damage calls.
 6. **Migrate weapons incrementally.** Author weapon fire actions and place full `DamagePacket` values on projectile/beam hit records. Keep the legacy adapter only until trace parity is demonstrated.
-7. **Save migration.** Decide which subsystem damage/status/attachment state persists across save/respawn, add a save-version migration, and explicitly clear transient actions/cooldowns/trace if desired.
+7. **Save migration.** Landed as save schema v5 for SG-03 combatants, actions, cooldowns, statuses, and active semantic attachments. Trace, beams, threat tables, Rapier handles, joints, and telemetry remain transient.
 8. **Delete the flat path.** Remove the compatibility fields and adapters listed below after parity fixtures pass.
 9. **Run the golden encounter under real SG-02.** The final SG-03 merge gate is the exact command/trace fixture using real dynamic bodies and constraints, not only the deterministic test port.
 
@@ -353,4 +368,4 @@ No FreeSpace 2 or Endless Sky source code was fetched, read, translated, or copi
 
 ## Known unresolved integration item
 
-The framework is ready; the live mastery sequence is not honestly claimable on the inspected `master` because SG-02 is absent. The patch deliberately rejects movement/attachment operations without the SG-02 port. Once SG-02 lands, the remaining work is adapter wiring and running this same trace fixture against the real body/constraint implementation.
+Historical note: the original handoff could not claim the live mastery sequence because SG-02 was absent. Current master has since landed the SG-02 port and the real body/constraint save/reload fixture above. Remaining production work is weapon migration, legacy flat-path deletion after parity, and running the golden 47-A encounter through real dynamic-body default activation.

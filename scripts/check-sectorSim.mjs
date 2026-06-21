@@ -168,7 +168,7 @@ function checkDeserializeReseeds() {
 // 5: v2→current migration round-trip — the headline integrity gate (ADR's untested-migration risk).
 // ------------------------------------------------------------------------------------------
 function checkMigrationRoundTrip() {
-  assert.equal(CURRENT_VERSION, 4, 'CURRENT_VERSION should include the SG-02 dynamic save schema bump');
+  assert.equal(CURRENT_VERSION, 5, 'CURRENT_VERSION should include the SG-03 combat save schema bump');
 
   // A v2-era blob has no data.sectorSim at all.
   const v2Data = {

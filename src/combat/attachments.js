@@ -34,26 +34,6 @@ export function createAttachmentService(context) {
     const sourceWorld = socketWorldPosition(owner, sourceSocket);
     const targetWorld = socketWorldPosition(target, targetSocket);
     const restLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
-    let physicsHandle;
-    try {
-      physicsHandle = physics.createAttachment({
-        attachmentId: id,
-        defId: def.id,
-        ownerId: owner.id,
-        targetId: target.id,
-        sourceSocketId: sourceSocket.id,
-        targetSocketId: targetSocket.id,
-        sourceWorld,
-        targetWorld,
-        restLength,
-        break: { ...(def.break || {}) },
-        tick: state.tick,
-      });
-    } catch (error) {
-      return fail('physics_create_failed', error);
-    }
-    if (physicsHandle === false || physicsHandle == null) return fail('physics_create_rejected');
-
     const attachment = {
       id,
       defId: def.id,
@@ -61,7 +41,7 @@ export function createAttachmentService(context) {
       targetId: target.id,
       sourceSocketId: sourceSocket.id,
       targetSocketId: targetSocket.id,
-      physicsHandle: serializableHandle(physicsHandle),
+      physicsHandle: null,
       state: 'active',
       createdTick: state.tick,
       brokenTick: null,
@@ -71,6 +51,9 @@ export function createAttachmentService(context) {
       lastImpulse: 0,
       actionInstanceId: spec.actionInstanceId || null,
     };
+    const physicsResult = createPhysicsAttachment(attachment, def);
+    if (!physicsResult.ok) return fail(physicsResult.reason, physicsResult.error);
+    attachment.physicsHandle = serializableHandle(physicsResult.physicsHandle);
     state.combat.attachments.byId[id] = attachment;
     appendCombatTrace(state.combat, state.tick, 'attachment.created', {
       actorId: owner.id,
@@ -168,6 +151,41 @@ export function createAttachmentService(context) {
     return broken;
   }
 
+  function reconcilePhysics() {
+    if (!physics || typeof physics.createAttachment !== 'function' || typeof physics.getAttachmentTelemetry !== 'function') {
+      return { recreated: 0, pending: 0 };
+    }
+    let recreated = 0;
+    let pending = 0;
+    for (const attachment of Object.values(state.combat.attachments.byId).sort(byId)) {
+      if (!attachment || attachment.state !== 'active') continue;
+      let telemetry = null;
+      try {
+        telemetry = physics.getAttachmentTelemetry({
+          attachmentId: attachment.id,
+          physicsHandle: attachment.physicsHandle,
+          tick: state.tick,
+        });
+      } catch (_) {
+        telemetry = null;
+      }
+      if (telemetry) continue;
+      const def = catalog.attachments.get(attachment.defId);
+      if (!def) { pending++; continue; }
+      const result = createPhysicsAttachment(attachment, def);
+      if (!result.ok) { pending++; continue; }
+      attachment.physicsHandle = serializableHandle(result.physicsHandle);
+      recreated++;
+      appendCombatTrace(state.combat, state.tick, 'attachment.physicsReconciled', {
+        actorId: attachment.ownerId,
+        targetId: attachment.targetId,
+        attachmentId: attachment.id,
+        attachmentDefId: attachment.defId,
+      });
+    }
+    return { recreated, pending };
+  }
+
   function transfer(attachmentId, fromOwnerId, toOwnerId) {
     const attachment = get(attachmentId);
     const def = attachment && catalog.attachments.get(attachment.defId);
@@ -220,15 +238,58 @@ export function createAttachmentService(context) {
       .sort(byId);
   }
 
-  return Object.freeze({ get, create, reel, cut, breakAttachment, breakOwnedBy, transfer, updateTelemetryAndBreak, onPhysicsBreak, listForEntity });
+  return Object.freeze({ get, create, reel, cut, breakAttachment, breakOwnedBy, reconcilePhysics, transfer, updateTelemetryAndBreak, onPhysicsBreak, listForEntity });
 
-  function selectSocket(runtime, requiredTags, explicitId, entityId) {
+  function createPhysicsAttachment(attachment, def) {
+    if (!physics || typeof physics.createAttachment !== 'function') return { ok: false, reason: 'physics_port_unavailable' };
+    const owner = entity(attachment.ownerId);
+    const target = entity(attachment.targetId);
+    if (!owner || !owner.alive) return { ok: false, reason: 'owner_missing' };
+    if (!target || !target.alive || target.id === owner.id) return { ok: false, reason: 'target_missing' };
+    const ownerRuntime = ensureCombatant(state, owner, catalog);
+    const targetRuntime = ensureCombatant(state, target, catalog);
+    const sourceSocket = selectSocket(ownerRuntime, def.sourceSocketTags, attachment.sourceSocketId, owner.id, attachment.id);
+    const targetSocket = selectSocket(targetRuntime, def.targetSocketTags, attachment.targetSocketId, target.id, attachment.id);
+    if (!sourceSocket) return { ok: false, reason: 'source_socket_unavailable' };
+    if (!targetSocket) return { ok: false, reason: 'target_socket_unavailable' };
+    const sourceWorld = socketWorldPosition(owner, sourceSocket);
+    const targetWorld = socketWorldPosition(target, targetSocket);
+    const fallbackRestLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
+    const restLength = Number.isFinite(attachment.restLength) && attachment.restLength > 0
+      ? attachment.restLength
+      : fallbackRestLength;
+    try {
+      const physicsHandle = physics.createAttachment({
+        attachmentId: attachment.id,
+        defId: def.id,
+        ownerId: owner.id,
+        targetId: target.id,
+        sourceSocketId: sourceSocket.id,
+        targetSocketId: targetSocket.id,
+        sourceWorld,
+        targetWorld,
+        restLength,
+        break: { ...(def.break || {}) },
+        tick: state.tick,
+      });
+      if (physicsHandle === false || physicsHandle == null) return { ok: false, reason: 'physics_create_rejected' };
+      attachment.sourceSocketId = sourceSocket.id;
+      attachment.targetSocketId = targetSocket.id;
+      attachment.restLength = restLength;
+      return { ok: true, physicsHandle };
+    } catch (error) {
+      return { ok: false, reason: 'physics_create_failed', error };
+    }
+  }
+
+  function selectSocket(runtime, requiredTags, explicitId, entityId, ignoreAttachmentId = null) {
     const sockets = runtime && runtime.sockets ? Object.values(runtime.sockets).sort(byId) : [];
     const required = new Set(requiredTags || []);
     for (const socket of sockets) {
       if (explicitId && socket.id !== explicitId) continue;
       if (![...required].some((tag) => socket.tags.includes(tag))) continue;
       const used = Object.values(state.combat.attachments.byId).filter((attachment) =>
+        attachment.id !== ignoreAttachmentId &&
         attachment.state === 'active' && ((attachment.ownerId === entityId && attachment.sourceSocketId === socket.id) ||
         (attachment.targetId === entityId && attachment.targetSocketId === socket.id))).length;
       if (used < socket.maxAttachments) return socket;

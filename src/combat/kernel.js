@@ -106,6 +106,7 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function postPhysics() {
+    attachments.reconcilePhysics();
     attachments.updateTelemetryAndBreak();
     for (const entity of sortedEntities(state)) {
       if (!entity.alive || !isCombatantType(entity.type)) continue;

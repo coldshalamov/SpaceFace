@@ -35,7 +35,7 @@
     "comms:popup": 2
   },
   "acceptancePlaceholders": {
-    "authoritativeHash": "46ac93897737f44a5f1b522ed3438643e4f19c561a5dd6d291c43be7aa4573a5",
+    "authoritativeHash": "4da22058949ec31e2b0d7b6dad868a104d0604bc4ceced39d962d1e168d2d12f",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": null,
     "firstHostileShotTickMax": 5400,

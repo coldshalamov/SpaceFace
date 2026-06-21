@@ -2,7 +2,6 @@ import { appendCombatTrace } from './trace.js';
 
 export function createStatusService(context) {
   const { state, catalog, bus } = context;
-  let nextPendingSeq = 1;
 
   function schedule(targetEntity, runtime, application, source = {}) {
     const def = catalog.statuses.get(application && application.id);
@@ -18,8 +17,11 @@ export function createStatusService(context) {
     }
     const stacks = Math.max(1, Math.floor(application.stacks || 1));
     const applyTick = Number.isInteger(application.applyTick) ? application.applyTick : state.tick + 1;
+    if (!Number.isInteger(state.combat.statusNextPendingSeq) || state.combat.statusNextPendingSeq < 1) {
+      state.combat.statusNextPendingSeq = 1;
+    }
     runtime.pendingStatuses.push({
-      seq: nextPendingSeq++,
+      seq: state.combat.statusNextPendingSeq++,
       id: def.id,
       stacks,
       durationTicks: Number.isInteger(application.durationTicks) ? application.durationTicks : def.durationTicks,

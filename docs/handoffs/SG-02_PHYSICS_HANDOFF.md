@@ -25,13 +25,14 @@ Accepted runtime surface:
 
 ## Schema And Migration
 
-Save schema v4 persists SG-02 dynamic authority prerequisites: `settings.gameplay.physicsBackend === 'rapier-dynamic'`, craft yaw-rate (`angVel`), and the additive `entity.physicsBody` authoring/mutable-thruster schema from `physicsAuthority.js`. Runtime commands, Rapier handles, joints, and telemetry stay transient WeakMap state and must not enter saves.
+Save schema v4 persists SG-02 dynamic authority prerequisites: `settings.gameplay.physicsBackend === 'rapier-dynamic'`, craft yaw-rate (`angVel`), and the additive `entity.physicsBody` authoring/mutable-thruster schema from `physicsAuthority.js`.
+
+Save schema v5 persists SG-03 semantic combat state: combatants, active/queued actions, cooldowns, statuses, and active semantic attachments. Runtime commands, Rapier handles, joints, and telemetry stay transient WeakMap state and must not enter saves. On reload, SG-03 remaps saved semantic entity refs to fresh player/persistent ids, then reconciles active Massline constraints through `helpers.combatPhysics.createAttachment(...)` after SG-02 bodies exist.
 
 Follow-up before making `rapier-dynamic` the default:
 
-- persist active SG-03 actions and semantic attachments;
-- rebuild Rapier bodies/constraints in deterministic order after load;
 - fold quantized SG-02 body state into the SG-01 authoritative snapshot.
+- close projectile/pickup/docking contact-event parity under dynamic authority.
 
 ## Acceptance Scripts
 
@@ -42,6 +43,7 @@ Follow-up before making `rapier-dynamic` the default:
 - `scripts/check-sg02-save-reload.mjs`
 - `scripts/check-sg02-dynamic-body-owner.mjs`
 - `scripts/check-physics-authority.mjs`
+- Cross-SG reload gate: `scripts/check-sg03-save-reload.mjs` via `npm run check:combat`
 
 `npm run check:sg02` runs the SG-02 intake, membrane, lab, production-authority, production-combat-port, tether, dash-collision, and save/reload gates.
 

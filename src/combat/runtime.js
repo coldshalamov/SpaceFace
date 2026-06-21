@@ -38,6 +38,7 @@ export function ensureCombatState(state) {
   combat.schemaVersion = COMBAT_SCHEMA_VERSION;
   if (!Array.isArray(combat.beams)) combat.beams = [];
   if (!(combat.threatTables instanceof Map)) combat.threatTables = new Map();
+  if (!Number.isInteger(combat.statusNextPendingSeq) || combat.statusNextPendingSeq < 1) combat.statusNextPendingSeq = 1;
   if (!combat.actions || typeof combat.actions !== 'object') combat.actions = {};
   if (!Number.isInteger(combat.actions.nextRequestSeq) || combat.actions.nextRequestSeq < 1) combat.actions.nextRequestSeq = 1;
   if (!Number.isInteger(combat.actions.nextInstanceSeq) || combat.actions.nextInstanceSeq < 1) combat.actions.nextInstanceSeq = 1;

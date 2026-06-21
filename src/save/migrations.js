@@ -57,4 +57,28 @@ export const MIGRATIONS = [
       }
     },
   },
+  // v5: SG-03 semantic combat state. Old saves intentionally begin with no queued/active action
+  // state or Massline attachments; the runtime rebuilds fresh combat services on load.
+  {
+    from: 4,
+    to: 5,
+    fn(data) {
+      if (!data.combat || typeof data.combat !== 'object') {
+        data.combat = {
+          schemaVersion: 1,
+          combatSchemaVersion: 1,
+          statusNextPendingSeq: 1,
+          entities: [],
+          actions: {
+            nextRequestSeq: 1,
+            nextInstanceSeq: 1,
+            requests: [],
+            active: [],
+            cooldowns: [],
+          },
+          attachments: { nextId: 1, byId: {} },
+        };
+      }
+    },
+  },
 ];

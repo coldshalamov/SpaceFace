@@ -12,6 +12,7 @@
 import { fnv1a } from './checksum.js';
 import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
 import { mulberry32 } from '../core/rng.js';
+import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
@@ -91,6 +92,7 @@ export const save = {
     data.factions = this._callSerialize('factions') || {};
     data.world = this._callSerialize('world') || {};
     data.entities = this._serializeEntities();
+    data.combat = serializeCombatState(state);
     data.missions = this._callSerialize('missions') || this._serializeMissions();
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
@@ -369,13 +371,14 @@ export const save = {
   // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):
   // pause → clear old mission runtime/transient entities → restore meta/player/cargo/economy/factions/world
   // → spawn the saved player → re-enter the sector (regenerates NPCs/stations/asteroids) →
-  // re-apply player pose → restore persistent entities → restore missions/automation/settings →
-  // rebuild rng → save:loaded → unpause.
+  // re-apply player pose → restore persistent entities → remap semantic combat state →
+  // restore missions/automation/settings → rebuild rng → save:loaded → unpause.
   _restore(data, slot) {
     const state = this.state;
     this._restoring = true;
     const prevTimeScale = state.timeScale;
     state.timeScale = 0; // freeze the sim during the swap
+    const entityIdRemap = new Map();
 
     try {
       // 1. meta (seed/version/playtime) first — enterSector & rng depend on meta.seed.
@@ -397,7 +400,7 @@ export const save = {
 
       // 5. spawn the saved player entity (fresh id) and adopt it.
       const savedPlayer = data.entities && data.entities.player;
-      this._spawnPlayer(savedPlayer);
+      this._spawnPlayer(savedPlayer, entityIdRemap);
 
       // 6. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
       const shipsSys = this.registry.get('ships');
@@ -424,12 +427,15 @@ export const save = {
 
       // 10. restore persistent saved actors after sector regeneration, which despawns non-player
       // entities from the previous live sector.
-      this._spawnPersistentEntities(data.entities && data.entities.persistent);
+      this._spawnPersistentEntities(data.entities && data.entities.persistent, entityIdRemap);
 
       // 11. clear stale entity-id references (the saved targets belong to entities that no longer exist).
       this._clearStaleTargets();
 
-      // 12. restore missions/automation/settings.
+      // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
+      this._restoreCombat(data.combat, entityIdRemap);
+
+      // 13. restore missions/automation/settings.
       this._restoreMissions(data.missions);
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
@@ -447,14 +453,14 @@ export const save = {
       this.state.drill = null;
       this._restoreSettings(data.settings);
 
-      // 13. restore sim clock + rebuild the master RNG from the (unchanged) seed.
+      // 14. restore sim clock + rebuild the master RNG from the (unchanged) seed.
       if (data.entities) {
         if (typeof data.entities.simTime === 'number') state.simTime = data.entities.simTime;
         if (typeof data.entities.tick === 'number') state.tick = data.entities.tick;
       }
       state.rng = mulberry32((state.meta.seed >>> 0) || 1);
 
-      // 14. finalize.
+      // 15. finalize.
       state.meta.version = CURRENT_VERSION;
       state.save.currentSlot = slot;
       state.mode = 'flight';
@@ -538,6 +544,25 @@ export const save = {
     this.state.crafting = clonePlain(payload);
   },
 
+  _restoreCombat(d, entityIdRemap) {
+    const state = this.state;
+    const resolveEntityRef = (ref) => {
+      if (!ref || typeof ref !== 'object') return null;
+      if (ref.kind === 'player') return state.playerId || null;
+      if (ref.kind === 'persistent') {
+        const mapped = entityIdRemap && entityIdRemap.get(String(ref.saveId));
+        return mapped == null ? null : mapped;
+      }
+      return null;
+    };
+    try {
+      restoreCombatState(state, d, resolveEntityRef);
+    } catch (err) {
+      console.error('[save] restore combat', err);
+      restoreCombatState(state, null, () => null);
+    }
+  },
+
   _restoreSettings(d) {
     if (!d) return;
     // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
@@ -576,7 +601,7 @@ export const save = {
 
   // Spawn the saved player ship through the canonical factory (assigns a fresh id, emits
   // entity:spawned so render rebuilds its mesh). We DON'T trust the saved id (spawnEntity ignores it).
-  _spawnPlayer(saved) {
+  _spawnPlayer(saved, entityIdRemap = null) {
     const state = this.state;
     if (!saved) {
       console.warn('[save] no player entity in save; player not restored');
@@ -591,9 +616,13 @@ export const save = {
     const e = this.helpers.spawnEntity(spec);
     state.playerId = e.id;
     state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
+    if (entityIdRemap) {
+      entityIdRemap.set('player', e.id);
+      if (saved.id != null) entityIdRemap.set(String(saved.id), e.id);
+    }
   },
 
-  _spawnPersistentEntities(savedList) {
+  _spawnPersistentEntities(savedList, entityIdRemap = null) {
     if (!Array.isArray(savedList)) return;
     const state = this.state;
     for (const saved of savedList) {
@@ -604,6 +633,7 @@ export const save = {
       spec.flags = Object.assign({}, spec.flags, { persistent: true, noInterp: true });
       const e = this.helpers.spawnEntity(spec);
       state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
+      if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), e.id);
     }
   },
 
