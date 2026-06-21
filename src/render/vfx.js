@@ -84,6 +84,10 @@ export const vfx = {
     this._socketScratch = { x: 0, z: 0 };
     this._liveSpriteCount = 0;
     this._activeLightCount = 0;
+    this._presentationCueCount = 0;
+    this._presentationParticleCount = 0;
+    this._presentationLightCount = 0;
+    this._lastPresentationCue = null;
 
     // colour scratch objects (reused; no per-event allocation)
     this._c0 = new THREE.Color();
@@ -92,6 +96,24 @@ export const vfx = {
 
     this._initPools();
     this._subscribe();
+  },
+
+  inspect() {
+    const last = this._lastPresentationCue ? { ...this._lastPresentationCue } : null;
+    return {
+      schema: 'spaceface.vfxInspect.v1',
+      sceneAttached: !!this._scene,
+      particleCap: this._cap || 0,
+      liveParticles: this._liveCount || 0,
+      liveSprites: this._liveSpriteCount || 0,
+      activeLights: this._activeLightCount || 0,
+      presentation: {
+        applied: this._presentationCueCount || 0,
+        particlesSpawned: this._presentationParticleCount || 0,
+        lightsActivated: this._presentationLightCount || 0,
+        last,
+      },
+    };
   },
 
   // -------------------------------------------------------------------------
@@ -227,6 +249,7 @@ export const vfx = {
     add('ship:boostStart', (p) => this._onBoost(p, true));
     add('ship:boostStop', (p) => this._onBoost(p, false));
     add('ship:dash', (p) => this._onDash(p));                      // Phase 3 dash impulse — violet shock cone
+    add('presentation:vfxCue', (p) => this._onPresentationCue(p));
     add('jump:start', (p) => this._onJumpStart(p));
     add('jump:arrive', (p) => this._onJumpArrive(p));
     add('pickup:collected', (p) => this._onPickup(p));
@@ -611,6 +634,124 @@ export const vfx = {
     this._spawnSprite(SPR_FLASH, x, 0, z, 0.15, 4.0, 7.0, 0.65, 0.0, color, 0, 0);
     // impact light flash
     this._flashLight({ x, z }, color, 2.5, 14, 100);
+  },
+
+  _onPresentationCue(p) {
+    if (!this._scene || !p) return;
+    const particlesRequested = budgetInt(p.particles);
+    const lightsRequested = budgetInt(p.lights);
+    if (particlesRequested <= 0 && lightsRequested <= 0) return;
+    const pos = this._presentationPos(p);
+    if (!pos) return;
+
+    const style = this._presentationStyle(p);
+    const radius = this._presentationRadius(p);
+    const angle = this._dirAngle(p.direction, p.sourceId);
+    const particlesSpawned = particlesRequested > 0
+      ? this._spawnPresentationParticles(p, pos, style, particlesRequested, angle, radius)
+      : 0;
+    if (particlesRequested > 0) this._spawnPresentationSprite(p, pos, style, radius);
+
+    const maxLights = Math.min(lightsRequested, this._LIGHT_NPOOL || 0);
+    let lightsActivated = 0;
+    for (let i = 0; i < maxLights; i++) {
+      const off = i - (maxLights - 1) * 0.5;
+      const dx = Math.cos(angle + Math.PI / 2) * off * radius * 0.35;
+      const dz = Math.sin(angle + Math.PI / 2) * off * radius * 0.35;
+      if (this._flashLight({ x: pos.x + dx, z: pos.z + dz }, style.lightColor || style.color0, style.lightPeak, style.lightDecay, style.lightDistance)) {
+        lightsActivated++;
+      }
+    }
+
+    this._presentationCueCount++;
+    this._presentationParticleCount += particlesSpawned;
+    this._presentationLightCount += lightsActivated;
+    this._lastPresentationCue = {
+      id: p.id || null,
+      lane: p.lane || null,
+      material: p.material || 'unknown',
+      particlesRequested,
+      particlesSpawned,
+      lightsRequested,
+      lightsActivated,
+      flashReduced: !!p.flashReduced,
+    };
+  },
+
+  _presentationPos(p) {
+    const pos = this._posFrom(p, p.targetId ?? p.sourceId);
+    if (pos) return pos;
+    const player = this._ent(this.state && this.state.playerId);
+    return player ? player.pos : null;
+  },
+
+  _presentationRadius(p) {
+    const e = this._ent(p && p.targetId);
+    const base = (e && e.radius) || 8;
+    const mag = Math.max(1, Math.min(6, Number(p && p.magnitude) || 1));
+    return Math.max(4, base * (0.7 + Math.log2(mag + 1) * 0.18));
+  },
+
+  _spawnPresentationSprite(p, pos, style, radius) {
+    const reduced = !!(p && p.flashReduced);
+    const kind = reduced ? SPR_RING : style.spriteKind;
+    const opacity = reduced ? Math.min(style.spriteOpacity, 0.42) : style.spriteOpacity;
+    this._spawnSprite(kind, pos.x, 0, pos.z, style.spriteLife, radius * style.spriteSize0, radius * style.spriteSize1, opacity, 0.0, style.color0, 0, 0);
+    if (!reduced && style.echoRing) {
+      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, style.spriteLife * 1.25, radius * style.spriteSize0 * 0.7, radius * style.spriteSize1 * 1.35, opacity * 0.55, 0.0, style.color1, 0, 0);
+    }
+  },
+
+  _spawnPresentationParticles(p, pos, style, requested, angle, radius) {
+    const burst = this._burst || 1;
+    const count = Math.max(1, Math.min(requested, Math.round(requested * burst)));
+    this._c0.set(style.color0);
+    this._c1.set(style.color1);
+    const radial = style.radial || (p && p.id && (p.id.includes('shield') || p.id.includes('signal') || p.id.includes('branch')));
+    for (let k = 0; k < count; k++) {
+      const a = radial ? Math.random() * Math.PI * 2 : angle + (Math.random() - 0.5) * style.spread;
+      const sp = style.speed0 + Math.random() * style.speedJitter;
+      const dist = radial ? Math.random() * radius * 0.45 : (Math.random() - 0.5) * radius * 0.35;
+      const sx = pos.x + Math.cos(a) * dist;
+      const sz = pos.z + Math.sin(a) * dist;
+      this._spawnParticle(
+        sx, sz,
+        Math.cos(a) * sp, Math.sin(a) * sp,
+        style.life0 + Math.random() * style.lifeJitter,
+        style.size0, style.size1,
+        this._c0, this._c1,
+        style.drag,
+        style.y, style.vy,
+      );
+    }
+    return count;
+  },
+
+  _presentationStyle(p) {
+    const id = (p && p.id) || '';
+    const lane = (p && p.lane) || '';
+    if (id === 'shield.collapse' || lane.includes('shield')) {
+      return presentationStyle('#ffffff', '#66ccff', SPR_FRESNEL, { radial: true, echoRing: true, lightPeak: 6.0, lightDistance: 220, speed0: 24, speedJitter: 44, size0: 2.1 });
+    }
+    if (id === 'subsystem.disabled' || lane.includes('subsystem')) {
+      return presentationStyle('#fff4c0', '#ff8a30', SPR_FLASH, { spread: 1.35, lightPeak: 3.2, lightDistance: 120, speed0: 34, speedJitter: 34, size0: 1.8 });
+    }
+    if (id === 'tether.break' || lane.includes('tether_break')) {
+      return presentationStyle('#ffffff', '#5fe0ff', SPR_RING, { echoRing: true, lightPeak: 5.0, lightDistance: 190, speed0: 46, speedJitter: 58, size0: 2.4 });
+    }
+    if (id.startsWith('tether.') || lane.includes('tether')) {
+      return presentationStyle('#dffcff', '#2bb7ff', SPR_RING, { lightPeak: 3.0, lightDistance: 140, speed0: 28, speedJitter: 30, size0: 1.8 });
+    }
+    if (lane.includes('pod_beacon') || id.includes('objective')) {
+      return presentationStyle('#fff0a8', '#ffcc44', SPR_RING, { radial: true, echoRing: true, lightPeak: 3.4, lightDistance: 160, speed0: 18, speedJitter: 22, life0: 0.45 });
+    }
+    if (lane.includes('comms')) {
+      return presentationStyle('#e6fbff', '#5fd7ff', SPR_PUFF, { radial: true, lightPeak: 0, lightDistance: 0, speed0: 10, speedJitter: 18, life0: 0.55, size0: 1.7, size1: 0.2, drag: 0.9 });
+    }
+    if (lane.includes('branch') || id.includes('branch')) {
+      return presentationStyle('#fff8d8', '#f5d06f', SPR_RING, { radial: true, echoRing: true, lightPeak: 4.0, lightDistance: 180, speed0: 18, speedJitter: 32, life0: 0.5 });
+    }
+    return presentationStyle('#ffffff', '#b060ff', SPR_RING, { radial: true, lightPeak: 3.2, lightDistance: 150, speed0: 18, speedJitter: 32 });
   },
 
   _onCollision(p) {
@@ -1146,12 +1287,12 @@ export const vfx = {
   // `color` may be a hex number (0xffb060) OR a CSS string ('#ffb060') — normalized internally.
   _flashLight(pos, color, peak, decayRate, dist) {
     const pool = this._lights;
-    if (!pool || !pos) return;
+    if (!pool || !pos) return false;
     // Cull if the event is far from the player (lights far away contribute nothing visible but
     // still cost a per-fragment eval). Generous radius so nearby fights still light up.
     const pp = this._playerPos();
     const d = Math.hypot((pos.x || 0) - pp.x, (pos.z || 0) - pp.z);
-    if (d > 700) return;
+    if (d > 700) return false;
     const slot = pool[this._lightCur];
     this._lightCur = (this._lightCur + 1) % pool.length;
     const obj = slot.obj;
@@ -1168,6 +1309,7 @@ export const vfx = {
     slot.intensity = peak * 0.3; // start ramped partway (fast attack)
     slot.decay = decayRate || 8;
     slot.t = 0;
+    return true;
   },
 
   _decayEventLights(dt) {
@@ -1479,6 +1621,40 @@ function makeRibbonTrail(scene, color, nSeg, baseWidth) {
 // ---------------------------------------------------------------------------
 function dirOf(rot) { return { x: Math.cos(rot), z: Math.sin(rot) }; }
 function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+
+function budgetInt(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.max(0, Math.floor(n));
+}
+
+function presentationStyle(color0, color1, spriteKind, overrides = {}) {
+  return {
+    color0,
+    color1,
+    lightColor: overrides.lightColor || color1,
+    spriteKind,
+    spriteLife: overrides.spriteLife || 0.34,
+    spriteSize0: overrides.spriteSize0 || 0.5,
+    spriteSize1: overrides.spriteSize1 || 3.6,
+    spriteOpacity: overrides.spriteOpacity || 0.82,
+    echoRing: !!overrides.echoRing,
+    radial: !!overrides.radial,
+    spread: overrides.spread || 0.85,
+    speed0: overrides.speed0 || 24,
+    speedJitter: overrides.speedJitter || 30,
+    life0: overrides.life0 || 0.32,
+    lifeJitter: overrides.lifeJitter || 0.22,
+    size0: overrides.size0 || 1.8,
+    size1: overrides.size1 ?? 0.0,
+    drag: overrides.drag || 2.2,
+    y: overrides.y || 0,
+    vy: overrides.vy || 0,
+    lightPeak: overrides.lightPeak || 0,
+    lightDecay: overrides.lightDecay || 9,
+    lightDistance: overrides.lightDistance || 140,
+  };
+}
 
 // ore/commodity -> tint (cosmetic; falls back to a warm amber)
 function oreColor(id) {
