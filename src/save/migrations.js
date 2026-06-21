@@ -37,4 +37,24 @@ export const MIGRATIONS = [
       if (!data.sectorSim.meta || typeof data.sectorSim.meta !== 'object') data.sectorSim.meta = {};
     },
   },
+  // v4: SG-02 dynamic authority makes entity angVel and `rapier-dynamic` gameplay settings
+  // authoritative save fields. Existing v3 saves may omit them; omission remains a valid zero/default.
+  {
+    from: 3,
+    to: 4,
+    fn(data) {
+      if (data && data.entities && data.entities.player && typeof data.entities.player === 'object') {
+        if (data.entities.player.angVel != null && typeof data.entities.player.angVel !== 'number') {
+          data.entities.player.angVel = 0;
+        }
+      }
+      if (data && data.entities && Array.isArray(data.entities.persistent)) {
+        for (const entity of data.entities.persistent) {
+          if (entity && typeof entity === 'object' && entity.angVel != null && typeof entity.angVel !== 'number') {
+            entity.angVel = 0;
+          }
+        }
+      }
+    },
+  },
 ];

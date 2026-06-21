@@ -256,7 +256,7 @@ export const settingsScreen = {
       if (!g.physicsBackend) g.physicsBackend = 'custom';
       rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
-      rowSelect('Physics backend', () => g.physicsBackend || 'custom', [['custom', 'Custom'], ['rapier', 'Rapier']], (v) => this._set(ctx, 'gameplay', 'physicsBackend', v));
+      rowSelect('Physics backend', () => g.physicsBackend || 'custom', [['custom', 'Custom'], ['rapier', 'Rapier'], ['rapier-dynamic', 'Rapier Dynamic']], (v) => this._set(ctx, 'gameplay', 'physicsBackend', v));
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
       rowToggle('Damage numbers', () => s.showDamageNumbers, (v) => this._set(ctx, null, 'showDamageNumbers', v));

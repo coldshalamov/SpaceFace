@@ -6,7 +6,7 @@
 //      X yields the same result regardless of when (ADR §86-88, the headline invariant).
 //   3. Determinism — same seed reproduces; different seed differs (but still reproducible).
 //   4. deserialize re-seeds from the restored rngSeed (save-integrity continuation).
-//   5. v2→v3 migration round-trip — a v2 blob (no data.sectorSim) survives migration with sane defaults.
+//   5. v2→current migration round-trip — a v2 blob (no data.sectorSim) survives migration with sane defaults.
 //      This is the first real migration to ever run; the ADR flags the untested-migration path as the
 //      headline follow-up risk, so this gate closes it.
 //   6. Single-writer safety — sectorSim never directly writes player.credits / factions / world.sectors /
@@ -165,10 +165,10 @@ function checkDeserializeReseeds() {
 }
 
 // ------------------------------------------------------------------------------------------
-// 5: v2→v3 migration round-trip — the headline integrity gate (ADR's untested-migration risk).
+// 5: v2→current migration round-trip — the headline integrity gate (ADR's untested-migration risk).
 // ------------------------------------------------------------------------------------------
 function checkMigrationRoundTrip() {
-  assert.equal(CURRENT_VERSION, 3, 'CURRENT_VERSION should be 3 after the sectorSim schema bump');
+  assert.equal(CURRENT_VERSION, 4, 'CURRENT_VERSION should include the SG-02 dynamic save schema bump');
 
   // A v2-era blob has no data.sectorSim at all.
   const v2Data = {
@@ -180,15 +180,24 @@ function checkMigrationRoundTrip() {
   };
   assert.ok(!('sectorSim' in v2Data), 'pre-migration v2 blob must not have a sectorSim key');
 
+  const migrateFrom = (payload, fromVersion) => {
+    let version = fromVersion;
+    let guard = 0;
+    while (version < CURRENT_VERSION && guard++ < 64) {
+      const step = MIGRATIONS.find((m) => m.from === version);
+      assert(step, `missing migration from v${version}`);
+      step.fn(payload);
+      version = step.to;
+    }
+    return version;
+  };
+
   // Run the full migration chain (migrations.js runs from-version → CURRENT_VERSION).
   const data = JSON.parse(JSON.stringify(v2Data));
-  let ver = 2;
-  for (const m of MIGRATIONS) {
-    if (m.from === ver) { m.fn(data); ver = m.to; }
-  }
+  const ver = migrateFrom(data, 2);
   assert.equal(ver, CURRENT_VERSION, 'migration chain should advance to CURRENT_VERSION');
   assert.ok(data.sectorSim && typeof data.sectorSim === 'object',
-    'v2→v3 migration should seed an empty data.sectorSim object');
+    'v2→current migration should seed an empty data.sectorSim object');
   assert.ok(data.sectorSim.sectors && typeof data.sectorSim.sectors === 'object',
     'migrated sectorSim should have a sectors map');
   assert.ok(data.sectorSim.meta && typeof data.sectorSim.meta === 'object',
@@ -196,8 +205,8 @@ function checkMigrationRoundTrip() {
 
   // The migration must be idempotent (re-runnable, never throws).
   const data2 = JSON.parse(JSON.stringify(v2Data));
-  for (const m of MIGRATIONS) { if (m.from === 2) m.fn(data2); }
-  for (const m of MIGRATIONS) { if (m.from === 2) m.fn(data2); }   // run twice
+  migrateFrom(data2, 2);
+  migrateFrom(data2, 2);
   assert.deepEqual(data2.sectorSim, data.sectorSim, 'migration must be idempotent');
 
   // deserialize must accept the migrated blob without throwing and heal to full schema.
@@ -334,7 +343,7 @@ const checks = [
   ['seed stability + determinism', checkSeedStabilityAndDeterminism],
   ['per-sector stream stability (ADR §86-88)', checkPerSectorStreamStability],
   ['deserialize re-seeds from rngSeed', checkDeserializeReseeds],
-  ['v2→v3 migration round-trip', checkMigrationRoundTrip],
+  ['v2→current migration round-trip', checkMigrationRoundTrip],
   ['single-writer safety', checkSingleWriterSafety],
   ['danger-overlay correctness', checkDangerOverlay],
   ['view boundary (current sector never drifted)', checkViewBoundary],

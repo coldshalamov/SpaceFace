@@ -25,11 +25,11 @@ Accepted runtime surface:
 
 ## Schema And Migration
 
-No save migration is claimed complete in this landing. Dynamic body authoring uses the existing additive `entity.physicsBody` schema from `physicsAuthority.js`. Runtime commands and telemetry stay transient WeakMap state and must not enter saves.
+Save schema v4 persists SG-02 dynamic authority prerequisites: `settings.gameplay.physicsBackend === 'rapier-dynamic'`, craft yaw-rate (`angVel`), and the additive `entity.physicsBody` authoring/mutable-thruster schema from `physicsAuthority.js`. Runtime commands, Rapier handles, joints, and telemetry stay transient WeakMap state and must not enter saves.
 
 Follow-up before making `rapier-dynamic` the default:
 
-- persist yaw-rate, mutable `physicsBody`, active actions, and semantic attachments;
+- persist active SG-03 actions and semantic attachments;
 - rebuild Rapier bodies/constraints in deterministic order after load;
 - fold quantized SG-02 body state into the SG-01 authoritative snapshot.
 
@@ -39,10 +39,11 @@ Follow-up before making `rapier-dynamic` the default:
 - `scripts/check-sg02-production-combat-port.mjs`
 - `scripts/check-sg02-tether.mjs`
 - `scripts/check-sg02-dash-collision.mjs`
+- `scripts/check-sg02-save-reload.mjs`
 - `scripts/check-sg02-dynamic-body-owner.mjs`
 - `scripts/check-physics-authority.mjs`
 
-`npm run check:sg02` runs the SG-02 intake, membrane, lab, production-authority, production-combat-port, tether, and dash-collision gates.
+`npm run check:sg02` runs the SG-02 intake, membrane, lab, production-authority, production-combat-port, tether, dash-collision, and save/reload gates.
 
 ## Superseded Legacy Code
 

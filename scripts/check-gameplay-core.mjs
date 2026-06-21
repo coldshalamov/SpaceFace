@@ -191,6 +191,16 @@ function checkSaveScrubsTransientFlightState() {
     bank: 0.42,
     bankVel: -0.8,
     hull: 88,
+    physicsBody: {
+      schemaVersion: 1,
+      mass: 42,
+      inertiaY: 77,
+      radius: 9,
+      dynamic: true,
+      ccd: true,
+      revision: 3,
+      thrusters: [{ id: 'drive-port', health: 0.5, forward: 1, reverse: 0.8, strafe: 0.4, yaw: 0.7 }],
+    },
     flags: { persistent: true, boosting: true, noInterp: true, invuln: true },
     boost: {
       energy: 63,
@@ -218,7 +228,10 @@ function checkSaveScrubsTransientFlightState() {
   assert.equal(savedPlayer.pos.x, 12, 'save should keep authoritative player position');
   assert.equal(savedPlayer.vel.x, 45, 'save should keep authoritative player velocity');
   assert.equal(savedPlayer.rot, 1.25, 'save should keep authoritative player heading');
+  assert.equal(savedPlayer.angVel, 2.75, 'save should keep authoritative yaw-rate for SG-02 dynamic bodies');
   assert.equal(savedPlayer.hull, 88, 'save should keep persistent player vitals');
+  assert.equal(savedPlayer.physicsBody.mass, 42, 'save should keep authored dynamic body mass');
+  assert.equal(savedPlayer.physicsBody.thrusters[0].health, 0.5, 'save should keep dynamic thruster damage state');
   assert.equal(savedPlayer.flags.persistent, true, 'save should keep persistent entity flags');
   assert.equal(savedPlayer.flags.invuln, true, 'save should keep non-flight gameplay flags');
   assert.equal(savedPlayer.flags.boosting, undefined, 'save should drop transient sustained boost flag');
@@ -230,7 +243,6 @@ function checkSaveScrubsTransientFlightState() {
   assert.equal(savedPlayer.boost._boostArmed, undefined, 'save should drop private boost edge state');
   assert.equal(savedPlayer.prevPos, undefined, 'save should drop interpolation position history');
   assert.equal(savedPlayer.prevRot, undefined, 'save should drop interpolation rotation history');
-  assert.equal(savedPlayer.angVel, undefined, 'save should drop angular velocity so loads do not keep spinning');
   assert.equal(savedPlayer.bank, undefined, 'save should drop decorative bank pose');
   assert.equal(savedPlayer.bankVel, undefined, 'save should drop decorative bank spring velocity');
   assert.equal(savedPlayer._flightFrame, undefined, 'save should drop derived diagnostics frame');
@@ -1639,6 +1651,12 @@ function checkSettingsRestoreSanitizesFlightOptions() {
   assert.equal(state.settings.gameplay.physicsBackend, 'rapier', 'valid saved Rapier backend should restore');
   assert.equal(state.settings.controls.flightMode, 'newtonian', 'valid saved flight mode should restore');
   assert.equal(state.settings.controls.bindings, null, 'null bindings should keep default binding semantics');
+
+  save._restoreSettings({
+    gameplay: { physicsBackend: 'rapier-dynamic' },
+    controls: { flightMode: 'assisted', bindings: null },
+  });
+  assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic', 'valid saved SG-02 dynamic backend should restore');
 }
 
 function checkProfessionalFlightApiExists() {

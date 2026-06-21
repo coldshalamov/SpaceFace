@@ -21,13 +21,12 @@ const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
 const DEFAULT_FLIGHT_MODE = 'assisted';
 const DEFAULT_PHYSICS_BACKEND = 'custom';
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
-const VALID_PHYSICS_BACKENDS = new Set(['custom', 'rapier']);
+const VALID_PHYSICS_BACKENDS = new Set(['custom', 'rapier', 'rapier-dynamic']);
 const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'mesh',
   'view',
   'prevPos',
   'prevRot',
-  'angVel',
   'bank',
   'bankVel',
 ]);
@@ -625,6 +624,7 @@ export const save = {
     if (saved.pos) { e.pos.set(saved.pos.x || 0, 0, saved.pos.z || 0); e.prevPos.copy(e.pos); }
     if (saved.vel) e.vel.set(saved.vel.x || 0, 0, saved.vel.z || 0);
     if (typeof saved.rot === 'number') { e.rot = saved.rot; e.prevRot = saved.rot; }
+    if (typeof saved.angVel === 'number') e.angVel = saved.angVel;
     e.flags.noInterp = true; // skip interpolation this frame (teleport)
   },
 

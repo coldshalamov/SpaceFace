@@ -118,7 +118,7 @@ assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected te
 assert.equal(envelope.phase0ObservedTraceCounts['graffiti:show'], 1, 'expected telemetry should pin observed cold-start graffiti count');
 assert.equal(envelope.phase0ObservedTraceCounts['comms:popup'], 2, 'expected telemetry should pin observed cold-start comms count');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  '59765bf146a7290ff1a83a1634e4b2dc7cbe71edb63e4b0e360db7a028d8139e',
+  '46ac93897737f44a5f1b522ed3438643e4f19c561a5dd6d291c43be7aa4573a5',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 
 const balanceSim = read('scripts/balance-sim.mjs');
