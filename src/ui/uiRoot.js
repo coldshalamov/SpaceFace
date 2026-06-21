@@ -115,8 +115,24 @@ export const ui = {
     document.getElementById('ui-root').appendChild(hints);
 
     // Hide hints/reticle when not in pure flight (improved from initial override for robustness)
+    // showHints: briefly show the control bar then fade out.
+    // ms = how long to keep it visible before fading (default 8s on flight start, 3.5s on context change).
+    let _hintFadeTimer = null;
+    const showHints = (ms = 8000) => {
+      if (!hints) return;
+      clearTimeout(_hintFadeTimer);
+      hints.classList.add('sf-hint-visible');
+      _hintFadeTimer = setTimeout(() => hints.classList.remove('sf-hint-visible'), ms);
+    };
+    // Expose so onboarding can flash hints on context change
+    window._sfShowHints = showHints;
+
     const setFlightUI = (visible) => {
-      if (hints) hints.style.display = visible ? 'block' : 'none';
+      if (hints) {
+        // Keep hard-hidden (display:none) when outside flight so the modal override still works.
+        hints.style.display = visible ? '' : 'none';
+        if (visible) showHints(8000); else { clearTimeout(_hintFadeTimer); hints.classList.remove('sf-hint-visible'); }
+      }
       if (reticle) reticle.style.display = visible ? 'block' : 'none';
     };
     const refreshFlightUI = () => {
@@ -408,8 +424,8 @@ function injectHudCss() {
   #hud { font-size: calc(15px * var(--ui-scale)); }
   #hud > * { pointer-events: none; }
   body.ui-modal-open #aim-reticle,
-  body.ui-modal-open #control-hints,
   body.ui-modal-open #pilot-portrait { display: none !important; }
+  body.ui-modal-open #control-hints { opacity: 0 !important; pointer-events: none !important; }
 
   /* Reticle reflects fire mode: amber tint + slight pulse when auto-fire is engaging hostiles,
      cyan when the pilot aims/fires manually (Phase 2). */
@@ -485,9 +501,13 @@ function injectHudCss() {
   /* bottom-right radar + target */
   .sf-rightdock { position:absolute; right:18px; bottom:18px; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
   .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
-  .sf-radar { width:180px; height:180px; border-radius:50%; overflow:hidden;
-    border:1px solid var(--panel-edge); box-shadow:0 0 18px rgba(0,0,0,.5); }
-  .sf-radar canvas { display:block; }
+  .sf-radar { position:relative; width:180px; height:180px; border-radius:50%; overflow:hidden;
+    border:1px solid var(--panel-edge); box-shadow:0 0 18px rgba(0,0,0,.5); cursor:pointer;
+    transition:width .3s cubic-bezier(.4,0,.2,1), height .3s cubic-bezier(.4,0,.2,1), box-shadow .25s ease; }
+  .sf-radar--expanded { width:340px !important; height:340px !important;
+    box-shadow:0 0 0 1px rgba(57,208,255,0.45), 0 0 40px rgba(57,208,255,0.18), 0 0 80px rgba(57,208,255,0.06) !important; }
+  /* canvas is always 340px — centered so the overflow:hidden circle reveals from the player outward */
+  .sf-radar canvas { display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
   .sf-radar-legend { width:220px; display:grid; grid-template-columns:repeat(5, auto); gap:4px 7px; justify-content:center;
     padding:5px 7px; background:rgba(8,14,24,.58); border:1px solid var(--panel-edge); border-radius:7px;
     color:var(--ink-dim); font-size:9px; letter-spacing:.04em; backdrop-filter:blur(4px); }

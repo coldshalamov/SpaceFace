@@ -270,6 +270,11 @@ export const onboarding = {
       gate:    'M open Star Map  •  Select destination  •  Jump to travel between systems',
     };
     el.textContent = HINTS[mode] || HINTS.flight;
+    // Flash the bar for 3.5s on context change so the player sees the relevant hint, then it fades.
+    // Skips flash on the generic 'flight' mode restore so returning from combat doesn't re-surface it.
+    if (mode !== 'flight' && typeof window._sfShowHints === 'function') {
+      window._sfShowHints(3500);
+    }
   },
 
   _completeClaimIfNear(step) {

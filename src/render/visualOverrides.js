@@ -1,4 +1,4 @@
-// Bespoke visual overrides for hero assets.
+// Bespoke visual overrides for hero assets plus the authored-asset boundary.
 //
 // The existing visualFactory remains the procedural fallback for the complete ship catalog.
 // Overrides are deliberately narrow, deterministic, and failure-isolated: if a bespoke builder
@@ -10,6 +10,7 @@ import { buildMeridianTrader } from './ships/meridianTrader.js';
 import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
+import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 
 function isPlayerKestrel(entity) {
   return !!entity && entity.type === 'ship' && entity.team === 0 && entity.data && entity.data.defId === 'ship_kestrel';
@@ -27,7 +28,7 @@ const FACTION_BUILDERS = {
 };
 
 /**
- * Install the hero-asset registry on a live visual factory.
+ * Install the hero-asset registry and authored-part boundary on a live visual factory.
  * Mutating the existing factory object is intentional: renderer event closures, rebuild paths,
  * and the dev ship-preview harness all retain a reference to that same object.
  */
@@ -36,19 +37,30 @@ export function installVisualOverrides(factory) {
 
   const fallbackBuild = factory.build.bind(factory);
   factory.build = (entity) => {
+    let visual = null;
     if (isPlayerKestrel(entity)) {
-      try { return buildKestrelHero(entity); }
+      try { visual = buildKestrelHero(entity); }
       catch (error) { console.warn('[visualOverrides] Kestrel hero build failed; using procedural fallback', error); }
     } else if (entity && entity.type === 'ship' && entity.data) {
       // Faction bespoke ships (spec §8.2–§8.7, Phase 3 §20). Each is failure-isolated: any throw in
       // the bespoke builder falls back to the procedural factory, so a broken hero never blanks an NPC.
       const entry = FACTION_BUILDERS[entity.data.lootTableId];
       if (entry) {
-        try { return entry.build(entity); }
+        try { visual = entry.build(entity); }
         catch (error) { console.warn(`[visualOverrides] ${entry.label} build failed; using procedural fallback`, error); }
       }
     }
-    return fallbackBuild(entity);
+
+    if (!visual) visual = fallbackBuild(entity);
+    if (!visual || !entity || entity.type !== 'ship') return visual;
+
+    // The wrapper is synchronous. Any later transport, validation, or composition failure leaves
+    // the selected procedural/bespoke visual mounted and alive.
+    try { return wrapShipWithAuthoredParts(entity, visual); }
+    catch (error) {
+      console.warn('[visualOverrides] authored-asset boundary failed; using selected ship visual', error);
+      return visual;
+    }
   };
 
   Object.defineProperty(factory, '__spacefaceOverridesInstalled', {

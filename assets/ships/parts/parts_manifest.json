@@ -1,0 +1,939 @@
+{
+  "schemaVersion": 1,
+  "libraryId": "SF_SHIP_PARTS_V1",
+  "coordinateSystem": {
+    "handedness": "right",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "origin": "mount point"
+  },
+  "textureContract": {
+    "baseColor": "sRGB",
+    "normal": "tangent OpenGL green-up",
+    "orm": "R=AO G=roughness B=metallic",
+    "resolution": 1024
+  },
+  "budgets": {
+    "trianglesPerPart": [
+      500,
+      4000
+    ],
+    "maxBytesPerPart": 350000
+  },
+  "materialContract": {
+    "hull": "Material_Hull",
+    "accent": "Material_Accent",
+    "glass": "Material_Glass",
+    "mechanical": "Material_Mechanical"
+  },
+  "parts": [
+    {
+      "id": "cockpit_dome",
+      "category": "cockpits",
+      "priority": "P0",
+      "file": "cockpits/cockpit_dome.glb",
+      "tris": 2120,
+      "bytes": 245856,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1.1,
+          -1.15,
+          -1.63
+        ],
+        "max": [
+          3.5,
+          2.11,
+          1.63
+        ],
+        "dimensionsM": [
+          4.6,
+          3.26,
+          3.26
+        ]
+      },
+      "note": "Bubble canopy with interior deck and structural frame."
+    },
+    {
+      "id": "cockpit_slab",
+      "category": "cockpits",
+      "priority": "P0",
+      "file": "cockpits/cockpit_slab.glb",
+      "tris": 1564,
+      "bytes": 238892,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.8,
+          -0.045,
+          -1.85
+        ],
+        "max": [
+          4.055,
+          1.81,
+          1.85
+        ],
+        "dimensionsM": [
+          4.855,
+          1.855,
+          3.7
+        ]
+      },
+      "note": "Armored authority bridge with serialized viewports."
+    },
+    {
+      "id": "cockpit_recessed",
+      "category": "cockpits",
+      "priority": "P0",
+      "file": "cockpits/cockpit_recessed.glb",
+      "tris": 960,
+      "bytes": 221664,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.9,
+          -0.05,
+          -1.75
+        ],
+        "max": [
+          4.8,
+          1.18,
+          1.75
+        ],
+        "dimensionsM": [
+          5.7,
+          1.23,
+          3.5
+        ]
+      },
+      "note": "Flush sensor-slot cockpit with armored brow."
+    },
+    {
+      "id": "engine_ion_small",
+      "category": "engines",
+      "priority": "P0",
+      "file": "engines/engine_ion_small.glb",
+      "tris": 3156,
+      "bytes": 306668,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "HOOK_Spin",
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.12,
+          -1.062,
+          -1.062
+        ],
+        "max": [
+          2.5,
+          1.062,
+          1.062
+        ],
+        "dimensionsM": [
+          2.62,
+          2.124,
+          2.124
+        ]
+      },
+      "note": "Compact ion drive with fan, core and heat ribs."
+    },
+    {
+      "id": "engine_ion_twin",
+      "category": "engines",
+      "priority": "P0",
+      "file": "engines/engine_ion_twin.glb",
+      "tris": 2476,
+      "bytes": 300884,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "HOOK_Spin",
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.11,
+          -0.82,
+          -1.87
+        ],
+        "max": [
+          2.8,
+          0.82,
+          1.87
+        ],
+        "dimensionsM": [
+          2.91,
+          1.64,
+          3.74
+        ]
+      },
+      "note": "Serialized twin-nozzle fighter drive."
+    },
+    {
+      "id": "engine_industrial",
+      "category": "engines",
+      "priority": "P0",
+      "file": "engines/engine_industrial.glb",
+      "tris": 3944,
+      "bytes": 337868,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "HOOK_Spin",
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.12,
+          -1.4396,
+          -1.4396
+        ],
+        "max": [
+          3.3,
+          1.45,
+          1.4396
+        ],
+        "dimensionsM": [
+          3.42,
+          2.8896,
+          2.8792
+        ]
+      },
+      "note": "Asymmetric serviced industrial drive with coolant plumbing."
+    },
+    {
+      "id": "engine_resonator",
+      "category": "engines",
+      "priority": "P0",
+      "file": "engines/engine_resonator.glb",
+      "tris": 2384,
+      "bytes": 282660,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "HOOK_Spin",
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.46,
+          -1.3,
+          -1.3
+        ],
+        "max": [
+          2.6,
+          1.3,
+          1.3
+        ],
+        "dimensionsM": [
+          3.06,
+          2.6,
+          2.6
+        ]
+      },
+      "note": "Nozzle-less alien resonator with nested faceted hoops."
+    },
+    {
+      "id": "weapon_pulse_cannon",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_pulse_cannon.glb",
+      "tris": 1944,
+      "bytes": 250636,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.15,
+          -0.52,
+          -0.5
+        ],
+        "max": [
+          4.64,
+          0.52,
+          0.5
+        ],
+        "dimensionsM": [
+          4.79,
+          1.04,
+          1.0
+        ]
+      },
+      "note": "Fixed pulse cannon with visible cooling train."
+    },
+    {
+      "id": "weapon_heavy_cannon",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_heavy_cannon.glb",
+      "tris": 2296,
+      "bytes": 257156,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.3,
+          -0.725,
+          -0.85
+        ],
+        "max": [
+          6.13,
+          0.795,
+          0.85
+        ],
+        "dimensionsM": [
+          6.43,
+          1.52,
+          1.7
+        ]
+      },
+      "note": "Oversized bolted cannon with recoil cylinders."
+    },
+    {
+      "id": "weapon_turret_dual",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_turret_dual.glb",
+      "tris": 1808,
+      "bytes": 249580,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "HOOK_Spin"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.25,
+          -1.05,
+          -1.125
+        ],
+        "max": [
+          5.03,
+          1.05,
+          1.125
+        ],
+        "dimensionsM": [
+          5.28,
+          2.1,
+          2.25
+        ]
+      },
+      "note": "Dual tracking turret with a hook-addressable head."
+    },
+    {
+      "id": "weapon_lance",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_lance.glb",
+      "tris": 1112,
+      "bytes": 226672,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.3,
+          -0.535,
+          -0.85
+        ],
+        "max": [
+          7.35,
+          0.535,
+          0.85
+        ],
+        "dimensionsM": [
+          7.65,
+          1.07,
+          1.7
+        ]
+      },
+      "note": "Long crystalline focusing lance."
+    },
+    {
+      "id": "fin_wedge",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_wedge.glb",
+      "tris": 584,
+      "bytes": 201448,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.4,
+          -0.14,
+          0.0
+        ],
+        "max": [
+          3.8,
+          0.339,
+          4.1
+        ],
+        "dimensionsM": [
+          4.2,
+          0.479,
+          4.1
+        ]
+      },
+      "note": "Chamfered combat wing with structural ribs."
+    },
+    {
+      "id": "fin_radiator_grid",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_radiator_grid.glb",
+      "tris": 652,
+      "bytes": 217540,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          0.0,
+          -0.12,
+          0.0
+        ],
+        "max": [
+          3.6,
+          0.32,
+          3.8
+        ],
+        "dimensionsM": [
+          3.6,
+          0.44,
+          3.8
+        ]
+      },
+      "note": "Vented industrial radiator grid."
+    },
+    {
+      "id": "fin_swept_smuggler",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_swept_smuggler.glb",
+      "tris": 576,
+      "bytes": 199672,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.2,
+          -0.09,
+          0.0
+        ],
+        "max": [
+          4.8,
+          0.2,
+          4.0
+        ],
+        "dimensionsM": [
+          5.0,
+          0.29,
+          4.0
+        ]
+      },
+      "note": "Low-profile swept smuggler blade."
+    },
+    {
+      "id": "fin_crystalline",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_crystalline.glb",
+      "tris": 540,
+      "bytes": 198824,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.3,
+          -0.11,
+          0.0
+        ],
+        "max": [
+          3.8,
+          0.205,
+          4.3
+        ],
+        "dimensionsM": [
+          4.1,
+          0.315,
+          4.3
+        ]
+      },
+      "note": "Alien faceted plane with emissive veins."
+    },
+    {
+      "id": "greeble_vents",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_vents.glb",
+      "tris": 968,
+      "bytes": 254024,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.2,
+          -0.26,
+          -1.3
+        ],
+        "max": [
+          3.8,
+          1.1,
+          1.3
+        ],
+        "dimensionsM": [
+          4.0,
+          1.36,
+          2.6
+        ]
+      },
+      "note": "Vent slat and intake kit."
+    },
+    {
+      "id": "greeble_hatches",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_hatches.glb",
+      "tris": 1620,
+      "bytes": 269316,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.9,
+          -0.01,
+          -0.7
+        ],
+        "max": [
+          2.8,
+          0.585,
+          1.925
+        ],
+        "dimensionsM": [
+          3.7,
+          0.595,
+          2.625
+        ]
+      },
+      "note": "Access hatch and fastener kit."
+    },
+    {
+      "id": "greeble_pipes",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_pipes.glb",
+      "tris": 1180,
+      "bytes": 248260,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.4,
+          -0.03,
+          -1.4
+        ],
+        "max": [
+          3.8,
+          0.52,
+          1.4
+        ],
+        "dimensionsM": [
+          4.2,
+          0.55,
+          2.8
+        ]
+      },
+      "note": "Coolant pipe and coupling kit."
+    },
+    {
+      "id": "greeble_rcs",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_rcs.glb",
+      "tris": 1040,
+      "bytes": 245844,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.4,
+          -0.04,
+          -1.6
+        ],
+        "max": [
+          2.8,
+          0.63,
+          1.6
+        ],
+        "dimensionsM": [
+          3.2,
+          0.67,
+          3.2
+        ]
+      },
+      "note": "Reaction-control thruster quad."
+    },
+    {
+      "id": "greeble_antennas",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_antennas.glb",
+      "tris": 1214,
+      "bytes": 247744,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.4,
+          -0.04,
+          -1.43861
+        ],
+        "max": [
+          2.4,
+          3.31,
+          1.2
+        ],
+        "dimensionsM": [
+          2.8,
+          3.35,
+          2.63861
+        ]
+      },
+      "note": "Sensor mast, loop, dish and beacon kit."
+    },
+    {
+      "id": "skid_trio",
+      "category": "gear",
+      "priority": "P2",
+      "file": "gear/skid_trio.glb",
+      "tris": 1040,
+      "bytes": 222764,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.65,
+          -0.02,
+          -1.4
+        ],
+        "max": [
+          3.75,
+          1.2728,
+          1.4
+        ],
+        "dimensionsM": [
+          4.4,
+          1.2928,
+          2.8
+        ]
+      },
+      "note": "Three-skid frontier landing set with replacement foot."
+    },
+    {
+      "id": "skid_quad",
+      "category": "gear",
+      "priority": "P2",
+      "file": "gear/skid_quad.glb",
+      "tris": 1532,
+      "bytes": 233552,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.575,
+          -0.04,
+          -1.8
+        ],
+        "max": [
+          3.775,
+          1.82,
+          1.8
+        ],
+        "dimensionsM": [
+          4.35,
+          1.86,
+          3.6
+        ]
+      },
+      "note": "Four-point heavy landing gear."
+    },
+    {
+      "id": "pod_utility",
+      "category": "pods",
+      "priority": "P2",
+      "file": "pods/pod_utility.glb",
+      "tris": 952,
+      "bytes": 235560,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.45,
+          -0.095,
+          -1.34
+        ],
+        "max": [
+          3.75,
+          1.66,
+          1.34
+        ],
+        "dimensionsM": [
+          4.2,
+          1.755,
+          2.68
+        ]
+      },
+      "note": "Dorsal utility pod with status bank."
+    },
+    {
+      "id": "pod_cargo_container",
+      "category": "pods",
+      "priority": "P2",
+      "file": "pods/pod_cargo_container.glb",
+      "tris": 1216,
+      "bytes": 248572,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.5,
+          -0.125,
+          -1.5
+        ],
+        "max": [
+          4.7,
+          2.125,
+          1.5
+        ],
+        "dimensionsM": [
+          5.2,
+          2.25,
+          3.0
+        ]
+      },
+      "note": "Ribbed standardized cargo container."
+    },
+    {
+      "id": "pod_repair_patch",
+      "category": "pods",
+      "priority": "P2",
+      "file": "pods/pod_repair_patch.glb",
+      "tris": 1688,
+      "bytes": 255748,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.25,
+          -0.06,
+          -1.56937
+        ],
+        "max": [
+          4.6,
+          0.24,
+          1.55
+        ],
+        "dimensionsM": [
+          4.85,
+          0.3,
+          3.11937
+        ]
+      },
+      "note": "Irregular bolted field-repair panel."
+    }
+  ]
+}
