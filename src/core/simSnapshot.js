@@ -17,7 +17,7 @@ const OMIT_KEYS = new Set([
 ]);
 
 export function snapshotSimState(state) {
-  return {
+  const snapshot = {
     schema: 'spaceface.simSnapshot.v1',
     meta: snapshotMeta(state.meta),
     tick: state.tick | 0,
@@ -36,6 +36,9 @@ export function snapshotSimState(state) {
       .map(snapshotEntity)
       .sort((a, b) => a.id - b.id),
   };
+  const physics = snapshotPhysicsRuntime(state);
+  if (physics) snapshot.physics = physics;
+  return snapshot;
 }
 
 export function canonicalStringify(value) {
@@ -67,6 +70,34 @@ function snapshotMeta(meta) {
   return {
     version: meta && typeof meta.version === 'number' ? meta.version : null,
     seed: meta && typeof meta.seed === 'number' ? meta.seed >>> 0 : 0,
+  };
+}
+
+function snapshotPhysicsRuntime(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  if (!gameplay || gameplay.physicsBackend !== 'rapier-dynamic') return null;
+  const runtime = state.physicsRuntime || {};
+  const diag = runtime.diagnostics || {};
+  return {
+    schema: 'spaceface.physicsSnapshot.v1',
+    backend: 'rapier-dynamic',
+    ready: diag.sg02Ready === true,
+    bodies: Array.isArray(runtime.sg02Snapshot)
+      ? runtime.sg02Snapshot.map(snapshotSg02Body).sort((a, b) => a.id - b.id)
+      : [],
+  };
+}
+
+function snapshotSg02Body(body) {
+  return {
+    id: body.id | 0,
+    x: round6(body.x),
+    z: round6(body.z),
+    yaw: round6(body.yaw),
+    vx: round6(body.vx),
+    vz: round6(body.vz),
+    wy: round6(body.wy),
+    revision: Math.max(0, Math.trunc(body.revision || 0)),
   };
 }
 

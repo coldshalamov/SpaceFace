@@ -9,6 +9,7 @@ Accepted runtime surface:
 - `src/core/physicsAuthority.js` remains the command membrane for force, torque, impulse, body schema, thruster health, and telemetry.
 - `src/core/sg02DynamicBodyOwner.js` owns Rapier dynamic/fixed bodies, 2.5D plane locking, speed clamping, Massline rope joints, reel/cut operations, and SG-03-shaped combat physics methods.
 - `src/core/physics.js` installs a stable `helpers.combatPhysics` object before SG-03 action services initialize, then forwards it to the live SG-02 owner when `rapier-dynamic` is ready.
+- `src/core/simSnapshot.js` folds the live, quantized SG-02 body snapshot into SG-01 headless snapshots when `rapier-dynamic` is selected.
 - `src/core/flightDynamics.js` can compile the existing assisted/drift/newtonian control laws into SG-02 force/torque commands without directly mutating entity motion.
 - `src/systems/flight.js` routes dash impulses and intentless damping through SG-02 when the dynamic backend is selected.
 
@@ -31,8 +32,8 @@ Save schema v5 persists SG-03 semantic combat state: combatants, active/queued a
 
 Follow-up before making `rapier-dynamic` the default:
 
-- fold quantized SG-02 body state into the SG-01 authoritative snapshot.
-- close remaining projectile/docking/contact-event parity under dynamic authority. Pickup contact parity is now covered by `scripts/check-sg02-authority.mjs`.
+- use the folded quantized SG-02 body snapshot in the 47-A reload/default-backend replay gate.
+- close remaining docking/range contact-event parity under dynamic authority. Pickup and live projectile contact parity are now covered by `scripts/check-sg02-authority.mjs`.
 
 ## Acceptance Scripts
 
@@ -55,5 +56,5 @@ The old kinematic Rapier observer authority was removed from `src/core/rapierCol
 ## Known Limitations
 
 - `rapier-dynamic` is explicit opt-in, not the default 47-A replay backend yet.
-- Projectile hit and docking range parity still depend on legacy projections and need deeper SG-01 save/replay work before default activation. Pickup collection parity is live in the explicit `rapier-dynamic` backend and covered by `npm run check:sg02:authority`.
+- Docking range parity still depends on legacy projections and needs deeper SG-01 save/replay work before default activation. Pickup collection and live projectile hit parity are live in the explicit `rapier-dynamic` backend and covered by `npm run check:sg02:authority`.
 - SG-06 tactical AI remains registry-gated until the production ports are exercised by the live tactical system with encounter ownership and legacy intent/fire path deletion in the same milestone.

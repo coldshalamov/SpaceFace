@@ -68,8 +68,7 @@ export const physics = {
       if (state.spatialHash && (this._diag.sweptProjectileHits > 0 || this._diag.pickupCollections > 0)) state.spatialHash.rebuild(state.entityList);
       this.updateDockRange(state);
       this._diag.tickMs = Math.max(0, nowMs() - t0);
-      state.physicsRuntime = state.physicsRuntime || {};
-      state.physicsRuntime.diagnostics = this._diag;
+      this._publishRuntime(state);
       return;
     }
     this._disableSg02DynamicAuthority();
@@ -83,8 +82,18 @@ export const physics = {
     this._syncOptionalBackend(dt, state);
     this.updateDockRange(state);
     this._diag.tickMs = Math.max(0, nowMs() - t0);
+    this._publishRuntime(state);
+  },
+
+  _publishRuntime(state) {
     state.physicsRuntime = state.physicsRuntime || {};
     state.physicsRuntime.diagnostics = this._diag;
+    if (this._sg02 && this._diag.backend === 'rapier-dynamic') {
+      const live = new Set((state.entityList || []).filter((e) => e && e.alive !== false).map((e) => e.id));
+      state.physicsRuntime.sg02Snapshot = this._sg02.quantizedSnapshot().filter((body) => live.has(body.id));
+    } else {
+      delete state.physicsRuntime.sg02Snapshot;
+    }
   },
 
   collectPickups(state) {
