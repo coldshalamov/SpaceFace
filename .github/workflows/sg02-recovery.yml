@@ -1,0 +1,67 @@
+name: SG-02 payload recovery
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [sg-02-rapier-dynamic-authority]
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Recover staged implementation
+        shell: bash
+        run: |
+          set -u
+          mkdir -p recovery/recovered recovery/diagnostics
+          cat .sg02-bootstrap/payload-* | tr -d '\r\n' > recovery/diagnostics/payload.b64
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+
+          src = Path('recovery/diagnostics/payload.b64').read_text()
+          report = []
+          report.append(f'base64_chars={len(src)}')
+          try:
+              raw = base64.b64decode(src, validate=True)
+              Path('recovery/diagnostics/sg02-payload.tar.gz').write_bytes(raw)
+              report.append(f'decoded_bytes={len(raw)}')
+              report.append('base64_status=ok')
+          except Exception as exc:
+              report.append(f'base64_status=failed: {exc!r}')
+          Path('recovery/diagnostics/recovery-status.txt').write_text('\n'.join(report) + '\n')
+          PY
+
+          if gzip -t recovery/diagnostics/sg02-payload.tar.gz 2>> recovery/diagnostics/recovery-status.txt; then
+            echo 'gzip_status=ok' >> recovery/diagnostics/recovery-status.txt
+            if tar -xzf recovery/diagnostics/sg02-payload.tar.gz -C recovery/recovered 2>> recovery/diagnostics/recovery-status.txt; then
+              echo 'tar_status=ok' >> recovery/diagnostics/recovery-status.txt
+            else
+              echo 'tar_status=failed' >> recovery/diagnostics/recovery-status.txt
+            fi
+          else
+            echo 'gzip_status=failed_or_missing' >> recovery/diagnostics/recovery-status.txt
+          fi
+
+          find recovery/recovered -type f -print | sort > recovery/diagnostics/recovered-files.txt
+          cp -R .sg02-bootstrap recovery/diagnostics/staged-payloads
+          cp .github/workflows/sg02-recovery.yml recovery/diagnostics/
+          (cd recovery && zip -qr ../SpaceFace-SG02-recovery.zip recovered diagnostics)
+          cat recovery/diagnostics/recovery-status.txt
+          echo '--- recovered files ---'
+          cat recovery/diagnostics/recovered-files.txt
+
+      - name: Upload recovery ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpaceFace-SG02-recovery
+          path: SpaceFace-SG02-recovery.zip
+          if-no-files-found: error
+          retention-days: 7
