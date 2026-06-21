@@ -470,6 +470,179 @@ function checkLoadDoesNotSpawnTargetsForStaleLiveMissions() {
   assert.equal(state.ui.trackedMissionId, null, 'load should not keep tracking a stale pre-load mission');
 }
 
+function checkLoadRestoresPersistentEntities() {
+  const makeVec = (x = 0, z = 0) => ({
+    x,
+    y: 0,
+    z,
+    set(nx, ny, nz) { this.x = nx; this.y = ny || 0; this.z = nz; return this; },
+    copy(pos) { this.x = pos.x; this.y = pos.y || 0; this.z = pos.z; return this; },
+  });
+  const state = {
+    mode: 'flight',
+    timeScale: 1,
+    meta: { seed: 7, playtimeS: 1, createdAt: 'old', lastSavedAt: '' },
+    save: { currentSlot: 'old' },
+    playerId: 1,
+    simTime: 5,
+    tick: 2,
+    player: {
+      credits: 0,
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 10, capMass: 10 },
+      ownedShips: [{ defId: 'ship_kestrel', fittings: [] }],
+      activeShipIndex: 0,
+      moduleInventory: [],
+      targetId: 88,
+      stats: { missionsDone: 0 },
+    },
+    economy: {},
+    factions: {},
+    world: { currentSectorId: 'sector_ceres_belt', sectors: {}, activeSector: {}, discovery: {}, pendingSpawns: {} },
+    missions: { boards: {}, active: [], completedLog: [], nextId: 1, config: null },
+    story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
+    automation: { drones: [], meta: {} },
+    crafting: { queues: {} },
+    settings: {},
+    ui: { trackedMissionId: null },
+    entities: new Map(),
+    entityList: [],
+    freeIds: [],
+    nextEntityId: 1,
+    rng: () => 0.5,
+  };
+  const stale = { id: 1, type: 'ship', alive: true, pos: makeVec(999, 999), radius: 8, flags: {}, data: {} };
+  state.entities.set(stale.id, stale);
+  state.entityList.push(stale);
+  const bus = createBus();
+  const helpers = {
+    spawnEntity(spec) {
+      const ent = {
+        id: state.nextEntityId++,
+        ...spec,
+        alive: spec.alive !== false,
+        flags: Object.assign({}, spec.flags),
+        data: spec.data || {},
+        pos: makeVec(spec.pos && spec.pos.x, spec.pos && spec.pos.z),
+        prevPos: makeVec(spec.pos && spec.pos.x, spec.pos && spec.pos.z),
+        vel: makeVec(spec.vel && spec.vel.x, spec.vel && spec.vel.z),
+        rot: spec.rot || 0,
+        prevRot: spec.rot || 0,
+      };
+      state.entities.set(ent.id, ent);
+      state.entityList.push(ent);
+      return ent;
+    },
+    getEntity(id) { return state.entities.get(id); },
+    player() { return state.entities.get(state.playerId); },
+    hash32() { return 1; },
+    mulberry32() { return () => 0.5; },
+  };
+  const registry = {
+    get(name) {
+      return {
+        economy: { deserialize() {} },
+        factions: { deserialize() {} },
+        world: {
+          deserialize(data) { state.world.currentSectorId = data && data.currentSectorId; },
+          enterSector(sectorId) {
+            for (let i = state.entityList.length - 1; i >= 0; i--) {
+              const e = state.entityList[i];
+              if (e.id === state.playerId) continue;
+              state.entities.delete(e.id);
+              state.entityList.splice(i, 1);
+            }
+            state.world.currentSectorId = sectorId;
+          },
+        },
+        ships: { recomputeActiveShip() {} },
+        cargo: { recompute() {} },
+        automation: { deserialize(data) { state.automation = data || {}; } },
+        crafting: { deserialize(data) { state.crafting = data || { queues: {} }; } },
+        sectorSim: { deserialize() {} },
+      }[name] || null;
+    },
+  };
+  const savedData = {
+    meta: { seed: 11, playtimeS: 9, createdAt: 'save', lastSavedAt: 'save' },
+    player: {
+      credits: 10,
+      ownedShips: [{ defId: 'ship_kestrel', fittings: [] }],
+      activeShipIndex: 0,
+      moduleInventory: [],
+      targetId: 88,
+      stats: { missionsDone: 0 },
+    },
+    cargo: { items: {}, capVolume: 10, capMass: 10 },
+    economy: {},
+    factions: {},
+    world: { currentSectorId: 'sector_helios_prime' },
+    entities: {
+      player: {
+        type: 'ship',
+        alive: true,
+        pos: { x: 5, z: -7 },
+        vel: { x: 1, z: 2 },
+        rot: 0.25,
+        flags: {},
+        data: { defId: 'ship_kestrel' },
+        hull: 100,
+        hullMax: 100,
+        shield: 20,
+        shieldMax: 20,
+        cap: 30,
+        capMax: 30,
+      },
+      persistent: [{
+        id: 99,
+        type: 'ship',
+        alive: true,
+        team: 1,
+        factionId: 'faction_reavers',
+        pos: { x: 120, z: -35 },
+        vel: { x: 3, z: 4 },
+        rot: 1.5,
+        radius: 22,
+        hull: 12,
+        hullMax: 40,
+        armorHp: 3,
+        shield: 7,
+        cap: 2,
+        flags: { persistent: true, invuln: true },
+        data: { defId: 'ship_wasp', role: 'target_dummy' },
+      }],
+      simTime: 9,
+      tick: 4,
+    },
+    missions: { boards: {}, active: [], completedLog: [], nextId: 1, story: { beatIndex: 0 } },
+    automation: {},
+    crafting: { queues: {} },
+    settings: {},
+  };
+
+  save.state = state;
+  save.bus = bus;
+  save.helpers = helpers;
+  save.registry = registry;
+
+  save._restore(savedData, 'loaded');
+
+  const restored = state.entityList.find((e) => e.data && e.data.role === 'target_dummy');
+  assert(restored, 'load should restore saved persistent entities');
+  assert.notEqual(restored.id, 99, 'load should assign persistent entities fresh ids');
+  assert.equal(restored.pos.x, 120, 'restored persistent entity should keep position');
+  assert.equal(restored.vel.z, 4, 'restored persistent entity should keep velocity');
+  assert.equal(restored.rot, 1.5, 'restored persistent entity should keep heading');
+  assert.equal(restored.hull, 12, 'restored persistent entity should keep hull');
+  assert.equal(restored.armorHp, 3, 'restored persistent entity should keep armor');
+  assert.equal(restored.shield, 7, 'restored persistent entity should keep shields');
+  assert.equal(restored.flags.persistent, true, 'restored persistent entity should remain persistent');
+  assert.equal(restored.flags.invuln, true, 'restored persistent entity should keep gameplay flags');
+  assert.equal(restored.flags.noInterp, true, 'restored persistent entity should skip interpolation on load');
+  assert.equal(state.player.targetId, null, 'load should still clear stale player target references');
+  assert.equal(state.tick, 4, 'load should restore saved sim tick');
+  assert(!state.entityList.includes(stale), 'load should clear stale live entities before restore');
+}
+
 function checkLoadRejectsSaveWithoutPlayerEntity() {
   const state = {
     mode: 'flight',
@@ -2202,6 +2375,7 @@ checkSaveDelegatesCraftingHooks();
 checkSaveScrubsTransientFlightState();
 checkMissionCompletionAutosaveSeesSettledState();
 checkLoadDoesNotSpawnTargetsForStaleLiveMissions();
+checkLoadRestoresPersistentEntities();
 checkLoadRejectsSaveWithoutPlayerEntity();
 checkCombatRewardsAndLootKinds();
 checkHeatUsesTargetFactionContext();

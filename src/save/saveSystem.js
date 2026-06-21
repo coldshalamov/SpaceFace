@@ -370,7 +370,8 @@ export const save = {
   // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):
   // pause → clear old mission runtime/transient entities → restore meta/player/cargo/economy/factions/world
   // → spawn the saved player → re-enter the sector (regenerates NPCs/stations/asteroids) →
-  // re-apply player pose → restore missions/automation/settings → rebuild rng → save:loaded → unpause.
+  // re-apply player pose → restore persistent entities → restore missions/automation/settings →
+  // rebuild rng → save:loaded → unpause.
   _restore(data, slot) {
     const state = this.state;
     this._restoring = true;
@@ -422,10 +423,14 @@ export const save = {
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
       this._applySavedPose(savedPlayer);
 
-      // 10. clear stale entity-id references (the saved targets belong to entities that no longer exist).
+      // 10. restore persistent saved actors after sector regeneration, which despawns non-player
+      // entities from the previous live sector.
+      this._spawnPersistentEntities(data.entities && data.entities.persistent);
+
+      // 11. clear stale entity-id references (the saved targets belong to entities that no longer exist).
       this._clearStaleTargets();
 
-      // 11. restore missions/automation/settings.
+      // 12. restore missions/automation/settings.
       this._restoreMissions(data.missions);
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
@@ -443,14 +448,14 @@ export const save = {
       this.state.drill = null;
       this._restoreSettings(data.settings);
 
-      // 12. restore sim clock + rebuild the master RNG from the (unchanged) seed.
+      // 13. restore sim clock + rebuild the master RNG from the (unchanged) seed.
       if (data.entities) {
         if (typeof data.entities.simTime === 'number') state.simTime = data.entities.simTime;
         if (typeof data.entities.tick === 'number') state.tick = data.entities.tick;
       }
       state.rng = mulberry32((state.meta.seed >>> 0) || 1);
 
-      // 13. finalize.
+      // 14. finalize.
       state.meta.version = CURRENT_VERSION;
       state.save.currentSlot = slot;
       state.mode = 'flight';
@@ -587,6 +592,20 @@ export const save = {
     const e = this.helpers.spawnEntity(spec);
     state.playerId = e.id;
     state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
+  },
+
+  _spawnPersistentEntities(savedList) {
+    if (!Array.isArray(savedList)) return;
+    const state = this.state;
+    for (const saved of savedList) {
+      if (!saved || typeof saved !== 'object') continue;
+      const spec = clonePlain(saved);
+      delete spec.id; delete spec._isPlayer;
+      if (spec.type !== 'projectile' && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;
+      spec.flags = Object.assign({}, spec.flags, { persistent: true, noInterp: true });
+      const e = this.helpers.spawnEntity(spec);
+      state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
+    }
   },
 
   _applySavedVitals(saved) {

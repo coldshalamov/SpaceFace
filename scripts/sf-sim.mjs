@@ -16,6 +16,7 @@ import { physics } from '../src/core/physics.js';
 import { combat } from '../src/systems/combat.js';
 import { cargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
+import { save } from '../src/save/saveSystem.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
@@ -33,13 +34,22 @@ const tape = readJson(inputPath);
 const seed = readInt('--seed', tape.seed || 47);
 const ticks = readInt('--ticks', Math.max(720, lastTapeTick(tape) + 360));
 const repeat = readInt('--repeat', 1);
+const reloadAt = readOptionalInt('--reload-at', null);
+if (reloadAt != null && (reloadAt <= 0 || reloadAt >= ticks)) {
+  throw new RangeError('--reload-at must be greater than 0 and less than --ticks');
+}
 const includeSnapshot = hasFlag('--snapshot') || !hasFlag('--hash');
 
-const first = run47a({ seed, ticks, tape });
-assert47aPhase0Metrics(first.metrics);
+const baseline = run47a({ seed, ticks, tape });
+assert47aPhase0Metrics(baseline.metrics);
+const first = reloadAt == null ? baseline : run47a({ seed, ticks, tape, reloadAt });
+assert47aPhase0Metrics(first.metrics, { reloadAt });
+if (reloadAt != null) {
+  assert.equal(first.sha256, baseline.sha256, `reload-at ${reloadAt} hash diverged from uninterrupted baseline`);
+}
 for (let i = 1; i < repeat; i++) {
-  const next = run47a({ seed, ticks, tape });
-  assert47aPhase0Metrics(next.metrics);
+  const next = run47a({ seed, ticks, tape, reloadAt });
+  assert47aPhase0Metrics(next.metrics, { reloadAt });
   assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
 }
 
@@ -52,14 +62,16 @@ const result = {
   ticks,
   inputTape: inputPath.replace(/\\/g, '/'),
   repeat,
+  reloadAt,
   sha256: first.sha256,
+  baselineSha256: reloadAt == null ? undefined : baseline.sha256,
   metrics: first.metrics,
 };
 if (includeSnapshot) result.snapshot = first.snapshot;
 process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 
-function run47a({ seed, ticks, tape }) {
-  const sim = createSimulation({ seed, systems: [flight, weapons, physics, combat, cargo, economy] });
+function run47a({ seed, ticks, tape, reloadAt = null }) {
+  const sim = createSimulation({ seed, systems: [flight, weapons, physics, combat, cargo, economy, save] });
   const { state, bus, registry } = sim;
   const metrics = {
     combatFire: 0,
@@ -67,6 +79,7 @@ function run47a({ seed, ticks, tape }) {
     combatDamage: 0,
     entityKilled: 0,
     economyTicks: 0,
+    saveReloads: 0,
     firstMeaningfulSteeringTick: null,
   };
   bus.on('combat:fire', () => { metrics.combatFire++; });
@@ -97,6 +110,7 @@ function run47a({ seed, ticks, tape }) {
     ai: { role: 'target_dummy' },
   }));
   target.radius = Math.max(target.radius || 0, 44);
+  target.flags = Object.assign({}, target.flags, { persistent: true });
 
   const econ = registry.get('economy');
   if (econ && typeof econ.newGame === 'function') econ.newGame();
@@ -115,6 +129,9 @@ function run47a({ seed, ticks, tape }) {
       metrics.firstMeaningfulSteeringTick = tick;
     }
     sim.step(SIM_DT);
+    if (reloadAt != null && state.tick === reloadAt) {
+      reloadThroughSave(registry, state, metrics, reloadAt);
+    }
   }
 
   metrics.finalPlayerCredits = state.player.credits;
@@ -124,6 +141,19 @@ function run47a({ seed, ticks, tape }) {
   const sha256 = hashSnapshot(snapshot);
   sim.dispose();
   return { snapshot, sha256, metrics };
+}
+
+function reloadThroughSave(registry, state, metrics, reloadAt) {
+  const saveSys = registry.get('save');
+  assert(saveSys && typeof saveSys.serialize === 'function' && typeof saveSys.loadEnvelope === 'function',
+    '47-A reload check requires the real save system');
+  const persistentBefore = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
+  const envelope = saveSys.serialize('sf-sim-reload');
+  assert.equal(saveSys.loadEnvelope(envelope, 'sf-sim-reload'), true, '47-A reload check should load its own envelope');
+  const persistentAfter = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
+  assert.equal(state.tick, reloadAt, '47-A reload should preserve sim tick');
+  assert.equal(persistentAfter, persistentBefore, '47-A reload should preserve persistent live actors');
+  metrics.saveReloads++;
 }
 
 function applyInput(state, input) {
@@ -185,6 +215,14 @@ function readInt(name, fallback) {
   return value;
 }
 
+function readOptionalInt(name, fallback) {
+  const raw = argValue(name, null);
+  if (raw == null) return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 0) throw new RangeError(`${name} must be a non-negative integer`);
+  return value;
+}
+
 function readFrameTick(value) {
   if (!Number.isSafeInteger(value) || value < 0) throw new RangeError('input frame tick must be a non-negative integer');
   return value;
@@ -202,17 +240,20 @@ function isMeaningfulSteering(input) {
   return Math.abs(input.moveX || 0) > 0.01 || Math.abs(input.moveZ || 0) > 0.01 || Math.abs(input.turnIntent || 0) > 0.01;
 }
 
-function assert47aPhase0Metrics(metrics) {
+function assert47aPhase0Metrics(metrics, options = {}) {
   assert(metrics.firstMeaningfulSteeringTick != null && metrics.firstMeaningfulSteeringTick <= 300,
     '47-A Phase 0 tape should produce meaningful steering within 5s');
   assert(metrics.combatFire > 0, '47-A Phase 0 tape should exercise weapon fire');
   assert(metrics.projectileHits > 0, '47-A Phase 0 tape should exercise projectile collision');
   assert(metrics.combatDamage > 0, '47-A Phase 0 tape should exercise combat damage');
   assert(metrics.economyTicks > 0, '47-A Phase 0 tape should advance economy cadence');
+  if (options.reloadAt != null) {
+    assert.equal(metrics.saveReloads, 1, '47-A reload check should perform exactly one save/load cycle');
+  }
 }
 
 function usage(code, message) {
   if (message) process.stderr.write(message + '\n');
-  process.stderr.write('Usage: node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --hash --repeat 20\n');
+  process.stderr.write('Usage: node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --hash --repeat 20 [--reload-at 600]\n');
   process.exit(code);
 }

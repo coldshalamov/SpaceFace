@@ -19,7 +19,7 @@ const OMIT_KEYS = new Set([
 export function snapshotSimState(state) {
   return {
     schema: 'spaceface.simSnapshot.v1',
-    meta: sanitize(state.meta),
+    meta: snapshotMeta(state.meta),
     tick: state.tick | 0,
     simTime: round6(state.simTime || 0),
     mode: state.mode,
@@ -58,6 +58,13 @@ function snapshotEntity(e) {
     ttl: Number.isFinite(e.ttl) ? round6(e.ttl) : 'Infinity',
     ownerId: e.ownerId == null ? null : e.ownerId,
     data: sanitize(e.data),
+  };
+}
+
+function snapshotMeta(meta) {
+  return {
+    version: meta && typeof meta.version === 'number' ? meta.version : null,
+    seed: meta && typeof meta.seed === 'number' ? meta.seed >>> 0 : 0,
   };
 }
 
