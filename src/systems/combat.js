@@ -161,14 +161,19 @@ export const combat = {
     ctx.bus.on('dock:docked', (p) => this.rememberRespawnStation(p && p.stationId));
   },
 
-  // Transitional adapter: every legacy projectile/beam hit becomes a DamagePacket and enters the
-  // same route used by authored actions and status ticks. Delete after all producers carry packets.
-  onHit({ targetId, ownerId, damage, damageType, pos, penetration = 0, impulse = null, heat = 0, statuses = [] }) {
+  // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
+  // producers still pass through the legacy bridge until their emitters migrate.
+  onHit({ targetId, ownerId, damage, damageType, pos, penetration = 0, impulse = null, heat = 0, statuses = [], damagePacket = null, packet = null, weaponId = null, origin = null }) {
+    const authoredPacket = damagePacket || packet || null;
     const result = this.ensureKernel().routeDamage({
       attackerId: ownerId,
       targetId,
-      packet: legacyHitToDamagePacket({ damage, damageType, pos, penetration, impulse, heat, statuses }),
-      origin: { kind: 'legacy', id: 'projectile:hit' },
+      packet: authoredPacket
+        ? damagePacketWithHit(authoredPacket, pos)
+        : legacyHitToDamagePacket({ damage, damageType, pos, penetration, impulse, heat, statuses }),
+      origin: origin || (authoredPacket
+        ? { kind: 'weapon', id: weaponId || (authoredPacket.source && authoredPacket.source.weaponId) || 'projectile:hit' }
+        : { kind: 'legacy', id: 'projectile:hit' }),
     });
     if (result.ok && targetId === this.state.playerId) {
       this.bus.emit('camera:shake', { amount: result.shieldBroke ? 0.4 : 0.2 });
@@ -353,8 +358,15 @@ export const combat = {
         if (px * px + pz * pz <= rr * rr && t < bestT) { bestT = t; bestE = e; }
       }
       if (bestE) {
-        this.onHit({ targetId: bestE.id, ownerId: beam.ownerId, damage: beam.dpsThisTick,
-          damageType: beam.dmgType || 'energy', pos: { x: ax + dx * bestT, z: az + dz * bestT } });
+        this.onHit({
+          targetId: bestE.id,
+          ownerId: beam.ownerId,
+          damage: beam.dpsThisTick,
+          damageType: beam.dmgType || 'energy',
+          damagePacket: beam.damagePacket || null,
+          weaponId: beam.weaponId || null,
+          pos: { x: ax + dx * bestT, z: az + dz * bestT },
+        });
       }
     }
   },
@@ -362,4 +374,20 @@ export const combat = {
 
 function lootPickupKind(id) {
   return (typeof id === 'string' && id.startsWith('cmdty_')) ? 'cargo' : 'module';
+}
+
+function damagePacketWithHit(packet, pos) {
+  if (!pos) return packet;
+  return {
+    ...packet,
+    channels: { ...(packet.channels || {}) },
+    statuses: (packet.statuses || []).map((status) => ({ ...status })),
+    flags: packet.flags ? { ...packet.flags } : undefined,
+    source: packet.source ? { ...packet.source } : undefined,
+    hit: {
+      ...(packet.hit || {}),
+      pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
+    },
+    impulse: packet.impulse ? { ...packet.impulse } : packet.impulse,
+  };
 }

@@ -253,16 +253,9 @@ export const physics = {
         if (!best || hit.t < best.hit.t) best = { target: tgt, hit };
       }
       if (!best) continue;
-      const pd = proj.data || {};
       proj.pos.x = best.hit.x;
       proj.pos.z = best.hit.z;
-      this.bus.emit('projectile:hit', {
-        targetId: best.target.id,
-        ownerId: proj.ownerId,
-        damage: pd.damage || 0,
-        damageType: pd.damageType || 'kinetic',
-        pos: { x: proj.pos.x, z: proj.pos.z },
-      });
+      this.bus.emit('projectile:hit', projectileHitPayload(proj, best.target.id, { x: proj.pos.x, z: proj.pos.z }));
       proj.alive = false;
       this._diag.sweptProjectileHits++;
     }
@@ -276,11 +269,7 @@ export const physics = {
       const tgt = ta === 'projectile' ? b : a;
       if (tgt.type === 'projectile') return;
       if (proj.ownerId === tgt.id) return; // never hit owner
-      const pd = proj.data || {};
-      bus.emit('projectile:hit', {
-        targetId: tgt.id, ownerId: proj.ownerId, damage: pd.damage || 0,
-        damageType: pd.damageType || 'kinetic', pos: { x: proj.pos.x, z: proj.pos.z },
-      });
+      bus.emit('projectile:hit', projectileHitPayload(proj, tgt.id, { x: proj.pos.x, z: proj.pos.z }));
       proj.alive = false;
       return;
     }
@@ -493,6 +482,36 @@ function maskOf(e) {
 
 function canCollide(a, b) {
   return !!(a.collisionMask & maskOf(b));
+}
+
+function projectileHitPayload(proj, targetId, pos) {
+  const pd = proj.data || {};
+  const payload = {
+    targetId,
+    ownerId: proj.ownerId,
+    damage: pd.damage || 0,
+    damageType: pd.damageType || 'kinetic',
+    pos,
+  };
+  if (pd.weaponId != null) payload.weaponId = pd.weaponId;
+  if (pd.damagePacket) payload.damagePacket = cloneDamagePacketWithHit(pd.damagePacket, pos);
+  return payload;
+}
+
+function cloneDamagePacketWithHit(packet, pos) {
+  const out = {
+    ...packet,
+    channels: { ...(packet.channels || {}) },
+    statuses: (packet.statuses || []).map((status) => ({ ...status })),
+    flags: packet.flags ? { ...packet.flags } : undefined,
+    source: packet.source ? { ...packet.source } : undefined,
+    hit: {
+      ...(packet.hit || {}),
+      pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
+    },
+  };
+  if (packet.impulse) out.impulse = { ...packet.impulse };
+  return out;
 }
 
 function invMass(e) { return (e.type === 'station' || e.type === 'asteroid') ? 0 : 1 / Math.max(0.1, e.mass); }

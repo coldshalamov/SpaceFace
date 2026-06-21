@@ -328,14 +328,17 @@ As of the current master integration, SG-02 is present as the explicit `rapier-d
 
 Save schema v5 persists SG-03 semantic combat state for save-restored actors: combatant runtime, active/queued actions, cooldowns, statuses, and active semantic attachments. Entity ids are saved as semantic refs (`player` or saved persistent id) and remapped after load; Rapier handles and joints remain transient. `src/combat/attachments.js` reconciles restored active attachments through the SG-02 port after bodies exist.
 
+Live projectile and beam producers now attach immutable `DamagePacket` snapshots derived from their authored weapon fields. `src/core/physics.js` forwards projectile packets with deterministic hit positions, and `src/systems/combat.js::onHit` prefers those packets before falling back to the scalar legacy bridge. Scalar `damage`/`damageType` fields remain only as compatibility payload for transitional listeners and old producers.
+
 Current acceptance:
 
 ```text
 npm run check:combat
 node scripts/check-sg03-save-reload.mjs
+node scripts/check-gameplay-core.mjs
 ```
 
-The save/reload fixture creates a real SG-02 Massline, saves while `action_reel` and status state are live, reloads with intentionally shifted entity ids, rebuilds the physical rope from semantic attachment state, and continues through `action_sling` -> `action_cut`.
+The save/reload fixture creates a real SG-02 Massline, saves while `action_reel` and status state are live, reloads with intentionally shifted entity ids, rebuilds the physical rope from semantic attachment state, and continues through `action_sling` -> `action_cut`. The core gameplay gate proves physics preserves packet hit metadata and combat routes authored projectile packets as weapon-origin damage instead of the legacy scalar adapter.
 
 ## Migration plan
 
@@ -344,7 +347,7 @@ The save/reload fixture creates a real SG-02 Massline, saves while `action_reel`
 3. **Apply this patch.** Run `npm run check:combat`, then the complete `npm run check`.
 4. **Wire player controls.** Translate dash/attach/reel/sling/cut/burst inputs into `requestCombatAction`. Do not mutate combat state from UI.
 5. **Wire tactical AI.** Existing AI or SG-06 submits identical requests with `source.kind='ai'`. Do not add AI-only damage calls.
-6. **Migrate weapons incrementally.** Author weapon fire actions and place full `DamagePacket` values on projectile/beam hit records. Keep the legacy adapter only until trace parity is demonstrated.
+6. **Migrate weapons incrementally.** Live projectile/beam hit records now carry `DamagePacket` snapshots. Next, author weapon fire actions and remove compatibility scalar fields only after trace parity is demonstrated.
 7. **Save migration.** Landed as save schema v5 for SG-03 combatants, actions, cooldowns, statuses, and active semantic attachments. Trace, beams, threat tables, Rapier handles, joints, and telemetry remain transient.
 8. **Delete the flat path.** Remove the compatibility fields and adapters listed below after parity fixtures pass.
 9. **Run the golden encounter under real SG-02.** The final SG-03 merge gate is the exact command/trace fixture using real dynamic bodies and constraints, not only the deterministic test port.
@@ -354,10 +357,10 @@ The save/reload fixture creates a real SG-02 Massline, saves while `action_reel`
 Delete only after migrated producers have trace parity:
 
 1. The old direct shield/armor/hull body of `src/systems/combat.js::onHit` — removed by this patch.
-2. `legacyHitToDamagePacket` and the scalar `damage`/`damageType` `projectile:hit` adapter.
-3. Scalar projectile fields `data.damage` and `data.damageType` in `src/systems/weapons.js`; replace with an authored action/packet reference or immutable packet snapshot.
-4. Scalar `projectile:hit {damage,damageType}` emission in `src/core/physics.js`; emit the packet/reference plus deterministic hit metadata.
-5. Beam `dpsThisTick` as authoritative damage grammar; emit authored packets at deterministic ticks. The beam ray may remain presentation/query data.
+2. `legacyHitToDamagePacket` and the scalar `damage`/`damageType` `projectile:hit` adapter after the remaining scalar producers migrate.
+3. Scalar projectile fields `data.damage` and `data.damageType` in `src/systems/weapons.js`; packet snapshots are now present, scalar fields remain compatibility-only until listener parity is closed.
+4. Scalar `projectile:hit {damage,damageType}` emission in `src/core/physics.js`; `damagePacket` + deterministic hit metadata are now emitted, scalar fields remain compatibility-only.
+5. Beam `dpsThisTick` as authoritative damage grammar; beam packets are now present, and `dpsThisTick` remains compatibility/presentation metadata. The beam ray may remain presentation/query data.
 6. Flat weapon source fields `dmg`, `rof`, `dps`, `damageType`, and `armorPierce` in `src/data/weapons.js` after all weapons resolve through ActionDefs/DamagePackets.
 7. `src/systems/flight.js::_triggerDash` direct velocity mutation and its independent dash cooldown/cost once player dash is bound to `action_dash` and SG-02 owns impulses.
 8. Any future AI code that calls damage directly or writes vitals. AI may only request an action or submit a world command with the same public contract.
@@ -368,4 +371,4 @@ No FreeSpace 2 or Endless Sky source code was fetched, read, translated, or copi
 
 ## Known unresolved integration item
 
-Historical note: the original handoff could not claim the live mastery sequence because SG-02 was absent. Current master has since landed the SG-02 port and the real body/constraint save/reload fixture above. Remaining production work is weapon migration, legacy flat-path deletion after parity, and running the golden 47-A encounter through real dynamic-body default activation.
+Historical note: the original handoff could not claim the live mastery sequence because SG-02 was absent. Current master has since landed the SG-02 port, the real body/constraint save/reload fixture above, and live weapon hit `DamagePacket` payloads. Remaining production work is authored weapon ActionDef migration, legacy flat-path deletion after parity, and running the golden 47-A encounter through real dynamic-body default activation.

@@ -9,6 +9,7 @@
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
 import { wrapAngle } from '../core/rng.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -212,12 +213,15 @@ export const weapons = {
     const dir = this._hardpointDir(e, w, aimAngle || e.rot, 0);
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
+    const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt;
+    const damageType = w.damageType || def.damageType || 'energy';
     if (state.combat && Array.isArray(state.combat.beams)) {
       state.combat.beams.push({
-        ownerId: e.id, factionId: e.factionId,
+        ownerId: e.id, factionId: e.factionId, weaponId: w.defId,
         from: { x: origin.x, z: origin.z }, to,
-        dmgType: w.damageType || def.damageType || 'energy',
-        dpsThisTick: (w.dmg != null ? w.dmg : def.dmg || 0) * dt,
+        dmgType: damageType,
+        dpsThisTick: damage,
+        damagePacket: weaponDamagePacket(w, def, damage, damageType),
       });
     }
     this._beamFiring.add(e.id);
@@ -314,9 +318,12 @@ export const weapons = {
     const refSpeed = isMissile && projSpeedMin != null ? projSpeedMin : projSpeed;
     const ttl = Math.max(0.25, range / Math.max(1, refSpeed));
 
+    const damage = (w.dmg != null ? w.dmg : def.dmg) || 0;
+    const damageType = w.damageType || def.damageType || 'kinetic';
     const data = {
-      damage: (w.dmg != null ? w.dmg : def.dmg) || 0,
-      damageType: w.damageType || def.damageType || 'kinetic',
+      damage,
+      damageType,
+      damagePacket: weaponDamagePacket(w, def, damage, damageType),
       ownerId: e.id,
       weaponId: w.defId,
       kind: isMissile ? 'missile' : 'bullet',
@@ -472,3 +479,16 @@ export const weapons = {
 
 void DEG2;
 void TWO_PI;
+
+function weaponDamagePacket(w, def, damage, damageType, pos = null) {
+  return scalarHitToDamagePacket({
+    damage,
+    damageType,
+    pos,
+    penetration: w.armorPierce != null ? w.armorPierce : def.armorPierce,
+    source: {
+      kind: 'weapon',
+      weaponId: w.defId || def.id || null,
+    },
+  });
+}

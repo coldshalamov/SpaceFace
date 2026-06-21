@@ -4,6 +4,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { Masks } from '../src/core/entity.js';
 import { createGameState } from '../src/core/gameState.js';
 import { physics } from '../src/core/physics.js';
+import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { AI_CONTRACT_VERSION } from '../src/ai/contracts.js';
 import { save } from '../src/save/saveSystem.js';
 import { cargo } from '../src/systems/cargo.js';
@@ -840,6 +841,79 @@ function checkCombatRewardsAndLootKinds() {
   assert(npcEvents.some((e) => e.event === 'loot:drop' && e.payload.credits === 0), 'NPC-on-NPC loot drop should not show player credits');
 }
 
+function checkCombatPrefersAuthoredProjectilePacket() {
+  const events = [];
+  const state = {
+    playerId: 1,
+    tick: 12,
+    simTime: 0.2,
+    meta: { seed: 123 },
+    entities: new Map(),
+    entityList: [],
+    combat: { beams: [], threatTables: new Map() },
+  };
+  const attacker = {
+    id: 1,
+    type: 'ship',
+    team: 0,
+    alive: true,
+    flags: {},
+    pos: { x: 0, z: 0 },
+    data: {},
+  };
+  const target = {
+    id: 2,
+    type: 'ship',
+    team: 1,
+    alive: true,
+    flags: {},
+    pos: { x: 40, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    radius: 8,
+    mass: 10,
+    hull: 150,
+    hullMax: 150,
+    shield: 0,
+    shieldMax: 0,
+    armorHp: 0,
+    armorMax: 0,
+    armorFlat: 0,
+    data: { combatProfileId: 'combat_profile_standard_ship', derived: { damageReductionMult: 1 } },
+  };
+  for (const entity of [attacker, target]) {
+    state.entities.set(entity.id, entity);
+    state.entityList.push(entity);
+  }
+
+  combat.state = state;
+  combat.bus = { emit(event, payload) { events.push({ event, payload }); } };
+  combat.helpers = {};
+  combat.registry = { get() { return null; } };
+  combat.kernel = null;
+
+  combat.onHit({
+    targetId: target.id,
+    ownerId: attacker.id,
+    damage: 999,
+    damageType: 'kinetic',
+    pos: { x: 40, z: 0 },
+    damagePacket: scalarHitToDamagePacket({ damage: 10, damageType: 'energy', penetration: 0.25 }),
+    weaponId: 'wpn_packet_fixture',
+  });
+
+  const routed = state.combat.trace.events.find((event) => event.kind === 'damage.routed');
+  assert.equal(routed.origin.kind, 'weapon', 'authored projectile packet should route as weapon-origin damage');
+  assert.equal(routed.origin.id, 'wpn_packet_fixture', 'weapon-origin trace should preserve weapon id');
+  assert.equal(routed.rawTotal, 10, 'combat should prefer the canonical packet over legacy scalar damage');
+  assert(Math.abs(routed.channels.thermal - 7.2) < 1e-9, 'energy packet should preserve thermal split');
+  assert(Math.abs(routed.channels.ion - 2.8) < 1e-9, 'energy packet should preserve ion split');
+  assert(target.hull < target.hullMax, 'authored projectile packet should apply real damage');
+  assert(events.some((e) => e.event === 'combat:damage' && e.payload.origin.kind === 'weapon'), 'combat damage event should expose weapon-origin metadata');
+
+  combat.kernel = null;
+}
+
 function checkHeatUsesTargetFactionContext() {
   const makeState = (target) => {
     const state = {
@@ -877,6 +951,7 @@ function checkHeatUsesTargetFactionContext() {
   heat.init({ state: hostileState, bus: hostileBus, helpers: {}, registry: { get() { return null; } } });
   combat.state = hostileState;
   combat.bus = hostileBus;
+  combat.kernel = null;
 
   combat.onHit({ targetId: hostile.id, ownerId: hostileState.playerId, damage: 5, damageType: 'kinetic', pos: { x: 10, z: 0 } });
 
@@ -2212,7 +2287,12 @@ function checkSweptProjectileCollisionHitsAlongSegment() {
     prevPos: { x: -14, z: 0 },
     vel: { x: 840, z: 0 },
     collisionMask: Masks.SHIP,
-    data: { damage: 7, damageType: 'kinetic' },
+    data: {
+      damage: 7,
+      damageType: 'energy',
+      weaponId: 'wpn_packet_fixture',
+      damagePacket: scalarHitToDamagePacket({ damage: 7, damageType: 'energy', penetration: 0.25 }),
+    },
   };
   const target = {
     id: 2,
@@ -2230,7 +2310,16 @@ function checkSweptProjectileCollisionHitsAlongSegment() {
   physics.sweepProjectiles(1 / 30, state);
 
   assert.equal(projectile.alive, false, 'swept projectile should be consumed on hit');
-  assert(events.some((e) => e.event === 'projectile:hit' && e.payload.targetId === target.id && e.payload.damage === 7), 'swept projectile should emit hit event with damage payload');
+  const hitEvent = events.find((e) => e.event === 'projectile:hit' && e.payload.targetId === target.id);
+  assert(hitEvent, 'swept projectile should emit hit event with damage payload');
+  assert.equal(hitEvent.payload.damage, 7, 'swept projectile should preserve scalar compatibility damage');
+  assert.equal(hitEvent.payload.damageType, 'energy', 'swept projectile should preserve scalar compatibility damage type');
+  assert.equal(hitEvent.payload.weaponId, 'wpn_packet_fixture', 'swept projectile should preserve weapon id');
+  assert.equal(hitEvent.payload.damagePacket.penetration, 0.25, 'swept projectile should preserve authored packet penetration');
+  assert(Math.abs(hitEvent.payload.damagePacket.channels.thermal - 5.04) < 1e-9, 'swept projectile packet should preserve thermal split');
+  assert(Math.abs(hitEvent.payload.damagePacket.channels.ion - 1.96) < 1e-9, 'swept projectile packet should preserve ion split');
+  assert.equal(hitEvent.payload.damagePacket.hit.pos.x, hitEvent.payload.pos.x, 'swept projectile packet should carry impact X');
+  assert.equal(hitEvent.payload.damagePacket.hit.pos.z, hitEvent.payload.pos.z, 'swept projectile packet should carry impact Z');
   assert.equal(physics._diag.sweptProjectileHits, 1, 'swept projectile should report the hit for diagnostics');
 }
 
@@ -2435,6 +2524,7 @@ checkLoadDoesNotSpawnTargetsForStaleLiveMissions();
 checkLoadRestoresPersistentEntities();
 checkLoadRejectsSaveWithoutPlayerEntity();
 checkCombatRewardsAndLootKinds();
+checkCombatPrefersAuthoredProjectilePacket();
 checkHeatUsesTargetFactionContext();
 checkInsuredRespawnUsesStationRefundAndCargoLoss();
 checkFailedCargoFitDoesNotDuplicateModules();

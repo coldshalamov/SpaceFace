@@ -254,7 +254,7 @@ export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 't
   };
 }
 
-export function legacyHitToDamagePacket({ damage = 0, damageType = 'kinetic', pos = null, penetration = 0, impulse = null, heat = 0, statuses = [] } = {}) {
+export function scalarHitToDamagePacket({ damage = 0, damageType = 'kinetic', pos = null, penetration = 0, impulse = null, heat = 0, statuses = [], source = null } = {}) {
   const amount = Math.max(0, Number(damage) || 0);
   const channels = { kinetic: 0, thermal: 0, ion: 0, plasma: 0, phase: 0 };
   switch (damageType) {
@@ -267,7 +267,19 @@ export function legacyHitToDamagePacket({ damage = 0, damageType = 'kinetic', po
     case 'explosive': channels.kinetic = amount * 0.65; channels.thermal = amount * 0.35; break;
     default: channels.thermal = amount; break;
   }
-  return { channels, penetration: clamp01(Number(penetration) || 0), impulse, heat: Math.max(0, Number(heat) || 0), statuses, hit: pos ? { pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 } } : null };
+  return {
+    channels,
+    penetration: clamp01(Number(penetration) || 0),
+    impulse,
+    heat: Math.max(0, Number(heat) || 0),
+    statuses,
+    hit: pos ? { pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 } } : null,
+    source: source && typeof source === 'object' ? { ...source } : null,
+  };
+}
+
+export function legacyHitToDamagePacket(input = {}) {
+  return scalarHitToDamagePacket(input);
 }
 
 function applyArmorFlat(channels, flat, order) {
