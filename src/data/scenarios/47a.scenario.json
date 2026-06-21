@@ -171,6 +171,13 @@
       "beatIds": ["resolution_branch"]
     },
     {
+      "id": "death_to_retry",
+      "target": "< 6s from player death to retry-ready respawn",
+      "evidence": "production combat respawn gate and telemetry envelope ceiling",
+      "required": true,
+      "beatIds": ["scavenger_arrival", "recovery_tug", "resolution_branch"]
+    },
+    {
       "id": "critical_beat_presentation",
       "target": "every critical beat has audio, VFX, camera, UI, and accessibility evidence",
       "evidence": "SG-08 cue trace and accessibility transforms",
@@ -349,7 +356,7 @@
       "requiredMechanics": ["scenario.branch_resolution", "world_fact.apply", "replay.branch_policy"],
       "requiredPresentation": ["ui.aftermath_summary", "audio.aftermath_state", "vfx.branch_signal", "camera.exit_composition", "accessibility.branch_caption"],
       "presentationEventIds": ["scenario.branch.resolved"],
-      "proofMetricIds": ["policy_completion_count", "branch_world_fact_delta", "critical_beat_presentation"],
+      "proofMetricIds": ["policy_completion_count", "branch_world_fact_delta", "death_to_retry", "critical_beat_presentation"],
       "worldFactRefs": ["fact.47a.evidence_status", "fact.47a.civilian_status", "fact.47a.faction_pressure", "fact.47a.contract_record"],
       "next": [],
       "branchIds": ["escape_with_evidence", "surrender_evidence", "destroy_evidence", "deliver_to_contact"]

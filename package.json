@@ -22,6 +22,7 @@
     "check:47a:live-branch": "node scripts/check-47a-live-branch-predicate.mjs",
     "check:47a:counterplay": "node scripts/check-47a-counter-tether-live.mjs",
     "check:47a:death-retry": "node scripts/check-47a-death-retry.mjs",
+    "check:slice-scope": "node scripts/check-slice-scope.mjs",
     "check:balance": "node scripts/balance-sim.mjs",
     "check:presentation": "node scripts/check-presentation-cues.mjs && node scripts/check-sg08-golden-trace.mjs && node scripts/check-sg08-mix-profile.mjs && node scripts/check-sg08-render-vfx.mjs",
     "check:camera": "node scripts/check-camera-composition.mjs",
@@ -54,7 +55,7 @@
     "check:flight": "node scripts/flight-lab-sim.mjs && node scripts/probe-flight-visual.mjs",
     "check:flight:clean": "node scripts/flight-lab-sim.mjs && node scripts/probe-flight-visual.mjs --clean-runs 5 --strict-warnings --no-write",
     "check:art": "node scripts/check-kestrel-asset.mjs && node scripts/check-parts-manifest.mjs && node scripts/check-sg04-release-assets.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs && node scripts/check-kestrel-damage.mjs && node scripts/check-kestrel-leak.mjs && node scripts/check-lod.mjs && node scripts/check-collision-debug.mjs && node scripts/check-concord-patrol.mjs && node scripts/check-reaver-pirate.mjs && node scripts/check-faction-ships.mjs",
-    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && npm run check:balance && npm run check:sg02 && npm run check:sg05 && npm run check:sg06 && npm run check:combat && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && npm run check:contracts && npm run check:replay && npm run check:presentation && npm run check:camera && node scripts/check-gameplay-core.mjs && npm run check:sim && npm run check:sim:compare && npm run check:sim:profile && npm run check:sim:long && npm run check:sim:long:compare && npm run check:47a:tactics && npm run check:47a:live-branch && npm run check:47a:counterplay && npm run check:47a:death-retry && node scripts/check-phase0-slice-contract.mjs && npm run check:flight:clean && node scripts/check-sectorSim.mjs && npm run check:art"
+    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && npm run check:balance && npm run check:sg02 && npm run check:sg05 && npm run check:sg06 && npm run check:combat && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && npm run check:contracts && npm run check:replay && npm run check:presentation && npm run check:camera && node scripts/check-gameplay-core.mjs && npm run check:sim && npm run check:sim:compare && npm run check:sim:profile && npm run check:sim:long && npm run check:sim:long:compare && npm run check:47a:tactics && npm run check:47a:live-branch && npm run check:47a:counterplay && npm run check:47a:death-retry && npm run check:slice-scope && node scripts/check-phase0-slice-contract.mjs && npm run check:flight:clean && node scripts/check-sectorSim.mjs && npm run check:art"
   },
   "private": true,
   "devDependencies": {

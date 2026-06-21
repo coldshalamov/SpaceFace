@@ -99,6 +99,7 @@ for (const requiredMetric of [
   'policy_completion_count',
   'enemy_counter_tether_count',
   'branch_world_fact_delta',
+  'death_to_retry',
   'critical_beat_presentation',
 ]) {
   assert(metricIds.has(requiredMetric), `scenario missing proof metric ${requiredMetric}`);

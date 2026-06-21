@@ -105,6 +105,10 @@ assert.equal(packageJson.scripts['check:47a:death-retry'], 'node scripts/check-4
   'package scripts should expose the 47-A death-to-retry acceptance gate');
 assert(packageJson.scripts.check.includes('npm run check:47a:death-retry'),
   'full check should include the 47-A death-to-retry acceptance gate');
+assert.equal(packageJson.scripts['check:slice-scope'], 'node scripts/check-slice-scope.mjs',
+  'package scripts should expose the 47-A slice-scope guardrail');
+assert(packageJson.scripts.check.includes('npm run check:slice-scope'),
+  'full check should include the 47-A slice-scope guardrail');
 const counterplayGate = read('scripts/check-47a-counter-tether-live.mjs');
 for (const marker of ['--tactical-ai', '--counter-tether-probe', 'action_dash', 'action_cut', "controllerId === 'sg06'"]) {
   assert(counterplayGate.includes(marker), `47-A counterplay gate must keep live SG-06/SG-03 proof marker: ${marker}`);
@@ -171,7 +175,7 @@ assert.equal(envelope.acceptanceCriteria.enemyCounterTetherBehaviorCountMin, 2,
 assert.equal(envelope.acceptanceCriteria.deathToRetryTickMax, 360,
   'expected telemetry should require failure-to-retry within 6s at 60Hz');
 assert.equal(envelope.acceptanceCriteria.authoritativeHash,
-  '7f9a865cdcaa65fad851a78345325db1e83af8a74dc32a688aaf794500f1329c',
+  '7d0bf402f41ce91ef94e7764c33dfe655e190bee93749d13b2c267cf2a4555c6',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 assert.equal(envelope.acceptanceCriteria.canonicalLongBranchId, 'escape_with_evidence',
   'expected telemetry should pin the canonical long-run branch outcome');
