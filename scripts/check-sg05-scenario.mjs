@@ -20,7 +20,7 @@ const report = validateScenarioDocument(scenario, { file: SCENARIO_PATH });
 assert(report.ok, report.issues.map(formatScenarioIssue).join('\n'));
 
 assert.equal(scenario.scenario, '47-A: The Mass Discrepancy', 'scenario contract must name the 47-A slice');
-assert.equal(scenario.durationSeconds, 720, '47-A skeleton should cover the 10-12 minute slice window');
+assert.equal(scenario.durationSeconds, 720, '47-A scenario should cover the 10-12 minute slice window');
 assert.deepEqual(scenario.beats.map((beat) => beat.id), REQUIRED_47A_BEAT_IDS, '47-A beat order should stay pinned');
 for (const branchId of REQUIRED_47A_BRANCH_IDS) {
   assert(scenario.branches.some((branch) => branch.id === branchId), `scenario missing required branch ${branchId}`);
@@ -87,7 +87,7 @@ function assertCliValidation() {
     SCENARIO_PATH,
   ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 }));
   assert.equal(out.schema, 'spaceface.sfCliResult.v1', 'sf validate scenario should emit the canonical CLI result');
-  assert.equal(out.ok, true, 'sf validate scenario should pass for the canonical 47-A skeleton');
+  assert.equal(out.ok, true, 'sf validate scenario should pass for the canonical 47-A scenario');
   assert.equal(out.validateKind, 'scenario', 'sf validate scenario should identify scenario validation');
   assert.equal(out.result.schema, 'spaceface.scenarioValidationResult.v1', 'scenario validation result should be versioned');
 }

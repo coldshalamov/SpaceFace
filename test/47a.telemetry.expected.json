@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.telemetryEnvelope.v1",
-  "id": "47a-phase0-empty-envelope",
+  "id": "47a-phase0-live-envelope",
   "scenario": "47-A: The Mass Discrepancy",
   "seed": 47,
   "sourceInputTape": "test/47a.inputs.json",
@@ -48,7 +48,7 @@
     "comms:popup": 2
   },
   "acceptancePlaceholders": {
-    "authoritativeHash": "817de49bb6ab24acee39e56bc722508fe8c63ac89243522890003944bbc30a12",
+    "authoritativeHash": "a4d6e9539cd3b47bfe03635b86686fe9061abbd4f2b4dd90674dcecfc5b09ca5",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -57,7 +57,7 @@
     "cleanRunCountRequired": 5
   },
   "notes": [
-    "This starts as a Phase 0 envelope for the current headless 47-A smoke run.",
+    "This is the Phase 0 envelope for the current headless 47-A smoke run.",
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
     "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick run.",
     "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds."

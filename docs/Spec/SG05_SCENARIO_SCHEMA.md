@@ -14,8 +14,8 @@ logic in UI, renderer, or one-off mission code.
 - `spaceface.scenarioValidationResult.v1` — machine-readable validation issues with `file`,
   `path`, `rule`, and `message`.
 - `spaceface.scenarioRuntimeSummary.v1` — the headless 47-A runtime proof that the validated
-  contract was loaded, the first beat became active, facts initialized, and missing slice actors
-  were reported as unresolved rather than invented.
+  contract was loaded, beats advance by sim time, facts initialize, and the complete Phase 0
+  scenario actor cast binds through declared actor metadata.
 
 ## Canonical File
 
@@ -23,7 +23,7 @@ logic in UI, renderer, or one-off mission code.
 node scripts/sf.mjs validate scenario src/data/scenarios/47a.scenario.json
 ```
 
-`npm run check:sg05` validates the canonical skeleton and malformed fixtures. It requires:
+`npm run check:sg05` validates the canonical Phase 0 scenario and malformed fixtures. It requires:
 
 - the eight 47-A beats in the frozen order;
 - the four resolution branches: escape, surrender, destroy, deliver;
@@ -31,13 +31,14 @@ node scripts/sf.mjs validate scenario src/data/scenarios/47a.scenario.json
 - every branch to change at least one immediate world fact;
 - critical SG-08 cue ids to be reserved by the scenario contract.
 - the canonical `sf-sim 47a` run to load this contract, emit deterministic `scenario:*` trace
-  evidence, snapshot/save/reload the scenario state, and stay on `drop_wreck_field` while the
-  contract remains `status: "skeleton"`.
+  evidence, snapshot/save/reload the scenario state, bind all required Phase 0 actors, and prove
+  beat progression through `scavenger_arrival` in a longer replay.
 
 ## Boundary
 
 This contract deliberately stops before implementing the full SG-05 DSL runtime, localization,
 branch policy runner, content hot reload, or the complete live branch implementation. The Phase 0
 runtime bridge is only a boot/evidence layer: it consumes this same file, initializes facts and
-actor bindings, and reports unresolved actors until real slice actors are migrated. Future SG-05 work
-should extend this schema and consume the same file rather than adding a parallel encounter format.
+actor bindings, and proves the first live beat transitions without adding a parallel encounter
+format. Future SG-05 work should extend this schema and consume the same file for policy,
+dialogue, localization, and branch execution.

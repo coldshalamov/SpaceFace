@@ -237,6 +237,7 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   });
   const metrics = {
     combatFire: 0,
+    hostileCombatFire: 0,
     projectileHits: 0,
     combatDamage: 0,
     entityKilled: 0,
@@ -251,8 +252,18 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
     scenarioBeatEntered: 0,
     scenarioFactsInitialized: 0,
     scenarioActorBindings: 0,
+    firstHostileShotTick: null,
   };
-  bus.on('combat:fire', () => { metrics.combatFire++; });
+  bus.on('combat:fire', (event) => {
+    metrics.combatFire++;
+    const owner = event && event.ownerId != null ? state.entities.get(event.ownerId) : null;
+    const isHostileScenarioActor = owner && owner.id !== state.playerId && owner.team !== 0
+      && owner.data && owner.data.scenarioActorId;
+    if (isHostileScenarioActor) {
+      metrics.hostileCombatFire++;
+      if (metrics.firstHostileShotTick == null) metrics.firstHostileShotTick = state.tick;
+    }
+  });
   bus.on('projectile:hit', () => { metrics.projectileHits++; });
   bus.on('combat:damage', () => { metrics.combatDamage++; });
   bus.on('entity:killed', () => { metrics.entityKilled++; });
@@ -304,6 +315,8 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   target.radius = Math.max(target.radius || 0, 44);
   target.flags = Object.assign({}, target.flags, { persistent: true });
 
+  spawn47aScenarioCast(sim);
+
   const econ = registry.get('economy');
   if (econ && typeof econ.newGame === 'function') econ.newGame();
   bus.emit('game:started', { source: 'sf-sim', scenario: '47a' });
@@ -324,6 +337,7 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
     if (metrics.firstMeaningfulSteeringTick == null && isMeaningfulSteering(currentInput)) {
       metrics.firstMeaningfulSteeringTick = tick;
     }
+    update47aScenarioActorIntents(state);
     sim.step(SIM_DT);
     if (reloadAt != null && state.tick === reloadAt) {
       await reloadThroughSave(registry, state, metrics, reloadAt, { physicsBackend });
@@ -681,6 +695,147 @@ function makeEvidenceSpindleSpec({ pos, rot = 0 } = {}) {
       revision: 0,
     },
   };
+}
+
+function spawn47aScenarioCast(sim) {
+  const { state } = sim;
+  const carrier = sim.spawn(makePassiveScenarioSpec({
+    type: 'wreck',
+    actorId: 'carrier_wreck_bourse',
+    role: 'arena_landmark',
+    assetRef: 'asset.slice.bourse_carrier_wreck',
+    pos: { x: 340, z: 220 },
+    rot: -0.22,
+    radius: 92,
+    mass: 9000,
+    hull: 2200,
+    data: {
+      majorDebris: true,
+      cameraAnchor: true,
+      hazardState: 'stable',
+    },
+  }));
+  carrier.flags = Object.assign({}, carrier.flags, { persistent: true });
+
+  const harasser = sim.spawn(makeShipEntitySpec('ship_wasp', {
+    team: 1,
+    factionId: 'faction_reavers',
+    fittings: fittingsFromDefaultModules('ship_wasp', ['wpn_pulse_laser_s']),
+    pos: { x: 690, z: 90 },
+    rot: Math.PI,
+    ai: { role: '47a_harasser', dormantUntilBeat: 'scavenger_arrival' },
+  }));
+  markScenarioActor(harasser, {
+    actorId: 'scavenger_harasser',
+    role: 'enemy_light_harass',
+    assetRef: 'enemy_reaver_skirmisher',
+    extraData: { tacticRole: 'standoff_focus' },
+  });
+  harasser.data.combat = Object.assign({}, harasser.data.combat, { targetId: state.playerId });
+
+  const thief = sim.spawn(makeShipEntitySpec('ship_mule', {
+    team: 1,
+    factionId: 'faction_reavers',
+    fittings: fittingsFromDefaultModules('ship_mule', ['wpn_pulse_laser_s']),
+    pos: { x: 780, z: -145 },
+    rot: Math.PI,
+    ai: { role: '47a_thief', dormantUntilBeat: 'scavenger_arrival' },
+  }));
+  markScenarioActor(thief, {
+    actorId: 'scavenger_thief',
+    role: 'enemy_light_steal',
+    assetRef: 'enemy_reaver_tug',
+    extraData: { tacticRole: 'screen_tug_steal' },
+  });
+
+  const recoveryTug = sim.spawn(makeShipEntitySpec('ship_mule', {
+    team: 2,
+    factionId: 'faction_scn',
+    fittings: fittingsFromDefaultModules('ship_mule', ['wpn_pulse_laser_s']),
+    pos: { x: -520, z: 210 },
+    rot: -0.35,
+    ai: { role: '47a_recovery_tug', dormantUntilBeat: 'recovery_tug' },
+  }));
+  markScenarioActor(recoveryTug, {
+    actorId: 'official_recovery_tug',
+    role: 'faction_pressure_tug',
+    assetRef: 'asset.slice.meridian_recovery_tug',
+    extraData: { tacticRole: 'contain_and_disable' },
+  });
+
+  sim.spawn(makePassiveScenarioSpec({
+    type: 'payload',
+    actorId: 'civilian_pod',
+    role: 'narrative_priority_conflict',
+    assetRef: 'asset.slice.civilian_pod',
+    pos: { x: -180, z: 160 },
+    radius: 8,
+    mass: 120,
+    hull: 80,
+    data: {
+      tetherPayload: true,
+      distressBeacon: true,
+      rescuePriority: true,
+    },
+  }));
+}
+
+function makePassiveScenarioSpec({ type, actorId, role, assetRef, pos, rot = 0, radius, mass, hull, data = {} }) {
+  return {
+    type,
+    alive: true,
+    collides: false,
+    radius,
+    mass,
+    pos,
+    rot,
+    vel: { x: 0, z: 0 },
+    angVel: 0,
+    team: 0,
+    factionId: type === 'wreck' ? null : 'faction_free',
+    hull,
+    hullMax: hull,
+    armorHp: 0,
+    armorMax: 0,
+    armorFlat: 0,
+    shield: 0,
+    shieldMax: 0,
+    cap: 0,
+    capMax: 0,
+    capRegen: 0,
+    flags: { persistent: true },
+    data: Object.assign({
+      scenarioActorId: actorId,
+      scenarioRole: role,
+      assetRef,
+    }, data),
+  };
+}
+
+function markScenarioActor(entity, { actorId, role, assetRef, extraData = {} }) {
+  entity.flags = Object.assign({}, entity.flags, { persistent: true });
+  entity.data = Object.assign({}, entity.data, extraData, {
+    scenarioActorId: actorId,
+    scenarioRole: role,
+    assetRef,
+  });
+}
+
+function update47aScenarioActorIntents(state) {
+  const player = state.entities.get(state.playerId);
+  const scenario = state.scenario && state.scenario.active;
+  if (!player || !scenario) return;
+  const harasser = resolveScenarioEntity(state, 'scavenger_harasser');
+  if (!harasser || !harasser.alive) return;
+  const activeBeat = scenario.activeBeatId;
+  const simTime = state.simTime || 0;
+  const shouldFire = (simTime >= 75 && simTime <= 76.25) || (activeBeat === 'scavenger_arrival' && simTime <= 76.25);
+  harasser.data.intent = shouldFire
+    ? {
+        fire: true,
+        aimAngle: Math.atan2(player.pos.z - harasser.pos.z, player.pos.x - harasser.pos.x),
+      }
+    : null;
 }
 
 function loadScenarioContract(rel) {

@@ -1,4 +1,5 @@
 import { formatScenarioIssue, validateScenarioDocument } from '../contracts/scenarioSchemas.js';
+import { FIGURES } from '../data/narrative.js';
 
 export const SCENARIO_RUNTIME_SCHEMA_VERSION = 1;
 
@@ -146,6 +147,8 @@ function beatForTime(beats, simTime) {
 }
 
 function bindActor(state, actor) {
+  const narrativeBinding = bindNarrativeActor(actor);
+  if (narrativeBinding) return narrativeBinding;
   const entity = findActorEntity(state, actor);
   if (entity) {
     return {
@@ -160,6 +163,27 @@ function bindActor(state, actor) {
     entityId: null,
     role: actor.role,
     assetRef: actor.assetRef || null,
+  };
+}
+
+function bindNarrativeActor(actor) {
+  if (!actor || actor.role !== 'remote_contact') return null;
+  const assetRef = typeof actor.assetRef === 'string' ? actor.assetRef : '';
+  const prefix = 'lore.contact.';
+  if (!assetRef.startsWith(prefix)) return null;
+  const figureId = assetRef.slice(prefix.length);
+  const figure = FIGURES && FIGURES[figureId];
+  if (!figure) return null;
+  return {
+    status: 'bound',
+    entityId: null,
+    role: actor.role,
+    assetRef: actor.assetRef || null,
+    source: {
+      kind: 'narrativeFigure',
+      figureId,
+      name: figure.name || figureId,
+    },
   };
 }
 

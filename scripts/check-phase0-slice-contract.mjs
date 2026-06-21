@@ -132,7 +132,7 @@ assert.equal(envelope.phase0ObservedTraceCounts['tether:attached'], 1, 'expected
 assert.equal(envelope.acceptancePlaceholders.firstTetherAttachTickMax, 3600,
   'expected telemetry should require first Massline attach within 60s');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  '817de49bb6ab24acee39e56bc722508fe8c63ac89243522890003944bbc30a12',
+  'a4d6e9539cd3b47bfe03635b86686fe9061abbd4f2b4dd90674dcecfc5b09ca5',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 
 const balanceSim = read('scripts/balance-sim.mjs');
@@ -191,9 +191,14 @@ assert.equal(inspect.snapshot.scenario.active.activeBeatId, 'drop_wreck_field',
   'sf-sim snapshot should include the active 47-A beat');
 assert.deepEqual(inspect.snapshot.scenario.enteredBeatIds, ['drop_wreck_field'],
   'sf-sim snapshot should not claim later 47-A beats');
-assert.equal(inspect.scenarioContract.boundActorCount, 2, 'sf-sim inspect should bind player and evidence spindle actors');
-assert(!inspect.scenarioContract.unresolvedActorIds.includes('evidence_spindle_47a'),
-  'sf-sim inspect should bind the evidence spindle instead of leaving it unresolved');
+assert.equal(inspect.scenarioContract.status, 'phase0-live', 'sf-sim inspect should load the live Phase 0 scenario timing contract');
+assert.equal(inspect.scenarioContract.boundActorCount, 8, 'sf-sim inspect should bind the complete 47-A actor cast');
+assert.deepEqual(inspect.scenarioContract.unresolvedActorIds, [],
+  'sf-sim inspect should not leave required 47-A actors unresolved');
+assert.equal(inspect.snapshot.scenario.actorBindings.contact_kessler.entityId, null,
+  'Kessler should bind as a narrative contact, not a physics entity');
+assert.equal(inspect.snapshot.scenario.actorBindings.contact_kessler.source.kind, 'narrativeFigure',
+  'Kessler should bind through canonical narrative figure data');
 const inspectPayload = inspect.snapshot.entities.find((entity) => entity.data && entity.data.scenarioActorId === 'evidence_spindle_47a');
 assert(inspectPayload, 'sf-sim inspect snapshot should include the 47-A evidence spindle payload');
 assert.equal(inspectPayload.type, 'payload', 'evidence spindle should use the payload entity primitive');
@@ -258,9 +263,9 @@ assert.equal(trace.traceSummary.types['scenario:loaded'], envelope.phase0Observe
   'sf-sim trace should expose scenario contract load evidence');
 assert.equal(trace.scenarioContract.activeBeatId, 'drop_wreck_field',
   'sf-sim trace should expose the first active scenario beat');
-assert.equal(trace.scenarioContract.boundActorCount, 2, 'sf-sim trace should bind player and evidence spindle actors');
-assert(!trace.scenarioContract.unresolvedActorIds.includes('evidence_spindle_47a'),
-  'sf-sim trace should bind the evidence spindle actor');
+assert.equal(trace.scenarioContract.boundActorCount, 8, 'sf-sim trace should bind the complete 47-A actor cast');
+assert.deepEqual(trace.scenarioContract.unresolvedActorIds, [],
+  'sf-sim trace should not leave required 47-A actors unresolved');
 assert(trace.combatTrace && trace.combatTrace.schemaVersion === 1, 'sf-sim trace should include the SG-03 combat trace');
 assert(trace.combatTrace.digest && /^[a-f0-9]{8}$/.test(trace.combatTrace.digest), 'SG-03 combat trace should include a deterministic digest');
 assert((trace.combatTraceSummary.kinds['damage.routed'] || 0) > 0, 'SG-03 combat trace should expose routed damage events');

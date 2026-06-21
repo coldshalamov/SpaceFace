@@ -6,7 +6,7 @@
   "sourceSpec": "docs/Spec/47A_SLICE_CONTRACT.md",
   "tickRate": 60,
   "durationSeconds": 720,
-  "status": "skeleton",
+  "status": "phase0-live",
   "actors": [
     {
       "id": "player_kestrel",
@@ -51,7 +51,7 @@
       "role": "faction_pressure_tug",
       "required": true,
       "assetRef": "asset.slice.meridian_recovery_tug",
-      "factionId": "faction_concord",
+      "factionId": "faction_scn",
       "capabilities": ["ai.contain_and_disable", "massline.attach", "subsystem.targeting"]
     },
     {
@@ -352,7 +352,7 @@
     }
   ],
   "notes": [
-    "This is an SG-05 skeleton contract, not the full mission runtime.",
+    "This is the Phase 0 live contract for the headless 47-A slice proof, not the full mission runtime.",
     "All branch effects are immediate world facts so no outcome can be menu-only.",
     "Future content work must extend this file or its schema instead of adding bespoke 47-A logic in UI, renderer, or ad hoc mission code."
   ]
