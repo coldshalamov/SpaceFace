@@ -60,7 +60,7 @@ const report = {
     sg02DynamicBodies: 'required_on_master',
     sg03ActionRuntime: 'integrated_on_master_canonical_actiondefs_consumed',
     sg03LiveAdapter: 'delivered_createSG03ActionPort',
-    productionRegistration: 'fail_closed_until_dependencies_exist',
+    productionRegistration: 'explicit_sg06_tactical_backend_proved_default_replacement_gated',
   },
   deterministic: true,
   determinismSamples,

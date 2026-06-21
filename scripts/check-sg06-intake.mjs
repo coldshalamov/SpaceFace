@@ -24,6 +24,7 @@ const REQUIRED_FULL_HANDOFF = Object.freeze([
   'third_party/reference-ledger-sg06.yml',
   'scripts/check-sg06-ai.mjs',
   'scripts/check-sg06-registry-init.mjs',
+  'scripts/check-sg06-live-registry.mjs',
 ]);
 
 const PRODUCTION_CLAIM_MARKERS = Object.freeze([
@@ -53,6 +54,10 @@ assert(scripts['check:sg06:registry-init'] && scripts['check:sg06:registry-init'
   'package.json must expose the SG-06 lazy registry-init gate');
 assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:registry-init'),
   'package.json check:sg06 must run the SG-06 lazy registry-init gate');
+assert(scripts['check:sg06:live-registry'] && scripts['check:sg06:live-registry'].includes('check-sg06-live-registry.mjs'),
+  'package.json must expose the SG-06 production registry gate');
+assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:live-registry'),
+  'package.json check:sg06 must run the SG-06 production registry gate');
 
 const hasProductionClaim = PRODUCTION_CLAIM_MARKERS.some(exists) || systemImportsSg06();
 
@@ -69,7 +74,7 @@ if (hasProductionClaim) {
   assertAiActionPort();
   assertNoPrivilegedAiMutation();
   assertSourceHygiene();
-  await assertFailClosedProductionRegistration();
+  await assertGatedProductionRegistration();
 }
 
 console.log('SG-06 intake checks OK');
@@ -142,11 +147,22 @@ function assertAcceptanceRecord() {
     'SG-06 acceptance record must cover both canonical counter-tether actions');
   assert.equal(acceptance.physicalFormationConvergence, 'covered_by_check_sg06_formation',
     'SG-06 acceptance should point physical convergence proof at the Rapier formation gate');
+  assert.equal(acceptance.integrationStatus && acceptance.integrationStatus.productionRegistration,
+    'explicit_sg06_tactical_backend_proved_default_replacement_gated',
+    'SG-06 acceptance should record the opted-in production registry gate status');
 }
 
-async function assertFailClosedProductionRegistration() {
+async function assertGatedProductionRegistration() {
   const registry = read('src/core/registry.js');
-  assert(!registry.includes('tacticalAI'), 'SG-06 tacticalAI must not replace the live AI registry slot before live parity gates pass');
+  assert(registry.includes('createTacticalAISystem'), 'SG-06 registry gate must construct tacticalAI through the production registry');
+  assert(registry.includes("aiBackend === 'sg06-tactical'"), 'SG-06 tacticalAI must stay behind the explicit AI backend selector');
+  assert(registry.includes("physicsBackend === 'rapier-dynamic'"), 'SG-06 tacticalAI must require SG-02 dynamic authority in the production registry');
+  assert(registry.includes("byName.set('ai', aiSlot)"), 'production registry must preserve the ai slot alias for the selected backend');
+  const gameState = read('src/core/gameState.js');
+  assert(gameState.includes("aiBackend: 'legacy'"), 'default game settings must keep legacy AI until live parity gates pass');
+  const saveSystem = read('src/save/saveSystem.js');
+  assert(saveSystem.includes('VALID_AI_BACKENDS'), 'save restore must validate the AI backend setting');
+  assert(saveSystem.includes("'sg06-tactical'"), 'save restore must allow only the explicit SG-06 AI backend id');
   const tactical = read('src/systems/tacticalAI.js');
   assert(tactical.includes('helpers.aiManeuver'), 'SG-06 tacticalAI must depend on helpers.aiManeuver');
   assert(tactical.includes('function ensureStack'), 'SG-06 tacticalAI must lazy-bind ports for registry-slot initialization');

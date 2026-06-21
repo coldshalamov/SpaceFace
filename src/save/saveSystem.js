@@ -21,8 +21,10 @@ const AUTOSAVE_SLOT = 'auto';
 const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
 const DEFAULT_FLIGHT_MODE = 'assisted';
 const DEFAULT_PHYSICS_BACKEND = 'custom';
+const DEFAULT_AI_BACKEND = 'legacy';
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
 const VALID_PHYSICS_BACKENDS = new Set(['custom', 'rapier', 'rapier-dynamic']);
+const VALID_AI_BACKENDS = new Set(['legacy', 'sg06-tactical']);
 const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'mesh',
   'view',
@@ -853,6 +855,9 @@ function sanitizeRestoredSettings(settings) {
   if (!s.gameplay || typeof s.gameplay !== 'object' || Array.isArray(s.gameplay)) s.gameplay = {};
   if (!VALID_PHYSICS_BACKENDS.has(s.gameplay.physicsBackend)) {
     s.gameplay.physicsBackend = DEFAULT_PHYSICS_BACKEND;
+  }
+  if (!VALID_AI_BACKENDS.has(s.gameplay.aiBackend)) {
+    s.gameplay.aiBackend = DEFAULT_AI_BACKEND;
   }
 
   if (!s.controls || typeof s.controls !== 'object' || Array.isArray(s.controls)) s.controls = {};

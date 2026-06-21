@@ -1600,6 +1600,7 @@ function checkDefaultProfessionalFlightSettings() {
 
   assert.equal(state.settings.controls.flightMode, 'assisted', 'assisted flight mode should be the default');
   assert.equal(state.settings.gameplay.physicsBackend, 'custom', 'custom physics backend should remain the default');
+  assert.equal(state.settings.gameplay.aiBackend, 'legacy', 'legacy AI backend should remain the default');
   assert.deepEqual(INPUT_DEFAULTS.BINDINGS.strafeLeft, ['KeyQ'], 'Q should default to left lateral thruster');
   assert.deepEqual(INPUT_DEFAULTS.BINDINGS.strafeRight, ['KeyE'], 'E should default to right lateral thruster');
 }
@@ -1614,6 +1615,7 @@ function checkLegacySettingsRestoreKeepsFlightDefaults() {
 
   assert.equal(state.settings.gameplay.difficulty, 'veteran', 'legacy settings restore should still apply known gameplay fields');
   assert.equal(state.settings.gameplay.physicsBackend, 'custom', 'legacy settings restore should preserve default physics backend');
+  assert.equal(state.settings.gameplay.aiBackend, 'legacy', 'legacy settings restore should preserve default AI backend');
   assert.equal(state.settings.controls.flightMode, 'assisted', 'legacy settings restore should preserve default assisted flight mode');
 }
 
@@ -1621,7 +1623,7 @@ function checkSettingsRestoreSanitizesFlightOptions() {
   const state = createGameState(322);
   save.state = state;
   save._restoreSettings({
-    gameplay: { physicsBackend: 'raw-rigidbody' },
+    gameplay: { physicsBackend: 'raw-rigidbody', aiBackend: 'stringly-ghost' },
     controls: {
       flightMode: 'diagonal-attractor',
       bindings: {
@@ -1633,6 +1635,7 @@ function checkSettingsRestoreSanitizesFlightOptions() {
   });
 
   assert.equal(state.settings.gameplay.physicsBackend, 'custom', 'invalid saved physics backend should fall back to custom');
+  assert.equal(state.settings.gameplay.aiBackend, 'legacy', 'invalid saved AI backend should fall back to legacy');
   assert.equal(state.settings.controls.flightMode, 'assisted', 'invalid saved flight mode should fall back to assisted');
   assert.deepEqual(state.settings.controls.bindings.forward, ['KeyI'], 'string saved bindings should normalize to arrays');
   assert.deepEqual(state.settings.controls.bindings.reverse, ['KeyK'], 'saved bindings should drop non-string entries');
@@ -1653,10 +1656,11 @@ function checkSettingsRestoreSanitizesFlightOptions() {
   assert.equal(state.settings.controls.bindings, null, 'null bindings should keep default binding semantics');
 
   save._restoreSettings({
-    gameplay: { physicsBackend: 'rapier-dynamic' },
+    gameplay: { physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical' },
     controls: { flightMode: 'assisted', bindings: null },
   });
   assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic', 'valid saved SG-02 dynamic backend should restore');
+  assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'valid saved SG-06 tactical AI backend should restore');
 }
 
 function checkProfessionalFlightApiExists() {
