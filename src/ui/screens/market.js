@@ -9,6 +9,7 @@
 // when available, else fall back to the station's MarketEntry (lastBuy/lastSell) or the commodity
 // basePrice. Never throws if markets are empty.
 import { COMMODITIES } from '../../data/commodities.js';
+import { confirm } from '../confirm.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -120,7 +121,7 @@ export function createMarketPanel(ctx) {
   root.appendChild(footer);
 
   // ONE delegated listener for the whole list (perf §5.5).
-  list.addEventListener('click', (ev) => {
+  list.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-act]');
     if (!btn) return;
     const rowEl = btn.closest('[data-cmdty]');
@@ -138,6 +139,27 @@ export function createMarketPanel(ctx) {
       }
       qty = Math.max(0, Math.floor(qty));
       if (qty <= 0) { ctx.bus.emit('audio:cue', { id: 'ui_deny' }); return; }
+      // Large-trade confirm (UX-2): a Max-then-Buy can commit a fortune in one click. Confirm when
+      // the trade total exceeds 50% of credits OR an absolute threshold (whichever is lower), so a
+      // casual buy of a few units never prompts but a max-out does. Sells are reversible enough
+      // (you can buy back) to skip the gate, so only buys are gated.
+      if (act === 'buy') {
+        const unit = unitPrice(ctx, stationId, cmdtyId, 'buy') || 0;
+        const total = unit * qty;
+        const credits = state.player.credits || 0;
+        const bigShare = credits > 0 && total >= credits * 0.5;
+        const bigAbs = total >= 25000;
+        if (bigShare || bigAbs) {
+          const name = (COMMODITY_BY_ID.get(cmdtyId) || {}).name || cmdtyId;
+          const ok = await confirm({
+            title: 'Confirm purchase',
+            body: 'Buy ' + qty + ' ' + name + ' for ' + Math.round(total).toLocaleString() + ' CR?',
+            confirmLabel: 'Buy',
+            danger: bigShare,
+          });
+          if (!ok) return;
+        }
+      }
       ctx.bus.emit(act === 'buy' ? 'ui:buy' : 'ui:sell', { commodityId: cmdtyId, qty });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
       // optimistic footer note; the real refresh comes from economy:tradeCompleted / cargo:changed.

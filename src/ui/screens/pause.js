@@ -4,6 +4,8 @@
 // UI emits intents only; it never mutates owned sim state beyond the documented
 // timeScale/mode toggle that the loop reads (§2.2 — timeScale gates stepSim).
 
+import { confirm } from '../confirm.js';
+
 const STYLE_ID = 'sf-menu-style';
 
 /** Find the screen manager regardless of where uiRoot exposed it. Screens navigate
@@ -103,9 +105,25 @@ export const pauseScreen = {
     const bResume = mk('Resume', () => this._resume(ctx));
     mk('Settings', () => nav(ctx, 'pushScreen', 'settings'));
     mk('Save', () => nav(ctx, 'pushScreen', 'saveLoad'));
-    mk('Load', () => nav(ctx, 'pushScreen', 'saveLoad'));
+    // Load discards unsaved current progress — confirm first (UX-2).
+    mk('Load', async () => {
+      const ok = await confirm({
+        title: 'Load game?',
+        body: 'Loading will discard any unsaved progress in the current session.',
+        confirmLabel: 'Load', danger: true,
+      });
+      if (ok) nav(ctx, 'pushScreen', 'saveLoad');
+    });
     mk('Help', () => nav(ctx, 'pushScreen', 'help'));
-    mk('Main Menu', () => this._toMenu(ctx));
+    // Main Menu discards the current session entirely — confirm first (UX-2).
+    mk('Main Menu', async () => {
+      const ok = await confirm({
+        title: 'Return to main menu?',
+        body: 'Any unsaved progress will be lost. You can Save first if you want to keep it.',
+        confirmLabel: 'Main Menu', danger: true,
+      });
+      if (ok) this._toMenu(ctx);
+    });
 
     els = { bResume };
   },

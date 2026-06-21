@@ -6,6 +6,7 @@
 // Catalog source: the ships system (ctx.registry.get('ships')) exposes nothing public for the
 // catalog, so we read the static SHIPS data and use the system only for unlock checks / sell.
 import { SHIPS } from '../../data/ships.js';
+import { confirm } from '../confirm.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 
@@ -114,12 +115,23 @@ export function createShipyardPanel(ctx) {
   root.appendChild(buyWrap);
 
   // delegated listeners
-  ownedList.addEventListener('click', (ev) => {
+  ownedList.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-act]');
     if (!btn) return;
     const idx = Number(btn.closest('[data-idx]').getAttribute('data-idx'));
     const ships = ctx.registry && ctx.registry.get && ctx.registry.get('ships');
     if (btn.getAttribute('data-act') === 'sell') {
+      // Selling a hull refunds 50% irreversibly — confirm first (UX-2). Surface the refund amount.
+      const owned = (ctx.state.player.ownedShips || [])[idx];
+      const def = owned ? SHIP_BY_ID.get(owned.defId) : null;
+      const refund = def && def.price != null ? Math.floor(((def.buyback != null ? def.buyback : def.price)) * 0.5) : 0;
+      const name = (owned && owned.customName) || (def && def.name) || 'this ship';
+      const ok = await confirm({
+        title: 'Sell ' + name + '?',
+        body: 'Refund: ' + fmtCr(refund) + ' (50% of hull value). Equipped modules stay in your inventory. This cannot be undone.',
+        confirmLabel: 'Sell', danger: true,
+      });
+      if (!ok) return;
       if (ships && typeof ships.sellShip === 'function') ships.sellShip(idx);
       else ctx.bus.emit('ui:sellShip', { index: idx });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });

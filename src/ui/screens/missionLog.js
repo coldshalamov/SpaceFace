@@ -6,6 +6,7 @@
 
 import { SECTORS } from '../../data/sectors.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { confirm } from '../confirm.js';
 import { FACTION_META } from '../../data/factions.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -165,13 +166,26 @@ export const missionLogScreen = {
     });
 
     // Delegated click handler for buttons
-    list.addEventListener('click', (ev) => {
+    list.addEventListener('click', async (ev) => {
       const btn = ev.target.closest('[data-mid]');
       if (!btn) return;
       const missionId = btn.getAttribute('data-mid');
       const act = btn.getAttribute('data-act');
-      if (act === 'track') ctx.bus.emit('ui:trackMission', { missionId });
-      else if (act === 'abandon') ctx.bus.emit('ui:abandonMission', { missionId });
+      if (act === 'track') {
+        ctx.bus.emit('ui:trackMission', { missionId });
+      } else if (act === 'abandon') {
+        // Abandoning a mission forfeits progress + any standing/reputation gain — confirm (UX-2).
+        const active = (ctx.state.missions && ctx.state.missions.active) || [];
+        const m = active.find((x) => x.id === missionId);
+        const title = (m && (m.title || m.name)) || 'this mission';
+        const ok = await confirm({
+          title: 'Abandon ' + title + '?',
+          body: 'You will lose all progress on this contract. Any reputation or reward is forfeit.',
+          confirmLabel: 'Abandon', danger: true,
+        });
+        if (!ok) return;
+        ctx.bus.emit('ui:abandonMission', { missionId });
+      }
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
       this._render();
     });

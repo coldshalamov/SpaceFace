@@ -3,6 +3,8 @@
 // save system owns persistence. Slot index is read defensively from the save system's
 // public API if present, else from localStorage (manifest: SaveLoadScreen reads sf.save.index).
 
+import { confirm } from '../confirm.js';
+
 const STYLE_ID = 'sf-menu-style';
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
@@ -220,11 +222,21 @@ export const saveLoadScreen = {
       const bSave = el('button', 'sf-tab', 'Save'); bSave.style.minWidth = '64px';
       bSave.disabled = !saveAllowed;
       bSave.title = saveAllowed ? 'Save to ' + slotLabel(id) : 'Start or load a game before saving';
-      bSave.addEventListener('click', () => {
+      bSave.addEventListener('click', async () => {
         if (!canSave(ctx)) {
           ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
           this._render(ctx);
           return;
+        }
+        // Overwrite confirmation if the slot is already occupied (UX-2) — saving clobbers the
+        // previous save irreversibly. Empty slots save without a prompt.
+        if (occupied) {
+          const ok = await confirm({
+            title: 'Overwrite save?',
+            body: 'This will replace the existing save in ' + slotLabel(id) + '. This cannot be undone.',
+            confirmLabel: 'Overwrite', danger: true,
+          });
+          if (!ok) return;
         }
         refs.selected = id;
         ctx.bus.emit('game:save', { slot: id });
@@ -233,7 +245,17 @@ export const saveLoadScreen = {
       });
       const bLoad = el('button', 'sf-tab', 'Load'); bLoad.style.minWidth = '64px';
       bLoad.disabled = !occupied;
-      bLoad.addEventListener('click', () => { refs.selected = id; ctx.bus.emit('game:load', { slot: id }); });
+      // Loading discards the current session — confirm first (UX-2).
+      bLoad.addEventListener('click', async () => {
+        const ok = await confirm({
+          title: 'Load this save?',
+          body: 'Loading will replace your current game with the save from ' + slotLabel(id) + '. Unsaved progress is lost.',
+          confirmLabel: 'Load', danger: true,
+        });
+        if (!ok) return;
+        refs.selected = id;
+        ctx.bus.emit('game:load', { slot: id });
+      });
 
       row.appendChild(bSave);
       row.appendChild(bLoad);

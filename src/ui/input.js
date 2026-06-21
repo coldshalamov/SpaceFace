@@ -9,6 +9,8 @@
 // (ESC always = back). Otherwise translate UI-owned keys into intent events / screen pushes.
 // The UI never mutates sim state; docking sets ui.docked + emits dock:docked + pushes 'station'.
 
+import { isConfirmOpen } from './confirm.js';
+
 export function createUiInput(ctx, screenManager) {
   const { state, bus } = ctx;
   let dockInRange = false;
@@ -38,6 +40,10 @@ export function createUiInput(ctx, screenManager) {
     const key = ev.key;
     const code = ev.code;
     const modalOpen = screenManager.isOpen();
+
+    // If a shared confirm dialog is open (UX-2), let it own ALL keys — its own handler traps
+    // Esc/Enter/Tab. Bail here so the modal screen underneath doesn't also react to the keystroke.
+    if (isConfirmOpen()) { ev.preventDefault(); return; }
 
     // --- if a modal is open, route to its handler, ESC = back ---
     if (modalOpen) {

@@ -12,6 +12,7 @@ import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { SECTORS } from '../../data/sectors.js';
+import { confirm } from '../confirm.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const FITTABLE_BY_ID = new Map();
@@ -147,12 +148,23 @@ export function createOutfittingPanel(ctx) {
   }
 
   // ---- delegated listeners ----
-  slotGrid.addEventListener('click', (ev) => {
+  slotGrid.addEventListener('click', async (ev) => {
     const cell = ev.target.closest('[data-slot]');
     if (!cell) return;
     const slotIndex = Number(cell.getAttribute('data-slot'));
     const unfitBtn = ev.target.closest('[data-act="unfit"]');
     if (unfitBtn) {
+      const owned = activeOwned();
+      const fittedId = owned && owned.fittings && owned.fittings[slotIndex];
+      const def = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
+      const name = def && def.name || 'this module';
+      const ok = await confirm({
+        title: 'Unfit ' + name + '?',
+        body: 'The module will move to inventory and this ship will immediately lose its fitted stats.',
+        confirmLabel: 'Unfit',
+        danger: true,
+      });
+      if (!ok) return;
       ctx.bus.emit('ui:unfitModule', { slotIndex });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
       selectedSlot = null; previewFit = null;
