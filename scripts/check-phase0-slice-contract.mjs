@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 
 import { drawSeeded, hash32 } from '../src/core/rng.js';
 import { DEFAULT_TRACE_EVENTS } from '../src/core/eventTrace.js';
@@ -22,6 +22,24 @@ for (const rel of ['src/systems/story.js', 'src/systems/traffic.js', 'src/system
   assert(!read(rel).includes('Math.random'), `${rel} must not use Math.random in authoritative flow`);
 }
 assert(!read('src/systems/story.js').includes('setTimeout'), 'story scheduling must use sim-time, not wall-clock timers');
+
+const allowedRandomFiles = new Map([
+  ['src/main.js', 'boot seed generation before an explicit run seed exists'],
+  ['src/audio/synth.js', 'cosmetic procedural noise buffer'],
+  ['src/audio/audioSystem.js', 'cosmetic audio variation'],
+  ['src/render/camera.js', 'cosmetic camera shake offset'],
+  ['src/render/starfield.js', 'cosmetic starfield generation'],
+  ['src/render/vfx.js', 'cosmetic particle variation'],
+  ['src/systems/telemetry.js', 'local telemetry session id only'],
+  ['src/ui/floatingText.js', 'cosmetic floating text drift'],
+]);
+const randomSites = activeMathRandomSites('src');
+for (const site of randomSites) {
+  assert(allowedRandomFiles.has(site.rel), `Unclassified Math.random site: ${site.rel}:${site.line}`);
+}
+for (const rel of allowedRandomFiles.keys()) {
+  assert(read('docs/Spec/PHASE0_AUTHORITY_AUDIT.md').includes(rel), `Authority audit must classify ${rel}`);
+}
 
 const a = { rngSeed: hash32(47, 'phase0') };
 const b = { rngSeed: hash32(47, 'phase0') };
@@ -75,3 +93,29 @@ for (const type of envelope.phase0ExpectedTraceTypes) {
 }
 
 console.log('Phase 0 slice contract checks OK');
+
+function activeMathRandomSites(relDir) {
+  const root = resolve(ROOT, relDir);
+  const out = [];
+  walk(root, (abs) => {
+    if (!/\.(js|mjs)$/.test(abs)) return;
+    const rel = relative(ROOT, abs).replace(/\\/g, '/');
+    const lines = read(rel).split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) continue;
+      const code = lines[i].replace(/\/\/.*$/, '');
+      if (code.includes('Math.random')) out.push({ rel, line: i + 1 });
+    }
+  });
+  return out;
+}
+
+function walk(dir, visit) {
+  for (const ent of readdirSync(dir)) {
+    const abs = join(dir, ent);
+    const st = statSync(abs);
+    if (st.isDirectory()) walk(abs, visit);
+    else visit(abs);
+  }
+}

@@ -11,6 +11,7 @@ import { combat } from '../src/systems/combat.js';
 import { crafting } from '../src/systems/crafting.js';
 import { economy } from '../src/systems/economy.js';
 import { flight } from '../src/systems/flight.js';
+import { automation } from '../src/systems/automation.js';
 import * as FlightDynamics from '../src/core/flightDynamics.js';
 import { heat } from '../src/systems/heat.js';
 import { missions } from '../src/systems/missions.js';
@@ -940,10 +941,23 @@ function checkEconomyRngFollowsCurrentSaveSeed() {
   state.economy = makeState(22).economy;
   economy.newGame();
   assert.notEqual(economy.rng.seed, bootSeed, 'new game should not keep the boot-time economy RNG stream');
-  assert.equal(economy.rng.seed, helpers.hash32(22, 'economy'), 'new game should seed economy RNG from the current run seed');
+  assert.equal(typeof economy.rng.seed, 'number', 'new game should expose the economy stream seed for diagnostics');
   assert.equal(state.economy.rng, economy.rng, 'new game should attach RNG to the replacement economy state');
 
-  state.meta.seed = 33;
+  economy._rng();
+  const saved = economy.serialize();
+  const expectedNext = economy._rng();
+
+  const restoredState = makeState(22);
+  economy.state = restoredState;
+  economy.helpers = helpers;
+  economy.bus = { emit() {} };
+  economy.deserialize(saved);
+  assert.equal(economy._rng(), expectedNext, 'load should continue the serialized economy RNG stream');
+  assert.equal(restoredState.economy.rng, economy.rng, 'load should attach RNG to restored economy state');
+
+  const legacyState = makeState(33);
+  economy.state = legacyState;
   economy.deserialize({
     markets: {},
     econEvents: [],
@@ -951,8 +965,40 @@ function checkEconomyRngFollowsCurrentSaveSeed() {
     marketIntel: {},
     nextEventId: 9,
   });
-  assert.equal(economy.rng.seed, helpers.hash32(33, 'economy'), 'load should reseed economy RNG from the restored save seed');
-  assert.equal(state.economy.rng, economy.rng, 'load should attach RNG to restored economy state');
+  assert.equal(typeof economy.rng.seed, 'number', 'legacy load should seed an economy RNG stream');
+  assert.equal(legacyState.economy.rng, economy.rng, 'legacy load should attach RNG to restored economy state');
+}
+
+function checkAutomationRngContinuesAfterDeserialize() {
+  const makeState = (seed) => ({
+    meta: { seed },
+    automation: {
+      drones: [],
+      traders: [],
+      outposts: [],
+      fleet: [],
+      fleetCap: 0,
+      balance: {},
+      accumulators: { creditBuffer: 0, upkeepDebt: 0 },
+      meta: { lastTickTime: 0, totalPassiveEarnedLifetime: 0, lostAssetsLog: [], rngSeed: 0 },
+    },
+  });
+
+  const state = makeState(44);
+  automation.state = state;
+  automation.helpers = {};
+  automation._normalizeAutomation(state.automation);
+  automation._initRng(true);
+
+  automation._rng();
+  const saved = automation.serialize();
+  const expectedNext = automation._rng();
+
+  const restored = makeState(44);
+  automation.state = restored;
+  automation.deserialize(saved);
+  assert.equal(automation._rng(), expectedNext, 'load should continue the serialized automation RNG stream');
+  assert.equal(restored.automation.rng, automation.rng, 'load should attach RNG to restored automation state');
 }
 
 function checkCreditWritersRejectNegativeAmounts() {
@@ -2165,6 +2211,7 @@ checkNewGameOwnedShipDefaultsAreFitted();
 checkAmmoServiceOnlyChargesAcceptedCargo();
 checkInsuranceUsesDockedStationId();
 checkEconomyRngFollowsCurrentSaveSeed();
+checkAutomationRngContinuesAfterDeserialize();
 checkCreditWritersRejectNegativeAmounts();
 checkGateTollRequiresCredits();
 checkPlayerBankDoesNotSteerAfterRelease();

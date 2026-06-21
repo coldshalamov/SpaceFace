@@ -23,6 +23,7 @@
 //   reproduce the anchor numbers. Verified numerically.
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
+import { drawSeeded, hash32 } from '../core/rng.js';
 import { addCargo, removeCargo } from './cargo.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
@@ -171,6 +172,7 @@ export const economy = {
     if (!state.economy.econEvents) state.economy.econEvents = [];
     if (!state.economy.econClock) state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     if (!state.economy.marketIntel) state.economy.marketIntel = {};
+    if (!Number.isFinite(state.economy.rngSeed) || (state.economy.rngSeed >>> 0) === 0) state.economy.rngSeed = hash32(state.meta && state.meta.seed, 'economy');
     this._nextEventId = 1;
     this._eventAccumulator = 0;
 
@@ -666,7 +668,7 @@ export const economy = {
     const security = p.security != null ? p.security : this.currentSecurity();
     const cloak = (p.scannerCloak != null ? p.scannerCloak : this.scannerCloak(state));
     const pScan = clamp(BASE_SCAN * (1 + security) - cloak, SCAN_LO, SCAN_HI);
-    const roll = this.rng ? this.rng() : Math.random();
+    const roll = this._rng();
     if (roll > pScan) return { found: false }; // evaded
     // CAUGHT — compute fine, confiscate, rep hit
     let fine = 0;
@@ -791,7 +793,7 @@ export const economy = {
     const stationIds = Object.keys(state.economy.markets);
     if (!stationIds.length) return;
     // cap simultaneous active events per station
-    const rng = this.rng || Math.random;
+    const rng = () => this._rng();
     const sid = stationIds[Math.floor(rng() * stationIds.length)];
     const active = state.economy.econEvents.filter((e) => e.stationId === sid).length;
     if (active >= MAX_EVENTS_PER_STATION) return;
@@ -887,13 +889,20 @@ export const economy = {
   resetRng() {
     const state = this.state;
     const seed = (state.meta && state.meta.seed) || 1;
-    const streamSeed = (this.helpers && this.helpers.hash32)
-      ? this.helpers.hash32(seed, 'economy')
-      : ((seed * 2654435761) >>> 0);
-    state.economy.rng = (this.helpers && this.helpers.mulberry32)
-      ? this.helpers.mulberry32(streamSeed >>> 0)
-      : mulberryLocal(streamSeed >>> 0);
-    this.rng = state.economy.rng;
+    state.economy.rngSeed = hash32(seed, 'economy');
+    this._installRngFunction();
+  },
+
+  _installRngFunction() {
+    const fn = () => this._rng();
+    Object.defineProperty(fn, 'seed', { get: () => (this.state.economy && this.state.economy.rngSeed) || 0 });
+    this.state.economy.rng = fn;
+    this.rng = fn;
+  },
+
+  _rng() {
+    if (!this.state.economy) this.state.economy = {};
+    return drawSeeded(this.state.economy, 'rngSeed', hash32(this.state.meta && this.state.meta.seed, 'economy'));
   },
 
   newGame() {
@@ -928,6 +937,7 @@ export const economy = {
       econEvents: (econ.econEvents || []).map((e) => ({ ...e })),
       econClock: { ...econ.econClock },
       marketIntel: econ.marketIntel,
+      rngSeed: econ.rngSeed,
       nextEventId: this._nextEventId,
     };
   },
@@ -953,9 +963,12 @@ export const economy = {
     econ.econEvents = (data.econEvents || []).map((e) => ({ ...e }));
     econ.econClock = data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     econ.marketIntel = data.marketIntel || {};
+    econ.rngSeed = (Number.isFinite(data.rngSeed) && (data.rngSeed >>> 0) !== 0)
+      ? data.rngSeed >>> 0
+      : hash32(this.state.meta && this.state.meta.seed, 'economy');
     this._nextEventId = data.nextEventId || 1;
     this._eventAccumulator = 0;
-    this.resetRng();
+    this._installRngFunction();
   },
 };
 
@@ -965,14 +978,4 @@ export function quote(stationId, commodityId, side, qty) {
 }
 export function execute(stationId, commodityId, side, qty) {
   return economy._instance ? economy._instance.execute(stationId, commodityId, side, qty) : { ok: false, reason: 'no_economy' };
-}
-
-// ---- local PRNG fallback (only if core helpers absent, e.g. isolated unit test) --------------
-function mulberryLocal(a) {
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }

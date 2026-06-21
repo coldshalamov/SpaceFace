@@ -25,6 +25,7 @@
 // danger from the SECTORS catalog (dangerIndex), the player tier from player.droneTierCap.
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
+import { drawSeeded, hash32 } from '../core/rng.js';
 import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
 import { addCargo, removeCargo } from './cargo.js';
 
@@ -70,16 +71,6 @@ const HOTNESS_GAIN = 0.05;     // per consecutive cycle on the same route
 const HOTNESS_DECAY = 0.1;     // per minute when idle
 const ROUTE_FUEL_PER_WU = 0.4; // cr per wu (sector-position distance proxy)
 const SECTOR_POS_TO_WU = 600;  // sector graph spacing -> rough wu so route fuel is non-trivial
-
-// ---- local PRNG fallback (only if core helpers absent, e.g. isolated unit test) -----------------
-function mulberryLocal(a) {
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 export const automation = {
   name: 'automation',
@@ -1259,16 +1250,24 @@ export const automation = {
   _allocId() { return 'au_' + (this._nextId++); },
 
   // ---- seeded RNG (§0.5) — loss/raid rolls; deterministic + reproducible across save/offline ----
-  _initRng() {
+  _initRng(reset = false) {
     const state = this.state;
     const seed = (state.meta && state.meta.seed) || 1;
-    const h = this.helpers.hash32 ? this.helpers.hash32(seed, 'automation') : (seed * 2654435761) >>> 0;
-    state.automation.rng = this.helpers.mulberry32 ? this.helpers.mulberry32(h >>> 0) : mulberryLocal(h >>> 0);
-    state.automation.meta.rngSeed = h >>> 0;
-    this.rng = state.automation.rng;
+    if (!state.automation.meta) state.automation.meta = {};
+    if (reset || !Number.isFinite(state.automation.meta.rngSeed) || (state.automation.meta.rngSeed >>> 0) === 0) {
+      state.automation.meta.rngSeed = hash32(seed, 'automation');
+    }
+    const fn = () => this._rng();
+    Object.defineProperty(fn, 'seed', { get: () => (this.state.automation && this.state.automation.meta && this.state.automation.meta.rngSeed) || 0 });
+    state.automation.rng = fn;
+    this.rng = fn;
   },
 
-  _rng() { return (this.state.automation && this.state.automation.rng) ? this.state.automation.rng() : Math.random(); },
+  _rng() {
+    if (!this.state.automation) this.state.automation = makeDefaultAutomation();
+    if (!this.state.automation.meta) this.state.automation.meta = {};
+    return drawSeeded(this.state.automation.meta, 'rngSeed', hash32(this.state.meta && this.state.meta.seed, 'automation'));
+  },
 
   // Heal a deserialized / partial automation tree to the full schema (§3.9).
   _normalizeAutomation(a) {
@@ -1296,7 +1295,7 @@ export const automation = {
   newGame() {
     this.state.automation = makeDefaultAutomation();
     this._normalizeAutomation(this.state.automation);
-    this._initRng();
+    this._initRng(true);
     this.state.automation.meta.lastTickTime = nowMs();
     this._nextId = 1;
     this._capBudget = 0;
@@ -1324,7 +1323,7 @@ export const automation = {
     const a = this.state.automation = Object.assign(makeDefaultAutomation(), data);
     this._normalizeAutomation(a);
     this._nextId = data.nextId || (a.drones.length + a.traders.length + a.outposts.length + a.fleet.length + 1);
-    this._initRng(); // rebuild the rng fn (rngSeed restored from save → deterministic continuation)
+    this._initRng(); // rebuild the rng fn from the restored rngSeed → deterministic continuation
     this._capBudget = 0;
     this._outpostRaidAccum = 0;
     this._outpostSellAccum = 0;
