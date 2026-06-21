@@ -8,7 +8,7 @@ const REQUIRED_EVENT_FAMILIES = ['flight', 'combat', 'economy', 'story', 'ai', '
 const TAPE_KEYS = new Set(['schema', 'id', 'scenario', 'seed', 'tickRate', 'notes', 'frames']);
 const FRAME_KEYS = new Set(['tick', 'input', 'commands']);
 const INPUT_KEYS = new Set(['moveX', 'moveZ', 'turnIntent', 'boost', 'fire', 'fireGroup', 'aimAngle']);
-const COMMAND_KEYS = new Set(['kind', 'actionId', 'actor', 'target', 'attachment', 'source']);
+const COMMAND_KEYS = new Set(['kind', 'actionId', 'actor', 'target', 'attachment', 'branchId', 'source']);
 const ENVELOPE_KEYS = new Set([
   'schema',
   'id',
@@ -159,13 +159,23 @@ function validateTapeCommands(commands, path, issues, file) {
       return;
     }
     validateKnownKeys(command, COMMAND_KEYS, itemPath, issues, file);
-    if (command.kind !== 'combatAction') {
-      addIssue(issues, file, `${itemPath}.kind`, 'enum', 'command kind must be combatAction');
+    if (!['combatAction', 'scenarioBranch'].includes(command.kind)) {
+      addIssue(issues, file, `${itemPath}.kind`, 'enum', 'command kind must be combatAction or scenarioBranch');
+      return;
     }
-    requireString(command.actionId, `${itemPath}.actionId`, issues, file, { pattern: /^action_[a-z0-9_:-]+$/ });
-    validateActorRef(command.actor, `${itemPath}.actor`, issues, file, { required: true });
-    validateActorRef(command.target, `${itemPath}.target`, issues, file, { required: false });
-    validateActorRef(command.attachment, `${itemPath}.attachment`, issues, file, { required: false });
+    if (command.kind === 'combatAction') {
+      requireString(command.actionId, `${itemPath}.actionId`, issues, file, { pattern: /^action_[a-z0-9_:-]+$/ });
+      validateActorRef(command.actor, `${itemPath}.actor`, issues, file, { required: true });
+      validateActorRef(command.target, `${itemPath}.target`, issues, file, { required: false });
+      validateActorRef(command.attachment, `${itemPath}.attachment`, issues, file, { required: false });
+      if (command.branchId != null) addIssue(issues, file, `${itemPath}.branchId`, 'forbidden', 'combatAction commands cannot include branchId');
+    } else {
+      requireString(command.branchId, `${itemPath}.branchId`, issues, file, { pattern: /^[a-z0-9][a-z0-9_.:-]*$/ });
+      if (command.actionId != null) addIssue(issues, file, `${itemPath}.actionId`, 'forbidden', 'scenarioBranch commands cannot include actionId');
+      if (command.actor != null) addIssue(issues, file, `${itemPath}.actor`, 'forbidden', 'scenarioBranch commands cannot include actor');
+      if (command.target != null) addIssue(issues, file, `${itemPath}.target`, 'forbidden', 'scenarioBranch commands cannot include target');
+      if (command.attachment != null) addIssue(issues, file, `${itemPath}.attachment`, 'forbidden', 'scenarioBranch commands cannot include attachment');
+    }
     if (command.source != null && !/^[a-z][a-z0-9_.:-]*$/.test(String(command.source))) {
       addIssue(issues, file, `${itemPath}.source`, 'pattern', 'source must be a stable lowercase token');
     }

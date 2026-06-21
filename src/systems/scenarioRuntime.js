@@ -14,6 +14,7 @@ export const scenarioRuntime = {
     this._contractPath = normalizePath(this.helpers.scenarioContractPath || '');
     this._contractHash = this.helpers.scenarioContractHash || null;
     this._lastBeatId = null;
+    this.helpers.applyScenarioBranch = (branchId, options = {}) => applyScenarioBranch(this, branchId, options);
     ensureScenarioState(this.state);
 
     if (this._contract) {
@@ -137,6 +138,103 @@ function updateActiveBeat(runtime, contract) {
   });
 }
 
+function applyScenarioBranch(runtime, branchId, options = {}) {
+  const scenario = ensureScenarioState(runtime.state);
+  const active = scenario.active;
+  const contract = runtime._contract;
+  if (!contract || !active || active.id !== contract.id) {
+    return { ok: false, reason: 'scenario_not_active' };
+  }
+  if (scenario.resolution && scenario.resolution.branchId) {
+    return { ok: false, reason: 'already_resolved', branchId: scenario.resolution.branchId };
+  }
+
+  const branch = (contract.branches || []).find((item) => item && item.id === branchId);
+  if (!branch) return { ok: false, reason: 'unknown_branch', branchId };
+  const unlocked = active.activeBeatId === branch.unlockedByBeat
+    || (Array.isArray(scenario.enteredBeatIds) && scenario.enteredBeatIds.includes(branch.unlockedByBeat));
+  if (!unlocked) {
+    return {
+      ok: false,
+      reason: 'branch_locked',
+      branchId,
+      activeBeatId: active.activeBeatId || null,
+      unlockedByBeat: branch.unlockedByBeat,
+    };
+  }
+
+  const effects = [];
+  for (const effect of branch.worldFactEffects || []) {
+    const result = applyWorldFactEffect(scenario, effect);
+    if (!result.ok) return { ok: false, reason: result.reason, branchId, factId: effect && effect.factId };
+    effects.push(result.effect);
+    runtime.bus.emit('scenario:factChanged', {
+      scenarioId: contract.id,
+      branchId: branch.id,
+      policyId: branch.policyId,
+      factId: result.effect.factId,
+      op: result.effect.op,
+      before: clonePlain(result.effect.before),
+      after: clonePlain(result.effect.after),
+      source: options.source || branch.policyId || 'policy',
+    });
+  }
+
+  const resolution = {
+    branchId: branch.id,
+    policyId: branch.policyId,
+    source: options.source || branch.policyId || 'policy',
+    tick: Number.isSafeInteger(runtime.state.tick) ? runtime.state.tick : 0,
+    simTime: Number.isFinite(runtime.state.simTime) ? runtime.state.simTime : 0,
+    outcomeTags: Array.isArray(branch.outcomeTags) ? branch.outcomeTags.slice() : [],
+    effects,
+  };
+  scenario.resolution = clonePlain(resolution);
+  runtime.bus.emit('scenario:branchResolved', {
+    scenarioId: contract.id,
+    branchId: branch.id,
+    policyId: branch.policyId,
+    summary: branch.summary,
+    outcomeTags: resolution.outcomeTags.slice(),
+    effects: clonePlain(effects),
+    source: resolution.source,
+  });
+  return { ok: true, ...clonePlain(resolution) };
+}
+
+function applyWorldFactEffect(scenario, effect) {
+  if (!effect || !effect.factId || !scenario.facts || !scenario.facts[effect.factId]) {
+    return { ok: false, reason: 'unknown_fact' };
+  }
+  const fact = scenario.facts[effect.factId];
+  const before = clonePlain(fact.value);
+  let after;
+  if (effect.op === 'set') {
+    after = clonePlain(effect.value);
+  } else if (effect.op === 'increment') {
+    const a = Number(fact.value || 0);
+    const b = Number(effect.value);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return { ok: false, reason: 'invalid_increment' };
+    after = a + b;
+  } else if (effect.op === 'append') {
+    const list = Array.isArray(fact.value) ? fact.value.slice() : [];
+    list.push(clonePlain(effect.value));
+    after = list;
+  } else {
+    return { ok: false, reason: 'unsupported_fact_op' };
+  }
+  fact.value = after;
+  return {
+    ok: true,
+    effect: {
+      factId: effect.factId,
+      op: effect.op,
+      before,
+      after: clonePlain(after),
+    },
+  };
+}
+
 function beatForTime(beats, simTime) {
   if (!Array.isArray(beats) || beats.length === 0) return null;
   const t = Math.max(0, Number(simTime) || 0);
@@ -214,7 +312,7 @@ function ensureScenarioState(state) {
 
 function normalizeScenarioState(data) {
   const src = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
-  return {
+  const out = {
     schemaVersion: SCENARIO_RUNTIME_SCHEMA_VERSION,
     active: src.active && typeof src.active === 'object' ? clonePlain(src.active) : null,
     facts: src.facts && typeof src.facts === 'object' && !Array.isArray(src.facts) ? clonePlain(src.facts) : {},
@@ -224,6 +322,10 @@ function normalizeScenarioState(data) {
     unresolvedActorIds: Array.isArray(src.unresolvedActorIds) ? src.unresolvedActorIds.filter((id) => typeof id === 'string') : [],
     enteredBeatIds: Array.isArray(src.enteredBeatIds) ? src.enteredBeatIds.filter((id) => typeof id === 'string') : [],
   };
+  if (src.resolution && typeof src.resolution === 'object' && !Array.isArray(src.resolution)) {
+    out.resolution = clonePlain(src.resolution);
+  }
+  return out;
 }
 
 function clonePlain(value) {

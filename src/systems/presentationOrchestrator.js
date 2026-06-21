@@ -53,6 +53,7 @@ export const presentationOrchestrator = {
         subsystemId: payload && payload.subsystemId,
         material: 'subsystem',
       })),
+      this.bus.on('scenario:branchResolved', (payload) => this._onScenarioBranchResolved(payload || {})),
       this.bus.on('save:loaded', () => this._resetRuntime()),
     ];
   },
@@ -106,6 +107,17 @@ export const presentationOrchestrator = {
       targetId: payload.targetId,
       material: 'shield',
       magnitude: Math.max(1, Number(payload.applied) || Number(payload.amount) || 0),
+    });
+  },
+
+  _onScenarioBranchResolved(payload) {
+    this._emitCue('scenario.branch.resolved', payload, {
+      sourceEvent: 'scenario:branchResolved',
+      sourceId: payload.scenarioId || null,
+      targetId: resolveActorEntityId(this.state, 'evidence_spindle_47a'),
+      material: 'branch',
+      sequence: payload.branchId || null,
+      tags: ['branch', payload.branchId].filter(Boolean),
     });
   },
 

@@ -253,6 +253,8 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
     scenarioBeatEntered: 0,
     scenarioFactsInitialized: 0,
     scenarioActorBindings: 0,
+    scenarioFactChanged: 0,
+    scenarioBranchResolved: 0,
     firstHostileShotTick: null,
     presentationCue: 0,
     presentationCueSuppressed: 0,
@@ -281,6 +283,8 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   bus.on('scenario:beatEntered', () => { metrics.scenarioBeatEntered++; });
   bus.on('scenario:factsInitialized', () => { metrics.scenarioFactsInitialized++; });
   bus.on('scenario:actorBindings', () => { metrics.scenarioActorBindings++; });
+  bus.on('scenario:factChanged', () => { metrics.scenarioFactChanged++; });
+  bus.on('scenario:branchResolved', () => { metrics.scenarioBranchResolved++; });
   bus.on('presentation:cue', () => { metrics.presentationCue++; });
   bus.on('presentation:cueSuppressed', () => { metrics.presentationCueSuppressed++; });
 
@@ -411,7 +415,17 @@ function applyInput(state, input) {
 function applyTapeCommands(state, helpers, commands) {
   if (!Array.isArray(commands) || commands.length === 0) return;
   for (const command of commands) {
-    if (!command || command.kind !== 'combatAction') continue;
+    if (!command) continue;
+    if (command.kind === 'scenarioBranch') {
+      assert(helpers && typeof helpers.applyScenarioBranch === 'function',
+        'golden tape scenarioBranch commands require the SG-05 applyScenarioBranch helper');
+      const result = helpers.applyScenarioBranch(command.branchId, {
+        source: command.source || 'golden-tape',
+      });
+      assert(result && result.ok, `golden tape scenarioBranch rejected: ${command.branchId} (${result && result.reason || 'unknown'})`);
+      continue;
+    }
+    if (command.kind !== 'combatAction') continue;
     assert(helpers && typeof helpers.requestCombatAction === 'function',
       'golden tape combatAction commands require the SG-03 requestCombatAction helper');
     const actor = resolveScenarioEntity(state, command.actor);
@@ -895,6 +909,10 @@ function summarizeCombatTrace(trace) {
 function summarizeScenarioContract(state) {
   const scenario = state && state.scenario || {};
   const active = scenario.active || {};
+  const factValues = {};
+  for (const [id, fact] of Object.entries(scenario.facts || {}).sort(([a], [b]) => a.localeCompare(b))) {
+    factValues[id] = fact && Object.prototype.hasOwnProperty.call(fact, 'value') ? clonePlain(fact.value) : null;
+  }
   return {
     schema: 'spaceface.scenarioRuntimeSummary.v1',
     id: active.id || null,
@@ -909,6 +927,9 @@ function summarizeScenarioContract(state) {
     actorCount: active.actorCount || 0,
     boundActorCount: Object.values(scenario.actorBindings || {}).filter((binding) => binding && binding.status === 'bound').length,
     unresolvedActorIds: Array.isArray(scenario.unresolvedActorIds) ? scenario.unresolvedActorIds.slice() : [],
+    resolvedBranchId: scenario.resolution && scenario.resolution.branchId || null,
+    resolution: scenario.resolution ? clonePlain(scenario.resolution) : null,
+    factValues,
   };
 }
 
@@ -993,6 +1014,24 @@ function normalizePath(path) {
 
 function finite(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function clonePlain(value) {
+  if (value == null) return value;
+  const t = typeof value;
+  if (t === 'number') return Number.isFinite(value) ? value : 0;
+  if (t === 'string' || t === 'boolean') return value;
+  if (Array.isArray(value)) return value.map(clonePlain);
+  if (t === 'object') {
+    const out = {};
+    for (const key of Object.keys(value).sort()) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+      const cloned = clonePlain(value[key]);
+      if (cloned !== undefined) out[key] = cloned;
+    }
+    return out;
+  }
+  return undefined;
 }
 
 function isMeaningfulSteering(input) {

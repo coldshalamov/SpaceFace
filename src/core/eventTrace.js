@@ -26,6 +26,7 @@ export const DEFAULT_TRACE_EVENTS = Object.freeze([
   'scenario:actorBindings',
   'scenario:beatEntered',
   'scenario:factChanged',
+  'scenario:branchResolved',
   'tether:attached',
   'tether:reel',
   'tether:broken',

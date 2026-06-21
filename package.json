@@ -20,7 +20,7 @@
     "check:balance": "node scripts/balance-sim.mjs",
     "check:presentation": "node scripts/check-presentation-cues.mjs",
     "check:camera": "node scripts/check-camera-composition.mjs",
-    "check:sg05": "node scripts/check-sg05-scenario.mjs && node scripts/check-sg05-runtime.mjs",
+    "check:sg05": "node scripts/check-sg05-scenario.mjs && node scripts/check-sg05-runtime.mjs && node scripts/check-sg05-branch-policies.mjs",
     "check:sg02:intake": "node scripts/check-sg02-intake.mjs",
     "check:physics-authority": "node scripts/check-physics-authority.mjs",
     "check:sg02:dynamic-lab": "node scripts/check-sg02-dynamic-body-owner.mjs",
