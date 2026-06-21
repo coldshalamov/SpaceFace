@@ -1,0 +1,225 @@
+name: Author hull GLBs
+
+on:
+  push:
+    branches:
+      - codex/authored-hull-glbs-20260621
+    paths:
+      - .github/workflows/author-hulls-bootstrap.yml
+
+permissions:
+  contents: write
+
+jobs:
+  author-hulls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out authoring branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/authored-hull-glbs-20260621
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install preview runtime dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          packages=(xvfb zstd libgbm1 libgtk-3-0 libnss3)
+          if apt-cache show libasound2t64 >/dev/null 2>&1; then
+            packages+=(libasound2t64)
+          else
+            packages+=(libasound2)
+          fi
+          sudo apt-get install -y "${packages[@]}"
+
+      - name: Materialize authoring tools
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p tools/art scripts
+          base64 -d .hullgen/generator.py.gz.b64 | gzip -d > tools/art/generate_ship_hulls.py
+          base64 -d .hullgen/checker.mjs.gz.b64 | gzip -d > scripts/check-authored-hulls.mjs
+          chmod +x tools/art/generate_ship_hulls.py scripts/check-authored-hulls.mjs
+          rm -rf .hullgen
+
+      - name: Generate and wire seven authored hull classes
+        run: |
+          python tools/art/generate_ship_hulls.py \
+            --repo . \
+            --apply \
+            --stats docs/verification/ship-hulls/generator-stats.json
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Verify binary contracts and art checks
+        run: |
+          set -euxo pipefail
+          node scripts/check-authored-hulls.mjs \
+            --report=docs/verification/ship-hulls/structural-verification.json
+          node scripts/check-parts-manifest.mjs
+          node scripts/check-sg04-release-assets.mjs
+          npm run check:art
+
+      - name: Configure Electron for software WebGL in CI
+        run: |
+          cp electron/shipPreview.cjs /tmp/shipPreview.cjs
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('electron/shipPreview.cjs')
+          text = path.read_text()
+          needle = "app.commandLine.appendSwitch('ignore-gpu-blocklist');"
+          switches = """app.commandLine.appendSwitch('ignore-gpu-blocklist');
+          app.commandLine.appendSwitch('no-sandbox');
+          app.commandLine.appendSwitch('disable-gpu-sandbox');
+          app.commandLine.appendSwitch('disable-dev-shm-usage');
+          app.commandLine.appendSwitch('use-gl', 'swiftshader');
+          app.commandLine.appendSwitch('enable-unsafe-swiftshader');"""
+          if needle not in text:
+              raise SystemExit('Electron preview switch anchor not found')
+          path.write_text(text.replace(needle, switches, 1))
+          PY
+
+      - name: Run the real ship preview harness
+        shell: bash
+        env:
+          ELECTRON_DISABLE_SANDBOX: '1'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          SF_PREVIEW_TIMEOUT: '300000'
+        run: |
+          set -euxo pipefail
+          mkdir -p docs/verification/ship-hulls
+          xvfb-run -a node scripts/run-ship-preview.mjs 2>&1 \
+            | tee docs/verification/ship-hulls/ship-preview.log
+          if grep -Fq '[shipPreview] authored swap did not settle' docs/verification/ship-hulls/ship-preview.log; then
+            echo 'At least one authored composition failed to settle.' >&2
+            exit 1
+          fi
+          while read -r ship hull; do
+            grep -E "authored composition ${ship} .*hulls/${hull}\.glb" \
+              docs/verification/ship-hulls/ship-preview.log >/dev/null
+          done <<'MAP'
+          ship_kestrel hull_starter
+          ship_pelican hull_miner
+          ship_wasp hull_fighter
+          ship_mule hull_freighter
+          ship_drifter hull_starter
+          ship_hornet hull_interceptor
+          ship_ironback hull_miner
+          ship_bastion hull_corvette
+          ship_atlas hull_freighter
+          ship_ranger hull_interceptor
+          ship_warden hull_gunship
+          ship_colossus hull_gunship
+          ship_leviathan hull_gunship
+          MAP
+          mv /tmp/shipPreview.cjs electron/shipPreview.cjs
+
+      - name: Preserve representative visual evidence
+        run: |
+          python -m pip install --disable-pip-version-check pillow
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import json
+          from PIL import Image, ImageChops, ImageDraw, ImageOps, ImageStat
+
+          out = Path('docs/verification/ship-hulls')
+          out.mkdir(parents=True, exist_ok=True)
+          cases = [
+              ('starter', 'kestrel_MkI.jpg'),
+              ('fighter', 'wasp_MkI.jpg'),
+              ('miner', 'pelican_MkI.jpg'),
+              ('freighter', 'mule_MkI.jpg'),
+              ('interceptor', 'hornet_MkI.jpg'),
+              ('corvette', 'bastion_MkI.jpg'),
+              ('gunship', 'warden_MkI.jpg'),
+          ]
+          cards = []
+          records = []
+          for hull_class, source_name in cases:
+              source = Path('.devshots') / source_name
+              if not source.is_file():
+                  raise SystemExit(f'missing preview screenshot: {source}')
+              image = Image.open(source).convert('RGB')
+              card = ImageOps.fit(image, (480, 300), method=Image.Resampling.LANCZOS)
+              evidence = out / f'{hull_class}.jpg'
+              card.save(evidence, quality=82, optimize=True)
+              cards.append((hull_class, card))
+
+              corners = [image.getpixel((0, 0)), image.getpixel((image.width - 1, 0)),
+                         image.getpixel((0, image.height - 1)), image.getpixel((image.width - 1, image.height - 1))]
+              bg = tuple(sum(px[channel] for px in corners) // len(corners) for channel in range(3))
+              delta = ImageChops.difference(image, Image.new('RGB', image.size, bg)).convert('L')
+              mask = delta.point(lambda value: 255 if value > 24 else 0)
+              bbox = mask.getbbox()
+              stats = ImageStat.Stat(image.resize((160, 100)).convert('L'))
+              records.append({
+                  'class': hull_class,
+                  'source': source_name,
+                  'sourceSize': list(image.size),
+                  'evidence': evidence.as_posix(),
+                  'sha256': sha256(evidence.read_bytes()).hexdigest(),
+                  'luminanceMean': round(stats.mean[0], 3),
+                  'luminanceVariance': round(stats.var[0], 3),
+                  'foregroundBounds': list(bbox) if bbox else None,
+              })
+
+          rows = (len(cards) + 1) // 2
+          sheet = Image.new('RGB', (1000, rows * 340), (12, 14, 20))
+          draw = ImageDraw.Draw(sheet)
+          for index, (label, card) in enumerate(cards):
+              x = 10 + (index % 2) * 500
+              y = 30 + (index // 2) * 340
+              sheet.paste(card, (x, y))
+              draw.text((x + 8, y - 22), label.upper(), fill=(238, 242, 248))
+          contact = out / 'contact-sheet.jpg'
+          sheet.save(contact, quality=84, optimize=True)
+          (out / 'visual-verification.json').write_text(json.dumps({
+              'schema': 'spaceface.authoredHullVisualVerification.v1',
+              'harness': '?dev=shippreview',
+              'contactSheet': contact.as_posix(),
+              'captures': records,
+          }, indent=2) + '\n')
+          PY
+          cat > docs/verification/ship-hulls/README.md <<'EOF'
+          # Authored hull verification
+
+          The committed captures were rendered by the existing `?dev=shippreview` Electron harness after it observed the asynchronous authored-part swap. The workflow asserts the canonical ship-to-hull mapping in the renderer log and fails if any ship remains on the procedural fallback.
+
+          `structural-verification.json` records transport-level checks for LODs, tangents, KTX2 textures, packed ORM wiring, exact mount/socket topology, and silhouette distance from the procedural safety core. `contact-sheet.jpg` contains one representative Mk.I render for every commissioned class.
+          EOF
+
+      - name: Upload full preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: authored-hull-preview
+          path: |
+            .devshots/
+            docs/verification/ship-hulls/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Commit generated content
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name 'SpaceFace Hull Authoring Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: author seven ship hull GLBs'
+          git push origin HEAD:codex/authored-hull-glbs-20260621
