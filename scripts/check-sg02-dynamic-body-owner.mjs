@@ -11,14 +11,19 @@ import {
 } from '../src/core/physicsAuthority.js';
 import {
   SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
+  createSg02CombatPhysicsPort,
   createSg02DynamicBodyOwner,
 } from '../src/core/sg02DynamicBodyOwner.js';
 
 const first = await runScenario();
 const second = await runScenario();
+const tetherFirst = await runTetherScenario();
+const tetherSecond = await runTetherScenario();
 
 assert.deepEqual(second.hash, first.hash, 'SG-02 dynamic owner lab should replay to the same quantized hash');
 assert.deepEqual(second.snapshot, first.snapshot, 'SG-02 dynamic owner lab snapshots should be stable');
+assert.deepEqual(tetherSecond.hash, tetherFirst.hash, 'SG-02 tether lab should replay to the same quantized hash');
+assert.deepEqual(tetherSecond.snapshot, tetherFirst.snapshot, 'SG-02 tether lab snapshots should be stable');
 
 console.log('SG-02 dynamic body owner checks OK');
 
@@ -87,20 +92,102 @@ async function runScenario() {
   }
 }
 
-function makeShip() {
+async function runTetherScenario() {
+  const ownerShip = makeShip(101, 0);
+  const targetShip = makeShip(202, 20);
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, quantum: 1e-5 });
+  const port = createSg02CombatPhysicsPort(owner);
+
+  try {
+    owner.syncFromEntities([ownerShip, targetShip]);
+    assert.equal(owner.diagnostics().bodies, 2, 'tether lab should create both dynamic bodies');
+    assert.equal(port.applyImpulse({
+      entityId: targetShip.id,
+      impulse: { x: 1.5, y: 100, z: 0 },
+      reason: 'sg02-port-check',
+      tick: 0,
+    }), true, 'SG-03-shaped port should apply impulses through the dynamic owner');
+
+    const handle = port.createAttachment({
+      attachmentId: 'att_sg02_lab',
+      defId: 'att_massline',
+      ownerId: ownerShip.id,
+      targetId: targetShip.id,
+      sourceSocketId: 'massline',
+      targetSocketId: 'massline',
+      sourceWorld: { x: ownerShip.pos.x, y: 0, z: ownerShip.pos.z },
+      targetWorld: { x: targetShip.pos.x, y: 0, z: targetShip.pos.z },
+      restLength: 12,
+      break: { maxTension: 10_000, maxImpulse: 10_000, stiffness: 180, damping: 12 },
+      tick: 0,
+    });
+    assert.deepEqual(handle, {
+      id: 'att_sg02_lab',
+      attachmentId: 'att_sg02_lab',
+      ownerId: ownerShip.id,
+      targetId: targetShip.id,
+    }, 'createAttachment should return a serializable SG-03 physics handle');
+    assert.equal(owner.diagnostics().attachments, 1, 'dynamic owner should track the Rapier rope attachment');
+
+    for (let i = 0; i < 30; i++) owner.step(1 / 60);
+    const firstTelemetry = port.getAttachmentTelemetry({ attachmentId: 'att_sg02_lab', physicsHandle: handle, tick: 30 });
+    assertAttachmentTelemetry(firstTelemetry, 12);
+    assert(firstTelemetry.distance < 20, 'rope joint should reduce initial cable violation');
+
+    assert.equal(port.setAttachmentReel({
+      attachmentId: 'att_sg02_lab',
+      physicsHandle: handle,
+      restLength: 8,
+      previousRestLength: 12,
+      tick: 31,
+    }), true, 'setAttachmentReel should rebuild the rope at the requested rest length');
+    for (let i = 0; i < 30; i++) owner.step(1 / 60);
+    const reeledTelemetry = port.getAttachmentTelemetry({ attachmentId: 'att_sg02_lab', physicsHandle: handle, tick: 61 });
+    assertAttachmentTelemetry(reeledTelemetry, 8);
+    assert(reeledTelemetry.distance <= firstTelemetry.distance + 1e-6, 'reeling should not increase anchor distance');
+
+    assert.equal(port.cutAttachment({
+      attachmentId: 'att_sg02_lab',
+      physicsHandle: handle,
+      reason: 'sg02-check',
+      tick: 62,
+    }), true, 'cutAttachment should remove the Rapier rope attachment');
+    assert.equal(port.getAttachmentTelemetry({ attachmentId: 'att_sg02_lab', physicsHandle: handle, tick: 62 }), null,
+      'cut attachments should stop publishing telemetry');
+    assert.equal(owner.diagnostics().attachments, 0, 'dynamic owner should clear cut attachments');
+
+    return { snapshot: owner.quantizedSnapshot(), hash: hashSnapshot(owner.quantizedSnapshot()) };
+  } finally {
+    owner.dispose();
+  }
+}
+
+function makeShip(id = 47, x = 0) {
   return {
-    id: 47,
+    id,
     type: 'ship',
     alive: true,
     radius: 12,
     mass: 28,
     flightModel: { inertia: 88 },
-    pos: { x: 0, z: 0 },
+    pos: { x, z: 0 },
     vel: { x: 0, z: 0 },
     rot: 0,
     angVel: 0,
     data: {},
   };
+}
+
+function assertAttachmentTelemetry(value, restLength) {
+  assert(value, 'attachment telemetry should be published');
+  assert.equal(value.schemaVersion, SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION, 'attachment telemetry should be versioned');
+  assert.equal(value.attachmentId, 'att_sg02_lab', 'attachment telemetry should identify the attachment');
+  assert.equal(value.restLength, restLength, 'attachment telemetry should report current rest length');
+  for (const key of ['distance', 'stretch', 'relativeSpeed', 'tension', 'impulse']) {
+    assert(Number.isFinite(value[key]), `attachment telemetry ${key} should be finite`);
+  }
+  assertVectorFinite(value.sourceWorld, 'attachment sourceWorld should be finite');
+  assertVectorFinite(value.targetWorld, 'attachment targetWorld should be finite');
 }
 
 function assertTelemetry(value) {

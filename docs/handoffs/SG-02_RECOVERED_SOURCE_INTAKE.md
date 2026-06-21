@@ -14,7 +14,7 @@ Accepted now:
 
 - `src/core/physicsAuthority.js` as a complete, additive SG-02 command/telemetry membrane.
 - `scripts/check-physics-authority.mjs` as the focused evidence gate for command consumption, body-spec derivation, telemetry isolation, and thruster-authority mutation.
-- `src/core/sg02DynamicBodyOwner.js` and `scripts/check-sg02-dynamic-body-owner.mjs` as an isolated, non-production dynamic-owner lab proving the membrane can drive real Rapier dynamic bodies, plane locks, telemetry, thruster authority, and stable quantized snapshots.
+- `src/core/sg02DynamicBodyOwner.js` and `scripts/check-sg02-dynamic-body-owner.mjs` as an isolated, non-production dynamic-owner lab proving the membrane can drive real Rapier dynamic bodies, plane locks, telemetry, thruster authority, SG-03-shaped impulse/attachment/reel/cut/telemetry ports over Rapier rope joints, and stable quantized snapshots.
 - `scripts/check-sg02-intake.mjs` as the honesty gate that allows this partial membrane while failing future dynamic-authority markers unless the full handoff package, tests, fixtures, and reference ledger are present.
 
 Not accepted yet:

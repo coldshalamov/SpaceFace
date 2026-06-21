@@ -23,6 +23,19 @@ export async function createSg02DynamicBodyOwner(options = {}) {
   return new Sg02DynamicBodyOwner(RAPIER, options);
 }
 
+export function createSg02CombatPhysicsPort(owner) {
+  if (!owner || typeof owner.applyImpulse !== 'function') {
+    throw new Error('SG-02 combat physics port requires a dynamic body owner');
+  }
+  return Object.freeze({
+    applyImpulse(input) { return owner.applyImpulse(input); },
+    createAttachment(input) { return owner.createAttachment(input); },
+    setAttachmentReel(input) { return owner.setAttachmentReel(input); },
+    cutAttachment(input) { return owner.cutAttachment(input); },
+    getAttachmentTelemetry(input) { return owner.getAttachmentTelemetry(input); },
+  });
+}
+
 export class Sg02DynamicBodyOwner {
   constructor(RAPIER, options = {}) {
     if (!RAPIER || !RAPIER.World) throw new Error('SG-02 dynamic body owner requires Rapier');
@@ -31,6 +44,7 @@ export class Sg02DynamicBodyOwner {
     this.fixedDt = positive(options.fixedDt, SG02_DYNAMIC_BODY_OWNER_DT);
     this.quantum = positive(options.quantum, SG02_DYNAMIC_BODY_OWNER_QUANTUM);
     this.records = new Map();
+    this.attachments = new Map();
     this.tick = 0;
     this.accumulator = 0;
   }
@@ -98,6 +112,7 @@ export class Sg02DynamicBodyOwner {
       tick: this.tick,
       fixedDt: this.fixedDt,
       bodies: this.records.size,
+      attachments: this.attachments.size,
       dynamicBodies,
       ccdBodies,
       lockedPlaneBodies,
@@ -105,8 +120,95 @@ export class Sg02DynamicBodyOwner {
   }
 
   dispose() {
+    for (const attachment of this.attachments.values()) this._removeAttachmentJoints(attachment);
+    this.attachments.clear();
     for (const [id, rec] of this.records) this._removeRecord(id, rec);
     if (this.world && typeof this.world.free === 'function') this.world.free();
+  }
+
+  applyImpulse(input = {}) {
+    const rec = this.records.get(input.entityId);
+    if (!rec) return false;
+    rec.body.applyImpulse(planeForce(input.impulse), true);
+    return true;
+  }
+
+  createAttachment(input = {}) {
+    const attachmentId = String(input.attachmentId || '');
+    if (!attachmentId || this.attachments.has(attachmentId)) return false;
+    const owner = this.records.get(input.ownerId);
+    const target = this.records.get(input.targetId);
+    if (!owner || !target || owner === target) return false;
+    const sourceWorld = worldPoint(input.sourceWorld, owner.body.translation());
+    const targetWorld = worldPoint(input.targetWorld, target.body.translation());
+    const restLength = positive(input.restLength, distance2d(sourceWorld, targetWorld));
+    const attachment = {
+      id: attachmentId,
+      defId: String(input.defId || 'unknown'),
+      ownerId: owner.entity.id,
+      targetId: target.entity.id,
+      sourceSocketId: input.sourceSocketId == null ? null : String(input.sourceSocketId),
+      targetSocketId: input.targetSocketId == null ? null : String(input.targetSocketId),
+      owner,
+      target,
+      anchorA: localAnchorFromWorld(owner, sourceWorld),
+      anchorB: localAnchorFromWorld(target, targetWorld),
+      restLength,
+      break: normalizeBreak(input.break),
+      createdTick: Math.max(0, Math.trunc(finite(input.tick))),
+      ropeJoint: null,
+    };
+    this._createAttachmentJoints(attachment);
+    this.attachments.set(attachment.id, attachment);
+    return { id: attachment.id, attachmentId: attachment.id, ownerId: attachment.ownerId, targetId: attachment.targetId };
+  }
+
+  setAttachmentReel(input = {}) {
+    const attachment = this._findAttachment(input);
+    if (!attachment) return false;
+    attachment.restLength = positive(input.restLength, attachment.restLength);
+    this._removeAttachmentJoints(attachment);
+    this._createAttachmentJoints(attachment);
+    return true;
+  }
+
+  cutAttachment(input = {}) {
+    const attachment = this._findAttachment(input);
+    if (!attachment) return false;
+    this._removeAttachmentJoints(attachment);
+    this.attachments.delete(attachment.id);
+    return true;
+  }
+
+  getAttachmentTelemetry(input = {}) {
+    const attachment = this._findAttachment(input);
+    if (!attachment) return null;
+    const source = worldAnchor(attachment.owner, attachment.anchorA);
+    const target = worldAnchor(attachment.target, attachment.anchorB);
+    const dx = target.x - source.x;
+    const dz = target.z - source.z;
+    const distance = Math.hypot(dx, dz);
+    const nx = distance > 1e-9 ? dx / distance : 1;
+    const nz = distance > 1e-9 ? dz / distance : 0;
+    const ownerVelocity = attachment.owner.body.linvel();
+    const targetVelocity = attachment.target.body.linvel();
+    const relativeSpeed = (targetVelocity.x - ownerVelocity.x) * nx + (targetVelocity.z - ownerVelocity.z) * nz;
+    const stretch = Math.max(0, distance - attachment.restLength);
+    const tension = Math.max(0, stretch * attachment.break.stiffness + relativeSpeed * attachment.break.damping);
+    const impulse = tension * this.fixedDt;
+    return Object.freeze({
+      schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
+      attachmentId: attachment.id,
+      restLength: attachment.restLength,
+      distance,
+      stretch,
+      relativeSpeed,
+      tension,
+      impulse,
+      sourceWorld: Object.freeze(source),
+      targetWorld: Object.freeze(target),
+      tick: this.tick,
+    });
   }
 
   _stepFixed() {
@@ -169,6 +271,9 @@ export class Sg02DynamicBodyOwner {
   }
 
   _removeRecord(id, rec) {
+    for (const attachment of Array.from(this.attachments.values())) {
+      if (attachment.owner === rec || attachment.target === rec) this.cutAttachment({ attachmentId: attachment.id });
+    }
     this.world.removeCollider(rec.collider, false);
     this.world.removeRigidBody(rec.body);
     this.records.delete(id);
@@ -243,6 +348,31 @@ export class Sg02DynamicBodyOwner {
       mode: 'sg02-dynamic-lab',
     });
   }
+
+  _findAttachment(input = {}) {
+    const fromHandle = input.physicsHandle && typeof input.physicsHandle === 'object' ? input.physicsHandle.id : input.physicsHandle;
+    const id = String(input.attachmentId || fromHandle || '');
+    return id ? this.attachments.get(id) || null : null;
+  }
+
+  _createAttachmentJoints(attachment) {
+    attachment.ropeJoint = this.world.createImpulseJoint(
+      this.RAPIER.JointData.rope(attachment.restLength, attachment.anchorA, attachment.anchorB),
+      attachment.owner.body,
+      attachment.target.body,
+      true,
+    );
+    if (attachment.ropeJoint && typeof attachment.ropeJoint.setContactsEnabled === 'function') {
+      attachment.ropeJoint.setContactsEnabled(false);
+    }
+  }
+
+  _removeAttachmentJoints(attachment) {
+    if (attachment.ropeJoint && (!attachment.ropeJoint.isValid || attachment.ropeJoint.isValid())) {
+      this.world.removeImpulseJoint(attachment.ropeJoint, true);
+    }
+    attachment.ropeJoint = null;
+  }
 }
 
 async function loadRapierCompat() {
@@ -282,6 +412,45 @@ function isPlaneLocked(body) {
   const v = body.linvel();
   const w = body.angvel();
   return Math.abs(p.y) < 1e-9 && Math.abs(v.y) < 1e-9 && Math.abs(w.x) < 1e-9 && Math.abs(w.z) < 1e-9;
+}
+
+function worldPoint(source, fallback = zero3()) {
+  return { x: finite(source && source.x, fallback.x), y: finite(source && source.y, 0), z: finite(source && source.z, fallback.z) };
+}
+
+function localAnchorFromWorld(rec, world) {
+  const p = rec.body.translation();
+  const yaw = yawFromQuat(rec.body.rotation());
+  const dx = finite(world.x) - p.x;
+  const dz = finite(world.z) - p.z;
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  return { x: c * dx + s * dz, y: 0, z: -s * dx + c * dz };
+}
+
+function worldAnchor(rec, local) {
+  const p = rec.body.translation();
+  const yaw = yawFromQuat(rec.body.rotation());
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  return {
+    x: p.x + c * local.x - s * local.z,
+    y: 0,
+    z: p.z + s * local.x + c * local.z,
+  };
+}
+
+function normalizeBreak(value = {}) {
+  return {
+    maxTension: positive(value.maxTension, Infinity),
+    maxImpulse: positive(value.maxImpulse, Infinity),
+    stiffness: positive(value.stiffness, 120),
+    damping: positive(value.damping, 8),
+  };
+}
+
+function distance2d(a, b) {
+  return Math.hypot(finite(b.x) - finite(a.x), finite(b.z) - finite(a.z));
 }
 
 function planeForce(value) {
