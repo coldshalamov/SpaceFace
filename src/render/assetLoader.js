@@ -35,7 +35,10 @@ export const ASSET_AUTHORING_CONTRACT = Object.freeze({
   runtime: Object.freeze({
     gltfLoader: 'three/addons/loaders/GLTFLoader.js',
     ktx2Loader: 'three/addons/loaders/KTX2Loader.js',
+    dracoLoader: 'three/addons/loaders/DRACOLoader.js',
+    meshoptDecoder: 'three/addons/libs/meshopt_decoder.module.js',
     basisTranscoder: 'vendor/addons/libs/basis/{basis_transcoder.js,basis_transcoder.wasm}',
+    dracoDecoder: 'vendor/addons/libs/draco/gltf/{draco_decoder.js,draco_decoder.wasm,draco_wasm_wrapper.js}',
   }),
   nodeNames: Object.freeze({
     sockets: 'SOCKET_*',
@@ -44,6 +47,22 @@ export const ASSET_AUTHORING_CONTRACT = Object.freeze({
     mounts: 'MOUNT_COCKPIT | MOUNT_ENGINE_* | MOUNT_FIN_*',
     lod: 'LOD0_* | LOD1_* | LOD2_*',
   }),
+});
+
+export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
+  schema: 'spaceface.sg04AssetRuntimeDecoders.v1',
+  gltfLoader: 'vendor/addons/loaders/GLTFLoader.js',
+  ktx2Loader: 'vendor/addons/loaders/KTX2Loader.js',
+  dracoLoader: 'vendor/addons/loaders/DRACOLoader.js',
+  meshoptDecoder: 'vendor/addons/libs/meshopt_decoder.module.js',
+  ktx2TranscoderPath: 'vendor/addons/libs/basis/',
+  dracoDecoderPath: 'vendor/addons/libs/draco/gltf/',
+  compressedTextureExtension: 'KHR_texture_basisu',
+  meshCompressionExtensions: Object.freeze([
+    'KHR_draco_mesh_compression',
+    'EXT_meshopt_compression',
+    'KHR_meshopt_compression',
+  ]),
 });
 
 const runtimeByRenderer = new WeakMap();
@@ -116,6 +135,32 @@ export async function getAuthoredAssetDiagnostic(renderer, url, slot = null) {
   }
 }
 
+export async function getAuthoredAssetRuntimeInfo(renderer) {
+  if (!renderer) return null;
+  try {
+    const runtime = await runtimeFor(renderer);
+    return {
+      schema: 'spaceface.authoredAssetRuntimeInfo.v1',
+      source: runtime.source,
+      decoders: { ...runtime.decoders },
+      paths: { ...runtime.paths },
+    };
+  } catch (error) {
+    return {
+      schema: 'spaceface.authoredAssetRuntimeInfo.v1',
+      source: 'unavailable',
+      decoders: {
+        gltf: false,
+        ktx2: false,
+        draco: false,
+        meshopt: false,
+      },
+      paths: { ...ASSET_RUNTIME_DECODER_CONTRACT },
+      error: error && error.message ? error.message : String(error),
+    };
+  }
+}
+
 export function invalidateAuthoredAsset(renderer, url = null) {
   const runtimePromise = runtimeByRenderer.get(renderer);
   if (!runtimePromise) return;
@@ -140,20 +185,64 @@ function runtimeFor(renderer) {
 }
 
 async function createRuntime(renderer) {
-  // This zero-bundle repo ships its own deliberately-small glTF 2.0 loader (src/render/GLTFLoader.js)
-  // rather than relying on three/addons or node_modules. KTX2/BasisU decoding is optional: the parts
-  // generator embeds PNG textures, and the loader throws on KHR_texture_basisu GLBs, so we only attach
-  // a KTX2Loader if one is actually present in vendor/addons (it currently is not). Failure to attach
-  // KTX2 simply means BasisU-compressed GLBs won't load — embedded-PNG GLBs work fine.
-  const { GLTFLoader } = await import('./GLTFLoader.js');
-  const gltf = new GLTFLoader();
+  const decoders = { gltf: false, ktx2: false, draco: false, meshopt: false };
+  const paths = { ...ASSET_RUNTIME_DECODER_CONTRACT };
+  let gltf;
+  let source = 'three/addons/loaders/GLTFLoader.js';
 
-  // KTX2/BasisU remains an authoring target, but this zero-bundle runtime does not vendor the
-  // decoder yet. Do not dynamically import a missing optional module: browsers report that 404 as
-  // a page error, which breaks the visual QA gate even though embedded-PNG GLBs are valid today.
-  const ktx2 = null;
+  try {
+    const mod = await import('three/addons/loaders/GLTFLoader.js');
+    gltf = new mod.GLTFLoader();
+    decoders.gltf = true;
+  } catch (error) {
+    warnOnce('official-gltf-loader', '[assetLoader] official GLTFLoader unavailable; compressed release assets will not load', error);
+    const mod = await import('./GLTFLoader.js');
+    gltf = new mod.GLTFLoader();
+    source = './GLTFLoader.js';
+  }
 
-  return { gltf, ktx2, assets: new Map(), failures: new Map(), source: './GLTFLoader.js' };
+  if (decoders.gltf) {
+    await attachRuntimeDecoders(gltf, renderer, decoders);
+  }
+
+  return { gltf, assets: new Map(), failures: new Map(), source, decoders, paths };
+}
+
+async function attachRuntimeDecoders(gltf, renderer, decoders) {
+  if (typeof gltf.setKTX2Loader === 'function') {
+    try {
+      const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
+      const ktx2 = new KTX2Loader();
+      ktx2.setTranscoderPath(ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath);
+      if (renderer && typeof ktx2.detectSupport === 'function') ktx2.detectSupport(renderer);
+      gltf.setKTX2Loader(ktx2);
+      decoders.ktx2 = true;
+    } catch (error) {
+      warnOnce('ktx2-loader', '[assetLoader] KTX2/BasisU decoder unavailable; release-compressed textures will fail', error);
+    }
+  }
+
+  if (typeof gltf.setDRACOLoader === 'function') {
+    try {
+      const { DRACOLoader } = await import('three/addons/loaders/DRACOLoader.js');
+      const draco = new DRACOLoader();
+      draco.setDecoderPath(ASSET_RUNTIME_DECODER_CONTRACT.dracoDecoderPath);
+      gltf.setDRACOLoader(draco);
+      decoders.draco = true;
+    } catch (error) {
+      warnOnce('draco-loader', '[assetLoader] DRACO decoder unavailable; Draco-compressed meshes will fail', error);
+    }
+  }
+
+  if (typeof gltf.setMeshoptDecoder === 'function') {
+    try {
+      const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+      gltf.setMeshoptDecoder(MeshoptDecoder);
+      decoders.meshopt = !!MeshoptDecoder;
+    } catch (error) {
+      warnOnce('meshopt-loader', '[assetLoader] Meshopt decoder unavailable; meshopt-compressed meshes will fail', error);
+    }
+  }
 }
 
 function compileBlueprint(url, gltf, expectedSlot) {
