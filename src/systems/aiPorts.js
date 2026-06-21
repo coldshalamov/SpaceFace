@@ -1,4 +1,4 @@
-import { AI_CONTRACT_VERSION, ContactKind, normalizeSensorFrame, stableId, wrapAngle } from '../ai/contracts.js';
+import { AI_CONTRACT_VERSION, ContactKind, DirectorPhase, normalizeSensorFrame, stableId, wrapAngle } from '../ai/contracts.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 
@@ -6,23 +6,32 @@ const DEFAULT_SENSOR_RANGE = 1600;
 const DEFAULT_FORMATION_SPACING = 72;
 const DEFAULT_FORMATION_BOUND = 170;
 const RECENT_EVENT_TICKS = 90;
+const ENCOUNTER_COMMAND_RING_CAPACITY = 128;
+const ENCOUNTER_COMMAND_TYPES = new Set(['phase', 'request_reinforcement', 'order_retreat', 'narrative_beat']);
+const DIRECTOR_PHASES = new Set(Object.values(DirectorPhase));
 
 export const aiPorts = {
   name: 'aiPorts',
 
   init(ctx) {
     this.state = ctx.state;
+    this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this._pendingManeuvers = new Map();
+    ensureEncounterState(this.state);
     this._diag = {
       schemaVersion: AI_CONTRACT_VERSION,
       sensorsInstalled: true,
       rosterInstalled: true,
       maneuverInstalled: true,
+      encounterInstalled: true,
       acceptedManeuvers: 0,
       flushedManeuvers: 0,
       droppedManeuvers: 0,
       lastDropReason: null,
+      acceptedEncounterCommands: 0,
+      rejectedEncounterCommands: 0,
+      lastEncounterDropReason: null,
     };
 
     this.helpers.aiSensors = Object.freeze({
@@ -33,6 +42,9 @@ export const aiPorts = {
     });
     this.helpers.aiManeuver = Object.freeze({
       request: (request) => this._requestManeuver(request),
+    });
+    this.helpers.aiEncounter = Object.freeze({
+      issue: (command) => this._issueEncounterCommand(command),
     });
     this.helpers.inspectAIPorts = () => this.inspect();
   },
@@ -92,6 +104,26 @@ export const aiPorts = {
     this._diag.droppedManeuvers += this._pendingManeuvers.size;
     this._diag.lastDropReason = reason;
     this._pendingManeuvers.clear();
+  },
+
+  _issueEncounterCommand(command = {}) {
+    const state = this.state;
+    const normalized = normalizeEncounterCommand(command, state && state.tick);
+    if (!normalized.ok) {
+      this._diag.rejectedEncounterCommands++;
+      this._diag.lastEncounterDropReason = normalized.reason;
+      return false;
+    }
+    const encounter = ensureEncounterState(state);
+    const record = Object.freeze({
+      seq: encounter.nextSeq++,
+      ...normalized.command,
+    });
+    encounter.commands.push(record);
+    while (encounter.commands.length > ENCOUNTER_COMMAND_RING_CAPACITY) encounter.commands.shift();
+    this._diag.acceptedEncounterCommands++;
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('ai:encounterCommand', record);
+    return true;
   },
 
   _sensorFrameFor(entityId, tick) {
@@ -155,6 +187,57 @@ export const aiPorts = {
     })).sort((a, b) => compareText(a.id, b.id)));
   },
 };
+
+function ensureEncounterState(state) {
+  if (!state.aiEncounter || typeof state.aiEncounter !== 'object') {
+    state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
+  }
+  if (state.aiEncounter.schemaVersion !== AI_CONTRACT_VERSION) state.aiEncounter.schemaVersion = AI_CONTRACT_VERSION;
+  if (!Number.isInteger(state.aiEncounter.nextSeq) || state.aiEncounter.nextSeq < 1) state.aiEncounter.nextSeq = 1;
+  if (!Array.isArray(state.aiEncounter.commands)) state.aiEncounter.commands = [];
+  if (state.aiEncounter.commands.length > ENCOUNTER_COMMAND_RING_CAPACITY) {
+    state.aiEncounter.commands.splice(0, state.aiEncounter.commands.length - ENCOUNTER_COMMAND_RING_CAPACITY);
+  }
+  return state.aiEncounter;
+}
+
+function normalizeEncounterCommand(command, fallbackTick = 0) {
+  if (!command || typeof command !== 'object') return rejectEncounterCommand('command_invalid');
+  const type = String(command.type || '');
+  if (!ENCOUNTER_COMMAND_TYPES.has(type)) return rejectEncounterCommand('command_type_invalid');
+  const base = {
+    version: AI_CONTRACT_VERSION,
+    tick: Number.isInteger(command.tick) ? command.tick : (Number.isInteger(fallbackTick) ? fallbackTick : 0),
+    type,
+  };
+  if (type === 'phase') {
+    const phase = String(command.phase || '');
+    if (!DIRECTOR_PHASES.has(phase)) return rejectEncounterCommand('phase_invalid');
+    return acceptEncounterCommand({ ...base, phase });
+  }
+  if (type === 'request_reinforcement') {
+    return acceptEncounterCommand({
+      ...base,
+      packageId: command.packageId == null ? null : String(command.packageId),
+      budgetRemaining: Math.max(0, finiteInt(command.budgetRemaining, 0)),
+    });
+  }
+  if (type === 'order_retreat') {
+    return acceptEncounterCommand({ ...base, reason: String(command.reason || 'unspecified') });
+  }
+  if (type === 'narrative_beat') {
+    return acceptEncounterCommand({ ...base, beatIndex: Math.max(0, finiteInt(command.beatIndex, 0)) });
+  }
+  return rejectEncounterCommand('command_type_invalid');
+}
+
+function acceptEncounterCommand(command) {
+  return { ok: true, command: Object.freeze(command) };
+}
+
+function rejectEncounterCommand(reason) {
+  return { ok: false, reason };
+}
 
 function controlFromManeuver(entity, request, dt, state) {
   const profile = resolveFlightProfile(entity, state);
@@ -536,6 +619,10 @@ function positive(value, fallback) {
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function finiteInt(value, fallback = 0) {
+  return Number.isInteger(value) ? value : fallback;
 }
 
 function clamp(value, min, max) {
