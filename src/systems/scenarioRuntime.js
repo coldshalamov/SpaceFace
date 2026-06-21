@@ -136,6 +136,25 @@ function updateActiveBeat(runtime, contract) {
     proofMetricIds: (beat.proofMetricIds || []).slice(),
     presentationEventIds: (beat.presentationEventIds || []).slice(),
   });
+  emitBeatDialogue(runtime, contract, beat);
+}
+
+function emitBeatDialogue(runtime, contract, beat) {
+  const lines = Array.isArray(contract.dialogue) ? contract.dialogue : [];
+  for (const line of lines) {
+    if (!line || line.beatId !== beat.id) continue;
+    runtime.bus.emit('scenario:dialogueLine', {
+      scenarioId: contract.id,
+      beatId: beat.id,
+      lineId: line.id,
+      speakerActorId: line.speakerActorId,
+      speaker: line.speaker,
+      channel: line.channel,
+      text: line.text,
+      presentationEventId: line.presentationEventId,
+      source: 'scenario-dialogue',
+    });
+  }
 }
 
 function applyScenarioBranch(runtime, branchId, options = {}) {

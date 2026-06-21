@@ -21,6 +21,7 @@
     "scenario:factsInitialized",
     "scenario:actorBindings",
     "scenario:beatEntered",
+    "scenario:dialogueLine",
     "tether:attached",
     "ship:boostStart",
     "ship:boostStop",
@@ -48,6 +49,7 @@
     "scenario:factsInitialized": 1,
     "scenario:actorBindings": 1,
     "scenario:beatEntered": 1,
+    "scenario:dialogueLine": 1,
     "tether:attached": 1,
     "combat:fire": 12,
     "projectile:hit": 11,
@@ -66,7 +68,7 @@
     "audio:cue": 2
   },
   "acceptancePlaceholders": {
-    "authoritativeHash": "c57bd7d52b39ad5a82fbf5a5a58fc2d69bbb9f88b2f5e82c92acc6f5d561003a",
+    "authoritativeHash": "9af966cccaca4f9b907964482de08c12c7ec91250ad4933bacae7d582c7910ca",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -77,7 +79,7 @@
   "notes": [
     "This is the Phase 0 envelope for the current headless 47-A smoke run.",
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
-    "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick run, including SG-08 semantic cue and adapter-output evidence.",
+    "phase0ExpectedTraceTypes includes future subscribed slice events; phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick run, including SG-05 authored dialogue plus SG-08 semantic cue and adapter-output evidence.",
     "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds."
   ]
 }

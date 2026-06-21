@@ -130,11 +130,12 @@ assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:beatEntered'], 1, 'expected telemetry should pin scenario beat entry count');
+assert.equal(envelope.phase0ObservedTraceCounts['scenario:dialogueLine'], 1, 'expected telemetry should pin authored scenario dialogue execution');
 assert.equal(envelope.phase0ObservedTraceCounts['tether:attached'], 1, 'expected telemetry should pin first Massline attach evidence');
 assert.equal(envelope.acceptancePlaceholders.firstTetherAttachTickMax, 3600,
   'expected telemetry should require first Massline attach within 60s');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  'c57bd7d52b39ad5a82fbf5a5a58fc2d69bbb9f88b2f5e82c92acc6f5d561003a',
+  '9af966cccaca4f9b907964482de08c12c7ec91250ad4933bacae7d582c7910ca',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 
 const balanceSim = read('scripts/balance-sim.mjs');
@@ -264,6 +265,8 @@ assert.equal(trace.traceSummary.types['tether:attached'], envelope.phase0Observe
   'sf-sim trace should expose filtered Massline attach evidence');
 assert.equal(trace.traceSummary.types['scenario:loaded'], envelope.phase0ObservedTraceCounts['scenario:loaded'],
   'sf-sim trace should expose scenario contract load evidence');
+assert.equal(trace.traceSummary.types['scenario:dialogueLine'], envelope.phase0ObservedTraceCounts['scenario:dialogueLine'],
+  'sf-sim trace should expose authored scenario dialogue evidence');
 assert.equal(trace.traceSummary.types['presentation:cue'], envelope.phase0ObservedTraceCounts['presentation:cue'],
   'sf-sim trace should expose SG-08 cue evidence');
 assert.equal(trace.scenarioContract.activeBeatId, 'drop_wreck_field',
@@ -309,6 +312,8 @@ assert.equal(sfTrace.result.traceSummary.types['tether:attached'], envelope.phas
   'canonical sf trace should expose filtered Massline attach evidence');
 assert.equal(sfTrace.result.traceSummary.types['scenario:loaded'], envelope.phase0ObservedTraceCounts['scenario:loaded'],
   'canonical sf trace should expose scenario contract load evidence');
+assert.equal(sfTrace.result.traceSummary.types['scenario:dialogueLine'], envelope.phase0ObservedTraceCounts['scenario:dialogueLine'],
+  'canonical sf trace should expose authored scenario dialogue evidence');
 assert.equal(sfTrace.result.traceSummary.types['presentation:cue'], envelope.phase0ObservedTraceCounts['presentation:cue'],
   'canonical sf trace should expose SG-08 cue evidence');
 

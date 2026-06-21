@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { branchLifecycleCommsPayload } from '../src/ui/comms.js';
+import { branchLifecycleCommsPayload, scenarioDialogueCommsPayload } from '../src/ui/comms.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const scenario = JSON.parse(readFileSync(resolve(ROOT, 'src/data/scenarios/47a.scenario.json'), 'utf8'));
@@ -22,10 +22,26 @@ for (const branch of scenario.branches || []) {
   assert.equal(payload.persist, true, `${branch.id} lifecycle comms should persist until dismissed`);
 }
 
+for (const line of scenario.dialogue || []) {
+  const payload = scenarioDialogueCommsPayload(line);
+  assert(payload, `${line.id} should produce a UI dialogue comms payload`);
+  assert.equal(payload.sender, line.speaker, `${line.id} should render the authored speaker`);
+  assert.equal(payload.category, 'story', `${line.id} should use the story comms channel`);
+  assert.equal(payload.text, line.text, `${line.id} should render authored dialogue text`);
+  assert.equal(payload.persist, false, `${line.id} should not pin live comms permanently`);
+  assert(payload.ttl > 0, `${line.id} should include a finite live comms TTL`);
+}
+
 assert.equal(
   branchLifecycleCommsPayload({ lifecycle: {} }),
   null,
   'missing lifecycle text should not create an empty comms entry',
+);
+
+assert.equal(
+  scenarioDialogueCommsPayload({ speaker: 'KESSLER', text: '   ' }),
+  null,
+  'blank authored dialogue should not create an empty comms entry',
 );
 
 assert.equal(

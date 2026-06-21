@@ -43,6 +43,19 @@ export function branchLifecycleCommsPayload(payload) {
   };
 }
 
+export function scenarioDialogueCommsPayload(payload) {
+  const text = cleanLifecycleText(payload && payload.text);
+  if (!text) return null;
+  const sender = cleanLifecycleText(payload && (payload.speaker || payload.speakerActorId)) || 'UNKNOWN';
+  return {
+    sender,
+    category: 'story',
+    text,
+    ttl: 7.5,
+    persist: false,
+  };
+}
+
 export function createComms(ctx) {
   const { bus, state } = ctx;
   injectCommsCss();
@@ -123,6 +136,10 @@ export function createComms(ctx) {
   }
 
   bus.on('comms:popup', pushComms);
+  bus.on('scenario:dialogueLine', (payload) => {
+    const comms = scenarioDialogueCommsPayload(payload || {});
+    if (comms) pushComms(comms);
+  });
   bus.on('scenario:branchResolved', (payload) => {
     const comms = branchLifecycleCommsPayload(payload || {});
     if (comms) pushComms(comms);

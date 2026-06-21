@@ -56,6 +56,7 @@ assert.equal(counts['scenario:loaded'], 1, 'scenario trace should prove contract
 assert.equal(counts['scenario:factsInitialized'], 1, 'scenario trace should prove fact initialization');
 assert.equal(counts['scenario:actorBindings'], 1, 'scenario trace should prove actor binding audit');
 assert.equal(counts['scenario:beatEntered'], 1, 'scenario trace should prove beat entry');
+assert.equal(counts['scenario:dialogueLine'], 1, 'scenario trace should prove authored dialogue execution for the first beat');
 assert.equal(counts['tether:attached'], 1, 'scenario trace should prove the first Massline attach');
 assert.equal(counts['presentation:cue'], 2, 'scenario trace should prove SG-08 cue routing for first beat and Massline attach');
 assert(result.trace.records.some((record) => record.type === 'scenario:beatEntered'
@@ -66,6 +67,9 @@ assert(result.trace.records.some((record) => record.type === 'presentation:cue'
   && record.payload.id === 'scenario.signal.pulse'), 'trace records should include the first scenario presentation cue');
 assert(result.trace.records.some((record) => record.type === 'presentation:cue'
   && record.payload.id === 'tether.attach'), 'trace records should include the Massline attach presentation cue');
+assert(result.trace.records.some((record) => record.type === 'scenario:dialogueLine'
+  && record.payload.lineId === 'dialogue.47a.kessler.drop'
+  && record.payload.text.includes('sealed mass')), 'trace records should include the first authored Kessler line');
 
 const progressedTrace = runJson([
   'scripts/sf.mjs',
@@ -96,11 +100,15 @@ assert.equal(progressed.scenarioContract.boundActorCount, 8, 'progressed run sho
 assert.deepEqual(progressed.scenarioContract.unresolvedActorIds, [], 'progressed run should not lose actor bindings');
 assert((progressed.traceSummary.types['scenario:beatEntered'] || 0) >= 3,
   'progressed trace should prove the first three beat entries');
+assert.equal(progressed.traceSummary.types['scenario:dialogueLine'], 3,
+  'progressed trace should execute one authored dialogue line for each entered beat through scavenger arrival');
 assert.equal(progressed.metrics.presentationCue, 4, 'progressed run should route scenario and tether presentation cues through SG-08');
 assert(progressed.trace.records.some((record) => record.type === 'scenario:beatEntered'
   && record.payload.beatId === 'scavenger_arrival'), 'trace records should name scavenger_arrival');
 assert(progressed.trace.records.some((record) => record.type === 'presentation:cue'
   && record.payload.id === 'scenario.comms.kessler'), 'progressed trace should include Kessler comms as a semantic cue');
+assert(progressed.trace.records.some((record) => record.type === 'scenario:dialogueLine'
+  && record.payload.lineId === 'dialogue.47a.kessler.scavengers'), 'progressed trace should include the scavenger-arrival authored line');
 assert(progressed.metrics.firstHostileShotTick != null
   && progressed.metrics.firstHostileShotTick <= envelope.acceptancePlaceholders.firstHostileShotTickMax,
   'progressed run should prove first hostile fire inside the authored 90s window');

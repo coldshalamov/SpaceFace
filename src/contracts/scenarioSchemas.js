@@ -34,6 +34,7 @@ const TOP_KEYS = new Set([
   'facts',
   'presentationEventIds',
   'proofMetrics',
+  'dialogue',
   'beats',
   'branches',
   'notes',
@@ -59,6 +60,8 @@ const BEAT_KEYS = new Set([
 ]);
 const BRANCH_KEYS = new Set(['id', 'unlockedByBeat', 'policyId', 'summary', 'outcomeTags', 'lifecycle', 'worldFactEffects']);
 const BRANCH_LIFECYCLE_KEYS = new Set(['offer', 'active', 'reminder', 'fail', 'abandon', 'complete', 'aftermath']);
+const DIALOGUE_KEYS = new Set(['id', 'beatId', 'speakerActorId', 'speaker', 'channel', 'text', 'presentationEventId']);
+const DIALOGUE_CHANNELS = new Set(['comms', 'distress', 'official', 'system']);
 const EFFECT_KEYS = new Set(['factId', 'op', 'value']);
 
 export function validateScenarioDocument(doc, options = {}) {
@@ -87,6 +90,7 @@ export function validateScenarioDocument(doc, options = {}) {
   const facts = validateFacts(doc.facts, issues, file);
   const cues = validatePresentationEventIds(doc.presentationEventIds, issues, file);
   const metrics = validateProofMetrics(doc.proofMetrics, issues, file);
+  validateDialogue(doc.dialogue, issues, file);
   const beats = validateBeats(doc.beats, issues, file);
   const branches = validateBranches(doc.branches, issues, file);
 
@@ -179,6 +183,39 @@ function validateProofMetrics(value, issues, file) {
     requireString(metric.evidence, `${path}.evidence`, issues, file);
     if (typeof metric.required !== 'boolean') addIssue(issues, file, `${path}.required`, 'type', 'required must be a boolean');
     validateStringArray(metric.beatIds, `${path}.beatIds`, issues, file, { minItems: 1 });
+  });
+  return ids;
+}
+
+function validateDialogue(value, issues, file) {
+  const ids = new Set();
+  if (!Array.isArray(value) || value.length === 0) {
+    addIssue(issues, file, '$.dialogue', 'minItems', 'dialogue must contain at least one authored line');
+    return ids;
+  }
+  value.forEach((line, index) => {
+    const path = `$.dialogue[${index}]`;
+    if (!isPlainObject(line)) {
+      addIssue(issues, file, path, 'type', 'dialogue line must be an object');
+      return;
+    }
+    validateKnownKeys(line, DIALOGUE_KEYS, path, issues, file);
+    requireUniqueId(line.id, `${path}.id`, ids, issues, file);
+    requireId(line.beatId, `${path}.beatId`, issues, file);
+    requireId(line.speakerActorId, `${path}.speakerActorId`, issues, file);
+    requireString(line.speaker, `${path}.speaker`, issues, file);
+    requireString(line.channel, `${path}.channel`, issues, file);
+    if (typeof line.channel === 'string' && !DIALOGUE_CHANNELS.has(line.channel)) {
+      addIssue(issues, file, `${path}.channel`, 'enum', `channel must be one of ${[...DIALOGUE_CHANNELS].join(', ')}`);
+    }
+    requireString(line.text, `${path}.text`, issues, file);
+    if (typeof line.text === 'string' && line.text.length > 150) {
+      addIssue(issues, file, `${path}.text`, 'maxLength', 'dialogue text must be <= 150 characters');
+    }
+    requireString(line.presentationEventId, `${path}.presentationEventId`, issues, file);
+    if (typeof line.presentationEventId === 'string' && !CUE_PATTERN.test(line.presentationEventId)) {
+      addIssue(issues, file, `${path}.presentationEventId`, 'cueId', 'presentationEventId must use dotted lower-case syntax');
+    }
   });
   return ids;
 }
@@ -287,6 +324,7 @@ function validateScenarioRefs(ctx) {
   const beatList = Array.isArray(doc.beats) ? doc.beats : [];
   const branchList = Array.isArray(doc.branches) ? doc.branches : [];
   const metricList = Array.isArray(doc.proofMetrics) ? doc.proofMetrics : [];
+  const dialogueList = Array.isArray(doc.dialogue) ? doc.dialogue : [];
 
   for (const id of REQUIRED_47A_BEAT_IDS) {
     if (!beats.has(id)) addIssue(issues, file, '$.beats', 'requiredBeat', `missing required 47-A beat ${id}`);
@@ -328,6 +366,13 @@ function validateScenarioRefs(ctx) {
     for (const effect of branch.worldFactEffects || []) {
       if (effect && !facts.has(effect.factId)) addIssue(issues, file, `$.branches[${index}].worldFactEffects`, 'factRef', `missing fact ${effect.factId}`);
     }
+  });
+
+  dialogueList.forEach((line, index) => {
+    if (!isPlainObject(line)) return;
+    if (!beats.has(line.beatId)) addIssue(issues, file, `$.dialogue[${index}].beatId`, 'beatRef', `missing beat ${line.beatId}`);
+    if (!actors.has(line.speakerActorId)) addIssue(issues, file, `$.dialogue[${index}].speakerActorId`, 'actorRef', `missing actor ${line.speakerActorId}`);
+    if (!cues.has(line.presentationEventId)) addIssue(issues, file, `$.dialogue[${index}].presentationEventId`, 'cueRef', `missing presentation event ${line.presentationEventId}`);
   });
 
   metricList.forEach((metric, index) => {

@@ -171,6 +171,53 @@
       "beatIds": ["drop_wreck_field", "stabilize_spindle", "scavenger_arrival", "debris_sling", "recovery_tug", "carrier_destabilizes", "civilian_pod_choice", "resolution_branch"]
     }
   ],
+  "dialogue": [
+    {
+      "id": "dialogue.47a.kessler.drop",
+      "beatId": "drop_wreck_field",
+      "speakerActorId": "contact_kessler",
+      "speaker": "KESSLER",
+      "channel": "comms",
+      "text": "Kestrel, that pulse is the job. Tag the sealed mass. Do not open it.",
+      "presentationEventId": "scenario.comms.kessler"
+    },
+    {
+      "id": "dialogue.47a.kessler.spindle",
+      "beatId": "stabilize_spindle",
+      "speakerActorId": "contact_kessler",
+      "speaker": "KESSLER",
+      "channel": "comms",
+      "text": "Massline only. If the spool lies, believe the spool.",
+      "presentationEventId": "scenario.comms.kessler"
+    },
+    {
+      "id": "dialogue.47a.kessler.scavengers",
+      "beatId": "scavenger_arrival",
+      "speakerActorId": "contact_kessler",
+      "speaker": "KESSLER",
+      "channel": "comms",
+      "text": "Two scavenger burns inbound. One shoots, one steals. Keep the spindle moving.",
+      "presentationEventId": "scenario.comms.kessler"
+    },
+    {
+      "id": "dialogue.47a.concord.recovery",
+      "beatId": "recovery_tug",
+      "speakerActorId": "official_recovery_tug",
+      "speaker": "CONCORD RECOVERY",
+      "channel": "official",
+      "text": "Contractor, kill thrust and transfer the sealed object. This channel is recorded.",
+      "presentationEventId": "scenario.comms.denial"
+    },
+    {
+      "id": "dialogue.47a.civilian.pod",
+      "beatId": "civilian_pod_choice",
+      "speakerActorId": "civilian_pod",
+      "speaker": "CIVILIAN POD",
+      "channel": "distress",
+      "text": "Suit pressure is falling. Whoever can hear this, I am not cargo.",
+      "presentationEventId": "scenario.objective.priority_split"
+    }
+  ],
   "beats": [
     {
       "id": "drop_wreck_field",

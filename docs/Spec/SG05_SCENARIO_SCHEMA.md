@@ -10,7 +10,8 @@ logic in UI, renderer, or one-off mission code.
 ## Current Schema
 
 - `spaceface.scenarioContract.v1` — a validated 47-A beat graph with actors, world facts,
-  presentation event ids, proof metrics, beat order/windows, and outcome branches.
+  presentation event ids, proof metrics, authored dialogue lines, beat order/windows, and outcome
+  branches.
 - `spaceface.scenarioValidationResult.v1` — machine-readable validation issues with `file`,
   `path`, `rule`, and `message`.
 - `spaceface.scenarioRuntimeSummary.v1` — the headless 47-A runtime proof that the validated
@@ -30,10 +31,14 @@ node scripts/sf.mjs validate scenario src/data/scenarios/47a.scenario.json
 - every beat to reference declared actors, proof metrics, world facts, and presentation lanes;
 - every branch to change at least one immediate world fact;
 - every branch to supply offer, active, reminder, fail, abandon, complete, and aftermath lifecycle text;
+- authored dialogue lines to reference declared beats, speakers, and presentation cue ids while staying
+  inside the slice text budget;
 - critical SG-08 cue ids to be reserved by the scenario contract.
 - the canonical `sf-sim 47a` run to load this contract, emit deterministic `scenario:*` trace
   evidence, snapshot/save/reload the scenario state, bind all required Phase 0 actors, and prove
   beat progression through `scavenger_arrival` in a longer replay.
+- authored dialogue execution to emit deterministic `scenario:dialogueLine` records and render through
+  the comms UI payload contract.
 - four generated branch policy tapes to resolve escape, surrender, destroy, and deliver outcomes,
   mutate the authored world facts, route aftermath through SG-08, and preserve branch resolution
   plus lifecycle payloads across save/load.
@@ -41,9 +46,9 @@ node scripts/sf.mjs validate scenario src/data/scenarios/47a.scenario.json
 ## Boundary
 
 This contract deliberately stops before implementing the full SG-05 DSL runtime, localization,
-content hot reload, authored dialogue execution, or UI/runtime rendering of lifecycle text. The
-Phase 0 runtime bridge is an evidence layer: it consumes this same file, initializes facts and actor
-bindings, proves live beat transitions, and applies replayed branch policies without adding a
-parallel encounter format. Future SG-05 work should extend this schema and consume the same file for
-dialogue, localization, and richer policy conditions while preserving the validated branch lifecycle
-contract.
+content hot reload, or richer branching dialogue graph semantics. The Phase 0 runtime bridge is an
+evidence layer: it consumes this same file, initializes facts and actor bindings, proves live beat
+transitions, emits authored beat dialogue, and applies replayed branch policies without adding a
+parallel encounter format. Future SG-05 work should extend this schema for localization, dialogue
+choices, and richer policy conditions while preserving the validated dialogue and branch lifecycle
+contracts.

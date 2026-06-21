@@ -15,6 +15,7 @@ import { CRITICAL_SLICE_EVENT_IDS } from '../src/presentation/cueSchema.js';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const BRANCH_LIFECYCLE_KEYS = ['abandon', 'active', 'aftermath', 'complete', 'fail', 'offer', 'reminder'];
+const REQUIRED_DIALOGUE_BEATS = ['drop_wreck_field', 'stabilize_spindle', 'scavenger_arrival'];
 
 const scenario = readJson(SCENARIO_PATH);
 const report = validateScenarioDocument(scenario, { file: SCENARIO_PATH });
@@ -37,6 +38,17 @@ for (const beat of scenario.beats) {
   assert(beat.requiredPresentation.length >= 5, `${beat.id} must reserve audio/VFX/camera/UI/accessibility presentation lanes`);
   assert(beat.proofMetricIds.length > 0, `${beat.id} must map to proof metrics`);
   assert(beat.worldFactRefs.length > 0, `${beat.id} must touch declared world facts`);
+}
+
+const dialogueByBeat = new Map();
+for (const line of scenario.dialogue) {
+  assert(line.id.startsWith('dialogue.47a.'), `${line.id} should live in the 47-A dialogue namespace`);
+  assert(line.text.length <= 150, `${line.id} should stay inside the dialogue text budget`);
+  assert(cueIds.has(line.presentationEventId), `${line.id} should reference a reserved presentation cue`);
+  dialogueByBeat.set(line.beatId, (dialogueByBeat.get(line.beatId) || 0) + 1);
+}
+for (const beatId of REQUIRED_DIALOGUE_BEATS) {
+  assert((dialogueByBeat.get(beatId) || 0) >= 1, `${beatId} should execute at least one authored dialogue line`);
 }
 
 for (const branch of scenario.branches) {
@@ -86,6 +98,14 @@ function assertRejectsMalformedScenario() {
   const badCue = clone(scenario);
   badCue.presentationEventIds.push('bad');
   assertIssue(badCue, 'cueId', 'presentation event ids should use dotted semantic syntax');
+
+  const badDialogueActor = clone(scenario);
+  badDialogueActor.dialogue[0].speakerActorId = 'actor_missing';
+  assertIssue(badDialogueActor, 'actorRef', 'dialogue speaker references should resolve');
+
+  const badDialogueCue = clone(scenario);
+  badDialogueCue.dialogue[0].presentationEventId = 'scenario.comms.missing';
+  assertIssue(badDialogueCue, 'cueRef', 'dialogue presentation cue references should resolve');
 }
 
 function assertCliValidation() {
