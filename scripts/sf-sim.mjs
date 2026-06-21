@@ -15,6 +15,7 @@ import { formatScenarioIssue, validateScenarioDocument } from '../src/contracts/
 import { readCombatTrace } from '../src/combat/trace.js';
 import { scenarioRuntime } from '../src/systems/scenarioRuntime.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
+import { presentationAdapters } from '../src/systems/presentationAdapters.js';
 import { actions } from '../src/systems/actions.js';
 import { flight } from '../src/systems/flight.js';
 import { weapons } from '../src/systems/weapons.js';
@@ -228,7 +229,7 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
       scenarioContractPath: scenarioContract.path,
       scenarioContractHash: scenarioContract.sha256,
     },
-    systems: [scenarioRuntime, presentationOrchestrator, actions, flight, weapons, physics, combat, cargo, economy, missions, story, save],
+    systems: [scenarioRuntime, presentationOrchestrator, presentationAdapters, actions, flight, weapons, physics, combat, cargo, economy, missions, story, save],
   });
   const { state, bus, registry } = sim;
   state.settings.gameplay.physicsBackend = physicsBackend;

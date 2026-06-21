@@ -65,6 +65,15 @@ const CUE_TO_RECIPE = {
   confirm: 'sfx_ui_confirm', ui_confirm: 'sfx_ui_confirm', buy: 'sfx_ui_confirm', sell: 'sfx_ui_confirm',
   deny: 'sfx_ui_click', error: 'sfx_ui_alert', alert: 'sfx_ui_alert', warning: 'sfx_ui_alert',
   pickup: 'sfx_mining_impact', cash: 'sfx_ui_confirm',
+  'presentation.tether.attach': 'sfx_boost_whoosh',
+  'presentation.tether.near_break': 'sfx_ui_alert',
+  'presentation.tether.break': 'sfx_explosion_small',
+  'presentation.shield.collapse': 'sfx_explosion_small',
+  'presentation.subsystem.disabled': 'sfx_ui_alert',
+  'presentation.scenario.signal': 'sfx_ui_alert',
+  'presentation.comms.priority': 'sfx_ui_alert',
+  'presentation.objective.split': 'sfx_ui_alert',
+  'presentation.branch.resolved': 'sfx_ui_confirm',
 };
 
 export const audio = {
@@ -161,7 +170,7 @@ export const audio = {
     });
     bus.on('toast', (p) => this._onCue((p && (p.kind === 'error' ? 'error' : 'click'))));
     bus.on('alert', (p) => this._onCue('alert'));
-    bus.on('audio:cue', (p) => this._onCue(p && p.id));
+    bus.on('audio:cue', (p) => this._onCue(p));
     bus.on('settings:changed', (p) => { if (!p || p.section === 'audio' || p.section == null) this._applySettings(); });
 
     // Pause respect (V2 §17 anti-pattern: "audio playing behind the pause menu"). When the sim
@@ -606,10 +615,17 @@ export const audio = {
     }, 400);
   },
 
-  _onCue(id) {
+  _onCue(cue) {
+    const id = typeof cue === 'string' ? cue : cue && cue.id;
     if (!id) { this.play('sfx_ui_click', { gain: 0.7 }); return; }
     const rid = CUE_TO_RECIPE[id] || (RECIPE_BY_ID[id] ? id : 'sfx_ui_click');
-    this.play(rid, { gain: 0.8 });
+    const opts = (cue && typeof cue === 'object') ? cue : {};
+    if (opts.duck) this._duckMusic(opts.duckSeconds || 0.8);
+    this.play(rid, {
+      gain: opts.gain == null ? 0.8 : opts.gain,
+      position: opts.position || null,
+      rate: opts.rate || 1,
+    });
   },
 
   _duckMusic(seconds) {

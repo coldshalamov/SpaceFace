@@ -17,6 +17,7 @@ import {
   validatePresentationRecipes,
 } from '../src/presentation/cueRecipes.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
+import { presentationAdapters } from '../src/systems/presentationAdapters.js';
 import { createBus } from '../src/core/eventBus.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -24,6 +25,7 @@ const checkedSources = [
   'src/presentation/cueSchema.js',
   'src/presentation/cueRecipes.js',
   'src/systems/presentationOrchestrator.js',
+  'src/systems/presentationAdapters.js',
 ];
 
 for (const rel of checkedSources) {
@@ -105,11 +107,22 @@ assert.throws(
 
 const cueRecords = [];
 const suppressedRecords = [];
+const appliedRecords = [];
+const cameraRecords = [];
+const vfxRecords = [];
+const audioRecords = [];
+const uiRecords = [];
+const alertRecords = [];
+const captionRecords = [];
 const bus = createBus();
 const runtimeState = {
   playerId: 1,
   tick: 12,
   simTime: 0.2,
+  settings: {
+    video: { motionReduce: false },
+    accessibility: { flashReduce: false, highContrast: false },
+  },
   entities: new Map([
     [1, { id: 1, pos: { x: 0, y: 0, z: 0 } }],
     [2, { id: 2, pos: { x: 90, y: 0, z: 0 } }],
@@ -124,7 +137,15 @@ const runtimeState = {
 };
 bus.on('presentation:cue', (payload) => cueRecords.push(payload));
 bus.on('presentation:cueSuppressed', (payload) => suppressedRecords.push(payload));
+bus.on('presentation:cueApplied', (payload) => appliedRecords.push(payload));
+bus.on('presentation:cameraCue', (payload) => cameraRecords.push(payload));
+bus.on('presentation:vfxCue', (payload) => vfxRecords.push(payload));
+bus.on('presentation:audioCue', (payload) => audioRecords.push(payload));
+bus.on('presentation:uiCue', (payload) => uiRecords.push(payload));
+bus.on('alert', (payload) => alertRecords.push(payload));
+bus.on('presentation:caption', (payload) => captionRecords.push(payload));
 presentationOrchestrator.init({ state: runtimeState, bus });
+presentationAdapters.init({ state: runtimeState, bus });
 
 bus.emit('scenario:beatEntered', {
   scenarioId: 'scenario.47a.mass-discrepancy',
@@ -136,17 +157,30 @@ assert.equal(cueRecords.length, 1, 'scenario beat should emit only scenario-owne
 assert.equal(cueRecords[0].id, 'scenario.signal.pulse', 'scenario signal cue should route through SG-08');
 assert.equal(cueRecords[0].targetId, 2, 'scenario signal cue should bind to the evidence spindle actor');
 assert.equal(cueRecords[0].lanes.camera, 'camera.threat_composition', 'cue should carry camera lane recipe');
+assert.equal(appliedRecords.length, 1, 'presentation adapter should consume the scenario cue');
+assert.equal(audioRecords.at(-1).id, 'presentation.scenario.signal', 'scenario cue should route to semantic audio');
+assert.equal(alertRecords.at(-1).text, 'UNREGISTERED SIGNAL', 'scenario cue should route to UI alert copy');
+assert.equal(captionRecords.at(-1).shape, 'pulse', 'scenario cue should carry a non-color accessibility shape');
 
 bus.emit('tether:attached', { actorId: 1, targetId: 2, attachmentId: 'att_1', restLength: 90 });
 bus.flush();
 assert.equal(cueRecords.length, 2, 'tether attach should emit a presentation cue');
 assert.equal(cueRecords[1].id, 'tether.attach', 'tether attach should map to the semantic cue id');
 assert.equal(cueRecords[1].material, 'massline', 'tether attach cue should carry Massline material');
+assert.equal(appliedRecords.length, 2, 'presentation adapter should consume the tether cue');
+assert.equal(cameraRecords.at(-1).amount, 0.12, 'tether attach should route camera trauma from the recipe budget');
+assert.equal(audioRecords.at(-1).id, 'presentation.tether.attach', 'tether attach should route to a semantic audio cue');
+assert.equal(uiRecords.at(-1).shape, 'arc', 'tether attach UI cue should use shape coding');
+assert.equal(captionRecords.at(-1).text, 'Massline attached.', 'tether attach should route an accessibility caption');
+assert.deepEqual(appliedRecords.at(-1).outputs.camera,
+  { event: 'camera:shake', amount: 0.12, reducedMotion: false },
+  'applied record should summarize the concrete camera output');
 
 bus.emit('tether:attached', { actorId: 1, targetId: 2, attachmentId: 'att_1', restLength: 90 });
 bus.flush();
 assert.equal(cueRecords.length, 2, 'duplicate tether attach in the dedupe window should be suppressed');
 assert.equal(suppressedRecords[0].reason, 'dedupe_window', 'suppressed duplicate should name the dedupe reason');
+assert.equal(appliedRecords.length, 2, 'suppressed cues should not run presentation adapters');
 
 runtimeState.tick += 10;
 runtimeState.simTime += 0.166667;
@@ -154,6 +188,9 @@ bus.emit('combat:damage', { attackerId: 3, targetId: 1, brokeShield: true, appli
 bus.flush();
 assert.equal(cueRecords.at(-1).id, 'shield.collapse', 'shield breaks should route to shield.collapse');
 assert.equal(cueRecords.at(-1).playerRelevance, 1, 'shield collapse against player should be maximally relevant');
+assert.equal(audioRecords.at(-1).id, 'presentation.shield.collapse', 'shield collapse should route audio');
+assert.equal(alertRecords.at(-1).sev, 'danger', 'shield collapse should route danger UI');
+assert.equal(captionRecords.at(-1).assertive, true, 'player-relevant shield collapse should be assertive');
 
 runtimeState.tick += 2;
 runtimeState.simTime += 0.033333;
@@ -161,10 +198,30 @@ bus.emit('combat:subsystemDisabled', { targetId: 3, subsystemId: 'subsystem_driv
 bus.flush();
 assert.equal(cueRecords.at(-1).id, 'subsystem.disabled', 'subsystem disable event should route to SG-08');
 assert.equal(cueRecords.at(-1).subsystemId, 'subsystem_drive', 'subsystem cue should preserve subsystem id');
+assert.equal(vfxRecords.at(-1).lane, 'vfx.subsystem_sparks', 'subsystem disable should route VFX lane evidence');
+
+runtimeState.tick += 20;
+runtimeState.simTime += 0.333333;
+runtimeState.settings.video.motionReduce = true;
+runtimeState.settings.accessibility.flashReduce = true;
+bus.emit('tether:broken', { actorId: 1, targetId: 2, attachmentId: 'att_2', tension: 9, impulse: 5 });
+bus.flush();
+assert.equal(cueRecords.at(-1).id, 'tether.break', 'tether break should route through SG-08');
+assert.equal(cameraRecords.at(-1).amount, 0.055, 'reduced motion should scale camera trauma down');
+assert.equal(cameraRecords.at(-1).reducedMotion, true, 'camera cue should record reduced-motion transform');
+assert.equal(vfxRecords.at(-1).particles, 48, 'reduced flashing should halve tether break particle budget');
+assert.equal(vfxRecords.at(-1).lights, 0, 'reduced flashing should suppress event lights');
+assert.equal(captionRecords.at(-1).flashReduced, true, 'caption evidence should record flash reduction');
 
 const inspect = presentationOrchestrator.inspect();
-assert.equal(inspect.emitted, 4, 'orchestrator inspect should count emitted cues');
+assert.equal(inspect.emitted, 5, 'orchestrator inspect should count emitted cues');
 assert.equal(inspect.suppressed, 1, 'orchestrator inspect should count suppressed cues');
+const adapterInspect = presentationAdapters.inspect();
+assert.equal(adapterInspect.applied, 5, 'adapter inspect should count applied cues');
+assert.deepEqual(adapterInspect.lastApplied.outputLanes,
+  ['accessibility', 'audio', 'camera', 'ui', 'vfx'],
+  'adapter inspect should summarize all output lanes');
+presentationAdapters.dispose();
 presentationOrchestrator.dispose();
 
 console.log('Presentation cue schema checks OK');
