@@ -30,6 +30,7 @@ const packageJson = json('package.json');
 const scripts = packageJson.scripts || {};
 
 const hasMembrane = exists('src/core/physicsAuthority.js');
+const hasDynamicLab = exists('src/core/sg02DynamicBodyOwner.js') || exists('scripts/check-sg02-dynamic-body-owner.mjs');
 const hasFullHandoff = exists('docs/handoffs/SG-02_PHYSICS_HANDOFF.md');
 const dynamicMarkers = activeDynamicMarkers();
 
@@ -44,6 +45,17 @@ if (hasMembrane) {
   assert(intake.includes('not a merge-ready SG-02 handoff'), 'SG-02 intake doc must reject full acceptance of the partial recovery');
   assert(intake.includes('Accepted now') && intake.includes('Not accepted yet'),
     'SG-02 intake doc must separate accepted membrane work from rejected dynamic runtime work');
+}
+
+if (hasDynamicLab) {
+  assert(exists('src/core/sg02DynamicBodyOwner.js'), 'SG-02 dynamic lab requires src/core/sg02DynamicBodyOwner.js');
+  assert(exists('scripts/check-sg02-dynamic-body-owner.mjs'), 'SG-02 dynamic lab requires scripts/check-sg02-dynamic-body-owner.mjs');
+  assert(scripts['check:sg02:dynamic-lab'], 'package.json must expose check:sg02:dynamic-lab');
+  assert(scripts['check:sg02'] && scripts['check:sg02'].includes('check:sg02:dynamic-lab'),
+    'package.json check:sg02 must include the dynamic-owner lab gate');
+
+  const intake = read('docs/handoffs/SG-02_RECOVERED_SOURCE_INTAKE.md');
+  assert(intake.includes('dynamic-owner lab'), 'SG-02 intake doc must record the accepted dynamic-owner lab boundary');
 }
 
 if (dynamicMarkers.length || hasFullHandoff) {

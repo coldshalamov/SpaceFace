@@ -14,6 +14,7 @@ Accepted now:
 
 - `src/core/physicsAuthority.js` as a complete, additive SG-02 command/telemetry membrane.
 - `scripts/check-physics-authority.mjs` as the focused evidence gate for command consumption, body-spec derivation, telemetry isolation, and thruster-authority mutation.
+- `src/core/sg02DynamicBodyOwner.js` and `scripts/check-sg02-dynamic-body-owner.mjs` as an isolated, non-production dynamic-owner lab proving the membrane can drive real Rapier dynamic bodies, plane locks, telemetry, thruster authority, and stable quantized snapshots.
 - `scripts/check-sg02-intake.mjs` as the honesty gate that allows this partial membrane while failing future dynamic-authority markers unless the full handoff package, tests, fixtures, and reference ledger are present.
 
 Not accepted yet:
@@ -35,7 +36,7 @@ Do not wire the recovered physics object directly into `helpers.combatPhysics`. 
 
 Current master still uses the proven custom physics integrator plus optional kinematic Rapier observer. That observer still contains `kinematicPositionBased` and `setNextKinematicTranslation`; it is not SG-02 dynamic authority and must not be treated as one.
 
-The accepted membrane intentionally does not install `helpers.combatPhysics` and does not make SG-03 movement or attachment actions succeed. Until an authoritative SG-02 physics owner consumes these commands and exposes the SG-03 port, SG-03 must continue to reject those operations with deterministic `physics_port_unavailable:*` trace events.
+The accepted membrane and dynamic-owner lab intentionally do not install `helpers.combatPhysics` and do not make SG-03 movement or attachment actions succeed. Until an authoritative production SG-02 physics owner consumes these commands and exposes the SG-03 port, SG-03 must continue to reject those operations with deterministic `physics_port_unavailable:*` trace events.
 
 ## Required Evidence Before Dynamic SG-02 Can Land
 
