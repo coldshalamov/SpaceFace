@@ -13,6 +13,9 @@ logic in UI, renderer, or one-off mission code.
   presentation event ids, proof metrics, beat order/windows, and outcome branches.
 - `spaceface.scenarioValidationResult.v1` — machine-readable validation issues with `file`,
   `path`, `rule`, and `message`.
+- `spaceface.scenarioRuntimeSummary.v1` — the headless 47-A runtime proof that the validated
+  contract was loaded, the first beat became active, facts initialized, and missing slice actors
+  were reported as unresolved rather than invented.
 
 ## Canonical File
 
@@ -27,9 +30,14 @@ node scripts/sf.mjs validate scenario src/data/scenarios/47a.scenario.json
 - every beat to reference declared actors, proof metrics, world facts, and presentation lanes;
 - every branch to change at least one immediate world fact;
 - critical SG-08 cue ids to be reserved by the scenario contract.
+- the canonical `sf-sim 47a` run to load this contract, emit deterministic `scenario:*` trace
+  evidence, snapshot/save/reload the scenario state, and stay on `drop_wreck_field` while the
+  contract remains `status: "skeleton"`.
 
 ## Boundary
 
 This contract deliberately stops before implementing the full SG-05 DSL runtime, localization,
-save-node migration, branch policy runner, or content hot reload. Future SG-05 work should extend
-this schema and consume the same file rather than adding a parallel encounter format.
+branch policy runner, content hot reload, or the complete live branch implementation. The Phase 0
+runtime bridge is only a boot/evidence layer: it consumes this same file, initializes facts and
+actor bindings, and reports unresolved actors until real slice actors are migrated. Future SG-05 work
+should extend this schema and consume the same file rather than adding a parallel encounter format.

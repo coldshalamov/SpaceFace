@@ -43,7 +43,7 @@ function runValidate(validateArgs) {
 
   const paths = validateArgs.filter((arg) => !arg.startsWith('--'));
   if (paths.length === 0) {
-    paths.push('test/47a.inputs.json', 'test/47a.telemetry.expected.json');
+    paths.push('test/47a.inputs.json', 'test/47a.telemetry.expected.json', 'src/data/scenarios/47a.scenario.json');
   }
 
   const entries = paths.map((path) => readJsonEntry(path));
@@ -155,7 +155,7 @@ function parseJson(text) {
 function usage(code, message) {
   if (message) process.stderr.write(message + '\n');
   process.stderr.write('Usage:\n');
-  process.stderr.write('  node scripts/sf.mjs validate [test/47a.inputs.json test/47a.telemetry.expected.json]\n');
+  process.stderr.write('  node scripts/sf.mjs validate [test/47a.inputs.json test/47a.telemetry.expected.json src/data/scenarios/47a.scenario.json]\n');
   process.stderr.write('  node scripts/sf.mjs validate asset assets/ships/kestrel/kestrel_reference.glb\n');
   process.stderr.write('  node scripts/sf.mjs validate scenario src/data/scenarios/47a.scenario.json\n');
   process.stderr.write('  node scripts/sf.mjs run|inspect|compare|trace|profile 47a [...sf-sim args]\n');

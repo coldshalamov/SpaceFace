@@ -90,6 +90,14 @@ export function createGameState(seed) {
     factions: {},
     conflicts: {},
     missions: { boards: {}, active: [], completedLog: [], nextId: 1, config: null },
+    scenario: {
+      schemaVersion: 1,
+      active: null,
+      facts: {},
+      actorBindings: {},
+      unresolvedActorIds: [],
+      enteredBeatIds: [],
+    },
     // story: beatIndex/branch/flags/chainProgress are owned by missions.js; the narrative overlay
     // fields (phase/seenComms/ambientQueue/graffiti/endgame) are owned by story.js. Both systems
     // co-own state.story; safe empty defaults here so either can read at boot (§3).

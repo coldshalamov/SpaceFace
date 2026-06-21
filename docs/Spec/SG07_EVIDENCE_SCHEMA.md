@@ -16,23 +16,26 @@ fields in ad hoc JSON.
   `rule`, and `message`.
 - `spaceface.scenarioValidationResult.v1` — machine-readable SG-05 validation issues with the same
   issue shape.
+- `spaceface.scenarioRuntimeSummary.v1` — `sf-sim` proof that the loaded 47-A run is tied to the
+  canonical scenario contract hash/path and active beat.
 - `spaceface.sfCliResult.v1` — versioned CLI envelope emitted by `scripts/sf.mjs`.
 
 ## CLI
 
 ```powershell
-node scripts/sf.mjs validate test/47a.inputs.json test/47a.telemetry.expected.json
+node scripts/sf.mjs validate test/47a.inputs.json test/47a.telemetry.expected.json src/data/scenarios/47a.scenario.json
 node scripts/sf.mjs validate scenario src/data/scenarios/47a.scenario.json
 ```
 
 The command emits JSON and exits nonzero if any schema, field, range, ordering, or cross-file
 reference check fails.
 
-`npm run check:contracts` runs the replay-evidence validation in CI-style checks. `npm run check:sg05`
-runs the scenario contract validation. `npm run check:sim` also passes
-`--expect test/47a.telemetry.expected.json`, so replay hash drift must be an intentional envelope
-update rather than an invisible behavior change. The same expectation file also asserts the trace
-event counts emitted by the current 720-tick headless run.
+`npm run check:contracts` runs the replay-evidence validation in CI-style checks, including the
+cross-reference from telemetry envelope to input tape and scenario contract. `npm run check:sg05`
+runs the scenario contract and runtime bridge validation. `npm run check:sim` also passes `--expect
+test/47a.telemetry.expected.json`, so replay hash drift must be an intentional envelope update
+rather than an invisible behavior change. The same expectation file also asserts the trace event
+counts emitted by the current 720-tick headless run, including `scenario:*` evidence.
 
 ## Scope Boundary
 

@@ -89,9 +89,11 @@ assert(contract.includes('First meaningful steering input within 5s'), 'slice co
 
 const tape = json('test/47a.inputs.json');
 const envelope = json('test/47a.telemetry.expected.json');
+const scenarioContract = json('src/data/scenarios/47a.scenario.json');
 const evidenceReport = validateEvidenceCorpus([
   { path: 'test/47a.inputs.json', data: tape },
   { path: 'test/47a.telemetry.expected.json', data: envelope },
+  { path: 'src/data/scenarios/47a.scenario.json', data: scenarioContract },
 ]);
 assert(evidenceReport.ok, evidenceReport.issues.map(formatEvidenceIssue).join('\n'));
 assertRejectsMalformedEvidence();
@@ -105,6 +107,9 @@ for (let i = 1; i < tape.frames.length; i++) {
 for (const family of ['flight', 'combat', 'economy', 'story', 'ai', 'camera']) {
   assert(envelope.requiredEventFamilies.includes(family), `telemetry envelope missing ${family}`);
 }
+assert(envelope.requiredEventFamilies.includes('scenario'), 'telemetry envelope missing scenario');
+assert.equal(envelope.sourceScenarioContract, 'src/data/scenarios/47a.scenario.json',
+  'telemetry envelope should point at the canonical scenario contract');
 for (const type of envelope.phase0ExpectedTraceTypes) {
   assert(DEFAULT_TRACE_EVENTS.includes(type), `event trace does not subscribe to expected type ${type}`);
 }
@@ -117,8 +122,12 @@ assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 12, 'expected 
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
 assert.equal(envelope.phase0ObservedTraceCounts['graffiti:show'], 1, 'expected telemetry should pin observed cold-start graffiti count');
 assert.equal(envelope.phase0ObservedTraceCounts['comms:popup'], 2, 'expected telemetry should pin observed cold-start comms count');
+assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected telemetry should pin scenario load count');
+assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
+assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');
+assert.equal(envelope.phase0ObservedTraceCounts['scenario:beatEntered'], 1, 'expected telemetry should pin scenario beat entry count');
 assert.equal(envelope.acceptancePlaceholders.authoritativeHash,
-  '4da22058949ec31e2b0d7b6dad868a104d0604bc4ceced39d962d1e168d2d12f',
+  'bfdab9bc8334f8036b107c90376557e4aaa13fd155861f030414b4424fc54c7e',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 
 const balanceSim = read('scripts/balance-sim.mjs');
@@ -169,6 +178,12 @@ for (const systemName of ['actions', 'missions', 'story']) {
 }
 assert(inspect.snapshot.missions && inspect.snapshot.missions.nextId === 1, 'sf-sim snapshot should include mission state');
 assert(inspect.snapshot.story && inspect.snapshot.story.beatIndex === 0, 'sf-sim snapshot should include story state');
+assert.equal(inspect.snapshot.scenario.active.id, 'scenario.47a.mass-discrepancy',
+  'sf-sim snapshot should include scenario runtime state');
+assert.equal(inspect.snapshot.scenario.active.activeBeatId, 'drop_wreck_field',
+  'sf-sim snapshot should include the active 47-A beat');
+assert.deepEqual(inspect.snapshot.scenario.enteredBeatIds, ['drop_wreck_field'],
+  'sf-sim snapshot should not claim later 47-A beats');
 assert((inspect.traceSummary.types['graffiti:show'] || 0) > 0, 'sf-sim inspect should expose cold-start graffiti evidence');
 assert((inspect.traceSummary.types['comms:popup'] || 0) > 0, 'sf-sim inspect should expose cold-start comms evidence');
 
@@ -201,7 +216,7 @@ const trace = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--events',
-  'combat.*,story.*',
+  'scenario.*,combat.*,story.*',
   '--limit',
   '200',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
@@ -210,9 +225,16 @@ assert.equal(trace.command, 'trace', 'sf-sim trace command should round-trip in 
 assert.equal(trace.sha256, envelope.acceptancePlaceholders.authoritativeHash, 'sf-sim trace should preserve the authoritative replay hash');
 assert(trace.trace && trace.trace.schema === 'spaceface.eventTrace.v1', 'sf-sim trace should include deterministic event records');
 assert(trace.trace.subscribedEvents.includes('combat:fire'), 'sf-sim trace should resolve combat.* event filters');
+assert(trace.trace.subscribedEvents.includes('scenario:loaded'), 'sf-sim trace should resolve scenario.* event filters');
 assert(trace.trace.subscribedEvents.includes('story:beatAdvanced'), 'sf-sim trace should resolve story.* event filters');
 assert.equal(trace.traceSummary.types['combat:fire'], envelope.phase0ObservedTraceCounts['combat:fire'],
   'sf-sim trace should expose filtered combat fire evidence');
+assert.equal(trace.traceSummary.types['scenario:loaded'], envelope.phase0ObservedTraceCounts['scenario:loaded'],
+  'sf-sim trace should expose scenario contract load evidence');
+assert.equal(trace.scenarioContract.activeBeatId, 'drop_wreck_field',
+  'sf-sim trace should expose the first active scenario beat');
+assert(trace.scenarioContract.unresolvedActorIds.includes('evidence_spindle_47a'),
+  'sf-sim trace should expose unresolved scenario actor ids instead of silently inventing missing actors');
 assert(trace.combatTrace && trace.combatTrace.schemaVersion === 1, 'sf-sim trace should include the SG-03 combat trace');
 assert(trace.combatTrace.digest && /^[a-f0-9]{8}$/.test(trace.combatTrace.digest), 'SG-03 combat trace should include a deterministic digest');
 assert((trace.combatTraceSummary.kinds['damage.routed'] || 0) > 0, 'SG-03 combat trace should expose routed damage events');
@@ -229,7 +251,7 @@ const sfTrace = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--events',
-  'combat.*,story.*',
+  'scenario.*,combat.*,story.*',
   '--limit',
   '200',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
@@ -242,6 +264,8 @@ assert.equal(sfTrace.result.sha256, envelope.acceptancePlaceholders.authoritativ
   'canonical sf trace should preserve the authoritative replay hash');
 assert.equal(sfTrace.result.traceSummary.types['combat:fire'], envelope.phase0ObservedTraceCounts['combat:fire'],
   'canonical sf trace should expose filtered combat fire evidence');
+assert.equal(sfTrace.result.traceSummary.types['scenario:loaded'], envelope.phase0ObservedTraceCounts['scenario:loaded'],
+  'canonical sf trace should expose scenario contract load evidence');
 
 const profile = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf-sim.mjs',

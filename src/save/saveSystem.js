@@ -97,6 +97,7 @@ export const save = {
     data.entities = this._serializeEntities();
     data.combat = serializeCombatState(state);
     data.missions = this._callSerialize('missions') || this._serializeMissions();
+    data.scenario = this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {});
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
     data.sectorSim = this._callSerialize('sectorSim') || {};   // ADR-0002 / V2 §33 — offscreen sim state
@@ -440,6 +441,7 @@ export const save = {
 
       // 13. restore missions/automation/settings.
       this._restoreMissions(data.missions);
+      this._restoreScenario(data.scenario);
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
         try { missionsSys.spawnTargetsForSector(sectorId); } catch (err) { console.error('[save] spawn mission targets', err); }
@@ -529,6 +531,14 @@ export const save = {
       this.state.missions.config = payload.config || null;
     }
     if (payload.story) this.state.story = payload.story;
+  },
+
+  _restoreScenario(d) {
+    const sys = this.registry && this.registry.get && this.registry.get('scenarioRuntime');
+    if (sys && typeof sys.deserialize === 'function') {
+      try { sys.deserialize(d); return; } catch (err) { console.error('[save] deserialize scenarioRuntime', err); }
+    }
+    if (d && typeof d === 'object') this.state.scenario = clonePlain(d);
   },
 
   _restoreAutomation(d) {

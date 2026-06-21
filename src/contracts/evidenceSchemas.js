@@ -1,8 +1,10 @@
+import { SCENARIO_CONTRACT_SCHEMA, validateScenarioDocument } from './scenarioSchemas.js';
+
 export const GOLDEN_INPUT_TAPE_SCHEMA = 'spaceface.goldenInputTape.v1';
 export const TELEMETRY_ENVELOPE_SCHEMA = 'spaceface.telemetryEnvelope.v1';
 export const EVIDENCE_VALIDATION_RESULT_SCHEMA = 'spaceface.evidenceValidationResult.v1';
 
-const REQUIRED_EVENT_FAMILIES = ['flight', 'combat', 'economy', 'story', 'ai', 'camera'];
+const REQUIRED_EVENT_FAMILIES = ['flight', 'combat', 'economy', 'story', 'ai', 'camera', 'scenario'];
 const TAPE_KEYS = new Set(['schema', 'id', 'scenario', 'seed', 'tickRate', 'notes', 'frames']);
 const FRAME_KEYS = new Set(['tick', 'input']);
 const INPUT_KEYS = new Set(['moveX', 'moveZ', 'turnIntent', 'boost', 'fire', 'fireGroup', 'aimAngle']);
@@ -12,6 +14,7 @@ const ENVELOPE_KEYS = new Set([
   'scenario',
   'seed',
   'sourceInputTape',
+  'sourceScenarioContract',
   'requiredEventFamilies',
   'phase0ExpectedTraceTypes',
   'phase0ObservedTraceCounts',
@@ -38,6 +41,7 @@ export function validateEvidenceDocument(doc, options = {}) {
 
   if (doc.schema === GOLDEN_INPUT_TAPE_SCHEMA) validateGoldenInputTape(doc, issues, file);
   else if (doc.schema === TELEMETRY_ENVELOPE_SCHEMA) validateTelemetryEnvelope(doc, issues, file);
+  else if (doc.schema === SCENARIO_CONTRACT_SCHEMA) issues.push(...validateScenarioDocument(doc, { file }).issues);
   else addIssue(issues, file, '$.schema', 'schema', `unsupported evidence schema ${JSON.stringify(doc.schema)}`);
 
   return documentResult(doc, issues);
@@ -145,6 +149,7 @@ function validateTelemetryEnvelope(envelope, issues, file) {
   requireString(envelope.scenario, '$.scenario', issues, file);
   requireInteger(envelope.seed, '$.seed', issues, file, { min: 1 });
   requireString(envelope.sourceInputTape, '$.sourceInputTape', issues, file);
+  requireString(envelope.sourceScenarioContract, '$.sourceScenarioContract', issues, file);
   validateStringArray(envelope.requiredEventFamilies, '$.requiredEventFamilies', issues, file, { minItems: 1 });
   validateStringArray(envelope.phase0ExpectedTraceTypes, '$.phase0ExpectedTraceTypes', issues, file, { minItems: 1 });
   validateTraceCountMap(envelope.phase0ObservedTraceCounts, '$.phase0ObservedTraceCounts', issues, file);
@@ -212,6 +217,7 @@ function validateEvidenceCrossRefs(entries, issues) {
     if (!entry || !entry.data || entry.data.schema !== TELEMETRY_ENVELOPE_SCHEMA) continue;
     const envelopePath = normalizePath(entry.path || '');
     const sourcePath = normalizePath(entry.data.sourceInputTape || '');
+    const scenarioPath = normalizePath(entry.data.sourceScenarioContract || '');
     const source = byPath.get(sourcePath);
     if (!source) {
       addIssue(issues, envelopePath, '$.sourceInputTape', 'crossRef', `source input tape ${sourcePath || '<empty>'} was not part of this validation corpus`);
@@ -223,6 +229,18 @@ function validateEvidenceCrossRefs(entries, issues) {
     }
     if (source.data.seed !== entry.data.seed) addIssue(issues, envelopePath, '$.seed', 'crossRef', 'telemetry seed must match source input tape seed');
     if (source.data.scenario !== entry.data.scenario) addIssue(issues, envelopePath, '$.scenario', 'crossRef', 'telemetry scenario must match source input tape scenario');
+    const scenario = byPath.get(scenarioPath);
+    if (!scenario) {
+      addIssue(issues, envelopePath, '$.sourceScenarioContract', 'crossRef', `source scenario contract ${scenarioPath || '<empty>'} was not part of this validation corpus`);
+      continue;
+    }
+    if (!scenario.data || scenario.data.schema !== SCENARIO_CONTRACT_SCHEMA) {
+      addIssue(issues, envelopePath, '$.sourceScenarioContract', 'crossRef', 'sourceScenarioContract must point to a scenario contract');
+      continue;
+    }
+    if (scenario.data.scenario !== entry.data.scenario) {
+      addIssue(issues, envelopePath, '$.scenario', 'crossRef', 'telemetry scenario must match source scenario contract');
+    }
   }
 }
 

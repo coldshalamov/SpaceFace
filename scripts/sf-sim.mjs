@@ -11,7 +11,9 @@ import { fileURLToPath } from 'node:url';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { canonicalStringify, snapshotSimState } from '../src/core/simSnapshot.js';
 import { DEFAULT_TRACE_EVENTS, createDeterministicEventTrace } from '../src/core/eventTrace.js';
+import { formatScenarioIssue, validateScenarioDocument } from '../src/contracts/scenarioSchemas.js';
 import { readCombatTrace } from '../src/combat/trace.js';
+import { scenarioRuntime } from '../src/systems/scenarioRuntime.js';
 import { actions } from '../src/systems/actions.js';
 import { flight } from '../src/systems/flight.js';
 import { weapons } from '../src/systems/weapons.js';
@@ -57,6 +59,8 @@ if (expectedEnvelope) assertEvidenceDocument(expectedEnvelope, expectPath);
 const traceEvents = command === 'trace' ? parseTraceEvents(argValue('--events', null)) : null;
 const traceLimit = command === 'trace' ? readPositiveInt('--limit', 500) : null;
 const physicsBackend = readPhysicsBackend('--physics-backend', 'custom');
+const scenarioContractPath = argValue('--scenario-contract', 'src/data/scenarios/47a.scenario.json');
+const scenarioContract = loadScenarioContract(scenarioContractPath);
 
 if (command === 'inspect') {
   const inspected = await run47a({ seed, ticks, tape, reloadAt, physicsBackend });
@@ -70,6 +74,7 @@ if (command === 'inspect') {
     physicsBackend,
     inputTape: inputPath.replace(/\\/g, '/'),
     reloadAt,
+    scenarioContract: inspected.scenarioContract,
     sha256: inspected.sha256,
     metrics: inspected.metrics,
     traceSummary: inspected.traceSummary,
@@ -89,6 +94,7 @@ if (command === 'inspect') {
     physicsBackend,
     inputTape: inputPath.replace(/\\/g, '/'),
     reloadAt,
+    scenarioContract: traced.scenarioContract,
     sha256: traced.sha256,
     metrics: traced.metrics,
     traceSummary: traced.traceSummary,
@@ -114,6 +120,7 @@ if (command === 'inspect') {
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     reloadAt,
+    scenarioContract: run.scenarioContract,
     sha256: run.sha256,
     metrics: run.metrics,
     traceSummary: run.traceSummary,
@@ -179,6 +186,7 @@ if (command === 'inspect') {
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     repeat,
     reloadAt,
+    scenarioContract: first.scenarioContract,
     sha256: first.sha256,
     baselineSha256: reloadAt == null ? undefined : baseline.sha256,
     metrics: first.metrics,
@@ -212,7 +220,15 @@ async function profile47a(options) {
 }
 
 async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceLimit = null, includeTrace = false, physicsBackend = 'custom' }) {
-  const sim = createSimulation({ seed, systems: [actions, flight, weapons, physics, combat, cargo, economy, missions, story, save] });
+  const sim = createSimulation({
+    seed,
+    helpers: {
+      scenarioContract: scenarioContract.document,
+      scenarioContractPath: scenarioContract.path,
+      scenarioContractHash: scenarioContract.sha256,
+    },
+    systems: [scenarioRuntime, actions, flight, weapons, physics, combat, cargo, economy, missions, story, save],
+  });
   const { state, bus, registry } = sim;
   state.settings.gameplay.physicsBackend = physicsBackend;
   const eventTrace = createDeterministicEventTrace(bus, state, {
@@ -227,12 +243,20 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
     economyTicks: 0,
     saveReloads: 0,
     firstMeaningfulSteeringTick: null,
+    scenarioLoaded: 0,
+    scenarioBeatEntered: 0,
+    scenarioFactsInitialized: 0,
+    scenarioActorBindings: 0,
   };
   bus.on('combat:fire', () => { metrics.combatFire++; });
   bus.on('projectile:hit', () => { metrics.projectileHits++; });
   bus.on('combat:damage', () => { metrics.combatDamage++; });
   bus.on('entity:killed', () => { metrics.entityKilled++; });
   bus.on('economy:tick', () => { metrics.economyTicks++; });
+  bus.on('scenario:loaded', () => { metrics.scenarioLoaded++; });
+  bus.on('scenario:beatEntered', () => { metrics.scenarioBeatEntered++; });
+  bus.on('scenario:factsInitialized', () => { metrics.scenarioFactsInitialized++; });
+  bus.on('scenario:actorBindings', () => { metrics.scenarioActorBindings++; });
 
   state.mode = 'flight';
   state.world.currentSectorId = 'sector_helios_prime';
@@ -248,6 +272,7 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
     rot: 0,
   }));
   state.playerId = player.id;
+  player.data = Object.assign({}, player.data, { scenarioActorId: 'player_kestrel', scenarioRole: 'player_ship' });
 
   const target = sim.spawn(makeShipEntitySpec('ship_wasp', {
     team: 1,
@@ -290,6 +315,7 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   const traceSummary = summarizeTrace(traceRecords);
   const snapshot = snapshotSimState(state);
   const sha256 = hashSnapshot(snapshot);
+  const scenarioContractSummary = summarizeScenarioContract(state);
   let trace = null;
   let combatTrace = null;
   if (includeTrace) {
@@ -304,8 +330,8 @@ async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, 
   eventTrace.dispose();
   sim.dispose();
   return includeTrace
-    ? { snapshot, sha256, metrics, traceSummary, trace, combatTrace, physicsBackend }
-    : { snapshot, sha256, metrics, traceSummary, physicsBackend };
+    ? { snapshot, sha256, metrics, traceSummary, trace, combatTrace, physicsBackend, scenarioContract: scenarioContractSummary }
+    : { snapshot, sha256, metrics, traceSummary, physicsBackend, scenarioContract: scenarioContractSummary };
 }
 
 async function reloadThroughSave(registry, state, metrics, reloadAt, options = {}) {
@@ -358,6 +384,10 @@ function assertExpectedEnvelope(envelope, run, options) {
   assert.equal(envelope.schema, TELEMETRY_ENVELOPE_SCHEMA, '--expect must point to a telemetry envelope');
   assert.equal(envelope.seed, options.seed, 'expected telemetry seed must match run seed');
   assert.equal(normalizePath(envelope.sourceInputTape), normalizePath(options.inputPath), 'expected telemetry sourceInputTape must match --inputs');
+  assert.equal(normalizePath(envelope.sourceScenarioContract), normalizePath(scenarioContract.path),
+    'expected telemetry sourceScenarioContract must match the loaded scenario contract');
+  assert(run.scenarioContract && run.scenarioContract.sha256 === scenarioContract.sha256,
+    'loaded scenario contract hash must match the canonical scenario contract');
   const placeholders = envelope.acceptancePlaceholders || {};
   if (placeholders.authoritativeHash != null) {
     assert.equal(run.sha256, placeholders.authoritativeHash, '47-A authoritative hash drifted from expected telemetry envelope');
@@ -409,6 +439,7 @@ function runSummary(label, run) {
   return {
     label,
     physicsBackend: run.physicsBackend || 'custom',
+    scenarioContract: run.scenarioContract,
     sha256: run.sha256,
     metrics: run.metrics,
     traceSummary: run.traceSummary,
@@ -517,6 +548,18 @@ function readJson(rel) {
   return JSON.parse(readFileSync(resolve(ROOT, rel), 'utf8'));
 }
 
+function loadScenarioContract(rel) {
+  const path = normalizePath(rel);
+  const document = readJson(rel);
+  const report = validateScenarioDocument(document, { file: path });
+  assert(report.ok, `scenario contract invalid:\n${report.issues.map(formatScenarioIssue).join('\n')}`);
+  return {
+    path,
+    document,
+    sha256: createHash('sha256').update(canonicalStringify(document)).digest('hex'),
+  };
+}
+
 function hashSnapshot(snapshot) {
   return createHash('sha256').update(canonicalStringify(snapshot)).digest('hex');
 }
@@ -551,6 +594,26 @@ function summarizeCombatTrace(trace) {
     dropped: trace && trace.dropped,
     total: trace && Array.isArray(trace.events) ? trace.events.length : 0,
     kinds,
+  };
+}
+
+function summarizeScenarioContract(state) {
+  const scenario = state && state.scenario || {};
+  const active = scenario.active || {};
+  return {
+    schema: 'spaceface.scenarioRuntimeSummary.v1',
+    id: active.id || null,
+    name: active.name || null,
+    source: active.contractPath || scenarioContract.path,
+    sha256: active.contractHash || scenarioContract.sha256,
+    status: active.status || null,
+    activeBeatId: active.activeBeatId || null,
+    activeBeatOrder: active.activeBeatOrder == null ? null : active.activeBeatOrder,
+    enteredBeatIds: Array.isArray(scenario.enteredBeatIds) ? scenario.enteredBeatIds.slice() : [],
+    factCount: active.factCount || 0,
+    actorCount: active.actorCount || 0,
+    boundActorCount: Object.values(scenario.actorBindings || {}).filter((binding) => binding && binding.status === 'bound').length,
+    unresolvedActorIds: Array.isArray(scenario.unresolvedActorIds) ? scenario.unresolvedActorIds.slice() : [],
   };
 }
 
@@ -661,5 +724,6 @@ function usage(code, message) {
   process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600 [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--expect test/47a.telemetry.expected.json] [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  Optional: --scenario-contract src/data/scenarios/47a.scenario.json\n');
   process.exit(code);
 }
