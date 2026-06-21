@@ -14,9 +14,11 @@ import {
   computeFlightFrame,
   resolveFlightProfile,
   settleBankPose,
+  stepPhysicsDamping,
   stepNpcFlight,
   stepPlayerFlight,
 } from '../core/flightDynamics.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { wrapAngle } from '../core/rng.js';
 
 const ANG_VEL_DRAG = 2.2;     // per-second decay of yaw rate for drifting (intent-less) ships
@@ -85,10 +87,11 @@ export const flight = {
   update(dt, state) {
     const t0 = nowMs();
     const player = state.entities.get(state.playerId);
+    const dynamicAuthority = usesSg02DynamicAuthority(state);
     if (player && playerFlightSimActive(state, player)) {
       const controlsActive = playerFlightControlsActive(state, player);
       if (!controlsActive) this._cancelPlayerBoost(player);
-      this.applyPlayerIntent(player, dt, controlsActive ? null : NEUTRAL_PLAYER_INPUT);
+      this.applyPlayerIntent(player, dt, controlsActive ? null : NEUTRAL_PLAYER_INPUT, { physicsAuthority: dynamicAuthority });
       // Emit boost start/stop on the TRUE transition (applyPlayerIntent already set flags.boosting
       // to the actual sustained-boost state above). The old code re-derived it from raw input.boost,
       // which desynced the audio loop and VFX trails whenever energy cut boost mid-hold.
@@ -104,15 +107,15 @@ export const flight = {
     for (const e of state.entityList) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
-      if (intent) this.applyIntent(e, intent, dt);
-      else { this.applyDrag(e, dt); this._settleBank(e, dt); }
+      if (intent) this.applyIntent(e, intent, dt, { physicsAuthority: dynamicAuthority });
+      else this.applyDrag(e, dt, { physicsAuthority: dynamicAuthority });
     }
     this._diag.tickMs = Math.max(0, nowMs() - t0);
     if (player) this._publishDiagnostics(player);
   },
 
   // ---- PLAYER: turn-nose + throttle + bank (mouse aims weapons, not the ship) ----
-  applyPlayerIntent(e, dt, inputOverride = null) {
+  applyPlayerIntent(e, dt, inputOverride = null, opts = {}) {
     normalizeFlightRuntime(e);
     const inp = inputOverride || this.state.input;
     const boost = normalizeBoostResource(e);
@@ -139,7 +142,7 @@ export const flight = {
     } else if (boostWasHeld) {
       const heldT = boost._boostHoldT || 0;
       if (boost._dashCandidate && heldT <= DASH_TAP_WINDOW) {
-        this._triggerDash(e, boost);
+        this._triggerDash(e, boost, opts);
       }
       boost._boostHoldT = 0;
       boost._dashCandidate = false;
@@ -163,15 +166,18 @@ export const flight = {
     e.flags.boosting = boosting;
 
     const profile = resolveFlightProfile(e, this.state);
-    stepPlayerFlight(e, inp, dt, profile, { boosting });
+    stepPlayerFlight(e, inp, dt, profile, { boosting, physicsAuthority: opts.physicsAuthority, source: 'player-flight' });
   },
 
-  _triggerDash(e, boost) {
+  _triggerDash(e, boost, opts = {}) {
     if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashImpulse * 0.6) return false;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const imp = boost.dashImpulse;
-    e.vel.x += cf * imp;
-    e.vel.z += sf * imp;
+    if (opts.physicsAuthority) queuePhysicsImpulse(e, { x: cf * imp, y: 0, z: sf * imp });
+    else {
+      e.vel.x += cf * imp;
+      e.vel.z += sf * imp;
+    }
     boost.energy = Math.max(0, boost.energy - boost.dashImpulse * 0.6);
     boost.dashCdT = boost.dashCd;
     this.bus.emit('ship:dash', { shipId: e.id, impulse: imp });
@@ -202,21 +208,32 @@ export const flight = {
   },
 
   // ---- NPC: turn toward aimAngle + thrust along ship-relative axes (unchanged contract) ----
-  applyIntent(e, intent, dt) {
+  applyIntent(e, intent, dt, opts = {}) {
     normalizeFlightRuntime(e);
     e.flags.boosting = !!intent.boost;
-    stepNpcFlight(e, intent, dt, resolveFlightProfile(e, this.state));
+    stepNpcFlight(e, intent, dt, resolveFlightProfile(e, this.state), {
+      physicsAuthority: opts.physicsAuthority,
+      source: 'npc-flight',
+    });
   },
 
   // Linear-only drag for intent-less drifters. Also decays yaw rate so a ship that lost its pilot
   // stops spinning (the old code never damped angVel — physics kept rotating it forever).
-  applyDrag(e, dt) {
+  applyDrag(e, dt, opts = {}) {
     normalizeFlightRuntime(e);
+    if (opts.physicsAuthority) {
+      stepPhysicsDamping(e, dt, resolveFlightProfile(e, this.state), {
+        source: 'flight-drift-damping',
+        angularDrag: ANG_VEL_DRAG,
+      });
+      return;
+    }
     const drag = e.drag || 1.2;
     e.vel.x -= drag * e.vel.x * dt;
     e.vel.z -= drag * e.vel.z * dt;
     e.angVel -= ANG_VEL_DRAG * e.angVel * dt;
     e.rot = wrapAngle(e.rot + e.angVel * dt); // keep applying residual spin as it decays
+    this._settleBank(e, dt);
   },
 
   // Ease bank back to level (used when a ship has no active input — paused, menu, drifting NPC).
@@ -269,6 +286,11 @@ function playerFlightControlsActive(state, player) {
   const ui = state.ui || {};
   const stack = Array.isArray(ui.screenStack) ? ui.screenStack : (Array.isArray(ui.screens) ? ui.screens : []);
   return !ui.docked && stack.length === 0;
+}
+
+function usesSg02DynamicAuthority(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  return gameplay && gameplay.physicsBackend === 'rapier-dynamic';
 }
 
 function normalizeFlightRuntime(e) {

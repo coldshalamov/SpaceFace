@@ -1,11 +1,17 @@
 // Optional Rapier collision observer backend.
 //
-// The production ship controller remains custom/deterministic. This adapter builds simple 2.5D
-// sphere proxies for live collidable entities so Rapier can be toggled on for contact/CCD
-// experiments without taking ownership of starship handling or transforms.
+// This adapter builds simple 2.5D sphere bodies for live collidable entities so Rapier can be
+// toggled on for contact/CCD experiments. It uses dynamic/fixed rigid bodies only; SG-02 production
+// authority is hosted by physics.js through sg02DynamicBodyOwner.
+
+export const PHYSICS_RUNTIME_SCHEMA_VERSION = 1;
 
 const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initialization function';
 let rapierInitPromise = null;
+
+export async function createRapierDynamicsWorld() {
+  return createRapierCollisionWorld();
+}
 
 export async function createRapierCollisionWorld() {
   const mod = await import('@dimforge/rapier3d-compat');
@@ -27,19 +33,10 @@ export async function createRapierCollisionWorld() {
       live.add(e.id);
       let rec = bodies.get(e.id);
       const ccdEnabled = wantsCcd(e);
-      if (!rec) {
-        const desc = RAPIER.RigidBodyDesc.kinematicPositionBased()
-          .setTranslation(e.pos.x, 0, e.pos.z)
-          .setCcdEnabled(ccdEnabled);
-        const colliderDesc = RAPIER.ColliderDesc.ball(e.radius)
-          .setSensor(false)
-          .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-        if (RAPIER.ActiveCollisionTypes && RAPIER.ActiveCollisionTypes.ALL != null) {
-          colliderDesc.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL);
-        }
-        const body = world.createRigidBody(desc);
-        const collider = world.createCollider(colliderDesc, body);
-        rec = { body, collider, radius: e.radius, queryShape: new RAPIER.Ball(e.radius), ccdEnabled };
+      const dynamic = wantsDynamic(e);
+      if (!rec || rec.dynamic !== dynamic) {
+        if (rec) removeRecord(rec);
+        rec = createRecord(e, dynamic, ccdEnabled);
         bodies.set(e.id, rec);
       } else if (Math.abs(rec.radius - e.radius) > 0.001) {
         if (typeof rec.collider.setRadius === 'function') rec.collider.setRadius(e.radius);
@@ -51,13 +48,16 @@ export async function createRapierCollisionWorld() {
         if (typeof rec.body.enableCcd === 'function') rec.body.enableCcd(ccdEnabled);
         rec.ccdEnabled = ccdEnabled;
       }
-      rec.body.setNextKinematicTranslation({ x: e.pos.x, y: 0, z: e.pos.z });
+      rec.body.setTranslation({ x: finite(e.pos && e.pos.x), y: 0, z: finite(e.pos && e.pos.z) }, true);
+      if (rec.dynamic) {
+        rec.body.setLinvel({ x: finite(e.vel && e.vel.x), y: 0, z: finite(e.vel && e.vel.z) }, true);
+        rec.body.setAngvel({ x: 0, y: finite(e.angVel), z: 0 }, true);
+      }
     }
 
     for (const [id, rec] of bodies) {
       if (live.has(id)) continue;
-      world.removeCollider(rec.collider, false);
-      world.removeRigidBody(rec.body);
+      removeRecord(rec);
       bodies.delete(id);
     }
   }
@@ -87,8 +87,7 @@ export async function createRapierCollisionWorld() {
 
   function dispose() {
     for (const rec of bodies.values()) {
-      world.removeCollider(rec.collider, false);
-      world.removeRigidBody(rec.body);
+      removeRecord(rec);
     }
     bodies.clear();
     if (eventQueue && typeof eventQueue.free === 'function') eventQueue.free();
@@ -96,6 +95,31 @@ export async function createRapierCollisionWorld() {
   }
 
   return { syncFromEntities, step, diagnostics, dispose };
+
+  function createRecord(e, dynamic, ccdEnabled) {
+    const desc = (dynamic ? RAPIER.RigidBodyDesc.dynamic() : RAPIER.RigidBodyDesc.fixed())
+      .setTranslation(finite(e.pos && e.pos.x), 0, finite(e.pos && e.pos.z))
+      .setCcdEnabled(ccdEnabled);
+    if (dynamic) {
+      desc
+        .setLinvel(finite(e.vel && e.vel.x), 0, finite(e.vel && e.vel.z))
+        .setAngvel({ x: 0, y: finite(e.angVel), z: 0 });
+    }
+    const colliderDesc = RAPIER.ColliderDesc.ball(e.radius)
+      .setSensor(false)
+      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    if (RAPIER.ActiveCollisionTypes && RAPIER.ActiveCollisionTypes.ALL != null) {
+      colliderDesc.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL);
+    }
+    const body = world.createRigidBody(desc);
+    const collider = world.createCollider(colliderDesc, body);
+    return { body, collider, radius: e.radius, queryShape: new RAPIER.Ball(e.radius), ccdEnabled, dynamic };
+  }
+
+  function removeRecord(rec) {
+    world.removeCollider(rec.collider, false);
+    world.removeRigidBody(rec.body);
+  }
 
   function countContacts() {
     const pairs = new Set();
@@ -136,6 +160,14 @@ export async function createRapierCollisionWorld() {
 
 function wantsCcd(e) {
   return e.type === 'projectile' || !!(e.flags && e.flags.boosting);
+}
+
+function wantsDynamic(e) {
+  return e.type !== 'asteroid' && e.type !== 'station';
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
 }
 
 async function initRapierCompat(RAPIER) {

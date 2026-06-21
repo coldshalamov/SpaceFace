@@ -3,6 +3,7 @@
 // This module owns authored "space game" handling. It is intentionally not a raw rigid-body
 // solver: the pilot/controller sets desired yaw/thrust, this module integrates a stable ship
 // response, and collision systems resolve contacts separately. Banking is visual pose only.
+import { writePhysicsControl } from './physicsAuthority.js';
 import { wrapAngle } from './rng.js';
 
 export const FLIGHT_MODES = Object.freeze(['assisted', 'drift', 'newtonian']);
@@ -106,6 +107,13 @@ export function resolveFlightProfile(e, stateOrMode = null) {
 }
 
 export function stepPlayerFlight(e, input, dt, profile = resolveFlightProfile(e), opts = {}) {
+  if (opts.physicsAuthority) {
+    return stepPhysicsAuthorityFlight(e, input, dt, profile, {
+      ...opts,
+      source: opts.source || 'player-flight',
+      turnIntent: clampUnit((input && input.turnIntent) || 0),
+    });
+  }
   const yaw = stepYawController(e, clampUnit((input && input.turnIntent) || 0), dt, profile);
   const translation = stepTranslation(e, input, dt, profile, {
     boosting: !!(opts.boosting || (input && input.boosting)),
@@ -125,6 +133,16 @@ export function stepNpcFlight(e, intent = {}, dt, profile = resolveFlightProfile
   const err = wrapAngle(desired - e.rot);
   const softAngle = opts.softAngle ?? 0.7;
   const turnIntent = clampUnit(err / softAngle);
+  if (opts.physicsAuthority) {
+    return stepPhysicsAuthorityFlight(e, intent, dt, profile, {
+      ...opts,
+      source: opts.source || 'npc-flight',
+      boosting: !!intent.boost,
+      npc: true,
+      turnIntent,
+      aimError: err,
+    });
+  }
   const yaw = stepYawController(e, turnIntent, dt, profile);
   const translation = stepTranslation(e, intent, dt, profile, { boosting: !!intent.boost, npc: true });
   const bank = stepBankPose(e, yaw.turnFraction, dt, profile);
@@ -160,6 +178,46 @@ export function computeFlightFrame(e, profile = resolveFlightProfile(e)) {
     maxYawRate: profile.maxYawRate,
     maxSpeed: profile.maxSpeed,
   };
+}
+
+export function stepPhysicsDamping(e, dt, profile = resolveFlightProfile(e), opts = {}) {
+  ensureVelocity(e);
+  const linearDrag = finiteNonNegative(opts.linearDrag, finiteNonNegative(e && e.drag, 1.2));
+  const angularDrag = finiteNonNegative(opts.angularDrag, 2.2);
+  const dtSafe = Math.max(1e-6, dt || 0);
+  const vx = finiteNumber(e.vel.x);
+  const vz = finiteNumber(e.vel.z);
+  const av = finiteNumber(e.angVel);
+  const vScale = Math.max(0, 1 - linearDrag * dtSafe);
+  const wScale = Math.max(0, 1 - angularDrag * dtSafe);
+  const force = {
+    x: ((vx * vScale) - vx) * profile.mass / dtSafe,
+    y: 0,
+    z: ((vz * vScale) - vz) * profile.mass / dtSafe,
+  };
+  const torque = {
+    x: 0,
+    y: ((av * wScale) - av) * profile.inertia / dtSafe,
+    z: 0,
+  };
+  writePhysicsControl(e, {
+    source: opts.source || 'flight-damping',
+    mode: profile.mode,
+    force,
+    torque,
+    maxSpeed: profile.maxSpeed * profile.normalMaxSpeedMult,
+  });
+  const bank = settleBankPose(e, dtSafe);
+  const frame = computeFlightFrame(e, profile);
+  const diagnostics = Object.assign({}, frame, bank, {
+    mode: profile.mode,
+    flightClass: profile.flightClass,
+    physicsAuthority: 'sg02-dynamic',
+    force,
+    torque,
+  });
+  e._flightFrame = diagnostics;
+  return diagnostics;
 }
 
 // Compatibility wrappers used by existing callers/tests. New code should call stepPlayerFlight()
@@ -254,6 +312,69 @@ function stepTranslation(e, input = {}, dt, profile, opts = {}) {
     assistStrength: profile.assistStrength,
     boosting,
   };
+}
+
+function stepPhysicsAuthorityFlight(e, input = {}, dt, profile, opts = {}) {
+  ensureVelocity(e);
+  const dtSafe = Math.max(1e-6, dt || 0);
+  const turnIntent = clampUnit(opts.turnIntent || 0);
+  const yaw = computeYawControl(e, turnIntent, dtSafe, profile);
+  const translation = computeTranslationControl(e, input, dtSafe, profile, opts);
+  const bank = stepBankPose(e, yaw.turnFraction, dtSafe, profile);
+  writePhysicsControl(e, {
+    source: opts.source || 'flight',
+    mode: profile.mode,
+    force: translation.force,
+    torque: yaw.torque,
+    maxSpeed: translation.maxSpeed,
+  });
+  const frame = computeFlightFrame(e, profile);
+  const diagnostics = Object.assign({}, frame, yaw, translation, bank, {
+    mode: profile.mode,
+    flightClass: profile.flightClass,
+    physicsAuthority: 'sg02-dynamic',
+  });
+  if (Number.isFinite(opts.aimError)) diagnostics.aimError = opts.aimError;
+  e._flightFrame = diagnostics;
+  return diagnostics;
+}
+
+function computeYawControl(e, turnIntent, dt, profile) {
+  const currentYawRate = finiteNumber(e.angVel);
+  const targetYawRate = turnIntent * profile.maxYawRate;
+  const accel = Math.abs(targetYawRate) > Math.abs(currentYawRate) ? profile.angularAccel : profile.angularBrake;
+  let requestedYawRate = approachValue(currentYawRate, targetYawRate, Math.max(0, accel) * dt);
+  if (!turnIntent && Math.abs(requestedYawRate) < DEFAULT_FLIGHT_TUNING.turnDeadband) requestedYawRate = 0;
+  const angularAccelerationY = (requestedYawRate - currentYawRate) / dt;
+  return {
+    turnIntent,
+    turnRate: profile.maxYawRate,
+    targetYawRate,
+    requestedYawRate,
+    turnFraction: clampUnit(requestedYawRate / Math.max(0.01, profile.maxYawRate)),
+    torque: { x: 0, y: angularAccelerationY * profile.inertia, z: 0 },
+  };
+}
+
+function computeTranslationControl(e, input, dt, profile, opts) {
+  const before = {
+    x: finiteNumber(e.vel && e.vel.x),
+    z: finiteNumber(e.vel && e.vel.z),
+  };
+  const probe = Object.assign({}, e, {
+    vel: { x: before.x, z: before.z },
+    rot: finiteNumber(e.rot),
+  });
+  const translation = stepTranslation(probe, input, dt, profile, opts);
+  const maxSpeed = profile.maxSpeed * (translation.boosting ? profile.boostMaxSpeedMult : profile.normalMaxSpeedMult);
+  return Object.assign({}, translation, {
+    maxSpeed,
+    force: {
+      x: (probe.vel.x - before.x) * profile.mass / dt,
+      y: 0,
+      z: (probe.vel.z - before.z) * profile.mass / dt,
+    },
+  });
 }
 
 function buildRuntimeModel(e) {
@@ -379,4 +500,8 @@ function clampUnit(v) {
 
 function finiteNonNegative(value, fallback) {
   return Number.isFinite(value) ? Math.max(0, value) : fallback;
+}
+
+function finiteNumber(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
 }

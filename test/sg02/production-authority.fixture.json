@@ -1,0 +1,11 @@
+{
+  "schema": "spaceface.sg02.fixture.v1",
+  "name": "production-authority-smoke",
+  "backend": "rapier-dynamic",
+  "cases": [
+    "flight-command-compiles-to-force",
+    "dash-uses-queued-impulse",
+    "massline-attach-reel-cut",
+    "dash-collision-no-tunnel"
+  ]
+}

@@ -1,8 +1,8 @@
-// SG-02 dynamic body owner laboratory.
+// SG-02 dynamic body owner.
 //
-// This module is intentionally not wired into production gameplay yet. It proves that the
-// SG-02 physicsAuthority membrane can drive real Rapier dynamic bodies deterministically before
-// the full flight/collision/tether runtime replaces the legacy owner.
+// The same authority powers the focused laboratory checks and the explicit production
+// `rapier-dynamic` backend. Flight/combat write membrane commands; this owner consumes them,
+// steps real Rapier dynamic bodies, and mirrors the post-solve state back to entities.
 
 import {
   consumePhysicsCommand,
@@ -47,6 +47,7 @@ export class Sg02DynamicBodyOwner {
     this.attachments = new Map();
     this.tick = 0;
     this.accumulator = 0;
+    this.mode = String(options.mode || 'sg02-dynamic-lab');
   }
 
   syncFromEntities(entities = []) {
@@ -345,7 +346,7 @@ export class Sg02DynamicBodyOwner {
       angularAccelerationY: rec.appliedTorque.y / rec.spec.inertiaY,
       lateralAcceleration: 0,
       authority: measureThrusterAuthority(rec.entity),
-      mode: 'sg02-dynamic-lab',
+      mode: this.mode,
     });
   }
 

@@ -36,7 +36,7 @@ import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
-    core, input, ai, actions, flight, weapons, physics, combat, mining, cargo, economy,
+    core, input, ai, physics, actions, flight, weapons, combat, mining, cargo, economy,
     automation, intervention, world, factions, sectorSim, missions, story, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.

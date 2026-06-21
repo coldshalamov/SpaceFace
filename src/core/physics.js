@@ -2,6 +2,7 @@
 // collision with response, swept projectile tests. Runs as steps 5-7 of the sim spine (§2.3).
 // Velocity is updated by flight (thrust/drag); physics integrates position from velocity.
 import { Masks } from './entity.js';
+import { createSg02DynamicBodyOwner } from './sg02DynamicBodyOwner.js';
 
 const DEFAULT_MATERIAL = Object.freeze({
   push: 1,
@@ -31,6 +32,11 @@ export const physics = {
     this._rapier = null;
     this._rapierInit = null;
     this._rapierToken = 0;
+    this._sg02 = null;
+    this._sg02Init = null;
+    this._sg02Token = 0;
+    this._sg02CombatPhysics = createDeferredSg02CombatPhysicsPort(this);
+    if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
     this._diag = {
       backend: 'custom',
       rapierReady: false,
@@ -39,6 +45,9 @@ export const physics = {
       ccdBodies: 0,
       rapierContacts: 0,
       rapierEvents: 0,
+      sg02Ready: false,
+      sg02Bodies: 0,
+      sg02Attachments: 0,
       sweptShipContacts: 0,
       sweptProjectileHits: 0,
       tickMs: 0,
@@ -49,6 +58,18 @@ export const physics = {
     const t0 = nowMs();
     this._diag.sweptShipContacts = 0;
     this._diag.sweptProjectileHits = 0;
+    if (usesSg02DynamicAuthority(state)) {
+      this._updateSg02DynamicAuthority(dt, state);
+      if (state.spatialHash) state.spatialHash.rebuild(state.entityList);
+      this.sweepProjectiles(dt, state);
+      if (state.spatialHash && this._diag.sweptProjectileHits > 0) state.spatialHash.rebuild(state.entityList);
+      this.updateDockRange(state);
+      this._diag.tickMs = Math.max(0, nowMs() - t0);
+      state.physicsRuntime = state.physicsRuntime || {};
+      state.physicsRuntime.diagnostics = this._diag;
+      return;
+    }
+    this._disableSg02DynamicAuthority();
     this.integrate(dt, state);
     if (state.spatialHash) state.spatialHash.rebuild(state.entityList);
     this.sweepShipStatics(dt, state);
@@ -60,6 +81,62 @@ export const physics = {
     this._diag.tickMs = Math.max(0, nowMs() - t0);
     state.physicsRuntime = state.physicsRuntime || {};
     state.physicsRuntime.diagnostics = this._diag;
+  },
+
+  _updateSg02DynamicAuthority(dt, state) {
+    this._disableRapierBackend();
+    this._diag.backend = 'rapier-dynamic';
+    if (!this._sg02Init && !this._sg02) {
+      const token = ++this._sg02Token;
+      this._sg02Init = createSg02DynamicBodyOwner({ mode: 'rapier-dynamic' })
+        .then((owner) => {
+          const currentBackend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
+          if (token !== this._sg02Token || currentBackend !== 'rapier-dynamic') {
+            if (owner && typeof owner.dispose === 'function') owner.dispose();
+            return null;
+          }
+          this._sg02 = owner;
+          return owner;
+        })
+        .catch((err) => {
+          if (token === this._sg02Token) {
+            console.warn('[physics] SG-02 dynamic authority failed; craft motion is fail-closed', err);
+            this._sg02 = null;
+            this._sg02Init = null;
+          }
+          return null;
+        });
+    }
+
+    if (!this._sg02) {
+      this._diag.rapierReady = false;
+      this._diag.sg02Ready = false;
+      this._diag.sg02Bodies = 0;
+      this._diag.sg02Attachments = 0;
+      return;
+    }
+
+    this._sg02.syncFromEntities(state.entityList);
+    const sdiag = this._sg02.step(dt);
+    this._diag.rapierReady = true;
+    this._diag.sg02Ready = true;
+    this._diag.bodies = sdiag.bodies;
+    this._diag.colliders = sdiag.bodies;
+    this._diag.ccdBodies = sdiag.ccdBodies || 0;
+    this._diag.rapierContacts = 0;
+    this._diag.rapierEvents = 0;
+    this._diag.sg02Bodies = sdiag.bodies;
+    this._diag.sg02Attachments = sdiag.attachments || 0;
+  },
+
+  _disableSg02DynamicAuthority() {
+    if (this._sg02 || this._sg02Init) this._sg02Token++;
+    if (this._sg02 && typeof this._sg02.dispose === 'function') this._sg02.dispose();
+    this._sg02 = null;
+    this._sg02Init = null;
+    this._diag.sg02Ready = false;
+    this._diag.sg02Bodies = 0;
+    this._diag.sg02Attachments = 0;
   },
 
   integrate(dt, state) {
@@ -369,6 +446,37 @@ export const physics = {
     return false;
   },
 };
+
+function usesSg02DynamicAuthority(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  return gameplay && gameplay.physicsBackend === 'rapier-dynamic';
+}
+
+function createDeferredSg02CombatPhysicsPort(host) {
+  const owner = () => host && host._sg02;
+  return Object.freeze({
+    applyImpulse(input) {
+      const runtime = owner();
+      return runtime ? runtime.applyImpulse(input) : false;
+    },
+    createAttachment(input) {
+      const runtime = owner();
+      return runtime ? runtime.createAttachment(input) : false;
+    },
+    setAttachmentReel(input) {
+      const runtime = owner();
+      return runtime ? runtime.setAttachmentReel(input) : false;
+    },
+    cutAttachment(input) {
+      const runtime = owner();
+      return runtime ? runtime.cutAttachment(input) : false;
+    },
+    getAttachmentTelemetry(input) {
+      const runtime = owner();
+      return runtime ? runtime.getAttachmentTelemetry(input) : null;
+    },
+  });
+}
 
 function maskOf(e) {
   switch (e.type) {
