@@ -11,6 +11,7 @@
 // restore, so a bad save aborts with save:error and leaves live state untouched.
 import { fnv1a } from './checksum.js';
 import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
+import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32 } from '../core/rng.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
 
@@ -449,10 +450,12 @@ export const save = {
       // read the restored sector owners + faction power. runOfflineCatchup fires on save:loaded below.
       this._callDeserialize('sectorSim', data.sectorSim);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
-      // load) and the drill session's screen is closed on load. Clear their tracking so stale
-      // cross-save references (wreck ids from the prior session) can't dangle into the loaded game.
+      // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
+      // reconstructed from the live director. Clear tracking so stale cross-save references and
+      // pending commands from the prior session can't dangle into the loaded game.
       this.state.interventions = [];
       this.state.drill = null;
+      this.state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
       this._restoreSettings(data.settings);
 
       // 14. restore sim clock + rebuild the master RNG from the (unchanged) seed.

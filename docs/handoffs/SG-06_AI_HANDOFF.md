@@ -261,6 +261,7 @@ SG-06 directly mutates only its private runtime maps and trace ring.
 
 - Introduces `AI_CONTRACT_VERSION = 1`.
 - Introduces no save-schema change; AI memory/decisions are transient and reconstructible.
+  Destructive save restore explicitly resets `state.aiEncounter` to an empty contract-versioned recorder so stale commands, pending reinforcement owner state, and prior-slot decision history cannot leak into a loaded game. This is covered by `node scripts/check-gameplay-core.mjs`.
 - Introduces no combat grammar/schema change.
 - Introduces no narrative DSL change.
 - Introduces no renderer or entity-layout change.
@@ -302,6 +303,8 @@ The encounter-sink gate proves production `helpers.aiEncounter` records only whi
 
 The encounter-owner gate proves the recorder and owner stay separate: direct commands are recorded without spawning until `aiEncounter` consumes them, valid reinforcement packages schedule and spawn exactly owned ships, unknown packages are rejected, story/missions remain unchanged, and `state.combat.pendingReinforcements` stays unused. It also runs a tacticalAI director fixture that emits `request_reinforcement` through `helpers.aiEncounter`, then proves the active owner consumes that command and spawns deterministic SG-06-owned reinforcements.
 
+The core save/load gate proves SG-06 encounter commands and owner state stay transient: `serializeData()` does not write `aiEncounter`, and destructive restore clears live encounter recorder/owner state before normal simulation resumes.
+
 The live-shadow gate constructs `createTacticalAISystem(...)` against production `helpers.aiSensors` and `helpers.aiRoster`, uses the default live SG-03 action adapter, captures maneuver requests at the port boundary, and proves SG-06 can submit a canonical `action_burst` AI request that SG-03 starts and applies without touching the legacy `entity.data.intent.fire` path.
 
 The registry-init gate initializes `tacticalAI` before physics, aiPorts, and actions, then installs the real production ports and proves the first tactical update lazy-binds them, starts a canonical SG-03 `action_burst`, and flushes SG-06 maneuver requests into SG-02 without touching legacy intent. This clears init order as a blocker.
@@ -342,6 +345,7 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 | Massline threshold break telemetry | SG-02/SG-03 `check:sg02:tether-break` and SG-06 `check:sg06:tether-break` gates | pass at foundation and opted-in production-registry level; default replacement still gated |
 | Same sensors/actions/heat/energy/subsystems/physics as player | production sensor/roster/maneuver ports + live SG-03 adapter; no fallback | opted-in registry pass; default replacement still gated |
 | Director commands cannot spawn or mutate story/missions | strict production encounter recorder plus active `aiEncounter` owner gate | pass; owner spawns only approved reinforcement packages and does not mutate story/missions |
+| Encounter memory/commands cannot leak across loaded games | save/core transient reset gate | pass; `aiEncounter` is not serialized and is reset on destructive restore |
 | Director pressure inside authored envelope | per-tick clamp and 100-seed assertion | pass |
 | Every decision explainable | six-layer trace assertions | pass |
 
@@ -353,14 +357,15 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 4. Done at harness level: construct `createTacticalAISystem(...)` with production sensor/roster helpers and the live SG-03 action adapter; verify canonical AI ActionDef requests without legacy intent mutation.
 5. Done at recorder level: install production `helpers.aiEncounter` for deterministic, whitelisted director command recording without spawn/story/mission side effects.
 6. Done at owner level: install active `aiEncounter` consumption of whitelisted director commands and approved SG-06-owned reinforcement spawns.
-7. Done at standalone SG-02 level: prove Rapier dynamic formation convergence and no commanded-stationary breach through production `helpers.aiManeuver`.
-8. Done at SG-02/SG-03 foundation level: prove Massline threshold break telemetry and physical rope release through `check:sg02:tether-break`.
-9. Done at harness level: prove lazy registry-slot initialization can bind production ports after tacticalAI init.
-10. Done at opted-in production level: construct `createTacticalAISystem(...)` in the actual production registry AI slot with `sg06-tactical` + `rapier-dynamic` and prove it through `registry.step()`.
-11. Done at opted-in production level: prove SG-06 commits canonical `action_dash` before SG-03/SG-02 Massline overload telemetry breaks and releases the rope.
-12. Next: run the suite against default gameplay activation, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
-13. Verify no stationary bodies in default live slot, replay parity, action/resource equivalence, and default-production Massline break parity.
-14. Delete the legacy path only after all default-production acceptance checks pass in the same milestone.
+7. Done at save/load boundary: keep `aiEncounter` out of the save schema and clear live recorder/owner state during destructive restore.
+8. Done at standalone SG-02 level: prove Rapier dynamic formation convergence and no commanded-stationary breach through production `helpers.aiManeuver`.
+9. Done at SG-02/SG-03 foundation level: prove Massline threshold break telemetry and physical rope release through `check:sg02:tether-break`.
+10. Done at harness level: prove lazy registry-slot initialization can bind production ports after tacticalAI init.
+11. Done at opted-in production level: construct `createTacticalAISystem(...)` in the actual production registry AI slot with `sg06-tactical` + `rapier-dynamic` and prove it through `registry.step()`.
+12. Done at opted-in production level: prove SG-06 commits canonical `action_dash` before SG-03/SG-02 Massline overload telemetry breaks and releases the rope.
+13. Next: run the suite against default gameplay activation, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
+14. Verify no stationary bodies in default live slot, replay parity, action/resource equivalence, and default-production Massline break parity.
+15. Delete the legacy path only after all default-production acceptance checks pass in the same milestone.
 
 ## Explicit legacy deletion list
 

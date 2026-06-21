@@ -4,6 +4,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { Masks } from '../src/core/entity.js';
 import { createGameState } from '../src/core/gameState.js';
 import { physics } from '../src/core/physics.js';
+import { AI_CONTRACT_VERSION } from '../src/ai/contracts.js';
 import { save } from '../src/save/saveSystem.js';
 import { cargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
@@ -122,11 +123,18 @@ function checkSaveDelegatesSystemHooks() {
 
   save.state = state;
   save.registry = { get: (name) => systems[name] || null };
+  state.aiEncounter = {
+    schemaVersion: AI_CONTRACT_VERSION,
+    nextSeq: 42,
+    commands: [{ seq: 41, type: 'request_reinforcement', packageId: 'fixture_wing_pair' }],
+    owner: { lastAppliedSeq: 40, pendingReinforcements: [{ id: 'stale' }] },
+  };
   const data = save.serializeData();
 
   assert.equal(data.missions.nextId, 2, 'save should use missions.serialize');
   assert.equal(data.missions.missions, undefined, 'mission payload should not use legacy wrapper');
   assert.equal(data.automation.nextId, 4, 'save should use automation.serialize');
+  assert.equal(data.aiEncounter, undefined, 'save should not persist transient SG-06 encounter state');
 
   save._restoreMissions({
     missions: { boards: { legacy: true }, active: [], completedLog: [], nextId: 9 },
@@ -521,6 +529,16 @@ function checkLoadRestoresPersistentEntities() {
     freeIds: [],
     nextEntityId: 1,
     rng: () => 0.5,
+    aiEncounter: {
+      schemaVersion: AI_CONTRACT_VERSION,
+      nextSeq: 99,
+      commands: [{ seq: 98, type: 'request_reinforcement', packageId: 'fixture_wing_pair' }],
+      owner: {
+        lastAppliedSeq: 97,
+        pendingReinforcements: [{ id: 'stale_reinforcement', dueTick: 1 }],
+        spawned: [{ id: 'stale_spawn' }],
+      },
+    },
   };
   const stale = { id: 1, type: 'ship', alive: true, pos: makeVec(999, 999), radius: 8, flags: {}, data: {} };
   state.entities.set(stale.id, stale);
@@ -653,6 +671,11 @@ function checkLoadRestoresPersistentEntities() {
   assert.equal(state.player.targetId, null, 'load should still clear stale player target references');
   assert.equal(state.tick, 4, 'load should restore saved sim tick');
   assert(!state.entityList.includes(stale), 'load should clear stale live entities before restore');
+  assert.deepEqual(
+    state.aiEncounter,
+    { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] },
+    'load should clear transient SG-06 encounter commands and owner state',
+  );
 }
 
 function checkLoadRejectsSaveWithoutPlayerEntity() {
