@@ -169,7 +169,7 @@ function validateTapeCommands(commands, path, issues, file) {
       requireString(command.actionId, `${itemPath}.actionId`, issues, file, { pattern: /^action_[a-z0-9_:-]+$/ });
       validateActorRef(command.actor, `${itemPath}.actor`, issues, file, { required: true });
       validateActorRef(command.target, `${itemPath}.target`, issues, file, { required: false });
-      validateActorRef(command.attachment, `${itemPath}.attachment`, issues, file, { required: false });
+      validateAttachmentRef(command.attachment, `${itemPath}.attachment`, issues, file, { required: false });
       if (command.branchId != null) addIssue(issues, file, `${itemPath}.branchId`, 'forbidden', 'combatAction commands cannot include branchId');
     } else {
       requireString(command.branchId, `${itemPath}.branchId`, issues, file, { pattern: /^[a-z0-9][a-z0-9_.:-]*$/ });
@@ -239,6 +239,11 @@ function validateActorRef(value, path, issues, file, options = {}) {
   if (typeof value !== 'string' || !/^[a-z0-9][a-z0-9_.:-]*$/.test(value)) {
     addIssue(issues, file, path, 'pattern', 'actor reference must be a stable scenario id');
   }
+}
+
+function validateAttachmentRef(value, path, issues, file, options = {}) {
+  if (value === 'latestOwned') return;
+  validateActorRef(value, path, issues, file, options);
 }
 
 function validateAcceptancePlaceholders(value, issues, file) {

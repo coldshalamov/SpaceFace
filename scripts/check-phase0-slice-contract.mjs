@@ -88,6 +88,11 @@ assert(onboarding.includes('SAMPLE:'), 'onboarding progress should frame the fir
 const contract = read('docs/Spec/47A_SLICE_CONTRACT.md');
 assert(contract.includes('47-A: The Mass Discrepancy'), 'slice contract should name the target encounter');
 assert(contract.includes('First meaningful steering input within 5s'), 'slice contract should freeze proof metrics');
+const packageJson = json('package.json');
+assert.equal(packageJson.scripts['check:47a:tactics'], 'node scripts/check-47a-tactics.mjs',
+  'package scripts should expose the 47-A tactic acceptance gate');
+assert(packageJson.scripts.check.includes('npm run check:47a:tactics'),
+  'full check should include the 47-A tactic acceptance gate');
 
 const tape = json('test/47a.inputs.json');
 const envelope = json('test/47a.telemetry.expected.json');
