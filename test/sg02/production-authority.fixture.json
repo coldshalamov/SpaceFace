@@ -4,6 +4,7 @@
   "backend": "rapier-dynamic",
   "cases": [
     "flight-command-compiles-to-force",
+    "production-sg03-port-capture",
     "dash-uses-queued-impulse",
     "massline-attach-reel-cut",
     "dash-collision-no-tunnel"

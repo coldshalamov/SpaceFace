@@ -36,12 +36,13 @@ Follow-up before making `rapier-dynamic` the default:
 ## Acceptance Scripts
 
 - `scripts/check-sg02-authority.mjs`
+- `scripts/check-sg02-production-combat-port.mjs`
 - `scripts/check-sg02-tether.mjs`
 - `scripts/check-sg02-dash-collision.mjs`
 - `scripts/check-sg02-dynamic-body-owner.mjs`
 - `scripts/check-physics-authority.mjs`
 
-`npm run check:sg02` runs the SG-02 intake, membrane, lab, production-authority, tether, and dash-collision gates.
+`npm run check:sg02` runs the SG-02 intake, membrane, lab, production-authority, production-combat-port, tether, and dash-collision gates.
 
 ## Superseded Legacy Code
 
