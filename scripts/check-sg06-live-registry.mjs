@@ -10,9 +10,9 @@ const HEADLESS_SKIP = new Set(['render', 'vfx', 'feel', 'audio', 'ui', 'save']);
 const restoreGlobals = installHeadlessBrowserStubs();
 
 try {
-  assertDefaultRegistryUsesLegacyAI();
+  assertDefaultRegistryUsesTacticalAI();
   const harness = await makeLiveRegistryHarness();
-  const { state, helpers, registry } = harness;
+  const { state, bus, helpers, registry } = harness;
 
   const player = helpers.spawnEntity(makeShipSpec({
     team: 0,
@@ -74,6 +74,12 @@ try {
   assert(portDiagnostics.flushedManeuvers > 0, 'production registry aiPorts should flush SG-06 maneuvers into SG-02');
   assert.equal(portDiagnostics.lastDropReason, null, 'live registry SG-06 maneuvers should not be dropped after SG-02 is ready');
 
+  state.tick = 0;
+  state.simTime = 0;
+  bus.emit('game:started', {});
+  assert.doesNotThrow(() => registry.step(DT),
+    'default tacticalAI should reset its tick ledger after a new-game lifecycle reset');
+
   harness.dispose();
 } finally {
   restoreGlobals();
@@ -81,15 +87,16 @@ try {
 
 console.log('SG-06 live production-registry checks OK');
 
-function assertDefaultRegistryUsesLegacyAI() {
+function assertDefaultRegistryUsesTacticalAI() {
   const state = createGameState(0x47060001);
   const bus = createBus();
   const ctx = { state, bus, helpers: {}, registry: null };
   const registry = createRegistry(ctx);
   ctx.registry = registry;
-  assert.equal(state.settings.gameplay.aiBackend, 'legacy', 'default settings should keep the legacy AI backend');
-  assert.equal(registry.get('ai').name, 'ai', 'default registry AI slot should remain legacy');
-  assert.equal(registry.get('tacticalAI'), undefined, 'default registry should not register tacticalAI');
+  assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic', 'default settings should use SG-02 dynamic physics');
+  assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'default settings should use the SG-06 tactical AI backend');
+  assert.equal(registry.get('ai').name, 'tacticalAI', 'default registry AI slot should resolve to SG-06 tacticalAI');
+  assert.equal(registry.get('ai'), registry.get('tacticalAI'), 'default registry should alias ai to tacticalAI');
 }
 
 async function makeLiveRegistryHarness() {

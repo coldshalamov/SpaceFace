@@ -253,10 +253,12 @@ export const settingsScreen = {
       const g = s.gameplay;
       if (!s.controls) s.controls = { bindings: null, flightMode: 'assisted' };
       if (!s.controls.flightMode) s.controls.flightMode = 'assisted';
-      if (!g.physicsBackend) g.physicsBackend = 'custom';
+      if (!g.physicsBackend) g.physicsBackend = 'rapier-dynamic';
+      if (!g.aiBackend) g.aiBackend = 'sg06-tactical';
       rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
-      rowSelect('Physics backend', () => g.physicsBackend || 'custom', [['custom', 'Custom'], ['rapier', 'Rapier'], ['rapier-dynamic', 'Rapier Dynamic']], (v) => this._set(ctx, 'gameplay', 'physicsBackend', v));
+      rowSelect('Physics backend', () => g.physicsBackend || 'rapier-dynamic', [['rapier-dynamic', 'Rapier Dynamic'], ['custom', 'Custom'], ['rapier', 'Rapier Observer']], (v) => this._set(ctx, 'gameplay', 'physicsBackend', v));
+      rowSelect('AI backend', () => g.aiBackend || 'sg06-tactical', [['sg06-tactical', 'SG-06 Tactical'], ['legacy', 'Legacy FSM']], (v) => this._set(ctx, 'gameplay', 'aiBackend', v));
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
       rowToggle('Damage numbers', () => s.showDamageNumbers, (v) => this._set(ctx, null, 'showDamageNumbers', v));

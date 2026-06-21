@@ -5,10 +5,10 @@ import { TacticalAIStack } from '../ai/stack.js';
 /**
  * SG-06 simulation-system factory.
  *
- * Register this in the legacy AI slot only after live parity gates pass. Ports are lazy-bound on
- * first update so registry init order can install helpers.aiManeuver/helpers.aiSensors after this
- * system's init. SG-03 is adapted directly and remains the sole action executor. Missing ports
- * throw before gameplay updates; no intent.fire or velocity fallback exists.
+ * Default SG-06 tactical AI system. Ports are lazy-bound on first update so registry init order can
+ * install helpers.aiManeuver/helpers.aiSensors after this system's init. SG-03 is adapted directly
+ * and remains the sole action executor. Missing ports throw before gameplay updates; no intent.fire
+ * or velocity fallback exists.
  */
 export function createTacticalAISystem({
   seed = null,
@@ -50,6 +50,11 @@ export function createTacticalAISystem({
     return inspection.handle(request);
   }
 
+  function resetRuntime() {
+    stack = null;
+    inspection = null;
+  }
+
   return {
     name: 'tacticalAI',
 
@@ -59,6 +64,10 @@ export function createTacticalAISystem({
       helpers.inspectAI = (request = {}) => handleInspection({ method: 'ai.inspect', params: request });
       helpers.traceAI = (request = {}) => handleInspection({ method: 'ai.trace', params: request });
       helpers.inspectAIContract = () => handleInspection({ method: 'ai.contract' });
+      if (ctx.bus && typeof ctx.bus.on === 'function') {
+        ctx.bus.on('game:started', resetRuntime);
+        ctx.bus.on('save:loaded', resetRuntime);
+      }
     },
 
     update(_dt, state) {

@@ -129,7 +129,11 @@ async function runViewportProbe(browser, viewport) {
     tapDashFires: tapDash.speed > 55 && tapDash.dashCdT > 1 && tapDash.boosting === false && tapDash.boostEnergy < tapDash.boostMax * 0.5,
     runtimeModeSwitchAffectsAssist: !!modeDiagnostics
       && modeDiagnostics.mode === 'newtonian'
-      && Math.abs(assistedMode.lateralSpeed) < Math.abs(newtonianMode.lateralSpeed) * 0.65,
+      && assistedMode.flightMode === 'assisted'
+      && newtonianMode.flightMode === 'newtonian'
+      && !!diagnostics
+      && diagnostics.mode === 'assisted'
+      && modeDiagnostics.assistStrength < diagnostics.assistStrength * 0.25,
     diagnosticsAvailable: !!diagnostics && diagnostics.mode === 'assisted',
     rapierBackendReady: !!rapierDiagnostics && rapierDiagnostics.backend === 'rapier' && rapierDiagnostics.rapierReady && rapierDiagnostics.bodies > 0,
     canvasNonBlank: pixels.nonDark > 0 && pixels.maxLum > 45 && pixels.dataUrlLen > 10000,

@@ -59,7 +59,7 @@ const expectedEnvelope = expectPath ? readJson(expectPath) : null;
 if (expectedEnvelope) assertEvidenceDocument(expectedEnvelope, expectPath);
 const traceEvents = command === 'trace' ? parseTraceEvents(argValue('--events', null)) : null;
 const traceLimit = command === 'trace' ? readPositiveInt('--limit', 500) : null;
-const physicsBackend = readPhysicsBackend('--physics-backend', 'custom');
+const physicsBackend = readPhysicsBackend('--physics-backend', 'rapier-dynamic');
 const scenarioContractPath = argValue('--scenario-contract', 'src/data/scenarios/47a.scenario.json');
 const scenarioContract = loadScenarioContract(scenarioContractPath);
 
@@ -220,7 +220,7 @@ async function profile47a(options) {
   };
 }
 
-async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceLimit = null, includeTrace = false, physicsBackend = 'custom' }) {
+async function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceLimit = null, includeTrace = false, physicsBackend = 'rapier-dynamic' }) {
   const sim = createSimulation({
     seed,
     helpers: {
@@ -389,7 +389,7 @@ async function reloadThroughSave(registry, state, metrics, reloadAt, options = {
   const persistentAfter = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
   assert.equal(state.tick, reloadAt, '47-A reload should preserve sim tick');
   assert.equal(persistentAfter, persistentBefore, '47-A reload should preserve persistent live actors');
-  await preparePhysicsBackend(registry, state, options.physicsBackend || 'custom', { reset: true });
+  await preparePhysicsBackend(registry, state, options.physicsBackend || 'rapier-dynamic', { reset: true });
   metrics.saveReloads++;
 }
 
@@ -548,7 +548,7 @@ async function compareRuns(baseline, candidate, options) {
 function runSummary(label, run) {
   return {
     label,
-    physicsBackend: run.physicsBackend || 'custom',
+    physicsBackend: run.physicsBackend || 'rapier-dynamic',
     scenarioContract: run.scenarioContract,
     sha256: run.sha256,
     metrics: run.metrics,
@@ -1063,6 +1063,7 @@ function usage(code, message) {
   process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600 [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--expect test/47a.telemetry.expected.json] [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  default physics backend: rapier-dynamic\n');
   process.stderr.write('  Optional: --scenario-contract src/data/scenarios/47a.scenario.json\n');
   process.exit(code);
 }

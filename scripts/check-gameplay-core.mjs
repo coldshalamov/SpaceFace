@@ -1697,8 +1697,8 @@ function checkDefaultProfessionalFlightSettings() {
   const state = createGameState(123);
 
   assert.equal(state.settings.controls.flightMode, 'assisted', 'assisted flight mode should be the default');
-  assert.equal(state.settings.gameplay.physicsBackend, 'custom', 'custom physics backend should remain the default');
-  assert.equal(state.settings.gameplay.aiBackend, 'legacy', 'legacy AI backend should remain the default');
+  assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic', 'SG-02 dynamic physics should be the default backend');
+  assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'SG-06 tactical AI should be the default backend');
   assert.deepEqual(INPUT_DEFAULTS.BINDINGS.strafeLeft, ['KeyQ'], 'Q should default to left lateral thruster');
   assert.deepEqual(INPUT_DEFAULTS.BINDINGS.strafeRight, ['KeyE'], 'E should default to right lateral thruster');
 }
@@ -1712,8 +1712,8 @@ function checkLegacySettingsRestoreKeepsFlightDefaults() {
   });
 
   assert.equal(state.settings.gameplay.difficulty, 'veteran', 'legacy settings restore should still apply known gameplay fields');
-  assert.equal(state.settings.gameplay.physicsBackend, 'custom', 'legacy settings restore should preserve default physics backend');
-  assert.equal(state.settings.gameplay.aiBackend, 'legacy', 'legacy settings restore should preserve default AI backend');
+  assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic', 'legacy settings restore should preserve default SG-02 dynamic physics');
+  assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'legacy settings restore should preserve default SG-06 tactical AI');
   assert.equal(state.settings.controls.flightMode, 'assisted', 'legacy settings restore should preserve default assisted flight mode');
 }
 
@@ -1732,8 +1732,8 @@ function checkSettingsRestoreSanitizesFlightOptions() {
     },
   });
 
-  assert.equal(state.settings.gameplay.physicsBackend, 'custom', 'invalid saved physics backend should fall back to custom');
-  assert.equal(state.settings.gameplay.aiBackend, 'legacy', 'invalid saved AI backend should fall back to legacy');
+  assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic', 'invalid saved physics backend should fall back to SG-02 dynamic');
+  assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'invalid saved AI backend should fall back to SG-06 tactical');
   assert.equal(state.settings.controls.flightMode, 'assisted', 'invalid saved flight mode should fall back to assisted');
   assert.deepEqual(state.settings.controls.bindings.forward, ['KeyI'], 'string saved bindings should normalize to arrays');
   assert.deepEqual(state.settings.controls.bindings.reverse, ['KeyK'], 'saved bindings should drop non-string entries');

@@ -173,7 +173,10 @@ export const flight = {
     if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashImpulse * 0.6) return false;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const imp = boost.dashImpulse;
-    if (opts.physicsAuthority) queuePhysicsImpulse(e, { x: cf * imp, y: 0, z: sf * imp });
+    if (opts.physicsAuthority) {
+      const mass = positiveMass(e);
+      queuePhysicsImpulse(e, { x: cf * imp * mass, y: 0, z: sf * imp * mass });
+    }
     else {
       e.vel.x += cf * imp;
       e.vel.z += sf * imp;
@@ -327,4 +330,11 @@ function normalizeBoostResource(e) {
 
 function finiteNonNegative(value, fallback) {
   return Number.isFinite(value) ? Math.max(0, value) : fallback;
+}
+
+function positiveMass(e) {
+  const authored = e && e.physicsBody && e.physicsBody.mass;
+  if (Number.isFinite(authored) && authored > 0) return authored;
+  if (Number.isFinite(e && e.mass) && e.mass > 0) return e.mass;
+  return 1;
 }

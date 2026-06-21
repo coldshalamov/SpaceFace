@@ -2,7 +2,7 @@
 
 ## Scope Accepted
 
-This landing promotes the recovered SG-02 dynamic body owner from an isolated lab into an explicit production backend selected by `settings.gameplay.physicsBackend === 'rapier-dynamic'`.
+This landing promotes the recovered SG-02 dynamic body owner from an isolated lab into the default production backend selected by `settings.gameplay.physicsBackend === 'rapier-dynamic'`.
 
 Accepted runtime surface:
 
@@ -30,9 +30,9 @@ Save schema v4 persists SG-02 dynamic authority prerequisites: `settings.gamepla
 
 Save schema v5 persists SG-03 semantic combat state: combatants, active/queued actions, cooldowns, statuses, and active semantic attachments. Runtime commands, Rapier handles, joints, and telemetry stay transient WeakMap state and must not enter saves. On reload, SG-03 remaps saved semantic entity refs to fresh player/persistent ids, then reconciles active Massline constraints through `helpers.combatPhysics.createAttachment(...)` after SG-02 bodies exist.
 
-Follow-up before making `rapier-dynamic` the default:
+Default-promotion status:
 
-- promote the now-passing 47-A dynamic reload replay gate into the default backend path and delete the superseded predecessor in the same milestone. Pickup, live projectile, docking, gate range contact parity, and dynamic uninterrupted-vs-reload hash parity are now covered by `npm run check:sg02`.
+- `rapier-dynamic` is now the new-game, save-normalization, and `sf-sim` default. Pickup, live projectile, docking, gate range contact parity, and dynamic uninterrupted-vs-reload hash parity are covered by `npm run check:sg02`; the canonical `npm run check:sim` path now exercises the dynamic backend without an explicit override flag.
 
 ## Acceptance Scripts
 
@@ -50,10 +50,10 @@ Follow-up before making `rapier-dynamic` the default:
 
 ## Superseded Legacy Code
 
-The old kinematic Rapier observer authority was removed from `src/core/rapierCollisionWorld.js`; that module now uses dynamic/fixed rigid bodies only. The default `custom` backend remains as the live fallback until save/replay and contact-event parity are closed.
+The old kinematic Rapier observer authority was removed from `src/core/rapierCollisionWorld.js`; that module now uses dynamic/fixed rigid bodies only. The legacy `custom` backend remains available only for explicit compatibility probes until all non-slice callers migrate.
 
 ## Known Limitations
 
-- `rapier-dynamic` is explicit opt-in, not the default 47-A replay backend yet.
-- `rapier-dynamic` has a passing explicit 47-A replay gate under `npm run check:sim:dynamic`; it still needs a same-milestone default-backend promotion before the legacy/custom default path can be removed.
-- SG-06 tactical AI remains registry-gated until the production ports are exercised by the live tactical system with encounter ownership and legacy intent/fire path deletion in the same milestone.
+- `rapier-dynamic` is the default 47-A replay backend.
+- `rapier-dynamic` has a passing default replay gate under `npm run check:sim` and an alias gate under `npm run check:sim:dynamic`.
+- SG-06 tactical AI is now the default registry slot when paired with `rapier-dynamic`; legacy intent/fire code remains only as an explicit compatibility backend pending a focused deletion pass.
