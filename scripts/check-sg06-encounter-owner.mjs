@@ -21,6 +21,8 @@ assert.deepEqual(tacticalReplay, tactical, 'tacticalAI encounter owner scenario 
 assert.equal(direct.spawned.length, 2, 'valid reinforcement package should spawn exactly two ships');
 assert(direct.spawned.every((entry) => entry.packageId === 'fixture_wing_pair'), 'spawn records should preserve package id');
 assert(direct.spawned.every((entry) => entry.owner === 'sg06'), 'spawned entities should be owned by the SG-06 encounter owner');
+assert(direct.spawned.every((entry) => entry.capabilities.includes('ranged')),
+  'encounter-owned reinforcements should preserve production tactical capabilities');
 assert.equal(direct.pendingCombatReinforcements, null, 'encounter owner must not use legacy state.combat.pendingReinforcements');
 assert.deepEqual(direct.storyAfter, direct.storyBefore, 'encounter owner must not mutate story state');
 assert.deepEqual(direct.missionsAfter, direct.missionsBefore, 'encounter owner must not mutate mission state');
@@ -252,6 +254,9 @@ function spawnedEntities(state) {
       type: entity.type,
       factionId: entity.factionId,
       squadId: entity.data.ai && entity.data.ai.squadId,
+      capabilities: entity.data.ai && Array.isArray(entity.data.ai.capabilities)
+        ? entity.data.ai.capabilities.slice().sort()
+        : [],
       owner: entity.data.encounter.owner,
       commandSeq: entity.data.encounter.commandSeq,
       packageId: entity.data.encounter.packageId,

@@ -16,6 +16,15 @@ const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
 const SHIP = new Map(SHIPS.map((s) => [s.id, s]));
 const MOD = new Map(MODULES.map((m) => [m.id, m]));
 const CARGO_LOSS_RATE = 0.5;
+const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
+const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
+  swarmer: Object.freeze(['counter_tether_overload', 'ranged', 'screen']),
+  sniper: Object.freeze(['ranged']),
+  brawler: Object.freeze(['disable', 'ranged']),
+  fleeing_trader: Object.freeze(['ranged', 'screen']),
+  pirate: Object.freeze(['counter_tether_overload', 'ranged', 'screen']),
+  miniboss_capital: Object.freeze(['disable', 'ranged', 'screen']),
+});
 
 /** Scale an enemy archetype's base stats by encounter level. */
 export function scaleCombatant(def, level) {
@@ -95,7 +104,11 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos) {
   // L6, Mk.III at L12). Player ships are unaffected (they sum their own fitted module tiers).
   spec.data.visualTier = Math.max(0, Math.round((level - 1) * 1.8));
   spec.data.miningBeam = null;
-  spec.data.ai = { archetype: def.aiArchetype, lawful: !!def.factionLawful };
+  spec.data.ai = {
+    archetype: def.aiArchetype,
+    lawful: !!def.factionLawful,
+    capabilities: tacticalCapabilitiesFor(def),
+  };
   spec.data.bountyCr = def.bountyCr || 0;
   spec.data.loot = def.loot || null;
   spec.data.lootTableId = def.id;
@@ -108,6 +121,19 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos) {
   if (def.silhouette) spec.data.silhouette = def.silhouette;
   spec.factionId = factionId;
   return spec;
+}
+
+function tacticalCapabilitiesFor(def) {
+  const caps = new Set(BASE_AI_CAPABILITIES);
+  if (Array.isArray(def.weapons) && def.weapons.length) caps.add('ranged');
+  for (const capability of ARCHETYPE_TACTICAL_CAPABILITIES[def.aiArchetype] || []) caps.add(capability);
+  if (def.factionLawful) caps.add('disable');
+  if (def.reinforcements) caps.add('screen');
+  if (def.shipClass === 'capital') {
+    caps.add('disable');
+    caps.add('screen');
+  }
+  return [...caps].sort();
 }
 
 function qrange(range, r) { if (!range) return 1; const [lo, hi] = range; return Math.round(lo + (hi - lo) * r()); }

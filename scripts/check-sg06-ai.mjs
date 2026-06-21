@@ -65,6 +65,7 @@ const report = {
     activeEncounterOwner: 'covered_by_check_sg06_encounter_owner',
     transientEncounterSaveLoadReset: 'covered_by_check_gameplay_core',
     runtimeCapabilityGating: 'covered_by_check_sg06_production_ports',
+    productionSpawnTacticalCapabilities: 'covered_by_check_sg06_production_ports_and_encounter_owner',
   },
   deterministic: true,
   determinismSamples,

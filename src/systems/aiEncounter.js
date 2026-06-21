@@ -158,12 +158,13 @@ export const aiEncounter = {
       const spec = makeEnemySpawnSpec(pending.typeId, pending.level, pending.pos);
       spec.factionId = pending.factionId || spec.factionId;
       spec.data = spec.data || {};
+      const baseAI = spec.data.ai || {};
       spec.data.ai = {
-        ...(spec.data.ai || {}),
+        ...baseAI,
         squadId: pending.squadId,
         doctrine: pending.doctrine,
         preferredRole: 'attack',
-        capabilities: ['drive', 'weapon', 'sensor'],
+        capabilities: mergeCapabilities(baseAI.capabilities, ['drive', 'sensor', 'weapon']),
       };
       spec.data.reinforcements = null;
       spec.data.encounter = {
@@ -263,6 +264,16 @@ function unitHash(...args) {
 
 function array(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function mergeCapabilities(...lists) {
+  const out = new Set();
+  for (const list of lists) {
+    for (const capability of Array.isArray(list) ? list : []) {
+      if (typeof capability === 'string' && capability) out.add(capability);
+    }
+  }
+  return [...out].sort();
 }
 
 function finite(value, fallback = 0) {

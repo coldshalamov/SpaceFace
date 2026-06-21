@@ -297,11 +297,11 @@ npm run check:sg02:tether-break
 
 Checked-in result: `docs/Spec/SG-06_ACCEPTANCE.json`.
 
-The production-port gate proves sensor frames are exact SG-06 whitelists, hidden state getters are not read, roster signatures and roles are stable across unchanged ticks, duplicate membership is rejected by `TacticalAIStack`, authored tactical capabilities cannot override SG-03 runtime-disabled weapon/sensor/drive/tether capabilities, maneuvers fail closed outside `rapier-dynamic`, and accepted maneuvers move craft only after SG-02 consumes the command.
+The production-port gate proves sensor frames are exact SG-06 whitelists, hidden state getters are not read, roster signatures and roles are stable across unchanged ticks, duplicate membership is rejected by `TacticalAIStack`, authored tactical capabilities cannot override SG-03 runtime-disabled weapon/sensor/drive/tether capabilities, production enemy spawn specs carry stable tactical capability metadata, maneuvers fail closed outside `rapier-dynamic`, and accepted maneuvers move craft only after SG-02 consumes the command.
 
 The encounter-sink gate proves production `helpers.aiEncounter` records only whitelisted director commands, rejects invalid/spawn-shaped commands, replays deterministically, mirrors commands through `ai:encounterCommand`, and does not mutate entity count, `state.combat.pendingReinforcements`, missions, or story state.
 
-The encounter-owner gate proves the recorder and owner stay separate: direct commands are recorded without spawning until `aiEncounter` consumes them, valid reinforcement packages schedule and spawn exactly owned ships, unknown packages are rejected, story/missions remain unchanged, and `state.combat.pendingReinforcements` stays unused. It also runs a tacticalAI director fixture that emits `request_reinforcement` through `helpers.aiEncounter`, then proves the active owner consumes that command and spawns deterministic SG-06-owned reinforcements.
+The encounter-owner gate proves the recorder and owner stay separate: direct commands are recorded without spawning until `aiEncounter` consumes them, valid reinforcement packages schedule and spawn exactly owned ships while preserving production tactical capability metadata, unknown packages are rejected, story/missions remain unchanged, and `state.combat.pendingReinforcements` stays unused. It also runs a tacticalAI director fixture that emits `request_reinforcement` through `helpers.aiEncounter`, then proves the active owner consumes that command and spawns deterministic SG-06-owned reinforcements.
 
 The core save/load gate proves SG-06 encounter commands and owner state stay transient: `serializeData()` does not write `aiEncounter`, and destructive restore clears live encounter recorder/owner state before normal simulation resumes.
 
@@ -342,6 +342,7 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 | Lazy registry-slot initialization | `check:sg06:registry-init` initializes tacticalAI before production ports, then lazy-binds them on update | pass |
 | Opted-in production registry slot | `check:sg06:live-registry` runs the actual production registry step order with `sg06-tactical` + `rapier-dynamic` | pass; default replacement still gated |
 | Damaged subsystems affect SG-06 tactical capability selection | production-port runtime capability gate | pass; authored AI tags cannot re-add SG-03-disabled weapon/sensor-derived tactics |
+| Production-spawned squads carry tactical vocabulary | enemy-spawn and encounter-owner gates | pass; normal enemy specs and SG-06-owned reinforcements preserve sorted tactical capabilities |
 | Role/formation bounds until explicit break | stable roles, explicit reasons, recovery request assertion, Rapier formation convergence gate | pass at request and standalone SG-02 physical level; default production slot still gated |
 | Massline threshold break telemetry | SG-02/SG-03 `check:sg02:tether-break` and SG-06 `check:sg06:tether-break` gates | pass at foundation and opted-in production-registry level; default replacement still gated |
 | Same sensors/actions/heat/energy/subsystems/physics as player | production sensor/roster/maneuver ports + live SG-03 adapter; no fallback | opted-in registry pass; default replacement still gated |

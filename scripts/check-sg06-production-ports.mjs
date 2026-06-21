@@ -7,6 +7,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { readPhysicsTelemetry } from '../src/core/physicsAuthority.js';
 import { physics } from '../src/core/physics.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
+import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { flight } from '../src/systems/flight.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 
@@ -76,6 +77,12 @@ assert(disabledMember, 'disabled test ship should remain in the tactical roster'
 assert(!disabledMember.capabilities.includes('ranged'), 'roster capabilities must reflect disabled weapon/sensor state');
 assert(!disabledMember.capabilities.includes('disable'), 'roster capabilities must not re-add authored tags blocked by runtime capabilities');
 wingARuntime.capabilities = wingAOriginalCaps;
+
+const lawmanSpec = makeEnemySpawnSpec('patrol_lawman', 3, { x: 0, z: 0 });
+assert(lawmanSpec.data.ai.capabilities.includes('ranged'), 'production enemy spawns should carry ranged tactical capabilities');
+assert(lawmanSpec.data.ai.capabilities.includes('disable'), 'lawful interceptor spawns should carry disable tactical capabilities');
+assert.deepEqual(lawmanSpec.data.ai.capabilities, [...lawmanSpec.data.ai.capabilities].sort(),
+  'production enemy tactical capabilities should be stable and sorted');
 
 const shadowManeuvers = [];
 const stack = new TacticalAIStack({
