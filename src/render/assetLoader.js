@@ -110,7 +110,7 @@ export async function loadAuthoredPart(url, options = {}) {
       .catch((error) => {
         runtime.failures.set(cacheKey, error);
         if (error instanceof AssetContractError) {
-          warnOnce(cacheKey, error.message);
+          if (!optional) warnOnce(cacheKey, error.message);
         } else if (!optional) {
           warnOnce(cacheKey, `[assetLoader] failed to load ${url}; procedural fallback retained`, error);
         }

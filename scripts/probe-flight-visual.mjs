@@ -19,10 +19,18 @@ const viewports = [
 ];
 const results = [];
 const MAX_VISUAL_PROBE_ATTEMPTS = 2;
+const cleanRuns = readPositiveIntArg(['--clean-runs', '--runs'], 1);
+const writeShots = !process.argv.includes('--no-write');
+const strictWarnings = process.argv.includes('--strict-warnings');
+const includeWarningDetails = strictWarnings || process.argv.includes('--include-warning-details');
+const compactOutput = process.argv.includes('--compact-output') || cleanRuns > 1;
 
 try {
-  for (const viewport of viewports) {
-    results.push(await runViewportProbeWithRetry(browser, viewport));
+  for (let runIndex = 1; runIndex <= cleanRuns; runIndex++) {
+    for (const viewport of viewports) {
+      logProgress(`run ${runIndex}/${cleanRuns} ${viewport.name}`);
+      results.push(await runViewportProbeWithRetry(browser, viewport, runIndex));
+    }
   }
 } finally {
   await browser.close();
@@ -30,14 +38,21 @@ try {
 }
 
 const ok = results.every((r) => r.ok);
-console.log(JSON.stringify({ ok, baseUrl, results }, null, 2));
+console.log(JSON.stringify({
+  ok,
+  baseUrl,
+  cleanRuns,
+  strictWarnings,
+  compactOutput,
+  results: compactOutput ? results.map(compactProbeResult) : results,
+}, null, 2));
 if (!ok) process.exitCode = 1;
 
-async function runViewportProbeWithRetry(browser, viewport) {
+async function runViewportProbeWithRetry(browser, viewport, runIndex) {
   const attempts = [];
   let lastResult = null;
   for (let i = 0; i < MAX_VISUAL_PROBE_ATTEMPTS; i++) {
-    const result = await runViewportProbe(browser, viewport);
+    const result = await runViewportProbe(browser, viewport, runIndex);
     lastResult = result;
     attempts.push(summarizeProbeAttempt(result, i + 1));
     if (result.ok) return { ...result, attempts };
@@ -46,11 +61,14 @@ async function runViewportProbeWithRetry(browser, viewport) {
   return { ...lastResult, attempts };
 }
 
-async function runViewportProbe(browser, viewport) {
+async function runViewportProbe(browser, viewport, runIndex) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: viewport.deviceScaleFactor, isMobile: !!viewport.isMobile });
   const issues = [];
+  const ignoredIssues = [];
   page.on('console', (msg) => {
-    if (msg.type() === 'error') issues.push({ type: msg.type(), text: msg.text() });
+    const issue = { type: msg.type(), text: msg.text() };
+    if (issue.type === 'warning' && isProbeInducedWarning(issue)) ignoredIssues.push(issue);
+    else if (issue.type === 'error' || issue.type === 'warning') issues.push(issue);
   });
   page.on('pageerror', (err) => issues.push({ type: 'pageerror', text: String(err && err.message || err) }));
 
@@ -127,10 +145,23 @@ async function runViewportProbe(browser, viewport) {
   const diagnostics = await getFlightDiagnostics(page);
   const sg02Diagnostics = await enableSg02DynamicBackend(page);
   const pixels = await sampleCanvas(page);
-  await mkdir(outDir, { recursive: true });
-  const screenshot = join(outDir, `flight-probe-${viewport.name}.png`);
-  await writeFile(screenshot, await page.screenshot({ type: 'png' }));
+  const suffix = cleanRuns > 1 ? `-run${runIndex}` : '';
+  let screenshot = null;
+  if (writeShots) {
+    await mkdir(outDir, { recursive: true });
+    screenshot = join(outDir, `flight-probe-${viewport.name}${suffix}.png`);
+    await writeFile(screenshot, await page.screenshot({ type: 'png' }));
+  }
   await page.close();
+
+  const errorIssues = issues.filter((issue) => issue.type === 'error' || issue.type === 'pageerror');
+  const warningIssues = issues.filter((issue) => issue.type === 'warning');
+  const warningSummary = {
+    strict: strictWarnings,
+    count: warningIssues.length,
+    clean: warningIssues.length === 0,
+    ignoredProbeWarnings: ignoredIssues.length,
+  };
 
   const checks = {
     rightBanksRight: right.bank > 0 && right.hullRotX > 0,
@@ -156,10 +187,12 @@ async function runViewportProbe(browser, viewport) {
       && sg02Diagnostics.sg02Bodies > 0
       && sg02Diagnostics.snapshotBodies > 0,
     canvasNonBlank: pixels.nonDark > 0 && pixels.maxLum > 45 && pixels.dataUrlLen > 10000,
-    noPageErrors: issues.length === 0,
+    noPageErrors: errorIssues.length === 0,
+    noConsoleWarnings: !strictWarnings || warningSummary.clean,
   };
 
   return {
+    run: runIndex,
     viewport: viewport.name,
     ok: Object.values(checks).every(Boolean),
     checks,
@@ -180,19 +213,74 @@ async function runViewportProbe(browser, viewport) {
     diagnostics,
     sg02Diagnostics,
     pixels,
-    issues,
+    warningSummary,
+    issueCount: issues.length,
+    ignoredIssueCount: ignoredIssues.length,
+    issues: summarizeIssues(includeWarningDetails ? issues : errorIssues),
+    ignoredIssues: includeWarningDetails ? summarizeIssues(ignoredIssues) : [],
     screenshot,
   };
+}
+
+function logProgress(message) {
+  if (process.env.SF_PROBE_QUIET === '1') return;
+  process.stderr.write(`[flight-probe] ${message}\n`);
+}
+
+function compactProbeResult(result) {
+  const compact = {
+    run: result.run,
+    viewport: result.viewport,
+    ok: result.ok,
+    failedChecks: failedCheckNames(result.checks),
+    checks: result.checks,
+    warningSummary: result.warningSummary,
+    issueCount: result.issueCount,
+    ignoredIssueCount: result.ignoredIssueCount,
+    issues: result.issues,
+    ignoredIssues: result.ignoredIssues,
+    pixels: result.pixels && {
+      width: result.pixels.width,
+      height: result.pixels.height,
+      nonDark: result.pixels.nonDark,
+      maxLum: result.pixels.maxLum,
+      dataUrlLen: result.pixels.dataUrlLen,
+    },
+    diagnostics: result.diagnostics && {
+      mode: result.diagnostics.mode,
+      speed: result.diagnostics.speed,
+      assistStrength: result.diagnostics.assistStrength,
+      physicsBackend: result.diagnostics.physicsBackend,
+      tickMs: result.diagnostics.tickMs,
+    },
+    sg02Diagnostics: result.sg02Diagnostics && {
+      backend: result.sg02Diagnostics.backend,
+      rapierReady: result.sg02Diagnostics.rapierReady,
+      sg02Ready: result.sg02Diagnostics.sg02Ready,
+      sg02Bodies: result.sg02Diagnostics.sg02Bodies,
+      snapshotBodies: result.sg02Diagnostics.snapshotBodies,
+      tickMs: result.sg02Diagnostics.tickMs,
+    },
+    screenshot: result.screenshot,
+  };
+  if (result.attempts && result.attempts.length > 1) compact.attempts = result.attempts;
+  return compact;
+}
+
+function failedCheckNames(checks) {
+  return Object.entries(checks || {})
+    .filter(([, passed]) => !passed)
+    .map(([name]) => name);
 }
 
 function summarizeProbeAttempt(result, attempt) {
   return {
     attempt,
     ok: result.ok,
-    failedChecks: Object.entries(result.checks || {})
-      .filter(([, passed]) => !passed)
-      .map(([name]) => name),
-    issues: (result.issues || []).map((issue) => ({ type: issue.type, text: issue.text })),
+    failedChecks: failedCheckNames(result.checks),
+    issueCount: result.issueCount || 0,
+    ignoredIssueCount: result.ignoredIssueCount || 0,
+    issues: summarizeIssues(result.issues || []),
   };
 }
 
@@ -203,6 +291,7 @@ function isRetriableVisualProbeFailure(result) {
     .map(([name]) => name);
   return failedChecks.length === 1
     && failedChecks[0] === 'noPageErrors'
+    && checks.noConsoleWarnings === true
     && checks.canvasNonBlank === true
     && checks.sg02DynamicReady === true
     && Array.isArray(result.issues)
@@ -215,6 +304,23 @@ function isEmptyWebglShaderValidationIssue(issue) {
   const text = String(issue.text || '').trim();
   return /^THREE\.WebGLProgram: Shader Error (?:0|1282) - VALIDATE_STATUS false/.test(text)
     && /Program Info Log:\s*$/.test(text);
+}
+
+function isProbeInducedWarning(issue) {
+  if (!issue || issue.type !== 'warning') return false;
+  return /GPU stall due to ReadPixels/i.test(String(issue.text || ''));
+}
+
+function summarizeIssues(issues) {
+  const MAX_ISSUES = 8;
+  const MAX_TEXT = 420;
+  return (issues || []).slice(0, MAX_ISSUES).map((issue) => {
+    const text = String(issue && issue.text || '');
+    return {
+      type: issue && issue.type || 'unknown',
+      text: text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}... [truncated ${text.length - MAX_TEXT} chars]` : text,
+    };
+  });
 }
 
 async function dismissTutorial(page) {
@@ -467,6 +573,21 @@ function withDebugFlight(url) {
   const u = new URL(url);
   u.searchParams.set('debug', 'flight');
   return String(u);
+}
+
+function readPositiveIntArg(names, fallback) {
+  for (const name of names) {
+    const ix = process.argv.indexOf(name);
+    const inline = process.argv.find((arg) => arg.startsWith(`${name}=`));
+    const raw = ix >= 0 ? process.argv[ix + 1] : inline && inline.slice(name.length + 1);
+    if (raw == null) continue;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1) {
+      throw new RangeError(`${name} must be a positive integer`);
+    }
+    return n;
+  }
+  return fallback;
 }
 
 async function gotoWithRetry(page, url, opts) {
