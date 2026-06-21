@@ -9,9 +9,10 @@
     "serve": "node server.js 8123",
     "electron": "electron .",
     "dist": "electron-builder",
+    "check:sim": "node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --hash --repeat 20",
     "check:flight": "node scripts/flight-lab-sim.mjs && node scripts/probe-flight-visual.mjs",
     "check:art": "node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs && node scripts/check-kestrel-damage.mjs && node scripts/check-kestrel-leak.mjs && node scripts/check-lod.mjs && node scripts/check-collision-debug.mjs && node scripts/check-concord-patrol.mjs && node scripts/check-reaver-pirate.mjs && node scripts/check-faction-ships.mjs",
-    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && node scripts/check-gameplay-core.mjs && node scripts/check-phase0-slice-contract.mjs && node scripts/check-sectorSim.mjs && node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs && node scripts/check-kestrel-damage.mjs && node scripts/check-kestrel-leak.mjs && node scripts/check-lod.mjs && node scripts/check-collision-debug.mjs && node scripts/check-concord-patrol.mjs && node scripts/check-reaver-pirate.mjs && node scripts/check-faction-ships.mjs"
+    "check": "node scripts/check-data.mjs && node scripts/check-data-refs.mjs && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && node scripts/check-gameplay-core.mjs && npm run check:sim && node scripts/check-phase0-slice-contract.mjs && node scripts/check-sectorSim.mjs && node scripts/check-kestrel-asset.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs && node scripts/check-kestrel-damage.mjs && node scripts/check-kestrel-leak.mjs && node scripts/check-lod.mjs && node scripts/check-collision-debug.mjs && node scripts/check-concord-patrol.mjs && node scripts/check-reaver-pirate.mjs && node scripts/check-faction-ships.mjs"
   },
   "private": true,
   "devDependencies": {
