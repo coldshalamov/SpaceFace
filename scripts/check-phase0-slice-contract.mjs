@@ -168,6 +168,34 @@ assert(inspect.snapshot.story && inspect.snapshot.story.beatIndex === 0, 'sf-sim
 assert((inspect.traceSummary.types['graffiti:show'] || 0) > 0, 'sf-sim inspect should expose cold-start graffiti evidence');
 assert((inspect.traceSummary.types['comms:popup'] || 0) > 0, 'sf-sim inspect should expose cold-start comms evidence');
 
+const trace = JSON.parse(execFileSync(process.execPath, [
+  'scripts/sf-sim.mjs',
+  'trace',
+  '47a',
+  '--seed',
+  '47',
+  '--ticks',
+  '720',
+  '--inputs',
+  'test/47a.inputs.json',
+  '--events',
+  'combat.*,story.*',
+  '--limit',
+  '200',
+], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+assert.equal(trace.schema, 'spaceface.sfSimTraceResult.v1', 'sf-sim trace should emit a versioned trace result');
+assert.equal(trace.command, 'trace', 'sf-sim trace command should round-trip in JSON');
+assert.equal(trace.sha256, envelope.acceptancePlaceholders.authoritativeHash, 'sf-sim trace should preserve the authoritative replay hash');
+assert(trace.trace && trace.trace.schema === 'spaceface.eventTrace.v1', 'sf-sim trace should include deterministic event records');
+assert(trace.trace.subscribedEvents.includes('combat:fire'), 'sf-sim trace should resolve combat.* event filters');
+assert(trace.trace.subscribedEvents.includes('story:beatAdvanced'), 'sf-sim trace should resolve story.* event filters');
+assert.equal(trace.traceSummary.types['combat:fire'], envelope.phase0ObservedTraceCounts['combat:fire'],
+  'sf-sim trace should expose filtered combat fire evidence');
+assert(trace.combatTrace && trace.combatTrace.schemaVersion === 1, 'sf-sim trace should include the SG-03 combat trace');
+assert(trace.combatTrace.digest && /^[a-f0-9]{8}$/.test(trace.combatTrace.digest), 'SG-03 combat trace should include a deterministic digest');
+assert((trace.combatTraceSummary.kinds['damage.routed'] || 0) > 0, 'SG-03 combat trace should expose routed damage events');
+assert(trace.metrics.systems.includes('actions'), 'sf-sim trace should run the real action system');
+
 const compare = JSON.parse(execFileSync(process.execPath, [
   'scripts/sf-sim.mjs',
   'compare',

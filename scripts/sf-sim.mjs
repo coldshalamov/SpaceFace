@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { canonicalStringify, snapshotSimState } from '../src/core/simSnapshot.js';
-import { createDeterministicEventTrace } from '../src/core/eventTrace.js';
+import { DEFAULT_TRACE_EVENTS, createDeterministicEventTrace } from '../src/core/eventTrace.js';
+import { readCombatTrace } from '../src/combat/trace.js';
 import { actions } from '../src/systems/actions.js';
 import { flight } from '../src/systems/flight.js';
 import { weapons } from '../src/systems/weapons.js';
@@ -35,7 +36,7 @@ const command = args[0] || 'help';
 const scenario = args[1] || '';
 
 if (command === 'help' || command === '--help' || command === '-h') usage(0);
-if (command !== 'run' && command !== 'inspect' && command !== 'compare') usage(1, `Unknown command: ${command}`);
+if (command !== 'run' && command !== 'inspect' && command !== 'compare' && command !== 'trace') usage(1, `Unknown command: ${command}`);
 if (scenario !== '47a') usage(1, `Unknown scenario: ${scenario}`);
 
 const inputPath = argValue('--inputs', 'test/47a.inputs.json');
@@ -53,6 +54,8 @@ const includeSnapshot = command === 'inspect' || hasFlag('--snapshot') || !hasFl
 const expectPath = command === 'run' || command === 'compare' ? argValue('--expect', null) : null;
 const expectedEnvelope = expectPath ? readJson(expectPath) : null;
 if (expectedEnvelope) assertEvidenceDocument(expectedEnvelope, expectPath);
+const traceEvents = command === 'trace' ? parseTraceEvents(argValue('--events', null)) : null;
+const traceLimit = command === 'trace' ? readPositiveInt('--limit', 500) : null;
 
 if (command === 'inspect') {
   const inspected = run47a({ seed, ticks, tape, reloadAt });
@@ -69,6 +72,26 @@ if (command === 'inspect') {
     metrics: inspected.metrics,
     traceSummary: inspected.traceSummary,
     snapshot: inspected.snapshot,
+  };
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+} else if (command === 'trace') {
+  const traced = run47a({ seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true });
+  assert47aPhase0Metrics(traced.metrics, reloadAt == null ? {} : { reloadAt });
+  const result = {
+    schema: 'spaceface.sfSimTraceResult.v1',
+    deterministic: true,
+    command: 'trace',
+    scenario,
+    seed,
+    ticks,
+    inputTape: inputPath.replace(/\\/g, '/'),
+    reloadAt,
+    sha256: traced.sha256,
+    metrics: traced.metrics,
+    traceSummary: traced.traceSummary,
+    trace: traced.trace,
+    combatTraceSummary: summarizeCombatTrace(traced.combatTrace),
+    combatTrace: traced.combatTrace,
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'compare') {
@@ -136,10 +159,13 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 }
 
-function run47a({ seed, ticks, tape, reloadAt = null }) {
+function run47a({ seed, ticks, tape, reloadAt = null, traceEvents = null, traceLimit = null, includeTrace = false }) {
   const sim = createSimulation({ seed, systems: [actions, flight, weapons, physics, combat, cargo, economy, missions, story, save] });
   const { state, bus, registry } = sim;
-  const eventTrace = createDeterministicEventTrace(bus, state);
+  const eventTrace = createDeterministicEventTrace(bus, state, {
+    events: traceEvents || undefined,
+    cap: traceLimit || undefined,
+  });
   const metrics = {
     combatFire: 0,
     projectileHits: 0,
@@ -205,12 +231,26 @@ function run47a({ seed, ticks, tape, reloadAt = null }) {
   metrics.finalPlayerCredits = state.player.credits;
   metrics.finalEntityCount = state.entityList.length;
   metrics.systems = registry.systems.map((s) => s.name);
-  const traceSummary = summarizeTrace(eventTrace.snapshot());
+  const traceRecords = eventTrace.snapshot();
+  const traceSummary = summarizeTrace(traceRecords);
   const snapshot = snapshotSimState(state);
   const sha256 = hashSnapshot(snapshot);
+  let trace = null;
+  let combatTrace = null;
+  if (includeTrace) {
+    trace = {
+      schema: 'spaceface.eventTrace.v1',
+      subscribedEvents: eventTrace.events,
+      cap: traceLimit,
+      records: traceRecords,
+    };
+    combatTrace = readCombatTrace(state.combat, traceLimit == null ? {} : { limit: traceLimit });
+  }
   eventTrace.dispose();
   sim.dispose();
-  return { snapshot, sha256, metrics, traceSummary };
+  return includeTrace
+    ? { snapshot, sha256, metrics, traceSummary, trace, combatTrace }
+    : { snapshot, sha256, metrics, traceSummary };
 }
 
 function reloadThroughSave(registry, state, metrics, reloadAt) {
@@ -429,6 +469,43 @@ function summarizeTrace(trace) {
   };
 }
 
+function summarizeCombatTrace(trace) {
+  const kinds = {};
+  for (const event of (trace && trace.events) || []) {
+    kinds[event.kind] = (kinds[event.kind] || 0) + 1;
+  }
+  return {
+    schema: 'spaceface.combatTraceSummary.v1',
+    digest: trace && trace.digest,
+    nextSeq: trace && trace.nextSeq,
+    dropped: trace && trace.dropped,
+    total: trace && Array.isArray(trace.events) ? trace.events.length : 0,
+    kinds,
+  };
+}
+
+function parseTraceEvents(raw) {
+  if (!raw) return null;
+  const requested = new Set();
+  for (const item of String(raw).split(',')) {
+    const token = item.trim();
+    if (!token) continue;
+    if (token.endsWith('.*') || token.endsWith(':*')) {
+      const family = token.slice(0, -2).replace(/[.:]$/, '');
+      const prefix = family + ':';
+      for (const type of DEFAULT_TRACE_EVENTS) {
+        if (type.startsWith(prefix)) requested.add(type);
+      }
+    } else {
+      requested.add(token.includes(':') ? token : token.replace('.', ':'));
+    }
+  }
+  if (!requested.size) usage(1, '--events did not resolve any event types');
+  const ordered = DEFAULT_TRACE_EVENTS.filter((type) => requested.has(type));
+  const custom = [...requested].filter((type) => !DEFAULT_TRACE_EVENTS.includes(type)).sort();
+  return [...ordered, ...custom];
+}
+
 function argValue(name, fallback) {
   const eq = name + '=';
   const ix = args.findIndex((arg) => arg === name || arg.startsWith(eq));
@@ -453,6 +530,12 @@ function readRequiredInt(name) {
   if (raw == null) usage(1, `${name} is required`);
   const value = Number(raw);
   if (!Number.isSafeInteger(value) || value < 0) throw new RangeError(`${name} must be a non-negative integer`);
+  return value;
+}
+
+function readPositiveInt(name, fallback) {
+  const value = readInt(name, fallback);
+  if (value <= 0) throw new RangeError(`${name} must be a positive integer`);
   return value;
 }
 
@@ -498,5 +581,6 @@ function usage(code, message) {
   process.stderr.write('  node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 [--reload-at 600]\n');
   process.stderr.write('  node scripts/sf-sim.mjs inspect 47a --seed 47 --tick 360 --inputs test/47a.inputs.json [--reload-at 600]\n');
   process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600\n');
+  process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500]\n');
   process.exit(code);
 }
