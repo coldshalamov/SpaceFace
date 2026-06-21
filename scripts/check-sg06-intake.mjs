@@ -135,8 +135,8 @@ function assertAcceptanceRecord() {
     'SG-06 acceptance record must demonstrate at least three tactics');
   assert.deepEqual(new Set(acceptance.counterTetherActions), new Set(['action_cut', 'action_dash']),
     'SG-06 acceptance record must cover both canonical counter-tether actions');
-  assert.equal(acceptance.physicalFormationConvergence, 'blocked_on_sg02_dynamic_body_integration',
-    'SG-06 acceptance must not claim physical convergence before SG-02 dynamic bodies land');
+  assert.equal(acceptance.physicalFormationConvergence, 'covered_by_check_sg06_formation',
+    'SG-06 acceptance should point physical convergence proof at the Rapier formation gate');
 }
 
 async function assertFailClosedProductionRegistration() {

@@ -271,6 +271,8 @@ npm run check:sg06:production-ports
 npm run check:sg06:encounter-sink
 
 npm run check:sg06:live-shadow
+
+npm run check:sg06:formation
 ```
 
 Checked-in result: `docs/Spec/SG-06_ACCEPTANCE.json`.
@@ -280,6 +282,8 @@ The production-port gate proves sensor frames are exact SG-06 whitelists, hidden
 The encounter-sink gate proves production `helpers.aiEncounter` records only whitelisted director commands, rejects invalid/spawn-shaped commands, replays deterministically, mirrors commands through `ai:encounterCommand`, and does not mutate entity count, `state.combat.pendingReinforcements`, missions, or story state.
 
 The live-shadow gate constructs `createTacticalAISystem(...)` against production `helpers.aiSensors` and `helpers.aiRoster`, uses the default live SG-03 action adapter, captures maneuver requests at the port boundary, and proves SG-06 can submit a canonical `action_burst` AI request that SG-03 starts and applies without touching the legacy `entity.data.intent.fire` path. It intentionally does not register `tacticalAI` in the production registry yet; the intake guard remains responsible for preventing premature live replacement.
+
+The formation gate runs `createTacticalAISystem(...)` with production `helpers.aiSensors`, `helpers.aiRoster`, and `helpers.aiManeuver` against the real SG-02 `rapier-dynamic` owner. It proves three dynamic AI ships receive and flush maneuver requests through `aiPorts`, follower slot error enters the authored formation bound, commanded-stationary time stays below the watchdog threshold, and the run replays deterministically. The maneuver planner now slows formation/hold approaches over a formation-sized radius so dynamic bodies converge instead of overshooting the slot.
 
 The final 100-seed run on 2026-06-21 produced:
 
@@ -303,7 +307,7 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 | ≥2 counter-tether actions | canonical `action_cut` and `action_dash` under documented conditions | pass at decision/SG-03 request level |
 | No unintended stationary >180 ticks | maneuver watchdog and seeded assertion; max 1 | pass at request level; physical pass requires SG-02 |
 | No action-state oscillation above threshold | commit windows, switch margins, SG-03 cancel prediction, seeded assertions | pass |
-| Role/formation bounds until explicit break | stable roles, explicit reasons, recovery request assertion | pass at request level; physical convergence requires SG-02 |
+| Role/formation bounds until explicit break | stable roles, explicit reasons, recovery request assertion, Rapier formation convergence gate | pass at request and standalone SG-02 physical level; live registry slot still gated |
 | Same sensors/actions/heat/energy/subsystems/physics as player | production sensor/roster/maneuver ports + live SG-03 adapter; no fallback | port pass; live registry parity still gated |
 | Director commands cannot spawn or mutate story/missions | inert production encounter sink + deterministic isolation gate | pass at recorder level; active encounter owner still gated |
 | Director pressure inside authored envelope | per-tick clamp and 100-seed assertion | pass |
@@ -316,10 +320,11 @@ The test imports the repository's canonical `ACTION_DEFS` and rejects synthetic 
 3. Done: install `helpers.aiManeuver` over SG-02 force/torque/thruster allocation.
 4. Done at harness level: construct `createTacticalAISystem(...)` with production sensor/roster helpers and the live SG-03 action adapter; verify canonical AI ActionDef requests without legacy intent mutation.
 5. Done at recorder level: install production `helpers.aiEncounter` for deterministic, whitelisted director command recording without spawn/story/mission side effects.
-6. Next: construct `createTacticalAISystem(...)` in the registry in the existing AI slot, before `actions` and before the AI maneuver port flushes to SG-02.
-7. Run the suite against the real registry slot, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
-8. Verify physical formation convergence, constraint break telemetry, no stationary bodies, replay parity, action/resource equivalence, and active encounter-command ownership.
-9. Delete the legacy path only after all production acceptance checks pass in the same milestone.
+6. Done at standalone SG-02 level: prove Rapier dynamic formation convergence and no commanded-stationary breach through production `helpers.aiManeuver`.
+7. Next: construct `createTacticalAISystem(...)` in the registry in the existing AI slot, before `actions` and before the AI maneuver port flushes to SG-02.
+8. Run the suite against the real registry slot, real sensor degradation, actual SG-03 action state, and actual Massline constraints.
+9. Verify constraint break telemetry, no stationary bodies in live slot, replay parity, action/resource equivalence, and active encounter-command ownership.
+10. Delete the legacy path only after all production acceptance checks pass in the same milestone.
 
 ## Explicit legacy deletion list
 

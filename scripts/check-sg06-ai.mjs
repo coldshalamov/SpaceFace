@@ -71,7 +71,7 @@ const report = {
   maxActionTransitions: Math.max(...summaries.map((run) => run.maxActionTransitions)),
   maxCommandedStationaryTicks: Math.max(...summaries.map((run) => run.maxCommandedStationaryTicks)),
   formationRecoveryRequests: summaries.reduce((sum, run) => sum + run.formationRecoveryRequests, 0),
-  physicalFormationConvergence: 'blocked_on_sg02_dynamic_body_integration',
+  physicalFormationConvergence: 'covered_by_check_sg06_formation',
   directorPressure: {
     minimum: round6(Math.min(...summaries.map((run) => run.minPressure))),
     maximum: round6(Math.max(...summaries.map((run) => run.maxPressure))),

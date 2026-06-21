@@ -14,7 +14,7 @@ Accepted at port level.
 
 The final archive provides the missing five-layer stack, canonical SG-03 action adapter, fail-closed tactical system wrapper, explainability trace, inspection endpoint, clean-room ledger, handoff document, checked acceptance evidence, and the deterministic 100-seed SG-06 acceptance harness.
 
-This is not a live replacement for `src/systems/ai.js` yet. SG-02 dynamic-body authority is now present as the explicit `rapier-dynamic` backend, and `src/systems/aiPorts.js` installs production-shaped `helpers.aiSensors`, `helpers.aiRoster`, and `helpers.aiManeuver` ports. `src/systems/tacticalAI.js` still stays unregistered until the live parity gates prove real formation convergence, Massline break telemetry, encounter-command ownership, and removal of legacy `entity.data.intent`/weapon dependencies.
+This is not a live replacement for `src/systems/ai.js` yet. SG-02 dynamic-body authority is now present as the explicit `rapier-dynamic` backend, and `src/systems/aiPorts.js` installs production-shaped `helpers.aiSensors`, `helpers.aiRoster`, `helpers.aiManeuver`, and `helpers.aiEncounter` ports. `src/systems/tacticalAI.js` still stays unregistered until the live parity gates prove real-registry convergence, Massline break telemetry, active encounter-command ownership, and removal of legacy `entity.data.intent`/weapon dependencies.
 
 ## Accepted now
 
@@ -37,14 +37,14 @@ This is not a live replacement for `src/systems/ai.js` yet. SG-02 dynamic-body a
 - `docs/handoffs/SG-06_AI_HANDOFF.md`
 - `third_party/reference-ledger-sg06.yml`
 
-`check:sg06` now runs the intake guard, the production-port contract gate, and the 100-seed AI acceptance suite. `check:ai` remains an alias for the SG-06 seeded suite.
+`check:sg06` now runs the intake guard, the production-port contract gate, the encounter-sink gate, the live-shadow ActionDef gate, the Rapier formation-convergence gate, and the 100-seed AI acceptance suite. `check:ai` remains an alias for the SG-06 seeded suite.
 
 ## Still blocked
 
 - Replacing the legacy live FSM in `src/systems/ai.js`.
 - Registering `src/systems/tacticalAI.js` in `src/core/registry.js`.
 - Deleting legacy `entity.data.intent.fire`, `fireGroup`, lead-angle, and direct NPC flight paths.
-- Claiming physical formation convergence.
+- Claiming physical formation convergence in the real registry slot.
 - Claiming real tether overload/break telemetry.
 - Claiming full SG-02/SG-06 live AI replacement in production.
 
@@ -54,7 +54,10 @@ These are blocked until the tactical stack is run against the real registry slot
 
 - `npm run check:sg06:intake`
 - `npm run check:sg06:production-ports`
+- `npm run check:sg06:encounter-sink`
+- `npm run check:sg06:live-shadow`
+- `npm run check:sg06:formation`
 - `npm run check:sg06:ai`
 - `npm run check:sg06`
 
-The checked evidence record is `docs/Spec/SG-06_ACCEPTANCE.json`. It records 100 seeds x 600 ticks, seven tactics, both canonical counter-tether actions (`action_cut`, `action_dash`), no privileged action path, bounded stationarity, pressure within the authored envelope, and the explicit `blocked_on_sg02_dynamic_body_integration` physical-convergence status.
+The checked evidence record is `docs/Spec/SG-06_ACCEPTANCE.json`. It records 100 seeds x 600 ticks, seven tactics, both canonical counter-tether actions (`action_cut`, `action_dash`), no privileged action path, bounded stationarity, pressure within the authored envelope, and the explicit `covered_by_check_sg06_formation` physical-convergence status.

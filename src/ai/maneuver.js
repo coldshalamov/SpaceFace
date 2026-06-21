@@ -87,12 +87,14 @@ export class ManeuverPlanner {
     const forward = Math.cos(self.rot) * desiredUnit.x + Math.sin(self.rot) * desiredUnit.z;
     const right = -Math.sin(self.rot) * desiredUnit.x + Math.cos(self.rot) * desiredUnit.z;
     const arrival = desired.arrivalDistance == null ? Infinity : desired.arrivalDistance;
-    const throttle = arrival < this.config.arrivalRadius ? saturate(arrival / this.config.arrivalRadius) : 1;
+    const slowRadius = approachSlowRadius(kind, formationBound, this.config);
+    const throttle = arrival < slowRadius ? saturate(arrival / slowRadius) : 1;
     const boostWanted = kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK ||
       (kind === ManeuverKind.INTERCEPT && arrival > 500) ||
-      (kind === ManeuverKind.FORMATION && formationDistance > formationBound * 0.78);
+      (kind === ManeuverKind.FORMATION && formationDistance > formationBound * 1.5);
     const boost = boostWanted && self.energyFraction >= this.config.minBoostEnergyFraction && self.heatFraction <= this.config.maxBoostHeatFraction;
-    const brake = (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) && arrival < this.config.arrivalRadius * 1.5 && speed > 4;
+    const brake = (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
+      arrival < slowRadius && speed > Math.max(4, arrival / 2);
     const trajectory = buildTrajectory(self, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks);
     const request = makeThrusterRequest(entityId, tick, {
       kind,
@@ -144,6 +146,12 @@ export class ManeuverPlanner {
     for (const [id, state] of this.byEntity) out[String(id)] = freezeRuntime(state);
     return Object.freeze(out);
   }
+}
+
+function approachSlowRadius(kind, formationBound, config) {
+  if (kind === ManeuverKind.FORMATION) return Math.max(config.arrivalRadius * 2, formationBound * 0.85);
+  if (kind === ManeuverKind.HOLD) return Math.max(config.arrivalRadius * 1.5, formationBound * 0.35);
+  return config.arrivalRadius;
 }
 
 function predictFormationSlot(intent, predictionTicks) {
