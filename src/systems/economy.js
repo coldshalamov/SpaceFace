@@ -972,6 +972,7 @@ export const economy = {
       marketIntel: econ.marketIntel,
       rngSeed: econ.rngSeed,
       nextEventId: this._nextEventId,
+      eventAccumulator: Number.isFinite(this._eventAccumulator) ? this._eventAccumulator : 0,
     };
   },
 
@@ -1000,7 +1001,7 @@ export const economy = {
       ? data.rngSeed >>> 0
       : hash32(this.state.meta && this.state.meta.seed, 'economy');
     this._nextEventId = data.nextEventId || 1;
-    this._eventAccumulator = 0;
+    this._eventAccumulator = Number.isFinite(data.eventAccumulator) ? data.eventAccumulator : 0;
     this._installRngFunction();
   },
 };

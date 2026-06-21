@@ -1118,7 +1118,9 @@ function checkEconomyRngFollowsCurrentSaveSeed() {
   assert.equal(state.economy.rng, economy.rng, 'new game should attach RNG to the replacement economy state');
 
   economy._rng();
+  economy._eventAccumulator = 37.25;
   const saved = economy.serialize();
+  assert.equal(saved.eventAccumulator, 37.25, 'save should include the economy event scheduler accumulator');
   const expectedNext = economy._rng();
 
   const restoredState = makeState(22);
@@ -1127,6 +1129,7 @@ function checkEconomyRngFollowsCurrentSaveSeed() {
   economy.bus = { emit() {} };
   economy.deserialize(saved);
   assert.equal(economy._rng(), expectedNext, 'load should continue the serialized economy RNG stream');
+  assert.equal(economy.serialize().eventAccumulator, 37.25, 'load should continue the economy event scheduler accumulator');
   assert.equal(restoredState.economy.rng, economy.rng, 'load should attach RNG to restored economy state');
 
   const legacyState = makeState(33);
@@ -1139,6 +1142,7 @@ function checkEconomyRngFollowsCurrentSaveSeed() {
     nextEventId: 9,
   });
   assert.equal(typeof economy.rng.seed, 'number', 'legacy load should seed an economy RNG stream');
+  assert.equal(economy.serialize().eventAccumulator, 0, 'legacy load should default missing economy event accumulator to zero');
   assert.equal(legacyState.economy.rng, economy.rng, 'legacy load should attach RNG to restored economy state');
 }
 
