@@ -3,7 +3,8 @@
 // Mirrors check-ship-builders.mjs: stubs only the canvas-texture layer (no jsdom) so buildKestrelHero()
 // can run under node and we can assert the structural contract the style guide / manifest require —
 // 7 named sockets, the static-by-material batching target, drive/plume kept dynamic, and that a
-// throw inside the hero builder falls through to the procedural factory (failure isolation, spec §17.3).
+// throw inside the hero builder falls through to the procedural factory in dev, but fails in release
+// mode so packaged startup and CI cannot hide a broken hero asset (spec §17.3 / SG-04).
 //
 // Run: node scripts/check-kestrel-hero.mjs
 function makeStubCanvas() {
@@ -32,7 +33,7 @@ const THREE = await import('../vendor/three.module.js');
 globalThis.THREE = THREE;
 
 const { buildKestrelHero } = await import('../src/render/ships/kestrelHero.js');
-const { installVisualOverrides } = await import('../src/render/visualOverrides.js');
+const { installVisualOverrides, isReleaseAssetMode } = await import('../src/render/visualOverrides.js');
 const { createVisualFactory } = await import('../src/render/visualFactory.js');
 
 const DESIGN_RADIUS = 14;
@@ -100,7 +101,7 @@ const size = new THREE.Vector3(); box.getSize(size);
 check('authored length ~28 m', size.x > 24 && size.x < 32, `length=${size.x.toFixed(2)}`);
 check('contract userData present', !!root.userData.renderContract && root.userData.assetId === 'SF_K0_KESTREL_BORROWED_TIME');
 
-// ---- override seam (spec §17.3): player Kestrel intercepted, others unaffected, failure isolated ----
+// ---- override seam (spec §17.3): player Kestrel intercepted, others unaffected, dev fallback isolated ----
 const vf = createVisualFactory();
 installVisualOverrides(vf);
 let viaSeam;
@@ -115,13 +116,35 @@ try {
 const npcMesh = vf.build(mkKestrelEntity({ team: 1, data: { defId: 'ship_bastion', fittings: [] } }));
 check('non-Kestrel entity uses procedural path', !!npcMesh && !(npcMesh.userData && npcMesh.userData.assetId === 'SF_K0_KESTREL_BORROWED_TIME'));
 
-// Failure isolation: if the hero builder throws, the seam must fall back to the procedural factory,
-// never null/blank the entity. Simulate by feeding an entity that breaks isPlayerKestrel is true but
-// buildKestrelHero can't tolerate (radius NaN). The procedural builder tolerates it via fallback.
-const hostile = mkKestrelEntity({ radius: NaN });
-let fallback;
-try { fallback = vf.build(hostile); } catch (e) { /* expected path may throw inside hero; seam catches */ }
-check('seam does not propagate hero-builder exceptions', fallback === undefined || !!fallback || true); // tolerate either fallback or a clean value
+// Failure isolation: if the hero builder throws in development, the seam must fall back to the
+// procedural factory and never null/blank the entity. In release mode the same failure is fatal.
+const vfDevFailure = createVisualFactory();
+installVisualOverrides(vfDevFailure, { releaseMode: false, kestrelBuilder: () => { throw new Error('synthetic dev hero failure'); } });
+let devFallback, devThrow;
+try { devFallback = vfDevFailure.build(mkKestrelEntity()); } catch (e) { devThrow = e; }
+check('dev seam catches hero-builder exceptions', !devThrow, devThrow && devThrow.message);
+check('dev seam returns procedural fallback on hero failure', !!devFallback && devFallback.isObject3D && !(devFallback.userData && devFallback.userData.assetId === 'SF_K0_KESTREL_BORROWED_TIME'));
+
+const vfReleaseFailure = createVisualFactory();
+installVisualOverrides(vfReleaseFailure, { releaseMode: true, kestrelBuilder: () => { throw new Error('synthetic release hero failure'); } });
+let releaseThrow;
+try { vfReleaseFailure.build(mkKestrelEntity()); } catch (e) { releaseThrow = e; }
+check('release seam fails when Kestrel hero build fails', !!releaseThrow && /release mode requires Kestrel hero asset/.test(releaseThrow.message),
+  releaseThrow && releaseThrow.message);
+
+check('asset release mode default is off in headless dev checks', isReleaseAssetMode() === false);
+const previousReleaseFlag = globalThis.SPACEFACE_RELEASE;
+globalThis.SPACEFACE_RELEASE = true;
+check('asset release mode honors global release flag', isReleaseAssetMode() === true);
+if (previousReleaseFlag === undefined) delete globalThis.SPACEFACE_RELEASE;
+else globalThis.SPACEFACE_RELEASE = previousReleaseFlag;
+
+const previousLocation = globalThis.location;
+globalThis.location = { search: '?prod=1' };
+check('asset release mode honors packaged prod query', isReleaseAssetMode() === true);
+if (previousLocation === undefined) delete globalThis.location;
+else globalThis.location = previousLocation;
+check('explicit releaseMode=false overrides packaged detection', isReleaseAssetMode({ releaseMode: false }) === false);
 
 // Idempotency: installing twice must not double-wrap (would re-route the fallback chain).
 installVisualOverrides(vf);

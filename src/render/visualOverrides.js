@@ -1,8 +1,8 @@
 // Bespoke visual overrides for hero assets plus the authored-asset boundary.
 //
-// The existing visualFactory remains the procedural fallback for the complete ship catalog.
-// Overrides are deliberately narrow, deterministic, and failure-isolated: if a bespoke builder
-// throws, the original factory still produces a usable ship instead of blanking the entity.
+// The existing visualFactory remains the procedural fallback for the complete ship catalog in
+// development. Release mode is stricter: the player Kestrel hero must build, because a procedural
+// fallback would hide a broken authored-asset path from CI and packaged startup.
 import { buildKestrelHero } from './ships/kestrelHero.js';
 import { buildConcordPatrol } from './ships/concordPatrol.js';
 import { buildReaverPirate } from './ships/reaverPirate.js';
@@ -12,8 +12,43 @@ import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 
+const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
+
 function isPlayerKestrel(entity) {
   return !!entity && entity.type === 'ship' && entity.team === 0 && entity.data && entity.data.defId === 'ship_kestrel';
+}
+
+export function isReleaseAssetMode(options = {}) {
+  if (typeof options.releaseMode === 'boolean') return options.releaseMode;
+
+  const g = typeof globalThis !== 'undefined' ? globalThis : {};
+  if (g.SPACEFACE_RELEASE === true || g.__SPACEFACE_RELEASE__ === true) return true;
+
+  const env = typeof process !== 'undefined' && process.env ? process.env : null;
+  if (env && (env.SPACEFACE_RELEASE === '1' || env.SPACEFACE_RELEASE === 'true' || env.NODE_ENV === 'production')) {
+    return true;
+  }
+
+  const loc = typeof location !== 'undefined' ? location : g.location;
+  const search = loc && typeof loc.search === 'string' ? loc.search : '';
+  if (search) {
+    const params = new URLSearchParams(search);
+    if (params.get('prod') === '1' || params.get('release') === '1') return true;
+  }
+
+  return false;
+}
+
+function releaseAssetError(message, cause) {
+  const error = new Error(message);
+  if (cause) error.cause = cause;
+  return error;
+}
+
+function assertReleaseHeroVisual(entity, visual, releaseMode) {
+  if (!releaseMode || !isPlayerKestrel(entity)) return;
+  if (visual && visual.userData && visual.userData.assetId === KESTREL_HERO_ASSET_ID) return;
+  throw releaseAssetError('[visualOverrides] release mode requires Kestrel hero asset; procedural fallback is forbidden');
 }
 
 // Faction bespoke ships intercept by enemy type id (data.lootTableId, set in combat.js). Each maps a
@@ -32,15 +67,23 @@ const FACTION_BUILDERS = {
  * Mutating the existing factory object is intentional: renderer event closures, rebuild paths,
  * and the dev ship-preview harness all retain a reference to that same object.
  */
-export function installVisualOverrides(factory) {
+export function installVisualOverrides(factory, options = {}) {
   if (!factory || typeof factory.build !== 'function' || factory.__spacefaceOverridesInstalled) return factory;
 
   const fallbackBuild = factory.build.bind(factory);
+  const releaseMode = isReleaseAssetMode(options);
+  const kestrelBuilder = typeof options.kestrelBuilder === 'function' ? options.kestrelBuilder : buildKestrelHero;
   factory.build = (entity) => {
     let visual = null;
     if (isPlayerKestrel(entity)) {
-      try { visual = buildKestrelHero(entity); }
-      catch (error) { console.warn('[visualOverrides] Kestrel hero build failed; using procedural fallback', error); }
+      try { visual = kestrelBuilder(entity); }
+      catch (error) {
+        if (releaseMode) {
+          throw releaseAssetError('[visualOverrides] release mode requires Kestrel hero asset; hero build failed', error);
+        }
+        console.warn('[visualOverrides] Kestrel hero build failed; using procedural fallback', error);
+      }
+      assertReleaseHeroVisual(entity, visual, releaseMode);
     } else if (entity && entity.type === 'ship' && entity.data) {
       // Faction bespoke ships (spec §8.2–§8.7, Phase 3 §20). Each is failure-isolated: any throw in
       // the bespoke builder falls back to the procedural factory, so a broken hero never blanks an NPC.
@@ -52,6 +95,7 @@ export function installVisualOverrides(factory) {
     }
 
     if (!visual) visual = fallbackBuild(entity);
+    assertReleaseHeroVisual(entity, visual, releaseMode);
     if (!visual || !entity || entity.type !== 'ship') return visual;
 
     // The wrapper is synchronous. Any later transport, validation, or composition failure leaves
