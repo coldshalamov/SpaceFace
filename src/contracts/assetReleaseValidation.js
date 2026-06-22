@@ -94,6 +94,102 @@ export function inspectGlbReleaseCompression(assetPath, options = {}) {
   };
 }
 
+export function inspectReleaseAssetPair(sourcePath, releasePath, options = {}) {
+  const root = resolve(options.root || process.cwd());
+  const source = inspectGlbReleaseCompression(sourcePath, { root, releaseMode: false });
+  const release = inspectGlbReleaseCompression(releasePath, { root, releaseMode: true });
+  const issues = [];
+
+  if (!source.ok) {
+    issues.push({
+      rule: 'release.sourceAsset',
+      path: normalizeRel(sourcePath),
+      message: 'source asset must parse before release comparison',
+      detail: source.issues.map((issue) => issue.rule).join(','),
+    });
+  }
+  if (!release.ok || !release.releaseReady) {
+    issues.push({
+      rule: 'release.compressedAsset',
+      path: normalizeRel(releasePath),
+      message: 'release asset must parse and satisfy compression contract',
+      detail: release.releaseIssues.map((issue) => issue.rule).join(','),
+    });
+  }
+
+  const sourceNodes = new Set(source.metrics.contractNodeNames || []);
+  const releaseNodes = new Set(release.metrics.contractNodeNames || []);
+  const missingNodes = [...sourceNodes].filter((name) => !releaseNodes.has(name));
+  if (missingNodes.length) {
+    issues.push({
+      rule: 'release.contractNodes',
+      path: normalizeRel(releasePath),
+      message: 'release compression must preserve gameplay contract nodes',
+      detail: missingNodes.join(','),
+    });
+  }
+
+  if (source.metrics.primitiveCount !== release.metrics.primitiveCount) {
+    issues.push({
+      rule: 'release.primitiveTopology',
+      path: normalizeRel(releasePath),
+      message: 'release compression must preserve primitive count',
+      detail: `${source.metrics.primitiveCount} -> ${release.metrics.primitiveCount}`,
+    });
+  }
+
+  if (source.metrics.textureCount !== release.metrics.textureCount) {
+    issues.push({
+      rule: 'release.textureTopology',
+      path: normalizeRel(releasePath),
+      message: 'release compression must preserve texture slot count',
+      detail: `${source.metrics.textureCount} -> ${release.metrics.textureCount}`,
+    });
+  }
+
+  return {
+    schema: 'spaceface.sg04ReleaseAssetPair.v1',
+    sourcePath: normalizeRel(sourcePath),
+    releasePath: normalizeRel(releasePath),
+    ok: source.ok && release.ok && release.releaseReady && issues.length === 0,
+    source,
+    release,
+    issues,
+  };
+}
+
+export function validateReleaseAssetPairs(assetPairs, options = {}) {
+  const root = resolve(options.root || process.cwd());
+  const runtime = inspectRuntimeDecoderFiles({ root });
+  const pairs = (assetPairs || []).map((pair) =>
+    inspectReleaseAssetPair(pair.source || pair.sourcePath, pair.release || pair.releasePath, { root }));
+  const issues = [];
+  if (!runtime.ok) {
+    issues.push({
+      rule: 'runtime.decoders',
+      message: 'release decoder runtime files must be vendored',
+      detail: runtime.files.filter((file) => !file.ok || file.bytes <= 0).map((file) => file.path).join(','),
+    });
+  }
+  for (const pair of pairs) {
+    if (!pair.ok) {
+      issues.push({
+        rule: 'asset.releasePair',
+        path: pair.releasePath,
+        message: 'release asset pair must preserve contracts and pass compression',
+        detail: pair.issues.map((issue) => issue.rule).join(','),
+      });
+    }
+  }
+  return {
+    schema: 'spaceface.sg04ReleaseAssetPairs.v1',
+    ok: runtime.ok && pairs.length > 0 && pairs.every((pair) => pair.ok) && issues.length === 0,
+    runtime,
+    pairs,
+    issues,
+  };
+}
+
 export function validateReleaseAssetSet(assetPaths, options = {}) {
   const root = resolve(options.root || process.cwd());
   const releaseMode = options.releaseMode === true;
@@ -189,7 +285,12 @@ function releaseMetrics(gltf, bytes) {
     meshoptBufferViewCount,
     extensionsUsed: [...extensionsUsed].sort(),
     extensionsRequired: [...extensionsRequired].sort(),
-    hasKtx2Textures: textureCount > 0 && ktx2TextureCount === textureCount,
+    nodeNames: (gltf.nodes || []).map((node) => node.name).filter(Boolean).sort(),
+    contractNodeNames: (gltf.nodes || [])
+      .map((node) => node.name)
+      .filter((name) => /^(SOCKET|HOOK|MOUNT|LOD[0-2])/i.test(String(name || '')))
+      .sort(),
+    hasKtx2Textures: textureCount === 0 || ktx2TextureCount === textureCount,
     hasMeshCompression: primitiveCount > 0 && (
       dracoPrimitiveCount > 0 || meshoptBufferViewCount > 0 || declaredMeshCompression
     ),

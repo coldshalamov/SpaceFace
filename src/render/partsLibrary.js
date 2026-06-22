@@ -7,9 +7,11 @@
 import * as THREE from 'three';
 import { FACTION_PALETTES } from '../data/palettes.js';
 import { loadAuthoredPart } from './assetLoader.js';
+import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 
 const PART_ROOT = 'assets/ships/parts/';
+const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
 const INSTANCE_CHUNK_SIZE = 64;
 const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
 const sceneStates = new WeakMap();
@@ -22,6 +24,7 @@ const ownerReleaseState = new WeakMap();
 export const PART_LIBRARY_CONTRACT = Object.freeze({
   version: 1,
   root: PART_ROOT,
+  releaseRoot: PART_RELEASE_ROOT,
   slots: Object.freeze({
     hull: Object.freeze([]),
     cockpit: Object.freeze([
@@ -55,8 +58,9 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
  * Wrap one already-built ship in the authored-asset boundary. This call is synchronous and cannot
  * remove the supplied fallback. Loading begins only when the fallback is actually rendered.
  */
-export function wrapShipWithAuthoredParts(entity, fallbackRoot) {
+export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || entity.type !== 'ship') return fallbackRoot;
+  const releaseMode = isReleaseAssetMode(options);
 
   const boundary = new THREE.Group();
   boundary.name = `${fallbackRoot.name || 'Ship'}_AuthoredAssetBoundary`;
@@ -67,6 +71,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot) {
   Object.assign(boundary.userData, fallbackRoot.userData || {});
   boundary.userData.kind = 'ship';
   boundary.userData.authoredAssetState = 'procedural-fallback';
+  boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
   boundary.userData.renderContract = {
     ...((fallbackRoot.userData && fallbackRoot.userData.renderContract) || {}),
@@ -100,7 +105,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot) {
     armed = false;
     trigger.onBeforeRender = previousBeforeRender;
     boundary.userData.authoredAssetState = 'loading';
-    void upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, (next) => {
+    void upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, { releaseMode }, (next) => {
       active = next;
       syncActiveSurface(boundary, active);
     });
@@ -109,10 +114,10 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot) {
   return boundary;
 }
 
-async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, setActive) {
+async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, options, setActive) {
   let swapped = false;
   try {
-    const library = await loadCanonicalLibrary(renderer);
+    const library = await loadCanonicalLibrary(renderer, options);
     if (!boundary.parent) return; // destroyed while assets were in flight
 
     const authored = buildComposedShip(entity, library, scene, boundary);
@@ -185,19 +190,25 @@ function syncActiveSurface(boundary, active) {
   boundary.userData.hullFrac = data.hullFrac;
 }
 
-function loadCanonicalLibrary(renderer) {
-  let promise = libraryByRenderer.get(renderer);
+function loadCanonicalLibrary(renderer, options = {}) {
+  const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
+  let promises = libraryByRenderer.get(renderer);
+  if (!promises) {
+    promises = new Map();
+    libraryByRenderer.set(renderer, promises);
+  }
+  let promise = promises.get(partRoot);
   if (!promise) {
     const entries = Object.entries(PART_LIBRARY_CONTRACT.slots);
     promise = Promise.all(entries.map(async ([slot, files]) => {
-      const records = await Promise.all(files.map((file) => loadAuthoredPart(`${PART_ROOT}${file}`, {
+      const records = await Promise.all(files.map((file) => loadAuthoredPart(`${partRoot}${file}`, {
         renderer,
         slot,
         optional: true,
       })));
       return [slot, records.filter(Boolean)];
     })).then((pairs) => new Map(pairs));
-    libraryByRenderer.set(renderer, promise);
+    promises.set(partRoot, promise);
   }
   return promise;
 }

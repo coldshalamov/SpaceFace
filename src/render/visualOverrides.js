@@ -12,6 +12,7 @@ import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import { wrapShipWithAuthoredParts } from './partsLibrary.js';
+import { isReleaseAssetMode } from './releaseMode.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -19,26 +20,7 @@ function isPlayerKestrel(entity) {
   return !!entity && entity.type === 'ship' && entity.team === 0 && entity.data && entity.data.defId === 'ship_kestrel';
 }
 
-export function isReleaseAssetMode(options = {}) {
-  if (typeof options.releaseMode === 'boolean') return options.releaseMode;
-
-  const g = typeof globalThis !== 'undefined' ? globalThis : {};
-  if (g.SPACEFACE_RELEASE === true || g.__SPACEFACE_RELEASE__ === true) return true;
-
-  const env = typeof process !== 'undefined' && process.env ? process.env : null;
-  if (env && (env.SPACEFACE_RELEASE === '1' || env.SPACEFACE_RELEASE === 'true' || env.NODE_ENV === 'production')) {
-    return true;
-  }
-
-  const loc = typeof location !== 'undefined' ? location : g.location;
-  const search = loc && typeof loc.search === 'string' ? loc.search : '';
-  if (search) {
-    const params = new URLSearchParams(search);
-    if (params.get('prod') === '1' || params.get('release') === '1') return true;
-  }
-
-  return false;
-}
+export { isReleaseAssetMode };
 
 function releaseAssetError(message, cause) {
   const error = new Error(message);
@@ -119,7 +101,7 @@ export function installVisualOverrides(factory, options = {}) {
 
     // The wrapper is synchronous. Any later transport, validation, or composition failure leaves
     // the selected procedural/bespoke visual mounted and alive.
-    try { return wrapShipWithAuthoredParts(entity, visual); }
+    try { return wrapShipWithAuthoredParts(entity, visual, { releaseMode }); }
     catch (error) {
       reportVisualWarning(options, '[visualOverrides] authored-asset boundary failed; using selected ship visual', error);
       return visual;
