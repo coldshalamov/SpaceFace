@@ -21,12 +21,35 @@ const ownerReleaseState = new WeakMap();
 
 // Runtime slots mirror assets/ships/parts/parts_manifest.json. Only list files that are actually
 // vendored; missing slots fall back procedurally instead of producing browser 404s.
+// WebGL context restore: authored part blueprints and their derived shared material variants
+// hold GPU resources that are invalid after the context is recreated. Clear them so subsequent
+// ships reload authored parts and rebuild fresh materials.
+export function invalidatePartsLibraryCaches(renderer) {
+  sharedMaterialVariants.clear();
+  if (renderer) {
+    const promises = libraryByRenderer.get(renderer);
+    if (promises) promises.clear();
+  }
+}
+
 export const PART_LIBRARY_CONTRACT = Object.freeze({
   version: 1,
   root: PART_ROOT,
   releaseRoot: PART_RELEASE_ROOT,
   slots: Object.freeze({
-    hull: Object.freeze([]),
+    // Seven class-authored hull GLBs (GR-9). Each carries LOD0/LOD1/LOD2 meshes, nine assembly
+    // mounts (MOUNT_COCKPIT / ENGINE_{FL,FR,BL,BR} / FIN_{L,R}) and SOCKET_{Trail_Main,Weapon_Front},
+    // with 1024² embedded KTX2 baseColor + OpenGL normal + packed ORM. See assetLoader.js for the
+    // full spacefaceAsset contract they were authored against.
+    hull: Object.freeze([
+      'hulls/hull_starter.glb',
+      'hulls/hull_fighter.glb',
+      'hulls/hull_miner.glb',
+      'hulls/hull_freighter.glb',
+      'hulls/hull_interceptor.glb',
+      'hulls/hull_corvette.glb',
+      'hulls/hull_gunship.glb',
+    ]),
     cockpit: Object.freeze([
       'cockpits/cockpit_dome.glb',
       'cockpits/cockpit_slab.glb',
@@ -52,6 +75,29 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
     authoredMounts: 'MOUNT_COCKPIT / MOUNT_ENGINE_* / MOUNT_FIN_* on hull parts',
     missingPart: 'procedural slot fallback; never blank an entity',
   }),
+});
+
+// Deterministic ship-definition → hull-class selection. The hull is the silhouette-defining slot,
+// so it must match the ship's authored role rather than being chosen by the generic seed-based hash.
+// Each hull file is keyed to the ship defId (src/data/ships.js) whose role it was modelled for; ships
+// outside this map fall back to the seed-based pick across all seven hulls. Roles follow the genius's
+// authoring pass: starter/multirole→starter, fighter→fighter, mining/mining_barge→miner,
+// freighter/heavy_hauler→freighter, interceptor/explorer→interceptor, corvette→corvette,
+// gunship/battlecruiser/flagship→gunship.
+const HULL_FILE_BY_DEF_ID = Object.freeze({
+  ship_kestrel: 'hulls/hull_starter.glb',
+  ship_drifter: 'hulls/hull_starter.glb',
+  ship_wasp: 'hulls/hull_fighter.glb',
+  ship_pelican: 'hulls/hull_miner.glb',
+  ship_ironback: 'hulls/hull_miner.glb',
+  ship_mule: 'hulls/hull_freighter.glb',
+  ship_atlas: 'hulls/hull_freighter.glb',
+  ship_hornet: 'hulls/hull_interceptor.glb',
+  ship_ranger: 'hulls/hull_interceptor.glb',
+  ship_bastion: 'hulls/hull_corvette.glb',
+  ship_warden: 'hulls/hull_gunship.glb',
+  ship_colossus: 'hulls/hull_gunship.glb',
+  ship_leviathan: 'hulls/hull_gunship.glb',
 });
 
 /**
@@ -105,7 +151,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     armed = false;
     trigger.onBeforeRender = previousBeforeRender;
     boundary.userData.authoredAssetState = 'loading';
-    void upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, { releaseMode }, (next) => {
+    void upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, { releaseMode, onSwap: options.onSwap }, (next) => {
       active = next;
       syncActiveSurface(boundary, active);
     });
@@ -148,6 +194,10 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     boundary.userData.authoredCompositionId = authored.root.userData.assetId;
     boundary.userData.authoredRenderContract = authored.root.userData.renderContract;
     boundary.userData.__socketCache = new Map(); // invalidate renderer socket lookups across the swap
+    if (typeof options.onSwap === 'function') {
+      try { options.onSwap({ boundary, root: authored.root, entity, authoredParts: authored.authoredParts }); }
+      catch (error) { console.warn('[partsLibrary] authored swap callback failed', error); }
+    }
 
     try { disposeDetachedObject(fallbackRoot); }
     catch (error) { console.warn('[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
@@ -188,6 +238,7 @@ function syncActiveSurface(boundary, active) {
   boundary.userData.damageParts = data.damageParts;
   boundary.userData.damageState = data.damageState;
   boundary.userData.hullFrac = data.hullFrac;
+  boundary.userData.shieldBubble = data.shieldBubble || null;
 }
 
 function loadCanonicalLibrary(renderer, options = {}) {
@@ -218,7 +269,16 @@ function buildComposedShip(entity, library, scene, ownerBoundary) {
   const selected = new Map();
   for (const slot of Object.keys(PART_LIBRARY_CONTRACT.slots)) {
     const records = library.get(slot) || [];
-    selected.set(slot, records.length ? records[((seed ^ hashString(slot)) >>> 0) % records.length] : null);
+    if (slot === 'hull') {
+      // The hull defines the silhouette, so prefer the defId-mapped class. Falling back to the
+      // seed-based pick keeps every ship painted even if its defId isn't in the map (e.g. a future
+      // ship added before its hull is authored).
+      const wanted = HULL_FILE_BY_DEF_ID[entity.data && entity.data.defId];
+      const exact = wanted && records.find((record) => String(record.url || '').endsWith(wanted));
+      selected.set(slot, exact || (records.length ? records[((seed ^ hashString(slot)) >>> 0) % records.length] : null));
+    } else {
+      selected.set(slot, records.length ? records[((seed ^ hashString(slot)) >>> 0) % records.length] : null);
+    }
   }
   const authoredParts = [...selected.values()].filter(Boolean);
   if (!authoredParts.length) return null;
@@ -350,6 +410,12 @@ function buildComposedShip(entity, library, scene, ownerBoundary) {
   synchronizeSecondaryDrives(primaryDrive, bindings);
   installAuthoredLod(root, bindings, safetyCore, authoredHullLevels);
   root.userData.updateLod('lod0');
+
+  // GR-5: authored compositions need the same persistent shield bubble as procedural ships so
+  // syncEntityViews can toggle it from e.shield. Geometry shared via shipKit; material per-ship.
+  const shieldBubble = kit.createShieldBubble(palette.accent || '#5fd0ff', entity.radius || 12);
+  root.add(shieldBubble);
+  root.userData.shieldBubble = shieldBubble;
 
   // Hidden geometry gives object-space tools/debuggers useful bounds even though opaque authored
   // surfaces are rendered by scene-level instance pools rather than as children of this root.

@@ -8,6 +8,8 @@ import { SECTORS } from '../../data/sectors.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { confirm } from '../confirm.js';
 import { FACTION_META } from '../../data/factions.js';
+import { STORY_BEATS } from '../../data/missions.js';
+import { escapeHtml } from '../comms.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -146,6 +148,15 @@ export const missionLogScreen = {
     rootEl.appendChild(list);
     this._listEl = list;
 
+    // Story objective section (P2-14): the current beat's objective + direction hint, above the
+    // active missions so the log is the canonical "what should I do now" home. Built in _render so
+    // it tracks beatIndex live; _storyEl is the container.
+    const storyH = el('div', 'sf-mlog-section-h sf-mlog-section-story', 'STORY OBJECTIVE');
+    rootEl.insertBefore(storyH, activeH);
+    const storyEl = el('div', 'sf-mlog-story');
+    rootEl.insertBefore(storyEl, activeH);
+    this._storyEl = storyEl;
+
     // Completed missions section
     const compH = el('div', 'sf-mlog-section-h sf-mlog-section-comp');
     compH.innerHTML = '<span>COMPLETED</span><button class="sf-mlog-toggle">Show</button>';
@@ -241,6 +252,10 @@ export const missionLogScreen = {
     const tracked = state.ui && state.ui.trackedMissionId;
     const simTime = state.simTime || 0;
 
+    // Story objective (P2-14): render the current beat first, before active missions, so the log is
+    // always a valid "what should I do now" even with zero active contracts.
+    this._renderStory(state);
+
     this._listEl.innerHTML = '';
 
     if (!active.length) {
@@ -261,8 +276,8 @@ export const missionLogScreen = {
       const top = el('div', 'sf-mlog-card-top');
       const risk = m.riskTier != null ? m.riskTier : 0;
       top.innerHTML =
-        '<span class="sf-mlog-card-title">' + (m.title || prettyType(m.type)) + '</span>' +
-        '<span class="sf-mlog-card-type">' + prettyType(m.type) + '</span>' +
+        '<span class="sf-mlog-card-title">' + escapeHtml(m.title || prettyType(m.type)) + '</span>' +
+        '<span class="sf-mlog-card-type">' + escapeHtml(prettyType(m.type)) + '</span>' +
         '<span class="sf-mlog-card-risk r' + risk + '">R' + risk + '</span>';
       card.appendChild(top);
 
@@ -272,7 +287,7 @@ export const missionLogScreen = {
       const tgt = m.objectiveTarget || 1;
       const pct = Math.min(100, Math.round((prog / tgt) * 100));
       objLine.innerHTML =
-        '<span class="sf-mlog-obj-text">' + objectiveText(m) + '</span>' +
+        '<span class="sf-mlog-obj-text">' + escapeHtml(objectiveText(m)) + '</span>' +
         '<span class="sf-mlog-obj-pct">' + pct + '%</span>';
       card.appendChild(objLine);
 
@@ -287,19 +302,19 @@ export const missionLogScreen = {
       const meta = el('div', 'sf-mlog-meta mono');
       const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
       meta.innerHTML =
-        '<span class="sf-mlog-dest">' + destLabel(m) + '</span>' +
+        '<span class="sf-mlog-dest">' + escapeHtml(destLabel(m)) + '</span>' +
         (remaining > 0 ? '<span class="sf-mlog-time' + (urgent ? ' urgent' : '') + '">' + fmtTime(remaining) + '</span>' : '') +
         '<span class="sf-mlog-cr">+' + (m.reward_cr || 0).toLocaleString() + ' cr</span>' +
-        (fac ? '<span class="sf-mlog-fac" style="color:' + (fac.color || 'var(--accent-2)') + '">' + (fac.short || fac.name) + '</span>' : '');
+        (fac ? '<span class="sf-mlog-fac" style="color:' + (fac.color || 'var(--accent-2)') + '">' + escapeHtml(fac.short || fac.name) + '</span>' : '');
       card.appendChild(meta);
 
       // Buttons: Track / Abandon
       const btns = el('div', 'sf-mlog-btns');
       btns.innerHTML =
-        '<button class="sf-mlog-btn-track' + (isTracked ? ' active' : '') + '" data-act="track" data-mid="' + m.id + '">' +
+        '<button class="sf-mlog-btn-track' + (isTracked ? ' active' : '') + '" data-act="track" data-mid="' + escapeHtml(m.id) + '">' +
           (isTracked ? 'TRACKING' : 'TRACK') +
         '</button>' +
-        '<button class="sf-mlog-btn-abandon" data-act="abandon" data-mid="' + m.id + '">ABANDON</button>';
+        '<button class="sf-mlog-btn-abandon" data-act="abandon" data-mid="' + escapeHtml(m.id) + '">ABANDON</button>';
       card.appendChild(btns);
 
       frag.appendChild(card);
@@ -307,6 +322,23 @@ export const missionLogScreen = {
     this._listEl.appendChild(frag);
 
     if (this._compVisible) this._renderCompleted();
+  },
+
+  // Story objective tracker (P2-14): the current beat's concrete objective + reward, so the mission
+  // log answers "what should I do now" even with no active contracts. Reads state.story.beatIndex
+  // (owned by missions.js) + the STORY_BEATS table (objective/reward/introduces per beat).
+  _renderStory(state) {
+    if (!this._storyEl) return;
+    const beat = (state.story && state.story.beatIndex) || 0;
+    const sb = STORY_BEATS[beat];
+    if (!sb) { this._storyEl.innerHTML = ''; return; }
+    const introduces = sb.introduces ? '<div class="sf-mlog-story-introduces">Introduces: ' + escapeHtml(sb.introduces.replace(/_/g, ' ')) + '</div>' : '';
+    this._storyEl.innerHTML =
+      '<div class="sf-mlog-story-card">' +
+        '<div class="sf-mlog-story-beat">Beat ' + beat + ' / 7 · ' + escapeHtml((sb.id || '').replace(/_/g, ' ')) + '</div>' +
+        '<div class="sf-mlog-story-objective">' + escapeHtml(sb.objective) + '</div>' +
+        introduces +
+      '</div>';
   },
 
   _renderCompleted() {
@@ -321,7 +353,7 @@ export const missionLogScreen = {
     for (const rec of log) {
       const row = el('div', 'sf-mlog-comp-row mono');
       row.innerHTML =
-        '<span class="sf-mlog-comp-type">' + prettyType(rec.type) + '</span>' +
+        '<span class="sf-mlog-comp-type">' + escapeHtml(prettyType(rec.type)) + '</span>' +
         '<span class="sf-mlog-comp-count">' + rec.success + '/' + rec.count + ' done</span>' +
         '<span class="sf-mlog-comp-cr">+' + (rec.totalCr || 0).toLocaleString() + ' cr</span>';
       frag.appendChild(row);
@@ -348,6 +380,16 @@ const CSS = `
 .sf-mlog-section-comp { display: flex; align-items: center; justify-content: space-between;
   border-top: 1px solid var(--panel-edge); margin-top: 4px; padding-top: 10px; }
 .sf-mlog-toggle { font-size: .68rem; padding: 3px 10px; }
+
+/* Story objective section (P2-14) — always present so the log answers "what now". */
+.sf-mlog-story { padding: 4px 16px 6px; }
+.sf-mlog-story-card { border: 1px solid var(--accent); border-radius: 8px; padding: 11px 14px;
+  background: linear-gradient(180deg, rgba(20,40,60,.55), rgba(10,18,32,.55));
+  box-shadow: 0 0 12px rgba(57,208,255,.15); }
+.sf-mlog-story-beat { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
+.sf-mlog-story-objective { font-size: .92rem; color: var(--ink); line-height: 1.4; font-weight: 600; }
+.sf-mlog-story-introduces { font-size: .72rem; color: var(--ink-mute); margin-top: 6px; font-style: italic; }
 
 .sf-mlog-list { flex: 1; overflow-y: auto; padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
 

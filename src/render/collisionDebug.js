@@ -32,7 +32,7 @@ export function createCollisionDebug(renderSys) {
 
   // A pool of debug primitives we reposition/recolor rather than reallocating each frame.
   const ringGeo = new THREE.RingGeometry(0.985, 1.0, 48); // unit-radius ring; scaled per entity
-  const ringMat = new THREE.LineBasicMaterial({ color: 0x33ddaa, transparent: true, opacity: 0.7 });
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x33ddaa, transparent: true, opacity: 0.7 });
   const socketGeo = new THREE.SphereGeometry(0.35, 8, 6);
   const contactGeo = new THREE.SphereGeometry(0.22, 6, 5);
   const contactMat = new THREE.MeshBasicMaterial({ color: 0xffdd55, transparent: true, opacity: 0.85 });

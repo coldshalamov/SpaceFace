@@ -13,6 +13,8 @@ const checks = [
   ['../src/ui/screens/settings.js', 'settingsScreen'],
   ['../src/ui/screens/saveLoad.js', 'saveLoadScreen'],
   ['../src/ui/screens/help.js', 'helpScreen'],
+  ['../src/ui/screens/codex.js', 'codexScreen'],
+  ['../src/ui/screens/missionLog.js', 'missionLogScreen'],
 ];
 
 let ok = 0;

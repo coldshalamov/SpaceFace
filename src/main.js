@@ -25,7 +25,45 @@ import {
 // global game handle. (userAgent sniffing fails here: the desktop preview is itself Electron-based.)
 const SF_DEBUG = !(typeof location !== 'undefined' && new URLSearchParams(location.search).get('prod') === '1');
 
+// Global error boundary. Without this, an uncaught runtime exception or an unhandled promise
+// rejection dies silently to the console — invisible to the player (who sees a frozen game) and
+// easy to miss in dev. This surfaces BOTH as a console error (preserved for devtools) AND as a
+// player-visible toast via the bus once the game is running, so a failure is never silent.
+// Idempotent + defensive: the boundary itself must never throw (it guards everything else).
+function installGlobalErrorBoundary() {
+  if (typeof window === 'undefined' || window.__sfErrorBoundary) return;
+  window.__sfErrorBoundary = true;
+  let lastToastAt = 0;
+  let toastCount = 0;
+  const surface = (label, err) => {
+    // Console always gets the full error (devtools is the source of truth).
+    try { console.error('[SpaceFace]', label, err); } catch (_) {}
+    // Debounce the toast: at most one per second, and collapse a burst into a count.
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    if (now - lastToastAt < 1000) { toastCount++; return; }
+    const burst = toastCount > 0 ? ` (${toastCount + 1} errors)` : '';
+    toastCount = 0; lastToastAt = now;
+    try {
+      const sf = window.SF;
+      if (sf && sf.bus && typeof sf.bus.emit === 'function') {
+        sf.bus.emit('toast', { text: 'Something went wrong — see console.' + burst, kind: 'warn', ttl: 5 });
+      }
+    } catch (_) { /* game may not be up yet; the console log is enough */ }
+  };
+  try {
+    window.addEventListener('error', (ev) => {
+      // ev.error is the thrown value for uncaught exceptions; ev.message is the fallback.
+      surface('uncaught error', ev && (ev.error || ev.message));
+    });
+    window.addEventListener('unhandledrejection', (ev) => {
+      // ev.reason is the rejection value (an Error, a string, or anything thrown).
+      surface('unhandled rejection', ev && (ev.reason && ev.reason.message ? ev.reason : (ev.reason || ev)));
+    });
+  } catch (_) { /* if addEventListener is unavailable, the console path above still runs */ }
+}
+
 async function boot() {
+  installGlobalErrorBoundary();
   try {
     const seed = (Date.now() & 0x7fffffff) >>> 0;
     const state = createGameState(seed);
@@ -122,7 +160,7 @@ function startNewGame(state, helpers, bus, registry, opts) {
   state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
   resetRunState(state, opts || {});
-  for (const name of ['world', 'factions', 'economy', 'automation', 'missions']) {
+  for (const name of ['world', 'factions', 'economy', 'automation', 'intervention', 'sectorSim', 'missions', 'aiEncounter', 'crafting', 'traffic', 'drill', 'claims']) {
     const sys = registry.get(name);
     if (sys && typeof sys.newGame === 'function') sys.newGame();
   }
@@ -186,6 +224,14 @@ function resetRunState(state, opts = {}) {
   state.fuel = fresh.fuel;
   state.nav = fresh.nav;
   state.automation = fresh.automation;
+  state.crafting = fresh.crafting;
+  state.sectorSim = fresh.sectorSim;
+  state.aiEncounter = fresh.aiEncounter;
+  state.interventions = fresh.interventions;
+  state.interventionMeta = fresh.interventionMeta;
+  state.drill = fresh.drill;
+  state.claims = fresh.claims;
+  state.traffic = fresh.traffic;
   const ui = state.ui || (state.ui = {});
   const screenStack = Array.isArray(ui.screenStack) ? ui.screenStack : [];
   screenStack.length = 0;

@@ -6,14 +6,23 @@ import { createGameState } from '../src/core/gameState.js';
 import { physics } from '../src/core/physics.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { AI_CONTRACT_VERSION } from '../src/ai/contracts.js';
+import { hash32 } from '../src/core/rng.js';
 import { save } from '../src/save/saveSystem.js';
-import { cargo } from '../src/systems/cargo.js';
+import { cargo, addCargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { combat } from '../src/systems/combat.js';
+import { countermeasures } from '../src/systems/countermeasures.js';
+import { wingmen } from '../src/systems/wingmen.js';
 import { crafting } from '../src/systems/crafting.js';
 import { economy } from '../src/systems/economy.js';
 import { flight } from '../src/systems/flight.js';
 import { automation } from '../src/systems/automation.js';
+import { aiEncounter } from '../src/systems/aiEncounter.js';
+import { intervention } from '../src/systems/intervention.js';
+import { sectorSim } from '../src/systems/sectorSim.js';
+import { drill } from '../src/systems/drill.js';
+import { claims } from '../src/systems/claims.js';
+import { traffic } from '../src/systems/traffic.js';
 import * as FlightDynamics from '../src/core/flightDynamics.js';
 import { heat } from '../src/systems/heat.js';
 import { missions } from '../src/systems/missions.js';
@@ -21,6 +30,7 @@ import { DEFAULTS as INPUT_DEFAULTS } from '../src/systems/input.js';
 import { ships, buildSlotList, fittingsFromDefaultModules, getDerivedStats, makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 import { SHIPS } from '../src/data/ships.js';
+import { SECTORS } from '../src/data/sectors.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
 function makeCargoState() {
@@ -183,6 +193,157 @@ function checkSaveDelegatesCraftingHooks() {
 
   save._restoreCrafting(undefined);
   assert.deepEqual(state.crafting.queues, {}, 'missing legacy crafting payload should clear live crafting queues');
+}
+
+// Claims (claimed bases + their modules) were previously NOT serialized — a documented TODO that
+// meant a player's bases vanished on reload. Now claims.serialize()/deserialize() capture state.claims
+// and the save system delegates to them. The module-level _nextClaimId counter is NOT serialized —
+// deserialize re-derives it from the highest restored claim id, which is robust to legacy saves and
+// direct edits. Guards the wiring end-to-end.
+function checkClaimsSerializeAndReload() {
+  const state = makeSaveState();
+  const systems = {
+    economy: { serialize: () => ({}) },
+    factions: { serialize: () => ({}) },
+    world: { serialize: () => ({}) },
+    missions: { serialize: () => ({ boards: {}, active: [], completedLog: [], nextId: 1, story: { beatIndex: 0 } }) },
+    automation: { serialize: () => ({}) },
+    crafting: { serialize: () => ({}) },
+    sectorSim: { serialize: () => ({}) },
+    claims,
+  };
+
+  claims.state = state;
+  save.state = state;
+  save.registry = { get: (name) => systems[name] || null };
+
+  // Seed a claimed body with modules built on it (the real persisted shape).
+  state.claims = { bodies: [] };
+  claims.newGame();
+  state.claims.bodies.push({
+    id: 'claim_1', sectorId: 'sector_pallas_drift', poiId: 'poi_colony', name: 'Pallas Moon',
+    size: 'M', slots: 3, modules: ['mod_depot', 'mod_refinery'], linkedStationId: 'station_pallas',
+    x: 100, z: -50, claimedAt: 500,
+  });
+
+  // Serialize captures the body (no counter — it's re-derived on load).
+  const data = save.serializeData();
+  assert.ok(data.claims && Array.isArray(data.claims.bodies), 'save should include a claims.bodies array');
+  assert.equal(data.claims.bodies.length, 1, 'save should capture the claimed body');
+  assert.equal(data.claims.bodies[0].poiId, 'poi_colony', 'saved body should keep its POI linkage');
+  assert.deepEqual(data.claims.bodies[0].modules, ['mod_depot', 'mod_refinery'], 'saved body should keep its built modules');
+
+  // Deserialize restores into a fresh state (simulating reload).
+  state.claims = { bodies: [] };
+  claims.deserialize(data.claims);
+  assert.equal(state.claims.bodies.length, 1, 'reload should restore the claimed body');
+  assert.equal(state.claims.bodies[0].id, 'claim_1', 'restored body keeps its id');
+  assert.deepEqual(state.claims.bodies[0].modules, ['mod_depot', 'mod_refinery'], 'restored body keeps its modules');
+  assert.equal(state.claims.bodies[0].linkedStationId, 'station_pallas', 'restored body keeps its teleporter link');
+
+  // Missing/legacy payload (pre-serialization saves) degrades cleanly, not crash.
+  claims.deserialize(undefined);
+  assert.deepEqual(state.claims.bodies, [], 'missing claims payload should clear to empty, not crash');
+
+  // The id counter re-derives past the highest restored claim id, so the next claim() can't collide.
+  // Observe by restoring a high-id body, then claiming a fresh one and checking its id is higher.
+  claims.newGame();
+  claims.deserialize({ bodies: [{ id: 'claim_7', poiId: 'poi_x', modules: [] }] });
+  state.player = { credits: 999999, researchedNodes: ['tech_outpost_charter'] };
+  // claim() needs a POI; call it directly and inspect the assigned id.
+  state.world = { currentSectorId: 'sector_pallas_drift' };
+  claims.bus = { emit() {} };
+  claims.claim({ id: 'poi_new', name: 'New', size: 'M', pos: { x: 0, z: 0 } });
+  const newId = state.claims.bodies[state.claims.bodies.length - 1].id;
+  assert.ok(newId && /^claim_(\d+)$/.test(newId) && parseInt(newId.slice(6), 10) >= 8,
+    'next claim id (' + newId + ') must be > the highest restored id (claim_7) — no collision');
+}
+
+function checkNewGameHooksClearTransientRuntimeState() {
+  const state = createGameState(222);
+  const bus = createBus();
+  const ctx = { state, bus, helpers: {}, registry: { get() { return null; } } };
+
+  crafting.init(ctx);
+  aiEncounter.init(ctx);
+  intervention.init(ctx);
+  sectorSim.init(ctx);
+  drill.init(ctx);
+  claims.init(ctx);
+  traffic.init(ctx);
+
+  state.crafting.queues.station_alpha = { bpId: 'bp_build_pulse_laser_s', elapsed: 19, total: 20, done: false };
+  state.aiEncounter = {
+    schemaVersion: AI_CONTRACT_VERSION,
+    nextSeq: 12,
+    commands: [{ seq: 11, type: 'request_reinforcement', packageId: 'fixture_wing_pair' }],
+    owner: { lastAppliedSeq: 10, pendingReinforcements: [{ id: 'old', dueTick: 0 }], spawned: [{ id: 'old_spawn' }] },
+  };
+  state.interventions = [{ id: 'old_intervention', wreckEntityId: 999 }];
+  state.interventionMeta = { rngSeed: 1234 };
+  state.drill = { active: true, asteroidId: 'old_rock' };
+  state.claims.bodies.push({ id: 'claim_old', poiId: 'poi_old', modules: [] });
+  state.traffic.freighters.push({ id: 88 });
+  state.sectorSim.meta.rngSeed = hash32(111, 'sectorSim') >>> 0;
+
+  state.meta.seed = 333;
+  for (const sys of [crafting, aiEncounter, intervention, sectorSim, drill, claims, traffic]) sys.newGame();
+
+  assert.deepEqual(state.crafting.queues, {}, 'new game should clear crafting queues');
+  assert.deepEqual(state.aiEncounter.commands, [], 'new game should clear pending AI encounter commands');
+  assert.deepEqual(state.aiEncounter.owner.pendingReinforcements, [], 'new game should clear scheduled AI reinforcements');
+  assert.deepEqual(state.interventions, [], 'new game should clear active interventions');
+  assert.equal(state.interventionMeta.rngSeed, hash32(333, 'intervention') >>> 0, 'intervention rng should follow new seed');
+  assert.equal(state.drill, null, 'new game should close active drill sessions');
+  assert.deepEqual(state.claims.bodies, [], 'new game should clear claimed bodies');
+  assert.deepEqual(state.traffic.freighters, [], 'new game should clear traffic runtime records');
+  assert.equal(state.traffic.rngSeed, hash32(333, 'traffic', 'boot') >>> 0, 'traffic rng should follow new seed');
+  assert.equal(state.sectorSim.meta.rngSeed, hash32(333, 'sectorSim') >>> 0, 'sector sim rng should follow new seed');
+}
+
+function checkDrillRewardsUseCanonicalCommodities() {
+  const state = createGameState(44);
+  const bus = createBus();
+  const ctx = { state, bus, helpers: {}, registry: { get() { return null; } } };
+  cargo.init(ctx);
+  drill.init(ctx);
+  state.player.cargo.capVolume = 100;
+  state.player.cargo.capMass = 100;
+
+  for (const ore of ['cmdty_silicate', 'cmdty_ice_water']) {
+    state.drill = {
+      asteroidId: 'test_rock',
+      field: [[
+        { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false },
+        { type: 'vein', hp: 1, maxHp: 1, ore, yieldU: 2, hazard: false },
+      ]],
+      avatar: { col: 0, row: 0 },
+      drillDir: null,
+      accumulator: 0,
+      gasHits: 0,
+      yieldLog: {},
+      active: true,
+    };
+    const before = state.player.cargo.items[ore] || 0;
+    drill.drillVertical(1, 1);
+    assert.equal(state.player.cargo.items[ore], before + 2, `drill should award ${ore}`);
+    assert.equal(state.drill.yieldLog[ore], 2, `drill yield log should record ${ore}`);
+  }
+}
+
+function checkClaimRefineryOutputsCanonicalCommodities() {
+  const state = createGameState(55);
+  const bus = createBus();
+  const ctx = { state, bus, helpers: {}, registry: { get() { return null; } } };
+  cargo.init(ctx);
+  claims.init(ctx);
+  state.player.cargo.capVolume = 100;
+  state.player.cargo.capMass = 100;
+  addCargo(state, 'cmdty_silicate', 2);
+  claims._tickRefinery({ _refineAcc: 0 }, 2);
+
+  assert.equal(state.player.cargo.items.cmdty_silicate, undefined, 'claim refinery should consume silicate');
+  assert.equal(state.player.cargo.items.cmdty_polymers, 1, 'claim refinery should grant a canonical output commodity');
 }
 
 function checkSaveScrubsTransientFlightState() {
@@ -745,6 +906,153 @@ function checkLoadRejectsSaveWithoutPlayerEntity() {
   assert.equal(state.playerId, 1, 'rejected playerless save should not clear the live player id');
   assert.equal(state.entities.get(1), player, 'rejected playerless save should leave live entities untouched');
   assert(events.some((e) => e.event === 'save:error' && e.payload.reason === 'no_player'), 'playerless save should emit no_player');
+}
+
+function checkLoadRepairsMalformedPlayerSaveIntoPlayableShip() {
+  const state = createGameState(123);
+  state.mode = 'menu';
+  state.timeScale = 0;
+  const events = [];
+  const makeVec = (x = 0, z = 0) => ({
+    x, y: 0, z,
+    set(nx, ny, nz) { this.x = nx; this.y = ny || 0; this.z = nz; return this; },
+    copy(pos) { this.x = pos.x || 0; this.y = pos.y || 0; this.z = pos.z || 0; return this; },
+  });
+  const helpers = {
+    spawnEntity(spec) {
+      const ent = {
+        id: state.nextEntityId++,
+        ...spec,
+        alive: spec.alive !== false,
+        flags: Object.assign({}, spec.flags || {}),
+        data: spec.data || {},
+        pos: makeVec(spec.pos && spec.pos.x, spec.pos && spec.pos.z),
+        prevPos: makeVec(spec.pos && spec.pos.x, spec.pos && spec.pos.z),
+        vel: makeVec(spec.vel && spec.vel.x, spec.vel && spec.vel.z),
+        rot: spec.rot || 0,
+        prevRot: spec.rot || 0,
+      };
+      state.entities.set(ent.id, ent);
+      state.entityList.push(ent);
+      return ent;
+    },
+    getEntity(id) { return state.entities.get(id); },
+    player() { return state.entities.get(state.playerId); },
+  };
+  const registry = {
+    get(name) {
+      return {
+        economy: { deserialize() {} },
+        factions: { deserialize() {} },
+        world: {
+          deserialize(data) {
+            state.world.currentSectorId = data && data.currentSectorId;
+            if (data && data.fuel) state.fuel = data.fuel;
+          },
+          enterSector(sectorId) { state.world.currentSectorId = sectorId; },
+        },
+        ships: { recomputeActiveShip() {} },
+        cargo: { recompute() {} },
+        automation: { deserialize() {} },
+        crafting: { deserialize() {} },
+        sectorSim: { deserialize() {} },
+        claims: { deserialize() {} },
+      }[name] || null;
+    },
+  };
+
+  save.state = state;
+  save.bus = { emit(event, payload) { events.push({ event, payload }); } };
+  save.helpers = helpers;
+  save.registry = registry;
+
+  const ok = save.loadEnvelope({
+    fmt: 'spaceface-save',
+    version: 5,
+    slot: 'bad-latest',
+    data: {
+      meta: { seed: 44, playtimeS: 0, createdAt: 'bad', lastSavedAt: 'bad' },
+      player: { credits: 123, ownedShips: [], activeShipIndex: 99 },
+      cargo: { items: {}, capVolume: 0, capMass: 0 },
+      economy: {},
+      factions: {},
+      world: { currentSectorId: null, fuel: { current: 0, max: 0 } },
+      entities: {
+        player: {
+          type: 'ship',
+          alive: false,
+          pos: { x: 12, z: -4 },
+          vel: { x: 0, z: 0 },
+          data: {},
+          hull: 0,
+          hullMax: 0,
+          shield: 0,
+          shieldMax: 0,
+          cap: 0,
+          capMax: 0,
+        },
+        persistent: [],
+        simTime: 0,
+        tick: 0,
+      },
+      missions: { boards: {}, active: [], completedLog: [], nextId: 1, story: { beatIndex: 0 } },
+      automation: {},
+      crafting: { queues: {} },
+      settings: {},
+    },
+  }, 'bad-latest');
+
+  assert.equal(ok, true, 'repairable malformed player save should load');
+  const player = state.entities.get(state.playerId);
+  assert(player, 'repaired save should create a player entity');
+  assert.equal(player.alive, true, 'repaired player entity should be alive');
+  assert.equal(player.type, 'ship', 'repaired player entity should be a ship');
+  assert.equal(player.data.defId, NEW_GAME.shipId, 'repaired save should fall back to the canonical starter ship');
+  assert(player.hull > 0 && player.hullMax > 0, 'repaired player should have nonzero hull');
+  assert(player.capMax > 0, 'repaired player should have a capacitor');
+  assert(Array.isArray(player.data.weapons) && player.data.weapons.length > 0, 'repaired player should have a starter weapon');
+  assert.equal(state.world.currentSectorId, NEW_GAME.startingSectorId, 'malformed world save should fall back to the starting sector');
+  assert(state.fuel.current > 0 && state.fuel.max > 0, 'malformed fuel save should be repaired to a playable tank');
+  assert.equal(state.mode, 'flight', 'repaired save should enter flight only after a playable ship exists');
+}
+
+function checkLoadRejectsUnrepairablePlayerEntityBeforeRestore() {
+  const state = createGameState(321);
+  state.mode = 'flight';
+  state.playerId = 77;
+  const livePlayer = { id: 77, type: 'ship', alive: true, pos: { x: 1, z: 2 }, data: { defId: 'ship_kestrel' } };
+  state.entities.set(livePlayer.id, livePlayer);
+  state.entityList.push(livePlayer);
+  const events = [];
+
+  save.state = state;
+  save.bus = { emit(event, payload) { events.push({ event, payload }); } };
+  save.helpers = {
+    spawnEntity() { throw new Error('restore should not spawn for invalid player save'); },
+    getEntity(id) { return state.entities.get(id); },
+  };
+  save.registry = { get() { throw new Error('restore should not reach registry for invalid player save'); } };
+
+  const ok = save.loadEnvelope({
+    fmt: 'spaceface-save',
+    version: 5,
+    slot: 'bad-station',
+    data: {
+      meta: { seed: 55 },
+      player: { credits: 0 },
+      cargo: {},
+      world: { currentSectorId: 'sector_helios_prime' },
+      entities: { player: { type: 'station', pos: { x: 0, z: 0 } }, persistent: [] },
+      missions: {},
+      automation: {},
+      settings: {},
+    },
+  }, 'bad-station');
+
+  assert.equal(ok, false, 'unrepairable non-ship player save should be rejected');
+  assert.equal(state.playerId, 77, 'rejected invalid save should not clear player id');
+  assert.equal(state.entities.get(77), livePlayer, 'rejected invalid save should leave live entity graph untouched');
+  assert(events.some((e) => e.event === 'save:error' && e.payload.reason === 'invalid_player'), 'invalid save should emit invalid_player');
 }
 
 function checkCombatRewardsAndLootKinds() {
@@ -2518,11 +2826,17 @@ function checkSpawnRequestAmbushContract() {
 checkPickupSingleWriter();
 checkSaveDelegatesSystemHooks();
 checkSaveDelegatesCraftingHooks();
+checkClaimsSerializeAndReload();
+checkNewGameHooksClearTransientRuntimeState();
+checkDrillRewardsUseCanonicalCommodities();
+checkClaimRefineryOutputsCanonicalCommodities();
 checkSaveScrubsTransientFlightState();
 checkMissionCompletionAutosaveSeesSettledState();
 checkLoadDoesNotSpawnTargetsForStaleLiveMissions();
 checkLoadRestoresPersistentEntities();
 checkLoadRejectsSaveWithoutPlayerEntity();
+checkLoadRepairsMalformedPlayerSaveIntoPlayableShip();
+checkLoadRejectsUnrepairablePlayerEntityBeforeRestore();
 checkCombatRewardsAndLootKinds();
 checkCombatPrefersAuthoredProjectilePacket();
 checkHeatUsesTargetFactionContext();
@@ -2574,5 +2888,303 @@ checkSweptProjectileCollisionHitsAlongSegment();
 checkBroadPhasePairKeysDoNotCollideForHighEntityIds();
 checkBroadPhaseProjectileIsConsumedOnlyOnce();
 checkSpawnRequestAmbushContract();
+
+// Dreadnought boss (dreadnought_boss, "Iron Maw") was authored in data + render but had ZERO
+// makeEnemySpawnSpec call sites — the marquee T4 fight was invisible. This guards the wiring:
+// it spawns on entry to a sector authored with a poi_boss POI, carries the boss tags the kill
+// handler reads, and does NOT respawn once defeated (tracked in the deterministic discovery
+// overlay, so it survives sector re-entry and save reload). Non-boss sectors must not spawn one.
+function checkDreadnoughtBossSpawnsAndStaysDefeated() {
+  function makeWorldHarness() {
+    const state = {
+      mode: 'flight',
+      meta: { seed: 777, playtimeS: 0 },
+      playerId: 1,
+      player: { ownedShips: [], activeShipIndex: 0, researchedNodes: [] },
+      entities: new Map([[1, {
+        id: 1, type: 'ship', alive: true,
+        pos: { x: 0, y: 0, z: 0 }, prevPos: { x: 0, y: 0, z: 0, copy(p) { this.x = p.x; this.y = p.y || 0; this.z = p.z; return this; } },
+        vel: { x: 0, z: 0 }, rot: 0, prevRot: 0, flags: {}, data: {},
+      }]]),
+      entityList: [],
+      rng: () => 0.5,
+      world: { sectors: {}, currentSectorId: null, activeSector: null, discovery: {}, pendingSpawns: {}, rng: () => 0.5 },
+      bounds: {},
+      jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
+      fuel: { current: 100, max: 100 },
+    };
+    // Seed the live sector graph (world.init copies SECTORS in if empty, but enterSector needs it
+    // populated before init runs its discovery init — match main.js by pre-filling).
+    for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
+
+    const spawned = [];
+    const bossEvents = [];
+    const bus = createBus();
+    const helpers = {
+      spawnEntity(spec) {
+        const ent = { id: 1000 + spawned.length, alive: true, pos: spec.pos || { x: 0, z: 0 }, data: spec.data || {}, ...spec };
+        state.entities.set(ent.id, ent);
+        spawned.push(ent);
+        return ent;
+      },
+      getEntity(id) { return state.entities.get(id) || null; },
+      hash32: hash32,
+      mulberry32(seed) {
+        let a = (seed >>> 0) || 1;
+        return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      },
+    };
+    const registry = { get() { return null; } };
+    world.init({ state, bus, helpers, registry });
+    bus.on('boss:defeated', (p) => bossEvents.push(p));
+    return { state, bus, helpers, spawned, bossEvents };
+  }
+
+  // 1. Entering Ashfall Reach (the sector authored with poi_boss) spawns exactly one dreadnought.
+  const ctx = makeWorldHarness();
+  world.enterSector('sector_ashfall_reach');
+  const activeBosses1 = ctx.spawned.filter((e) => e.data && e.data.isBoss);
+  assert.equal(activeBosses1.length, 1, 'Ashfall Reach entry should spawn exactly one dreadnought boss');
+  const boss = activeBosses1[0];
+  assert.equal(boss.data.bossPoiId, 'poi_boss', 'boss entity should carry its poi_boss linkage');
+  assert.equal(boss.data.bossSectorId, 'sector_ashfall_reach', 'boss entity should carry its sector linkage');
+  assert.ok(ctx.state.world.activeSector.boss, 'activeSector should record the live boss handle');
+  assert.equal(ctx.state.world.activeSector.boss.entityId, boss.id, 'activeSector.boss.entityId should match the spawned boss');
+
+  // 2. Killing the boss marks the POI defeated in the discovery overlay + emits boss:defeated.
+  ctx.bus.emit('entity:killed', { id: boss.id, killerId: 1, type: 'ship', pos: { x: boss.pos.x, z: boss.pos.z }, victimClass: 'capital' });
+  const disc = ctx.state.world.discovery['sector_ashfall_reach'];
+  assert.ok(disc && disc.pois && disc.pois['poi_boss'] && disc.pois['poi_boss'].bossDefeated,
+    'boss death should mark poi_boss.bossDefeated in the discovery overlay');
+  assert.ok(!ctx.state.world.activeSector.boss, 'activeSector.boss handle should clear after defeat');
+  assert.equal(ctx.bossEvents.length, 1, 'boss death should emit exactly one boss:defeated');
+  assert.equal(ctx.bossEvents[0].poiId, 'poi_boss', 'boss:defeated should carry the poi id');
+
+  // 3. Re-entering the sector does NOT respawn the boss (stays defeated — survives reload).
+  const beforeCount = ctx.spawned.length;
+  world.enterSector('sector_ashfall_reach');
+  const newBosses = ctx.spawned.slice(beforeCount).filter((e) => e.data && e.data.isBoss);
+  assert.equal(newBosses.length, 0, 'defeated boss must not respawn on sector re-entry');
+
+  // 4. A fresh harness (new save) on the same sector DOES spawn the boss (defeat is per-save).
+  const ctx2 = makeWorldHarness();
+  world.enterSector('sector_ashfall_reach');
+  const freshBosses = ctx2.spawned.filter((e) => e.data && e.data.isBoss);
+  assert.equal(freshBosses.length, 1, 'a new save should spawn the boss fresh (defeat is per-save, not global)');
+
+  // 5. A non-boss sector never spawns one.
+  const ctx3 = makeWorldHarness();
+  world.enterSector('sector_helios_prime');
+  const heliosBosses = ctx3.spawned.filter((e) => e.data && e.data.isBoss);
+  assert.equal(heliosBosses.length, 0, 'a sector without a poi_boss POI must not spawn a dreadnought');
+}
+checkDreadnoughtBossSpawnsAndStaysDefeated();
+
+// Countermeasures (P1-7): chaff diverts in-flight missiles targeting the deploying ship to a decoy;
+// ECM zeros missile turnRate (jamming). Guards the actual interception behavior, not just the wiring
+// (check-countermeasures.mjs pins the contract). Runs the countermeasures system headlessly against
+// a missile + ship + attacker and asserts the missile is neutralized.
+function checkCountermeasuresInterceptMissiles() {
+  function makeShip(id, x, z, fittings) {
+    return { id, type: 'ship', alive: true, pos: { x, y: 0, z }, prevPos: { x, y: 0, z }, vel: { x: 0, z: 0 }, rot: 0,
+      data: { fittings, combat: { lockTarget: null, lockProgress: 0 } } };
+  }
+  function makeMissile(id, targetId, x, z) {
+    return { id, type: 'projectile', alive: true, pos: { x, y: 0, z }, prevPos: { x, y: 0, z },
+      vel: { x: 1, z: 0 }, rot: 0,
+      data: { kind: 'missile', targetId, turnRate: 3.0, projSpeed: 200, armed: true } };
+  }
+  function boot(fittings) {
+    const state = {
+      mode: 'flight', simTime: 1, playerId: 1,
+      entities: new Map(), entityList: [],
+      input: { deployCountermeasure: false },
+      ui: { screenStack: [] },
+      entityIndex: { projectiles: [] },
+      rng: () => 0.0, // deterministic RNG stub (< divertPct → chaff diversion always happens)
+    };
+    const player = makeShip(1, 0, 0, fittings);
+    const attacker = makeShip(2, 400, 0, []);
+    attacker.data.combat.lockTarget = 1; attacker.data.combat.lockProgress = 0.9;
+    const missile = makeMissile(10, 1, 200, 0); // targeting player, closing
+    state.entities.set(1, player); state.entities.set(2, attacker); state.entities.set(10, missile);
+    state.entityList = [player, attacker, missile];
+    state.entityIndex.projectiles = [missile];
+    const events = [];
+    countermeasures.state = state;
+    countermeasures.bus = { emit: (e, p) => events.push({ e, p }) };
+    countermeasures.helpers = { getEntity: (id) => state.entities.get(id) };
+    return { state, player, attacker, missile, events };
+  }
+
+  // CHAFF: deploy → missile targeting player diverts to decoy + attacker lock breaks.
+  {
+    const ctx = boot(['mod_chaff_dispenser_m']);
+    ctx.state.input.deployCountermeasure = true;
+    countermeasures.update(0.016, ctx.state);
+    assert.equal(ctx.state.input.deployCountermeasure, false, 'deploy flag should be consumed');
+    assert.ok(ctx.player.data.cm && ctx.player.data.cm.effect, 'chaff effect should be active after deploy');
+    assert.ok(ctx.player.data.cm.cooldownT > 0, 'chaff should start its cooldown');
+    // The lock on the player should be broken (lockBreakPct 1.0 → lockProgress 0).
+    assert.ok(ctx.attacker.data.combat.lockProgress < 0.01 && ctx.attacker.data.combat.lockTarget == null,
+      'chaff should fully break the attacker missile lock');
+    // Run the effect-application tick: the missile should divert to the decoy. The deterministic
+    // state.rng stub returns 0.0 (< divertPct 0.85) so diversion always happens in the test.
+    countermeasures.update(0.016, ctx.state);
+    assert.equal(ctx.missile.data.targetId !== 1, true, 'chaff should divert the missile away from the player');
+    assert.equal(ctx.missile.data.diverted, true, 'diverted missile should be flagged');
+    // A second deploy while on cooldown is a no-op.
+    ctx.state.input.deployCountermeasure = true;
+    const cdBefore = ctx.player.data.cm.cooldownT;
+    countermeasures.update(0.016, ctx.state);
+    assert.ok(ctx.player.data.cm.cooldownT <= cdBefore, 'chaff on cooldown should not reset the timer');
+  }
+
+  // ECM: deploy → missile turnRate zeroed (jammed) for the effect duration, restored after.
+  {
+    const ctx = boot(['mod_ecm_jammer_l']);
+    ctx.state.input.deployCountermeasure = true;
+    countermeasures.update(0.016, ctx.state);
+    assert.ok(ctx.player.data.cm && ctx.player.data.cm.effect.cfg.kind === 'ecm', 'ECM effect active');
+    countermeasures.update(0.016, ctx.state); // apply jam
+    assert.equal(ctx.missile.data.turnRate, 0, 'ECM should zero the missile turnRate (jam guidance)');
+    assert.ok(ctx.missile.data._jammedTurnRate === 3.0, 'ECM should store the original turnRate for restore');
+    // Tick past the effect duration (4.0s) → jam restores.
+    for (let i = 0; i < 300; i++) countermeasures.update(0.016, ctx.state);
+    assert.equal(ctx.missile.data.turnRate, 3.0, 'ECM jam should restore turnRate when the effect expires');
+    assert.equal(ctx.missile.data._jammedTurnRate, undefined, 'restore should clear the _jammedTurnRate marker');
+  }
+
+  // No countermeasure equipped → deploy is a silent no-op (no crash, no effect).
+  {
+    const ctx = boot([]);
+    ctx.state.input.deployCountermeasure = true;
+    countermeasures.update(0.016, ctx.state);
+    assert.ok(!ctx.player.data.cm || !ctx.player.data.cm.effect, 'no countermeasure equipped → no effect');
+    assert.equal(ctx.missile.data.targetId, 1, 'missile should keep tracking the player with no countermeasure');
+  }
+}
+checkCountermeasuresInterceptMissiles();
+
+// Wingmen (P1-8): fleet ledger entries spawn as LIVE team-0 entities on sector enter, sync hull
+// back to the ledger, and route death through onHitAsset so the fleet entry is removed. Guards the
+// "wingmen are flyable, not passive ledger entries" contract behaviorally.
+function checkWingmenSpawnAsLiveEntities() {
+  let nextEntId = 5000;
+  function boot(fleet) {
+    const state = {
+      mode: 'flight', simTime: 1, playerId: 1,
+      entities: new Map(), entityList: [],
+      automation: { fleet: fleet.slice() },
+      ui: { screenStack: [] },
+      entityIndex: { projectiles: [] },
+    };
+    // Player entity for spawn positioning.
+    state.entities.set(1, { id: 1, type: 'ship', alive: true, pos: { x: 0, y: 0, z: 0 }, data: {} });
+    const events = [];
+    wingmen.state = state;
+    wingmen.bus = { emit: (e, p) => events.push({ e, p }) };
+    wingmen.helpers = {
+      spawnEntity(spec) {
+        const e = { id: nextEntId++, type: 'ship', alive: true,
+          pos: spec.pos || { x: 0, z: 0 }, hull: 100, hullMax: 100, data: spec.data || {}, team: spec.team };
+        state.entities.set(e.id, e);
+        state.entityList.push(e);
+        return e;
+      },
+      getEntity: (id) => state.entities.get(id) || null,
+    };
+    return { state, events };
+  }
+
+  // 1. sector:enter spawns a live entity per fleet entry, tagged team 0 + isWingman.
+  const ctx = boot([
+    { id: 'f1', shipDefId: 'ship_wasp', order: 'escort', hp: 1, hullPct: 1, status: 'escort' },
+    { id: 'f2', shipDefId: 'ship_pelican', order: 'attack', hp: 1, hullPct: 1, status: 'attack' },
+  ]);
+  // (init registers bus listeners — not needed for this direct-call test; state/bus/helpers are set by boot.)
+  wingmen._spawnWingmen();
+  const f1 = ctx.state.automation.fleet[0];
+  const f2 = ctx.state.automation.fleet[1];
+  assert.ok(f1._liveId, 'fleet entry f1 should get a _liveId after spawn');
+  assert.ok(f2._liveId, 'fleet entry f2 should get a _liveId after spawn');
+  const e1 = ctx.state.entities.get(f1._liveId);
+  const e2 = ctx.state.entities.get(f2._liveId);
+  assert.ok(e1 && e1.alive, 'f1 wingman should be a live entity');
+  assert.ok(e2 && e2.alive, 'f2 wingman should be a live entity');
+  assert.equal(e1.team, 0, 'wingman must be team 0 (player-aligned — AI targets team-1 hostiles)');
+  assert.equal(e1.data.isWingman, true, 'wingman entity must be flagged isWingman');
+  assert.equal(e2.data.ai && e2.data.ai.archetype, 'pirate', 'attack-order wingman should use the pirate (aggressive) archetype');
+
+  // 2. update syncs hull% back to the ledger.
+  e1.hull = 40; // take damage
+  wingmen.update(0.016, ctx.state);
+  assert.ok(Math.abs(f1.hullPct - 0.4) < 0.01, 'fleet hullPct should sync from live entity hull (40/100 = 0.4)');
+
+  // 3. Wingman death → combat:hitAsset emitted + fleet entry removed.
+  e1.alive = false;
+  wingmen.update(0.016, ctx.state);
+  assert.ok(ctx.events.some((ev) => ev.e === 'combat:hitAsset' && ev.p && ev.p.assetKind === 'fleet'),
+    'wingman death must emit combat:hitAsset {assetKind:"fleet"} so automation.onHitAsset removes the ledger entry');
+
+  // 4. sector:leave despawns remaining wingmen (clears _liveId).
+  const beforeCount = ctx.state.entityList.filter((e) => e.data && e.data.isWingman && e.alive).length;
+  assert.ok(beforeCount >= 1, 'at least one wingman should still be alive before sector leave');
+  wingmen._despawnWingmen();
+  for (const fs of ctx.state.automation.fleet) {
+    assert.ok(!fs._liveId, 'sector:leave should clear _liveId on all fleet entries');
+  }
+
+  // 5. Empty fleet → no spawn, no crash.
+  const ctx2 = boot([]);
+  wingmen.state = ctx2.state;
+  wingmen._spawnWingmen();
+  assert.equal(ctx2.state.entityList.length, 0, 'empty fleet should spawn nothing');
+}
+checkWingmenSpawnAsLiveEntities();
+
+// Ironman difficulty is advertised as "permadeath" in the New Game UI, but the runtime previously
+// respawned identically for all difficulties — a false-advertised feature. Now combat.kill() on
+// Ironman emits game:over and leaves the player dead instead of respawning. Guards the contract.
+function checkIronmanDeathEndsTheRun() {
+  const makeVec = (x, z) => ({ x, y: 0, z, set(nx, ny, nz) { this.x = nx; this.y = ny || 0; this.z = nz; return this; }, copy(p) { this.x = p.x; this.y = p.y || 0; this.z = p.z; return this; } });
+  function makePlayer() {
+    return { id: 1, type: 'ship', alive: true, pos: makeVec(10, 10), prevPos: makeVec(10, 10), vel: makeVec(0, 0), flags: {}, data: { defId: 'ship_pelican' }, hull: 0, hullMax: 180, shield: 0, shieldMax: 60, cap: 0, capMax: 110 };
+  }
+  function bootCombat(difficulty) {
+    const state = {
+      playerId: 1, simTime: 42,
+      settings: { gameplay: { difficulty } },
+      player: { credits: 100, insurance: { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: 'station_helios' }, ownedShips: [{ defId: 'ship_pelican', fittings: [] }], activeShipIndex: 0, cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 100, capMass: 100 } },
+      entities: new Map(),
+      world: { currentSectorId: 'sector_helios_prime', activeSector: { stations: [{ stationId: 'station_helios', pos: { x: 320, z: -80 } }] } },
+    };
+    const player = makePlayer();
+    state.entities.set(player.id, player);
+    const events = [];
+    combat.state = state;
+    combat.bus = { emit: (event, payload) => events.push({ event, payload }) };
+    return { state, player, events };
+  }
+
+  // Ironman: kill emits game:over + player:death, does NOT respawn, leaves the entity dead.
+  const iron = bootCombat('ironman');
+  combat.kill(iron.player, 99);
+  assert(iron.events.some((e) => e.event === 'game:over'), 'ironman death must emit game:over');
+  assert(iron.events.some((e) => e.event === 'player:death'), 'ironman death must still emit player:death (for the death banner/VFX)');
+  assert(!iron.events.some((e) => e.event === 'player:respawn'), 'ironman death must NOT respawn');
+  assert.equal(iron.player.alive, false, 'ironman death must leave the player entity dead');
+  assert.equal(iron.player.hull, 0, 'ironman death must NOT heal the player');
+
+  // Non-ironman difficulties respawn as before (the default loop is unchanged).
+  for (const diff of ['casual', 'standard', 'veteran']) {
+    const run = bootCombat(diff);
+    combat.kill(run.player, 99);
+    assert(run.events.some((e) => e.event === 'player:respawn'), `${diff} death must still respawn (only ironman permadeaths)`);
+    assert(!run.events.some((e) => e.event === 'game:over'), `${diff} death must NOT emit game:over`);
+    assert.equal(run.player.alive, true, `${diff} respawn must leave the player alive`);
+  }
+}
+checkIronmanDeathEndsTheRun();
 
 console.log('Core gameplay checks OK');

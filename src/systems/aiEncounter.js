@@ -77,6 +77,11 @@ export const aiEncounter = {
     });
   },
 
+  newGame() {
+    this.state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
+    ensureOwnerState(this.state);
+  },
+
   _applyCommand(command, owner, state) {
     if (!command || typeof command !== 'object') return reject(owner, command, 'command_invalid');
     if (command.type === 'phase') {

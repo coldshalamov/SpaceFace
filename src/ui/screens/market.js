@@ -10,6 +10,10 @@
 // basePrice. Never throws if markets are empty.
 import { COMMODITIES } from '../../data/commodities.js';
 import { confirm } from '../confirm.js';
+import { createListControls, buildSortHeader, sortHeaderAria } from '../listControls.js';
+import { getPriceHistory } from '../priceHistory.js';
+import { drawSparkline } from '../sparkline.js';
+import { escapeHtml } from '../comms.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -50,12 +54,34 @@ function unitPrice(ctx, stationId, cmdtyId, side) {
   return side === 'buy' ? Math.round(base * 1.1) : Math.round(base * 0.9);
 }
 
-/** Does this station trade the given commodity? Prefer the live market; else show legal goods. */
+/** Does this station trade the given commodity? Honest gate (UX-5): the economy only creates a
+ *  market entry for commodities whose role (produce/consume) is non-'none' for this station type,
+ *  so the presence of a live entry IS the truth. If the live market hasn't been seeded yet, fall
+ *  back to the static producedBy/consumedBy lists vs the station's type so the panel still reflects
+ *  the station's real trade identity instead of showing every commodity. */
 function stationTrades(state, stationId, cmdtyId) {
   const e = marketEntry(state, stationId, cmdtyId);
-  if (e) return true;
-  // no live market yet → show all commodities so the panel is non-empty for testing.
-  return true;
+  if (e) return e.role !== 'none';
+  // No live entry yet — resolve from the static station type + commodity role lists.
+  const def = COMMODITY_BY_ID.get(cmdtyId);
+  if (!def) return false;
+  const stationType = stationTypeFor(state, stationId);
+  if (!stationType) return false;
+  return ((def.producedBy || []).includes(stationType)) || ((def.consumedBy || []).includes(stationType));
+}
+
+/** Look up a station's type (trade_hub / refinery / mining / fab / military / blackmarket / research)
+ *  from the active sector or the static SECTORS table. Returns '' if not found. */
+function stationTypeFor(state, stationId) {
+  const sect = state.world && state.world.activeSector;
+  let stn = sect && (sect.stations || []).find((x) => x.id === stationId);
+  if (!stn) {
+    for (const s of (state.world && state.world.sectors ? Object.values(state.world.sectors) : [])) {
+      stn = (s.stations || []).find((x) => x.id === stationId);
+      if (stn) break;
+    }
+  }
+  return (stn && stn.type) || '';
 }
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
@@ -100,14 +126,32 @@ export function createMarketPanel(ctx) {
   // --- table head ---
   const tableHead = document.createElement('div');
   tableHead.className = 'st-row st-row-head';
-  tableHead.innerHTML =
-    '<span class="c-name">Commodity</span>' +
-    '<span class="c-num">Owned</span>' +
-    '<span class="c-num">Buy</span>' +
-    '<span class="c-num">Sell</span>' +
-    '<span class="c-qty">Qty</span>' +
-    '<span class="c-act">Trade</span>';
+  // UX-3: sortable column headers. Clicking a header toggles the sort key + direction.
+  const _sort = { key: 'category', dir: 'asc' };
+  function applySort(key) {
+    if (_sort.key === key) _sort.dir = _sort.dir === 'asc' ? 'desc' : 'asc';
+    else { _sort.key = key; _sort.dir = 'asc'; }
+    rebuild();
+  }
+  tableHead.innerHTML = '';
+  const hName = buildSortHeader({ key: 'name', label: 'Commodity', activeKey: _sort.key, dir: _sort.dir, onSort: applySort });
+  hName.style.gridColumn = '1';
+  const hOwned = buildSortHeader({ key: 'owned', label: 'Owned', activeKey: _sort.key, dir: _sort.dir, onSort: applySort });
+  const hBuy = buildSortHeader({ key: 'buy', label: 'Buy', activeKey: _sort.key, dir: _sort.dir, onSort: applySort });
+  const hSell = buildSortHeader({ key: 'sell', label: 'Sell', activeKey: _sort.key, dir: _sort.dir, onSort: applySort });
+  [hName, hOwned, hBuy, hSell].forEach((h) => { h.className += ' c-num'; tableHead.appendChild(h); });
+  // the qty + trade columns aren't sortable; pad them with plain spans to keep the grid intact
+  const qtyH = document.createElement('span'); qtyH.className = 'c-qty'; qtyH.textContent = 'Qty'; tableHead.appendChild(qtyH);
+  const actH = document.createElement('span'); actH.className = 'c-act'; actH.textContent = 'Trade'; tableHead.appendChild(actH);
   root.appendChild(tableHead);
+
+  // UX-3: search box above the list (filters by commodity name/category). Cheap substring match.
+  const _filter = { q: '' };
+  const ctrls = createListControls({
+    search: true, placeholder: 'Search commodities…',
+    onSearch: (q) => { _filter.q = q; rebuild(); },
+  });
+  root.appendChild(ctrls.el);
 
   // --- scrollable list ---
   const list = document.createElement('div');
@@ -185,15 +229,30 @@ export function createMarketPanel(ctx) {
     });
   }
 
-  // The list of commodities to display for the active station (sorted by category then name).
+  // The list of commodities to display for the active station. UX-3: applies the search filter and
+  // the chosen sort (name / owned / buy / sell / category fallback). Live prices + owned quantities
+  // are read here so sorting by them reflects the current market state, not a stale snapshot.
   function commodityRowsFor(stationId) {
     const state = ctx.state;
     const out = [];
+    const q = (_filter.q || '').trim().toLowerCase();
     for (const c of COMMODITIES) {
       if (!stationTrades(state, stationId, c.id)) continue;
+      if (q) {
+        const hay = (c.name + ' ' + (c.category || '') + ' ' + (c.id || '')).toLowerCase();
+        if (!hay.includes(q)) continue;
+      }
       out.push(c);
     }
-    out.sort((a, b) => (a.category < b.category ? -1 : a.category > b.category ? 1 : (a.name < b.name ? -1 : 1)));
+    const dir = _sort.dir === 'desc' ? -1 : 1;
+    const byName = (a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    switch (_sort.key) {
+      case 'name': out.sort((a, b) => dir * byName(a, b)); break;
+      case 'owned': out.sort((a, b) => dir * ((state.player.cargo.items[a.id] || 0) - (state.player.cargo.items[b.id] || 0)) || byName(a, b)); break;
+      case 'buy': out.sort((a, b) => dir * ((unitPrice(ctx, stationId, a.id, 'buy') || 0) - (unitPrice(ctx, stationId, b.id, 'buy') || 0)) || byName(a, b)); break;
+      case 'sell': out.sort((a, b) => dir * ((unitPrice(ctx, stationId, a.id, 'sell') || 0) - (unitPrice(ctx, stationId, b.id, 'sell') || 0)) || byName(a, b)); break;
+      default: out.sort((a, b) => dir * ((a.category < b.category ? -1 : a.category > b.category ? 1 : byName(a, b)))); break;
+    }
     return out;
   }
 
@@ -201,6 +260,15 @@ export function createMarketPanel(ctx) {
   function rebuild() {
     const state = ctx.state;
     const stationId = panel.stationId;
+    // UX-3: refresh the sort-header active state + arrows for the current sort key/dir.
+    tableHead.querySelectorAll('.sf-sort').forEach((el) => {
+      const isActive = el.getAttribute('data-sk') === _sort.key;
+      el.classList.toggle('active', isActive);
+      el.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      el.setAttribute('aria-label', sortHeaderAria(el.getAttribute('data-label') || '', isActive, _sort.dir));
+      const arrow = el.querySelector('.sf-sort__arrow');
+      if (arrow) arrow.textContent = isActive ? (_sort.dir === 'asc' ? '▲' : '▼') : '↕';
+    });
     const frag = document.createDocumentFragment();
     panel._rowEls = Object.create(null);
     for (const c of commodityRowsFor(stationId)) {
@@ -208,9 +276,11 @@ export function createMarketPanel(ctx) {
       row.className = 'st-row';
       row.setAttribute('data-cmdty', c.id);
       const legalTag = c.legality !== 'legal'
-        ? ' <span class="st-tag st-tag-' + c.legality + '">' + c.legality + '</span>' : '';
+        ? ' <span class="st-tag st-tag-' + escapeHtml(c.legality) + '">' + escapeHtml(c.legality) + '</span>' : '';
       row.innerHTML =
-        '<span class="c-name">' + c.name + legalTag + '</span>' +
+        '<span class="c-name">' + escapeHtml(c.name) + legalTag +
+          '<canvas class="st-spark" width="56" height="14" title="Recent price trend"></canvas>' +
+        '</span>' +
         '<span class="c-num st-owned mono">0</span>' +
         '<span class="c-num st-buy mono">—</span>' +
         '<span class="c-num st-sell mono">—</span>' +
@@ -229,7 +299,25 @@ export function createMarketPanel(ctx) {
       updateRowQty(row, qtyState[c.id]);
     }
     list.textContent = '';
-    list.appendChild(frag);
+    // UX-3/5: empty state. Distinguish "your search matched nothing" from "this station genuinely
+    // trades nothing in this category" so the player understands the station's trade identity.
+    if (!frag.childElementCount) {
+      const empty = document.createElement('div');
+      empty.className = 'st-empty';
+      if (_filter.q) {
+        empty.textContent = 'No commodities match "' + _filter.q + '".';
+      } else {
+        // The station trades SOMETHING (roleFor produced/consumed), but maybe nothing yet — surface
+        // the station type so the player knows what this place deals in.
+        const type = stationTypeFor(ctx.state, stationId).replace('_', ' ');
+        empty.textContent = type
+          ? 'No active market listings here yet. This ' + type + ' deals in goods matching its role.'
+          : 'No commodities traded here.';
+      }
+      list.appendChild(empty);
+    } else {
+      list.appendChild(frag);
+    }
     refreshValues();
   }
 
@@ -258,6 +346,9 @@ export function createMarketPanel(ctx) {
       applyPriceHeat(row.querySelector('.st-buy'), buyHeat);
       const sellHeat = base > 0 ? (sellP - base) / base : 0;
       applyPriceHeat(row.querySelector('.st-sell'), sellHeat);
+      // UX-4: real price-trend sparkline (session history from priceHistory.js, not basePrice heat).
+      const spark = row.querySelector('.st-spark');
+      if (spark) drawSparkline(spark, getPriceHistory(stationId, cmdtyId));
       const buyBtn = row.querySelector('.st-buy-btn');
       const sellBtn = row.querySelector('.st-sell-btn');
       // buy disabled if can't afford even 1 unit or cargo full; sell disabled if own nothing.
@@ -282,11 +373,11 @@ export function createMarketPanel(ctx) {
       row.className = 'st-planner-row';
       const pct = Math.round((t.margin / t.buyHere) * 100);
       row.innerHTML =
-        '<span class="st-pl-cmdty">' + t.cmdtyName + '</span>' +
+        '<span class="st-pl-cmdty">' + escapeHtml(t.cmdtyName) + '</span>' +
         '<span class="st-pl-prices mono">buy ' + fmtCr(t.buyHere) + ' → sell ' + fmtCr(t.sellThere) + '</span>' +
         '<span class="st-pl-margin st-pl-up">+' + fmtCr(t.margin) + '/u (' + pct + '%)</span>' +
-        '<span class="st-pl-dest">' + stationName(state, t.destStation) + '</span>' +
-        '<button class="st-pl-nav" data-act="nav" data-station="' + t.destStation + '" data-cmdty="' + t.cmdtyId + '">Set Nav</button>';
+        '<span class="st-pl-dest">' + escapeHtml(stationName(state, t.destStation)) + '</span>' +
+        '<button class="st-pl-nav" data-act="nav" data-station="' + escapeHtml(t.destStation) + '" data-cmdty="' + escapeHtml(t.cmdtyId) + '">Set Nav</button>';
       frag.appendChild(row);
     }
     plannerList.appendChild(frag);

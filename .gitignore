@@ -1,3 +1,5 @@
 .devshots/
 node_modules/
+build/
+dist/
 /nul

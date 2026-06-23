@@ -13,6 +13,15 @@
 // show controls relevant to the player's current activity (mining, combat, near station, open flight).
 //
 // System contract: { name, init(ctx), update(dt, state) }. Wired into registry SYSTEMS + UPDATE_ORDER.
+//
+// STORY OBJECTIVE TRACKER (P2-14): once the 5-step tutorial finishes (or for a returning player on
+// load), the same panel slot switches to "story mode" and persistently shows the CURRENT story beat's
+// objective + direction hint, read from state.story.beatIndex + STORY_BEATS (data) + BEAT_CONTENT
+// (narrative). A player who missed the ephemeral comms toast can always see "what should I do now"
+// without opening a menu.
+
+import { STORY_BEATS } from '../data/missions.js';
+import { BEAT_CONTENT } from '../data/narrative.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
@@ -52,7 +61,10 @@ export const onboarding = {
     const bus = this.bus;
     // Start only for a fresh game. Loaded saves emit save:loaded (no tutorial for a returning pilot).
     bus.on('game:started', () => this._begin());
-    bus.on('save:loaded', () => this._teardown());
+    // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
+    // tracker (P2-14), so they can always see their current beat objective. Tear down any tutorial
+    // state, then bring up the story panel.
+    bus.on('save:loaded', () => { this._teardown(); this._beginStoryMode(); });
 
     // Objective completion hooks (real events verified against the systems).
     bus.on('dock:docked', () => this._complete('dock'));
@@ -106,6 +118,66 @@ export const onboarding = {
         'Cargo hold full! Dock at a station to audit or sell the sample and free up space.');
     });
 
+    // ── Mid/late-game system onboarding (P1-10) ─────────────────────────────────────────────
+    // The 5-step tutorial covers flight + first dock/sell, but drill-mining, outfitting, the tech
+    // tree, automation, claims/bases, and crafting are all un-onboarded — the player hits a steep
+    // self-serve cliff the moment they dock. Each of these fires a ONE-TIME contextual hint on the
+    // player's first interaction with that system, via the same player.hints mechanism as the
+    // flight hints above. The hint explains what the system IS + the immediate next step, so the
+    // player is never staring at an unfamiliar screen with no guidance.
+
+    // First dock: orient the player to the 8-tab station hub. This is the single biggest "cliff"
+    // moment — a new player docking for the first time sees Market/Shipyard/Outfitting/Manufacture/
+    // Missions/Services/Factions/Bar with no explanation. This fires on every first dock (not just
+    // the tutorial's dock step) so returning players who skipped the tutorial still get oriented.
+    bus.on('dock:docked', () => {
+      this._showHint('firstHub',
+        'Station hub: Market (trade), Missions (contracts), Shipyard (buy ships), Outfitting (modules), Manufacture (craft), Services (repair/refuel), Factions, Bar. Press the tab labels at top.');
+    });
+
+    // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
+
+    // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
+    bus.on('drill:start', () => {
+      this._showHint('firstDrill',
+        'Deep-drill active! You are now inside the asteroid. Mine the colored ore veins and avoid gas pockets. Press B again or fly out to exit.');
+    });
+
+    // Outfitting: the first time the player equips OR buys a module at a station.
+    bus.on('ui:fitModule', () => {
+      this._showHint('firstOutfit',
+        'Module equipped! Visit Outfitting at any station to swap shields, engines, weapons, and utility modules (like the Chaff Dispenser). Bigger ships have more slots.');
+    });
+    bus.on('ui:buyModule', () => {
+      this._showHint('firstOutfit',
+        'Module purchased! Equip it in Outfitting. Modules fill ship slots — shields, engines, weapons, utility. Sell the old one back if you need credits.');
+    });
+
+    // Tech tree: the first time the player researches a node.
+    bus.on('tech:researched', () => {
+      this._showHint('firstTech',
+        'Research complete! The Tech Tree (T) unlocks new ships, modules, and capabilities. Some gear requires research before you can buy or build it.');
+    });
+
+    // Automation: the first time the player deploys a drone.
+    bus.on('asset:deployed', (p) => {
+      if (!p || p.kind !== 'drone') return;
+      this._showHint('firstAutomation',
+        'Drone deployed! Drones auto-mine ore and haul it to your ship or a depot. Manage them in the Automation panel — more drones unlock with tech.');
+    });
+
+    // Claims/bases: the first time the player claims a body.
+    bus.on('claim:claimed', () => {
+      this._showHint('firstClaim',
+        'Body claimed! Build modules on it (Cargo Depot, On-Site Refinery, Defense Battery) to automate ore flow. Claimed bases persist across the sector.');
+    });
+
+    // Crafting: the first time the player queues a craft job (refine/assemble/augment).
+    bus.on('craft:queueChanged', () => {
+      this._showHint('firstCraft',
+        'Craft job queued! The Manufacture tab refines raw ore into materials, assembles components, and augments modules. Some recipes need research first.');
+    });
+
     // First flight: triggered a few seconds after the game starts (handled in update via a timer).
     this._firstFlightTimer = 0;
     this._firstFlightPending = false;
@@ -133,7 +205,14 @@ export const onboarding = {
     const st = this.state;
     const hintsOn = !st.settings || !st.settings.gameplay || st.settings.gameplay.tutorialHints !== false;
     st.onboarding = { active: hintsOn, stepIndex: 0, done: {}, finished: false, minedUnits: 0 };
-    if (!hintsOn) return;             // player opted out — stay silent, no panel
+    // A fresh new game starts in tutorial mode (not story mode).
+    this._storyMode = false;
+    if (!hintsOn) {
+      // Player opted out of the tutorial entirely — still give them the story objective tracker so
+      // they're never without a "what now" (P2-14).
+      this._beginStoryMode();
+      return;
+    }
     this._injectStyle();
     this._buildPanel();
     this._showIntro();
@@ -141,11 +220,21 @@ export const onboarding = {
     this._setObjectiveWaypoint(true);
   },
 
+  // Enter story-mode (the persistent objective tracker) without the tutorial. Used by save:loaded
+  // (returning pilots) and by players who skipped/disabled tutorial hints. Respects the tutorialHints
+  // setting — a pilot who turned hints off still gets the tracker ONLY if they haven't also disabled
+  // story cues; for simplicity we always show the story tracker (it's the objective, not a hint).
+  _beginStoryMode() {
+    this._storyMode = true;
+    this._refreshStory();
+  },
+
   _teardown() {
     const ob = this.state.onboarding; if (ob) ob.active = false;
     if (this._panel) { this._panel.remove(); this._panel = null; }
     if (this._intro) { this._intro.remove(); this._intro = null; }
     this._clearObjectiveWaypoint();
+    this._storyMode = false;
   },
 
   _complete(key) {
@@ -186,10 +275,53 @@ export const onboarding = {
     ob.finished = true;
     this.bus.emit('toast', { text: 'Tutorial complete — the galaxy is yours, pilot.', kind: 'good', ttl: 5 });
     this._clearObjectiveWaypoint();
-    if (this._panel) {
-      const body = this._panel.querySelector('.sf-ob-body');
-      if (body) body.innerHTML = '<div class="sf-ob-title">You have the first discrepancy.</div><div class="sf-ob-hint">Trade, fight, audit the ledger, and keep the Pulse Laser warm. Press H for help anytime.</div>';
-      this._fadeT = 6; // seconds until the panel fades out (handled in update)
+    // Instead of fading out, transition the panel into STORY MODE (P2-14): it now persistently
+    // shows the current story beat objective so the player always knows what to do next. The
+    // panel keeps its slot + styling; only the content source switches from STEPS to STORY_BEATS.
+    this._storyMode = true;
+    this._refreshStory();
+  },
+
+  // Story-mode objective tracker (P2-14). Reuses the onboarding panel slot to persistently show the
+  // current story beat's objective + direction hint. Called once on tutorial finish / save load, and
+  // refreshed each frame in update() so it tracks beatIndex as the player progresses.
+  _ensureStoryPanel() {
+    if (this._panel && this._storyMode) return this._panel;
+    this._injectStyle();
+    this._buildPanel();
+    // Hide the step dots in story mode (they're tutorial-specific); show the objective body only.
+    const steps = this._panel.querySelector('.sf-ob-steps');
+    if (steps) steps.style.display = 'none';
+    const count = this._panel.querySelector('.sf-ob-count');
+    if (count) count.textContent = '';
+    const kicker = this._panel.querySelector('.sf-ob-kicker span');
+    if (kicker) kicker.textContent = 'Story';
+    this._storyMode = true;
+    return this._panel;
+  },
+
+  _refreshStory() {
+    if (!this._storyMode) return;
+    const panel = this._ensureStoryPanel();
+    if (!panel) return;
+    const body = panel.querySelector('.sf-ob-body');
+    if (!body) return;
+    const beat = (this.state.story && this.state.story.beatIndex) || 0;
+    const sb = STORY_BEATS[beat];
+    if (!sb) { body.innerHTML = ''; return; }
+    // The concrete objective (data/missions.js STORY_BEATS) is the actionable "what to do"; the
+    // narrative BEAT_CONTENT.hint is the in-world Captain's Log voice shown as flavor underneath.
+    const content = BEAT_CONTENT[beat];
+    body.innerHTML = '';
+    const titleEl = document.createElement('div');
+    titleEl.className = 'sf-ob-title';
+    titleEl.textContent = sb.objective || '';
+    body.appendChild(titleEl);
+    if (content && content.hint) {
+      const flavorEl = document.createElement('div');
+      flavorEl.className = 'sf-ob-flavor';
+      flavorEl.textContent = content.hint;
+      body.appendChild(flavorEl);
     }
   },
 
@@ -207,6 +339,13 @@ export const onboarding = {
 
     // ── Contextual control bar ───────────────────────────────────────────────────────────
     try { this._updateControlBar(state); } catch (_) { /* non-critical */ }
+
+    // ── Story objective tracker (P2-14) — persists after the tutorial finishes ───────────
+    // Refresh the story panel each frame so it tracks beatIndex. Throttled like the tutorial path.
+    if (this._storyMode && state.mode === 'flight') {
+      this._storyAccum = (this._storyAccum || 0) + dt;
+      if (this._storyAccum >= 0.5) { this._storyAccum = 0; this._refreshStory(); }
+    }
 
     // ── Tutorial chain (only while active) ───────────────────────────────────────────────
     const ob = state.onboarding;
@@ -357,6 +496,8 @@ export const onboarding = {
       text-transform:uppercase; color:var(--accent,#39d0ff); margin-bottom:5px; display:flex; justify-content:space-between; }
     #${PANEL_ID} .sf-ob-title { font-size:14px; color:#eaf4ff; font-weight:600; margin-bottom:5px; }
     #${PANEL_ID} .sf-ob-hint { font-size:12px; line-height:1.45; color:var(--ink-dim,#84a0c8); }
+    #${PANEL_ID} .sf-ob-flavor { font-size:11.5px; line-height:1.45; color:var(--ink-mute,#6b7d99);
+      font-style:italic; margin-top:7px; border-top:1px dashed rgba(132,160,200,.18); padding-top:6px; }
     #${PANEL_ID} .sf-ob-progress { margin-top:7px; font-family:var(--mono,monospace); font-size:11px; color:var(--accent-2,#7af7d0); }
     #${PANEL_ID} .sf-ob-steps { display:flex; gap:5px; margin-top:9px; }
     #${PANEL_ID} .sf-ob-dot { flex:1; height:3px; border-radius:2px; background:rgba(132,160,200,.25); }
@@ -378,8 +519,8 @@ export const onboarding = {
       color:#fff; font-size:14px; letter-spacing:.06em; text-transform:uppercase; padding:9px 22px; border-radius:7px; cursor:pointer;
       box-shadow:0 0 14px rgba(57,208,255,.35); }
     .sf-ob-intro button.sf-ob-go:hover { background:linear-gradient(180deg,#2080cc,#155aa0); }
-    .sf-ob-intro a.sf-ob-skip { color:var(--ink-mute,#4d6a90); font-size:12px; cursor:pointer; text-decoration:underline; }
-    .sf-ob-intro a.sf-ob-skip:hover { color:var(--ink-dim,#84a0c8); }
+    .sf-ob-intro button.sf-ob-skip { color:var(--ink-mute,#4d6a90); font-size:12px; cursor:pointer; text-decoration:underline; background:none; border:none; padding:0; }
+    .sf-ob-intro button.sf-ob-skip:hover { color:var(--ink-dim,#84a0c8); }
     `;
     document.head.appendChild(s);
   },
@@ -405,10 +546,20 @@ export const onboarding = {
     const steps = this._panel.querySelector('.sf-ob-steps');
     if (count) count.textContent = Math.min(idx + 1, STEPS.length) + ' / ' + STEPS.length;
     if (body && curr) {
-      const progress = curr.key === 'mine'
-        ? '<div class="sf-ob-progress">SAMPLE: ' + Math.min((ob.minedUnits || 0), curr.qty || 3) + ' / ' + (curr.qty || 3) + ' u</div>'
-        : '';
-      body.innerHTML = '<div class="sf-ob-title">' + curr.title + '</div><div class="sf-ob-hint">' + curr.hint + '</div>' + progress;
+      body.innerHTML = '';
+      const titleEl = document.createElement('div');
+      titleEl.className = 'sf-ob-title';
+      titleEl.textContent = curr.title || '';
+      const hintEl = document.createElement('div');
+      hintEl.className = 'sf-ob-hint';
+      hintEl.textContent = curr.hint || '';
+      body.append(titleEl, hintEl);
+      if (curr.key === 'mine') {
+        const progressEl = document.createElement('div');
+        progressEl.className = 'sf-ob-progress';
+        progressEl.textContent = 'SAMPLE: ' + Math.min((ob.minedUnits || 0), curr.qty || 3) + ' / ' + (curr.qty || 3) + ' u';
+        body.appendChild(progressEl);
+      }
     }
     if (steps) {
       steps.innerHTML = '';
@@ -430,7 +581,7 @@ export const onboarding = {
       + '<h1>The manifest says one mass. Your instruments say another.</h1>'
       + '<p>Follow the yellow signal, verify the discrepancy, and get back to Helios before the registry decides the shipment never existed.</p>'
       + '<p>The Kestrel carries a Pulse Laser S and a sampling beam. Gray dots are rocks, cyan/green squares are stations, purple rings are gates, red triangles are trouble, and yellow diamonds are cargo or objectives.</p>'
-      + '<div class="sf-ob-row"><a class="sf-ob-skip">Skip tutorial</a><button class="sf-ob-go">Begin →</button></div>';
+      + '<div class="sf-ob-row"><button class="sf-ob-skip" type="button">Skip tutorial</button><button class="sf-ob-go">Begin →</button></div>';
     root.appendChild(el);
     this._intro = el;
     const close = () => { if (this._intro) { this._intro.remove(); this._intro = null; } };

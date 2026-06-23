@@ -44,6 +44,7 @@ export const heat = {
     if (player && typeof player.heat !== 'number') player.heat = 0;
     this._lastHitT = -1e9;
     this._lastEmit = -1;
+    this._burstAccrued = 0;
 
     const bus = this.bus;
 

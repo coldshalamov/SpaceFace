@@ -10,7 +10,7 @@
 // Screens that "pause the sim" (pause / menus) emit sim:pause while at least one such screen
 // is open and sim:resume once none remain. Screen modules implement {id,mount,onShow,onHide,refresh}.
 
-const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'settings', 'saveLoad', 'help', 'drill', 'base']);
+const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base']);
 
 export function createScreenManager(ctx) {
   const { state, bus } = ctx;
@@ -24,6 +24,62 @@ export function createScreenManager(ctx) {
   const stack = state.ui.screenStack;
 
   let pauseEmitted = false;
+
+  // UX-6: focus management. On each push we snapshot the currently-focused element so popScreen can
+  // restore it — keyboard + screen-reader users return to the button that opened the modal instead
+  // of being dropped at the document root. Paired with a focus trap (Tab/Shift-Tab cycle inside the
+  // active screen) so focus can't escape into the inert HUD.
+  const focusStack = [];   // [HTMLElement|null] — the element focused before each push
+  function _focusableInside(root) {
+    if (!root) return [];
+    return Array.from(root.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )).filter((el) => {
+      if (el.disabled) return false;
+      if (el.getAttribute('aria-hidden') === 'true') return false;
+      const t = el.getAttribute('tabindex');
+      if (t != null && Number(t) < 0) return false;
+      // skip elements in a hidden subtree
+      let p = el; while (p && p !== root) { if (p.style && p.style.display === 'none') return false; p = p.parentNode; }
+      return true;
+    });
+  }
+  function _trapKeydown(ev) {
+    if (ev.key !== 'Tab') return;
+    const topId = stack[stack.length - 1];
+    if (!topId) return;
+    const rec = registry.get(topId);
+    if (!rec || !rec.el || rec.el.style.display === 'none') return;
+    const items = _focusableInside(rec.el);
+    if (!items.length) { ev.preventDefault(); return; }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (ev.shiftKey) {
+      if (active === first || !rec.el.contains(active)) { ev.preventDefault(); last.focus(); }
+    } else {
+      if (active === last || !rec.el.contains(active)) { ev.preventDefault(); first.focus(); }
+    }
+  }
+  function _focusFirst() {
+    const topId = stack[stack.length - 1];
+    const rec = topId && registry.get(topId);
+    if (!rec || !rec.el) return;
+    const items = _focusableInside(rec.el);
+    if (items.length) { try { items[0].focus(); } catch (e) {} }
+  }
+  function _restoreFocus(el, visibleRoot) {
+    if (!el || !el.isConnected || typeof el.focus !== 'function') return false;
+    if (visibleRoot && !visibleRoot.contains(el)) return false;
+    try { el.focus(); return document.activeElement === el; } catch (e) { return false; }
+  }
+  function _ensureFocusIn(rec) {
+    if (!rec || !rec.el) return;
+    const active = document.activeElement;
+    if (!active || !rec.el.contains(active)) _focusFirst();
+  }
+  // one document-level trap listener (active whenever a modal is open)
+  document.addEventListener('keydown', _trapKeydown);
 
   function register(def) {
     if (!def || !def.id) throw new Error('screen def needs an id');
@@ -118,6 +174,8 @@ export function createScreenManager(ctx) {
 
   function pushScreen(id) {
     if (!registry.has(id)) { console.warn(`[screenManager] unknown screen "${id}"`); return; }
+    const active = document.activeElement;
+    focusStack.push(active && active !== document.body ? active : null);
     // hide currently-visible top
     const prev = activeDef();
     if (prev && prev.onHide) { try { prev.onHide(); } catch (e) { console.error(e); } }
@@ -126,6 +184,7 @@ export function createScreenManager(ctx) {
     syncVisibility();
     if (rec && rec.def.onShow) { try { rec.def.onShow(ctx); } catch (e) { console.error(e); } }
     if (rec && rec.def.refresh) { try { rec.def.refresh(ctx); } catch (e) { console.error(e); } }
+    _ensureFocusIn(rec);
   }
 
   function popScreen() {
@@ -147,11 +206,20 @@ export function createScreenManager(ctx) {
     }
 
     stack.pop();
+    const restoreTarget = focusStack.pop();
     syncVisibility();
-    if (!stack.length) clearModalFocus();
+    if (!stack.length) {
+      const canRestoreOutsideScreens = restoreTarget && (!screensRoot || !screensRoot.contains(restoreTarget));
+      if (!canRestoreOutsideScreens || !_restoreFocus(restoreTarget, null)) clearModalFocus();
+    }
     const next = activeDef();
     if (next && next.onShow) { try { next.onShow(ctx); } catch (e) { console.error(e); } }
     if (next && next.refresh) { try { next.refresh(ctx); } catch (e) { console.error(e); } }
+    if (stack.length) {
+      const nextId = stack[stack.length - 1];
+      const nextRec = nextId && registry.get(nextId);
+      if (!_restoreFocus(restoreTarget, nextRec && nextRec.el)) _ensureFocusIn(nextRec);
+    }
   }
 
   function replaceScreen(id) {
@@ -159,6 +227,8 @@ export function createScreenManager(ctx) {
       const closing = activeDef();
       if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
       stack.pop();
+      focusStack.pop();
+      clearModalFocus();
     }
     pushScreen(id);
   }
@@ -169,11 +239,13 @@ export function createScreenManager(ctx) {
       if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
       stack.pop();
     }
+    focusStack.length = 0;
     syncVisibility();
     clearModalFocus();
   }
 
   function isOpen() { return stack.length > 0; }
+  function hasScreen(id) { return registry.has(id); }
   function getActiveScreenDef() { return activeDef(); }
   function refreshTop() { const d = activeDef(); if (d && d.refresh) { try { d.refresh(ctx); } catch (e) { console.error(e); } } }
   function locked() {
@@ -189,6 +261,6 @@ export function createScreenManager(ctx) {
 
   return {
     register, pushScreen, popScreen, replaceScreen, closeAll,
-    isOpen, top, getActiveScreenDef, refreshTop, syncVisibility, locked,
+    isOpen, hasScreen, top, getActiveScreenDef, refreshTop, syncVisibility, locked,
   };
 }

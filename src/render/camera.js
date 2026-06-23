@@ -114,6 +114,14 @@ export function createChaseCamera(state) {
   // image spins in-plane without changing where the camera points.
   const _rollQ = new THREE.Quaternion();
   const _FORWARD = new THREE.Vector3(0, 0, -1);
+  // GR-6: rotational shake. Translational shake alone reads as a float; adding a small angular jitter
+  // (roll + pitch about the camera's local axes) gives trauma real impact. Scaled by trauma² so it's
+  // imperceptible at low trauma and punchy near death. Pitch (about local X) is the most visceral.
+  const SHAKE_ROT_ROLL = 0.045;  // rad (~2.6°) max roll from shake
+  const SHAKE_ROT_PITCH = 0.030; // rad (~1.7°) max pitch from shake
+  const _shakeRollQ = new THREE.Quaternion();
+  const _shakePitchQ = new THREE.Quaternion();
+  const _camRight = new THREE.Vector3(1, 0, 0);
 
   // dynamic zoom — smoothly adapts camera distance to gameplay context
   let _dynamicZoom = c.zoom;
@@ -203,10 +211,16 @@ export function createChaseCamera(state) {
       }
       _dynamicZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, dt);
       computeOffset(_dynamicZoom);
+      let shakeRoll = 0;
+      let shakePitch = 0;
       if (c.trauma > 0) {
         c.trauma = Math.max(0, c.trauma - 1.6 * dt);
         const t2 = c.trauma * c.trauma;
         c.shakeOffset.set((Math.random() * 2 - 1) * 2.2 * t2, 0, (Math.random() * 2 - 1) * 2.2 * t2);
+        // GR-6: angular shake — roll + pitch jitter, trauma²-scaled. Sampled once per frame from
+        // trauma so it stays coherent with the translational shake rather than vibrating independently.
+        shakeRoll = (Math.random() * 2 - 1) * SHAKE_ROT_ROLL * t2;
+        shakePitch = (Math.random() * 2 - 1) * SHAKE_ROT_PITCH * t2;
       } else {
         c.shakeOffset.set(0, 0, 0);
       }
@@ -219,6 +233,10 @@ export function createChaseCamera(state) {
       camRoll = damp(camRoll, targetRoll, ROLL_LERP, dt);
       _rollQ.setFromAxisAngle(_FORWARD, camRoll);
       cam.quaternion.multiply(_rollQ);
+      // GR-6: apply rotational shake after the bank roll. Post-multiplying local-axis quats keeps the
+      // shake in the camera's frame (spins the image, never drags the heading).
+      if (shakeRoll) { _shakeRollQ.setFromAxisAngle(_FORWARD, shakeRoll); cam.quaternion.multiply(_shakeRollQ); }
+      if (shakePitch) { _shakePitchQ.setFromAxisAngle(_camRight, shakePitch); cam.quaternion.multiply(_shakePitchQ); }
     },
     onResize() {
       cam.aspect = window.innerWidth / window.innerHeight;

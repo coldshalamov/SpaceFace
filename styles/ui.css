@@ -3,7 +3,7 @@
 :root {
   --bg: #05070d;
   --panel: #0b1220; --panel-2: #111d30; --panel-edge: #1d3350; --panel-edge-2: #2b4a72;
-  --ink: #d3e6ff; --ink-dim: #84a0c8; --ink-mute: #4d6a90;
+  --ink: #d3e6ff; --ink-dim: #84a0c8; --ink-mute: #5a7aa0;
   --accent: #39d0ff; --accent-2: #7af7d0; --accent-3: #c08bff;
   --warn: #ffb347; --danger: #ff5470; --good: #62e08a;
   --hull: #ff5470; --shield: #39d0ff; --energy: #ffd84a; --cargo: #7af7d0;
@@ -347,3 +347,10 @@ body.low-hull #vignette {
 *::-webkit-scrollbar-track { background: rgba(5,9,18,.4); }
 *::-webkit-scrollbar-thumb { background: var(--panel-edge-2); border-radius: var(--r-pill); }
 *::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* Screen-reader-only live-region text (still announced, never visually shown). */
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+/* Contrast safety: caption + control hints over bright raw nebulae. */
+#hud .sf-caption { text-shadow:0 1px 5px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.7) !important; }
+#control-hints { text-shadow:0 1px 5px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.7); background:rgba(6,10,20,.72); }

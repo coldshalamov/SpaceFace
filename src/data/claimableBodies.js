@@ -13,29 +13,37 @@
 //     a teleporter first?).
 
 // Module types buildable on a claimed body. Each is a passive provider when staffed/powered.
+// techReq gates map onto the REAL tech tree (src/data/tech.js) — a body module is buildable only
+// after the player has researched the corresponding node. (Previously these referenced three tech_
+// IDs that did not exist in the tree, making every module permanently unbuildable.)
+//   - Depot / Defense Battery → tech_outpost_charter (the logistics capstone that already grants
+//     outpostConstruction:true; gating base structures on the "you may build outposts" node).
+//   - On-Site Refinery        → tech_deep_core_mining (the industry capstone for serious refining).
+//   - Quantum Teleporter      → tech_graviton_drives (the drives capstone; "rewrites the map"
+//     thematically matches the drive tier that makes collapsed lanes trivial).
 export const BODY_MODULES = [
   {
     id: 'mod_depot', name: 'Cargo Depot', desc: 'A dropoff point for your drones. Drones assigned a depot template route here. Stores overflow ore.',
-    cost: 4500, techReq: 'tech_outpost_construction',
+    cost: 4500, techReq: 'tech_outpost_charter',
     slots: 1,
     effect: 'depot', // a MOVE beacon named 'depot' resolves here when built
   },
   {
     id: 'mod_refinery', name: 'On-Site Refinery', desc: 'Auto-refines raw ore into materials at a fixed rate, no station visit needed. Lighter, dearer goods to ship.',
-    cost: 12000, techReq: 'tech_refining_2',
+    cost: 12000, techReq: 'tech_deep_core_mining',
     slots: 1,
     effect: 'refine', // ticks: converts ore -> refined commodity at a rate
     refineRate: 0.5,  // ore-units/sec
   },
   {
     id: 'mod_teleporter', name: 'Quantum Teleporter', desc: 'Links this body to a chosen station. Collapses your worst lane to a single jump — classic automation that rewrites the map.',
-    cost: 45000, techReq: 'tech_quantum_link',
+    cost: 45000, techReq: 'tech_graviton_drives',
     slots: 1,
     effect: 'teleport', // enables instant travel between body and linked station
   },
   {
     id: 'mod_defense', name: 'Defense Battery', desc: 'Automated turret that protects the body from raids. Required on dangerous frontier claims.',
-    cost: 8000, techReq: 'tech_outpost_construction',
+    cost: 8000, techReq: 'tech_outpost_charter',
     slots: 1,
     effect: 'defense',
     defenseRating: 40, // reduces the body's intervention/raid risk

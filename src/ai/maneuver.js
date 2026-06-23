@@ -168,8 +168,10 @@ function desiredForIntent(intent, self, target, contacts, seed, entityId, config
   switch (intent.kind) {
     case ManeuverKind.INTERCEPT:
       return target ? intercept(self, target, config.interceptHorizonTicks) : seekPoint(self, intent.formationSlot, 0.7);
-    case ManeuverKind.ORBIT:
-      return target ? orbit(self, target, intent.preferredRange || config.orbitRadius, seed, entityId) : seekPoint(self, intent.formationSlot, 0.7);
+    case ManeuverKind.ORBIT: {
+      const orbitRadius = Math.max(1, Number.isFinite(intent.preferredRange) ? intent.preferredRange : config.orbitRadius);
+      return target ? orbit(self, target, orbitRadius, seed, entityId) : seekPoint(self, intent.formationSlot, 0.7);
+    }
     case ManeuverKind.SCREEN:
       return screen(self, target, intent.formationSlot);
     case ManeuverKind.APPROACH_SOCKET:

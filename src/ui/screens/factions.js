@@ -4,6 +4,7 @@
 // NEW_GAME starting reps and FACTION_META when state.factions hasn't been populated yet (stub).
 import { FACTION_META } from '../../data/factions.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { escapeHtml } from '../comms.js';
 
 // 9 tiers over -1000..1000. Thresholds are the lower bound of each tier.
 const TIERS = [
@@ -51,14 +52,14 @@ export function createFactionsPanel(ctx) {
       row.innerHTML =
         '<div class="st-fac-head">' +
           '<span class="st-fac-dot" style="background:' + (meta.color || '#888') + '"></span>' +
-          '<span class="st-fac-name">' + meta.name + '</span>' +
+          '<span class="st-fac-name">' + escapeHtml(meta.name) + '</span>' +
           '<span class="st-fac-tier st-fac-' + tier.cls + '">' + tier.name + '</span>' +
           '<span class="st-fac-val mono">' + (rep > 0 ? '+' : '') + rep + '</span>' +
         '</div>' +
         '<div class="st-fac-bar"><div class="st-fac-bar-mid"></div>' +
           '<div class="st-fac-bar-fill st-fac-' + tier.cls + '" style="transform:scaleX(' + fill.toFixed(3) + ')"></div>' +
         '</div>' +
-        '<div class="st-fac-ctrl mono">' + (meta.controls || []).join(' · ') + '</div>';
+        '<div class="st-fac-ctrl mono">' + escapeHtml((meta.controls || []).join(' · ')) + '</div>';
       frag.appendChild(row);
     }
     list.textContent = '';

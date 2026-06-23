@@ -10,11 +10,13 @@ import { aiEncounter } from '../systems/aiEncounter.js';
 import { actions } from '../systems/actions.js';
 import { flight } from '../systems/flight.js';
 import { weapons } from '../systems/weapons.js';
+import { countermeasures } from '../systems/countermeasures.js';
 import { combat } from '../systems/combat.js';
 import { mining } from '../systems/mining.js';
 import { cargo } from '../systems/cargo.js';
 import { economy } from '../systems/economy.js';
 import { automation } from '../systems/automation.js';
+import { wingmen } from '../systems/wingmen.js';
 import { world } from '../systems/world.js';
 import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';   // ADR-0002 / V2 §33 — offscreen stat sim
@@ -43,8 +45,8 @@ export function createRegistry(ctx) {
   const aiSlot = selectAISystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flight, weapons, combat, mining, cargo, economy,
-    automation, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
+    core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flight, weapons, countermeasures, combat, mining, cargo, economy,
+    automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -64,7 +66,7 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, aiSlot, aiEncounter, actions, flight, aiPorts, weapons, physics, combat, mining, cargo, crafting,
+    input, aiSlot, aiEncounter, actions, flight, aiPorts, weapons, countermeasures, physics, combat, mining, cargo, automation, wingmen, crafting,
     economy, automation, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));

@@ -12,10 +12,12 @@
 // WHY "after the draw, once per frame" is load-bearing:
 //   renderer.info.render.{calls,triangles,points,lines} are PER-render() counters. By default
 //   info.autoReset === true, so they zero at the START of every renderer.render() call. The bloom
-//   path (bloom.js) issues FIVE render() calls per frame (scene + 4 fullscreen blits), so a naive
-//   read would see only the LAST pass (~1 draw call) instead of the true frame total. installDiagnostics
-//   sets renderer.info.autoReset = false and update() calls renderer.info.reset() at the END of each
-//   sample, so calls/triangles ACCUMULATE across every pass of the frame and reflect the real total.
+//   path (bloom.js) issues several render() calls per frame — one scene render plus a pyramid of
+//   fullscreen downsample/upsample blits — so a naive read would see only the LAST pass (~1 draw
+//   call) instead of the true frame total. installDiagnostics sets renderer.info.autoReset = false
+//   and update() calls renderer.info.reset() at the END of each sample, so calls/triangles
+//   ACCUMULATE across every pass of the frame and reflect the real total. The mechanism is
+//   pass-count-agnostic: whatever the pyramid depth, the totals stay correct.
 //   The contract: update() MUST be called exactly once per frame (after the draw). Skipping it makes
 //   info.render.* over-accumulate; calling it twice halves the reported counts.
 //

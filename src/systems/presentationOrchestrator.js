@@ -39,6 +39,13 @@ export const presentationOrchestrator = {
         targetId: payload && payload.targetId,
         material: 'massline',
       })),
+      this.bus.on('tether:nearBreak', (payload) => this._emitCue('tether.near_break', payload || {}, {
+        sourceEvent: 'tether:nearBreak',
+        sourceId: payload && payload.actorId,
+        targetId: payload && payload.targetId,
+        material: 'massline',
+        magnitude: Math.max(1, Number(payload && payload.tension) || 0, Number(payload && payload.impulse) || 0),
+      })),
       this.bus.on('tether:broken', (payload) => this._emitCue('tether.break', payload || {}, {
         sourceEvent: 'tether:broken',
         sourceId: payload && payload.actorId,

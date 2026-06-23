@@ -251,7 +251,7 @@ function compileBlueprint(url, gltf, expectedSlot) {
 
   const errors = [];
   const warnings = [];
-  const metadata = readAssetMetadata(gltf, scene);
+  const metadata = readAssetMetadata(gltf, scene, expectedSlot);
   validateAssetMetadata(metadata, expectedSlot, errors);
 
   if (gltf.animations && gltf.animations.length) {
@@ -267,7 +267,7 @@ function compileBlueprint(url, gltf, expectedSlot) {
 
   scene.traverse((node) => {
     if (node === scene) return;
-    const tags = collectTags(node, scene);
+    const tags = collectTags(node, scene, metadata.slot, metadata.legacyPart === true);
     if (tags.tint && !ASSET_AUTHORING_CONTRACT.tintRoles.includes(String(tags.tint).toLowerCase())) {
       errors.push(`${label(node)} declares unknown tint role "${tags.tint}"`);
     }
@@ -279,7 +279,7 @@ function compileBlueprint(url, gltf, expectedSlot) {
       errors.push(`${label(node)} socket forward must be a finite non-zero [x,y,z] vector`);
     }
     const normalizedName = String(node.name || '').toUpperCase().replace(/[\s-]+/g, '_');
-    if (normalizedName.startsWith('HOOK_') && !tags.drive && !tags.damageRole) {
+    if (normalizedName.startsWith('HOOK_') && !tags.drive && !tags.damageRole && metadata.legacyPart !== true) {
       errors.push(`${label(node)} uses an unknown HOOK_* name`);
     }
 
@@ -317,13 +317,13 @@ function compileBlueprint(url, gltf, expectedSlot) {
         geometry: node.geometry,
         material,
         matrix: _relative.clone(),
-        tags: Object.freeze({ ...tags, canopy }),
+        tags: Object.freeze({ ...tags, lod: tags.lod || (metadata.legacyPart === true ? 'lod0' : undefined), canopy }),
       }));
     } else if (isContractMarker(node, tags)) {
       markers.push(Object.freeze({
         name: node.name || `Marker_${markers.length}`,
         matrix: _relative.clone(),
-        tags: Object.freeze(tags),
+        tags: Object.freeze({ ...tags, lod: tags.lod || (metadata.legacyPart === true ? 'lod0' : undefined) }),
         userData: Object.freeze({ ...node.userData }),
       }));
     }
@@ -336,7 +336,7 @@ function compileBlueprint(url, gltf, expectedSlot) {
     }
   }
 
-  validateHookSurface(expectedSlot || metadata.slot, primitives, markers, errors);
+  validateHookSurface(expectedSlot || metadata.slot, primitives, markers, errors, { legacyPart: metadata.legacyPart === true });
 
   _bounds.setFromObject(scene);
   _bounds.getSize(_boundsSize);
@@ -393,14 +393,63 @@ function validateRootTransform(scene, errors) {
   }
 }
 
-function readAssetMetadata(gltf, scene) {
+function readAssetMetadata(gltf, scene, expectedSlot) {
   const sources = [
     scene.userData && scene.userData.spacefaceAsset,
     scene.userData && scene.userData.spaceface,
     gltf.userData && gltf.userData.spacefaceAsset,
     gltf.asset && gltf.asset.extras && (gltf.asset.extras.spacefaceAsset || gltf.asset.extras.spaceface),
+    gltf.asset && gltf.asset.extras,
+    gltf.parser && gltf.parser.json && gltf.parser.json.asset && gltf.parser.json.asset.extras
+      && (gltf.parser.json.asset.extras.spacefaceAsset || gltf.parser.json.asset.extras.spaceface),
+    gltf.parser && gltf.parser.json && gltf.parser.json.asset && gltf.parser.json.asset.extras,
   ];
-  return { ...(sources.find((v) => v && typeof v === 'object') || {}) };
+  const raw = { ...(sources.find((v) => v && typeof v === 'object') || {}) };
+  return normalizeAssetMetadata(raw, gltf, expectedSlot);
+}
+
+function normalizeAssetMetadata(raw, gltf, expectedSlot) {
+  const meta = { ...(raw || {}) };
+  if (meta.contractVersion === ASSET_AUTHORING_CONTRACT.version && meta.slot) return meta;
+
+  const slot = expectedSlot || meta.slot || slotFromCategory(meta.category);
+  if (!slot || !meta.assetId) return meta;
+  const forward = meta.forward || meta.forwardAxis;
+  const up = meta.up || meta.upAxis;
+  const starboard = meta.starboard || meta.starboardAxis;
+  const unit = meta.unit || (meta.metresPerUnit === 1 || meta.metersPerUnit === 1 ? 'metre' : null);
+  if (forward !== '+X' || up !== '+Y' || starboard !== '+Z' || !(unit === 'metre' || unit === 'meter')) return meta;
+
+  return {
+    ...meta,
+    contractVersion: ASSET_AUTHORING_CONTRACT.version,
+    slot,
+    forward,
+    up,
+    starboard,
+    unit,
+    normalConvention: meta.normalConvention || 'OpenGL',
+    ormChannels: meta.ormChannels || 'R=AO,G=Roughness,B=Metallic',
+    textureCompression: meta.textureCompression || inferTextureCompression(gltf),
+    chamfered: meta.chamfered !== false,
+    legacyPart: true,
+  };
+}
+
+function slotFromCategory(category) {
+  const value = String(category || '').toLowerCase();
+  if (value === 'hulls') return 'hull';
+  if (value === 'cockpits') return 'cockpit';
+  if (value === 'engines') return 'engine';
+  if (value === 'fins') return 'fin';
+  return null;
+}
+
+function inferTextureCompression(gltf) {
+  const images = gltf && gltf.parser && gltf.parser.json && gltf.parser.json.images || [];
+  if (images.length && images.every((image) => image && image.mimeType === 'image/ktx2')) return 'KTX2/BasisU';
+  if (images.length && images.every((image) => image && (!image.mimeType || image.mimeType === 'image/png'))) return 'PNG-source';
+  return '';
 }
 
 function validateAssetMetadata(meta, expectedSlot, errors) {
@@ -428,8 +477,9 @@ function validateAssetMetadata(meta, expectedSlot, errors) {
   if (normalizeToken(meta.ormChannels) !== 'r=ao,g=roughness,b=metallic') {
     errors.push('spacefaceAsset.ormChannels must be "R=AO,G=Roughness,B=Metallic"');
   }
-  if (normalizeToken(meta.textureCompression) !== 'ktx2/basisu') {
-    errors.push('spacefaceAsset.textureCompression must be "KTX2/BasisU"');
+  const compression = normalizeToken(meta.textureCompression);
+  if (compression !== 'ktx2/basisu' && compression !== 'png-source') {
+    errors.push('spacefaceAsset.textureCompression must be "KTX2/BasisU" or "PNG-source"');
   }
 }
 
@@ -481,8 +531,8 @@ function validatePrimitive(node, material, canopy, gltf, metadata, errors, warni
     } else if (size.width < 1024 || size.height < 1024 || size.width > 2048 || size.height > 2048) {
       errors.push(`${prefix} ${role} texture must be 1K–2K; got ${size.width}x${size.height}`);
     }
-    if (!isKtx2Texture(texture, gltf, metadata)) {
-      errors.push(`${prefix} ${role} texture is not KTX2/BasisU (KHR_texture_basisu)`);
+    if (!isSupportedPartTexture(texture, gltf, metadata)) {
+      errors.push(`${prefix} ${role} texture does not match declared compression pipeline`);
     }
   }
 
@@ -496,7 +546,8 @@ function validatePrimitive(node, material, canopy, gltf, metadata, errors, warni
   }
 }
 
-function validateHookSurface(slot, primitives, markers, errors) {
+function validateHookSurface(slot, primitives, markers, errors, options = {}) {
+  const legacyPart = options.legacyPart === true;
   // Render hooks must resolve to renderable primitives. Empty marker nodes are valid sockets, but an
   // empty HOOK_DRIVE_* marker would leave shipKit with nothing to animate or damage.
   if (!primitives.some((entry) => entry.tags.lod === 'lod0')) {
@@ -505,7 +556,7 @@ function validateHookSurface(slot, primitives, markers, errors) {
   if (slot === 'engine') {
     for (const role of ['fan', 'core', 'plume']) {
       const count = primitives.filter((entry) => entry.tags.drive === role).length;
-      if (count !== 1) {
+      if (count !== 1 && !legacyPart) {
         errors.push(`engine mesh must expose exactly one HOOK_DRIVE_${role.toUpperCase()}; found ${count}`);
       }
     }
@@ -538,16 +589,16 @@ function validateHookSurface(slot, primitives, markers, errors) {
   }
 }
 
-function collectTags(node, scene) {
+function collectTags(node, scene, slot, legacyPart) {
   const chain = [];
   for (let current = node; current && current !== scene; current = current.parent) chain.push(current);
   const tags = {};
-  for (let i = chain.length - 1; i >= 0; i--) applyNodeTags(tags, chain[i]);
+  for (let i = chain.length - 1; i >= 0; i--) applyNodeTags(tags, chain[i], slot, legacyPart);
 
   // Sockets and assembly mounts describe one transform, not a subtree. Keep render-state tags
   // inheritable, but require these marker tags to be declared on the marker node itself.
   const local = {};
-  applyNodeTags(local, node);
+  applyNodeTags(local, node, slot, legacyPart);
   for (const key of ['socket', 'socketRole', 'socketForward', 'mount', 'mountKey']) {
     if (Object.hasOwn(local, key)) tags[key] = local[key];
     else delete tags[key];
@@ -555,7 +606,7 @@ function collectTags(node, scene) {
   return tags;
 }
 
-function applyNodeTags(tags, node) {
+function applyNodeTags(tags, node, slot, legacyPart) {
   const data = node.userData || {};
   const sf = data.spaceface && typeof data.spaceface === 'object' ? data.spaceface : {};
   const name = String(node.name || '').toUpperCase().replace(/[\s-]+/g, '_');
@@ -574,6 +625,11 @@ function applyNodeTags(tags, node) {
   if (name.includes('HOOK_DRIVE_FAN')) tags.drive = 'fan';
   if (name.includes('HOOK_DRIVE_CORE')) tags.drive = 'core';
   if (name.includes('HOOK_DRIVE_PLUME')) tags.drive = 'plume';
+  if (legacyPart && slot === 'engine') {
+    if (name.includes('HOOK_SPIN') || name.includes('FAN')) tags.drive = 'fan';
+    if (name.includes('ENGINE_CORE') || name.includes('DRIVE_CORE')) tags.drive = 'core';
+    if (name.includes('HOOK_EMISSIVE') || name.includes('NOZZLE') || name.includes('PLUME')) tags.drive = 'plume';
+  }
   if (name.includes('HOOK_NAV_') || name.includes('HOOK_NAVLIGHT')) tags.damageRole = 'navLight';
   if (name.includes('HOOK_SENSOR_')) tags.damageRole = 'sensor';
   if (name.includes('HOOK_ARMOR_')) tags.damageRole = 'armor';
@@ -693,6 +749,23 @@ function textureSize(texture) {
 
 function isKtx2Texture(texture, gltf, metadata) {
   if (!texture || normalizeToken(metadata && metadata.textureCompression) !== 'ktx2/basisu') return false;
+  const definition = textureDefinition(texture, gltf);
+  return !!(definition && definition.extensions && definition.extensions.KHR_texture_basisu);
+}
+
+function isPngTexture(texture, gltf, metadata) {
+  if (!texture || normalizeToken(metadata && metadata.textureCompression) !== 'png-source') return false;
+  const definition = textureDefinition(texture, gltf);
+  const parser = gltf && gltf.parser;
+  const image = definition && parser && parser.json && parser.json.images && parser.json.images[definition.source];
+  return !!(image && (!image.mimeType || image.mimeType === 'image/png'));
+}
+
+function isSupportedPartTexture(texture, gltf, metadata) {
+  return isKtx2Texture(texture, gltf, metadata) || isPngTexture(texture, gltf, metadata);
+}
+
+function textureDefinition(texture, gltf) {
   const parser = gltf && gltf.parser;
   if (!parser || !parser.associations || !parser.json || !parser.json.textures) return false;
 
@@ -710,8 +783,7 @@ function isKtx2Texture(texture, gltf, metadata) {
     }
   }
   const textureIndex = association && Number.isInteger(association.textures) ? association.textures : null;
-  const definition = textureIndex != null ? parser.json.textures[textureIndex] : null;
-  return !!(definition && definition.extensions && definition.extensions.KHR_texture_basisu);
+  return textureIndex != null ? parser.json.textures[textureIndex] : null;
 }
 
 function normalizeToken(value) {

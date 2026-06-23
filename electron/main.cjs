@@ -10,7 +10,13 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.join(__dirname, '..');
+// WEB ROOT: the bundled release ships minified, tree-shoken output in build/web/ (produced by
+// `npm run build:bundle` / `npm run dist`). When that exists, serve IT (smaller, faster, no raw
+// source shipped). When it doesn't (dev: `npm run electron` without a build), fall back to the
+// project root so the raw ES modules + importmap load as in a browser — the zero-build dev path.
+const PROJECT_ROOT = path.join(__dirname, '..');
+const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
+const ROOT = fs.existsSync(path.join(BUNDLE_ROOT, 'index.html')) ? BUNDLE_ROOT : PROJECT_ROOT;
 // Dedicated fixed port for the packaged app (distinct from the dev server's 8123 so both can run).
 const PORT = 41788;
 const MIME = {

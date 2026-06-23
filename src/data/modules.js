@@ -105,4 +105,18 @@ export const MODULES = [
     id: 'mod_jump_drive_m', name: 'Jump Drive T2 M', slotType: 'utility', size: 'M', tier: 2, mass: 6, price: 26000, requiresTech: 'tech_drive_tuning',
     energyDraw: 2, mods: { jumpDriveTier: 2 },
   },
+  // Countermeasures (P1-7): chaff breaks missile locks + diverts in-flight missiles to a decoy
+  // cloud; ECM jams homing guidance (turnRate → 0) for a duration. Both use the utility slot, are
+  // cooldown-gated (not consumable ammo — keeps the loop simple), and give missiles real counterplay
+  // beyond pure dodging. Triggered by the player (keybind) + auto-deployed by AI ships that equip one.
+  {
+    id: 'mod_chaff_dispenser_m', name: 'Chaff Dispenser M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 14000, requiresTech: 'tech_deflector_theory',
+    energyDraw: 1,
+    mods: { countermeasure: { kind: 'chaff', radius: 380, durationS: 3.5, cooldownS: 8, lockBreakPct: 1.0, divertPct: 0.85 } },
+  },
+  {
+    id: 'mod_ecm_jammer_l', name: 'ECM Jammer L', slotType: 'utility', size: 'L', tier: 4, mass: 10, price: 62000, requiresTech: 'tech_fire_control',
+    energyDraw: 6,
+    mods: { countermeasure: { kind: 'ecm', radius: 520, durationS: 4.0, cooldownS: 12, lockBreakPct: 0.6, turnRateMult: 0.0 } },
+  },
 ];

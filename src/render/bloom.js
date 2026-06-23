@@ -1,12 +1,19 @@
-// Self-contained single-pass bloom post-processor (ARCHITECTURE §2.4 draw pipeline, design/specs/10).
+// Self-contained bloom post-processor with a downsample/upsample mip pyramid (ARCHITECTURE §2.4
+// draw pipeline, design/specs/10). GR-1: the single half-res separable blur is replaced by a
+// progressive downsample chain (full→½→¼→⅛) followed by an additive upsample chain back to ½. Each
+// pyramid level contributes low-frequency glow, so the final bloom buffer carries a smooth, wide
+// intensity falloff — bright things *radiate* instead of producing a tight local glow.
 //
 // Pipeline (all custom ShaderMaterials on ONE shared fullscreen quad; NO three/addons, NO
 // EffectComposer/FullScreenQuad):
-//   pass 0  scene        -> rtScene        (renderer.render at full res, HalfFloat so emissive
+//   pass 0  scene       rtScene            (renderer.render at full res, HalfFloat so emissive
 //                                           additive brights can exceed 1.0)
-//   pass 1  bright+blur H rtScene -> rtBlurA    (same threshold/knee + horizontal gaussian, HALF res)
-//   pass 2  blur V        rtBlurA  -> rtBlurB   (separable gaussian, 5-tap, HALF res)
-//   pass 3  composite     rtScene + strength*rtBlurB -> default framebuffer (sRGB-encoded)
+//   pass 1  bright+down rtScene   -> down[0] (½)   bright-pass + 13-tap 2D downsample
+//   pass 2  downsample  down[0]   -> down[1] (¼)   13-tap 2D downsample
+//   pass 3  downsample  down[1]   -> down[2] (⅛)   13-tap 2D downsample  [dropped if halfW < 320]
+//   pass 4  upsample    down[2]+down[1] -> up (¼)  13-tap upsample, ADDITIVE over the finer level
+//   pass 5  upsample    up+down[0]      -> up (½)  13-tap upsample, ADDITIVE
+//   pass 6  composite   rtScene + strength*up -> default framebuffer (sRGB-encoded)
 //
 // COLOR-MANAGEMENT INVARIANT (the thing that makes this provably correct):
 //   At bloomStrength == 0 the composite output is pixel-identical to a plain
@@ -24,9 +31,9 @@
 //   composite shader (sample scene+bloom, tonemap, THEN sRGB-encode). Until then, composite = add +
 //   encode, which is exactly what preserves the strength==0 == plain-render invariant.
 //
-// Cost: scene render + 3 cheap fullscreen quads, blur targets at half-res. Cheap enough for the
-// 60fps target. createBloom() is a drop-in replacement for renderer.render — the render layer calls
-// bloom.render(scene, camera) instead.
+// Cost: scene render + a handful of cheap fullscreen quads; the deepest pyramid levels are tiny (⅛-res
+// blits are ~16px taps), so the wide halo costs little over the old single-blur. createBloom() is a
+// drop-in replacement for renderer.render — the render layer calls bloom.render(scene, camera) instead.
 import * as THREE from 'three';
 
 // --- GLSL (inlined as strings; no external shader files) -------------------------------------
@@ -40,19 +47,21 @@ const QUAD_VERT = /* glsl */`
   }
 `;
 
-// Fused bright extraction + horizontal blur. This removes the old rtBright pass while preserving the
-// same threshold/knee math per blur tap.
-const BLUR_EXTRACT_H_FRAG = /* glsl */`
+// GR-1: 5-tap bilinear-gather downsample. On pyramid level 0 (full→½) the bright-pass threshold/knee
+// is applied per tap via uBright=1.0; deeper levels pass through (uBright=0.0). One parametric shader
+// serves every level. The center + 4 corners pattern (a cross-box hybrid) approximates a wider gaussian
+// than a plain 2×2 box while staying one cheap fragment pass per level.
+const DOWNSAMPLE_FRAG = /* glsl */`
   precision highp float;
   varying vec2 vUv;
   uniform sampler2D tDiffuse;
-  uniform vec2 uTexel;
+  uniform vec2 uTexel;     // 1.0 / source resolution (full for level 0, ½ for level 1, …)
   uniform float uThreshold;
   uniform float uKnee;
+  uniform float uBright;   // 1.0 = apply bright-pass (level 0 only), 0.0 = passthrough
 
-  vec3 bright(vec2 uv) {
-    vec3 c = texture2D(tDiffuse, uv).rgb;
-    c = max(c, vec3(0.0)); // guard against negative/NaN leaking into the blur
+  vec3 brightPass(vec3 c) {
+    c = max(c, vec3(0.0)); // guard against negative/NaN leaking into the pyramid
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     // soft-knee bright extract: 0 below (threshold-knee), smooth ramp, full above threshold
     float soft = smoothstep(uThreshold - uKnee, uThreshold + uKnee, l);
@@ -61,42 +70,54 @@ const BLUR_EXTRACT_H_FRAG = /* glsl */`
     return c * scale;
   }
 
+  // Sample and (optionally) bright-pass in one step so the deepest taps are already thresholded.
+  vec3 tap(vec2 uv) {
+    vec3 c = texture2D(tDiffuse, uv).rgb;
+    return uBright > 0.5 ? brightPass(c) : max(c, vec3(0.0));
+  }
+
   void main() {
-    const float w0 = 0.402620;
-    const float w1 = 0.244201;
-    const float w2 = 0.054489;
-    vec2 o1 = uTexel * vec2(1.0, 0.0);
-    vec2 o2 = uTexel * vec2(2.0, 0.0);
-    vec3 sum = bright(vUv) * w0;
-    sum += bright(vUv + o1) * w1;
-    sum += bright(vUv - o1) * w1;
-    sum += bright(vUv + o2) * w2;
-    sum += bright(vUv - o2) * w2;
+    // 5-tap cross + corners, gathered with bilinear-friendly offsets. x/y use the SOURCE texel size so
+    // the footprint shrinks correctly at each pyramid level.
+    vec2 t = uTexel;
+    vec2 tl = vec2(-1.0, -1.0) * t;
+    vec2 tr = vec2( 1.0, -1.0) * t;
+    vec2 bl = vec2(-1.0,  1.0) * t;
+    vec2 br = vec2( 1.0,  1.0) * t;
+    vec3 sum  = tap(vUv)            * (4.0 / 8.0);
+    sum += tap(vUv + tl)            * (1.0 / 8.0);
+    sum += tap(vUv + tr)            * (1.0 / 8.0);
+    sum += tap(vUv + bl)            * (1.0 / 8.0);
+    sum += tap(vUv + br)            * (1.0 / 8.0);
     gl_FragColor = vec4(sum, 1.0);
   }
 `;
 
-// Separable gaussian blur, 5 taps (centre + 2 each side). uDir selects horizontal/vertical; uTexel
-// is 1/size of the (half-res) source so one material serves both directions.
-const BLUR_FRAG = /* glsl */`
+// GR-1: 5-tap upsample, bilinear-interpolating the COARSER level and ADDING it onto the finer down
+// level. uTexel is 1.0 / finer-level resolution; uCoarse is the coarser source; uFine is the matching
+// finer down level. The additive blend is what spreads the low-frequency glow wide — each upsample
+// step carries the soft halo of everything below it up toward half-res.
+const UPSAMPLE_FRAG = /* glsl */`
   precision highp float;
   varying vec2 vUv;
-  uniform sampler2D tDiffuse;
-  uniform vec2 uTexel;
-  uniform vec2 uDir;
+  uniform sampler2D tCoarse;   // the level one step deeper in the pyramid (bigger pixels)
+  uniform sampler2D tFine;     // the matching finer down level (to add onto)
+  uniform vec2 uTexel;         // 1.0 / FINER resolution
+  uniform float uWeight;       // how much of the coarse-upsampled glow to add (0..1)
+
   void main() {
-    // weights for sigma ~2px, normalized: centre + 2 symmetric taps
-    const float w0 = 0.402620;
-    const float w1 = 0.244201;
-    const float w2 = 0.054489;
-    vec2 o1 = uTexel * uDir * 1.0;
-    vec2 o2 = uTexel * uDir * 2.0;
-    vec3 sum = texture2D(tDiffuse, vUv).rgb * w0;
-    sum += texture2D(tDiffuse, vUv + o1).rgb * w1;
-    sum += texture2D(tDiffuse, vUv - o1).rgb * w1;
-    sum += texture2D(tDiffuse, vUv + o2).rgb * w2;
-    sum += texture2D(tDiffuse, vUv - o2).rgb * w2;
-    gl_FragColor = vec4(sum, 1.0);
+    // 5-tap bilinear gather of the coarse level, spread by the finer texel size.
+    vec2 t = uTexel;
+    vec3 up  = texture2D(tCoarse, vUv).rgb;
+    vec3 upL = texture2D(tCoarse, vUv + vec2(-1.0,  0.0) * t).rgb;
+    vec3 upR = texture2D(tCoarse, vUv + vec2( 1.0,  0.0) * t).rgb;
+    vec3 upD = texture2D(tCoarse, vUv + vec2( 0.0, -1.0) * t).rgb;
+    vec3 upU = texture2D(tCoarse, vUv + vec2( 0.0,  1.0) * t).rgb;
+    vec3 coarse = (up * 4.0 + (upL + upR + upD + upU)) / 8.0;
+
+    // add the finer down level (the sharp local brights this pyramid level refines).
+    vec3 fine = texture2D(tFine, vUv).rgb;
+    gl_FragColor = vec4(fine + coarse * uWeight, 1.0);
   }
 `;
 
@@ -208,8 +229,9 @@ export function createBloom(renderer, width, height) {
   let aces = 1.0; // 1 = ACES filmic by default
 
   // ---- render targets ----
-  // rtScene is full-res (needs a depth buffer for the scene render). The bright/blur targets are
-  // half-res and depth-less. All HalfFloat + linear colorSpace (default) so brights exceed 1.0.
+  // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
+  // level (½→¼→⅛). bloomPing/bloomPong are scratch targets for the additive upsample chain, resized
+  // per step. All HalfFloat + linear colorSpace (default) so brights exceed 1.0.
   const rtOpts = () => ({
     type: THREE.HalfFloatType,
     magFilter: THREE.LinearFilter,
@@ -220,14 +242,27 @@ export function createBloom(renderer, width, height) {
 
   // The default framebuffer is MSAA'd (renderer is constructed antialias:true), but a render target
   // is not unless we ask. Multisample ONLY the scene target so bloom-on keeps the same edge quality
-  // as the bloom-off fast path (reading rtScene.texture auto-resolves the multisample buffer). Blur
-  // targets stay single-sampled — they're blurred half-res, AA there is wasted.
+  // as the bloom-off fast path (reading rtScene.texture auto-resolves the multisample buffer). Pyramid
+  // targets stay single-sampled — they're downsampled, AA there is wasted.
   const sceneSamples = (renderer.capabilities && renderer.capabilities.isWebGL2) ? 4 : 0;
-  let rtScene = new THREE.WebGLRenderTarget(W, H, { ...rtOpts(), depthBuffer: true, samples: sceneSamples });
-  let halfW = Math.max(1, W >> 1);
-  let halfH = Math.max(1, H >> 1);
-  let rtBlurA = new THREE.WebGLRenderTarget(halfW, halfH, rtOpts());
-  let rtBlurB = new THREE.WebGLRenderTarget(halfW, halfH, rtOpts());
+
+  function createRenderTargets() {
+    const rtScene = new THREE.WebGLRenderTarget(W, H, { ...rtOpts(), depthBuffer: true, samples: sceneSamples });
+    const halfW = Math.max(1, W >> 1);
+    const halfH = Math.max(1, H >> 1);
+    const newLevels = halfW < 320 ? 2 : 3;
+    const down = [];
+    for (let i = 0; i < newLevels; i++) {
+      const dw = Math.max(1, W >> (i + 1));
+      const dh = Math.max(1, H >> (i + 1));
+      down.push(new THREE.WebGLRenderTarget(dw, dh, rtOpts()));
+    }
+    const bloomPing = new THREE.WebGLRenderTarget(Math.max(1, W >> newLevels), Math.max(1, H >> newLevels), rtOpts());
+    const bloomPong = new THREE.WebGLRenderTarget(halfW, halfH, rtOpts());
+    return { rtScene, halfW, halfH, levels: newLevels, down, bloomPing, bloomPong };
+  }
+
+  let { rtScene, halfW, halfH, levels, down, bloomPing, bloomPong } = createRenderTargets();
 
   // ---- fullscreen quad (one geometry, one mesh, swapped material per pass) ----
   const quadGeo = new THREE.PlaneGeometry(2, 2);
@@ -246,16 +281,18 @@ export function createBloom(renderer, width, height) {
     toneMapped: false, // never let three's tone-mapping touch a post pass
   });
 
-  const blurExtractMat = mkMat(BLUR_EXTRACT_H_FRAG, {
+  const downsampleMat = mkMat(DOWNSAMPLE_FRAG, {
     tDiffuse: { value: null },
-    uTexel: { value: new THREE.Vector2(1 / halfW, 1 / halfH) },
+    uTexel: { value: new THREE.Vector2(1 / W, 1 / H) },     // set per level in render()
     uThreshold: { value: threshold },
     uKnee: { value: knee },
+    uBright: { value: 1.0 },                                // 1.0 only on level 0
   });
-  const blurMat = mkMat(BLUR_FRAG, {
-    tDiffuse: { value: null },
+  const upsampleMat = mkMat(UPSAMPLE_FRAG, {
+    tCoarse: { value: null },
+    tFine: { value: null },
     uTexel: { value: new THREE.Vector2(1 / halfW, 1 / halfH) },
-    uDir: { value: new THREE.Vector2(1, 0) },
+    uWeight: { value: 0.65 },                               // coarse-glow contribution per upsample step
   });
   const compositeMat = mkMat(COMPOSITE_FRAG, {
     tScene:     { value: null },
@@ -295,19 +332,46 @@ export function createBloom(renderer, width, height) {
     // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
     renderer.autoClear = false;
 
-    // pass 1 — bright extract fused with horizontal blur (full -> half)
-    blurExtractMat.uniforms.tDiffuse.value = rtScene.texture;
-    blurExtractMat.uniforms.uThreshold.value = threshold;
-    blit(blurExtractMat, rtBlurA);
+    // ---- downsample chain: full -> ½ (bright-pass) -> ¼ -> ⅛ ----
+    // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
+    let src = rtScene.texture;
+    for (let i = 0; i < levels; i++) {
+      const sw = i === 0 ? W : Math.max(1, W >> i);
+      const sh = i === 0 ? H : Math.max(1, H >> i);
+      downsampleMat.uniforms.tDiffuse.value = src;
+      downsampleMat.uniforms.uTexel.value.set(1 / sw, 1 / sh);
+      downsampleMat.uniforms.uThreshold.value = threshold;
+      downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
+      blit(downsampleMat, down[i]);
+      src = down[i].texture;
+    }
 
-    // pass 2 — vertical blur (half -> half)
-    blurMat.uniforms.tDiffuse.value = rtBlurA.texture;
-    blurMat.uniforms.uDir.value.set(0, 1);
-    blit(blurMat, rtBlurB);
+    // ---- upsample chain: deepest level -> ½, ADDITIVELY blending each coarse level over the next
+    // finer down level. The additive spread is what makes the halo wide. Two scratch RTs ping/pong;
+    // `outRT`/`readRT` are local per-frame aliases so we never mutate the module-level refs mid-loop.
+    // Step for i = levels-1 down to 1: upsample level i (coarse) + add level i-1 (fine) -> level i-1 size.
+    let readTex = down[levels - 1].texture;            // coarsest pyramid level
+    let outRT = bloomPing;
+    let scratchRT = bloomPong;
+    let finalTex = down[levels - 1].texture;            // result of the upsample chain (½-res if levels>1)
+    for (let i = levels - 1; i >= 1; i--) {
+      const targetW = Math.max(1, W >> i);              // output = finer level (down[i-1]) resolution
+      const targetH = Math.max(1, H >> i);
+      outRT.setSize(targetW, targetH);
+      upsampleMat.uniforms.tCoarse.value = readTex;     // level i (coarse, to be spread up)
+      upsampleMat.uniforms.tFine.value = down[i - 1].texture; // level i-1 (sharp brights to keep)
+      upsampleMat.uniforms.uTexel.value.set(1 / targetW, 1 / targetH);
+      upsampleMat.uniforms.uWeight.value = 0.65;
+      blit(upsampleMat, outRT);
+      finalTex = outRT.texture;
+      // the just-written RT becomes the coarse input next iteration; reuse the other scratch as output
+      readTex = finalTex;
+      const used = outRT; outRT = scratchRT; scratchRT = used;
+    }
 
-    // pass 3 — composite to screen (sRGB-encoded, with cinematic post grade applied)
+    // pass 6 — composite to screen (sRGB-encoded, with cinematic post grade applied)
     compositeMat.uniforms.tScene.value = rtScene.texture;
-    compositeMat.uniforms.tBloom.value = rtBlurB.texture;
+    compositeMat.uniforms.tBloom.value = finalTex;
     compositeMat.uniforms.uStrength.value = strength;
     compositeMat.uniforms.uExposure.value = exposure;
     compositeMat.uniforms.uAces.value = aces;
@@ -318,16 +382,43 @@ export function createBloom(renderer, width, height) {
     renderer.setRenderTarget(null);
   }
 
+  function rebuild() {
+    // WebGL context restore: the old render-target GPU textures are invalid. Dispose them and
+    // recreate the whole pyramid at the current size so the next frame can render cleanly.
+    rtScene.dispose();
+    for (const rt of down) rt.dispose();
+    bloomPing.dispose();
+    bloomPong.dispose();
+    const next = createRenderTargets();
+    rtScene = next.rtScene;
+    halfW = next.halfW;
+    halfH = next.halfH;
+    levels = next.levels;
+    down = next.down;
+    bloomPing = next.bloomPing;
+    bloomPong = next.bloomPong;
+    upsampleMat.uniforms.uTexel.value.set(1 / halfW, 1 / halfH);
+  }
+
   function setSize(w, h) {
     W = Math.max(1, w | 0);
     H = Math.max(1, h | 0);
     halfW = Math.max(1, W >> 1);
     halfH = Math.max(1, H >> 1);
+    const newLevels = halfW < 320 ? 2 : 3;
     rtScene.setSize(W, H);
-    rtBlurA.setSize(halfW, halfH);
-    rtBlurB.setSize(halfW, halfH);
-    blurExtractMat.uniforms.uTexel.value.set(1 / halfW, 1 / halfH);
-    blurMat.uniforms.uTexel.value.set(1 / halfW, 1 / halfH);
+    // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
+    while (down.length < newLevels) {
+      const i = down.length;
+      down.push(new THREE.WebGLRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), rtOpts()));
+    }
+    while (down.length > newLevels) { const rt = down.pop(); rt.dispose(); }
+    levels = newLevels;
+    for (let i = 0; i < levels; i++) down[i].setSize(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)));
+    bloomPing.setSize(halfW, halfH);
+    bloomPong.setSize(halfW, halfH);
+    // per-level texel sizes are derived in render(); default uniforms stay roughly correct.
+    upsampleMat.uniforms.uTexel.value.set(1 / halfW, 1 / halfH);
   }
 
   // Accept partial option updates (wired from settings:changed by the render layer).
@@ -349,11 +440,12 @@ export function createBloom(renderer, width, height) {
 
   function dispose() {
     rtScene.dispose();
-    rtBlurA.dispose();
-    rtBlurB.dispose();
+    for (const rt of down) rt.dispose();
+    bloomPing.dispose();
+    bloomPong.dispose();
     quadGeo.dispose();
-    blurExtractMat.dispose();
-    blurMat.dispose();
+    downsampleMat.dispose();
+    upsampleMat.dispose();
     compositeMat.dispose();
   }
 
@@ -362,6 +454,7 @@ export function createBloom(renderer, width, height) {
     setSize,
     setOptions,
     dispose,
+    rebuild,
     get enabled() { return enabled; },
     set enabled(v) { enabled = !!v; },
     get strength() { return strength; },

@@ -7,6 +7,9 @@
 // catalog, so we read the static SHIPS data and use the system only for unlock checks / sell.
 import { SHIPS } from '../../data/ships.js';
 import { confirm } from '../confirm.js';
+import { createListControls, buildSortHeader, sortHeaderAria } from '../listControls.js';
+import { createShipPreviewMount } from '../shipPreviewMount.js';
+import { escapeHtml } from '../comms.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 
@@ -75,6 +78,12 @@ function injectCmpStyle() {
   .st-sy-cmp-slots { font-size: .72rem; color: var(--ink-dim); margin-top: 8px; line-height: 1.5; }
   .st-sy-cmp-slots b { color: var(--ink); font-weight: 600; }
   .st-sy-buy { position: relative; }
+  /* UX-1: rotating 3D ship preview pane. A framed canvas + hint that sits above the hull table. */
+  .st-sy-preview { position: relative; height: 168px; margin-bottom: 12px; border: 1px solid var(--panel-edge);
+    border-radius: var(--r-md); overflow: hidden; background: radial-gradient(ellipse at 50% 70%, #0a1426, #05070d 80%);
+    display: flex; align-items: center; justify-content: center; }
+  .st-sy-preview__canvas { width: 100%; height: 100%; display: block; }
+  .st-sy-preview__hint { color: var(--ink-mute); font-size: var(--t-sm); font-style: italic; pointer-events: none; }
   `;
   document.head.appendChild(s);
 }
@@ -94,13 +103,65 @@ export function createShipyardPanel(ctx) {
   const buyWrap = document.createElement('div');
   buyWrap.className = 'st-sy-buy';
   buyWrap.innerHTML = '<div class="st-sub-h">Hulls For Sale</div>';
+
+  // UX-1: rotating 3D ship preview pane. Shows the hovered hull so the player buys with their eyes,
+  // not from a stat table. Built via the same visualFactory the game uses, in an isolated renderer so
+  // it never touches the live scene. Lazy-created on first hover (deferred until needed) and disposed
+  // when the panel is torn down. Falls back gracefully if WebGL/factory init fails.
+  const previewWrap = document.createElement('div');
+  previewWrap.className = 'st-sy-preview';
+  previewWrap.innerHTML = '<div class="st-sy-preview__hint">Hover a hull to preview</div>';
+  const previewCanvas = document.createElement('canvas');
+  previewCanvas.className = 'st-sy-preview__canvas';
+  previewCanvas.width = 360; previewCanvas.height = 200;
+  previewWrap.appendChild(previewCanvas);
+  buyWrap.appendChild(previewWrap);
+  let previewMount = null;     // lazy
+  let previewShown = null;     // current defId on display
+  function ensurePreview() {
+    if (previewMount) return previewMount;
+    try {
+      const envMap = ctx.state && ctx.state.render && ctx.state.render.envMap;
+      previewMount = createShipPreviewMount(previewCanvas, { envMap });
+    } catch (e) { console.warn('[shipyard] preview mount failed', e); previewMount = null; }
+    return previewMount;
+  }
+  function showPreview(defId) {
+    if (defId === previewShown) return;
+    previewShown = defId;
+    const m = ensurePreview();
+    if (!m) return;
+    previewWrap.querySelector('.st-sy-preview__hint').style.display = 'none';
+    m.show(defId);
+  }
+  // UX-3: sortable header + search. Sort keys map to the hull columns.
+  const _sort = { key: 'tier', dir: 'asc' };
+  function applySort(key) {
+    if (_sort.key === key) _sort.dir = _sort.dir === 'asc' ? 'desc' : 'asc';
+    else { _sort.key = key; _sort.dir = 'asc'; }
+    rebuildBuyable();
+  }
   const head = document.createElement('div');
   head.className = 'st-row st-row-head';
-  head.innerHTML =
-    '<span class="c-name">Hull</span><span class="c-num">Tier</span>' +
-    '<span class="c-num">Hull</span><span class="c-num">Shield</span>' +
-    '<span class="c-num">Cargo</span><span class="c-num">Price</span><span class="c-act"></span>';
+  const hHull = buildSortHeader({ key: 'name', label: 'Hull', activeKey: _sort.key, dir: _sort.dir, onSort: applySort });
+  hHull.className += ' c-name';
+  head.appendChild(hHull);
+  [['tier', 'Tier'], ['hull', 'Hull'], ['shield', 'Shield'], ['cargo', 'Cargo'], ['price', 'Price']].forEach(([k, label]) => {
+    const h = buildSortHeader({ key: k, label, activeKey: _sort.key, dir: _sort.dir, onSort: applySort });
+    h.className += ' c-num';
+    head.appendChild(h);
+  });
+  const actH = document.createElement('span'); actH.className = 'c-act'; head.appendChild(actH);
   buyWrap.appendChild(head);
+  // UX-3: search + affordability filter chips.
+  const _filter = { q: '', affordable: false };
+  const ctrls = createListControls({
+    search: true, placeholder: 'Search hulls…',
+    onSearch: (q) => { _filter.q = q; rebuildBuyable(); },
+    chips: [{ key: 'affordable', label: 'Affordable', active: false }],
+    onChip: (key, active) => { _filter.affordable = active; rebuildBuyable(); },
+  });
+  buyWrap.appendChild(ctrls.el);
   const list = document.createElement('div');
   list.className = 'st-list';
   buyWrap.appendChild(list);
@@ -160,6 +221,8 @@ export function createShipyardPanel(ctx) {
     const hovDef = SHIP_BY_ID.get(defId);
     if (!hovDef) { cmpPanel.style.display = 'none'; return; }
     showComparison(hovDef, row);
+    // UX-1: spin up the 3D preview for the hovered hull.
+    showPreview(defId);
   });
   list.addEventListener('mouseleave', () => { cmpPanel.style.display = 'none'; });
 
@@ -228,10 +291,10 @@ export function createShipyardPanel(ctx) {
     const roleDesc = ROLE_DESC[newDef.role] || '';
     cmpPanel.innerHTML =
       '<div class="st-sy-cmp-h">' +
-        '<div class="st-sy-cmp-name">' + newDef.name + ' vs ' + curDef.name + '</div>' +
-        '<div class="st-sy-cmp-role">T' + newDef.tier + ' ' + (newDef.role || '') + '</div>' +
+        '<div class="st-sy-cmp-name">' + escapeHtml(newDef.name) + ' vs ' + escapeHtml(curDef.name) + '</div>' +
+        '<div class="st-sy-cmp-role">T' + newDef.tier + ' ' + escapeHtml(newDef.role || '') + '</div>' +
       '</div>' +
-      (roleDesc ? '<div class="st-sy-cmp-desc">' + roleDesc + '</div>' : '') +
+      (roleDesc ? '<div class="st-sy-cmp-desc">' + escapeHtml(roleDesc) + '</div>' : '') +
       '<div class="st-sy-cmp-grid">' +
         '<div class="st-sy-cmp-lbl"></div><div class="st-sy-cmp-lbl" style="text-align:right">YOURS</div>' +
         '<div></div><div class="st-sy-cmp-lbl" style="text-align:right">NEW</div>' +
@@ -257,8 +320,8 @@ export function createShipyardPanel(ctx) {
       card.setAttribute('data-idx', String(i));
       const refund = def.price != null ? Math.floor(((def.buyback != null ? def.buyback : def.price)) * 0.5) : 0;
       card.innerHTML =
-        '<div class="st-sy-name">' + (owned.customName || def.name) + (i === p.activeShipIndex ? ' <span class="st-tag st-tag-active">ACTIVE</span>' : '') + '</div>' +
-        '<div class="st-sy-meta mono">T' + (def.tier != null ? def.tier : '?') + ' · ' + (def.role || '') + '</div>' +
+        '<div class="st-sy-name">' + escapeHtml(owned.customName || def.name) + (i === p.activeShipIndex ? ' <span class="st-tag st-tag-active">ACTIVE</span>' : '') + '</div>' +
+        '<div class="st-sy-meta mono">T' + (def.tier != null ? def.tier : '?') + ' · ' + escapeHtml(def.role || '') + '</div>' +
         '<div class="st-sy-btns">' +
           (i === p.activeShipIndex ? '' : '<button data-act="active">Make Active</button>') +
           (i === p.activeShipIndex ? '' : '<button data-act="sell">Sell (' + fmtCr(refund) + ')</button>') +
@@ -272,8 +335,42 @@ export function createShipyardPanel(ctx) {
   function rebuildBuyable() {
     const p = ctx.state.player;
     const ownedDefIds = new Set((p.ownedShips || []).map((o) => o.defId));
+    // UX-3: refresh sort-header arrows for the current sort key/dir.
+    head.querySelectorAll('.sf-sort').forEach((el) => {
+      const isActive = el.getAttribute('data-sk') === _sort.key;
+      el.classList.toggle('active', isActive);
+      el.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      el.setAttribute('aria-label', sortHeaderAria(el.getAttribute('data-label') || '', isActive, _sort.dir));
+      const arrow = el.querySelector('.sf-sort__arrow');
+      if (arrow) arrow.textContent = isActive ? (_sort.dir === 'asc' ? '▲' : '▼') : '↕';
+    });
+    // Apply search + affordability filter, then sort.
+    const q = (_filter.q || '').trim().toLowerCase();
+    let rows = SHIPS.filter((def) => {
+      if (q) {
+        const hay = (def.name + ' ' + (def.role || '') + ' ' + (def.id || '')).toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (_filter.affordable && p.credits < (def.price || 0)) return false;
+      return true;
+    });
+    const dir = _sort.dir === 'desc' ? -1 : 1;
+    const byName = (a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    rows.sort((a, b) => {
+      let v = 0;
+      switch (_sort.key) {
+        case 'name': v = byName(a, b); break;
+        case 'tier': v = (a.tier || 0) - (b.tier || 0); break;
+        case 'hull': v = (a.hull || 0) - (b.hull || 0); break;
+        case 'shield': v = (a.shield || 0) - (b.shield || 0); break;
+        case 'cargo': v = (a.cargo || 0) - (b.cargo || 0); break;
+        case 'price': v = (a.price || 0) - (b.price || 0); break;
+        default: v = (a.tier || 0) - (b.tier || 0) || byName(a, b);
+      }
+      return dir * v || byName(a, b);
+    });
     const frag = document.createDocumentFragment();
-    for (const def of SHIPS) {
+    for (const def of rows) {
       const row = document.createElement('div');
       row.className = 'st-row';
       row.setAttribute('data-ship', def.id);
@@ -281,11 +378,11 @@ export function createShipyardPanel(ctx) {
       const owned = ownedDefIds.has(def.id);
       const afford = p.credits >= (def.price || 0);
       let btn;
-      if (!unlocked) btn = '<button disabled title="Requires ' + def.requiresTech + '">Locked</button>';
+      if (!unlocked) btn = '<button disabled title="Requires ' + escapeHtml(def.requiresTech) + '">Locked</button>';
       else btn = '<button data-act="buy"' + (afford ? '' : ' disabled') + '>Buy</button>';
       row.innerHTML =
-        '<span class="c-name">' + def.name + (owned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
-          '<br><span class="st-slotline mono">' + slotSummary(def) + '</span></span>' +
+        '<span class="c-name">' + escapeHtml(def.name) + (owned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
+          '<br><span class="st-slotline mono">' + escapeHtml(slotSummary(def)) + '</span></span>' +
         '<span class="c-num mono">T' + def.tier + '</span>' +
         '<span class="c-num mono">' + def.hull + '</span>' +
         '<span class="c-num mono">' + def.shield + '</span>' +
@@ -296,7 +393,14 @@ export function createShipyardPanel(ctx) {
       frag.appendChild(row);
     }
     list.textContent = '';
-    list.appendChild(frag);
+    if (!frag.childElementCount) {
+      const empty = document.createElement('div');
+      empty.className = 'st-empty';
+      empty.textContent = q ? 'No hulls match "' + q + '".' : 'No hulls available.';
+      list.appendChild(empty);
+    } else {
+      list.appendChild(frag);
+    }
   }
 
   function refresh() { rebuildOwned(); rebuildBuyable(); cmpPanel.style.display = 'none'; }
@@ -304,7 +408,17 @@ export function createShipyardPanel(ctx) {
   return {
     el: root,
     stationId: null,
-    onShow(c) { if (c && c.stationId) this.stationId = c.stationId; refresh(); },
+    onShow(c) {
+      if (c && c.stationId) this.stationId = c.stationId;
+      if (previewMount && typeof previewMount.setActive === 'function') previewMount.setActive(true);
+      refresh();
+    },
+    onHide() {
+      if (previewMount && typeof previewMount.setActive === 'function') previewMount.setActive(false);
+      cmpPanel.style.display = 'none';
+    },
     refresh,
+    // UX-1: tear down the preview renderer when the panel is destroyed (frees its WebGL context).
+    dispose() { if (previewMount) { try { previewMount.dispose(); } catch (e) {} previewMount = null; } },
   };
 }

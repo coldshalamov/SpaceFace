@@ -17,6 +17,7 @@ const RELEASE_MANIFEST = resolve(ROOT, 'assets/ships/release/release_manifest.js
 const PACKAGE_JSON = resolve(ROOT, 'package.json');
 const SCENARIO_47A = resolve(ROOT, 'src/data/scenarios/47a.scenario.json');
 const releaseMode = process.argv.includes('--release');
+const BUNDLE_PREFIX = 'build/web/';
 
 const partManifest = JSON.parse(readFileSync(PART_MANIFEST, 'utf8'));
 const packageJson = JSON.parse(readFileSync(PACKAGE_JSON, 'utf8'));
@@ -197,7 +198,11 @@ assert(
 const devOnlyAssets = devResult.assets.filter((asset) => !asset.releaseReady);
 for (const asset of devOnlyAssets) {
   const rules = new Set(asset.releaseIssues.map((issue) => issue.rule));
-  if (asset.metrics.textureCount > 0) {
+  // KTX2-native assets (authored hulls) already satisfy the texture contract in dev form, so they
+  // only need to be blocked by mesh compression. PNG-based assets must still be blocked by KTX2.
+  const hasKtx2 = asset.metrics.textureCount === 0
+    || asset.metrics.ktx2TextureCount === asset.metrics.textureCount;
+  if (asset.metrics.textureCount > 0 && !hasKtx2) {
     assert(rules.has('release.textures.ktx2'), `${asset.assetPath} should be blocked by missing KTX2 textures`);
   }
   if (asset.metrics.primitiveCount > 0) {
@@ -216,9 +221,13 @@ console.log(`SG-04 release asset gate OK (${devAssetPaths.length} assets, releas
 function inspectPackagedAssetCoverage(pkg) {
   const buildFiles = (((pkg || {}).build || {}).files || []).map(normalizeRel);
   const runtimeFiles = SG04_RELEASE_ASSET_CONTRACT.requiredRuntimeFiles.map(normalizeRel);
-  const unpackagedRuntimeFiles = runtimeFiles.filter((file) => !isPackagedPath(file, buildFiles));
+  // A bundled release ships runtime files under build/web/... while still resolving the same
+  // relative URLs at runtime, so consider both the raw path and the bundle-prefixed path covered.
+  const unpackagedRuntimeFiles = runtimeFiles.filter(
+    (file) => !isPackagedPath(file, buildFiles) && !isPackagedPath(BUNDLE_PREFIX + file, buildFiles));
   const requiredRoots = ['assets/ships'];
-  const uncoveredRoots = requiredRoots.filter((root) => !isPackagedRoot(root, buildFiles));
+  const uncoveredRoots = requiredRoots.filter(
+    (root) => !isPackagedRoot(root, buildFiles) && !isPackagedRoot(BUNDLE_PREFIX + root, buildFiles));
   const issues = [];
 
   if (unpackagedRuntimeFiles.length > 0) {
@@ -436,11 +445,14 @@ function inspect47aScenarioAssetCoverage(scenario, inspectedAssets = [], options
 
 function isPackagedRoot(root, patterns) {
   const relRoot = normalizeRel(root);
-  return patterns.some((pattern) =>
-    pattern === 'assets/**'
-    || pattern === 'assets/**/*'
-    || pattern === `${relRoot}/**`
-    || pattern === `${relRoot}/**/*`);
+  return patterns.some((pattern) => {
+    const p = normalizeRel(pattern);
+    if (p === 'assets/**' || p === 'assets/**/*' || p === `${relRoot}/**` || p === `${relRoot}/**/*`) return true;
+    // A glob like build/web/** covers build/web/assets/ships as a bundled prefix.
+    if (p.endsWith('/**') && relRoot.startsWith(`${p.slice(0, -3)}/`)) return true;
+    if (p.endsWith('/**/*') && relRoot.startsWith(`${p.slice(0, -5)}/`)) return true;
+    return false;
+  });
 }
 
 function isPackagedPath(path, patterns) {

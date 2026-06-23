@@ -83,6 +83,7 @@ uniform vec3  uCity;      // night-side city-light color (0 if the world is unin
 uniform vec3  uSunDir;
 uniform float uCloudAmt;
 uniform float uSeed;
+uniform float uTime;      // GR-4: drives slow cloud-band drift (weather motion)
 
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -133,8 +134,11 @@ void main() {
   float land = fbm(uv * 4.0 + warp * 0.8 + seed2 * 0.5);
   vec3 surface = mix(uColor2, uColor1, smoothstep(0.38, 0.62, land));
 
-  // cloud octave
-  float cloud = fbm(uv * 5.5 + seed2 + vec2(2.1, 4.7));
+  // cloud octave — GR-4: drift the cloud longitude slowly with uTime so weather bands slide across
+  // the disk (planetary rotation read). Speed is a fraction of a full longitude wrap per second; the
+  // small amplitude keeps it subliminal unless you watch for a few seconds.
+  float cloudDrift = uTime * 0.008;
+  float cloud = fbm(uv * 5.5 + seed2 + vec2(2.1 + cloudDrift, 4.7));
   cloud = smoothstep(0.52, 0.70, cloud) * uCloudAmt;
   surface = mix(surface, uCloudColor, cloud);
 
@@ -162,6 +166,34 @@ void main() {
   vec3  atm     = uAtmColor * fresnel * 0.9 * rimLit;
 
   gl_FragColor = vec4(surface + atm, 1.0);
+}
+`;
+
+// ---- atmosphere shell shader (GR-4) -------------------------------------------------------------
+// A transparent, slightly-larger sphere rendered additively OUTSIDE the planet disk. Unlike the
+// in-shader fresnel rim (which only brightens the limb), this shell extends beyond the silhouette —
+// so a planet against the black of space gets a real glowing halo, and the limb reads as a real
+// atmosphere seen edge-on. Backface-only rendering (FrontSide cull) keeps the far hemisphere visible
+// as a ring around the disk while the near hemisphere is skipped (it would just tint the surface).
+const ATMSHELL_FRAG = /* glsl */`
+precision highp float;
+varying vec3 vNormal;
+varying vec3 vWorldPos;
+uniform vec3  uAtmColor;
+uniform vec3  uSunDir;
+uniform float uIntensity;
+
+void main() {
+  vec3 N = normalize(vNormal);
+  vec3 V = normalize(cameraPosition - vWorldPos);
+  // Limb glow: strongest where the surface grazes the view (fresnel), falling to nothing face-on.
+  float fresnel = pow(1.0 - max(0.0, dot(N, V)), 3.0);
+  // Day/night modulation: the atmosphere only glows on the sunlit side, so the shell respects the
+  // same terminator as the surface (no glow on the night limb).
+  float daylight = dot(N, normalize(uSunDir));
+  float lit = smoothstep(-0.15, 0.35, daylight);
+  vec3 col = uAtmColor * fresnel * lit * uIntensity;
+  gl_FragColor = vec4(col, fresnel * lit * uIntensity);
 }
 `;
 
@@ -235,12 +267,37 @@ export function createPlanetFactory() {
         uSunDir:     { value: SUN_DIR },
         uCloudAmt:   { value: cloudAmt },
         uSeed:       { value: seed % 99999 },
+        uTime:       { value: 0 },   // GR-4: cloud drift; advanced by the renderer each frame
       },
       fog: false,
     });
     const mesh = new THREE.Mesh(getPlanetGeo(), mat);
     mesh.scale.setScalar(radius);
     mesh.frustumCulled = false;
+
+    // GR-4: atmosphere shell — a transparent additive sphere ~6% larger than the disk, rendered
+    // backface-only so it forms a glowing ring around the planet rather than tinting its surface.
+    // Dead/scorched worlds (thin/no atmosphere) get a near-invisible shell; the rest get a vivid halo.
+    const atmIntensity = (type === 'dead' || type === 'scorched') ? 0.25 : 1.0;
+    const atmMat = new THREE.ShaderMaterial({
+      vertexShader: PLANET_VERT,
+      fragmentShader: ATMSHELL_FRAG,
+      uniforms: {
+        uAtmColor:  { value: new THREE.Vector3(...pal.atm) },
+        uSunDir:    { value: SUN_DIR },
+        uIntensity: { value: atmIntensity },
+      },
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.BackSide,   // render the far hemisphere so the ring extends past the silhouette
+      fog: false,
+    });
+    const shell = new THREE.Mesh(getPlanetGeo(), atmMat);
+    shell.scale.setScalar(radius * 1.06);
+    shell.frustumCulled = false;
+    mesh.add(shell);
+    mesh.userData.atmShellMat = atmMat;
     return mesh;
   }
 
@@ -319,6 +376,9 @@ export function createPlanetFactory() {
   function disposeBodies(bodies) {
     for (const b of bodies) {
       if (b.mesh.material) b.mesh.material.dispose();
+      // GR-4: dispose the atmosphere shell material (a child of the planet mesh) so sector changes
+      // don't leak the shell ShaderMaterial.
+      if (b.mesh.userData && b.mesh.userData.atmShellMat) b.mesh.userData.atmShellMat.dispose();
     }
   }
 

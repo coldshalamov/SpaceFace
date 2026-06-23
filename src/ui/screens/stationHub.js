@@ -21,6 +21,7 @@ import { createBarPanel } from './bar.js';
 import { SECTORS } from '../../data/sectors.js';
 import { FACTION_META } from '../../data/factions.js';
 import { MISSION_TUNING } from '../../data/missions.js';
+import { escapeHtml } from '../comms.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
@@ -188,13 +189,13 @@ export const stationHub = {
       card.className = 'st-mission-card' + (tracked && tracked === mid ? ' tracked' : '');
       card.innerHTML =
         '<div class="st-mission-top">' +
-          '<span class="st-mission-title">' + (m.title || prettyType(m.type)) + '</span>' +
+          '<span class="st-mission-title">' + escapeHtml(m.title || prettyType(m.type)) + '</span>' +
           '<span class="st-mission-risk r' + risk + '">RISK ' + risk + '</span>' +
         '</div>' +
         '<div class="st-mission-meta mono">' +
-          (fac ? '<span class="st-mission-fac" style="color:' + (fac.color || '#aaa') + '">' + (fac.short || fac.name) + '</span> · ' : '') +
-          prettyType(m.type) +
-          (m.destStationId || m.dest ? ' → ' + (m.destName || m.destStationId || m.dest) : '') +
+          (fac ? '<span class="st-mission-fac" style="color:' + (fac.color || '#aaa') + '">' + escapeHtml(fac.short || fac.name) + '</span> · ' : '') +
+          escapeHtml(prettyType(m.type)) +
+          (m.destStationId || m.dest ? ' → ' + escapeHtml(m.destName || m.destStationId || m.dest) : '') +
         '</div>' +
         '<div class="st-mission-rewards mono">' +
           '<span class="st-mission-cr">+' + (reward || 0).toLocaleString('en-US') + ' cr</span>' +
@@ -202,9 +203,9 @@ export const stationHub = {
           (m.expiresInS != null ? '<span class="st-mission-exp">' + fmtTime(m.expiresInS) + '</span>' : '') +
         '</div>' +
         '<div class="st-mission-btns">' +
-          '<button data-act="accept" data-mid="' + mid + '"' + (unmet ? ' disabled title="' + unmet + '"' : '') + '>Accept</button>' +
-          '<button data-act="track" data-mid="' + mid + '" class="st-mission-track">Track</button>' +
-          (unmet ? '<span class="st-mission-unmet">' + unmet + '</span>' : '') +
+          '<button data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled title="' + escapeHtml(unmet) + '"' : '') + '>Accept</button>' +
+          '<button data-act="track" data-mid="' + escapeHtml(mid) + '" class="st-mission-track">Track</button>' +
+          (unmet ? '<span class="st-mission-unmet">' + escapeHtml(unmet) + '</span>' : '') +
         '</div>';
       frag.appendChild(card);
     }
@@ -214,6 +215,13 @@ export const stationHub = {
   /** Activate a tab: toggle rail highlight + panel visibility, persist ui.activeStationTab. */
   setTab(tabId) {
     if (!TABS.some((t) => t.id === tabId)) tabId = 'market';
+    const prevTab = this._activePanelId();
+    if (prevTab !== tabId) {
+      const prev = this._panels && this._panels[prevTab];
+      if (prev && typeof prev.onHide === 'function') {
+        try { prev.onHide(); } catch (e) { console.error(e); }
+      }
+    }
     this._ctx.state.ui.activeStationTab = tabId;
     // rail highlight
     this._rail.querySelectorAll('[data-tab]').forEach((b) => {
@@ -299,7 +307,12 @@ export const stationHub = {
     this.setTab(tab); // also refreshes the active panel via onShow
   },
 
-  onHide() { /* DOM retained; nothing to tear down (§5.1) */ },
+  onHide() {
+    const p = this._panels && this._panels[this._activePanelId()];
+    if (p && typeof p.onHide === 'function') {
+      try { p.onHide(); } catch (e) { console.error(e); }
+    }
+  },
 
   /** Generic refresh (data-event driven). Refreshes only the active panel for cheapness. */
   refresh(ctx) {
@@ -507,6 +520,10 @@ const STATION_CSS = `
 .st-heat-up { color: var(--danger); }     /* dear = sell opportunity (red = you can sell high) */
 .st-heat-down { color: var(--good); }     /* cheap = buy opportunity (green = buy low) */
 .st-heat-flat { color: var(--ink-dim); }
+/* UX-4: inline price-trend sparkline next to each commodity name. Small + muted so it reads as a
+   secondary cue (the ▲/▼ heat is the primary); trend-colored by sparkline.js (warm up / cool down). */
+.st-spark { display:inline-block; width:56px; height:14px; vertical-align:middle; margin-left:8px;
+  opacity:.85; }
 
 /* shipyard */
 /* The hulls-for-sale table has 7 columns (Hull name, Tier, Hull, Shield, Cargo, Price, action) but

@@ -85,12 +85,16 @@ design/               per‑subsystem design specs + the content/balance bible
 
 ## Packaging for Steam (desktop build)
 
-An **Electron** shell is included (`electron/main.cjs`) — it serves the app on a private localhost port and opens a game window, so ES modules + the importmap load exactly as in a browser.
+An **Electron** shell is included (`electron/main.cjs`) — it serves the app on a private localhost port and opens a game window.
+
+- **Dev** (`npm run electron`): serves the raw ES modules + importmap from the project root, exactly as in a browser — no build step, hot-editable source.
+- **Release** (`npm run dist`): first runs `build:bundle` (esbuild) to produce a tree-shaken, minified bundle in `build/web/` (~45% smaller JS than the raw `src/`+`vendor/` tree, with three/rapier/loaders code-split into on-demand chunks), then electron-builder packages that into an installer. The Electron shell auto-detects the bundle and serves it when present.
 
 ```bash
-npm install        # downloads Electron + electron-builder (~250 MB, one time)
-npm run electron   # run the desktop app
-npm run dist       # build a distributable (Win installer / mac dmg / linux AppImage) into dist/
+npm install            # downloads Electron + electron-builder + esbuild (~250 MB, one time)
+npm run electron       # run the desktop app (dev: raw modules)
+npm run build:bundle   # build the minified bundle to build/web/ (without packaging)
+npm run dist           # bundle + package a distributable (Win installer / mac dmg / linux AppImage) into dist/
 ```
 
 For **Steam**: add Steamworks via `steamworks.js` in `electron/main.cjs`, then ship the `electron-builder` output through SteamPipe. (Prefer **Tauri** for much smaller binaries — point its dev URL at this same web app, unchanged. A fully native port to Godot/Unity is also straightforward since the design is data-driven.)

@@ -101,7 +101,7 @@ export function installVisualOverrides(factory, options = {}) {
 
     // The wrapper is synchronous. Any later transport, validation, or composition failure leaves
     // the selected procedural/bespoke visual mounted and alive.
-    try { return wrapShipWithAuthoredParts(entity, visual, { releaseMode }); }
+    try { return wrapShipWithAuthoredParts(entity, visual, { releaseMode, onSwap: options.onAuthoredAssetSwap }); }
     catch (error) {
       reportVisualWarning(options, '[visualOverrides] authored-asset boundary failed; using selected ship visual', error);
       return visual;

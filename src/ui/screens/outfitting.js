@@ -13,6 +13,7 @@ import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { SECTORS } from '../../data/sectors.js';
 import { confirm } from '../confirm.js';
+import { escapeHtml } from '../comms.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const FITTABLE_BY_ID = new Map();
@@ -249,10 +250,10 @@ export function createOutfittingPanel(ctx) {
       // Weapon hardpoints show their facing (Phase 2) — front/left/right/rear/turret — so the
       // strategic choice of where a gun sits on the hull is legible at a glance.
       const facingTag = (slot.type === 'weapon' && slot.facing && slot.facing !== 'front')
-        ? ' <span class="st-slot-facing">' + slot.facing + '</span>' : '';
+        ? ' <span class="st-slot-facing">' + escapeHtml(slot.facing) + '</span>' : '';
       cell.innerHTML =
-        '<div class="st-slot-type mono">' + slot.type + ' ' + slot.size + facingTag + '</div>' +
-        '<div class="st-slot-mod">' + (def ? def.name : (selectedSlot === i ? 'pick a module ▾' : '— empty —')) + '</div>' +
+        '<div class="st-slot-type mono">' + escapeHtml(slot.type) + ' ' + escapeHtml(slot.size) + facingTag + '</div>' +
+        '<div class="st-slot-mod">' + (def ? escapeHtml(def.name) : (selectedSlot === i ? 'pick a module ▾' : '— empty —')) + '</div>' +
         (fittedId ? '<button class="st-slot-unfit" data-act="unfit">unfit</button>' : '');
       frag.appendChild(cell);
     });
@@ -277,8 +278,8 @@ export function createOutfittingPanel(ctx) {
       item.setAttribute('data-inst', m.instanceId);
       item.setAttribute('data-def', m.defId);
       item.innerHTML =
-        '<span class="st-inv-name">' + def.name + '</span>' +
-        '<span class="st-inv-meta mono">' + def.slotType + ' ' + def.size + '</span>';
+        '<span class="st-inv-name">' + escapeHtml(def.name) + '</span>' +
+        '<span class="st-inv-meta mono">' + escapeHtml(def.slotType) + ' ' + escapeHtml(def.size) + '</span>';
       frag.appendChild(item);
     }
     invList.appendChild(frag);
@@ -349,12 +350,12 @@ export function createOutfittingPanel(ctx) {
       else btnHtml = '<button data-act="buy">Buy</button>';
 
       row.innerHTML =
-        '<span class="c-name">' + def.name +
+        '<span class="c-name">' + escapeHtml(def.name) +
           (alreadyOwned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
           (!hasSlot && unlocked ? ' <span class="st-tag">no slot</span>' : '') +
         '</span>' +
-        '<span class="c-num st-shop-slot mono">' + def.slotType[0].toUpperCase() + ':' + def.size + '</span>' +
-        '<span class="c-num st-shop-stats">' + statSnippet(def) + deltaHtml + '</span>' +
+        '<span class="c-num st-shop-slot mono">' + escapeHtml(def.slotType[0].toUpperCase()) + ':' + escapeHtml(def.size) + '</span>' +
+        '<span class="c-num st-shop-stats">' + escapeHtml(statSnippet(def)) + deltaHtml + '</span>' +
         '<span class="c-num st-shop-price mono">' + fmtCr(def.price) + '</span>' +
         '<span class="c-act">' + btnHtml + '</span>';
       frag.appendChild(row);

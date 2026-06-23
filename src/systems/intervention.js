@@ -126,6 +126,12 @@ export const intervention = {
   // Public read API for UI (a future interventions log). Returns active interventions.
   active() { return (this.state.interventions || []).slice(); },
 
+  newGame() {
+    this.state.interventions = [];
+    this.state.interventionMeta = { rngSeed: hash32(this.state.meta && this.state.meta.seed, 'intervention') };
+    this._nextId = 1;
+  },
+
   _rng() {
     if (!this.state.interventionMeta) this.state.interventionMeta = {};
     return drawSeeded(

@@ -105,7 +105,8 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
       const blocked = new Set(combat.blockedActionTags || []);
       const blockedTag = (def.tags || []).find((tag) => blocked.has(tag));
       if (blockedTag) return { ok: false, reason: `disabled:${blockedTag}` };
-      const readyTick = Number(entity.actions && entity.actions.cooldownReadyTick && entity.actions.cooldownReadyTick[actionId]) || 0;
+      const actionStatus = kernel.actions.inspect(entityId);
+      const readyTick = Number(actionStatus && actionStatus.cooldownReadyTick && actionStatus.cooldownReadyTick[actionId]) || 0;
       if (state.tick < readyTick) return { ok: false, reason: `cooldown:${readyTick}` };
       const capCost = Math.max(0, Number(def.costs && def.costs.capacitor) || 0);
       const heatCost = Math.max(0, Number(def.costs && def.costs.heat) || 0);

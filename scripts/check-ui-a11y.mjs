@@ -13,6 +13,8 @@ const checks = [
     label: 'modal HUD accessibility state',
     needs: [
       'function syncHudAccessibility',
+      'function hasScreen',
+      'isOpen, hasScreen',
       "state.mode !== 'flight'",
       "hud.setAttribute('aria-hidden', 'true')",
       "hud.removeAttribute('aria-hidden')",
@@ -30,6 +32,28 @@ const checks = [
       'deathBanner.hidden = false',
       "deathBanner.removeAttribute('aria-hidden')",
       'deathHideTimer = setTimeout',
+    ],
+  },
+  {
+    path: 'src/ui/confirm.js',
+    label: 'confirm dialog preserves underlying modal state',
+    needs: [
+      'hadModalOpen',
+      'if (!hadModalOpen) document.body.classList.remove',
+      '_sfConfirmToken',
+      'root.removeEventListener',
+    ],
+  },
+  {
+    path: 'src/ui/listControls.js',
+    label: 'sortable headers are keyboard controls',
+    needs: [
+      "document.createElement('button')",
+      "btn.type = 'button'",
+      "btn.setAttribute('aria-pressed'",
+      "btn.setAttribute('aria-label'",
+      'sortHeaderAria',
+      '.sf-sort:focus-visible',
     ],
   },
 ];

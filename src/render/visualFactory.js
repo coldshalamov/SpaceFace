@@ -276,6 +276,11 @@ function optimizeStaticBatches(root) {
       mergedMesh.name = 'sf-static-merge';
       mergedMesh.renderOrder = rec.renderOrder;
       mergedMesh.userData.staticMerge = true;
+      // GR-2: preserve shadow intent across the merge. If ANY source mesh was a shadow caster or
+      // receiver, the merged mesh inherits it — otherwise optimizeStaticBatches would silently strip
+      // the per-mesh receiveShadow/castShadow flags set by the builders (station pads, asteroid rock).
+      if (rec.meshes.some((m) => m.castShadow)) mergedMesh.castShadow = true;
+      if (rec.meshes.some((m) => m.receiveShadow)) mergedMesh.receiveShadow = true;
       rec.parent.add(mergedMesh);
       for (const mesh of rec.meshes) rec.parent.remove(mesh);
     } catch (_) {
@@ -1580,6 +1585,13 @@ function buildShipMesh(e, pal) {
     };
   }
   outer.userData.kind = 'ship';
+
+  // GR-5: persistent 3D shield bubble. Shared via shipKit so authored compositions use the same
+  // geometry/material contract; per-instance material carries its own flash state.
+  const shieldBubble = kit.createShieldBubble(pal.accent || '#5fd0ff', R);
+  outer.add(shieldBubble);
+  outer.userData.shieldBubble = shieldBubble;
+
   return outer;
 }
 
@@ -1679,6 +1691,12 @@ function buildAsteroid(e) {
   const geo = astDisplacedGeometry(typeId, def, variantIdx);
   const mesh = new THREE.Mesh(geo, astMaterial(typeId, def, tint));
   mesh.scale.setScalar(R);
+  // GR-2: large asteroids are shadow receivers (and casters). A ship mining an asteroid should see
+  // its shadow drape across the rock's sunlit side, and the asteroid's own shadow should fall on the
+  // station pad when nearby. Both castShadow and receiveShadow engage the renderer's auto-gated
+  // shadow system (renderer._syncShadowMapEnabled flips the map on only when receivers exist).
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
 
   const g = new THREE.Group();
   g.add(mesh);
@@ -1952,12 +1970,23 @@ function buildStation(e) {
   const r2 = new THREE.Mesh(getGeometry('stat:ring2', () => new THREE.TorusGeometry(0.62, 0.05, 8, 24)), ringMat);
   r2.rotation.set(Math.PI / 2, 0, 0.6); r2.scale.setScalar(R); g.add(r2);
   // docking spars
+  const spars = [];
   for (let i = 0; i < 4; i++) {
     const arm = new THREE.Mesh(getGeometry('stat:spar', () => new THREE.BoxGeometry(0.16, 0.12, 0.7)), m);
     const a = i * Math.PI / 2;
     arm.position.set(Math.cos(a) * R * 0.55, 0, Math.sin(a) * R * 0.55);
-    arm.rotation.y = -a; arm.scale.setScalar(R); g.add(arm);
+    arm.rotation.y = -a; arm.scale.setScalar(R); g.add(arm); spars.push(arm);
   }
+  // GR-2: the station's large flat surfaces (core, rings, docking spars) are the natural shadow
+  // receivers — a ship docking should cast its shadow across the spar/deck it's landing on, and the
+  // station body should catch shadows from its own rings and nearby ships. Setting receiveShadow on
+  // these opaque meshes also engages the renderer's auto-gated shadow system (no receivers = maps off,
+  // so this is what actually turns real shadows on for the whole sector). We set it per-surface rather
+  // than traversing the group so the tiny emissive nav-lights/window-strips stay cheap (no shadow pass).
+  core.receiveShadow = true; core.castShadow = true;
+  r1.receiveShadow = true; r1.castShadow = true;
+  r2.receiveShadow = true; r2.castShadow = true;
+  for (const arm of spars) { arm.receiveShadow = true; arm.castShadow = true; }
   // window strips
   const winMat = emissiveMaterial('#ffd98a', 1.2);
   for (let i = 0; i < 3; i++) {
@@ -2276,6 +2305,25 @@ function buildFallback(e) {
 // ---------------------------------------------------------------------------------------------
 // Public factory
 // ---------------------------------------------------------------------------------------------
+// WebGL context restore: the module-level caches hold CPU-side geometry/material/texture
+// descriptors, but externally loaded images and any GPU upload handles may be stale. Clear them
+// so the next build() re-creates fresh Three objects against the restored context.
+function disposeMapValues(map) {
+  for (const obj of map.values()) {
+    if (!obj) continue;
+    try { if (typeof obj.dispose === 'function') obj.dispose(); } catch (_) { /* ignore */ }
+  }
+  map.clear();
+}
+
+export function invalidateVisualFactoryCaches() {
+  disposeMapValues(_tex);
+  disposeMapValues(_geo);
+  disposeMapValues(_mat);
+  disposeMapValues(_extTex);
+  SHIP_ENV_MAP = null;
+}
+
 export function createVisualFactory() {
   return {
     build(e) {

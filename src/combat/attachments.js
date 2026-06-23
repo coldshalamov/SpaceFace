@@ -49,6 +49,7 @@ export function createAttachmentService(context) {
       restLength,
       lastTension: 0,
       lastImpulse: 0,
+      nearBreakWarned: false,
       actionInstanceId: spec.actionInstanceId || null,
     };
     const physicsResult = createPhysicsAttachment(attachment, def);
@@ -249,6 +250,23 @@ export function createAttachmentService(context) {
       attachment.lastImpulse = finiteOrZero(telemetry.impulse);
       const grace = Math.max(0, Number(def.break && def.break.graceTicks) || 0);
       if (state.tick - attachment.createdTick < grace) continue;
+      let nearBreak = false;
+      if (def.break) {
+        const tensionRatio = def.break.maxTension > 0 ? attachment.lastTension / def.break.maxTension : 0;
+        const impulseRatio = def.break.maxImpulse > 0 ? attachment.lastImpulse / def.break.maxImpulse : 0;
+        nearBreak = Math.max(tensionRatio, impulseRatio) > 0.75;
+      }
+      if (nearBreak && !attachment.nearBreakWarned) {
+        attachment.nearBreakWarned = true;
+        if (bus) bus.emit('tether:nearBreak', {
+          actorId: attachment.ownerId,
+          targetId: attachment.targetId,
+          attachmentId: attachment.id,
+          attachmentDefId: attachment.defId,
+          tension: attachment.lastTension,
+          impulse: attachment.lastImpulse,
+        });
+      }
       if ((def.break && attachment.lastTension > def.break.maxTension) || (def.break && attachment.lastImpulse > def.break.maxImpulse)) {
         breakAttachment(attachment, 'threshold', attachment.ownerId, telemetry);
       }

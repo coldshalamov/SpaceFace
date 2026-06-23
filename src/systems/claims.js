@@ -12,20 +12,21 @@
 // reduces raid risk. The teleporter enables the fast-travel verb.
 //
 // Single-writer: claims owns only state.claims. Credits/cargo route through canonical writers.
-// PERSISTENCE: claimable bodies are NOT yet serialized (documented TODO) — they persist in-memory
-// this pass. A save v2->v3 migration is the follow-up once the save system is stable; the body's
-// sectorId + POI id are stable seeds so re-derivation is deterministic (V2 §32).
+// PERSISTENCE: claims serialize()/deserialize() capture state.claims + the module-level
+// _nextClaimId counter; the save system delegates to them (deps-first, after world so the sector
+// context exists). The body's sectorId + POI id are stable seeds so the claim re-attaches to the
+// same POI after load.
 import { BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE, CLAIM_COST } from '../data/claimableBodies.js';
 import { addCargo, removeCargo } from './cargo.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
 const REFINE_MAP = { // raw ore -> refined commodity
-  cmdty_ore_iron: 'cmdty_mat_alloys',
-  cmdty_ore_copper: 'cmdty_mat_circuits',
-  cmdty_ore_silicon: 'cmdty_mat_circuits',
-  cmdty_ore_titanium: 'cmdty_mat_alloys',
-  cmdty_ore_platinoid: 'cmdty_mat_components',
+  cmdty_ore_iron: 'cmdty_refined_metals',
+  cmdty_ore_copper: 'cmdty_comp_circuitry',
+  cmdty_silicate: 'cmdty_polymers',
+  cmdty_ore_titanium: 'cmdty_alloys',
+  cmdty_ore_platinoid: 'cmdty_alloys',
 };
 
 let _nextClaimId = 1;
@@ -157,18 +158,19 @@ export const claims = {
     // accumulate fractional conversion per-body so slow rates still progress
     body._refineAcc = (body._refineAcc || 0) + oreUnits;
     if (body._refineAcc < REFINE_RATIO) return; // not enough for one conversion yet
-    const units = Math.floor(body._refineAcc / REFINE_RATIO);
-    body._refineAcc -= units * REFINE_RATIO;
+    const maxOutputs = Math.floor(body._refineAcc / REFINE_RATIO);
     // find the most plentiful refinable ore
     let bestOre = null, bestQty = 0;
     for (const ore of Object.keys(REFINE_MAP)) {
       const have = cargo.items[ore] || 0;
       if (have > bestQty) { bestQty = have; bestOre = ore; }
     }
-    if (!bestOre || bestQty < units) return; // nothing to refine
+    const outputs = Math.min(maxOutputs, Math.floor(bestQty / REFINE_RATIO));
+    if (!bestOre || outputs <= 0) return; // nothing to refine
+    body._refineAcc -= outputs * REFINE_RATIO;
     const out = REFINE_MAP[bestOre];
-    removeCargo(this.state, bestOre, units);
-    addCargo(this.state, out, units);
+    removeCargo(this.state, bestOre, outputs * REFINE_RATIO);
+    addCargo(this.state, out, outputs);
   },
 
   _nearestStationId(body) {
@@ -196,4 +198,30 @@ export const claims = {
 
   // Public read API for a future Base screen.
   list() { return (this.state.claims && this.state.claims.bodies) || []; },
+
+  // Serialization (save system delegates via serialize/deserialize). state.claims is plain JSON
+  // ({ bodies: [...] }). The module-level _nextClaimId counter is NOT serialized — deserialize
+  // re-derives it from the highest restored claim id, which is robust to saves made before
+  // serialization existed and to direct body edits. Bodies are deps-free plain data.
+  serialize() {
+    const bodies = (this.state.claims && this.state.claims.bodies) || [];
+    return { bodies: bodies.map((b) => ({ ...b, modules: (b.modules || []).slice() })) };
+  },
+  deserialize(data) {
+    if (!data || typeof data !== 'object') { this.state.claims = { bodies: [] }; _nextClaimId = 1; return; }
+    this.state.claims = { bodies: Array.isArray(data.bodies) ? data.bodies : [] };
+    // Re-derive _nextClaimId past any restored claim id so the next claim() can't collide. (We
+    // don't trust a serialized counter even if one is present — deriving from the bodies is the
+    // source of truth and survives legacy/partial saves.)
+    _nextClaimId = 1;
+    for (const b of this.state.claims.bodies) {
+      const m = /^claim_(\d+)$/.exec(b && b.id || '');
+      if (m) _nextClaimId = Math.max(_nextClaimId, (parseInt(m[1], 10) || 0) + 1);
+    }
+  },
+
+  newGame() {
+    this.state.claims = { bodies: [] };
+    _nextClaimId = 1;
+  },
 };

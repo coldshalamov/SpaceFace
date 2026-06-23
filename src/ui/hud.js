@@ -216,7 +216,7 @@ export function createHud(ctx, alerts) {
     return `Throttle: ${pct}%\nMax speed: ${Math.round(maxSp)} wu/s\nMass: ${Math.round(mass)}\nHandling: ${handling}`;
   }
   function buildCargoTip() {
-    const c = state.player.cargo || {};
+    const c = (state.player || {}).cargo || {};
     const items = c.items || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
@@ -231,8 +231,9 @@ export function createHud(ctx, alerts) {
     return lines.join('\n');
   }
   function buildCreditsTip() {
-    const cr = Math.round(state.player.credits || 0);
-    const st = state.player.stats || {};
+    const player = state.player || {};
+    const cr = Math.round(player.credits || 0);
+    const st = player.stats || {};
     return `Credits: ${cr.toLocaleString()} CR\nLifetime profit: ${Math.round(st.lifetimeProfit || 0).toLocaleString()}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${Math.round(st.biggestSingleProfit || 0).toLocaleString()}`;
   }
   function buildWeaponsTip(p) {
@@ -360,11 +361,18 @@ export function createHud(ctx, alerts) {
       const name = (w.name || w.defId || '').replace(/^wpn_/, '').replace(/_/g, ' ').slice(0, 8);
       const row = document.createElement('div');
       row.className = 'sf-wpn-heat';
-      row.innerHTML =
-        `<span class="sf-wpn-heat__label">${name}</span>` +
-        `<div class="sf-wpn-heat__bar"><div class="sf-wpn-heat__fill"></div></div>`;
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'sf-wpn-heat__label';
+      labelSpan.textContent = name;
+      const bar = document.createElement('div');
+      bar.className = 'sf-wpn-heat__bar';
+      const fill = document.createElement('div');
+      fill.className = 'sf-wpn-heat__fill';
+      bar.appendChild(fill);
+      row.appendChild(labelSpan);
+      row.appendChild(bar);
       wpnHeatsWrap.appendChild(row);
-      wpnHeatEls.push({ fill: row.querySelector('.sf-wpn-heat__fill'), row, lastHeat: -1 });
+      wpnHeatEls.push({ fill, row, lastHeat: -1 });
     }
     wpnHeatsWrap.style.display = 'flex';
   }
@@ -401,6 +409,72 @@ export function createHud(ctx, alerts) {
   });
   ctx.bus.on('player:respawn', () => {
     ctx.bus.emit('toast', { text: 'Hull rebuilt — fly safe, pilot. (3s shields online)', kind: 'good', ttl: 4 });
+  });
+
+  // ---- presentation captions (accessibility: subtitles for audio/gameplay cues) ----
+  // presentationAdapters emits presentation:caption { text, assertive, shape, ... } for important
+  // cues, but nothing subscribed — the events were emitted into the void. This mounts a visible
+  // caption box (bottom-center, like subtitles) + an aria-live region so screen readers announce
+  // the same text. The hook already carries text + an assertive flag for high-priority cues, so
+  // wiring it closes the audio-caption accessibility gap for free.
+  if (!document.getElementById('sf-caption-style')) {
+    const cs = document.createElement('style');
+    cs.id = 'sf-caption-style';
+    cs.textContent = `
+    .sf-caption { position:absolute; left:50%; bottom:14%; transform:translate(-50%, 8px);
+      max-width:min(80vw, 640px); padding:9px 16px; border-radius:8px;
+      background:rgba(6,10,20,.82); border:1px solid var(--panel-edge, rgba(120,160,200,.25));
+      color:var(--ink, #d7e6ff); font-size:15px; line-height:1.35; text-align:center;
+      pointer-events:none; opacity:0; transition:opacity .18s ease, transform .18s ease;
+      backdrop-filter:blur(3px); text-shadow:0 1px 6px rgba(0,0,0,.7); z-index:40;
+      letter-spacing:.01em; }
+    .sf-caption.show { opacity:1; transform:translate(-50%, 0); }
+    .sf-caption.assertive { border-color:var(--accent, #39d0ff); box-shadow:0 0 16px rgba(57,208,255,.35); }
+    @media (prefers-reduced-motion: reduce) { .sf-caption { transition:opacity .18s ease; transform:translate(-50%,0); } }
+    `;
+    document.head.appendChild(cs);
+  }
+  const caption = document.createElement('div');
+  caption.className = 'sf-caption';
+  caption.hidden = true;
+  caption.setAttribute('aria-hidden', 'true');
+  root.appendChild(caption);
+  // Two dedicated live regions so we never mutate aria-live on a single element.
+  const livePolite = document.createElement('div');
+  livePolite.className = 'sr-only';
+  livePolite.setAttribute('aria-live', 'polite');
+  livePolite.setAttribute('role', 'status');
+  livePolite.setAttribute('aria-atomic', 'true');
+  root.appendChild(livePolite);
+  const liveAssertive = document.createElement('div');
+  liveAssertive.className = 'sr-only';
+  liveAssertive.setAttribute('aria-live', 'assertive');
+  liveAssertive.setAttribute('role', 'alert');
+  liveAssertive.setAttribute('aria-atomic', 'true');
+  root.appendChild(liveAssertive);
+  let captionHideTimer = 0;
+  let captionFadeTimer = 0;
+  ctx.bus.on('presentation:caption', (p) => {
+    if (!p || !p.text) return;
+    clearTimeout(captionHideTimer);
+    clearTimeout(captionFadeTimer);
+    caption.textContent = p.text;
+    caption.hidden = false;
+    caption.classList.toggle('assertive', !!p.assertive);
+    caption.classList.remove('show'); void caption.offsetWidth; // restart fade-in
+    caption.classList.add('show');
+    // Route to the appropriate live region so screen readers get the right politeness without
+    // mutating aria-live on a single element (which confuses some ATs).
+    const live = p.assertive ? liveAssertive : livePolite;
+    live.textContent = '';
+    live.textContent = p.text;
+    const ttl = p.assertive ? 3200 : 2400;
+    captionHideTimer = setTimeout(() => {
+      caption.classList.remove('show');
+      captionFadeTimer = setTimeout(() => {
+        caption.hidden = true;
+      }, 220); // let the fade-out finish before hiding
+    }, ttl);
   });
 
   // ---- HUD meta-arc: the three phases of complicity (STABLE LOAD, tag flicker, manifest ghost) ----
@@ -446,7 +520,7 @@ export function createHud(ctx, alerts) {
   function refreshCargoPanel() {
     if (!cargoPanelOpen) return;
     buildCmdtyMap();
-    const c = state.player.cargo || {};
+    const c = (state.player || {}).cargo || {};
     const items = c.items || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
@@ -488,12 +562,25 @@ export function createHud(ctx, alerts) {
 
       const row = document.createElement('div');
       row.className = 'sf-cargo-row';
-      row.innerHTML =
-        `<span class="sf-cargo-row__name" title="${name}">${name}</span>` +
-        `<span class="sf-cargo-row__qty">${qty}</span>` +
-        `<span class="sf-cargo-row__vol">${vol}u</span>` +
-        `<span class="sf-cargo-row__val">${val > 0 ? val.toLocaleString() : '—'}</span>` +
-        `<button class="sf-cargo-row__jet" data-id="${id}" title="Jettison 1 unit">JET</button>`;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'sf-cargo-row__name';
+      nameSpan.title = name;
+      nameSpan.textContent = name;
+      const qtySpan = document.createElement('span');
+      qtySpan.className = 'sf-cargo-row__qty';
+      qtySpan.textContent = String(qty);
+      const volSpan = document.createElement('span');
+      volSpan.className = 'sf-cargo-row__vol';
+      volSpan.textContent = `${vol}u`;
+      const valSpan = document.createElement('span');
+      valSpan.className = 'sf-cargo-row__val';
+      valSpan.textContent = val > 0 ? val.toLocaleString() : '—';
+      const jetBtn = document.createElement('button');
+      jetBtn.className = 'sf-cargo-row__jet';
+      jetBtn.dataset.id = id;
+      jetBtn.title = 'Jettison 1 unit';
+      jetBtn.textContent = 'JET';
+      row.append(nameSpan, qtySpan, volSpan, valSpan, jetBtn);
       frag.appendChild(row);
     }
 
@@ -621,7 +708,7 @@ export function createHud(ctx, alerts) {
     return _credFrom + (_credTo - _credFrom) * e;
   }
   function refreshCredits() {
-    const target = Math.round(state.player.credits || 0);
+    const target = Math.round((state.player || {}).credits || 0);
     // Retarget from the value currently displayed (not the old target) so chained changes stay smooth
     _credFrom = _credCurrent();
     _credTo = target;
@@ -637,7 +724,7 @@ export function createHud(ctx, alerts) {
   }
   function refreshCargo() {
     cargoDirty = false;
-    const c = state.player.cargo || {};
+    const c = (state.player || {}).cargo || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
     setText(elCargo, `${used} / ${cap} u`);
@@ -662,7 +749,12 @@ export function createHud(ctx, alerts) {
         prog = need ? ` ${cur}/${need}` : '';
         line.dataset.label = o.label || o.text || '';
       }
-      line.innerHTML = `<span class="sf-obj__dot"></span><span class="sf-obj__t">${title}${prog}</span>`;
+      const dot = document.createElement('span');
+      dot.className = 'sf-obj__dot';
+      const text = document.createElement('span');
+      text.className = 'sf-obj__t';
+      text.textContent = `${title}${prog}`;
+      line.append(dot, text);
       frag.appendChild(line);
     }
     objWrap.appendChild(frag);
@@ -733,7 +825,7 @@ export function createHud(ctx, alerts) {
     }
 
     // ---- Target lock diamond (world-space overlay on locked/selected target) ----
-    const tid = state.player.targetId;
+    const tid = (state.player || {}).targetId;
     const tgt = tid != null ? state.entities.get(tid) : null;
     if (tgt && tgt.alive && helpers.worldToScreen) {
       const proj = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
@@ -793,7 +885,8 @@ export function createHud(ctx, alerts) {
       const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
       const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
       // Mining beam heat is the primary heat source; fall back to entity.data.heat only if beam has none.
-      const beamHeat = (state.player.miningBeam && state.player.miningBeam.heat != null) ? state.player.miningBeam.heat : 0;
+      const player = state.player || {};
+      const beamHeat = (player.miningBeam && player.miningBeam.heat != null) ? player.miningBeam.heat : 0;
       const heat = beamHeat > 0 ? beamHeat : ((p.data && p.data.heat != null) ? p.data.heat : 0);
       const heatMax = (p.data && p.data.heatMax) || 100;
       const heatFrac = clamp01(heat / heatMax);

@@ -171,6 +171,10 @@ export const audio = {
     // payoff lands above the bed.
     bus.on('mission:accepted', () => { this.play('sfx_mission_accept', { gain: 0.7 }); });
     bus.on('mission:completed', () => { this._duckMusic(); this.play('sfx_mission_complete', { gain: 0.8 }); });
+    // Mission failure/expiry: previously silent on the negative outcome (only accept/complete had
+    // sound). A short low deny cue signals the setback without celebration.
+    bus.on('mission:failed', () => this._onCue('deny'));
+    bus.on('mission:expired', () => this._onCue('deny'));
     bus.on('dock:docked', (p) => this._onDocked(p));
     bus.on('dock:undocked', () => this._onUndocked());
     bus.on('jump:chargeStart', () => {
@@ -178,6 +182,21 @@ export const audio = {
       this.play('sfx_jump_charge', { gain: 0.5, rate: 0.6 }); // early charge buildup
     });
     bus.on('jump:start', (p) => this._onJump(p));
+    // Jump arrival: play the decompression whoosh when the player ACTUALLY materializes at the
+    // destination (the jump:arrive event from world.js after the 1.2s tunnel). Previously arrival
+    // was silent — _onJump used a fixed 400ms setTimeout that raced the real arrival time and never
+    // fired on aborted jumps. Subscribing to the real event syncs the sound to the visual exactly.
+    bus.on('jump:arrive', () => this.play('sfx_jump_arrive', { gain: 0.7 }));
+    // Mining yield: each ore chunk gained was silent (only the per-tick beam impact had sound).
+    // A soft impact ping makes the reward loop read — throttled so a burst of yields isn't noise.
+    bus.on('mining:yield', (p) => this._onMiningYield(p));
+    // Low-fuel alarm: fuel:empty fired with no sound (no warning before you're stranded). A short
+    // alert cue surfaces the emergency. (The continuous low-health alarm is a separate poller.)
+    bus.on('fuel:empty', () => this._onCue('alert'));
+    // Tech research + ship purchase: the two biggest credit sinks were silent. A confirm chime
+    // makes the payoff of a major purchase/upgrade land.
+    bus.on('tech:researched', () => this.play('sfx_mission_complete', { gain: 0.6 }));
+    bus.on('ship:purchased', () => this.play('sfx_mission_complete', { gain: 0.7 }));
     bus.on('sector:enter', () => { this._markMusicDirty(); });
     bus.on('ship:boostStart', (p) => {
       // Boost activation: a dedicated breathy whoosh, distinct from explosions.
@@ -621,13 +640,22 @@ export const audio = {
   },
 
   _onJump(p) {
-    // Warp: charge sound (rising energy) + duck music + arrival whoosh after a beat
+    // Warp charge sound (rising energy) + duck music. The arrival decompression whoosh is now
+    // triggered by the jump:arrive event (synced to the actual materialization after the 1.2s
+    // tunnel), not a fixed timer — see the jump:arrive subscriber in init().
     this._duckMusic(1.8);
     this.play('sfx_jump_charge', { gain: 0.8 });
-    // Arrival decompression after the charge completes
-    setTimeout(() => {
-      this.play('sfx_jump_arrive', { gain: 0.7 });
-    }, 400);
+  },
+
+  // Mining yield: a burst of ore chunks (e.g. a big asteroid breaking up) would spam the impact
+  // sound. Throttle to at most one yield ping per ~120ms so a rich strike reads as a pleasant
+  // trickle, not machine-gun noise. Position follows the player's mining target when available.
+  _onMiningYield(p) {
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    if (now - (this._lastMiningYieldAt || 0) < 120) return;
+    this._lastMiningYieldAt = now;
+    const pos = p && p.pos;
+    this.play('sfx_mining_impact', { position: pos, gain: 0.5, rate: 1.1 });
   },
 
   _onCue(cue) {

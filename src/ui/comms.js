@@ -149,7 +149,7 @@ export function createComms(ctx) {
   const backlogBtn = document.createElement('button');
   backlogBtn.className = 'sf-comm-backlog-btn';
   backlogBtn.id = 'sf-comm-backlog-btn';
-  backlogBtn.title = 'Comms log (C)';
+  backlogBtn.title = 'Comms log (L)';
   backlogBtn.setAttribute('aria-label', 'Open comms log');
   backlogBtn.textContent = '\u2261';  // trigram — "the channel"
   document.getElementById('ui-root').appendChild(backlogBtn);
@@ -373,7 +373,7 @@ function cleanLifecycleText(value) {
   return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
 }
 
-function escapeHtml(s) {
+export function escapeHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

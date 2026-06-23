@@ -4,7 +4,7 @@
   "seed": 47,
   "ticks": 720,
   "inputTape": "test/47a.inputs.json",
-  "stateHash": "7d0bf402f41ce91ef94e7764c33dfe655e190bee93749d13b2c267cf2a4555c6",
+  "stateHash": "ca3eac66b0f0b62457a40f44ba61142b176b9f178fc4f555bffaa916f49dce39",
   "traceLimit": 120,
   "events": [
     "scenario.*",
@@ -18,16 +18,16 @@
     "scenario:beatEntered": 1,
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
-    "presentation:cue": 2,
-    "presentation:cueApplied": 2,
-    "presentation:cameraCue": 1,
-    "camera:shake": 1,
-    "presentation:vfxCue": 2,
-    "presentation:audioCue": 2,
-    "audio:cue": 2,
-    "presentation:uiCue": 2,
-    "alert": 2,
-    "presentation:caption": 2
+    "presentation:cue": 3,
+    "presentation:cueApplied": 3,
+    "presentation:cameraCue": 2,
+    "camera:shake": 2,
+    "presentation:vfxCue": 3,
+    "presentation:audioCue": 3,
+    "audio:cue": 3,
+    "presentation:uiCue": 3,
+    "alert": 3,
+    "presentation:caption": 3
   },
   "cues": [
     {

@@ -38,8 +38,8 @@ function tileFor(col, row, rng) {
     const oreRoll = rng();
     let ore;
     if (depth < 0.33) ore = 'cmdty_ore_iron';              // surface: common iron
-    else if (depth < 0.66) ore = oreRoll < 0.6 ? 'cmdty_ore_copper' : 'cmdty_ore_silicon';
-    else ore = oreRoll < 0.4 ? 'cmdty_ore_titanium' : (oreRoll < 0.75 ? 'cmdty_ore_platinoid' : 'cmdty_ore_ice');
+    else if (depth < 0.66) ore = oreRoll < 0.6 ? 'cmdty_ore_copper' : 'cmdty_silicate';
+    else ore = oreRoll < 0.4 ? 'cmdty_ore_titanium' : (oreRoll < 0.75 ? 'cmdty_ore_platinoid' : 'cmdty_ice_water');
     const yieldU = 1 + Math.floor(rng() * (2 + depth * 4)); // deeper veins are richer
     const hp = 6 + Math.floor(depth * 10);                 // deeper veins are harder
     return { type: 'vein', hp, maxHp: hp, ore, yieldU, hazard: false };
@@ -100,6 +100,10 @@ export const drill = {
     const yieldLog = d.yieldLog;
     this.state.drill = null;
     this.bus.emit('drill:end', { asteroidId: d.asteroidId, yieldLog });
+  },
+
+  newGame() {
+    this.state.drill = null;
   },
 
   // Move the avatar left/right by dc columns (clamped; can't move into uncleared tiles horizontally

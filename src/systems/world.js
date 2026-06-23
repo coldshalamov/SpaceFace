@@ -90,6 +90,30 @@ export const world = {
     bus.on('ship:statsChanged', () => this._resolveShipModules());
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
+    // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
+    // re-entry or save reload. (The entity carries data.isBoss + data.bossSectorId/bossPoiId.)
+    bus.on('entity:killed', (p) => this._onBossKilled(p || {}));
+  },
+
+  _onBossKilled(p) {
+    if (!p || !p.id) return;
+    const e = this.state.entities.get(p.id);
+    const d = e && e.data;
+    if (!d || !d.isBoss) return;
+    const sectorId = d.bossSectorId || this.state.world.currentSectorId;
+    const poiId = d.bossPoiId;
+    if (!sectorId || !poiId) return;
+    const disc = this._discoveryFor(sectorId);
+    if (!disc.pois) disc.pois = {};
+    const rec = disc.pois[poiId] || (disc.pois[poiId] = { discovered: true, identified: true });
+    rec.bossDefeated = true;
+    rec.discovered = true;
+    rec.identified = true;
+    // Clear the live boss handle so the active sector knows it's gone.
+    if (this.state.world.activeSector && this.state.world.activeSector.boss) {
+      delete this.state.world.activeSector.boss;
+    }
+    this.bus.emit('boss:defeated', { sectorId, poiId, killerId: p.killerId || null });
   },
 
   // =========================================================================================
@@ -140,6 +164,7 @@ export const world = {
     this._spawnPOIs(sector, active, disc, rng);
     this._spawnHazards(sector, active);
     this._spawnEnemies(sector, active, rng);
+    this._spawnBossIfDue(sector, active, rng);
 
     state.world.activeSector = active;
     state.world.currentSectorId = sectorId;
@@ -380,6 +405,36 @@ export const world = {
         active.enemies.push(ent.id);
       }
     }
+  },
+
+  // Boss encounter (V2 § frontier capstone): a sector authored with a `poi_boss` POI hosts the
+  // dreadnought 'Iron Maw' (dreadnought_boss). The marquee T4 fight was previously authored in
+  // data + render but had NO spawn call site — invisible to players. It spawns once per sector
+  // entry and stays defeated (tracked in the deterministic discovery overlay) once killed, so
+  // re-entering the sector or reloading a save does not respawn it. Position is offset from the
+  // boss POI marker so the fight reads as "at the arena signal", not on top of the entry point.
+  _spawnBossIfDue(sector, active, rng) {
+    const bossPoi = (sector.pois || []).find((p) => p.type === 'anomaly' && p.id === 'poi_boss');
+    if (!bossPoi) return;
+    const disc = this._discoveryFor(sector.id);
+    if (!disc.pois) disc.pois = {};
+    const rec = disc.pois[bossPoi.id] || (disc.pois[bossPoi.id] = { discovered: false, identified: false });
+    if (rec.bossDefeated) return; // already beaten this save — don't respawn
+    // Place the boss near the POI marker (or a deterministic ring position if the POI is unplaced).
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const pos = bossPoi.pos
+      ? { x: bossPoi.pos.x, z: bossPoi.pos.z }
+      : (() => { const ang = rng() * Math.PI * 2, r = wr * 0.45; return { x: Math.cos(ang) * r, z: Math.sin(ang) * r }; })();
+    const [lvLo, lvHi] = sector.enemyLevel || [10, 15];
+    const level = clamp(lvHi, lvLo, 15);
+    const spec = makeEnemySpawnSpec('dreadnought_boss', level, pos);
+    spec.data = spec.data || {};
+    spec.data.isBoss = true;          // flag so the kill handler can find this entity cheaply
+    spec.data.bossPoiId = bossPoi.id; // links back to the discovery record to mark defeated
+    spec.data.bossSectorId = sector.id;
+    const ent = this.helpers.spawnEntity(spec);
+    active.enemies.push(ent.id);
+    active.boss = { entityId: ent.id, poiId: bossPoi.id };
   },
 
   _enemyPool(sector) {

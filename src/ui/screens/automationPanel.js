@@ -7,6 +7,7 @@
 // Export: automationScreen  (id 'automation'). No 'three' import.
 
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
+import { escapeHtml } from '../comms.js';
 
 const TABS = [
   { id: 'drones',   label: 'Drones'   },
@@ -286,8 +287,8 @@ export const automationScreen = {
           ['mine_to_depot', 'Mine → Haul → Sell', 'mine_to_depot'],
           ['patrol_guard', 'Guard Player', 'patrol_guard'],
           ['scout_report', 'Scout → Report', 'scout_report'],
-        ].map(([v, label, id]) => `<option value="${id}" ${curTpl === id ? 'selected' : ''}>${label}</option>`).join('');
-        const programBadge = curTpl ? ` <span class="au-program-badge">⚙ ${curTpl}</span>` : '';
+        ].map(([v, label, id]) => `<option value="${escapeHtml(id)}" ${curTpl === id ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+        const programBadge = curTpl ? ` <span class="au-program-badge">⚙ ${escapeHtml(curTpl)}</span>` : '';
         const card = document.createElement('div');
         card.className = 'au-card';
         card.innerHTML = `
@@ -345,7 +346,7 @@ export const automationScreen = {
         const def = TRADERS.find((x) => x.id === t.defId) || t;
         const card = document.createElement('div');
         card.className = 'au-card';
-        const route = t.route ? `${t.route.from || '?'} → ${t.route.to || '?'}` : 'idle (assign route)';
+        const route = t.route ? `${escapeHtml(t.route.from || '?')} → ${escapeHtml(t.route.to || '?')}` : 'idle (assign route)';
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${prettyId(def.id)} ${statusPill(t.status)}</div>
@@ -456,9 +457,9 @@ export const automationScreen = {
         const order = fs.order || 'escort';
         card.innerHTML = `
           <div class="grow">
-            <div class="nm">${fs.name || prettyId(fs.defId || 'wingman')} ${statusPill(fs.status)}</div>
+            <div class="nm">${escapeHtml(fs.name) || prettyId(fs.defId || 'wingman')} ${statusPill(fs.status)}</div>
             <div class="meta">
-              <span>order ${order}</span>
+              <span>order ${escapeHtml(order)}</span>
               ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
             </div>
           </div>
@@ -485,7 +486,7 @@ export const automationScreen = {
         card.className = 'au-card';
         card.innerHTML = `
           <div class="grow">
-            <div class="nm">${s.customName || prettyId(s.defId)}</div>
+            <div class="nm">${escapeHtml(s.customName) || prettyId(s.defId)}</div>
             <div class="meta"><span>${prettyId(s.defId)}</span></div>
           </div>
           <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;
@@ -555,9 +556,9 @@ function recipeText(r) {
 
 function statusPill(status) {
   if (!status || status === 'active' || status === 'working' || status === 'deployed') return `<span class="au-pill ok">active</span>`;
-  if (status === 'distressed' || status === 'lowfuel' || status === 'idle') return `<span class="au-pill warn">${status}</span>`;
-  if (status === 'lost' || status === 'raided' || status === 'destroyed') return `<span class="au-pill bad">${status}</span>`;
-  return `<span class="au-pill">${status}</span>`;
+  if (status === 'distressed' || status === 'lowfuel' || status === 'idle') return `<span class="au-pill warn">${escapeHtml(status)}</span>`;
+  if (status === 'lost' || status === 'raided' || status === 'destroyed') return `<span class="au-pill bad">${escapeHtml(status)}</span>`;
+  return `<span class="au-pill">${escapeHtml(status)}</span>`;
 }
 
 function miniBar(frac) {
@@ -580,9 +581,9 @@ function lockedEl(text) {
 }
 
 function prettyId(id) {
-  return String(id || '')
+  return escapeHtml(String(id || '')
     .replace(/^(drone_|trader_|outpost_|cmdty_|ship_|sector_|mod_)/, '')
-    .replace(/_/g, ' ');
+    .replace(/_/g, ' '));
 }
 
 function numOr(v) {

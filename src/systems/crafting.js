@@ -255,6 +255,10 @@ export const crafting = {
     return { queues: normalizeQueues(this.state.crafting && this.state.crafting.queues) };
   },
 
+  newGame() {
+    this.state.crafting = { queues: {} };
+  },
+
   deserialize(data) {
     this.state.crafting = { queues: normalizeQueues(data && data.queues) };
   },

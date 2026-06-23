@@ -13,8 +13,18 @@ import { isConfirmOpen } from './confirm.js';
 
 export function createUiInput(ctx, screenManager) {
   const { state, bus } = ctx;
+  const gp = ctx.gamepad;
   let dockInRange = false;
   let dockStationId = null;
+
+  // Gamepad UI navigation state.
+  const _nav = {
+    up: false, down: false, left: false, right: false,
+    holdT: 0,
+    repeatT: 0,
+    initialDelay: 0.36,
+    repeatDelay: 0.12,
+  };
 
   // physics emits dock:range while the player is near a station
   bus.on('dock:range', ({ stationId, inRange }) => {
@@ -221,8 +231,177 @@ export function createUiInput(ctx, screenManager) {
   // let other modules (uiRoot Undock button) trigger an undock
   bus.on('ui:undock', undock);
 
+  // ---- gamepad UI layer -----------------------------------------------------
+
+  function getGamepadConfig() {
+    return (state.settings && state.settings.controls && state.settings.controls.gamepad) || {};
+  }
+
+  function focusableInside(root) {
+    if (!root) return [];
+    return Array.from(root.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )).filter((el) => {
+      if (el.disabled) return false;
+      if (el.getAttribute('aria-hidden') === 'true') return false;
+      const t = el.getAttribute('tabindex');
+      if (t != null && Number(t) < 0) return false;
+      let p = el;
+      while (p && p !== root) {
+        if (p.style && p.style.display === 'none') return false;
+        p = p.parentNode;
+      }
+      return true;
+    });
+  }
+
+  function activeScreenEl() {
+    const screensRoot = document.getElementById('screens');
+    if (!screensRoot) return null;
+    for (const el of screensRoot.querySelectorAll('.screen')) {
+      if (el.style.display !== 'none') return el;
+    }
+    return null;
+  }
+
+  function moveFocus(dir) {
+    const root = activeScreenEl();
+    const items = focusableInside(root);
+    if (!items.length) return;
+    const active = document.activeElement;
+    let idx = items.indexOf(active);
+    if (idx < 0) idx = 0;
+    const delta = dir === 'up' || dir === 'left' ? -1 : 1;
+    const next = (idx + delta + items.length) % items.length;
+    try { items[next].focus(); } catch (e) {}
+  }
+
+  function activateFocused() {
+    const root = activeScreenEl();
+    const active = document.activeElement;
+    if (!active || !root || !root.contains(active)) return;
+    if (typeof active.click === 'function') active.click();
+    else {
+      active.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
+    }
+  }
+
+  function handleGamepadUi(dt) {
+    if (!gp || !gp.isConnected()) return;
+    const cfg = getGamepadConfig();
+    if (cfg.enabled === false) return;
+
+    const modalOpen = screenManager.isOpen();
+    const top = modalOpen && screenManager.top ? screenManager.top() : null;
+
+    // Navigation: D-pad or left stick. Use a simple repeat timer.
+    const dz = typeof cfg.deadzone === 'number' ? cfg.deadzone : 0.12;
+    const navNow = {
+      up: gp.axes.leftY < -dz,
+      down: gp.axes.leftY > dz,
+      left: gp.axes.leftX < -dz,
+      right: gp.axes.leftX > dz,
+    };
+    // D-pad overrides / extends stick navigation.
+    const dpad = gp.actions || {};
+    // d-pad buttons are not in the action map, read raw pad state via getGamepad? We don't expose
+    // raw button array, so we expose them as pseudo actions on the gamepad object for convenience.
+    // Since gamepad.js does not export dpad actions, read from the connected pad directly.
+    const rawPad = getRawPad();
+    if (rawPad) {
+      if (rawPad.buttons[12] && rawPad.buttons[12].pressed) navNow.up = true;
+      if (rawPad.buttons[13] && rawPad.buttons[13].pressed) navNow.down = true;
+      if (rawPad.buttons[14] && rawPad.buttons[14].pressed) navNow.left = true;
+      if (rawPad.buttons[15] && rawPad.buttons[15].pressed) navNow.right = true;
+    }
+
+    if (modalOpen) {
+      if (isConfirmOpen()) return; // confirm dialog traps all keys/buttons
+
+      // Accept / Cancel (A / B).
+      if (gp.actions.accept && gp.actions.accept.pressed) {
+        activateFocused();
+        bus.emit('ui:confirm', {});
+        bus.emit('audio:cue', { id: 'ui_confirm' });
+      }
+      if (gp.actions.cancel && gp.actions.cancel.pressed) {
+        const def = screenManager.getActiveScreenDef && screenManager.getActiveScreenDef();
+        if (def && def.id === 'station') undock();
+        else if (!screenManager.locked || !screenManager.locked()) screenManager.popScreen();
+        bus.emit('ui:cancel', {});
+        bus.emit('audio:cue', { id: 'ui_back' });
+      }
+
+      // Direction repeat handling.
+      let moved = false;
+      for (const d of ['up', 'down', 'left', 'right']) {
+        if (navNow[d]) {
+          if (!_nav[d]) {
+            moveFocus(d);
+            moved = true;
+            _nav.holdT = 0;
+            _nav.repeatT = 0;
+          } else {
+            _nav.holdT += dt;
+            if (_nav.holdT >= _nav.initialDelay + _nav.repeatT) {
+              _nav.repeatT += _nav.repeatDelay;
+              moveFocus(d);
+              moved = true;
+            }
+          }
+        }
+        _nav[d] = navNow[d];
+      }
+      if (moved) {
+        bus.emit('ui:navigate', {});
+        bus.emit('audio:cue', { id: 'hover' });
+      }
+    }
+
+    // Global UI actions when no modal is open (mode must be flight).
+    if (!modalOpen && state.mode === 'flight') {
+      if (gp.actions.pause && gp.actions.pause.pressed) {
+        screenManager.pushScreen('pause');
+        bus.emit('audio:cue', { id: 'ui_open' });
+      }
+      if (gp.actions.map && gp.actions.map.pressed) {
+        screenManager.pushScreen('starmap');
+      }
+      if (gp.actions.codex && gp.actions.codex.pressed) {
+        screenManager.pushScreen('help');
+      }
+      if (gp.actions.cycleTarget && gp.actions.cycleTarget.pressed) {
+        bus.emit('ui:cycleTarget', { dir: 1 });
+      }
+    }
+
+    // Start toggles pause even when the pause menu itself is open.
+    if (top === 'pause' && gp.actions.pause && gp.actions.pause.pressed) {
+      screenManager.popScreen();
+      bus.emit('audio:cue', { id: 'ui_back' });
+    }
+  }
+
+  function getRawPad() {
+    if (typeof navigator === 'undefined' || !navigator.getGamepads) return null;
+    const pads = navigator.getGamepads();
+    for (let i = 0; i < pads.length; i++) {
+      const p = pads[i];
+      if (p && p.connected) return p;
+    }
+    return null;
+  }
+
+  function tick(dt) {
+    // Poll the gamepad whenever the sim is not stepping in flight so menus stay navigable.
+    if (gp && (state.mode !== 'flight' || state.timeScale === 0)) {
+      gp.tick(dt);
+    }
+    handleGamepadUi(dt);
+  }
+
   return {
-    doDock, undock,
+    doDock, undock, tick,
     dispose() { document.removeEventListener('keydown', onKeyDown); window.removeEventListener('wheel', onWheel); },
   };
 }

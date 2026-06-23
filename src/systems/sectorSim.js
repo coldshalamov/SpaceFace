@@ -40,17 +40,17 @@ const MAX_IMPULSES = 256;
 const MAX_INTEL_ALERTS = 3;
 
 const STATION_GOODS = Object.freeze({
-  refinery: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_fuel'],
+  refinery: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_fuel_cells'],
   mine: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_scrap_metal'],
   mining: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_scrap_metal'],
-  trade_hub: ['cmdty_food', 'cmdty_fuel', 'cmdty_scrap_metal'],
+  trade_hub: ['cmdty_food', 'cmdty_fuel_cells', 'cmdty_scrap_metal'],
   fab: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_scrap_metal'],
-  shipyard: ['cmdty_ore_iron', 'cmdty_fuel', 'cmdty_scrap_metal'],
-  blackmarket: ['cmdty_fuel', 'cmdty_scrap_metal', 'cmdty_food'],
-  research: ['cmdty_fuel', 'cmdty_ore_copper', 'cmdty_food'],
-  station: ['cmdty_food', 'cmdty_fuel', 'cmdty_scrap_metal'],
+  shipyard: ['cmdty_ore_iron', 'cmdty_fuel_cells', 'cmdty_scrap_metal'],
+  blackmarket: ['cmdty_fuel_cells', 'cmdty_scrap_metal', 'cmdty_food'],
+  research: ['cmdty_fuel_cells', 'cmdty_ore_copper', 'cmdty_food'],
+  station: ['cmdty_food', 'cmdty_fuel_cells', 'cmdty_scrap_metal'],
 });
-const DEFAULT_GOODS = ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_food', 'cmdty_fuel', 'cmdty_scrap_metal'];
+const DEFAULT_GOODS = ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_food', 'cmdty_fuel_cells', 'cmdty_scrap_metal'];
 
 export const sectorSim = {
   name: 'sectorSim',
@@ -73,7 +73,6 @@ export const sectorSim = {
     this.bus.on('sector:exit', (p) => this._guard('sector:exit', () => this._onSectorExit(p)));
     this.bus.on('sector:enter', (p) => this._guard('sector:enter', () => this._onSectorEnter(p)));
     this.bus.on('save:loaded', () => this._guard('save:loaded', () => this.runOfflineCatchup()));
-    this.bus.on('game:new', () => this._guard('game:new', () => this.newGame()));
     this.bus.on('game:started', () => this._guard('game:started', () => this._seedCurrentSector()));
 
     // Event-to-field boundary. These are impulses, not random walks: player/NPC outcomes become

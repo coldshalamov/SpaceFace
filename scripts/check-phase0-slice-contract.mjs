@@ -155,7 +155,7 @@ assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 12, 'expected 
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
 assert.equal(envelope.phase0ObservedTraceCounts['graffiti:show'], 1, 'expected telemetry should pin observed cold-start graffiti count');
 assert.equal(envelope.phase0ObservedTraceCounts['comms:popup'], 2, 'expected telemetry should pin observed cold-start comms count');
-assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 2, 'expected telemetry should pin SG-08 presentation cue count');
+assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 3, 'expected telemetry should pin SG-08 presentation cue count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected telemetry should pin scenario load count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');
@@ -175,7 +175,7 @@ assert.equal(envelope.acceptanceCriteria.enemyCounterTetherBehaviorCountMin, 2,
 assert.equal(envelope.acceptanceCriteria.deathToRetryTickMax, 360,
   'expected telemetry should require failure-to-retry within 6s at 60Hz');
 assert.equal(envelope.acceptanceCriteria.authoritativeHash,
-  '7d0bf402f41ce91ef94e7764c33dfe655e190bee93749d13b2c267cf2a4555c6',
+  'ca3eac66b0f0b62457a40f44ba61142b176b9f178fc4f555bffaa916f49dce39',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 assert.equal(envelope.acceptanceCriteria.canonicalLongBranchId, 'escape_with_evidence',
   'expected telemetry should pin the canonical long-run branch outcome');

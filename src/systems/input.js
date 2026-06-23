@@ -19,6 +19,9 @@
 // both KeyW and ArrowUp) so WASD-and-arrows both work out of the box. The settings layer stores an
 // array per action; the UI lets the player set a primary + keeps the arrow-cluster as a secondary
 // for movement so arrow-key players aren't stranded.
+import { createGamepad } from './gamepad.js';
+import { createTouch } from './touch.js';
+
 const DEFAULT_BINDINGS = {
   forward:  ['KeyW', 'ArrowUp'],
   reverse:  ['KeyS', 'ArrowDown'],
@@ -29,6 +32,7 @@ const DEFAULT_BINDINGS = {
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     ['Space'],          // mouse LMB also fires (see update)
   autoFire: ['KeyF'],
+  countermeasure: ['KeyC'],    // deploy chaff/ECM (P1-7) — C by default, remappable
   // Mouse buttons (LMB=fire, RMB=group2/mine) are not remappable in this pass — they're ergonomic
   // constants. Keyboard equivalents (Space to fire) ARE remappable.
 };
@@ -52,15 +56,35 @@ export const input = {
     const keys = (this._keys = Object.create(null));
     this._ndc = { x: 0, y: 0 };
     this._m0 = false; this._m2 = false;
+    this._lastKbmMs = performance.now();
 
-    addEventListener('keydown', (e) => { keys[e.code] = true; });
+    this.gamepad = createGamepad(ctx);
+    ctx.gamepad = this.gamepad;
+
+    // Touch layer (P1-12): virtual dual-stick + buttons for touchscreens. Auto-detects on touch
+    // devices; the overlay is built lazily. Merged below alongside gamepad so gameplay is unchanged.
+    this.touch = createTouch(ctx);
+    ctx.touch = this.touch;
+    this.touch.autoDetect();
+    // Re-evaluate on resize (phone rotate / tablet dock) unless the player set an explicit choice.
+    addEventListener('resize', () => this.touch.autoDetect());
+
+    addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      this._lastKbmMs = performance.now();
+    });
     addEventListener('keyup', (e) => { keys[e.code] = false; });
     addEventListener('blur', () => { for (const k in keys) keys[k] = false; this._m0 = this._m2 = false; });
     addEventListener('mousemove', (e) => {
       this._ndc.x = (e.clientX / innerWidth) * 2 - 1;
       this._ndc.y = -(e.clientY / innerHeight) * 2 + 1;
+      this._lastKbmMs = performance.now();
     });
-    addEventListener('mousedown', (e) => { if (e.button === 0) this._m0 = true; if (e.button === 2) this._m2 = true; });
+    addEventListener('mousedown', (e) => {
+      if (e.button === 0) this._m0 = true;
+      if (e.button === 2) this._m2 = true;
+      this._lastKbmMs = performance.now();
+    });
     addEventListener('mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 2) this._m2 = false; });
     addEventListener('contextmenu', (e) => e.preventDefault());
   },
@@ -73,6 +97,11 @@ export const input = {
   },
 
   update(dt, state) {
+    const gp = this.gamepad;
+    if (gp) gp.tick(dt);
+    const tp = this.touch;
+    if (tp) tp.tick(dt);
+
     const inp = state.input;
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0) {
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
@@ -89,14 +118,53 @@ export const input = {
     const strafeRight = this._held(state, 'strafeRight');
     const strafeLeft = this._held(state, 'strafeLeft');
 
-    inp.turnIntent = (right ? 1 : 0) - (left ? 1 : 0);   // +1 = turn clockwise (toward +rot)
-    inp.moveZ = (up ? 1 : 0) - (down ? 1 : 0);            // throttle: +1 forward, -1 reverse
-    inp.moveX = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0); // lateral thrusters: +1 ship-local right
+    const kbdTurn = (right ? 1 : 0) - (left ? 1 : 0);
+    const kbdMoveZ = (up ? 1 : 0) - (down ? 1 : 0);
+    const kbdMoveX = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
+    const kbdBoost = this._held(state, 'boost');
+    const kbdFire = this._m0 || this._held(state, 'fire');
 
-    inp.boost = this._held(state, 'boost');
-    // LMB always fires (ergonomic constant); keyboard fire is rebindable.
-    inp.fire = this._m0 || this._held(state, 'fire');
-    inp.fireGroup = this._m2 ? 2 : (inp.fire ? 1 : null);
+    // --- gamepad merge (left stick = yaw/throttle, right stick = aim, RT/RB fire/boost) ---
+    let gpTurn = 0;
+    let gpMoveZ = 0;
+    let gpBoost = false;
+    let gpFire = false;
+    let gpBrake = false;
+    let gpAimActive = false;
+    if (gp && gp.isConnected()) {
+      gpTurn = gp.axes.leftX;
+      gpMoveZ = -gp.axes.leftY; // stick up = forward
+      gpBoost = gp.actions.boost && gp.actions.boost.held;
+      gpFire = gp.actions.fire && gp.actions.fire.held;
+      gpBrake = gp.actions.brake && gp.actions.brake.held;
+      gpAimActive = Math.abs(gp.axes.rightX) > 0.001 || Math.abs(gp.axes.rightY) > 0.001;
+    }
+
+    // --- touch merge (P1-12): virtual dual-stick. Left stick = yaw/throttle (same as gamepad),
+    //     right stick = aim, on-screen buttons = fire/mine/boost. A touch modality is the most
+    //     deliberate input (a thumb on a stick), so when touch is active it wins over kbm/gp. ---
+    let tpTurn = 0, tpMoveZ = 0, tpMoveX = 0;
+    let tpBoost = false, tpFire = false, tpMine = false;
+    let tpAimActive = false;
+    const touchActive = !!(tp && tp.isConnected());
+    if (touchActive) {
+      tpTurn = tp.axes.leftX;
+      tpMoveZ = -tp.axes.leftY;
+      tpBoost = tp.actions.boost && tp.actions.boost.held;
+      tpFire = tp.actions.fire && tp.actions.fire.held;
+      tpMine = tp.actions.mine && tp.actions.mine.held;
+      tpAimActive = Math.abs(tp.axes.rightX) > 0.001 || Math.abs(tp.axes.rightY) > 0.001;
+    }
+
+    // Keyboard/mouse is authoritative when both are active (whichever moved last wins for aim).
+    const kbmRecent = this._lastKbmMs >= (gp ? gp.lastActiveMs : 0) && this._lastKbmMs >= (tp ? tp.lastActiveMs : 0);
+
+    inp.turnIntent = kbdTurn || gpTurn || tpTurn;
+    inp.moveX = kbdMoveX || tpMoveX;
+    inp.moveZ = kbdMoveZ || (gpBrake ? -1 : gpMoveZ) || tpMoveZ;
+    inp.boost = kbdBoost || gpBoost || tpBoost;
+    inp.fire = kbdFire || gpFire || tpFire;
+    inp.fireGroup = (this._m2 || tpMine) ? 2 : (inp.fire ? 1 : null);
 
     // Auto-fire toggle (edge-triggered): F flips state.input.autoFire.
     if (this._held(state, 'autoFire')) {
@@ -109,11 +177,35 @@ export const input = {
       this._autoFireHeld = false;
     }
 
-    // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
-    const w = this.helpers.raycastToPlane ? this.helpers.raycastToPlane(this._ndc) : { x: 0, z: 0 };
-    inp.aimWorld.x = w.x; inp.aimWorld.z = w.z;
+    // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
+    // We set a flag (not deploy directly) so the countermeasures system owns the cooldown/equip
+    // logic + AI auto-deploy in one place.
+    if (this._held(state, 'countermeasure')) {
+      if (!this._cmHeld) { inp.deployCountermeasure = true; this._cmHeld = true; }
+    } else {
+      this._cmHeld = false;
+    }
+
     const p = state.entities.get(state.playerId);
-    if (p) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);
-    inp.mouseNdc.x = this._ndc.x; inp.mouseNdc.y = this._ndc.y;
+    const gpOrTouchAim = gpAimActive || tpAimActive;
+    const aimAxes = tpAimActive ? tp.axes : (gpAimActive ? gp.axes : null);
+    if (aimAxes && !kbmRecent && p) {
+      // Right-stick / right-touch aim is independent of the ship nose, like the mouse.
+      const ax = aimAxes.rightX;
+      const ay = -aimAxes.rightY; // world +Z is "up" on the stick
+      const angle = Math.atan2(ay, ax);
+      const dist = 300;
+      inp.aimAngle = angle;
+      inp.aimWorld.x = p.pos.x + Math.cos(angle) * dist;
+      inp.aimWorld.z = p.pos.z + Math.sin(angle) * dist;
+      inp.mouseNdc.x = ax;
+      inp.mouseNdc.y = ay;
+    } else {
+      // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
+      const w = this.helpers.raycastToPlane ? this.helpers.raycastToPlane(this._ndc) : { x: 0, z: 0 };
+      inp.aimWorld.x = w.x; inp.aimWorld.z = w.z;
+      if (p) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);
+      inp.mouseNdc.x = this._ndc.x; inp.mouseNdc.y = this._ndc.y;
+    }
   },
 };

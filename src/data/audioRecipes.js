@@ -265,6 +265,27 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 500, filterQ: 0.4,
     pitchRange: [1.0, 1.5],
   },
+
+  // --- Countermeasures (P1-7): chaff = bright metallic burst; ECM = descending electronic whine ---
+  {
+    id: 'sfx_cm_chaff',
+    category: 'weapon',
+    type: 'noise_filtered',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.25 },
+    filterType: 'highpass', filterFreq: 2000, filterQ: 0.8,
+    pitchRange: [0.9, 1.3],
+  },
+  {
+    id: 'sfx_cm_ecm',
+    category: 'weapon',
+    type: 'osc',
+    oscType: 'sawtooth',
+    freqStart: 1200, freqEnd: 200,
+    gainEnvelope: { attack: 0.01, sustain: 0.3, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 3000, filterQ: 2,
+    pitchRange: [0.95, 1.1],
+  },
 ];
 
 // 4 adaptive music stems (A=ambient/safe, B=tension, C=combat, D=boss).

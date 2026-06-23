@@ -12,6 +12,7 @@
 
 import { createScreenManager } from './screenManager.js';
 import { createUiInput } from './input.js';
+import { initPriceHistory } from './priceHistory.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -43,21 +44,26 @@ import { createToasts } from './toasts.js';
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
 
-// id-of-export → { path, export }. Order matters only for nicer console logs.
+// id-of-export → { load, export }. Order matters only for nicer console logs.
+// Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
+// chunks. A runtime string import works in the raw dev server but becomes /screens/*.js 404s in
+// build/web, which strands packaged players in an empty HUD before the menu registers.
 const SCREEN_MODULES = [
-  { path: './screens/stationHub.js', name: 'stationHub' },
-  { path: './screens/starmap.js', name: 'starmapScreen' },
-  { path: './screens/techTree.js', name: 'techTreeScreen' },
-  { path: './screens/automationPanel.js', name: 'automationScreen' },
-  { path: './screens/drill.js', name: 'drillScreen' },
-  { path: './screens/base.js', name: 'baseScreen' },
-  { path: './screens/mainMenu.js', name: 'mainMenuScreen' },
-  { path: './screens/newGame.js', name: 'newGameScreen' },
-  { path: './screens/pause.js', name: 'pauseScreen' },
-  { path: './screens/settings.js', name: 'settingsScreen' },
-  { path: './screens/saveLoad.js', name: 'saveLoadScreen' },
-  { path: './screens/help.js', name: 'helpScreen' },
-  { path: './screens/missionLog.js', name: 'missionLogScreen' },
+  { path: './screens/stationHub.js', load: () => import('./screens/stationHub.js'), name: 'stationHub' },
+  { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },
+  { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
+  { path: './screens/automationPanel.js', load: () => import('./screens/automationPanel.js'), name: 'automationScreen' },
+  { path: './screens/drill.js', load: () => import('./screens/drill.js'), name: 'drillScreen' },
+  { path: './screens/base.js', load: () => import('./screens/base.js'), name: 'baseScreen' },
+  { path: './screens/mainMenu.js', load: () => import('./screens/mainMenu.js'), name: 'mainMenuScreen' },
+  { path: './screens/newGame.js', load: () => import('./screens/newGame.js'), name: 'newGameScreen' },
+  { path: './screens/pause.js', load: () => import('./screens/pause.js'), name: 'pauseScreen' },
+  { path: './screens/gameOver.js', load: () => import('./screens/gameOver.js'), name: 'gameOverScreen' },
+  { path: './screens/settings.js', load: () => import('./screens/settings.js'), name: 'settingsScreen' },
+  { path: './screens/saveLoad.js', load: () => import('./screens/saveLoad.js'), name: 'saveLoadScreen' },
+  { path: './screens/help.js', load: () => import('./screens/help.js'), name: 'helpScreen' },
+  { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
+  { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
 ];
 
 const HUD_STYLE_ID = 'sf-hud-style';
@@ -72,6 +78,9 @@ export const ui = {
     this.helpers = ctx.helpers;
 
     injectHudCss();
+
+    // UX-4: start the price-history recorder (subscribes to economy:tick; standalone, no sim writes).
+    try { initPriceHistory(ctx.bus, ctx.state); } catch (e) { console.warn('[ui] price history init failed', e); }
 
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
@@ -97,6 +106,7 @@ export const ui = {
     const portrait = document.createElement('div');
     portrait.id = 'pilot-portrait';
     portrait.title = 'Pilot';
+    portrait.style.pointerEvents = 'none';
     portrait.innerHTML = PILOT_AVATAR_SVG;
     document.getElementById('ui-root').appendChild(portrait);
 
@@ -109,9 +119,11 @@ export const ui = {
     // Always-visible (when in flight) control hints. The default text below is the open-flight set;
     // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
     // hints based on the player's current activity (mining, combat, near station, near gate).
+    const HINTS_KBM = 'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB sample  •  Shift boost  •  Tab target  •  M map  •  I cargo  •  L comms';
+    const HINTS_PAD = 'Left stick fly  •  Right stick aim  •  RT fire  •  RB boost  •  LB brake  •  X target  •  View map  •  Y codex  •  Start pause';
     const hints = document.createElement('div');
     hints.id = 'control-hints';
-    hints.textContent = 'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB sample  •  Shift boost  •  Tab target  •  M map  •  I cargo  •  L comms';
+    hints.textContent = HINTS_KBM;
     document.getElementById('ui-root').appendChild(hints);
 
     // Hide hints/reticle when not in pure flight (improved from initial override for robustness)
@@ -126,6 +138,10 @@ export const ui = {
     };
     // Expose so onboarding can flash hints on context change
     window._sfShowHints = showHints;
+
+    // Swap the hint bar when a gamepad connects/disconnects so the pilot always sees the right cues.
+    this.bus.on('gamepad:connected', () => { hints.textContent = HINTS_PAD; showHints(5000); });
+    this.bus.on('gamepad:disconnected', () => { hints.textContent = HINTS_KBM; showHints(3000); });
 
     const setFlightUI = (visible) => {
       if (hints) {
@@ -163,7 +179,8 @@ export const ui = {
       }
     };
 
-    const shouldShowCinematic = !sessionStorage.getItem(CINEMATIC_SEEN_KEY);
+    let shouldShowCinematic = false;
+    try { shouldShowCinematic = !sessionStorage.getItem(CINEMATIC_SEEN_KEY); } catch (e) { shouldShowCinematic = true; }
     if (shouldShowCinematic) {
       const cinematic = document.createElement('div');
       cinematic.id = 'cinematic-splash';
@@ -198,7 +215,7 @@ export const ui = {
         cinematic.style.transition = 'opacity .45s ease';
         cinematic.style.opacity = '0';
         setTimeout(() => cinematic.parentNode && cinematic.parentNode.removeChild(cinematic), 500);
-        sessionStorage.setItem(CINEMATIC_SEEN_KEY, '1');
+        try { sessionStorage.setItem(CINEMATIC_SEEN_KEY, '1'); } catch (e) {}
         // ensure menu shows
         showMainMenuWhenReady();
       };
@@ -217,15 +234,21 @@ export const ui = {
     this.playCinematic = (videoPath = 'assets/cinematics/C-INTRO-01_6s.mp4', title = 'Intro') => {
       const ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;z-index:5000;background:rgba(3,5,10,0.92);display:flex;align-items:center;justify-content:center;';
-      ov.innerHTML = `
-        <div style="max-width:92vw;max-height:92vh;position:relative;">
-          <video src="${videoPath}" autoplay controls playsinline style="max-width:100%;max-height:82vh;border:3px solid #39d0ff;box-shadow:0 0 40px #39d0ff;"></video>
-          <div style="text-align:center;margin-top:8px;color:#d3e6ff;font-family:var(--mono);letter-spacing:2px;opacity:0.7;">${title} — click backdrop to close</div>
-        </div>
-      `;
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'max-width:92vw;max-height:92vh;position:relative;';
+      const vid = document.createElement('video');
+      vid.src = videoPath;
+      vid.autoplay = true;
+      vid.controls = true;
+      vid.playsInline = true;
+      vid.style.cssText = 'max-width:100%;max-height:82vh;border:3px solid #39d0ff;box-shadow:0 0 40px #39d0ff;';
+      const hint = document.createElement('div');
+      hint.style.cssText = 'text-align:center;margin-top:8px;color:#d3e6ff;font-family:var(--mono);letter-spacing:2px;opacity:0.7;';
+      hint.textContent = `${title} — click backdrop to close`;
+      wrap.append(vid, hint);
+      ov.appendChild(wrap);
       ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-      const vid = ov.querySelector('video');
-      if (vid) vid.addEventListener('ended', () => setTimeout(() => ov.remove(), 400));
+      vid.addEventListener('ended', () => setTimeout(() => ov.remove(), 400));
       document.getElementById('ui-root').appendChild(ov);
     };
     window.playSpaceFaceCinematic = this.playCinematic; // handy for console or future buttons
@@ -303,6 +326,25 @@ export const ui = {
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
     this.bus.on('game:started', () => { this.screenManager.closeAll(); this.screenManager.syncVisibility(); refreshFlightUI(); });
+    // Ironman permadeath: combat.kill() emits game:over instead of respawning. Open the game-over
+    // screen over the wreck. The screen loads via dynamic import (registerScreens path), so retry
+    // briefly until the 'gameOver' screen is registered, then push it (idempotent — only push once).
+    this.bus.on('game:over', () => {
+      if (this._gameOverShown) return;
+      this._gameOverShown = true;
+      const tryOpen = (attempts) => {
+        if (this._registeredScreens && this._registeredScreens.has('gameOver')) {
+          try { this.screenManager.pushScreen('gameOver'); } catch (e) { console.error('[ui] open gameOver', e); }
+          return;
+        }
+        if (attempts > 60) { console.warn('[ui] gameOver screen never registered'); return; }
+        setTimeout(() => tryOpen(attempts + 1), 50);
+      };
+      tryOpen(0);
+    });
+    // Reset the one-shot gate when a new game starts or a save loads (a loaded save is alive again).
+    this.bus.on('game:over:dismissed', () => { this._gameOverShown = false; });
+    this.bus.on('game:started', () => { this._gameOverShown = false; });
     this.bus.on('save:loaded', () => {
       // clear any stale modal restored from a save; HUD returns
       this.state.ui.docked = false;
@@ -322,8 +364,8 @@ export const ui = {
 
   // Dynamically import + register every screen; a missing/throwing module is logged and skipped.
   registerScreens() {
-    for (const { path, name } of SCREEN_MODULES) {
-      import(path)
+    for (const { path, load, name } of SCREEN_MODULES) {
+      load()
         .then((mod) => {
           const def = mod && (mod[name] || mod.default);
           if (!def || !def.id) { console.warn(`[ui] screen "${name}" missing valid export`); return; }
@@ -349,6 +391,10 @@ export const ui = {
   // the flight HUD is visible; hidden modal/docked states keep toasts and safety alerts alive.
   frame(dt, state) {
     try {
+      // Gamepad UI navigation / global button intents are processed every render frame so menus
+      // work even when the sim is paused and input.update is not being stepped.
+      if (this.input && this.input.tick) this.input.tick(dt);
+
       const st = state || this.state;
       const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
       const docked = !!(st && st.ui && st.ui.docked === true);
@@ -442,7 +488,7 @@ function injectHudCss() {
 
   /* bottom-left status bars */
   .sf-bars { position:absolute; left:18px; bottom:18px; display:flex; flex-direction:column; gap:7px;
-    padding:12px 14px; background:rgba(8,14,24,.55); border:1px solid var(--panel-edge);
+    padding:12px 14px; background:rgba(8,14,24,.72); border:1px solid var(--panel-edge);
     border-radius:8px; backdrop-filter:blur(4px); }
   .sf-barrow { display:flex; align-items:center; gap:9px; }
   .sf-barrow__label { width:38px; font-family:var(--mono); font-size:10px; letter-spacing:.12em; color:var(--ink-dim); }

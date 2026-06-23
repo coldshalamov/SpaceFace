@@ -28,6 +28,7 @@ import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
 import { addCargo, removeCargo } from './cargo.js';
+import { ASTEROIDS } from '../data/mining.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -36,6 +37,8 @@ const DRONE_BY_ID = new Map(DRONES.map((d) => [d.id, d]));
 const TRADER_BY_ID = new Map(TRADERS.map((t) => [t.id, t]));
 const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
+const COMMON_ORES = ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_ore_titanium', 'cmdty_ore_platinoid'];
 
 // stationId -> { sectorId, factionId, type, position } from the SECTORS graph (same resolve
 // pattern economy uses — dock/UI hands us station ids, sectors own the geometry).
@@ -560,8 +563,9 @@ export const automation = {
 
   // profit = cargoVol * max(0, sellB - buyA) * tradeEff - routeFuelCost  (spec Formula).
   _computeTraderProfit(t, def) {
-    const buyA = this._stationPrice(t.route.from, DRONE_ORE_ID, 'buy', def.cargoVol);
-    const sellB = this._stationPrice(t.route.to, t.route.good || DRONE_ORE_ID, 'sell', def.cargoVol);
+    const good = t.route.good || DRONE_ORE_ID;
+    const buyA = this._stationPrice(t.route.from, good, 'buy', def.cargoVol);
+    const sellB = this._stationPrice(t.route.to, good, 'sell', def.cargoVol);
     // hotness collapses the realized spread (route fatigue), on top of the economy's price move.
     return traderProfitPerCycle(def, buyA, sellB, { hotness: t.hotness || 0, routeFuelCost: this._routeFuelCost(t) });
   },
@@ -914,14 +918,15 @@ export const automation = {
     const def = TRADER_BY_ID.get(defId);
     if (!def) return false;
     if (!this._charge(def.hireCost, 'hire:' + defId)) return false;
+    const good = this._currentOreId();
     const t = {
       id: this._allocId(), defId, tier: def.tier,
-      route: this._pickRoute(), good: DRONE_ORE_ID,
+      route: this._pickRoute(), good,
       cycleProgress: 0, cycleTime: def.cycleTime, cargoVol: def.cargoVol,
       lastCycleProfit: 0, upkeepPerMin: def.upkeepPerMin, hotness: 0,
       status: 'enroute', ratePerMin: 0,
     };
-    if (t.route) t.route.good = DRONE_ORE_ID;
+    if (t.route) t.route.good = good;
     this.state.automation.traders.push(t);
     this.bus.emit('asset:deployed', { kind: 'trader', id: t.id });
     this.toast(`Trader hired — route ${routeLabel(t.route)}`, 'success');
@@ -934,7 +939,7 @@ export const automation = {
     const t = this.state.automation.traders.find((x) => x.id === id);
     if (!t) return false;
     t.route = this._pickRoute(t.route);
-    if (t.route) t.route.good = DRONE_ORE_ID;
+    if (t.route) t.route.good = this._currentOreId();
     t.hotness = 0;
     t.status = 'enroute';
     this.toast(`Trader re-routed — ${routeLabel(t.route)}`, 'info');
@@ -954,7 +959,7 @@ export const automation = {
   // any two distinct stations. Deterministic-ish (price-driven), avoids re-picking the same pair.
   _pickRoute(avoid) {
     const econ = this._economy();
-    const good = DRONE_ORE_ID;
+    const good = this._currentOreId();
     let bestA = null, bestB = null, bestBuy = Infinity, bestSell = -Infinity;
     for (const st of ALL_STATIONS) {
       if (econ && econ.getMarket) econ.getMarket(st.id); // warm the market so a price exists
@@ -1041,11 +1046,12 @@ export const automation = {
   },
 
   // Count guard-order fleet ships protecting a given asset (cuts loss/raid probability).
+  // The UI/system exposes fleet orders as 'escort' with a targetRef; treat that as guarding.
   _guardCountFor(kind, assetId, a) {
     a = a || this.state.automation;
     let n = 0;
     for (const fs of a.fleet) {
-      if (fs.order === 'guard' && fs.targetRef && fs.targetRef.refId == assetId) n++;
+      if ((fs.order === 'guard' || fs.order === 'escort') && fs.targetRef && fs.targetRef.refId == assetId) n++;
     }
     return n;
   },
@@ -1142,9 +1148,16 @@ export const automation = {
     // realized credits scaled by offlineEff (presence is always better), then funnelled through cap.
     const grossOffline = (droneCr + traderCr) * offlineEff;
     const credited = grossOffline > 0 ? this.creditPassive(grossOffline, 'offline') : 0;
-    // deduct upkeep for the elapsed window
+    // deduct upkeep for the elapsed window, clamped to available credits; distress any unpaid remainder
     const upkeep = Math.round(this.totalUpkeepPerMin(a) * (elapsed / 60));
-    if (upkeep > 0) this.bus.emit('economy:chargeCredits', { amount: upkeep, reason: 'automation:upkeep:offline' });
+    const playerCredits = (this.state.player && this.state.player.credits) || 0;
+    const charge = Math.min(upkeep, playerCredits);
+    const unpaid = upkeep - charge;
+    if (charge > 0) this.bus.emit('economy:chargeCredits', { amount: charge, reason: 'automation:upkeep:offline' });
+    if (unpaid > 0) {
+      this._distressAll(a);
+      this.bus.emit('toast', { text: `Offline upkeep underpaid by ${unpaid} cr; assets distressed`, kind: 'warn', ttl: 4 });
+    }
 
     const hrs = (elapsed / 3600).toFixed(1);
     this.bus.emit('automation:offlineSummary', {
@@ -1278,7 +1291,22 @@ export const automation = {
     return f ? f.id : null;
   },
 
-  _currentOreId() { return DRONE_ORE_ID; },
+  _currentOreId() {
+    const fields = this.state.world && this.state.world.activeSector && this.state.world.activeSector.fields;
+    if (fields && fields.length) {
+      const f = fields[0];
+      const def = ASTEROID_BY_ID.get(f.type);
+      if (def && def.oreTable) {
+        const oreLike = Object.entries(def.oreTable)
+          .sort((a, b) => b[1] - a[1])
+          .find(([k]) => k.includes('_ore_'));
+        if (oreLike) return oreLike[0];
+      }
+    }
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const sid = (this.state.world && this.state.world.currentSectorId) || '';
+    return COMMON_ORES[hash32(seed, sid) % COMMON_ORES.length];
+  },
 
   // charge with an affordability guard (chargeCredits clamps silently at 0 and won't report failure).
   _charge(amount, reason) {
@@ -1354,8 +1382,12 @@ export const automation = {
     // entityIds are live runtime ids (don't survive save/load or sector unload) → strip them; the
     // flying drones re-spawn from the group on the next in-sector tick.
     const drones = a.drones.map((g) => { const { entityIds, ...rest } = g; return rest; });
+    // Fleet entries carry a transient _liveId (the live wingman entity id, set by systems/wingmen.js
+    // on spawn). It doesn't survive save/load (entity ids are per-session) → strip it like drone
+    // entityIds so a reloaded save doesn't reference a dead/stale entity.
+    const fleet = a.fleet.map((fs) => { const { _liveId, ...rest } = fs; return rest; });
     return {
-      drones, traders: a.traders, outposts: a.outposts, fleet: a.fleet,
+      drones, traders: a.traders, outposts: a.outposts, fleet,
       fleetCap: a.fleetCap, balance: a.balance, accumulators: a.accumulators,
       meta: { lastTickTime: a.meta.lastTickTime, totalPassiveEarnedLifetime: a.meta.totalPassiveEarnedLifetime, lostAssetsLog: a.meta.lostAssetsLog, rngSeed: a.meta.rngSeed },
       nextId: this._nextId,

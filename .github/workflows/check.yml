@@ -1,0 +1,48 @@
+# Continuous integration for SpaceFace.
+#
+# Runs the HEADLESS portion of the project's check suite on every push and pull request. The full
+# `npm run check` additionally includes a handful of scripts that drive a real browser via
+# Playwright (check:47a:live-cold-open, check:flight:clean) — those need a running static server
+# + a browser install and are intentionally excluded from CI (Playwright is not a declared
+# dependency). The `check:ci` alias runs everything else: data/ref integrity, balance sim,
+# deterministic replay verification, AI/physics/combat contracts, the presentation/render/audio
+# checks, and the gameplay-core assertions (including the boss-spawn + ironman-permadeath guards).
+#
+# A green run here means every namespaced data ref resolves, the fixed-timestep sim is
+# deterministic across save/reload, and no wired gameplay contract has regressed.
+name: check
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+# Cancel a superseded in-flight run on the same ref (push-then-PR, or force-push).
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Node 20 LTS. The headless check scripts use Node built-ins + vendored three.module.js;
+          # the bundle check (check:bundle) additionally needs esbuild, so deps ARE installed now.
+          node-version: '20'
+          cache: 'npm'
+
+      # Install dev dependencies. The headless checks are dependency-free, but check:bundle (the
+      # production bundler verification) needs esbuild. npm ci is faster + deterministic on CI.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run headless check suite (+ bundle verification)
+        run: npm run check:ci

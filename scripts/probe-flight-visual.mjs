@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 
+import { collectPageIssues, isIgnorableWebglValidation, summarizeIssues } from './lib/browser-issues.mjs';
+
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const outDir = join(ROOT, '.devshots');
 const { chromium } = await loadPlaywright();
@@ -63,14 +65,7 @@ async function runViewportProbeWithRetry(browser, viewport, runIndex) {
 
 async function runViewportProbe(browser, viewport, runIndex) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: viewport.deviceScaleFactor, isMobile: !!viewport.isMobile });
-  const issues = [];
-  const ignoredIssues = [];
-  page.on('console', (msg) => {
-    const issue = { type: msg.type(), text: msg.text() };
-    if (issue.type === 'warning' && isProbeInducedWarning(issue)) ignoredIssues.push(issue);
-    else if (issue.type === 'error' || issue.type === 'warning') issues.push(issue);
-  });
-  page.on('pageerror', (err) => issues.push({ type: 'pageerror', text: String(err && err.message || err) }));
+  const pageIssues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
 
   const url = withDebugFlight(baseUrl);
   await gotoWithRetry(page, url, { waitUntil: 'domcontentloaded' });
@@ -154,8 +149,10 @@ async function runViewportProbe(browser, viewport, runIndex) {
   }
   await page.close();
 
-  const errorIssues = issues.filter((issue) => issue.type === 'error' || issue.type === 'pageerror');
-  const warningIssues = issues.filter((issue) => issue.type === 'warning');
+  const issues = pageIssues.issues;
+  const ignoredIssues = pageIssues.ignoredIssues;
+  const errorIssues = pageIssues.errorIssues();
+  const warningIssues = pageIssues.warningIssues();
   const warningSummary = {
     strict: strictWarnings,
     count: warningIssues.length,
@@ -296,31 +293,7 @@ function isRetriableVisualProbeFailure(result) {
     && checks.sg02DynamicReady === true
     && Array.isArray(result.issues)
     && result.issues.length > 0
-    && result.issues.every(isEmptyWebglShaderValidationIssue);
-}
-
-function isEmptyWebglShaderValidationIssue(issue) {
-  if (!issue || issue.type !== 'error') return false;
-  const text = String(issue.text || '').trim();
-  return /^THREE\.WebGLProgram: Shader Error (?:0|1282) - VALIDATE_STATUS false/.test(text)
-    && /Program Info Log:\s*$/.test(text);
-}
-
-function isProbeInducedWarning(issue) {
-  if (!issue || issue.type !== 'warning') return false;
-  return /GPU stall due to ReadPixels/i.test(String(issue.text || ''));
-}
-
-function summarizeIssues(issues) {
-  const MAX_ISSUES = 8;
-  const MAX_TEXT = 420;
-  return (issues || []).slice(0, MAX_ISSUES).map((issue) => {
-    const text = String(issue && issue.text || '');
-    return {
-      type: issue && issue.type || 'unknown',
-      text: text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}... [truncated ${text.length - MAX_TEXT} chars]` : text,
-    };
-  });
+    && result.issues.every(isIgnorableWebglValidation);
 }
 
 async function dismissTutorial(page) {

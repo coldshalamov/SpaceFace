@@ -87,29 +87,6 @@ function shell(rootEl, title, extraClass) {
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
-// Default keybind cheat-sheet (also used by Help). Flight keys are owned by input/flight,
-// listed here for the player's reference (§5.6).
-const KEYBINDS = [
-  ['Throttle', '↑↓ / W S'],
-  ['Steer (yaw + bank)', '←→ / A D'],
-  ['Lateral thrusters', 'Q / E'],
-  ['Aim weapons', 'Mouse'],
-  ['Boost', 'Shift'],
-  ['Fire (group 1)', 'LMB / Space'],
-  ['Fire (group 2)', 'RMB'],
-  ['Mine beam', 'RMB (on rock)'],
-  ['Auto-fire toggle', 'F'],
-  ['Target nearest', 'T'],
-  ['Cycle target', 'Tab'],
-  ['Dock', 'Enter (when prompted)'],
-  ['Pause', 'ESC / P'],
-  ['Star-map', 'M'],
-  ['Tech tree', 'T'],
-  ['Missions', 'J'],
-  ['Help', 'F1 / H'],
-  ['Quick save', 'F5'],
-  ['Quick load', 'F9'],
-];
 
 let refs = null;
 
@@ -209,9 +186,11 @@ export const settingsScreen = {
       row.appendChild(el('label', null, label));
       const ctl = el('div', 'sf-ctl');
       const b = el('button', 'sf-tab', get() ? 'On' : 'Off');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(get()));
       if (get()) b.classList.add('active');
       b.style.minWidth = '64px';
-      b.addEventListener('click', () => { const nv = !get(); onChange(nv); b.textContent = nv ? 'On' : 'Off'; b.classList.toggle('active', nv); });
+      b.addEventListener('click', () => { const nv = !get(); onChange(nv); b.textContent = nv ? 'On' : 'Off'; b.setAttribute('aria-pressed', String(nv)); b.classList.toggle('active', nv); });
       ctl.appendChild(b); row.appendChild(ctl); pane.appendChild(row);
     };
     const rowSelect = (label, get, options, onChange) => {
@@ -276,7 +255,64 @@ export const settingsScreen = {
     } else if (refs.active === 'Controls') {
       pane.appendChild(el('p', 'sf-muted', 'Click a key to rebind it, then press a new key. Mouse buttons (fire/mine) are fixed.'));
       this._renderControlsRebind(ctx, pane);
+      this._renderGamepadSettings(ctx, pane);
     }
+  },
+
+  _renderGamepadSettings(ctx, pane) {
+    pane.appendChild(el('h2', null, 'Gamepad'));
+    const s = ctx.state.settings;
+    if (!s.controls) s.controls = { bindings: null, flightMode: 'assisted' };
+    if (!s.controls.gamepad) s.controls.gamepad = { enabled: true, deadzone: 0.12, invertY: false };
+    const gp = s.controls.gamepad;
+
+    const rowToggle = (label, get, onChange) => {
+      const row = el('div', 'sf-row');
+      row.appendChild(el('label', null, label));
+      const ctl = el('div', 'sf-ctl');
+      const b = el('button', 'sf-tab', get() ? 'On' : 'Off');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(get()));
+      if (get()) b.classList.add('active');
+      b.style.minWidth = '64px';
+      b.addEventListener('click', () => {
+        const nv = !get();
+        onChange(nv);
+        b.textContent = nv ? 'On' : 'Off';
+        b.setAttribute('aria-pressed', String(nv));
+        b.classList.toggle('active', nv);
+      });
+      ctl.appendChild(b); row.appendChild(ctl); pane.appendChild(row);
+    };
+    const rowSlider = (label, get, min, max, step, fmt, onInput) => {
+      const row = el('div', 'sf-row');
+      row.appendChild(el('label', null, label));
+      const ctl = el('div', 'sf-ctl');
+      const r = el('input'); r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = get();
+      const v = el('span', 'sf-val', fmt(get()));
+      r.addEventListener('input', () => { onInput(parseFloat(r.value)); v.textContent = fmt(parseFloat(r.value)); });
+      ctl.appendChild(r); ctl.appendChild(v); row.appendChild(ctl); pane.appendChild(row);
+    };
+
+    rowToggle('Gamepad enabled', () => !!gp.enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, enabled: v }));
+    rowSlider('Stick deadzone', () => gp.deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, deadzone: v }));
+    rowToggle('Invert right-stick Y', () => !!gp.invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, invertY: v }));
+    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, RB boost, LB brake, X target, View map, Y codex, Start pause.'));
+
+    // Touch (P1-12): virtual dual-stick + buttons for touchscreens. Auto-detects on touch devices;
+    // this toggle lets the player force-enable (e.g. a touchscreen laptop) or force-disable.
+    pane.appendChild(el('h2', null, 'Touch'));
+    if (!s.controls.touch) s.controls.touch = { enabled: null }; // null = auto-detect
+    const tc = s.controls.touch;
+    rowToggle('Touch controls', () => (tc.enabled == null ? 'auto' : tc.enabled), (v) => {
+      // Cycle auto → on → off → auto so all three states are reachable from one control.
+      const cur = tc.enabled == null ? 'auto' : (tc.enabled ? 'on' : 'off');
+      const next = cur === 'auto' ? true : (cur === 'on' ? false : null);
+      this._set(ctx, 'controls', 'touch', { ...tc, enabled: next });
+      const tp = ctx.touch;
+      if (tp) tp.persistEnabled(next);
+    });
+    pane.appendChild(el('p', 'sf-muted', 'Virtual sticks: left = fly, right = aim, buttons = fire/mine/boost. Auto-enabled on touch devices.'));
   },
 
   // Live rebind UI for flight actions. Reads defaults from input.js + any saved overrides in

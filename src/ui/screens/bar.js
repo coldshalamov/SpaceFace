@@ -4,6 +4,7 @@
 // intel, mission boards, sector danger, asteroid fields). Read-only except for
 // the mission-accept button which emits ui:acceptMission.
 import { FACTION_META } from '../../data/factions.js';
+import { escapeHtml } from '../comms.js';
 import { SECTORS }      from '../../data/sectors.js';
 import { COMMODITIES }  from '../../data/commodities.js';
 
@@ -601,13 +602,13 @@ export function createBarPanel(ctx) {
       const body = document.createElement('div');
       body.className = 'st-bar-body';
       body.innerHTML =
-        '<div class="st-bar-name">' + c.name +
-          ' <span class="st-bar-role mono">' + ROLE_LABELS[c.role] +
-          (fac ? ' · ' + (fac.short || fac.name) : '') +
+        '<div class="st-bar-name">' + escapeHtml(c.name) +
+          ' <span class="st-bar-role mono">' + escapeHtml(ROLE_LABELS[c.role]) +
+          (fac ? ' · ' + escapeHtml(fac.short || fac.name) : '') +
           '</span></div>' +
-        '<div class="st-bar-line">' + c.line + '</div>' +
+        '<div class="st-bar-line">' + escapeHtml(c.line) + '</div>' +
         '<div class="st-bar-choices">' +
-          choices.map(ch => '<button data-choice="' + ch.id + '">' + ch.label + '</button>').join('') +
+          choices.map(ch => '<button data-choice="' + escapeHtml(ch.id) + '">' + escapeHtml(ch.label) + '</button>').join('') +
         '</div>' +
         '<div class="st-bar-reply mono"></div>';
 

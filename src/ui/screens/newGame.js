@@ -4,6 +4,7 @@
 import { MODULES } from '../../data/modules.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { WEAPONS } from '../../data/weapons.js';
+import { createShipPreviewMount } from '../shipPreviewMount.js';
 
 const STYLE_ID = 'sf-menu-style';
 const STARTER_SHIP = 'ship_kestrel';
@@ -74,6 +75,11 @@ function injectStyle() {
   .sf-ng-lore__line { font-size:11px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.06em; }
   .sf-ng-lore__quote { font-size:12px; color:var(--ink); font-style:italic; line-height:1.5; }
   .sf-ng-lore__attr { font-size:10px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.1em; text-align:right; }
+  /* UX-1: rotating 3D preview of the starter ship. Sits above the stat grid so the hull reads as a
+     real object (with a history), not a table of numbers. */
+  .sf-ng-preview { position: relative; height: 150px; margin: 6px 0 10px; border: 1px solid var(--panel-edge);
+    border-radius: var(--r-md); overflow: hidden; background: radial-gradient(ellipse at 50% 70%, #0a1426, #05070d 80%); }
+  .sf-ng-preview__canvas { width: 100%; height: 100%; display: block; }
   `;
   document.head.appendChild(s);
 }
@@ -141,6 +147,19 @@ export const newGameScreen = {
     // Starter ship preview — ship identity comes first, then stats.
     // The Tessera has a history. The player should feel it before they click Launch.
     rootEl.appendChild(el('h2', null, 'Starting Ship'));
+    // UX-1: rotating 3D preview of the starter hull. Lazy + guarded so a WebGL/factory failure never
+    // blocks game creation — the stat grid + Launch button still work without it.
+    const previewWrap = el('div', 'sf-ng-preview');
+    const previewCanvas = el('canvas', 'sf-ng-preview__canvas');
+    previewCanvas.width = 380; previewCanvas.height = 150;
+    previewWrap.appendChild(previewCanvas);
+    rootEl.appendChild(previewWrap);
+    let ngPreview = null;
+    try {
+      const envMap = ctx.state && ctx.state.render && ctx.state.render.envMap;
+      ngPreview = createShipPreviewMount(previewCanvas, { envMap });
+      ngPreview.show(STARTER_SHIP);
+    } catch (e) { console.warn('[newGame] ship preview failed', e); }
     const ship = starterShip(ctx);
     const grid = el('div', 'sf-grid2');
     const addStat = (k, v) => { grid.appendChild(el('div', 'k', k)); grid.appendChild(el('div', 'v', v)); };
@@ -175,10 +194,29 @@ export const newGameScreen = {
     foot.appendChild(back); foot.appendChild(launch);
     rootEl.appendChild(foot);
 
-    refs = { name };
+    refs = { name, preview: ngPreview, previewCanvas, ctx };
   },
 
-  onShow() { if (refs && refs.name) try { refs.name.focus(); refs.name.select(); } catch (e) {} },
-  onHide() {},
+  onShow() {
+    if (refs && refs.preview) {
+      try {
+        if (typeof refs.preview.setActive === 'function') refs.preview.setActive(true);
+        refs.preview.show(STARTER_SHIP);
+      } catch (e) { console.warn('[newGame] ship preview resume failed', e); }
+    } else if (refs && refs.previewCanvas) {
+      try {
+        const envMap = refs.ctx && refs.ctx.state && refs.ctx.state.render && refs.ctx.state.render.envMap;
+        refs.preview = createShipPreviewMount(refs.previewCanvas, { envMap });
+        refs.preview.show(STARTER_SHIP);
+      } catch (e) { console.warn('[newGame] ship preview failed', e); }
+    }
+    if (refs && refs.name) try { refs.name.focus(); refs.name.select(); } catch (e) {}
+  },
+  onHide() {
+    // ScreenManager caches this DOM; pause the turntable so reopening New Game can resume it.
+    if (refs && refs.preview && typeof refs.preview.setActive === 'function') {
+      try { refs.preview.setActive(false); } catch (e) {}
+    }
+  },
   refresh() {},
 };

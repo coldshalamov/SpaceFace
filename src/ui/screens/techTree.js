@@ -6,6 +6,7 @@
 // Export: techTreeScreen  (id 'techTree'). No 'three' import.
 
 import { TECH_NODES } from '../../data/tech.js';
+import { escapeHtml } from '../comms.js';
 
 // Branch -> column index and accent colour. The DAG is laid out as columns by branch,
 // rows by topological depth (longest prereq chain).
@@ -468,13 +469,13 @@ export const techTreeScreen = {
       ? n.prereqs.map((p) => {
           const pn = (this._layout.byId[p] || {}).name || p;
           const ok = this._isResearched(p);
-          return `<div class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'} ${pn}</div>`;
+          return `<div class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'} ${escapeHtml(pn)}</div>`;
         }).join('')
       : `<div class="ok">No prerequisites</div>`;
 
     sel.innerHTML = `
-      <div class="tt-sel-name">${n.name}</div>
-      <div class="tt-branch" style="color:${bcol}">${n.branch} branch</div>
+      <div class="tt-sel-name">${escapeHtml(n.name)}</div>
+      <div class="tt-branch" style="color:${bcol}">${escapeHtml(n.branch)} branch</div>
       <div class="tt-state" style="color:${stateColor(stt)}">${stateLabel(stt)}</div>
       <div class="tt-cost">
         <span class="cr${creds >= (cost.credits || 0) ? '' : ' bad'}">${fmtCr(cost.credits || 0)} cr</span>
@@ -544,12 +545,12 @@ function formatUnlocks(u) {
   if (u.npcTraderHiring) parts.push(`<b>Unlocks:</b> NPC trader hiring`);
   if (u.outpostConstruction) parts.push(`<b>Unlocks:</b> outpost construction`);
   if (u.extraDronePerBay) parts.push(`<b>+${u.extraDronePerBay}</b> drone per bay`);
-  if (u.flags && u.flags.length) parts.push(`<b>Flags:</b> ${u.flags.join(', ')}`);
+  if (u.flags && u.flags.length) parts.push(`<b>Flags:</b> ${u.flags.map(escapeHtml).join(', ')}`);
   return parts.length ? parts.join('<br>') : '<b>Effects:</b> —';
 }
 
 function cleanId(id) {
-  return String(id).replace(/^(ship_|mod_|wpn_)/, '').replace(/_/g, ' ');
+  return escapeHtml(String(id).replace(/^(ship_|mod_|wpn_)/, '').replace(/_/g, ' '));
 }
 
 function fmtCr(v) {

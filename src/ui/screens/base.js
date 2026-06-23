@@ -3,6 +3,7 @@
 // teleporter. Reuses the screen-modal pattern (like station hub). Entry: pushed when the player
 // presses C near an already-claimed body (input.js sets state.ui.pendingClaimBodyId first).
 import { BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE } from '../../data/claimableBodies.js';
+import { escapeHtml } from '../comms.js';
 
 const STYLE_ID = 'sf-base-style';
 
@@ -103,8 +104,8 @@ export const baseScreen = {
       if (modId) {
         const mod = BODY_MODULE_BY_ID.get(modId);
         slot.className = 'base-slot';
-        slot.innerHTML = '<div class="nm">' + (mod ? mod.name : pretty(modId)) + '</div>' +
-          '<div class="eff">' + (mod ? '◆ ' + mod.effect.toUpperCase() : '') + '</div>';
+        slot.innerHTML = '<div class="nm">' + escapeHtml(mod ? mod.name : pretty(modId)) + '</div>' +
+          '<div class="eff">' + (mod ? '◆ ' + escapeHtml(mod.effect.toUpperCase()) : '') + '</div>';
       } else {
         slot.className = 'base-slot empty';
         slot.textContent = '— empty slot —';
@@ -145,9 +146,9 @@ export const baseScreen = {
       const slotFree = usedSlots < body.slots;
       const canBuild = !built && techOk && afford && slotFree;
       card.innerHTML =
-        '<div class="nm">' + mod.name + (built ? ' <span style="color:var(--good)">✓ built</span>' : '') + '</div>' +
-        '<div class="desc">' + (mod.desc || '') + '</div>' +
-        '<div class="meta"><span>' + mod.cost.toLocaleString() + ' cr' + (mod.techReq ? ' · ' + mod.techReq : '') + '</span></div>';
+        '<div class="nm">' + escapeHtml(mod.name) + (built ? ' <span style="color:var(--good)">✓ built</span>' : '') + '</div>' +
+        '<div class="desc">' + escapeHtml(mod.desc || '') + '</div>' +
+        '<div class="meta"><span>' + mod.cost.toLocaleString() + ' cr' + (mod.techReq ? ' · ' + escapeHtml(mod.techReq) : '') + '</span></div>';
       if (!built) {
         const btn = document.createElement('button');
         btn.className = 'sf-btn sf-btn--primary';

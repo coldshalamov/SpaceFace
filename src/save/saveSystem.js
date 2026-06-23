@@ -13,7 +13,9 @@ import { fnv1a } from './checksum.js';
 import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32 } from '../core/rng.js';
+import { NEW_GAME } from '../data/newGameDefaults.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
@@ -26,6 +28,7 @@ const DEFAULT_AI_BACKEND = 'sg06-tactical';
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
 const VALID_PHYSICS_BACKENDS = new Set(['custom', 'rapier', 'rapier-dynamic']);
 const VALID_AI_BACKENDS = new Set(['legacy', 'sg06-tactical']);
+const DEFAULT_START_SECTOR = NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime';
 const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'mesh',
   'view',
@@ -101,6 +104,7 @@ export const save = {
     data.automation = this._callSerialize('automation') || this._serializeAutomation();
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
     data.sectorSim = this._callSerialize('sectorSim') || {};   // ADR-0002 / V2 §33 — offscreen sim state
+    data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
     data.settings = this._serializeSettings();
     return data;
   },
@@ -360,7 +364,8 @@ export const save = {
       // Migrate a COPY so a throwing migration never half-mutates anything we keep.
       let data = clonePlain(env.data);
       if (!runMigrations(data, ver)) { this.bus.emit('save:error', { slot, reason: 'migration_failed' }); return false; }
-      if (!hasRestorablePlayer(data)) { this.bus.emit('save:error', { slot, reason: 'no_player' }); return false; }
+      const normalized = normalizeRestorableData(data);
+      if (!normalized.ok) { this.bus.emit('save:error', { slot, reason: normalized.reason }); return false; }
 
       // Everything validated → perform the (destructive) restore.
       this._restore(data, slot);
@@ -451,6 +456,8 @@ export const save = {
       // Offscreen sim state restores last (after world/factions/economy) so its drift overlay can
       // read the restored sector owners + faction power. runOfflineCatchup fires on save:loaded below.
       this._callDeserialize('sectorSim', data.sectorSim);
+      // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
+      this._callDeserialize('claims', data.claims);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and
@@ -719,7 +726,7 @@ export const save = {
         const a = document.createElement('a');
         a.href = url; a.download = filename;
         document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 0);
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
         this.bus.emit('toast', { text: 'Exported ' + filename, kind: 'success', ttl: 3 });
       }
     } catch (err) { this.bus.emit('save:error', { slot, reason: 'export_failed' }); }
@@ -764,6 +771,182 @@ function runMigrations(data, fromVer) {
 function hasRestorablePlayer(data) {
   const player = data && data.entities && data.entities.player;
   return !!(player && typeof player === 'object');
+}
+
+function normalizeRestorableData(data) {
+  if (!data || typeof data !== 'object') return { ok: false, reason: 'no_data' };
+  if (!hasRestorablePlayer(data)) return { ok: false, reason: 'no_player' };
+  const savedPlayer = data.entities.player;
+  if (savedPlayer.type && savedPlayer.type !== 'ship') return { ok: false, reason: 'invalid_player' };
+
+  data.player = normalizePlayerSaveRecord(data.player, savedPlayer);
+  data.cargo = normalizeCargoSaveRecord(data.cargo);
+  data.world = normalizeWorldSaveRecord(data.world);
+  data.entities.player = normalizePlayerEntitySave(savedPlayer, data.player);
+  return { ok: true };
+}
+
+function normalizePlayerSaveRecord(player, savedEntity) {
+  const out = (player && typeof player === 'object' && !Array.isArray(player)) ? player : {};
+  const defId = resolveSavedDefId(out, savedEntity);
+  const fittings = resolveSavedFittings(out, savedEntity, defId);
+  const needsRepair = needsPlayerEntityRepair(savedEntity);
+  if (!Array.isArray(out.ownedShips) || !out.ownedShips.length) {
+    if (needsRepair) out.ownedShips = [{ defId, fittings }];
+    return out;
+  }
+  if (!Number.isInteger(out.activeShipIndex) || out.activeShipIndex < 0 || out.activeShipIndex >= out.ownedShips.length) {
+    out.activeShipIndex = 0;
+  }
+  const active = out.ownedShips[out.activeShipIndex] || (out.ownedShips[0] = { defId, fittings });
+  if (!active.defId) active.defId = defId;
+  if (!Array.isArray(active.fittings)) active.fittings = fittings;
+  if (!Array.isArray(out.moduleInventory)) out.moduleInventory = [];
+  if (!Array.isArray(out.researchedNodes)) out.researchedNodes = [];
+  if (!out.efficiencyMods || typeof out.efficiencyMods !== 'object' || Array.isArray(out.efficiencyMods)) {
+    out.efficiencyMods = { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 };
+  }
+  return out;
+}
+
+function needsPlayerEntityRepair(saved) {
+  if (!saved || typeof saved !== 'object') return true;
+  const data = saved.data && typeof saved.data === 'object' ? saved.data : null;
+  return !(saved.type === 'ship'
+    && data
+    && data.defId
+    && Number.isFinite(saved.hullMax) && saved.hullMax > 0
+    && Number.isFinite(saved.capMax) && saved.capMax > 0
+    && Array.isArray(data.weapons) && data.weapons.length > 0);
+}
+
+function normalizeCargoSaveRecord(cargo) {
+  const out = (cargo && typeof cargo === 'object' && !Array.isArray(cargo)) ? cargo : {};
+  if (!out.items || typeof out.items !== 'object' || Array.isArray(out.items)) out.items = {};
+  if (!Number.isFinite(out.capVolume) || out.capVolume <= 0) out.capVolume = NEW_GAME.cargoCapacity || 40;
+  if (!Number.isFinite(out.capMass) || out.capMass <= 0) out.capMass = Math.max(60, out.capVolume);
+  return out;
+}
+
+function normalizeWorldSaveRecord(world) {
+  const out = (world && typeof world === 'object' && !Array.isArray(world)) ? world : {};
+  if (!out.currentSectorId) out.currentSectorId = DEFAULT_START_SECTOR;
+  const fuel = (out.fuel && typeof out.fuel === 'object' && !Array.isArray(out.fuel)) ? out.fuel : {};
+  const hasValidMax = Number.isFinite(fuel.max) && fuel.max > 0;
+  const max = hasValidMax ? fuel.max : 100;
+  const current = hasValidMax && Number.isFinite(fuel.current) ? Math.max(0, Math.min(max, fuel.current)) : max;
+  out.fuel = { current, max };
+  return out;
+}
+
+function normalizePlayerEntitySave(saved, player) {
+  const defId = resolveSavedDefId(player, saved);
+  const fittings = resolveSavedFittings(player, saved, defId);
+  const base = makeShipEntitySpec(defId, {
+    team: Number.isFinite(saved.team) ? saved.team : 0,
+    factionId: saved.factionId || 'faction_free',
+    isPlayer: true,
+    player,
+    fittings,
+    pos: normalizedPos(saved.pos),
+    rot: Number.isFinite(saved.rot) ? saved.rot : 0,
+  });
+  const out = mergePlain(base, saved);
+  out.type = 'ship';
+  out.alive = true;
+  out.pos = normalizedPos(saved.pos);
+  out.vel = normalizedPos(saved.vel);
+  out.rot = Number.isFinite(saved.rot) ? saved.rot : base.rot;
+  out.team = Number.isFinite(saved.team) ? saved.team : base.team;
+  out.factionId = saved.factionId || base.factionId;
+  out.radius = positiveNumber(saved.radius, base.radius);
+  out.mass = positiveNumber(saved.mass, base.mass);
+  out.data = normalizePlayerEntityData(saved.data, base.data, defId, fittings);
+  normalizeVitals(out, base);
+  if (!out.flags || typeof out.flags !== 'object' || Array.isArray(out.flags)) out.flags = {};
+  return out;
+}
+
+function normalizePlayerEntityData(savedData, baseData, defId, fittings) {
+  const data = mergePlain(baseData || {}, savedData || {});
+  data.defId = data.defId || defId;
+  if (!data.derived || typeof data.derived !== 'object' || !Number.isFinite(data.derived.hullMax) || data.derived.hullMax <= 0) {
+    data.derived = clonePlain(baseData.derived);
+  }
+  if (!Array.isArray(data.weapons) || !data.weapons.length) data.weapons = clonePlain(baseData.weapons || []);
+  if (!data.miningBeam || typeof data.miningBeam !== 'object') data.miningBeam = clonePlain(baseData.miningBeam || null);
+  if (!Array.isArray(data.fittings) || !data.fittings.length) data.fittings = clonePlain(baseData.fittings || fittings || []);
+  if (!data.combat || typeof data.combat !== 'object') data.combat = { targetId: null, lockTarget: null, lockProgress: 0 };
+  data.intent = null;
+  return data;
+}
+
+function normalizeVitals(out, base) {
+  out.hullMax = positiveNumber(out.hullMax, base.hullMax);
+  out.shieldMax = nonNegativeNumber(out.shieldMax, base.shieldMax);
+  out.capMax = positiveNumber(out.capMax, base.capMax);
+  out.armorMax = nonNegativeNumber(out.armorMax, base.armorMax);
+  out.armorFlat = nonNegativeNumber(out.armorFlat, base.armorFlat);
+  out.hull = boundedVital(out.hull, out.hullMax, base.hull);
+  out.shield = boundedVital(out.shield, out.shieldMax, base.shield, true);
+  out.cap = boundedVital(out.cap, out.capMax, base.cap, true);
+  out.armorHp = boundedVital(out.armorHp, out.armorMax, base.armorHp, true);
+  out.thrust = positiveNumber(out.thrust, base.thrust);
+  out.turnRate = positiveNumber(out.turnRate, base.turnRate);
+  out.maxSpeed = positiveNumber(out.maxSpeed, base.maxSpeed);
+  out.drag = positiveNumber(out.drag, base.drag);
+  if (!out.boost || typeof out.boost !== 'object' || Array.isArray(out.boost)) out.boost = clonePlain(base.boost || {});
+  else {
+    out.boost.max = nonNegativeNumber(out.boost.max, base.boost && base.boost.max);
+    out.boost.energy = boundedVital(out.boost.energy, out.boost.max, base.boost && base.boost.energy, true);
+    out.boost.drainRate = nonNegativeNumber(out.boost.drainRate, base.boost && base.boost.drainRate);
+    out.boost.regenRate = nonNegativeNumber(out.boost.regenRate, base.boost && base.boost.regenRate);
+    out.boost.dashImpulse = nonNegativeNumber(out.boost.dashImpulse, base.boost && base.boost.dashImpulse);
+    out.boost.dashCd = nonNegativeNumber(out.boost.dashCd, base.boost && base.boost.dashCd);
+    out.boost.dashCdT = nonNegativeNumber(out.boost.dashCdT, 0);
+  }
+}
+
+function resolveSavedDefId(player, savedEntity) {
+  const active = player && Array.isArray(player.ownedShips) ? player.ownedShips[player.activeShipIndex || 0] : null;
+  return (savedEntity && savedEntity.data && savedEntity.data.defId)
+    || (active && active.defId)
+    || NEW_GAME.shipId
+    || 'ship_kestrel';
+}
+
+function resolveSavedFittings(player, savedEntity, defId) {
+  const active = player && Array.isArray(player.ownedShips) ? player.ownedShips[player.activeShipIndex || 0] : null;
+  if (active && Array.isArray(active.fittings)) return active.fittings;
+  if (savedEntity && savedEntity.data && Array.isArray(savedEntity.data.fittings)) return savedEntity.data.fittings;
+  return defId === NEW_GAME.shipId
+    ? fittingsFromDefaultModules(defId, NEW_GAME.fittedModules || [])
+    : [];
+}
+
+function normalizedPos(pos) {
+  return {
+    x: Number.isFinite(pos && pos.x) ? pos.x : 0,
+    z: Number.isFinite(pos && pos.z) ? pos.z : 0,
+  };
+}
+
+function positiveNumber(value, fallback) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function nonNegativeNumber(value, fallback = 0) {
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function boundedVital(value, max, fallback, allowZero = false) {
+  if (Number.isFinite(value) && (allowZero ? value >= 0 : value > 0)) {
+    return Math.min(Math.max(0, value), Math.max(0, max || 0));
+  }
+  if (Number.isFinite(fallback) && (allowZero ? fallback >= 0 : fallback > 0)) {
+    return Math.min(Math.max(0, fallback), Math.max(0, max || fallback));
+  }
+  return allowZero ? 0 : Math.max(1, max || 1);
 }
 
 // Serialize an entity to a plain object: drop render/interpolation/controller state, encode pos/vel
@@ -879,6 +1062,19 @@ function sanitizeRestoredSettings(settings) {
     s.controls.flightMode = DEFAULT_FLIGHT_MODE;
   }
   s.controls.bindings = normalizeControlBindings(s.controls.bindings);
+  if (!s.controls.gamepad || typeof s.controls.gamepad !== 'object' || Array.isArray(s.controls.gamepad)) {
+    s.controls.gamepad = { enabled: true, deadzone: 0.12, invertY: false };
+  }
+  const gp = s.controls.gamepad;
+  if (typeof gp.enabled !== 'boolean') gp.enabled = true;
+  if (typeof gp.deadzone !== 'number' || !(gp.deadzone >= 0 && gp.deadzone <= 1)) gp.deadzone = 0.12;
+  if (typeof gp.invertY !== 'boolean') gp.invertY = false;
+  // Touch (P1-12): { enabled } where enabled is true/false/null (null = auto-detect on touch devices).
+  if (!s.controls.touch || typeof s.controls.touch !== 'object' || Array.isArray(s.controls.touch)) {
+    s.controls.touch = { enabled: null };
+  }
+  const tc = s.controls.touch;
+  if (tc.enabled !== true && tc.enabled !== false) tc.enabled = null;
   return s;
 }
 

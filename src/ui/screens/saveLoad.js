@@ -201,19 +201,6 @@ export const saveLoadScreen = {
       const meta = slots[id];
       const occupied = isOccupied(meta);
       const row = el('div', 'sf-slot' + (occupied ? '' : ' empty') + (refs.selected === id ? ' sel' : ''));
-      // The slot row is a clickable surface (selects the slot) but contains real <button>s for the
-      // actual actions. Make the row itself keyboard-operable so selection isn't mouse-only.
-      row.setAttribute('role', 'button');
-      row.setAttribute('tabindex', '0');
-      row.setAttribute('aria-label', slotLabel(id) + ' — ' + fmtMeta(meta));
-      const selectSlot = () => { refs.selected = id; this._render(ctx); };
-      row.addEventListener('click', (ev) => {
-        if (ev.target && ev.target.closest && ev.target.closest('button,input')) return;
-        selectSlot();
-      });
-      row.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selectSlot(); }
-      });
       const main = el('div', 'sf-slot-main');
       main.appendChild(el('div', 'sf-slot-name', slotLabel(id)));
       main.appendChild(el('div', 'sf-slot-sub', fmtMeta(meta)));
@@ -264,7 +251,7 @@ export const saveLoadScreen = {
       // out as the constructive action (the Save/Load beside it are secondary .sf-tab chips).
       if (!occupied) {
         const bNew = el('button', 'sf-btn sf-btn--primary', 'New Game');
-        bNew.addEventListener('click', () => nav(ctx, 'pushScreen', 'newGame'));
+        bNew.addEventListener('click', () => { refs.selected = id; this._render(ctx); nav(ctx, 'pushScreen', 'newGame'); });
         row.appendChild(bNew);
       }
       refs.list.appendChild(row);
@@ -294,7 +281,7 @@ export const saveLoadScreen = {
       const a = document.createElement('a');
       a.href = url; a.download = 'spaceface_' + slot + '.json';
       document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch (e) { ctx.bus.emit('toast', { text: 'Export failed', kind: 'warn', ttl: 2500 }); }
   },
 
@@ -317,7 +304,13 @@ export const saveLoadScreen = {
       if (sys && typeof sys.importString === 'function') { try { ok = !!sys.importString(text, 'quick'); } catch (e) {} }
       else if (sys && typeof sys.importSave === 'function') { try { ok = !!sys.importSave(text); } catch (e) {} }
       if (!ok) {
-        try { if (typeof localStorage !== 'undefined') { localStorage.setItem(LS_PREFIX + 'import', text); ok = true; } } catch (e) {}
+        try {
+          JSON.parse(text);
+          if (typeof localStorage !== 'undefined') { localStorage.setItem(LS_PREFIX + 'import', text); ok = true; }
+        } catch (e) {
+          ctx.bus.emit('toast', { text: 'Import failed: file is not valid JSON', kind: 'warn', ttl: 3000 });
+          ok = false;
+        }
       }
       finish(ok);
     };

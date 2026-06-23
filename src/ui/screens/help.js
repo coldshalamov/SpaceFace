@@ -1,12 +1,17 @@
 // Help / codex screen (ARCHITECTURE §5.6; design/specs/09).
 // Tabbed reference: Controls, Ships, Commodities, Ores, Factions.
-// Built from state.settings.keybinds when present, else the documented defaults.
-// Dismissed via the Close button or ESC (screen manager handles ESC).
+// The Controls tab reads the LIVE keybindings the player set in Settings → Controls
+// (state.settings.controls.bindings), falling back to the input system's DEFAULT_BINDINGS so the
+// help always reflects what the keys actually do — previously it read a nonexistent
+// `settings.keybinds` field and so always showed the static documented defaults, even after a
+// rebind. Dismissed via the Close button or ESC (screen manager handles ESC).
 
 import { SHIPS } from '../../data/ships.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { ORES, ASTEROIDS } from '../../data/mining.js';
 import { FACTION_META } from '../../data/factions.js';
+import { createListControls } from '../listControls.js';
+import { DEFAULTS } from '../../systems/input.js';
 
 const STYLE_ID = 'sf-menu-style';
 
@@ -89,38 +94,77 @@ function shell(rootEl, title, extraClass) {
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 // action -> default human-readable key. Sections group the grid.
+// Each row: [label, actionId (or null for fixed/non-rebindable), documented default text].
+// actionId matches the input system's binding() keys (forward/yawRight/strafeLeft/boost/fire/
+// autoFire). UI-owned keys (dock/map/tech/…) are handled in src/ui/input.js and are NOT rebindable
+// in this pass, so they carry null + a fixed label.
 const SECTIONS = [
   ['Flight', [
-    ['Throttle forward / reverse', 'moveUp', '↑↓ / W S'],
-    ['Steer (yaw + bank)', 'aim', '←→ / A D'],
-    ['Lateral thrusters', 'strafe', 'Q / E'],
-    ['Aim weapons', 'aim', 'Mouse'],
-    ['Boost', 'boost', 'Shift'],
-    ['Fire group 1', 'fire1', 'LMB / Space'],
-    ['Fire group 2', 'fire2', 'RMB'],
-    ['Mine beam', 'mine', 'RMB on rock'],
-    ['Deep-drill (ant-farm)', 'drill', 'B (target an asteroid)'],
-    ['Claim body / open base', 'claim', 'C (near a colony/moon)'],
+    ['Throttle forward', 'forward', '↑↓ / W S'],
+    ['Throttle reverse', 'reverse', '↑↓ / W S'],
+    ['Steer right (yaw + bank)', 'yawRight', '←→ / A D'],
+    ['Steer left (yaw + bank)', 'yawLeft', '←→ / A D'],
+    ['Lateral thruster (left)', 'strafeLeft', 'Q / E'],
+    ['Lateral thruster (right)', 'strafeRight', 'Q / E'],
+    ['Boost (hold) / Dash (tap)', 'boost', 'Shift'],
+    ['Fire weapons', 'fire', 'LMB / Space'],
     ['Auto-fire toggle', 'autoFire', 'F'],
   ]],
-  ['Interface', [
-    ['Cycle target', 'cycleTarget', 'Tab'],
-    ['Dock', 'dock', 'Enter (when prompted)'],
-    ['Pause', 'pause', 'ESC / P'],
-    ['Star-map', 'map', 'M'],
-    ['Tech tree', 'tech', 'T'],
-    ['Mission log', 'missionLog', 'J'],
-    ['Help', 'help', 'F1 / H'],
-    ['Quick save', 'quicksave', 'F5'],
-    ['Quick load', 'quickload', 'F9'],
+  ['Interface (fixed keys)', [
+    ['Aim weapons', null, 'Mouse'],
+    ['Mine beam', null, 'RMB on rock'],
+    ['Deep-drill (ant-farm)', null, 'B (target an asteroid)'],
+    ['Claim body / open base', null, 'C (near a colony/moon)'],
+    ['Cycle target', null, 'Tab'],
+    ['Dock', null, 'Enter (when prompted)'],
+    ['Pause', null, 'ESC / P'],
+    ['Star-map', null, 'M'],
+    ['Tech tree', null, 'T'],
+    ['Mission log', null, 'J'],
+    ['Help', null, 'F1 / H'],
+    ['Quick save / load', null, 'F5 / F9'],
+  ]],
+  ['Gamepad (Xbox / PlayStation)', [
+    ['Fly (yaw + throttle)', null, 'Left stick'],
+    ['Aim weapons', null, 'Right stick'],
+    ['Fire', null, 'RT / R2'],
+    ['Boost', null, 'RB / R1'],
+    ['Brake / reverse', null, 'LB / L1'],
+    ['Cycle target', null, 'X / □'],
+    ['Open star-map', null, 'View / Select'],
+    ['Open codex', null, 'Y / △'],
+    ['Pause', null, 'Start / Options'],
+    ['Accept / activate', null, 'A / X'],
+    ['Cancel / back', null, 'B / ○'],
   ]],
 ];
 
+// Normalize a single KeyboardEvent.code to a friendly label (matches humanizeCode in settings.js).
+function codeLabel(code) {
+  if (!code) return '—';
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (code.startsWith('Arrow')) return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }[code] || code;
+  if (code === 'Space') return 'Space';
+  if (code === 'ShiftLeft') return 'L-Shift';
+  if (code === 'ShiftRight') return 'R-Shift';
+  if (code === 'ControlLeft') return 'L-Ctrl';
+  if (code === 'ControlRight') return 'R-Ctrl';
+  if (code === 'AltLeft') return 'L-Alt';
+  return code;
+}
+
+// Resolve the keys for a row: rebindable actions read the live binding (settings.controls.bindings,
+// falling back to DEFAULT_BINDINGS exactly like input.js); null actions keep their documented label.
 function keyLabel(binds, action, def) {
-  const code = binds && binds[action];
-  if (!code) return def;
-  // Normalize common KeyboardEvent.code values to a friendly label.
-  return String(code).replace(/^Key/, '').replace(/^Digit/, '').replace(/^Arrow/, '');
+  if (!action) return def; // fixed / non-rebindable key
+  // binds is settings.controls.bindings; prefer it, then the input defaults, then the doc text.
+  let codes = binds && binds[action];
+  if (codes == null) codes = DEFAULTS.BINDINGS[action];
+  if (codes == null) return def;
+  const arr = Array.isArray(codes) ? codes : [codes];
+  if (!arr.length) return def;
+  return arr.map(codeLabel).join(' / ');
 }
 
 const TABS = ['Controls', 'Ships', 'Commodities', 'Ores', 'Factions'];
@@ -162,12 +206,38 @@ export const helpScreen = {
 
   _render(ctx) {
     if (!this._body) return;
+    const active = document.activeElement;
+    const hadSearchFocus = active && this._body.contains(active) && active.classList.contains('sf-lc__search');
+    const selection = hadSearchFocus
+      ? { start: active.selectionStart, end: active.selectionEnd }
+      : null;
     this._body.innerHTML = '';
 
     // Update tab active states
     if (this._tabBtns) {
       for (const t of TABS) {
         this._tabBtns[t].classList.toggle('active', t === this._activeTab);
+      }
+    }
+
+    // UX-3: a search box on the reference-table tabs (Ships/Commodities/Ores). Controls + Factions
+    // are short enough to not need it. The query persists in this._q across re-renders.
+    if (this._activeTab === 'Ships' || this._activeTab === 'Commodities' || this._activeTab === 'Ores') {
+      const ctrls = createListControls({
+        search: true,
+        placeholder: 'Search ' + this._activeTab.toLowerCase() + '…',
+        onSearch: (q) => { this._q = q; this._render(ctx); },
+      });
+      // seed the input with the current query so it survives a re-render
+      const input = ctrls.el.querySelector('.sf-lc__search');
+      if (input && this._q) input.value = this._q;
+      this._body.appendChild(ctrls.el);
+      if (hadSearchFocus && input) {
+        try {
+          input.focus();
+          const pos = selection || { start: input.value.length, end: input.value.length };
+          input.setSelectionRange(pos.start, pos.end);
+        } catch (e) {}
       }
     }
 
@@ -181,7 +251,10 @@ export const helpScreen = {
   },
 
   _renderControls(ctx) {
-    const binds = ctx.state.settings.keybinds || {};
+    // Read the LIVE keybindings (Settings → Controls persists here). Falls back to the input
+    // system's DEFAULT_BINDINGS inside keyLabel, so help always shows what the keys actually do —
+    // even on a fresh save with no rebinds, and correctly after any rebind.
+    const binds = (ctx.state.settings && ctx.state.settings.controls && ctx.state.settings.controls.bindings) || {};
     SECTIONS.forEach(([heading, rows]) => {
       this._body.appendChild(el('h2', null, heading));
       const grid = el('div', 'sf-grid2');
@@ -191,11 +264,14 @@ export const helpScreen = {
       });
       this._body.appendChild(grid);
     });
-    this._body.appendChild(el('p', 'sf-muted', 'UI owns menu keys; flight system owns movement & fire (ARCHITECTURE §5.6).'));
+    this._body.appendChild(el('p', 'sf-muted', 'Flight keys can be rebound in Settings → Controls. UI keys are fixed (ARCHITECTURE §5.6).'));
   },
 
   _renderShips() {
-    const sorted = SHIPS.slice().sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+    const q = (this._q || '').trim().toLowerCase();
+    const sorted = SHIPS.slice()
+      .filter((s) => !q || (s.name + ' ' + (s.role || '')).toLowerCase().includes(q))
+      .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
     const table = document.createElement('table');
     table.className = 'sf-codex-table';
     const thead = document.createElement('thead');
@@ -234,7 +310,10 @@ export const helpScreen = {
   },
 
   _renderCommodities() {
-    const sorted = COMMODITIES.slice().sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+    const q = (this._q || '').trim().toLowerCase();
+    const sorted = COMMODITIES.slice()
+      .filter((c) => !q || (c.name + ' ' + (c.category || '')).toLowerCase().includes(q))
+      .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
     const table = document.createElement('table');
     table.className = 'sf-codex-table';
     const thead = document.createElement('thead');
@@ -273,7 +352,11 @@ export const helpScreen = {
 
   _renderOres() {
     // Raw extraction ores only (category 'raw')
-    const rawOres = ORES.filter((o) => o.category === 'raw').sort((a, b) => a.tier - b.tier || a.baseValue - b.baseValue);
+    const q = (this._q || '').trim().toLowerCase();
+    const rawOres = ORES
+      .filter((o) => o.category === 'raw')
+      .filter((o) => !q || (o.name + ' ' + (o.id || '')).toLowerCase().includes(q))
+      .sort((a, b) => a.tier - b.tier || a.baseValue - b.baseValue);
     this._body.appendChild(el('h2', null, 'Mineable Ores'));
     const table = document.createElement('table');
     table.className = 'sf-codex-table';

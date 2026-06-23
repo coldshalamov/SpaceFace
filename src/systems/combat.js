@@ -195,7 +195,22 @@ export const combat = {
 
   kill(t, killerId) {
     const state = this.state, bus = this.bus, d = t.data || {};
-    if (t.id === state.playerId) { this.respawnPlayer(t, killerId); return; }
+    if (t.id === state.playerId) {
+      // Ironman (advertised as "permadeath" in the New Game UI) honors that promise: death ends
+      // the run instead of respawning. We still fire player:death so the death banner/VFX play,
+      // then emit game:over (a gameOver screen subscribes and shows a run summary). The entity is
+      // left dead (not healed/relocated) so the screen opens over a real wreck, not a live ship.
+      const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+      if (difficulty === 'ironman') {
+        bus.emit('player:death', { pos: { x: t.pos.x, z: t.pos.z }, killerId });
+        t.alive = false;
+        bus.emit('camera:shake', { amount: 0.9 });
+        bus.emit('game:over', { reason: 'ironman_death', killerId });
+        return;
+      }
+      this.respawnPlayer(t, killerId);
+      return;
+    }
     if (!t.alive) return;
     t.alive = false;
     const killedByPlayer = killerId === state.playerId;

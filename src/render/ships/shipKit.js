@@ -174,9 +174,12 @@ function shipTexture(key, build) {
 export function pbrHullMaterial({ hull, accent, seed, panelCount = 12, metalness = 0.16, roughness = 0.62, emissive }) {
   const key = `shipKitHull:${hull}:${accent}:${panelCount}:${seed}`;
   return shipTexture(key, () => {
-    const albedo = makeHullPanelTexture({ size: 256, seed, hull, accent, panelCount, wear: 0.5 });
-    const normal = makeHullNormalMap({ size: 256, seed: seed + 1, panelCount, bevel: 0.55 });
-    const rough = makeNoiseTexture({ size: 256, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 });
+    // GR-3: hull-defining textures at 1024² so procedural ships match the authored GLB resolution.
+    // Panel seams, bevels and the roughness variation all read sharply under the key/rim/fill lights.
+    const albedo = makeHullPanelTexture({ size: 1024, seed, hull, accent, panelCount, wear: 0.5 });
+    const normal = makeHullNormalMap({ size: 1024, seed: seed + 1, panelCount, bevel: 0.55 });
+    const rough = makeNoiseTexture({ size: 1024, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 });
+    // aoMap is intentionally omitted: procedural geometries have only uv0, so AO would be silently ignored.
     const mat = new THREE.MeshStandardMaterial({
       map: albedo,
       roughnessMap: rough,
@@ -292,6 +295,64 @@ export function addSocket(parent, name, position, role, forward = [1, 0, 0]) {
   return socket;
 }
 
+// GR-5: persistent 3D shield bubble. Shared geometry + per-instance shader material so each ship
+// carries its own fresnel flash state. The renderer toggles visibility from e.shield and punches
+// uFlash on combat:damage.
+const SHIELD_VERT = /* glsl */`
+  varying vec3 vNormal;
+  varying vec3 vWorldPos;
+  void main() {
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorldPos = wp.xyz;
+    vNormal = normalize(mat3(modelMatrix) * normal);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+const SHIELD_FRAG = /* glsl */`
+  precision highp float;
+  varying vec3 vNormal;
+  varying vec3 vWorldPos;
+  uniform vec3  uColor;
+  uniform float uFlash;
+  uniform float uBase;
+  void main() {
+    vec3 N = normalize(vNormal);
+    vec3 V = normalize(cameraPosition - vWorldPos);
+    float fres = pow(1.0 - max(0.0, dot(N, V)), 2.5);
+    float alpha = clamp(uBase * fres + uFlash, 0.0, 1.0);
+    vec3 col = mix(uColor, vec3(1.0), uFlash * 0.7);
+    gl_FragColor = vec4(col, alpha * (0.45 + 0.55 * fres));
+  }
+`;
+let _shieldGeo = null;
+export function shieldBubbleGeometry() {
+  if (!_shieldGeo) _shieldGeo = noDispose(new THREE.IcosahedronGeometry(1, 2));
+  return _shieldGeo;
+}
+export function createShieldBubble(color = '#5fd0ff', radius = 12) {
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: SHIELD_VERT,
+    fragmentShader: SHIELD_FRAG,
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uFlash: { value: 0 },
+      uBase:  { value: 0.22 },
+    },
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.FrontSide,
+    fog: false,
+  });
+  const bubble = new THREE.Mesh(shieldBubbleGeometry(), mat);
+  bubble.scale.setScalar(radius * 1.5);
+  bubble.frustumCulled = false;
+  bubble.visible = false;
+  bubble.renderOrder = 2;
+  bubble.userData.sharedShieldGeo = true;
+  return bubble;
+}
+
 // A canvas decal plane on a hull face. Returns the mesh (kept out of static batching so the LOD
 // reaction can hide it at distance, matching the Kestrel's decal handling).
 export function addDecal(parent, material, name, size, position, rotation) {
@@ -387,7 +448,7 @@ function mulberryLite(seed) {
 const _smallGeo = new Map();
 function smallGeo(key, build) {
   let g = _smallGeo.get(key);
-  if (!g) { g = build(); _smallGeo.set(key, g); }
+  if (!g) { g = noDispose(build()); _smallGeo.set(key, g); }
   return g;
 }
 

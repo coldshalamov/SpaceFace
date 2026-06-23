@@ -72,8 +72,11 @@ export function confirm(opts) {
   if (_openResolver) { const r = _openResolver; _openResolver = null; r(false); }
 
   const root = getRoot();
+  const token = Symbol('sf-confirm');
+  root._sfConfirmToken = token;
   // capture the element that had focus before opening so we can restore it on close
   const opener = document.activeElement;
+  const hadModalOpen = document.body.classList.contains('ui-modal-open');
 
   const titleCls = 'sf-confirm__title' + (opts.danger ? ' sf-confirm__title--danger' : '');
   const dialog = document.createElement('div');
@@ -81,14 +84,16 @@ export function confirm(opts) {
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
   dialog.innerHTML =
-    `<h2 class="${titleCls}"></h2>` +
-    `<div class="sf-confirm__body"></div>` +
+    `<h2 class="${titleCls}" id="sf-confirm-title"></h2>` +
+    `<div class="sf-confirm__body" id="sf-confirm-body"></div>` +
     `<div class="sf-confirm__btns">` +
       `<button class="sf-btn sf-btn--ghost sf-confirm__cancel" type="button"></button>` +
       `<button class="sf-btn sf-confirm__ok" type="button"></button>` +
     `</div>`;
-  dialog.querySelector('.sf-confirm__title').textContent = opts.title || 'Confirm';
-  dialog.querySelector('.sf-confirm__body').textContent = opts.body || '';
+  dialog.setAttribute('aria-labelledby', 'sf-confirm-title');
+  dialog.setAttribute('aria-describedby', 'sf-confirm-body');
+  dialog.querySelector('#sf-confirm-title').textContent = opts.title || 'Confirm';
+  dialog.querySelector('#sf-confirm-body').textContent = opts.body || '';
   const cancelBtn = dialog.querySelector('.sf-confirm__cancel');
   const okBtn = dialog.querySelector('.sf-confirm__ok');
   cancelBtn.textContent = opts.cancelLabel || 'Cancel';
@@ -108,14 +113,20 @@ export function confirm(opts) {
   let _resolve;
   const promise = new Promise((res) => { _resolve = res; });
   let settled = false;
+  function onBackdropClick(ev) {
+    if (ev.target === root) close(false);
+  }
   const close = (v) => {
     if (settled) return;
     settled = true;
     root.classList.remove('sf-confirm--in');
-    document.body.classList.remove('ui-modal-open');
+    if (!hadModalOpen) document.body.classList.remove('ui-modal-open');
+    root.removeEventListener('click', onBackdropClick);
     setTimeout(() => {
+      if (root._sfConfirmToken !== token) return;
       if (opener && typeof opener.focus === 'function') { try { opener.focus(); } catch (e) {} }
       if (root.parentNode) root.innerHTML = '';
+      root._sfConfirmToken = null;
     }, 160);
     _openResolver = null;
     _resolve(v);
@@ -125,7 +136,7 @@ export function confirm(opts) {
   okBtn.addEventListener('click', () => close(true));
   cancelBtn.addEventListener('click', () => close(false));
   // backdrop click (on the root, not the dialog) cancels
-  root.addEventListener('click', (ev) => { if (ev.target === root) close(false); });
+  root.addEventListener('click', onBackdropClick);
   // Esc cancels; Enter confirms. Focus-trap Tab between the two buttons.
   dialog.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(false); }

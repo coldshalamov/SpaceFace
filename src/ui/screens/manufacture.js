@@ -8,6 +8,7 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { SHIPS } from '../../data/ships.js';
+import { escapeHtml } from '../comms.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
@@ -16,10 +17,13 @@ const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const TIER_LABEL = { refine: 'REFINE', assemble: 'ASSEMBLE', augment: 'AUGMENT', ship: 'SHIPYARD' };
 
 function niceName(id, kind) {
-  if (kind === 'ship') return (SHIP_BY_ID.get(id) || {}).name || id;
-  if (kind === 'weapon') return (WPN_BY_ID.get(id) || {}).name || id;
-  if (kind === 'module') return (MOD_BY_ID.get(id) || {}).name || id;
-  return (CMDTY_BY_ID.get(id) || {}).name || id;
+  const raw = (() => {
+    if (kind === 'ship') return (SHIP_BY_ID.get(id) || {}).name || id;
+    if (kind === 'weapon') return (WPN_BY_ID.get(id) || {}).name || id;
+    if (kind === 'module') return (MOD_BY_ID.get(id) || {}).name || id;
+    return (CMDTY_BY_ID.get(id) || {}).name || id;
+  })();
+  return escapeHtml(raw);
 }
 
 export function createManufacturePanel(ctx) {
@@ -94,7 +98,7 @@ export function createManufacturePanel(ctx) {
 
         const outNm = niceName(bp.outputs.id, bp.outputs.kind);
         const qtyLabel = bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : '';
-        const techLabel = (!techOk && bp.requiresTech) ? `<span class="sf-badge sf-badge--warn">🔒 ${bp.requiresTech}</span>` : '';
+        const techLabel = (!techOk && bp.requiresTech) ? `<span class="sf-badge sf-badge--warn">🔒 ${escapeHtml(bp.requiresTech)}</span>` : '';
 
         // augment: note the consumed source module
         const augNote = (bp.category === 'augment' && bp.fromModule)
@@ -116,10 +120,10 @@ export function createManufacturePanel(ctx) {
 
         card.innerHTML =
           `<div class="st-manuf-card-h">
-             <div class="st-manuf-title">${bp.name}${techLabel}</div>
-             <button class="sf-btn sf-btn--primary st-manuf-build" data-act="build" data-bp="${bp.id}" ${canBuild ? '' : 'disabled'}>${buildBtnText}</button>
+             <div class="st-manuf-title">${escapeHtml(bp.name)}${techLabel}</div>
+             <button class="sf-btn sf-btn--primary st-manuf-build" data-act="build" data-bp="${escapeHtml(bp.id)}" ${canBuild ? '' : 'disabled'}>${escapeHtml(buildBtnText)}</button>
            </div>
-           <div class="st-manuf-desc">${bp.desc || ''}${timeLabel}</div>
+           <div class="st-manuf-desc">${escapeHtml(bp.desc || '')}${timeLabel}</div>
            ${augNote}
            <div class="st-manuf-out">→ ${outNm}${qtyLabel}</div>
            <div class="st-manuf-mats">${matsHtml}</div>`;

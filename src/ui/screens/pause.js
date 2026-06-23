@@ -115,6 +115,7 @@ export const pauseScreen = {
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     });
     mk('Help', () => nav(ctx, 'pushScreen', 'help'));
+    mk('Codex', () => nav(ctx, 'pushScreen', 'codex'));
     // Main Menu discards the current session entirely — confirm first (UX-2).
     mk('Main Menu', async () => {
       const ok = await confirm({

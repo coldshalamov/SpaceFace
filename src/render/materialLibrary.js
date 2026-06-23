@@ -63,17 +63,24 @@ function tex(key, make) {
 // ---------------------------------------------------------------------------------------------
 
 // bodyPrimary — dominant hull/shell of ships + stations. PBR panel metal.
+// GR-8: metalness aligned with shipKit.pbrHullMaterial (the gold-standard bespoke-ship hull). Per the
+// graphics spec (§4.5/§11.1) the hull is primarily dielectric (low metalness ~0.16) so it reads as
+// paint, not bare metal; the contrast with exposed hardware (machineryMaterial at 0.78) carries the
+// material hierarchy. The old 0.6 metalness made stations/bodies read as chrome, clashing with ships.
 function bodyPrimary(pal) {
   const key = `role:bodyPrimary:${pal.hull}:${pal.accent}`;
   return _matGet(key, () => {
     const seed = hashId(pal.hull + pal.accent) & 0xffff;
+    // GR-3: hull textures at 1024² (albedo/normal), matching shipKit.pbrHullMaterial so
+    // stations/bodies share the bespoke ships' surface resolution instead of looking last-gen.
+    // aoMap is intentionally omitted: procedural geometries have no uv1, so AO would be silently ignored.
     const albedo = tex(`hullpanel:${pal.hull}:${pal.accent}:14`,
-      () => _texBuilder.hullPanel({ size: 256, seed, hull: pal.hull, accent: pal.accent, panelCount: 14, wear: 0.5 }));
-    const rough = tex('noise:rough', () => _texBuilder.noise({ size: 256, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 }));
-    const normal = tex(`hullnrm:14`, () => _texBuilder.hullNormal({ size: 256, seed: seed + 1, panelCount: 14, bevel: 0.55 }));
+      () => _texBuilder.hullPanel({ size: 1024, seed, hull: pal.hull, accent: pal.accent, panelCount: 14, wear: 0.5 }));
+    const rough = tex('noise:rough', () => _texBuilder.noise({ size: 1024, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 }));
+    const normal = tex(`hullnrm:14`, () => _texBuilder.hullNormal({ size: 1024, seed: seed + 1, panelCount: 14, bevel: 0.55 }));
     const m = new THREE.MeshStandardMaterial({
       map: albedo || undefined, roughnessMap: rough || undefined, normalMap: normal || undefined,
-      color: 0xffffff, roughness: 0.6, metalness: 0.6,
+      color: 0xffffff, roughness: 0.62, metalness: 0.16,
       normalScale: new THREE.Vector2(0.7, 0.7),
       emissive: new THREE.Color(pal.emissive || pal.accent), emissiveIntensity: 0.04,
     });

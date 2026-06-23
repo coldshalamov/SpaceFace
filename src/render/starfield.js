@@ -2,6 +2,7 @@
 // the default square points) layered over a colored nebula backdrop built from the generated
 // nebula art. Together they kill the "dead black void" and give real depth + atmosphere.
 import * as THREE from 'three';
+import { createPlanetFactory } from './planetFactory.js';
 
 // Soft round star sprite (radial gradient -> circular, glowing). Square PointsMaterial points are
 // the #1 reason a starfield looks cheap; this fixes it.
@@ -214,7 +215,11 @@ export function createStarfield(scene, opts = {}) {
     const pts = new THREE.Points(g, m);
     pts.frustumCulled = false; pts.renderOrder = -10;
     scene.add(pts);
-    layers.push({ pts, par: s.par });
+    // GR-7: tag the hero-star layer (last spec) so update() can shimmer it. The base opacity is kept
+    // so the twinkle modulates around the authored brightness rather than replacing it.
+    const rec = { pts, par: s.par, baseOpacity: s.opacity };
+    if (s === specs[specs.length - 1]) rec.hero = true;
+    layers.push(rec);
   }
 
   // ---- nebula backdrop (with painted distant planets) ------------------------------------------
@@ -233,12 +238,64 @@ export function createStarfield(scene, opts = {}) {
   }
   applyBackground(currentTint);
 
+  // ---- GR-7: real 3D distant planets -----------------------------------------------------------
+  // A few genuine 3D planet meshes (built by the planet factory) placed at huge distance, parallaxing
+  // with the starfield. Unlike the 2D painted planets baked into the nebula canvas, these rotate, catch
+  // real fresnel atmosphere shells, and shift against the stars as you fly — selling true galactic
+  // depth. Kept to 2-3 small worlds so the cost is negligible; fog is off so they survive the distance.
+  const distantPlanets = [];
+  if (opts.distantPlanets !== false) {
+    try {
+      const pf = createPlanetFactory();
+      const rnd = (() => { let s = 0x1234abcd; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; })();
+      const types = ['gas_giant', 'terran', 'ice', 'arid', 'rocky'];
+      const n = 2 + (rnd() < 0.5 ? 1 : 0);
+      for (let i = 0; i < n; i++) {
+        const type = types[(rnd() * types.length) | 0];
+        const radius = 180 + rnd() * 260;
+        const seed = (rnd() * 99999) | 0;
+        const mesh = pf.buildPlanetMesh(type, radius, seed);
+        const spread = 6000 + rnd() * 3000;
+        const ang = rnd() * Math.PI * 2;
+        mesh.position.set(
+          Math.cos(ang) * spread,
+          -(600 + rnd() * 1200),
+          Math.sin(ang) * spread
+        );
+        mesh.frustumCulled = false;
+        scene.add(mesh);
+        distantPlanets.push({
+          mesh,
+          basePos: mesh.position.clone(),
+          parallax: 0.96,   // nearly fixed -> appears extremely far, just creeping vs the stars
+          spin: 0.01 + rnd() * 0.02,
+        });
+      }
+    } catch (_) { /* distant 3D planets are optional polish */ }
+  }
+
   return {
     recenter(camPos) {
       for (const L of layers) {
         L.pts.position.x = camPos.x * (1 - L.par);
         L.pts.position.z = camPos.z * (1 - L.par);
       }
+      // GR-7: distant 3D planets parallax with the starfield (very low factor = appear extremely far).
+      for (const p of distantPlanets) {
+        p.mesh.position.x = p.basePos.x + camPos.x * (1 - p.parallax);
+        p.mesh.position.z = p.basePos.z + camPos.z * (1 - p.parallax);
+      }
+    },
+    // GR-7: per-frame twinkle for the hero-star layer. A slow sinusoidal shimmer on the brightest stars
+    // so the backdrop feels alive (atmospheric scintillation) instead of a frozen field. Cheap: one
+    // material.opacity write per frame.
+    update(dt, time) {
+      const hero = layers[layers.length - 1];
+      if (hero && hero.hero) {
+        hero.pts.material.opacity = hero.baseOpacity * (0.8 + 0.2 * Math.sin(time * 1.7));
+      }
+      // GR-7: slow-rotate the distant 3D planets so they read as real spinning worlds, not billboards.
+      for (const p of distantPlanets) p.mesh.rotation.y += dt * p.spin;
     },
     // Swap the nebula mood on sector enter — each region of the galaxy reads with its own color
     // signature (core = clean blue, industrial = rust/amber, frontier = blood-red, alien = violet).

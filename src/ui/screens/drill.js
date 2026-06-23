@@ -14,10 +14,10 @@ const { COLS, ROWS, TILE } = DRILL_CONST;
 const ORE_COLOR = {
   cmdty_ore_iron: '#c8a878',
   cmdty_ore_copper: '#d8703a',
-  cmdty_ore_silicon: '#b8b8d0',
+  cmdty_silicate: '#b8b8d0',
   cmdty_ore_titanium: '#d0d8e8',
   cmdty_ore_platinoid: '#e8d850',
-  cmdty_ore_ice: '#9ad8ff',
+  cmdty_ice_water: '#9ad8ff',
 };
 const TILE_COLOR = {
   empty: 'rgba(8,10,16,0)',     // transparent (the "see through the ground" ant-farm feel)

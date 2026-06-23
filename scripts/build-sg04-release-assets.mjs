@@ -73,7 +73,12 @@ for (let index = 0; index < assets.length; index++) {
   await mkdir(dirname(releaseAbs), { recursive: true });
   const document = await io.read(sourceAbs);
   const transforms = [];
-  if (sourceInspection.metrics.textureCount > 0) {
+  // Sources that already ship KTX2/BasisU textures (e.g. authored hull GLBs) are KTX2-native and
+  // must skip the pngjs decode → re-encode path: re-encoding would be lossy and pngjs can't read KTX2.
+  // They only need meshopt geometry compression to satisfy the release contract.
+  const sourceAlreadyKtx2 = sourceInspection.metrics.textureCount > 0
+    && sourceInspection.metrics.ktx2TextureCount === sourceInspection.metrics.textureCount;
+  if (sourceInspection.metrics.textureCount > 0 && !sourceAlreadyKtx2) {
     transforms.push(
       ktx2({
         slots: /^baseColorTexture$/,

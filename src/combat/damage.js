@@ -147,6 +147,7 @@ export function createDamageRouter(context, statusService, options = {}) {
         targetId: target.id,
         attackerId: result.attackerId,
         amount: rawTotal,
+        rawTotal,
         applied: totalApplied,
         type: dominantChannel(packet.channels, model.channelOrder),
         channels: { ...packet.channels },

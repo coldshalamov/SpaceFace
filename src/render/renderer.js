@@ -4,9 +4,11 @@
 import * as THREE from 'three';
 import { createChaseCamera } from './camera.js';
 import { createStarfield } from './starfield.js';
-import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
+import { createVisualFactory, setEnvMapForShips, invalidateVisualFactoryCaches } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
+import { invalidateAuthoredAsset } from './assetLoader.js';
+import { invalidatePartsLibraryCaches } from './partsLibrary.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
@@ -76,10 +78,16 @@ function attachContactShadow(mesh, entity) {
 function configureShadowCasters(root) {
   root.traverse((o) => {
     if (!o.isMesh) return;
+    if (!o.visible) { o.castShadow = false; o.receiveShadow = false; return; }
     if (o.userData && o.userData.sharedContactShadow) { o.castShadow = false; return; }
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     const casts = mats.some((m) => m && !m.transparent && m.depthWrite !== false && (m.opacity == null || m.opacity >= 1) && m.blending === THREE.NormalBlending);
     o.castShadow = casts;
+    // GR-2: opaque hulls also RECEIVE shadows — a ship resting on a station pad should be shaded by
+    // the station's superstructure, and ships in formation should shadow each other. The same opacity
+    // test as casting: transparent shields/engine-plumes neither cast nor receive (they'd self-shadow
+    // and flicker). This is what gives ships groundedness beyond the fake contact-shadow disc.
+    o.receiveShadow = casts;
   });
 }
 
@@ -141,32 +149,69 @@ export const render = {
     // Hero-asset registry (spec §17.3): wraps the factory's build() so the bespoke player Kestrel is
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
     // back to the original procedural builder, so non-Kestrel entities are completely unaffected.
-    installVisualOverrides(vf);
+    installVisualOverrides(vf, {
+      onAuthoredAssetSwap: () => { this._shadowReceiversDirty = true; },
+    });
 
     // Bake a PMREM environment map from the nebula backdrop (scene.background) so chrome/authority
     // hulls can mirror the actual space around them — real reflections of the nebula + stars rather
     // than a canned gradient. Done once after the starfield sets scene.background; the resulting
     // envMap is exposed on state.render for the visual factory to attach to high-metalness hulls.
-    let envMap = null;
+    // Factored into a method (_bakeEnv) so WebGL context-loss recovery can re-bake it: a lost GL
+    // context invalidates the envMap GPU texture, and without re-baking chrome hulls go matte after
+    // a driver/GPU hiccup.
+    this._envMap = null;
     try {
       // wait one frame so scene.background (an async-decoded CanvasTexture) is present, then bake
-      const bakeEnv = () => {
-        try {
-          const pmrem = new THREE.PMREMGenerator(renderer);
-          // use the scene background if it's a texture; else fall back to a synthetic equirect from
-          // the scene's current render. PMREMGenerator.fromScene bakes whatever is currently visible
-          // (the nebula backdrop) into a filtered cubemap — exactly what chrome should reflect.
-          envMap = scene.background && scene.background.isTexture
-            ? pmrem.fromEquirectangular(scene.background).texture
-            : pmrem.fromScene(scene, 0, 0.1, 1000).texture;
-          pmrem.dispose();
-          state.render.envMap = envMap;
-          setEnvMapForShips(envMap);   // hand it to the visual factory for chrome/authority hulls
-          if (scene.environment === null) scene.environment = envMap; // subtle global reflection on all PBR
-        } catch (_) { /* env-map optional — chrome falls back to high-metalness matte */ }
-      };
+      const bakeEnv = () => this._bakeEnv();
       setTimeout(bakeEnv, 120); // let the starfield's async background decode first
     } catch (_) { /* PMREM unavailable */ }
+
+    // WebGL context-loss recovery. The browser fires webglcontextlost when the GPU driver resets
+    // (driver crash, sleep/wake, VRAM exhaustion). THREE's WebGLRenderer only stops rendering on
+    // loss — it does NOT restore the env map, re-upload procedural textures, or rebuild GPU state,
+    // so without handling this the game silently freezes / goes black with no recovery path.
+    // On lost: preventDefault (tells the browser we'll recover), set a flag so renderFrame skips
+    // work while the context is gone. On restored: re-bake the PMREM env, force a full mesh
+    // reconciliation (re-builds every entity mesh → re-uploads geometries/materials), re-apply
+    // renderer config, and re-apply the video settings that drive tone mapping / shadow state.
+    this._contextLost = false;
+    if (canvas) {
+      canvas.addEventListener('webglcontextlost', (ev) => {
+        ev.preventDefault();        // allow restoration
+        this._contextLost = true;
+        if (typeof console !== 'undefined') console.warn('[render] WebGL context lost — awaiting restore');
+        bus.emit('toast', { text: 'Graphics context lost — recovering…', kind: 'warn', ttl: 4 });
+      }, false);
+      canvas.addEventListener('webglcontextrestored', () => {
+        if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
+        this._contextLost = false;
+        try {
+          // Re-apply renderer config that the new context defaults lose.
+          this.renderer.setClearColor(0x060912, 1);
+          if (this._shadowSettingOn && this._keyLight) this.renderer.shadowMap.enabled = false; // re-gated by _syncShadowMapEnabled on next frame
+          // Re-bake the PMREM env (the old GPU texture is gone).
+          this._bakeEnv();
+          // Invalidate authored-asset and factory caches so the next rebuild reloads GLBs and
+          // recreates materials against the restored context rather than reusing stale GPU handles.
+          invalidateAuthoredAsset(renderer);
+          invalidateVisualFactoryCaches();
+          invalidatePartsLibraryCaches(renderer);
+          // Rebuild the bloom post-process pipeline (its render targets are tied to the lost context).
+          if (this.bloom && typeof this.bloom.rebuild === 'function') this.bloom.rebuild();
+          // Force every entity mesh to rebuild so geometries/materials re-upload. The cleanest way
+          // is to clear + reconcile: dispose the CPU mesh objects, then reconcileMeshes() rebuilds
+          // them from the live entityList via the visual factory.
+          this.clearAllMeshes(false);
+          this._meshReconcileDirty = true;
+          // Re-apply bloom + video settings (tone mapping / exposure live on settings:changed).
+          bus.emit('settings:changed', { section: 'video' });
+          bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
+        } catch (err) {
+          if (typeof console !== 'undefined') console.error('[render] context-restore rebuild failed', err);
+        }
+      }, false);
+    }
 
     // Preload the menu background (the only generated .jpg we use — the rest are captioned
     // contact-sheet references and are replaced by procedural materials / inline SVG).
@@ -317,6 +362,28 @@ export const render = {
     this._hazardVisuals = [];
   },
 
+  // Bake (or re-bake) the PMREM environment map from the current nebula backdrop. Called once at
+  // init after the starfield background decodes, AND on WebGL context restore (a lost GL context
+  // invalidates the envMap GPU texture — without re-baking, chrome hulls go matte after recovery).
+  _bakeEnv() {
+    try {
+      const renderer = this.renderer, scene = this.scene, state = this.state;
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const envMap = scene.background && scene.background.isTexture
+        ? pmrem.fromEquirectangular(scene.background).texture
+        : pmrem.fromScene(scene, 0, 0.1, 1000).texture;
+      pmrem.dispose();
+      // Dispose the previous env GPU texture if we're re-baking (context restore path).
+      if (this._envMap && this._envMap !== envMap) {
+        try { this._envMap.dispose(); } catch (_) {}
+      }
+      this._envMap = envMap;
+      state.render.envMap = envMap;
+      setEnvMapForShips(envMap);   // hand it to the visual factory for chrome/authority hulls
+      if (scene.environment === null || scene.environment === this._envMap) scene.environment = envMap;
+    } catch (_) { /* env-map optional — chrome falls back to high-metalness matte */ }
+  },
+
   // Self-healing entity<->mesh reconciliation. Guarantees every alive, renderable entity has a
   // scene mesh and that meshes for gone entities are disposed — independent of event ordering.
   // This is the safety net that makes the world actually render (entity:spawned alone was being
@@ -396,6 +463,24 @@ export const render = {
       // HUD bar. Cheap no-op for non-hero meshes (no closure). Called once per frame per entity.
       if (m.userData.updateDamageState) m.userData.updateDamageState(e, now);
 
+      // GR-5: persistent 3D shield bubble visibility + impact flash. Shown while shields hold; the
+      // flash decays each frame and is punched up whenever the entity's shield value drops (impact).
+      const sb = m.userData.shieldBubble;
+      if (sb) {
+        const up = e.shield > 0;
+        if (sb.visible !== up) sb.visible = up;
+        if (up) {
+          const u = sb.material.uniforms;
+          // detect shield loss since last frame -> punch the fresnel flash
+          const prev = sb.userData._prevShield != null ? sb.userData._prevShield : e.shield;
+          if (e.shield < prev - 0.5) u.uFlash.value = Math.min(1, u.uFlash.value + 0.8);
+          sb.userData._prevShield = e.shield;
+          // frame-rate-independent exponential decay: uFlash *= 0.05^(dt) settles in ~0.4s at any fps.
+          const dt = Math.min(0.1, now - (sb.userData._prevFlashT != null ? sb.userData._prevFlashT : now));
+          sb.userData._prevFlashT = now;
+          u.uFlash.value *= Math.pow(0.05, dt);
+        }
+      }
       // Projected-screen-size LOD (spec §12.4): resolve each entity's detail level from its projected
       // pixel width with hysteresis, so assets can drop detail at distance. The selector owns no
       // geometry; per-asset hooks read m.userData.lod.level and decide what to show. Cheap for entities
@@ -421,9 +506,15 @@ export const render = {
 
   _updatePlanetParallax() {
     const cam = this.cam.obj.position;
+    // GR-4: advance the planet cloud-drift uniform from the background clock (sim-scaled, not wall
+    // clock) so hit-stop/pause also stills the clouds. Sun bodies have no uTime uniform; planet
+    // surface materials do — the lazy read avoids a per-body branch on suns.
+    const t = this._bgTime || 0;
     for (const b of this._planetBodies) {
       b.mesh.position.x = b.basePos.x + cam.x * (1 - b.parallax);
       b.mesh.position.z = b.basePos.z + cam.z * (1 - b.parallax);
+      const u = b.mesh.material && b.mesh.material.uniforms && b.mesh.material.uniforms.uTime;
+      if (u) u.value = t;
     }
   },
 
@@ -514,10 +605,20 @@ export const render = {
   },
 
   renderFrame(alpha, frameDt) {
+    // While the GL context is lost, the renderer can't draw — skip all per-frame work until
+    // webglcontextrestored rebuilds GPU resources. (cam.follow etc. would run against a dead
+    // renderer; the context-restore handler re-applies everything that matters when it returns.)
+    if (this._contextLost) return;
     if (this._meshReconcileDirty) this.reconcileMeshes();
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
     this.starfield.recenter(this.cam.obj.position);
+    // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
+    // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
+    // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
+    const ts = (this.state.timeScale != null) ? this.state.timeScale : 1;
+    this._bgTime = (this._bgTime || 0) + frameDt * ts;
+    if (this.starfield.update) this.starfield.update(frameDt, this._bgTime);
     this._updatePlanetParallax();
     this._syncShadowMapEnabled();
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
@@ -627,7 +728,7 @@ function finiteInRange(value, min, max, fallback) {
 function disposeObject(obj) {
   obj.traverse((c) => {
     if (c.isBatchedMesh && typeof c.dispose === 'function') c.dispose();
-    else if (c.geometry && !(c.userData && c.userData.sharedContactShadow)) c.geometry.dispose();
+    else if (c.geometry && !(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo))) c.geometry.dispose();
     if (c.material && !(c.userData && c.userData.sharedContactShadow)) { const mm = Array.isArray(c.material) ? c.material : [c.material]; mm.forEach((m) => m.dispose()); }
   });
 }

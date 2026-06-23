@@ -30,6 +30,258 @@
   },
   "parts": [
     {
+      "id": "hull_starter",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_starter.glb",
+      "tris": 720,
+      "bytes": 281524,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.0,
+          -0.31,
+          -1.85
+        ],
+        "max": [
+          5.2,
+          0.765,
+          1.85
+        ],
+        "dimensionsM": [
+          10.2,
+          1.075,
+          3.7
+        ]
+      },
+      "note": "Class-authored starter hull with three LODs and assembly mounts."
+    },
+    {
+      "id": "hull_fighter",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_fighter.glb",
+      "tris": 840,
+      "bytes": 296132,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -4.825,
+          -0.23,
+          -3.25
+        ],
+        "max": [
+          5.35,
+          0.81,
+          3.25
+        ],
+        "dimensionsM": [
+          10.175,
+          1.04,
+          6.5
+        ]
+      },
+      "note": "Class-authored fighter hull with three LODs and assembly mounts."
+    },
+    {
+      "id": "hull_miner",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_miner.glb",
+      "tris": 1092,
+      "bytes": 337060,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.2,
+          -1.14,
+          -2.54255
+        ],
+        "max": [
+          5.6,
+          1.39,
+          2.54255
+        ],
+        "dimensionsM": [
+          10.8,
+          2.53,
+          5.0851
+        ]
+      },
+      "note": "Class-authored miner hull with three LODs and assembly mounts."
+    },
+    {
+      "id": "hull_freighter",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_freighter.glb",
+      "tris": 1188,
+      "bytes": 347568,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.325,
+          -0.875,
+          -2.125
+        ],
+        "max": [
+          5.6236,
+          1.5,
+          2.125
+        ],
+        "dimensionsM": [
+          10.9486,
+          2.375,
+          4.25
+        ]
+      },
+      "note": "Class-authored freighter hull with three LODs and assembly mounts."
+    },
+    {
+      "id": "hull_interceptor",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_interceptor.glb",
+      "tris": 824,
+      "bytes": 295912,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -4.975,
+          -0.17,
+          -3.05
+        ],
+        "max": [
+          6.0,
+          0.745,
+          3.05
+        ],
+        "dimensionsM": [
+          10.975,
+          0.915,
+          6.1
+        ]
+      },
+      "note": "Class-authored interceptor hull with three LODs and assembly mounts."
+    },
+    {
+      "id": "hull_corvette",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_corvette.glb",
+      "tris": 832,
+      "bytes": 298036,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.4,
+          -0.825,
+          -2.18777
+        ],
+        "max": [
+          5.65,
+          1.68,
+          2.18777
+        ],
+        "dimensionsM": [
+          11.05,
+          2.505,
+          4.37554
+        ]
+      },
+      "note": "Class-authored corvette hull with three LODs and assembly mounts."
+    },
+    {
+      "id": "hull_gunship",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_gunship.glb",
+      "tris": 1112,
+      "bytes": 342304,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.475,
+          -0.96,
+          -2.81021
+        ],
+        "max": [
+          5.55,
+          1.615,
+          2.81021
+        ],
+        "dimensionsM": [
+          11.025,
+          2.575,
+          5.62042
+        ]
+      },
+      "note": "Class-authored gunship hull with three LODs and assembly mounts."
+    },
+    {
       "id": "cockpit_dome",
       "category": "cockpits",
       "priority": "P0",

@@ -193,6 +193,11 @@ export const traffic = {
     this._ensureState();
     return drawSeeded(this.state.traffic, 'rngSeed', hash32(this.state.meta && this.state.meta.seed, 'traffic'));
   },
+
+  newGame() {
+    this._active = [];
+    this.state.traffic = { freighters: [], rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot') };
+  },
 };
 
 function setIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {

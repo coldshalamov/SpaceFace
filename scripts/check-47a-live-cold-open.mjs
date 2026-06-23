@@ -6,6 +6,8 @@ import { createServer as createNetServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { collectPageIssues } from './lib/browser-issues.mjs';
+
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCENARIO_ID = 'scenario.47a.mass-discrepancy';
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
@@ -128,25 +130,6 @@ try {
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
-}
-
-function collectPageIssues(page) {
-  const issues = [];
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') issues.push({ type: 'console', text: msg.text() });
-  });
-  page.on('pageerror', (err) => issues.push({ type: 'pageerror', text: String(err && err.message || err) }));
-  return {
-    errorIssues() {
-      return issues.filter((issue) => !isIgnorableWebglValidation(issue));
-    },
-  };
-}
-
-function isIgnorableWebglValidation(issue) {
-  const text = String(issue && issue.text || '').trim();
-  return /^THREE\.WebGLProgram: Shader Error (?:0|1282) - VALIDATE_STATUS false/.test(text)
-    && /Program Info Log:\s*$/.test(text);
 }
 
 async function startFreshServer() {

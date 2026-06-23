@@ -4,6 +4,7 @@
 import { mulberry32 } from './rng.js';
 import { SpatialHash } from './spatialHash.js';
 import { CURRENT_VERSION } from '../data/saveVersion.js';
+import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 
 function defaultSettings() {
   return {
@@ -11,9 +12,13 @@ function defaultSettings() {
     showDamageNumbers: true,
     keybinds: {},
     audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
-    video: { renderScale: 1, bloom: true, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'high', pixelRatioCap: 2, motionReduce: false, shadows: true },
+    video: { renderScale: 0.7, bloom: false, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'low', pixelRatioCap: 2, motionReduce: false, shadows: false },
     gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical' },
-    controls: { bindings: null, flightMode: 'assisted' },  // null = use input.js DEFAULT_BINDINGS; populated on first rebind
+    controls: {
+      bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
+      flightMode: 'assisted',
+      gamepad: { enabled: true, deadzone: 0.12, invertY: false },
+    },
     // Accessibility (V2 §9/§12). motionReduce lives under video (feel/vfx read it there); uiScale is the
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.
     accessibility: { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false },
@@ -77,7 +82,7 @@ export function createGameState(seed) {
     tick: 0,
     days: 0,
     rng: mulberry32(seed),
-    input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, fire: false, fireGroup: null, autoFire: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 } },
+    input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 } },
     camera: { obj: null, tilt: 60, zoom: 95, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 18 },
     bounds: { radius: 2600, hardRadius: 3000, center: { x: 0, z: 0 } },
 
@@ -105,6 +110,7 @@ export function createGameState(seed) {
              phase: 1, seenComms: {}, ambientQueue: [], ambientTimerS: 0, graffitiShown: {},
              endgameChoice: null, endgameOffered: false, endgameDeclined: [], persistentCargo: [] },
     crafting: { queues: {} },
+    aiEncounter: { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] },
     world: { sectors: {}, currentSectorId: null, activeSector: { stations: [], fields: [], hazards: [], pois: [], gates: [] }, discovery: {}, entryPoint: { x: 0, z: 0, heading: 0 } },
     jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
     fuel: { current: 100, max: 100 },
@@ -114,6 +120,11 @@ export function createGameState(seed) {
     // `sectors[id] = { drift:{security,enemyDensity}|null, lastEnterSimT, lastDay }` is the per-sector
     // drift overlay + away-clock; `meta` carries the seeded-RNG continuation seed + offline baseline.
     sectorSim: { sectors: {}, meta: { rngSeed: 0, lastTickSimT: 0, lastWallT: 0, lossLog: [] } },
+    interventions: [],
+    interventionMeta: { rngSeed: 0 },
+    drill: null,
+    claims: { bodies: [] },
+    traffic: { freighters: [] },
     ui: { screenStack: [], docked: false, activeStationTab: 'market', radarRange: 4000, toasts: [], alerts: [], trackedMissionId: null, starmapView: { cx: 0, cy: 0, zoom: 1 } },
 
     // --- static catalogs (filled from src/data/* at boot; NOT serialized) ---

@@ -23,6 +23,9 @@ export function createTacticalAISystem({
   let stack = null;
   let inspection = null;
   let ctxRef = null;
+  let lastDecisionTick = -Infinity;
+  let lastManeuverRequests = [];
+  const decisionIntervalTicks = runtimeDecisionInterval(config);
 
   function ensureStack(state) {
     if (stack) return stack;
@@ -53,6 +56,16 @@ export function createTacticalAISystem({
   function resetRuntime() {
     stack = null;
     inspection = null;
+    lastDecisionTick = -Infinity;
+    lastManeuverRequests = [];
+  }
+
+  function replayLastManeuvers(liveStack, tick) {
+    const maneuverPort = liveStack && liveStack.ports && liveStack.ports.maneuver;
+    if (!maneuverPort || typeof maneuverPort.request !== 'function') return;
+    for (const request of lastManeuverRequests) {
+      maneuverPort.request({ ...request, tick });
+    }
   }
 
   return {
@@ -73,10 +86,18 @@ export function createTacticalAISystem({
     update(_dt, state) {
       const liveStack = ensureStack(state);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
+      if (tick - lastDecisionTick < decisionIntervalTicks && lastManeuverRequests.length) {
+        replayLastManeuvers(liveStack, tick);
+        return;
+      }
       const authored = typeof authoredEncounter === 'function'
         ? authoredEncounter(tick, state, ctxRef)
         : (authoredEncounter || {});
-      liveStack.update(tick, authored);
+      const result = liveStack.update(tick, authored);
+      lastDecisionTick = tick;
+      lastManeuverRequests = (result.decisions || [])
+        .map((decision) => decision && decision.maneuver)
+        .filter(Boolean);
     },
 
     inspect(query = {}) {
@@ -91,4 +112,11 @@ export function createTacticalAISystem({
 
     get stack() { return stack; },
   };
+}
+
+function runtimeDecisionInterval(config = {}) {
+  const runtime = config.runtime && typeof config.runtime === 'object' ? config.runtime : {};
+  const value = runtime.decisionIntervalTicks ?? config.decisionIntervalTicks ?? 3;
+  if (!Number.isFinite(value)) return 3;
+  return Math.max(1, Math.min(12, Math.floor(value)));
 }
