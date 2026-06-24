@@ -216,6 +216,14 @@ export const settingsScreen = {
       const vd = s.video;
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
       rowSlider('Bloom strength', () => vd.bloomStrength, 0, 2, 0.05, (x) => x.toFixed(2), (v) => this._set(ctx, 'video', 'bloomStrength', v));
+      // HDR energy materials (spec §14.5): shader-driven thruster plume + Massline ribbon that write
+      // HDR radiance into the bloom target. On by default for the beautiful flight look.
+      if (vd.energyMaterials == null) vd.energyMaterials = true;
+      rowToggle('HDR energy materials', () => !!vd.energyMaterials, (v) => this._set(ctx, 'video', 'energyMaterials', v));
+      // Modern render graph (spec §14.6 / INTEGRATION_MAP §8.1): GTAO-lite contact depth + multiscale
+      // bloom + ACES/grade composite. Replaces the bloom path when on; falls back on low-end GPUs.
+      if (vd.renderGraph == null) vd.renderGraph = false;
+      rowToggle('Render graph (GTAO + bloom)', () => !!vd.renderGraph, (v) => this._set(ctx, 'video', 'renderGraph', v));
       rowSlider('Render scale', () => vd.renderScale, 0.5, 2, 0.05, (x) => x.toFixed(2) + 'x', (v) => this._set(ctx, 'video', 'renderScale', v));
       rowSlider('FOV', () => vd.fov, 35, 90, 1, (x) => Math.round(x) + '°', (v) => this._set(ctx, 'video', 'fov', v));
       rowSelect('Particle quality', () => vd.particleQuality, [['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], (v) => this._set(ctx, 'video', 'particleQuality', v));
@@ -234,9 +242,14 @@ export const settingsScreen = {
       if (!s.controls.flightMode) s.controls.flightMode = 'assisted';
       if (!g.physicsBackend) g.physicsBackend = 'rapier-dynamic';
       if (!g.aiBackend) g.aiBackend = 'sg06-tactical';
+      if (!g.flightBackend) g.flightBackend = 'v3';
       rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
       rowSelect('Physics backend', () => g.physicsBackend || 'rapier-dynamic', [['rapier-dynamic', 'Rapier Dynamic'], ['custom', 'Custom'], ['rapier', 'Rapier Observer']], (v) => this._set(ctx, 'gameplay', 'physicsBackend', v));
+      // Flight controller migration control (spec §21 phase: integrate Flight V3). V3 writes only
+      // force/torque/impulse through the physics authority and drives the live Rapier bodies via the
+      // generated propulsion kernel; legacy is the prior custom controller. V3 requires rapier-dynamic.
+      rowSelect('Flight controller', () => g.flightBackend, [['legacy', 'Custom Controller (legacy)'], ['v3', 'Flight V3 (Rapier authority)']], (v) => this._set(ctx, 'gameplay', 'flightBackend', v));
       rowSelect('AI backend', () => g.aiBackend || 'sg06-tactical', [['sg06-tactical', 'SG-06 Tactical'], ['legacy', 'Legacy FSM']], (v) => this._set(ctx, 'gameplay', 'aiBackend', v));
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));

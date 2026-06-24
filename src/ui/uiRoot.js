@@ -13,6 +13,7 @@
 import { createScreenManager } from './screenManager.js';
 import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
+import { isConfirmOpen } from './confirm.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -51,6 +52,7 @@ import { createComms } from './comms.js';
 const SCREEN_MODULES = [
   { path: './screens/stationHub.js', load: () => import('./screens/stationHub.js'), name: 'stationHub' },
   { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },
+  { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
   { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
   { path: './screens/automationPanel.js', load: () => import('./screens/automationPanel.js'), name: 'automationScreen' },
   { path: './screens/drill.js', load: () => import('./screens/drill.js'), name: 'drillScreen' },
@@ -397,8 +399,9 @@ export const ui = {
 
       const st = state || this.state;
       const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
+      const modalChromeOpen = syncModalChrome(modalOpen);
       const docked = !!(st && st.ui && st.ui.docked === true);
-      const hudVisible = !!(st && st.mode === 'flight' && !modalOpen && !docked);
+      const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
       if (this.hud) {
         if (hudVisible) {
           if (!this._hudVisibleLast && this.hud.forceRefresh) this.hud.forceRefresh();
@@ -415,7 +418,7 @@ export const ui = {
       this._rt = (this._rt || 0) + 1;
       if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {
         const def = this.screenManager.getActiveScreenDef && this.screenManager.getActiveScreenDef();
-        if (def && (def.id === 'automation' || def.id === 'starmap' || def.id === 'techTree' || def.id === 'missionLog') && def.refresh) {
+        if (def && (def.id === 'automation' || def.id === 'starmap' || def.id === 'localmap' || def.id === 'techTree' || def.id === 'missionLog') && def.refresh) {
           def.refresh(this.ctx, { periodic: true });
         } else {
           this.screenManager.refreshTop();
@@ -808,4 +811,35 @@ function injectHudCss() {
   .sf-dock-fade.active { opacity:1; }
   `;
   document.head.appendChild(s);
+}
+
+function syncModalChrome(screenOpen) {
+  const externalModalOpen = isConfirmOpen() || hasVisibleElement('#sf-endgame.open, .sf-endgame--c.open');
+  const modalOpen = !!(screenOpen || externalModalOpen);
+  document.body.classList.toggle('ui-modal-open', modalOpen);
+
+  const backdrop = document.getElementById('modal-backdrop');
+  if (backdrop) {
+    // Only screen-manager modals use the shared backdrop for interaction. Confirm/endgame mount
+    // their own higher-z overlays; a stale body class must not leave an invisible click shield.
+    backdrop.style.pointerEvents = screenOpen ? 'auto' : 'none';
+  }
+  return modalOpen;
+}
+
+function hasVisibleElement(selector) {
+  const nodes = document.querySelectorAll(selector);
+  for (const el of nodes) {
+    if (isVisiblyRendered(el)) return true;
+  }
+  return false;
+}
+
+function isVisiblyRendered(el) {
+  if (!el) return false;
+  const cs = getComputedStyle(el);
+  if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+  if (Number(cs.opacity || 1) <= 0.05) return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width > 2 && rect.height > 2;
 }

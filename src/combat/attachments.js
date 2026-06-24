@@ -1,6 +1,23 @@
 import { socketWorldPosition } from './geometry.js';
 import { ensureCombatant, entityKey } from './runtime.js';
 import { appendCombatTrace } from './trace.js';
+import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
+import { SIM_DT } from '../core/sim.js';
+
+// Builds the winch/heat/overload policy def that masslineController.stepMassline consumes. The
+// physical break thresholds come from the attachment def's `break` block (authored in combatDefs);
+// the winch/heat/reel policy comes from the generated DEFAULT_MASSLINE_DEF so the controller's
+// mass-ratio-driven behavior (heavy target stalls the winch, sustained overload breaks the line)
+// is the live contract, not an ad-hoc scripted tether.
+function masslineDefFor(def) {
+  const brk = (def && def.break) || {};
+  return {
+    maxTension: Number.isFinite(brk.maxTension) ? brk.maxTension : 140,
+    maxImpulse: Number.isFinite(brk.maxImpulse) ? brk.maxImpulse : 90,
+    overloadGraceS: 0.18,
+    catastrophicRatio: 1.75,
+  };
+}
 
 export function createAttachmentService(context) {
   const { state, catalog, helpers, bus } = context;
@@ -249,6 +266,85 @@ export function createAttachmentService(context) {
       attachment.lastTension = finiteOrZero(telemetry.tension);
       attachment.lastImpulse = finiteOrZero(telemetry.impulse);
       const grace = Math.max(0, Number(def.break && def.break.graceTicks) || 0);
+
+      // Massline controller: run the winch/heat/overload policy (spec §8) one step per fixed tick
+      // and apply its rest-length command to the Rapier joint. Rapier still owns momentum exchange
+      // (mass-ratio-driven swing/reel); the controller only owns the winch + break policy. This is
+      // what turns the scripted tether into a physical mass-ratio-driven Massline.
+      // Massline controller (spec §8): run the winch/heat/overload policy one step per fixed tick
+      // and apply its rest-length command to the Rapier joint. Opt-in per attachment def via a
+      // `massline: { enabled: true }` block, so existing scenario tethers keep their proven
+      // dynamics until a def deliberately adopts the controller. When enabled, Rapier still owns
+      // momentum exchange (mass-ratio-driven swing/reel); the controller only owns the winch +
+      // break policy. Joint rebuilds are conservative (only on a meaningful length change) to
+      // avoid destabilizing the solver with per-tick joint recreation.
+      const masslinePolicy = def.massline && def.massline.enabled;
+      if (masslinePolicy && state.tick - attachment.createdTick >= grace) {
+        const masslineDef = masslineDefFor(def);
+        if (!attachment.masslineRuntime) {
+          // Seed the winch from the ACTUAL attachment rest length, not the def's defaultLength,
+          // so a neutral (no-reel) command holds the engagement distance rather than drifting the
+          // ships toward an arbitrary 70-unit separation. The controller only moves the joint when
+          // a reel command is issued or physics stretches the line.
+          const runtime = createMasslineRuntime(masslineDef);
+          const seed = attachment.restLength > 0 ? attachment.restLength : runtime.restLength;
+          runtime.restLength = seed;
+          runtime.targetLength = seed;
+          attachment.masslineRuntime = runtime;
+        }
+        const owner = entity(attachment.ownerId);
+        const target = entity(attachment.targetId);
+        const ml = stepMassline({
+          dt: SIM_DT,
+          def: masslineDef,
+          runtime: attachment.masslineRuntime,
+          telemetry: {
+            attachmentId: attachment.id,
+            restLength: telemetry.restLength,
+            distance: telemetry.distance,
+            stretch: telemetry.stretch,
+            relativeSpeed: telemetry.relativeSpeed,
+            tension: telemetry.tension,
+            impulse: telemetry.impulse,
+          },
+          command: { reel: 0, hold: true, cut: false },
+          ownerBody: owner && { mass: finiteOrZero(owner.physicsBody && owner.physicsBody.mass) || finiteOrZero(owner.mass) || 1 },
+          targetBody: target && { mass: finiteOrZero(target.physicsBody && target.physicsBody.mass) || finiteOrZero(target.mass) || 1 },
+        });
+        attachment.masslineRuntime = ml.runtime;
+        attachment.masslineTelemetry = ml.telemetry;
+        // Apply the controller's rest length only on a meaningful change (>= 2 units). Rebuilding
+        // a Rapier rope joint every tick resets solver contact state and destabilizes the tether;
+        // the winch is a slow actuator, so a coarse threshold is physically appropriate.
+        if (ml.action.restLength > 0 && Math.abs(ml.action.restLength - attachment.restLength) >= 2.0) {
+          try {
+            if (physics.setAttachmentReel) {
+              physics.setAttachmentReel({
+                attachmentId: attachment.id,
+                physicsHandle: attachment.physicsHandle,
+                restLength: ml.action.restLength,
+                previousRestLength: attachment.restLength,
+                tick: state.tick,
+              });
+              attachment.restLength = ml.action.restLength;
+            }
+          } catch (_) { /* joint update is best-effort; the next tick retries */ }
+        }
+        // The controller's break (sustained overload / integrity failure / catastrophic) is the
+        // primary, physics-derived break path — it supersedes the raw threshold check below. A
+        // catastrophic overload is a direct tension/impulse threshold exceedance, so it reports the
+        // authored 'threshold' reason (the legacy break contract); sustained-overload and
+        // integrity-failure keep the controller's distinct winch-policy reasons.
+        if (ml.action.cut) {
+          const cutReason = ml.runtime.cutReason === 'catastrophic-overload' ? 'threshold' : (ml.runtime.cutReason || 'overload');
+          breakAttachment(attachment, cutReason, attachment.ownerId, {
+            tension: ml.telemetry.tension,
+            impulse: ml.telemetry.impulse,
+          });
+          continue;
+        }
+      }
+
       if (state.tick - attachment.createdTick < grace) continue;
       let nearBreak = false;
       if (def.break) {

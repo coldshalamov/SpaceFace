@@ -5,6 +5,8 @@
 //   - `alert` events {key,sev,text,ttl} from any system,
 //   - contextual conditions we own here: low-shield, incoming-fire, and the dock prompt.
 //
+import { promptLabel } from './bindings.js';
+
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
 // "Press Enter to dock" alert (no ttl). The dock key handling lives in input.js.
 
@@ -82,9 +84,10 @@ export function createAlerts(ctx) {
   // --- event wiring ---
   bus.on('alert', raise);
 
-  // dock prompt (persistent while in range) — large and unmissable
+  // dock prompt (persistent while in range) — large and unmissable. The key label is sourced from
+  // the live binding registry (spec §15.4) so it can never drift from the actual handler.
   bus.on('dock:range', ({ inRange }) => {
-    if (inRange) raise({ key: 'dock', sev: 'dock', text: '[ ENTER ] DOCK AT STATION', ttl: Infinity });
+    if (inRange) raise({ key: 'dock', sev: 'dock', text: `${promptLabel('dock')} DOCK AT STATION`, ttl: Infinity });
     else clear('dock');
   });
   bus.on('dock:docked', () => clear('dock'));

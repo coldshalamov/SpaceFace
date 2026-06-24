@@ -10,6 +10,7 @@
 // The UI never mutates sim state; docking sets ui.docked + emits dock:docked + pushes 'station'.
 
 import { isConfirmOpen } from './confirm.js';
+import { BINDINGS } from './bindings.js';
 
 export function createUiInput(ctx, screenManager) {
   const { state, bus } = ctx;
@@ -90,6 +91,8 @@ export function createUiInput(ctx, screenManager) {
         return;
       case 'm': case 'M':
         ev.preventDefault(); screenManager.pushScreen('starmap'); return;
+      case 'n': case 'N':
+        ev.preventDefault(); screenManager.pushScreen('localmap'); return;
       case 't': case 'T':
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;
       case 'j': case 'J':
@@ -100,6 +103,9 @@ export function createUiInput(ctx, screenManager) {
         ev.preventDefault();
         bus.emit('ui:cycleTarget', { dir: ev.shiftKey ? -1 : 1 });
         return;
+      // Dock / interact: default binding is `E` (spec §15.4), sourced from the live binding
+      // registry so the prompt and handler can never drift. Enter remains a secondary trigger.
+      case BINDINGS.dock.key:
       case 'Enter':
         if (dockInRange) { ev.preventDefault(); doDock(); }
         return;

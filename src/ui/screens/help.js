@@ -116,7 +116,7 @@ const SECTIONS = [
     ['Deep-drill (ant-farm)', null, 'B (target an asteroid)'],
     ['Claim body / open base', null, 'C (near a colony/moon)'],
     ['Cycle target', null, 'Tab'],
-    ['Dock', null, 'Enter (when prompted)'],
+    ['Dock', null, 'E (when prompted)'],
     ['Pause', null, 'ESC / P'],
     ['Star-map', null, 'M'],
     ['Tech tree', null, 'T'],

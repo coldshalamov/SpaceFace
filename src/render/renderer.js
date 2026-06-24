@@ -7,6 +7,7 @@ import { createStarfield } from './starfield.js';
 import { createVisualFactory, setEnvMapForShips, invalidateVisualFactoryCaches } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
+import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import { invalidateAuthoredAsset } from './assetLoader.js';
 import { invalidatePartsLibraryCaches } from './partsLibrary.js';
 import { projectedWidthPx } from './lod.js';
@@ -625,7 +626,15 @@ export const render = {
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
     // an offset from its target; we move both together. No-op if shadows are disabled.
     this._updateShadowFollow();
-    if (this.bloom && this.state.settings.video.bloom !== false) this.bloom.render(this.scene, this.cam.obj);
+    // Render path selection (INTEGRATION_MAP §8.1). The SpaceRenderGraph is a capability-aware HDR
+    // pipeline (GTAO-lite ambient occlusion + multiscale bloom + ACES/grade composite) that
+    // supersedes the monolithic bloom wrapper. It is opt-in behind settings.video.renderGraph so the
+    // proven bloom path stays the default; the render graph module is no longer tree-shaken because
+    // it is reachable from this live branch. The energy materials I wired write HDR radiance that the
+    // render graph composites with contact-depth AO.
+    if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
+      this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
+    } else if (this.bloom && this.state.settings.video.bloom !== false) this.bloom.render(this.scene, this.cam.obj);
     else this.renderer.render(this.scene, this.cam.obj);
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
@@ -701,11 +710,40 @@ export const render = {
   onResize() {
     const drawSize = applyRendererSize(this.renderer, this.state);
     if (this.bloom) this.bloom.setSize(drawSize.x, drawSize.y);
+    if (this._renderGraph) this._renderGraph.setSize(drawSize.x, drawSize.y, this.renderer.getPixelRatio() || 1);
     this.cam.onResize();
     // Cache the CSS-pixel viewport for the LOD projector (projectedWidthPx expects CSS px, matching
     // the projected-width thresholds in spec §12.4). Drawing-buffer size carries devicePixelRatio.
     const dpr = this.renderer.getPixelRatio() || 1;
     this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr };
+  },
+
+  // Lazily construct the SpaceRenderGraph only when its setting is on (it allocates GPU render
+  // targets). Returns false if construction fails (e.g. a low-capability GPU) so the caller falls
+  // back to bloom/straight-render. Options mirror the bloom/quality settings where they overlap.
+  _ensureRenderGraph() {
+    if (this._renderGraph) return true;
+    if (this._renderGraphUnavailable) return false;
+    try {
+      const v = this.state.settings.video || {};
+      const drawSize = this.viewport ? { x: this.viewport.width * (this.renderer.getPixelRatio() || 1), y: this.viewport.height * (this.renderer.getPixelRatio() || 1) } : { x: 1280, y: 720 };
+      this._renderGraph = new SpaceRenderGraph(this.renderer, {
+        enabled: true,
+        ao: v.ao !== false,
+        bloom: true,
+        renderScale: Math.min(1, Math.max(0.5, v.renderScale || 0.7)),
+        bloomStrength: v.bloomStrength != null ? v.bloomStrength : 0.9,
+        bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 0.65,
+      });
+      this._renderGraph.setSize(drawSize.x, drawSize.y, this.renderer.getPixelRatio() || 1);
+      // Expose for diagnostics + the energy-materials depth binding path.
+      this.state.render.renderGraph = this._renderGraph;
+      return true;
+    } catch (err) {
+      console.warn('[render] SpaceRenderGraph unavailable, falling back to bloom:', err);
+      this._renderGraphUnavailable = true;
+      return false;
+    }
   },
 };
 

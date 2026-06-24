@@ -77,4 +77,15 @@ export const WEAPONS = [
     dmg: 420, rof: 0.5, dps: 210, damageType: 'kinetic', energyCost: 40,
     projSpeed: 600, range: 1600, tracking: 'fixed', armorPierce: 0.5,
   },
+  {
+    // EMP Disruptor (spec §9 weapon-verb variety): a distinct DISABLE verb. Unlike hull weapons, it
+    // routes ALL damage to subsystems (subsystemShare 1.0) and bypasses hull entirely — its purpose
+    // is to cripple capability (drive/weapon/sensor/power), not to destroy the ship. EMP damage is
+    // heavily resisted by armor but ignores shields (it couples through them), making it the
+    // counter to shield-turtling and the enabler of capture/disable play.
+    id: 'wpn_emp_disruptor_m', name: 'EMP Disruptor M', slotType: 'weapon', size: 'M', tier: 3, mass: 6, price: 36000, requiresTech: 'tech_plasma_dynamics',
+    dmg: 45, rof: 1.5, dps: 68, damageType: 'emp', energyCost: 11,
+    projSpeed: 380, range: 560, tracking: 'fixed', spreadDeg: 1.0,
+    subsystemShare: 1.0, shieldBypass: 1.0,
+  },
 ];

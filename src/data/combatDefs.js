@@ -193,6 +193,10 @@ export const ATTACHMENT_DEFS = Object.freeze([
     sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: true },
     break: { maxTension: 140, maxImpulse: 90, graceTicks: 1 },
+    // Massline winch/heat/overload controller (spec §8). Opt-in: runs stepMassline per tick,
+    // smoothing the joint rest length and breaking on sustained overload / integrity failure.
+    // Rapier still owns the momentum exchange; this owns the winch + break policy.
+    massline: { enabled: true },
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },

@@ -16,6 +16,24 @@ import { confirm } from '../confirm.js';
 import { escapeHtml } from '../comms.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+
+// Drive-family label for the preview header. The hull's driveId resolves to one of five propulsion
+// families (spec §6); surfacing it in outfitting lets the player feel the family switch on a new hull.
+const DRIVE_FAMILY_LABEL = {
+  reaction: 'Reaction', gravimetric: 'Gravimetric', pulse_plate: 'Pulse Plate',
+  torch: 'Torch', field_sail: 'Field Sail',
+};
+function driveLabelFor(defId) {
+  const def = SHIP_BY_ID.get(defId);
+  const driveId = def && def.driveId;
+  if (!driveId) return '';
+  if (driveId.startsWith('drive_gravimetric')) return DRIVE_FAMILY_LABEL.gravimetric;
+  if (driveId.startsWith('drive_pulse_plate')) return DRIVE_FAMILY_LABEL.pulse_plate;
+  if (driveId.startsWith('drive_torch')) return DRIVE_FAMILY_LABEL.torch;
+  if (driveId.startsWith('drive_field_sail')) return DRIVE_FAMILY_LABEL.field_sail;
+  if (driveId.startsWith('drive_reaction')) return DRIVE_FAMILY_LABEL.reaction;
+  return '';
+}
 const FITTABLE_BY_ID = new Map();
 for (const m of MODULES) FITTABLE_BY_ID.set(m.id, m);
 for (const w of WEAPONS) if (!FITTABLE_BY_ID.has(w.id)) FITTABLE_BY_ID.set(w.id, w);
@@ -384,6 +402,15 @@ export function createOutfittingPanel(ctx) {
     const cur = getDerivedStats(owned.defId, owned.fittings || [], ctx.state.player);
     const next = previewFit ? getDerivedStats(owned.defId, fittingsWithPreview(owned), ctx.state.player) : cur;
     const frag = document.createDocumentFragment();
+    const driveLabel = driveLabelFor(owned.defId);
+    if (driveLabel) {
+      const driveRow = document.createElement('div');
+      driveRow.className = 'st-stat-row st-stat-row--drive';
+      driveRow.innerHTML =
+        '<span class="st-stat-l">Drive</span>' +
+        '<span class="st-stat-v mono">' + escapeHtml(driveLabel) + '</span>';
+      frag.appendChild(driveRow);
+    }
     for (const s of PREVIEW_STATS) {
       const a = cur[s.k] || 0;
       const b = next[s.k] || 0;

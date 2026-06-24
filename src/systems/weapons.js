@@ -486,6 +486,10 @@ function weaponDamagePacket(w, def, damage, damageType, pos = null) {
     damageType,
     pos,
     penetration: w.armorPierce != null ? w.armorPierce : def.armorPierce,
+    // Subsystem-targeting / shield-bypass verbs (EMP disable, spec §9). Authored on the weapon def;
+    // 0/null for normal hull weapons.
+    subsystemShare: w.subsystemShare != null ? w.subsystemShare : def.subsystemShare,
+    shieldBypass: w.shieldBypass != null ? w.shieldBypass : def.shieldBypass,
     source: {
       kind: 'weapon',
       weaponId: w.defId || def.id || null,

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const argv = parseArgs(process.argv.slice(2));
 const BAD_SAVE = !!argv.badSave || !!argv['bad-save'];
+const STALE_MODAL = !!argv.staleModal || !!argv['stale-modal'];
 const SHOT = argv.shot || `.devshots/perf/boot-flow${BAD_SAVE ? '-bad-save' : ''}.jpg`;
 const WIDTH = Number(argv.width || 1280);
 const HEIGHT = Number(argv.height || 800);
@@ -48,16 +49,32 @@ try {
     'boot should not strand player in empty pre-game HUD: ' + JSON.stringify(menuSnap)
     + ' issues=' + JSON.stringify(issues.slice(0, 8)));
 
-  if (BAD_SAVE) {
+  if (menuSnap.flightPlayable) {
+    // Some dev sessions restore or start directly into flight. That is already enough for visual
+    // lifecycle probes such as --stale-modal; don't make the harness depend on title-screen copy.
+  } else if (BAD_SAVE) {
     await clickButton(cdp, 'Continue');
   } else {
-    await clickButton(cdp, 'New Game');
+    await clickButton(cdp, 'New Game', menuSnap);
     await waitFor(cdp, () => snapshotExpression(), (snap) => snap.newGameVisible, 10000, 'New Game screen');
     await clickButton(cdp, 'Launch');
   }
 
   const flight = await waitFor(cdp, () => snapshotExpression(), (snap) => snap.flightPlayable, 15000, 'playable flight HUD');
   assert.equal(flight.emptyPreGameHud, false, 'flight should not be the empty pre-game HUD');
+
+  if (STALE_MODAL) {
+    await cdp.send('Runtime.evaluate', {
+      expression: `document.body.classList.add('ui-modal-open')`,
+      awaitPromise: true,
+    });
+    const healed = await waitFor(cdp, () => snapshotExpression(), (snap) => (
+      snap.flightPlayable && snap.hudVisible && !snap.bodyModalOpen && !snap.backdropVisible
+    ), 5000, 'stale modal blur to self-heal');
+    assert.equal(healed.bodyModalOpen, false, 'stale ui-modal-open class should be removed in pure flight');
+    assert.equal(healed.backdropVisible, false, 'modal backdrop should not stay visible in pure flight');
+  }
+
   assert.equal(issues.filter((issue) => issue.level === 'error').length, 0,
     'boot-flow probe should not record page errors: ' + JSON.stringify(issues.slice(0, 5)));
 
@@ -181,15 +198,16 @@ async function waitForUsableMenu(cdp) {
   return snap;
 }
 
-async function clickButton(cdp, label) {
+async function clickButton(cdp, label, snap = null) {
   const expr = `(() => {
     const button = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === ${JSON.stringify(label)});
-    if (!button) return false;
+    if (!button) return { ok: false, buttons: [...document.querySelectorAll('button')].map((b) => (b.textContent || '').trim()).filter(Boolean).slice(0, 16) };
     button.click();
-    return true;
+    return { ok: true };
   })()`;
   const res = await cdp.send('Runtime.evaluate', { expression: expr, returnByValue: true });
-  assert.equal(res.result?.value, true, `button "${label}" should exist`);
+  const value = res.result?.value || {};
+  assert.equal(value.ok, true, `button "${label}" should exist; buttons=${JSON.stringify(value.buttons || [])}; snap=${JSON.stringify(snap)}`);
 }
 
 async function waitFor(cdp, exprFactory, predicate, timeoutMs, label) {
@@ -221,6 +239,7 @@ function snapshotExpression() {
     const player = state && state.entities && state.entities.get(state.playerId) || null;
     const hud = document.getElementById('hud');
     const screens = document.getElementById('screens');
+    const backdrop = document.getElementById('modal-backdrop');
     const mainMenu = document.querySelector('[data-screen="mainMenu"]');
     const newGame = document.querySelector('[data-screen="newGame"]');
     const bootOverlay = document.getElementById('boot-overlay');
@@ -238,6 +257,7 @@ function snapshotExpression() {
     const newGameVisible = visible(newGame);
     const modalOpen = document.body.classList.contains('ui-modal-open');
     const hudVisible = visible(hud);
+    const backdropVisible = visible(backdrop);
     const flightPlayable = flightPlayableState || hudPlayableDom;
     return {
       bootOverlayHidden: !bootOverlay || bootOverlay.classList.contains('hidden'),
@@ -245,6 +265,9 @@ function snapshotExpression() {
       mainMenuVisible,
       newGameVisible,
       flightPlayable,
+      hudVisible,
+      bodyModalOpen: modalOpen,
+      backdropVisible,
       emptyPreGameHud: !cinematicVisible && !mainMenuVisible && !newGameVisible && !flightPlayable && hudVisible && !modalOpen,
       mode: state && state.mode || null,
       playerId: state && state.playerId || null,

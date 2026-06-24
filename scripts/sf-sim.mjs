@@ -21,6 +21,7 @@ import { aiEncounter } from '../src/systems/aiEncounter.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 import { actions } from '../src/systems/actions.js';
 import { flight } from '../src/systems/flight.js';
+import { flightV3 } from '../src/systems/flightV3.js';
 import { weapons } from '../src/systems/weapons.js';
 import { physics } from '../src/core/physics.js';
 import { combat } from '../src/systems/combat.js';
@@ -71,12 +72,17 @@ const traceEvents = command === 'trace' ? parseTraceEvents(argValue('--events', 
 const traceLimit = command === 'trace' ? readPositiveInt('--limit', 500) : null;
 const physicsBackend = readPhysicsBackend('--physics-backend', 'rapier-dynamic');
 const tacticalAI = hasFlag('--tactical-ai');
+// Flight controller A/B: which production flight system drives the 47-A sim. The legacy controller
+// pins the golden hash ca3eac66…; V3 writes force/torque through the physics authority via the
+// generated propulsion kernel and produces a distinct hash (it stamps propulsionRuntime into data).
+// Default 'legacy' keeps every existing check:sim* gate byte-identical.
+const flightSystem = readFlightSystem('--flight-system', 'legacy');
 const counterTetherProbe = readCounterTetherProbe('--counter-tether-probe', null);
 const scenarioContractPath = argValue('--scenario-contract', 'src/data/scenarios/47a.scenario.json');
 const scenarioContract = loadScenarioContract(scenarioContractPath);
 
 if (command === 'inspect') {
-  const inspected = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
+  const inspected = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   const result = {
     schema: 'spaceface.sfSimInspectResult.v1',
     deterministic: true,
@@ -87,6 +93,7 @@ if (command === 'inspect') {
     physicsBackend,
     tacticalAI,
     counterTetherProbe,
+    flightSystem,
     inputTape: inputPath.replace(/\\/g, '/'),
     reloadAt,
     scenarioContract: inspected.scenarioContract,
@@ -97,7 +104,7 @@ if (command === 'inspect') {
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'trace') {
-  const traced = await run47a({ seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true, physicsBackend, tacticalAI, counterTetherProbe });
+  const traced = await run47a({ seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   assert47aPhase0Metrics(traced.metrics, { physicsBackend, counterTetherProbe, ...(reloadAt == null ? {} : { reloadAt }) });
   const result = {
     schema: 'spaceface.sfSimTraceResult.v1',
@@ -109,6 +116,7 @@ if (command === 'inspect') {
     physicsBackend,
     tacticalAI,
     counterTetherProbe,
+    flightSystem,
     inputTape: inputPath.replace(/\\/g, '/'),
     reloadAt,
     scenarioContract: traced.scenarioContract,
@@ -121,7 +129,7 @@ if (command === 'inspect') {
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'profile') {
-  const profiled = await profile47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
+  const profiled = await profile47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   const run = profiled.run;
   assert47aPhase0Metrics(run.metrics, { physicsBackend, counterTetherProbe, ...(reloadAt == null ? {} : { reloadAt }) });
   if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, run, { inputPath, seed });
@@ -136,6 +144,7 @@ if (command === 'inspect') {
     physicsBackend,
     tacticalAI,
     counterTetherProbe,
+    flightSystem,
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     reloadAt,
@@ -148,9 +157,9 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'compare') {
   if (reloadAt == null) usage(1, 'compare requires --reload-at');
-  const baseline = await run47a({ seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe });
+  const baseline = await run47a({ seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
-  const candidate = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
+  const candidate = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   assert47aPhase0Metrics(candidate.metrics, { physicsBackend, reloadAt, counterTetherProbe });
   const comparison = await compareRuns(baseline, candidate, {
     expectedEnvelope,
@@ -162,6 +171,7 @@ if (command === 'inspect') {
     physicsBackend,
     tacticalAI,
     counterTetherProbe,
+    flightSystem,
   });
   const result = {
     schema: 'spaceface.sfSimCompareResult.v1',
@@ -174,6 +184,7 @@ if (command === 'inspect') {
     physicsBackend,
     tacticalAI,
     counterTetherProbe,
+    flightSystem,
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     baseline: runSummary('uninterrupted', baseline),
@@ -183,15 +194,15 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   process.exitCode = comparison.ok ? 0 : 1;
 } else {
-  const baseline = await run47a({ seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe });
+  const baseline = await run47a({ seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
-  const first = reloadAt == null ? baseline : await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
+  const first = reloadAt == null ? baseline : await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   assert47aPhase0Metrics(first.metrics, { physicsBackend, reloadAt, counterTetherProbe });
   if (reloadAt != null) {
     assert.equal(first.sha256, baseline.sha256, `reload-at ${reloadAt} hash diverged from uninterrupted baseline`);
   }
   for (let i = 1; i < repeat; i++) {
-    const next = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe });
+    const next = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
     assert47aPhase0Metrics(next.metrics, { physicsBackend, reloadAt, counterTetherProbe });
     assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
   }
@@ -207,6 +218,7 @@ if (command === 'inspect') {
     physicsBackend,
     tacticalAI,
     counterTetherProbe,
+    flightSystem,
     inputTape: inputPath.replace(/\\/g, '/'),
     expectedTelemetry: expectPath ? expectPath.replace(/\\/g, '/') : null,
     repeat,
@@ -255,7 +267,15 @@ async function run47a({
   physicsBackend = 'rapier-dynamic',
   tacticalAI = false,
   counterTetherProbe = null,
+  flightSystem = 'legacy',
 }) {
+  // Select the flight controller. V3 only functions under rapier-dynamic (it emits no motion
+  // commands otherwise), so a 'v3' request under another backend falls back to legacy with a warn.
+  const flightSlot = flightSystem === 'v3' && physicsBackend === 'rapier-dynamic'
+    ? flightV3 : flight;
+  if (flightSystem === 'v3' && physicsBackend !== 'rapier-dynamic') {
+    console.warn(`[sf-sim] flight-system v3 requires rapier-dynamic; got ${physicsBackend}, falling back to legacy flight`);
+  }
   const systems = tacticalAI
     ? [
         scenarioRuntime,
@@ -264,7 +284,7 @@ async function run47a({
         createTacticalAISystem(),
         aiEncounter,
         actions,
-        flight,
+        flightSlot,
         aiPorts,
         weapons,
         physics,
@@ -275,7 +295,7 @@ async function run47a({
         story,
         save,
       ]
-    : [scenarioRuntime, presentationOrchestrator, presentationAdapters, actions, flight, weapons, physics, combat, cargo, economy, missions, story, save];
+    : [scenarioRuntime, presentationOrchestrator, presentationAdapters, actions, flightSlot, weapons, physics, combat, cargo, economy, missions, story, save];
   const sim = createSimulation({
     seed,
     helpers: {
@@ -288,6 +308,8 @@ async function run47a({
   const { state, bus, registry } = sim;
   state.settings.gameplay.physicsBackend = physicsBackend;
   state.settings.gameplay.aiBackend = tacticalAI ? 'sg06-tactical' : 'legacy';
+  // Record the selected flight controller so diagnostics/registry selection stay consistent.
+  state.settings.gameplay.flightBackend = flightSlot === flightV3 ? 'v3' : 'legacy';
   const eventTrace = createDeterministicEventTrace(bus, state, {
     events: traceEvents || undefined,
     cap: traceLimit || undefined,
@@ -762,6 +784,7 @@ async function findFirstDivergentTick(options) {
       physicsBackend: options.physicsBackend,
       tacticalAI: options.tacticalAI,
       counterTetherProbe: options.counterTetherProbe,
+      flightSystem: options.flightSystem,
     });
     const reloadAt = options.reloadAt <= mid ? options.reloadAt : null;
     const candidate = await run47a({
@@ -772,6 +795,7 @@ async function findFirstDivergentTick(options) {
       physicsBackend: options.physicsBackend,
       tacticalAI: options.tacticalAI,
       counterTetherProbe: options.counterTetherProbe,
+      flightSystem: options.flightSystem,
     });
     if (baseline.sha256 === candidate.sha256) lo = mid + 1;
     else hi = mid;
@@ -1073,6 +1097,14 @@ function readPhysicsBackend(name, fallback) {
   const value = argValue(name, fallback);
   if (!['custom', 'rapier', 'rapier-dynamic'].includes(value)) {
     throw new RangeError(`${name} must be one of custom, rapier, rapier-dynamic`);
+  }
+  return value;
+}
+
+function readFlightSystem(name, fallback) {
+  const value = argValue(name, fallback);
+  if (!['legacy', 'v3'].includes(value)) {
+    throw new RangeError(`${name} must be one of legacy, v3`);
   }
   return value;
 }

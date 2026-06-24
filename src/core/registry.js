@@ -9,6 +9,7 @@ import { createTacticalAISystem } from '../systems/tacticalAI.js';
 import { aiEncounter } from '../systems/aiEncounter.js';
 import { actions } from '../systems/actions.js';
 import { flight } from '../systems/flight.js';
+import { flightV3 } from '../systems/flightV3.js';
 import { weapons } from '../systems/weapons.js';
 import { countermeasures } from '../systems/countermeasures.js';
 import { combat } from '../systems/combat.js';
@@ -43,9 +44,14 @@ import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 
 export function createRegistry(ctx) {
   const aiSlot = selectAISystem(ctx);
+  // Flight controller: the legacy custom controller (default) or the V3 Rapier-authority adapter,
+  // behind the gameplay.flightBackend setting. V3 writes force/torque/impulse commands through the
+  // physics authority membrane and never edits body motion directly (spec §4.3). The default stays
+  // legacy until the V3 golden replay hash is recorded; see settings.js.
+  const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flight, weapons, countermeasures, combat, mining, cargo, economy,
+    core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, weapons, countermeasures, combat, mining, cargo, economy,
     automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -66,11 +72,12 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, aiSlot, aiEncounter, actions, flight, aiPorts, weapons, countermeasures, physics, combat, mining, cargo, automation, wingmen, crafting,
+    input, aiSlot, aiEncounter, actions, flightSlot, aiPorts, weapons, countermeasures, physics, combat, mining, cargo, automation, wingmen, crafting,
     economy, automation, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
   byName.set('ai', aiSlot);
+  byName.set('flight', flightSlot);
 
   return {
     systems: SYSTEMS,
@@ -133,4 +140,15 @@ function selectAISystem(ctx) {
     return createTacticalAISystem();
   }
   return ai;
+}
+
+// Flight controller selection. V3 only functions under rapier-dynamic (it emits no motion commands
+// otherwise), so require both flags: flightBackend === 'v3' AND physicsBackend === 'rapier-dynamic'.
+// Anything else resolves to the legacy controller, so the default is zero behavior change.
+function selectFlightSystem(ctx) {
+  const gameplay = ctx && ctx.state && ctx.state.settings && ctx.state.settings.gameplay || {};
+  if (gameplay.flightBackend === 'v3' && gameplay.physicsBackend === 'rapier-dynamic') {
+    return flightV3;
+  }
+  return flight;
 }

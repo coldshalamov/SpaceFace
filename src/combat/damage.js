@@ -27,6 +27,9 @@ export function createDamageRouter(context, statusService, options = {}) {
     const before = snapshotVitals(target, runtime);
     const model = catalog.damageModel;
     const penetration = clamp01(packet.penetration);
+    // Shield bypass (EMP/disable verb, spec §9): a fraction of the damage couples through the
+    // shield directly to armor/hull/subsystems. 1.0 = shields ignored entirely.
+    const shieldBypass = clamp01(Number(packet.shieldBypass) || 0);
     const postShieldRaw = emptyChannels(model.channelOrder);
     const penetratingRaw = emptyChannels(model.channelOrder);
     let shieldDamage = 0;
@@ -34,14 +37,17 @@ export function createDamageRouter(context, statusService, options = {}) {
     for (const channel of model.channelOrder) {
       const raw = packet.channels[channel] || 0;
       penetratingRaw[channel] = raw * penetration;
-      const normal = raw - penetratingRaw[channel];
+      // The bypassed fraction skips the shield pool entirely.
+      const bypassed = raw * shieldBypass;
+      const normal = (raw - penetratingRaw[channel] - bypassed);
       const multiplier = positiveMultiplier(model.shieldMultipliers[channel]);
       const potentialHp = normal * multiplier;
       const absorbedHp = Math.min(Math.max(0, target.shield || 0), potentialHp);
       target.shield = Math.max(0, (target.shield || 0) - absorbedHp);
       shieldDamage += absorbedHp;
       const consumedRaw = multiplier > 0 ? absorbedHp / multiplier : 0;
-      postShieldRaw[channel] = Math.max(0, normal - consumedRaw);
+      // The bypassed fraction (EMP coupling through the shield) passes onward to armor/hull.
+      postShieldRaw[channel] = Math.max(0, normal - consumedRaw) + bypassed;
     }
 
     const shieldBroke = before.shield > 0 && target.shield <= 0;
@@ -250,12 +256,13 @@ export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 't
       .map((status) => ({ id: status.id, stacks: Math.max(1, Math.floor(status.stacks || 1)), durationTicks: integerOrUndefined(status.durationTicks) })) : [],
     hit: normalizeHit(packet.hit),
     subsystemShare: packet.subsystemShare == null ? null : clamp01(Number(packet.subsystemShare) || 0),
+    shieldBypass: clamp01(Number(packet.shieldBypass) || 0),
     flags: packet.flags && typeof packet.flags === 'object' ? { ...packet.flags } : {},
     source: packet.source && typeof packet.source === 'object' ? { ...packet.source } : null,
   };
 }
 
-export function scalarHitToDamagePacket({ damage = 0, damageType = 'kinetic', pos = null, penetration = 0, impulse = null, heat = 0, statuses = [], source = null } = {}) {
+export function scalarHitToDamagePacket({ damage = 0, damageType = 'kinetic', pos = null, penetration = 0, impulse = null, heat = 0, statuses = [], source = null, subsystemShare = null, shieldBypass = 0 } = {}) {
   const amount = Math.max(0, Number(damage) || 0);
   const channels = { kinetic: 0, thermal: 0, ion: 0, plasma: 0, phase: 0 };
   switch (damageType) {
@@ -266,6 +273,9 @@ export function scalarHitToDamagePacket({ damage = 0, damageType = 'kinetic', po
     case 'phase': channels.phase = amount; break;
     case 'energy': channels.thermal = amount * 0.72; channels.ion = amount * 0.28; break;
     case 'explosive': channels.kinetic = amount * 0.65; channels.thermal = amount * 0.35; break;
+    // EMP (spec §9): pure ion disruption — couples through shields to fry subsystems. The weapon's
+    // subsystemShare routes this to components (drive/weapon/power), not the hull.
+    case 'emp': channels.ion = amount; break;
     default: channels.thermal = amount; break;
   }
   return {
@@ -276,6 +286,10 @@ export function scalarHitToDamagePacket({ damage = 0, damageType = 'kinetic', po
     statuses,
     hit: pos ? { pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 } } : null,
     source: source && typeof source === 'object' ? { ...source } : null,
+    // Subsystem-targeting + shield coupling (EMP/disable verb, spec §9). subsystemShare 1.0 = all
+    // damage to components; shieldBypass 1.0 = ignores shields entirely.
+    subsystemShare: subsystemShare == null ? null : clamp01(Number(subsystemShare) || 0),
+    shieldBypass: clamp01(Number(shieldBypass) || 0),
   };
 }
 

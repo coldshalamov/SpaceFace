@@ -13,6 +13,7 @@
 // contacts (and the heading marker) flip left/right or up/down relative to the viewport.
 
 import { semanticColor, semanticShape } from './accessibility.js';
+import { solveIntercept } from '../core/flight/flightTelemetry.js';
 
 // ── dimensions ──────────────────────────────────────────────────────────────────────────────
 // Canvas is always drawn at EXPAND_SIZE. The .sf-radar div transitions its width/height via CSS,
@@ -35,6 +36,19 @@ const COL = {
 };
 
 // ── blip helpers ────────────────────────────────────────────────────────────────────────────
+// Player projectile speed for the lead marker (matches src/systems/weapons.js._playerProjSpeed).
+// Used only to place the intercept cue; never affects actual firing.
+function playerProjSpeed(p) {
+  const ws = p && p.data && p.data.weapons;
+  if (ws) {
+    for (const w of ws) {
+      const sp = w.projSpeed;
+      if (sp && sp > 0) return sp;
+    }
+  }
+  return 360;
+}
+
 function shipState(e, playerTeam) {
   if (e.team !== playerTeam && e.team !== 0) return 'hostile';
   if (e.factionId && FACTION_COLOR[e.factionId]) return 'friendly';
@@ -391,6 +405,46 @@ export function createRadar(ctx) {
         g.strokeStyle = '#fff'; g.lineWidth = 1.3;
         g.beginPath(); g.arc(bx, by, 6.5, 0, Math.PI * 2); g.stroke();
         noGlow(g);
+      }
+    }
+
+    // ── intercept lead marker (spec §9.3) ────────────────────────────────────────────────
+    // Shows where to aim to hit the locked target, accounting for both ships' velocity. This is the
+    // target-centric combat cue that makes maneuvering matter more than pixel-perfect free aim.
+    if (targetId) {
+      const tgt = state.entities.get(targetId);
+      if (tgt && tgt.alive) {
+        const projSpeed = playerProjSpeed(p);
+        const lead = solveIntercept(p.pos, p.vel || { x: 0, z: 0 }, tgt.pos, tgt.vel || { x: 0, z: 0 }, projSpeed);
+        if (lead) {
+          const ldx = lead.aimPoint.x - px, ldz = lead.aimPoint.z - pz;
+          const ldistSq = ldx * ldx + ldz * ldz;
+          // Project the lead point the same way blips are (both axes negated, see header note).
+          let lbx, lby, offR = false;
+          if (ldistSq > rangeSq) {
+            offR = true;
+            const la = Math.atan2(-ldz, -ldx);
+            lbx = C + Math.cos(la) * R; lby = C + Math.sin(la) * R;
+          } else {
+            lbx = C - (ldx / range) * R; lby = C - (ldz / range) * R;
+          }
+          g.save();
+          g.strokeStyle = 'rgba(255,220,90,0.9)';
+          g.fillStyle = 'rgba(255,220,90,0.9)';
+          g.lineWidth = 1.1;
+          // Small crosshair + tick line from the target ring to the lead point.
+          g.beginPath(); g.moveTo(lbx - 3.2, lby); g.lineTo(lbx + 3.2, lby);
+          g.moveTo(lbx, lby - 3.2); g.lineTo(lbx, lby + 3.2); g.stroke();
+          if (!offR) {
+            g.setLineDash([2, 2]);
+            g.beginPath();
+            const tdx = tgt.pos.x - px, tdz = tgt.pos.z - pz;
+            const tbx = C - (tdx / range) * R, tby = C - (tdz / range) * R;
+            g.moveTo(tbx, tby); g.lineTo(lbx, lby); g.stroke();
+            g.setLineDash([]);
+          }
+          g.restore();
+        }
       }
     }
 

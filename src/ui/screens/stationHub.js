@@ -569,6 +569,9 @@ const STATION_CSS = `
 .st-stat-row { display: grid; grid-template-columns: 1.4fr 1fr .9fr; align-items: baseline; gap: 6px;
   padding: 3px 0; font-size: .82rem; }
 .st-stat-row .st-stat-l { color: var(--ink-dim); text-transform: none; letter-spacing: normal; font-size: .82rem; }
+.st-stat-row--drive { grid-template-columns: 1.4fr 1fr; border-bottom: 1px solid var(--panel-edge);
+  margin-bottom: 3px; padding-bottom: 4px; }
+.st-stat-row--drive .st-stat-v { color: var(--accent); letter-spacing: .04em; }
 .st-stat-v { text-align: right; }
 .st-delta { text-align: right; font-size: .75rem; font-family: var(--mono); }
 .st-delta.up { color: var(--good); } .st-delta.down { color: var(--danger); }

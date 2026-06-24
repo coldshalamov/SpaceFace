@@ -12,8 +12,8 @@ function defaultSettings() {
     showDamageNumbers: true,
     keybinds: {},
     audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
-    video: { renderScale: 0.7, bloom: false, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'low', pixelRatioCap: 2, motionReduce: false, shadows: false },
-    gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical' },
+    video: { renderScale: 0.85, bloom: true, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'medium', pixelRatioCap: 2, motionReduce: false, shadows: false, energyMaterials: true, renderGraph: false },
+    gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3' },
     controls: {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
       flightMode: 'assisted',

@@ -22,6 +22,7 @@
 
 import { STORY_BEATS } from '../data/missions.js';
 import { BEAT_CONTENT } from '../data/narrative.js';
+import { BINDINGS } from '../ui/bindings.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
@@ -333,7 +334,7 @@ export const onboarding = {
       if (this._firstFlightTimer > 3.0) {
         this._firstFlightPending = false;
         this._showHint('firstFlight',
-          'W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE fires the Pulse Laser S, RMB samples the mass reading, SHIFT boosts, M maps, ENTER docks.');
+          `W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE fires the Pulse Laser S, RMB samples the mass reading, SHIFT boosts, ${BINDINGS.starmap.label} maps, ${BINDINGS.dock.label} docks.`);
       }
     }
 

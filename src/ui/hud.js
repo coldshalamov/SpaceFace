@@ -22,6 +22,8 @@ import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { SHIPS } from '../data/ships.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
+import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -31,6 +33,22 @@ const ROLE_LABEL = {
   corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
   gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship',
 };
+// Drive-family short label for the CLASS readout. Resolved from the hull's driveId so the player
+// feels the propulsion family (spec §6) without opening a stat screen.
+const DRIVE_FAMILY_LABEL = {
+  reaction: 'Reaction', gravimetric: 'Gravimetric', pulse_plate: 'Pulse Plate',
+  torch: 'Torch', field_sail: 'Field Sail',
+};
+function driveFamilyFor(def) {
+  const driveId = def && def.driveId;
+  if (!driveId) return '';
+  if (driveId.startsWith('drive_gravimetric')) return DRIVE_FAMILY_LABEL.gravimetric;
+  if (driveId.startsWith('drive_pulse_plate')) return DRIVE_FAMILY_LABEL.pulse_plate;
+  if (driveId.startsWith('drive_torch')) return DRIVE_FAMILY_LABEL.torch;
+  if (driveId.startsWith('drive_field_sail')) return DRIVE_FAMILY_LABEL.field_sail;
+  if (driveId.startsWith('drive_reaction')) return DRIVE_FAMILY_LABEL.reaction;
+  return '';
+}
 
 // ── Mission tracker helpers ──────────────────────────────────────────────────────────────────
 const MT_STATION_BY_ID = new Map();
@@ -183,6 +201,7 @@ export function createHud(ctx, alerts) {
   center.innerHTML = `
     <div class="sf-stat sf-stat--info"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span><div class="sf-tip" data-tip="speed"></div></div>
     <div class="sf-stat sf-stat--info"><span class="sf-stat__k">THR</span><span class="sf-stat__v mono" data-k="throttle">0%</span><div class="sf-tip" data-tip="throttle"></div></div>
+    <div class="sf-stat sf-stat--info"><span class="sf-stat__k">STOP</span><span class="sf-stat__v mono" data-k="stop">—</span><div class="sf-tip" data-tip="stop"></div></div>
     <div class="sf-stat sf-stat--wide sf-stat--info"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span><div class="sf-tip" data-tip="cargo"></div></div>
     <div class="sf-stat sf-stat--wide sf-stat--info"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span><div class="sf-tip" data-tip="credits"></div></div>
     <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
@@ -190,6 +209,7 @@ export function createHud(ctx, alerts) {
   root.appendChild(center);
   const elSpeed = center.querySelector('[data-k=speed]');
   const elThrottle = center.querySelector('[data-k=throttle]');
+  const elStop = center.querySelector('[data-k=stop]');
   const elCargo = center.querySelector('[data-k=cargo]');
   const elCredits = center.querySelector('[data-k=credits]');
   const elWeapons = center.querySelector('[data-k=weapons]');
@@ -204,7 +224,21 @@ export function createHud(ctx, alerts) {
     const sp = Math.hypot(p.vel.x, p.vel.z);
     const maxSp = p.maxSpeed || 1;
     const pct = Math.round(clamp01(sp / maxSp) * 100);
-    return `Speed: ${Math.round(sp)} / ${Math.round(maxSp)} wu/s (${pct}%)\nVelocity X: ${p.vel.x.toFixed(1)}, Z: ${p.vel.z.toFixed(1)}`;
+    const drive = driveFamilyFor(SHIP_BY_ID.get(p.data && p.data.defId)) || 'Reaction';
+    let lines = [
+      `Speed: ${Math.round(sp)} / ${Math.round(maxSp)} wu/s (${pct}%)`,
+      `Velocity X: ${p.vel.x.toFixed(1)}, Z: ${p.vel.z.toFixed(1)}`,
+      `Drive: ${drive}`,
+    ];
+    // Braking solution (spec §15.3): turn physics from confusion into skill by showing the
+    // projected stop point, fastest stop mode, and stop time/distance.
+    if (sp > 0.5) {
+      const brake = estimateBrakingSolution(p, resolvePropulsionProfile(p));
+      lines.push(`Best stop: ${brake.bestMode.replace('-', ' ')}`);
+      lines.push(`Direct: ${brake.directDistance.toFixed(0)} wu / ${brake.directTimeS.toFixed(1)} s`);
+      lines.push(`Flip-and-burn: ${brake.flipBurnDistance.toFixed(0)} wu / ${brake.flipBurnTimeS.toFixed(1)} s`);
+    }
+    return lines.join('\n');
   }
   function buildThrottleTip(p) {
     if (!p) return 'No ship data';
@@ -937,6 +971,17 @@ export function createHud(ctx, alerts) {
       setText(elSpeed, Math.round(sp) + '');
       const maxSp = p.maxSpeed || 1;
       setText(elThrottle, Math.round(clamp01(sp / maxSp) * 100) + '%');
+      // STOP readout (spec §15.2/§15.3): the shortest projected stop distance/time from the live
+      // braking solution. Hidden when effectively stopped so it never reads "0 wu" noise.
+      if (sp > 0.5) {
+        const brake = estimateBrakingSolution(p, resolvePropulsionProfile(p));
+        const bestDist = Math.min(brake.directDistance, brake.flipBurnDistance);
+        setText(elStop, Math.round(bestDist) + ' wu');
+        elStop.classList.toggle('sf-warn', bestDist > 600);
+      } else {
+        setText(elStop, '—');
+        elStop.classList.remove('sf-warn');
+      }
       // Weapon status: count of guns + auto-fire state. Shows the strategic loadout at a glance
       // and whether the guns will auto-engage aggressive enemies while you fly.
       const ws = p.data && p.data.weapons;
@@ -956,13 +1001,18 @@ export function createHud(ctx, alerts) {
         const inner = elReticle.firstElementChild;
         if (inner) inner.style.transform = `scale(${1 + _recoilBloom * 0.25})`;
       }
-      // Class/archetype label: surfaces the ship's role so the player feels the archetype switch
-      // when they buy a new hull (Phase 3). Updates cheaply each slow tick.
+      // Class/archetype label: surfaces the ship's role + drive family so the player feels the
+      // archetype and propulsion switch when they buy a new hull. Updates cheaply each slow tick.
       const defId = p.data && p.data.defId;
       if (defId !== lastDefId) {
         lastDefId = defId;
         const def = SHIP_BY_ID.get(defId);
-        setText(elRole, def ? (def.name + ' · ' + (ROLE_LABEL[def.role] || def.role || 'Ship')) : '—');
+        if (def) {
+          const drive = driveFamilyFor(def);
+          setText(elRole, def.name + ' · ' + (ROLE_LABEL[def.role] || def.role || 'Ship') + (drive ? ' · ' + drive : ''));
+        } else {
+          setText(elRole, '—');
+        }
       }
     }
 

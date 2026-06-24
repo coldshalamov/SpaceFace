@@ -13,6 +13,28 @@ import { escapeHtml } from '../comms.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 
+// Drive-family short labels for the comparison header. Hulls carry a driveId that resolves to one
+// of the five propulsion families (spec §6): reaction, gravimetric, pulse plate, torch, or sail.
+// Surfacing it turns the drive family from a hidden stat into a buying decision.
+const DRIVE_FAMILY_LABEL = {
+  reaction: 'Reaction',
+  gravimetric: 'Gravimetric',
+  pulse_plate: 'Pulse Plate',
+  torch: 'Torch',
+  field_sail: 'Field Sail',
+};
+function driveLabelFor(def) {
+  const driveId = def && def.driveId;
+  if (!driveId) return '';
+  // The family is encoded in the drive id prefix; resolve via the catalog when available, else infer.
+  if (driveId.startsWith('drive_gravimetric')) return DRIVE_FAMILY_LABEL.gravimetric;
+  if (driveId.startsWith('drive_pulse_plate')) return DRIVE_FAMILY_LABEL.pulse_plate;
+  if (driveId.startsWith('drive_torch')) return DRIVE_FAMILY_LABEL.torch;
+  if (driveId.startsWith('drive_field_sail')) return DRIVE_FAMILY_LABEL.field_sail;
+  if (driveId.startsWith('drive_reaction')) return DRIVE_FAMILY_LABEL.reaction;
+  return '';
+}
+
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
 
 function slotSummary(def) {
@@ -289,10 +311,12 @@ export function createShipyardPanel(ctx) {
     }
 
     const roleDesc = ROLE_DESC[newDef.role] || '';
+    const driveLabel = driveLabelFor(newDef);
     cmpPanel.innerHTML =
       '<div class="st-sy-cmp-h">' +
         '<div class="st-sy-cmp-name">' + escapeHtml(newDef.name) + ' vs ' + escapeHtml(curDef.name) + '</div>' +
-        '<div class="st-sy-cmp-role">T' + newDef.tier + ' ' + escapeHtml(newDef.role || '') + '</div>' +
+        '<div class="st-sy-cmp-role">T' + newDef.tier + ' ' + escapeHtml(newDef.role || '') +
+          (driveLabel ? ' · ' + escapeHtml(driveLabel) + ' Drive' : '') + '</div>' +
       '</div>' +
       (roleDesc ? '<div class="st-sy-cmp-desc">' + escapeHtml(roleDesc) + '</div>' : '') +
       '<div class="st-sy-cmp-grid">' +

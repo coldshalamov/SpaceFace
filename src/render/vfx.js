@@ -5,6 +5,7 @@
 // state is drawn on the following frame. Determinism is irrelevant here: VFX may use Math.random()
 // (cosmetic, never serialized).
 import * as THREE from 'three';
+import { createEnergyVolume, createMasslineRibbonMaterial, updateEnergyMaterial } from './energy/energyMaterials.js';
 
 // Duplicate lightweight external texture loader (same as visualFactory) so VFX can use our generated fx_* and ore assets without extra modules.
 // Falls back silently.
@@ -1247,6 +1248,7 @@ export const vfx = {
     this._emitTrails(dt);
     this._updateRibbonTrails(dt);
     this._updateMiningBeam(dt);
+    this._updateEnergy(dt);
     this._integrateParticles(dt);
     this._integrateSprites(dt);
     this._decayEventLights(dt);
@@ -1254,6 +1256,125 @@ export const vfx = {
 
   // (defensive) only used if pools attached lazily; avoids double-subscription
   _subscribeOnce() { if (!this._subs.length) this._subscribe(); },
+
+  // -------------------------------------------------------------------------
+  // HDR energy materials (spec §14.5 / INTEGRATION_MAP §8.5). An opt-in layer of real
+  // shader-driven energy volumes — a hot-core/turbulent-halo thruster plume and a tension-pulsing
+  // Massline ribbon — that write HDR radiance into the half-float bloom target. These are
+  // additive, depth-tested, toneMapped:false meshes layered alongside the particle trail, NOT a
+  // replacement for it. Gated on settings.video.energyMaterials (and bloom, since HDR radiance
+  // only reads correctly when the bloom composite tone-maps it). Purely cosmetic — never sim state.
+  // -------------------------------------------------------------------------
+  _updateEnergy(dt) {
+    const video = this.state.settings && this.state.settings.video;
+    const enabled = !!(video && video.energyMaterials && video.bloom !== false);
+    if (!enabled) { this._disposeEnergy(); return; }
+    if (!this._energy) this._initEnergy();
+    if (!this._energy) return;
+    this._updateEnergyPlume(dt);
+    this._updateEnergyMassline(dt);
+  },
+
+  _initEnergy() {
+    if (!this._scene) return;
+    // Thruster plume: a small elongated cylinder energy volume positioned at the player's trail
+    // socket each frame. Two meshes (core + halo) share the geometry.
+    const plumeGeo = new THREE.CylinderGeometry(0.5, 1.6, 4.0, 12, 1, true);
+    plumeGeo.rotateX(Math.PI / 2); // align length along +X (ship-forward)
+    const plume = createEnergyVolume(plumeGeo, {
+      name: 'sf-energy-plume',
+      colorA: 0x36c8ff, colorB: 0x6a4cff,
+      coreIntensity: 6.5, haloIntensity: 2.6, noiseScale: 1.6, flowSpeed: 2.4,
+    });
+
+    // Massline ribbon: a thin tube energy volume drawn between the player and a tethered target.
+    // Reuses the energy shader (turbulent core + halo) rather than the dedicated ribbon shader so it
+    // needs no per-vertex aAlong/aSide attributes (the tube geometry already provides them implicitly).
+    const ribbonGeo = new THREE.CylinderGeometry(0.18, 0.18, 1.0, 8, 1, true);
+    ribbonGeo.translate(0, 0.5, 0); // pivot at one end so we can scale along the tether axis
+    ribbonGeo.rotateX(Math.PI / 2);
+    const ribbonCore = createEnergyVolume(ribbonGeo, {
+      name: 'sf-energy-massline',
+      colorA: 0x42f5d4, colorB: 0x2ad4ff,
+      coreIntensity: 5.0, haloIntensity: 2.2, noiseScale: 2.4, flowSpeed: 3.2, pulse: 1.4,
+    });
+
+    plume.visible = false;
+    ribbonCore.visible = false;
+    this._scene.add(plume, ribbonCore);
+    this._energy = { plume, plumeGeo, ribbon: ribbonCore, ribbonGeo };
+  },
+
+  _updateEnergyPlume(dt) {
+    const { plume } = this._energy;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.alive) { plume.visible = false; return; }
+    const boosting = !!(player.flags && player.flags.boosting);
+    const throttle = this._throttleFor(player);
+    if (throttle <= 0.02 && !boosting) { plume.visible = false; return; }
+    const socket = this._trailSocketWorldPos(player);
+    plume.position.set(socket ? socket.x : player.pos.x, 0, socket ? socket.z : player.pos.z);
+    plume.rotation.y = player.rot || 0;
+    // Plume length/opacity track commanded thrust; boost widens and brightens it.
+    const drive = Math.min(1, throttle * 1.2 + (boosting ? 0.6 : 0));
+    plume.scale.set(0.7 + drive * 0.6, 0.7 + drive * 0.6, 0.6 + drive * 1.8);
+    plume.visible = true;
+    const core = plume.userData.energyCore;
+    const halo = plume.userData.energyHalo;
+    if (core) updateEnergyMaterial(core.material, { time: this._t, intensity: 5.5 + drive * 4.0, opacity: 0.82 });
+    if (halo) updateEnergyMaterial(halo.material, { time: this._t, intensity: 2.4 + drive * 1.6, opacity: 0.34 });
+  },
+
+  _updateEnergyMassline(dt) {
+    const { ribbon } = this._energy;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.alive) { ribbon.visible = false; return; }
+    // Find an active attachment owned or targeted by the player to render the ribbon along.
+    const attachments = this.state.combat && this.state.combat.attachments && this.state.combat.attachments.byId;
+    let att = null;
+    if (attachments) {
+      for (const a of Object.values(attachments)) {
+        if (a.state === 'active' && (a.ownerId === player.id || a.targetId === player.id)) { att = a; break; }
+      }
+    }
+    if (!att) { ribbon.visible = false; return; }
+    const other = this.state.entities.get(att.ownerId === player.id ? att.targetId : att.ownerId);
+    if (!other || !other.alive) { ribbon.visible = false; return; }
+    const dx = other.pos.x - player.pos.x, dz = other.pos.z - player.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (!(dist > 0.5)) { ribbon.visible = false; return; }
+    ribbon.position.set(player.pos.x, 0, player.pos.z);
+    ribbon.rotation.y = Math.atan2(dz, dx);
+    ribbon.scale.set(1, 1, dist);
+    ribbon.visible = true;
+    // Tension from the massline controller telemetry (set by attachments.js); overload drives the
+    // chatter + color shift baked into the energy shader via the pulse uniform.
+    const ml = att.masslineTelemetry;
+    const tension = ml ? Math.min(1, ml.tensionFraction || 0) : 0;
+    const overload = !!(ml && ml.overloadRatio > 1);
+    const core = ribbon.userData.energyCore;
+    const halo = ribbon.userData.energyHalo;
+    const intensity = 4.0 + tension * 4.0 + (overload ? 3.0 : 0);
+    if (core) updateEnergyMaterial(core.material, { time: this._t, intensity, opacity: 0.8, pulse: 1.0 + tension * 1.5 });
+    if (halo) updateEnergyMaterial(halo.material, { time: this._t, intensity: intensity * 0.5, opacity: 0.3, pulse: 1.0 + tension });
+  },
+
+  _disposeEnergy() {
+    if (!this._energy) return;
+    this._scene.remove(this._energy.plume, this._energy.ribbon);
+    this._energy.plumeGeo.dispose();
+    this._energy.ribbonGeo.dispose();
+    this._energy = null;
+  },
+
+  // Approximate commanded throttle for the plume: forward input or current speed fraction.
+  _throttleFor(player) {
+    const inp = this.state.input;
+    if (inp && Number.isFinite(inp.moveZ) && inp.moveZ > 0) return inp.moveZ;
+    const sp = Math.hypot(player.vel.x, player.vel.z);
+    const max = player.maxSpeed || 1;
+    return Math.min(1, sp / max);
+  },
 
   // -------------------------------------------------------------------------
   // Event lights (V2 §11 Tier-A rendering finish). A small pool of dynamic PointLights grabbed on
