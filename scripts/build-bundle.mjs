@@ -6,15 +6,14 @@
 // minified output in dist/web/, resolving three/rapier/addons from node_modules. The Electron
 // builder ships dist/web/ instead of the raw src/ tree, cutting load size substantially.
 //
-// Dynamic imports: src/ui/uiRoot.js imports screens via import(path) where path is a literal string
-// from the SCREEN_MODULES array, and src/core/* + src/render/assetLoader.js conditionally import
+// Dynamic imports: src/ui/uiRoot.js imports screens through literal import() call sites,
+// and src/core/* + src/render/assetLoader.js conditionally import
 // rapier/three-addons. esbuild code-splits these into separate chunks automatically (each dynamic
-// import becomes its own file loaded on demand). We feed it ALL the screen modules as entry points
-// so they're included in the graph even if esbuild can't fully statically resolve the variable import.
+// import becomes its own file loaded on demand).
 import * as esbuild from 'esbuild';
-import { readFile, writeFile, mkdir, copyFile, readdir, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile, readdir, stat, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { dirname, join, extname, relative } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -23,9 +22,9 @@ const SRC = join(ROOT, 'src');
 // bundled web assets it needs to ship. electron-builder globs are relative to project root.
 const OUT = join(ROOT, 'build', 'web');
 
-// Discover screen entry points (the dynamically-imported modules in uiRoot.js SCREEN_MODULES).
-// We glob src/ui/screens/*.js so every screen is in the bundle graph regardless of whether esbuild
-// can statically trace the import(variable) call.
+// Count screen modules for the build log. They are imported from uiRoot.js through literal dynamic
+// import call sites, so main.js is the only entry point; adding screens here as independent entries
+// would duplicate shared chunks.
 async function screenEntries() {
   const dir = join(SRC, 'ui', 'screens');
   const files = await readdir(dir);
@@ -73,9 +72,10 @@ async function jsSize(dir) {
 
 async function build() {
   const screens = await screenEntries();
-  const entryPoints = [join(SRC, 'main.js'), ...screens];
+  const entryPoints = [join(SRC, 'main.js')];
 
-  console.log('[bundle] entry points:', entryPoints.length, '(main.js + ' + screens.length + ' screens)');
+  console.log('[bundle] entry points:', entryPoints.length, '(main.js; ' + screens.length + ' screens via dynamic imports)');
+  await cleanOutputDir();
 
   const result = await esbuild.build({
     entryPoints,
@@ -93,12 +93,10 @@ async function build() {
     mainFields: ['browser', 'module', 'main'],
     conditions: ['browser', 'import'],
     logLevel: 'info',
-    // Treat dynamic imports of literal strings as code-splittable chunks (default). The screen
-    // registry's import(path) where path is from a literal array is handled by feeding all screens
-    // as entry points above — esbuild keeps them in the graph.
+    // Treat dynamic imports of literal strings as code-splittable chunks (default).
     legalComments: 'none',
     define: {
-      // Match the ?prod=1 gate the Electron shell uses to strip debug surfaces.
+      // Production bundles strip debug surfaces while keeping the same player-facing launch URL.
       'process.env.NODE_ENV': '"production"',
     },
   });
@@ -144,6 +142,14 @@ async function build() {
   if (result.warnings.length) console.warn('[bundle] warnings:', result.warnings.length);
   console.log('[bundle] OK → build/web/');
   return { outJsSize, rawJsSize };
+}
+
+async function cleanOutputDir() {
+  const expected = resolve(ROOT, 'build', 'web');
+  const actual = resolve(OUT);
+  if (actual !== expected) throw new Error(`[bundle] refused to clean unexpected output dir: ${actual}`);
+  await rm(actual, { recursive: true, force: true });
+  await mkdir(actual, { recursive: true });
 }
 
 // Build the production index.html: same DOM shell as the dev index.html, but loads the bundled

@@ -16,9 +16,13 @@ await new Promise((res) => setTimeout(res, 1500));
 // Electron's binary: run our driver script as the main entry (electron/shipPreview.cjs) instead of
 // the app's package.json main. The driver loads the app URL offscreen and waits for the snapshots.
 const electronBin = require.resolve('electron/cli.js');
+// `node scripts/run-ship-preview.mjs authored` (or SF_AUTHORED=1) renders the authored GLB-part
+// hulls (the live-gameplay path) instead of the procedural fallback.
+const authored = process.argv.includes('authored') || process.env.SF_AUTHORED === '1';
+const previewUrl = `http://localhost:${PORT}/?dev=shippreview${authored ? '&authored=1' : ''}`;
 const driver = spawn(process.execPath, [electronBin, 'electron/shipPreview.cjs'], {
   stdio: 'inherit',
-  env: { ...process.env, SF_PREVIEW_URL: `http://localhost:${PORT}/?dev=shippreview` },
+  env: { ...process.env, SF_PREVIEW_URL: previewUrl },
 });
 
 driver.on('exit', (code) => {

@@ -90,9 +90,11 @@ export function createUiInput(ctx, screenManager) {
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
       case 'm': case 'M':
-        ev.preventDefault(); screenManager.pushScreen('starmap'); return;
-      case 'n': case 'N':
+        // M = the local/system map (player position, objective, stations, gates) — the everyday
+        // "where am I / where do I go" map. The galaxy/star map moved to N.
         ev.preventDefault(); screenManager.pushScreen('localmap'); return;
+      case 'n': case 'N':
+        ev.preventDefault(); screenManager.pushScreen('starmap'); return;
       case 't': case 'T':
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;
       case 'j': case 'J':

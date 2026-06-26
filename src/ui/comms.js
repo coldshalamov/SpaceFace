@@ -28,6 +28,7 @@ const CATEGORY_STYLE = {
 
 const MAX_LIVE = 4;          // max simultaneous live comms entries on the feed
 const MAX_BACKLOG = 80;      // retained history for the 'C' backlog view
+const SCENARIO_DIALOGUE_TTL = 18; // authored mission comms need to survive cold-open/load stalls.
 
 export function branchLifecycleCommsPayload(payload) {
   const lifecycle = payload && payload.lifecycle && typeof payload.lifecycle === 'object' ? payload.lifecycle : {};
@@ -51,7 +52,7 @@ export function scenarioDialogueCommsPayload(payload) {
     sender,
     category: 'story',
     text,
-    ttl: 7.5,
+    ttl: SCENARIO_DIALOGUE_TTL,
     persist: false,
   };
 }
@@ -68,6 +69,7 @@ export function createComms(ctx) {
   document.getElementById('ui-root').appendChild(feed);
   const live = [];        // { el, rec, born, ttl, persist }
   const backlog = [];     // full history for the backlog view
+  let nextSweepAt = Infinity;
 
   function pushComms(p) {
     if (!p || !p.text) return;
@@ -103,6 +105,7 @@ export function createComms(ctx) {
       ttl: p.persist ? Infinity : normalizeTtlMs(p.ttl), persist: !!p.persist,
     };
     live.unshift(rec);
+    recomputeNextSweep();
     backlog.unshift({ sender: rec.sender, text: rec.text, category: rec.category, note: rec.note, at: Date.now() });
     while (backlog.length > MAX_BACKLOG) backlog.pop();
 
@@ -119,19 +122,36 @@ export function createComms(ctx) {
     rec.el.classList.remove('sf-comm--in');
     rec.el.classList.add('sf-comm--out');
     setTimeout(() => { if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el); }, 220);
+    recomputeNextSweep();
   }
 
-  // per-frame fade sweep (called from tick())
+  // Fade sweep called from tick(), but sleeps until a non-persistent line can fade or expire.
   function sweep() {
     if (!live.length) return;
     const now = performance.now();
+    if (now < nextSweepAt) return;
+    let next = Infinity;
     for (let i = live.length - 1; i >= 0; i--) {
       const rec = live[i];
       if (rec.persist) continue;
       const age = now - rec.born;
       if (age > rec.ttl) { dismissLive(rec); continue; }
       const left = rec.ttl - age;
-      if (left < 400) rec.el.style.opacity = String(Math.max(0, left / 400));
+      if (left < 400) {
+        rec.el.style.opacity = String(Math.max(0, left / 400));
+        next = Math.min(next, now);
+      } else {
+        next = Math.min(next, rec.born + Math.max(0, rec.ttl - 400));
+      }
+    }
+    nextSweepAt = live.length ? next : Infinity;
+  }
+
+  function recomputeNextSweep() {
+    nextSweepAt = Infinity;
+    for (let i = 0; i < live.length; i++) {
+      const rec = live[i];
+      if (!rec.persist) nextSweepAt = Math.min(nextSweepAt, rec.born + Math.max(0, rec.ttl - 400));
     }
   }
 
@@ -270,6 +290,8 @@ export function createComms(ctx) {
     '</div>';
   document.getElementById('ui-root').appendChild(endgameModal);
   const endgameChoicesEl = endgameModal.querySelector('.sf-endgame__choices');
+  let endgameOpen = false;
+  let choiceCModalOpen = false;
 
   function presentEndgame({ choices }) {
     if (!choices || !choices.length) return;
@@ -289,6 +311,7 @@ export function createComms(ctx) {
       frag.appendChild(card);
     }
     endgameChoicesEl.appendChild(frag);
+    endgameOpen = true;
     endgameModal.classList.add('open');
     endgameModal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('ui-modal-open');
@@ -304,6 +327,7 @@ export function createComms(ctx) {
   });
 
   function closeEndgame() {
+    endgameOpen = false;
     endgameModal.classList.remove('open');
     endgameModal.setAttribute('aria-hidden', 'true');
     // only release the modal-open lock if no screen is up
@@ -316,6 +340,7 @@ export function createComms(ctx) {
   // Choice C is a separate Yes/No prompt (not the 5-card modal) — present it inline.
   bus.on('endgame:promptChoiceC', ({ promptText }) => {
     const wrap = document.createElement('div');
+    choiceCModalOpen = true;
     wrap.className = 'sf-endgame sf-endgame--c';
     wrap.setAttribute('role', 'dialog');
     wrap.setAttribute('aria-modal', 'true');
@@ -327,7 +352,11 @@ export function createComms(ctx) {
       '</div>';
     document.getElementById('ui-root').appendChild(wrap);
     requestAnimationFrame(() => wrap.classList.add('open'));
-    const cleanup = () => { wrap.classList.remove('open'); setTimeout(() => wrap.remove(), 220); };
+    const cleanup = () => {
+      choiceCModalOpen = false;
+      wrap.classList.remove('open');
+      setTimeout(() => wrap.remove(), 220);
+    };
     wrap.querySelector('.sf-endgame__c-yes').addEventListener('click', () => { bus.emit('ui:endgameChoose', { choice: 'C' }); cleanup(); });
     wrap.querySelector('.sf-endgame__c-no').addEventListener('click', () => {
       // declining C records it for Choice E eligibility
@@ -360,7 +389,11 @@ export function createComms(ctx) {
     setFlightVisibility(flight);
   }, 60);
 
-  return { tick, pushComms, openBacklog, closeBacklog };
+  function isModalOpen() {
+    return endgameOpen || choiceCModalOpen;
+  }
+
+  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen };
 }
 
 function normalizeTtlMs(ttl) {
@@ -384,31 +417,31 @@ function injectCommsCss() {
   const s = document.createElement('style');
   s.id = COMMS_STYLE_ID;
   s.textContent = `
-  /* ===== comms feed (left edge) ===== */
-  #sf-comms { position:absolute; left:16px; top:96px; bottom:120px; width:300px; display:flex;
+  /* ===== comms feed (left edge) — chromeless thin-line cards above the ship schematic (§3C) ===== */
+  #sf-comms { position:absolute; left:16px; top:118px; bottom:170px; width:300px; display:flex;
     flex-direction:column-reverse; gap:8px; pointer-events:none; z-index:1050; overflow:hidden; }
   #sf-comms .sf-comm { pointer-events:auto; }
   body.ui-modal-open #sf-comms { opacity:.25; }
-  .sf-comm { --comm-color:var(--ink-dim); --comm-glow:none; position:relative; padding:8px 11px;
-    background:rgba(8,14,24,.78); border:1px solid var(--panel-edge); border-left:2px solid var(--comm-color);
-    border-radius:5px; color:var(--ink); font-size:12px; box-shadow:0 3px 14px rgba(0,0,0,.45);
-    cursor:pointer; transform:translateX(-130%); opacity:0; transition:transform .18s ease, opacity .18s ease;
-    backdrop-filter:blur(3px); }
+  .sf-comm { --comm-color:var(--text-secondary); --comm-glow:none; position:relative; padding:6px 11px;
+    border-left:2px solid var(--comm-color); box-shadow:-1px 0 8px -2px var(--comm-color);
+    color:var(--text-primary); font-size:12px; text-shadow:var(--text-shadow-hard);
+    cursor:pointer; transform:translateX(-130%); opacity:0; transition:transform .18s ease, opacity .18s ease; }
   .sf-comm--in { transform:translateX(0); opacity:1; }
   .sf-comm--out { transform:translateX(-130%); opacity:0; }
   .sf-comm__head { display:flex; align-items:baseline; gap:7px; margin-bottom:3px; }
-  .sf-comm__tag { font-size:9px; letter-spacing:.14em; color:var(--comm-color); text-shadow:var(--comm-glow); }
-  .sf-comm__sender { font-size:9px; letter-spacing:.06em; color:var(--ink-mute); text-transform:uppercase;
+  .sf-comm__tag { font-size:9px; letter-spacing:.14em; color:var(--comm-color); text-shadow:var(--text-shadow-hard), var(--comm-glow); }
+  .sf-comm__sender { font-size:9px; letter-spacing:.06em; color:var(--text-secondary); text-transform:uppercase;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .sf-comm__body { line-height:1.4; color:var(--ink); }
+  .sf-comm__body { line-height:1.4; color:var(--text-primary); }
   .sf-comm--personal .sf-comm__body, .sf-comm--late .sf-comm__body, .sf-comm--story .sf-comm__body { color:#eaf4ff; }
 
-  /* comms backlog button + view */
-  .sf-comm-backlog-btn { position:absolute; left:16px; top:54px; width:34px; height:34px; z-index:1060;
-    background:rgba(8,14,24,.7); border:1px solid var(--panel-edge); border-radius:6px; color:var(--ink-dim);
+  /* comms backlog button (the ≡) — dedicated top-left anchor, chromeless thin outline */
+  .sf-comm-backlog-btn { position:absolute; left:16px; top:54px; width:32px; height:32px; z-index:1060;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:1px solid var(--visor-cyan-dim); border-radius:6px; color:var(--text-secondary);
     font-family:var(--mono); font-size:18px; cursor:pointer; pointer-events:auto; transition:color .12s, border-color .12s;
-    backdrop-filter:blur(3px); }
-  .sf-comm-backlog-btn:hover { border-color:var(--accent); color:var(--accent); }
+    text-shadow:var(--text-shadow-hard); }
+  .sf-comm-backlog-btn:hover { border-color:var(--visor-cyan); color:var(--visor-cyan); }
   .sf-comm-backlog-btn--pulse { color:var(--accent-3); border-color:var(--accent-3);
     animation:sf-commpulse 1.3s ease-in-out infinite alternate; }
   @keyframes sf-commpulse { from { box-shadow:0 0 0 0 rgba(192,139,255,0); } to { box-shadow:0 0 10px 1px rgba(192,139,255,.5); } }

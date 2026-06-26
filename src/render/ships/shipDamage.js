@@ -77,6 +77,7 @@ export function attachDamageStateDriver(root, hullGroup, parts) {
 
   const rng = makeShedRng((root.uuid.charCodeAt(0) * 97 + 7) | 0);
   let lastState = 'operational';
+  let lastVisualState = null;
 
   function setStateVisuals(stateId, frac, now) {
     // ----- emissive light groups: failed lights are the most readable damage cue -----
@@ -134,6 +135,8 @@ export function attachDamageStateDriver(root, hullGroup, parts) {
       root.userData.damageState = stateId;
       root.userData.hullFrac = frac;
     }
+    if (stateId === lastVisualState && stateId !== 'critical') return;
+    lastVisualState = stateId;
     setStateVisuals(stateId, frac, now != null ? now : (typeof performance !== 'undefined' ? performance.now() * 0.001 : 0));
   };
 

@@ -152,6 +152,7 @@ export const feel = {
 
     let targetOpacity = 0;
     let boosting = false;
+    let intensity = 0;          // 0..1 drive for streak density/length/flow
 
     if (player && player.vel) {
       const vel = player.vel;
@@ -160,10 +161,12 @@ export const feel = {
       boosting = !!(player.flags && player.flags.boosting);
 
       if (boosting) {
-        targetOpacity = 0.5;
+        targetOpacity = 0.62;
+        intensity = 1;
       } else if (speedRatio > 0.4) {
-        // Ramp from 0 at 0.4 to ~0.3 at 1.0
-        targetOpacity = ((speedRatio - 0.4) / 0.6) * 0.3;
+        // Ramp in over the top 60% of the speed range.
+        intensity = (speedRatio - 0.4) / 0.6;
+        targetOpacity = intensity * 0.34;
       }
     }
 
@@ -171,10 +174,8 @@ export const feel = {
     this._slOpacity = damp(this._slOpacity, targetOpacity, 8, frameDt);
 
     if (this._slOpacity <= 0.01) {
-      // Hide canvas and skip drawing
-      if (cvs.style.opacity !== '0') {
-        cvs.style.opacity = '0';
-      }
+      if (this._streaks) this._streaks.length = 0;   // reset so streaks re-seed on next burst
+      if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
       return;
     }
 
@@ -182,47 +183,61 @@ export const feel = {
     const w = window.innerWidth;
     const h = window.innerHeight;
     if (this._slW !== w || this._slH !== h) {
-      cvs.width = w;
-      cvs.height = h;
-      this._slW = w;
-      this._slH = h;
+      cvs.width = w; cvs.height = h; this._slW = w; this._slH = h;
     }
-
-    // Show canvas
     cvs.style.opacity = '1';
-
-    // Clear
     ctx.clearRect(0, 0, w, h);
 
-    // Draw radial speed lines from center outward
-    const cx = w * 0.5;
-    const cy = h * 0.5;
-    const maxR = Math.hypot(cx, cy);    // distance from center to corner
-    const startR = maxR * 0.4;          // lines begin ~40% out from center
-    const lineCount = boosting ? 48 : 32;
-    const lineWidth = boosting ? 2 : 1.2;
-    const alpha = this._slOpacity;
+    // Animated warp streaks: thin tapered lines that FLOW outward from center (the world raking past
+    // as you accelerate). Each has a soft gradient tail toward center, a cool blue-white tint, varied
+    // length/width/brightness, and additive blending — so it reads as motion depth, not a flat
+    // hand-drawn starburst. Streaks recycle to the center when they pass the corner.
+    const cx = w * 0.5, cy = h * 0.5;
+    const maxR = Math.hypot(cx, cy);
+    if (!this._streaks) this._streaks = [];
+    const want = Math.round((boosting ? 58 : 32) * (0.45 + 0.55 * intensity));
+    while (this._streaks.length < want) this._streaks.push(this._newStreak(false));
+    if (this._streaks.length > want) this._streaks.length = want;
+    const flow = (boosting ? 1.85 : 1.05) * (0.55 + 0.7 * intensity);   // outward speed (maxR-fractions/s)
+    const lenScale = 0.4 + 0.6 * intensity;
+    const widthMul = boosting ? 1.5 : 1.0;
 
-    ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
-    ctx.lineWidth = lineWidth;
-    ctx.beginPath();
-
-    // Use a seeded-ish set of angles so lines don't flicker randomly every frame.
-    // Slight per-line variation in start radius and length gives organic feel.
-    const angleStep = (Math.PI * 2) / lineCount;
-    for (let i = 0; i < lineCount; i++) {
-      // Small fixed offset per line (deterministic from index) for variation
-      const jitter = ((i * 7 + 3) % 13) / 13;           // 0..1 pseudo-random per line
-      const angle = angleStep * i + (jitter - 0.5) * angleStep * 0.35;
-      const rStart = startR + jitter * maxR * 0.08;      // slight start variation
-      const rEnd = maxR * (0.92 + jitter * 0.08);        // slight end variation
-
-      const cosA = Math.cos(angle);
-      const sinA = Math.sin(angle);
-      ctx.moveTo(cx + cosA * rStart, cy + sinA * rStart);
-      ctx.lineTo(cx + cosA * rEnd, cy + sinA * rEnd);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (const s of this._streaks) {
+      s.r += flow * frameDt * s.v;
+      if (s.r > 1.12) Object.assign(s, this._newStreak(true));   // recycle near center
+      const cosA = Math.cos(s.a), sinA = Math.sin(s.a);
+      const lead = s.r * maxR;
+      const tail = Math.max(0, s.r - s.len * lenScale) * maxR;
+      // fade in just past the clear center hole, fade out as it reaches the corner
+      const edgeFade = s.r < 0.28 ? Math.max(0, (s.r - 0.1) / 0.18)
+        : (s.r > 0.9 ? Math.max(0, (1.12 - s.r) / 0.22) : 1);
+      const a = this._slOpacity * s.b * edgeFade;
+      if (a <= 0.012) continue;
+      const x0 = cx + cosA * tail, y0 = cy + sinA * tail;
+      const x1 = cx + cosA * lead, y1 = cy + sinA * lead;
+      const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, 'rgba(150,200,255,0)');
+      grad.addColorStop(0.6, `rgba(190,225,255,${(a * 0.5).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(228,243,255,${a.toFixed(3)})`);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = s.w * widthMul;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
     }
-    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+  },
+
+  // One warp streak in normalized polar form. r is a fraction of the center→corner distance.
+  _newStreak(nearCenter) {
+    return {
+      a: Math.random() * Math.PI * 2,                         // angle
+      r: nearCenter ? 0.06 + Math.random() * 0.14 : Math.random() * 1.1,
+      v: 0.6 + Math.random() * 1.0,                           // per-streak speed multiplier
+      len: 0.14 + Math.random() * 0.26,                       // length (maxR fraction)
+      b: 0.45 + Math.random() * 0.55,                         // brightness
+      w: 0.8 + Math.random() * 1.6,                           // line width
+    };
   },
 
   _subscribe() {

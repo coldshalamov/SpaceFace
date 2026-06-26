@@ -10,8 +10,8 @@ export const BINDINGS = Object.freeze({
   // Default interact/dock action is `E` (spec §15.4 / INTEGRATION_MAP §5). The input handler in
   // src/ui/input.js must keep its case clause in sync with this value.
   dock: { key: 'e', code: 'KeyE', label: 'E' },
-  starmap: { key: 'm', code: 'KeyM', label: 'M' },
-  localmap: { key: 'n', code: 'KeyN', label: 'N' },
+  localmap: { key: 'm', code: 'KeyM', label: 'M' },
+  starmap: { key: 'n', code: 'KeyN', label: 'N' },
 });
 
 // Render a bracketed prompt label, e.g. "[ E ] DOCK AT STATION".

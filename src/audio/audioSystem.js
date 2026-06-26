@@ -16,6 +16,7 @@
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
@@ -46,6 +47,28 @@ function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 const recipeById = {};
 for (const r of RECIPES) recipeById[r.id] = r;
 export const AUDIO_RECIPE_BY_ID = Object.freeze(recipeById);
+
+export function audioNearbyHostileCount(state, player, range = 1200, scratch = [], maxCount = Infinity) {
+  if (!state || !player || !player.pos) return 0;
+  const fallback = (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 && state.entityIndex.ships) || state.entityList || [];
+  const candidates = queryNearbyEntities(state, player.pos, range, scratch, fallback);
+  const myTeam = player.team;
+  const px = player.pos.x;
+  const pz = player.pos.z;
+  const r2 = range * range;
+  let count = 0;
+  for (const e of candidates) {
+    if (!e || !e.alive || e.type !== 'ship' || e.id === player.id) continue;
+    if (e.team === myTeam) continue;
+    const dx = e.pos.x - px;
+    const dz = e.pos.z - pz;
+    if (dx * dx + dz * dz <= r2) {
+      count++;
+      if (count >= maxCount) break;
+    }
+  }
+  return count;
+}
 
 // Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
 // payload carries weaponId. We classify by substring so any catalog id resolves.
@@ -129,6 +152,7 @@ export const audio = {
     rt._nextMusicScan = 0;
     rt._loopPositionDirty = true;
     rt._nextLoopPositionUpdate = 0;
+    rt._musicThreatScratch = [];
     this.rt = rt;
 
     const bus = this.bus;
@@ -1138,16 +1162,7 @@ export const audio = {
     let docked = !!(rt._docked || (player && player.flags && player.flags.docked) || state.ui.docked);
     if (player) {
       shieldPct = player.shieldMax > 0 ? clamp(player.shield / player.shieldMax, 0, 1) : 1;
-      // count nearby hostile ships (different team, alive, within range)
-      const myTeam = player.team;
-      const range = 1200, r2 = range * range;
-      const px = player.pos.x, pz = player.pos.z;
-      for (const e of state.entityList) {
-        if (!e.alive || e.type !== 'ship' || e.id === player.id) continue;
-        if (e.team === myTeam) continue;
-        const dx = e.pos.x - px, dz = e.pos.z - pz;
-        if (dx * dx + dz * dz <= r2) { nearbyHostiles++; if (nearbyHostiles >= 3) break; }
-      }
+      nearbyHostiles = audioNearbyHostileCount(state, player, 1200, rt._musicThreatScratch, 3);
     }
     const inCombatRecent = (state.simTime - rt._lastDamageT) < IN_COMBAT_WINDOW ? 1 : 0;
     const threat = clamp(0.5 * Math.min(nearbyHostiles, 3) / 3 + 0.5 * (1 - shieldPct) * inCombatRecent, 0, 1);

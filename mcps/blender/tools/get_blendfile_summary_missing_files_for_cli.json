@@ -1,0 +1,17 @@
+{
+  "name": "get_blendfile_summary_missing_files_for_cli",
+  "description": "\nReport missing file references by opening *blend_file* in background Blender.\n",
+  "inputSchema": {
+    "properties": {
+      "blend_file": {
+        "title": "Blend File",
+        "type": "string"
+      }
+    },
+    "required": [
+      "blend_file"
+    ],
+    "title": "get_blendfile_summary_missing_files_for_cliArguments",
+    "type": "object"
+  }
+}

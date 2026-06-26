@@ -26,6 +26,7 @@ export class SquadCommander {
     this.seed = seed >>> 0;
     this.trace = trace;
     this.config = Object.freeze({ ...DEFAULTS, ...config });
+    this.freeze = config.freezeResults === false ? identity : Object.freeze;
     this.squads = new Map();
   }
 
@@ -49,6 +50,11 @@ export class SquadCommander {
       breakUntil: new Map(),
       breakReason: new Map(),
       lastDirectives: new Map(),
+      perceptionsScratch: [],
+      contactMergeScratch: new Map(),
+      contactsScratch: [],
+      tacticCandidatesScratch: [],
+      capabilityScratch: new Set(),
     };
     this.squads.set(definition.id, state);
     return this.inspect(definition.id);
@@ -61,10 +67,13 @@ export class SquadCommander {
   update(squadId, tick, perceptionsByMember, director = null) {
     const squad = this.squads.get(squadId);
     if (!squad) throw new Error(`unknown squad: ${squadId}`);
-    const perceptions = squad.members
-      .map((member) => perceptionsByMember.get(member.id))
-      .filter((value) => value && value.self);
-    const contacts = mergeContacts(perceptions);
+    const perceptions = squad.perceptionsScratch;
+    perceptions.length = 0;
+    for (const member of squad.members) {
+      const perception = perceptionsByMember.get(member.id);
+      if (perception && perception.self) perceptions.push(perception);
+    }
+    const contacts = mergeContacts(perceptions, this.freeze, squad.contactMergeScratch, squad.contactsScratch);
     const focus = selectFocusTarget(perceptions, contacts);
     squad.focusTargetId = focus ? focus.id : null;
 
@@ -86,7 +95,10 @@ export class SquadCommander {
         ? leader.self.rot
         : slewAngle(squad.formationHeading, leader.self.rot, this.config.formationTurnPerTick);
     }
+    const bestObjective = selectObjectiveContact(contacts);
+    const bestTether = selectTetherContact(contacts);
     const directives = new Map();
+    const freeze = this.freeze;
     for (let index = 0; index < squad.members.length; index++) {
       const member = squad.members[index];
       const perception = perceptionsByMember.get(member.id) || null;
@@ -99,8 +111,8 @@ export class SquadCommander {
       const breakFormation = (squad.breakUntil.get(member.id) || -1) >= tick;
       if (!breakFormation) squad.breakReason.delete(member.id);
       const formationSlot = formationSlotFor(squad, leader, index, squad.members.length);
-      const objective = objectiveFor(selected.id, role, focus, contacts, perception);
-      const directive = Object.freeze({
+      const objective = objectiveFor(selected.id, role, focus, bestObjective, bestTether, perception, freeze);
+      const directive = freeze({
         tick,
         squadId,
         memberId: member.id,
@@ -108,10 +120,10 @@ export class SquadCommander {
         tactic: selected.id,
         focusTargetId: focus ? focus.id : null,
         objective,
-        formation: Object.freeze({
+        formation: freeze({
           kind: squad.formation,
-          slot: Object.freeze(formationSlot),
-          velocity: Object.freeze({
+          slot: freeze(formationSlot),
+          velocity: freeze({
             x: leader && leader.self ? leader.self.vel.x : 0,
             z: leader && leader.self ? leader.self.vel.z : 0,
           }),
@@ -147,7 +159,7 @@ export class SquadCommander {
       });
     }
 
-    return Object.freeze({
+    return freeze({
       squadId,
       tick,
       tactic: selected.id,
@@ -157,23 +169,43 @@ export class SquadCommander {
   }
 
   _tacticCandidates(squad, tick, perceptions, contacts, director) {
-    const capabilities = capabilitySet(squad, perceptions);
-    const hostileShips = contacts.filter((contact) => contact.kind === ContactKind.SHIP && contact.hostileVotes > 0);
-    const objectives = contacts.filter((contact) => contact.kind === ContactKind.OBJECTIVE);
-    const exposedTether = contacts.some((contact) => contact.kind === ContactKind.TETHER && contact.exposed && contact.confidence >= 0.55 && (contact.ownedBySelf || contact.tags.includes('owned_by_self') || contact.tags.includes('cuttable_by_self')));
-    const memberTethered = perceptions.some((perception) => perception.self.tethered);
-    const lowHull = average(perceptions.map((perception) => 1 - perception.self.hullFraction));
-    const disabled = average(perceptions.map((perception) => perception.self.disabled ? 1 : 0));
-    const outnumbered = saturate((hostileShips.length - perceptions.length) / Math.max(1, perceptions.length));
+    const capabilities = capabilitySet(squad, perceptions, squad.capabilityScratch);
+    let hostileShips = 0;
+    let objectives = 0;
+    let firstObjectiveValue = 0;
+    let exposedTether = false;
+    for (const contact of contacts) {
+      if (contact.kind === ContactKind.SHIP && contact.hostileVotes > 0) hostileShips++;
+      else if (contact.kind === ContactKind.OBJECTIVE) {
+        if (objectives === 0) firstObjectiveValue = contact.objectiveValue || 0;
+        objectives++;
+      } else if (!exposedTether && contact.kind === ContactKind.TETHER && contact.exposed && contact.confidence >= 0.55 &&
+        (contact.ownedBySelf || contact.tags.includes('owned_by_self') || contact.tags.includes('cuttable_by_self'))) {
+        exposedTether = true;
+      }
+    }
+    let memberTethered = false;
+    let lowHullTotal = 0;
+    let disabledTotal = 0;
+    for (const perception of perceptions) {
+      if (perception.self.tethered) memberTethered = true;
+      lowHullTotal += 1 - perception.self.hullFraction;
+      disabledTotal += perception.self.disabled ? 1 : 0;
+    }
+    const denom = Math.max(1, perceptions.length);
+    const lowHull = lowHullTotal / denom;
+    const disabled = disabledTotal / denom;
+    const outnumbered = saturate((hostileShips - perceptions.length) / denom);
     const jitter = (id) => hashUnit(this.seed, squad.id, id, Math.floor(tick / 600)) * 0.08;
-    const candidates = [];
+    const candidates = squad.tacticCandidatesScratch || (squad.tacticCandidatesScratch = []);
+    candidates.length = 0;
     const push = (id, utility, reason) => candidates.push({ id, utility: saturate(utility + jitter(id)), reason });
 
-    push('hold_formation', hostileShips.length ? 0.18 : 0.56, 'maintain cohesion while contact picture is weak');
-    push('swarm_pincer', hostileShips.length ? 0.48 + (squad.doctrine === 'scavenger' ? 0.22 : 0) : 0, 'split attack vectors around a perceived focus target');
-    push('standoff_focus', hostileShips.length && capabilities.has('ranged') ? 0.5 + (squad.doctrine === 'official' ? 0.2 : 0) : 0, 'concentrate ranged actions while preserving formation');
-    push('screen_tug_steal', objectives.length && (capabilities.has('tug') || capabilities.has('steal')) ? 0.62 + objectives[0].objectiveValue * 0.2 : 0, 'screen a specialist while contesting the objective');
-    push('contain_and_disable', hostileShips.length && capabilities.has('disable') ? 0.55 + (squad.doctrine === 'official' ? 0.14 : 0) : 0, 'official wing disables mobility before capture');
+    push('hold_formation', hostileShips ? 0.18 : 0.56, 'maintain cohesion while contact picture is weak');
+    push('swarm_pincer', hostileShips ? 0.48 + (squad.doctrine === 'scavenger' ? 0.22 : 0) : 0, 'split attack vectors around a perceived focus target');
+    push('standoff_focus', hostileShips && capabilities.has('ranged') ? 0.5 + (squad.doctrine === 'official' ? 0.2 : 0) : 0, 'concentrate ranged actions while preserving formation');
+    push('screen_tug_steal', objectives && (capabilities.has('tug') || capabilities.has('steal')) ? 0.62 + firstObjectiveValue * 0.2 : 0, 'screen a specialist while contesting the objective');
+    push('contain_and_disable', hostileShips && capabilities.has('disable') ? 0.55 + (squad.doctrine === 'official' ? 0.14 : 0) : 0, 'official wing disables mobility before capture');
     push('cut_and_scatter', exposedTether && capabilities.has('counter_tether_cut') ? 0.92 : 0, 'exposed hostile tether can be severed');
     push('overload_and_break', memberTethered && capabilities.has('counter_tether_overload') ? 0.96 : 0, 'tethered member has energy and overload capability');
     push('fighting_retreat', director && director.command && director.command.type === 'order_retreat' ? 1 : lowHull * 0.62 + disabled * 0.5 + outnumbered * 0.35, 'explicit director retreat or observed wing attrition');
@@ -217,8 +249,9 @@ function assignRoles(members) {
   return roles;
 }
 
-function mergeContacts(perceptions) {
-  const merged = new Map();
+function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null, outScratch = null) {
+  const merged = mergeScratch || new Map();
+  merged.clear();
   for (const perception of perceptions) {
     for (const contact of perception.contacts) {
       const key = `${contact.kind}|${stableId(contact.id)}`;
@@ -240,12 +273,16 @@ function mergeContacts(perceptions) {
       if (contact.confidence > record.confidence) Object.assign(record, contact);
     }
   }
-  const out = [];
+  const out = outScratch || [];
+  out.length = 0;
   for (const record of merged.values()) {
     record.confidence = saturate(record.confidenceTotal / Math.max(1, record.confidenceSamples));
-    out.push(Object.freeze(record));
+    out.push(freeze(record));
   }
-  out.sort((a, b) => `${a.kind}|${stableId(a.id)}`.localeCompare(`${b.kind}|${stableId(b.id)}`));
+  merged.clear();
+  if (freeze === Object.freeze) {
+    out.sort((a, b) => `${a.kind}|${stableId(a.id)}`.localeCompare(`${b.kind}|${stableId(b.id)}`));
+  }
   return out;
 }
 
@@ -294,29 +331,46 @@ function formationSlotFor(squad, leaderPerception, index, count) {
   return { x: base.x + c * localZ - s * localX, z: base.z + s * localZ + c * localX };
 }
 
-function objectiveFor(tactic, role, focus, contacts, perception) {
-  const objective = contacts
-    .filter((contact) => contact.kind === ContactKind.OBJECTIVE)
-    .sort((a, b) => b.objectiveValue - a.objectiveValue || stableId(a.id).localeCompare(stableId(b.id)))[0] || null;
-  const tether = contacts
-    .filter((contact) => contact.kind === ContactKind.TETHER)
-    .sort((a, b) => Number(b.exposed) - Number(a.exposed) || b.confidence - a.confidence)[0] || null;
-
-  if (tactic === 'fighting_retreat') return freezeObjective(ObjectiveKind.RETREAT, null, 'director_or_attrition');
-  if (tactic === 'cut_and_scatter') return freezeObjective(role === SquadRole.SUPPORT || role === SquadRole.STRIKER ? ObjectiveKind.COUNTER_TETHER_CUT : ObjectiveKind.SCREEN, tether && tether.id, 'exposed_tether');
-  if (tactic === 'overload_and_break') return freezeObjective(perception && perception.self.tethered ? ObjectiveKind.COUNTER_TETHER_OVERLOAD : ObjectiveKind.SCREEN, tether && tether.id, 'tethered_member');
+function objectiveFor(tactic, role, focus, objective, tether, perception, freeze = Object.freeze) {
+  if (tactic === 'fighting_retreat') return freezeObjective(ObjectiveKind.RETREAT, null, 'director_or_attrition', freeze);
+  if (tactic === 'cut_and_scatter') return freezeObjective(role === SquadRole.SUPPORT || role === SquadRole.STRIKER ? ObjectiveKind.COUNTER_TETHER_CUT : ObjectiveKind.SCREEN, tether && tether.id, 'exposed_tether', freeze);
+  if (tactic === 'overload_and_break') return freezeObjective(perception && perception.self.tethered ? ObjectiveKind.COUNTER_TETHER_OVERLOAD : ObjectiveKind.SCREEN, tether && tether.id, 'tethered_member', freeze);
   if (tactic === 'screen_tug_steal') {
-    if (role === SquadRole.TUG) return freezeObjective(ObjectiveKind.TUG, objective && objective.id, 'assigned_tug');
-    if (role === SquadRole.THIEF) return freezeObjective(ObjectiveKind.STEAL, objective && objective.id, 'assigned_thief');
-    return freezeObjective(ObjectiveKind.SCREEN, objective && objective.id, 'protect_specialist');
+    if (role === SquadRole.TUG) return freezeObjective(ObjectiveKind.TUG, objective && objective.id, 'assigned_tug', freeze);
+    if (role === SquadRole.THIEF) return freezeObjective(ObjectiveKind.STEAL, objective && objective.id, 'assigned_thief', freeze);
+    return freezeObjective(ObjectiveKind.SCREEN, objective && objective.id, 'protect_specialist', freeze);
   }
-  if (tactic === 'hold_formation') return freezeObjective(ObjectiveKind.HOLD, null, 'weak_contact_picture');
-  if (tactic === 'contain_and_disable') return freezeObjective(ObjectiveKind.ENGAGE, focus && focus.id, 'disable_focus');
-  return freezeObjective(ObjectiveKind.FOCUS, focus && focus.id, tactic);
+  if (tactic === 'hold_formation') return freezeObjective(ObjectiveKind.HOLD, null, 'weak_contact_picture', freeze);
+  if (tactic === 'contain_and_disable') return freezeObjective(ObjectiveKind.ENGAGE, focus && focus.id, 'disable_focus', freeze);
+  return freezeObjective(ObjectiveKind.FOCUS, focus && focus.id, tactic, freeze);
 }
 
-function freezeObjective(kind, targetId, reason) {
-  return Object.freeze({ kind, targetId: targetId == null ? null : targetId, reason });
+function selectObjectiveContact(contacts) {
+  let best = null;
+  for (const contact of contacts) {
+    if (contact.kind !== ContactKind.OBJECTIVE) continue;
+    if (!best || contact.objectiveValue > best.objectiveValue ||
+      (contact.objectiveValue === best.objectiveValue && stableId(contact.id) < stableId(best.id))) {
+      best = contact;
+    }
+  }
+  return best;
+}
+
+function selectTetherContact(contacts) {
+  let best = null;
+  for (const contact of contacts) {
+    if (contact.kind !== ContactKind.TETHER) continue;
+    if (!best || Number(contact.exposed) > Number(best.exposed) ||
+      (contact.exposed === best.exposed && contact.confidence > best.confidence)) {
+      best = contact;
+    }
+  }
+  return best;
+}
+
+function freezeObjective(kind, targetId, reason, freeze = Object.freeze) {
+  return freeze({ kind, targetId: targetId == null ? null : targetId, reason });
 }
 
 function detectExplicitBreak(memberId, perception, director, tactic, role) {
@@ -331,15 +385,12 @@ function detectExplicitBreak(memberId, perception, director, tactic, role) {
   return null;
 }
 
-function capabilitySet(squad, perceptions) {
-  const out = new Set();
+function capabilitySet(squad, perceptions, scratch = null) {
+  const out = scratch || new Set();
+  out.clear();
   for (const member of squad.members) for (const capability of member.capabilities) out.add(capability);
   for (const perception of perceptions) for (const capability of perception.self.capabilities) out.add(capability);
   return out;
-}
-
-function average(values) {
-  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
 
 function freezeSquad(squad) {
@@ -365,4 +416,8 @@ function slewAngle(current, target, maxStep) {
 
 function idSort(a, b) {
   return stableId(a).localeCompare(stableId(b));
+}
+
+function identity(value) {
+  return value;
 }

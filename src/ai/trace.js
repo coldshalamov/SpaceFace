@@ -3,7 +3,17 @@ import { TraceLayer, finite } from './contracts.js';
 const LAYERS = new Set(Object.values(TraceLayer));
 
 export class ExplainabilityTrace {
-  constructor({ capacity = 8192 } = {}) {
+  constructor({ capacity = 8192, enabled = true, layers = null } = {}) {
+    this.enabled = enabled !== false;
+    this.layers = Array.isArray(layers) ? new Set(layers) : null;
+    if (!this.enabled) {
+      this.capacity = 0;
+      this.sequence = 0;
+      this._buffer = [];
+      this._start = 0;
+      this._count = 0;
+      return;
+    }
     if (!Number.isInteger(capacity) || capacity < 64) throw new RangeError('trace capacity must be an integer >= 64');
     this.capacity = capacity;
     this.sequence = 0;
@@ -17,6 +27,7 @@ export class ExplainabilityTrace {
 
   emit({ tick, layer, entityId = null, squadId = null, decision, selected = null, candidates = [], context = {} }) {
     if (!LAYERS.has(layer)) throw new TypeError(`unknown AI trace layer: ${layer}`);
+    if (!this.enabled || (this.layers && !this.layers.has(layer))) return null;
     if (typeof decision !== 'string' || !decision) throw new TypeError('trace decision is required');
     const entry = Object.freeze({
       version: 1,
@@ -70,6 +81,8 @@ export class ExplainabilityTrace {
   snapshot() {
     return Object.freeze({
       version: 1,
+      enabled: this.enabled,
+      layers: this.layers ? Object.freeze([...this.layers]) : null,
       capacity: this.capacity,
       nextSequence: this.sequence,
       entries: Object.freeze(this._orderedEntries()),

@@ -1,4 +1,14 @@
-import { AI_CONTRACT_VERSION, ContactKind, DirectorPhase, normalizeSensorFrame, stableId, wrapAngle } from '../ai/contracts.js';
+import {
+  AI_CONTRACT_VERSION,
+  ContactKind,
+  DirectorPhase,
+  NORMALIZED_SENSOR_FRAME_FLAG,
+  NORMALIZED_THRUSTER_REQUEST_FLAG,
+  makeTrustedSensorFrame,
+  normalizeSensorFrame,
+  stableId,
+  wrapAngle,
+} from '../ai/contracts.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 
@@ -9,6 +19,14 @@ const RECENT_EVENT_TICKS = 90;
 const ENCOUNTER_COMMAND_RING_CAPACITY = 128;
 const ENCOUNTER_COMMAND_TYPES = new Set(['phase', 'request_reinforcement', 'order_retreat', 'narrative_beat']);
 const DIRECTOR_PHASES = new Set(Object.values(DirectorPhase));
+const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
+const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
+const EMPTY_ATTACHMENTS = Object.freeze([]);
+const AI_SPATIAL_MIN_COLLIDABLES = 96;
+const OWNED_TETHER_TAGS = Object.freeze(['cuttable_by_self', 'massline', 'owned_by_self', 'severable']);
+const HOSTILE_TETHER_TAGS = Object.freeze(['hostile', 'massline', 'overloadable']);
+const SOLID_TAGS = Object.freeze(['solid']);
+const EMPTY_SUBSYSTEM_FRACTIONS = Object.freeze({});
 const CAPABILITY_DEPENDENCIES = Object.freeze({
   drive: Object.freeze(['drive']),
   weapon: Object.freeze(['weapon']),
@@ -32,6 +50,29 @@ export const aiPorts = {
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this._pendingManeuvers = new Map();
+    this._capabilityCacheTick = -1;
+    this._capabilityCache = new Map();
+    this._tagCacheTick = -1;
+    this._tagCache = new Map();
+    this._subsystemFractionCacheTick = -1;
+    this._subsystemFractionCache = new Map();
+    this._attachmentCacheTick = -1;
+    this._attachmentIndexCache = { all: EMPTY_ATTACHMENTS, byEntity: new Map() };
+    this._recentEventCacheTick = -1;
+    this._recentEventsByTarget = new Map();
+    this._sensorCandidateScratch = [];
+    this._sensorContactsScratch = [];
+    this._sensorTetherContactsScratch = [];
+    this._liveSensorFrameScratch = {
+      tick: -1,
+      self: null,
+      contacts: this._sensorContactsScratch,
+      events: EMPTY_ATTACHMENTS,
+    };
+    Object.defineProperty(this._liveSensorFrameScratch, NORMALIZED_SENSOR_FRAME_FLAG, { value: true });
+    this._pendingFlushScratch = [];
+    this._rosterCandidateScratch = [];
+    this._rosterSquadsScratch = new Map();
     ensureEncounterState(this.state);
     this._diag = {
       schemaVersion: AI_CONTRACT_VERSION,
@@ -50,9 +91,11 @@ export const aiPorts = {
 
     this.helpers.aiSensors = Object.freeze({
       frameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick),
+      liveFrameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick, { freezeResults: false }),
     });
     this.helpers.aiRoster = Object.freeze({
       listSquads: (tick) => this._listSquads(tick),
+      liveListSquads: (tick) => this._listSquads(tick, { freezeResults: false }),
     });
     this.helpers.aiManeuver = Object.freeze({
       request: (request) => this._requestManeuver(request),
@@ -70,7 +113,10 @@ export const aiPorts = {
       return;
     }
 
-    const pending = [...this._pendingManeuvers.values()].sort((a, b) => compareIds(a.request.entityId, b.request.entityId));
+    const pending = this._pendingFlushScratch || (this._pendingFlushScratch = []);
+    pending.length = 0;
+    for (const entry of this._pendingManeuvers.values()) pending.push(entry);
+    pending.sort((a, b) => compareIds(a.request.entityId, b.request.entityId));
     this._pendingManeuvers.clear();
     for (const entry of pending) {
       const entity = getEntity(state, entry.request.entityId);
@@ -82,6 +128,7 @@ export const aiPorts = {
       writePhysicsControl(entity, controlFromManeuver(entity, entry.request, dt, state));
       this._diag.flushedManeuvers++;
     }
+    pending.length = 0;
   },
 
   inspect() {
@@ -140,32 +187,74 @@ export const aiPorts = {
     return true;
   },
 
-  _sensorFrameFor(entityId, tick) {
+  _sensorFrameFor(entityId, tick, options = {}) {
     const state = this.state;
+    const live = options.freezeResults === false;
+    const freeze = live ? identity : Object.freeze;
     const entity = getEntity(state, entityId);
     if (!entity || !entity.alive) return normalizeSensorFrame(null, entityId, tick);
     const range = sensorRangeFor(state, entity);
-    const contacts = [
-      ...entityContacts(state, entity, range, this.helpers),
-      ...attachmentContacts(state, entity, range),
-    ].sort(contactSort);
+    const attachmentIndex = this._attachmentIndex();
+    const contacts = entityContacts(
+      state,
+      entity,
+      range,
+      this.helpers,
+      attachmentIndex,
+      freeze,
+      this._sensorCandidateScratch,
+      live ? this._sensorContactsScratch : null,
+      this,
+    );
+    const tetherContacts = attachmentContacts(
+      state,
+      entity,
+      range,
+      attachmentIndex.all,
+      freeze,
+      live ? this._sensorTetherContactsScratch : null,
+    );
+    for (const contact of tetherContacts) contacts.push(contact);
+    if (freeze !== identity) contacts.sort(contactSort);
+    if (live) {
+      const frame = this._liveSensorFrameScratch;
+      frame.tick = tick;
+      frame.self = sensorSelf(state, entity, this._capabilitiesFor(entity, tick), attachmentIndex, freeze, this);
+      frame.contacts = contacts;
+      frame.events = this._recentEventsFor(entity, tick, freeze);
+      return frame;
+    }
     const frame = {
       tick,
-      self: sensorSelf(state, entity),
+      self: sensorSelf(state, entity, this._capabilitiesFor(entity, tick), attachmentIndex, freeze, this),
       contacts,
-      events: recentEventsFor(state, entity, tick),
+      events: this._recentEventsFor(entity, tick, freeze),
     };
-    return normalizeSensorFrame(frame, entityId, tick);
+    return options.freezeResults === false
+      ? makeTrustedSensorFrame(frame, entityId, tick, options)
+      : normalizeSensorFrame(frame, entityId, tick);
   },
 
-  _listSquads(tick) {
+  _listSquads(tick, options = {}) {
     const state = this.state;
-    const squads = new Map();
-    const source = Array.isArray(state.entityList) ? state.entityList : [];
-    for (const entity of source.slice().sort((a, b) => compareIds(a && a.id, b && b.id))) {
+    const freeze = options.freezeResults === false ? identity : Object.freeze;
+    const squads = this._rosterSquadsScratch || (this._rosterSquadsScratch = new Map());
+    squads.clear();
+    const index = state && state.entityIndex;
+    const source = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.aiShips)
+      ? index.aiShips
+      : (Array.isArray(state.entityList) ? state.entityList : []);
+    const candidates = this._rosterCandidateScratch || (this._rosterCandidateScratch = []);
+    candidates.length = 0;
+    for (const entity of source) {
       if (!isLiveCraft(entity) || entity.id === state.playerId) continue;
       const ai = entity.data && entity.data.ai;
       if (!ai || ai.passive) continue;
+      candidates.push(entity);
+    }
+    candidates.sort((a, b) => compareIds(a && a.id, b && b.id));
+    for (const entity of candidates) {
+      const ai = entity.data && entity.data.ai;
       const doctrine = String(ai.doctrine || doctrineFor(entity));
       const faction = String(entity.factionId || ai.faction || `team_${entity.team == null ? 'unknown' : entity.team}`);
       const squadId = String(ai.squadId || ai.wingId || `${doctrine}:${faction}`);
@@ -183,22 +272,112 @@ export const aiPorts = {
         };
         squads.set(squadId, squad);
       }
-      squad.members.push(Object.freeze({
+      squad.members.push(freeze({
         id: entity.id,
         preferredRole: ai.preferredRole || ai.role || null,
-        capabilities: Object.freeze(capabilitiesFor(state, entity)),
+        capabilities: this._capabilitiesFor(entity, tick),
       }));
     }
 
-    return Object.freeze([...squads.values()].map((squad) => Object.freeze({
-      id: squad.id,
-      doctrine: squad.doctrine,
-      faction: squad.faction,
-      formation: squad.formation,
-      formationSpacing: squad.formationSpacing,
-      formationBound: squad.formationBound,
-      members: Object.freeze(squad.members.sort((a, b) => compareIds(a.id, b.id))),
-    })).sort((a, b) => compareText(a.id, b.id)));
+    const roster = [];
+    for (const squad of squads.values()) {
+      const members = freeze(squad.members.sort((a, b) => compareIds(a.id, b.id)));
+      const entry = {
+        id: squad.id,
+        doctrine: squad.doctrine,
+        faction: squad.faction,
+        formation: squad.formation,
+        formationSpacing: squad.formationSpacing,
+        formationBound: squad.formationBound,
+        members,
+      };
+      Object.defineProperty(entry, ROSTER_SIGNATURE_FLAG, { value: rosterSignature(entry) });
+      roster.push(freeze(entry));
+    }
+    roster.sort((a, b) => compareText(a.id, b.id));
+    Object.defineProperty(roster, NORMALIZED_ROSTER_FLAG, { value: true });
+    candidates.length = 0;
+    squads.clear();
+    return freeze(roster);
+  },
+
+  _capabilitiesFor(entity, tickOverride = null) {
+    const state = this.state;
+    const tick = Number.isInteger(tickOverride) ? tickOverride : (Number.isInteger(state && state.tick) ? state.tick : -1);
+    if (this._capabilityCacheTick !== tick) {
+      this._capabilityCacheTick = tick;
+      this._capabilityCache.clear();
+    }
+    const key = stableId(entity && entity.id);
+    let capabilities = this._capabilityCache.get(key);
+    if (!capabilities) {
+      capabilities = Object.freeze(capabilitiesFor(state, entity));
+      this._capabilityCache.set(key, capabilities);
+    }
+    return capabilities;
+  },
+
+  _tagsFor(entity, runtime) {
+    const state = this.state;
+    const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
+    if (this._tagCacheTick !== tick) {
+      this._tagCacheTick = tick;
+      this._tagCache.clear();
+    }
+    const key = stableId(entity && entity.id);
+    let tags = this._tagCache.get(key);
+    if (!tags) {
+      tags = tagsFor(entity, runtime, Object.freeze);
+      this._tagCache.set(key, tags);
+    }
+    return tags;
+  },
+
+  _subsystemFractionsFor(entity, runtime) {
+    const state = this.state;
+    const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
+    if (this._subsystemFractionCacheTick !== tick) {
+      this._subsystemFractionCacheTick = tick;
+      this._subsystemFractionCache.clear();
+    }
+    const key = stableId(entity && entity.id);
+    let fractions = this._subsystemFractionCache.get(key);
+    if (!fractions) {
+      fractions = Object.freeze(subsystemFractions(runtime));
+      this._subsystemFractionCache.set(key, fractions);
+    }
+    return fractions;
+  },
+
+  _attachmentIndex() {
+    const state = this.state;
+    const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
+    if (this._attachmentCacheTick === tick && this._attachmentIndexCache) return this._attachmentIndexCache;
+    const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId || {};
+    const all = [];
+    const byEntity = new Map();
+    for (const attachment of Object.values(attachments)) {
+      if (!attachment || attachment.state !== 'active') continue;
+      all.push(attachment);
+      addAttachment(byEntity, attachment.ownerId, attachment);
+      addAttachment(byEntity, attachment.targetId, attachment);
+    }
+    all.sort((a, b) => compareText(String(a.id), String(b.id)));
+    this._attachmentCacheTick = tick;
+    this._attachmentIndexCache = { all, byEntity };
+    return this._attachmentIndexCache;
+  },
+
+  _recentEventsFor(entity, tick, freeze = Object.freeze) {
+    if (this._recentEventCacheTick !== tick) {
+      this._recentEventCacheTick = tick;
+      this._recentEventsByTarget = recentEventIndexFor(this.state, tick);
+    }
+    const list = this._recentEventsByTarget.get(entity && entity.id) || EMPTY_ATTACHMENTS;
+    if (freeze === identity) return list;
+    const out = new Array(list.length);
+    for (let i = 0; i < list.length; i++) out[i] = freeze({ ...list[i] });
+    return out;
   },
 };
 
@@ -290,65 +469,78 @@ function addBrakeForce(force, entity, profile, dt) {
   force.z += ((vz * scale) - vz) * profile.mass / dtSafe;
 }
 
-function sensorSelf(state, entity) {
+function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity), attachmentIndex = null, freeze = Object.freeze, cacheOwner = null) {
   const runtime = combatRuntimeFor(state, entity.id);
   const heatMax = positive(runtime && runtime.heatMax, 100);
-  return {
+  const subsystemFractionView = cacheOwner && typeof cacheOwner._subsystemFractionsFor === 'function'
+    ? cacheOwner._subsystemFractionsFor(entity, runtime)
+    : freeze(subsystemFractions(runtime));
+  return freeze({
     id: entity.id,
     team: entity.team == null ? null : entity.team,
-    pos: vec2(entity.pos),
-    vel: vec2(entity.vel),
-    rot: finite(entity.rot),
+    pos: vec2(entity.pos, freeze),
+    vel: vec2(entity.vel, freeze),
+    rot: wrapAngle(finite(entity.rot)),
     radius: positive(entity.radius, 1),
     hullFraction: fraction(entity.hull, entity.hullMax, 1),
     energyFraction: fraction(entity.cap, entity.capMax, 1),
     heatFraction: clamp(finite(runtime && runtime.heat, 0) / heatMax, 0, 1),
     disabled: isDisabled(runtime, entity),
-    tethered: activeAttachmentsFor(state, entity.id).length > 0,
-    capabilities: capabilitiesFor(state, entity),
-    subsystemFractions: subsystemFractions(runtime),
-  };
+    tethered: attachmentsFor(attachmentIndex, entity.id).length > 0,
+    capabilities,
+    subsystemFractions: subsystemFractionView,
+  });
 }
 
-function entityContacts(state, self, range, helpers = null) {
-  const out = [];
-  const candidates = nearbyEntities(state, self.pos, range, helpers);
+function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null) {
+  const out = outScratch || [];
+  out.length = 0;
+  const candidates = nearbyEntities(state, self.pos, range, helpers, candidateScratch);
+  const rangeSq = range * range;
   for (const other of candidates) {
     if (!other || other === self || !other.alive) continue;
     const kind = contactKindFor(other);
     if (!kind) continue;
-    const distance = distance2(self.pos, other.pos);
-    if (distance > range) continue;
+    const dx = finite(self.pos && self.pos.x) - finite(other.pos && other.pos.x);
+    const dz = finite(self.pos && self.pos.z) - finite(other.pos && other.pos.z);
+    const distanceSq = dx * dx + dz * dz;
+    if (distanceSq > rangeSq) continue;
+    const distance = Math.sqrt(distanceSq);
     const runtime = combatRuntimeFor(state, other.id);
+    const tags = cacheOwner && typeof cacheOwner._tagsFor === 'function'
+      ? cacheOwner._tagsFor(other, runtime)
+      : tagsFor(other, runtime, freeze);
     out.push({
       id: other.id,
       kind,
       team: other.team == null ? null : other.team,
       classification: classificationFor(other),
-      pos: vec2(other.pos),
-      vel: vec2(other.vel),
+      pos: vec2(other.pos, freeze),
+      vel: vec2(other.vel, freeze),
       radius: positive(other.radius, 0),
       confidence: confidenceFor(distance, range, state, self),
       threat: threatFor(self, other),
       targetId: other.data && other.data.combat ? other.data.combat.targetId : null,
       ownerId: other.ownerId == null ? null : other.ownerId,
       disabled: isDisabled(runtime, other),
-      tethered: activeAttachmentsFor(state, other.id).length > 0,
+      tethered: attachmentsFor(attachmentIndex, other.id).length > 0,
       exposed: false,
       ownedBySelf: false,
       objectiveValue: objectiveValueFor(other),
       massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
-      tags: tagsFor(other, runtime),
+      tags,
     });
   }
   return out;
 }
 
-function attachmentContacts(state, self, range) {
-  const out = [];
-  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId || {};
-  for (const attachment of Object.values(attachments).sort((a, b) => compareText(String(a.id), String(b.id)))) {
-    if (!attachment || attachment.state !== 'active') continue;
+function attachmentContacts(state, self, range, activeAttachments = null, freeze = Object.freeze, outScratch = null) {
+  const out = outScratch || [];
+  out.length = 0;
+  const attachments = activeAttachments || Object.values(state.combat && state.combat.attachments && state.combat.attachments.byId || {})
+    .filter((attachment) => attachment && attachment.state === 'active')
+    .sort((a, b) => compareText(String(a.id), String(b.id)));
+  for (const attachment of attachments) {
     const owner = getEntity(state, attachment.ownerId);
     const target = getEntity(state, attachment.targetId);
     if (!owner || !target) continue;
@@ -363,8 +555,8 @@ function attachmentContacts(state, self, range) {
       kind: ContactKind.TETHER,
       team: owner.team == null ? null : owner.team,
       classification: attachment.defId || 'massline',
-      pos,
-      vel: relativeVelocity(owner, target),
+      pos: freeze(pos),
+      vel: freeze(relativeVelocity(owner, target)),
       radius: 2,
       confidence: endpointVisible ? 1 : confidenceFor(distance, range, state, self),
       threat: hostile ? 0.85 : 0.25,
@@ -379,28 +571,32 @@ function attachmentContacts(state, self, range) {
       ownedBySelf,
       objectiveValue: 0,
       massClass: 1,
-      tags: ownedBySelf
-        ? ['cuttable_by_self', 'massline', 'owned_by_self', 'severable']
-        : ['hostile', 'massline', 'overloadable'],
+      tags: ownedBySelf ? OWNED_TETHER_TAGS : HOSTILE_TETHER_TAGS,
     });
   }
   return out;
 }
 
-function recentEventsFor(state, entity, tick) {
+function recentEventIndexFor(state, tick) {
   const events = state.combat && state.combat.trace && Array.isArray(state.combat.trace.events)
     ? state.combat.trace.events : [];
-  const out = [];
-  for (let index = events.length - 1; index >= 0 && out.length < 12; index--) {
+  const byTarget = new Map();
+  for (let index = events.length - 1; index >= 0; index--) {
     const event = events[index];
-    if (!event || event.targetId !== entity.id) continue;
+    if (!event || event.targetId == null) continue;
     const age = tick - (Number.isInteger(event.tick) ? event.tick : tick);
     if (age < 0 || age > RECENT_EVENT_TICKS) continue;
+    let out = byTarget.get(event.targetId);
+    if (!out) {
+      out = [];
+      byTarget.set(event.targetId, out);
+    }
+    if (out.length >= 12) continue;
     if (event.kind === 'damage.routed') {
       out.push({
         type: 'damage_received',
         sourceId: event.attackerId == null ? null : event.attackerId,
-        targetId: entity.id,
+        targetId: event.targetId,
         magnitude: finite(event.totalApplied, finite(event.hullDamage, 0)),
         tags: ['combat'],
       });
@@ -408,16 +604,18 @@ function recentEventsFor(state, entity, tick) {
       out.push({
         type: 'subsystem_disabled',
         sourceId: event.attackerId == null ? null : event.attackerId,
-        targetId: entity.id,
+        targetId: event.targetId,
         magnitude: 1,
         tags: [String(event.subsystemId || 'unknown')],
       });
     }
   }
-  return out.reverse();
+  for (const out of byTarget.values()) out.reverse();
+  return byTarget;
 }
 
 function normalizeManeuverRequest(request, fallbackTick) {
+  if (request && request[NORMALIZED_THRUSTER_REQUEST_FLAG] === true && request.tick === fallbackTick) return request;
   const forceLocal = request.forceLocal || {};
   return Object.freeze({
     version: AI_CONTRACT_VERSION,
@@ -471,14 +669,17 @@ function capabilityBlocked(capability, disabled) {
 }
 
 function subsystemFractions(runtime) {
+  const subsystems = runtime && runtime.subsystems || {};
+  if (!Object.keys(subsystems).length) return EMPTY_SUBSYSTEM_FRACTIONS;
   const out = {};
-  for (const [id, subsystem] of Object.entries(runtime && runtime.subsystems || {})) {
+  for (const [id, subsystem] of Object.entries(subsystems)) {
     out[id] = fraction(subsystem.health, subsystem.maxHealth, 1);
   }
   return out;
 }
 
-function tagsFor(entity, runtime) {
+function tagsFor(entity, runtime, freeze = Object.freeze) {
+  if ((!runtime || !runtime.capabilities) && entity && entity.collides === true && !entity.factionId) return SOLID_TAGS;
   const tags = new Set();
   if (entity.collides) tags.add('solid');
   if (entity.data && Array.isArray(entity.data.weapons) && entity.data.weapons.length) tags.add('armed');
@@ -486,24 +687,49 @@ function tagsFor(entity, runtime) {
   for (const capability of Object.keys(runtime && runtime.capabilities || {})) {
     if (runtime.capabilities[capability] !== false) tags.add(capability);
   }
-  return [...tags].sort();
+  return freeze([...tags].sort());
 }
 
-function nearbyEntities(state, pos, range, helpers = null) {
+function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
   const helper = helpers && helpers.queryRadius;
-  if (typeof helper === 'function') return helper(pos, range, []);
+  if (scratch) scratch.length = 0;
+  const index = state && state.entityIndex;
+  const collidables = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
+    ? index.collidables
+    : null;
+  if (collidables && collidables.length > 0 && collidables.length < AI_SPATIAL_MIN_COLLIDABLES) {
+    return collidables;
+  }
+  if (typeof helper === 'function') return helper(pos, range, scratch || []);
   if (state.spatialHash && state.entityIndex && state.entityIndex.ready && typeof state.spatialHash.queryRadius === 'function') {
-    const out = [];
+    const out = scratch || [];
     state.spatialHash.queryRadius(pos.x, pos.z, range, out);
     return out;
   }
   return Array.isArray(state.entityList) ? state.entityList : [];
 }
 
-function activeAttachmentsFor(state, entityId) {
-  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId || {};
-  return Object.values(attachments).filter((attachment) =>
-    attachment && attachment.state === 'active' && (attachment.ownerId === entityId || attachment.targetId === entityId));
+function addAttachment(byEntity, entityId, attachment) {
+  if (entityId == null) return;
+  let list = byEntity.get(entityId);
+  if (!list) {
+    list = [];
+    byEntity.set(entityId, list);
+  }
+  list.push(attachment);
+}
+
+function attachmentsFor(index, entityId) {
+  if (!index || !index.byEntity || entityId == null) return EMPTY_ATTACHMENTS;
+  return index.byEntity.get(entityId) || EMPTY_ATTACHMENTS;
+}
+
+function rosterSignature(squad) {
+  let text = `${squad.id}|${squad.doctrine}|${squad.faction}|${squad.formation}|${squad.formationSpacing}|${squad.formationBound}`;
+  for (const member of squad.members) {
+    text += `;${stableId(member.id)}:${member.preferredRole || ''}:${(member.capabilities || []).join('+')}`;
+  }
+  return text;
 }
 
 function combatRuntimeFor(state, entityId) {
@@ -597,8 +823,8 @@ function localAxes(rot) {
   return { fx, fz, rx: -fz, rz: fx };
 }
 
-function vec2(value) {
-  return Object.freeze({ x: finite(value && value.x), z: finite(value && value.z) });
+function vec2(value, freeze = Object.freeze) {
+  return freeze({ x: finite(value && value.x), z: finite(value && value.z) });
 }
 
 function midpoint(a, b) {
@@ -619,9 +845,8 @@ function confidenceFor(distance, range, state, entity) {
 }
 
 function contactSort(a, b) {
-  const ak = `${a.kind}|${stableId(a.id)}`;
-  const bk = `${b.kind}|${stableId(b.id)}`;
-  return compareText(ak, bk);
+  const kind = compareText(a.kind, b.kind);
+  return kind || compareIds(a.id, b.id);
 }
 
 function compareIds(a, b) {
@@ -653,4 +878,8 @@ function finiteInt(value, fallback = 0) {
 
 function clamp(value, min, max) {
   return value < min ? min : value > max ? max : value;
+}
+
+function identity(value) {
+  return value;
 }

@@ -1,0 +1,17 @@
+{
+  "name": "get_object_detail_summary",
+  "description": "\nReturn a structured summary of the object identified by *name*.\n\nIncludes type, transforms, parent, children, modifiers, constraints,\nmaterials, visibility, data-block name, and collections.\n",
+  "inputSchema": {
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "get_object_detail_summaryArguments",
+    "type": "object"
+  }
+}

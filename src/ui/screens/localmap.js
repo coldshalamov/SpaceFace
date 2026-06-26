@@ -9,13 +9,18 @@
 // flight-computer telemetry and the deterministic flightV3 spec — so the module is now live,
 // not test-only.
 //
-// Opened with L (see uiRoot key binding). Canvas is DPI-scaled like the radar. Purely read-only
+// Opened with N (see uiRoot key binding). Canvas is DPI-scaled like the radar. Purely read-only
 // over sim state: it never writes movement/combat state (§0.6).
 import { LocalSpaceIntel, rankTradeRoutes } from '../navigation/localSpaceMapModel.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { STORY_BEATS } from '../../data/missions.js';
+import { SECTORS } from '../../data/sectors.js';
 
 // Friendly commodity/station names for the route panel (single source: the data catalogs).
 const COMM_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
+const SECTOR_NAME = new Map(SECTORS.map((s) => [s.id, s.name]));
+const EMPTY_ROUTES = Object.freeze([]);
+const EMPTY_GEOMETRY = Object.freeze([]);
 
 const LOCALMAP_STYLE = `
 #sf-localmap { position:absolute; inset:0; display:flex; flex-direction:column; background:rgba(6,12,22,.97); color:var(--ink,#cfe3ff); }
@@ -36,6 +41,18 @@ const LOCALMAP_STYLE = `
 #sf-localmap .lm-route .lm-route-profit { color:#ffd66b; font-weight:600; }
 #sf-localmap .lm-route .lm-route-stale { color:#ff8a8a; font-size:.58rem; }
 #sf-localmap .lm-routes-empty { color:var(--ink-mute,#5e7393); font-style:italic; }
+#sf-localmap .lm-objective { position:absolute; left:12px; top:12px; width:min(340px,calc(100% - 270px)); min-width:230px; background:rgba(6,12,22,.84); border:1px solid rgba(255,210,74,.38); border-radius:6px; padding:9px 11px; font-size:.68rem; color:var(--ink,#cfe3ff); box-shadow:0 0 18px rgba(255,210,74,.10); }
+#sf-localmap .lm-objective[hidden] { display:none; }
+#sf-localmap .lm-objective-k { color:#ffd24a; font-family:var(--mono,monospace); font-size:.58rem; letter-spacing:.12em; text-transform:uppercase; }
+#sf-localmap .lm-objective-title { margin-top:4px; font-size:.78rem; font-weight:700; color:#fff; line-height:1.25; }
+#sf-localmap .lm-objective-body { margin-top:4px; color:var(--ink-dim,#9bb1d0); line-height:1.45; }
+#sf-localmap .lm-objective-meta { display:flex; gap:10px; flex-wrap:wrap; margin-top:7px; color:var(--ink-mute,#5e7393); font-family:var(--mono,monospace); }
+#sf-localmap .lm-objective-meta .hot { color:#ffd24a; }
+@media (max-width: 760px) {
+  #sf-localmap .lm-objective { left:10px; right:10px; top:58px; width:auto; max-width:none; min-width:0; }
+  #sf-localmap .lm-routes { right:10px; left:10px; top:auto; bottom:54px; width:auto; max-height:25%; }
+  #sf-localmap .lm-legend { left:10px; right:10px; bottom:10px; }
+}
 `;
 
 let _styleInjected = false;
@@ -60,14 +77,32 @@ export const localmapScreen = {
   id: 'localmap',
   _ctx: null,
   _root: null,
+  _body: null,
   _canvas: null,
   _g: null,
+  _routesPanel: null,
+  _objectivePanel: null,
   _ro: null,
   _visible: false,
   _animFrame: null,
+  _lastFrameAt: 0,
   _dpr: 1,
+  _lastCanvasW: 0,
+  _lastCanvasH: 0,
+  _lastDpr: 0,
   _zoom: 1,
   _pan: { x: 0, y: 0 },
+  _routes: EMPTY_ROUTES,
+  _routesSig: '',
+  _objectiveSig: '',
+  _mapPlayer: { id: null, pos: null, vel: null, rot: 0 },
+  _missionGeometryScratch: [{
+    id: 'nav-waypoint',
+    kind: 'waypoint',
+    label: 'Objective',
+    position: { x: 0, z: 0 },
+    metadata: { missionId: null, sectorId: null, sectorName: null },
+  }],
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -81,6 +116,7 @@ export const localmapScreen = {
         '<button class="lm-close" type="button">Close (N)</button>' +
       '</div>' +
       '<div class="lm-body"><canvas></canvas>' +
+      '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
       '<div class="lm-legend">' +
         '◆ station &nbsp; ◇ gate &nbsp; ▲ ship &nbsp; ● asteroid<br>' +
         'bright = fresh &nbsp;·&nbsp; faint = stale/uncertain<br>' +
@@ -88,12 +124,21 @@ export const localmapScreen = {
       '</div>' +
       '<div class="lm-routes" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';
+    this._body = rootEl.querySelector('.lm-body');
     this._canvas = rootEl.querySelector('canvas');
     this._g = this._canvas.getContext('2d');
+    this._objectivePanel = rootEl.querySelector('#sf-localmap-objective');
+    this._routesPanel = rootEl.querySelector('#sf-localmap-routes');
+    this._routes = EMPTY_ROUTES;
+    this._routesSig = '';
+    this._objectiveSig = '';
+    this._lastCanvasW = 0;
+    this._lastCanvasH = 0;
+    this._lastDpr = 0;
     rootEl.querySelector('.lm-close').addEventListener('click', () => this._close());
     // Auto-fit the canvas to its container (DPI-scaled).
     this._ro = new ResizeObserver(() => this._resize());
-    this._ro.observe(rootEl.querySelector('.lm-body'));
+    this._ro.observe(this._body);
     this._resize();
     return this;
   },
@@ -104,11 +149,16 @@ export const localmapScreen = {
     this._resize(); // size the canvas synchronously so the first draw isn't on a 0x0 surface
     const loop = () => {
       if (!this._visible) return;
-      this._resize(); // keep DPI/size fresh while open
-      this._refreshIntel();
-      this._draw();
+      const now = performance.now();
+      if (now - this._lastFrameAt >= 100) {
+        this._lastFrameAt = now;
+        this._resize(); // keep DPI/size fresh while open
+        this._refreshIntel();
+        this._draw();
+      }
       this._animFrame = requestAnimationFrame(loop);
     };
+    this._lastFrameAt = 0;
     loop();
   },
 
@@ -164,7 +214,7 @@ export const localmapScreen = {
   _refreshRoutes(m, now) {
     const state = this._ctx.state;
     const economy = state.economy;
-    if (!economy || !economy.marketIntel) { this._routes = []; this._renderRoutes(); return; }
+    if (!economy || !economy.marketIntel) { this._routes = EMPTY_ROUTES; this._renderRoutes(); return; }
     const beacons = [];
     for (const stationId in economy.marketIntel) {
       const intel = economy.marketIntel[stationId];
@@ -188,32 +238,36 @@ export const localmapScreen = {
     };
     try {
       this._routes = rankTradeRoutes({ beacons, cargoCapacity: cargo, travelEstimator, riskEstimator: () => 0, nowS: now }) || [];
-    } catch (_) { this._routes = []; }
+    } catch (_) { this._routes = EMPTY_ROUTES; }
     this._renderRoutes();
   },
 
   _renderRoutes() {
-    const panel = this._root && this._root.querySelector('#sf-localmap-routes');
+    const panel = this._routesPanel;
     if (!panel) return;
-    const routes = (this._routes || []).slice(0, 5); // top 5 by profit/min
+    const allRoutes = this._routes || EMPTY_ROUTES;
+    const routes = allRoutes.length > 5 ? allRoutes.slice(0, 5) : allRoutes; // top 5 by profit/min
+    let html = '';
     if (!routes.length) {
-      panel.innerHTML = '<h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div>';
-      return;
+      html = '<h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div>';
+    } else {
+      const commName = (cid) => COMM_NAME.get(cid) || cid;
+      const stationName = (id) => { const e = this._ctx.state.entities.get(id); return (e && e.data && e.data.name) || id; };
+      html = '<h4>Trade Routes <span style="float:right;color:var(--ink-mute,#5e7393)">profit/min</span></h4>';
+      for (const r of routes) {
+        const stale = (r.reliability || 1) < 0.5;
+        html += '<div class="lm-route">' +
+          '<div class="lm-route-hdr">' +
+            '<span class="lm-route-comm">' + commName(r.commodityId) + '</span>' +
+            '<span class="lm-route-profit">' + Math.round(r.profitPerMinute) + '/m</span>' +
+          '</div>' +
+          '<div style="color:var(--ink-mute,#5e7393)">' + stationName(r.originId) + ' → ' + stationName(r.destinationId) + '</div>' +
+          (stale ? '<div class="lm-route-stale">stale intel (' + Math.round((r.reliability || 0) * 100) + '% reliable)</div>' : '') +
+        '</div>';
+      }
     }
-    const commName = (cid) => COMM_NAME.get(cid) || cid;
-    const stationName = (id) => { const e = this._ctx.state.entities.get(id); return (e && e.data && e.data.name) || id; };
-    let html = '<h4>Trade Routes <span style="float:right;color:var(--ink-mute,#5e7393)">profit/min</span></h4>';
-    for (const r of routes) {
-      const stale = (r.reliability || 1) < 0.5;
-      html += '<div class="lm-route">' +
-        '<div class="lm-route-hdr">' +
-          '<span class="lm-route-comm">' + commName(r.commodityId) + '</span>' +
-          '<span class="lm-route-profit">' + Math.round(r.profitPerMinute) + '/m</span>' +
-        '</div>' +
-        '<div style="color:var(--ink-mute,#5e7393)">' + stationName(r.originId) + ' → ' + stationName(r.destinationId) + '</div>' +
-        (stale ? '<div class="lm-route-stale">stale intel (' + Math.round((r.reliability || 0) * 100) + '% reliable)</div>' : '') +
-      '</div>';
-    }
+    if (html === this._routesSig) return;
+    this._routesSig = html;
     panel.innerHTML = html;
   },
 
@@ -223,13 +277,20 @@ export const localmapScreen = {
   },
 
   _resize() {
-    const wrap = this._root.querySelector('.lm-body');
+    const wrap = this._body;
     if (!wrap || !this._canvas) return;
     const w = wrap.clientWidth, h = wrap.clientHeight;
-    this._dpr = Math.min(2, window.devicePixelRatio || 1);
-    this._canvas.width = Math.max(2, Math.floor(w * this._dpr));
-    this._canvas.height = Math.max(2, Math.floor(h * this._dpr));
-    this._g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cw = Math.max(2, Math.floor(w * dpr));
+    const ch = Math.max(2, Math.floor(h * dpr));
+    if (cw === this._lastCanvasW && ch === this._lastCanvasH && dpr === this._lastDpr) return;
+    this._dpr = dpr;
+    this._lastCanvasW = cw;
+    this._lastCanvasH = ch;
+    this._lastDpr = dpr;
+    this._canvas.width = cw;
+    this._canvas.height = ch;
+    this._g.setTransform(dpr, 0, 0, dpr, 0, 0);
   },
 
   _draw() {
@@ -243,10 +304,18 @@ export const localmapScreen = {
     if (!player) { g.clearRect(0, 0, w, h); return; }
 
     const m = intel();
+    const missionGeometry = this._missionGeometry(state);
+    const mapPlayer = this._mapPlayer;
+    mapPlayer.id = player.id;
+    mapPlayer.pos = player.pos;
+    mapPlayer.vel = player.vel;
+    mapPlayer.rot = player.rot;
     const map = m.buildLocalMap({
-      player: { id: player.id, pos: player.pos, vel: player.vel, rot: player.rot },
+      player: mapPlayer,
       mode: 'system',
+      missionGeometry,
     });
+    this._renderObjectivePanel(state, player);
 
     // World → screen: player fixed at center. Both axes negated to match the chase-cam/radar
     // convention (world +Z = screen up, world +X = screen left). Scale fits the contact spread.
@@ -295,11 +364,12 @@ export const localmapScreen = {
       const conf = Math.max(0, Math.min(1, c.confidence || 0));
       if (conf < 0.05) continue;
       const stale = c.lastSeenS != null && (m.timeS - c.lastSeenS) > 6;
-      g.save();
-      g.globalAlpha = 0.3 + conf * 0.7;
       if (c.kind === 'asteroid') {
+        g.globalAlpha = 0.3 + conf * 0.7;
         g.fillStyle = '#6e7b8c'; g.beginPath(); g.arc(x, y, 2, 0, Math.PI * 2); g.fill();
       } else {
+        g.save();
+        g.globalAlpha = 0.3 + conf * 0.7;
         const col = c.hostile ? '#ff5470' : (c.factionId ? '#4DA8FF' : '#9aa8bc');
         g.fillStyle = col; g.strokeStyle = col;
         g.shadowColor = col; g.shadowBlur = stale ? 0 : 6;
@@ -307,7 +377,38 @@ export const localmapScreen = {
         g.translate(x, y); g.rotate(Math.PI + ang);
         g.beginPath(); g.moveTo(4, 0); g.lineTo(-3, -2.6); g.lineTo(-3, 2.6); g.closePath(); g.fill();
         g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
+        g.restore();
       }
+    }
+    g.globalAlpha = 1;
+
+    // Active waypoint / mission geometry. This uses the same state.nav.waypoint source as the HUD,
+    // so the map remains a recovery surface when the tactical radar no longer has nearby dots.
+    for (const item of map.missionGeometry || []) {
+      const pnt = item.position;
+      if (!pnt) continue;
+      const x = wx(pnt.x), y = wz(pnt.z);
+      g.save();
+      g.strokeStyle = '#ffd24a';
+      g.fillStyle = '#ffd24a';
+      g.shadowColor = '#ffd24a';
+      g.shadowBlur = 14;
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(x, y - 8); g.lineTo(x + 8, y); g.lineTo(x, y + 8); g.lineTo(x - 8, y); g.closePath();
+      g.stroke();
+      g.shadowBlur = 0;
+      g.globalAlpha = 0.18;
+      g.beginPath(); g.arc(x, y, 24, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.72;
+      g.setLineDash([6, 5]);
+      g.beginPath(); g.moveTo(C.x, C.y); g.lineTo(x, y); g.stroke();
+      g.setLineDash([]);
+      g.globalAlpha = 1;
+      g.font = '10px monospace';
+      g.textAlign = 'left';
+      g.textBaseline = 'middle';
+      g.fillText(item.label || item.reason || 'Objective', x + 12, y);
       g.restore();
     }
 
@@ -328,4 +429,140 @@ export const localmapScreen = {
       g.beginPath(); g.moveTo(C.x, C.y); g.lineTo(vx, vz); g.stroke(); g.setLineDash([]);
     }
   },
+
+  _missionGeometry(state) {
+    const wp = state.nav && state.nav.waypoint;
+    if (!wp || !wp.pos) return EMPTY_GEOMETRY;
+    const item = this._missionGeometryScratch[0];
+    item.id = wp.missionId || wp.targetEntityId || wp.stationId || 'nav-waypoint';
+    item.kind = wp.kind || 'waypoint';
+    item.label = wp.reason || wp.label || 'Objective';
+    item.position.x = wp.pos.x;
+    item.position.z = wp.pos.z;
+    item.metadata.missionId = wp.missionId || null;
+    item.metadata.sectorId = wp.sectorId || null;
+    item.metadata.sectorName = wp.sectorName || null;
+    return this._missionGeometryScratch;
+  },
+
+  _renderObjectivePanel(state, player) {
+    const panel = this._objectivePanel;
+    if (!panel) return;
+    const trackedId = state.ui && state.ui.trackedMissionId;
+    const active = (state.missions && state.missions.active) || [];
+    const tracked = trackedId ? active.find((m) => m.id === trackedId && m.status === 'active') : null;
+    const wp = state.nav && state.nav.waypoint;
+    const beat = state.story && STORY_BEATS[state.story.beatIndex];
+    const route = routeGuidance(state, wp);
+
+    let kicker = 'Story';
+    let title = beat ? `Beat ${beat.beat} / 7` : 'Objective';
+    let body = beat ? beat.objective : 'Open the mission log for available contracts.';
+    const meta = [];
+
+    if (tracked) {
+      kicker = 'Tracked Mission';
+      title = tracked.title || 'Mission';
+      body = (wp && wp.reason) || missionProgressText(tracked);
+      if (route) body = appendSentence(body, route.next);
+      const remaining = Math.max(0, (tracked.deadline_s || 0) - (state.simTime || 0));
+      meta.push({ text: fmtClock(remaining), hot: remaining < 120 });
+      if (wp && wp.sectorName) meta.push({ text: wp.sectorName, hot: !wp.pos });
+    } else if (wp) {
+      kicker = wp.onboarding ? 'Tutorial Objective' : wp.kind === 'story' ? 'Story Objective' : wp.kind === 'trade' ? 'Course' : 'Waypoint';
+      title = wp.label || wp.reason || 'Waypoint';
+      body = wp.reason || (wp.onboarding ? 'Follow the yellow signal' : wp.sectorName) || 'Set course';
+      if (route) body = appendSentence(body, route.next);
+      if (wp.sectorName) meta.push({ text: wp.sectorName, hot: !wp.pos });
+    } else if (beat) {
+      meta.push({ text: 'N Local Map', hot: true });
+    }
+
+    if (wp && wp.pos && player && player.pos) {
+      const d = Math.hypot(wp.pos.x - player.pos.x, wp.pos.z - player.pos.z);
+      meta.push({ text: Math.round(d) + ' u', hot: false });
+    } else if (wp && !wp.pos) {
+      meta.push({ text: 'Off-sector fix', hot: true });
+    }
+    if (route) {
+      meta.push({ text: route.summary, hot: true });
+      meta.push({ text: 'M Star Map', hot: true });
+    }
+
+    const readable = [kicker, title, body, ...meta.map((m) => m.text)].filter(Boolean).join(' ');
+    const html =
+      '<div class="lm-objective-k">' + esc(kicker) + '</div>\n' +
+      '<div class="lm-objective-title">' + esc(title) + '</div>\n' +
+      '<div class="lm-objective-body">' + esc(body) + '</div>' +
+      (meta.length ? '\n<div class="lm-objective-meta">' + meta.map((m) => '<span' + (m.hot ? ' class="hot"' : '') + '>' + esc(m.text) + '</span>').join(' ') + '</div>' : '');
+    const sig = readable + '\n' + html;
+    if (sig === this._objectiveSig) return;
+    this._objectiveSig = sig;
+    panel.hidden = false;
+    if (panel.getAttribute('aria-label') !== readable) panel.setAttribute('aria-label', readable);
+    panel.innerHTML = html;
+  },
 };
+
+function missionProgressText(m) {
+  const progress = Math.max(0, m.objectiveProgress || 0);
+  const target = Math.max(1, m.objectiveTarget || 1);
+  if (m.type === 'mining_quota') return `Mine ${progress}/${target} units`;
+  if (m.type === 'bulk_trade') return `Sell ${progress}/${target} units`;
+  if (m.type === 'patrol_clear') return `Clear ${progress}/${target} hostiles`;
+  if (m.type === 'recon_scan') return `Scan ${progress}/${target} sites`;
+  return progress > 0 ? `${progress}/${target}` : 'Proceed to the objective';
+}
+
+function fmtClock(value) {
+  const s = Math.max(0, Math.floor(value || 0));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (m >= 60) return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+  if (m >= 1) return m + 'm ' + sec + 's';
+  return sec + 's';
+}
+
+function routeGuidance(state, wp) {
+  if (!state) return null;
+  const route = state.nav && state.nav.route;
+  const legs = route && Array.isArray(route.legs) ? route.legs : [];
+  const first = legs[0];
+  const last = legs[legs.length - 1];
+  const currentSectorId = (state.world && state.world.currentSectorId) || state.currentSectorId || (first && first.from);
+  const targetSectorId = (wp && wp.sectorId) || (route && route.destinationSectorId) || (last && last.to);
+  if (!targetSectorId) return null;
+  if (currentSectorId && currentSectorId === targetSectorId) return null;
+  if (first && last && (!currentSectorId || first.from === currentSectorId) && last.to === targetSectorId) {
+    const hops = route.totalHops || legs.length;
+    const fuel = Math.round(route.totalFuel || legs.reduce((sum, leg) => sum + (leg.fuel || 0), 0));
+    return {
+      next: 'Next jump: ' + sectorName(first.to),
+      summary: hops + ' hop' + (hops === 1 ? '' : 's') + ' / ' + fuel + 'F',
+    };
+  }
+  return {
+    next: 'Plot route to ' + sectorName(targetSectorId),
+    summary: 'Route needed',
+  };
+}
+
+function sectorName(id) {
+  return SECTOR_NAME.get(id) || id || 'target sector';
+}
+
+function appendSentence(base, sentence) {
+  const head = String(base || '').trim();
+  const tail = String(sentence || '').trim();
+  if (!head) return tail;
+  if (!tail) return head;
+  return /[.!?]$/.test(head) ? head + ' ' + tail + '.' : head + '. ' + tail + '.';
+}
+
+function esc(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}

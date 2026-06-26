@@ -1,6 +1,7 @@
 import { AIInspectionEndpoint } from '../ai/inspection.js';
 import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
+import { NORMALIZED_THRUSTER_REQUEST_FLAG } from '../ai/contracts.js';
 
 /**
  * SG-06 simulation-system factory.
@@ -20,6 +21,16 @@ export function createTacticalAISystem({
   encounter = null,
   actionPortFactory = createSG03ActionPort,
 } = {}) {
+  const runtime = config.runtime && typeof config.runtime === 'object' ? config.runtime : {};
+  const defaultRuntime = ('memberBatchSize' in runtime || 'memberBatchTargetTicks' in runtime)
+    ? {}
+    : { memberBatchSize: 3 };
+  const runtimeConfig = {
+    ...config,
+    runtime: { ...defaultRuntime, ...runtime },
+    trace: config.trace === undefined ? defaultTraceConfig() : config.trace,
+    freezeResults: config.freezeResults === undefined ? false : config.freezeResults,
+  };
   let stack = null;
   let inspection = null;
   let ctxRef = null;
@@ -41,7 +52,7 @@ export function createTacticalAISystem({
     stack = new TacticalAIStack({
       seed: seed == null ? (state && state.meta && state.meta.seed) || 1 : seed,
       ports,
-      config,
+      config: runtimeConfig,
     });
     inspection = new AIInspectionEndpoint(stack);
     return stack;
@@ -64,7 +75,7 @@ export function createTacticalAISystem({
     const maneuverPort = liveStack && liveStack.ports && liveStack.ports.maneuver;
     if (!maneuverPort || typeof maneuverPort.request !== 'function') return;
     for (const request of lastManeuverRequests) {
-      maneuverPort.request({ ...request, tick });
+      maneuverPort.request(retickManeuverRequest(request, tick));
     }
   }
 
@@ -95,9 +106,10 @@ export function createTacticalAISystem({
         : (authoredEncounter || {});
       const result = liveStack.update(tick, authored);
       lastDecisionTick = tick;
-      lastManeuverRequests = (result.decisions || [])
-        .map((decision) => decision && decision.maneuver)
-        .filter(Boolean);
+      lastManeuverRequests.length = 0;
+      for (const decision of result.decisions || []) {
+        if (decision && decision.maneuver) lastManeuverRequests.push(decision.maneuver);
+      }
     },
 
     inspect(query = {}) {
@@ -119,4 +131,24 @@ function runtimeDecisionInterval(config = {}) {
   const value = runtime.decisionIntervalTicks ?? config.decisionIntervalTicks ?? 3;
   if (!Number.isFinite(value)) return 3;
   return Math.max(1, Math.min(12, Math.floor(value)));
+}
+
+function retickManeuverRequest(request, tick) {
+  if (!request || request.tick === tick) return request;
+  if (!Object.isFrozen(request)) {
+    request.tick = tick;
+    return request;
+  }
+  const next = { ...request, tick };
+  if (request[NORMALIZED_THRUSTER_REQUEST_FLAG] === true) {
+    Object.defineProperty(next, NORMALIZED_THRUSTER_REQUEST_FLAG, { value: true });
+  }
+  return next;
+}
+
+function defaultTraceConfig() {
+  const isNode = typeof process !== 'undefined' && !!(process.versions && process.versions.node);
+  return isNode
+    ? { enabled: true, layers: ['behavior'], capacity: 512 }
+    : { enabled: false };
 }

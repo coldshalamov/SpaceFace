@@ -25,6 +25,7 @@ const DEFAULT_CONFIG = Object.freeze({
 export class EncounterDirector {
   constructor({ config = {}, trace = null, encounterPort = null } = {}) {
     this.config = validateConfig({ ...DEFAULT_CONFIG, ...config });
+    this.freeze = config.freezeResults === false ? identity : Object.freeze;
     this.trace = trace;
     this.encounterPort = encounterPort;
     this.state = {
@@ -47,7 +48,8 @@ export class EncounterDirector {
     s.reinforcementCooldown = Math.max(0, s.reinforcementCooldown - 1);
     s.narrativeCooldown = Math.max(0, s.narrativeCooldown - 1);
 
-    const envelope = normalizeEnvelope(authored.threatEnvelope, cfg);
+    const freeze = this.freeze;
+    const envelope = normalizeEnvelope(authored.threatEnvelope, cfg, freeze);
     const distress = saturate(
       (telemetry.friendlyDisabledFraction || 0) * 0.55 +
       (telemetry.friendlyLowHullFraction || 0) * 0.25 +
@@ -108,7 +110,7 @@ export class EncounterDirector {
       });
     }
 
-    return Object.freeze({
+    return freeze({
       tick,
       phase: s.phase,
       pressure: s.pressure,
@@ -121,6 +123,7 @@ export class EncounterDirector {
   _applyDecision(id, tick, authored) {
     const s = this.state;
     const cfg = this.config;
+    const freeze = this.freeze;
     let command = { type: 'hold', phase: s.phase };
     if (id === 'begin_build') {
       this._setPhase(DirectorPhase.BUILD);
@@ -147,8 +150,8 @@ export class EncounterDirector {
       s.narrativeCooldown = cfg.narrativeCooldownTicks;
       command = { type: 'narrative_beat', beatIndex: s.beatIndex++ };
     }
-    if (this.encounterPort && command.type !== 'hold') this.encounterPort.issue(Object.freeze({ tick, ...command }));
-    return Object.freeze(command);
+    if (this.encounterPort && command.type !== 'hold') this.encounterPort.issue(freeze({ tick, ...command }));
+    return freeze(command);
   }
 
   _setPhase(phase) {
@@ -173,14 +176,18 @@ function validateConfig(config) {
   return Object.freeze(out);
 }
 
-function normalizeEnvelope(value, config) {
+function normalizeEnvelope(value, config, freeze = Object.freeze) {
   const rawMin = Number(value && value.min);
   const rawMax = Number(value && value.max);
   if (!Number.isFinite(rawMin) || !Number.isFinite(rawMax) || rawMin >= rawMax) {
-    return Object.freeze({ min: config.minPressure, max: config.maxPressure });
+    return freeze({ min: config.minPressure, max: config.maxPressure });
   }
   const min = clamp(rawMin, config.minPressure, config.maxPressure);
   const max = clamp(rawMax, min, config.maxPressure);
-  if (min >= max) return Object.freeze({ min: config.minPressure, max: config.maxPressure });
-  return Object.freeze({ min, max });
+  if (min >= max) return freeze({ min: config.minPressure, max: config.maxPressure });
+  return freeze({ min, max });
+}
+
+function identity(value) {
+  return value;
 }

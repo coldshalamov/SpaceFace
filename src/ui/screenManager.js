@@ -254,8 +254,23 @@ export function createScreenManager(ctx) {
     return state.mode === 'menu' && stack.length === 1 && top() === 'mainMenu';
   }
 
+  function shieldModalPointerEvent(ev) {
+    if (!isOpen()) return;
+    if (ev.type === 'contextmenu') ev.preventDefault();
+    ev.stopPropagation();
+  }
+
   // Backdrop click pops the top (unless the screen is mid-transaction locked).
+  const shieldedPointerEvents = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu'];
+  if (screensRoot) {
+    shieldedPointerEvents.forEach((type) => {
+      screensRoot.addEventListener(type, shieldModalPointerEvent);
+    });
+  }
   if (backdrop) {
+    shieldedPointerEvents.forEach((type) => {
+      backdrop.addEventListener(type, shieldModalPointerEvent);
+    });
     backdrop.addEventListener('click', () => { if (isOpen() && !locked()) popScreen(); });
   }
 

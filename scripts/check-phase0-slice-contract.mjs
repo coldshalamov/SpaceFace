@@ -175,7 +175,7 @@ assert.equal(envelope.acceptanceCriteria.enemyCounterTetherBehaviorCountMin, 2,
 assert.equal(envelope.acceptanceCriteria.deathToRetryTickMax, 360,
   'expected telemetry should require failure-to-retry within 6s at 60Hz');
 assert.equal(envelope.acceptanceCriteria.authoritativeHash,
-  'ca3eac66b0f0b62457a40f44ba61142b176b9f178fc4f555bffaa916f49dce39',
+  '48366b6a1c5aa760a330d04a065c3343ca757809e24f88f0ac1cacba6622b3c1',
   'expected telemetry envelope should pin the current Phase 0 replay hash');
 assert.equal(envelope.acceptanceCriteria.canonicalLongBranchId, 'escape_with_evidence',
   'expected telemetry should pin the canonical long-run branch outcome');

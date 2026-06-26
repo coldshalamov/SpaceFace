@@ -16,6 +16,8 @@ export function createAlerts(ctx) {
   const { bus } = ctx;
   const root = document.getElementById('alerts');
   const map = new Map(); // key -> { key, sev, text, ttl(ms)|Infinity, born, el }
+  const expiredKeys = [];
+  let nextExpiryAt = Infinity;
 
   function ensureEl(rec) {
     if (rec.el) return rec.el;
@@ -42,7 +44,9 @@ export function createAlerts(ctx) {
     rec.sev = sev; rec.text = text;
     rec.ttl = ttl == null || ttl === Infinity ? Infinity : ttl * 1000;
     rec.born = performance.now();
+    rec.expiresAt = rec.ttl === Infinity ? Infinity : rec.born + rec.ttl;
     if (rec.el) rec.el.className = `sf-alert sf-alert--${sev}`;
+    recomputeNextExpiry();
     render();
   }
 
@@ -51,6 +55,7 @@ export function createAlerts(ctx) {
     if (!rec) return;
     if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
     map.delete(key);
+    recomputeNextExpiry();
   }
 
   function render() {
@@ -70,15 +75,33 @@ export function createAlerts(ctx) {
     }
   }
 
-  // expiry sweep — called each frame from hud frame()
+  // Expiry sweep — called from hud frame(), but wakes only when a finite alert can expire.
   function tick() {
     if (!map.size) return;
     const now = performance.now();
+    if (now <= nextExpiryAt) return;
     let dirty = false;
-    for (const rec of [...map.values()]) {
-      if (rec.ttl !== Infinity && now - rec.born > rec.ttl) { clear(rec.key); dirty = true; }
+    expiredKeys.length = 0;
+    for (const rec of map.values()) {
+      if (rec.expiresAt !== Infinity && now > rec.expiresAt) expiredKeys.push(rec.key);
     }
+    for (let i = 0; i < expiredKeys.length; i++) {
+      const rec = map.get(expiredKeys[i]);
+      if (!rec) continue;
+      if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      map.delete(rec.key);
+      dirty = true;
+    }
+    expiredKeys.length = 0;
+    if (dirty) recomputeNextExpiry();
     if (dirty) render();
+  }
+
+  function recomputeNextExpiry() {
+    nextExpiryAt = Infinity;
+    for (const rec of map.values()) {
+      if (rec.expiresAt < nextExpiryAt) nextExpiryAt = rec.expiresAt;
+    }
   }
 
   // --- event wiring ---

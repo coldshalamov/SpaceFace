@@ -3,20 +3,29 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { Masks } from '../src/core/entity.js';
 import { createGameState } from '../src/core/gameState.js';
+import { core } from '../src/core/coreSystem.js';
 import { physics } from '../src/core/physics.js';
+import { queryNearbyEntities } from '../src/core/spatialQuery.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { AI_CONTRACT_VERSION } from '../src/ai/contracts.js';
-import { hash32 } from '../src/core/rng.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
+import { audioNearbyHostileCount } from '../src/audio/audioSystem.js';
 import { save } from '../src/save/saveSystem.js';
 import { cargo, addCargo } from '../src/systems/cargo.js';
 import { mining } from '../src/systems/mining.js';
 import { combat } from '../src/systems/combat.js';
+import { weapons } from '../src/systems/weapons.js';
 import { countermeasures } from '../src/systems/countermeasures.js';
 import { wingmen } from '../src/systems/wingmen.js';
 import { crafting } from '../src/systems/crafting.js';
 import { economy } from '../src/systems/economy.js';
+import { factions } from '../src/systems/factions.js';
+import { tickProgram } from '../src/systems/alphabet.js';
 import { flight } from '../src/systems/flight.js';
+import { flightV3 } from '../src/systems/flightV3.js';
+import { resolveHudNavStation } from '../src/ui/hud.js';
 import { automation } from '../src/systems/automation.js';
+import { ai } from '../src/systems/ai.js';
 import { aiEncounter } from '../src/systems/aiEncounter.js';
 import { intervention } from '../src/systems/intervention.js';
 import { sectorSim } from '../src/systems/sectorSim.js';
@@ -79,6 +88,1109 @@ function checkPickupSingleWriter() {
     commodityId: 'wpn_pulse_laser_s',
   });
   assert.equal(state.player.moduleInventory.length, 2, 'module pickups should enter module inventory');
+}
+
+function checkEventBusUsesPooledDispatchSnapshots() {
+  const bus = createBus();
+  const events = [];
+  const late = () => events.push('late');
+  let removeSecond = null;
+  bus.on('evt', () => {
+    events.push('first');
+    bus.on('evt', late);
+    if (removeSecond) removeSecond();
+    bus.emit('nested', {});
+  });
+  removeSecond = bus.on('evt', () => events.push('second'));
+  bus.on('nested', () => events.push('nested'));
+
+  const originalIterator = Set.prototype[Symbol.iterator];
+  Set.prototype[Symbol.iterator] = function failEventBusIteratorUse() {
+    throw new Error('event bus emit should not allocate listener snapshots through Set iteration');
+  };
+  try {
+    bus.emit('evt', {});
+  } finally {
+    Set.prototype[Symbol.iterator] = originalIterator;
+  }
+
+  assert.deepEqual(events, ['first', 'nested', 'second'],
+    'event bus should preserve snapshot dispatch semantics without per-emit spread allocation');
+}
+
+function checkCoreBuildsRadarContactIndex() {
+  function vec(x, z) {
+    return {
+      x, y: 0, z,
+      copy(p) { this.x = p.x; this.y = p.y || 0; this.z = p.z; return this; },
+    };
+  }
+  function entity(id, type, x, z, extra = {}) {
+    return {
+      id,
+      type,
+      alive: true,
+      collides: false,
+      radius: 4,
+      pos: vec(x, z),
+      prevPos: vec(x, z),
+      rot: 0,
+      prevRot: 0,
+      bank: 0,
+      prevBank: 0,
+      data: {},
+      ...extra,
+    };
+  }
+
+  const state = createGameState(97);
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  const player = entity(1, 'ship', 0, 0);
+  const asteroid = entity(2, 'asteroid', 100, 0);
+  const pickup = entity(3, 'pickup', 10, 0);
+  const wreck = entity(4, 'wreck', 30, 0);
+  const projectile = entity(5, 'projectile', 40, 0);
+  const fx = entity(6, 'fx', 50, 0);
+  const payload = entity(7, 'payload', 60, 0);
+  for (const e of [player, asteroid, pickup, wreck, projectile, fx, payload]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+
+  const bus = createBus();
+  core.init({ state, bus, helpers: {} });
+  core.preStep(1 / 60, state);
+
+  assert(state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1, 'core should build the typed entity index');
+  assert.deepEqual(state.entityIndex.radarAsteroids.map((e) => e.id), [asteroid.id],
+    'radar asteroid bucket should contain live asteroids');
+  assert(state.entityIndex.radarContacts.includes(player),
+    'radar contact bucket may include the player; radar draw skips it without rebuilding the list');
+  assert(state.entityIndex.radarContacts.includes(pickup), 'radar contact bucket should include pickups');
+  assert(state.entityIndex.radarContacts.includes(wreck), 'radar contact bucket should include wrecks');
+  assert(state.entityIndex.radarContacts.includes(payload), 'radar contact bucket should preserve non-projectile gameplay payloads');
+  assert(!state.entityIndex.radarContacts.includes(projectile), 'radar contact bucket should exclude projectiles');
+  assert(!state.entityIndex.radarContacts.includes(fx), 'radar contact bucket should exclude transient fx');
+}
+
+function checkCoreSnapshotsOnlyMovableEntities() {
+  function vec(x, z, onCopy = null) {
+    return {
+      x, y: 0, z,
+      copy(p) {
+        if (onCopy) onCopy();
+        this.x = p.x;
+        this.y = p.y || 0;
+        this.z = p.z;
+        return this;
+      },
+    };
+  }
+  function entity(id, type, x, z, extra = {}) {
+    return {
+      id,
+      type,
+      alive: true,
+      collides: true,
+      radius: 4,
+      pos: vec(x, z),
+      prevPos: vec(x - 1, z - 1),
+      rot: 0.25,
+      prevRot: -9,
+      bank: 0.1,
+      prevBank: -9,
+      data: {},
+      ...extra,
+    };
+  }
+
+  let movableCopies = 0;
+  const state = createGameState(98);
+  state.entities.clear();
+  state.entityList.length = 0;
+  const ship = entity(1, 'ship', 10, 0, { prevPos: vec(0, 0, () => { movableCopies++; }) });
+  const projectile = entity(2, 'projectile', 20, 0, { prevPos: vec(0, 0, () => { movableCopies++; }) });
+  const asteroid = entity(3, 'asteroid', 100, 0, {
+    prevPos: vec(0, 0, () => { throw new Error('static asteroid interpolation snapshot should sleep'); }),
+  });
+  const station = entity(4, 'station', -100, 0, {
+    prevPos: vec(0, 0, () => { throw new Error('static station interpolation snapshot should sleep'); }),
+  });
+  for (const e of [ship, projectile, asteroid, station]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+
+  const bus = createBus();
+  core.init({ state, bus, helpers: {} });
+  core.preStep(1 / 60, state);
+
+  assert.equal(movableCopies, 2, 'core preStep should snapshot interpolation state only for movable entities');
+  assert.equal(ship.prevRot, ship.rot, 'movable ship rotation should still be snapshotted for interpolation');
+  assert.equal(projectile.prevRot, projectile.rot, 'movable projectile rotation should still be snapshotted for interpolation');
+  assert.equal(asteroid.prevRot, -9, 'static asteroid rotation snapshot should be left untouched');
+  assert.equal(station.prevBank, -9, 'static station bank snapshot should be left untouched');
+  assert(state.entityIndex.asteroids.includes(asteroid), 'static asteroid should still be indexed');
+  assert(state.entityIndex.stations.includes(station), 'static station should still be indexed');
+  assert(state.entityIndex.movables.includes(ship), 'movable ship should be in movables index');
+  assert(state.entityIndex.movables.includes(projectile), 'movable projectile should be in movables index');
+}
+
+function checkCoreEntityIndexIsLifecycleDriven() {
+  function vec(x, z) {
+    return {
+      x, y: 0, z,
+      copy(p) { this.x = p.x; this.y = p.y || 0; this.z = p.z; return this; },
+    };
+  }
+  function entity(id, type, x, z, extra = {}) {
+    return {
+      id,
+      type,
+      alive: true,
+      collides: true,
+      radius: 4,
+      pos: vec(x, z),
+      prevPos: vec(x, z),
+      rot: 0,
+      prevRot: 0,
+      bank: 0,
+      prevBank: 0,
+      data: {},
+      ...extra,
+    };
+  }
+
+  const state = createGameState(99);
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.nextEntityId = 4;
+  const ship = entity(1, 'ship', 0, 0, { data: { weapons: [{ defId: 'wpn_pulse_laser_s' }] } });
+  const asteroid = entity(2, 'asteroid', 80, 0);
+  const station = entity(3, 'station', -120, 0, { data: { stationId: 'station_test' } });
+  for (const e of [ship, asteroid, station]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+
+  const bus = createBus();
+  const helpers = {};
+  core.init({ state, bus, helpers });
+  core.preStep(1 / 60, state);
+  const index = state.entityIndex;
+  const firstVersion = index.version;
+  assert(index.asteroids.includes(asteroid), 'lifecycle index should include manually seeded asteroids after initial reconcile');
+  assert(index.stations.includes(station), 'lifecycle index should include manually seeded stations after initial reconcile');
+  assert(index.weaponShips.includes(ship), 'volatile weapon ship bucket should be populated from live ship data');
+
+  ship.data.weapons = [];
+  core.preStep(1 / 60, state);
+  assert.equal(index.version, firstVersion, 'unchanged entity membership should not churn entityIndex.version every tick');
+  assert(!index.weaponShips.includes(ship), 'volatile weapon ship bucket should refresh without a full entity-list rebuild');
+
+  const spawned = helpers.spawnEntity({
+    type: 'asteroid',
+    pos: { x: 180, z: 0 },
+    radius: 5,
+    mass: 200,
+    hull: 20,
+    hullMax: 20,
+    data: { typeId: 'ast_test', oreHP: 20 },
+  });
+  assert(index.asteroids.includes(spawned), 'spawned static asteroid should be indexed immediately');
+  const spawnVersion = index.version;
+  core.preStep(1 / 60, state);
+  assert.equal(index.version, spawnVersion, 'spawned entity should not force a repeated full-index rebuild');
+
+  spawned.alive = false;
+  core.lifetimeSweep(1 / 60, state);
+  assert(!index.asteroids.includes(spawned), 'swept static asteroid should be removed from asteroid bucket');
+  assert(!index.radarAsteroids.includes(spawned), 'swept static asteroid should be removed from radar asteroid bucket');
+}
+checkCoreEntityIndexIsLifecycleDriven();
+
+function checkMiningPickupMagnetUsesSpatialHashForCrowdedScenes() {
+  const state = createGameState(90);
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  state.player.magnetRange = 100;
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 6,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    flags: {},
+    data: {},
+  };
+  const pulled = {
+    id: 2,
+    type: 'pickup',
+    alive: true,
+    collides: true,
+    radius: 2.2,
+    pos: { x: 80, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: { kind: 'ore', amount: 1, commodityId: 'cmdty_ore_iron' },
+  };
+  const collected = {
+    id: 3,
+    type: 'pickup',
+    alive: true,
+    collides: true,
+    radius: 2.2,
+    pos: { x: 2, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: { kind: 'ore', amount: 1, commodityId: 'cmdty_ore_iron' },
+  };
+  const pickups = [pulled, collected];
+  for (let i = 0; i < 160; i++) {
+    pickups.push({
+      id: 10 + i,
+      type: 'pickup',
+      alive: true,
+      collides: true,
+      radius: 2.2,
+      pos: { x: 5000 + i * 80, z: 0 },
+      vel: { x: 0, z: 0 },
+      data: { kind: 'ore', amount: 1, commodityId: 'cmdty_ore_iron' },
+    });
+  }
+  for (const e of [player, ...pickups]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    pickups,
+  };
+  const events = [];
+  const bus = createBus();
+  bus.on('pickup:collected', (payload) => events.push(payload));
+
+  mining.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+  state.spatialHash.rebuild(state.entityList);
+  mining._updatePickups(1 / 60, state);
+
+  assert(pulled.vel.x < 0, 'nearby pickup should still magnetize toward the player');
+  assert.equal(collected.alive, false, 'overlapping pickup should still collect');
+  assert.equal(pickups[2].vel.x, 0, 'far pickup should not be touched by magnet updates');
+  assert.equal(events.length, 1, 'magnet collection should still emit exactly one pickup event');
+  assert.equal(state.miningRuntime.diagnostics.pickupSpatialQueries, 1, 'crowded pickup magnet should query the spatial hash once');
+  assert(state.miningRuntime.diagnostics.pickupCandidates < pickups.length,
+    'crowded pickup magnet should avoid scanning every pickup in the sector');
+}
+
+function checkMiningBeamTargetUsesSpatialHashForCrowdedFields() {
+  const state = createGameState(91);
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  state.input.aimAngle = 0;
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 6,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    flags: {},
+    data: {},
+  };
+  const target = {
+    id: 2,
+    type: 'asteroid',
+    alive: true,
+    collides: true,
+    radius: 12,
+    pos: { x: 120, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: { typeId: 'ast_common_rock' },
+  };
+  const mineables = [target];
+  for (let i = 0; i < 180; i++) {
+    mineables.push({
+      id: 10 + i,
+      type: 'asteroid',
+      alive: true,
+      collides: true,
+      radius: 12,
+      pos: { x: 5000 + i * 90, z: 0 },
+      vel: { x: 0, z: 0 },
+      data: { typeId: 'ast_common_rock' },
+    });
+  }
+  for (const e of [player, ...mineables]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    mineables,
+  };
+
+  mining.init({ state, bus: createBus(), helpers: {}, registry: { get() { return null; } } });
+  state.spatialHash.rebuild(state.entityList);
+  const picked = mining._acquireTarget(player, 240, state);
+
+  assert.equal(picked, target, 'mining beam should still pick the aimed nearby asteroid');
+  assert.equal(mining._diag.targetSpatialQueries, 1, 'crowded mining target acquisition should use one spatial query');
+  assert(mining._diag.targetCandidates < mineables.length,
+    'crowded mining target acquisition should avoid scanning every mineable in the sector');
+}
+
+function checkWeaponAutoFireUsesSpatialShipCandidates() {
+  const state = createGameState(93);
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 0,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    flags: {},
+    data: {
+      weapons: [{ defId: 'wpn_pulse_laser_s' }],
+      combat: {},
+    },
+  };
+  const nearHostile = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 1,
+    pos: { x: 280, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: { ai: { fsm: 'attack' }, combat: { targetId: player.id } },
+  };
+  const shipsInIndex = [player, nearHostile];
+  for (let i = 0; i < 180; i++) {
+    shipsInIndex.push({
+      id: 10 + i,
+      type: 'ship',
+      alive: true,
+      collides: true,
+      radius: 8,
+      team: 1,
+      pos: { x: 5000 + i * 90, z: 0 },
+      vel: { x: 0, z: 0 },
+      data: { ai: { fsm: 'attack' }, combat: { targetId: player.id } },
+    });
+  }
+  for (const e of shipsInIndex) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ships: shipsInIndex,
+  };
+
+  weapons.init({
+    state,
+    bus: createBus(),
+    helpers: {
+      getEntity: (id) => state.entities.get(id) || null,
+      spawnEntity() { throw new Error('auto-fire target check should not spawn projectiles'); },
+      hash32,
+      mulberry32,
+    },
+  });
+  state.spatialHash.rebuild(state.entityList);
+  const picked = weapons._autoFireTarget(player, state);
+
+  assert.equal(picked, nearHostile, 'auto-fire should still choose the nearby aggressive hostile');
+  assert.equal(weapons._diag.autoFireSpatialQueries, 1, 'crowded auto-fire targeting should query nearby ships through the spatial hash');
+  assert(weapons._diag.autoFireCandidates < shipsInIndex.length,
+    'crowded auto-fire targeting should avoid scanning every ship in the sector');
+}
+
+function checkSharedSpatialQueryUsesActiveHashAndFallback() {
+  const state = createGameState(94);
+  state.entities.clear();
+  state.entityList.length = 0;
+  const near = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 4,
+    pos: { x: 8, z: 0 },
+  };
+  const far = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 4,
+    pos: { x: 800, z: 0 },
+  };
+  state.entityList.push(near, far);
+  state.spatialHash.rebuild(state.entityList);
+  const out = [];
+
+  const spatial = queryNearbyEntities(state, { x: 0, z: 0 }, 32, out, state.entityList);
+  assert.equal(spatial, out, 'shared spatial query should reuse caller scratch when the hash is active');
+  assert(spatial.includes(near), 'shared spatial query should include nearby collidables');
+  assert(!spatial.includes(far), 'shared spatial query should exclude far collidables when the hash is active');
+
+  state.spatialHash.deactivate();
+  const fallback = queryNearbyEntities(state, { x: 0, z: 0 }, 32, out, state.entityList);
+  assert.equal(fallback, state.entityList, 'shared spatial query should return the fallback source when the hash is inactive');
+}
+
+function checkSpatialHashCachesStaticLayer() {
+  function vec(x, z) {
+    return {
+      x, y: 0, z,
+      copy(p) { this.x = p.x; this.y = p.y || 0; this.z = p.z; return this; },
+    };
+  }
+  function entity(id, type, x, z, extra = {}) {
+    return {
+      id,
+      type,
+      alive: true,
+      collides: true,
+      radius: type === 'station' ? 42 : 8,
+      pos: vec(x, z),
+      prevPos: vec(x, z),
+      vel: vec(0, 0),
+      rot: 0,
+      prevRot: 0,
+      bank: 0,
+      prevBank: 0,
+      data: {},
+      ...extra,
+    };
+  }
+
+  const state = createGameState(95);
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.nextEntityId = 4;
+  const ship = entity(1, 'ship', 0, 0);
+  const asteroid = entity(2, 'asteroid', 96, 0);
+  const station = entity(3, 'station', -120, 0, { data: { stationId: 'station_spatial_cache' } });
+  for (const e of [ship, asteroid, station]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+
+  const helpers = {};
+  core.init({ state, bus: createBus(), helpers });
+  core.preStep(1 / 60, state);
+  physics._rebuildSpatialHash(state);
+  const hash = state.spatialHash;
+  const staticRebuilds = hash.diagnostics.rebuilds;
+  const dynamicRebuilds = hash.diagnostics.dynamicRebuilds;
+  const staticBuckets = hash.diagnostics.staticBuckets;
+  assert(staticBuckets > 0, 'spatial hash should build a static layer for asteroids/stations');
+  assert(hash.diagnostics.dynamicBuckets > 0, 'spatial hash should build a dynamic layer for ships/projectiles/pickups');
+
+  const out = [];
+  hash.queryRadius(0, 0, 180, out, { countDiagnostics: false });
+  assert(out.includes(ship), 'layered spatial query should include dynamic ships');
+  assert(out.includes(asteroid), 'layered spatial query should include static asteroids');
+  assert(out.includes(station), 'layered spatial query should include static stations');
+
+  ship.pos.x = 24;
+  physics._rebuildSpatialHash(state);
+  assert.equal(hash.diagnostics.rebuilds, staticRebuilds,
+    'unchanged static colliders should not rebuild the static broadphase layer each tick');
+  assert.equal(hash.diagnostics.dynamicRebuilds, dynamicRebuilds + 1,
+    'dynamic broadphase layer should still refresh moving colliders');
+  assert.equal(hash.diagnostics.staticBuckets, staticBuckets,
+    'static broadphase bucket count should stay cached across dynamic refreshes');
+
+  const spawned = helpers.spawnEntity({
+    type: 'asteroid',
+    pos: { x: 0, z: 160 },
+    radius: 10,
+    mass: 200,
+    hull: 20,
+    hullMax: 20,
+    data: { typeId: 'ast_test', oreHP: 20 },
+  });
+  core.preStep(1 / 60, state);
+  physics._rebuildSpatialHash(state);
+  assert(hash.diagnostics.rebuilds > staticRebuilds,
+    'adding a static collider should invalidate and rebuild the static broadphase layer');
+  out.length = 0;
+  hash.queryRadius(0, 0, 180, out, { countDiagnostics: false });
+  assert(out.includes(spawned), 'layered spatial query should include newly spawned static colliders after invalidation');
+}
+
+function checkCoreBuildsPhysicsBodyIndexForSg02Layers() {
+  function vec(x, z) {
+    return {
+      x, y: 0, z,
+      copy(p) { this.x = p.x; this.y = p.y || 0; this.z = p.z; return this; },
+    };
+  }
+  function entity(id, type, x, z, extra = {}) {
+    return {
+      id,
+      type,
+      alive: true,
+      collides: true,
+      radius: type === 'station' ? 42 : 8,
+      pos: vec(x, z),
+      prevPos: vec(x, z),
+      vel: vec(0, 0),
+      rot: 0,
+      prevRot: 0,
+      bank: 0,
+      prevBank: 0,
+      data: {},
+      ...extra,
+    };
+  }
+
+  const state = createGameState(196);
+  state.entities.clear();
+  state.entityList.length = 0;
+  const ship = entity(1, 'ship', 0, 0);
+  const wreck = entity(2, 'wreck', 48, 0);
+  const asteroid = entity(3, 'asteroid', 96, 0);
+  const station = entity(4, 'station', -120, 0, { data: { stationId: 'station_sg02_index' } });
+  const visualOnly = entity(5, 'fx', 0, 96, { collides: false });
+  const tetherPayload = entity(6, 'payload', 32, 32, { collides: false, data: { tetherPayload: true } });
+  const beacon = entity(7, 'beacon', 64, 32, { collides: false });
+  for (const e of [ship, wreck, asteroid, station, visualOnly, tetherPayload, beacon]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+
+  core.init({ state, bus: createBus(), helpers: {} });
+  core.preStep(1 / 60, state);
+
+  assert(state.entityIndex.physicsDynamics.includes(ship), 'SG-02 physics index should classify ships as dynamic bodies');
+  assert(state.entityIndex.physicsDynamics.includes(wreck), 'SG-02 physics index should classify dynamic wreck bodies separately from spatial statics');
+  assert(state.entityIndex.physicsStatics.includes(asteroid), 'SG-02 physics index should keep asteroids as fixed collision bodies');
+  assert(state.entityIndex.physicsStatics.includes(station), 'SG-02 physics index should keep stations as fixed collision bodies');
+  assert(!state.entityIndex.physicsDynamics.includes(visualOnly), 'SG-02 physics index should skip non-colliding visual-only entities');
+  assert(!state.entityIndex.physicsStatics.includes(visualOnly), 'SG-02 physics index should skip non-colliding visual-only fixed bodies');
+  assert(state.entityIndex.physicsDynamics.includes(tetherPayload), 'SG-02 physics index should keep authored dynamic payload roles even when gameplay collisions are disabled');
+  assert(state.entityIndex.physicsStatics.includes(beacon), 'SG-02 physics index should keep non-FX gameplay bodies in the fixed body layer for deterministic compatibility');
+  assert.deepEqual(state.entityIndex.physicsBodies, [ship, wreck, asteroid, station, tetherPayload, beacon],
+    'SG-02 physics index should preserve entity-order body creation while excluding visual-only fx');
+  assert(state.entityIndex.physicsStaticVersion > 0, 'SG-02 physics static layer should expose an invalidation version');
+}
+
+function checkSg02ProductionSyncUsesIndexedBodyLayers() {
+  const staticBody = { id: 1, alive: true, type: 'asteroid' };
+  const dynamicBody = { id: 2, alive: true, type: 'ship' };
+  const state = {
+    entityList: nonIterableEntityList(2, 'SG-02 production sync should use indexed physics body layers'),
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      ready: true,
+      physicsBodies: [staticBody, dynamicBody],
+      physicsStatics: [staticBody],
+      physicsDynamics: [dynamicBody],
+      physicsStaticVersion: 7,
+    },
+  };
+  const previous = physics._sg02;
+  const calls = [];
+  physics._sg02 = {
+    syncFromEntityLayers(statics, dynamics, version, ordered) {
+      calls.push({ statics, dynamics, version, ordered });
+    },
+    syncFromEntities() {
+      throw new Error('SG-02 production sync should not fall back to full entityList iteration when indexed layers are ready');
+    },
+  };
+  try {
+    physics._syncSg02DynamicAuthorityEntities(state);
+  } finally {
+    physics._sg02 = previous || null;
+  }
+  assert.equal(calls.length, 1, 'SG-02 production sync should call the layered body sync path');
+  assert.equal(calls[0].statics, state.entityIndex.physicsStatics, 'SG-02 production sync should pass indexed fixed bodies');
+  assert.equal(calls[0].dynamics, state.entityIndex.physicsDynamics, 'SG-02 production sync should pass indexed dynamic bodies');
+  assert.equal(calls[0].version, 7, 'SG-02 production sync should pass the static invalidation version');
+  assert.equal(calls[0].ordered, state.entityIndex.physicsBodies, 'SG-02 production sync should pass entity-ordered physics bodies for deterministic static refreshes');
+}
+
+function checkAutomationNearestAsteroidUsesSpatialCandidates() {
+  const state = createGameState(96);
+  state.entities.clear();
+  state.entityList.length = 0;
+
+  const near = {
+    id: 1,
+    type: 'asteroid',
+    alive: true,
+    collides: true,
+    radius: 12,
+    pos: { x: 120, z: 0 },
+    data: { typeId: 'ast_common_rock' },
+  };
+  const asteroids = [near];
+  for (let i = 0; i < 180; i++) {
+    asteroids.push({
+      id: 10 + i,
+      type: 'asteroid',
+      alive: true,
+      collides: true,
+      radius: 12,
+      pos: { x: 5000 + i * 90, z: 0 },
+      data: { typeId: 'ast_common_rock' },
+    });
+  }
+  for (const e of asteroids) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    asteroids,
+  };
+
+  automation.init({ state, bus: createBus(), helpers: {}, registry: { get() { return null; } } });
+  state.spatialHash.rebuild(state.entityList);
+  const picked = automation._nearestAsteroid({ x: 0, z: 0 }, 450);
+
+  assert.equal(picked, near, 'automation nearest asteroid should still pick the nearby rock');
+  assert.equal(automation._diag.asteroidSpatialQueries, 1,
+    'crowded automation asteroid lookup should query nearby asteroids through the spatial hash');
+  assert(automation._diag.asteroidCandidates < asteroids.length,
+    'crowded automation asteroid lookup should avoid scanning every asteroid in the sector');
+}
+
+function checkAlphabetProgramBeaconResolutionUsesIndexedSpatialCandidates() {
+  const state = createGameState(97);
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  state.player = state.player || {};
+  state.player.cargo = { items: {}, usedVolume: 0, capVolume: 40 };
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 6,
+    pos: { x: 0, z: 0 },
+    data: {},
+  };
+  const depot = {
+    id: 2,
+    type: 'station',
+    alive: true,
+    collides: true,
+    radius: 40,
+    pos: { x: 90, z: 0 },
+    data: { stationId: 'station_test_depot' },
+  };
+  const nearRock = {
+    id: 3,
+    type: 'asteroid',
+    alive: true,
+    collides: true,
+    radius: 12,
+    pos: { x: 160, z: 0 },
+    data: { typeId: 'ast_common_rock' },
+  };
+  const asteroids = [nearRock];
+  for (let i = 0; i < 180; i++) {
+    asteroids.push({
+      id: 10 + i,
+      type: 'asteroid',
+      alive: true,
+      collides: true,
+      radius: 12,
+      pos: { x: 5000 + i * 80, z: 0 },
+      data: { typeId: 'ast_common_rock' },
+    });
+  }
+  for (const e of [player, depot, ...asteroids]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    dockStations: [depot],
+    stations: [depot],
+    mineables: asteroids,
+    asteroids,
+    byStationId: new Map([[depot.data.stationId, depot]]),
+  };
+  state.spatialHash.rebuild(state.entityList);
+
+  const originalEntityList = state.entityList;
+  state.entityList = {
+    length: originalEntityList.length,
+    [Symbol.iterator]() {
+      throw new Error('alphabet beacon resolution should not iterate the full entityList');
+    },
+  };
+
+  try {
+    const diagnostics = {};
+    const group = {
+      program: { templateId: 'mine_to_depot' },
+      programState: { pc: 3, waitT: 0, cargoWasFull: false },
+      deployRange: 450,
+      originPos: { x: 0, z: 0 },
+    };
+    let steeredBeacon = null;
+    tickProgram(group, {
+      state,
+      helpers: {},
+      group,
+      diagnostics,
+      steerTo(beacon) { steeredBeacon = beacon; return true; },
+      mineIntoCargo() {},
+      sellMinedCargo() {},
+    }, 1 / 60);
+    assert.equal(steeredBeacon && steeredBeacon.entity, nearRock,
+      'program field beacon should still resolve to the nearby asteroid');
+    assert.equal(diagnostics.alphabetSpatialQueries, 1,
+      'program field beacon should query nearby asteroid candidates through the spatial hash');
+    assert(diagnostics.alphabetCandidates < asteroids.length,
+      'program field beacon should avoid scanning every asteroid in the sector');
+
+    group.programState.pc = 1;
+    steeredBeacon = null;
+    tickProgram(group, {
+      state,
+      helpers: {},
+      group,
+      diagnostics: {},
+      steerTo(beacon) { steeredBeacon = beacon; return true; },
+      mineIntoCargo() {},
+      sellMinedCargo() {},
+    }, 1 / 60);
+    assert.equal(steeredBeacon && steeredBeacon.entity, depot,
+      'program depot beacon should use the indexed dock station list');
+  } finally {
+    state.entityList = originalEntityList;
+  }
+}
+
+function checkHudNavStationUsesIndexedLookup() {
+  const station = {
+    id: 2,
+    type: 'station',
+    alive: true,
+    pos: { x: 120, z: -40 },
+    data: { stationId: 'station_hud_nav' },
+  };
+  const state = {
+    entityList: nonIterableEntityList(1, 'HUD nav station lookup should use entityIndex.byStationId instead of iterating entityList'),
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      version: 3,
+      byStationId: new Map([[station.data.stationId, station]]),
+      stations: [station],
+      dockStations: [station],
+    },
+  };
+
+  assert.equal(resolveHudNavStation(state, station.data.stationId), station,
+    'HUD nav station lookup should resolve the live station from byStationId');
+  assert.equal(resolveHudNavStation(state, 'station_missing'), null,
+    'HUD nav station lookup should return null for an indexed miss without scanning entityList');
+
+  const fallbackStation = { ...station, id: 3, data: { stationId: 'station_hud_nav_fallback' } };
+  const staleStation = { ...station, alive: false, data: { stationId: fallbackStation.data.stationId } };
+  assert.equal(resolveHudNavStation({
+    entityList: nonIterableEntityList(2, 'HUD nav station lookup should stay inside indexed station buckets'),
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      version: 4,
+      byStationId: new Map([[fallbackStation.data.stationId, staleStation]]),
+      stations: [],
+      dockStations: [fallbackStation],
+    },
+  }, fallbackStation.data.stationId), fallbackStation,
+    'HUD nav station lookup should recover from stale byStationId entries using indexed station buckets');
+}
+
+function checkAudioThreatScanUsesSpatialShipCandidates() {
+  const state = createGameState(98);
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 0,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    flags: {},
+    data: {},
+  };
+  const friend = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 0,
+    pos: { x: 120, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: {},
+  };
+  const deadHostile = {
+    id: 3,
+    type: 'ship',
+    alive: false,
+    collides: true,
+    radius: 8,
+    team: 1,
+    pos: { x: 160, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: {},
+  };
+  const ships = [player, friend, deadHostile];
+  for (let i = 0; i < 3; i++) {
+    ships.push({
+      id: 10 + i,
+      type: 'ship',
+      alive: true,
+      collides: true,
+      radius: 8,
+      team: 1,
+      pos: { x: 220 + i * 80, z: 0 },
+      vel: { x: 0, z: 0 },
+      data: {},
+    });
+  }
+  for (let i = 0; i < 180; i++) {
+    ships.push({
+      id: 100 + i,
+      type: 'ship',
+      alive: true,
+      collides: true,
+      radius: 8,
+      team: 1,
+      pos: { x: 5000 + i * 90, z: 0 },
+      vel: { x: 0, z: 0 },
+      data: {},
+    });
+  }
+  for (const e of ships) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ships,
+  };
+  state.spatialHash.rebuild(state.entityList);
+
+  const originalEntityList = state.entityList;
+  state.entityList = nonIterableEntityList(originalEntityList.length,
+    'audio threat scan should use spatial/indexed ship candidates instead of iterating entityList');
+  try {
+    const scratch = [];
+    assert.equal(audioNearbyHostileCount(state, player, 1200, scratch, 3), 3,
+      'audio threat scan should still count nearby live hostiles');
+    assert(scratch.length < ships.length,
+      'audio threat scan should keep the active spatial candidate list smaller than all ships');
+    assert.equal(state.spatialHash.diagnostics.queries, 1,
+      'audio threat scan should query the spatial hash when it is active');
+
+    state.spatialHash.deactivate();
+    assert.equal(audioNearbyHostileCount(state, player, 1200, scratch, 3), 3,
+      'audio threat scan should fall back to the indexed ship bucket without scanning entityList');
+  } finally {
+    state.entityList = originalEntityList;
+  }
+}
+
+function checkAiTargetSelectionReusesSpatialScratch() {
+  const state = createGameState(99);
+  state.mode = 'flight';
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 0,
+    pos: { x: 240, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: {},
+  };
+  const npc = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 1,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: {
+      ai: { archetype: 'swarmer' },
+      combat: {},
+    },
+  };
+  const farShips = [];
+  for (let i = 0; i < 120; i++) {
+    farShips.push({
+      id: 10 + i,
+      type: 'ship',
+      alive: true,
+      collides: true,
+      radius: 8,
+      team: 0,
+      pos: { x: 5000 + i * 90, z: 0 },
+      vel: { x: 0, z: 0 },
+      data: {},
+    });
+  }
+  const ships = [player, npc, ...farShips];
+  for (const e of ships) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    aiShips: [npc],
+    ships,
+    collidables: ships,
+  };
+
+  let calls = 0;
+  let firstScratch = null;
+  const helpers = {
+    queryRadius(pos, radius, out) {
+      calls += 1;
+      assert(out, 'AI target selection should pass reusable scratch to queryRadius');
+      if (firstScratch == null) firstScratch = out;
+      assert.equal(out, firstScratch, 'AI target selection should reuse the same query scratch across retargets');
+      out.length = 0;
+      out.push(player, npc, ...farShips);
+      return out;
+    },
+  };
+  ai.init({ state, bus: createBus(), helpers });
+
+  const arch = { sensor: 500, attackR: 300, pref: 180 };
+  assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), player,
+    'AI target selection should still pick the nearby hostile player');
+  assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), player,
+    'AI target selection should still work after reusing the same scratch array');
+  assert.equal(calls, 2, 'AI target selection should query spatial candidates on each retarget');
+}
+
+function checkTrafficUsesEntityIndexesForStationsAndAsteroids() {
+  const state = createGameState(100);
+  state.mode = 'flight';
+  state.entities.clear();
+  state.entityList.length = 0;
+  const station = {
+    id: 1,
+    type: 'station',
+    alive: true,
+    collides: true,
+    radius: 40,
+    factionId: 'faction_free',
+    pos: { x: 0, z: 0 },
+    data: { stationId: 'station_traffic_indexed' },
+  };
+  const gate = {
+    id: 2,
+    type: 'station',
+    alive: true,
+    collides: true,
+    radius: 40,
+    factionId: 'faction_free',
+    pos: { x: 1000, z: 0 },
+    data: { isGate: true, stationId: 'gate_should_not_route_traffic' },
+  };
+  const rock = {
+    id: 3,
+    type: 'asteroid',
+    alive: true,
+    collides: true,
+    radius: 14,
+    pos: { x: 220, z: 0 },
+    data: { typeId: 'ast_common_rock' },
+  };
+  const miner = {
+    id: 4,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    factionId: 'faction_free',
+    team: 2,
+    pos: { x: 0, z: 0 },
+    rot: 0,
+    data: { ai: { passive: true }, combat: {} },
+  };
+  const asteroids = [rock];
+  for (let i = 0; i < 120; i++) {
+    asteroids.push({
+      id: 10 + i,
+      type: 'asteroid',
+      alive: true,
+      collides: true,
+      radius: 14,
+      pos: { x: 5000 + i * 80, z: 0 },
+      data: { typeId: 'ast_common_rock' },
+    });
+  }
+  for (const e of [station, gate, rock, miner, ...asteroids.slice(1)]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    dockStations: [station],
+    stations: [station, gate],
+    gates: [gate],
+    asteroids,
+  };
+  traffic.init({ state, bus: createBus(), helpers: {} });
+  state.traffic.freighters = [{
+    id: miner.id,
+    role: 'miner',
+    targetId: -1,
+    waitT: 0,
+    nextTradeT: 0,
+  }];
+
+  const originalEntityList = state.entityList;
+  state.entityList = nonIterableEntityList(originalEntityList.length,
+    'traffic should use entityIndex buckets instead of iterating or filtering entityList during flight updates');
+  try {
+    assert.equal(traffic._sectorStations(), state.entityIndex.dockStations,
+      'traffic station lookup should reuse the indexed non-gate station bucket');
+    traffic.update(1 / 60, state);
+  } finally {
+    state.entityList = originalEntityList;
+  }
+
+  assert(asteroids.some((entry) => entry.id === state.traffic.freighters[0].targetId),
+    'miner traffic should select an indexed live asteroid without a full-world filter allocation');
+  assert.equal(miner.data.intent.fire, false, 'traffic miner should still publish passive movement intent');
 }
 
 function makeSaveState() {
@@ -1016,6 +2128,116 @@ function checkLoadRepairsMalformedPlayerSaveIntoPlayableShip() {
   assert.equal(state.mode, 'flight', 'repaired save should enter flight only after a playable ship exists');
 }
 
+function checkSaveLoadDefersFlightWhenAuthoredVisualGateExists() {
+  const state = createGameState(124);
+  state.mode = 'menu';
+  state.timeScale = 0;
+  const events = [];
+  let finalizePayload = null;
+  const makeVec = (x = 0, z = 0) => ({
+    x, y: 0, z,
+    set(nx, ny, nz) { this.x = nx; this.y = ny || 0; this.z = nz; return this; },
+    copy(pos) { this.x = pos.x || 0; this.y = pos.y || 0; this.z = pos.z || 0; return this; },
+  });
+  const helpers = {
+    spawnEntity(spec) {
+      const ent = {
+        id: state.nextEntityId++,
+        ...spec,
+        alive: spec.alive !== false,
+        flags: Object.assign({}, spec.flags || {}),
+        data: spec.data || {},
+        pos: makeVec(spec.pos && spec.pos.x, spec.pos && spec.pos.z),
+        prevPos: makeVec(spec.pos && spec.pos.x, spec.pos && spec.pos.z),
+        vel: makeVec(spec.vel && spec.vel.x, spec.vel && spec.vel.z),
+        rot: spec.rot || 0,
+        prevRot: spec.rot || 0,
+      };
+      state.entities.set(ent.id, ent);
+      state.entityList.push(ent);
+      return ent;
+    },
+    getEntity(id) { return state.entities.get(id); },
+    player() { return state.entities.get(state.playerId); },
+    finalizeLoadedGame(payload) {
+      finalizePayload = payload;
+      assert.equal(state.mode, 'loading', 'load finalizer should see loading mode until authored visuals are ready');
+      assert.equal(state.timeScale, 0, 'load finalizer should see the sim frozen until authored visuals are ready');
+    },
+  };
+  const registry = {
+    get(name) {
+      return {
+        economy: { deserialize() {} },
+        factions: { deserialize() {} },
+        world: {
+          deserialize(data) {
+            state.world.currentSectorId = data && data.currentSectorId;
+            if (data && data.fuel) state.fuel = data.fuel;
+          },
+          enterSector(sectorId) { state.world.currentSectorId = sectorId; },
+        },
+        ships: { recomputeActiveShip() {} },
+        cargo: { recompute() {} },
+        automation: { deserialize() {} },
+        crafting: { deserialize() {} },
+        sectorSim: { deserialize() {} },
+        claims: { deserialize() {} },
+      }[name] || null;
+    },
+  };
+
+  save.state = state;
+  save.bus = { emit(event, payload) { events.push({ event, payload }); } };
+  save.helpers = helpers;
+  save.registry = registry;
+
+  const ok = save.loadEnvelope({
+    fmt: 'spaceface-save',
+    version: 5,
+    slot: 'visual-gated',
+    data: {
+      meta: { seed: 44, playtimeS: 0, createdAt: 'gate', lastSavedAt: 'gate' },
+      player: { credits: 123, ownedShips: [], activeShipIndex: 99 },
+      cargo: { items: {}, capVolume: 0, capMass: 0 },
+      economy: {},
+      factions: {},
+      world: { currentSectorId: null, fuel: { current: 0, max: 0 } },
+      entities: {
+        player: {
+          type: 'ship',
+          alive: false,
+          pos: { x: 12, z: -4 },
+          vel: { x: 0, z: 0 },
+          data: {},
+          hull: 0,
+          hullMax: 0,
+          shield: 0,
+          shieldMax: 0,
+          cap: 0,
+          capMax: 0,
+        },
+        persistent: [],
+        simTime: 0,
+        tick: 0,
+      },
+      missions: { boards: {}, active: [], completedLog: [], nextId: 1, story: { beatIndex: 0 } },
+      automation: {},
+      crafting: { queues: {} },
+      settings: {},
+    },
+  }, 'visual-gated');
+
+  assert.equal(ok, true, 'visual-gated repaired save should load');
+  assert.deepEqual(finalizePayload, { slot: 'visual-gated' }, 'save restore should hand the slot to the authored visual finalizer');
+  assert.equal(state.mode, 'loading', 'visual-gated load should not enter flight before the finalizer releases it');
+  assert.equal(state.timeScale, 0, 'visual-gated load should keep simulation frozen before authored visuals are ready');
+  assert(events.some((e) => e.event === 'mode:changed' && e.payload.mode === 'loading'),
+    'visual-gated load should publish loading mode instead of a transient flight frame');
+  assert(events.some((e) => e.event === 'save:loaded' && e.payload.visualGatePending === true),
+    'save:loaded should tell runtime listeners that authored visual finalization is pending');
+}
+
 function checkLoadRejectsUnrepairablePlayerEntityBeforeRestore() {
   const state = createGameState(321);
   state.mode = 'flight';
@@ -1220,6 +2442,112 @@ function checkCombatPrefersAuthoredProjectilePacket() {
   assert(events.some((e) => e.event === 'combat:damage' && e.payload.origin.kind === 'weapon'), 'combat damage event should expose weapon-origin metadata');
 
   combat.kernel = null;
+}
+
+function checkBeamDamageUsesSpatialCandidatesForCrowdedScenes() {
+  const state = createGameState(95);
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.combat = { beams: [], threatTables: new Map() };
+  const events = [];
+  const attacker = {
+    id: 1,
+    type: 'ship',
+    team: 0,
+    alive: true,
+    collides: true,
+    flags: {},
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 8,
+    hull: 100,
+    hullMax: 100,
+    shield: 0,
+    shieldMax: 0,
+    cap: 100,
+    capMax: 100,
+    data: {},
+  };
+  const target = {
+    id: 2,
+    type: 'ship',
+    team: 1,
+    alive: true,
+    collides: true,
+    flags: {},
+    pos: { x: 100, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 8,
+    hull: 100,
+    hullMax: 100,
+    shield: 0,
+    shieldMax: 0,
+    cap: 100,
+    capMax: 100,
+    armorHp: 0,
+    armorMax: 0,
+    armorFlat: 0,
+    data: { combatProfileId: 'combat_profile_standard_ship', derived: { damageReductionMult: 1 } },
+  };
+  const damageables = [attacker, target];
+  for (let i = 0; i < 180; i++) {
+    damageables.push({
+      id: 10 + i,
+      type: 'ship',
+      team: 1,
+      alive: true,
+      collides: true,
+      flags: {},
+      pos: { x: 5000 + i * 90, z: 0 },
+      vel: { x: 0, z: 0 },
+      radius: 8,
+      hull: 100,
+      hullMax: 100,
+      shield: 0,
+      shieldMax: 0,
+      cap: 100,
+      capMax: 100,
+      armorHp: 0,
+      armorMax: 0,
+      armorFlat: 0,
+      data: { combatProfileId: 'combat_profile_standard_ship', derived: { damageReductionMult: 1 } },
+    });
+  }
+  for (const e of damageables) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ships: damageables,
+    damageables,
+  };
+  state.combat.beams.push({
+    ownerId: attacker.id,
+    weaponId: 'wpn_beam_fixture',
+    from: { x: 0, z: 0 },
+    to: { x: 200, z: 0 },
+    dpsThisTick: 10,
+    dmgType: 'energy',
+    damagePacket: scalarHitToDamagePacket({ damage: 10, damageType: 'energy' }),
+  });
+
+  combat.init({
+    state,
+    bus: { on() {}, emit(event, payload) { events.push({ event, payload }); } },
+    helpers: {},
+    registry: { get() { return null; } },
+  });
+  state.spatialHash.rebuild(state.entityList);
+  combat.update(1 / 60, state);
+
+  assert(target.hull < target.hullMax, 'beam damage should still hit the closest target on the ray');
+  assert.equal(state.combatRuntime.diagnostics.beamSpatialQueries, 1,
+    'crowded beam damage should query nearby damageables through the spatial hash');
+  assert(state.combatRuntime.diagnostics.beamCandidates < damageables.length,
+    'crowded beam damage should avoid scanning every damageable entity in the sector');
+  assert(events.some((e) => e.event === 'combat:damage' && e.payload.targetId === target.id),
+    'beam spatial path should still emit combat damage for the hit target');
 }
 
 function checkHeatUsesTargetFactionContext() {
@@ -1719,6 +3047,50 @@ function tickFlightSystem(h, frames = 1, dt = 1 / 60) {
   for (let i = 0; i < frames; i++) flight.update(dt, h.state);
 }
 
+function checkFlightLoopsUseShipLikeIndex() {
+  const h = makeFlightHarness();
+  const npc = makeDynamicFlightShip({ id: 2, data: {}, flags: {}, vel: { x: 25, z: 0 } });
+  h.state.entities.set(npc.id, npc);
+  h.state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    shipLike: [h.ship, npc],
+  };
+  const originalLegacyList = h.state.entityList;
+  h.state.entityList = nonIterableEntityList(originalLegacyList.length);
+  try {
+    flight.update(1 / 60, h.state);
+  } finally {
+    h.state.entityList = originalLegacyList;
+  }
+  assert(npc.vel.x < 25, 'legacy flight should still damp indexed NPC craft');
+
+  const v3Craft = makeDynamicFlightShip({ id: 3, bank: 0.4, data: {}, flags: {} });
+  const v3State = {
+    mode: 'flight',
+    settings: { gameplay: { physicsBackend: 'custom' } },
+    entities: new Map(),
+    playerId: 99,
+    entityList: nonIterableEntityList(1),
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      shipLike: [v3Craft],
+    },
+  };
+  flightV3.init({ state: v3State, bus: { on() {}, emit() {} } });
+  flightV3._warnedBackend = true;
+  flightV3.update(1 / 60, v3State);
+  assert(v3Craft.bank < 0.4, 'flight V3 fallback banking should settle indexed craft');
+}
+
+function nonIterableEntityList(length, message = 'system should use entity indexes instead of iterating entityList') {
+  return {
+    length,
+    [Symbol.iterator]() {
+      throw new Error(message);
+    },
+  };
+}
+
 function checkPlayerBankDoesNotSteerAfterRelease() {
   const h = makeFlightHarness({ bank: 0.45, bankVel: 0 });
   h.state.input.turnIntent = 0;
@@ -2052,21 +3424,27 @@ function checkSettingsRestoreSanitizesFlightOptions() {
   assert.equal(Object.prototype.spacefacePolluted, pollutedBefore, 'settings restore should ignore prototype mutation keys');
   assert.equal(Object.prototype.hasOwnProperty.call(state.settings.controls.bindings, '__proto__'), false, 'control bindings should not preserve __proto__ entries');
   assert.equal(Object.prototype.hasOwnProperty.call(state.settings.controls.bindings, 'constructor'), false, 'control bindings should not preserve constructor entries');
+  assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic', 'saved legacy physics backend should canonicalize to SG-02 dynamic');
+  assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'missing saved AI backend should canonicalize to SG-06 tactical');
+  assert.equal(state.settings.gameplay.flightBackend, 'v3', 'missing saved flight backend should canonicalize to Flight V3');
 
   save._restoreSettings({
     gameplay: { physicsBackend: 'rapier' },
     controls: { flightMode: 'newtonian', bindings: null },
   });
-  assert.equal(state.settings.gameplay.physicsBackend, 'rapier', 'valid saved Rapier backend should restore');
+  assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic', 'saved Rapier observer backend should canonicalize to SG-02 dynamic');
+  assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'missing saved AI backend should stay canonical');
+  assert.equal(state.settings.gameplay.flightBackend, 'v3', 'missing saved flight backend should stay canonical');
   assert.equal(state.settings.controls.flightMode, 'newtonian', 'valid saved flight mode should restore');
   assert.equal(state.settings.controls.bindings, null, 'null bindings should keep default binding semantics');
 
   save._restoreSettings({
-    gameplay: { physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical' },
+    gameplay: { physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3' },
     controls: { flightMode: 'assisted', bindings: null },
   });
   assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic', 'valid saved SG-02 dynamic backend should restore');
   assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'valid saved SG-06 tactical AI backend should restore');
+  assert.equal(state.settings.gameplay.flightBackend, 'v3', 'valid saved Flight V3 backend should restore');
 }
 
 function checkProfessionalFlightApiExists() {
@@ -2400,6 +3778,54 @@ function checkDockAndGateRangeTransitionsAreIndependent() {
 
   assert(events.some((e) => e.event === 'dock:range' && e.payload.inRange), 'station range enter should emit');
   assert(events.some((e) => e.event === 'gate:range' && e.payload.inRange), 'gate range enter should emit in the same update');
+}
+
+function checkPhysicsIntegratesOnlyIndexedMovables() {
+  const ship = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 10, z: 0 },
+  };
+  const projectile = {
+    id: 2,
+    type: 'projectile',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: -30 },
+  };
+  const asteroid = {
+    id: 3,
+    type: 'asteroid',
+    alive: true,
+    pos: { x: 100, z: 0 },
+    vel: { x: 999, z: 999 },
+  };
+  const station = {
+    id: 4,
+    type: 'station',
+    alive: true,
+    pos: { x: -100, z: 0 },
+    vel: { x: -999, z: -999 },
+  };
+  const state = {
+    bounds: null,
+    entityList: nonIterableEntityList(4, 'physics integrate should use entityIndex.movables instead of iterating entityList'),
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      movables: [ship, projectile],
+      asteroids: [asteroid],
+      stations: [station],
+    },
+  };
+
+  physics.integrate(1, state);
+
+  assert.equal(ship.pos.x, 10, 'indexed ship should still integrate position');
+  assert.equal(projectile.pos.z, -30, 'indexed projectile should still integrate position');
+  assert.equal(asteroid.pos.x, 100, 'static asteroid should not be integrated by the movables path');
+  assert.equal(station.pos.x, -100, 'static station should not be integrated by the movables path');
 }
 
 function checkSweptShipStaticCollisionStaysOutsideObstacle() {
@@ -2748,6 +4174,92 @@ function checkBroadPhaseProjectileIsConsumedOnlyOnce() {
   assert.equal(projectile.alive, false, 'broad-phase projectile should be marked consumed after the first hit');
 }
 
+function checkPickupCollectionUsesSpatialHashForCrowdedScenes() {
+  const events = [];
+  const state = createGameState(89);
+  state.entities.clear();
+  state.entityList.length = 0;
+  const pickups = [];
+  const shipLike = [];
+
+  const player = {
+    id: 1000,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 6,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    collisionMask: Masks.PICKUP,
+  };
+  const drone = {
+    id: 1001,
+    type: 'drone',
+    alive: true,
+    collides: true,
+    radius: 5,
+    pos: { x: 3000, z: 0 },
+    vel: { x: 0, z: 0 },
+    collisionMask: Masks.PICKUP,
+  };
+  const nearPlayer = {
+    id: 1,
+    type: 'pickup',
+    alive: true,
+    collides: true,
+    radius: 2,
+    pos: { x: 4, z: 0 },
+    collisionMask: Masks.SHIP | Masks.DRONE,
+    data: { kind: 'ore', amount: 1, commodityId: 'cmdty_ore_iron' },
+  };
+  const nearDrone = {
+    id: 2,
+    type: 'pickup',
+    alive: true,
+    collides: true,
+    radius: 2,
+    pos: { x: 3003, z: 0 },
+    collisionMask: Masks.SHIP | Masks.DRONE,
+    data: { kind: 'ore', amount: 1, commodityId: 'cmdty_ore_iron' },
+  };
+  pickups.push(nearPlayer, nearDrone);
+  shipLike.push(player, drone);
+
+  for (let i = 0; i < 160; i++) {
+    pickups.push({
+      id: 10 + i,
+      type: 'pickup',
+      alive: true,
+      collides: true,
+      radius: 2,
+      pos: { x: 10000 + i * 96, z: 0 },
+      collisionMask: Masks.SHIP | Masks.DRONE,
+      data: { kind: 'ore', amount: 1, commodityId: 'cmdty_ore_iron' },
+    });
+  }
+
+  for (const e of [...shipLike, ...pickups]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    pickups,
+    shipLike,
+  };
+
+  physics.init({ state, bus: { emit(event, payload) { events.push({ event, payload }); } } });
+  state.spatialHash.rebuild(state.entityList);
+  physics.collectPickups(state);
+
+  assert.equal(nearPlayer.alive, false, 'near player pickup should still collect through the spatial path');
+  assert.equal(nearDrone.alive, false, 'near drone pickup should still collect through the spatial path');
+  assert.equal(pickups[2].alive, true, 'far pickups should remain uncollected');
+  assert.equal(events.filter((e) => e.event === 'pickup:collected').length, 2, 'spatial pickup path should emit one event per collected pickup');
+  assert(physics._diag.pickupSpatialQueries > 0, 'crowded pickup collection should use spatial hash queries');
+  assert(physics._diag.pickupPairChecks < pickups.length * shipLike.length, 'spatial pickup collection should avoid the full pickup x collector scan');
+}
+
 function checkSpawnRequestAmbushContract() {
   const state = {
     mode: 'flight',
@@ -2823,7 +4335,133 @@ function checkSpawnRequestAmbushContract() {
   assert.equal(state.world.activeSector.enemies.length, 1, 'queued pirate request should materialize when the sector loads');
 }
 
+function checkWorldHazardsReuseScratchSets() {
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    hull: 50,
+  };
+  const state = {
+    playerId: 1,
+    entities: new Map([[1, player]]),
+    world: {
+      activeSector: {
+        hazards: [
+          { center: { x: 0, z: 0 }, radius: 100, type: 'radiation', intensity: 0.5 },
+        ],
+      },
+    },
+  };
+  const events = [];
+  world.state = state;
+  world.bus = { emit(event, payload) { events.push({ event, payload }); } };
+  world._hazardSet = new Set();
+  world._hazardNextSet = new Set();
+  const setA = world._hazardSet;
+  const setB = world._hazardNextSet;
+
+  world._tickHazards(1, state);
+  assert.equal(events.filter((e) => e.event === 'hazard:enter').length, 1, 'entering a hazard should still emit once');
+  assert(player.hull < 50, 'radiation hazard should still drain hull while inside');
+  assert([setA, setB].includes(world._hazardSet), 'hazard current set should be one of the reusable runtime sets');
+  assert([setA, setB].includes(world._hazardNextSet), 'hazard scratch set should be one of the reusable runtime sets');
+
+  player.pos.x = 500;
+  const OriginalSet = globalThis.Set;
+  globalThis.Set = class FailingSet extends OriginalSet {
+    constructor(...args) {
+      super(...args);
+      throw new Error('world hazard ticking should reuse scratch Sets instead of allocating per frame');
+    }
+  };
+  try {
+    world._tickHazards(1 / 60, state);
+  } finally {
+    globalThis.Set = OriginalSet;
+  }
+
+  assert.equal(events.filter((e) => e.event === 'hazard:exit').length, 1, 'leaving a hazard should still emit once');
+  assert.equal(world._hazardSet.size, 0, 'hazard current set should be empty after leaving the only hazard');
+  assert([setA, setB].includes(world._hazardSet), 'hazard current set should still be reused after exit');
+  assert([setA, setB].includes(world._hazardNextSet), 'hazard scratch set should still be reused after exit');
+}
+
+function checkFactionPowerUsesEntityIndexes() {
+  const hauler = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    factionId: 'faction_reach',
+    data: { ai: { passive: true } },
+  };
+  const escort = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    factionId: 'faction_reach',
+    data: { ai: { passive: false } },
+  };
+  const station = {
+    id: 3,
+    type: 'station',
+    alive: true,
+    factionId: 'faction_scn',
+    data: {},
+  };
+  const gate = {
+    id: 4,
+    type: 'station',
+    alive: true,
+    factionId: 'faction_scn',
+    data: { isGate: true },
+  };
+  const state = {
+    factions: {
+      faction_reach: { power: 10, aggro: false },
+      faction_scn: { power: 10, aggro: false },
+    },
+    world: {
+      sectors: {
+        sector_indexed: { owner: 'faction_reach' },
+      },
+    },
+    entityList: nonIterableEntityList(4, 'faction power recompute should use entity indexes instead of iterating entityList'),
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      ships: [hauler, escort],
+      stations: [station, gate],
+    },
+  };
+
+  factions.state = state;
+  factions.bus = { emit() {} };
+  factions._recomputeFactionPower(state);
+
+  assert.equal(state.factions.faction_reach.power, 11.5,
+    'faction power should count indexed passive haulers plus owned territory');
+  assert.equal(state.factions.faction_scn.power, 9,
+    'faction power should count indexed stations while ignoring gate infrastructure');
+}
+
 checkPickupSingleWriter();
+checkEventBusUsesPooledDispatchSnapshots();
+checkCoreBuildsRadarContactIndex();
+checkCoreSnapshotsOnlyMovableEntities();
+checkMiningPickupMagnetUsesSpatialHashForCrowdedScenes();
+checkMiningBeamTargetUsesSpatialHashForCrowdedFields();
+checkWeaponAutoFireUsesSpatialShipCandidates();
+checkSharedSpatialQueryUsesActiveHashAndFallback();
+checkSpatialHashCachesStaticLayer();
+checkCoreBuildsPhysicsBodyIndexForSg02Layers();
+checkSg02ProductionSyncUsesIndexedBodyLayers();
+checkAutomationNearestAsteroidUsesSpatialCandidates();
+checkAlphabetProgramBeaconResolutionUsesIndexedSpatialCandidates();
+checkHudNavStationUsesIndexedLookup();
+checkAudioThreatScanUsesSpatialShipCandidates();
+checkAiTargetSelectionReusesSpatialScratch();
+checkTrafficUsesEntityIndexesForStationsAndAsteroids();
 checkSaveDelegatesSystemHooks();
 checkSaveDelegatesCraftingHooks();
 checkClaimsSerializeAndReload();
@@ -2836,9 +4474,11 @@ checkLoadDoesNotSpawnTargetsForStaleLiveMissions();
 checkLoadRestoresPersistentEntities();
 checkLoadRejectsSaveWithoutPlayerEntity();
 checkLoadRepairsMalformedPlayerSaveIntoPlayableShip();
+checkSaveLoadDefersFlightWhenAuthoredVisualGateExists();
 checkLoadRejectsUnrepairablePlayerEntityBeforeRestore();
 checkCombatRewardsAndLootKinds();
 checkCombatPrefersAuthoredProjectilePacket();
+checkBeamDamageUsesSpatialCandidatesForCrowdedScenes();
 checkHeatUsesTargetFactionContext();
 checkInsuredRespawnUsesStationRefundAndCargoLoss();
 checkFailedCargoFitDoesNotDuplicateModules();
@@ -2849,6 +4489,7 @@ checkEconomyRngFollowsCurrentSaveSeed();
 checkAutomationRngContinuesAfterDeserialize();
 checkCreditWritersRejectNegativeAmounts();
 checkGateTollRequiresCredits();
+checkFlightLoopsUseShipLikeIndex();
 checkPlayerBankDoesNotSteerAfterRelease();
 checkBankPoseCannotChangePhysicsState();
 checkPlayerTurnBrakesOnRelease();
@@ -2879,6 +4520,7 @@ checkAuthoredFlightModelIsNotClassTunedTwice();
 checkAuthoredFlightModelPreservesExplicitZeroes();
 checkNpcFlightPreservesExplicitZeroControllerTuning();
 checkDockAndGateRangeTransitionsAreIndependent();
+checkPhysicsIntegratesOnlyIndexedMovables();
 checkSweptShipStaticCollisionStaysOutsideObstacle();
 checkSweptShipStaticCollisionUsesEitherMask();
 checkSweptShipStaticCollisionUsesEntryPointForGlancingHit();
@@ -2887,7 +4529,10 @@ checkCollisionMaterialsProduceDistinctSweptResponses();
 checkSweptProjectileCollisionHitsAlongSegment();
 checkBroadPhasePairKeysDoNotCollideForHighEntityIds();
 checkBroadPhaseProjectileIsConsumedOnlyOnce();
+checkPickupCollectionUsesSpatialHashForCrowdedScenes();
 checkSpawnRequestAmbushContract();
+checkWorldHazardsReuseScratchSets();
+checkFactionPowerUsesEntityIndexes();
 
 // Dreadnought boss (dreadnought_boss, "Iron Maw") was authored in data + render but had ZERO
 // makeEnemySpawnSpec call sites — the marquee T4 fight was invisible. This guards the wiring:
@@ -3000,7 +4645,7 @@ function checkCountermeasuresInterceptMissiles() {
       entities: new Map(), entityList: [],
       input: { deployCountermeasure: false },
       ui: { screenStack: [] },
-      entityIndex: { projectiles: [] },
+      entityIndex: { __spacefaceEntityIndexV1: true, ships: [], projectiles: [] },
       rng: () => 0.0, // deterministic RNG stub (< divertPct → chaff diversion always happens)
     };
     const player = makeShip(1, 0, 0, fittings);
@@ -3008,7 +4653,8 @@ function checkCountermeasuresInterceptMissiles() {
     attacker.data.combat.lockTarget = 1; attacker.data.combat.lockProgress = 0.9;
     const missile = makeMissile(10, 1, 200, 0); // targeting player, closing
     state.entities.set(1, player); state.entities.set(2, attacker); state.entities.set(10, missile);
-    state.entityList = [player, attacker, missile];
+    state.entityList = nonIterableEntityList(3, 'countermeasures should use entity indexes instead of iterating entityList');
+    state.entityIndex.ships = [player, attacker];
     state.entityIndex.projectiles = [missile];
     const events = [];
     countermeasures.state = state;
@@ -3063,8 +4709,89 @@ function checkCountermeasuresInterceptMissiles() {
     assert.ok(!ctx.player.data.cm || !ctx.player.data.cm.effect, 'no countermeasure equipped → no effect');
     assert.equal(ctx.missile.data.targetId, 1, 'missile should keep tracking the player with no countermeasure');
   }
+
+  // AI auto-deploy: a countermeasure-equipped NPC should react to a ship locking onto it without
+  // scanning the full world entity list.
+  {
+    const ctx = boot([]);
+    ctx.player.data.combat.lockTarget = 2;
+    ctx.player.data.combat.lockProgress = 0.9;
+    ctx.attacker.data.fittings = ['mod_chaff_dispenser_m'];
+    ctx.missile.data.targetId = 99;
+    countermeasures.update(0.016, ctx.state);
+    assert.ok(ctx.attacker.data.cm && ctx.attacker.data.cm.effect,
+      'AI ship should auto-deploy a countermeasure when another ship is locking it');
+    assert.equal(ctx.player.data.combat.lockTarget, null,
+      'AI chaff should break the hostile lock using indexed ship candidates');
+  }
 }
 checkCountermeasuresInterceptMissiles();
+
+function checkCountermeasureEffectsUseSpatialProjectileQueries() {
+  const state = createGameState(92);
+  state.mode = 'flight';
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  state.input.deployCountermeasure = false;
+
+  const ship = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    pos: { x: 0, z: 0 },
+    data: {
+      cm: {
+        cooldownT: 0,
+        effectT: 1,
+        effect: { cfg: { kind: 'ecm', radius: 120, turnRateMult: 0 }, decoyId: null },
+      },
+    },
+  };
+  const nearMissile = {
+    id: 2,
+    type: 'projectile',
+    alive: true,
+    collides: true,
+    radius: 2,
+    pos: { x: 80, z: 0 },
+    data: { kind: 'missile', targetId: ship.id, turnRate: 3 },
+  };
+  const projectiles = [nearMissile];
+  for (let i = 0; i < 180; i++) {
+    projectiles.push({
+      id: 10 + i,
+      type: 'projectile',
+      alive: true,
+      collides: true,
+      radius: 2,
+      pos: { x: 5000 + i * 90, z: 0 },
+      data: { kind: 'missile', targetId: ship.id, turnRate: 3 },
+    });
+  }
+  for (const e of [ship, ...projectiles]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+  }
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    projectiles,
+  };
+
+  countermeasures.init({ state, bus: { emit() {} }, helpers: {} });
+  state.spatialHash.rebuild(state.entityList);
+  countermeasures.update(1 / 60, state);
+
+  assert.equal(nearMissile.data.turnRate, 0, 'near missile should still be jammed by ECM');
+  assert.equal(projectiles[1].data.turnRate, 3, 'far missiles should not be touched by the local ECM effect');
+  assert.equal(state.countermeasureRuntime.diagnostics.effectSpatialQueries, 1,
+    'countermeasure effect should query nearby projectiles through the spatial hash');
+  assert(state.countermeasureRuntime.diagnostics.projectileCandidates < projectiles.length,
+    'countermeasure effect should avoid scanning every projectile in the sector');
+}
+checkCountermeasureEffectsUseSpatialProjectileQueries();
 
 // Wingmen (P1-8): fleet ledger entries spawn as LIVE team-0 entities on sector enter, sync hull
 // back to the ledger, and route death through onHitAsset so the fleet entry is removed. Guards the

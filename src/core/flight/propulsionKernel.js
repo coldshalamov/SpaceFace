@@ -76,19 +76,16 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
   const axes = localAxes(body.rot);
   const boostMult = input.boost ? positive(profile.boostAccelMult, 1) : 1;
   const limits = reactionLimits(profile, boostMult);
+  const controlLimits = input.brake ? reactionBrakeLimits(profile) : limits;
+  const localVelocity = worldToLocal(body.vel, axes);
 
-  const manualLocal = {
-    forward: input.throttle >= 0
-      ? input.throttle * limits.forward
-      : input.throttle * limits.reverse,
-    lateral: input.strafe * limits.strafe,
-  };
+  const manualLocal = manualThrustLocal(input, limits, localVelocity, profile);
 
   const assist = reactionAssistAcceleration(body, axes, input, profile, false);
   const combined = clampLocalAcceleration({
     forward: manualLocal.forward + assist.local.forward,
     lateral: manualLocal.lateral + assist.local.lateral,
-  }, limits);
+  }, controlLimits);
 
   let accel = localToWorld(combined, axes);
   const environmental = environmentalDragAcceleration(body, environment);
@@ -327,13 +324,14 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
 
   const axes = localAxes(body.rot);
   const limits = reactionLimits(effective, effective.boostAccelMult);
+  const controlLimits = input.brake ? reactionBrakeLimits(effective) : limits;
+  const localVelocity = worldToLocal(body.vel, axes);
   const assist = reactionAssistAcceleration(body, axes, input, effective, false);
+  const manualLocal = manualThrustLocal(input, limits, localVelocity, effective);
   const local = clampLocalAcceleration({
-    forward: (input.throttle >= 0
-      ? input.throttle * limits.forward
-      : input.throttle * limits.reverse) + assist.local.forward,
-    lateral: input.strafe * limits.strafe + assist.local.lateral,
-  }, limits);
+    forward: manualLocal.forward + assist.local.forward,
+    lateral: manualLocal.lateral + assist.local.lateral,
+  }, controlLimits);
   let accel = add2(localToWorld(local, axes), environmentalDragAcceleration(body, environment));
   const yaw = computeYawControl(body, input, profile, dt);
   const demand = resourceDemand(profile, accel, input.boost, dt, spool > 0 ? positive(profile.resources && profile.resources.idleFuelPerS, 0) : 0);
@@ -413,7 +411,7 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
   const deadInput = positive(settings.deadInput, 0.025);
   const hasManual = Math.abs(input.throttle) > deadInput || Math.abs(input.strafe) > deadInput;
   const localVelocity = worldToLocal(body.vel, axes);
-  const limits = reactionLimits(profile, 1);
+  const limits = (forceBrake || input.brake) ? reactionBrakeLimits(profile) : reactionLimits(profile, 1);
   let forward = 0;
   let lateral = 0;
   let reason = 'none';
@@ -421,9 +419,11 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
   if (mode === 'newtonian' && !forceBrake && !input.brake) return { accel: zero2(), local: { forward: 0, lateral: 0 }, reason };
 
   if (forceBrake || input.brake || !hasManual) {
-    const horizon = mode === 'drift'
-      ? positive(settings.driftStopHorizonS, 8)
-      : positive(settings.stopHorizonS, 2.8);
+    const horizon = input.brake || forceBrake
+      ? positive(settings.pilotBrakeHorizonS, 0.72)
+      : mode === 'drift'
+        ? positive(settings.driftStopHorizonS, 8)
+        : positive(settings.stopHorizonS, 2.8);
     let fraction = mode === 'newtonian'
       ? 1
       : mode === 'drift'
@@ -489,6 +489,39 @@ function reactionLimits(profile, boostMult) {
     forward: positive(profile.mainAccel, 40) * positive(boostMult, 1),
     reverse: positive(profile.reverseAccel, positive(profile.mainAccel, 40) * 0.55),
     strafe: positive(profile.strafeAccel, positive(profile.mainAccel, 40) * 0.45),
+  };
+}
+
+function manualThrustLocal(input, limits, localVelocity, profile) {
+  const assist = profile.assist || {};
+  const deadInput = positive(assist.deadInput, 0.025);
+  const releaseSpeed = positive(assist.brakeReleaseSpeed, 1.2);
+  let throttle = input.throttle;
+  let strafe = input.strafe;
+
+  if (input.brake) {
+    if (Math.abs(throttle) > deadInput && throttle * finite(localVelocity.forward, 0) < -releaseSpeed) throttle = 0;
+    if (Math.abs(strafe) > deadInput && strafe * finite(localVelocity.lateral, 0) < -releaseSpeed) strafe = 0;
+  }
+
+  return {
+    forward: throttle >= 0
+      ? throttle * limits.forward
+      : throttle * limits.reverse,
+    lateral: strafe * limits.strafe,
+  };
+}
+
+function reactionBrakeLimits(profile) {
+  const base = reactionLimits(profile, 1);
+  const assist = profile.assist || {};
+  const main = positive(profile.mainAccel, 40);
+  const brake = positive(profile.brakeAccel, Math.max(base.reverse, main * positive(assist.pilotBrakeAccelMult, 1.35)));
+  const lateral = positive(profile.brakeStrafeAccel, Math.max(base.strafe, brake * positive(assist.pilotBrakeLateralFraction, 0.85)));
+  return {
+    forward: Math.max(base.forward, brake),
+    reverse: brake,
+    strafe: lateral,
   };
 }
 

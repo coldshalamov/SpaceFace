@@ -122,20 +122,20 @@ export const OFFER_MIX = {
 
 // 8-beat story spine FSM.
 export const STORY_BEATS = [
-  { beat: 0, id: 'cold_start',     objective: 'mining_quota: mine 10u cmdty_silicate, deliver to home station',
+  { beat: 0, id: 'cold_start',     objective: 'Mine 10u Silicate from a nearby asteroid, then dock at Helios to sell or deliver the sample.',
     reward: { credits: 400, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
-  { beat: 1, id: 'honest_work',    objective: 'cargo_delivery: carry 12u to neighbor station',
+  { beat: 1, id: 'honest_work',    objective: 'Accept a haul or trade contract and carry cargo to a neighboring station for profit.',
     reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'trade', next: 2 },
-  { beat: 2, id: 'first_blood',    objective: 'bounty_hunt: kill 1 weak pirate (lvl1)',
+  { beat: 2, id: 'first_blood',    objective: 'Arm the Kestrel, track a low-risk bounty, and destroy the marked hostile.',
     reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'combat', next: 3 },
-  { beat: 3, id: 'bigger_boat',    objective: 'purchase any T2 hull at shipyard', precredits: 1500,
+  { beat: 3, id: 'bigger_boat',    objective: 'Earn enough credits to buy any tier-2 hull from a shipyard.',
     reward: { credits: 1000, milestone: 'cargo+20u' }, introduces: 'shipyard', next: 4 },
-  { beat: 4, id: 'pick_a_side',    objective: 'accept faction_mts OR faction_scn OR faction_free intro contract', branch: true,
+  { beat: 4, id: 'pick_a_side',    objective: 'Choose a faction path by accepting an intro contract from MTS, SCN, or the Free Captains.',
     reward: { credits: 1200, rep: { chosen: 15, opposing: -10 } }, introduces: 'factions', next: 5 },
-  { beat: 5, id: 'proving_ground', objective: 'branch chain: faction_mts=bulk_trade x3 / faction_scn=patrol_clear x2 / faction_free=smuggling_run x2',
+  { beat: 5, id: 'proving_ground', objective: 'Complete your faction chain: MTS trade runs, SCN patrol clears, or Free Captain smuggling jobs.',
     reward: { credits: 2500, unlock: 'module_unlock' }, introduces: 'chaining+passive_preview', next: 6 },
-  { beat: 6, id: 'empire_seed',    objective: 'deploy first passive asset (drone OR trader OR outpost)', precredits: 8000,
+  { beat: 6, id: 'empire_seed',    objective: 'Deploy your first passive asset: a drone, trader, or outpost.',
     reward: { credits: 3000, unlock: 'passive_income' }, introduces: 'passive_income', next: 7 },
-  { beat: 7, id: 'deep_reach',     objective: 'amass 100000cr net worth AND rep>=50 with chosen faction, THEN buy capital hull OR build+defend outpost (3-wave)',
+  { beat: 7, id: 'deep_reach',     objective: 'Reach 100,000cr net worth and 50 faction rep, then buy a capital hull or build and defend an outpost.',
     reward: { title: 'Sector Baron', unlock: 'newgame_plus' }, introduces: 'endgame', next: null },
 ];

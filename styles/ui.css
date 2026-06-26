@@ -14,6 +14,26 @@
   --nebula-purple: #3a1c6e;
   --nebula-cyan: #0e4030;
   --glow-cyan: #7af7ff;
+
+  /* ===== Tactical Visor palette (HUD_REVAMP_DESIGN.md §2) =====
+     Diegetic helmet-projection HUD: crisp neon thin-lines + hard glow, no panels.
+     Legibility over the bright nebula comes from drop-shadow / text-shadow, not backgrounds. */
+  --visor-cyan: #00F0FF;
+  --visor-cyan-dim: rgba(0, 240, 255, 0.4);
+  --visor-amber: #FF9900;
+  --visor-amber-dim: rgba(255, 153, 0, 0.4);
+  --visor-red: #FF2A2A;
+  --visor-red-dim: rgba(255, 42, 42, 0.4);
+
+  /* Text and glows */
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --visor-glow-cyan: 0px 0px 8px rgba(0, 240, 255, 0.6);
+  --visor-glow-amber: 0px 0px 8px rgba(255, 153, 0, 0.6);
+  --visor-glow-red: 0px 0px 12px rgba(255, 42, 42, 0.8);
+
+  /* Text shadow for legibility without backgrounds */
+  --text-shadow-hard: 0px 1px 3px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 0.8);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); }
@@ -21,7 +41,7 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: 
 #ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); }
 #ui-root > div { position: absolute; }
 #hud { inset: 0; z-index: 10; transition: opacity .12s ease; }
-#modal-backdrop { inset: 0; z-index: 90; background: radial-gradient(circle at 50% 40%, rgba(2,5,12,.45), rgba(2,5,12,.7)); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity var(--dur) var(--ease); }
+#modal-backdrop { inset: 0; z-index: 90; background: radial-gradient(circle at 50% 40%, rgba(2,5,12,.45), rgba(2,5,12,.7)); backdrop-filter: blur(6px); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--dur) var(--ease), visibility 0s linear var(--dur); }
 #screens { inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
 #screens > * { pointer-events: auto; }
 
@@ -38,10 +58,10 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: 
 #sf-dock-overlay.active { opacity: 1; }
 #toasts { right: 16px; top: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
 #alerts { left: 50%; top: 13%; transform: translateX(-50%); z-index: 1100; display: flex; flex-direction: column; gap: 6px; align-items: center; }
-#vignette { inset: 0; z-index: 5; pointer-events: none; box-shadow: inset 0 0 240px rgba(0, 0, 0, 0); transition: box-shadow .3s ease; }
+#vignette { inset: 0; z-index: 5; pointer-events: none; box-shadow: none; transition: box-shadow .3s ease; }
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
-body.ui-modal-open #modal-backdrop { opacity: 1; pointer-events: auto; }
+body.ui-modal-open #modal-backdrop { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
 body.ui-modal-open #sf-onboarding,
 body.ui-modal-open .sf-ob-intro { display: none; }
 
@@ -53,7 +73,7 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* boot overlay */
 #boot-overlay { inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 38%, #0a1426, #03050a); transition: opacity .5s ease; }
-#boot-overlay.hidden { opacity: 0; pointer-events: none; }
+#boot-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 .boot-inner { font-family: var(--mono); letter-spacing: .42em; font-size: 34px; color: var(--accent); text-shadow: 0 0 26px var(--accent); display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .boot-sub { font-size: 11px; letter-spacing: .22em; color: var(--ink-dim); text-shadow: none; }
 .boot-error { color: var(--danger); font-family: var(--mono); font-size: 13px; max-width: 70ch; white-space: pre-wrap; letter-spacing: normal; text-shadow: none; text-align: left; }
@@ -92,7 +112,7 @@ button, .btn {
   border-radius: 6px;
   padding: 8px 16px;
   cursor: pointer;
-  transition: all .1s ease;
+  transition: border-color .1s ease, color .1s ease, box-shadow .1s ease, transform .1s ease;
   text-transform: uppercase;
   letter-spacing: .08em;
   font-size: 0.92em;
@@ -206,7 +226,7 @@ button:active { transform: translateY(1px); }
 
 /* Vignette + damage feedback enhanced */
 #vignette {
-  box-shadow: inset 0 0 180px rgba(0,0,0,0), inset 0 0 80px rgba(255,84,112,0);
+  box-shadow: none;
   transition: box-shadow .25s ease;
 }
 body.low-hull #vignette {
@@ -302,7 +322,7 @@ body.low-hull #vignette {
 /* Primary / ghost button variants for clear affordance hierarchy. */
 .sf-btn { font-family: inherit; cursor: pointer; pointer-events: auto; border-radius: var(--r-md);
   padding: var(--sp-2) var(--sp-4); font-size: var(--t-sm); letter-spacing: .06em; text-transform: uppercase;
-  transition: all var(--dur) var(--ease); }
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
 .sf-btn--primary { background: var(--grad-accent); color: #04121a; border: none; font-weight: 700;
   box-shadow: 0 0 16px rgba(57,208,255,.3); }
 .sf-btn--primary:hover { box-shadow: 0 0 24px rgba(57,208,255,.55); transform: translateY(-1px); }

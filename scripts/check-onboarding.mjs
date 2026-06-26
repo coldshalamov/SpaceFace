@@ -40,4 +40,16 @@ assert.match(src, /_showHint\(key, text\)/, '_showHint(key, text) must exist (th
 assert.match(src, /tutorialHints === false/, '_showHint must respect settings.gameplay.tutorialHints === false');
 assert.match(src, /st\.player\.hints\[key\]/, '_showHint must dedupe via state.player.hints[key] (fire-once-per-save)');
 
+// The contextual control bar runs during flight updates, so it must not inspect alert DOM every
+// frame. Dock/gate proximity is already available from the physics-owned range events.
+assert.match(src, /_dockControlInRange/, 'control bar should track dock range from dock:range events');
+assert.match(src, /_gateControlInRange/, 'control bar should track gate range from gate:range events');
+assert.match(src, /_controlHintsEl/, 'control bar should cache the #control-hints element');
+assert.ok(!src.includes("document.querySelector('.sf-alert--dock')"),
+  'control bar must not query the dock alert DOM during flight updates');
+assert.ok(!src.includes("document.querySelector('.sf-alert--info')"),
+  'control bar must not query the gate alert DOM during flight updates');
+assert.match(src, /_storySig/, 'story objective refresh should cache its last rendered content signature');
+assert.match(src, /sig === this\._storySig/, 'story objective refresh should skip DOM rebuilds when the objective text is unchanged');
+
 console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft).`);

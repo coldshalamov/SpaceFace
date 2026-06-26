@@ -20,6 +20,8 @@ const first = await runScenario();
 const second = await runScenario();
 const tetherFirst = await runTetherScenario();
 const tetherSecond = await runTetherScenario();
+const layeredFirst = await runLayeredSyncScenario();
+const layeredSecond = await runLayeredSyncScenario();
 const combatFirst = await runCombatKernelScenario();
 const combatSecond = await runCombatKernelScenario();
 
@@ -27,6 +29,8 @@ assert.deepEqual(second.hash, first.hash, 'SG-02 dynamic owner lab should replay
 assert.deepEqual(second.snapshot, first.snapshot, 'SG-02 dynamic owner lab snapshots should be stable');
 assert.deepEqual(tetherSecond.hash, tetherFirst.hash, 'SG-02 tether lab should replay to the same quantized hash');
 assert.deepEqual(tetherSecond.snapshot, tetherFirst.snapshot, 'SG-02 tether lab snapshots should be stable');
+assert.deepEqual(layeredSecond.hash, layeredFirst.hash, 'SG-02 layered body sync should replay to the same quantized hash');
+assert.deepEqual(layeredSecond.snapshot, layeredFirst.snapshot, 'SG-02 layered body sync snapshots should be stable');
 assert.deepEqual(combatSecond.compactTrace, combatFirst.compactTrace, 'SG-03 kernel trace over SG-02 port should be deterministic');
 assert.deepEqual(combatSecond.snapshot, combatFirst.snapshot, 'SG-03 kernel over SG-02 port should replay to the same body snapshot');
 
@@ -167,6 +171,57 @@ async function runTetherScenario() {
   }
 }
 
+async function runLayeredSyncScenario() {
+  const ship = makeShip(303, 0);
+  const asteroid = makeAsteroid(404, 24);
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, quantum: 1e-5 });
+
+  try {
+    owner.syncFromEntityLayers([asteroid], [ship], 1, [ship, asteroid]);
+    const initialDiagnostics = owner.diagnostics();
+    assert.equal(initialDiagnostics.syncMode, 'layered', 'layered sync should report layered mode');
+    assert.equal(initialDiagnostics.syncStaticEntities, 1, 'first layered sync should import fixed bodies once');
+    assert.equal(initialDiagnostics.syncDynamicEntities, 1, 'first layered sync should import dynamic bodies');
+    assert.equal(initialDiagnostics.bodies, 2, 'layered sync should keep fixed collision bodies and dynamic craft');
+    assert.equal(initialDiagnostics.dynamicBodies, 1, 'layered sync should mark only the craft as dynamic');
+
+    const staticTrap = {
+      length: 1,
+      [Symbol.iterator]() {
+        throw new Error('unchanged SG-02 static layer should not be iterated');
+      },
+    };
+    owner.syncFromEntityLayers(staticTrap, [ship], 1, staticTrap);
+    const steadyDiagnostics = owner.diagnostics();
+    assert.equal(steadyDiagnostics.syncStaticEntities, 0, 'unchanged layered sync should not revisit fixed bodies');
+    assert.equal(steadyDiagnostics.syncDynamicEntities, 1, 'unchanged layered sync should still refresh dynamic bodies');
+    assert.equal(steadyDiagnostics.bodies, 2, 'unchanged layered sync should preserve fixed collision bodies');
+
+    writePhysicsControl(ship, {
+      source: 'sg02-layered-sync-check',
+      mode: 'assisted',
+      force: { x: 18, y: 0, z: 0 },
+      torque: { x: 0, y: 0, z: 0 },
+      maxSpeed: 6,
+    });
+    owner.step(1 / 60);
+    assert(ship.pos.x > 0, 'layered sync should still advance dynamic bodies');
+    assert.equal(asteroid.pos.x, 24, 'layered sync should not write kinematics into fixed collision bodies');
+
+    asteroid.alive = false;
+    owner.syncFromEntityLayers([], [ship], 2);
+    const removedDiagnostics = owner.diagnostics();
+    assert.equal(removedDiagnostics.bodies, 1, 'static layer version changes should remove stale fixed bodies');
+    assert.equal(removedDiagnostics.dynamicBodies, 1, 'static removal should keep dynamic craft alive');
+
+    const snapshot = owner.quantizedSnapshot();
+    assert.equal(snapshot.length, 1, 'snapshot should include the remaining dynamic craft after static removal');
+    return { snapshot, hash: hashSnapshot(snapshot) };
+  } finally {
+    owner.dispose();
+  }
+}
+
 async function runCombatKernelScenario() {
   const actor = makeCombatShip(1, 0, 0);
   const target = makeCombatShip(2, 1, 40);
@@ -231,6 +286,21 @@ function makeShip(id = 47, x = 0) {
     radius: 12,
     mass: 28,
     flightModel: { inertia: 88 },
+    pos: { x, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    data: {},
+  };
+}
+
+function makeAsteroid(id = 404, x = 24) {
+  return {
+    id,
+    type: 'asteroid',
+    alive: true,
+    radius: 10,
+    mass: 800,
     pos: { x, z: 0 },
     vel: { x: 0, z: 0 },
     rot: 0,

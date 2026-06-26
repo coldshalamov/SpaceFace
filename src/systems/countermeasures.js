@@ -18,6 +18,7 @@
 // state — the VFX (chaff puff / ECM shimmer) is emitted via bus events for the renderer to pick up.
 
 import { MODULES } from '../data/modules.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 
@@ -46,16 +47,24 @@ export const countermeasures = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._projectileScratch = [];
+    this._diag = {
+      threatSpatialQueries: 0,
+      effectSpatialQueries: 0,
+      projectileCandidates: 0,
+    };
   },
 
   newGame() { /* no global state — per-ship runtime state is transient */ },
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    ensureCountermeasureRuntime(this);
+    resetCountermeasureDiagnostics(this._diag);
 
     // 1. Tick cooldowns + active-effect timers on every ship, and expire finished effects. When an
     //    ECM effect expires, restore the turnRate on missiles it jammed (stored in _jammedTurnRate).
-    for (const e of state.entityList) {
+    for (const e of countermeasureShipCandidates(state)) {
       if (e.type !== 'ship' || !e.alive) continue;
       const cm = e.data && e.data.cm;
       if (!cm) continue;
@@ -91,7 +100,7 @@ export const countermeasures = {
 
     // 3. AI auto-deploy: ships with a countermeasure deploy when a missile is locked onto them or
     //    closing fast. Cheap check — only ships that HAVE a countermeasure run the threat scan.
-    for (const e of state.entityList) {
+    for (const e of countermeasureShipCandidates(state)) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const eq = equippedCountermeasure(e.data && e.data.fittings);
       if (!eq) continue;
@@ -103,13 +112,15 @@ export const countermeasures = {
     // 4. Apply active effects to in-flight missiles. Chaff: divert missiles whose target is the
     //    deploying ship to a decoy. ECM: zero their turnRate so they fly straight. Both are checked
     //    per active effect (a ship may have deployed recently and still be within the effect window).
-    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
-    for (const e of state.entityList) {
+    for (const e of countermeasureShipCandidates(state)) {
       if (e.type !== 'ship' || !e.alive) continue;
       const cm = e.data && e.data.cm;
       if (!cm || !cm.effect || cm.effectT <= 0) continue;
       const cfg = cm.effect.cfg;
       const r2 = cfg.radius * cfg.radius;
+      const projectiles = projectilesNear(state, e.pos, cfg.radius, this._projectileScratch);
+      if (projectiles === this._projectileScratch) this._diag.effectSpatialQueries++;
+      this._diag.projectileCandidates += projectiles.length;
       for (const p of projectiles) {
         if (p.type !== 'projectile' || !p.alive) continue;
         const d = p.data;
@@ -137,6 +148,8 @@ export const countermeasures = {
         }
       }
     }
+    state.countermeasureRuntime = state.countermeasureRuntime || {};
+    state.countermeasureRuntime.diagnostics = this._diag;
   },
 
   // Attempt to deploy the countermeasure on ship e. No-op if no module equipped, on cooldown, or
@@ -152,7 +165,7 @@ export const countermeasures = {
     // Break locks: any ship whose combat.lockTarget is THIS ship loses lockProgress (chaff fully,
     // ECM partially). This is the "missile can't maintain track through the cloud" effect.
     const breakPct = cfg.lockBreakPct != null ? cfg.lockBreakPct : 1.0;
-    for (const other of this.state.entityList) {
+    for (const other of countermeasureShipCandidates(this.state)) {
       if (other.type !== 'ship' || !other.alive || other.id === e.id) continue;
       const oc = other.data && other.data.combat;
       if (oc && oc.lockTarget === e.id) {
@@ -183,7 +196,9 @@ export const countermeasures = {
   // Cheap threat check for AI auto-deploy: is any live missile targeting this ship, or is any ship
   // building a lock on it? Returns true if a countermeasure is warranted.
   _missileThreat(e, state) {
-    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    const projectiles = projectilesNear(state, e.pos, 900, this._projectileScratch);
+    if (projectiles === this._projectileScratch) this._diag.threatSpatialQueries++;
+    this._diag.projectileCandidates += projectiles.length;
     for (const p of projectiles) {
       if (p.type !== 'projectile' || !p.alive) continue;
       const d = p.data;
@@ -194,7 +209,7 @@ export const countermeasures = {
       }
     }
     // Someone locking onto this ship?
-    for (const other of state.entityList) {
+    for (const other of countermeasureShipCandidates(state)) {
       if (other.type !== 'ship' || !other.alive || other.id === e.id) continue;
       const oc = other.data && other.data.combat;
       if (oc && oc.lockTarget === e.id && (oc.lockProgress || 0) > 0.5) return true;
@@ -202,3 +217,32 @@ export const countermeasures = {
     return false;
   },
 };
+
+function projectilesNear(state, pos, radius, out) {
+  return queryNearbyEntities(state, pos, radius, out,
+    (state.entityIndex && state.entityIndex.projectiles) || state.entityList);
+}
+
+function countermeasureShipCandidates(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ships) return index.ships;
+  return (state && state.entityList) || [];
+}
+
+function resetCountermeasureDiagnostics(diag) {
+  if (!diag) return;
+  diag.threatSpatialQueries = 0;
+  diag.effectSpatialQueries = 0;
+  diag.projectileCandidates = 0;
+}
+
+function ensureCountermeasureRuntime(host) {
+  if (!host._projectileScratch) host._projectileScratch = [];
+  if (!host._diag) {
+    host._diag = {
+      threatSpatialQueries: 0,
+      effectSpatialQueries: 0,
+      projectileCandidates: 0,
+    };
+  }
+}

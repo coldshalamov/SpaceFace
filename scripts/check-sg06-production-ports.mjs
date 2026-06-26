@@ -53,6 +53,46 @@ assert.equal(JSON.stringify(frame).includes('private'), false, 'sensor frame mus
 assert(Object.isFrozen(frame), 'normalized sensor frame should be immutable');
 assert(Object.isFrozen(frame.self), 'normalized sensor self should be immutable');
 
+const liveFrameA = helpers.aiSensors.liveFrameFor(wingA.id, 7);
+const liveContacts = liveFrameA.contacts;
+assert.equal(Object.isFrozen(liveFrameA), false, 'live sensor frame should stay mutable for runtime scratch reuse');
+assert(liveFrameA.contacts.some((contact) => contact.id === player.id), 'live sensor frame should expose the same nearby hostile contacts');
+const liveFrameB = helpers.aiSensors.liveFrameFor(wingB.id, 7);
+assert.equal(liveFrameB, liveFrameA, 'live sensor frame should reuse the same frame object instead of allocating per ship');
+assert.equal(liveFrameB.contacts, liveContacts, 'live sensor frame should reuse the same contacts array between immediate consumers');
+assert(liveFrameB.contacts.some((contact) => contact.id === player.id), 'reused live contacts should be repopulated for the requested ship');
+const livePlayerContact = liveFrameB.contacts.find((contact) => contact.id === player.id);
+const livePlayerTags = livePlayerContact && livePlayerContact.tags;
+const liveSubsystemFractions = liveFrameB.self.subsystemFractions;
+const liveFrameBRepeat = helpers.aiSensors.liveFrameFor(wingB.id, 7);
+const livePlayerContactRepeat = liveFrameBRepeat.contacts.find((contact) => contact.id === player.id);
+assert.equal(livePlayerContactRepeat && livePlayerContactRepeat.tags, livePlayerTags,
+  'same-tick live sensor contacts should reuse cached tag arrays instead of rebuilding Sets per AI member');
+assert.equal(liveFrameBRepeat.self.subsystemFractions, liveSubsystemFractions,
+  'same-tick live sensor self frames should reuse cached subsystem fraction views');
+const frozenAfterLive = helpers.aiSensors.frameFor(wingA.id, 7);
+assert(Object.isFrozen(frozenAfterLive), 'normal sensor frame should remain immutable after live scratch reuse');
+assert.notEqual(frozenAfterLive.contacts, liveContacts, 'immutable sensor frames must not expose live scratch arrays');
+
+const beforeSensorQueries = state.spatialHash.diagnostics.queries;
+const hiddenNonIndexedContact = makeShipSpec({ team: 0, x: -120, factionId: 'faction_hidden' });
+hiddenNonIndexedContact.id = 9905;
+Object.defineProperty(hiddenNonIndexedContact, 'type', {
+  configurable: true,
+  enumerable: true,
+  get() { throw new Error('small-field sensor touched non-indexed entityList contact'); },
+});
+state.entityList.push(hiddenNonIndexedContact);
+try {
+  const indexedFrame = helpers.aiSensors.liveFrameFor(wingA.id, 7);
+  assert(indexedFrame.contacts.some((contact) => contact.id === player.id),
+    'small-field live sensor path should still report indexed hostile contacts');
+  assert.equal(state.spatialHash.diagnostics.queries, beforeSensorQueries,
+    'small-field live sensor path should avoid a broad spatial-hash query');
+} finally {
+  state.entityList.pop();
+}
+
 const rosterA = helpers.aiRoster.listSquads(8);
 const rosterB = helpers.aiRoster.listSquads(8);
 assert.deepEqual(rosterB, rosterA, 'unchanged production roster should be deterministic');
@@ -61,6 +101,21 @@ assert.equal(rosterA[0].members.length, 2, 'active tactical wing should contain 
 assertUniqueRosterMembers(rosterA);
 for (const member of rosterA[0].members) {
   assert.deepEqual(member.capabilities, [...member.capabilities].sort(), 'member capabilities should be sorted');
+}
+
+const nonIndexedShip = makeShipSpec({ team: 1, x: 320, factionId: 'faction_scn' });
+nonIndexedShip.id = 9906;
+Object.defineProperty(nonIndexedShip, 'data', {
+  configurable: true,
+  enumerable: true,
+  get() { throw new Error('full entityList scan touched non-AI ship data'); },
+});
+state.entityList.push(nonIndexedShip);
+try {
+  assert.deepEqual(helpers.aiRoster.listSquads(8), rosterA,
+    'production roster should use the indexed AI ship list instead of scanning every entity');
+} finally {
+  state.entityList.pop();
 }
 
 const wingARuntime = combatRuntime(state, wingA.id);
@@ -124,6 +179,17 @@ assert.throws(() => {
 }, /appears in more than one squad/, 'SG-06 stack should reject duplicate roster membership');
 
 await ensureSg02Ready(harness);
+harness.rebuildSpatialHash();
+const beforeInactiveHashRebuilds = state.spatialHash.diagnostics.rebuilds;
+harness.physics.update(DT, state);
+assert.equal(state.spatialHash.diagnostics.rebuilds, beforeInactiveHashRebuilds,
+  'rapier-dynamic should not rebuild the spatial hash in small scenes with no indexed query consumer');
+assert.equal(state.spatialHash.diagnostics.activeBuckets, 0,
+  'rapier-dynamic should mark the unused small-scene spatial hash inactive instead of keeping stale buckets');
+const inactiveHashQuery = helpers.queryRadius(wingA.pos, 260);
+assert(inactiveHashQuery.some((entity) => entity.id === player.id),
+  'helper radius queries should fall back to the entity index while the spatial hash is inactive');
+
 wingA.pos.x = 0;
 wingA.pos.z = 0;
 wingA.vel.x = 0;

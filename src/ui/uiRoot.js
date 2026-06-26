@@ -101,17 +101,9 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
 
-    // === UI identity: pilot avatar, aiming reticle, control clarity ===
-    // NOTE: the generated assets/pilots/*.jpg and assets/ui/reticle.jpg are LABELLED reference
-    // contact-sheets (captions + black backgrounds), not usable sprites — they rendered text in the
-    // HUD. Replaced with clean on-theme inline SVG (a helmet avatar + a crosshair).
-    const portrait = document.createElement('div');
-    portrait.id = 'pilot-portrait';
-    portrait.title = 'Pilot';
-    portrait.style.pointerEvents = 'none';
-    portrait.innerHTML = PILOT_AVATAR_SVG;
-    document.getElementById('ui-root').appendChild(portrait);
-
+    // === UI: aiming reticle ===
+    // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
+    // this third-person chase-cam game, and it sat on every screen as an unexplained symbol.)
     // Center aiming reticle (clean SVG crosshair).
     const reticle = document.createElement('div');
     reticle.id = 'aim-reticle';
@@ -399,7 +391,8 @@ export const ui = {
 
       const st = state || this.state;
       const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
-      const modalChromeOpen = syncModalChrome(modalOpen);
+      const externalModalOpen = isConfirmOpen() || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
+      const modalChromeOpen = syncModalChrome(modalOpen, externalModalOpen);
       const docked = !!(st && st.ui && st.ui.docked === true);
       const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
       if (this.hud) {
@@ -489,118 +482,167 @@ function injectHudCss() {
     animation: sf-reticlepulse 1.4s ease-in-out infinite alternate; }
   @keyframes sf-reticlepulse { from { transform: scale(1); } to { transform: scale(1.06); } }
 
-  /* bottom-left status bars */
-  .sf-bars { position:absolute; left:18px; bottom:18px; display:flex; flex-direction:column; gap:7px;
-    padding:12px 14px; background:rgba(8,14,24,.72); border:1px solid var(--panel-edge);
-    border-radius:8px; backdrop-filter:blur(4px); }
-  .sf-barrow { display:flex; align-items:center; gap:9px; }
-  .sf-barrow__label { width:38px; font-family:var(--mono); font-size:10px; letter-spacing:.12em; color:var(--ink-dim); }
-  .sf-barrow__num { width:42px; text-align:right; font-size:11px; color:var(--ink); }
-  .sf-bar { position:relative; width:200px; height:13px; border-radius:3px; overflow:hidden;
-    background:rgba(4,9,18,.85); box-shadow:inset 0 0 0 1px rgba(57,208,255,.08); }
-  .sf-bar--sm { height:8px; width:100%; }
+  /* ===== bottom-left: ship schematic + thin micro-bars (Tactical Visor §3C) ===== */
+  /* Container is now chromeless — no panel background, border, or blur. */
+  .sf-bars { position:absolute; left:22px; bottom:22px; display:flex; flex-direction:column;
+    gap:10px; align-items:flex-start; }
+
+  /* Top-down ship schematic: outline + shield ring + hull readout. */
+  .sf-schematic { position:relative; width:96px; height:96px; }
+  .sf-schematic svg { width:100%; height:100%; overflow:visible; }
+  .sf-schematic .sf-sch-ship { fill:none; stroke:var(--visor-cyan); stroke-width:2;
+    filter:drop-shadow(var(--visor-glow-cyan)); transition:stroke .25s ease, filter .25s ease; }
+  .sf-schematic .sf-sch-shield { fill:none; stroke:var(--visor-cyan); stroke-width:2.5;
+    stroke-linecap:round; opacity:.85; filter:drop-shadow(var(--visor-glow-cyan));
+    transition:stroke-dashoffset .15s linear; }
+  /* Hull-critical state: tint the whole schematic red and pulse. */
+  .sf-schematic.sf-sch-critical .sf-sch-ship { stroke:var(--visor-red);
+    filter:drop-shadow(var(--visor-glow-red)); animation:sf-schpulse 1s ease-in-out infinite alternate; }
+  @keyframes sf-schpulse { from { opacity:.6; } to { opacity:1; } }
+  .sf-sch-hull { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    font-family:var(--mono); font-size:16px; font-weight:700; color:var(--text-primary);
+    text-shadow:var(--text-shadow-hard); pointer-events:none; }
+  .sf-schematic.sf-sch-critical .sf-sch-hull { color:var(--visor-red); }
+  /* Damage flash: a quick white-hot pulse of the ship outline when the player is hit. */
+  .sf-schematic.sf-sch-hit .sf-sch-ship { animation:sf-schhit .34s ease-out; }
+  @keyframes sf-schhit {
+    0% { stroke:#fff; filter:drop-shadow(0 0 12px #fff); }
+    100% { stroke:var(--visor-cyan); filter:drop-shadow(var(--visor-glow-cyan)); } }
+
+  /* Thin micro-bars (energy / heat / boost) — 2px glowing lines, no panel. */
+  .sf-barrow { display:flex; align-items:center; gap:8px; }
+  .sf-barrow__label { width:40px; font-family:var(--mono); font-size:9px; letter-spacing:.14em;
+    color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-barrow__num { width:38px; text-align:right; font-family:var(--mono); font-size:10px;
+    color:var(--text-primary); text-shadow:var(--text-shadow-hard); }
+  .sf-bar { position:relative; width:150px; height:2px; overflow:visible;
+    background:rgba(255,255,255,.12); }
+  .sf-bar--sm { height:2px; width:100%; }
   .sf-bar__fill { position:absolute; inset:0; transform-origin:left center; transform:scaleX(1);
     transition:transform .1s linear; }
-  /* Hit-flash: a brief overlay pulse on the bar when the player takes damage to that pool. The flash
-     sits above the fill (z-index) and animates opacity via the sf-barhit keyframe; toggled from
-     hud.js on combat:damage for the affected pool (hull/shield). */
-  .sf-bar__flash { position:absolute; inset:0; pointer-events:none; opacity:0; z-index:2;
-    background:#fff; mix-blend-mode:screen; }
-  .sf-bar--hit .sf-bar__flash { animation:sf-barhit .32s ease-out forwards; }
-  @keyframes sf-barhit { 0%{opacity:.85;} 30%{opacity:.4;} 100%{opacity:0;} }
-  .sf-bar--hull .sf-bar__fill { background:linear-gradient(90deg,#b8324a,var(--hull)); }
-  .sf-bar--shield .sf-bar__fill { background:linear-gradient(90deg,#1d6fa8,var(--shield)); }
-  .sf-bar--energy .sf-bar__fill { background:linear-gradient(90deg,#b8932a,var(--energy)); }
-  .sf-bar--heat .sf-bar__fill { background:linear-gradient(90deg,#a8521f,#ff8a3d); }
-  .sf-bar--boost .sf-bar__fill { background:linear-gradient(90deg,#7a3df0,#c98cff); }   /* Phase 3 boost energy (violet) */
-  .sf-bar--low { animation:sf-barpulse 1s ease-in-out infinite alternate; }
-  .sf-bar--ready { box-shadow:inset 0 0 0 1px rgba(201,140,255,.45), 0 0 8px rgba(170,90,255,.5);
-    animation:sf-barready 1.1s ease-in-out infinite alternate; }
-  @keyframes sf-barpulse { from { box-shadow:inset 0 0 0 1px rgba(255,84,112,.2); } to { box-shadow:inset 0 0 6px 1px rgba(255,84,112,.7); } }
-  @keyframes sf-barready { from { box-shadow:inset 0 0 0 1px rgba(201,140,255,.3); } to { box-shadow:inset 0 0 6px 2px rgba(170,90,255,.8); } }
+  /* hull/shield modifiers are now consumed only by the target panel — keep them distinct
+     (hull = red, shield = cyan) so a target's defensive state stays parseable. */
+  .sf-bar--hull .sf-bar__fill { background:var(--visor-red); box-shadow:0 0 6px var(--visor-red); }
+  .sf-bar--shield .sf-bar__fill { background:var(--visor-cyan); box-shadow:0 0 6px var(--visor-cyan); }
+  .sf-bar--energy .sf-bar__fill { background:var(--visor-amber); box-shadow:0 0 6px var(--visor-amber); }
+  .sf-bar--heat .sf-bar__fill { background:#ff8a3d; box-shadow:0 0 6px #ff8a3d; }
+  .sf-bar--boost .sf-bar__fill { background:#c98cff; box-shadow:0 0 6px #c98cff; }
+  .sf-bar--low .sf-bar__fill { animation:sf-barpulse 1s ease-in-out infinite alternate; }
+  .sf-bar--ready .sf-bar__fill { animation:sf-barready 1.1s ease-in-out infinite alternate; }
+  @keyframes sf-barpulse { from { box-shadow:0 0 4px var(--visor-red-dim); } to { box-shadow:0 0 10px 1px var(--visor-red); } }
+  @keyframes sf-barready { from { box-shadow:0 0 4px rgba(201,140,255,.4); } to { box-shadow:0 0 10px 1px rgba(201,140,255,.9); } }
 
-  /* Phase 4: nav readout (top-center) + fuel gauge (top-left) */
-  .sf-nav-readout { position:absolute; top:16px; left:50%; transform:translateX(-50%);
-    padding:7px 16px; background:rgba(8,14,24,.6); border:1px solid var(--panel-edge);
-    border-radius:7px; backdrop-filter:blur(4px); text-align:center; pointer-events:none; }
-  .sf-nav-label { font-size:13px; color:var(--accent); letter-spacing:.06em; }
-  .sf-nav-meta { font-size:11px; color:var(--ink-dim); margin-top:2px; }
-  .sf-nav-meta .sf-nav-dist { color:var(--ink); }
-  .sf-fuel { position:absolute; top:16px; left:18px; display:flex; align-items:center; gap:8px;
-    padding:6px 12px; background:rgba(8,14,24,.55); border:1px solid var(--panel-edge);
-    border-radius:7px; backdrop-filter:blur(4px); }
-  .sf-fuel-label { font-size:10px; letter-spacing:.14em; color:var(--ink-mute); }
-  .sf-bar--fuel { width:90px; height:9px; }
-  .sf-bar--fuel .sf-bar__fill { background:linear-gradient(90deg,#1d6fa8,#39d0ff); }
-  .sf-fuel-num { font-size:11px; color:var(--ink); width:34px; text-align:right; }
-  .sf-fuel--low .sf-bar--fuel { animation:sf-barpulse 1s ease-in-out infinite alternate; }
+  /* ===== top-center: nav / target-lock readout — chromeless floating text (§3E) ===== */
+  .sf-nav-readout { position:absolute; top:18px; left:50%; transform:translateX(-50%);
+    text-align:center; pointer-events:none; }
+  .sf-nav-label { font-family:var(--mono); font-size:13px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--visor-cyan); text-shadow:var(--text-shadow-hard), var(--visor-glow-cyan); }
+  /* The "[ TARGET LOCK: ... ]" / "[ NNN u ]" framing applies only to a live, in-range fix — the JS
+     toggles .sf-nav--lock for that case; route/tutorial guidance renders plain (§3E). */
+  .sf-nav--lock .sf-nav-label::before { content:'[ TARGET LOCK: '; color:var(--text-secondary); }
+  .sf-nav--lock .sf-nav-label::after { content:' ]'; color:var(--text-secondary); }
+  .sf-nav-meta { font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--text-secondary);
+    margin-top:3px; text-shadow:var(--text-shadow-hard); }
+  .sf-nav-meta .sf-nav-dist { color:var(--text-primary); }
+  .sf-nav--lock .sf-nav-meta .sf-nav-dist::before { content:'[ '; color:var(--text-secondary); }
+  .sf-nav--lock .sf-nav-meta .sf-nav-dist::after { content:' ]'; color:var(--text-secondary); }
 
-  /* bottom-center cluster */
-  .sf-cluster { position:absolute; left:50%; bottom:18px; transform:translateX(-50%);
-    display:flex; gap:10px; align-items:stretch; }
-  .sf-stat { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:62px;
-    padding:7px 12px; background:rgba(8,14,24,.55); border:1px solid var(--panel-edge); border-radius:7px;
-    backdrop-filter:blur(4px); position:relative; }
-  .sf-stat--wide { min-width:96px; }
-  .sf-stat__k { font-size:9px; letter-spacing:.16em; color:var(--ink-mute); }
-  .sf-stat__v { font-size:16px; color:var(--ink); }
-  .sf-credits { color:var(--accent-2); }
-  .sf-stat__v.sf-warn { color:var(--warn); }
-  /* Info-label styling: make it clear these are readouts, not buttons */
-  .sf-stat--info { cursor:default; user-select:none; transition:border-color .15s, background .15s; }
-  .sf-stat--info:hover { border-color:var(--accent); background:rgba(8,14,24,.75); }
-  .sf-stat--info .sf-stat__k { border-bottom:1px dotted rgba(154,168,188,.3); padding-bottom:1px; }
-  /* Hover tooltip for stat tiles */
-  .sf-tip { display:none; position:absolute; left:50%; bottom:calc(100% + 10px); transform:translateX(-50%);
-    min-width:180px; max-width:260px; padding:8px 10px; background:rgba(4,10,18,.92); border:1px solid var(--accent);
-    border-radius:6px; backdrop-filter:blur(6px); color:var(--ink); font-family:var(--mono); font-size:11px;
-    letter-spacing:.02em; line-height:1.45; white-space:pre-line; pointer-events:none; z-index:200;
-    box-shadow:0 4px 16px rgba(0,0,0,.5), 0 0 8px rgba(57,208,255,.15); }
+  /* ===== top-left: fuel gauge — thin glowing line (§3 thin-line) ===== */
+  .sf-fuel { position:absolute; top:18px; left:22px; display:flex; align-items:center; gap:8px; }
+  .sf-fuel-label { font-family:var(--mono); font-size:9px; letter-spacing:.16em; color:var(--text-secondary);
+    text-shadow:var(--text-shadow-hard); }
+  .sf-bar--fuel { width:90px; height:2px; }
+  .sf-bar--fuel .sf-bar__fill { background:var(--visor-cyan); box-shadow:0 0 6px var(--visor-cyan); }
+  .sf-fuel-num { font-family:var(--mono); font-size:10px; color:var(--text-primary); width:34px;
+    text-align:right; text-shadow:var(--text-shadow-hard); }
+  .sf-fuel--low .sf-bar--fuel .sf-bar__fill { animation:sf-barpulse 1s ease-in-out infinite alternate; }
+
+  /* ===== bottom-center: action bar (key→ability map) + flight readouts (§3B) ===== */
+  #action-bar { position:absolute; bottom:28px; left:50%; transform:translateX(-50%);
+    display:flex; gap:16px; }
+  .action-slot { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .action-slot .bind { font-family:var(--mono); font-size:.66rem; letter-spacing:.08em;
+    color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .icon-box { position:relative; width:44px; height:44px; border:1px solid var(--visor-cyan-dim);
+    border-radius:4px; display:flex; justify-content:center; align-items:center;
+    box-shadow:inset 0 0 10px rgba(0,240,255,.05); transition:box-shadow .12s ease, border-color .12s ease; }
+  .icon-box svg { width:24px; height:24px; fill:none; stroke:var(--visor-cyan); stroke-width:1.8;
+    stroke-linecap:round; stroke-linejoin:round; filter:drop-shadow(var(--visor-glow-cyan)); opacity:.9; }
+  .icon-box.sf-act-active { border-color:var(--visor-cyan);
+    box-shadow:inset 0 0 18px rgba(0,240,255,.5), 0 0 10px rgba(0,240,255,.35); }
+  .icon-box.sf-act-active svg { opacity:1; }
+
+  /* ===== bottom-center: flight readouts — chromeless thin-line row above the action bar (§3B) ===== */
+  .sf-cluster { position:absolute; left:50%; bottom:92px; transform:translateX(-50%);
+    display:flex; flex-wrap:wrap; justify-content:center; gap:6px 20px; align-items:baseline;
+    max-width:min(880px, 92vw); }
+  .sf-stat { display:flex; align-items:baseline; gap:5px; position:relative;
+    font-family:var(--mono); }
+  .sf-stat__k { font-size:9px; letter-spacing:.16em; color:var(--text-secondary);
+    text-shadow:var(--text-shadow-hard); }
+  .sf-stat__v { font-size:14px; color:var(--text-primary); text-shadow:var(--text-shadow-hard); }
+  .sf-credits { color:var(--visor-cyan); text-shadow:var(--text-shadow-hard), var(--visor-glow-cyan); }
+  .sf-stat__v.sf-warn { color:var(--visor-amber); text-shadow:var(--text-shadow-hard), var(--visor-glow-amber); }
+  /* Hover-affordance: these are readouts; underline the key to hint at the tooltip. */
+  .sf-stat--info { cursor:default; user-select:none; }
+  .sf-stat--info .sf-stat__k { border-bottom:1px dotted rgba(255,255,255,.25); padding-bottom:1px; }
+  .sf-stat--info:hover .sf-stat__k { color:var(--visor-cyan); border-bottom-color:var(--visor-cyan-dim); }
+  /* Hover tooltip for stat readouts — the one place a dark backing aids legibility of dense text. */
+  .sf-tip { display:none; position:absolute; left:50%; bottom:calc(100% + 12px); transform:translateX(-50%);
+    min-width:180px; max-width:260px; padding:8px 10px; background:rgba(4,10,18,.92);
+    border:1px solid var(--visor-cyan); border-radius:6px; color:var(--text-primary);
+    font-family:var(--mono); font-size:11px; letter-spacing:.02em; line-height:1.45;
+    white-space:pre-line; pointer-events:none; z-index:200;
+    box-shadow:0 4px 16px rgba(0,0,0,.5), 0 0 8px rgba(0,240,255,.2); }
   .sf-tip::after { content:''; position:absolute; left:50%; top:100%; transform:translateX(-50%);
-    border:6px solid transparent; border-top-color:var(--accent); }
+    border:6px solid transparent; border-top-color:var(--visor-cyan); }
   .sf-stat--info:hover .sf-tip { display:block; }
 
-  /* bottom-right radar + target */
-  .sf-rightdock { position:absolute; right:18px; bottom:18px; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+  /* ===== bottom-right: tactical node map (radar) + target readout (§3D) ===== */
+  /* Borderless: the radar reads as a raw projection. overflow:hidden is kept only because the
+     expand animation reveals a fixed 340px canvas from the center outward. */
+  .sf-rightdock { position:absolute; right:22px; bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
   .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
-  .sf-radar { position:relative; width:180px; height:180px; border-radius:50%; overflow:hidden;
-    border:1px solid var(--panel-edge); box-shadow:0 0 18px rgba(0,0,0,.5); cursor:pointer;
-    transition:width .3s cubic-bezier(.4,0,.2,1), height .3s cubic-bezier(.4,0,.2,1), box-shadow .25s ease; }
-  .sf-radar--expanded { width:340px !important; height:340px !important;
-    box-shadow:0 0 0 1px rgba(57,208,255,0.45), 0 0 40px rgba(57,208,255,0.18), 0 0 80px rgba(57,208,255,0.06) !important; }
+  .sf-radar { position:relative; width:180px; height:180px; border-radius:50%; overflow:hidden; cursor:pointer;
+    transition:width .3s cubic-bezier(.4,0,.2,1), height .3s cubic-bezier(.4,0,.2,1); }
+  .sf-radar--expanded { width:340px !important; height:340px !important; }
   /* canvas is always 340px — centered so the overflow:hidden circle reveals from the player outward */
   .sf-radar canvas { display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
-  .sf-radar-legend { width:220px; display:grid; grid-template-columns:repeat(5, auto); gap:4px 7px; justify-content:center;
-    padding:5px 7px; background:rgba(8,14,24,.58); border:1px solid var(--panel-edge); border-radius:7px;
-    color:var(--ink-dim); font-size:9px; letter-spacing:.04em; backdrop-filter:blur(4px); }
+  .sf-radar-legend { width:220px; display:grid; grid-template-columns:repeat(5, auto); gap:4px 9px; justify-content:center;
+    color:var(--text-secondary); font-family:var(--mono); font-size:9px; letter-spacing:.04em;
+    text-shadow:var(--text-shadow-hard); }
   .sf-radar-legend span { display:flex; align-items:center; gap:4px; white-space:nowrap; }
   .sf-radar-legend i { display:inline-block; width:7px; height:7px; flex:0 0 auto; }
-  .sf-radar-legend .stn { background:var(--accent-2); }
+  .sf-radar-legend .stn { background:var(--visor-cyan); box-shadow:0 0 4px var(--visor-cyan); }
   .sf-radar-legend .gate { border:1px solid #b99cff; border-radius:50%; }
   .sf-radar-legend .rock { background:#6e7b8c; border-radius:50%; }
-  .sf-radar-legend .bad { width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:7px solid var(--danger); }
-  .sf-radar-legend .obj { transform:rotate(45deg); border:1px solid #ffe36b; }
-  /* HUD sub-panel surface (the target readout above the radar, and similar small HUD cards).
-     Lighter than the modal .panel: thin border, tight radius, modest shadow so it reads as a
-     piece of the HUD rather than a floating dialog. */
-  .sf-hudpanel { background:rgba(8,14,24,.82); border:1px solid var(--panel-edge);
-    border-radius:6px; box-shadow:0 2px 14px rgba(0,0,0,.45); backdrop-filter:blur(4px); }
-  .sf-target { width:220px; padding:8px 10px; display:flex; flex-direction:column; gap:5px; }
-  .sf-target__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
-  .sf-target__name { font-size:13px; color:var(--ink); letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .sf-target__faction { font-family:var(--mono); font-size:10px; letter-spacing:.08em; }
-  .sf-target__meta { display:flex; justify-content:space-between; font-size:11px; color:var(--ink-dim); }
+  .sf-radar-legend .bad { width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:7px solid var(--visor-red); }
+  .sf-radar-legend .obj { transform:rotate(45deg); border:1px solid var(--visor-amber); }
+  /* HUD sub-panel surface — now chromeless. Legibility comes from hard text-shadow on the content. */
+  .sf-hudpanel { background:none; border:none; box-shadow:none; }
+  .sf-target { width:220px; display:flex; flex-direction:column; gap:5px; text-align:right; }
+  .sf-target__head { display:flex; align-items:baseline; justify-content:flex-end; gap:8px; }
+  .sf-target__name { font-family:var(--mono); font-size:12px; color:var(--text-primary); letter-spacing:.06em;
+    text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    text-shadow:var(--text-shadow-hard); }
+  .sf-target__faction { font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-shadow:var(--text-shadow-hard); }
+  .sf-target__meta { display:flex; justify-content:flex-end; gap:14px; font-family:var(--mono); font-size:11px;
+    color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  /* The target panel's mini hull/shield bars become thin lines flush right (3px for legibility). */
+  .sf-target .sf-bar { width:100%; }
+  .sf-target .sf-bar--sm { height:3px; }
 
-  /* top-right objective tracker */
-  .sf-objectives { position:absolute; right:18px; top:16px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; max-width:280px; }
-  .sf-obj { display:flex; align-items:center; gap:7px; padding:5px 10px; background:rgba(8,14,24,.55);
-    border:1px solid var(--panel-edge); border-radius:6px; font-size:12px; color:var(--ink); backdrop-filter:blur(4px); }
-  .sf-obj__dot { width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 6px var(--accent); flex:0 0 auto; }
+  /* ===== top-right: objective tracker — chromeless glowing lines (§3) ===== */
+  .sf-objectives { position:absolute; right:22px; top:18px; display:flex; flex-direction:column; gap:6px; align-items:flex-end; max-width:300px; }
+  .sf-obj { display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:12px;
+    letter-spacing:.04em; color:var(--text-primary); text-shadow:var(--text-shadow-hard); }
+  .sf-obj__dot { width:6px; height:6px; transform:rotate(45deg); background:var(--visor-cyan);
+    box-shadow:var(--visor-glow-cyan); flex:0 0 auto; }
   .sf-obj__t { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* off-screen objective arrow */
   .sf-objarrow { position:absolute; left:0; top:0; width:0; height:0; border-style:solid; border-width:8px 0 8px 14px;
-    border-color:transparent transparent transparent var(--accent); filter:drop-shadow(0 0 5px var(--accent)); z-index:11;
+    border-color:transparent transparent transparent var(--visor-cyan); filter:drop-shadow(var(--visor-glow-cyan)); z-index:11;
     will-change:transform; }
 
   /* ===== toasts ===== */
@@ -659,19 +701,18 @@ function injectHudCss() {
     text-transform:uppercase; white-space:nowrap; text-shadow:0 0 6px rgba(57,208,255,.6); }
   .sf-lockring.locked .sf-lockring__label { color:var(--danger); text-shadow:0 0 6px rgba(255,84,112,.6); }
 
-  /* Weapon heat bars — anchored above the status bars panel (left:18px matches .sf-bars) */
-  .sf-wpn-heats { position:absolute; left:18px;
-    display:flex; flex-direction:column; gap:3px; pointer-events:none;
-    padding:6px 10px; background:rgba(8,14,24,.5); border:1px solid var(--panel-edge);
-    border-radius:6px; backdrop-filter:blur(4px); }
+  /* Weapon heat bars — chromeless, anchored above the schematic (left:22px matches .sf-bars) */
+  .sf-wpn-heats { position:absolute; left:22px;
+    display:flex; flex-direction:column; gap:4px; pointer-events:none; }
   .sf-wpn-heat { display:flex; align-items:center; gap:6px; }
   .sf-wpn-heat__label { font-family:var(--mono); font-size:9px; letter-spacing:.06em;
-    color:var(--ink-dim); width:46px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .sf-wpn-heat__bar { position:relative; width:120px; height:8px; border-radius:2px;
-    background:rgba(4,9,18,.85); box-shadow:inset 0 0 0 1px rgba(57,208,255,.08); overflow:hidden; }
+    color:var(--text-secondary); width:46px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    text-shadow:var(--text-shadow-hard); }
+  .sf-wpn-heat__bar { position:relative; width:110px; height:2px;
+    background:rgba(255,255,255,.12); overflow:visible; }
   .sf-wpn-heat__fill { position:absolute; inset:0; transform-origin:left center;
-    background:linear-gradient(90deg,#a8521f,#ff8a3d); transition:transform .08s linear; }
-  .sf-wpn-heat.overheated .sf-wpn-heat__fill { background:linear-gradient(90deg,#cc2020,#ff4040); }
+    background:#ff8a3d; box-shadow:0 0 6px #ff8a3d; transition:transform .08s linear; }
+  .sf-wpn-heat.overheated .sf-wpn-heat__fill { background:var(--visor-red); box-shadow:0 0 8px var(--visor-red); }
   .sf-wpn-heat.overheated { animation:sf-wpnpulse .5s ease-in-out infinite alternate; }
   @keyframes sf-wpnpulse { from { opacity:.7; } to { opacity:1; } }
 
@@ -704,12 +745,18 @@ function injectHudCss() {
     #alerts { top:84px; width:calc(100vw - 20px); }
     .sf-alert { max-width:100%; font-size:10px; letter-spacing:.08em; white-space:normal; text-align:center; justify-content:center; }
 
-    .sf-fuel { left:10px; top:10px; padding:5px 8px; max-width:178px; }
-    .sf-fuel-label { font-size:9px; }
-    .sf-bar--fuel { width:74px; }
-    .sf-fuel-num { width:30px; font-size:10px; }
-    .sf-nav-readout { top:276px; max-width:calc(100vw - 24px); padding:6px 10px; }
-    .sf-nav-label { max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+    /* The action bar maps keyboard/mouse binds — meaningless on touch, where the touch system
+       draws its own on-screen controls. Hide it (mirrors #control-hints above). */
+    #action-bar { display:none !important; }
+
+    .sf-fuel { left:10px; top:10px; }
+    .sf-fuel-label { font-size:8px; }
+    .sf-bar--fuel { width:64px; }
+    .sf-fuel-num { width:28px; font-size:9px; }
+    .sf-nav-readout { top:236px; max-width:calc(100vw - 24px); }
+    .sf-nav-label { max-width:calc(100vw - 32px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+    /* The full "[ TARGET LOCK: ... ]" prefix overflows a narrow pane — shorten to brackets here. */
+    .sf-nav--lock .sf-nav-label::before { content:'[ '; }
     .sf-nav-meta { font-size:10px; }
 
     #sf-onboarding { left:12px !important; top:138px !important; width:min(316px, calc(100vw - 24px)) !important; }
@@ -720,29 +767,31 @@ function injectHudCss() {
     .sf-ob-intro h1 { font-size:20px; }
     .sf-ob-intro p { font-size:13px; }
 
-    .sf-bars { left:8px; bottom:108px; gap:5px; padding:9px 8px; width:174px; }
+    .sf-bars { left:8px; bottom:96px; gap:7px; }
+    .sf-schematic { width:64px; height:64px; }
+    .sf-sch-hull { font-size:12px; }
     .sf-barrow { gap:5px; }
-    .sf-barrow__label { width:34px; font-size:9px; }
-    .sf-barrow__num { width:28px; font-size:10px; }
-    .sf-bar { width:88px; height:10px; }
-    .sf-bar--sm { height:7px; width:100%; }
+    .sf-barrow__label { width:34px; font-size:8px; }
+    .sf-barrow__num { width:26px; font-size:9px; }
+    .sf-bar { width:78px; }
 
-    .sf-rightdock { right:8px; bottom:108px; gap:5px; }
-    .sf-target { width:160px; padding:6px 8px; }
+    .sf-rightdock { right:8px; bottom:96px; gap:5px; }
+    .sf-target { width:150px; }
     .sf-target__name { font-size:11px; }
     .sf-target__meta { font-size:10px; }
     .sf-radar-wrap { gap:4px; }
     .sf-radar { width:132px; height:132px; }
     .sf-radar canvas { width:132px !important; height:132px !important; }
-    .sf-radar-legend { width:160px; grid-template-columns:repeat(5, auto); gap:3px 4px; padding:4px 5px; font-size:8px; }
+    /* On a narrow pane the legend collides with the left-side micro-bars; the radar is small and
+       contacts are color/shape-coded (and the briefing explains them), so drop it here. */
+    .sf-radar-legend { display:none; }
     .sf-radar-legend i { width:6px; height:6px; }
     .sf-radar-legend .bad { border-left-width:3px; border-right-width:3px; border-bottom-width:6px; }
 
-    .sf-cluster { left:8px; right:8px; bottom:8px; transform:none; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:5px; }
-    .sf-stat { min-width:0; padding:5px 6px; border-radius:6px; gap:1px; }
-    .sf-stat--wide { min-width:0; }
+    .sf-cluster { left:8px; right:8px; bottom:8px; transform:none; display:flex; flex-wrap:wrap;
+      justify-content:center; gap:4px 14px; }
     .sf-stat__k { font-size:8px; }
-    .sf-stat__v { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    .sf-stat__v { font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:46vw; }
     #sf-rolestat { display:none; }
     .sf-tip { display:none !important; }
 
@@ -754,26 +803,26 @@ function injectHudCss() {
   }
 
   /* ===== cargo panel overlay ===== */
-  .sf-cargo-panel { position:absolute; left:50%; bottom:90px; transform:translateX(-50%);
+  .sf-cargo-panel { position:absolute; left:50%; bottom:120px; transform:translateX(-50%);
     width:380px; max-height:60vh; display:none; flex-direction:column;
-    background:rgba(4,10,18,.94); border:1px solid var(--accent); border-radius:8px;
-    backdrop-filter:blur(8px); box-shadow:0 8px 32px rgba(0,0,0,.6), 0 0 12px rgba(57,208,255,.15);
+    background:rgba(4,10,18,.94); border:1px solid var(--visor-cyan); border-radius:8px;
+    backdrop-filter:blur(8px); box-shadow:0 8px 32px rgba(0,0,0,.6), 0 0 12px rgba(0,240,255,.18);
     z-index:200; pointer-events:auto; font-family:var(--mono, Consolas, monospace); overflow:hidden; }
   .sf-cargo-panel.open { display:flex; }
   .sf-cargo-panel__head { display:flex; align-items:center; justify-content:space-between;
     padding:10px 14px; border-bottom:1px solid var(--panel-edge); }
-  .sf-cargo-panel__title { font-size:13px; letter-spacing:.14em; color:var(--accent); text-transform:uppercase; }
+  .sf-cargo-panel__title { font-size:13px; letter-spacing:.14em; color:var(--visor-cyan); text-transform:uppercase; }
   .sf-cargo-panel__close { background:none; border:1px solid var(--ink-mute); border-radius:4px;
     color:var(--ink-dim); font-size:11px; padding:2px 8px; cursor:pointer; font-family:var(--mono); }
-  .sf-cargo-panel__close:hover { border-color:var(--accent); color:var(--accent); }
+  .sf-cargo-panel__close:hover { border-color:var(--visor-cyan); color:var(--visor-cyan); }
   .sf-cargo-panel__summary { display:flex; justify-content:space-between; padding:8px 14px;
-    font-size:11px; color:var(--ink-dim); border-bottom:1px solid rgba(57,208,255,.08); }
+    font-size:11px; color:var(--ink-dim); border-bottom:1px solid rgba(0,240,255,.1); }
   .sf-cargo-panel__list { overflow-y:auto; max-height:calc(60vh - 90px); padding:6px 0; }
   .sf-cargo-panel__list::-webkit-scrollbar { width:4px; }
-  .sf-cargo-panel__list::-webkit-scrollbar-thumb { background:var(--accent); border-radius:2px; }
+  .sf-cargo-panel__list::-webkit-scrollbar-thumb { background:var(--visor-cyan); border-radius:2px; }
   .sf-cargo-row { display:grid; grid-template-columns:1fr 50px 50px 60px 56px; align-items:center;
     padding:5px 14px; font-size:11px; color:var(--ink); gap:4px; }
-  .sf-cargo-row:hover { background:rgba(57,208,255,.06); }
+  .sf-cargo-row:hover { background:rgba(0,240,255,.06); }
   .sf-cargo-row__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
   .sf-cargo-row__qty { text-align:right; color:var(--accent-2); }
   .sf-cargo-row__vol { text-align:right; color:var(--ink-dim); }
@@ -787,18 +836,21 @@ function injectHudCss() {
     .sf-cargo-panel { width:calc(100vw - 24px); bottom:110px; }
   }
 
-  /* ===== HUD mission tracker (top-left, shows tracked mission) ===== */
-  .sf-mission-tracker { position:absolute; top:52px; left:18px; max-width:260px;
-    padding:8px 12px; background:rgba(8,14,24,.7); border:1px solid var(--panel-edge);
-    border-left:3px solid var(--accent); border-radius:0 6px 6px 0;
-    backdrop-filter:blur(4px); pointer-events:none; z-index:10; }
-  .sf-mt-title { font-size:12px; color:var(--ink); letter-spacing:.04em; margin-bottom:3px;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .sf-mt-obj { font-size:11px; color:var(--ink-dim); margin-bottom:2px; }
-  .sf-mt-time { font-size:10px; color:var(--ink-mute); letter-spacing:.08em; }
-  .sf-mt-time.sf-mt-urgent { color:var(--warn); font-weight:600; }
+  /* ===== HUD mission tracker (top-left) — chromeless, with a glowing edge marker ===== */
+  .sf-mission-tracker { position:absolute; top:96px; left:22px; max-width:280px;
+    padding-left:10px; border-left:2px solid var(--visor-cyan-dim);
+    box-shadow:-1px 0 8px -2px var(--visor-cyan-dim); pointer-events:none; z-index:10; }
+  .sf-mt-title { font-family:var(--mono); font-size:12px; color:var(--text-primary); letter-spacing:.06em;
+    margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    text-shadow:var(--text-shadow-hard); }
+  .sf-mt-obj { font-family:var(--mono); font-size:11px; color:var(--text-secondary); margin-bottom:2px;
+    text-shadow:var(--text-shadow-hard); }
+  .sf-mt-time { font-family:var(--mono); font-size:10px; color:var(--text-secondary); letter-spacing:.08em;
+    text-shadow:var(--text-shadow-hard); }
+  .sf-mt-time.sf-mt-urgent { color:var(--visor-amber); text-shadow:var(--text-shadow-hard), var(--visor-glow-amber); }
   @media (max-width: 760px) {
-    .sf-mission-tracker { top:44px; left:8px; max-width:200px; padding:6px 8px; }
+    /* Sit below the fuel line + comms (≡) button + top-center SYS line so nothing overlaps. */
+    .sf-mission-tracker { top:92px; left:8px; max-width:calc(100vw - 16px); }
     .sf-mt-title { font-size:10px; }
     .sf-mt-obj { font-size:9px; }
     .sf-mt-time { font-size:9px; }
@@ -813,33 +865,27 @@ function injectHudCss() {
   document.head.appendChild(s);
 }
 
-function syncModalChrome(screenOpen) {
-  const externalModalOpen = isConfirmOpen() || hasVisibleElement('#sf-endgame.open, .sf-endgame--c.open');
+function syncModalChrome(screenOpen, externalModalOpen = false) {
   const modalOpen = !!(screenOpen || externalModalOpen);
-  document.body.classList.toggle('ui-modal-open', modalOpen);
+  if (_lastModalOpen !== modalOpen || document.body.classList.contains('ui-modal-open') !== modalOpen) {
+    document.body.classList.toggle('ui-modal-open', modalOpen);
+    _lastModalOpen = modalOpen;
+  }
 
-  const backdrop = document.getElementById('modal-backdrop');
+  if (!_modalBackdropEl || !_modalBackdropEl.isConnected) _modalBackdropEl = document.getElementById('modal-backdrop');
+  const backdrop = _modalBackdropEl;
   if (backdrop) {
     // Only screen-manager modals use the shared backdrop for interaction. Confirm/endgame mount
     // their own higher-z overlays; a stale body class must not leave an invisible click shield.
-    backdrop.style.pointerEvents = screenOpen ? 'auto' : 'none';
+    const pointerEvents = screenOpen ? 'auto' : 'none';
+    if (_lastBackdropPointerEvents !== pointerEvents || backdrop.style.pointerEvents !== pointerEvents) {
+      backdrop.style.pointerEvents = pointerEvents;
+      _lastBackdropPointerEvents = pointerEvents;
+    }
   }
   return modalOpen;
 }
 
-function hasVisibleElement(selector) {
-  const nodes = document.querySelectorAll(selector);
-  for (const el of nodes) {
-    if (isVisiblyRendered(el)) return true;
-  }
-  return false;
-}
-
-function isVisiblyRendered(el) {
-  if (!el) return false;
-  const cs = getComputedStyle(el);
-  if (cs.display === 'none' || cs.visibility === 'hidden') return false;
-  if (Number(cs.opacity || 1) <= 0.05) return false;
-  const rect = el.getBoundingClientRect();
-  return rect.width > 2 && rect.height > 2;
-}
+let _lastModalOpen = null;
+let _lastBackdropPointerEvents = null;
+let _modalBackdropEl = null;

@@ -68,6 +68,14 @@ export function createDamageIndicators() {
     root.appendChild(a);
     arcs.push({ el: a, t: 0, age: Infinity, angle: 0, crit: false });
   }
+  let activeCount = 0;
+
+  function retire(a) {
+    if (!a || a.age >= Infinity) return;
+    a.el.style.display = 'none';
+    a.age = Infinity;
+    if (activeCount > 0) activeCount--;
+  }
 
   function worldAngleToSource(playerPos, hitPos) {
     // Angle in screen space: world +x is right, world +z is "down" on a top-down-ish cam, but the
@@ -105,6 +113,7 @@ export function createDamageIndicators() {
       if (a.age > oldestAge) { oldestAge = a.age; oldest = a; }
     }
     if (!slot) slot = oldest;
+    if (slot.age >= Infinity) activeCount++;
     slot.angle = ang;
     slot.crit = slot.crit || crit;
     slot.age = 0; // reset lifetime; brightness re-ramps via FADE_IN
@@ -116,10 +125,11 @@ export function createDamageIndicators() {
   // player in the hit direction, project it, and clamp to the screen edge exactly like the
   // objective arrow. This way the indicator respects the current camera roll automatically.
   function tick(dt, helpers) {
+    if (activeCount <= 0) return;
     const player = this._player();
     const w2s = helpers && helpers.worldToScreen;
     if (!player || !w2s) {
-      for (const a of arcs) if (a.age < Infinity) { a.el.style.display = 'none'; a.age = Infinity; }
+      for (const a of arcs) retire(a);
       return;
     }
     const w = window.innerWidth, h = window.innerHeight;
@@ -129,7 +139,7 @@ export function createDamageIndicators() {
       if (a.age >= Infinity) continue;
       a.age += dt;
       a.t += dt;
-      if (a.age >= TTL) { a.el.style.display = 'none'; a.age = Infinity; continue; }
+      if (a.age >= TTL) { retire(a); continue; }
 
       // Synthesize a world point 600u away from the player along the hit direction and project it.
       // Using worldToScreen means the arc tracks the player's rotation/roll for free.
@@ -165,6 +175,7 @@ export function createDamageIndicators() {
     el: root,
     onDamage,
     tick,
+    _activeCount() { return activeCount; },
     // injected by HUD at mount so we can read the live player entity + id without holding ctx
     _player: null,
     _playerId: null,

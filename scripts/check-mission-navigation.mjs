@@ -1,0 +1,157 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { missions } from '../src/systems/missions.js';
+
+function createBus() {
+  const handlers = new Map();
+  const events = [];
+  return {
+    events,
+    on(name, fn) {
+      if (!handlers.has(name)) handlers.set(name, []);
+      handlers.get(name).push(fn);
+    },
+    emit(name, payload) {
+      events.push({ name, payload });
+      for (const fn of handlers.get(name) || []) fn(payload);
+    },
+  };
+}
+
+function createState() {
+  return {
+    mode: 'flight',
+    simTime: 0,
+    meta: { seed: 47 },
+    missions: { boards: {}, active: [], completedLog: [], nextId: 1, config: null },
+    story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
+    world: { currentSectorId: 'sector_helios_prime' },
+    nav: { route: null, autoTravel: false, waypoint: null },
+    ui: { trackedMissionId: null },
+    entities: new Map(),
+    entityList: [],
+    entityIndex: { byStationId: new Map() },
+    playerId: 'player',
+    player: { credits: 10000, cargo: { items: {} }, stats: {} },
+  };
+}
+
+function nonIterableEntityList(length) {
+  return {
+    length,
+    [Symbol.iterator]() {
+      throw new Error('mission navigation should use entity indexes instead of iterating entityList');
+    },
+  };
+}
+
+function createOffer(id = 'offer_offsector') {
+  return {
+    id,
+    type: 'cargo_delivery',
+    factionId: 'faction_scn',
+    params: { cmdtyId: 'cmdty_food', qty: 2 },
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    distance: 1800,
+    reward_cr: 750,
+    collateral_cr: 0,
+    riskTier: 1,
+    time_limit_s: 600,
+    title: 'Deliver food to Tethys',
+  };
+}
+
+function initHarness() {
+  const state = createState();
+  const bus = createBus();
+  bus.on('ui:setCourse', ({ sectorId }) => {
+    state.nav.route = {
+      legs: [{ from: state.world.currentSectorId, to: sectorId, fuel: 12, charge: 3, interdict: 0.05 }],
+      totalFuel: 12,
+      totalHops: 1,
+    };
+  });
+  missions.init({ state, bus, helpers: {} });
+  return { state, bus };
+}
+
+{
+  const { state, bus } = initHarness();
+  const offer = createOffer();
+  state.missions.boards.station_helios = { refreshEpoch: 0, slots: [offer] };
+
+  bus.emit('ui:trackMission', { missionId: offer.id });
+
+  assert.equal(state.ui.trackedMissionId, null, 'unaccepted offer Track Nav must not mutate tracked mission state');
+  assert.equal(state.nav.waypoint, null, 'unaccepted offer Track Nav must not set a waypoint');
+  assert.equal(bus.events.filter((e) => e.name === 'ui:setCourse').length, 0, 'unaccepted offer Track Nav must not plot a route');
+}
+
+{
+  const { state, bus } = initHarness();
+  const offer = createOffer();
+  state.missions.boards.station_helios = { refreshEpoch: 0, slots: [offer] };
+
+  bus.emit('ui:acceptMission', { missionId: offer.id });
+
+  const active = state.missions.active[0];
+  assert(active, 'accepting an offer must create an active mission');
+  assert.equal(state.ui.trackedMissionId, active.id, 'accepted mission must auto-track');
+  assert.equal(state.nav.waypoint && state.nav.waypoint.missionId, active.id, 'accepted mission must own the nav waypoint');
+  assert.equal(state.nav.waypoint && state.nav.waypoint.sectorId, 'sector_tethys_junction', 'off-sector waypoint must keep its target sector');
+  assert.equal(!!(state.nav.waypoint && state.nav.waypoint.pos), false, 'off-sector waypoint should not pretend to have a local position');
+  assert.equal(state.nav.route && state.nav.route.legs[0].to, 'sector_tethys_junction', 'off-sector accepted mission must request a route');
+
+  state.nav.route = null;
+  state.ui.trackedMissionId = null;
+  state.simTime = 5;
+  bus.emit('ui:trackMission', { missionId: active.id });
+
+  assert.equal(state.ui.trackedMissionId, active.id, 'accepted mission Track Nav must still work');
+  assert.equal(state.nav.route && state.nav.route.legs[0].to, 'sector_tethys_junction', 'accepted mission Track Nav must refresh route guidance');
+}
+
+{
+  const { state } = initHarness();
+  const player = { id: 'player', type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {} };
+  const asteroid = { id: 'rock-near', type: 'asteroid', alive: true, pos: { x: 120, z: 0 }, data: { typeId: 'ast_common_rock' } };
+  const station = { id: 'station-live', type: 'station', alive: true, pos: { x: 220, z: 0 }, data: { stationId: 'station_helios' } };
+  state.entities.set(player.id, player);
+  state.entities.set(asteroid.id, asteroid);
+  state.entities.set(station.id, station);
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    byStationId: new Map([[station.data.stationId, station]]),
+    asteroids: [asteroid],
+    mineables: [asteroid],
+    stations: [station],
+    dockStations: [station],
+  };
+  state.entityList = nonIterableEntityList(3);
+
+  assert.equal(missions._nearestAsteroid(), asteroid, 'mining nav should resolve asteroid from the indexed mineable bucket');
+  assert.equal(missions._nearestStation(), station, 'story nav should resolve station from the indexed station bucket');
+  assert.equal(missions._liveStation(station.data.stationId), station, 'mission nav should resolve live station from byStationId');
+
+  state.missions.active = [{
+    id: 'mission_mine_indexed',
+    status: 'active',
+    type: 'mining_quota',
+    title: 'Mine indexed rock',
+    destSectorId: 'sector_helios_prime',
+    deadline_s: 999,
+  }];
+  state.ui.trackedMissionId = 'mission_mine_indexed';
+  missions._refreshNavigation();
+  assert.equal(state.nav.waypoint && state.nav.waypoint.pos && state.nav.waypoint.pos.x, asteroid.pos.x,
+    'tracked mining waypoint should use the indexed asteroid position');
+}
+
+{
+  const stationHubSource = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
+  assert.equal(stationHubSource.includes('Track Nav'), false, 'station mission board must not render dead Track Nav copy for offers');
+  assert.equal(stationHubSource.includes('data-act="track"'), false, 'station mission board must not render dead Track Nav action for offers');
+}
+
+console.log('Mission navigation checks OK');

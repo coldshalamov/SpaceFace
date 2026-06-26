@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { PROPULSION_PROFILES } from '../src/core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../src/core/flight/propulsionKernel.js';
+import { advanceFixedTimestep, LOOP_FIXED_DT } from '../src/core/loop.js';
 import { estimateBrakingSolution, solveIntercept } from '../src/core/flight/flightTelemetry.js';
 import { estimateMasslineResponse, createMasslineRuntime, stepMassline } from '../src/core/constraints/masslineController.js';
 import { LocalSpaceIntel, rankTradeRoutes } from '../src/ui/navigation/localSpaceMapModel.js';
@@ -46,6 +47,36 @@ function simulate({ profile, b, input, ticks, runtime }) {
   return { body: b, runtime: r, result: last };
 }
 
+// 0. Runtime loop catch-up: a 30fps render frame must advance two fixed sim ticks, not slow time.
+{
+  let ticks = 0;
+  const result = advanceFixedTimestep(0, LOOP_FIXED_DT * 2 + 0.001, 1, () => { ticks++; });
+  assert.equal(ticks, 2, '30fps presentation should catch up with two 60Hz sim ticks');
+  assert.equal(result.steps, 2);
+  assert.equal(result.shedBacklog, false);
+  assert.ok(result.accumulator > 0 && result.accumulator < LOOP_FIXED_DT);
+}
+
+// 0b. Runtime loop remains spiral-safe: extreme stalls are capped and old backlog is shed.
+{
+  let ticks = 0;
+  const result = advanceFixedTimestep(0, LOOP_FIXED_DT * 10, 1, () => { ticks++; });
+  assert.equal(ticks, 4, 'extreme stalls should be bounded by the catch-up cap');
+  assert.equal(result.steps, 4);
+  assert.equal(result.shedBacklog, true);
+  assert.equal(result.accumulator, 0);
+}
+
+// 0c. A transient 20fps presentation frame should not shed simulation time.
+{
+  let ticks = 0;
+  const result = advanceFixedTimestep(LOOP_FIXED_DT * 0.25, LOOP_FIXED_DT * 3, 1, () => { ticks++; });
+  assert.equal(ticks, 3, '50ms presentation should advance three fixed sim ticks');
+  assert.equal(result.steps, 3);
+  assert.equal(result.shedBacklog, false);
+  assert.ok(result.accumulator > 0 && result.accumulator < LOOP_FIXED_DT);
+}
+
 // 1. Newtonian coast: neutral controls do not manufacture vacuum drag.
 {
   const profile = PROPULSION_PROFILES.drive_reaction_s;
@@ -89,6 +120,29 @@ function simulate({ profile, b, input, ticks, runtime }) {
   const neutral = stepPropulsion({ dt: DT, body: bNeutral, input: { assistMode: 'assisted' }, profile, runtime: createPropulsionRuntime(profile) });
   const reverse = stepPropulsion({ dt: DT, body: bReverse, input: { throttle: -1, assistMode: 'assisted' }, profile, runtime: createPropulsionRuntime(profile) });
   assert.ok(reverse.force.x < neutral.force.x, 'reverse input should add stronger deceleration');
+}
+
+// 4b. Deliberate brake spends counter-thruster authority beyond ordinary reverse thrust.
+{
+  const profile = PROPULSION_PROFILES.drive_reaction_s;
+  const bReverse = body({ vel: { x: 140, z: 35 } });
+  const bBrake = body({ vel: { x: 140, z: 35 } });
+  const reverse = stepPropulsion({ dt: DT, body: bReverse, input: { throttle: -1, assistMode: 'assisted' }, profile, runtime: createPropulsionRuntime(profile) });
+  const brake = stepPropulsion({ dt: DT, body: bBrake, input: { throttle: -1, brake: true, assistMode: 'assisted' }, profile, runtime: createPropulsionRuntime(profile) });
+  assert.ok(brake.force.x < reverse.force.x, 'brake intent should command stronger forward-axis counter-thrust');
+  assert.ok(brake.force.z < reverse.force.z, 'brake intent should also cancel lateral drift');
+}
+
+// 4c. Reverse-brake after boost should deliberately arrest escape speed.
+{
+  const profile = PROPULSION_PROFILES.drive_reaction_s;
+  const b = body();
+  let sim = simulate({ profile, b, input: { throttle: 1, boost: true, assistMode: 'assisted' }, ticks: 78 });
+  const boostedSpeed = Math.hypot(b.vel.x, b.vel.z);
+  sim = simulate({ profile, b, runtime: sim.runtime, input: { throttle: -1, brake: true, assistMode: 'assisted' }, ticks: 54 });
+  const brakeSpeed = Math.hypot(b.vel.x, b.vel.z);
+  assert.ok(boostedSpeed > 90, 'boost setup should reach a meaningful escape speed');
+  assert.ok(brakeSpeed < boostedSpeed * 0.78, 'reverse-brake should arrest boosted speed within the browser probe window');
 }
 
 // 5. Gravimetric drive converges to an authored speed envelope.

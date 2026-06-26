@@ -24,7 +24,6 @@ export function createActionService(context, attachments, routeDamage) {
       metadata: sanitizeMetadata(request.metadata),
     };
     state.combat.actions.requests.push(queued);
-    state.combat.actions.requests.sort((a, b) => a.notBeforeTick - b.notBeforeTick || a.seq - b.seq);
     appendCombatTrace(state.combat, state.tick, 'action.requested', {
       actorId,
       actionId: actionDef.id,

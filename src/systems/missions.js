@@ -87,6 +87,28 @@ function sectorDistanceWu(aSectorId, bSectorId) {
   return clamp(600 + Math.hypot(dx, dy) * 650, 600, 6000);
 }
 
+function missionNavReason(m, station, sector) {
+  const p = m && m.params || {};
+  const commodity = p.cmdtyId && CMDTY_BY_ID.get(p.cmdtyId);
+  const cargo = commodity ? commodity.name : 'cargo';
+  const stationName = station && station.name || 'destination';
+  const sectorName = sector && sector.name || 'target sector';
+  const remaining = Math.max(0, (m.objectiveTarget || p.qty || 1) - (m.objectiveProgress || 0));
+  switch (m.type) {
+    case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
+    case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
+    case 'mining_quota': return `Mine ${remaining || p.qty || ''}u ${cargo}`.trim();
+    case 'salvage_retrieval': return `Recover ${p.qty || ''}u ${cargo} for ${stationName}`.trim();
+    case 'smuggling_run': return `Smuggle ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
+    case 'passenger_transport': return `Transport passenger to ${stationName}`;
+    case 'escort': return `Escort convoy to ${stationName}`;
+    case 'bounty_hunt': return `Find the bounty near ${sectorName}`;
+    case 'patrol_clear': return `Clear hostiles in ${sectorName}`;
+    case 'recon_scan': return `Scan sites in ${sectorName}`;
+    default: return stationName || sectorName;
+  }
+}
+
 export const missions = {
   name: 'missions',
 
@@ -103,14 +125,17 @@ export const missions = {
 
     this._lastDockedStation = null;
     this._spawnSeq = 0; // disambiguates re-spawns of the same mission target across visits
+    this._lastWaypointRouteKey = null;
+    this._lastWaypointRouteAt = 0;
 
     // New game → seed config + reset boards/active (idempotent: a load may already have populated).
     bus.on('game:started', () => this.newGame());
+    bus.on('save:loaded', () => this._restoreNavigationAfterLoad());
 
     // ── Player intents (UI) ────────────────────────────────────────────────────────────────
     bus.on('ui:acceptMission', (p) => this.acceptMission(p && p.missionId));
     bus.on('ui:abandonMission', (p) => this.abandonMission(p && p.missionId));
-    bus.on('ui:trackMission', (p) => { if (p && p.missionId) state.ui.trackedMissionId = p.missionId; });
+    bus.on('ui:trackMission', (p) => { if (p && p.missionId) this.trackMission(p.missionId); });
 
     // ── Docking: refresh expired boards, run delivery/passenger/escort/salvage objectives ────
     bus.on('dock:docked', (p) => {
@@ -164,6 +189,11 @@ export const missions = {
     }
     // Story credit/net-worth gates are checked opportunistically (cheap, no per-frame DOM).
     this._checkStoryGates();
+    this._navRefreshT = (this._navRefreshT || 0) + (dt || 0);
+    if (this._navRefreshT >= 0.75) {
+      this._navRefreshT = 0;
+      this._refreshNavigation();
+    }
     if (changed) this.bus.emit('mission:updated', { missionId: null });
   },
 
@@ -419,6 +449,7 @@ export const missions = {
 
     // Spawn any immediate/deferred targets (if the player is already in the target sector).
     this._ensureMissionTargets(inst);
+    this.trackMission(inst.id, { silent: true });
 
     this.bus.emit('mission:accepted', { missionId: inst.id, type: inst.type, storyTag: inst.storyTag || undefined });
     this.bus.emit('mission:updated', { missionId: inst.id });
@@ -436,6 +467,21 @@ export const missions = {
 
     // B4 branch: accepting a faction intro contract sets the story branch.
     this._maybeSetBranch(inst);
+    return true;
+  },
+
+  trackMission(missionId, options = {}) {
+    if (!missionId) return false;
+    const state = this.state;
+    const mission = (state.missions.active || []).find((m) => m.id === missionId && m.status === 'active');
+    if (!mission) return false;
+    state.ui.trackedMissionId = mission.id;
+    this._refreshTrackedMissionNav(mission);
+    if (!options.silent) {
+      const wp = state.nav && state.nav.waypoint;
+      this.bus.emit('toast', { text: `Tracking: ${mission.title || 'Mission'}${wp && wp.reason ? ` - ${wp.reason}` : ''}`, kind: 'info', ttl: 3 });
+    }
+    this.bus.emit('mission:updated', { missionId: mission.id, tracked: true });
     return true;
   },
 
@@ -494,6 +540,228 @@ export const missions = {
     return true;
   },
 
+  _refreshTrackedMissionNav(mission = null) {
+    const trackedId = this.state.ui && this.state.ui.trackedMissionId;
+    if (!trackedId) return;
+    const m = mission || (this.state.missions.active || []).find((x) => x.id === trackedId && x.status === 'active');
+    if (!m || m.id !== trackedId || m.status !== 'active') return;
+    const waypoint = this._missionWaypoint(m);
+    if (waypoint) this._setNavWaypoint(waypoint);
+  },
+
+  _refreshNavigation(options = {}) {
+    const state = this.state;
+    const mission = this._trackedOrFirstActiveMission();
+    if (mission) {
+      state.ui = state.ui || {};
+      const changed = state.ui.trackedMissionId !== mission.id;
+      state.ui.trackedMissionId = mission.id;
+      this._refreshTrackedMissionNav(mission);
+      if (changed && !options.silent) this.bus.emit('mission:updated', { missionId: mission.id, tracked: true });
+      return true;
+    }
+    if (state.ui) state.ui.trackedMissionId = null;
+    return this._ensureStoryWaypoint(options);
+  },
+
+  _restoreNavigationAfterLoad() {
+    this._refreshNavigation({ forceStory: true, silent: true });
+  },
+
+  _trackedOrFirstActiveMission() {
+    const state = this.state;
+    const active = (state.missions && state.missions.active || []).filter((m) => m && m.status === 'active');
+    if (!active.length) return null;
+    const trackedId = state.ui && state.ui.trackedMissionId;
+    if (trackedId) {
+      const tracked = active.find((m) => m.id === trackedId);
+      if (tracked) return tracked;
+    }
+    return active[0];
+  },
+
+  _setNavWaypoint(waypoint) {
+    this.state.nav = this.state.nav || {};
+    const same = sameNavWaypoint(this.state.nav.waypoint, waypoint);
+    if (!same) {
+      this.state.nav.waypoint = waypoint || null;
+      this.bus.emit('nav:waypoint', waypoint || null);
+    }
+    this._syncWaypointRoute(waypoint);
+  },
+
+  _syncWaypointRoute(waypoint) {
+    if (!waypoint || !waypoint.sectorId) return;
+    const state = this.state;
+    const currentSectorId = state.world && state.world.currentSectorId;
+    if (!currentSectorId || currentSectorId === waypoint.sectorId) return;
+    const route = state.nav && state.nav.route;
+    const legs = route && Array.isArray(route.legs) ? route.legs : [];
+    const first = legs[0];
+    const last = legs[legs.length - 1];
+    if (first && last && first.from === currentSectorId && last.to === waypoint.sectorId) return;
+    const key = `${currentSectorId}->${waypoint.sectorId}`;
+    const now = state.simTime || 0;
+    if (this._lastWaypointRouteKey === key && now - (this._lastWaypointRouteAt || 0) < 3) return;
+    this._lastWaypointRouteKey = key;
+    this._lastWaypointRouteAt = now;
+    this.bus.emit('ui:setCourse', {
+      sectorId: waypoint.sectorId,
+      missionId: waypoint.missionId || null,
+      waypointKind: waypoint.kind || null,
+    });
+  },
+
+  _clearMissionNav(missionId) {
+    const state = this.state;
+    if (state.ui && state.ui.trackedMissionId === missionId) state.ui.trackedMissionId = null;
+    if (state.nav && state.nav.waypoint && state.nav.waypoint.missionId === missionId) {
+      state.nav.waypoint = null;
+      this.bus.emit('nav:waypoint', null);
+    }
+  },
+
+  _missionWaypoint(m) {
+    if (!m || m.status !== 'active') return null;
+    const sector = SECTOR_BY_ID.get(m.destSectorId);
+    const station = STATION_INFO.get(m.destStationId);
+    const title = m.title || 'Mission';
+    const base = {
+      kind: 'mission',
+      missionId: m.id,
+      missionType: m.type,
+      label: title,
+      reason: missionNavReason(m, station, sector),
+      stationId: m.destStationId || null,
+      sectorId: m.destSectorId || null,
+      sectorName: sector && sector.name || null,
+    };
+
+    if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
+      const target = this._firstLiveMissionTarget(m);
+      if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: 'Intercept the marked hostile' };
+      return base;
+    }
+
+    if (m.type === 'escort') {
+      const targetStation = this._liveStation(m.destStationId);
+      if (targetStation) return { ...base, pos: { x: targetStation.pos.x, z: targetStation.pos.z }, reason: 'Escort the convoy to dock' };
+      return base;
+    }
+
+    if (m.type === 'mining_quota') {
+      const asteroid = this._nearestAsteroid();
+      if (asteroid) {
+        return { ...base, stationId: null, sectorId: this.state.world && this.state.world.currentSectorId || m.destSectorId, pos: { x: asteroid.pos.x, z: asteroid.pos.z } };
+      }
+      return { ...base, stationId: null, sectorId: this.state.world && this.state.world.currentSectorId || m.destSectorId };
+    }
+
+    const targetStation = this._liveStation(m.destStationId);
+    if (targetStation) return { ...base, pos: { x: targetStation.pos.x, z: targetStation.pos.z } };
+    return base;
+  },
+
+  _firstLiveMissionTarget(m) {
+    for (const id of m.targetEntityIds || []) {
+      const e = this.state.entities.get(id);
+      if (e && e.alive !== false && e.pos) return e;
+    }
+    return null;
+  },
+
+  _liveStation(stationId) {
+    if (!stationId) return null;
+    const index = this.state.entityIndex;
+    const byStationId = index && index.byStationId;
+    const indexed = byStationId && byStationId.get(stationId);
+    if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+    if (hasActiveMissionEntityIndex(this.state)) return null;
+    for (const e of this.state.entityList || []) {
+      if (e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId === stationId) return e;
+    }
+    return null;
+  },
+
+  _nearestAsteroid() {
+    const player = this.state.entities.get(this.state.playerId);
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of missionIndexedEntities(this.state, 'mineables', 'asteroids')) {
+      if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+      const dx = e.pos.x - (player && player.pos ? player.pos.x : 0);
+      const dz = e.pos.z - (player && player.pos ? player.pos.z : 0);
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { best = e; bestD2 = d2; }
+    }
+    return best;
+  },
+
+  _nearestStation() {
+    const player = this.state.entities.get(this.state.playerId);
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of missionIndexedEntities(this.state, 'dockStations', 'stations')) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      const stationId = e.data && e.data.stationId;
+      if (!stationId || !STATION_INFO.get(stationId)) continue;
+      const dx = e.pos.x - (player && player.pos ? player.pos.x : 0);
+      const dz = e.pos.z - (player && player.pos ? player.pos.z : 0);
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { best = e; bestD2 = d2; }
+    }
+    return best;
+  },
+
+  _storyWaypointForBeat(beat) {
+    if (!beat) return null;
+    const state = this.state;
+    const currentSectorId = state.world && state.world.currentSectorId || null;
+    const sector = SECTOR_BY_ID.get(currentSectorId);
+    const base = {
+      kind: 'story',
+      storyBeat: beat.beat,
+      label: storyBeatTitle(beat),
+      reason: beat.objective || BEAT_HINT[beat.beat] || 'Follow the current story objective.',
+      sectorId: currentSectorId,
+      sectorName: sector && sector.name || null,
+    };
+    if (beat.beat === 0) {
+      const asteroid = this._nearestAsteroid();
+      if (asteroid) return { ...base, label: 'Cold Start: Mine Asteroid', pos: { x: asteroid.pos.x, z: asteroid.pos.z } };
+      return base;
+    }
+    const station = this._nearestStation();
+    if (station) {
+      const stationId = station.data && station.data.stationId || null;
+      const info = STATION_INFO.get(stationId);
+      return {
+        ...base,
+        stationId,
+        sectorId: info && info.sectorId || currentSectorId,
+        sectorName: info && SECTOR_BY_ID.get(info.sectorId) && SECTOR_BY_ID.get(info.sectorId).name || base.sectorName,
+        pos: { x: station.pos.x, z: station.pos.z },
+      };
+    }
+    return base;
+  },
+
+  _ensureStoryWaypoint(options = {}) {
+    const state = this.state;
+    const beat = state.story && STORY_BEATS[state.story.beatIndex];
+    if (!beat) return false;
+    const existing = state.nav && state.nav.waypoint;
+    const force = !!(options.forceStory || options.force);
+    const allowReplaceTrade = force || !!options.preferStory;
+    if (existing && existing.onboarding && !force) return false;
+    if (existing && existing.kind === 'mission') return false;
+    if (existing && existing.kind === 'trade' && !allowReplaceTrade) return false;
+    const waypoint = this._storyWaypointForBeat(beat);
+    if (!waypoint) return false;
+    this._setNavWaypoint(waypoint);
+    return true;
+  },
+
   // =========================================================================================
   // OBJECTIVE TRACKING (event resolvers)
   // =========================================================================================
@@ -507,7 +775,7 @@ export const missions = {
       if (m.destStationId && stationId && m.destStationId !== stationId) continue; // sell at the named buyer
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + (p.qty || 0));
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
-      else this.bus.emit('mission:updated', { missionId: m.id });
+      else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
     this._storyTrigger('trade', p); // first-sell story beat fires on any sell
   },
@@ -520,7 +788,7 @@ export const missions = {
       if (m.params.cmdtyId !== p.commodityId) continue;
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + (p.qty || 0));
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
-      else this.bus.emit('mission:updated', { missionId: m.id });
+      else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
     this._storyTrigger('mine', p);
   },
@@ -538,7 +806,7 @@ export const missions = {
       m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
-      else this.bus.emit('mission:updated', { missionId: m.id });
+      else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
   },
 
@@ -564,7 +832,7 @@ export const missions = {
       if (this.state.world.currentSectorId !== m.destSectorId) continue;
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
-      else this.bus.emit('mission:updated', { missionId: m.id });
+      else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
   },
 
@@ -643,6 +911,7 @@ export const missions = {
     const state = this.state;
     if (m.status !== 'active') return;
     m.status = 'completed';
+    this._clearMissionNav(m.id);
 
     // ── reward credits + collateral refund ──
     this.bus.emit('economy:grantCredits', { amount: m.reward_cr, reason: `mission:${m.id}` });
@@ -695,6 +964,7 @@ export const missions = {
   _failMission(m, index, reason) {
     if (m.status !== 'active') return;
     m.status = 'failed';
+    this._clearMissionNav(m.id);
 
     // Failure rep penalty to the offering faction. We emit faction:repDelta directly and keep the
     // mission:failed payload factionId-FREE so factions' onMissionLost doesn't ALSO penalise.
@@ -716,6 +986,7 @@ export const missions = {
   _expireMission(m, index) {
     if (m.status !== 'active') return;
     m.status = 'expired';
+    this._clearMissionNav(m.id);
     const baseRep = (MISSION_BASE_REP[m.type] != null ? MISSION_BASE_REP[m.type] : 3);
     const specRep = round(baseRep * (1 + (m.riskTier || 0) * 0.4));
     const penalty = -Math.ceil(specRep * 0.6);
@@ -731,12 +1002,16 @@ export const missions = {
 
   _removeActive(missionId, hintIndex) {
     const active = this.state.missions.active;
+    this._clearMissionNav(missionId);
+    let removed = false;
     if (hintIndex != null && active[hintIndex] && active[hintIndex].id === missionId) {
-      active.splice(hintIndex, 1); return;
+      active.splice(hintIndex, 1);
+      removed = true;
+    } else {
+      const i = active.findIndex((m) => m.id === missionId);
+      if (i >= 0) { active.splice(i, 1); removed = true; }
     }
-    const i = active.findIndex((m) => m.id === missionId);
-    if (i >= 0) active.splice(i, 1);
-    if (this.state.ui && this.state.ui.trackedMissionId === missionId) this.state.ui.trackedMissionId = null;
+    if (removed) this._refreshNavigation({ forceStory: true, silent: true });
   },
 
   _logCompletion(type, cr, success) {
@@ -756,6 +1031,7 @@ export const missions = {
     if (this.state.world.currentSectorId !== m.destSectorId) return; // defer until the player arrives
     if (m.targetEntityIds.length > 0) return;                        // already spawned
     this._spawnTargetsFor(m);
+    this._refreshTrackedMissionNav(m);
   },
 
   _spawnTargetsFor(m) {
@@ -868,6 +1144,7 @@ export const missions = {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
     this.spawnTargetsForSector(sectorId);
+    this._refreshNavigation({ preferStory: true });
     this._storyTrigger('sector', { sectorId });
   },
 
@@ -1016,6 +1293,7 @@ export const missions = {
     // (src/systems/story.js) presents the five endgame choices on the B7 gate; this line is only the
     // spine's terminal state, kept neutral so the endgame overlay owns the disposition.
     const nextBeat = STORY_BEATS[story.beatIndex];
+    this._refreshNavigation({ forceStory: true, silent: true });
     const dir = (nextBeat && story.beatIndex !== fromIndex) ? BEAT_HINT[nextBeat.beat] : 'The contracts continue. The count never ends.';
     if (dir) this.bus.emit('toast', { text: dir, kind: 'story', ttl: 6 });
     this.bus.emit('mission:updated', { missionId: null });
@@ -1060,13 +1338,18 @@ export const missions = {
     state.missions.config = MISSION_TUNING;
     state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
     this._spawnSeq = 0;
+    this._navRefreshT = 0;
+    this._lastWaypointRouteKey = null;
+    this._lastWaypointRouteAt = 0;
+    this._refreshNavigation({ forceStory: true, silent: true });
     // Direction toast for the opening beat (guard against the double newGame call: save.newGame()
     // then game:started both fire it → only toast once).
     const toastKey = state.meta && state.meta.seed;
-    if (this._newGameToastSeed === toastKey) return;
-    this._newGameToastSeed = toastKey;
-    const b0 = STORY_BEATS[state.story.beatIndex];
-    if (b0 && BEAT_HINT[b0.beat]) this.bus.emit('toast', { text: BEAT_HINT[b0.beat], kind: 'story', ttl: 6 });
+    if (this._newGameToastSeed !== toastKey) {
+      this._newGameToastSeed = toastKey;
+      const b0 = STORY_BEATS[state.story.beatIndex];
+      if (b0 && BEAT_HINT[b0.beat]) this.bus.emit('toast', { text: BEAT_HINT[b0.beat], kind: 'story', ttl: 6 });
+    }
   },
 
   serialize() {
@@ -1103,6 +1386,7 @@ export const missions = {
       }
       return true;
     });
+    this._refreshNavigation({ forceStory: true, silent: true });
   },
 };
 
@@ -1142,6 +1426,49 @@ const BEAT_HINT = {
   6: 'Empire Seed: deploy your first passive asset (drone, trader, or outpost).',
   7: 'The Deep Reach: amass 100,000cr and 50 rep with your faction, then claim the stars.',
 };
+
+function storyBeatTitle(beat) {
+  if (!beat) return 'Story Objective';
+  const hint = BEAT_HINT[beat.beat] || '';
+  const colon = hint.indexOf(':');
+  if (colon > 0) return hint.slice(0, colon);
+  return String(beat.id || `Beat ${beat.beat}`)
+    .replace(/^b\d+_?/i, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function hasActiveMissionEntityIndex(state) {
+  const index = state && state.entityIndex;
+  return !!(index && index.__spacefaceEntityIndexV1);
+}
+
+function missionIndexedEntities(state, primaryKey, secondaryKey) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) {
+    return index[primaryKey] || index[secondaryKey] || [];
+  }
+  return (state && state.entityList) || [];
+}
+
+function sameNavWaypoint(a, b) {
+  if (!a || !b) return !a && !b;
+  if ((a.kind || null) !== (b.kind || null)) return false;
+  if ((a.missionId || null) !== (b.missionId || null)) return false;
+  if ((a.targetEntityId || null) !== (b.targetEntityId || null)) return false;
+  if ((a.storyBeat ?? null) !== (b.storyBeat ?? null)) return false;
+  if ((a.stationId || null) !== (b.stationId || null)) return false;
+  if ((a.sectorId || null) !== (b.sectorId || null)) return false;
+  if ((a.label || '') !== (b.label || '')) return false;
+  if ((a.reason || '') !== (b.reason || '')) return false;
+  return sameNavPos(a.pos, b.pos);
+}
+
+function sameNavPos(a, b) {
+  if (!a || !b) return !a && !b;
+  return Math.abs((a.x || 0) - (b.x || 0)) < 0.05
+    && Math.abs((a.z || 0) - (b.z || 0)) < 0.05;
+}
 
 // Wrap an angle to (-π, π] for the smallest turn delta (escortee steering; no THREE dependency).
 function wrapAngleLocal(a) {

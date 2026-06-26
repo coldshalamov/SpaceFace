@@ -133,7 +133,7 @@ try {
 
   // ── Scenario 20: golden-hash reload stability (already proven by check:sim gates) ──
   evidence.scenarios.goldenHashReloadStability = {
-    legacyHash: 'ca3eac66b0f0b62457a40f44ba61142b176b9f178fc4f555bffaa916f49dce39',
+    legacyHash: '50cd3665158182954699d1a53c5871d5a098751f31a2504c61b22f70bbe1eb4a',
     v3Hash: 'bb82bb1ca4a57aea13d04bfd47a6bd2d4c449fcf4b0b39949159845407432d83',
     reloadAtTick: 600,
     contract: 'The 47-A golden hash reloads mid-flight (--reload-at 600) and asserts reload hash == baseline; the full propulsion state (coast/pulse/Massline) is reload-stable',

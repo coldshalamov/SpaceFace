@@ -240,17 +240,11 @@ export const settingsScreen = {
       const g = s.gameplay;
       if (!s.controls) s.controls = { bindings: null, flightMode: 'assisted' };
       if (!s.controls.flightMode) s.controls.flightMode = 'assisted';
-      if (!g.physicsBackend) g.physicsBackend = 'rapier-dynamic';
-      if (!g.aiBackend) g.aiBackend = 'sg06-tactical';
-      if (!g.flightBackend) g.flightBackend = 'v3';
+      g.physicsBackend = 'rapier-dynamic';
+      g.aiBackend = 'sg06-tactical';
+      g.flightBackend = 'v3';
       rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
-      rowSelect('Physics backend', () => g.physicsBackend || 'rapier-dynamic', [['rapier-dynamic', 'Rapier Dynamic'], ['custom', 'Custom'], ['rapier', 'Rapier Observer']], (v) => this._set(ctx, 'gameplay', 'physicsBackend', v));
-      // Flight controller migration control (spec §21 phase: integrate Flight V3). V3 writes only
-      // force/torque/impulse through the physics authority and drives the live Rapier bodies via the
-      // generated propulsion kernel; legacy is the prior custom controller. V3 requires rapier-dynamic.
-      rowSelect('Flight controller', () => g.flightBackend, [['legacy', 'Custom Controller (legacy)'], ['v3', 'Flight V3 (Rapier authority)']], (v) => this._set(ctx, 'gameplay', 'flightBackend', v));
-      rowSelect('AI backend', () => g.aiBackend || 'sg06-tactical', [['sg06-tactical', 'SG-06 Tactical'], ['legacy', 'Legacy FSM']], (v) => this._set(ctx, 'gameplay', 'aiBackend', v));
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
       rowToggle('Damage numbers', () => s.showDamageNumbers, (v) => this._set(ctx, null, 'showDamageNumbers', v));

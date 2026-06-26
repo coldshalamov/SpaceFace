@@ -37,13 +37,22 @@ export function createFloatingText(ctx) {
     nodes.push({ el, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0, targetId: null, wx: 0, wz: 0 });
   }
   let head = 0;
+  let activeCount = 0;
+
+  function retire(n) {
+    if (!n || !n.alive) return;
+    n.alive = false;
+    if (activeCount > 0) activeCount--;
+    n.el.style.display = 'none';
+  }
 
   function spawn(text, cls, wx, wz, targetId, opts) {
     if (!state.settings || state.settings.showDamageNumbers === false) return;
     opts = opts || {};
     let n = null;
     for (let k = 0; k < POOL; k++) { const idx = (head + k) % POOL; if (!nodes[idx].alive) { n = nodes[idx]; head = (idx + 1) % POOL; break; } }
-    if (!n) { n = nodes[head]; head = (head + 1) % POOL; }   // steal oldest-ish
+    if (!n) { n = nodes[head]; head = (head + 1) % POOL; retire(n); }   // steal oldest-ish
+    activeCount++;
     n.alive = true; n.age = 0; n.life = opts.life || 0.95;
     n.targetId = targetId != null ? targetId : null;
     n.wx = wx; n.wz = wz;
@@ -151,12 +160,13 @@ export function createFloatingText(ctx) {
   }
 
   function update(dt) {
+    if (activeCount <= 0) return;
     if (!helpers.worldToScreen) return;
     for (let i = 0; i < POOL; i++) {
       const n = nodes[i];
       if (!n.alive) continue;
       n.age += dt;
-      if (n.age >= n.life) { n.alive = false; n.el.style.display = 'none'; continue; }
+      if (n.age >= n.life) { retire(n); continue; }
       // follow the entity if it still exists, else stay at the world point
       let wx = n.wx, wz = n.wz;
       if (n.targetId != null) { const e = state.entities.get(n.targetId); if (e) { wx = e.pos.x; wz = e.pos.z; } }
@@ -170,7 +180,10 @@ export function createFloatingText(ctx) {
     }
   }
 
-  return { update };
+  return {
+    update,
+    _activeCount() { return activeCount; },
+  };
 }
 
 function injectStyle() {

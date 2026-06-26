@@ -27,6 +27,7 @@ import { MODULES } from '../data/modules.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
+import * as kit from './ships/shipKit.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -2341,6 +2342,12 @@ export function createVisualFactory() {
           default: return buildFallback(e);
         }
       } catch (err) {
+        if (globalThis && globalThis.__SF_VISUAL_FACTORY_THROW__) throw err;
+        if (globalThis && globalThis.__SF_VISUAL_FACTORY_LOG_FALLBACKS__) {
+          const kind = e && e.type ? e.type : 'unknown';
+          const defId = e && e.data && e.data.defId ? e.data.defId : '';
+          console.warn(`[visualFactory] fallback ${kind}${defId ? `:${defId}` : ''}`, err);
+        }
         try { return buildFallback(e); } catch (_e) { return null; }
       }
     },

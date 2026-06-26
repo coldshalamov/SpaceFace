@@ -14,13 +14,15 @@
 // Single-writer (§0.6): cargo is owned by the cargo module; we route ore through its addCargo
 // helper / pickup:collected event and only fall back to a direct write while cargo is a stub.
 import { ORES, ASTEROIDS, BEAMS } from '../data/mining.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 
-const MAGNET_ACCEL = 180;       // wu/s² pull toward ship inside magnetRange
-const MAGNET_MAX_SPEED = 140;   // wu/s cap on pulled pickups
+const MAGNET_ACCEL = 280;       // wu/s² pull toward ship inside magnetRange (snappy vacuum so ore doesn't drift off)
+const MAGNET_MAX_SPEED = 210;   // wu/s cap on pulled pickups
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
 const EJECT_STEP = 0.25;        // ore ejects each time cumulative loss crosses 25%
 const SALVAGE_TIME_DEFAULT = 6; // s to fully drain a wreck if combat didn't set one
+const MINEABLE_QUERY_RADIUS_PAD = 64;
 
 const ORE_BY_ID = new Map(ORES.map((o) => [o.id, o]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
@@ -34,6 +36,17 @@ export const mining = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
+    this._pickupScratch = [];
+    this._mineableScratch = [];
+    this._diag = {
+      pickupScans: 0,
+      pickupSpatialQueries: 0,
+      pickupCandidates: 0,
+      pickupsMagnetized: 0,
+      pickupsCollected: 0,
+      targetSpatialQueries: 0,
+      targetCandidates: 0,
+    };
 
     this._beaming = false;     // was the player beam active last tick (start/stop edges)
     this._lockTargetId = null; // currently soft-locked asteroid/wreck id
@@ -51,6 +64,7 @@ export const mining = {
 
   // ---- main per-tick update -------------------------------------------------
   update(dt, state) {
+    resetMiningDiagnostics(this._diag);
     const player = state.entities.get(state.playerId);
     const firing = !!player && player.alive && !player.flags.docked
       && state.mode === 'flight' && state.input.fireGroup === 2;
@@ -128,7 +142,9 @@ export const mining = {
     const aim = state.input.aimAngle || 0;
     const ax = Math.cos(aim), az = Math.sin(aim);
     let best = null, bestScore = -Infinity;
-    const mineables = (state.entityIndex && state.entityIndex.mineables) || state.entityList;
+    const mineables = mineablesNearShip(state, ship, range + MINEABLE_QUERY_RADIUS_PAD, this._mineableScratch);
+    this._diag.targetSpatialQueries = mineables === this._mineableScratch ? 1 : 0;
+    this._diag.targetCandidates = mineables.length;
     for (const e of mineables) {
       if (!e.alive) continue;
       if (e.type !== 'asteroid' && e.type !== 'wreck') continue;
@@ -253,8 +269,15 @@ export const mining = {
   _updatePickups(dt, state) {
     const player = state.entities.get(state.playerId);
     if (!player) return;
-    const magnet = state.player.magnetRange || 90;
-    const pickups = (state.entityIndex && state.entityIndex.pickups) || state.entityList;
+    const magnet = state.player.magnetRange || 250;
+    const collectRadius = (player.radius || 6) + 4;
+    const queryRadius = Math.max(magnet, collectRadius) + PICKUP_RADIUS;
+    const pickups = pickupsNearPlayer(state, player, queryRadius, this._pickupScratch);
+    this._diag.pickupScans = 1;
+    this._diag.pickupSpatialQueries = pickups === this._pickupScratch ? 1 : 0;
+    this._diag.pickupCandidates = pickups.length;
+    this._diag.pickupsMagnetized = 0;
+    this._diag.pickupsCollected = 0;
     for (const e of pickups) {
       if (!e.alive || e.type !== 'pickup') continue;
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
@@ -264,10 +287,12 @@ export const mining = {
         e.vel.z += (dz / dist) * MAGNET_ACCEL * dt;
         const sp = Math.hypot(e.vel.x, e.vel.z);
         if (sp > MAGNET_MAX_SPEED) { const s = MAGNET_MAX_SPEED / sp; e.vel.x *= s; e.vel.z *= s; }
+        this._diag.pickupsMagnetized++;
       }
       // direct collect on overlap (physics also emits pickup:collected on contact; idempotent via alive guard)
-      if (dist <= (player.radius || 6) + 4) {
+      if (dist <= collectRadius) {
         e.alive = false;
+        this._diag.pickupsCollected++;
         this.bus.emit('pickup:collected', {
           pickupId: e.id, collectorId: player.id, kind: (e.data && e.data.kind) || 'ore',
           amount: (e.data && e.data.amount) || 1, commodityId: e.data && e.data.commodityId,
@@ -275,6 +300,8 @@ export const mining = {
         });
       }
     }
+    state.miningRuntime = state.miningRuntime || {};
+    state.miningRuntime.diagnostics = this._diag;
   },
 
   _onPickupCollected(p) {
@@ -417,3 +444,24 @@ export const mining = {
     return { x: ast.pos.x + (dx / d) * r, z: ast.pos.z + (dz / d) * r };
   },
 };
+
+function pickupsNearPlayer(state, player, radius, out) {
+  return queryNearbyEntities(state, player.pos, radius, out,
+    (state.entityIndex && state.entityIndex.pickups) || state.entityList);
+}
+
+function mineablesNearShip(state, ship, radius, out) {
+  return queryNearbyEntities(state, ship.pos, radius, out,
+    (state.entityIndex && state.entityIndex.mineables) || state.entityList);
+}
+
+function resetMiningDiagnostics(diag) {
+  if (!diag) return;
+  diag.pickupScans = 0;
+  diag.pickupSpatialQueries = 0;
+  diag.pickupCandidates = 0;
+  diag.pickupsMagnetized = 0;
+  diag.pickupsCollected = 0;
+  diag.targetSpatialQueries = 0;
+  diag.targetCandidates = 0;
+}

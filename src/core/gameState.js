@@ -43,7 +43,7 @@ function defaultPlayer() {
     fireGroups: { 1: [], 2: [] },
     boostActive: false,
     insurance: { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null },
-    magnetRange: 90,
+    magnetRange: 250,
     miningBeam: { tierId: 'beam_mk1', range: 220, dps: 18, heat: 0, heatRate: 0, coolRate: 0, overheated: false, directToCargo: true },
     stats: { lifetimeProfit: 0, tradesCount: 0, biggestSingleProfit: 0, smuggledValue: 0, kills: 0, missionsDone: 0, totalPassiveEarnedLifetime: 0 },
     // Contextual first-time hints (onboarding.js). Each flag starts false and flips to true once
@@ -82,7 +82,7 @@ export function createGameState(seed) {
     tick: 0,
     days: 0,
     rng: mulberry32(seed),
-    input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 } },
+    input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 } },
     camera: { obj: null, tilt: 60, zoom: 95, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 18 },
     bounds: { radius: 2600, hardRadius: 3000, center: { x: 0, z: 0 } },
 

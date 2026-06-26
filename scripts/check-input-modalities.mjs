@@ -42,6 +42,11 @@ assert.match(inputSrc, /tp\.axes\.leftX/, 'input.js must merge touch left stick 
 assert.match(inputSrc, /tp\.actions\.fire/, 'input.js must merge touch fire action');
 assert.match(inputSrc, /tp\.actions\.mine/, 'input.js must merge touch mine action (fireGroup 2)');
 assert.match(inputSrc, /touchActive/, 'input.js must gate the touch merge on touchActive');
+assert.match(inputSrc, /document\.getElementById\('gl-canvas'\)/, 'input.js must bind gameplay pointer capture to the WebGL canvas');
+assert.match(inputSrc, /pointerSurface\.addEventListener\('mousedown'/, 'input.js must not use a window-wide gameplay mousedown listener');
+assert.match(inputSrc, /isUiCommandTarget/, 'input.js must reject UI command targets before recording gameplay input');
+assert.match(inputSrc, /ui-modal-open/, 'input.js must suppress gameplay input while modal UI owns focus');
+assert.match(inputSrc, /inp\.brake/, 'input.js must publish deliberate brake intent for reverse/brake controls');
 
 // 4. saveSystem normalizes both settings.controls objects (so a legacy/partial save can't crash).
 const saveSrc = read('src/save/saveSystem.js');

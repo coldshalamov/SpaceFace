@@ -16,6 +16,7 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
+import { installVisualOverrides } from '../render/visualOverrides.js';
 
 const WPN_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
@@ -82,6 +83,9 @@ export function createShipPreviewMount(canvas, opts) {
   // hand the main scene's envMap to the factory so chrome/authority hulls mirror the nebula
   if (opts.envMap) setEnvMapForShips(opts.envMap);
   const vf = createVisualFactory();
+  installVisualOverrides(vf, {
+    onWarning: (message, error) => console.warn(message, error),
+  });
 
   let current = null;     // the displayed THREE.Object3D
   let rotating = true;

@@ -44,29 +44,99 @@ export class Sg02DynamicBodyOwner {
     this.fixedDt = positive(options.fixedDt, SG02_DYNAMIC_BODY_OWNER_DT);
     this.quantum = positive(options.quantum, SG02_DYNAMIC_BODY_OWNER_QUANTUM);
     this.records = new Map();
+    this.dynamicRecords = new Set();
     this.attachments = new Map();
+    this._liveEntityIds = new Set();
+    this._liveStaticEntityIds = new Set();
+    this._liveDynamicEntityIds = new Set();
+    this._staticLayerVersion = null;
+    this._diagnostics = {
+      schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
+      tick: 0,
+      fixedDt: this.fixedDt,
+      bodies: 0,
+      attachments: 0,
+      dynamicBodies: 0,
+      ccdBodies: 0,
+      lockedPlaneBodies: 0,
+      syncMode: 'none',
+      syncFullEntities: 0,
+      syncStaticEntities: 0,
+      syncDynamicEntities: 0,
+      syncStaticVersion: -1,
+    };
     this.tick = 0;
     this.accumulator = 0;
     this.mode = String(options.mode || 'sg02-dynamic-lab');
+    this.publishTelemetry = options.publishTelemetry !== false;
   }
 
   syncFromEntities(entities = []) {
-    const live = new Set();
+    const live = this._liveEntityIds;
+    live.clear();
+    let count = 0;
     for (const entity of entities) {
       if (!entity || entity.alive === false) continue;
       const spec = resolvePhysicsBodySpec(entity);
       if (!spec || !(spec.radius > 0)) continue;
       live.add(entity.id);
-      const rec = this.records.get(entity.id);
-      if (!rec || rec.revision !== spec.revision) {
-        if (rec) this._removeRecord(entity.id, rec);
-        this.records.set(entity.id, this._createRecord(entity, spec));
-      }
+      count++;
+      this._syncRecord(entity, spec);
     }
 
     for (const [id, rec] of this.records) {
       if (!live.has(id)) this._removeRecord(id, rec);
     }
+    this._staticLayerVersion = null;
+    this._writeSyncDiagnostics('full', count, 0, 0, -1);
+  }
+
+  syncFromEntityLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, orderedEntities = null) {
+    const version = Math.max(0, Math.trunc(finite(staticVersion)));
+    const staticChanged = this._staticLayerVersion !== version;
+    const dynamicLive = this._liveDynamicEntityIds;
+    dynamicLive.clear();
+
+    let staticCount = 0;
+    if (staticChanged) {
+      const staticLive = this._liveStaticEntityIds;
+      staticLive.clear();
+      const source = orderedEntities || staticEntities;
+      for (const entity of source) {
+        if (!entity || entity.alive === false) continue;
+        const spec = resolvePhysicsBodySpec(entity);
+        if (!spec || !(spec.radius > 0)) continue;
+        if (spec.dynamic) {
+          if (orderedEntities) {
+            dynamicLive.add(entity.id);
+            this._syncRecord(entity, spec);
+          }
+          continue;
+        }
+        staticLive.add(entity.id);
+        staticCount++;
+        this._syncRecord(entity, spec);
+      }
+      for (const [id, rec] of this.records) {
+        if (!rec.spec.dynamic && !staticLive.has(id)) this._removeRecord(id, rec);
+      }
+      this._staticLayerVersion = version;
+    }
+
+    let dynamicCount = 0;
+    for (const entity of dynamicEntities) {
+      if (!entity || entity.alive === false) continue;
+      const spec = resolvePhysicsBodySpec(entity);
+      if (!spec || !(spec.radius > 0) || !spec.dynamic) continue;
+      dynamicLive.add(entity.id);
+      dynamicCount++;
+      this._syncRecord(entity, spec);
+    }
+    for (const [id, rec] of this.records) {
+      if (rec.spec.dynamic && !dynamicLive.has(id)) this._removeRecord(id, rec);
+    }
+
+    this._writeSyncDiagnostics('layered', 0, staticCount, dynamicCount, version);
   }
 
   step(dt = this.fixedDt) {
@@ -78,46 +148,31 @@ export class Sg02DynamicBodyOwner {
     return this.diagnostics();
   }
 
-  quantizedSnapshot() {
-    const q = this.quantum;
-    return Array.from(this.records.values())
+  quantizedSnapshot(options = {}) {
+    const records = [];
+    for (const rec of this.records.values()) {
+      if (options.liveOnly && rec.entity && rec.entity.alive === false) continue;
+      records.push(rec);
+    }
+    return records
       .sort((a, b) => compareIds(a.entity.id, b.entity.id))
-      .map((rec) => {
-        const p = rec.body.translation();
-        const v = rec.body.linvel();
-        const w = rec.body.angvel();
-        return {
-          id: rec.entity.id,
-          x: quantize(p.x, q),
-          z: quantize(p.z, q),
-          yaw: quantize(yawFromQuat(rec.body.rotation()), q),
-          vx: quantize(v.x, q),
-          vz: quantize(v.z, q),
-          wy: quantize(w.y, q),
-          revision: rec.revision,
-        };
-      });
+      .map((rec) => ({ ...rec.snapshot }));
   }
 
   diagnostics() {
-    let dynamicBodies = 0;
     let ccdBodies = 0;
-    let lockedPlaneBodies = 0;
-    for (const rec of this.records.values()) {
-      if (rec.spec.dynamic) dynamicBodies++;
+    for (const rec of this.dynamicRecords) {
       if (rec.ccdEnabled) ccdBodies++;
-      if (isPlaneLocked(rec.body)) lockedPlaneBodies++;
     }
-    return {
-      schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
-      tick: this.tick,
-      fixedDt: this.fixedDt,
-      bodies: this.records.size,
-      attachments: this.attachments.size,
-      dynamicBodies,
-      ccdBodies,
-      lockedPlaneBodies,
-    };
+    const diag = this._diagnostics;
+    diag.tick = this.tick;
+    diag.fixedDt = this.fixedDt;
+    diag.bodies = this.records.size;
+    diag.attachments = this.attachments.size;
+    diag.dynamicBodies = this.dynamicRecords.size;
+    diag.ccdBodies = ccdBodies;
+    diag.lockedPlaneBodies = this.records.size;
+    return diag;
   }
 
   dispose() {
@@ -213,9 +268,9 @@ export class Sg02DynamicBodyOwner {
   }
 
   _stepFixed() {
-    for (const rec of this.records.values()) {
-      rec.appliedForce = zero3();
-      rec.appliedTorque = zero3();
+    for (const rec of this.dynamicRecords) {
+      setZero3(rec.appliedForce);
+      setZero3(rec.appliedTorque);
       rec.maxSpeed = Infinity;
       resetBodyForces(rec.body);
       const command = consumePhysicsCommand(rec.entity);
@@ -226,10 +281,10 @@ export class Sg02DynamicBodyOwner {
     this.world.step();
     this.tick++;
 
-    for (const rec of this.records.values()) {
-      this._enforcePlane(rec);
-      this._clampSpeed(rec);
-      this._syncEntityFromBody(rec);
+    for (const rec of this.dynamicRecords) {
+      const kinematics = this._enforcePlane(rec);
+      this._clampSpeed(rec, kinematics);
+      this._syncEntityFromKinematics(rec, kinematics);
       this._publishTelemetry(rec);
     }
   }
@@ -268,7 +323,25 @@ export class Sg02DynamicBodyOwner {
       ccdEnabled,
       appliedForce: zero3(),
       appliedTorque: zero3(),
+      kinematics: {
+        x: pos.x,
+        z: pos.z,
+        vx: vel.x,
+        vz: vel.z,
+        yaw: finite(entity.rot),
+        wy: finite(entity.angVel),
+      },
       maxSpeed: Infinity,
+      snapshot: {
+        id: entity.id,
+        x: quantize(pos.x, this.quantum),
+        z: quantize(pos.z, this.quantum),
+        yaw: quantize(finite(entity.rot), this.quantum),
+        vx: quantize(vel.x, this.quantum),
+        vz: quantize(vel.z, this.quantum),
+        wy: quantize(finite(entity.angVel), this.quantum),
+        revision: spec.revision,
+      },
     };
   }
 
@@ -276,9 +349,32 @@ export class Sg02DynamicBodyOwner {
     for (const attachment of Array.from(this.attachments.values())) {
       if (attachment.owner === rec || attachment.target === rec) this.cutAttachment({ attachmentId: attachment.id });
     }
+    this.dynamicRecords.delete(rec);
     this.world.removeCollider(rec.collider, false);
     this.world.removeRigidBody(rec.body);
     this.records.delete(id);
+  }
+
+  _syncRecord(entity, spec) {
+    const rec = this.records.get(entity.id);
+    if (!recordMatchesSpec(rec, spec)) {
+      if (rec) this._removeRecord(entity.id, rec);
+      const next = this._createRecord(entity, spec);
+      this.records.set(entity.id, next);
+      if (next.spec.dynamic) this.dynamicRecords.add(next);
+      return next;
+    }
+    rec.entity = entity;
+    return rec;
+  }
+
+  _writeSyncDiagnostics(mode, full, statics, dynamics, staticVersion) {
+    const diag = this._diagnostics;
+    diag.syncMode = mode;
+    diag.syncFullEntities = full;
+    diag.syncStaticEntities = statics;
+    diag.syncDynamicEntities = dynamics;
+    diag.syncStaticVersion = staticVersion;
   }
 
   _applyCommand(rec, command) {
@@ -287,8 +383,8 @@ export class Sg02DynamicBodyOwner {
       const torque = yawTorque(command.control.torque);
       rec.body.addForce(force, true);
       rec.body.addTorque(torque, true);
-      rec.appliedForce = add3(rec.appliedForce, force);
-      rec.appliedTorque = add3(rec.appliedTorque, torque);
+      add3Into(rec.appliedForce, force);
+      add3Into(rec.appliedTorque, torque);
       rec.maxSpeed = positive(command.control.maxSpeed, Infinity);
     }
     for (const impulse of command.impulses || []) {
@@ -302,34 +398,74 @@ export class Sg02DynamicBodyOwner {
   _enforcePlane(rec) {
     const p = rec.body.translation();
     const v = rec.body.linvel();
-    const yaw = yawFromQuat(rec.body.rotation());
+    const q = rec.body.rotation();
+    const yaw = wrapAngle(yawFromQuat(q));
     const w = rec.body.angvel();
-    rec.body.setTranslation({ x: finite(p.x), y: 0, z: finite(p.z) }, true);
-    rec.body.setLinvel({ x: finite(v.x), y: 0, z: finite(v.z) }, true);
-    rec.body.setRotation(quatFromYaw(yaw), true);
-    rec.body.setAngvel({ x: 0, y: finite(w.y), z: 0 }, true);
+    const x = finite(p.x);
+    const z = finite(p.z);
+    const vx = finite(v.x);
+    const vz = finite(v.z);
+    const wy = finite(w.y);
+    if (Math.abs(finite(p.y)) > 1e-9 || x !== p.x || z !== p.z) {
+      rec.body.setTranslation({ x, y: 0, z }, true);
+    }
+    if (Math.abs(finite(v.y)) > 1e-9 || vx !== v.x || vz !== v.z) {
+      rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
+    }
+    if (Math.abs(finite(q.x)) > 1e-9 || Math.abs(finite(q.z)) > 1e-9 || !Number.isFinite(q.y) || !Number.isFinite(q.w)) {
+      rec.body.setRotation(quatFromYaw(yaw), true);
+    }
+    if (Math.abs(finite(w.x)) > 1e-9 || Math.abs(finite(w.z)) > 1e-9 || wy !== w.y) {
+      rec.body.setAngvel({ x: 0, y: wy, z: 0 }, true);
+    }
+    const out = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
+    out.x = x;
+    out.z = z;
+    out.vx = vx;
+    out.vz = vz;
+    out.yaw = yaw;
+    out.wy = wy;
+    return out;
   }
 
-  _clampSpeed(rec) {
+  _clampSpeed(rec, kinematics = null) {
     if (!Number.isFinite(rec.maxSpeed)) return;
-    const v = rec.body.linvel();
-    const speed = Math.hypot(v.x, v.z);
+    const vx = kinematics ? kinematics.vx : finite(rec.body.linvel().x);
+    const vz = kinematics ? kinematics.vz : finite(rec.body.linvel().z);
+    const speed = Math.hypot(vx, vz);
     if (speed <= rec.maxSpeed || speed <= 1e-12) return;
     const scale = rec.maxSpeed / speed;
-    rec.body.setLinvel({ x: v.x * scale, y: 0, z: v.z * scale }, true);
+    const nextVx = vx * scale;
+    const nextVz = vz * scale;
+    rec.body.setLinvel({ x: nextVx, y: 0, z: nextVz }, true);
+    if (kinematics) {
+      kinematics.vx = nextVx;
+      kinematics.vz = nextVz;
+    }
   }
 
-  _syncEntityFromBody(rec) {
-    const p = rec.body.translation();
-    const v = rec.body.linvel();
-    const w = rec.body.angvel();
-    rec.entity.pos = { ...(rec.entity.pos || {}), x: finite(p.x), z: finite(p.z) };
-    rec.entity.vel = { ...(rec.entity.vel || {}), x: finite(v.x), z: finite(v.z) };
-    rec.entity.rot = wrapAngle(yawFromQuat(rec.body.rotation()));
-    rec.entity.angVel = finite(w.y);
+  _syncEntityFromKinematics(rec, kinematics) {
+    const pos = rec.entity.pos || (rec.entity.pos = { x: 0, z: 0 });
+    const vel = rec.entity.vel || (rec.entity.vel = { x: 0, z: 0 });
+    pos.x = kinematics.x;
+    pos.z = kinematics.z;
+    vel.x = kinematics.vx;
+    vel.z = kinematics.vz;
+    rec.entity.rot = kinematics.yaw;
+    rec.entity.angVel = kinematics.wy;
+    rec.snapshot.id = rec.entity.id;
+    rec.snapshot.x = quantize(pos.x, this.quantum);
+    rec.snapshot.z = quantize(pos.z, this.quantum);
+    rec.snapshot.yaw = quantize(kinematics.yaw, this.quantum);
+    rec.snapshot.vx = quantize(vel.x, this.quantum);
+    rec.snapshot.vz = quantize(vel.z, this.quantum);
+    rec.snapshot.wy = quantize(rec.entity.angVel, this.quantum);
+    rec.snapshot.revision = rec.revision;
   }
 
   _publishTelemetry(rec) {
+    if (!this.publishTelemetry) return;
+    if (!rec.spec.dynamic) return;
     writePhysicsTelemetry(rec.entity, {
       tick: this.tick,
       bodyHandle: rec.body.handle,
@@ -409,13 +545,6 @@ async function runRapierInitWithFilteredWarning(RAPIER) {
   }
 }
 
-function isPlaneLocked(body) {
-  const p = body.translation();
-  const v = body.linvel();
-  const w = body.angvel();
-  return Math.abs(p.y) < 1e-9 && Math.abs(v.y) < 1e-9 && Math.abs(w.x) < 1e-9 && Math.abs(w.z) < 1e-9;
-}
-
 function resetBodyForces(body) {
   if (!body) return;
   if (typeof body.resetForces === 'function') body.resetForces(true);
@@ -479,12 +608,22 @@ function vector3(source) {
   };
 }
 
-function add3(a, b) {
-  return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
+function add3Into(a, b) {
+  a.x += b.x;
+  a.y += b.y;
+  a.z += b.z;
+  return a;
 }
 
 function zero3() {
   return { x: 0, y: 0, z: 0 };
+}
+
+function setZero3(value) {
+  value.x = 0;
+  value.y = 0;
+  value.z = 0;
+  return value;
 }
 
 function quatFromYaw(yaw) {
@@ -502,6 +641,16 @@ function quantize(value, quantum) {
 function compareIds(a, b) {
   if (typeof a === 'number' && typeof b === 'number') return a - b;
   return String(a).localeCompare(String(b));
+}
+
+function recordMatchesSpec(rec, spec) {
+  if (!rec || !spec) return false;
+  return rec.revision === spec.revision &&
+    rec.spec.dynamic === spec.dynamic &&
+    rec.spec.ccd === spec.ccd &&
+    rec.spec.radius === spec.radius &&
+    rec.spec.mass === spec.mass &&
+    rec.spec.inertiaY === spec.inertiaY;
 }
 
 function wrapAngle(value) {

@@ -345,11 +345,13 @@ export function createShieldBubble(color = '#5fd0ff', radius = 12) {
     fog: false,
   });
   const bubble = new THREE.Mesh(shieldBubbleGeometry(), mat);
+  bubble.name = 'Ship_Shield_Bubble';
   bubble.scale.setScalar(radius * 1.5);
   bubble.frustumCulled = false;
   bubble.visible = false;
   bubble.renderOrder = 2;
   bubble.userData.sharedShieldGeo = true;
+  bubble.userData.spacefaceTags = { vfxRole: 'shieldBubble' };
   return bubble;
 }
 

@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { createServer as createNetServer } from 'node:net';
-import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
+import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCENARIO_ID = 'scenario.47a.mass-discrepancy';
@@ -194,29 +193,4 @@ function withDebugFlight(url) {
   const u = new URL(url);
   u.searchParams.set('debug', 'flight');
   return String(u);
-}
-
-async function loadPlaywright() {
-  try {
-    return await import('playwright');
-  } catch (_err) {
-    const bundledNodeModules = join(
-      process.env.USERPROFILE || '',
-      '.cache',
-      'codex-runtimes',
-      'codex-primary-runtime',
-      'dependencies',
-      'node',
-      'node_modules',
-    );
-    const require = createRequire(join(
-      bundledNodeModules,
-      '.pnpm',
-      'playwright@1.60.0',
-      'node_modules',
-      'playwright',
-      'index.js',
-    ));
-    return require('playwright');
-  }
 }

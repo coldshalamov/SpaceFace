@@ -13,17 +13,23 @@ import { NEW_GAME } from './data/newGameDefaults.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { applyAccessibility } from './ui/accessibility.js';
+import { getAuthoredUpgradeQueueStats } from './render/partsLibrary.js';
 import {
   SCENARIO_47A_CONTRACT_PATH,
   mark47aPlayerActor,
   spawn47aOpeningScene,
 } from './data/scenarios/47aLiveScene.js';
 
-// Debug surfaces (the mutable window.SF handle + boot logs) are exposed only OUTSIDE a packaged build.
-// The packaged app loads the page with ?prod=1 (electron/main.cjs); dev servers, the preview, and a
-// plain browser do not — so debugging stays available in dev while players get a clean console and no
-// global game handle. (userAgent sniffing fails here: the desktop preview is itself Electron-based.)
-const SF_DEBUG = !(typeof location !== 'undefined' && new URLSearchParams(location.search).get('prod') === '1');
+// Debug surfaces (the mutable window.SF handle + boot logs) are exposed outside production bundles.
+// Launcher URLs stay identical for browser/Electron; release/debug behavior must not fork gameplay.
+const SF_DEBUG = debugRuntimeEnabled();
+const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = 45000;
+
+function debugRuntimeEnabled() {
+  const env = typeof process !== 'undefined' && process.env ? process.env : null;
+  if (env && env.NODE_ENV === 'production') return false;
+  return true;
+}
 
 // Global error boundary. Without this, an uncaught runtime exception or an unhandled promise
 // rejection dies silently to the console — invisible to the player (who sees a frozen game) and
@@ -75,6 +81,7 @@ async function boot() {
       scenarioContractHash: contract.sha256,
     };
     const ctx = { state, bus, three: THREE, registry: null, helpers };
+    helpers.finalizeLoadedGame = (payload) => finalizeLoadedGame(state, bus, payload || {});
 
     const registry = createRegistry(ctx);
     ctx.registry = registry;
@@ -93,8 +100,12 @@ async function boot() {
     // Boot to the MAIN MENU. uiRoot shows it automatically because state.mode === 'menu' (the
     // gameState default). The world is created on New Game (game:new) and restored on Continue
     // (the save system handles game:load and emits save:loaded).
-    bus.on('game:new', (opts) => startNewGame(state, helpers, bus, registry, opts || {}));
-    bus.on('save:loaded', () => { state.mode = 'flight'; bus.emit('ui:closeAll'); });
+    bus.on('game:new', (opts) => {
+      startNewGame(state, helpers, bus, registry, opts || {}).catch((error) => {
+        console.error('[SpaceFace] new game startup failed', error);
+        failGameStart(state, bus, error, 'Game assets failed to load. See console.');
+      });
+    });
 
     startLoop(state, registry);
     hideBootOverlay();
@@ -153,13 +164,15 @@ function bootstrapScene(state, helpers, bus, registry) {
 }
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
-function startNewGame(state, helpers, bus, registry, opts) {
+async function startNewGame(state, helpers, bus, registry, opts) {
   for (const e of [...state.entityList]) {
     bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
   }
   state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
   resetRunState(state, opts || {});
+  enterLoadingMode(state, bus);
+
   for (const name of ['world', 'factions', 'economy', 'automation', 'intervention', 'sectorSim', 'missions', 'aiEncounter', 'crafting', 'traffic', 'drill', 'claims']) {
     const sys = registry.get(name);
     if (sys && typeof sys.newGame === 'function') sys.newGame();
@@ -176,12 +189,127 @@ function startNewGame(state, helpers, bus, registry, opts) {
     state.player.researchPoints = NEW_GAME.researchPoints || 0;
   }
 
+  const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+  if (!libraryReady) {
+    throw new Error('Authored ship asset library did not preload; refusing to start flight with procedural fallback ships.');
+  }
   bootstrapScene(state, helpers, bus, registry);
   if (opts.name) state.player.name = opts.name;
   if (opts.difficulty) state.settings.gameplay.difficulty = opts.difficulty;
-  state.mode = 'flight';
+  const visualsReady = await waitForInitialAuthoredVisuals(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+  if (!visualsReady) {
+    throw new Error('Initial authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
+  }
+  enterFlightMode(state, bus);
   bus.emit('game:started', {});
   if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
+}
+
+async function finalizeLoadedGame(state, bus, payload = {}) {
+  enterLoadingMode(state, bus);
+  try {
+    const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    if (!libraryReady) {
+      throw new Error('Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
+    }
+    const visualsReady = await waitForInitialAuthoredVisuals(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    if (!visualsReady) {
+      throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
+    }
+    enterFlightMode(state, bus);
+    bus.emit('ui:closeAll', {});
+    if (SF_DEBUG) console.log('[SpaceFace] loaded game entered flight. slot=%s', payload.slot || 'unknown');
+  } catch (error) {
+    console.error('[SpaceFace] loaded game startup failed', error);
+    failGameStart(state, bus, error, 'Loaded game assets failed to load. See console.');
+  }
+}
+
+function enterLoadingMode(state, bus) {
+  const previousMode = state.mode;
+  state.mode = 'loading';
+  state.timeScale = 0;
+  if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+}
+
+function enterFlightMode(state, bus) {
+  const previousMode = state.mode;
+  state.mode = 'flight';
+  state.timeScale = 1;
+  if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+}
+
+function failGameStart(state, bus, error, text) {
+  state.timeScale = 0;
+  const previousMode = state.mode;
+  state.mode = 'menu';
+  if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+  bus.emit('game:startFailed', { error: error && error.message ? error.message : String(error) });
+  bus.emit('toast', { text, kind: 'error', ttl: 8 });
+}
+
+async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
+  const ready = state && state.render && state.render.authoredPartLibraryReady;
+  if (!ready || typeof ready.then !== 'function') return false;
+  const result = await Promise.race([
+    ready.then(() => true, () => false),
+    delay(timeoutMs).then(() => false),
+  ]);
+  if (!result) console.warn('[SpaceFace] authored part library was not preloaded before world spawn');
+  return result;
+}
+
+async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000) {
+  const started = nowMs();
+  while (nowMs() - started < timeoutMs) {
+    const readiness = authoredVisualReadiness(state);
+    if (readiness.ready) return true;
+    await nextFrame();
+  }
+  const last = authoredVisualReadiness(state);
+  console.warn('[SpaceFace] initial authored visuals were not ready before flight start', last);
+  return false;
+}
+
+function authoredVisualReadiness(state) {
+  const scene = state.render && state.render.scene;
+  const queue = getAuthoredUpgradeQueueStats(scene);
+  const ships = (state.entityList || []).filter((entity) => entity && entity.type === 'ship' && entity.alive !== false);
+  let authored = 0;
+  let loading = 0;
+  let fallback = 0;
+  for (const ship of ships) {
+    const status = ship.mesh && ship.mesh.userData && ship.mesh.userData.authoredAssetState;
+    if (status === 'authored') authored++;
+    else if (status === 'loading' || status === 'procedural-fallback') loading++;
+    else fallback++;
+  }
+  const allLiveShipsAuthored = ships.length > 0 && authored === ships.length && loading === 0 && fallback === 0;
+  return {
+    ready: allLiveShipsAuthored,
+    shipCount: ships.length,
+    authored,
+    loading,
+    fallback,
+    queue,
+  };
+}
+
+function nextFrame() {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
+    else setTimeout(resolve, 16);
+  });
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function nowMs() {
+  return (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
+    ? performance.now()
+    : Date.now();
 }
 
 function resetRunState(state, opts = {}) {
@@ -241,7 +369,11 @@ function resetRunState(state, opts = {}) {
 
 function hideBootOverlay() {
   const o = document.getElementById('boot-overlay');
-  if (o) o.classList.add('hidden');
+  if (!o) return;
+  o.classList.add('hidden');
+  setTimeout(() => {
+    if (o.classList.contains('hidden')) o.style.display = 'none';
+  }, 600);
 }
 function showBootError(err) {
   const o = document.getElementById('boot-overlay');

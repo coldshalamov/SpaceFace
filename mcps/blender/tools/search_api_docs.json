@@ -1,0 +1,39 @@
+{
+  "name": "search_api_docs",
+  "description": "\nFull-text search over the bundled Blender Python API reference.\n\nReturns a ranked list of hits. Each hit has:\n\n- ``path``: file path relative to the bundled docs.\n- ``text``: the matching paragraph plus ``context``\n  paragraphs on either side.\n- ``breadcrumb``: the section path containing the hit\n  (``Section > Sub-section > ...``).\n- ``index``: the hit's position in the result list.\n- ``score``: a relevance score; higher is better.\n\nThe query is tokenised on whitespace and matched\ncase-insensitively. Every token must appear somewhere in\nthe paragraph body, the file path, or an enclosing section\ntitle - in any order. Common English stop-words (``the``,\n``a``, ``how``, ``to``, ...) are dropped, so natural\nphrasings like ``\"how to bake\"`` work as expected. Regular\nexpressions are not supported.\n\nUse ``context`` to pull more surrounding paragraphs into\neach hit (symmetric, default 0). Use ``index`` with the\nposition of a previous hit (same query) to get that hit\nalone with its text widened to its enclosing section.\n\nRead-only; consults bundled RST files only.\n",
+  "inputSchema": {
+    "properties": {
+      "query": {
+        "title": "Query",
+        "type": "string"
+      },
+      "max_results": {
+        "default": 20,
+        "title": "Max Results",
+        "type": "integer"
+      },
+      "context": {
+        "default": 0,
+        "title": "Context",
+        "type": "integer"
+      },
+      "index": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Index"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "title": "search_api_docsArguments",
+    "type": "object"
+  }
+}

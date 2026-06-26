@@ -86,6 +86,7 @@ export const traffic = {
     // live freighter records: id -> {targetId, waitT, nextTradeT}
     this.state.traffic = { freighters: [], rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot') };
     this._active = []; // entity ids we spawned (for cleanup)
+    this._stationScratch = [];
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     this.bus.on('sector:leave', () => this._cleanup());
@@ -138,8 +139,13 @@ export const traffic = {
   },
 
   _sectorStations() {
-    const out = [];
-    const stations = (this.state.entityIndex && this.state.entityIndex.dockStations) || this.state.entityList;
+    const index = this.state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.dockStations)) {
+      return index.dockStations;
+    }
+    const out = this._stationScratch || (this._stationScratch = []);
+    out.length = 0;
+    const stations = this.state.entityList || [];
     for (const e of stations) {
       if (e.type === 'station' && e.alive && !(e.data && e.data.isGate)) out.push(e);
     }
@@ -277,9 +283,28 @@ export const traffic = {
   },
 
   _pickAsteroid(state) {
-    const rocks = (state.entityList || []).filter((e) => e.type === 'asteroid' && e.alive);
-    if (!rocks.length) return null;
-    return rocks[Math.floor(this._rng() * rocks.length)].id;
+    const indexed = state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
+      ? state.entityIndex.asteroids
+      : null;
+    if (indexed && indexed.length) {
+      const tries = Math.min(indexed.length, 8);
+      for (let i = 0; i < tries; i++) {
+        const rock = indexed[Math.floor(this._rng() * indexed.length)];
+        if (rock && rock.type === 'asteroid' && rock.alive) return rock.id;
+      }
+      for (const rock of indexed) {
+        if (rock && rock.type === 'asteroid' && rock.alive) return rock.id;
+      }
+      return null;
+    }
+    let picked = null;
+    let seen = 0;
+    for (const e of state.entityList || []) {
+      if (!e || e.type !== 'asteroid' || !e.alive) continue;
+      seen += 1;
+      if (this._rng() < 1 / seen) picked = e;
+    }
+    return picked ? picked.id : null;
   },
 
   // Escorts convoy with the nearest civilian freighter — they shadow it, distinct from patrols.

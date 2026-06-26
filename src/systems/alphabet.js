@@ -19,6 +19,7 @@
 // `program` field runs the alphabet; a drone without one uses the legacy mine-to-buffer behavior
 // (backward compatible). The alphabet reads/writes only its own program state on the group; cargo
 // grants route through the canonical cargo.addCargo and credits through economy:grantCredits.
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 // Primitive type tags.
 export const P = Object.freeze({
@@ -57,13 +58,14 @@ export const TEMPLATES = Object.freeze({
   },
 });
 
+const BEACON_ASTEROID_QUERY_RADIUS_PAD = 64;
+
 // Resolve a beacon name to a world position. Beacons are named anchors the player places; for this
 // pass 'depot' resolves to the player's current position (a stand-in until beacon placement lands)
 // and 'field' to the nearest asteroid field, 'player' to the live player entity. Keeps templates
 // portable (V2 §4 beacons-not-coords).
 function resolveBeacon(name, ctx) {
   const state = ctx.state;
-  const helpers = ctx.helpers || {};
   if (name === 'player') {
     const e = state.entities.get(state.playerId);
     return e ? { x: e.pos.x, z: e.pos.z, entity: e } : null;
@@ -71,8 +73,10 @@ function resolveBeacon(name, ctx) {
   if (name === 'depot' || name === 'home') {
     // nearest station (the natural depot); fall back to player position
     const p = state.entities.get(state.playerId);
-    let best = null, bestD = Infinity;
-    for (const e of state.entityList) {
+    const stations = stationBeaconCandidates(state);
+    let best = null;
+    let bestD = Infinity;
+    for (const e of stations) {
       if (!e.alive || e.type !== 'station' || (e.data && e.data.isGate)) continue;
       if (!p) { best = e; break; }
       const d = (e.pos.x - p.pos.x) ** 2 + (e.pos.z - p.pos.z) ** 2;
@@ -88,7 +92,8 @@ function resolveBeacon(name, ctx) {
     const anchor = g.originPos || (state.entities.get(state.playerId) || {}).pos || { x: 0, z: 0 };
     let best = null, bestD = Infinity;
     const range = (g.deployRange || 450);
-    for (const e of state.entityList) {
+    const asteroids = asteroidBeaconCandidates(state, anchor, range, ctx);
+    for (const e of asteroids) {
       if (!e.alive || e.type !== 'asteroid') continue;
       if (e.data && e.data.respawnAt != null) continue;
       const d = (e.pos.x - anchor.x) ** 2 + (e.pos.z - anchor.z) ** 2;
@@ -116,7 +121,7 @@ export function tickProgram(group, ctx, dt) {
   const step = tpl.steps[ps.pc];
   if (!step) { ps.pc = 0; return false; }
 
-  const beacon = step.target ? resolveBeacon(step.target, { ...ctx, group }) : null;
+  const beacon = step.target ? resolveBeacon(step.target, ctx) : null;
   const cargo = ctx.state.player.cargo;
   const cargoFull = cargo && cargo.usedVolume >= cargo.capVolume - 0.01;
 
@@ -169,6 +174,38 @@ export function tickProgram(group, ctx, dt) {
 function advance(ps, tpl) {
   ps.pc = (ps.pc + 1) % tpl.steps.length;
   ps.waitT = 0;
+}
+
+function stationBeaconCandidates(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) return index.dockStations || index.stations || [];
+  return (state && state.entityList) || [];
+}
+
+function asteroidBeaconCandidates(state, anchor, range, ctx) {
+  const fallback = (state.entityIndex && (state.entityIndex.mineables || state.entityIndex.asteroids)) || state.entityList;
+  const scratch = alphabetAsteroidScratch(ctx);
+  const candidates = queryNearbyEntities(
+    state,
+    anchor,
+    range + BEACON_ASTEROID_QUERY_RADIUS_PAD,
+    scratch,
+    fallback,
+  );
+  recordAlphabetCandidates(ctx, candidates, scratch);
+  return candidates;
+}
+
+function alphabetAsteroidScratch(ctx) {
+  if (!ctx._alphabetAsteroidScratch) ctx._alphabetAsteroidScratch = [];
+  return ctx._alphabetAsteroidScratch;
+}
+
+function recordAlphabetCandidates(ctx, candidates, scratch) {
+  const diag = ctx && ctx.diagnostics;
+  if (!diag) return;
+  if (candidates === scratch) diag.alphabetSpatialQueries = (diag.alphabetSpatialQueries || 0) + 1;
+  diag.alphabetCandidates = (diag.alphabetCandidates || 0) + candidates.length;
 }
 
 // Assign a template to a drone group (the UI calls this). Resets program state.

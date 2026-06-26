@@ -1,6 +1,7 @@
 import { getCombatKernel } from '../combat/kernel.js';
 import { ContactKind, wrapAngle } from './contracts.js';
 
+const TACTICAL_ACTION_DEF_FLAG = '__spacefaceTacticalActionDef';
 const TACTICAL_PROFILE = Object.freeze({
   action_dash: Object.freeze({
     tags: Object.freeze(['evade', 'retreat', 'counter_tether_overload']),
@@ -45,7 +46,7 @@ export function toTacticalActionDef(def) {
   if (Number(def.costs && def.costs.heat) > 0) tags.add('heat');
   const totalTicks = ['startupTicks', 'activeTicks', 'recoveryTicks']
     .reduce((sum, key) => sum + Math.max(0, Number(def.phases && def.phases[key]) || 0), 0);
-  return Object.freeze({
+  const view = {
     id: def.id,
     tags: Object.freeze([...tags].sort()),
     minCommitTicks: Math.max(1, totalTicks),
@@ -64,7 +65,9 @@ export function toTacticalActionDef(def) {
       capacitorCost: Math.max(0, Number(def.costs && def.costs.capacitor) || 0),
       heatCost: Math.max(0, Number(def.costs && def.costs.heat) || 0),
     }),
-  });
+  };
+  Object.defineProperty(view, TACTICAL_ACTION_DEF_FLAG, { value: true });
+  return Object.freeze(view);
 }
 
 /**
@@ -75,42 +78,61 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
   if (!ctx || !ctx.state) throw new TypeError('SG-03 action port requires simulation context');
   const kernel = getCombatKernel(ctx);
   const state = ctx.state;
+  const sortedActions = [...kernel.catalog.actions.values()].sort((a, b) => a.id.localeCompare(b.id));
+  const tacticalViews = new Map();
+  const listCache = new Map();
+  const signatureCache = new Map();
+  const tacticalViewFor = (def) => {
+    let view = tacticalViews.get(def.id);
+    if (!view) {
+      view = toTacticalActionDef(def);
+      tacticalViews.set(def.id, view);
+    }
+    return view;
+  };
 
   return Object.freeze({
     list(entityId) {
-      const capabilityView = kernel.capabilities(entityId);
+      const capabilityView = fastCapabilityView(state, kernel, entityId);
       const capabilities = capabilityView && capabilityView.capabilities || {};
-      const blockedTags = new Set(capabilityView && capabilityView.blockedActionTags || []);
+      const blockedTags = Array.isArray(capabilityView && capabilityView.blockedActionTags)
+        ? capabilityView.blockedActionTags
+        : [];
+      const cacheKey = String(entityId);
+      const signature = cachedActionListSignature(signatureCache, cacheKey, state.tick, capabilities, blockedTags);
+      const cached = listCache.get(cacheKey);
+      if (cached && cached.signature === signature) return cached.list;
       const out = [];
-      for (const def of [...kernel.catalog.actions.values()].sort((a, b) => a.id.localeCompare(b.id))) {
+      for (const def of sortedActions) {
         if ((def.requiresCapabilities || []).some((name) => capabilities[name] === false)) continue;
-        if ((def.tags || []).some((tag) => blockedTags.has(tag))) continue;
-        const view = toTacticalActionDef(def);
+        if ((def.tags || []).some((tag) => blockedTags.includes(tag))) continue;
+        const view = tacticalViewFor(def);
         if (view) out.push(view);
       }
-      return Object.freeze(out);
+      const list = Object.freeze(out);
+      listCache.set(cacheKey, { signature, list });
+      return list;
     },
 
     canStart(entityId, actionId, request = {}) {
       const def = kernel.catalog.actions.get(actionId);
       if (!def) return { ok: false, reason: 'unknown_action' };
-      const inspection = kernel.inspect({ entityId, limit: 0 });
-      const entity = inspection && inspection.entity;
+      const entity = liveEntity(state, entityId);
       if (!entity || !entity.alive) return { ok: false, reason: 'actor_missing' };
-      const combat = entity.combat || {};
-      const capabilities = combat.capabilities || {};
+      const capabilityView = fastCapabilityView(state, kernel, entityId) || {};
+      const combat = liveCombatRuntime(state, entityId) || {};
+      const capabilities = capabilityView.capabilities || combat.capabilities || {};
       for (const capability of def.requiresCapabilities || []) {
         if (capabilities[capability] === false) return { ok: false, reason: `disabled:${capability}` };
       }
-      const blocked = new Set(combat.blockedActionTags || []);
-      const blockedTag = (def.tags || []).find((tag) => blocked.has(tag));
+      const blockedTags = capabilityView.blockedActionTags || combat.blockedActionTags || [];
+      const blockedTag = (def.tags || []).find((tag) => blockedTags.includes(tag));
       if (blockedTag) return { ok: false, reason: `disabled:${blockedTag}` };
-      const actionStatus = kernel.actions.inspect(entityId);
-      const readyTick = Number(actionStatus && actionStatus.cooldownReadyTick && actionStatus.cooldownReadyTick[actionId]) || 0;
+      const readyTick = cooldownReadyTick(state, entityId, actionId);
       if (state.tick < readyTick) return { ok: false, reason: `cooldown:${readyTick}` };
       const capCost = Math.max(0, Number(def.costs && def.costs.capacitor) || 0);
       const heatCost = Math.max(0, Number(def.costs && def.costs.heat) || 0);
-      if ((entity.vitals && entity.vitals.capacitor || 0) < capCost) return { ok: false, reason: 'insufficient_capacitor' };
+      if ((Number(entity.cap) || 0) < capCost) return { ok: false, reason: 'insufficient_capacitor' };
       if ((combat.heat || 0) + heatCost > (combat.heatMax || Infinity)) return { ok: false, reason: 'heat_limit' };
       if (def.target && def.target.required && request.targetId == null) return { ok: false, reason: 'target_required' };
       if (def.target && def.target.ownedByActor) {
@@ -150,9 +172,9 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
 
     status(entityId, handle) {
       if (handle == null) return 'failed';
-      const inspected = kernel.actions.inspect(entityId);
-      if (inspected.active && inspected.active.requestId === handle) return 'running';
-      if ((inspected.queued || []).some((request) => request.id === handle)) return 'queued';
+      const active = activeActionFor(state, entityId);
+      if (active && active.requestId === handle) return 'running';
+      if (queuedActionExists(state, entityId, handle)) return 'queued';
       const events = state.combat && state.combat.trace && state.combat.trace.events || [];
       let instanceId = null;
       for (let index = events.length - 1; index >= 0; index--) {
@@ -173,8 +195,7 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
 
     interrupt(entityId, _handle, context = {}) {
       const nextDef = kernel.catalog.actions.get(context.nextActionId);
-      const inspected = kernel.actions.inspect(entityId);
-      const current = inspected.active;
+      const current = activeActionFor(state, entityId);
       if (!current) return true;
       const currentDef = kernel.catalog.actions.get(current.actionId);
       if (!currentDef || !nextDef) return false;
@@ -209,4 +230,63 @@ function canCancelInto(currentDef, phase, nextDef) {
     if ((nextDef.tags || []).some((tag) => window.intoTags.includes(tag))) return true;
   }
   return false;
+}
+
+function fastCapabilityView(state, kernel, entityId) {
+  const runtime = state && state.combat && state.combat.entities && state.combat.entities[String(entityId)];
+  if (runtime) {
+    return {
+      capabilities: runtime.capabilities || {},
+      blockedActionTags: Array.isArray(runtime.blockedActionTags) ? runtime.blockedActionTags : [],
+    };
+  }
+  return kernel.capabilities(entityId);
+}
+
+function liveEntity(state, entityId) {
+  return state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(entityId) || null
+    : null;
+}
+
+function liveCombatRuntime(state, entityId) {
+  return state && state.combat && state.combat.entities && state.combat.entities[String(entityId)] || null;
+}
+
+function activeActionFor(state, entityId) {
+  return state && state.combat && state.combat.actions && state.combat.actions.activeByActor
+    ? state.combat.actions.activeByActor[String(entityId)] || null
+    : null;
+}
+
+function queuedActionExists(state, entityId, handle) {
+  const requests = state && state.combat && state.combat.actions && state.combat.actions.requests || [];
+  for (const request of requests) {
+    if (request && request.id === handle && request.actorId === entityId) return true;
+  }
+  return false;
+}
+
+function cooldownReadyTick(state, entityId, actionId) {
+  const cooldowns = state && state.combat && state.combat.actions && state.combat.actions.cooldownReadyTickByActor || {};
+  const byActor = cooldowns[String(entityId)] || {};
+  return Number(byActor[actionId]) || 0;
+}
+
+function actionListSignature(capabilities, blockedTags) {
+  const caps = Object.keys(capabilities || {}).sort()
+    .map((key) => `${key}:${capabilities[key] === false ? 0 : 1}`)
+    .join(',');
+  const blocked = (blockedTags || []).slice().sort().join(',');
+  return `${caps}|${blocked}`;
+}
+
+function cachedActionListSignature(cache, entityKey, tick, capabilities, blockedTags) {
+  const cached = cache.get(entityKey);
+  if (cached && cached.tick === tick && cached.capabilities === capabilities && cached.blockedTags === blockedTags) {
+    return cached.signature;
+  }
+  const signature = actionListSignature(capabilities, blockedTags);
+  cache.set(entityKey, { tick, capabilities, blockedTags, signature });
+  return signature;
 }

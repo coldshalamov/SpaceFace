@@ -1,0 +1,9 @@
+{
+  "name": "get_objects_summary",
+  "description": "\nReturn the scene's collection hierarchy and their objects.\n\nEach collection lists its objects (name, type, parent, data name,\nselection, visibility) and nested child collections.\n",
+  "inputSchema": {
+    "properties": {},
+    "title": "get_objects_summaryArguments",
+    "type": "object"
+  }
+}

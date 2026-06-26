@@ -1,0 +1,22 @@
+{
+  "name": "execute_blender_code_for_cli",
+  "description": "\nExecute Python code in a background Blender process.\n\nOpens *blend_file* with ``blender --background`` and runs *code*.\nAssign a dict to ``result`` to return data.\n",
+  "inputSchema": {
+    "properties": {
+      "blend_file": {
+        "title": "Blend File",
+        "type": "string"
+      },
+      "code": {
+        "title": "Code",
+        "type": "string"
+      }
+    },
+    "required": [
+      "blend_file",
+      "code"
+    ],
+    "title": "execute_blender_code_for_cliArguments",
+    "type": "object"
+  }
+}

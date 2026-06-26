@@ -25,9 +25,8 @@ const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
 const DEFAULT_FLIGHT_MODE = 'assisted';
 const DEFAULT_PHYSICS_BACKEND = 'rapier-dynamic';
 const DEFAULT_AI_BACKEND = 'sg06-tactical';
+const DEFAULT_FLIGHT_BACKEND = 'v3';
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
-const VALID_PHYSICS_BACKENDS = new Set(['custom', 'rapier', 'rapier-dynamic']);
-const VALID_AI_BACKENDS = new Set(['legacy', 'sg06-tactical']);
 const DEFAULT_START_SECTOR = NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime';
 const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'mesh',
@@ -386,6 +385,9 @@ export const save = {
     const state = this.state;
     this._restoring = true;
     const prevTimeScale = state.timeScale;
+    const finalizeLoadedGame = this.helpers && typeof this.helpers.finalizeLoadedGame === 'function'
+      ? this.helpers.finalizeLoadedGame
+      : null;
     state.timeScale = 0; // freeze the sim during the swap
     const entityIdRemap = new Map();
 
@@ -477,15 +479,25 @@ export const save = {
       // 15. finalize.
       state.meta.version = CURRENT_VERSION;
       state.save.currentSlot = slot;
-      state.mode = 'flight';
-      state.timeScale = 1;
+      const previousMode = state.mode;
+      state.mode = finalizeLoadedGame ? 'loading' : 'flight';
+      state.timeScale = finalizeLoadedGame ? 0 : 1;
+      if (previousMode !== state.mode) {
+        this.bus.emit('mode:changed', { mode: state.mode, previousMode });
+      }
 
-      this.bus.emit('save:loaded', { slot });
+      this.bus.emit('save:loaded', { slot, visualGatePending: !!finalizeLoadedGame });
+      if (finalizeLoadedGame) {
+        Promise.resolve(finalizeLoadedGame({ slot })).catch((err) => {
+          console.error('[save] finalizeLoadedGame', err);
+          this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
+        });
+      }
       // nudge audio to re-read restored volumes (audio's handler re-applies all audio settings
       // on section:'audio'); render reads settings.video directly each frame, no event needed.
       this.bus.emit('settings:changed', { section: 'audio' });
     } finally {
-      state.timeScale = state.timeScale || prevTimeScale || 1;
+      if (!Number.isFinite(state.timeScale)) state.timeScale = finalizeLoadedGame ? 0 : (prevTimeScale || 1);
       this._restoring = false;
       this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
       this._lastAutosavePlaytime = state.meta.playtimeS;
@@ -1050,12 +1062,9 @@ function mergePlain(base, patch) {
 function sanitizeRestoredSettings(settings) {
   const s = settings && typeof settings === 'object' && !Array.isArray(settings) ? settings : {};
   if (!s.gameplay || typeof s.gameplay !== 'object' || Array.isArray(s.gameplay)) s.gameplay = {};
-  if (!VALID_PHYSICS_BACKENDS.has(s.gameplay.physicsBackend)) {
-    s.gameplay.physicsBackend = DEFAULT_PHYSICS_BACKEND;
-  }
-  if (!VALID_AI_BACKENDS.has(s.gameplay.aiBackend)) {
-    s.gameplay.aiBackend = DEFAULT_AI_BACKEND;
-  }
+  s.gameplay.physicsBackend = DEFAULT_PHYSICS_BACKEND;
+  s.gameplay.aiBackend = DEFAULT_AI_BACKEND;
+  s.gameplay.flightBackend = DEFAULT_FLIGHT_BACKEND;
 
   if (!s.controls || typeof s.controls !== 'object' || Array.isArray(s.controls)) s.controls = {};
   if (!VALID_FLIGHT_MODES.has(s.controls.flightMode)) {

@@ -3,6 +3,7 @@
 // Velocity is updated by flight (thrust/drag); physics integrates position from velocity.
 import { Masks } from './entity.js';
 import { createSg02DynamicBodyOwner } from './sg02DynamicBodyOwner.js';
+import { hasActiveSpatialHash } from './spatialQuery.js';
 
 const DEFAULT_MATERIAL = Object.freeze({
   push: 1,
@@ -18,6 +19,9 @@ const COLLISION_MATERIALS = Object.freeze({
   asteroid: { push: 1, restitution: 0.24, tangentDamping: 0.08, impactScale: 1.1 },
   station: { push: 0.48, restitution: 0.05, tangentDamping: 0.35, impactScale: 0.35 },
 });
+const DYNAMIC_SPATIAL_QUERY_MIN_COLLIDABLES = 96;
+const DYNAMIC_SPATIAL_QUERY_MIN_ASTEROIDS = 96;
+const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
 
 export const physics = {
   name: 'physics',
@@ -27,6 +31,10 @@ export const physics = {
     this.helpers = ctx.helpers || {};
     this._scratch = [];
     this._statics = [];
+    this._prevPosScratch = { x: 0, z: 0 };
+    this._segmentHitScratch = createSegmentHitRecord();
+    this._bestSegmentHitScratch = createSegmentHitRecord();
+    this._pairMaterialScratch = createPairMaterialRecord();
     this._pairMarks = new Map(); // low id -> Map<high id, stamp>; avoids per-frame string pair keys
     this._pairStamp = 1;
     this._dockStationId = null;
@@ -38,6 +46,7 @@ export const physics = {
     this._sg02Init = null;
     this._sg02Token = 0;
     this._sg02CombatPhysics = createDeferredSg02CombatPhysicsPort(this);
+    this._spatialHashNeedsRebuild = false;
     if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('save:loaded', () => this._resetSg02AfterLoad());
@@ -52,10 +61,17 @@ export const physics = {
       rapierEvents: 0,
       sg02Ready: false,
       sg02Bodies: 0,
+      sg02DynamicBodies: 0,
       sg02Attachments: 0,
+      sg02SyncMode: 'none',
+      sg02SyncFullEntities: 0,
+      sg02SyncStaticEntities: 0,
+      sg02SyncDynamicEntities: 0,
       sweptShipContacts: 0,
       sweptProjectileHits: 0,
       pickupCollections: 0,
+      pickupPairChecks: 0,
+      pickupSpatialQueries: 0,
       tickMs: 0,
     };
   },
@@ -65,12 +81,13 @@ export const physics = {
     this._diag.sweptShipContacts = 0;
     this._diag.sweptProjectileHits = 0;
     this._diag.pickupCollections = 0;
+    this._diag.pickupPairChecks = 0;
+    this._diag.pickupSpatialQueries = 0;
     if (usesSg02DynamicAuthority(state)) {
       this._updateSg02DynamicAuthority(dt, state);
-      if (state.spatialHash) state.spatialHash.rebuild(state.entityList);
+      this._syncDynamicSpatialHash(state);
       this.collectPickups(state);
       this.sweepProjectiles(dt, state);
-      if (state.spatialHash && (this._diag.sweptProjectileHits > 0 || this._diag.pickupCollections > 0)) state.spatialHash.rebuild(state.entityList);
       this.updateDockRange(state);
       this._diag.tickMs = Math.max(0, nowMs() - t0);
       this._publishRuntime(state);
@@ -78,11 +95,12 @@ export const physics = {
     }
     this._disableSg02DynamicAuthority();
     this.integrate(dt, state);
-    if (state.spatialHash) state.spatialHash.rebuild(state.entityList);
+    this._rebuildSpatialHash(state);
+    this._spatialHashNeedsRebuild = false;
     this.sweepShipStatics(dt, state);
     this.sweepProjectiles(dt, state);
     this.collectPickups(state);
-    if (state.spatialHash && (this._diag.sweptShipContacts > 0 || this._diag.pickupCollections > 0)) state.spatialHash.rebuild(state.entityList);
+    if (this._spatialHashNeedsRebuild) this._rebuildSpatialHash(state);
     this.collide(dt, state);
     this._syncOptionalBackend(dt, state);
     this.updateDockRange(state);
@@ -90,12 +108,38 @@ export const physics = {
     this._publishRuntime(state);
   },
 
+  _rebuildSpatialHash(state) {
+    const hash = state.spatialHash;
+    if (!hash) return;
+    const index = state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 && index.ready &&
+      typeof hash.rebuildLayers === 'function' &&
+      Array.isArray(index.spatialStatics) &&
+      Array.isArray(index.spatialDynamics)) {
+      hash.rebuildLayers(index.spatialStatics, index.spatialDynamics, index.spatialStaticVersion || 0);
+      return;
+    }
+    hash.rebuild(state.entityList);
+  },
+
+  _syncDynamicSpatialHash(state) {
+    const hash = state.spatialHash;
+    if (!hash) return;
+    if (shouldMaintainDynamicSpatialHash(state)) {
+      this._rebuildSpatialHash(state);
+    } else if (typeof hash.deactivate === 'function') {
+      hash.deactivate();
+    } else if (typeof hash.clear === 'function') {
+      hash.clear();
+      if (hash.diagnostics) hash.diagnostics.activeBuckets = 0;
+    }
+  },
+
   _publishRuntime(state) {
     state.physicsRuntime = state.physicsRuntime || {};
     state.physicsRuntime.diagnostics = this._diag;
-    if (this._sg02 && this._diag.backend === 'rapier-dynamic') {
-      const live = new Set((state.entityList || []).filter((e) => e && e.alive !== false).map((e) => e.id));
-      state.physicsRuntime.sg02Snapshot = this._sg02.quantizedSnapshot().filter((body) => live.has(body.id));
+    if (this._sg02 && this._diag.backend === 'rapier-dynamic' && shouldPublishSg02Snapshot(state)) {
+      state.physicsRuntime.sg02Snapshot = this._sg02.quantizedSnapshot({ liveOnly: true });
     } else {
       delete state.physicsRuntime.sg02Snapshot;
     }
@@ -120,21 +164,66 @@ export const physics = {
   collectPickups(state) {
     const pickups = (state.entityIndex && state.entityIndex.pickups) || state.entityList;
     const collectors = (state.entityIndex && state.entityIndex.shipLike) || state.entityList;
+    if (!pickups || !collectors || !pickups.length || !collectors.length) return;
+    if (shouldUsePickupSpatialQuery(state, pickups, collectors)) {
+      this._collectPickupsSpatial(state, pickups, collectors);
+      return;
+    }
     for (const pk of pickups) {
-      if (!pk.alive || !pk.collides || pk.type !== 'pickup') continue;
+      if (!isLivePickup(pk)) continue;
       for (const col of collectors) {
         if (!pk.alive) break;
-        if (!col.alive || !col.collides || (col.type !== 'ship' && col.type !== 'drone')) continue;
-        if (!canCollide(pk, col) && !canCollide(col, pk)) continue;
-        const dx = col.pos.x - pk.pos.x;
-        const dz = col.pos.z - pk.pos.z;
-        const rsum = (col.radius || 0) + (pk.radius || 0);
-        if (dx * dx + dz * dz > rsum * rsum) continue;
-        emitPickupCollected(this.bus, pk, col);
-        pk.alive = false;
-        this._diag.pickupCollections++;
+        this._diag.pickupPairChecks++;
+        this._tryCollectPickup(pk, col);
       }
     }
+  },
+
+  _collectPickupsSpatial(state, pickups, collectors) {
+    const out = this._scratch;
+    const queryCollectors = collectors.length <= pickups.length;
+    if (queryCollectors) {
+      const maxPickupRadius = maxLivePickupRadius(pickups);
+      for (const col of collectors) {
+        if (!isPickupCollector(col)) continue;
+        out.length = 0;
+        state.spatialHash.queryRadius(col.pos.x, col.pos.z, (col.radius || 0) + maxPickupRadius, out);
+        this._diag.pickupSpatialQueries++;
+        for (const pk of out) {
+          if (!isLivePickup(pk)) continue;
+          this._diag.pickupPairChecks++;
+          this._tryCollectPickup(pk, col);
+        }
+      }
+      return;
+    }
+
+    const maxCollectorRadius = maxLiveCollectorRadius(collectors);
+    for (const pk of pickups) {
+      if (!isLivePickup(pk)) continue;
+      out.length = 0;
+      state.spatialHash.queryRadius(pk.pos.x, pk.pos.z, (pk.radius || 0) + maxCollectorRadius, out);
+      this._diag.pickupSpatialQueries++;
+      for (const col of out) {
+        if (!pk.alive) break;
+        if (!isPickupCollector(col)) continue;
+        this._diag.pickupPairChecks++;
+        this._tryCollectPickup(pk, col);
+      }
+    }
+  },
+
+  _tryCollectPickup(pk, col) {
+    if (!isPickupCollector(col)) return false;
+    if (!canCollide(pk, col) && !canCollide(col, pk)) return false;
+    const dx = col.pos.x - pk.pos.x;
+    const dz = col.pos.z - pk.pos.z;
+    const rsum = (col.radius || 0) + (pk.radius || 0);
+    if (dx * dx + dz * dz > rsum * rsum) return false;
+    emitPickupCollected(this.bus, pk, col);
+    pk.alive = false;
+    this._diag.pickupCollections++;
+    return true;
   },
 
   _updateSg02DynamicAuthority(dt, state) {
@@ -142,7 +231,10 @@ export const physics = {
     this._diag.backend = 'rapier-dynamic';
     if (!this._sg02Init && !this._sg02) {
       const token = ++this._sg02Token;
-      this._sg02Init = createSg02DynamicBodyOwner({ mode: 'rapier-dynamic' })
+      this._sg02Init = createSg02DynamicBodyOwner({
+        mode: 'rapier-dynamic',
+        publishTelemetry: shouldPublishSg02Telemetry(state),
+      })
         .then((owner) => {
           const currentBackend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
           if (token !== this._sg02Token || currentBackend !== 'rapier-dynamic') {
@@ -166,11 +258,17 @@ export const physics = {
       this._diag.rapierReady = false;
       this._diag.sg02Ready = false;
       this._diag.sg02Bodies = 0;
+      this._diag.sg02DynamicBodies = 0;
       this._diag.sg02Attachments = 0;
+      this._diag.sg02SyncMode = 'none';
+      this._diag.sg02SyncFullEntities = 0;
+      this._diag.sg02SyncStaticEntities = 0;
+      this._diag.sg02SyncDynamicEntities = 0;
       return;
     }
 
-    this._sg02.syncFromEntities(state.entityList);
+    this._sg02.publishTelemetry = shouldPublishSg02Telemetry(state);
+    this._syncSg02DynamicAuthorityEntities(state);
     this._reconcileCombatPhysicsBeforeStep();
     const sdiag = this._sg02.step(dt);
     this._diag.rapierReady = true;
@@ -181,7 +279,29 @@ export const physics = {
     this._diag.rapierContacts = 0;
     this._diag.rapierEvents = 0;
     this._diag.sg02Bodies = sdiag.bodies;
+    this._diag.sg02DynamicBodies = sdiag.dynamicBodies || 0;
     this._diag.sg02Attachments = sdiag.attachments || 0;
+    this._diag.sg02SyncMode = sdiag.syncMode || 'none';
+    this._diag.sg02SyncFullEntities = sdiag.syncFullEntities || 0;
+    this._diag.sg02SyncStaticEntities = sdiag.syncStaticEntities || 0;
+    this._diag.sg02SyncDynamicEntities = sdiag.syncDynamicEntities || 0;
+  },
+
+  _syncSg02DynamicAuthorityEntities(state) {
+    const index = state && state.entityIndex;
+    if (this._sg02 && typeof this._sg02.syncFromEntityLayers === 'function' &&
+      index && index.__spacefaceEntityIndexV1 && index.ready &&
+      Array.isArray(index.physicsStatics) &&
+      Array.isArray(index.physicsDynamics)) {
+      this._sg02.syncFromEntityLayers(
+        index.physicsStatics,
+        index.physicsDynamics,
+        index.physicsStaticVersion || 0,
+        Array.isArray(index.physicsBodies) ? index.physicsBodies : null,
+      );
+      return;
+    }
+    this._sg02.syncFromEntities(state.entityList);
   },
 
   _disableSg02DynamicAuthority() {
@@ -191,7 +311,12 @@ export const physics = {
     this._sg02Init = null;
     this._diag.sg02Ready = false;
     this._diag.sg02Bodies = 0;
+    this._diag.sg02DynamicBodies = 0;
     this._diag.sg02Attachments = 0;
+    this._diag.sg02SyncMode = 'none';
+    this._diag.sg02SyncFullEntities = 0;
+    this._diag.sg02SyncStaticEntities = 0;
+    this._diag.sg02SyncDynamicEntities = 0;
   },
 
   _resetSg02AfterLoad() {
@@ -206,7 +331,7 @@ export const physics = {
 
   integrate(dt, state) {
     const b = state.bounds;
-    for (const e of state.entityList) {
+    for (const e of physicsMovableEntities(state)) {
       if (!e.alive) continue;
       // sector soft boundary: gentle inward acceleration past the soft radius
       if (e.type === 'ship' && b) {
@@ -234,6 +359,7 @@ export const physics = {
     const source = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
     for (const a of source) {
       if (!a.alive || !a.collides) continue;
+      if (!shouldStartBroadphasePairSearch(a)) continue;
       out.length = 0;
       state.spatialHash.queryRadius(a.pos.x, a.pos.z, a.radius + 4, out);
       for (const bEnt of out) {
@@ -253,7 +379,7 @@ export const physics = {
 
   sweepShipStatics(dt, state) {
     const out = this._scratch;
-    const useHash = !!(state.spatialHash && typeof state.spatialHash.queryRadius === 'function');
+    const useHash = hasActiveSpatialHash(state.spatialHash);
     const statics = this._statics;
     if (!useHash) {
       statics.length = 0;
@@ -266,7 +392,7 @@ export const physics = {
     const ships = (state.entityIndex && state.entityIndex.shipLike) || state.entityList;
     for (const ship of ships) {
       if (!ship.alive || !ship.collides || (ship.type !== 'ship' && ship.type !== 'drone')) continue;
-      const start = previousPos(ship, dt);
+      const start = previousPosInto(this._prevPosScratch, ship, dt);
       const end = ship.pos;
       let candidates = statics;
       if (useHash) {
@@ -275,31 +401,40 @@ export const physics = {
         state.spatialHash.queryRadius((start.x + end.x) * 0.5, (start.z + end.z) * 0.5, sweepRadius, out);
         candidates = out;
       }
-      let best = null;
+      let bestTarget = null;
+      const hit = this._segmentHitScratch;
+      const bestHit = this._bestSegmentHitScratch;
       for (const target of candidates) {
         if (!target.alive || !target.collides || (target.type !== 'asteroid' && target.type !== 'station')) continue;
         if (target === ship || (!canCollide(ship, target) && !canCollide(target, ship))) continue;
-        const hit = segmentCircleHit(start, end, target.pos, (ship.radius || 0) + (target.radius || 0));
-        if (!hit.hit) continue;
-        if (!best || hit.t < best.hit.t) best = { target, hit };
+        if (!segmentCircleHitInto(hit, start, end, target.pos, (ship.radius || 0) + (target.radius || 0))) continue;
+        if (!bestTarget || hit.t < bestHit.t) {
+          bestTarget = target;
+          copySegmentHit(bestHit, hit);
+        }
       }
-      if (!best) continue;
-      const nx = best.hit.nx, nz = best.hit.nz;
+      if (!bestTarget) continue;
+      const nx = bestHit.nx, nz = bestHit.nz;
       const skin = 0.01;
-      ship.pos.x = best.hit.x + nx * skin;
-      ship.pos.z = best.hit.z + nz * skin;
-      applySurfaceResponse(ship, nx, nz, materialFor(best.target));
+      const nextX = bestHit.x + nx * skin;
+      const nextZ = bestHit.z + nz * skin;
+      if (useHash && spatialCellSpanChanged(state.spatialHash, ship, nextX, nextZ)) {
+        this._spatialHashNeedsRebuild = true;
+      }
+      ship.pos.x = nextX;
+      ship.pos.z = nextZ;
+      applySurfaceResponse(ship, nx, nz, materialFor(bestTarget));
       this._diag.sweptShipContacts++;
     }
   },
 
   sweepProjectiles(dt, state) {
     const out = this._scratch;
-    const useHash = !!(state.spatialHash && typeof state.spatialHash.queryRadius === 'function');
+    const useHash = hasActiveSpatialHash(state.spatialHash);
     const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
-      const start = previousPos(proj, dt);
+      const start = previousPosInto(this._prevPosScratch, proj, dt);
       const end = proj.pos;
       let candidates = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
       if (useHash) {
@@ -308,19 +443,23 @@ export const physics = {
         state.spatialHash.queryRadius((start.x + end.x) * 0.5, (start.z + end.z) * 0.5, sweepRadius, out);
         candidates = out;
       }
-      let best = null;
+      let bestTarget = null;
+      const hit = this._segmentHitScratch;
+      const bestHit = this._bestSegmentHitScratch;
       for (const tgt of candidates) {
         if (!tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
         if (proj.ownerId === tgt.id) continue;
         if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
-        const hit = segmentCircleHit(start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0));
-        if (!hit.hit) continue;
-        if (!best || hit.t < best.hit.t) best = { target: tgt, hit };
+        if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
+        if (!bestTarget || hit.t < bestHit.t) {
+          bestTarget = tgt;
+          copySegmentHit(bestHit, hit);
+        }
       }
-      if (!best) continue;
-      proj.pos.x = best.hit.x;
-      proj.pos.z = best.hit.z;
-      this.bus.emit('projectile:hit', projectileHitPayload(proj, best.target.id, { x: proj.pos.x, z: proj.pos.z }));
+      if (!bestTarget) continue;
+      proj.pos.x = bestHit.x;
+      proj.pos.z = bestHit.z;
+      this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget.id, { x: proj.pos.x, z: proj.pos.z }));
       proj.alive = false;
       this._diag.sweptProjectileHits++;
     }
@@ -351,13 +490,13 @@ export const physics = {
     // frame in updateDockRange() so the UI receives both true and false transitions.
     if (ta === 'station' || tb === 'station') {
       // soft bounce off station hull
-      const material = pairMaterial(a, b);
+      const material = pairMaterialInto(this._pairMaterialScratch, a, b);
       pushApart(a, b, dist, dx, dz, material.push);
       impulse(a, b, dx / dist, dz / dist, material);
       return;
     }
     // ship/ship and ship/asteroid: separate + restitution impulse
-    const material = pairMaterial(a, b);
+    const material = pairMaterialInto(this._pairMaterialScratch, a, b);
     pushApart(a, b, dist, dx, dz, material.push);
     const impulseMag = impulse(a, b, dx / dist, dz / dist, material);
     bus.emit('collision', {
@@ -505,6 +644,79 @@ function usesSg02DynamicAuthority(state) {
   return gameplay && gameplay.physicsBackend === 'rapier-dynamic';
 }
 
+function shouldMaintainDynamicSpatialHash(state) {
+  const index = state && state.entityIndex;
+  if (!index || !index.__spacefaceEntityIndexV1) return true;
+  const collidables = Array.isArray(index.collidables) ? index.collidables.length : 0;
+  const asteroids = Array.isArray(index.asteroids) ? index.asteroids.length : 0;
+  return collidables >= DYNAMIC_SPATIAL_QUERY_MIN_COLLIDABLES ||
+    asteroids >= DYNAMIC_SPATIAL_QUERY_MIN_ASTEROIDS;
+}
+
+function shouldUsePickupSpatialQuery(state, pickups, collectors) {
+  return hasActiveSpatialHash(state && state.spatialHash) &&
+    pickups.length * collectors.length >= PICKUP_SPATIAL_PAIR_THRESHOLD;
+}
+
+function isLivePickup(e) {
+  return !!(e && e.alive && e.collides && e.type === 'pickup' && e.pos);
+}
+
+function isPickupCollector(e) {
+  return !!(e && e.alive && e.collides && (e.type === 'ship' || e.type === 'drone') && e.pos);
+}
+
+function maxLivePickupRadius(pickups) {
+  let radius = 0;
+  for (const pk of pickups) {
+    if (isLivePickup(pk) && (pk.radius || 0) > radius) radius = pk.radius || 0;
+  }
+  return radius;
+}
+
+function maxLiveCollectorRadius(collectors) {
+  let radius = 0;
+  for (const col of collectors) {
+    if (isPickupCollector(col) && (col.radius || 0) > radius) radius = col.radius || 0;
+  }
+  return radius;
+}
+
+function shouldPublishSg02Snapshot(state) {
+  if (typeof window === 'undefined') return true;
+  const runtime = state && state.physicsRuntime;
+  return !!(runtime && runtime.publishSg02Snapshot === true)
+    || window.__SF_PUBLISH_SG02_SNAPSHOT__ === true;
+}
+
+function shouldPublishSg02Telemetry(state) {
+  if (typeof window === 'undefined') return true;
+  const runtime = state && state.physicsRuntime;
+  return !!(runtime && runtime.publishSg02Telemetry === true)
+    || window.__SF_PUBLISH_SG02_TELEMETRY__ === true;
+}
+
+function physicsMovableEntities(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.movables) return index.movables;
+  return (state && state.entityList) || [];
+}
+
+function spatialCellSpanChanged(hash, entity, nextX, nextZ) {
+  if (!hash || !entity || !entity.pos) return true;
+  const cell = Number.isFinite(hash.cell) && hash.cell > 0 ? hash.cell : 64;
+  const radius = entity.radius || 0;
+  const beforeX0 = Math.floor((entity.pos.x - radius) / cell);
+  const beforeX1 = Math.floor((entity.pos.x + radius) / cell);
+  const beforeZ0 = Math.floor((entity.pos.z - radius) / cell);
+  const beforeZ1 = Math.floor((entity.pos.z + radius) / cell);
+  const afterX0 = Math.floor((nextX - radius) / cell);
+  const afterX1 = Math.floor((nextX + radius) / cell);
+  const afterZ0 = Math.floor((nextZ - radius) / cell);
+  const afterZ1 = Math.floor((nextZ + radius) / cell);
+  return beforeX0 !== afterX0 || beforeX1 !== afterX1 || beforeZ0 !== afterZ0 || beforeZ1 !== afterZ1;
+}
+
 function createDeferredSg02CombatPhysicsPort(host) {
   const owner = () => host && host._sg02;
   return Object.freeze({
@@ -547,6 +759,10 @@ function maskOf(e) {
 
 function canCollide(a, b) {
   return !!(a.collisionMask & maskOf(b));
+}
+
+function shouldStartBroadphasePairSearch(e) {
+  return e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'pickup';
 }
 
 function projectileHitPayload(proj, targetId, pos) {
@@ -597,15 +813,23 @@ function materialFor(e) {
   return COLLISION_MATERIALS[e.type] || DEFAULT_MATERIAL;
 }
 
-function pairMaterial(a, b) {
+function createPairMaterialRecord() {
+  return {
+    push: DEFAULT_MATERIAL.push,
+    restitution: DEFAULT_MATERIAL.restitution,
+    tangentDamping: DEFAULT_MATERIAL.tangentDamping,
+    impactScale: DEFAULT_MATERIAL.impactScale,
+  };
+}
+
+function pairMaterialInto(out, a, b) {
   const ma = materialFor(a);
   const mb = materialFor(b);
-  return {
-    push: Math.min(ma.push, mb.push),
-    restitution: Math.min(ma.restitution, mb.restitution),
-    tangentDamping: Math.max(ma.tangentDamping, mb.tangentDamping),
-    impactScale: Math.min(ma.impactScale, mb.impactScale),
-  };
+  out.push = Math.min(ma.push, mb.push);
+  out.restitution = Math.min(ma.restitution, mb.restitution);
+  out.tangentDamping = Math.max(ma.tangentDamping, mb.tangentDamping);
+  out.impactScale = Math.min(ma.impactScale, mb.impactScale);
+  return out;
 }
 
 function applySurfaceResponse(e, nx, nz, material) {
@@ -653,15 +877,28 @@ function impulse(a, b, nx, nz, material) {
   return Math.abs(j);
 }
 
-function previousPos(e, dt) {
-  if (e.prevPos && Number.isFinite(e.prevPos.x) && Number.isFinite(e.prevPos.z)) return e.prevPos;
-  return {
-    x: e.pos.x - ((e.vel && e.vel.x) || 0) * dt,
-    z: e.pos.z - ((e.vel && e.vel.z) || 0) * dt,
-  };
+function createSegmentHitRecord() {
+  return { hit: false, t: 0, x: 0, z: 0, nx: 0, nz: 0 };
 }
 
-function segmentCircleHit(start, end, center, radius) {
+function copySegmentHit(out, hit) {
+  out.hit = hit.hit;
+  out.t = hit.t;
+  out.x = hit.x;
+  out.z = hit.z;
+  out.nx = hit.nx;
+  out.nz = hit.nz;
+  return out;
+}
+
+function previousPosInto(out, e, dt) {
+  if (e.prevPos && Number.isFinite(e.prevPos.x) && Number.isFinite(e.prevPos.z)) return e.prevPos;
+  out.x = e.pos.x - ((e.vel && e.vel.x) || 0) * dt;
+  out.z = e.pos.z - ((e.vel && e.vel.z) || 0) * dt;
+  return out;
+}
+
+function segmentCircleHitInto(out, start, end, center, radius) {
   const sx = start.x, sz = start.z;
   const ex = end.x, ez = end.z;
   const dx = ex - sx, dz = ez - sz;
@@ -669,7 +906,17 @@ function segmentCircleHit(start, end, center, radius) {
   if (len2 <= 0.000001) {
     const ox = sx - center.x, oz = sz - center.z;
     const d = Math.hypot(ox, oz) || 0.0001;
-    return d <= radius ? { hit: true, t: 0, x: sx, z: sz, nx: ox / d, nz: oz / d } : { hit: false };
+    if (d > radius) {
+      out.hit = false;
+      return false;
+    }
+    out.hit = true;
+    out.t = 0;
+    out.x = sx;
+    out.z = sz;
+    out.nx = ox / d;
+    out.nz = oz / d;
+    return true;
   }
   const relX = sx - center.x;
   const relZ = sz - center.z;
@@ -680,20 +927,32 @@ function segmentCircleHit(start, end, center, radius) {
     const len = Math.sqrt(len2);
     const nx = d > 0.0001 ? relX / d : -dx / len;
     const nz = d > 0.0001 ? relZ / d : -dz / len;
-    return { hit: true, t: 0, x: center.x + nx * radius, z: center.z + nz * radius, nx, nz };
+    out.hit = true;
+    out.t = 0;
+    out.x = center.x + nx * radius;
+    out.z = center.z + nz * radius;
+    out.nx = nx;
+    out.nz = nz;
+    return true;
   }
 
   const b = 2 * (relX * dx + relZ * dz);
   const c = startDist2 - r2;
   const disc = b * b - 4 * len2 * c;
-  if (disc < 0) return { hit: false };
+  if (disc < 0) {
+    out.hit = false;
+    return false;
+  }
 
   const sqrtDisc = Math.sqrt(disc);
   const invDenom = 1 / (2 * len2);
   let t = (-b - sqrtDisc) * invDenom;
   if (t < 0 || t > 1) {
     t = (-b + sqrtDisc) * invDenom;
-    if (t < 0 || t > 1) return { hit: false };
+    if (t < 0 || t > 1) {
+      out.hit = false;
+      return false;
+    }
   }
 
   const x = sx + dx * t;
@@ -701,7 +960,13 @@ function segmentCircleHit(start, end, center, radius) {
   const ox = x - center.x, oz = z - center.z;
   const d = Math.hypot(ox, oz) || 0.0001;
   const nx = ox / d, nz = oz / d;
-  return { hit: true, t, x: center.x + nx * radius, z: center.z + nz * radius, nx, nz };
+  out.hit = true;
+  out.t = t;
+  out.x = center.x + nx * radius;
+  out.z = center.z + nz * radius;
+  out.nx = nx;
+  out.nz = nz;
+  return true;
 }
 
 function clamp01(v) {

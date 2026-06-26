@@ -189,8 +189,10 @@ async function assertGatedProductionRegistration() {
   assert(gameState.includes("physicsBackend: 'rapier-dynamic'"), 'default game settings must use SG-02 dynamic authority');
   assert(gameState.includes("aiBackend: 'sg06-tactical'"), 'default game settings must use SG-06 tactical AI');
   const saveSystem = read('src/save/saveSystem.js');
-  assert(saveSystem.includes('VALID_AI_BACKENDS'), 'save restore must validate the AI backend setting');
-  assert(saveSystem.includes("'sg06-tactical'"), 'save restore must allow only the explicit SG-06 AI backend id');
+  assert(saveSystem.includes('s.gameplay.aiBackend = DEFAULT_AI_BACKEND'),
+    'save restore must canonicalize SG-06 instead of preserving alternate player-facing AI backend forks');
+  assert(saveSystem.includes("const DEFAULT_AI_BACKEND = 'sg06-tactical'"),
+    'save restore must keep SG-06 tactical AI as the canonical backend id');
   assert(saveSystem.includes('this.state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] }'),
     'save restore must clear transient SG-06 encounter commands and owner state');
   assert(read('scripts/check-sg06-ai.mjs').includes('transientEncounterSaveLoadReset'),

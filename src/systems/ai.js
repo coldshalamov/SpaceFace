@@ -55,6 +55,7 @@ export const ai = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._targetScratch = [];
     const state = ctx.state, bus = ctx.bus;
 
     // Threat tables live on state.combat (already allocated in gameState). Map<targetId, Map<attackerId, threat>>.
@@ -245,7 +246,7 @@ export const ai = {
     // Fast path: most NPCs only care about the player; still scan neighbours for threat sources.
     consider(player);
     if (this.helpers && this.helpers.queryRadius) {
-      const near = this.helpers.queryRadius(e.pos, arch.sensor);
+      const near = this.helpers.queryRadius(e.pos, arch.sensor, this._targetScratch || (this._targetScratch = []));
       for (const c of near) consider(c);
     }
     return best;

@@ -10,9 +10,11 @@
 import { WEAPONS } from '../data/weapons.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
+const AUTO_FIRE_QUERY_RADIUS_PAD = 128;
 
 const DEG2 = WEAPONS; // keep import referenced even if tree-shaken oddly (no-op)
 
@@ -34,10 +36,17 @@ export const weapons = {
     // Track which beam owners were firing last tick so we can emit combat:beamStop on release.
     this._beamFiring = new Set();
     this._beamFiringPrev = new Set();
+    this._autoFireScratch = [];
+    this._diag = {
+      autoFireSpatialQueries: 0,
+      autoFireCandidates: 0,
+    };
   },
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    ensureWeaponRuntime(this);
+    resetWeaponDiagnostics(this._diag);
 
     // Beams are transient per-tick rays; combat normally rebuilds state.combat.beams but may be a
     // stub this wave, so we clear it ourselves to keep it from growing unbounded.
@@ -84,6 +93,8 @@ export const weapons = {
     for (const ownerId of this._beamFiringPrev) {
       if (!this._beamFiring.has(ownerId)) this.bus.emit('combat:beamStop', { ownerId });
     }
+    state.weaponRuntime = state.weaponRuntime || {};
+    state.weaponRuntime.diagnostics = this._diag;
   },
 
   // --- per-instance timers (cooldown, heat dissipation, lock decay) ---
@@ -426,15 +437,21 @@ export const weapons = {
   // hostile team and in an attack FSM state, or currently targeting/attacking the player. This
   // implements "fire only at aggressive enemies while I fly" (Phase 2). Returns null if none.
   _autoFireTarget(player, state) {
+    ensureWeaponRuntime(this);
     let best = null, bestD2 = Infinity;
     const px = player.pos.x, pz = player.pos.z;
-    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    const maxRange = playerAutoFireRange(this, player);
+    const ships = shipsNearPlayer(state, player, maxRange + AUTO_FIRE_QUERY_RADIUS_PAD, this._autoFireScratch);
+    if (ships === this._autoFireScratch) this._diag.autoFireSpatialQueries++;
+    this._diag.autoFireCandidates += ships.length;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive || e.id === player.id) continue;
       if (e.team === player.team) continue;              // friendly — never auto-target allies
       if (!this._isAggressive(e, player, state)) continue;
       const dx = e.pos.x - px, dz = e.pos.z - pz;
       const d2 = dx * dx + dz * dz;
+      const inRange = maxRange <= 0 || d2 <= (maxRange + (e.radius || 0)) * (maxRange + (e.radius || 0));
+      if (!inRange) continue;
       if (d2 < bestD2) { bestD2 = d2; best = e; }
     }
     return best;
@@ -479,6 +496,40 @@ export const weapons = {
 
 void DEG2;
 void TWO_PI;
+
+function shipsNearPlayer(state, player, radius, out) {
+  return queryNearbyEntities(state, player.pos, radius, out,
+    (state.entityIndex && state.entityIndex.ships) || state.entityList);
+}
+
+function playerAutoFireRange(host, player) {
+  const ws = player && player.data && player.data.weapons;
+  if (!ws || !ws.length) return 0;
+  let range = 0;
+  const byId = host && host._byId;
+  for (const w of ws) {
+    const def = byId && byId.get ? byId.get(w.defId) : null;
+    const r = w.range != null ? w.range : (def && def.range);
+    if (Number.isFinite(r) && r > range) range = r;
+  }
+  return range;
+}
+
+function ensureWeaponRuntime(host) {
+  if (!host._autoFireScratch) host._autoFireScratch = [];
+  if (!host._diag) {
+    host._diag = {
+      autoFireSpatialQueries: 0,
+      autoFireCandidates: 0,
+    };
+  }
+}
+
+function resetWeaponDiagnostics(diag) {
+  if (!diag) return;
+  diag.autoFireSpatialQueries = 0;
+  diag.autoFireCandidates = 0;
+}
 
 function weaponDamagePacket(w, def, damage, damageType, pos = null) {
   return scalarHitToDamagePacket({

@@ -13,7 +13,7 @@ export const ASSET_AUTHORING_CONTRACT = Object.freeze({
     key: 'spacefaceAsset',
     required: Object.freeze({
       contractVersion: 1,
-      slot: 'hull | cockpit | engine | fin',
+      slot: 'hull | cockpit | engine | fin | weapon | greeble | gear | pod',
       forward: '+X', up: '+Y', starboard: '+Z', unit: 'metre',
       normalConvention: 'OpenGL',
       ormChannels: 'R=AO,G=Roughness,B=Metallic',
@@ -69,6 +69,7 @@ const runtimeByRenderer = new WeakMap();
 const warned = new Set();
 const _inverseRoot = new THREE.Matrix4();
 const _relative = new THREE.Matrix4();
+const _anchorRelative = new THREE.Matrix4();
 const _bounds = new THREE.Box3();
 const _boundsSize = new THREE.Vector3();
 const _boundsCenter = new THREE.Vector3();
@@ -303,7 +304,7 @@ function compileBlueprint(url, gltf, expectedSlot) {
       if (Array.isArray(node.material)) errors.push(`${label(node)} uses a material array; split it into one primitive per material for deterministic instancing`);
       if (!node.geometry || !node.material || Array.isArray(node.material)) return;
 
-      const canopy = tags.canopy || isCanopy(node);
+      const canopy = tags.canopy || isCanopy(node, metadata.slot);
       const material = canopy ? makeCanopyMaterial(node.material) : node.material;
       if (canopy) node.material = material;
       validatePrimitive(node, material, canopy, gltf, metadata, errors, warnings);
@@ -317,13 +318,13 @@ function compileBlueprint(url, gltf, expectedSlot) {
         geometry: node.geometry,
         material,
         matrix: _relative.clone(),
-        tags: Object.freeze({ ...tags, lod: tags.lod || (metadata.legacyPart === true ? 'lod0' : undefined), canopy }),
+        tags: buildPrimitiveTags(tags, metadata, canopy),
       }));
     } else if (isContractMarker(node, tags)) {
       markers.push(Object.freeze({
         name: node.name || `Marker_${markers.length}`,
         matrix: _relative.clone(),
-        tags: Object.freeze({ ...tags, lod: tags.lod || (metadata.legacyPart === true ? 'lod0' : undefined) }),
+        tags: Object.freeze({ ...cleanRuntimeTags(tags), lod: tags.lod || (metadata.legacyPart === true ? 'lod0' : undefined) }),
         userData: Object.freeze({ ...node.userData }),
       }));
     }
@@ -442,6 +443,10 @@ function slotFromCategory(category) {
   if (value === 'cockpits') return 'cockpit';
   if (value === 'engines') return 'engine';
   if (value === 'fins') return 'fin';
+  if (value === 'weapons') return 'weapon';
+  if (value === 'greebles') return 'greeble';
+  if (value === 'gear') return 'gear';
+  if (value === 'pods') return 'pod';
   return null;
 }
 
@@ -459,7 +464,7 @@ function validateAssetMetadata(meta, expectedSlot, errors) {
   if (!meta.assetId || typeof meta.assetId !== 'string') {
     errors.push('spacefaceAsset.assetId must be a stable non-empty string');
   }
-  const allowedSlots = ['hull', 'cockpit', 'engine', 'fin'];
+  const allowedSlots = ['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod'];
   if (!allowedSlots.includes(meta.slot)) {
     errors.push(`spacefaceAsset.slot must be one of ${allowedSlots.join(', ')}`);
   } else if (expectedSlot && meta.slot !== expectedSlot) {
@@ -486,11 +491,13 @@ function validateAssetMetadata(meta, expectedSlot, errors) {
 function validatePrimitive(node, material, canopy, gltf, metadata, errors, warnings) {
   const prefix = label(node);
   const geometry = node.geometry;
+  const legacyPart = metadata && metadata.legacyPart === true;
   if (!geometry.getAttribute('position')) errors.push(`${prefix} has no positions`);
   if (!geometry.getAttribute('normal')) errors.push(`${prefix} has no vertex normals`);
   if (!geometry.getAttribute('uv')) errors.push(`${prefix} has no UV0 for baseColor/normal maps`);
   if (material.normalMap && !geometry.getAttribute('tangent')) {
-    errors.push(`${prefix} has a normal map but no authored tangent attribute`);
+    if (legacyPart) warnings.push(`${prefix} has a normal map but no authored tangent attribute`);
+    else errors.push(`${prefix} has a normal map but no authored tangent attribute`);
   }
 
   if (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial) {
@@ -503,21 +510,24 @@ function validatePrimitive(node, material, canopy, gltf, metadata, errors, warni
   const ao = material.aoMap;
   const rough = material.roughnessMap;
   const metal = material.metalnessMap;
-  if (!map) errors.push(`${prefix} is missing baseColor map`);
-  if (!normal) errors.push(`${prefix} is missing tangent-space normal map`);
-  if (!ao || !rough || !metal) errors.push(`${prefix} is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)`);
+  if (!map && !legacyPart) errors.push(`${prefix} is missing baseColor map`);
+  if (!normal && !legacyPart) errors.push(`${prefix} is missing tangent-space normal map`);
+  if ((!ao || !rough || !metal) && !legacyPart) errors.push(`${prefix} is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)`);
 
   if (map && map.colorSpace !== THREE.SRGBColorSpace) errors.push(`${prefix} baseColor map is not tagged sRGB`);
   if (normal) {
     if (normal.colorSpace === THREE.SRGBColorSpace) errors.push(`${prefix} normal map must be linear/non-color data`);
     if (material.normalMapType !== THREE.TangentSpaceNormalMap) errors.push(`${prefix} normal map is not tangent-space`);
-    if (material.normalScale && material.normalScale.y < 0) errors.push(`${prefix} normal map is DirectX green-down; export OpenGL green-up`);
+    if (material.normalScale && material.normalScale.y < 0) {
+      if (legacyPart) warnings.push(`${prefix} normal map reports DirectX green-down; accepted for legacy generated part`);
+      else errors.push(`${prefix} normal map is DirectX green-down; export OpenGL green-up`);
+    }
   }
   if (ao && ao.colorSpace === THREE.SRGBColorSpace) errors.push(`${prefix} ORM map must be linear/non-color data`);
   if (ao && rough && metal && !(sameTexture(ao, rough) && sameTexture(rough, metal))) {
     errors.push(`${prefix} AO, roughness and metallic must share one packed ORM texture`);
-  } else if (ao && rough && metal && !(sameTextureSampling(ao, rough) && sameTextureSampling(rough, metal))) {
-    errors.push(`${prefix} packed ORM channels must use the same UV set and texture transform`);
+  } else if (!legacyPart && ao && rough && metal && !samePackedOrmSampling(ao, rough, metal)) {
+    errors.push(`${prefix} packed ORM channels must use one texture transform; roughness and metallic must share a UV set`);
   }
   if (ao && !(geometry.getAttribute('uv1') || geometry.getAttribute('uv'))) {
     errors.push(`${prefix} has no UV channel usable by AO`);
@@ -531,7 +541,7 @@ function validatePrimitive(node, material, canopy, gltf, metadata, errors, warni
     } else if (size.width < 1024 || size.height < 1024 || size.width > 2048 || size.height > 2048) {
       errors.push(`${prefix} ${role} texture must be 1K–2K; got ${size.width}x${size.height}`);
     }
-    if (!isSupportedPartTexture(texture, gltf, metadata)) {
+    if (!legacyPart && !isSupportedPartTexture(texture, gltf, metadata)) {
       errors.push(`${prefix} ${role} texture does not match declared compression pipeline`);
     }
   }
@@ -606,6 +616,26 @@ function collectTags(node, scene, slot, legacyPart) {
   return tags;
 }
 
+function buildPrimitiveTags(tags, metadata, canopy) {
+  const next = {
+    ...cleanRuntimeTags(tags),
+    lod: tags.lod || (metadata.legacyPart === true ? 'lod0' : undefined),
+    canopy,
+  };
+  const anchor = tags.driveAnchorObject;
+  if (next.drive && anchor && anchor.matrixWorld) {
+    _anchorRelative.multiplyMatrices(_inverseRoot, anchor.matrixWorld);
+    next.driveAnchorMatrix = _anchorRelative.clone();
+  }
+  return Object.freeze(next);
+}
+
+function cleanRuntimeTags(tags) {
+  const next = { ...tags };
+  delete next.driveAnchorObject;
+  return next;
+}
+
 function applyNodeTags(tags, node, slot, legacyPart) {
   const data = node.userData || {};
   const sf = data.spaceface && typeof data.spaceface === 'object' ? data.spaceface : {};
@@ -622,23 +652,26 @@ function applyNodeTags(tags, node, slot, legacyPart) {
     tags.mount = mountMatch[1].toLowerCase();
     tags.mountKey = name.slice('MOUNT_'.length).toLowerCase();
   }
-  if (name.includes('HOOK_DRIVE_FAN')) tags.drive = 'fan';
-  if (name.includes('HOOK_DRIVE_CORE')) tags.drive = 'core';
-  if (name.includes('HOOK_DRIVE_PLUME')) tags.drive = 'plume';
+  if (name.includes('HOOK_DRIVE_FAN')) setDriveTag(tags, 'fan', node);
+  if (name.includes('HOOK_DRIVE_CORE')) setDriveTag(tags, 'core', node);
+  if (name.includes('HOOK_DRIVE_PLUME')) setDriveTag(tags, 'plume', node);
   if (legacyPart && slot === 'engine') {
-    if (name.includes('HOOK_SPIN') || name.includes('FAN')) tags.drive = 'fan';
-    if (name.includes('ENGINE_CORE') || name.includes('DRIVE_CORE')) tags.drive = 'core';
-    if (name.includes('HOOK_EMISSIVE') || name.includes('NOZZLE') || name.includes('PLUME')) tags.drive = 'plume';
+    if (name.includes('HOOK_SPIN')) setDriveTag(tags, 'fan', node);
+    else if (!tags.drive && name.includes('FAN')) setDriveTag(tags, 'fan', node);
+    if (name.includes('HOOK_EMISSIVE')) setDriveTag(tags, 'core', node);
+    else if (!tags.drive && (name.includes('ENGINE_CORE') || name.includes('DRIVE_CORE') || /(?:^|_)CORE(?:_|$)/.test(name))) setDriveTag(tags, 'core', node);
+    if (!tags.drive && name.includes('PLUME')) setDriveTag(tags, 'plume', node);
   }
   if (name.includes('HOOK_NAV_') || name.includes('HOOK_NAVLIGHT')) tags.damageRole = 'navLight';
   if (name.includes('HOOK_SENSOR_')) tags.damageRole = 'sensor';
   if (name.includes('HOOK_ARMOR_')) tags.damageRole = 'armor';
   if (name.includes('HOOK_SECONDARY_')) tags.damageRole = 'secondary';
-  if (name.includes('CANOPY') || name.includes('COCKPIT_GLASS')) tags.canopy = true;
+  if (name.includes('CANOPY') || name.includes('COCKPIT_GLASS') ||
+    (legacyPart && slot === 'cockpit' && (name.includes('GLASS') || name.includes('WINDOW')))) tags.canopy = true;
   if (name.includes('DECAL')) tags.decal = true;
 
   const hook = sf.hook || data.spacefaceHook;
-  if (typeof hook === 'string') applyHookString(tags, hook);
+  if (typeof hook === 'string') applyHookString(tags, hook, node);
   if (sf.lod || data.spacefaceLod) tags.lod = normalizeLod(sf.lod || data.spacefaceLod);
   if (sf.tint || data.spacefaceTint) tags.tint = sf.tint || data.spacefaceTint;
   if (sf.damageRole || data.damageRole) tags.damageRole = normalizeDamageRole(sf.damageRole || data.damageRole);
@@ -666,11 +699,11 @@ function normalizeDamageRole(value) {
   return String(value || '');
 }
 
-function applyHookString(tags, value) {
+function applyHookString(tags, value, node) {
   const hook = value.toLowerCase();
-  if (hook === 'drive.fan') tags.drive = 'fan';
-  else if (hook === 'drive.core') tags.drive = 'core';
-  else if (hook === 'drive.plume') tags.drive = 'plume';
+  if (hook === 'drive.fan') setDriveTag(tags, 'fan', node);
+  else if (hook === 'drive.core') setDriveTag(tags, 'core', node);
+  else if (hook === 'drive.plume') setDriveTag(tags, 'plume', node);
   else if (hook === 'damage.navlight') tags.damageRole = 'navLight';
   else if (hook === 'damage.sensor') tags.damageRole = 'sensor';
   else if (hook === 'damage.armor') tags.damageRole = 'armor';
@@ -797,15 +830,27 @@ function sameTexture(a, b) {
   ));
 }
 
-function sameTextureSampling(a, b) {
+function sameTextureSampling(a, b, options = {}) {
+  const requireChannel = options.requireChannel !== false;
   if (!sameTexture(a, b)) return false;
-  if ((a.channel || 0) !== (b.channel || 0) || a.flipY !== b.flipY || a.wrapS !== b.wrapS || a.wrapT !== b.wrapT) return false;
+  if (requireChannel && (a.channel || 0) !== (b.channel || 0)) return false;
+  if (a.flipY !== b.flipY || a.wrapS !== b.wrapS || a.wrapT !== b.wrapT) return false;
   if (a.matrixAutoUpdate) a.updateMatrix();
   if (b.matrixAutoUpdate) b.updateMatrix();
   const ae = a.matrix.elements;
   const be = b.matrix.elements;
   for (let i = 0; i < ae.length; i++) if (Math.abs(ae[i] - be[i]) > 1e-6) return false;
   return true;
+}
+
+function setDriveTag(tags, role, node) {
+  tags.drive = role;
+  tags.driveAnchorObject = node;
+}
+
+function samePackedOrmSampling(ao, rough, metal) {
+  return sameTextureSampling(ao, rough, { requireChannel: false })
+    && sameTextureSampling(rough, metal);
 }
 
 function validateNodeTransform(node, matrix, errors) {
@@ -834,9 +879,11 @@ function isContractMarker(node, tags) {
   return !!(tags.socket || tags.mount || tags.drive || tags.damageRole || /^(HOOK|MOUNT)_/i.test(node.name || ''));
 }
 
-function isCanopy(node) {
-  const materialName = node.material && !Array.isArray(node.material) ? node.material.name : '';
-  return /(canopy|cockpit[_ -]?glass|windscreen)/i.test(`${node.name || ''} ${materialName || ''}`);
+function isCanopy(node, slot) {
+  const nodeName = String(node.name || '');
+  if (/(canopy|cockpit[_ -]?glass|windscreen)/i.test(nodeName)) return true;
+  const materialName = node.material && !Array.isArray(node.material) ? String(node.material.name || '') : '';
+  return slot === 'cockpit' && /(?:canopy|glass|windscreen)/i.test(materialName);
 }
 
 function socketRoleFromName(name) {

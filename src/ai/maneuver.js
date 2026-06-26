@@ -25,13 +25,17 @@ const DEFAULTS = Object.freeze({
   minBoostEnergyFraction: 0.22,
   formationRejoinFraction: 0.62,
   formationPredictionTicks: 45,
+  includeTrajectory: true,
 });
+const EMPTY_TRAJECTORY = Object.freeze([]);
 
 export class ManeuverPlanner {
   constructor({ seed = 1, trace = null, config = {} } = {}) {
     this.seed = seed >>> 0;
     this.trace = trace;
     this.config = Object.freeze({ ...DEFAULTS, ...config });
+    this.freeze = config.freezeResults === false ? identity : Object.freeze;
+    this.includeTrajectory = config.includeTrajectory !== false;
     this.byEntity = new Map();
   }
 
@@ -95,7 +99,9 @@ export class ManeuverPlanner {
     const boost = boostWanted && self.energyFraction >= this.config.minBoostEnergyFraction && self.heatFraction <= this.config.maxBoostHeatFraction;
     const brake = (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
       arrival < slowRadius && speed > Math.max(4, arrival / 2);
-    const trajectory = buildTrajectory(self, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks);
+    const trajectory = this.includeTrajectory
+      ? buildTrajectory(self, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks)
+      : EMPTY_TRAJECTORY;
     const request = makeThrusterRequest(entityId, tick, {
       kind,
       forceLocal: { forward: forward * throttle, right: right * throttle },
@@ -103,10 +109,10 @@ export class ManeuverPlanner {
       boost,
       brake,
       targetHeading: heading,
-      horizonTicks: this.config.trajectoryHorizonTicks,
+      horizonTicks: this.includeTrajectory ? this.config.trajectoryHorizonTicks : 1,
       trajectory,
       reason,
-    });
+    }, { freeze: this.freeze });
     runtime.lastKind = kind;
     runtime.lastRequest = request;
 
@@ -287,4 +293,8 @@ function buildTrajectory(self, direction, speed, tick, horizonTicks) {
 
 function freezeRuntime(runtime) {
   return runtime ? Object.freeze({ ...runtime }) : null;
+}
+
+function identity(value) {
+  return value;
 }

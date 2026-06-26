@@ -1,0 +1,9 @@
+{
+  "name": "get_blendfile_summary_of_linked_libraries",
+  "description": "\nReturn a tree of directly and indirectly linked library files.\n",
+  "inputSchema": {
+    "properties": {},
+    "title": "get_blendfile_summary_of_linked_librariesArguments",
+    "type": "object"
+  }
+}

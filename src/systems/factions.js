@@ -115,6 +115,17 @@ function ensureFaction(state, id) {
   return rec;
 }
 
+function accumulateFactionPowerEntity(e, power, haulerByFac, stationByFac) {
+  if (!e || !e.alive) return;
+  const fid = e.factionId;
+  if (fid == null || power[fid] == null) return;
+  if (e.type === 'ship' && e.data && e.data.ai && e.data.ai.passive) {
+    haulerByFac[fid] = (haulerByFac[fid] || 0) + 1;
+  } else if (e.type === 'station' && !(e.data && e.data.isGate)) {
+    stationByFac[fid] = (stationByFac[fid] || 0) + 1;
+  }
+}
+
 export const factions = {
   name: 'factions',
 
@@ -408,15 +419,12 @@ export const factions = {
     // dominate. Also count live stations of the faction (infrastructure).
     const haulerByFac = {};
     const stationByFac = {};
-    for (const e of state.entityList) {
-      if (!e.alive) continue;
-      const fid = e.factionId;
-      if (fid == null || power[fid] == null) continue;
-      if (e.type === 'ship' && e.data && e.data.ai && e.data.ai.passive) {
-        haulerByFac[fid] = (haulerByFac[fid] || 0) + 1;
-      } else if (e.type === 'station' && !(e.data && e.data.isGate)) {
-        stationByFac[fid] = (stationByFac[fid] || 0) + 1;
-      }
+    const index = state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 ? state.entityIndex : null;
+    if (index) {
+      for (const e of index.ships || []) accumulateFactionPowerEntity(e, power, haulerByFac, stationByFac);
+      for (const e of index.stations || []) accumulateFactionPowerEntity(e, power, haulerByFac, stationByFac);
+    } else {
+      for (const e of state.entityList || []) accumulateFactionPowerEntity(e, power, haulerByFac, stationByFac);
     }
     for (const id of FACTION_IDS) {
       power[id] += Math.min(12, (haulerByFac[id] || 0) * 2);  // haulers: trade power, capped

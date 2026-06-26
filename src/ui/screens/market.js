@@ -86,6 +86,46 @@ function stationTypeFor(state, stationId) {
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
 
+function commodityPurpose(c) {
+  const cat = (c && c.category) || '';
+  if (c && c.legality === 'contraband') return 'Risk cargo: high margins at black markets, but scans and trouble matter.';
+  if (c && c.legality === 'restricted') return 'Restricted cargo: profitable where wanted, risky around patrols.';
+  if (/raw|gas|crystal/.test(cat)) return 'Mining output: sell to buyers or feed refineries and fabs.';
+  if (/refined/.test(cat)) return 'Industrial input: useful for manufacturing and station demand.';
+  if (/component|tech/.test(cat)) return 'Upgrade economy: fabs, research, and military buyers want this.';
+  if (/military/.test(cat)) return 'Combat supply: military demand can pay well, but legality varies.';
+  if (/salvage/.test(cat)) return 'Recovered cargo: convert wreck runs into credits or fab inputs.';
+  if (/food|med|consumer|luxury/.test(cat)) return 'Route cargo: move it from producers to high-demand stations for profit.';
+  return 'Trade cargo: buy where cheap, sell where demanded, then spend credits on ship upgrades.';
+}
+
+function stationMarketPurpose(state, stationId) {
+  const type = stationTypeFor(state, stationId);
+  switch (type) {
+    case 'mining':
+      return 'Mining markets buy supplies and move raw ore into the trade loop; sell mined cargo or stock up before asteroid work.';
+    case 'refinery':
+      return 'Refineries want ore, gas, and volatiles, then feed refined materials into manufacturing and ship upgrades.';
+    case 'fab':
+      return 'Fabricators consume refined goods and components; bring materials here when you want modules or hull production.';
+    case 'military':
+      return 'Military stations pay for combat supply chains and keep repair/refuel options close to dangerous work.';
+    case 'blackmarket':
+      return 'Black markets trade risky cargo and covert margins; profits can be high, but legal pressure is part of the cost.';
+    case 'research':
+      return 'Research stations value scans, exotic goods, medical supply, and tech-linked inputs.';
+    case 'trade_hub':
+      return 'Trade hubs compare many routes; buy low here, set nav to a better buyer, then spend profits on hulls and modules.';
+    default:
+      return 'Markets turn cargo space into credits; credits buy hulls, modules, repairs, fuel, and mission readiness.';
+  }
+}
+
+function selectedQtyFor(qtySetting, maxValue) {
+  if (qtySetting === 'max') return Math.max(0, Math.floor(maxValue || 0));
+  return Math.max(0, Math.floor(Number(qtySetting) || 0));
+}
+
 /**
  * createMarketPanel(ctx) -> { el, refresh(ctx), onShow(ctx) }
  * stationHub mounts el, calls onShow when the tab becomes active, refresh on data events.
@@ -104,6 +144,11 @@ export function createMarketPanel(ctx) {
     '<div class="st-stat"><span class="st-stat-l">CREDITS</span><span class="mono st-credits">0</span></div>' +
     '<div class="st-stat"><span class="st-stat-l">CARGO</span><span class="mono st-cargo">0 / 0 u</span></div>';
   root.appendChild(header);
+
+  const purpose = document.createElement('div');
+  purpose.className = 'st-market-purpose';
+  purpose.innerHTML = '<b>Market loop:</b> <span class="st-market-purpose-text"></span>';
+  root.appendChild(purpose);
 
   // --- Phase 4: trade route planner ("Best Trades") ---
   // Scans marketIntel snapshots + this station's market for profitable buy-here→sell-there routes,
@@ -161,7 +206,7 @@ export function createMarketPanel(ctx) {
   // --- footer: trade preview ---
   const footer = document.createElement('div');
   footer.className = 'st-market-foot';
-  footer.innerHTML = '<span class="st-foot-msg">Select a quantity, then Buy or Sell.</span>';
+  footer.innerHTML = '<span class="st-foot-msg">Buy cargo for missions or profitable routes; sell mined, looted, or delivered goods to fund hulls, modules, repairs, and fuel.</span>';
   root.appendChild(footer);
 
   // ONE delegated listener for the whole list (perf §5.5).
@@ -197,7 +242,7 @@ export function createMarketPanel(ctx) {
           const name = (COMMODITY_BY_ID.get(cmdtyId) || {}).name || cmdtyId;
           const ok = await confirm({
             title: 'Confirm purchase',
-            body: 'Buy ' + qty + ' ' + name + ' for ' + Math.round(total).toLocaleString() + ' CR?',
+            body: 'Buy ' + qty + ' ' + name + ' for ' + Math.round(total).toLocaleString() + ' CR?\n\nCargo only pays off when you sell it into demand, complete a contract, or feed manufacturing. Check Best Trades or Mission Log after buying.',
             confirmLabel: 'Buy',
             danger: bigShare,
           });
@@ -280,6 +325,7 @@ export function createMarketPanel(ctx) {
       row.innerHTML =
         '<span class="c-name">' + escapeHtml(c.name) + legalTag +
           '<canvas class="st-spark" width="56" height="14" title="Recent price trend"></canvas>' +
+          '<span class="st-slotline st-cmdty-purpose">' + escapeHtml(commodityPurpose(c)) + '</span>' +
         '</span>' +
         '<span class="c-num st-owned mono">0</span>' +
         '<span class="c-num st-buy mono">—</span>' +
@@ -329,6 +375,8 @@ export function createMarketPanel(ctx) {
     header.querySelector('.st-credits').textContent = fmtCr(p.credits);
     const cap = p.cargo.capVolume || 0;
     header.querySelector('.st-cargo').textContent = Math.round(p.cargo.usedVolume || 0) + ' / ' + cap + ' u';
+    const purposeText = purpose.querySelector('.st-market-purpose-text');
+    if (purposeText) purposeText.textContent = stationMarketPurpose(state, stationId);
     refreshPlanner(state, stationId);
     if (!panel._rowEls) return;
     for (const cmdtyId in panel._rowEls) {
@@ -353,9 +401,32 @@ export function createMarketPanel(ctx) {
       const sellBtn = row.querySelector('.st-sell-btn');
       // buy disabled if can't afford even 1 unit or cargo full; sell disabled if own nothing.
       const vol = def && def.volPerU > 0 ? def.volPerU : 1;
-      const room = (p.cargo.capVolume - p.cargo.usedVolume) >= vol;
-      buyBtn.disabled = (p.credits < buyP) || !room;
-      sellBtn.disabled = owned <= 0;
+      const freeVolume = Math.max(0, (p.cargo.capVolume || 0) - (p.cargo.usedVolume || 0));
+      const room = freeVolume >= vol;
+      const maxBuy = maxBuyable(ctx, stationId, cmdtyId);
+      const buyQty = selectedQtyFor(qtyState[cmdtyId] || 1, maxBuy);
+      const sellQty = selectedQtyFor(qtyState[cmdtyId] || 1, owned);
+      const buyTotal = buyP * buyQty;
+      const sellTotal = sellP * sellQty;
+      const selectedFits = (buyQty * vol) <= freeVolume + 1e-6;
+      const canBuySelected = buyQty > 0 && buyQty <= maxBuy && buyTotal <= (p.credits || 0) && selectedFits;
+      const canSellSelected = sellQty > 0 && sellQty <= owned;
+      buyBtn.disabled = !canBuySelected;
+      sellBtn.disabled = !canSellSelected;
+      const cName = def ? def.name : cmdtyId;
+      const purposeLine = def ? commodityPurpose(def) : 'Trade cargo for credits or objectives.';
+      const buyTitle = buyBtn.disabled
+        ? (!room ? 'No cargo room for ' + cName + '. Sell cargo, refit cargo modules, or buy a larger hull.' :
+          (buyQty > maxBuy ? 'Selected quantity exceeds current credits or cargo room. Pick Max or a smaller amount.' :
+            'Need ' + fmtCr(Math.max(buyP, buyTotal)) + ' CR for the selected ' + cName + ' purchase.'))
+        : 'Buy ' + buyQty + ' ' + cName + ' for ' + fmtCr(buyTotal) + ' CR, using about ' + fmtCr(buyQty * vol) + 'u cargo. ' + purposeLine;
+      const sellTitle = sellBtn.disabled
+        ? (owned <= 0 ? 'You do not own any ' + cName + ' to sell here.' : 'Selected quantity exceeds the ' + owned + ' ' + cName + ' you own. Pick Max or a smaller amount.')
+        : 'Sell ' + sellQty + ' ' + cName + ' for about ' + fmtCr(sellTotal) + ' CR. Use proceeds for missions, hulls, modules, repairs, and fuel.';
+      buyBtn.title = buyTitle;
+      sellBtn.title = sellTitle;
+      buyBtn.setAttribute('aria-label', buyTitle);
+      sellBtn.setAttribute('aria-label', sellTitle);
     }
   }
 
@@ -425,7 +496,19 @@ function stationName(state, stationId) {
       return e.data.name || e.data.stationName || e.data.stationId || 'Station';
     }
   }
+  for (const s of (state.world && state.world.sectors ? Object.values(state.world.sectors) : [])) {
+    const stn = (s.stations || []).find((x) => x.id === stationId);
+    if (stn) return stn.name || stationId || 'Station';
+  }
   return stationId || 'Station';
+}
+
+function stationSectorName(state, stationId) {
+  for (const s of (state.world && state.world.sectors ? Object.values(state.world.sectors) : [])) {
+    const stn = (s.stations || []).find((x) => x.id === stationId);
+    if (stn) return s.name || s.id || null;
+  }
+  return null;
 }
 
 /** Set a navigation waypoint to a destination station so the HUD arrow steers toward it. */
@@ -438,9 +521,12 @@ function setNavTo(ctx, stationId, cmdtyId) {
   }
   const cmdty = COMMODITY_BY_ID.get(cmdtyId);
   state.nav.waypoint = {
+    kind: 'trade',
     stationId,
-    pos: pos || { x: 0, z: 0 },
+    pos: pos || null,
     label: stationName(state, stationId) + (cmdty ? ' · ' + cmdty.name : ''),
+    reason: cmdty ? `Sell ${cmdty.name}` : 'Trade destination',
+    sectorName: stationSectorName(state, stationId),
   };
   ctx.bus.emit('toast', { text: 'Nav set: ' + state.nav.waypoint.label + (pos ? '' : ' (in another sector — undock & jump)'), kind: 'info', ttl: 3 });
   ctx.bus.emit('audio:cue', { id: 'ui_click' });

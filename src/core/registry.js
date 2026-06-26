@@ -44,10 +44,8 @@ import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 
 export function createRegistry(ctx) {
   const aiSlot = selectAISystem(ctx);
-  // Flight controller: the legacy custom controller (default) or the V3 Rapier-authority adapter,
-  // behind the gameplay.flightBackend setting. V3 writes force/torque/impulse commands through the
-  // physics authority membrane and never edits body motion directly (spec §4.3). The default stays
-  // legacy until the V3 golden replay hash is recorded; see settings.js.
+  // Normal play is SG-06 tactical AI + Flight V3 on rapier-dynamic. Legacy/custom branches stay
+  // available for explicit tool/test fixtures, not player-facing settings or save restore.
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
@@ -73,7 +71,7 @@ export function createRegistry(ctx) {
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
     input, aiSlot, aiEncounter, actions, flightSlot, aiPorts, weapons, countermeasures, physics, combat, mining, cargo, automation, wingmen, crafting,
-    economy, automation, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding,
+    economy, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
   byName.set('ai', aiSlot);
@@ -142,9 +140,8 @@ function selectAISystem(ctx) {
   return ai;
 }
 
-// Flight controller selection. V3 only functions under rapier-dynamic (it emits no motion commands
-// otherwise), so require both flags: flightBackend === 'v3' AND physicsBackend === 'rapier-dynamic'.
-// Anything else resolves to the legacy controller, so the default is zero behavior change.
+// Flight controller selection. V3 only functions under rapier-dynamic, so direct tool/test fixtures
+// that request another backend resolve to the legacy controller.
 function selectFlightSystem(ctx) {
   const gameplay = ctx && ctx.state && ctx.state.settings && ctx.state.settings.gameplay || {};
   if (gameplay.flightBackend === 'v3' && gameplay.physicsBackend === 'rapier-dynamic') {

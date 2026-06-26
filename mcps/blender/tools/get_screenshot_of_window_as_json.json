@@ -1,0 +1,9 @@
+{
+  "name": "get_screenshot_of_window_as_json",
+  "description": "\nReturn a JSON description of the Blender window layout, areas, active object, and selection.\n",
+  "inputSchema": {
+    "properties": {},
+    "title": "get_screenshot_of_window_as_jsonArguments",
+    "type": "object"
+  }
+}

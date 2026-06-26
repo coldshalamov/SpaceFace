@@ -10,6 +10,7 @@ export const PHYSICS_TELEMETRY_SCHEMA_VERSION = 1;
 
 const COMMANDS = new WeakMap();
 const TELEMETRY = new WeakMap();
+const AUTHORITY_CACHE = new WeakMap();
 
 const DEFAULT_THRUSTERS = Object.freeze([
   Object.freeze({ id: 'drive-port', forward: 1, reverse: 0.8, strafe: 0.45, yaw: 0.8 }),
@@ -59,6 +60,7 @@ export function clearPhysicsAuthority(entity) {
   if (!entity || typeof entity !== 'object') return;
   COMMANDS.delete(entity);
   TELEMETRY.delete(entity);
+  AUTHORITY_CACHE.delete(entity);
 }
 
 /** Physics-only: publish measured post-solve state without polluting authoritative serialization. */
@@ -88,13 +90,27 @@ export function readPhysicsTelemetry(entity) {
   return entity && TELEMETRY.get(entity) || null;
 }
 
+export function shouldSyncPhysicsBodyEntity(entity) {
+  if (!entity || typeof entity !== 'object' || entity.alive === false) return false;
+  const authored = authoredPhysicsBody(entity);
+  if (entity.collides === false && !authored && entity.type === 'fx') return false;
+  const radius = positive(authored && authored.radius, positive(entity.radius, 1));
+  return radius > 0;
+}
+
+export function isDynamicPhysicsBodyEntity(entity) {
+  if (!entity || typeof entity !== 'object') return false;
+  const authored = authoredPhysicsBody(entity);
+  return authored && authored.dynamic != null ? !!authored.dynamic : defaultDynamic(entity);
+}
+
 /**
  * Ensure the additive, save-safe body authoring schema exists on a dynamic craft.
  * Existing authored values win; missing values are derived from canonical entity fields.
  */
 export function ensurePhysicsBodySpec(entity) {
   if (!entity || typeof entity !== 'object') return null;
-  const authored = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : {};
+  const authored = authoredPhysicsBody(entity) || {};
   const radius = positive(authored.radius, positive(entity.radius, 1));
   const mass = positive(authored.mass, positive(entity.mass, 1));
   const derivedModel = entity.data && entity.data.derived && entity.data.derived.flightModel;
@@ -126,6 +142,8 @@ export function ensurePhysicsBodySpec(entity) {
 export function measureThrusterAuthority(entity) {
   const body = ensurePhysicsBodySpec(entity);
   if (!body || !body.thrusters.length) return normalizeAuthority({});
+  const cached = AUTHORITY_CACHE.get(entity);
+  if (cached && cached.body === body && cached.revision === body.revision) return cached.authority;
   let forward = 0, reverse = 0, strafe = 0, yaw = 0;
   let forwardMax = 0, reverseMax = 0, strafeMax = 0, yawMax = 0;
   for (const thruster of body.thrusters) {
@@ -135,12 +153,14 @@ export function measureThrusterAuthority(entity) {
     strafe += health * thruster.strafe; strafeMax += thruster.strafe;
     yaw += health * thruster.yaw; yawMax += thruster.yaw;
   }
-  return normalizeAuthority({
+  const authority = normalizeAuthority({
     forward: forwardMax > 0 ? forward / forwardMax : 0,
     reverse: reverseMax > 0 ? reverse / reverseMax : 0,
     strafe: strafeMax > 0 ? strafe / strafeMax : 0,
     yaw: yawMax > 0 ? yaw / yawMax : 0,
   });
+  AUTHORITY_CACHE.set(entity, { body, revision: body.revision, authority });
+  return authority;
 }
 
 export function setThrusterHealth(entity, thrusterId, health) {
@@ -190,6 +210,10 @@ function commandFor(entity) {
     COMMANDS.set(entity, command);
   }
   return command;
+}
+
+function authoredPhysicsBody(entity) {
+  return entity && entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
 }
 
 function vector3(source) {

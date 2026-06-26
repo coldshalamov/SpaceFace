@@ -1,0 +1,17 @@
+{
+  "name": "execute_blender_code",
+  "description": "\nExecute Python code in the connected Blender instance.\n\nThe code runs in Blender's Python environment with full access to ``bpy``.\nTo return data, assign a JSON-serialisable dict to a variable named ``result``.\nDeferred completion via ``check_is_finished`` is only supported by the\ninteractive addon server, and is rejected in background mode.\n",
+  "inputSchema": {
+    "properties": {
+      "code": {
+        "title": "Code",
+        "type": "string"
+      }
+    },
+    "required": [
+      "code"
+    ],
+    "title": "execute_blender_codeArguments",
+    "type": "object"
+  }
+}

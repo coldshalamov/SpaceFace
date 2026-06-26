@@ -10,6 +10,7 @@ import { removeCargo } from './cargo.js';
 import { mulberry32, hash32 } from '../core/rng.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { legacyHitToDamagePacket } from '../combat/damage.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -17,6 +18,7 @@ const SHIP = new Map(SHIPS.map((s) => [s.id, s]));
 const MOD = new Map(MODULES.map((m) => [m.id, m]));
 const CARGO_LOSS_RATE = 0.5;
 const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
+const BEAM_QUERY_RADIUS_PAD = 256;
 const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   swarmer: Object.freeze(['counter_tether_overload', 'ranged', 'screen']),
   sniper: Object.freeze(['ranged']),
@@ -157,6 +159,12 @@ export const combat = {
     this.registry = ctx.registry || null;
     this.rng = mulberry32(hash32(ctx.state.meta.seed, 'combat'));
     this.kernel = getCombatKernel(ctx, { onKill: (target, killerId) => this.kill(target, killerId) });
+    this._beamCandidateScratch = [];
+    this._beamQueryCenter = { x: 0, z: 0 };
+    this._diag = {
+      beamSpatialQueries: 0,
+      beamCandidates: 0,
+    };
     ctx.bus.on('projectile:hit', (p) => this.onHit(p));
     ctx.bus.on('dock:docked', (p) => this.rememberRespawnStation(p && p.stationId));
   },
@@ -327,6 +335,8 @@ export const combat = {
   },
 
   update(dt, state) {
+    ensureCombatRuntime(this);
+    resetCombatDiagnostics(this._diag);
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
@@ -340,6 +350,8 @@ export const combat = {
       }
     }
     this._applyBeamDamage(state);
+    state.combatRuntime = state.combatRuntime || {};
+    state.combatRuntime.diagnostics = this._diag;
     if (this.kernel) this.kernel.postPhysics(dt);
   },
 
@@ -349,6 +361,7 @@ export const combat = {
   // entity along its path. Without this sweep, beam weapons (and the Dreadnought's heavy beams) deal
   // zero damage — only writes, no reads.
   _applyBeamDamage(state) {
+    ensureCombatRuntime(this);
     const beams = state.combat && state.combat.beams;
     if (!beams || !beams.length) return;
     for (let i = 0; i < beams.length; i++) {
@@ -360,7 +373,7 @@ export const combat = {
       const owner = state.entities.get(beam.ownerId);
       const ownerTeam = owner ? owner.team : null;
       let bestT = Infinity, bestE = null;
-      const damageables = (state.entityIndex && state.entityIndex.damageables) || state.entityList;
+      const damageables = beamDamageCandidates(this, state, beam, dx, dz);
       for (const e of damageables) {
         if (!e.alive) continue;
         if (e.type !== 'ship' && e.type !== 'station' && e.type !== 'drone') continue;
@@ -386,6 +399,36 @@ export const combat = {
     }
   },
 };
+
+function beamDamageCandidates(host, state, beam, dx, dz) {
+  ensureCombatRuntime(host);
+  const fallback = (state.entityIndex && state.entityIndex.damageables) || state.entityList;
+  const center = host._beamQueryCenter;
+  center.x = (beam.from.x + beam.to.x) * 0.5;
+  center.z = (beam.from.z + beam.to.z) * 0.5;
+  const queryRadius = Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD;
+  const candidates = queryNearbyEntities(state, center, queryRadius, host._beamCandidateScratch, fallback);
+  if (candidates === host._beamCandidateScratch) host._diag.beamSpatialQueries++;
+  host._diag.beamCandidates += candidates.length;
+  return candidates;
+}
+
+function ensureCombatRuntime(host) {
+  if (!host._beamCandidateScratch) host._beamCandidateScratch = [];
+  if (!host._beamQueryCenter) host._beamQueryCenter = { x: 0, z: 0 };
+  if (!host._diag) {
+    host._diag = {
+      beamSpatialQueries: 0,
+      beamCandidates: 0,
+    };
+  }
+}
+
+function resetCombatDiagnostics(diag) {
+  if (!diag) return;
+  diag.beamSpatialQueries = 0;
+  diag.beamCandidates = 0;
+}
 
 function lootPickupKind(id) {
   return (typeof id === 'string' && id.startsWith('cmdty_')) ? 'cargo' : 'module';

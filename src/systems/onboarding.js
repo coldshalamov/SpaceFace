@@ -58,6 +58,9 @@ export const onboarding = {
     this._intro = null;
     this._accum = 0;
     this._fadeT = 0;
+    this._controlHintsEl = null;
+    this._dockControlInRange = false;
+    this._gateControlInRange = false;
 
     const bus = this.bus;
     // Start only for a fresh game. Loaded saves emit save:loaded (no tutorial for a returning pilot).
@@ -65,10 +68,16 @@ export const onboarding = {
     // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
     // tracker (P2-14), so they can always see their current beat objective. Tear down any tutorial
     // state, then bring up the story panel.
-    bus.on('save:loaded', () => { this._teardown(); this._beginStoryMode(); });
+    bus.on('save:loaded', () => {
+      this._teardown();
+      this._dockControlInRange = false;
+      this._gateControlInRange = false;
+      this._lastControlMode = null;
+      this._beginStoryMode();
+    });
 
     // Objective completion hooks (real events verified against the systems).
-    bus.on('dock:docked', () => this._complete('dock'));
+    bus.on('dock:docked', () => { this._dockControlInRange = false; this._complete('dock'); });
     bus.on('economy:tradeCompleted', (p) => {
       if (p && p.side === 'sell' && this._isOre(p.commodityId)) {
         this._complete('mine'); // selling ore also implies you mined
@@ -101,6 +110,7 @@ export const onboarding = {
 
     // First station approach: enriches the existing dock prompt with what stations offer.
     bus.on('dock:range', ({ inRange }) => {
+      this._dockControlInRange = !!inRange;
       if (!inRange) return;
       this._showHint('firstStation',
         'Stations offer repairs, trading, upgrades, and mission boards. Press ENTER to dock.');
@@ -108,6 +118,7 @@ export const onboarding = {
 
     // First jump gate approach: teach the player how gates work.
     bus.on('gate:range', ({ inRange }) => {
+      this._gateControlInRange = !!inRange;
       if (!inRange) return;
       this._showHint('firstGate',
         'Jump gates connect star systems. Open the Star Map (M) to plot a jump route.');
@@ -204,6 +215,9 @@ export const onboarding = {
 
   _begin() {
     const st = this.state;
+    this._dockControlInRange = false;
+    this._gateControlInRange = false;
+    this._lastControlMode = null;
     const hintsOn = !st.settings || !st.settings.gameplay || st.settings.gameplay.tutorialHints !== false;
     st.onboarding = { active: hintsOn, stepIndex: 0, done: {}, finished: false, minedUnits: 0 };
     // A fresh new game starts in tutorial mode (not story mode).
@@ -227,6 +241,7 @@ export const onboarding = {
   // story cues; for simplicity we always show the story tracker (it's the objective, not a hint).
   _beginStoryMode() {
     this._storyMode = true;
+    this._storySig = '';
     this._refreshStory();
   },
 
@@ -236,6 +251,7 @@ export const onboarding = {
     if (this._intro) { this._intro.remove(); this._intro = null; }
     this._clearObjectiveWaypoint();
     this._storyMode = false;
+    this._storySig = '';
   },
 
   _complete(key) {
@@ -309,19 +325,24 @@ export const onboarding = {
     if (!body) return;
     const beat = (this.state.story && this.state.story.beatIndex) || 0;
     const sb = STORY_BEATS[beat];
-    if (!sb) { body.innerHTML = ''; return; }
     // The concrete objective (data/missions.js STORY_BEATS) is the actionable "what to do"; the
     // narrative BEAT_CONTENT.hint is the in-world Captain's Log voice shown as flavor underneath.
     const content = BEAT_CONTENT[beat];
+    const objective = (sb && sb.objective) || '';
+    const hint = (content && content.hint) || '';
+    const sig = `${beat}\u0001${objective}\u0001${hint}`;
+    if (sig === this._storySig) return;
+    this._storySig = sig;
+    if (!sb) { body.innerHTML = ''; return; }
     body.innerHTML = '';
     const titleEl = document.createElement('div');
     titleEl.className = 'sf-ob-title';
-    titleEl.textContent = sb.objective || '';
+    titleEl.textContent = objective;
     body.appendChild(titleEl);
-    if (content && content.hint) {
+    if (hint) {
       const flavorEl = document.createElement('div');
       flavorEl.className = 'sf-ob-flavor';
-      flavorEl.textContent = content.hint;
+      flavorEl.textContent = hint;
       body.appendChild(flavorEl);
     }
   },
@@ -370,7 +391,11 @@ export const onboarding = {
   // 'station' (near a station), 'gate' (near a gate), 'flight' (default open-space cruising).
   _updateControlBar(state) {
     if (state.mode !== 'flight') return;
-    const el = document.getElementById('control-hints');
+    let el = this._controlHintsEl;
+    if (!el || !el.isConnected) {
+      el = document.getElementById('control-hints');
+      this._controlHintsEl = el || null;
+    }
     if (!el) return;
 
     let mode = 'flight';
@@ -391,12 +416,8 @@ export const onboarding = {
 
     // Check for station/gate proximity (overrides flight, not combat/mining).
     if (mode === 'flight') {
-      const alerts = state.ui.alerts || [];
-      // Use the alert system's dock/gate range events as a proxy — they set keys in the DOM.
-      const dockEl = document.querySelector('.sf-alert--dock');
-      const gateEl = document.querySelector('.sf-alert--info');
-      if (dockEl) mode = 'station';
-      else if (gateEl && gateEl.textContent && gateEl.textContent.includes('JUMP GATE')) mode = 'gate';
+      if (this._dockControlInRange) mode = 'station';
+      else if (this._gateControlInRange) mode = 'gate';
     }
 
     if (mode === this._lastControlMode) return;
@@ -487,18 +508,18 @@ export const onboarding = {
     const s = document.createElement('style');
     s.id = STYLE_ID;
     s.textContent = `
-    #${PANEL_ID} { position:absolute; left:16px; top:96px; width:306px; z-index:60; pointer-events:none;
+    #${PANEL_ID} { position:absolute; left:16px; top:150px; width:306px; z-index:60; pointer-events:none;
       font-family:var(--font, "Segoe UI", system-ui, sans-serif); }
-    #${PANEL_ID} .sf-ob-card { background:linear-gradient(180deg, rgba(17,29,48,.92), rgba(11,18,32,.92));
-      border:1px solid var(--panel-edge,#1d3350); border-left:3px solid var(--accent,#39d0ff);
-      border-radius:8px; padding:11px 13px; box-shadow:0 8px 30px rgba(0,0,0,.55), 0 0 0 1px rgba(57,208,255,.06) inset;
-      backdrop-filter:blur(6px); }
+    /* Tactical-Visor: chromeless objective card — glowing left-edge marker, hard text-shadow, no panel. */
+    #${PANEL_ID} .sf-ob-card { padding:6px 0 6px 12px;
+      border-left:2px solid var(--visor-cyan, #00F0FF); box-shadow:-1px 0 8px -2px var(--visor-cyan-dim, rgba(0,240,255,.4)); }
     #${PANEL_ID} .sf-ob-kicker { font-family:var(--mono,monospace); font-size:10px; letter-spacing:.22em;
-      text-transform:uppercase; color:var(--accent,#39d0ff); margin-bottom:5px; display:flex; justify-content:space-between; }
-    #${PANEL_ID} .sf-ob-title { font-size:14px; color:#eaf4ff; font-weight:600; margin-bottom:5px; }
-    #${PANEL_ID} .sf-ob-hint { font-size:12px; line-height:1.45; color:var(--ink-dim,#84a0c8); }
+      text-transform:uppercase; color:var(--visor-cyan,#00F0FF); margin-bottom:5px; display:flex; justify-content:space-between;
+      text-shadow:var(--text-shadow-hard); }
+    #${PANEL_ID} .sf-ob-title { font-size:14px; color:#fff; font-weight:600; margin-bottom:5px; text-shadow:var(--text-shadow-hard); }
+    #${PANEL_ID} .sf-ob-hint { font-size:12px; line-height:1.45; color:var(--text-secondary,#84a0c8); text-shadow:var(--text-shadow-hard); }
     #${PANEL_ID} .sf-ob-flavor { font-size:11.5px; line-height:1.45; color:var(--ink-mute,#6b7d99);
-      font-style:italic; margin-top:7px; border-top:1px dashed rgba(132,160,200,.18); padding-top:6px; }
+      font-style:italic; margin-top:7px; border-top:1px dashed rgba(132,160,200,.18); padding-top:6px; text-shadow:var(--text-shadow-hard); }
     #${PANEL_ID} .sf-ob-progress { margin-top:7px; font-family:var(--mono,monospace); font-size:11px; color:var(--accent-2,#7af7d0); }
     #${PANEL_ID} .sf-ob-steps { display:flex; gap:5px; margin-top:9px; }
     #${PANEL_ID} .sf-ob-dot { flex:1; height:3px; border-radius:2px; background:rgba(132,160,200,.25); }
@@ -592,6 +613,7 @@ export const onboarding = {
       const ob = this.state.onboarding; if (ob) { ob.active = false; }
       if (this.state.settings && this.state.settings.gameplay) this.state.settings.gameplay.tutorialHints = false;
       this._teardown();
+      this._beginStoryMode();
       this.bus.emit('toast', { text: 'Tutorial hints off (re-enable in Settings).', kind: 'info', ttl: 3 });
     });
   },

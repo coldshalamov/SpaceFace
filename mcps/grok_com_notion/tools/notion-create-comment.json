@@ -1,6 +1,6 @@
 {
   "name": "notion-create-comment",
-  "description": "Add a comment to a page or specific content.\nCreates a new comment. Provide `page_id` to identify the page, then choose ONE targeting mode:\n- `page_id` alone: Page-level comment on the entire page\n- `page_id` + `selection_with_ellipsis`: Comment on specific block content\n- `discussion_id`: Reply to an existing discussion thread (page_id is still required)\n\nProvide exactly one content format:\n- `markdown`: Preferred. Inline Notion-flavored Markdown for comment text. For exact syntax, read the MCP resource `notion://docs/enhanced-markdown-spec` through your MCP client's resource-reading interface. Do NOT pass this URI to the Notion `fetch` tool or any URL-fetching tool. Use only the Rich text types and Mentions syntax that comments support. Comments support inline formatting (bold, italic, strikethrough, underline, code, links), inline math using `$`Equation`$`, and user/page/database/date mention tags such as `<mention-date start=\"YYYY-MM-DD\"/>`. Do not use UI shortcuts like `@today`, `@name`, `[[page]]`, or autocomplete-style emoji syntax; those are editor affordances, not markdown syntax. Mention tags must include a real `url` where required by the spec. Block-level Markdown such as headings, lists, tables, blockquotes, and fenced code blocks is stored as plain comment text rather than rendered as blocks.\n- `rich_text`: Array of rich text objects.\n\nFor content targeting, use `selection_with_ellipsis` with ~10 chars from start and end: \"# Section Ti...tle content\"\n<example description=\"Page-level comment\">\n{\"page_id\": \"uuid\", \"markdown\": \"Comment with **important** context.\"}\n</example>\n<example description=\"Comment on specific content\">\n{\"page_id\": \"uuid\", \"selection_with_ellipsis\": \"# Meeting No...es heading\",\n \"markdown\": \"Comment on this section.\"}\n</example>\n<example description=\"Reply to discussion\">\n{\"page_id\": \"uuid\", \"discussion_id\": \"discussion://pageId/blockId/discussionId\",\n \"markdown\": \"Reply with [context](https://example.com).\"}\n</example>",
+  "description": "Add a comment to a page or specific content.\n\nCreates a new comment. Provide `page_id` to identify the page, then choose ONE targeting mode:\n- `page_id` alone: Page-level comment on the entire page\n- `page_id` + `selection_with_ellipsis`: Comment on specific block content\n- `discussion_id`: Reply to an existing discussion thread (page_id is still required)\n\n\nProvide exactly one content format:\n- `markdown`: Preferred. Inline Notion-flavored Markdown for comment text. For exact syntax, read the MCP resource `notion://docs/enhanced-markdown-spec` through your MCP client's resource-reading interface. Do NOT pass this URI to the Notion `fetch` tool or any URL-fetching tool. Use only the Rich text types and Mentions syntax that comments support. Comments support inline formatting (bold, italic, strikethrough, underline, code, links), inline math using `$`Equation`$`, and user/page/database/date mention tags such as `<mention-date start=\"YYYY-MM-DD\"/>`. Do not use UI shortcuts like `@today`, `@name`, `[[page]]`, or autocomplete-style emoji syntax; those are editor affordances, not markdown syntax. Mention tags must include a real `url` where required by the spec. Block-level Markdown such as headings, lists, tables, blockquotes, and fenced code blocks is stored as plain comment text rather than rendered as blocks.\n- `rich_text`: Array of rich text objects.\n\n\nFor content targeting, use `selection_with_ellipsis` with ~10 chars from start and end: \"# Section Ti...tle content\"\n\n<example description=\"Page-level comment\">\n{\"page_id\": \"uuid\", \"markdown\": \"Comment with **important** context.\"}\n</example>\n<example description=\"Comment on specific content\">\n{\"page_id\": \"uuid\", \"selection_with_ellipsis\": \"# Meeting No...es heading\",\n \"markdown\": \"Comment on this section.\"}\n</example>\n<example description=\"Reply to discussion\">\n{\"page_id\": \"uuid\", \"discussion_id\": \"discussion://pageId/blockId/discussionId\",\n \"markdown\": \"Reply with [context](https://example.com).\"}\n</example>",
   "inputSchema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
@@ -31,18 +31,23 @@
                   "type": "object",
                   "properties": {
                     "bold": {
+                      "description": "Whether the text is formatted as bold.",
                       "type": "boolean"
                     },
                     "italic": {
+                      "description": "Whether the text is formatted as italic.",
                       "type": "boolean"
                     },
                     "strikethrough": {
+                      "description": "Whether the text is formatted with a strikethrough.",
                       "type": "boolean"
                     },
                     "underline": {
+                      "description": "Whether the text is formatted with an underline.",
                       "type": "boolean"
                     },
                     "code": {
+                      "description": "Whether the text is formatted as code.",
                       "type": "boolean"
                     },
                     "color": {

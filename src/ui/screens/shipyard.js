@@ -67,6 +67,37 @@ const ROLE_DESC = {
   flagship: 'The ultimate command ship — unmatched in every way.',
 };
 
+function hullPurpose(def) {
+  const role = def && def.role;
+  switch (role) {
+    case 'mining':
+    case 'mining_barge':
+      return 'Enables bigger mining runs by combining ore capacity with mining hardpoints.';
+    case 'fighter':
+    case 'interceptor':
+    case 'gunship':
+      return 'Enables combat contracts by trading cargo space for speed, shields, and weapons.';
+    case 'freighter':
+    case 'heavy_hauler':
+      return 'Enables larger trade and delivery loops with more cargo space per trip.';
+    case 'explorer':
+      return 'Enables safer scouting and recon work with utility capacity and long-range handling.';
+    case 'corvette':
+    case 'battlecruiser':
+    case 'flagship':
+      return 'Enables harder combat and faction work with heavier hull, shields, and broad weapon slots.';
+    case 'multirole':
+      return 'Enables flexible play: haul, fight, mine, or scan after outfitting the right modules.';
+    default:
+      return 'Changes what the ship can do through cargo capacity, survivability, handling, and module slots.';
+  }
+}
+
+function hullNextStep(def) {
+  const slots = slotSummary(def);
+  return 'After purchase: make it active, then use Outfitting to fill' + (slots ? ' ' + slots : ' its slots') + '.';
+}
+
 function slotCount(def, type) {
   return (def.slots && def.slots[type]) ? def.slots[type].length : 0;
 }
@@ -125,6 +156,10 @@ export function createShipyardPanel(ctx) {
   const buyWrap = document.createElement('div');
   buyWrap.className = 'st-sy-buy';
   buyWrap.innerHTML = '<div class="st-sub-h">Hulls For Sale</div>';
+  const buyGuide = document.createElement('div');
+  buyGuide.className = 'st-sy-guide';
+  buyGuide.textContent = 'A hull purchase changes what loops are practical: cargo space for trade and delivery, hardpoints for combat, mining slots for ore work, and utility slots for recon. Buying the hull is step one; Outfitting turns it into a build.';
+  buyWrap.appendChild(buyGuide);
 
   // UX-1: rotating 3D ship preview pane. Shows the hovered hull so the player buys with their eyes,
   // not from a stat table. Built via the same visualFactory the game uses, in an isolated renderer so
@@ -227,10 +262,20 @@ export function createShipyardPanel(ctx) {
     }
   });
 
-  list.addEventListener('click', (ev) => {
+  list.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-act="buy"]');
     if (!btn) return;
     const defId = btn.closest('[data-ship]').getAttribute('data-ship');
+    const def = SHIP_BY_ID.get(defId);
+    if (def && (def.price || 0) > 0) {
+      const ok = await confirm({
+        title: 'Buy ' + def.name + '?',
+        body: hullPurpose(def) + '\n\nCost: ' + fmtCr(def.price || 0) + ' CR. ' + hullNextStep(def),
+        confirmLabel: 'Buy',
+        danger: (ctx.state.player.credits || 0) > 0 && (def.price || 0) >= (ctx.state.player.credits || 0) * 0.5,
+      });
+      if (!ok) return;
+    }
     ctx.bus.emit('ui:buyShip', { defId });
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
   });
@@ -346,6 +391,7 @@ export function createShipyardPanel(ctx) {
       card.innerHTML =
         '<div class="st-sy-name">' + escapeHtml(owned.customName || def.name) + (i === p.activeShipIndex ? ' <span class="st-tag st-tag-active">ACTIVE</span>' : '') + '</div>' +
         '<div class="st-sy-meta mono">T' + (def.tier != null ? def.tier : '?') + ' · ' + escapeHtml(def.role || '') + '</div>' +
+        '<div class="st-sy-card-purpose">' + escapeHtml(hullPurpose(def)) + '</div>' +
         '<div class="st-sy-btns">' +
           (i === p.activeShipIndex ? '' : '<button data-act="active">Make Active</button>') +
           (i === p.activeShipIndex ? '' : '<button data-act="sell">Sell (' + fmtCr(refund) + ')</button>') +
@@ -403,10 +449,16 @@ export function createShipyardPanel(ctx) {
       const afford = p.credits >= (def.price || 0);
       let btn;
       if (!unlocked) btn = '<button disabled title="Requires ' + escapeHtml(def.requiresTech) + '">Locked</button>';
-      else btn = '<button data-act="buy"' + (afford ? '' : ' disabled') + '>Buy</button>';
+      else {
+        const title = afford
+          ? 'Buy ' + def.name + ': ' + hullPurpose(def) + ' ' + hullNextStep(def)
+          : 'Need ' + fmtCr(def.price || 0) + ' CR to buy ' + def.name + '. Earn credits through missions, trade, mining, or salvage.';
+        btn = '<button data-act="buy"' + (afford ? '' : ' disabled') + ' title="' + escapeHtml(title) + '">Buy</button>';
+      }
       row.innerHTML =
         '<span class="c-name">' + escapeHtml(def.name) + (owned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
-          '<br><span class="st-slotline mono">' + escapeHtml(slotSummary(def)) + '</span></span>' +
+          '<br><span class="st-slotline mono">' + escapeHtml(slotSummary(def)) + '</span>' +
+          '<span class="st-sy-purpose">' + escapeHtml(hullPurpose(def)) + '</span></span>' +
         '<span class="c-num mono">T' + def.tier + '</span>' +
         '<span class="c-num mono">' + def.hull + '</span>' +
         '<span class="c-num mono">' + def.shield + '</span>' +

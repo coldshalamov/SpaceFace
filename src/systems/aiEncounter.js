@@ -54,8 +54,8 @@ export const aiEncounter = {
   update(_dt, state) {
     const encounter = ensureEncounterState(state);
     const owner = ensureOwnerState(state);
-    const commands = Array.isArray(encounter.commands) ? encounter.commands.slice() : [];
-    commands.sort((a, b) => finiteInt(a && a.seq) - finiteInt(b && b.seq));
+    const commands = Array.isArray(encounter.commands) ? encounter.commands : [];
+    if (commandsOutOfOrder(commands)) commands.sort((a, b) => finiteInt(a && a.seq) - finiteInt(b && b.seq));
     for (const command of commands) {
       const seq = finiteInt(command && command.seq);
       if (seq <= owner.lastAppliedSeq) continue;
@@ -269,6 +269,13 @@ function unitHash(...args) {
 
 function array(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function commandsOutOfOrder(commands) {
+  for (let index = 1; index < commands.length; index++) {
+    if (finiteInt(commands[index] && commands[index].seq) < finiteInt(commands[index - 1] && commands[index - 1].seq)) return true;
+  }
+  return false;
 }
 
 function mergeCapabilities(...lists) {

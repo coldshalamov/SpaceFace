@@ -266,6 +266,8 @@ export function updateEnergyMaterial(material, frame = {}) {
   if (!material || !material.uniforms) return;
   const u = material.uniforms;
   if (u.uTime) u.uTime.value = finite(frame.time, u.uTime.value);
+  if (u.uColorA && frame.colorA != null) u.uColorA.value.set(frame.colorA);
+  if (u.uColorB && frame.colorB != null) u.uColorB.value.set(frame.colorB);
   if (u.uIntensity && Number.isFinite(frame.intensity)) u.uIntensity.value = frame.intensity;
   if (u.uOpacity && Number.isFinite(frame.opacity)) u.uOpacity.value = frame.opacity;
   if (u.uPulse && Number.isFinite(frame.pulse)) u.uPulse.value = frame.pulse;

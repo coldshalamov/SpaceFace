@@ -32,6 +32,7 @@ export function createCombatKernel(ctx, options = {}) {
   const hooks = { onKill: typeof options.onKill === 'function' ? options.onKill : null };
   const context = { state, bus, helpers, registry: ctx.registry || null, catalog, currentAttackerId: null };
   const attachments = createAttachmentService(context);
+  const attachmentContext = { ...context, attachments };
   const statuses = createStatusService(context);
   const routeDamage = createDamageRouter(context, statuses, {
     onKill: (target, killerId) => {
@@ -44,14 +45,24 @@ export function createCombatKernel(ctx, options = {}) {
   });
   const actions = createActionService(context, attachments, routeDamage);
   const subscriptions = [];
+  let sortedCacheTick = -1;
+  let sortedCacheRevision = 0;
+  let sortedCacheSeenRevision = -1;
+  let sortedCacheSource = null;
+  let sortedCacheLength = -1;
+  let sortedCache = null;
 
-  for (const entity of sortedEntities(state)) initializeEntity(entity);
+  for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
   if (bus && typeof bus.on === 'function') {
     subscriptions.push(bus.on('entity:spawned', (payload) => {
+      invalidateSortedCache();
       const entity = payload && (payload.entity || getEntity(payload.id));
       if (entity) initializeEntity(entity);
     }));
-    subscriptions.push(bus.on('entity:destroyed', (payload) => onEntityGone(payload)));
+    subscriptions.push(bus.on('entity:destroyed', (payload) => {
+      invalidateSortedCache();
+      onEntityGone(payload);
+    }));
     subscriptions.push(bus.on('physics:attachmentBroken', (payload) => attachments.onPhysicsBreak(payload)));
     subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
     subscriptions.push(bus.on('combat:routeDamage', (payload) => routeDamage(payload || {})));
@@ -95,10 +106,10 @@ export function createCombatKernel(ctx, options = {}) {
   return kernel;
 
   function prePhysics(dt) {
-    for (const entity of sortedEntities(state)) {
+    for (const entity of sortedEntitiesForTick()) {
       if (!entity.alive || !isCombatantType(entity.type)) continue;
       const runtime = ensureCombatant(state, entity, catalog);
-      applyPendingSubsystemTransitions(contextWithAttachments(), entity, runtime);
+      applyPendingSubsystemTransitions(attachmentContext, entity, runtime);
       const statusChanged = statuses.advance(entity, runtime, routeDamage);
       if (statusChanged) recomputeCombatantModifiers(context, entity, runtime, attachments);
       coolCombatHeat(entity, runtime, dt);
@@ -110,7 +121,7 @@ export function createCombatKernel(ctx, options = {}) {
   function postPhysics() {
     reconcilePhysicsAttachments();
     attachments.updateTelemetryAndBreak();
-    for (const entity of sortedEntities(state)) {
+    for (const entity of sortedEntitiesForTick()) {
       if (!entity.alive || !isCombatantType(entity.type)) continue;
       const runtime = ensureCombatant(state, entity, catalog);
       syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
@@ -205,12 +216,34 @@ export function createCombatKernel(ctx, options = {}) {
     runtime.heat = Math.max(0, runtime.heat - basePerTick * multiplier * normalizedTicks);
   }
 
-  function contextWithAttachments() {
-    return { ...context, attachments };
-  }
-
   function getEntity(id) {
     return state.entities && state.entities.get ? state.entities.get(id) || null : null;
+  }
+
+  function sortedEntitiesForTick() {
+    const source = entitySource(state);
+    const length = source.length;
+    if (
+      sortedCache &&
+      sortedCacheTick === state.tick &&
+      sortedCacheSeenRevision === sortedCacheRevision &&
+      sortedCacheSource === source &&
+      sortedCacheLength === length
+    ) {
+      return sortedCache;
+    }
+    sortedCache = sortedEntitiesFromSource(source);
+    sortedCacheTick = state.tick;
+    sortedCacheSeenRevision = sortedCacheRevision;
+    sortedCacheSource = source;
+    sortedCacheLength = length;
+    return sortedCache;
+  }
+
+  function invalidateSortedCache() {
+    sortedCacheRevision++;
+    sortedCacheTick = -1;
+    sortedCache = null;
   }
 
   function dispose() {
@@ -219,9 +252,20 @@ export function createCombatKernel(ctx, options = {}) {
   }
 }
 
-function sortedEntities(state) {
-  const list = state.entityList || (state.entities && [...state.entities.values()]) || [];
-  return [...list].sort((a, b) => compareIds(a && a.id, b && b.id));
+function entitySource(state) {
+  if (Array.isArray(state.entityList)) return state.entityList;
+  if (state.entities && typeof state.entities.values === 'function') return [...state.entities.values()];
+  return [];
+}
+
+function sortedEntitiesFromSource(list) {
+  if (!Array.isArray(list) || !list.length) return [];
+  for (let i = 1; i < list.length; i++) {
+    if (compareIds(list[i - 1] && list[i - 1].id, list[i] && list[i].id) > 0) {
+      return [...list].sort((a, b) => compareIds(a && a.id, b && b.id));
+    }
+  }
+  return list.slice();
 }
 
 function compareIds(a, b) {

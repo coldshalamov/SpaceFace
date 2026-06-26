@@ -37,6 +37,7 @@ globalThis.document = {
   addEventListener: () => {},
 };
 globalThis.window = { addEventListener: () => {}, devicePixelRatio: 1 };
+globalThis.__SF_VISUAL_FACTORY_THROW__ = true;
 
 const THREE = await import('three');
 globalThis.THREE = THREE;

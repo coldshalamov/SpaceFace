@@ -1051,8 +1051,12 @@ export const vfx = {
   _onThrust(p) {
     // Authoritative trail is the per-frame velocity-driven emitter in update(); this handler simply
     // gives an extra burst when an explicit ship:thrust event arrives (most ships drive it per-frame).
-    const e = this._ent(p && p.id);
-    if (e) this._emitEngineTrail(e, (p && p.throttle != null) ? p.throttle : 1, 1 / 60);
+    const id = p && (p.id != null ? p.id : p.shipId);
+    const e = this._ent(id);
+    if (!e) return;
+    const explicit = p && Number.isFinite(p.throttle) ? p.throttle : null;
+    const drive = explicit != null ? explicit : (this._engineDriveFor(e).drive || 1);
+    this._emitEngineTrail(e, drive, 1 / 60);
   },
 
   _onBoost(p, on) {
@@ -1063,8 +1067,9 @@ export const vfx = {
       // streak, expanding ring, and a dynamic light. The moment of ignition should read clearly.
       const col = this._engineColor(e);
       const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-      const bx = e.pos.x - cf * (e.radius + 2);
-      const bz = e.pos.z - sf * (e.radius + 2);
+      const sock = this._trailSocketWorldPos(e);
+      const bx = sock ? sock.x : e.pos.x - cf * (e.radius + 2);
+      const bz = sock ? sock.z : e.pos.z - sf * (e.radius + 2);
       // Core white flash — bigger
       this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.22, 6, 14, 1.0, 0.0, '#ffffff', 0, 0);
       // Coloured outer flare — wider, longer
@@ -1094,8 +1099,9 @@ export const vfx = {
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const nx = e.pos.x + cf * (e.radius + 1);   // nose
     const nz = e.pos.z + sf * (e.radius + 1);
-    const bx = e.pos.x - cf * (e.radius + 2);   // rear
-    const bz = e.pos.z - sf * (e.radius + 2);
+    const sock = this._trailSocketWorldPos(e);
+    const bx = sock ? sock.x : e.pos.x - cf * (e.radius + 2);   // rear
+    const bz = sock ? sock.z : e.pos.z - sf * (e.radius + 2);
     const VIOLET = '#c98cff', VIOLET2 = '#7a3df0';
     // expanding shock ring at the nose
     this._spawnSprite(SPR_RING, nx, 0, nz, 0.32, 3.0, 11.0, 0.85, 0.0, VIOLET, cf * 6, sf * 6);
@@ -1177,9 +1183,11 @@ export const vfx = {
   // engine trail emitter — called per ship per frame from update(), throttled by accumulator
   _emitEngineTrail(e, throttle, dt) {
     if (!this._scene) return;
+    const drive = Math.max(0, Math.min(1.35, Number.isFinite(throttle) ? throttle : 0));
+    if (drive <= 0.03) return;
     const col0 = this._engineColor(e);
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-    const boosting = e.flags && e.flags.boosting;
+    const boostBlend = e.flags && e.flags.boosting ? 1 : 0;
     // Hero assets carry SOCKET_Trail_Main at the authored nozzle; originate the plume there so it
     // leaves the real engine, not a center-derived point (spec §9.9, §14.2). Falls back to the
     // radial-behind formula for procedural ships that have no socket.
@@ -1193,19 +1201,17 @@ export const vfx = {
     }
     const baseA = Math.atan2(-sf, -cf);
 
-    // How many particles per tick: 2 normally, 3-4 when boosting (afterburner effect)
-    const pCount = boosting ? 3 + (Math.random() < 0.5 ? 1 : 0) : 2;
-    // Spread widens with throttle and boost
-    const spread = boosting ? 0.55 : 0.40;
+    const pCount = Math.max(1, Math.min(5, Math.floor(1 + drive * 2.2 + boostBlend * 1.2 + Math.random() * 0.85)));
+    const spread = 0.24 + drive * 0.22 + boostBlend * 0.16;
 
     for (let pi = 0; pi < pCount; pi++) {
       // outer plume: faction-hot -> dark blue, wider with throttle, jittered backward
       this._c0.set(col0); this._c1.set('#10204a');
-      const sp = (22 + throttle * 28) * (boosting ? 1.4 : 1.0);
+      const sp = (18 + drive * 34) * (1 + boostBlend * 0.25);
       const a = baseA + (Math.random() - 0.5) * spread;
-      const jitter = boosting ? 2.5 : 1.8;
-      const life = boosting ? 0.45 : 0.38;
-      const sz = (boosting ? 2.8 : 2.2) * (0.6 + throttle * 0.6);
+      const jitter = 1.0 + drive * 1.4 + boostBlend * 0.8;
+      const life = 0.24 + drive * 0.15 + boostBlend * 0.07;
+      const sz = 1.1 + drive * 1.25 + boostBlend * 0.55;
       this._spawnParticle(
         bx + (Math.random() - 0.5) * jitter, bz + (Math.random() - 0.5) * jitter,
         Math.cos(a) * sp, Math.sin(a) * sp, life, sz, 0.0, this._c0, this._c1, 1.8, 0, 0);
@@ -1214,20 +1220,20 @@ export const vfx = {
     // white-hot inner core right at the nozzle — bigger, brighter, gives the trail a visible spine
     this._c0.set('#ffffff'); this._c1.set(col0);
     const a2 = baseA + (Math.random() - 0.5) * 0.20;
-    const sp2 = (28 + throttle * 30) * (boosting ? 1.3 : 1.0);
-    const coreSize = (boosting ? 2.0 : 1.5) * (0.7 + throttle * 0.5);
-    this._spawnParticle(bx, bz, Math.cos(a2) * sp2, Math.sin(a2) * sp2, boosting ? 0.25 : 0.20, coreSize, 0.0, this._c0, this._c1, 2.2, 0, 0);
+    const sp2 = (24 + drive * 34) * (1 + boostBlend * 0.18);
+    const coreSize = 0.9 + drive * 0.85 + boostBlend * 0.35;
+    this._spawnParticle(bx, bz, Math.cos(a2) * sp2, Math.sin(a2) * sp2, 0.16 + drive * 0.08 + boostBlend * 0.04, coreSize, 0.0, this._c0, this._c1, 2.2, 0, 0);
 
     // AFTERBURNER: when boosting, add extra bright wide particles + a subtle sustained nozzle glow.
     // These give the boost a visibly different, more dramatic trail.
-    if (boosting) {
+    if (boostBlend > 0 || drive > 1.05) {
       // Extra wide bright outer particles — faction colored, bigger, slightly random y offset
       this._c0.set(col0); this._c1.set('#ffffff');
       const ab = baseA + (Math.random() - 0.5) * 0.7;
-      const absp = 35 + Math.random() * 30;
+      const absp = 30 + drive * 18 + Math.random() * 30;
       this._spawnParticle(
-        bx + (Math.random() - 0.5) * 3.0, bz + (Math.random() - 0.5) * 3.0,
-        Math.cos(ab) * absp, Math.sin(ab) * absp, 0.35, 3.2, 0.0, this._c0, this._c1, 1.5, 0, 0);
+        bx + (Math.random() - 0.5) * (2.2 + boostBlend), bz + (Math.random() - 0.5) * (2.2 + boostBlend),
+        Math.cos(ab) * absp, Math.sin(ab) * absp, 0.24 + boostBlend * 0.11, 2.1 + drive * 0.8, 0.0, this._c0, this._c1, 1.5, 0, 0);
     }
   },
 
@@ -1280,7 +1286,8 @@ export const vfx = {
     // Thruster plume: a small elongated cylinder energy volume positioned at the player's trail
     // socket each frame. Two meshes (core + halo) share the geometry.
     const plumeGeo = new THREE.CylinderGeometry(0.5, 1.6, 4.0, 12, 1, true);
-    plumeGeo.rotateX(Math.PI / 2); // align length along +X (ship-forward)
+    plumeGeo.rotateZ(Math.PI / 2);
+    plumeGeo.translate(-2, 0, 0); // nozzle pivot at local origin; volume extends toward ship -X/rear
     const plume = createEnergyVolume(plumeGeo, {
       name: 'sf-energy-plume',
       colorA: 0x36c8ff, colorB: 0x6a4cff,
@@ -1302,27 +1309,38 @@ export const vfx = {
     plume.visible = false;
     ribbonCore.visible = false;
     this._scene.add(plume, ribbonCore);
-    this._energy = { plume, plumeGeo, ribbon: ribbonCore, ribbonGeo };
+    this._energy = { plume, plumeGeo, ribbon: ribbonCore, ribbonGeo, plumeDrive: 0, boostBlend: 0 };
   },
 
   _updateEnergyPlume(dt) {
-    const { plume } = this._energy;
+    const energy = this._energy;
+    const { plume } = energy;
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (!player || !player.alive) { plume.visible = false; return; }
-    const boosting = !!(player.flags && player.flags.boosting);
-    const throttle = this._throttleFor(player);
-    if (throttle <= 0.02 && !boosting) { plume.visible = false; return; }
+    if (!player || !player.alive) { plume.visible = false; energy.plumeDrive = 0; energy.boostBlend = 0; return; }
+    const driveInfo = this._engineDriveFor(player);
+    const targetBoost = driveInfo.boost;
+    const rawDrive = driveInfo.drive;
+    const driveRate = rawDrive > energy.plumeDrive ? 9.5 : 4.2;
+    const boostRate = targetBoost > energy.boostBlend ? 8.5 : 3.6;
+    energy.plumeDrive += (rawDrive - energy.plumeDrive) * (1 - Math.exp(-driveRate * Math.max(0, dt || 0)));
+    energy.boostBlend += (targetBoost - energy.boostBlend) * (1 - Math.exp(-boostRate * Math.max(0, dt || 0)));
+    const drive = energy.plumeDrive;
+    const boostBlend = energy.boostBlend;
+    const fade = Math.max(0, Math.min(1, (drive - 0.012) / 0.10 + boostBlend * 0.4));
+    if (fade <= 0.01) { plume.visible = false; return; }
     const socket = this._trailSocketWorldPos(player);
     plume.position.set(socket ? socket.x : player.pos.x, 0, socket ? socket.z : player.pos.z);
-    plume.rotation.y = player.rot || 0;
-    // Plume length/opacity track commanded thrust; boost widens and brightens it.
-    const drive = Math.min(1, throttle * 1.2 + (boosting ? 0.6 : 0));
-    plume.scale.set(0.7 + drive * 0.6, 0.7 + drive * 0.6, 0.6 + drive * 1.8);
+    plume.rotation.y = -(player.rot || 0);
+    const width = 0.30 + drive * 0.42 + boostBlend * 0.22;
+    const length = 0.18 + drive * 1.65 + boostBlend * 0.78;
+    plume.scale.set(length, width, width);
     plume.visible = true;
     const core = plume.userData.energyCore;
     const halo = plume.userData.energyHalo;
-    if (core) updateEnergyMaterial(core.material, { time: this._t, intensity: 5.5 + drive * 4.0, opacity: 0.82 });
-    if (halo) updateEnergyMaterial(halo.material, { time: this._t, intensity: 2.4 + drive * 1.6, opacity: 0.34 });
+    const coreColor = this._c0.set('#36c8ff').lerp(this._c1.set('#fff4dd'), boostBlend);
+    const haloColor = this._ctmp.set('#6a4cff').lerp(this._c1.set('#c98cff'), boostBlend);
+    if (core) updateEnergyMaterial(core.material, { time: this._t, colorA: coreColor, colorB: haloColor, intensity: 4.7 + drive * 5.3 + boostBlend * 2.4, opacity: (0.22 + drive * 0.46 + boostBlend * 0.18) * fade });
+    if (halo) updateEnergyMaterial(halo.material, { time: this._t, colorA: haloColor, colorB: coreColor, intensity: 1.8 + drive * 2.1 + boostBlend * 1.5, opacity: (0.10 + drive * 0.18 + boostBlend * 0.08) * fade });
   },
 
   _updateEnergyMassline(dt) {
@@ -1367,13 +1385,35 @@ export const vfx = {
     this._energy = null;
   },
 
-  // Approximate commanded throttle for the plume: forward input or current speed fraction.
+  _engineDriveFor(e) {
+    if (!e) return { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
+    const frame = e._flightFrame || {};
+    const vx = e.vel && Number.isFinite(e.vel.x) ? e.vel.x : 0;
+    const vz = e.vel && Number.isFinite(e.vel.z) ? e.vel.z : 0;
+    const speed = Math.hypot(vx, vz);
+    const maxFromEntity = Number.isFinite(e.maxSpeed) ? e.maxSpeed : 0;
+    const maxFromFrame = Number.isFinite(frame.maxSpeed) ? frame.maxSpeed : 0;
+    const maxSpeed = Math.max(1, maxFromEntity || maxFromFrame || 120);
+    let throttle = 0;
+    if (Number.isFinite(frame.throttle)) throttle = Math.max(0, Math.min(1.15, frame.throttle));
+    else if (Number.isFinite(frame.commandedThrottle)) throttle = Math.max(0, Math.min(1.15, frame.commandedThrottle));
+    if (e.id === this.state.playerId) {
+      const inp = this.state.input;
+      if (inp && Number.isFinite(inp.moveZ) && inp.moveZ > 0) throttle = Math.max(throttle, Math.min(1.15, inp.moveZ));
+    }
+    const cf = Math.cos(e.rot || 0);
+    const sf = Math.sin(e.rot || 0);
+    const forwardSpeed = Number.isFinite(frame.forwardSpeed) ? frame.forwardSpeed : (vx * cf + vz * sf);
+    const forwardDrive = Math.min(1.1, Math.max(0, forwardSpeed) / Math.max(35, maxSpeed * 0.75));
+    const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
+    const boost = e.flags && e.flags.boosting ? 1 : 0;
+    const drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
+    return { drive, throttle, speed, speedDrive, boost };
+  },
+
+  // Approximate commanded throttle for the plume: forward input, forward speed, or boost blend.
   _throttleFor(player) {
-    const inp = this.state.input;
-    if (inp && Number.isFinite(inp.moveZ) && inp.moveZ > 0) return inp.moveZ;
-    const sp = Math.hypot(player.vel.x, player.vel.z);
-    const max = player.maxSpeed || 1;
-    return Math.min(1, sp / max);
+    return this._engineDriveFor(player).drive;
   },
 
   // -------------------------------------------------------------------------
@@ -1477,13 +1517,9 @@ export const vfx = {
       const e = list[i];
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
       if (e.flags && e.flags.docked) continue;
-      const speed = Math.hypot(e.vel.x, e.vel.z);
-      const maxSp = e.maxSpeed || 120;
-      // throttle proxy: how hard the ship is moving (or boosting)
-      let throttle = Math.min(1, speed / Math.max(20, maxSp * 0.6));
-      if (e.flags && e.flags.boosting) throttle = Math.min(1, throttle + 0.5);
-      if (throttle < 0.08) continue; // idle ships emit nothing
-      this._emitEngineTrail(e, throttle, step);
+      const driveInfo = this._engineDriveFor(e);
+      if (driveInfo.drive < 0.055) continue; // idle ships emit nothing
+      this._emitEngineTrail(e, driveInfo.drive, step);
       // Damage smoke: a wounded ship trails smoke so its state is readable at a glance (V2 §9:
       // particles are information). Two tiers — wounded (<40% hull) gets wispy grey smoke,
       // critical (<18%) adds orange embers + denser smoke. Even a stationary/idle damaged ship
@@ -1513,8 +1549,9 @@ export const vfx = {
     for (const e of this._ribbonCandidates) {
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
       if (e.flags && e.flags.docked) { const rt = this._ribbonTrails.get(e.id); if (rt) rt.clear(); continue; }
+      const driveInfo = this._engineDriveFor(e);
       const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
-      if (speed < 4) continue;
+      if (speed < 4 && driveInfo.drive < 0.04) continue;
       let trail = this._ribbonTrails.get(e.id);
       if (!trail) {
         const w = Math.max(2.5, (e.radius || 14) * 0.16);
@@ -1524,8 +1561,11 @@ export const vfx = {
       // sample from engine nozzle (rear of ship)
       const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
       const back = (e.radius || 14) * 0.88;
-      trail.push(e.pos.x - cf * back, e.pos.z - sf * back, e.rot);
-      trail.rebuild(0.25 + Math.min(1, speed / Math.max(20, e.maxSpeed || 80)) * 0.4);
+      const sock = this._trailSocketWorldPos(e);
+      const tx = sock ? sock.x : e.pos.x - cf * back;
+      const tz = sock ? sock.z : e.pos.z - sf * back;
+      trail.push(tx, tz, e.rot);
+      trail.rebuild(0.16 + Math.min(1, driveInfo.drive) * 0.38 + driveInfo.boost * 0.12);
     }
     // dispose dead entities
     for (const [id, trail] of this._ribbonTrails) {

@@ -1,35 +1,49 @@
 import { TraceLayer, normalizeSensorFrame, saturate, stableId } from './contracts.js';
 
 export class PerceptionMemory {
-  constructor({ memoryTicks = 300, confidenceFloor = 0.08, trace = null } = {}) {
+  constructor({ memoryTicks = 300, confidenceFloor = 0.08, trace = null, freezeResults = true } = {}) {
     if (!Number.isInteger(memoryTicks) || memoryTicks < 1) throw new RangeError('memoryTicks must be positive');
     this.memoryTicks = memoryTicks;
     this.confidenceFloor = confidenceFloor;
     this.trace = trace;
+    this.freeze = freezeResults === false ? identity : Object.freeze;
+    this.freezeResults = this.freeze === Object.freeze;
     this.byEntity = new Map();
+    this.seenScratch = new Set();
   }
 
   observe(entityId, frame, tick) {
     const normalized = normalizeSensorFrame(frame, entityId, tick);
     let memory = this.byEntity.get(entityId);
     if (!memory) {
-      memory = { self: normalized.self, contacts: new Map(), events: [], tick: normalized.tick };
+      memory = {
+        self: normalized.self,
+        contacts: new Map(),
+        events: [],
+        tick: normalized.tick,
+        snapshotContacts: [],
+        snapshot: { tick: normalized.tick, self: normalized.self, contacts: [], events: [] },
+      };
       this.byEntity.set(entityId, memory);
     }
     memory.self = normalized.self;
     memory.tick = normalized.tick;
-    memory.events = normalized.events.slice();
+    memory.events = this.freezeResults ? normalized.events.slice() : normalized.events;
 
-    const seen = new Set();
+    const seen = this.seenScratch;
+    seen.clear();
     for (const contact of normalized.contacts) {
       const key = contactKey(contact);
       seen.add(key);
-      memory.contacts.set(key, {
-        ...contact,
-        firstSeenTick: memory.contacts.has(key) ? memory.contacts.get(key).firstSeenTick : normalized.tick,
-        lastSeenTick: normalized.tick,
-        observedConfidence: contact.confidence,
-      });
+      let record = memory.contacts.get(key);
+      if (!record) {
+        record = { ...contact, firstSeenTick: normalized.tick };
+        memory.contacts.set(key, record);
+      } else {
+        Object.assign(record, contact);
+      }
+      record.lastSeenTick = normalized.tick;
+      record.observedConfidence = contact.confidence;
     }
 
     for (const [key, contact] of memory.contacts) {
@@ -55,14 +69,16 @@ export class PerceptionMemory {
 
   snapshot(entityId, tick = null) {
     const memory = this.byEntity.get(entityId);
-    if (!memory) return Object.freeze({ tick: tick || 0, self: null, contacts: Object.freeze([]), events: Object.freeze([]) });
+    const freeze = this.freeze;
+    if (!memory) return freeze({ tick: tick || 0, self: null, contacts: freeze([]), events: freeze([]) });
     const now = tick == null ? memory.tick : tick;
+    if (!this.freezeResults) return liveSnapshot(memory, now, this.memoryTicks, this.confidenceFloor);
     const contacts = [];
     for (const contact of memory.contacts.values()) {
       const ageTicks = Math.max(0, now - contact.lastSeenTick);
       const confidence = saturate(contact.observedConfidence * Math.max(0, 1 - ageTicks / this.memoryTicks));
       if (confidence < this.confidenceFloor) continue;
-      contacts.push(Object.freeze({
+      contacts.push(freeze({
         id: contact.id,
         kind: contact.kind,
         team: contact.team,
@@ -90,16 +106,18 @@ export class PerceptionMemory {
         visible: ageTicks === 0,
       }));
     }
-    contacts.sort((a, b) => {
-      const ak = `${a.kind}|${stableId(a.id)}`;
-      const bk = `${b.kind}|${stableId(b.id)}`;
-      return ak < bk ? -1 : (ak > bk ? 1 : 0);
-    });
-    return Object.freeze({
+    if (freeze === Object.freeze) {
+      contacts.sort((a, b) => {
+        const ak = `${a.kind}|${stableId(a.id)}`;
+        const bk = `${b.kind}|${stableId(b.id)}`;
+        return ak < bk ? -1 : (ak > bk ? 1 : 0);
+      });
+    }
+    return freeze({
       tick: now,
       self: memory.self,
-      contacts: Object.freeze(contacts),
-      events: Object.freeze(memory.events.slice()),
+      contacts: freeze(contacts),
+      events: freeze === Object.freeze ? freeze(memory.events.slice()) : memory.events,
     });
   }
 
@@ -115,7 +133,27 @@ export class PerceptionMemory {
   }
 }
 
-export function aggregatePerceivedTelemetry(perceptions) {
+function liveSnapshot(memory, now, memoryTicks, confidenceFloor) {
+  const contacts = memory.snapshotContacts || (memory.snapshotContacts = []);
+  contacts.length = 0;
+  for (const contact of memory.contacts.values()) {
+    const ageTicks = Math.max(0, now - contact.lastSeenTick);
+    const confidence = saturate(contact.observedConfidence * Math.max(0, 1 - ageTicks / memoryTicks));
+    if (confidence < confidenceFloor) continue;
+    contact.confidence = confidence;
+    contact.ageTicks = ageTicks;
+    contact.visible = ageTicks === 0;
+    contacts.push(contact);
+  }
+  const snapshot = memory.snapshot || (memory.snapshot = { tick: now, self: null, contacts, events: [] });
+  snapshot.tick = now;
+  snapshot.self = memory.self;
+  snapshot.contacts = contacts;
+  snapshot.events = memory.events;
+  return snapshot;
+}
+
+export function aggregatePerceivedTelemetry(perceptions, freeze = Object.freeze) {
   let hostileContacts = 0;
   let hostileThreat = 0;
   let friendlyDisabled = 0;
@@ -145,7 +183,7 @@ export function aggregatePerceivedTelemetry(perceptions) {
   }
 
   const denom = Math.max(1, reports);
-  return Object.freeze({
+  return freeze({
     reports,
     hostileContacts,
     visibleThreat: saturate(hostileThreat / denom),
@@ -164,4 +202,8 @@ function contactKey(contact) {
 function idSort(a, b) {
   const ak = stableId(a), bk = stableId(b);
   return ak < bk ? -1 : (ak > bk ? 1 : 0);
+}
+
+function identity(value) {
+  return value;
 }

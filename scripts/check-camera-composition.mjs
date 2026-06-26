@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { resolveChaseComposition } from '../src/render/camera.js';
+import { clampFocusToPlayerSafeRect, resolveChaseComposition } from '../src/render/camera.js';
 
 function ship(id, x, z, team = 'enemy') {
   return {
@@ -77,5 +77,20 @@ const unrelatedTetherState = stateWith([player, payload(3, 320, 0), ship(4, -200
 const unrelated = resolveChaseComposition(unrelatedTetherState, player, { x: 0, z: 0 });
 assert.equal(unrelated.hasTetherFocus, false, 'tethers not attached to the player should not steer the player camera');
 near(unrelated.x, 0, 'unrelated tether should leave player focus unchanged');
+
+const wideFocus = clampFocusToPlayerSafeRect({ x: 160, z: 120 }, player, { zoom: 95, fov: 50, aspect: 16 / 9 });
+assert.equal(wideFocus.clamped, true, 'camera safety clamp should engage when composition would lose the player');
+assert.ok(Math.abs(wideFocus.x - player.pos.x) < 60, 'camera safety clamp should keep player horizontally inside the safe view');
+assert.ok(Math.abs(wideFocus.z - player.pos.z) < 40, 'camera safety clamp should keep player vertically inside the safe view');
+
+const calmFocus = clampFocusToPlayerSafeRect({ x: 12, z: 8 }, player, { zoom: 95, fov: 50, aspect: 16 / 9 });
+assert.equal(calmFocus.clamped, false, 'camera safety clamp should preserve small loose-follow offsets');
+near(calmFocus.x, 12, 'safe focus should preserve horizontal breathing room');
+near(calmFocus.z, 8, 'safe focus should preserve vertical breathing room');
+
+const missingFocus = clampFocusToPlayerSafeRect(null, player, { zoom: 95, fov: 50, aspect: 16 / 9 });
+assert.equal(missingFocus.clamped, false, 'camera safety clamp should tolerate missing focus during startup');
+near(missingFocus.x, player.pos.x, 'missing focus should fall back to the player x position');
+near(missingFocus.z, player.pos.z, 'missing focus should fall back to the player z position');
 
 console.log('Camera composition checks OK');

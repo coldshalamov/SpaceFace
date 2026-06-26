@@ -47,6 +47,68 @@ function binding(state, action) {
 
 export const DEFAULTS = { BINDINGS: DEFAULT_BINDINGS };
 
+const KEY_CODE_FALLBACKS = {
+  w: 'KeyW',
+  a: 'KeyA',
+  s: 'KeyS',
+  d: 'KeyD',
+  q: 'KeyQ',
+  e: 'KeyE',
+  f: 'KeyF',
+  c: 'KeyC',
+  ' ': 'Space',
+  space: 'Space',
+  arrowup: 'ArrowUp',
+  arrowdown: 'ArrowDown',
+  arrowleft: 'ArrowLeft',
+  arrowright: 'ArrowRight',
+  shift: 'ShiftLeft',
+};
+
+const OPPOSING_ACTIONS = new Map([
+  ['forward', 'reverse'],
+  ['reverse', 'forward'],
+  ['yawRight', 'yawLeft'],
+  ['yawLeft', 'yawRight'],
+  ['strafeRight', 'strafeLeft'],
+  ['strafeLeft', 'strafeRight'],
+]);
+
+function eventCode(e) {
+  if (e && e.code) return e.code;
+  const key = e && typeof e.key === 'string' ? e.key.toLowerCase() : '';
+  return KEY_CODE_FALLBACKS[key] || '';
+}
+
+function actionForCode(state, code) {
+  for (const action of Object.keys(DEFAULT_BINDINGS)) {
+    if (binding(state, action).includes(code)) return action;
+  }
+  return null;
+}
+
+function clearActionCodes(state, keys, action, exceptCode) {
+  for (const code of binding(state, action)) {
+    if (code !== exceptCode) keys[code] = false;
+  }
+}
+
+function isTextEntryTarget(target) {
+  if (!target || typeof target.closest !== 'function') return false;
+  return !!target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [data-text-input]');
+}
+
+function isUiCommandTarget(target) {
+  if (!target || typeof target.closest !== 'function') return false;
+  return !!target.closest('button, [role="button"], a[href], input, textarea, select, [contenteditable="true"], [contenteditable=""], #ui-root, #screens');
+}
+
+function modalInputActive() {
+  const body = typeof document !== 'undefined' ? document.body : null;
+  return !!(body && body.classList && typeof body.classList.contains === 'function'
+    && body.classList.contains('ui-modal-open'));
+}
+
 export const input = {
   name: 'input',
   init(ctx) {
@@ -57,6 +119,7 @@ export const input = {
     this._ndc = { x: 0, y: 0 };
     this._m0 = false; this._m2 = false;
     this._lastKbmMs = performance.now();
+    this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
 
     this.gamepad = createGamepad(ctx);
     ctx.gamepad = this.gamepad;
@@ -70,23 +133,45 @@ export const input = {
     addEventListener('resize', () => this.touch.autoDetect());
 
     addEventListener('keydown', (e) => {
-      keys[e.code] = true;
+      const code = eventCode(e);
+      if (!code) return;
+      if (modalInputActive() || isTextEntryTarget(e.target) || isUiCommandTarget(e.target)) {
+        keys[code] = false;
+        return;
+      }
+      const action = actionForCode(this.state, code);
+      const opposingAction = action && OPPOSING_ACTIONS.get(action);
+      if (opposingAction) clearActionCodes(this.state, keys, opposingAction, code);
+      keys[code] = true;
       this._lastKbmMs = performance.now();
     });
-    addEventListener('keyup', (e) => { keys[e.code] = false; });
+    addEventListener('keyup', (e) => {
+      const code = eventCode(e);
+      if (code) keys[code] = false;
+    });
     addEventListener('blur', () => { for (const k in keys) keys[k] = false; this._m0 = this._m2 = false; });
-    addEventListener('mousemove', (e) => {
+    const pointerSurface = this._canvas || window;
+    pointerSurface.addEventListener('mousemove', (e) => {
+      if (this._canvas && e.target !== this._canvas) return;
       this._ndc.x = (e.clientX / innerWidth) * 2 - 1;
       this._ndc.y = -(e.clientY / innerHeight) * 2 + 1;
       this._lastKbmMs = performance.now();
     });
-    addEventListener('mousedown', (e) => {
+    pointerSurface.addEventListener('mousedown', (e) => {
+      if (this._canvas && e.target !== this._canvas) {
+        this._m0 = false; this._m2 = false;
+        return;
+      }
+      if (!this._canvas && isUiCommandTarget(e.target)) {
+        this._m0 = false; this._m2 = false;
+        return;
+      }
       if (e.button === 0) this._m0 = true;
       if (e.button === 2) this._m2 = true;
       this._lastKbmMs = performance.now();
     });
     addEventListener('mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 2) this._m2 = false; });
-    addEventListener('contextmenu', (e) => e.preventDefault());
+    pointerSurface.addEventListener('contextmenu', (e) => e.preventDefault());
   },
 
   // True if any of the bound codes for `action` is currently held.
@@ -103,10 +188,11 @@ export const input = {
     if (tp) tp.tick(dt);
 
     const inp = state.input;
-    if (state.mode !== 'flight' || state.ui.screenStack.length > 0) {
+    if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
       inp.moveX = 0; inp.moveZ = 0; inp.turnIntent = 0;
-      inp.fire = false; inp.boost = false; inp.fireGroup = null;
+      inp.fire = false; inp.boost = false; inp.brake = false; inp.fireGroup = null;
+      this._m0 = false; this._m2 = false;
       return;
     }
 
@@ -163,6 +249,7 @@ export const input = {
     inp.moveX = kbdMoveX || tpMoveX;
     inp.moveZ = kbdMoveZ || (gpBrake ? -1 : gpMoveZ) || tpMoveZ;
     inp.boost = kbdBoost || gpBoost || tpBoost;
+    inp.brake = down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55;
     inp.fire = kbdFire || gpFire || tpFire;
     inp.fireGroup = (this._m2 || tpMine) ? 2 : (inp.fire ? 1 : null);
 

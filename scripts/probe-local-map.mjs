@@ -78,6 +78,51 @@ try {
   // Let the world populate (stations/contacts spawn after flight starts).
   await sleep(1500);
 
+  // Regression: clicking HUD/UI buttons must not become gameplay LMB fire.
+  await evalJson(`JSON.stringify((() => {
+    const sf = window.SF;
+    window.__sfUiClickFireEvents = 0;
+    const bus = sf && sf.ctx && sf.ctx.bus;
+    if (bus && !window.__sfUiClickFireSubbed) {
+      window.__sfUiClickFireSubbed = true;
+      bus.on('combat:fire', (p) => {
+        const s = window.SF && window.SF.state;
+        if (!s || !p || p.ownerId === s.playerId) window.__sfUiClickFireEvents++;
+      });
+    }
+    if (sf && sf.state && sf.state.input) {
+      sf.state.input.fire = false;
+      sf.state.input.fireGroup = null;
+    }
+    if (bus && typeof bus.emit === 'function') bus.emit('ui:toggleCargo');
+    return { armed: true };
+  })())`);
+  await sleep(250);
+  const closeRect = await evalJson(`JSON.stringify((() => {
+    const btn = document.querySelector('.sf-cargo-panel.open .sf-cargo-panel__close');
+    if (!btn) return { ok:false };
+    const r = btn.getBoundingClientRect();
+    return { ok:true, x:r.left + r.width / 2, y:r.top + r.height / 2, w:r.width, h:r.height };
+  })())`);
+  assert.equal(closeRect.ok, true, 'cargo-panel close button must be visible for UI-click regression: ' + JSON.stringify(closeRect));
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: closeRect.x, y: closeRect.y });
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: closeRect.x, y: closeRect.y, button: 'left', clickCount: 1 });
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: closeRect.x, y: closeRect.y, button: 'left', clickCount: 1 });
+  await sleep(400);
+  const uiClickReport = await evalJson(`JSON.stringify((() => {
+    const s = window.SF && window.SF.state;
+    return {
+      fireEvents: window.__sfUiClickFireEvents || 0,
+      inputFire: !!(s && s.input && s.input.fire),
+      inputFireGroup: s && s.input && s.input.fireGroup || null,
+      cargoStillOpen: !!document.querySelector('.sf-cargo-panel.open'),
+    };
+  })())`);
+  console.log('UI click report:', JSON.stringify(uiClickReport, null, 2));
+  assert.equal(uiClickReport.fireEvents, 0, 'clicking a HUD button must not emit player combat:fire: ' + JSON.stringify(uiClickReport));
+  assert.equal(uiClickReport.inputFire, false, 'clicking a HUD button must not latch state.input.fire: ' + JSON.stringify(uiClickReport));
+  assert.equal(uiClickReport.inputFireGroup, null, 'clicking a HUD button must not latch a fire group: ' + JSON.stringify(uiClickReport));
+
   // Open the local system map via the N key.
   await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'n', code: 'KeyN', windowsVirtualKeyCode: 78 });
   await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'n', code: 'KeyN', windowsVirtualKeyCode: 78 });
@@ -102,6 +147,9 @@ try {
     }
     const state = sf.state;
     const entityCount = state && state.entityList ? state.entityList.length : 0;
+    const objective = el && el.querySelector('#sf-localmap-objective');
+    const objectiveText = objective ? (objective.textContent || '').replace(/\\s+/g, ' ').trim() : '';
+    const waypoint = state && state.nav && state.nav.waypoint || null;
     return {
       localmapOpen: top === 'localmap',
       localmapElVisible: !!(el && el.style.display !== 'none'),
@@ -109,6 +157,13 @@ try {
       canvasWidth: canvas ? canvas.width : 0,
       canvasDrawn: drawn,
       entityCount,
+      objectivePanelVisible: !!(objective && !objective.hidden && objective.getBoundingClientRect().height > 10),
+      objectiveText,
+      waypointKind: waypoint && waypoint.kind || null,
+      waypointLabel: waypoint && waypoint.label || null,
+      waypointReason: waypoint && waypoint.reason || null,
+      waypointOnboarding: !!(waypoint && waypoint.onboarding),
+      waypointHasPosition: !!(waypoint && waypoint.pos),
     };
   })())`);
   console.log('Local map report:', JSON.stringify(report, null, 2));
@@ -117,6 +172,69 @@ try {
   assert.equal(report.canvasPresent, true, 'localmap canvas must exist');
   assert.ok(report.canvasWidth > 0, 'localmap canvas must be sized (width > 0): ' + JSON.stringify(report));
   assert.equal(report.canvasDrawn, true, 'localmap canvas must have rendered content (range rings / contacts / player): ' + JSON.stringify(report));
+  assert.equal(report.objectivePanelVisible, true, 'localmap must show an objective/waypoint panel: ' + JSON.stringify(report));
+  assert.ok(report.objectiveText.length > 12, 'localmap objective panel must contain readable guidance: ' + JSON.stringify(report));
+  assert.match(report.objectiveText, /(mission|objective|story|tutorial|mine|dock|course|waypoint|signal|map)/i, 'localmap objective panel must name useful navigation intent: ' + JSON.stringify(report));
+  assert.ok(report.waypointHasPosition || report.objectiveText.includes('Off-sector') || /story|mission|tutorial|course/i.test(report.objectiveText), 'localmap must expose either a plotted waypoint or readable route context: ' + JSON.stringify(report));
+
+  // Inject a route-backed off-sector objective while the local map is open. This proves the panel
+  // tells the player the next jump instead of stopping at a vague "off-sector" note.
+  await evalJson(`JSON.stringify((() => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    if (!state) return { ok:false };
+    const current = state.world && state.world.currentSectorId || 'sector_helios_prime';
+    state.ui.trackedMissionId = 'probe_offsector';
+    state.missions.active = (state.missions.active || []).filter((m) => m.id !== 'probe_offsector');
+    state.missions.active.push({
+      id: 'probe_offsector',
+      status: 'active',
+      type: 'cargo_delivery',
+      title: 'Probe Delivery',
+      objectiveProgress: 0,
+      objectiveTarget: 1,
+      deadline_s: (state.simTime || 0) + 600,
+    });
+    state.nav.waypoint = {
+      kind: 'mission',
+      missionId: 'probe_offsector',
+      label: 'Probe Delivery',
+      reason: 'Deliver probe cargo',
+      sectorId: 'sector_tethys_junction',
+      sectorName: 'Tethys Junction',
+    };
+    state.nav.route = {
+      legs: [{ from: current, to: 'sector_tethys_junction', fuel: 12, charge: 3, interdict: 0.05 }],
+      totalFuel: 12,
+      totalHops: 1,
+    };
+    const ui = sf.registry && sf.registry.get && sf.registry.get('ui');
+    const sm = ui && ui.screenManager || sf.ctx && sf.ctx.screenManager;
+    if (sm && typeof sm.refreshTop === 'function') sm.refreshTop();
+    return { ok:true };
+  })())`);
+  await sleep(250);
+  const offSectorReport = await evalJson(`JSON.stringify((() => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const el = document.getElementById('sf-localmap');
+    const objective = el && el.querySelector('#sf-localmap-objective');
+    const objectiveText = objective ? (objective.textContent || '').replace(/\\s+/g, ' ').trim() : '';
+    const waypoint = state && state.nav && state.nav.waypoint || null;
+    return {
+      objectivePanelVisible: !!(objective && !objective.hidden && objective.getBoundingClientRect().height > 10),
+      objectiveText,
+      waypointHasPosition: !!(waypoint && waypoint.pos),
+      routeHops: state && state.nav && state.nav.route && state.nav.route.totalHops || 0,
+    };
+  })())`);
+  console.log('Off-sector local map report:', JSON.stringify(offSectorReport, null, 2));
+  assert.equal(offSectorReport.objectivePanelVisible, true, 'off-sector objective panel must stay visible: ' + JSON.stringify(offSectorReport));
+  assert.equal(offSectorReport.waypointHasPosition, false, 'off-sector waypoint probe must not have a local position: ' + JSON.stringify(offSectorReport));
+  assert.match(offSectorReport.objectiveText, /(Next jump|Plot route|M Star Map)/i, 'off-sector objective panel must surface route or next-jump guidance: ' + JSON.stringify(offSectorReport));
+  assert.match(offSectorReport.objectiveText, /Tethys Junction/i, 'off-sector objective panel must name the destination sector: ' + JSON.stringify(offSectorReport));
+  assert.ok(offSectorReport.routeHops >= 1, 'off-sector objective probe must include a plotted route: ' + JSON.stringify(offSectorReport));
+
   const errors = issues.filter((i) => i.level === 'error');
   assert.equal(errors.length, 0, 'local map must not produce page errors: ' + JSON.stringify(errors.slice(0, 5)));
 

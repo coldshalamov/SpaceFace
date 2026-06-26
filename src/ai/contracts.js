@@ -1,6 +1,9 @@
 // SG-06 tactical AI contracts. This module contains no game-state access and no side effects.
 
 export const AI_CONTRACT_VERSION = 1;
+export const NORMALIZED_SENSOR_FRAME_FLAG = '__spacefaceNormalizedSensorFrame';
+export const NORMALIZED_THRUSTER_REQUEST_FLAG = '__spacefaceNormalizedThrusterRequest';
+const EMPTY_TRAJECTORY = Object.freeze([]);
 
 export const DirectorPhase = Object.freeze({
   RESPITE: 'respite',
@@ -77,8 +80,14 @@ export function assertAIPorts(ports) {
 }
 
 export function normalizeSensorFrame(frame, entityId, tick) {
+  if (frame && typeof frame === 'object' && frame[NORMALIZED_SENSOR_FRAME_FLAG] === true) return frame;
   if (!frame || typeof frame !== 'object') {
-    return Object.freeze({ tick, self: neutralSelf(entityId), contacts: Object.freeze([]), events: Object.freeze([]) });
+    return freezeWithFlag({
+      tick,
+      self: neutralSelf(entityId),
+      contacts: Object.freeze([]),
+      events: Object.freeze([]),
+    }, NORMALIZED_SENSOR_FRAME_FLAG);
   }
   const self = normalizeSelf(frame.self, entityId);
   const contacts = Array.isArray(frame.contacts)
@@ -87,16 +96,29 @@ export function normalizeSensorFrame(frame, entityId, tick) {
   const events = Array.isArray(frame.events)
     ? frame.events.map(normalizeEvent).filter(Boolean)
     : [];
-  return Object.freeze({
+  return freezeWithFlag({
     tick: finiteInt(frame.tick, tick),
     self: Object.freeze(self),
     contacts: Object.freeze(contacts),
     events: Object.freeze(events),
-  });
+  }, NORMALIZED_SENSOR_FRAME_FLAG);
+}
+
+export function makeTrustedSensorFrame(frame, entityId, tick, options = {}) {
+  if (!frame || typeof frame !== 'object') return normalizeSensorFrame(frame, entityId, tick);
+  if (frame[NORMALIZED_SENSOR_FRAME_FLAG] === true) return frame;
+  const freeze = options.freezeResults === false ? identity : Object.freeze;
+  return freezeWithFlag({
+    tick: finiteInt(frame.tick, tick),
+    self: frame.self || neutralSelf(entityId),
+    contacts: freeze(Array.isArray(frame.contacts) ? frame.contacts : []),
+    events: freeze(Array.isArray(frame.events) ? frame.events : []),
+  }, NORMALIZED_SENSOR_FRAME_FLAG, freeze);
 }
 
 export function normalizeActionDef(def) {
   if (!def || typeof def !== 'object' || typeof def.id !== 'string' || !def.id) return null;
+  if (def.__spacefaceTacticalActionDef === true) return def;
   const tags = Array.isArray(def.tags) ? [...new Set(def.tags.filter((v) => typeof v === 'string'))].sort() : [];
   return Object.freeze({
     id: def.id,
@@ -110,21 +132,22 @@ export function normalizeActionDef(def) {
   });
 }
 
-export function makeThrusterRequest(entityId, tick, values = {}) {
+export function makeThrusterRequest(entityId, tick, values = {}, options = {}) {
+  const freeze = typeof options.freeze === 'function' ? options.freeze : Object.freeze;
   const forceLocal = values.forceLocal || {};
-  const trajectory = Array.isArray(values.trajectory)
-    ? values.trajectory.slice(0, 8).map((point) => Object.freeze({
+  const trajectory = Array.isArray(values.trajectory) && values.trajectory.length
+    ? values.trajectory.slice(0, 8).map((point) => freeze({
         x: finite(point && point.x, 0),
         z: finite(point && point.z, 0),
         tick: finiteInt(point && point.tick, tick),
       }))
-    : [];
-  return Object.freeze({
+    : EMPTY_TRAJECTORY;
+  return freezeWithFlag({
     version: AI_CONTRACT_VERSION,
     entityId,
     tick,
     kind: values.kind || ManeuverKind.HOLD,
-    forceLocal: Object.freeze({
+    forceLocal: freeze({
       forward: clamp(finite(forceLocal.forward, 0), -1, 1),
       right: clamp(finite(forceLocal.right, 0), -1, 1),
     }),
@@ -133,9 +156,9 @@ export function makeThrusterRequest(entityId, tick, values = {}) {
     brake: !!values.brake,
     targetHeading: wrapAngle(finite(values.targetHeading, 0)),
     horizonTicks: clamp(finiteInt(values.horizonTicks, 30), 1, 240),
-    trajectory: Object.freeze(trajectory),
+    trajectory: freeze(trajectory),
     reason: String(values.reason || 'no_reason'),
-  });
+  }, NORMALIZED_THRUSTER_REQUEST_FLAG, freeze);
 }
 
 export function stableId(value) {
@@ -271,6 +294,15 @@ function normalizeEvent(value) {
 
 function freezeVec(value) {
   return Object.freeze({ x: finite(value && value.x, 0), z: finite(value && value.z, 0) });
+}
+
+function freezeWithFlag(value, flag, freeze = Object.freeze) {
+  Object.defineProperty(value, flag, { value: true });
+  return freeze(value);
+}
+
+function identity(value) {
+  return value;
 }
 
 function contactOrder(a, b) {

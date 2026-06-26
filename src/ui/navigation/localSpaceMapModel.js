@@ -141,6 +141,11 @@ export class LocalSpaceIntel {
     }
 
     const landmarks = Array.from(this.landmarks.values()).filter((x) => x.discovered);
+    const normalizedHazards = normalizeGeometry(hazards);
+    const normalizedLanes = normalizeGeometry(lanes);
+    const normalizedDocking = normalizeGeometry(docking);
+    const normalizedRoute = normalizeGeometry(route);
+    const normalizedMissionGeometry = normalizeGeometry(missionGeometry);
     return Object.freeze({
       schemaVersion: LOCAL_INTEL_SCHEMA_VERSION,
       revision: this.revision,
@@ -157,12 +162,18 @@ export class LocalSpaceIntel {
       } : null,
       contacts: sortContacts(contacts, center),
       landmarks,
-      hazards: normalizeGeometry(hazards),
-      lanes: normalizeGeometry(lanes),
-      docking: normalizeGeometry(docking),
-      route: normalizeGeometry(route),
-      missionGeometry: normalizeGeometry(missionGeometry),
-      bounds: computeMapBounds(center, contacts, landmarks, inferredRange),
+      hazards: normalizedHazards,
+      lanes: normalizedLanes,
+      docking: normalizedDocking,
+      route: normalizedRoute,
+      missionGeometry: normalizedMissionGeometry,
+      bounds: computeMapBounds(center, contacts, landmarks, inferredRange, [
+        ...normalizedHazards,
+        ...normalizedLanes,
+        ...normalizedDocking,
+        ...normalizedRoute,
+        ...normalizedMissionGeometry,
+      ]),
       legend: buildLegend(contacts, landmarks),
     });
   }
@@ -247,10 +258,10 @@ export function rankTradeRoutes({ beacons, cargoCapacity, currentStationId = nul
   return routes;
 }
 
-export function computeMapBounds(center, contacts = [], landmarks = [], fixedRange = null) {
+export function computeMapBounds(center, contacts = [], landmarks = [], fixedRange = null, geometry = []) {
   if (fixedRange != null) return { minX:center.x-fixedRange, maxX:center.x+fixedRange, minZ:center.z-fixedRange, maxZ:center.z+fixedRange };
   let minX=center.x, maxX=center.x, minZ=center.z, maxZ=center.z;
-  for (const item of [...contacts, ...landmarks]) {
+  for (const item of [...contacts, ...landmarks, ...geometry]) {
     const p = item.position || item.pos;
     if (!p) continue;
     minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x); minZ=Math.min(minZ,p.z); maxZ=Math.max(maxZ,p.z);

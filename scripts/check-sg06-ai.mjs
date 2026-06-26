@@ -32,6 +32,7 @@ const ringEntries = ringProbe.query({ limit: 100 });
 assert.equal(ringEntries.length, 64, 'trace ring must retain exactly its capacity');
 assert.equal(ringEntries[0].sequence, 6, 'trace ring must evict oldest entries in order');
 assert.equal(ringEntries.at(-1).sequence, 69, 'trace ring must retain newest entry');
+assertBehaviorOnlyTraceLayerFiltering();
 
 const startedAt = performance.now();
 const summaries = [];
@@ -217,6 +218,34 @@ function runSeed(seed, ticks) {
     encounterCommandTypes: [...new Set(encounterCommands.map((command) => command.type))].sort(),
     traceSequence: stack.trace.sequence,
   };
+}
+
+function assertBehaviorOnlyTraceLayerFiltering() {
+  const world = makeWorld(0x5f0600b0);
+  const actions = makeActionPort(world, makeActionDefs());
+  const stack = new TacticalAIStack({
+    seed: world.seed,
+    ports: {
+      sensors: { frameFor: (entityId, tick) => sensorFrame(world, entityId, tick) },
+      actions,
+      maneuver: makeManeuverPort(world),
+      roster: { listSquads: () => world.roster },
+      encounter: { issue: () => {} },
+    },
+    config: {
+      trace: { enabled: true, layers: [TraceLayer.BEHAVIOR], capacity: 128 },
+    },
+  });
+  assert.equal(stack.memory.trace, null, 'behavior-only trace must not make perception pay disabled trace cost');
+  assert.equal(stack.director.trace, null, 'behavior-only trace must not make director pay disabled trace cost');
+  assert.equal(stack.commander.trace, null, 'behavior-only trace must not make squad commander pay disabled trace cost');
+  assert.equal(stack.selector.trace, null, 'behavior-only trace must not make utility selection pay disabled trace cost');
+  assert.equal(stack.maneuver.trace, null, 'behavior-only trace must not make maneuver planner pay disabled trace cost');
+  assert.equal(stack.executor.trace, stack.trace, 'behavior-only trace must still keep behavior inspection wired');
+
+  stack.update(0, { threatEnvelope: { min: 0.16, max: 0.76 } });
+  const layers = [...new Set(stack.trace.query({ limit: 128 }).map((entry) => entry.layer))].sort();
+  assert.deepEqual(layers, [TraceLayer.BEHAVIOR], 'behavior-only trace should emit no disabled layer entries');
 }
 
 function makeWorld(seed) {

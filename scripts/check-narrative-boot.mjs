@@ -6,21 +6,12 @@
 //   - beat advancement fires comms:popup / graffiti:show / hud:phase
 //   - ambient comms populate the feed on the timer
 // Exits non-zero on any console error or failed assertion.
-import { createRequire } from 'node:module';
-import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const base = process.env.SF_PROBE_URL || 'http://localhost:8123';
-
-async function loadPlaywright() {
-  try { return await import('playwright'); }
-  catch (err) {
-    const bundled = join(process.env.USERPROFILE || '', '.cache', 'codex-runtimes', 'codex-primary-runtime', 'dependencies', 'node', 'node_modules');
-    const require = createRequire(join(bundled, '.pnpm', 'playwright@1.60.0', 'node_modules', 'playwright', 'index.js'));
-    return require('playwright');
-  }
-}
 
 const { chromium } = await loadPlaywright();
 const browser = await chromium.launch({ headless: true });

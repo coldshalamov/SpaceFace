@@ -8,8 +8,9 @@
 //   top-right     : active objective line + off-screen objective arrow
 //
 // Update split (§5.5):
-//   - 60Hz cheap path (frame): bar widths via transform:scaleX, radar @20Hz, arrows via worldToScreen.
-//   - numerics via textContent @10Hz (every 6th tick).
+//   - frame path: cheap local transforms/classes only.
+//   - numerics via textContent @10Hz.
+//   - compositor-heavy overlays use explicit time cadences instead of implicit per-frame work.
 //   - lists/credits/cargo rebuilt only on data events (credits:changed, cargo:changed, ship:statsChanged).
 //
 // The HUD READS state for display and never mutates sim state (§5, §0.6).
@@ -22,6 +23,7 @@ import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { SHIPS } from '../data/ships.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
+import { STORY_BEATS } from '../data/missions.js';
 import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 
@@ -52,6 +54,7 @@ function driveFamilyFor(def) {
 
 // ── Mission tracker helpers ──────────────────────────────────────────────────────────────────
 const MT_STATION_BY_ID = new Map();
+const MT_SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s.name]));
 for (const sec of SECTORS) {
   for (const st of sec.stations || []) {
     MT_STATION_BY_ID.set(st.id, st.name);
@@ -66,6 +69,54 @@ function mtCmdtyName(id) {
 
 function mtStationName(id) {
   return MT_STATION_BY_ID.get(id) || 'destination';
+}
+
+function mtSectorName(id) {
+  return MT_SECTOR_BY_ID.get(id) || id || 'target sector';
+}
+
+function mtRouteGuidance(state, waypoint) {
+  if (!state || !waypoint || !waypoint.sectorId) return null;
+  const currentSectorId = state.world && state.world.currentSectorId;
+  if (!currentSectorId || currentSectorId === waypoint.sectorId) return null;
+  const route = state.nav && state.nav.route;
+  const legs = route && Array.isArray(route.legs) ? route.legs : [];
+  const first = legs[0];
+  const last = legs[legs.length - 1];
+  if (first && last && first.from === currentSectorId && last.to === waypoint.sectorId) {
+    const hops = route.totalHops || legs.length;
+    const fuel = Math.round(route.totalFuel || legs.reduce((sum, leg) => sum + (leg.fuel || 0), 0));
+    return {
+      next: `Next jump: ${mtSectorName(first.to)}`,
+      summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
+    };
+  }
+  return {
+    next: `Plot route to ${mtSectorName(waypoint.sectorId)}`,
+    summary: 'M Star Map',
+  };
+}
+
+export function resolveHudNavStation(state, stationId) {
+  if (!state || !stationId) return null;
+  const index = state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) {
+    const byStationId = index.byStationId;
+    const indexed = byStationId && byStationId.get(stationId);
+    if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+    const buckets = [index.stations, index.dockStations];
+    for (const stations of buckets) {
+      if (!stations || !stations.length) continue;
+      for (const e of stations) {
+        if (e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId === stationId) return e;
+      }
+    }
+    return null;
+  }
+  for (const e of state.entityList || []) {
+    if (e && e.type === 'station' && e.alive !== false && e.data && e.data.stationId === stationId) return e;
+  }
+  return null;
 }
 
 function mtObjectiveText(m) {
@@ -104,12 +155,46 @@ function mtFmtTime(s) {
   return `${m}m ${sec < 10 ? '0' : ''}${sec}s`;
 }
 
+function mtStoryTitle(beat) {
+  if (!beat) return 'Story Objective';
+  const id = String(beat.id || `Beat ${beat.beat}`);
+  return id.replace(/^b\d+_?/i, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+function setScaleX(el, value) {
+  if (!el) return;
+  const next = Math.round(clamp01(value) * 1000) / 1000;
+  if (el._sfScaleX === next) return;
+  el._sfScaleX = next;
+  el.style.transform = `scaleX(${next})`;
+}
+function setStyle(el, prop, value) {
+  if (el && el.style[prop] !== value) el.style[prop] = value;
+}
+function setClass(el, cls, active) {
+  if (el && el.classList.contains(cls) !== !!active) el.classList.toggle(cls, !!active);
+}
 function setDisplay(el, visible, mode = 'block') {
   if (!el) return;
   const next = visible ? mode : 'none';
   if (el.style.display !== next) el.style.display = next;
+}
+
+function createHudClock(hz, startReady = true) {
+  return { step: 1 / Math.max(1, hz || 1), elapsed: startReady ? Infinity : 0, lastDt: 1 / Math.max(1, hz || 1) };
+}
+function consumeHudClock(clock, dt) {
+  clock.elapsed += dt;
+  if (clock.elapsed < clock.step) return 0;
+  const runDt = Number.isFinite(clock.elapsed) ? clock.elapsed : clock.step;
+  clock.elapsed = 0;
+  clock.lastDt = runDt;
+  return runDt;
+}
+function forceHudClock(clock) {
+  clock.elapsed = Infinity;
 }
 
 function injectDeathStyle() {
@@ -137,12 +222,27 @@ export function createHud(ctx, alerts) {
   const root = document.getElementById('hud');
   root.innerHTML = '';
 
-  // ---- bottom-left: status bars ----
+  // ---- bottom-left: ship schematic (hull + shield) + thin micro-bars (energy/heat/boost) ----
+  // Tactical-Visor §3C: the clunky stacked bars become a top-down structural schematic. Hull is the
+  // tint + centered numeric; shield is the glowing ring (stroke-dashoffset). Energy/heat/boost — which
+  // the arcs/schematic don't cover — live on as thin 2px glowing micro-lines below it.
   const bars = document.createElement('div');
   bars.className = 'sf-bars';
+
+  const schematic = document.createElement('div');
+  schematic.className = 'sf-schematic';
+  schematic.innerHTML =
+    '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
+      '<circle class="sf-sch-shield" cx="50" cy="50" r="44" transform="rotate(-90 50 50)"/>' +
+      '<path class="sf-sch-ship" d="M50 14 L68 62 L56 58 L57 80 L50 73 L43 80 L44 58 L32 62 Z"/>' +
+    '</svg>' +
+    '<div class="sf-sch-hull">0</div>';
+  bars.appendChild(schematic);
+  const schShield = schematic.querySelector('.sf-sch-shield');
+  const schHull = schematic.querySelector('.sf-sch-hull');
+
+  // Thin micro-bars. Hull + shield are now in the schematic, so only energy/boost/heat remain here.
   const barDefs = [
-    ['hull', 'HULL', 'hull'],
-    ['shield', 'SHLD', 'shield'],
     ['energy', 'ENGY', 'energy'],
     ['boost', 'BOOST', 'boost'],   // Phase 3: boost/dash energy (hidden if the ship can't boost)
     ['heat', 'HEAT', 'heat'],
@@ -153,7 +253,7 @@ export function createHud(ctx, alerts) {
     row.className = 'sf-barrow';
     row.innerHTML = `
       <span class="sf-barrow__label">${label}</span>
-      <div class="sf-bar sf-bar--${mod}"><div class="sf-bar__fill"></div><div class="sf-bar__flash"></div></div>
+      <div class="sf-bar sf-bar--${mod}"><div class="sf-bar__fill"></div></div>
       <span class="sf-barrow__num mono">0</span>`;
     bars.appendChild(row);
     fillEls[key] = row.querySelector('.sf-bar__fill');
@@ -161,25 +261,57 @@ export function createHud(ctx, alerts) {
     rowEls[key] = row;
   }
   root.appendChild(bars);
+  // Shield ring: dasharray = full circumference, dashoffset grows as shields drop (erasing the ring).
+  // Measured after mount so getTotalLength() reads the live geometry (the fallback equals 2πr anyway).
+  const SHIELD_RING_LEN = (() => { try { return schShield.getTotalLength() || 2 * Math.PI * 44; } catch (e) { return 2 * Math.PI * 44; } })();
+  schShield.style.strokeDasharray = String(SHIELD_RING_LEN);
+  schShield.style.strokeDashoffset = '0';
 
-  // Hit-flash helper: briefly pulse the affected bar (hull/shield) when the player takes damage.
-  // Re-triggering the CSS animation requires removing + reflow + re-adding the class; we do it once
-  // per damage event, gated to the player. The flash reads at the periphery without watching numbers.
-  const _barFlashTimers = {};
-  function flashBar(key) {
-    const bar = fillEls[key] && fillEls[key].parentElement;   // .sf-bar
-    if (!bar) return;
-    bar.classList.remove('sf-bar--hit');
-    void bar.offsetWidth;   // force reflow so the animation restarts
-    bar.classList.add('sf-bar--hit');
-    clearTimeout(_barFlashTimers[key]);
-    _barFlashTimers[key] = setTimeout(() => bar.classList.remove('sf-bar--hit'), 340);
+  // (The center framing arcs were removed — a wide "visor projection" around the crosshair reads as a
+  //  first-person cockpit/windshield motif, which is wrong for this third-person chase-cam game.
+  //  Shield now lives on the schematic ring; energy on the ENGY micro-bar.)
+
+  // ---- bottom-center: action bar (key → ability map) (§3B) ----
+  const ACTION_ICONS = {
+    'pulse-laser': '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>',
+    'mass-sample': '<svg viewBox="0 0 24 24"><path d="M12 3l5 6-5 12-5-12z"/><path d="M7 9h10"/></svg>',
+    'boost': '<svg viewBox="0 0 24 24"><path d="M5 19l7-13 7 13"/><path d="M5 13l7-7 7 7"/></svg>',
+    'dock': '<svg viewBox="0 0 24 24"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>',
+  };
+  const ACTION_SLOTS = [
+    ['LMB', 'pulse-laser'],
+    ['RMB', 'mass-sample'],
+    ['SHIFT', 'boost'],
+    ['E', 'dock'],
+  ];
+  const actionBar = document.createElement('div');
+  actionBar.id = 'action-bar';
+  const actionBoxes = {};
+  for (const [bind, icon] of ACTION_SLOTS) {
+    const slot = document.createElement('div');
+    slot.className = 'action-slot';
+    slot.innerHTML = `<span class="bind">${bind}</span><div class="icon-box ${icon}">${ACTION_ICONS[icon]}</div>`;
+    actionBar.appendChild(slot);
+    actionBoxes[icon] = slot.querySelector('.icon-box');
+  }
+  root.appendChild(actionBar);
+  // Dock availability (physics emits dock:range as the player nears a station) → highlight the E slot.
+  let dockInRange = false;
+  ctx.bus.on('dock:range', (p) => { dockInRange = !!(p && p.inRange); });
+
+  // Hit-flash helper: briefly pulse the ship schematic when the player takes damage.
+  // Re-triggering a CSS animation needs remove + reflow + re-add; we do it once per damage event.
+  let _schFlashTimer = 0;
+  function flashSchematic() {
+    schematic.classList.remove('sf-sch-hit');
+    void schematic.offsetWidth;   // force reflow so the animation restarts
+    schematic.classList.add('sf-sch-hit');
+    clearTimeout(_schFlashTimer);
+    _schFlashTimer = setTimeout(() => schematic.classList.remove('sf-sch-hit'), 340);
   }
   ctx.bus.on('combat:damage', (p) => {
     if (!p || p.targetId !== state.playerId) return;
-    if (p.brokeShield || p.kind === 'shield') flashBar('shield');
-    if (!p.brokeShield && p.kind !== 'shield') flashBar('hull');
-    else flashBar('hull');   // a shield-break also lands on hull afterwards — flash both
+    flashSchematic();
   });
 
   // ---- top-left: mission tracker (shows the tracked mission objective + timer) ----
@@ -762,32 +894,42 @@ export function createHud(ctx, alerts) {
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
     setText(elCargo, `${used} / ${cap} u`);
-    elCargo.classList.toggle('sf-warn', cap > 0 && used >= cap);
+    setClass(elCargo, 'sf-warn', cap > 0 && used >= cap);
   }
+  let lastObjectivesSig = '';
   function refreshObjectives() {
     objDirty = false;
     const active = (state.missions && state.missions.active) || [];
-    objWrap.innerHTML = '';
-    if (!active.length) return;
-    const frag = document.createDocumentFragment();
+    const items = [];
     for (const m of active.slice(0, 4)) {
-      const line = document.createElement('div');
-      line.className = 'sf-obj';
       const title = (m.title || m.name || m.type || 'Mission');
       let prog = '';
+      let label = '';
       const objs = m.objectives || [];
       if (objs.length) {
         const o = objs.find((x) => !x.done) || objs[0];
         const cur = o.progress != null ? o.progress : (o.current != null ? o.current : 0);
         const need = o.target != null ? o.target : (o.required != null ? o.required : (o.count != null ? o.count : 0));
         prog = need ? ` ${cur}/${need}` : '';
-        line.dataset.label = o.label || o.text || '';
+        label = o.label || o.text || '';
       }
+      items.push({ title, prog, label });
+    }
+    const sig = items.map((item) => `${item.title}\u0001${item.prog}\u0001${item.label}`).join('\u0002');
+    if (sig === lastObjectivesSig) return;
+    lastObjectivesSig = sig;
+    objWrap.innerHTML = '';
+    if (!items.length) return;
+    const frag = document.createDocumentFragment();
+    for (const item of items) {
+      const line = document.createElement('div');
+      line.className = 'sf-obj';
+      line.dataset.label = item.label;
       const dot = document.createElement('span');
       dot.className = 'sf-obj__dot';
       const text = document.createElement('span');
       text.className = 'sf-obj__t';
-      text.textContent = `${title}${prog}`;
+      text.textContent = `${item.title}${item.prog}`;
       line.append(dot, text);
       frag.appendChild(line);
     }
@@ -816,10 +958,11 @@ export function createHud(ctx, alerts) {
     const isLocked = lockProgress >= 1;
     if (isLocking || isLocked) {
       lockRing.classList.add('active');
-      lockRing.classList.toggle('locked', isLocked);
+      setClass(lockRing, 'locked', isLocked);
       const offset = LOCK_C * (1 - lockProgress);
-      lockFill.setAttribute('stroke-dashoffset', String(offset));
-      lockLabel.textContent = isLocked ? 'LOCKED' : Math.round(lockProgress * 100) + '%';
+      const offsetText = offset.toFixed(2);
+      if (lockFill.getAttribute('stroke-dashoffset') !== offsetText) lockFill.setAttribute('stroke-dashoffset', offsetText);
+      setText(lockLabel, isLocked ? 'LOCKED' : Math.round(lockProgress * 100) + '%');
     } else {
       lockRing.classList.remove('active', 'locked');
     }
@@ -844,18 +987,18 @@ export function createHud(ctx, alerts) {
         const hMax = w.heatMax != null ? w.heatMax : 100;
         const hCur = w._heat || 0;
         const frac = hMax > 0 ? clamp01(hCur / hMax) : 0;
-        el.fill.style.transform = `scaleX(${frac})`;
+        setScaleX(el.fill, frac);
         const overheated = hCur >= hMax && hMax > 0;
-        el.row.classList.toggle('overheated', overheated);
+        setClass(el.row, 'overheated', overheated);
       }
       // Position above the status bars panel (recalc on slow ticks to track layout changes).
       if (slow) {
         const barsRect = bars.getBoundingClientRect();
-        wpnHeatsWrap.style.bottom = (window.innerHeight - barsRect.top + 6) + 'px';
+        setStyle(wpnHeatsWrap, 'bottom', (window.innerHeight - barsRect.top + 6) + 'px');
       }
-      wpnHeatsWrap.style.display = 'flex';
+      setStyle(wpnHeatsWrap, 'display', 'flex');
     } else {
-      wpnHeatsWrap.style.display = 'none';
+      setStyle(wpnHeatsWrap, 'display', 'none');
     }
 
     // ---- Target lock diamond (world-space overlay on locked/selected target) ----
@@ -865,11 +1008,11 @@ export function createHud(ctx, alerts) {
       const proj = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
       if (proj.onScreen) {
         lockDiamond.classList.add('visible');
-        lockDiamond.style.left = proj.x + 'px';
-        lockDiamond.style.top = proj.y + 'px';
+        setStyle(lockDiamond, 'left', proj.x.toFixed(1) + 'px');
+        setStyle(lockDiamond, 'top', proj.y.toFixed(1) + 'px');
         // Tint: red when missile-locked, cyan when just selected/tracking.
         const tgtLocked = isLocked && combat && combat.lockTarget === tid;
-        lockDiamond.classList.toggle('locked-tgt', tgtLocked);
+        setClass(lockDiamond, 'locked-tgt', tgtLocked);
       } else {
         lockDiamond.classList.remove('visible');
       }
@@ -881,16 +1024,20 @@ export function createHud(ctx, alerts) {
   // ---------------------------------------------------------------------------
   // 60Hz cheap path
   // ---------------------------------------------------------------------------
-  let tickN = 0;
   let lowShieldActive = false, lowHullActive = false;
   let lastDefId = null;
   let elReticle = null;
   let cachedNavStationId = null;
   let cachedNavEntity = null;
   let cachedNavListLength = -1;
+  let cachedNavIndexVersion = -1;
   let lastNavLabel = '';
   let lastNavDist = '';
   let lastNavEta = '';
+  const numericClock = createHudClock(10);
+  const targetClock = createHudClock(20);
+  const overlayClock = createHudClock(30);
+  const radarClock = createHudClock(15);
 
   function syncSafetyAlerts(p, hullFrac, shieldFrac) {
     if (!alerts || !p) return;
@@ -907,13 +1054,19 @@ export function createHud(ctx, alerts) {
   }
 
   function frame(dt) {
-    tickN++;
-    const slow = (tickN % 6) === 0;   // 10Hz numerics
-    const radarTick = (tickN % 3) === 0; // 20Hz radar
+    const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
+    const numericDt = consumeHudClock(numericClock, frameDt);
+    const targetDt = consumeHudClock(targetClock, frameDt);
+    const overlayDt = consumeHudClock(overlayClock, frameDt);
+    const radarDt = consumeHudClock(radarClock, frameDt);
+    const slow = numericDt > 0;
+    const targetTick = targetDt > 0;
+    const overlayTick = overlayDt > 0;
+    const radarTick = radarDt > 0;
 
     const p = state.entities.get(state.playerId);
 
-    // --- bars (every frame, transform only) ---
+    // --- schematic + arcs + micro-bars (every frame, transform/stroke only) ---
     if (p) {
       const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
       const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
@@ -925,44 +1078,54 @@ export function createHud(ctx, alerts) {
       const heatMax = (p.data && p.data.heatMax) || 100;
       const heatFrac = clamp01(heat / heatMax);
 
-      fillEls.hull.style.transform = `scaleX(${hullFrac})`;
-      fillEls.shield.style.transform = `scaleX(${shieldFrac})`;
-      fillEls.energy.style.transform = `scaleX(${capFrac})`;
-      fillEls.heat.style.transform = `scaleX(${heatFrac})`;
+      // Ship schematic (hull tint + centered numeric; shield ring via stroke-dashoffset).
+      setStyle(schShield, 'strokeDashoffset', (SHIELD_RING_LEN * (1 - shieldFrac)).toFixed(1));
+      setClass(schematic, 'sf-sch-critical', hullFrac < 0.25);
 
-      // Phase 3 boost bar: energy fraction; the row is hidden entirely if the ship can't boost.
+      setScaleX(fillEls.energy, capFrac);
+      setScaleX(fillEls.heat, heatFrac);
+
+      // Phase 3 boost micro-bar: energy fraction; the row is hidden entirely if the ship can't boost.
       // When a dash is ready (cooldown elapsed + enough energy) the bar gets a 'ready' glow.
       const boost = p.boost;
       const boostRow = rowEls.boost;
       if (boost && boost.max > 0 && boostRow) {
-        boostRow.style.display = '';
+        setStyle(boostRow, 'display', '');
         const bf = clamp01(boost.energy / boost.max);
-        fillEls.boost.style.transform = `scaleX(${bf})`;
+        setScaleX(fillEls.boost, bf);
         const dashReady = boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= boost.dashImpulse * 0.6;
-        fillEls.boost.parentElement.classList.toggle('sf-bar--ready', dashReady);
+        setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--ready', dashReady);
         if (slow) setText(numEls.boost, Math.round(bf * 100) + (dashReady ? ' ▸' : '%'));
       } else if (boostRow) {
-        boostRow.style.display = 'none';   // no boost capacity (e.g. a stripped hull) — hide the row
+        setStyle(boostRow, 'display', 'none');   // no boost capacity (e.g. a stripped hull) — hide the row
       }
 
-      fillEls.hull.parentElement.classList.toggle('sf-bar--low', hullFrac < 0.25);
-      fillEls.shield.parentElement.classList.toggle('sf-bar--low', shieldFrac < 0.25 && shieldFrac > 0);
+      // Heat micro-bar only matters while it's actually hot (mostly mining) — hide it when cold.
+      const heatRow = rowEls.heat;
+      if (heatRow) setStyle(heatRow, 'display', heatFrac > 0.01 ? '' : 'none');
+      setClass(fillEls.energy && fillEls.energy.parentElement, 'sf-bar--low', capFrac < 0.2 && capFrac > 0);
 
       // contextual low alerts via alerts module
       syncSafetyAlerts(p, hullFrac, shieldFrac);
 
       if (slow) {
-        setText(numEls.hull, Math.max(0, Math.round(p.hull)) + '');
-        setText(numEls.shield, Math.max(0, Math.round(p.shield)) + '');
+        setText(schHull, Math.max(0, Math.round(p.hull)) + '');
         setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
         setText(numEls.heat, Math.round(heatFrac * 100) + '%');
         // Phase 4 fuel gauge: low fuel flashes a warning.
         const fuel = state.fuel || { current: 100, max: 100 };
         const fuelFrac = fuel.max > 0 ? clamp01(fuel.current / fuel.max) : 1;
-        elFuelFill.style.transform = `scaleX(${fuelFrac})`;
+        setScaleX(elFuelFill, fuelFrac);
         setText(elFuelNum, Math.round(fuelFrac * 100) + '%');
-        elFuel.classList.toggle('sf-fuel--low', fuelFrac < 0.25);
+        setClass(elFuel, 'sf-fuel--low', fuelFrac < 0.25);
       }
+
+      // Action-bar highlights: light a slot while its ability is active.
+      const inp = state.input || {};
+      setClass(actionBoxes['pulse-laser'], 'sf-act-active', !!inp.fire && inp.fireGroup !== 2);
+      setClass(actionBoxes['mass-sample'], 'sf-act-active', inp.fireGroup === 2);
+      setClass(actionBoxes['boost'], 'sf-act-active', !!inp.boost);
+      setClass(actionBoxes['dock'], 'sf-act-active', dockInRange);
     }
 
     // --- speed / throttle (numerics @10Hz) ---
@@ -977,7 +1140,7 @@ export function createHud(ctx, alerts) {
         const brake = estimateBrakingSolution(p, resolvePropulsionProfile(p));
         const bestDist = Math.min(brake.directDistance, brake.flipBurnDistance);
         setText(elStop, Math.round(bestDist) + ' wu');
-        elStop.classList.toggle('sf-warn', bestDist > 600);
+        setClass(elStop, 'sf-warn', bestDist > 600);
       } else {
         setText(elStop, '—');
         elStop.classList.remove('sf-warn');
@@ -989,17 +1152,17 @@ export function createHud(ctx, alerts) {
       const auto = !!(state.input && state.input.autoFire);
       const primary = nGuns === 1 ? (ws[0].name || ws[0].defId || '1 gun') : (nGuns + ' guns');
       setText(elWeapons, primary + (auto ? ' · AUTO' : ''));
-      elWeapons.classList.toggle('sf-warn', auto);
+      setClass(elWeapons, 'sf-warn', auto);
       // Reticle reflects fire mode: amber ring when auto-fire is engaged (guns auto-target hostiles),
       // cyan when you're aiming/firing manually. Purely a visual cue.
       if (!elReticle) elReticle = document.getElementById('aim-reticle');
-      if (elReticle) elReticle.classList.toggle('autofire', auto);
+      if (elReticle) setClass(elReticle, 'autofire', auto);
       // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
       // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
-      _recoilBloom = Math.max(0, _recoilBloom - (dt || 0.016) * 2.2);
+      _recoilBloom = Math.max(0, _recoilBloom - frameDt * 2.2);
       if (elReticle) {
         const inner = elReticle.firstElementChild;
-        if (inner) inner.style.transform = `scale(${1 + _recoilBloom * 0.25})`;
+        if (inner) setStyle(inner, 'transform', `scale(${(1 + _recoilBloom * 0.25).toFixed(3)})`);
       }
       // Class/archetype label: surfaces the ship's role + drive family so the player feels the
       // archetype and propulsion switch when they buy a new hull. Updates cheaply each slow tick.
@@ -1028,6 +1191,20 @@ export function createHud(ctx, alerts) {
         setText(mtTime, mtFmtTime(remaining));
         mtTime.classList.toggle('sf-mt-urgent', remaining < 120);
         setDisplay(missionTracker, true);
+      } else if (state.nav && state.nav.waypoint && state.nav.waypoint.onboarding) {
+        const wp = state.nav.waypoint;
+        setText(mtTitle, 'Tutorial Objective');
+        setText(mtObj, wp.reason || wp.label || 'Follow the yellow signal');
+        setText(mtTime, 'N Local Map');
+        mtTime.classList.remove('sf-mt-urgent');
+        setDisplay(missionTracker, true);
+      } else if (state.story && STORY_BEATS[state.story.beatIndex]) {
+        const beat = STORY_BEATS[state.story.beatIndex];
+        setText(mtTitle, `Story: ${mtStoryTitle(beat)}`);
+        setText(mtObj, beat.objective || 'Open the mission log for your next objective');
+        setText(mtTime, 'J Mission Log · N Local Map');
+        mtTime.classList.remove('sf-mt-urgent');
+        setDisplay(missionTracker, true);
       } else {
         setDisplay(missionTracker, false);
       }
@@ -1038,30 +1215,30 @@ export function createHud(ctx, alerts) {
     if (cargoDirty) refreshCargo();
     if (objDirty) refreshObjectives();
     // advance the credit count-up tween (no-op when at rest)
-    if (slow) tickCreditsTween(dt || 0.016);
+    if (slow) tickCreditsTween(numericDt || frameDt);
 
-    // --- target panel (every frame, cheap) ---
-    targetPanel.update();
+    // --- target panel: DOM/compositor surface; update on a fixed HUD cadence ---
+    if (targetTick) targetPanel.update({ slow });
 
-    // --- combat HUD: lock ring, weapon heat bars, target diamond (every frame) ---
-    updateCombatHud(p, slow);
+    // --- combat HUD: lock ring, weapon heat bars, target diamond ---
+    if (targetTick) updateCombatHud(p, slow);
 
-    // --- floating combat text ---
-    floatingText.update(dt || 0.016);
+    // --- world-space DOM overlays: batch transform/opacity writes ---
+    if (overlayTick) floatingText.update(overlayDt || frameDt);
 
-    // --- radar @20Hz ---
+    // --- radar: canvas redraws are explicit, not tied to every render frame ---
     if (radarTick) radar.draw();
 
-    // directional damage indicators advance + reposition every frame (they track camera roll)
-    dmgInd.tick(dt, helpers);
+    // directional damage indicators advance + reposition on the overlay cadence.
+    if (overlayTick) dmgInd.tick(overlayDt || frameDt, helpers);
 
     // --- off-screen objective arrow ---
-    updateObjectiveArrow(p, slow);
+    if (overlayTick || slow) updateObjectiveArrow(p, slow);
 
     // --- toasts/alerts expiry sweep ---
     if (alerts && alerts.tick) alerts.tick();
     // --- HUD meta-arc (STABLE LOAD line, tag flicker, manifest ghost) ---
-    if (hudMeta && hudMeta.tick) hudMeta.tick(dt || 0.016);
+    if (overlayTick && hudMeta && hudMeta.tick) hudMeta.tick(overlayDt || frameDt);
   }
 
   function tickHidden(dt) {
@@ -1072,46 +1249,62 @@ export function createHud(ctx, alerts) {
 
   function resolveNavStation(nw) {
     if (!nw || !nw.stationId) return null;
+    const index = state.entityIndex;
+    const indexVersion = index && index.__spacefaceEntityIndexV1 ? (index.version || 0) : -1;
+    const listLength = indexVersion >= 0 ? -1 : state.entityList.length;
     if (
       cachedNavStationId === nw.stationId &&
-      cachedNavListLength === state.entityList.length &&
+      cachedNavIndexVersion === indexVersion &&
+      cachedNavListLength === listLength &&
       cachedNavEntity &&
-      cachedNavEntity.alive &&
+      cachedNavEntity.alive !== false &&
       cachedNavEntity.type === 'station'
     ) {
       return cachedNavEntity;
     }
     cachedNavStationId = nw.stationId;
-    cachedNavListLength = state.entityList.length;
-    cachedNavEntity = null;
-    for (const e of state.entityList) {
-      if (e.type === 'station' && e.data && e.data.stationId === nw.stationId) {
-        cachedNavEntity = e;
-        break;
-      }
-    }
+    cachedNavIndexVersion = indexVersion;
+    cachedNavListLength = listLength;
+    cachedNavEntity = resolveHudNavStation(state, nw.stationId);
     return cachedNavEntity;
   }
 
   function updateObjectiveArrow(p, slow) {
-    // Priority: a tracked mission waypoint, else a player-set trade nav waypoint (Phase 4).
+    // Priority: durable nav waypoint (mission/trade/story), else legacy mission-local waypoint.
     const tracked = state.ui.trackedMissionId;
     const active = (state.missions && state.missions.active) || [];
     const m = tracked ? active.find((x) => x.id === tracked) : active[0];
-    let wp = null, wpLabel = null;
-    if (m) wp = m.waypoint || m.targetPos || (m.objectives && m.objectives[0] && m.objectives[0].pos) || null;
-    if (!wp && state.nav && state.nav.waypoint) {
-      // nav waypoint is a station; re-resolve its live world position each frame so it tracks
-      // moving entities, and clear it if the station is no longer in this sector (e.g. after a jump).
+    let wp = null, wpLabel = null, navMeta = null;
+    if (state.nav && state.nav.waypoint) {
       const nw = state.nav.waypoint;
       let livePos = null;
       if (nw.stationId) {
         const station = resolveNavStation(nw);
         if (station) livePos = station.pos;
-        if (!livePos) { state.nav.waypoint = null; }   // station gone (jumped away) — drop the stale arrow
       }
       const pos = livePos || nw.pos;
-      if (pos) { wp = pos; wpLabel = nw.label; }
+      wpLabel = nw.reason || nw.label || nw.sectorName || 'Waypoint';
+      navMeta = nw;
+      if (pos) wp = pos;
+    }
+    if (!wp && m) {
+      wp = m.waypoint || m.targetPos || (m.objectives && m.objectives[0] && m.objectives[0].pos) || null;
+      wpLabel = wpLabel || m.title || m.name || 'Mission';
+    }
+    if (!wp && navMeta) {
+      setDisplay(arrow, false);
+      setDisplay(elNavReadout, true);
+      // Route/cross-sector guidance — not a live target with a distance, so render plain text
+      // (no "[ TARGET LOCK ]" / distance brackets, which only fit an in-range fix).
+      setClass(elNavReadout, 'sf-nav--lock', false);
+      const label = wpLabel || navMeta.label || 'Waypoint';
+      const route = mtRouteGuidance(state, navMeta);
+      const distText = route ? route.next : (navMeta.sectorName || (navMeta.sectorId ? 'Off-sector' : 'No local fix'));
+      if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
+      if (distText !== lastNavDist) { setText(elNavDist, distText); lastNavDist = distText; }
+      const etaText = route ? route.summary : 'M Star Map';
+      if (etaText !== lastNavEta) { setText(elNavEta, etaText); lastNavEta = etaText; }
+      return;
     }
     if (!wp || !p || !helpers.worldToScreen) {
       setDisplay(arrow, false);
@@ -1125,6 +1318,8 @@ export function createHud(ctx, alerts) {
     const speed = Math.hypot(p.vel.x, p.vel.z);
     const etaS = speed > 5 ? dist / speed : Infinity;
     setDisplay(elNavReadout, true);
+    // Live in-range fix: this is the real "[ TARGET LOCK: <label> ]" + "[ NNN u ]" case (§3E).
+    setClass(elNavReadout, 'sf-nav--lock', true);
     const label = wpLabel || '—';
     if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
     if (slow || !lastNavDist) {
@@ -1155,7 +1350,10 @@ export function createHud(ctx, alerts) {
     creditsDirty = true;
     cargoDirty = true;
     objDirty = true;
-    tickN = 5;
+    forceHudClock(numericClock);
+    forceHudClock(targetClock);
+    forceHudClock(overlayClock);
+    forceHudClock(radarClock);
     lastDefId = null;
     lastNavDist = '';
     lastNavEta = '';

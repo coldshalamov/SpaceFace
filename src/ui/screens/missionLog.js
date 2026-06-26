@@ -100,6 +100,34 @@ function objectiveText(m) {
   }
 }
 
+function nextStepText(m) {
+  const p = m.params || {};
+  const dest = m.destStationId ? destStationName(m.destStationId) : 'the tracked marker';
+  switch (m.type) {
+    case 'cargo_delivery':
+    case 'passenger_transport':
+      return 'Next: follow tracked nav to ' + dest + ', dock, and complete the handoff.';
+    case 'bulk_trade':
+      return 'Next: buy or carry ' + cmdtyName(p.cmdtyId) + ', then sell into the tracked destination market.';
+    case 'mining_quota':
+      return 'Next: mine ' + cmdtyName(p.cmdtyId) + ' in an asteroid field, keep cargo space open, then follow the tracker.';
+    case 'salvage_retrieval':
+      return 'Next: recover the marked cargo, keep enough hold space, and deliver it to ' + dest + '.';
+    case 'bounty_hunt':
+      return 'Next: follow tracked nav, engage the target, then check this log for completion.';
+    case 'patrol_clear':
+      return 'Next: follow tracked nav and clear hostiles until the progress bar fills.';
+    case 'escort':
+      return 'Next: stay near the convoy route and protect the objective until arrival.';
+    case 'recon_scan':
+      return 'Next: follow tracked nav and scan each marked site.';
+    case 'smuggling_run':
+      return 'Next: deliver quietly to ' + dest + '; avoid scans and keep an escape route.';
+    default:
+      return 'Next: track this mission, undock, and follow the nav/objective marker.';
+  }
+}
+
 function destStationName(id) {
   const info = STATION_INFO.get(id);
   return info ? info.name : 'destination';
@@ -259,7 +287,7 @@ export const missionLogScreen = {
     this._listEl.innerHTML = '';
 
     if (!active.length) {
-      this._listEl.innerHTML = '<div class="sf-mlog-empty">No active missions. Accept contracts at station mission boards.</div>';
+      this._listEl.innerHTML = '<div class="sf-mlog-empty">No active missions. Dock at a station, open Missions or the Bar, accept a contract, then undock and follow the tracked nav marker.</div>';
       return;
     }
 
@@ -298,6 +326,8 @@ export const missionLogScreen = {
       barWrap.appendChild(barFill);
       card.appendChild(barWrap);
 
+      card.appendChild(el('div', 'sf-mlog-next', nextStepText(m)));
+
       // Meta row: destination, time, rewards
       const meta = el('div', 'sf-mlog-meta mono');
       const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
@@ -312,7 +342,7 @@ export const missionLogScreen = {
       const btns = el('div', 'sf-mlog-btns');
       btns.innerHTML =
         '<button class="sf-mlog-btn-track' + (isTracked ? ' active' : '') + '" data-act="track" data-mid="' + escapeHtml(m.id) + '">' +
-          (isTracked ? 'TRACKING' : 'TRACK') +
+          (isTracked ? 'TRACKING' : 'TRACK NAV') +
         '</button>' +
         '<button class="sf-mlog-btn-abandon" data-act="abandon" data-mid="' + escapeHtml(m.id) + '">ABANDON</button>';
       card.appendChild(btns);
@@ -418,6 +448,7 @@ const CSS = `
   border: 1px solid rgba(29,51,80,.5); }
 .sf-mlog-pbar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2));
   border-radius: 2px; transition: width .3s ease; }
+.sf-mlog-next { color: var(--ink-mute); font-size: .74rem; line-height: 1.35; margin: 0 0 8px; }
 
 .sf-mlog-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: .74rem; margin-bottom: 8px; }
 .sf-mlog-dest { color: var(--ink-dim); }

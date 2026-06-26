@@ -36,6 +36,9 @@
 // drop-in replacement for renderer.render — the render layer calls bloom.render(scene, camera) instead.
 import * as THREE from 'three';
 
+const BALANCED_BLOOM_MAX_LEVELS = 2;
+const BALANCED_BLOOM_MSAA_SAMPLES = 0;
+
 // --- GLSL (inlined as strings; no external shader files) -------------------------------------
 
 // Shared vertex shader for every fullscreen pass: a [-1..1] quad straight to clip space, UV 0..1.
@@ -150,11 +153,10 @@ const COMPOSITE_FRAG = /* glsl */`
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
   }
 
-  // Hash for cheap animated grain (no texture lookup — fully procedural, frame-varying).
-  float hash21(vec2 p) {
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
+  // Interleaved gradient noise: one cheap ALU hash, no texture fetch. The floor() below makes it
+  // a fine 2x2 film-grain cell instead of a full-resolution snow field.
+  float grainNoise(vec2 p) {
+    return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
   }
 
   void main() {
@@ -196,11 +198,12 @@ const COMPOSITE_FRAG = /* glsl */`
     vec3 srgb = mix(1.055 * pow(c, vec3(1.0 / 2.4)) - vec3(0.055), c * 12.92, step(c, vec3(0.0031308)));
 
     // ---- FILM GRAIN (applied in sRGB space so it reads as photochemical noise, not a render glitch).
-    //      Animated per-pixel + per-frame; scaled by luminance so it's stronger in darks (where film
-    //      grain naturally lives) and invisible in brights.
+    //      Computed analytically to avoid a full-screen noise texture fetch; scaled by luminance so
+    //      it's stronger in darks (where film grain naturally lives) and invisible in brights.
     if (uGrain > 0.001) {
       float luma = dot(srgb, vec3(0.2126, 0.7152, 0.0722));
-      float n = hash21(vUv * vec2(1920.0, 1080.0) + fract(uTime) * 91.7) - 0.5;
+      vec2 grainCell = floor(gl_FragCoord.xy * 0.5) + floor(vec2(uTime * 37.0, uTime * 61.0));
+      float n = grainNoise(grainCell) - 0.5;
       srgb += n * uGrain * (0.25 + 0.75 * (1.0 - luma)) * 0.10;
     }
 
@@ -240,17 +243,29 @@ export function createBloom(renderer, width, height) {
     stencilBuffer: false,
   });
 
-  // The default framebuffer is MSAA'd (renderer is constructed antialias:true), but a render target
-  // is not unless we ask. Multisample ONLY the scene target so bloom-on keeps the same edge quality
-  // as the bloom-off fast path (reading rtScene.texture auto-resolves the multisample buffer). Pyramid
-  // targets stay single-sampled — they're downsampled, AA there is wasted.
-  const sceneSamples = (renderer.capabilities && renderer.capabilities.isWebGL2) ? 4 : 0;
+  // The bloom path already presents through a post composite, so multisampling the full-resolution HDR
+  // scene target adds a costly resolve before the downsample/composite chain. Keep the offscreen target
+  // single-sampled; edge treatment belongs in one maintained post-AA path, not in every HDR bloom frame.
+  // Pyramid targets stay single-sampled too — they're downsampled, AA there is wasted.
+  const maxSamples = renderer.capabilities && Number.isFinite(renderer.capabilities.maxSamples)
+    ? renderer.capabilities.maxSamples
+    : BALANCED_BLOOM_MSAA_SAMPLES;
+  const sceneSamples = (renderer.capabilities && renderer.capabilities.isWebGL2)
+    ? Math.max(0, Math.min(BALANCED_BLOOM_MSAA_SAMPLES, maxSamples))
+    : 0;
+
+  function levelCountForSize(w, h) {
+    const halfW = Math.max(1, w >> 1);
+    const halfH = Math.max(1, h >> 1);
+    if (halfW < 320 || halfH < 180) return 1;
+    return BALANCED_BLOOM_MAX_LEVELS;
+  }
 
   function createRenderTargets() {
     const rtScene = new THREE.WebGLRenderTarget(W, H, { ...rtOpts(), depthBuffer: true, samples: sceneSamples });
     const halfW = Math.max(1, W >> 1);
     const halfH = Math.max(1, H >> 1);
-    const newLevels = halfW < 320 ? 2 : 3;
+    const newLevels = levelCountForSize(W, H);
     const down = [];
     for (let i = 0; i < newLevels; i++) {
       const dw = Math.max(1, W >> (i + 1));
@@ -375,7 +390,8 @@ export function createBloom(renderer, width, height) {
     compositeMat.uniforms.uStrength.value = strength;
     compositeMat.uniforms.uExposure.value = exposure;
     compositeMat.uniforms.uAces.value = aces;
-    compositeMat.uniforms.uTime.value = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+    const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+    compositeMat.uniforms.uTime.value = timeS;
     blit(compositeMat, null);
 
     renderer.autoClear = prevAutoClear;
@@ -405,7 +421,7 @@ export function createBloom(renderer, width, height) {
     H = Math.max(1, h | 0);
     halfW = Math.max(1, W >> 1);
     halfH = Math.max(1, H >> 1);
-    const newLevels = halfW < 320 ? 2 : 3;
+    const newLevels = levelCountForSize(W, H);
     rtScene.setSize(W, H);
     // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
     while (down.length < newLevels) {
@@ -438,6 +454,26 @@ export function createBloom(renderer, width, height) {
     if (typeof o.grade === 'number') compositeMat.uniforms.uGrade.value = Math.max(0, Math.min(1, o.grade));
   }
 
+  function diagnostics() {
+    return {
+      enabled,
+      width: W,
+      height: H,
+      levels,
+      sceneSamples,
+      maxLevels: BALANCED_BLOOM_MAX_LEVELS,
+      halfWidth: halfW,
+      halfHeight: halfH,
+      strength,
+      threshold,
+      exposure,
+      grainSource: 'analytic',
+      targets: 1 + down.length + 2,
+      fullFramePasses: enabled && strength > 0.0001 ? 2 : 1,
+      bloomPasses: enabled && strength > 0.0001 ? down.length + Math.max(0, down.length - 1) : 0,
+    };
+  }
+
   function dispose() {
     rtScene.dispose();
     for (const rt of down) rt.dispose();
@@ -453,6 +489,7 @@ export function createBloom(renderer, width, height) {
     render,
     setSize,
     setOptions,
+    diagnostics,
     dispose,
     rebuild,
     get enabled() { return enabled; },

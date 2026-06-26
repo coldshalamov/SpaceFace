@@ -30,6 +30,7 @@ const DEFAULT_BOOST_RESOURCE = Object.freeze({
   dashCd: 3,
   dashCdT: 0,
 });
+const NEUTRAL_INPUT = Object.freeze({ moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false });
 
 export const flightV3 = {
   name: 'flight',
@@ -47,7 +48,9 @@ export const flightV3 = {
       shipId: null,
       driveId: null,
       family: null,
+      mode: 'assisted',
       assistMode: 'assisted',
+      assistStrength: 0,
       speed: 0,
       forwardSpeed: 0,
       lateralSpeed: 0,
@@ -106,7 +109,7 @@ export const flightV3 = {
       this._cancelPlayerBoost(player);
     }
 
-    for (const entity of state.entityList || []) {
+    for (const entity of flightCraftCandidates(state)) {
       if (!entity || entity.id === state.playerId || entity.alive === false) continue;
       if (entity.type !== 'ship' && entity.type !== 'drone') continue;
       const intent = entity.data && entity.data.intent;
@@ -129,7 +132,7 @@ export const flightV3 = {
     let boosting = input.boost;
     if (isPlayer) {
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state);
-      input = { ...input, boost: boosting };
+      input.boost = boosting;
     }
 
     const body = bodySnapshot(entity, profile);
@@ -152,20 +155,12 @@ export const flightV3 = {
     if (result.impulse) queuePhysicsImpulse(entity, result.impulse);
 
     entity.data = entity.data || {};
-    entity.data.propulsionRuntime = {
-      ...result.runtime,
-      previousBoost: !!input.boost,
-    };
+    assignPropulsionRuntime(entity, result.runtime, input.boost);
     entity.flags = entity.flags || {};
     // Player: use the resource-gated boost flag. NPC: raw intent.boost (no resource model),
     // matching the legacy controller (src/systems/flight.js:216 — AI never used e.boost).
     entity.flags.boosting = isPlayer ? boosting : !!input.boost;
-    entity._flightFrame = {
-      ...result.telemetry,
-      mode: input.assistMode,
-      driveId: result.driveId,
-      family: result.family,
-    };
+    assignFlightFrame(entity, result, input.assistMode);
 
     applyResourceDelta(entity, result.resourceDelta);
     updateBank(entity, input.turn, dt, profile);
@@ -257,13 +252,17 @@ export const flightV3 = {
 
   _publishPlayerDiagnostics(player, state) {
     const profile = resolvePropulsionProfile(player, state);
+    const frame = player._flightFrame || {};
     const telemetry = computeFlightTelemetry({ body: bodySnapshot(player, profile), profile, control: { telemetry: player._flightFrame } });
     const stop = telemetry.braking;
+    const mode = frame.mode || 'assisted';
     Object.assign(this._diag, {
       shipId: player.id,
       driveId: profile.id,
       family: profile.family,
-      assistMode: player._flightFrame && player._flightFrame.mode || 'assisted',
+      mode,
+      assistMode: mode,
+      assistStrength: flightAssistStrength(frame, mode),
       speed: telemetry.speed,
       forwardSpeed: telemetry.forwardSpeed,
       lateralSpeed: telemetry.lateralSpeed,
@@ -279,7 +278,7 @@ export const flightV3 = {
   _sanitizeAllRuntime() {
     const state = this.state;
     if (!state || !state.entityList) return;
-    for (const entity of state.entityList) {
+    for (const entity of flightCraftCandidates(state)) {
       if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
       const profile = resolvePropulsionProfile(entity, state);
       entity.data = entity.data || {};
@@ -292,7 +291,7 @@ export const flightV3 = {
   },
 
   _settleAllBanks(dt, state) {
-    for (const entity of state.entityList || []) {
+    for (const entity of flightCraftCandidates(state)) {
       if (entity && (entity.type === 'ship' || entity.type === 'drone')) settleBank(entity, dt);
     }
   },
@@ -335,17 +334,19 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer) {
   const boost = !!raw.boost;
   const previousBoost = !!runtime.previousBoost;
   let turn = finite(raw.turnIntent ?? raw.turn, 0);
+  const throttle = clamp(finite(raw.moveZ ?? raw.throttle, 0), -1, 1);
+  const strafe = clamp(finite(raw.moveX ?? raw.strafe, 0), -1, 1);
   if (!isPlayer && Number.isFinite(raw.aimAngle)) {
     turn = clamp(wrapAngle(raw.aimAngle - finite(entity.rot)) / 0.62, -1, 1);
   }
   return {
-    throttle: clamp(finite(raw.moveZ ?? raw.throttle, 0), -1, 1),
-    strafe: clamp(finite(raw.moveX ?? raw.strafe, 0), -1, 1),
+    throttle,
+    strafe,
     turn: clamp(turn, -1, 1),
     boost,
     boostPressed: boost && !previousBoost,
     boostReleased: !boost && previousBoost,
-    brake: !!(raw.brake || raw.fullStop || raw.flipBurn),
+    brake: !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && throttle < -0.55)),
     assistMode: resolveAssistMode(entity, state, raw),
   };
 }
@@ -362,6 +363,22 @@ function resolveAssistMode(entity, state, raw) {
 function propulsionRuntime(entity, profile) {
   entity.data = entity.data || {};
   return entity.data.propulsionRuntime || createPropulsionRuntime(profile);
+}
+
+function assignPropulsionRuntime(entity, runtime, boost) {
+  const target = entity.data.propulsionRuntime || (entity.data.propulsionRuntime = {});
+  Object.assign(target, runtime);
+  target.previousBoost = !!boost;
+  return target;
+}
+
+function assignFlightFrame(entity, result, mode) {
+  const frame = entity._flightFrame || (entity._flightFrame = {});
+  Object.assign(frame, result.telemetry);
+  frame.mode = mode;
+  frame.driveId = result.driveId;
+  frame.family = result.family;
+  return frame;
 }
 
 function bodySnapshot(entity, profile) {
@@ -418,12 +435,26 @@ function updateBank(entity, turn, dt, profile) {
 }
 
 function settleBank(entity, dt) { updateBank(entity, 0, dt, {}); }
-function neutralInput() { return { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false }; }
+function neutralInput() { return NEUTRAL_INPUT; }
 function playerFlightSimActive(state, player) { return !!player && state.mode === 'flight' && !(player.flags && player.flags.docked); }
 function playerFlightControlsActive(state, player) { return playerFlightSimActive(state, player) && !(state.ui && state.ui.screenStack && state.ui.screenStack.length); }
+function flightCraftCandidates(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.shipLike) return index.shipLike;
+  return (state && state.entityList) || [];
+}
 function nowMs() { return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(); }
 function damp(cur, target, lambda, dt) { return cur + (target - cur) * (1 - Math.exp(-lambda * dt)); }
 function wrapAngle(v) { let x = finite(v) % (Math.PI * 2); if (x <= -Math.PI) x += Math.PI * 2; if (x > Math.PI) x -= Math.PI * 2; return x; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function finite(v, fallback = 0) { return Number.isFinite(v) ? v : fallback; }
 function positive(v, fallback) { return Number.isFinite(v) && v > 0 ? v : fallback; }
+
+function flightAssistStrength(frame, mode) {
+  if (mode === 'newtonian') return 0;
+  const local = frame && frame.assistLocal;
+  if (local && Number.isFinite(local.forward) && Number.isFinite(local.lateral)) {
+    return Math.hypot(local.forward, local.lateral);
+  }
+  return mode === 'drift' ? 0.2 : 1;
+}

@@ -77,7 +77,8 @@ export const world = {
     this._scanning = false;
     this._driveTierId = null;     // resolved from equipped jump-drive module (null → T1 default)
     this._sectorSeq = 0;          // monotonic, disambiguates re-entry into the same sector
-    this._hazardSet = new Set();  // hazard zone indices the player is currently inside
+    this._hazardSet = new Set();      // hazard zone indices the player is currently inside
+    this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
 
     // --- event wiring (§4.4) ---
     bus.on('world:requestJump', (p) => this._onRequestJump(p || {}));
@@ -168,7 +169,10 @@ export const world = {
 
     state.world.activeSector = active;
     state.world.currentSectorId = sectorId;
-    this._hazardSet = new Set();
+    if (!this._hazardSet) this._hazardSet = new Set();
+    if (!this._hazardNextSet) this._hazardNextSet = new Set();
+    this._hazardSet.clear();
+    this._hazardNextSet.clear();
 
     // Place the player ship at the entry point (move existing entity; world never spawns the player).
     this._placePlayer(entryPoint);
@@ -862,8 +866,10 @@ export const world = {
     const player = state.entities.get(state.playerId);
     if (!player) return;
     const zones = state.world.activeSector.hazards || [];
-    const inside = this._hazardSet;
-    const nowInside = new Set();
+    const inside = this._hazardSet || (this._hazardSet = new Set());
+    let nowInside = this._hazardNextSet;
+    if (!nowInside || nowInside === inside) nowInside = this._hazardNextSet = new Set();
+    nowInside.clear();
     for (let i = 0; i < zones.length; i++) {
       const z = zones[i];
       const dx = player.pos.x - z.center.x, dz = player.pos.z - z.center.z;
@@ -882,7 +888,9 @@ export const world = {
         if (z) this.bus.emit('hazard:exit', { entityId: player.id, zoneType: z.type, intensity: z.intensity });
       }
     }
+    inside.clear();
     this._hazardSet = nowInside;
+    this._hazardNextSet = inside;
   },
 
   _spendFuel(amount) {

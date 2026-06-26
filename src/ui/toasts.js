@@ -9,6 +9,7 @@ export function createToasts(ctx) {
   const { bus } = ctx;
   const root = document.getElementById('toasts');
   const live = []; // { el, born, ttl }
+  let nextWakeAt = Infinity;
 
   function push({ text = '', kind = 'info', ttl = 4 } = {}) {
     if (!root || !text) return;
@@ -24,6 +25,7 @@ export function createToasts(ctx) {
         r.count = (r.count || 1) + 1;
         r.born = now;                       // refresh so the grouped toast gets a fresh TTL window
         r.ttl = normalizeTtlMs(ttl);
+        r.el.style.opacity = '';
         if (!r.badge) {
           const badge = document.createElement('span');
           badge.className = 'sf-toast__count';
@@ -32,6 +34,7 @@ export function createToasts(ctx) {
         }
         r.badge.textContent = '×' + r.count;
         r.el.setAttribute('aria-label', text + ' (×' + r.count + ', dismiss)');
+        recomputeNextWake();
         return;
       }
     }
@@ -57,6 +60,7 @@ export function createToasts(ctx) {
     root.prepend(el);
     const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1 };
     live.unshift(rec);
+    recomputeNextWake();
     // animate in next frame
     requestAnimationFrame(() => el.classList.add('sf-toast--in'));
     while (live.length > MAX) dismiss(live[live.length - 1]);
@@ -69,18 +73,34 @@ export function createToasts(ctx) {
     rec.el.classList.remove('sf-toast--in');
     rec.el.classList.add('sf-toast--out');
     setTimeout(() => { if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el); }, 180);
+    recomputeNextWake();
   }
 
-  // called each frame from hud's frame() (cheap; only touches opacity near expiry)
+  // Called from hud's frame(), but sleeps until a toast can fade or expire.
   function tick() {
     if (!live.length) return;
     const now = performance.now();
+    if (now < nextWakeAt) return;
+    let next = Infinity;
     for (let i = live.length - 1; i >= 0; i--) {
       const rec = live[i];
       const age = now - rec.born;
       if (age > rec.ttl) { dismiss(rec); continue; }
       const left = rec.ttl - age;
-      if (left < 300) rec.el.style.opacity = String(Math.max(0, left / 300));
+      if (left < 300) {
+        rec.el.style.opacity = String(Math.max(0, left / 300));
+        next = Math.min(next, now);
+      } else {
+        next = Math.min(next, rec.born + Math.max(0, rec.ttl - 300));
+      }
+    }
+    nextWakeAt = live.length ? next : Infinity;
+  }
+
+  function recomputeNextWake() {
+    nextWakeAt = Infinity;
+    for (let i = 0; i < live.length; i++) {
+      nextWakeAt = Math.min(nextWakeAt, fadeWakeAt(live[i], 300));
     }
   }
 
@@ -93,4 +113,8 @@ function normalizeTtlMs(ttl) {
   const n = Number(ttl);
   if (!Number.isFinite(n) || n <= 0) return 4000;
   return n > 60 ? n : n * 1000;
+}
+
+function fadeWakeAt(rec, fadeMs) {
+  return rec.born + Math.max(0, rec.ttl - fadeMs);
 }

@@ -15,46 +15,61 @@ const DEFAULTS = Object.freeze({
   heatLockoutFraction: 0.92,
   lowEnergyFraction: 0.14,
 });
+const EMPTY_REASONS = Object.freeze([]);
 
 export class ShipUtilitySelector {
   constructor({ trace = null, config = {} } = {}) {
     this.trace = trace;
     this.config = Object.freeze({ ...DEFAULTS, ...config });
+    this.freeze = config.freezeResults === false ? identity : Object.freeze;
   }
 
   select({ tick, entityId, perception, directive, actionDefs, current = null }) {
     const self = perception && perception.self;
     if (!self) throw new Error(`ship ${entityId} has no sensor self-frame`);
-    const defs = (actionDefs || []).map(normalizeActionDef).filter(Boolean);
+    const defs = preparedActionDefs(actionDefs);
     const requestedTarget = directive && directive.objective
       ? (directive.objective.targetId ?? directive.focusTargetId)
       : null;
     const target = resolveTarget(perception, requestedTarget);
     const distance = target ? distance2(self.pos, target.pos) : Infinity;
-    const candidates = [];
+    const candidates = this.trace ? [] : null;
+    let selected = null;
+    const freeze = this.freeze;
+    const consider = (candidate) => {
+      if (candidates) candidates.push(candidate);
+      if (!selected || candidateBetter(candidate, selected)) selected = candidate;
+    };
 
     for (const def of defs) {
-      const candidate = scoreAction(def, self, target, distance, directive, this.config);
+      const candidate = scoreAction(def, self, target, distance, directive, this.config, !!this.trace);
       if (!candidate.eligible) continue;
       if (current && current.actionId === def.id) {
         candidate.utility = saturate(candidate.utility + 0.06);
-        candidate.reasons.push('current_action_hysteresis');
+        if (candidate.reasons !== EMPTY_REASONS) candidate.reasons.push('current_action_hysteresis');
       }
-      candidates.push(candidate);
+      consider(candidate);
     }
 
-    candidates.push({
+    consider(attachActionMetadata({
       actionId: null,
       utility: directive && directive.objective.kind === ObjectiveKind.HOLD ? 0.62 : 0.08,
       reasons: ['no_action_hold'],
       targetId: null,
-      targetContact: target ? compactTarget(target) : null,
+      targetContact: null,
       minCommitTicks: this.config.minCommitTicks,
       switchMargin: this.config.switchMargin,
-      maneuver: maneuverFor(null, directive, target),
-    });
-    candidates.sort((a, b) => b.utility - a.utility || stableId(a.actionId).localeCompare(stableId(b.actionId)));
-    const selected = candidates[0];
+    }, null, directive));
+    if (candidates) {
+      candidates.sort((a, b) => b.utility - a.utility || stableId(a.actionId).localeCompare(stableId(b.actionId)));
+      selected = candidates[0];
+    }
+    const selectedActionDef = selected ? selected.__spacefaceActionDef || null : null;
+    if (selected && target && !selected.targetContact && (selected.targetId != null || selected.actionId == null)) {
+      selected.targetContact = compactTarget(target, freeze);
+    }
+    if (selected) selected.maneuver = maneuverFor(selectedActionDef, directive, target, freeze);
+    if (selected) stripActionMetadata(selected);
 
     if (this.trace) {
       this.trace.emit({
@@ -79,7 +94,7 @@ export class ShipUtilitySelector {
         },
       });
     }
-    return Object.freeze(selected);
+    return this.freeze(selected);
   }
 }
 
@@ -89,6 +104,8 @@ export class BehaviorExecutor {
     this.actionPort = actionPort;
     this.trace = trace;
     this.config = Object.freeze({ ...DEFAULTS, ...config });
+    this.freeze = config.freezeResults === false ? identity : Object.freeze;
+    this.traceTransitionsOnly = isBehaviorOnlyTrace(trace);
     this.byEntity = new Map();
   }
 
@@ -123,7 +140,7 @@ export class BehaviorExecutor {
         reason = !maySwitch ? 'minimum_commit_window' : 'switch_margin';
       } else {
         const interruptReason = emergency ? 'emergency_interrupt' : `utility_switch:${selected.actionId || 'hold'}`;
-        const interrupted = !!this.actionPort.interrupt(entityId, state.handle, Object.freeze({
+        const interrupted = !!this.actionPort.interrupt(entityId, state.handle, this.freeze({
           tick, reason: interruptReason, source: 'ai', nextActionId: selected.actionId, nextTargetId: selected.targetId,
         }));
         if (interrupted) {
@@ -141,7 +158,7 @@ export class BehaviorExecutor {
     }
 
     if (!state.actionId && selected.actionId != null) {
-      const request = Object.freeze({
+      const request = this.freeze({
         source: 'ai',
         tick,
         actionId: selected.actionId,
@@ -195,10 +212,10 @@ export class BehaviorExecutor {
     if (state.actionId) {
       state.maneuver = same
         ? selected.maneuver
-        : refreshFormation(state.maneuver || selected.maneuver, directive);
+        : refreshFormation(state.maneuver || selected.maneuver, directive, this.freeze);
     }
 
-    const output = Object.freeze({
+    const output = this.freeze({
       tick,
       entityId,
       decision,
@@ -209,14 +226,14 @@ export class BehaviorExecutor {
       maneuver: state.actionId ? state.maneuver : selected.maneuver,
     });
 
-    if (this.trace) {
+    if (this.trace && shouldEmitBehaviorTrace(this.traceTransitionsOnly, state, output)) {
       this.trace.emit({
         tick,
         layer: TraceLayer.BEHAVIOR,
         entityId,
         squadId: directive.squadId,
         decision: 'execute_action_def',
-        selected: output,
+        selected: compactBehaviorOutput(output),
         candidates: [{ actionId: selected.actionId, utility: selected.utility }],
         context: {
           dwellTicks: state.actionId ? tick - state.startedTick : 0,
@@ -233,6 +250,10 @@ export class BehaviorExecutor {
     this.byEntity.delete(entityId);
   }
 
+  current(entityId) {
+    return this.byEntity.get(entityId) || null;
+  }
+
   inspect(entityId = null) {
     if (entityId != null) return freezeState(this.byEntity.get(entityId));
     const out = {};
@@ -241,104 +262,95 @@ export class BehaviorExecutor {
   }
 }
 
-function scoreAction(def, self, target, distance, directive, config) {
-  const tags = new Set(def.tags);
+function scoreAction(def, self, target, distance, directive, config, collectReasons = true) {
   const objective = directive && directive.objective ? directive.objective.kind : ObjectiveKind.HOLD;
-  const reasons = [];
+  const reasons = collectReasons ? [] : EMPTY_REASONS;
+  const note = (...items) => { if (collectReasons) reasons.push(...items); };
   let utility = 0.05;
   let eligible = true;
 
-  if (tags.has('attack') || tags.has('disable')) {
+  if (hasTag(def, 'attack') || hasTag(def, 'disable')) {
     if (!target) eligible = false;
     else {
       utility += objective === ObjectiveKind.FOCUS || objective === ObjectiveKind.ENGAGE ? 0.48 : 0.18;
-      utility += tags.has('disable') && directive.tactic === 'contain_and_disable' ? 0.26 : 0;
+      utility += hasTag(def, 'disable') && directive.tactic === 'contain_and_disable' ? 0.26 : 0;
       utility += rangeFit(def, distance) * 0.25;
-      reasons.push('hostile_target', 'range_fit');
+      note('hostile_target', 'range_fit');
     }
   }
-  if (tags.has('screen')) {
+  if (hasTag(def, 'screen')) {
     utility += objective === ObjectiveKind.SCREEN ? 0.72 : 0.08;
-    reasons.push('screen_role');
+    note('screen_role');
   }
-  if (tags.has('tug') || tags.has('attach') || tags.has('steal')) {
-    const matches = (tags.has('tug') && objective === ObjectiveKind.TUG) ||
-      (tags.has('steal') && objective === ObjectiveKind.STEAL) ||
-      (tags.has('attach') && (objective === ObjectiveKind.TUG || objective === ObjectiveKind.STEAL));
+  if (hasTag(def, 'tug') || hasTag(def, 'attach') || hasTag(def, 'steal')) {
+    const matches = (hasTag(def, 'tug') && objective === ObjectiveKind.TUG) ||
+      (hasTag(def, 'steal') && objective === ObjectiveKind.STEAL) ||
+      (hasTag(def, 'attach') && (objective === ObjectiveKind.TUG || objective === ObjectiveKind.STEAL));
     utility += matches ? 0.76 : 0;
     if (!target) eligible = false;
-    reasons.push('objective_tether_action');
+    note('objective_tether_action');
   }
-  if (tags.has('counter_tether_cut')) {
+  if (hasTag(def, 'counter_tether_cut')) {
     utility += objective === ObjectiveKind.COUNTER_TETHER_CUT ? 0.94 : 0;
     eligible = eligible && !!target;
-    reasons.push('counter_tether_exposed_line');
+    note('counter_tether_exposed_line');
   }
-  if (tags.has('counter_tether_overload')) {
+  if (hasTag(def, 'counter_tether_overload')) {
     utility += objective === ObjectiveKind.COUNTER_TETHER_OVERLOAD && self.tethered ? 0.98 : 0;
     if (def.metadata && def.metadata.requiresEscapeAlignment && target) {
       const desired = Math.atan2(self.pos.z - target.pos.z, self.pos.x - target.pos.x);
       const alignmentError = Math.abs(wrapAngleLocal(desired - self.rot));
       if (alignmentError > 0.34) {
         eligible = false;
-        reasons.push('escape_heading_not_aligned');
+        note('escape_heading_not_aligned');
       } else {
-        reasons.push('escape_heading_aligned');
+        note('escape_heading_aligned');
       }
     }
-    reasons.push('counter_tether_overload');
+    note('counter_tether_overload');
   }
-  if (tags.has('retreat') || tags.has('evade')) {
+  if (hasTag(def, 'retreat') || hasTag(def, 'evade')) {
     const retreat = objective === ObjectiveKind.RETREAT;
     utility += retreat ? 0.8 : 0.08;
     utility += self.hullFraction < 0.3 ? 0.2 : 0;
-    reasons.push('survival');
+    note('survival');
   }
-  if (tags.has('repair') || tags.has('cooldown')) {
+  if (hasTag(def, 'repair') || hasTag(def, 'cooldown')) {
     utility += self.heatFraction > 0.75 ? 0.58 : 0;
     utility += self.hullFraction < 0.45 ? 0.25 : 0;
-    reasons.push('resource_recovery');
+    note('resource_recovery');
   }
 
-  if (tags.has('energy') && self.energyFraction < config.lowEnergyFraction) {
+  if (hasTag(def, 'energy') && self.energyFraction < config.lowEnergyFraction) {
     utility *= 0.15;
-    reasons.push('low_energy_penalty');
+    note('low_energy_penalty');
   }
-  if (tags.has('heat') && self.heatFraction >= config.heatLockoutFraction) {
+  if (hasTag(def, 'heat') && self.heatFraction >= config.heatLockoutFraction) {
     utility = 0;
     eligible = false;
-    reasons.push('heat_lockout');
+    note('heat_lockout');
   }
   if (def.targetKinds.length && target && !def.targetKinds.includes(target.kind)) {
     utility = 0;
     eligible = false;
-    reasons.push('target_kind_mismatch');
+    note('target_kind_mismatch');
   }
 
-  return {
+  return attachActionMetadata({
     actionId: def.id,
     utility: saturate(utility),
     eligible,
     reasons,
     targetId: target ? target.id : null,
-    targetContact: target ? compactTarget(target) : null,
+    targetContact: null,
     minCommitTicks: def.minCommitTicks,
     switchMargin: def.switchMargin,
-    maneuver: maneuverFor(def, directive, target),
-  };
+  }, def, directive);
 }
 
-function maneuverFor(def, directive, target) {
-  const tags = new Set(def ? def.tags : []);
-  let kind = ManeuverKind.FORMATION;
-  if (directive.objective.kind === ObjectiveKind.RETREAT || tags.has('retreat')) kind = ManeuverKind.RETREAT;
-  else if (directive.objective.kind === ObjectiveKind.COUNTER_TETHER_OVERLOAD) kind = ManeuverKind.ESCAPE_TETHER;
-  else if (directive.objective.kind === ObjectiveKind.COUNTER_TETHER_CUT) kind = ManeuverKind.CUT_TETHER;
-  else if (directive.objective.kind === ObjectiveKind.SCREEN || tags.has('screen')) kind = ManeuverKind.SCREEN;
-  else if (directive.objective.kind === ObjectiveKind.TUG || directive.objective.kind === ObjectiveKind.STEAL || tags.has('attach')) kind = ManeuverKind.APPROACH_SOCKET;
-  else if (tags.has('attack') || tags.has('disable')) kind = tags.has('ranged') ? ManeuverKind.ORBIT : ManeuverKind.INTERCEPT;
-  else if (directive.objective.kind === ObjectiveKind.HOLD) kind = ManeuverKind.HOLD;
-  return Object.freeze({
+function maneuverFor(def, directive, target, freeze = Object.freeze) {
+  const kind = maneuverKindFor(def, directive);
+  return freeze({
     kind,
     targetId: target ? target.id : null,
     preferredRange: def ? def.preferredRange : 0,
@@ -350,8 +362,20 @@ function maneuverFor(def, directive, target) {
   });
 }
 
-function refreshFormation(maneuver, directive) {
-  return Object.freeze({
+function maneuverKindFor(def, directive) {
+  let kind = ManeuverKind.FORMATION;
+  if (directive.objective.kind === ObjectiveKind.RETREAT || hasTag(def, 'retreat')) kind = ManeuverKind.RETREAT;
+  else if (directive.objective.kind === ObjectiveKind.COUNTER_TETHER_OVERLOAD) kind = ManeuverKind.ESCAPE_TETHER;
+  else if (directive.objective.kind === ObjectiveKind.COUNTER_TETHER_CUT) kind = ManeuverKind.CUT_TETHER;
+  else if (directive.objective.kind === ObjectiveKind.SCREEN || hasTag(def, 'screen')) kind = ManeuverKind.SCREEN;
+  else if (directive.objective.kind === ObjectiveKind.TUG || directive.objective.kind === ObjectiveKind.STEAL || hasTag(def, 'attach')) kind = ManeuverKind.APPROACH_SOCKET;
+  else if (hasTag(def, 'attack') || hasTag(def, 'disable')) kind = hasTag(def, 'ranged') ? ManeuverKind.ORBIT : ManeuverKind.INTERCEPT;
+  else if (directive.objective.kind === ObjectiveKind.HOLD) kind = ManeuverKind.HOLD;
+  return kind;
+}
+
+function refreshFormation(maneuver, directive, freeze = Object.freeze) {
+  return freeze({
     ...maneuver,
     formationSlot: directive.formation.slot,
     formationVelocity: directive.formation.velocity,
@@ -371,8 +395,8 @@ function rangeFit(def, distance) {
   return saturate(1 - error);
 }
 
-function compactTarget(target) {
-  return Object.freeze({
+function compactTarget(target, freeze = Object.freeze) {
+  return freeze({
     id: target.id, kind: target.kind, pos: target.pos, ownerId: target.ownerId,
     attachmentId: target.attachmentId, sourceSocketId: target.sourceSocketId, targetSocketId: target.targetSocketId,
     ownedBySelf: target.ownedBySelf, tags: target.tags,
@@ -392,8 +416,74 @@ function compactCandidate(candidate) {
     utility: candidate.utility,
     reasons: candidate.reasons,
     targetId: candidate.targetId,
-    maneuverKind: candidate.maneuver.kind,
+    maneuverKind: candidate.maneuver ? candidate.maneuver.kind : candidate.__spacefaceManeuverKind,
   };
+}
+
+function compactBehaviorOutput(output) {
+  return {
+    decision: output.decision,
+    reason: output.reason,
+    actionId: output.actionId,
+    targetId: output.targetId,
+    status: output.status,
+  };
+}
+
+function isBehaviorOnlyTrace(trace) {
+  return !!(trace && trace.layers && trace.layers.size === 1 && trace.layers.has(TraceLayer.BEHAVIOR));
+}
+
+function shouldEmitBehaviorTrace(transitionsOnly, state, output) {
+  if (!transitionsOnly) return true;
+  const signature = [
+    output.decision,
+    output.reason,
+    output.actionId == null ? '' : output.actionId,
+    output.targetId == null ? '' : output.targetId,
+    output.status,
+  ].join('|');
+  if (state.lastTraceSignature === signature) return false;
+  state.lastTraceSignature = signature;
+  return true;
+}
+
+function candidateBetter(candidate, current) {
+  if (candidate.utility !== current.utility) return candidate.utility > current.utility;
+  return stableId(candidate.actionId).localeCompare(stableId(current.actionId)) < 0;
+}
+
+function preparedActionDefs(actionDefs) {
+  if (!Array.isArray(actionDefs) || actionDefs.length === 0) return [];
+  let prepared = true;
+  for (const def of actionDefs) {
+    if (!def || def.__spacefaceTacticalActionDef !== true) {
+      prepared = false;
+      break;
+    }
+  }
+  if (prepared) return actionDefs;
+  const out = [];
+  for (const def of actionDefs) {
+    const normalized = normalizeActionDef(def);
+    if (normalized) out.push(normalized);
+  }
+  return out;
+}
+
+function hasTag(def, tag) {
+  return !!(def && Array.isArray(def.tags) && def.tags.includes(tag));
+}
+
+function attachActionMetadata(candidate, def, directive) {
+  candidate.__spacefaceActionDef = def || null;
+  candidate.__spacefaceManeuverKind = maneuverKindFor(def, directive);
+  return candidate;
+}
+
+function stripActionMetadata(candidate) {
+  delete candidate.__spacefaceActionDef;
+  delete candidate.__spacefaceManeuverKind;
 }
 
 function normalizeStart(value) {
@@ -424,4 +514,8 @@ function freezeState(state) {
 
 function idSort(a, b) {
   return stableId(a).localeCompare(stableId(b));
+}
+
+function identity(value) {
+  return value;
 }

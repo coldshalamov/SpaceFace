@@ -30,7 +30,7 @@ const FACTION_COLOR = {
   faction_free: '#4ECBE0', faction_choir: '#E85FD0',
 };
 const COL = {
-  player: '#39d0ff', hostile: '#ff5470', neutral: '#9aa8bc',
+  player: '#00F0FF', hostile: '#ff5470', neutral: '#9aa8bc',
   asteroid: '#6e7b8c', pickup: '#ffe36b', station: '#7af7d0', gate: '#b99cff',
   objective: '#ffe36b', ring: '#1d3350',
 };
@@ -91,6 +91,11 @@ function noGlow(g)             { g.shadowBlur = 0; g.shadowColor = 'transparent'
 // Sampled when the ship has moved ≥ ~20 world units since the last recorded point.
 const TRAIL_MAX = 7;
 const trailMap  = new Map();
+const MAX_TRAIL_UPDATES = 72;
+const TRAIL_PRUNE_INTERVAL = 20;
+const RADAR_QUERY_RADIUS_PAD = 32;
+const RADAR_SPATIAL_MIN_ASTEROIDS = 96;
+const RADAR_QUERY_VISIT_RATIO_LIMIT = 0.4;
 
 function updateTrail(e) {
   let hist = trailMap.get(e.id);
@@ -104,7 +109,7 @@ function updateTrail(e) {
   }
 }
 
-function drawTrail(g, e, px, pz, range, C, R, col) {
+function drawTrail(g, e, px, pz, scale, C, col) {
   const hist = trailMap.get(e.id);
   if (!hist || hist.length < 2) return;
   g.save();
@@ -114,13 +119,29 @@ function drawTrail(g, e, px, pz, range, C, R, col) {
   for (let i = 1; i < hist.length; i++) {
     g.globalAlpha = (i / hist.length) * 0.4;
     g.strokeStyle = col;
-    const x0 = C - ((hist[i - 1].x - px) / range) * R;
-    const y0 = C - ((hist[i - 1].z - pz) / range) * R;
-    const x1 = C - ((hist[i].x     - px) / range) * R;
-    const y1 = C - ((hist[i].z     - pz) / range) * R;
+    const x0 = C - (hist[i - 1].x - px) * scale;
+    const y0 = C - (hist[i - 1].z - pz) * scale;
+    const x1 = C - (hist[i].x     - px) * scale;
+    const y1 = C - (hist[i].z     - pz) * scale;
     g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
   }
   g.restore();
+}
+
+function drawAsteroidBlip(g, bx, by) {
+  g.beginPath(); g.moveTo(bx, by - 2.5); g.lineTo(bx + 2.5, by); g.lineTo(bx, by + 2.5); g.lineTo(bx - 2.5, by); g.closePath(); g.fill();
+}
+
+function drawTargetRing(g, bx, by) {
+  // Thin dashed tether from the player (center) to the current target (Tactical-Visor §3D).
+  g.save();
+  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1; g.setLineDash([3, 4]);
+  g.beginPath(); g.moveTo(EXPAND_C, EXPAND_C); g.lineTo(bx, by); g.stroke();
+  g.restore();
+  glow(g, '#fff', 8);
+  g.strokeStyle = '#fff'; g.lineWidth = 1.3;
+  g.beginPath(); g.arc(bx, by, 6.5, 0, Math.PI * 2); g.stroke();
+  noGlow(g);
 }
 
 // ── factory ─────────────────────────────────────────────────────────────────────────────────
@@ -184,8 +205,11 @@ export function createRadar(ctx) {
 
   // ── contact list cache ────────────────────────────────────────────────────────────────────
   let contactList = [];
+  let asteroidList = [];
   let contactsDirty = true;
   let cachedEntityList = null, cachedLength = -1, cachedPlayerId = null;
+  let radarQueryScratch = [];
+  let trailPruneCountdown = 0;
 
   function markContactsDirty() { contactsDirty = true; }
 
@@ -203,19 +227,63 @@ export function createRadar(ctx) {
     return e.type !== 'projectile' && e.type !== 'fx';
   }
 
-  function contactsFor(player) {
+  function indexedRadarContacts() {
+    const index = state.entityIndex;
+    if (!index || !index.__spacefaceEntityIndexV1) return null;
+    if (!Array.isArray(index.radarContacts) || !Array.isArray(index.radarAsteroids)) return null;
+    return index;
+  }
+
+  function refreshContacts(player) {
+    if (indexedRadarContacts()) return;
     const list = state.entityList;
     if (!contactsDirty && cachedEntityList === list && cachedLength === list.length && cachedPlayerId === state.playerId) {
-      return contactList;
+      return;
     }
-    contactList = [];
+    contactList.length = 0;
+    asteroidList.length = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (isRadarContact(e, player)) contactList.push(e);
+      if (!isRadarContact(e, player)) continue;
+      if (e.type === 'asteroid') asteroidList.push(e);
+      else contactList.push(e);
     }
     cachedEntityList = list; cachedLength = list.length; cachedPlayerId = state.playerId;
     contactsDirty = false;
+  }
+
+  function contactsFor(player) {
+    const index = indexedRadarContacts();
+    if (index) return index.radarContacts;
+    refreshContacts(player);
     return contactList;
+  }
+
+  function asteroidsFor(player) {
+    const index = indexedRadarContacts();
+    if (index) return index.radarAsteroids;
+    refreshContacts(player);
+    return asteroidList;
+  }
+
+  function nearbyAsteroidCandidates(px, pz, range, asteroidCount) {
+    const hash = state.spatialHash;
+    if (!hash || typeof hash.queryRadius !== 'function') return null;
+    if (!hash.diagnostics || !(hash.diagnostics.activeBuckets > 0)) return null;
+    if (asteroidCount < RADAR_SPATIAL_MIN_ASTEROIDS) return null;
+    const queryRadius = range + RADAR_QUERY_RADIUS_PAD;
+    const cell = Math.max(1, hash.cell || 64);
+    const x0 = Math.floor((px - queryRadius) / cell);
+    const x1 = Math.floor((px + queryRadius) / cell);
+    const z0 = Math.floor((pz - queryRadius) / cell);
+    const z1 = Math.floor((pz + queryRadius) / cell);
+    const rectangularVisits = (x1 - x0 + 1) * (z1 - z0 + 1);
+    const activeBuckets = hash.diagnostics.activeBuckets || (hash._activeBuckets && hash._activeBuckets.length) || 0;
+    const estimatedVisits = rectangularVisits > activeBuckets * 3 ? activeBuckets : rectangularVisits;
+    if (estimatedVisits > asteroidCount * RADAR_QUERY_VISIT_RATIO_LIMIT) return null;
+    radarQueryScratch.length = 0;
+    hash.queryRadius(px, pz, queryRadius, radarQueryScratch, { countDiagnostics: false });
+    return radarQueryScratch;
   }
 
   // ── draw ──────────────────────────────────────────────────────────────────────────────────
@@ -225,35 +293,27 @@ export function createRadar(ctx) {
     const range     = expanded ? baseRange * 2 : baseRange;
     const rangeSq   = range * range;
     const C = EXPAND_C, R = EXPAND_R, SIZE = EXPAND_SIZE;
+    const radarScale = R / range;
     const now = Date.now();
 
     g.clearRect(0, 0, SIZE, SIZE);
     g.drawImage(bgCanvas, 0, 0, SIZE, SIZE);
 
-    // ── outer border ring + N/S/E/W ticks ────────────────────────────────────────────────
-    g.strokeStyle = 'rgba(57,208,255,0.28)';
-    g.lineWidth   = 1;
-    g.beginPath(); g.arc(C, C, R + 6, 0, Math.PI * 2); g.stroke();
-    g.lineWidth = 1.2; g.beginPath();
-    g.moveTo(C,         C - R - 6); g.lineTo(C,         C - R - 2);
-    g.moveTo(C,         C + R + 6); g.lineTo(C,         C + R + 2);
-    g.moveTo(C + R + 6, C);         g.lineTo(C + R + 2, C);
-    g.moveTo(C - R - 6, C);         g.lineTo(C - R - 2, C);
-    g.stroke();
-    g.fillStyle    = 'rgba(57,208,255,0.45)';
+    // ── heading reference only (Tactical-Visor §3D: no enclosing border ring / dial) ──────
+    g.fillStyle    = 'rgba(0,240,255,0.45)';
     g.font         = 'bold 7px monospace';
     g.textAlign    = 'center';
     g.textBaseline = 'bottom';
-    g.fillText('N', C, C - R - 7);
+    g.fillText('N', C, C - R - 1);
 
     // ── scan sweep: 20° bright wedge + 30° trailing fade + leading edge line ─────────────
     const sweepAngle = ((now % 3000) / 3000) * Math.PI * 2;
     g.save();
     g.beginPath(); g.moveTo(C, C); g.arc(C, C, R, sweepAngle, sweepAngle + 0.35); g.closePath();
-    g.fillStyle = 'rgba(57,208,255,0.14)'; g.fill();
+    g.fillStyle = 'rgba(0,240,255,0.14)'; g.fill();
     g.beginPath(); g.moveTo(C, C); g.arc(C, C, R, sweepAngle - 0.55, sweepAngle); g.closePath();
-    g.fillStyle = 'rgba(57,208,255,0.04)'; g.fill();
-    g.strokeStyle = 'rgba(57,208,255,0.32)'; g.lineWidth = 1;
+    g.fillStyle = 'rgba(0,240,255,0.04)'; g.fill();
+    g.strokeStyle = 'rgba(0,240,255,0.32)'; g.lineWidth = 1;
     g.beginPath(); g.moveTo(C, C);
     g.lineTo(C + Math.cos(sweepAngle) * R, C + Math.sin(sweepAngle) * R);
     g.stroke();
@@ -262,21 +322,21 @@ export function createRadar(ctx) {
     // ── tactical mode overlay (expanded only) ─────────────────────────────────────────────
     if (expanded) {
       g.save();
-      g.fillStyle    = 'rgba(57,208,255,0.55)';
+      g.fillStyle    = 'rgba(0,240,255,0.55)';
       g.font         = 'bold 9px monospace';
       g.textAlign    = 'center';
       g.textBaseline = 'top';
       g.fillText('▸ TACTICAL  ·  ' + (range / 1000).toFixed(1) + 'K RANGE', C, C - R + 10);
       // distance labels on the 25 / 50 / 100% rings
       g.font         = '7px monospace';
-      g.fillStyle    = 'rgba(57,208,255,0.32)';
+      g.fillStyle    = 'rgba(0,240,255,0.32)';
       g.textAlign    = 'left';
       g.textBaseline = 'middle';
       for (const f of [0.25, 0.5, 1.0]) {
         g.fillText((range * f / 1000).toFixed(1) + 'k', C + R * f + 3, C - 5);
       }
       g.font         = '7px monospace';
-      g.fillStyle    = 'rgba(57,208,255,0.28)';
+      g.fillStyle    = 'rgba(0,240,255,0.28)';
       g.textAlign    = 'center';
       g.textBaseline = 'bottom';
       g.fillText('[click to close]', C, C + R - 6);
@@ -294,59 +354,87 @@ export function createRadar(ctx) {
     const rngRatio    = weaponRange ? Math.min(weaponRange / range, 1) : 0.6;
     const rngR        = R * rngRatio;
     g.save();
-    g.strokeStyle = 'rgba(57,208,255,0.13)'; g.lineWidth = 1; g.setLineDash([3, 4]);
+    g.strokeStyle = 'rgba(0,240,255,0.13)'; g.lineWidth = 1; g.setLineDash([3, 4]);
     g.beginPath(); g.arc(C, C, rngR, 0, Math.PI * 2); g.stroke();
     g.setLineDash([]); g.restore();
-    g.fillStyle    = 'rgba(57,208,255,0.2)'; g.font = '6px monospace';
+    g.fillStyle    = 'rgba(0,240,255,0.2)'; g.font = '6px monospace';
     g.textAlign    = 'center'; g.textBaseline = 'bottom';
     g.fillText('RNG', C, C - rngR - 1);
 
     // ── contacts ─────────────────────────────────────────────────────────────────────────
     const list = contactsFor(p);
+    const asteroidFallback = asteroidsFor(p);
+    const asteroidSource = nearbyAsteroidCandidates(px, pz, range, asteroidFallback.length) || asteroidFallback;
 
-    // update trails for visible ships; prune trails for destroyed/removed entities
+    // Prune trails for destroyed/removed entities. Trail sampling itself happens only for in-range
+    // ships below, so dense asteroid fields or off-sector traffic cannot burn radar time.
+    if (trailPruneCountdown-- <= 0) {
+      trailPruneCountdown = TRAIL_PRUNE_INTERVAL;
+      for (const id of trailMap.keys()) {
+        if (!state.entities.has(id)) trailMap.delete(id);
+      }
+    }
+
+    let targetAsteroidBlip = false, targetAsteroidX = 0, targetAsteroidY = 0;
+    const asteroidCol = COL.asteroid;
+    g.fillStyle = asteroidCol; g.strokeStyle = asteroidCol;
+    glow(g, asteroidCol, 3);
+    for (let i = 0; i < asteroidSource.length; i++) {
+      const e = asteroidSource[i];
+      if (!e.alive || e === p || e.type !== 'asteroid' || state.entities.get(e.id) !== e) continue;
+      const dx = e.pos.x - px, dz = e.pos.z - pz;
+      const distSq = dx * dx + dz * dz;
+      if (distSq > rangeSq) continue;
+      const bx = C - dx * radarScale;
+      const by = C - dz * radarScale;
+      drawAsteroidBlip(g, bx, by);
+      if (e.id === targetId) {
+        targetAsteroidBlip = true;
+        targetAsteroidX = bx;
+        targetAsteroidY = by;
+      }
+    }
+    noGlow(g);
+    if (targetAsteroidBlip) drawTargetRing(g, targetAsteroidX, targetAsteroidY);
+
+    let trailUpdates = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e.alive || e === p) continue;
-      if (e.type === 'ship' || e.type === 'drone') updateTrail(e);
-    }
-    for (const id of trailMap.keys()) {
-      if (!state.entities.has(id)) trailMap.delete(id);
-    }
-
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e.alive || e === p) continue;
+      const type = e.type;
       const dx = e.pos.x - px, dz = e.pos.z - pz;
       const distSq = dx * dx + dz * dz;
       const col = blipColor(e, playerTeam, cbMode);
-      let bx, by, off = false;
+      let bx, by, off = false, offAngle = 0;
 
       if (distSq > rangeSq) {
         off = true;
         // -dz/-dx: world +Z = screen up, world +X = screen left (see header note)
-        const a = Math.atan2(-dz, -dx);
-        bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
+        offAngle = Math.atan2(-dz, -dx);
+        bx = C + Math.cos(offAngle) * R; by = C + Math.sin(offAngle) * R;
       } else {
-        bx = C - (dx / range) * R; by = C - (dz / range) * R;   // both axes mirrored to match screen
+        bx = C - dx * radarScale; by = C - dz * radarScale;   // both axes mirrored to match screen
       }
 
       // motion trail (in-range ships/drones only)
-      if (!off && (e.type === 'ship' || e.type === 'drone')) {
-        drawTrail(g, e, px, pz, range, C, R, col);
+      if (!off && (type === 'ship' || type === 'drone')) {
+        if (trailUpdates < MAX_TRAIL_UPDATES) {
+          updateTrail(e);
+          trailUpdates++;
+        }
+        drawTrail(g, e, px, pz, radarScale, C, col);
       }
 
       g.fillStyle = col; g.strokeStyle = col;
 
       if (off) {
         // hollow chevron clamped to radar edge
-        const a = Math.atan2(-dz, -dx);
-        g.save(); g.translate(bx, by); g.rotate(a);
+        g.save(); g.translate(bx, by); g.rotate(offAngle);
         g.lineWidth = 1.5; g.beginPath();
         g.moveTo(-3, -3); g.lineTo(2, 0); g.lineTo(-3, 3); g.stroke();
         g.restore();
 
-      } else if (e.type === 'pickup') {
+      } else if (type === 'pickup') {
         // spinning animated diamond with pulse glow
         const pulse = 0.5 + 0.5 * Math.sin(now * 0.005);
         g.save();
@@ -356,12 +444,7 @@ export function createRadar(ctx) {
         g.beginPath(); g.moveTo(0, -4); g.lineTo(3.5, 0); g.lineTo(0, 4); g.lineTo(-3.5, 0); g.closePath(); g.fill();
         noGlow(g); g.restore();
 
-      } else if (e.type === 'asteroid') {
-        glow(g, col, 3);
-        g.beginPath(); g.moveTo(bx, by - 2.5); g.lineTo(bx + 2.5, by); g.lineTo(bx, by + 2.5); g.lineTo(bx - 2.5, by); g.closePath(); g.fill();
-        noGlow(g);
-
-      } else if (e.type === 'station') {
+      } else if (type === 'station') {
         if (e.data && e.data.isGate) {
           // gate: two counter-rotating glowing rings
           const spin = (now * 0.0005) % (Math.PI * 2);
@@ -401,10 +484,7 @@ export function createRadar(ctx) {
 
       // target ring
       if (e.id === targetId) {
-        glow(g, '#fff', 8);
-        g.strokeStyle = '#fff'; g.lineWidth = 1.3;
-        g.beginPath(); g.arc(bx, by, 6.5, 0, Math.PI * 2); g.stroke();
-        noGlow(g);
+        drawTargetRing(g, bx, by);
       }
     }
 
@@ -426,7 +506,7 @@ export function createRadar(ctx) {
             const la = Math.atan2(-ldz, -ldx);
             lbx = C + Math.cos(la) * R; lby = C + Math.sin(la) * R;
           } else {
-            lbx = C - (ldx / range) * R; lby = C - (ldz / range) * R;
+            lbx = C - ldx * radarScale; lby = C - ldz * radarScale;
           }
           g.save();
           g.strokeStyle = 'rgba(255,220,90,0.9)';
@@ -439,7 +519,7 @@ export function createRadar(ctx) {
             g.setLineDash([2, 2]);
             g.beginPath();
             const tdx = tgt.pos.x - px, tdz = tgt.pos.z - pz;
-            const tbx = C - (tdx / range) * R, tby = C - (tdz / range) * R;
+            const tbx = C - tdx * radarScale, tby = C - tdz * radarScale;
             g.moveTo(tbx, tby); g.lineTo(lbx, lby); g.stroke();
             g.setLineDash([]);
           }
@@ -451,7 +531,23 @@ export function createRadar(ctx) {
     // ── waypoint / objective marker ───────────────────────────────────────────────────────
     const wp  = state.nav && state.nav.waypoint;
     const pos = wp && wp.pos;
-    if (pos) {
+    if (wp && !pos) {
+      g.save();
+      const x = C, y = C - R + 18;
+      g.strokeStyle = '#ffd24a';
+      g.fillStyle = '#ffd24a';
+      glow(g, '#ffd24a', 8);
+      g.beginPath();
+      g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y); g.closePath();
+      g.stroke();
+      noGlow(g);
+      g.font = '7px monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'top';
+      g.globalAlpha = 0.82;
+      g.fillText(wp.sectorName || 'NAV', x, y + 8);
+      g.restore();
+    } else if (pos) {
       const dx = pos.x - px, dz = pos.z - pz;
       const distSq = dx * dx + dz * dz;
       let bx, by;
@@ -459,7 +555,7 @@ export function createRadar(ctx) {
         const a = Math.atan2(-dz, -dx);
         bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
       } else {
-        bx = C - (dx / range) * R; by = C - (dz / range) * R;
+        bx = C - dx * radarScale; by = C - dz * radarScale;
       }
       g.save();
       glow(g, COL.objective, 12);
@@ -474,7 +570,7 @@ export function createRadar(ctx) {
     // rot + π projects the nose onto canvas in the same direction the player faces on screen.
     g.save(); g.translate(C, C); g.rotate(Math.PI + p.rot);
     // forward FOV cone (~30-degree spread, faint)
-    g.fillStyle = 'rgba(57,208,255,0.07)';
+    g.fillStyle = 'rgba(0,240,255,0.07)';
     g.beginPath(); g.moveTo(6, 0); g.lineTo(24, -5.5); g.lineTo(24, 5.5); g.closePath(); g.fill();
     // player triangle with strong glow
     glow(g, COL.player, 12);
@@ -488,23 +584,44 @@ export function createRadar(ctx) {
 }
 
 // ── static background (pre-rendered once per size change) ────────────────────────────────────
+// Tactical-Visor §3D: the radar reads as a raw projection, not an enclosed dial. No filled panel
+// backdrop — instead a faint top-down Cartesian grid + subtle range rings, all clipped to the
+// circle. A very light dark wash only at the center keeps blips legible over bright nebulae.
 function drawBackground(g, C, R) {
   g.clearRect(0, 0, C * 2, C * 2);
-  // radial gradient backdrop — slightly lighter at center for depth
-  const grad = g.createRadialGradient(C, C, 0, C, C, R + 4);
-  grad.addColorStop(0,    'rgba(12,22,42,0.8)');
-  grad.addColorStop(0.65, 'rgba(7,14,26,0.72)');
-  grad.addColorStop(1,    'rgba(4,8,18,0.88)');
-  g.fillStyle = grad;
-  g.beginPath(); g.arc(C, C, R + 4, 0, Math.PI * 2); g.fill();
 
-  // concentric rings at 25 / 50 / 100% — outer ring slightly brighter
+  // Soft central wash (legibility against bright backgrounds) — much lighter than a panel fill,
+  // fading fully to transparent before the edge so there is no visible disc rim.
+  const grad = g.createRadialGradient(C, C, 0, C, C, R);
+  grad.addColorStop(0,   'rgba(4,8,18,0.42)');
+  grad.addColorStop(0.7, 'rgba(4,8,18,0.16)');
+  grad.addColorStop(1,   'rgba(4,8,18,0)');
+  g.fillStyle = grad;
+  g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.fill();
+
+  // Clip remaining grid art to the circle so the Cartesian lines fade at the rim, not as a square.
+  g.save();
+  g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.clip();
+
+  // faint Cartesian grid (every R/3)
+  g.strokeStyle = 'rgba(0,240,255,0.05)';
+  g.lineWidth   = 1;
+  const step = R / 3;
+  for (let d = step; d <= R; d += step) {
+    g.beginPath(); g.moveTo(C - d, C - R); g.lineTo(C - d, C + R);
+    g.moveTo(C + d, C - R); g.lineTo(C + d, C + R);
+    g.moveTo(C - R, C - d); g.lineTo(C + R, C - d);
+    g.moveTo(C - R, C + d); g.lineTo(C + R, C + d); g.stroke();
+  }
+
+  // concentric range rings at 25 / 50 / 100% — outer ring slightly brighter
   for (const f of [0.25, 0.5, 1.0]) {
-    g.strokeStyle = f === 1.0 ? 'rgba(57,208,255,0.14)' : 'rgba(57,208,255,0.07)';
+    g.strokeStyle = f === 1.0 ? 'rgba(0,240,255,0.12)' : 'rgba(0,240,255,0.06)';
     g.lineWidth   = 1;
     g.beginPath(); g.arc(C, C, R * f, 0, Math.PI * 2); g.stroke();
   }
-  // crosshair
-  g.strokeStyle = 'rgba(57,208,255,0.06)';
+  // crosshair axes
+  g.strokeStyle = 'rgba(0,240,255,0.08)';
   g.beginPath(); g.moveTo(C, C - R); g.lineTo(C, C + R); g.moveTo(C - R, C); g.lineTo(C + R, C); g.stroke();
+  g.restore();
 }

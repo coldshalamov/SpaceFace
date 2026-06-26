@@ -69,7 +69,7 @@ export function createTargetPanel(ctx) {
     if (node.textContent !== text) node.textContent = text;
   }
 
-  function update() {
+  function update(options = {}) {
     tickN++;
     const tid = state.player.targetId;
     const t = tid != null ? state.entities.get(tid) : null;
@@ -105,7 +105,7 @@ export function createTargetPanel(ctx) {
     if (shieldScale !== lastShieldScale) { fillShield.style.transform = shieldScale; lastShieldScale = shieldScale; }
 
     const p = state.entities.get(state.playerId);
-    if (p && (targetChanged || (tickN % 6) === 0)) {
+    if (p && (targetChanged || options.slow || (tickN % 6) === 0)) {
       const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
       const dist = Math.hypot(dx, dz);
       const distText = dist > 1000 ? (dist / 1000).toFixed(1) + 'k wu' : Math.round(dist) + ' wu';

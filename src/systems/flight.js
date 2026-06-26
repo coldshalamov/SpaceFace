@@ -104,7 +104,7 @@ export const flight = {
       settleBankPose(player, dt);
       this._cancelPlayerBoost(player);
     }
-    for (const e of state.entityList) {
+    for (const e of flightCraftCandidates(state)) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
       if (intent) this.applyIntent(e, intent, dt, { physicsAuthority: dynamicAuthority });
@@ -270,6 +270,12 @@ export const flight = {
 
 function nowMs() {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+}
+
+function flightCraftCandidates(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.shipLike) return index.shipLike;
+  return (state && state.entityList) || [];
 }
 
 function debugFlightEnabled() {

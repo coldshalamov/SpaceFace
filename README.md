@@ -2,7 +2,7 @@
 
 A semi‑3D, top‑down space game for desktop — fly a ship, **mine** asteroids, **trade** on a living supply/demand economy, **fight** pirates, **upgrade** your ship and modules, **jump** between sectors, take **missions**, and build **passive income** (drones, hired traders, outposts) that grows while you play. Inspired by *Freelancer*, *Endless Sky*, *Star Valor*, *Rebel Galaxy*, and the *X* series.
 
-Built with **Three.js** (true 3D meshes under a tilted top‑down camera) + a DOM/CSS overlay UI + 100% procedural Web Audio. No external art or audio assets — every ship, asteroid, station, particle, and sound is generated from primitives and code.
+Built with **Three.js** (true 3D meshes under a tilted top‑down camera), release-authored GLB ship parts, procedural world props/VFX, a DOM/CSS overlay UI, and 100% procedural Web Audio.
 
 ---
 
@@ -17,6 +17,12 @@ node server.js
 Then open **http://localhost:8123/** in a normal browser tab. That's it — no install, no build step.
 
 > Tip: keep the tab focused. Browsers pause the animation loop in fully hidden/background tabs.
+
+### Launch policy
+
+Browser (`http://localhost:8123/`), Electron dev (`npm run electron`), and packaged desktop builds must boot the same player-facing game: same `src/main.js` entry, same `createGameState()` defaults, same systems, same default settings, and the same release-authored ship assets. Query-string entries such as debug probes and capture tools are tooling only; they cannot be required to see normal assets or features.
+
+Source GLBs under `assets/ships/parts/` are authoring/build inputs. Normal play uses the release-authored runtime assets under `assets/ships/release/parts/` in both browser and desktop.
 
 ### Controls
 | Action | Key |
@@ -87,7 +93,7 @@ design/               per‑subsystem design specs + the content/balance bible
 
 An **Electron** shell is included (`electron/main.cjs`) — it serves the app on a private localhost port and opens a game window.
 
-- **Dev** (`npm run electron`): serves the raw ES modules + importmap from the project root, exactly as in a browser — no build step, hot-editable source.
+- **Dev** (`npm run electron`): serves the raw ES modules + importmap from the project root at the same root URL as the browser path — no build step, hot-editable source.
 - **Release** (`npm run dist`): first runs `build:bundle` (esbuild) to produce a tree-shaken, minified bundle in `build/web/` (~45% smaller JS than the raw `src/`+`vendor/` tree, with three/rapier/loaders code-split into on-demand chunks), then electron-builder packages that into an installer. The Electron shell auto-detects the bundle and serves it when present.
 
 ```bash

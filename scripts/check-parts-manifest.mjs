@@ -3,7 +3,7 @@
 // This checks the committed modular ship-part GLBs against assets/ships/parts/parts_manifest.json.
 // Procedurally-generated parts embed PNG textures; authored hulls (GR-9) embed KTX2/BasisU textures
 // per the spacefaceAsset contract in assetLoader.js. Both texture pipelines are accepted here.
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -128,6 +128,20 @@ for (const part of manifest.parts || []) {
   for (const socket of part.sockets || []) {
     check(`${label}: socket ${socket} exists`, metrics.nodeNames.has(socket));
   }
+  if (part.category === 'engines') {
+    const engineSurface = collectEngineDriveSurface(gltf);
+    const declaredHooks = new Set(part.hooks || []);
+    for (const role of ['core', 'fan', 'plume']) {
+      const hook = `HOOK_DRIVE_${role.toUpperCase()}`;
+      const declared = declaredHooks.has(hook);
+      const renderCount = engineSurface.driveRenderableCounts[role] || 0;
+      check(`${label}: declares standard ${hook}`, declared, `hooks=${[...declaredHooks].join(',')}`);
+      check(`${label}: exposes exactly one renderable ${hook}`, renderCount === 1,
+        `counts=${JSON.stringify(engineSurface.driveRenderableCounts)} nodes=${engineSurface.driveRenderableNodes.join(',')}`);
+    }
+    check(`${label}: exposes at least one LOD0/static engine render mesh`, engineSurface.staticRenderableCount > 0,
+      `staticRenderableCount=${engineSurface.staticRenderableCount}`);
+  }
   const undeclaredSockets = [...metrics.nodeNames].filter((name) => name.startsWith('SOCKET_') && !(part.sockets || []).includes(name));
   check(`${label}: all GLB sockets declared`, undeclaredSockets.length === 0, `undeclared=${undeclaredSockets.join(',')}`);
 
@@ -138,12 +152,30 @@ for (const part of manifest.parts || []) {
     `extras=${(extras.boundsDimensionsM || []).join(',')} manifest=${part.bounds.dimensionsM.join(',')}`);
 }
 
+const diskGlbFiles = collectGlbFiles(PART_ROOT);
+// Whole-ship bodies (wholeships/*.glb) are authored single-mesh ships wired through the hull slot,
+// not catalog parts — they have no parts_manifest entry and use the lenient legacy loader path.
+const isWholeShipFile = (f) => String(f).startsWith('wholeships/');
+const runtimeFiles = new Set(Object.values(PART_LIBRARY_CONTRACT.slots).flat());
+for (const file of diskGlbFiles) {
+  if (isWholeShipFile(file)) continue;
+  check(`committed GLB ${file} is declared in manifest`, manifestFiles.has(file));
+}
+for (const file of manifestFiles) {
+  check(`manifest GLB ${file} exists on disk`, diskGlbFiles.has(file));
+  check(`manifest GLB ${file} is wired to a runtime slot`, runtimeFiles.has(file));
+}
+for (const file of runtimeFiles) {
+  check(`runtime slot GLB ${file} exists on disk`, diskGlbFiles.has(file));
+}
+
 for (const [category, count] of categoryCounts) {
   check(`category ${category} has at least one part`, count > 0);
 }
 
 for (const [slot, files] of Object.entries(PART_LIBRARY_CONTRACT.slots)) {
   for (const file of files) {
+    if (isWholeShipFile(file)) continue; // authored whole-ship body, not a catalog part
     check(`runtime slot ${slot} file is declared in manifest`, manifestFiles.has(file), `file=${file}`);
     const category = categoryForSlot(slot);
     check(`runtime slot ${slot} file category matches`, !category || filesByCategory.get(category)?.has(file), `file=${file}`);
@@ -281,11 +313,58 @@ function sameVec(actual, expected) {
   return vector3(actual) && vector3(expected) && actual.every((value, index) => Math.abs(value - expected[index]) <= EPS);
 }
 
+function collectEngineDriveSurface(gltf) {
+  const driveRenderableCounts = { core: 0, fan: 0, plume: 0 };
+  const driveRenderableNodes = [];
+  let staticRenderableCount = 0;
+  for (const node of gltf.nodes || []) {
+    if (node.mesh == null) continue;
+    const name = normalizeNodeName(node.name);
+    const role = driveRoleFromName(name);
+    if (role) {
+      driveRenderableCounts[role]++;
+      driveRenderableNodes.push(node.name || '<unnamed>');
+    } else if (name.startsWith('LOD0_')) {
+      staticRenderableCount++;
+    }
+  }
+  return { driveRenderableCounts, driveRenderableNodes, staticRenderableCount };
+}
+
+function driveRoleFromName(name) {
+  if (name === 'HOOK_DRIVE_CORE' || name.startsWith('HOOK_DRIVE_CORE_')) return 'core';
+  if (name === 'HOOK_DRIVE_FAN' || name.startsWith('HOOK_DRIVE_FAN_')) return 'fan';
+  if (name === 'HOOK_DRIVE_PLUME' || name.startsWith('HOOK_DRIVE_PLUME_')) return 'plume';
+  return null;
+}
+
+function normalizeNodeName(name) {
+  return String(name || '').toUpperCase().replace(/[\s-]+/g, '_');
+}
+
+function collectGlbFiles(dir, prefix = '') {
+  const files = new Set();
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const rel = `${prefix}${entry.name}`;
+    const abs = resolve(dir, entry.name);
+    if (entry.isDirectory()) {
+      for (const child of collectGlbFiles(abs, `${rel}/`)) files.add(child);
+    } else if (entry.isFile() && entry.name.endsWith('.glb')) {
+      files.add(rel);
+    }
+  }
+  return files;
+}
+
 function categoryForSlot(slot) {
   if (slot === 'hull') return 'hulls';
   if (slot === 'cockpit') return 'cockpits';
   if (slot === 'engine') return 'engines';
   if (slot === 'fin') return 'fins';
+  if (slot === 'weapon') return 'weapons';
+  if (slot === 'greeble') return 'greebles';
+  if (slot === 'gear') return 'gear';
+  if (slot === 'pod') return 'pods';
   return null;
 }
 

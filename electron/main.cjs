@@ -28,6 +28,10 @@ const MIME = {
   '.ico': 'image/x-icon', '.map': 'application/json; charset=utf-8',
 };
 
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+
 function startServer() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
@@ -60,13 +64,13 @@ async function createWindow() {
   const win = new BrowserWindow({
     width: 1480, height: 920, minWidth: 1024, minHeight: 640,
     backgroundColor: '#05070d', title: 'SpaceFace', show: false,
-    webPreferences: { contextIsolation: true, nodeIntegration: false },
+    webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
   });
   win.removeMenu();
   win.once('ready-to-show', () => win.show());
-  // ?prod=1 marks this as the packaged build so the client strips debug surfaces (window.SF, boot
-  // logs, preserveDrawingBuffer). Dev servers / the preview load '/' without it and keep them.
-  win.loadURL(`http://127.0.0.1:${port}/?prod=1`);
+  // One player-facing launch URL: Electron and a browser tab both boot the same game route.
+  // Release-only debug stripping is handled by the production bundle, not by a gameplay URL flag.
+  win.loadURL(`http://127.0.0.1:${port}/`);
   // win.webContents.openDevTools();
 }
 

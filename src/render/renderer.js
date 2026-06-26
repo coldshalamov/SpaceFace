@@ -9,7 +9,7 @@ import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import { invalidateAuthoredAsset } from './assetLoader.js';
-import { invalidatePartsLibraryCaches } from './partsLibrary.js';
+import { getAuthoredInstancePoolDiagnostics, invalidatePartsLibraryCaches, preloadAuthoredPartLibrary, syncAuthoredInstancePools } from './partsLibrary.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
@@ -34,6 +34,12 @@ function sectorNebulaTint(sector) {
 let _shadowTex = null;
 let _shadowGeo = null;
 let _shadowMat = null;
+const CONTACT_SHADOW_INITIAL_CAPACITY = 256;
+const CONTACT_SHADOW_POS = new THREE.Vector3();
+const CONTACT_SHADOW_SCALE = new THREE.Vector3();
+const CONTACT_SHADOW_MATRIX = new THREE.Matrix4();
+const CONTACT_SHADOW_QUAT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+const RUNTIME_MESH_BUILD_BUDGET = 1;
 function getContactShadowTex() {
   if (_shadowTex) return _shadowTex;
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -66,20 +72,73 @@ function getContactShadowMat() {
 function attachContactShadow(mesh, entity) {
   if (!mesh || entity._noShadow) return;
   const r = Math.max(16, (entity.radius || 28) * 1.4);
-  const disc = new THREE.Mesh(getContactShadowGeo(), getContactShadowMat());
-  disc.scale.setScalar(r);
-  disc.rotation.x = -Math.PI / 2;
-  disc.position.y = -0.5; // just below entity plane
-  disc.renderOrder = -2;
-  disc.frustumCulled = false;
-  disc.userData.sharedContactShadow = true;
-  mesh.add(disc);
+  mesh.userData.contactShadowRadius = r;
+  mesh.userData.hasContactShadow = true;
+}
+
+function createContactShadowPool(scene) {
+  const pool = { scene, capacity: 0, mesh: null };
+  ensureContactShadowCapacity(pool, CONTACT_SHADOW_INITIAL_CAPACITY);
+  return pool;
+}
+
+function ensureContactShadowCapacity(pool, desired) {
+  if (!pool || desired <= pool.capacity) return;
+  const nextCapacity = Math.max(desired, pool.capacity ? pool.capacity * 2 : CONTACT_SHADOW_INITIAL_CAPACITY);
+  const previous = pool.mesh;
+  const mesh = new THREE.InstancedMesh(getContactShadowGeo(), getContactShadowMat(), nextCapacity);
+  mesh.name = 'ContactShadow_Pool';
+  mesh.count = 0;
+  mesh.renderOrder = -2;
+  mesh.frustumCulled = false;
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.userData.sharedContactShadow = true;
+  mesh.userData.contactShadowPool = true;
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  pool.mesh = mesh;
+  pool.capacity = nextCapacity;
+  if (previous && pool.scene) {
+    pool.scene.remove(previous);
+    if (typeof previous.dispose === 'function') previous.dispose();
+  }
+  if (pool.scene) pool.scene.add(mesh);
+}
+
+function syncContactShadowPool(pool, entities, meshes) {
+  if (!pool || !pool.mesh || !Array.isArray(entities)) return;
+  let count = 0;
+  for (const entity of entities) {
+    if (!entity || entity.alive === false || entity._noShadow) continue;
+    if (entity.type !== 'ship' && entity.type !== 'station') continue;
+    const mesh = meshes && meshes.get(entity.id);
+    if (!mesh || !(mesh.userData && mesh.userData.hasContactShadow)) continue;
+    ensureContactShadowCapacity(pool, count + 1);
+    const radius = Number(mesh.userData.contactShadowRadius) || Math.max(16, (entity.radius || 28) * 1.4);
+    CONTACT_SHADOW_POS.set(entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : mesh.position.x, -0.5,
+      entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : mesh.position.z);
+    CONTACT_SHADOW_SCALE.set(radius, radius, radius);
+    CONTACT_SHADOW_MATRIX.compose(CONTACT_SHADOW_POS, CONTACT_SHADOW_QUAT, CONTACT_SHADOW_SCALE);
+    pool.mesh.setMatrixAt(count, CONTACT_SHADOW_MATRIX);
+    count++;
+  }
+  pool.mesh.count = count;
+  pool.mesh.visible = count > 0;
+  pool.mesh.instanceMatrix.needsUpdate = true;
+}
+
+function requestAuthoredUpgrade(mesh, renderer, scene) {
+  const request = mesh && mesh.userData && mesh.userData.requestAuthoredUpgrade;
+  if (typeof request !== 'function') return;
+  try { request(renderer, scene); }
+  catch (error) { console.warn('[render] authored asset upgrade request failed', error); }
 }
 
 function configureShadowCasters(root) {
   root.traverse((o) => {
     if (!o.isMesh) return;
     if (!o.visible) { o.castShadow = false; o.receiveShadow = false; return; }
+    if (o.userData && o.userData.spacefaceNoShadow) { o.castShadow = false; o.receiveShadow = false; return; }
     if (o.userData && o.userData.sharedContactShadow) { o.castShadow = false; return; }
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     const casts = mats.some((m) => m && !m.transparent && m.depthWrite !== false && (m.opacity == null || m.opacity >= 1) && m.blending === THREE.NormalBlending);
@@ -106,9 +165,10 @@ export const render = {
     const state = ctx.state, bus = ctx.bus;
 
     const canvas = document.getElementById('gl-canvas');
-    // preserveDrawingBuffer is needed only by the dev /__shot screenshot route (dev browser/preview),
-    // not by the packaged build (loaded with ?prod=1) — keep it off there to avoid the readback cost.
-    const devShot = !(typeof location !== 'undefined' && new URLSearchParams(location.search).get('prod') === '1');
+    // preserveDrawingBuffer is needed only by the explicit /__shot ship capture route. Keeping it off
+    // during normal dev and perf probes avoids a readback-friendly WebGL path that players never use.
+    const query = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+    const devShot = !!(query && query.get('dev') === 'shipshot');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: devShot });
     renderer.setClearColor(0x060912, 1);
     const drawSize = applyRendererSize(renderer, state);
@@ -219,10 +279,16 @@ export const render = {
     { const i = new Image(); i.src = 'assets/cinematics/menu_background.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.starfield = starfield; this.vf = vf;
+    this.authoredPartLibraryReady = preloadAuthoredPartLibrary(renderer).catch((error) => {
+      console.warn('[render] authored part library preload failed', error);
+      return null;
+    });
+    state.render.authoredPartLibraryReady = this.authoredPartLibraryReady;
     this._keyLight = shadowsOn ? key : null; // referenced by _updateShadowFollow() each frame
     this._shadowSettingOn = shadowsOn;
     this._shadowReceiversDirty = true;
     this._shadowReceiverCount = 0;
+    this._contactShadowPool = createContactShadowPool(scene);
     this.planetFactory = createPlanetFactory();
     this._planetBodies = [];
     // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
@@ -237,6 +303,7 @@ export const render = {
     this._meshes = new Map(); // entityId -> Object3D
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
+    this._initialMeshReconcileComplete = false;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
     try {
       this.diag = installDiagnostics(renderer, {
@@ -259,6 +326,13 @@ export const render = {
         },
         perf: () => state.perfRuntime && state.perfRuntime.getReport ? state.perfRuntime.getReport() : {},
         settings: () => ({ video: { ...((state.settings && state.settings.video) || {}) } }),
+        scenePools: () => getAuthoredInstancePoolDiagnostics(scene),
+        post: () => ({
+          activePath: this._lastRenderPath || null,
+          bloomSelected: !!(this.bloom && state.settings && state.settings.video && state.settings.video.bloom !== false),
+          bloom: this.bloom && typeof this.bloom.diagnostics === 'function' ? this.bloom.diagnostics() : null,
+          renderGraph: !!this._renderGraph,
+        }),
       });
       state.render.diagnostics = this.diag;
     }
@@ -285,20 +359,7 @@ export const render = {
     ctx.helpers.addTrauma = (a) => cam.addTrauma(a);
     ctx.helpers.socketWorldPos = (id, name) => this.socketWorldPos(id, name);
 
-    bus.on('entity:spawned', ({ id, entity }) => {
-      const m = vf.build(entity);
-      if (!m) { entity._noMesh = true; return; }
-      m.position.set(entity.pos.x, 0, entity.pos.z);
-      m.rotation.y = -entity.rot;
-      if (entity.type === 'ship' || entity.type === 'station') {
-        attachContactShadow(m, entity);
-        configureShadowCasters(m);
-      }
-      entity.mesh = m; entity.view = { root: m };
-      this._meshes.set(id, m);
-      scene.add(m);
-      this._shadowReceiversDirty = true;
-    });
+    bus.on('entity:spawned', () => { this._meshReconcileDirty = true; });
     bus.on('entity:destroyed', ({ id }) => {
       const m = this._meshes.get(id);
       if (m) { scene.remove(m); disposeObject(m); this._meshes.delete(id); }
@@ -310,6 +371,9 @@ export const render = {
     bus.on('ship:appearanceChanged', ({ id }) => render.rebuildShipMesh(id));
     bus.on('camera:shake', ({ amount }) => cam.addTrauma(amount || 0.3));
     bus.on('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
+    bus.on('game:started', () => cam.snapToPlayer && cam.snapToPlayer());
+    bus.on('save:loaded', () => cam.snapToPlayer && cam.snapToPlayer());
+    bus.on('player:respawn', () => cam.snapToPlayer && cam.snapToPlayer());
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that
     // doesn't work" sore thumb. We forward the values to the systems that own them.
@@ -338,7 +402,8 @@ export const render = {
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
     bus.on('sector:enter', ({ sector } = {}) => {
-      this.reconcileMeshes();
+      this._meshReconcileDirty = true;
+      if (cam.snapToPlayer) cam.snapToPlayer();
       this._updatePlanetBodies(sector);
       // Tint the nebula backdrop to the sector's mood so each region of the galaxy reads with its
       // own color signature: clean-blue core → rust/amber industrial → blood-red frontier → violet
@@ -391,6 +456,9 @@ export const render = {
   // undone by the old sector:enter clear). Cheap: only builds/destroys on a delta.
   reconcileMeshes() {
     const state = this.state;
+    const buildBudget = this._initialMeshReconcileComplete ? RUNTIME_MESH_BUILD_BUDGET : Infinity;
+    let built = 0;
+    let pendingBuilds = false;
     // remove meshes whose entity no longer exists or has died
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
@@ -399,6 +467,10 @@ export const render = {
     // build meshes for alive entities that lack one (fx are particle-managed by vfx -> mark + skip)
     for (const e of state.entityList) {
       if (e._noMesh || this._meshes.has(e.id)) continue;
+      if (built >= buildBudget) {
+        pendingBuilds = true;
+        continue;
+      }
       const m = this.vf.build(e);
       if (!m) { e._noMesh = true; continue; }
       m.position.set(e.pos.x, 0, e.pos.z);
@@ -407,9 +479,12 @@ export const render = {
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
       this.scene.add(m);
+      requestAuthoredUpgrade(m, this.renderer, this.scene);
       this._shadowReceiversDirty = true;
+      built++;
     }
-    this._meshReconcileDirty = false;
+    this._meshReconcileDirty = pendingBuilds;
+    if (!pendingBuilds) this._initialMeshReconcileComplete = true;
   },
 
   // Rebuild one ship's mesh after a hull swap or loadout change. Disposes the old Object3D, builds a
@@ -433,6 +508,7 @@ export const render = {
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
     this.scene.add(m);
+    requestAuthoredUpgrade(m, this.renderer, this.scene);
     this._shadowReceiversDirty = true;
   },
 
@@ -613,6 +689,8 @@ export const render = {
     if (this._meshReconcileDirty) this.reconcileMeshes();
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
+    syncContactShadowPool(this._contactShadowPool, this.state.entityList, this._meshes);
+    syncAuthoredInstancePools(this.scene, { camera: this.cam.obj });
     this.starfield.recenter(this.cam.obj.position);
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
@@ -633,9 +711,15 @@ export const render = {
     // it is reachable from this live branch. The energy materials I wired write HDR radiance that the
     // render graph composites with contact-depth AO.
     if (this.state.settings.video.renderGraph && this._ensureRenderGraph()) {
+      this._lastRenderPath = 'renderGraph';
       this._renderGraph.render(this.scene, this.cam.obj, { time: this._bgTime || 0 });
-    } else if (this.bloom && this.state.settings.video.bloom !== false) this.bloom.render(this.scene, this.cam.obj);
-    else this.renderer.render(this.scene, this.cam.obj);
+    } else if (this.bloom && this.state.settings.video.bloom !== false) {
+      this._lastRenderPath = 'bloom';
+      this.bloom.render(this.scene, this.cam.obj);
+    } else {
+      this._lastRenderPath = 'straight';
+      this.renderer.render(this.scene, this.cam.obj);
+    }
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
     if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();

@@ -142,19 +142,8 @@ try { vfReleaseFailure.build(mkKestrelEntity()); } catch (e) { releaseThrow = e;
 check('release seam fails when Kestrel hero build fails', !!releaseThrow && /release mode requires Kestrel hero asset/.test(releaseThrow.message),
   releaseThrow && releaseThrow.message);
 
-check('asset release mode default is off in headless dev checks', isReleaseAssetMode() === false);
-const previousReleaseFlag = globalThis.SPACEFACE_RELEASE;
-globalThis.SPACEFACE_RELEASE = true;
-check('asset release mode honors global release flag', isReleaseAssetMode() === true);
-if (previousReleaseFlag === undefined) delete globalThis.SPACEFACE_RELEASE;
-else globalThis.SPACEFACE_RELEASE = previousReleaseFlag;
-
-const previousLocation = globalThis.location;
-globalThis.location = { search: '?prod=1' };
-check('asset release mode honors packaged prod query', isReleaseAssetMode() === true);
-if (previousLocation === undefined) delete globalThis.location;
-else globalThis.location = previousLocation;
-check('explicit releaseMode=false overrides packaged detection', isReleaseAssetMode({ releaseMode: false }) === false);
+check('asset release mode defaults to player-facing release assets', isReleaseAssetMode() === true);
+check('explicit releaseMode=false is reserved for source-asset authoring checks', isReleaseAssetMode({ releaseMode: false }) === false);
 
 // Idempotency: installing twice must not double-wrap (would re-route the fallback chain).
 installVisualOverrides(vf);

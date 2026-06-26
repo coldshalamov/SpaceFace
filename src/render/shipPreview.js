@@ -1,5 +1,5 @@
-// Dev-only ship turntable preview. Guards behind ?dev=shippreview so it NEVER loads in a packaged
-// build (?prod=1) or normal play. It builds each ship hull × its visual tiers directly via the
+// Dev-only ship turntable preview. Guards behind ?dev=shippreview so it never loads in normal play.
+// It builds each ship hull x its visual tiers directly via the
 // visual factory (bypassing tech/credit gating), renders a single framed snapshot of each into the
 // live scene, and POSTs the canvas pixels to the existing /__shot dev sink (server.js) so each hull
 // lands in .devshots/ for visual verification — without having to unlock tech and fly each ship.
@@ -10,6 +10,34 @@ import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
+import { wrapShipWithAuthoredParts } from './partsLibrary.js';
+
+// Opt-in: ?dev=shippreview&authored=1 wraps each ship with the authored GLB-part boundary (the same
+// path live gameplay uses) and waits for the async swap before snapshotting — so the turntable shows
+// the textured authored hulls, not the procedural fallback. Default stays procedural for back-compat.
+const PREVIEW_AUTHORED = typeof location !== 'undefined'
+  && new URLSearchParams(location.search).get('authored') === '1';
+function wrapIfAuthored(ent, mesh) {
+  if (!PREVIEW_AUTHORED) return mesh;
+  try { return wrapShipWithAuthoredParts(ent, mesh, { releaseMode: true }); }
+  catch (_) { return mesh; }
+}
+// The authored upgrade is armed on first render (onBeforeRender) and completes asynchronously, so we
+// must keep rendering frames while we wait for the GLB swap to land.
+async function awaitAuthoredSwap(renderer, scene, cam) {
+  if (!PREVIEW_AUTHORED) return;
+  for (let i = 0; i < 80; i++) {
+    renderer.render(scene, cam);
+    await new Promise((r) => setTimeout(r, 60));
+    // any ship boundary still loading?
+    let pending = false;
+    scene.traverse((o) => {
+      const st = o.userData && o.userData.authoredAssetState;
+      if (st === 'loading' || st === 'procedural-fallback') pending = true;
+    });
+    if (!pending) break;
+  }
+}
 
 // Sample loadouts that push each hull into each of its visual tiers (Mk.I/II/III). We pick high-tier
 // modules repeatedly so the summed tier crosses the minTier thresholds defined in ships.js visuals.
@@ -117,6 +145,7 @@ export async function runShipPreview(SF) {
       let mesh = null;
       try { mesh = vf.build(ent); } catch (err) { console.warn('[shipPreview] build failed', shipDef.id, err); continue; }
       if (!mesh) continue;
+      mesh = wrapIfAuthored(ent, mesh);
       // frame it: radius-based distance so big capitals still fit
       const R = ent.radius;
       tmp.add(mesh);
@@ -126,6 +155,8 @@ export async function runShipPreview(SF) {
       cam.position.set(-D * 0.6, D * 0.7, -D * 0.8);
       cam.lookAt(0, 0, 0);
       cam.updateProjectionMatrix();
+      // authored mode: render-poll until the GLB-part swap lands before snapshotting
+      await awaitAuthoredSwap(renderer, scene, cam);
       // warm up textures: CanvasTextures need a render pass (or initTexture) to upload to the GPU
       // before they're visible. Force-upload every texture reachable from the mesh, then render a few
       // frames with a delay so async image decode completes before the snapshot.

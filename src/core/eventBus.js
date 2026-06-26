@@ -5,6 +5,7 @@
 export function createBus() {
   const listeners = new Map(); // event -> Set<fn>
   let deferred = [];
+  const dispatchPool = [];
 
   function on(event, fn) {
     let set = listeners.get(event);
@@ -25,12 +26,17 @@ export function createBus() {
 
   function emit(event, payload) {
     const set = listeners.get(event);
-    if (!set) return;
-    // copy to tolerate handlers that subscribe/unsubscribe during dispatch
-    for (const fn of [...set]) {
+    if (!set || set.size === 0) return;
+    const snapshot = dispatchPool.pop() || [];
+    snapshot.length = 0;
+    set.forEach((fn) => snapshot.push(fn));
+    for (let i = 0; i < snapshot.length; i++) {
+      const fn = snapshot[i];
       try { fn(payload, event); }
       catch (err) { console.error(`[bus] handler error for "${event}":`, err); }
     }
+    snapshot.length = 0;
+    dispatchPool.push(snapshot);
   }
 
   /** Defer an event to the next flush() (end of sim step). */
@@ -43,7 +49,7 @@ export function createBus() {
     for (const [event, payload] of batch) emit(event, payload);
   }
 
-  function clear() { listeners.clear(); deferred = []; }
+  function clear() { listeners.clear(); deferred = []; dispatchPool.length = 0; }
 
   return { on, off, once, emit, queue, flush, clear, _listeners: listeners };
 }

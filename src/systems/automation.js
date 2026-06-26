@@ -26,6 +26,7 @@
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { ASTEROIDS } from '../data/mining.js';
@@ -66,6 +67,7 @@ const DRONE_ACCEL = 7.0;              // velocity lerp rate toward the desired h
 const DRONE_MINE_RANGE = 34;          // wu standoff at which the drone "chips" the rock
 const DRONE_ORBIT_GAP = 14;           // wu added to the asteroid radius for the standoff ring
 const DRONE_SPREAD = 26;              // wu spacing so multiple drones in a group fan out
+const ASTEROID_QUERY_RADIUS_PAD = 64;
 
 // Loss/raid tuning (spec Formulas).
 const TRADER_LOSS_CAP = 0.35;
@@ -157,6 +159,14 @@ export const automation = {
     this._outpostRaidAccum = 0;
     this._outpostSellAccum = 0;
     this._nextId = 1;
+    this._asteroidScratch = [];
+    this._diag = {
+      asteroidSpatialQueries: 0,
+      asteroidCandidates: 0,
+      alphabetSpatialQueries: 0,
+      alphabetCandidates: 0,
+    };
+    this._programCtx = makeProgramContext(this);
 
     // Dedicated seeded RNG stream (§0.5) for loss/raid rolls so they don't disturb other streams.
     this._initRng();
@@ -189,6 +199,8 @@ export const automation = {
     const a = state.automation;
     if (!a) return;
     if (!(dt > 0)) return;
+    ensureAutomationRuntime(this);
+    resetAutomationDiagnostics(this._diag);
 
     // Refill the per-minute cap token bucket: capLimit/60 per second, clamped to [0, capLimit].
     const capLimit = this.passiveCapPerMin();
@@ -200,6 +212,8 @@ export const automation = {
     this._drainUpkeep(dt, a);
 
     this.meta().lastTickTime = nowMs();
+    state.automationRuntime = state.automationRuntime || {};
+    state.automationRuntime.diagnostics = this._diag;
   },
 
   // ------------------------------------------------------------------------------------------
@@ -278,12 +292,14 @@ export const automation = {
   _runProgrammedGroup(g, def, dt, curSector) {
     // ensure entities exist (same spawn as legacy)
     if ((!g.entityIds || !g.entityIds.length) && g.sectorId === curSector) this._spawnDroneEntities(g, def);
-    const ctx = {
-      state: this.state, helpers: this.helpers, group: g,
-      steerTo: (beacon, ddt) => this._steerGroupTo(g, def, beacon, ddt, curSector),
-      mineIntoCargo: (ddt) => this._programMineIntoCargo(g, def, ddt),
-      sellMinedCargo: (stationId) => this._programSellCargo(g, stationId),
-    };
+    ensureAutomationRuntime(this);
+    const ctx = this._programCtx;
+    ctx.state = this.state;
+    ctx.helpers = this.helpers;
+    ctx.group = g;
+    ctx.def = def;
+    ctx.curSector = curSector;
+    ctx.diagnostics = this._diag;
     tickProgram(g, ctx, dt);
   },
 
@@ -463,8 +479,18 @@ export const automation = {
   },
 
   _nearestAsteroid(pos, range) {
-    const list = (this.state.entityIndex && this.state.entityIndex.asteroids) || this.state.entityList;
-    if (!list || !pos) return null;
+    ensureAutomationRuntime(this);
+    const fallback = (this.state.entityIndex && this.state.entityIndex.asteroids) || this.state.entityList;
+    if (!fallback || !pos) return null;
+    const list = queryNearbyEntities(
+      this.state,
+      pos,
+      (range || 1e9) + ASTEROID_QUERY_RADIUS_PAD,
+      this._asteroidScratch,
+      fallback,
+    );
+    if (list === this._asteroidScratch) this._diag.asteroidSpatialQueries++;
+    this._diag.asteroidCandidates += list.length;
     let best = null, bestD2 = (range || 1e9) * (range || 1e9);
     for (const e of list) {
       if (!e.alive || e.type !== 'asteroid') continue;
@@ -1408,6 +1434,49 @@ export const automation = {
 };
 
 // ---- module-scope helpers -----------------------------------------------------------------------
+function ensureAutomationRuntime(host) {
+  if (!host._asteroidScratch) host._asteroidScratch = [];
+  if (!host._programCtx) host._programCtx = makeProgramContext(host);
+  if (!host._diag) {
+    host._diag = {
+      asteroidSpatialQueries: 0,
+      asteroidCandidates: 0,
+      alphabetSpatialQueries: 0,
+      alphabetCandidates: 0,
+    };
+  }
+  if (host._diag.alphabetSpatialQueries == null) host._diag.alphabetSpatialQueries = 0;
+  if (host._diag.alphabetCandidates == null) host._diag.alphabetCandidates = 0;
+}
+
+function resetAutomationDiagnostics(diag) {
+  if (!diag) return;
+  diag.asteroidSpatialQueries = 0;
+  diag.asteroidCandidates = 0;
+  diag.alphabetSpatialQueries = 0;
+  diag.alphabetCandidates = 0;
+}
+
+function makeProgramContext(host) {
+  return {
+    state: null,
+    helpers: null,
+    group: null,
+    def: null,
+    curSector: null,
+    diagnostics: null,
+    steerTo(beacon, ddt) {
+      return host._steerGroupTo(this.group, this.def, beacon, ddt, this.curSector);
+    },
+    mineIntoCargo(ddt) {
+      return host._programMineIntoCargo(this.group, this.def, ddt);
+    },
+    sellMinedCargo(stationId) {
+      return host._programSellCargo(this.group, stationId);
+    },
+  };
+}
+
 function makeDefaultAutomation() {
   return {
     drones: [], traders: [], outposts: [], fleet: [],

@@ -27,15 +27,46 @@ const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
 // Tab order = the §5.3 rail. id === state.ui.activeStationTab value.
 const TABS = [
-  { id: 'market', label: 'Market', icon: '⚖' },
-  { id: 'shipyard', label: 'Shipyard', icon: '⛴' },
-  { id: 'outfit', label: 'Outfitting', icon: '⚙' },
-  { id: 'manufacture', label: 'Manufacture', icon: '⚒' },
-  { id: 'missions', label: 'Missions', icon: '✦' },
-  { id: 'services', label: 'Services', icon: '⛽' },
-  { id: 'factions', label: 'Factions', icon: '⚑' },
-  { id: 'bar', label: 'Bar', icon: '☕' },
+  { id: 'market', label: 'Market', icon: '⚖', help: 'Buy cargo, sell cargo, and set profitable trade nav routes.' },
+  { id: 'shipyard', label: 'Shipyard', icon: '⛴', help: 'Buy hulls to change cargo space, survivability, handling, and module slots.' },
+  { id: 'outfit', label: 'Outfitting', icon: '⚙', help: 'Install modules so your active hull can fight, mine, haul, or survive better.' },
+  { id: 'manufacture', label: 'Manufacture', icon: '⚒', help: 'Turn mined and traded materials into modules, upgrades, and hulls.' },
+  { id: 'missions', label: 'Missions', icon: '✦', help: 'Accept contracts; accepted missions auto-track and place nav guidance.' },
+  { id: 'services', label: 'Services', icon: '⛽', help: 'Refuel, repair, and handle station services before undocking.' },
+  { id: 'factions', label: 'Factions', icon: '⚑', help: 'Check standing and learn which groups control stations and contracts.' },
+  { id: 'bar', label: 'Bar', icon: '☕', help: 'Find rumors, contacts, and station-side leads.' },
 ];
+
+const STATION_TYPE_PURPOSE = {
+  trade_hub: 'Trade hubs are the safest place to compare prices, find legal cargo, and turn credits into better hulls.',
+  refinery: 'Refineries want ore and gas, then turn raw mining runs into refined materials for manufacturing.',
+  mining: 'Mining outposts sell field supplies and point you toward asteroid work, bulk contracts, and ore buyers.',
+  fab: 'Fabricators consume refined goods and components; bring materials here when you want modules or new hull options.',
+  military: 'Military stations favor repair, refuel, combat contracts, and restricted goods tied to faction standing.',
+  blackmarket: 'Black markets pay for risky cargo and covert work, but their goods and contracts can attract trouble.',
+  research: 'Research stations value scans, exotic materials, and tech-linked opportunities.',
+};
+
+function stationTypeLabel(type) {
+  if (!type) return 'Station';
+  return String(type).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function stationPurpose(stn) {
+  const type = stn && stn.type;
+  return STATION_TYPE_PURPOSE[type] || 'Dock here to trade, repair, find work, and prepare the ship for the next flight.';
+}
+
+function stationServiceSummary(stn) {
+  const services = (stn && Array.isArray(stn.services)) ? stn.services : [];
+  if (!services.length) return 'Available actions depend on this station type and your standing.';
+  return 'Available here: ' + services.map((s) => String(s).replace(/_/g, ' ')).join(', ') + '.';
+}
+
+function tabPurpose(tabId) {
+  const tab = TABS.find((t) => t.id === tabId);
+  return (tab && tab.help) || 'Pick a station action, then undock with a clearer next objective.';
+}
 
 let cssInjected = false;
 function injectCss() {
@@ -82,6 +113,14 @@ export const stationHub = {
     screen.appendChild(airlock);
     this._airlockEl = airlock.querySelector('.st-airlock__graffiti');
 
+    const purpose = document.createElement('div');
+    purpose.className = 'st-purpose';
+    purpose.innerHTML =
+      '<div class="st-purpose-main"><span class="st-purpose-type mono">Station</span><span class="st-purpose-copy"></span></div>' +
+      '<div class="st-purpose-sub"><span class="st-purpose-tab"></span><span class="st-purpose-services"></span></div>';
+    screen.appendChild(purpose);
+    this._purposeEl = purpose;
+
     // body: rail + content
     const body = document.createElement('div');
     body.className = 'st-body';
@@ -99,6 +138,7 @@ export const stationHub = {
       const b = document.createElement('button');
       b.className = 'st-tab';
       b.setAttribute('data-tab', t.id);
+      b.title = t.help;
       b.innerHTML = '<span class="st-tab-icon">' + t.icon + '</span><span class="st-tab-label">' + t.label + '</span>';
       railFrag.appendChild(b);
     }
@@ -150,7 +190,10 @@ export const stationHub = {
     const panel = document.createElement('div');
     panel.className = 'st-tabpanel st-panel st-missions';
     panel.style.display = 'none';
-    panel.innerHTML = '<div class="st-sub-h">Mission Board</div><div class="st-mission-list"></div>';
+    panel.innerHTML =
+      '<div class="st-sub-h">Mission Board</div>' +
+      '<div class="st-mission-guide">Accepting a contract adds it to the Mission Log (J), auto-tracks it, and sets nav guidance when a destination exists. Rewards fund hulls, modules, repairs, and fuel.</div>' +
+      '<div class="st-mission-list"></div>';
     const list = panel.querySelector('.st-mission-list');
     list.addEventListener('click', (ev) => {
       const btn = ev.target.closest('[data-mid]');
@@ -158,7 +201,6 @@ export const stationHub = {
       const missionId = btn.getAttribute('data-mid');
       const act = btn.getAttribute('data-act');
       if (act === 'accept') ctx.bus.emit('ui:acceptMission', { missionId });
-      else if (act === 'track') ctx.bus.emit('ui:trackMission', { missionId });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     });
     content.appendChild(panel);
@@ -173,7 +215,7 @@ export const stationHub = {
     const slots = (board && board.slots) || [];
     list.textContent = '';
     if (!slots.length) {
-      list.innerHTML = '<div class="st-empty">No contracts posted right now. Check back after the next board refresh.</div>';
+      list.innerHTML = '<div class="st-empty">No contracts posted right now. Try the Bar for leads, check another station, or undock and use the Mission Log (J) for active objectives.</div>';
       return;
     }
     const frag = document.createDocumentFragment();
@@ -181,10 +223,11 @@ export const stationHub = {
     for (const m of slots) {
       const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
       const risk = (m.riskTier != null ? m.riskTier : (m.risk != null ? m.risk : 0));
-      const reward = m.reward != null ? m.reward : (m.rewardCr != null ? m.rewardCr : 0);
+      const reward = m.reward != null ? m.reward : (m.rewardCr != null ? m.rewardCr : (m.reward_cr != null ? m.reward_cr : 0));
       const repAmt = (m.rep != null ? m.rep : (m.repReward != null ? m.repReward : (MISSION_TUNING.BASE_REP[m.type] || 0)));
       const mid = m.id != null ? m.id : m.missionId;
       const unmet = m.requirementUnmet || m.lockedReason || null;
+      const expires = m.expiresInS != null ? m.expiresInS : m.time_limit_s;
       const card = document.createElement('div');
       card.className = 'st-mission-card' + (tracked && tracked === mid ? ' tracked' : '');
       card.innerHTML =
@@ -197,14 +240,15 @@ export const stationHub = {
           escapeHtml(prettyType(m.type)) +
           (m.destStationId || m.dest ? ' → ' + escapeHtml(m.destName || m.destStationId || m.dest) : '') +
         '</div>' +
+        '<div class="st-mission-purpose">' + escapeHtml(missionValueText(m)) + '</div>' +
+        '<div class="st-mission-next">' + escapeHtml(missionNextStepText(m)) + '</div>' +
         '<div class="st-mission-rewards mono">' +
           '<span class="st-mission-cr">+' + (reward || 0).toLocaleString('en-US') + ' cr</span>' +
           (repAmt ? '<span class="st-mission-rep">+' + repAmt + ' rep</span>' : '') +
-          (m.expiresInS != null ? '<span class="st-mission-exp">' + fmtTime(m.expiresInS) + '</span>' : '') +
+          (expires != null ? '<span class="st-mission-exp">' + fmtTime(expires) + '</span>' : '') +
         '</div>' +
         '<div class="st-mission-btns">' +
-          '<button data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled title="' + escapeHtml(unmet) + '"' : '') + '>Accept</button>' +
-          '<button data-act="track" data-mid="' + escapeHtml(mid) + '" class="st-mission-track">Track</button>' +
+          '<button data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled title="' + escapeHtml(unmet) + '"' : ' title="Accept, auto-track, and add to Mission Log"') + '>Accept + Track</button>' +
           (unmet ? '<span class="st-mission-unmet">' + escapeHtml(unmet) + '</span>' : '') +
         '</div>';
       frag.appendChild(card);
@@ -230,6 +274,7 @@ export const stationHub = {
     // panel visibility
     for (const id in this._panels) this._panels[id].el.style.display = (id === tabId) ? '' : 'none';
     if (this._missionEls) this._missionEls.panel.style.display = (tabId === 'missions') ? '' : 'none';
+    this._refreshPurpose();
     // refresh the now-visible panel
     this._refreshActive(true);
   },
@@ -296,12 +341,26 @@ export const stationHub = {
     }
   },
 
+  _refreshPurpose() {
+    if (!this._purposeEl) return;
+    const stn = this._stationDef();
+    const typeEl = this._purposeEl.querySelector('.st-purpose-type');
+    const copyEl = this._purposeEl.querySelector('.st-purpose-copy');
+    const tabEl = this._purposeEl.querySelector('.st-purpose-tab');
+    const servicesEl = this._purposeEl.querySelector('.st-purpose-services');
+    if (typeEl) typeEl.textContent = stationTypeLabel(stn && stn.type);
+    if (copyEl) copyEl.textContent = stationPurpose(stn);
+    if (tabEl) tabEl.textContent = 'Current tab: ' + tabPurpose(this._activePanelId());
+    if (servicesEl) servicesEl.textContent = stationServiceSummary(stn);
+  },
+
   /** Called by screenManager when this screen becomes the top of the stack. */
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     this._resolveStation();
     this._refreshTopbar();
     this._refreshGraffiti();
+    this._refreshPurpose();
     // restore the last active tab (or default 'market')
     const tab = this._activePanelId();
     this.setTab(tab); // also refreshes the active panel via onShow
@@ -320,6 +379,7 @@ export const stationHub = {
     if (!this._el) return;
     this._refreshTopbar();
     this._refreshGraffiti();
+    this._refreshPurpose();
     this._refreshActive(false);
   },
 
@@ -401,6 +461,53 @@ function fmtTime(s) {
   return s + 's';
 }
 
+function missionDestName(m) {
+  return m.destName || m.destStationName || m.destStationId || m.dest || 'the target area';
+}
+
+function missionValueText(m) {
+  switch (m && m.type) {
+    case 'cargo_delivery':
+      return 'Pays for hauling cargo; useful when you have free cargo space and need credits for refits.';
+    case 'bulk_trade':
+      return 'Turns market buying/selling into a contract payout on top of normal trade profit.';
+    case 'mining_quota':
+      return 'Rewards asteroid work; better mining beams and cargo modules make this faster.';
+    case 'salvage_retrieval':
+      return 'Pays for recovery runs; bring cargo room and expect debris or hostile space.';
+    case 'bounty_hunt':
+    case 'patrol_clear':
+      return 'Combat work for credits and standing; hull, shield, and weapon upgrades matter here.';
+    case 'escort':
+      return 'Convoy work that rewards survivability, weapons, and staying near the objective.';
+    case 'smuggling_run':
+      return 'High-risk cargo pay; restricted routes can be profitable but invite scans and trouble.';
+    case 'passenger_transport':
+      return 'Straight route work; faster ships and safer paths reduce deadline pressure.';
+    case 'recon_scan':
+      return 'Exploration work; scanners, utility slots, and map awareness shorten the job.';
+    default:
+      return 'Contract reward feeds the upgrade loop: credits, standing, fuel, repairs, and better gear.';
+  }
+}
+
+function missionNextStepText(m) {
+  const dest = missionDestName(m || {});
+  switch (m && m.type) {
+    case 'mining_quota':
+      return 'Next: accept, undock to an asteroid field, mine the quota, then follow the tracked objective.';
+    case 'bulk_trade':
+      return 'Next: accept, buy or carry the requested goods, then sell them where the tracker points.';
+    case 'bounty_hunt':
+    case 'patrol_clear':
+      return 'Next: accept, undock, follow the tracked nav, and be ready to fight.';
+    case 'recon_scan':
+      return 'Next: accept, undock, follow tracked nav, and scan the marked sites.';
+    default:
+      return 'Next: accept to auto-track it, undock, then follow nav guidance toward ' + dest + '.';
+  }
+}
+
 // ---- scoped CSS (injected once; uses theme vars from styles/ui.css) --------------------------
 const STATION_CSS = `
 .st-hub { width: min(1100px, 94vw); height: min(760px, 92vh); display: flex; flex-direction: column;
@@ -425,6 +532,13 @@ const STATION_CSS = `
   color:#9aa6b8; text-transform:uppercase; opacity:.82; transform:rotate(var(--graffiti-skew));
   text-shadow:0 1px 2px #000; line-height:1.3; }
 .st-airlock__empty { font-size:10px; color:var(--ink-mute); font-style:italic; opacity:.5; }
+.st-purpose { display: grid; gap: 4px; padding: 9px 20px 10px; border-bottom: 1px solid var(--panel-edge);
+  background: rgba(8,14,26,.54); }
+.st-purpose-main { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.st-purpose-type { color: var(--accent); font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; flex: none; }
+.st-purpose-copy { color: var(--ink); font-size: .82rem; line-height: 1.35; }
+.st-purpose-sub { display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--ink-mute); font-size: .72rem; line-height: 1.35; }
+.st-purpose-tab { color: var(--ink-dim); }
 .st-undock:hover { background: var(--grad-accent); color: #04121a; box-shadow: 0 0 16px rgba(57,208,255,.4); }
 .st-body { display: flex; flex: 1; min-height: 0; }
 .st-rail { width: 176px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-3) var(--sp-2);
@@ -465,6 +579,10 @@ const STATION_CSS = `
 .st-stat-l { font-size: .62rem; letter-spacing: .14em; color: var(--ink-mute); text-transform: uppercase; }
 .st-credits { color: var(--energy); font-size: 1.05rem; }
 .st-cargo { color: var(--cargo); font-size: 1.05rem; }
+.st-market-purpose { margin: -2px 0 10px; border: 1px solid var(--panel-edge); border-radius: 6px;
+  padding: 9px 11px; background: rgba(10,18,32,.5); color: var(--ink-dim); font-size: .8rem; line-height: 1.4; }
+.st-market-purpose b { color: var(--ink); font-weight: 600; }
+.st-cmdty-purpose { display: block; margin-top: 3px; white-space: normal; line-height: 1.25; }
 .st-row .c-qty { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
 .st-row .c-qty button { padding: 2px 7px; font-size: .72rem; }
 .st-row .c-qty button.on { border-color: var(--accent); color: var(--accent); }
@@ -537,6 +655,11 @@ const STATION_CSS = `
 .st-sy-card.active { border-color: var(--accent); box-shadow: 0 0 12px rgba(57,208,255,.25); }
 .st-sy-name { font-size: .95rem; margin-bottom: 3px; }
 .st-sy-meta { color: var(--ink-dim); font-size: .72rem; margin-bottom: 8px; }
+.st-sy-guide, .st-sy-purpose, .st-sy-card-purpose { color: var(--ink-dim); font-size: .74rem; line-height: 1.35; }
+.st-sy-guide { margin: -2px 0 10px; border: 1px solid var(--panel-edge); border-radius: 6px;
+  padding: 9px 11px; background: rgba(10,18,32,.5); }
+.st-sy-purpose { display: block; margin-top: 3px; white-space: normal; }
+.st-sy-card-purpose { margin: -3px 0 8px; color: var(--ink-mute); }
 .st-sy-btns { display: flex; gap: 6px; }
 .st-sy-btns button { font-size: .75rem; padding: 4px 8px; }
 
@@ -658,6 +781,8 @@ const STATION_CSS = `
 .st-bar-reply.show { max-height: 120px; }
 
 /* missions */
+.st-mission-guide { margin: -2px 0 12px; border: 1px solid var(--panel-edge); border-radius: 6px;
+  padding: 9px 11px; background: rgba(10,18,32,.5); color: var(--ink-dim); font-size: .8rem; line-height: 1.4; }
 .st-mission-list { display: flex; flex-direction: column; gap: 10px; }
 .st-mission-card { border: 1px solid var(--panel-edge); border-radius: 8px; padding: 11px 14px;
   background: rgba(10,18,32,.55); }
@@ -669,12 +794,13 @@ const STATION_CSS = `
 .st-mission-risk.r0 { color: var(--good); } .st-mission-risk.r1 { color: var(--accent-2); }
 .st-mission-risk.r2 { color: var(--warn); } .st-mission-risk.r3, .st-mission-risk.r4 { color: var(--danger); }
 .st-mission-meta { font-size: .72rem; color: var(--ink-dim); margin: 4px 0; }
+.st-mission-purpose { color: var(--ink); font-size: .78rem; line-height: 1.35; margin-top: 5px; }
+.st-mission-next { color: var(--ink-mute); font-size: .72rem; line-height: 1.35; margin: 3px 0 8px; }
 .st-mission-rewards { display: flex; gap: 14px; font-size: .8rem; margin-bottom: 8px; }
 .st-mission-cr { color: var(--energy); }
 .st-mission-rep { color: var(--accent-2); }
 .st-mission-exp { color: var(--ink-mute); }
 .st-mission-btns { display: flex; gap: 8px; align-items: center; }
 .st-mission-btns button { font-size: .78rem; }
-.st-mission-track { border-color: var(--panel-edge-2); }
 .st-mission-unmet { font-size: .7rem; color: var(--danger); }
 `;

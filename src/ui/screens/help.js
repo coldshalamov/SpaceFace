@@ -1,5 +1,5 @@
 // Help / codex screen (ARCHITECTURE §5.6; design/specs/09).
-// Tabbed reference: Controls, Ships, Commodities, Ores, Factions.
+// Tabbed reference: Controls, Loops, Ships, Commodities, Ores, Factions.
 // The Controls tab reads the LIVE keybindings the player set in Settings → Controls
 // (state.settings.controls.bindings), falling back to the input system's DEFAULT_BINDINGS so the
 // help always reflects what the keys actually do — previously it read a nonexistent
@@ -119,6 +119,7 @@ const SECTIONS = [
     ['Dock', null, 'E (when prompted)'],
     ['Pause', null, 'ESC / P'],
     ['Star-map', null, 'M'],
+    ['Local system map', null, 'N'],
     ['Tech tree', null, 'T'],
     ['Mission log', null, 'J'],
     ['Help', null, 'F1 / H'],
@@ -167,7 +168,15 @@ function keyLabel(binds, action, def) {
   return arr.map(codeLabel).join(' / ');
 }
 
-const TABS = ['Controls', 'Ships', 'Commodities', 'Ores', 'Factions'];
+const TABS = ['Controls', 'Loops', 'Ships', 'Commodities', 'Ores', 'Factions'];
+
+const GAMEPLAY_LOOPS = [
+  ['Dock and choose work', 'E near a station -> Missions or Bar -> Accept + Track -> Undock', 'Contracts become Mission Log entries and tracked nav markers; rewards fund ship upgrades and supplies.'],
+  ['Trade for upgrades', 'Market -> buy cheap cargo -> Best Trades Set Nav -> sell high', 'Cargo space turns into credits; credits buy hulls, modules, repairs, and fuel.'],
+  ['Mine into economy', 'Asteroid field -> mine ore -> sell at mining/refinery markets or manufacture', 'Mining rewards cargo space and mining slots; refined goods feed modules and hull production.'],
+  ['Refit for a job', 'Shipyard for hull role -> Outfitting for modules -> Services before launch', 'Hull choice sets capacity and slots; modules decide whether the ship fights, hauls, mines, scans, or survives.'],
+  ['Track objectives', 'Mission Log (J) -> Track Nav -> HUD marker / local map (N) / star-map (M)', 'The log is the active objective home when you forget what the current flight is for.'],
+];
 
 export const helpScreen = {
   id: 'help',
@@ -243,6 +252,7 @@ export const helpScreen = {
 
     switch (this._activeTab) {
       case 'Controls':  this._renderControls(ctx); break;
+      case 'Loops':     this._renderLoops(); break;
       case 'Ships':     this._renderShips(); break;
       case 'Commodities': this._renderCommodities(); break;
       case 'Ores':      this._renderOres(); break;
@@ -265,6 +275,19 @@ export const helpScreen = {
       this._body.appendChild(grid);
     });
     this._body.appendChild(el('p', 'sf-muted', 'Flight keys can be rebound in Settings → Controls. UI keys are fixed (ARCHITECTURE §5.6).'));
+  },
+
+  _renderLoops() {
+    this._body.appendChild(el('h2', null, 'Interaction Loops'));
+    GAMEPLAY_LOOPS.forEach(([name, route, value]) => {
+      const card = el('div', 'sf-slot');
+      const main = el('div', 'sf-slot-main');
+      main.appendChild(el('div', 'sf-slot-name', name));
+      main.appendChild(el('div', 'sf-slot-sub', route));
+      main.appendChild(el('div', 'sf-muted', value));
+      card.appendChild(main);
+      this._body.appendChild(card);
+    });
   },
 
   _renderShips() {

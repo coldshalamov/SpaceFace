@@ -102,6 +102,7 @@ export function ensurePerfRuntime(state) {
 
   const phaseStats = {
     sim: createStat(),
+    simFrame: createStat(),
     render: createStat(),
     vfx: createStat(),
     feel: createStat(),
@@ -109,6 +110,9 @@ export function ensurePerfRuntime(state) {
   };
   const systemStats = Object.create(null);
   const frameStats = createStat();
+  const frameCallbackStats = createStat();
+  const frameUntrackedStats = createStat();
+  let frameAccountedMs = 0;
   const loop = {
     stepsThisFrame: 0,
     maxStepsThisFrame: 0,
@@ -117,7 +121,7 @@ export function ensurePerfRuntime(state) {
     lastFrameDtMs: 0,
   };
   const counters = {
-    spatialHash: { rebuilds: 0, queries: 0, candidates: 0 },
+    spatialHash: { rebuilds: 0, dynamicRebuilds: 0, queries: 0, candidates: 0 },
   };
 
   function statForSystem(name) {
@@ -131,6 +135,7 @@ export function ensurePerfRuntime(state) {
     beginFrame(frameDt) {
       const ms = Number.isFinite(frameDt) ? frameDt * 1000 : 0;
       loop.lastFrameDtMs = ms;
+      frameAccountedMs = 0;
       sample(frameStats, ms);
     },
     recordLoop(steps, shedBacklog, accumulatorS) {
@@ -142,28 +147,42 @@ export function ensurePerfRuntime(state) {
     recordStepTotal(ms) {
       sample(phaseStats.sim, ms);
     },
+    recordSimFrame(ms) {
+      frameAccountedMs += Number.isFinite(ms) && ms > 0 ? ms : 0;
+      sample(phaseStats.simFrame, ms);
+    },
     recordSystem(name, ms) {
       sample(statForSystem(name), ms);
     },
     recordPhase(name, ms) {
       const stat = phaseStats[name];
+      frameAccountedMs += Number.isFinite(ms) && ms > 0 ? ms : 0;
       if (stat) sample(stat, ms);
     },
-    recordSpatialHash({ rebuilds = 0, queries = 0, candidates = 0 } = {}) {
+    recordFrameCallback(ms) {
+      sample(frameCallbackStats, ms);
+      sample(frameUntrackedStats, Math.max(0, ms - frameAccountedMs));
+    },
+    recordSpatialHash({ rebuilds = 0, dynamicRebuilds = 0, queries = 0, candidates = 0 } = {}) {
       counters.spatialHash.rebuilds += rebuilds | 0;
+      counters.spatialHash.dynamicRebuilds += dynamicRebuilds | 0;
       counters.spatialHash.queries += queries | 0;
       counters.spatialHash.candidates += candidates | 0;
     },
     reset() {
       resetStat(frameStats);
+      resetStat(frameCallbackStats);
+      resetStat(frameUntrackedStats);
       for (const stat of Object.values(phaseStats)) resetStat(stat);
       for (const stat of Object.values(systemStats)) resetStat(stat);
+      frameAccountedMs = 0;
       loop.stepsThisFrame = 0;
       loop.maxStepsThisFrame = 0;
       loop.shedBacklogFrames = 0;
       loop.accumulatorS = 0;
       loop.lastFrameDtMs = 0;
       counters.spatialHash.rebuilds = 0;
+      counters.spatialHash.dynamicRebuilds = 0;
       counters.spatialHash.queries = 0;
       counters.spatialHash.candidates = 0;
     },
@@ -172,9 +191,12 @@ export function ensurePerfRuntime(state) {
       for (const name of Object.keys(systemStats)) systems[name] = reportStat(systemStats[name]);
       return {
         frame: reportStat(frameStats),
+        frameCallback: reportStat(frameCallbackStats),
+        frameUntracked: reportStat(frameUntrackedStats),
         loop: { ...loop },
         phases: {
           sim: reportStat(phaseStats.sim),
+          simFrame: reportStat(phaseStats.simFrame),
           render: reportStat(phaseStats.render),
           vfx: reportStat(phaseStats.vfx),
           feel: reportStat(phaseStats.feel),
