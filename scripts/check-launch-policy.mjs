@@ -21,6 +21,41 @@ assert.doesNotMatch(
   /\?|prod=1|release=1|debug=|dev=/,
   'Electron must not inject mode/query flags into the normal game launch URL'
 );
+assert.match(
+  electronMain,
+  /const PORT = 41788;/,
+  'Electron must use the fixed packaged-app port so localStorage saves survive relaunches'
+);
+assert.match(
+  electronMain,
+  /server\.listen\(PORT, '127\.0\.0\.1'/,
+  'Electron must try the fixed port before any fallback port'
+);
+assert.match(
+  electronMain,
+  /'\.glb': 'model\/gltf-binary'/,
+  'Electron MIME table must serve release-authored GLB ship assets as model/gltf-binary'
+);
+assert.match(
+  electronMain,
+  /'\.gltf': 'model\/gltf\+json; charset=utf-8'/,
+  'Electron MIME table must serve GLTF JSON assets consistently with the dev server'
+);
+assert.match(
+  electronMain,
+  /'\.ktx2': 'image\/ktx2'/,
+  'Electron MIME table must serve KTX2 textures consistently with the dev server'
+);
+assert.match(
+  electronMain,
+  /'Cache-Control': 'no-cache'/,
+  'Electron static server must keep no-cache semantics like the browser dev server'
+);
+assert.match(
+  electronMain,
+  /stats\.isDirectory\(\).*index\.html/s,
+  'Electron static server must support directory index fallback like the browser dev server'
+);
 
 const releaseMode = read('src/render/releaseMode.js');
 assert.doesNotMatch(
@@ -57,6 +92,25 @@ assert.doesNotMatch(
   /\?prod=1/,
   'Bundle policy must not refer to prod query flags'
 );
+assert.match(
+  bundle,
+  /RELEASE_ASSET_DIRS = \['cinematics', 'ui', 'ships'\]/,
+  'Production bundle must copy the runtime asset dirs used by CSS/UI and ships'
+);
+assert.match(
+  bundle,
+  /copyDir\(srcDir, join\(OUT, 'assets', name\)\)/,
+  'Production bundle must copy each release asset dir into build/web/assets/'
+);
+
+const packageJson = JSON.parse(read('package.json'));
+const packageFiles = (packageJson.build && packageJson.build.files) || [];
+for (const requiredGlob of ['build/web/**', 'assets/cinematics/menu_background.jpg', 'assets/ui/**', 'assets/ships/**']) {
+  assert.ok(
+    packageFiles.includes(requiredGlob),
+    `electron-builder files must include ${requiredGlob} so packaged builds serve the same player-facing runtime assets`
+  );
+}
 
 const gameState = read('src/core/gameState.js');
 assert.match(
@@ -98,4 +152,4 @@ assert.match(
   'save:loaded must expose whether playable flight is waiting on authored visual readiness'
 );
 
-console.log('Launch policy OK: one player URL, release-authored default assets, canonical runtime backends, no prod query fork.');
+console.log('Launch policy OK: one player URL, stable Electron save origin, release-authored default assets, packaged runtime asset parity, canonical runtime backends, no prod query fork.');
