@@ -928,7 +928,17 @@ const STATION_CSS = `
 .st-market-purpose { margin: -2px 0 10px; border: 1px solid var(--panel-edge); border-radius: 6px;
   padding: 9px 11px; background: rgba(10,18,32,.5); color: var(--ink-dim); font-size: .8rem; line-height: 1.4; }
 .st-market-purpose b { color: var(--ink); font-weight: 600; }
+.st-market-mission { margin: -2px 0 10px; border: 1px solid rgba(57,208,255,.46); border-radius: 6px;
+  padding: 9px 11px; background: rgba(15,37,54,.38); box-shadow: 0 0 12px rgba(57,208,255,.12); }
+.st-market-mission[hidden] { display: none; }
+.st-market-mission-label { color: var(--accent); font-size: .6rem; letter-spacing: .14em; margin-bottom: 4px; }
+.st-market-mission-title { color: var(--ink); font-weight: 700; font-size: .88rem; line-height: 1.3; }
+.st-market-mission-body { color: var(--ink-dim); font-size: .78rem; line-height: 1.35; margin-top: 4px; }
+.st-market-mission-meta { color: var(--energy); font-size: .66rem; margin-top: 5px; }
 .st-cmdty-purpose { display: block; margin-top: 3px; white-space: normal; line-height: 1.25; }
+.st-market-mission-line { display: block; margin-top: 3px; color: var(--accent); white-space: normal; line-height: 1.25; }
+.st-market-mission-line[hidden] { display: none; }
+.st-row.tracked-mission { border-color: rgba(57,208,255,.45); background: rgba(57,208,255,.045); }
 .st-row .c-qty { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
 .st-row .c-qty button { padding: 2px 7px; font-size: .72rem; }
 .st-row .c-qty button.on { border-color: var(--accent); color: var(--accent); }

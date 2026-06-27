@@ -161,6 +161,45 @@ function stationMarketPurpose(state, stationId) {
   }
 }
 
+const MARKET_MISSION_TYPES = new Set(['bulk_trade', 'cargo_delivery', 'smuggling_run', 'salvage_retrieval']);
+
+function trackedMarketMission(state, stationId) {
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const active = state && state.missions && state.missions.active || [];
+  const mission = trackedId ? active.find((m) => m && m.id === trackedId && m.status === 'active') : null;
+  const cmdtyId = mission && mission.params && mission.params.cmdtyId;
+  if (!mission || !cmdtyId || !MARKET_MISSION_TYPES.has(mission.type)) return null;
+  const def = COMMODITY_BY_ID.get(cmdtyId);
+  const target = Math.max(1, Number(mission.objectiveTarget || mission.params.qty || 1) || 1);
+  const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
+  const remaining = Math.max(0, target - progress);
+  const owned = Math.max(0, Number(state.player && state.player.cargo && state.player.cargo.items && state.player.cargo.items[cmdtyId]) || 0);
+  const atDestination = !!(mission.destStationId && mission.destStationId === stationId);
+  return {
+    mission,
+    cmdtyId,
+    cmdtyName: def ? def.name : cmdtyId,
+    target,
+    progress,
+    remaining,
+    owned,
+    needToLoad: Math.max(0, remaining - owned),
+    atDestination,
+    destination: mission.destStationId ? stationName(state, mission.destStationId) : 'destination',
+  };
+}
+
+function trackedMarketActionText(info) {
+  if (!info) return '';
+  if (info.atDestination) {
+    return 'Tracked contract destination: sell ' + fmtCr(info.remaining) + 'u here to finish the job.';
+  }
+  if (info.needToLoad > 0) {
+    return 'Tracked contract cargo: load ' + fmtCr(info.needToLoad) + 'u more before undocking for ' + info.destination + '.';
+  }
+  return 'Tracked contract cargo is aboard: undock and follow nav guidance to ' + info.destination + '.';
+}
+
 function selectedQtyFor(qtySetting, maxValue) {
   if (qtySetting === 'max') return Math.max(0, Math.floor(maxValue || 0));
   return Math.max(0, Math.floor(Number(qtySetting) || 0));
@@ -189,6 +228,11 @@ export function createMarketPanel(ctx) {
   purpose.className = 'st-market-purpose';
   purpose.innerHTML = '<b>Market loop:</b> <span class="st-market-purpose-text"></span>';
   root.appendChild(purpose);
+
+  const missionCallout = document.createElement('div');
+  missionCallout.className = 'st-market-mission';
+  missionCallout.hidden = true;
+  root.appendChild(missionCallout);
 
   // --- Phase 4: trade route planner ("Best Trades") ---
   // Scans marketIntel snapshots + this station's market for profitable buy-here→sell-there routes,
@@ -366,6 +410,7 @@ export function createMarketPanel(ctx) {
         '<span class="c-name">' + escapeHtml(c.name) + legalTag +
           '<canvas class="st-spark" width="56" height="14" title="Recent price trend"></canvas>' +
           '<span class="st-slotline st-cmdty-purpose">' + escapeHtml(commodityPurpose(c)) + '</span>' +
+          '<span class="st-slotline st-market-mission-line"></span>' +
         '</span>' +
         '<span class="c-num st-owned mono">0</span>' +
         '<span class="c-num st-buy mono">—</span>' +
@@ -417,10 +462,19 @@ export function createMarketPanel(ctx) {
     header.querySelector('.st-cargo').textContent = Math.round(p.cargo.usedVolume || 0) + ' / ' + cap + ' u';
     const purposeText = purpose.querySelector('.st-market-purpose-text');
     if (purposeText) purposeText.textContent = stationMarketPurpose(state, stationId);
+    const missionInfo = trackedMarketMission(state, stationId);
+    renderMissionCallout(missionInfo);
     refreshPlanner(state, stationId);
     if (!panel._rowEls) return;
     for (const cmdtyId in panel._rowEls) {
       const row = panel._rowEls[cmdtyId];
+      const missionMatch = missionInfo && missionInfo.cmdtyId === cmdtyId;
+      row.classList.toggle('tracked-mission', !!missionMatch);
+      const missionLine = row.querySelector('.st-market-mission-line');
+      if (missionLine) {
+        missionLine.textContent = missionMatch ? trackedMarketActionText(missionInfo) : '';
+        missionLine.hidden = !missionMatch;
+      }
       const owned = (p.cargo.items[cmdtyId]) || 0;
       const buyP = unitPrice(ctx, stationId, cmdtyId, 'buy');
       const sellP = unitPrice(ctx, stationId, cmdtyId, 'sell');
@@ -468,6 +522,23 @@ export function createMarketPanel(ctx) {
       buyBtn.setAttribute('aria-label', buyTitle);
       sellBtn.setAttribute('aria-label', sellTitle);
     }
+  }
+
+  function renderMissionCallout(info) {
+    if (!info) {
+      missionCallout.hidden = true;
+      missionCallout.innerHTML = '';
+      return;
+    }
+    const title = info.mission.title || 'Tracked contract';
+    missionCallout.hidden = false;
+    missionCallout.innerHTML =
+      '<div class="st-market-mission-label mono">TRACKED CONTRACT</div>' +
+      '<div class="st-market-mission-title">' + escapeHtml(title) + '</div>' +
+      '<div class="st-market-mission-body">' + escapeHtml(trackedMarketActionText(info)) + '</div>' +
+      '<div class="st-market-mission-meta mono">' +
+        escapeHtml(info.cmdtyName) + ' · hold ' + fmtCr(info.owned) + 'u / target ' + fmtCr(info.remaining) + 'u' +
+      '</div>';
   }
 
   // Render the trade-route planner (best buy→sell margins from market intel).

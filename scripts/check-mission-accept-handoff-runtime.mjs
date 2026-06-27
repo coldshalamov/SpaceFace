@@ -66,6 +66,72 @@ try {
   });
   await waitForVisible(page, '[data-screen="station"] .st-missions', 10000, 'station Missions panel');
 
+  const seededOffer = await page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const stationId = state.ui && state.ui.dockedStationId;
+    const market = state.economy && state.economy.markets && state.economy.markets[stationId] || {};
+    const cmdtyId = Object.keys(market).find((id) => market[id] && market[id].role !== 'none' &&
+      Number.isFinite(market[id].lastBuy) && market[id].lastBuy > 0);
+    const sectors = state.world && state.world.sectors || {};
+    let dest = null;
+    for (const entity of state.entityList || []) {
+      const data = entity && entity.data;
+      if (entity && entity.type === 'station' && data && data.stationId && data.stationId !== stationId) {
+        dest = {
+          stationId: data.stationId,
+          sectorId: state.world && state.world.currentSectorId,
+          name: data.name || data.stationName || data.stationId,
+        };
+        break;
+      }
+    }
+    for (const sector of Object.values(sectors)) {
+      if (dest) break;
+      for (const station of sector.stations || []) {
+        if (station && station.id && station.id !== stationId) {
+          dest = { stationId: station.id, sectorId: sector.id, name: station.name || station.id };
+          break;
+        }
+      }
+    }
+    if (!dest && stationId) {
+      dest = {
+        stationId,
+        sectorId: state.world && state.world.currentSectorId,
+        name: 'Current station',
+      };
+    }
+    if (!stationId || !cmdtyId || !dest) return { ok: false, stationId, cmdtyId, dest };
+    const board = state.missions.boards[stationId] || { refreshEpoch: 0, slots: [] };
+    board.slots = board.slots.filter((slot) => slot && slot.id !== 'handoff_probe_bulk_trade');
+    board.slots.unshift({
+      id: 'handoff_probe_bulk_trade',
+      type: 'bulk_trade',
+      stationId,
+      factionId: 'faction_scn',
+      reward_cr: 960,
+      time_limit_s: 900,
+      collateral_cr: 0,
+      riskTier: 0,
+      destStationId: dest.stationId,
+      destSectorId: dest.sectorId,
+      distance: 600,
+      params: { cmdtyId, qty: 3, fValue: 1, taskTime: 120 },
+      title: 'Probe tracked cargo loop',
+      expiresAtEpoch: 1,
+      storyTag: null,
+    });
+    state.missions.boards[stationId] = board;
+    sf.bus.emit('mission:updated', { missionId: null });
+    return { ok: true, stationId, cmdtyId, destStationId: dest.stationId, destName: dest.name };
+  });
+  assert.equal(seededOffer.ok, true, 'probe should seed a live commodity offer at the docked station: ' + JSON.stringify(seededOffer));
+  await page.waitForFunction(() => {
+    const button = document.querySelector('[data-screen="station"] .st-mission-btns button[data-mid="handoff_probe_bulk_trade"][data-act="accept"]');
+    return !!(button && !button.disabled);
+  }, null, { timeout: 5000 });
+
   const before = await page.evaluate(() => ({
     activeCount: window.SF.state.missions.active.filter((m) => m && m.status === 'active').length,
     trackedMissionId: window.SF.state.ui && window.SF.state.ui.trackedMissionId || null,
@@ -73,12 +139,24 @@ try {
 
   const offer = await page.evaluate(() => {
     const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-    const buttons = [...document.querySelectorAll('[data-screen="station"] .st-mission-btns button[data-act="accept"]')];
-    const button = buttons.find((btn) => !btn.disabled);
-    if (!button) {
+    const state = window.SF.state;
+    const stationId = state.ui && state.ui.dockedStationId;
+    const slots = state.missions && state.missions.boards && state.missions.boards[stationId]
+      && state.missions.boards[stationId].slots || [];
+    const wantedTypes = new Set(['bulk_trade', 'cargo_delivery', 'smuggling_run', 'salvage_retrieval']);
+    const candidates = slots.filter((slot) => slot && wantedTypes.has(slot.type) && slot.params && slot.params.cmdtyId);
+    const selected = candidates.find((slot) => {
+      const btn = document.querySelector(`[data-screen="station"] .st-mission-btns button[data-mid="${slot.id}"][data-act="accept"]`);
+      return btn && !btn.disabled;
+    });
+    const button = selected
+      ? document.querySelector(`[data-screen="station"] .st-mission-btns button[data-mid="${selected.id}"][data-act="accept"]`)
+      : null;
+    if (!button || !selected) {
       return {
         accepted: false,
-        reason: 'No enabled Accept + Track button',
+        reason: 'No enabled commodity Accept + Track button',
+        candidates: candidates.map((slot) => ({ id: slot.id, type: slot.type, title: slot.title, cmdtyId: slot.params && slot.params.cmdtyId })),
         boardText: normalize(document.querySelector('[data-screen="station"] .st-missions')?.textContent || ''),
       };
     }
@@ -86,9 +164,9 @@ try {
     const title = normalize(card && card.querySelector('.st-mission-title') && card.querySelector('.st-mission-title').textContent);
     const next = normalize(card && card.querySelector('.st-mission-next') && card.querySelector('.st-mission-next').textContent);
     button.click();
-    return { accepted: true, title, next };
+    return { accepted: true, title, next, offerId: selected.id, type: selected.type, cmdtyId: selected.params.cmdtyId };
   });
-  assert.equal(offer.accepted, true, 'station board should expose at least one enabled Accept + Track mission: ' + JSON.stringify(offer));
+  assert.equal(offer.accepted, true, 'station board should expose at least one enabled commodity Accept + Track mission: ' + JSON.stringify(offer));
 
   await page.waitForFunction((prevCount) => {
     const sf = window.SF;
@@ -135,6 +213,45 @@ try {
     'accepted mission should own the active nav waypoint: ' + JSON.stringify(stationReport));
   assert(stationReport.departureChips.some((chip) => /Track/i.test(chip) && chip.includes(stationReport.trackedTitle)),
     'Departure Check should show the tracked mission before undock: ' + JSON.stringify(stationReport));
+
+  await page.evaluate(() => {
+    const tab = document.querySelector('[data-screen="station"] [role="tab"][data-tab="market"]')
+      || document.querySelector('[data-screen="station"] [data-tab="market"]');
+    if (!tab) throw new Error('Market tab not found');
+    tab.click();
+  });
+  await waitForVisible(page, '[data-screen="station"] .st-market', 10000, 'station Market panel');
+  const marketReport = await page.evaluate(() => {
+    const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const state = window.SF.state;
+    const trackedId = state.ui.trackedMissionId;
+    const tracked = state.missions.active.find((m) => m.id === trackedId);
+    const cmdtyId = tracked && tracked.params && tracked.params.cmdtyId;
+    const callout = document.querySelector('[data-screen="station"] .st-market-mission');
+    const row = cmdtyId && document.querySelector(`[data-screen="station"] .st-row[data-cmdty="${cmdtyId}"]`);
+    return {
+      top: window.SF.ctx.screenManager.top(),
+      activeTab: state.ui.activeStationTab,
+      trackedTitle: tracked && tracked.title,
+      cmdtyId,
+      calloutVisible: !!callout && !callout.hidden && getComputedStyle(callout).display !== 'none',
+      calloutText: normalize(callout && callout.textContent),
+      rowClass: row && row.className || '',
+      rowText: normalize(row && row.textContent),
+      rowMissionLine: normalize(row && row.querySelector('.st-market-mission-line') && row.querySelector('.st-market-mission-line').textContent),
+    };
+  });
+  assert.equal(marketReport.activeTab, 'market', 'station should switch to Market for tracked contract cargo');
+  assert.equal(marketReport.calloutVisible, true, 'Market should show tracked-contract callout for accepted commodity mission');
+  assert.match(marketReport.calloutText, /TRACKED CONTRACT/i, 'Market callout should label the tracked contract');
+  assert(marketReport.calloutText.includes(marketReport.trackedTitle),
+    'Market callout should name the tracked mission: ' + JSON.stringify(marketReport));
+  assert(marketReport.calloutText.includes('hold') && marketReport.calloutText.includes('target'),
+    'Market callout should show held cargo versus contract target: ' + JSON.stringify(marketReport));
+  assert(marketReport.rowClass.includes('tracked-mission'),
+    'Market commodity row should be highlighted for the tracked mission commodity: ' + JSON.stringify(marketReport));
+  assert.match(marketReport.rowMissionLine, /Tracked contract/i,
+    'Market commodity row should explain why this cargo matters: ' + JSON.stringify(marketReport));
 
   await page.keyboard.press('KeyJ');
   await waitForVisible(page, '[data-screen="missionLog"]', 10000, 'Mission Log opened from station with J');
