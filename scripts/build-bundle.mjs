@@ -101,13 +101,14 @@ async function build() {
     },
   });
 
-  // Copy the non-JS assets the bundle references by URL (CSS, cinematics, ships, decoder libs).
+  // Copy the non-JS assets the bundle references by URL (CSS, cinematics, UI art, ships, decoder libs).
   await mkdir(OUT, { recursive: true });
   await copyDir(join(ROOT, 'styles'), join(OUT, 'styles'));
-  // Cinematics + ship assets (electron-builder files list mirrors this).
+  // Cinematics + UI art + ship assets (electron-builder files list mirrors this).
   if (existsSync(join(ROOT, 'assets'))) {
     await mkdir(join(OUT, 'assets'), { recursive: true });
     if (existsSync(join(ROOT, 'assets', 'cinematics'))) await copyDir(join(ROOT, 'assets', 'cinematics'), join(OUT, 'assets', 'cinematics'));
+    if (existsSync(join(ROOT, 'assets', 'ui'))) await copyDir(join(ROOT, 'assets', 'ui'), join(OUT, 'assets', 'ui'));
     if (existsSync(join(ROOT, 'assets', 'ships'))) await copyDir(join(ROOT, 'assets', 'ships'), join(OUT, 'assets', 'ships'));
   }
   // Scenario contracts are fetched by URL at runtime so designers can inspect the exact authored

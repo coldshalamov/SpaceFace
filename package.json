@@ -97,7 +97,8 @@
       "build/web/**",
       "electron/**",
       "package.json",
-      "assets/cinematics/menu_background.jpg",
+      "assets/cinematics/**",
+      "assets/ui/**",
       "assets/ships/**"
     ],
     "win": {

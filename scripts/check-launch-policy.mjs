@@ -57,6 +57,20 @@ assert.doesNotMatch(
   /\?prod=1/,
   'Bundle policy must not refer to prod query flags'
 );
+assert.match(
+  bundle,
+  /assets', 'ui'[\s\S]*assets', 'ships'/,
+  'Production bundle must copy player-facing UI art beside ship/cinematic assets'
+);
+
+const packageJson = JSON.parse(read('package.json'));
+const packageFiles = (((packageJson || {}).build || {}).files || []).map(normalizeRel);
+for (const assetRoot of ['assets/cinematics', 'assets/ui', 'assets/ships']) {
+  assert.ok(
+    isPackagedRoot(assetRoot, packageFiles),
+    `Electron package files must include ${assetRoot}/** for player-facing release assets`
+  );
+}
 
 const gameState = read('src/core/gameState.js');
 assert.match(
@@ -99,3 +113,18 @@ assert.match(
 );
 
 console.log('Launch policy OK: one player URL, release-authored default assets, canonical runtime backends, no prod query fork.');
+
+function isPackagedRoot(root, patterns) {
+  const relRoot = normalizeRel(root);
+  return patterns.some((pattern) => {
+    const p = normalizeRel(pattern);
+    if (p === 'assets/**' || p === 'assets/**/*' || p === `${relRoot}/**` || p === `${relRoot}/**/*`) return true;
+    if (p.endsWith('/**') && relRoot.startsWith(`${p.slice(0, -3)}/`)) return true;
+    if (p.endsWith('/**/*') && relRoot.startsWith(`${p.slice(0, -5)}/`)) return true;
+    return false;
+  });
+}
+
+function normalizeRel(path) {
+  return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
+}

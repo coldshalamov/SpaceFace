@@ -3,7 +3,7 @@
 //   1. The build succeeded with zero errors.
 //   2. The bundled index.html has NO importmap (the bundle resolves bare specifiers itself).
 //   3. The bundled main.js is syntactically valid.
-//   4. Runtime-fetched data contracts are copied beside the bundle.
+//   4. Runtime-fetched data contracts and player-facing URL assets are copied beside the bundle.
 //   5. The bundled JS is meaningfully smaller than raw (src + vendor) — the whole point of bundling.
 //      We require >=20% smaller (the observed saving is ~45%); a result below 20% would mean the
 //      bundler regressed (e.g. minification disabled, or three/rapier double-included).
@@ -21,6 +21,8 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const BUILD_WEB = join(ROOT, 'build', 'web');
 const MIN_SAVING_PCT = 20; // the bundler must beat raw by at least this much
 const SCENARIO_47A_BUNDLE_PATH = join(BUILD_WEB, 'data', 'scenarios', '47a.scenario.json');
+const INTRO_CINEMATIC_BUNDLE_PATH = join(BUILD_WEB, 'assets', 'cinematics', 'C-INTRO-02_6s.mp4');
+const UI_ICON_ATLAS_BUNDLE_PATH = join(BUILD_WEB, 'assets', 'ui', 'icons_atlas.jpg');
 
 function runBuild() {
   return new Promise((resolve, reject) => {
@@ -64,12 +66,17 @@ assert.ok(/src="\.\/main\.js"/.test(html), 'bundled index.html must load ./main.
 // chunk imports that only resolve at runtime. esbuild already validates syntax during build; a
 // zero-error build is sufficient evidence.)
 
-// 4. Scenario contracts are fetched by URL at runtime; a missing copy boots to a player-visible 404.
+// 4. Scenario contracts and authored UI/cinematic assets are fetched by URL at runtime; missing
+// copies create player-visible 404s in the release route.
 assert.ok(existsSync(SCENARIO_47A_BUNDLE_PATH),
   'build/web/data/scenarios/47a.scenario.json must exist for the bundled runtime');
 const scenario47a = JSON.parse(await readFile(SCENARIO_47A_BUNDLE_PATH, 'utf8'));
 assert.equal(scenario47a.id, 'scenario.47a.mass-discrepancy',
   'bundled 47-A scenario contract must be the canonical contract');
+assert.ok(existsSync(INTRO_CINEMATIC_BUNDLE_PATH),
+  'build/web/assets/cinematics/C-INTRO-02_6s.mp4 must exist for the bundled Watch Intro Cinematic action');
+assert.ok(existsSync(UI_ICON_ATLAS_BUNDLE_PATH),
+  'build/web/assets/ui/icons_atlas.jpg must exist for bundled CSS icon atlas references');
 
 // 5. The bundle is meaningfully smaller than raw JS. Compare JS-to-JS only (binary assets ship
 // identically either way).
