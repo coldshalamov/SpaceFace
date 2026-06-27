@@ -122,7 +122,7 @@ export const OFFER_MIX = {
 
 // 8-beat story spine FSM.
 export const STORY_BEATS = [
-  { beat: 0, id: 'cold_start',     objective: 'Mine 10u Silicate from a nearby asteroid, then dock at Helios to sell or deliver the sample.',
+  { beat: 0, id: 'cold_start',     objective: 'Follow the 47-A mass signal, sample the discrepancy, then dock at Helios before the manifest is rewritten.',
     reward: { credits: 400, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
   { beat: 1, id: 'honest_work',    objective: 'Accept a haul or trade contract and carry cargo to a neighboring station for profit.',
     reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'trade', next: 2 },
