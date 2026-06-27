@@ -61,6 +61,20 @@ if (starmap) {
   }
 }
 
+const localmap = loaded.get('localmapScreen');
+if (localmap) {
+  let popped = 0;
+  const handled = typeof localmap.onKey === 'function' &&
+    localmap.onKey({ key: 'N' }, { screenManager: { popScreen() { popped++; } } });
+  if (!handled || popped !== 1) {
+    console.log('FAIL localmapScreen - N shortcut must close the local map');
+    fail++;
+  } else {
+    console.log('ok   localmapScreen - N shortcut closes');
+    ok++;
+  }
+}
+
 const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
 const localmapSrc = readFileSync(new URL('../src/ui/screens/localmap.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');

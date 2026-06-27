@@ -170,6 +170,17 @@ export const localmapScreen = {
     cancelAnimationFrame(this._animFrame);
   },
 
+  onKey(event, ctx) {
+    const key = event && typeof event.key === 'string' ? event.key.toLowerCase() : '';
+    if (key === BINDINGS.localmap.key) {
+      const sm = (ctx && ctx.screenManager) || (this._ctx && this._ctx.screenManager);
+      if (sm && typeof sm.popScreen === 'function') sm.popScreen();
+      else this._close();
+      return true;
+    }
+    return false;
+  },
+
   refresh() { if (this._visible) { this._refreshIntel(); this._draw(); } },
 
   // Feed live entities into the LocalSpaceIntel model. The model decays confidence over time, so a
