@@ -189,6 +189,45 @@ try {
   assert.equal(navReport.waypoint && navReport.waypoint.kind, 'trade', 'Set Nav should create a trade waypoint');
   assert.equal(navReport.waypoint && navReport.waypoint.stationId, '__probe_trade_dest', 'Set Nav should target the seeded buyer station');
   assert.match((navReport.waypoint && navReport.waypoint.label) || '', /Probe Buyer/, 'Trade waypoint should name the buyer station');
+
+  const loadStart = await page.evaluate(() => {
+    const btn = document.querySelector('[data-screen="station"] .st-pl-load');
+    if (!btn) return { clicked: false };
+    const sf = window.SF;
+    const cmdtyId = btn.getAttribute('data-cmdty');
+    const beforeQty = (sf.state.player.cargo.items[cmdtyId]) || 0;
+    btn.click();
+    return {
+      clicked: true,
+      cmdtyId,
+      requestedQty: Number(btn.getAttribute('data-qty') || 0),
+      beforeQty,
+      confirmOpen: !!document.querySelector('#sf-confirm-root .sf-confirm'),
+    };
+  });
+  assert.equal(loadStart.clicked, true, 'Load & Nav should be clickable');
+  assert(loadStart.requestedQty > 0, 'Load & Nav should request a positive route load');
+  if (loadStart.confirmOpen) {
+    await page.locator('#sf-confirm-root .sf-confirm__ok').click({ timeout: 10000 });
+  }
+  await page.waitForFunction(({ cmdtyId, beforeQty }) => {
+    const sf = window.SF;
+    const afterQty = (sf.state.player.cargo.items[cmdtyId]) || 0;
+    const waypoint = sf.state && sf.state.nav && sf.state.nav.waypoint;
+    return afterQty > beforeQty && waypoint && waypoint.kind === 'trade' && waypoint.stationId === '__probe_trade_dest';
+  }, { cmdtyId: loadStart.cmdtyId, beforeQty: loadStart.beforeQty }, { timeout: 5000 });
+  const loadReport = await page.evaluate((cmdtyId) => {
+    const sf = window.SF;
+    const waypoint = sf.state && sf.state.nav && sf.state.nav.waypoint;
+    return {
+      afterQty: (sf.state.player.cargo.items[cmdtyId]) || 0,
+      waypoint,
+    };
+  }, loadStart.cmdtyId);
+  assert(loadReport.afterQty > loadStart.beforeQty,
+    'Load & Nav should buy cargo through the economy path: ' + JSON.stringify({ loadStart, loadReport }));
+  assert.equal(loadReport.waypoint && loadReport.waypoint.stationId, '__probe_trade_dest',
+    'Load & Nav should keep nav on the seeded buyer station');
   assert.deepEqual(issues.errorIssues(), [], 'market first-loop runtime probe should not record page errors');
 
   console.log('Market first-loop runtime OK: New Game -> dock -> Market purpose/prices/Best Trades/Load & Nav/Set Nav are legible.');
