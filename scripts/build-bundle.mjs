@@ -21,6 +21,7 @@ const SRC = join(ROOT, 'src');
 // Output to build/web/ (NOT dist/) so electron-builder's output dir (dist/) doesn't collide with the
 // bundled web assets it needs to ship. electron-builder globs are relative to project root.
 const OUT = join(ROOT, 'build', 'web');
+const RELEASE_ASSET_DIRS = ['cinematics', 'ui', 'ships'];
 
 // Count screen modules for the build log. They are imported from uiRoot.js through literal dynamic
 // import call sites, so main.js is the only entry point; adding screens here as independent entries
@@ -101,14 +102,16 @@ async function build() {
     },
   });
 
-  // Copy the non-JS assets the bundle references by URL (CSS, cinematics, ships, decoder libs).
+  // Copy the non-JS assets the bundle references by URL (CSS, cinematics, UI atlas, ships, decoder libs).
   await mkdir(OUT, { recursive: true });
   await copyDir(join(ROOT, 'styles'), join(OUT, 'styles'));
-  // Cinematics + ship assets (electron-builder files list mirrors this).
+  // Runtime-authored asset dirs. Keep this list mirrored by package.json + check-launch-policy.
   if (existsSync(join(ROOT, 'assets'))) {
     await mkdir(join(OUT, 'assets'), { recursive: true });
-    if (existsSync(join(ROOT, 'assets', 'cinematics'))) await copyDir(join(ROOT, 'assets', 'cinematics'), join(OUT, 'assets', 'cinematics'));
-    if (existsSync(join(ROOT, 'assets', 'ships'))) await copyDir(join(ROOT, 'assets', 'ships'), join(OUT, 'assets', 'ships'));
+    for (const name of RELEASE_ASSET_DIRS) {
+      const srcDir = join(ROOT, 'assets', name);
+      if (existsSync(srcDir)) await copyDir(srcDir, join(OUT, 'assets', name));
+    }
   }
   // Scenario contracts are fetched by URL at runtime so designers can inspect the exact authored
   // JSON that powered a run. They are not part of the JS graph, so esbuild will not copy them.
@@ -166,4 +169,4 @@ async function buildBundledHtml() {
     .replace('<script type="module" src="./src/main.js"></script>', '<script type="module" src="./main.js"></script>');
 }
 
-build().catch((err) => { console.error('[bundle] FAILED:', err); process.exit(1); });
+build().catch((err) => { console.error('[bundle] FAILED', err); process.exit(1); });
