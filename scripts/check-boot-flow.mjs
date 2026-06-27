@@ -53,6 +53,12 @@ try {
     // Some dev sessions restore or start directly into flight. That is already enough for visual
     // lifecycle probes such as --stale-modal; don't make the harness depend on title-screen copy.
   } else if (BAD_SAVE) {
+    assert.match(menuSnap.continueSummary || '', /^Continue: /,
+      'bad-save seeded menu should show a concrete Continue summary: ' + JSON.stringify(menuSnap));
+    assert.match(menuSnap.continueSummary || '', /123 CR/,
+      'Continue summary should include save-index credit context: ' + JSON.stringify(menuSnap));
+    assert.equal(menuSnap.continueDisabled, false,
+      'bad-save seeded Continue should be enabled so the load-repair path is reachable');
     await clickButton(cdp, 'Continue');
   } else {
     await clickButton(cdp, 'New Game', menuSnap);
@@ -242,6 +248,8 @@ function snapshotExpression() {
     const backdrop = document.getElementById('modal-backdrop');
     const mainMenu = document.querySelector('[data-screen="mainMenu"]');
     const newGame = document.querySelector('[data-screen="newGame"]');
+    const continueButton = [...document.querySelectorAll('button')]
+      .find((button) => (button.textContent || '').trim() === 'Continue') || null;
     const bootOverlay = document.getElementById('boot-overlay');
     const hullText = [...document.querySelectorAll('.sf-barrow')].find((row) => /HULL/.test(row.textContent || ''))?.querySelector('.sf-barrow__num')?.textContent || '0';
     const weaponText = document.querySelector('[data-k="weapons"]')?.textContent || '';
@@ -274,6 +282,8 @@ function snapshotExpression() {
       entityCount: state && state.entityList && state.entityList.length || 0,
       screenStack: state && state.ui && state.ui.screenStack || [],
       screensDisplay: screens && getComputedStyle(screens).display,
+      continueSummary: document.querySelector('.sf-menu-save-summary')?.textContent || '',
+      continueDisabled: continueButton ? !!continueButton.disabled : null,
       hullText,
       weaponText,
       classText,

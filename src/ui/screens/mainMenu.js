@@ -1,7 +1,7 @@
 // Main Menu / title screen (ARCHITECTURE §1.3 step 6, §5; design/specs/09).
-// New Game / Continue / Load / Settings. Continue enabled iff a save exists.
-// The game currently boots straight into flight; this screen is reachable from Pause
-// ("Main Menu") and on a future state.mode==='menu' boot.
+// New Game / Continue / Load / Settings. Continue is enabled iff a save exists and shows
+// the exact latest slot metadata so players trust resume before committing to a load.
+// Browser, Electron dev, and packaged desktop all arrive here through the same player route.
 
 const STYLE_ID = 'sf-menu-style';
 const LS_PREFIX = 'sf.save.';
@@ -55,6 +55,10 @@ function injectStyle() {
   .sf-slot .sf-slot-name { font-size:14px; color:var(--ink); }
   .sf-slot .sf-slot-sub { font-size:11px; color:var(--ink-mute); font-family:var(--mono); }
   .sf-slot.empty .sf-slot-name { color:var(--ink-mute); font-style:italic; }
+  .sf-menu-save-summary { border:1px solid var(--panel-edge); border-radius:6px; padding:9px 11px;
+    background:rgba(8,14,26,.45); color:var(--ink-dim); font-size:12px; line-height:1.45; }
+  .sf-menu-save-summary.has-save { color:var(--ink); border-color:rgba(57,208,255,.3);
+    box-shadow:inset 2px 0 0 rgba(57,208,255,.45); }
   .sf-title-logo { font-family:var(--mono); letter-spacing:.5em; font-size:46px; color:var(--accent);
     text-shadow:0 0 40px rgba(57,208,255,.5); text-align:center; margin:0; }
   .sf-title-tag { text-align:center; color:var(--ink-dim); letter-spacing:.28em; font-size:12px; margin-bottom:18px; }
@@ -64,22 +68,116 @@ function injectStyle() {
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function button(label) { const b = document.createElement('button'); b.className = 'sf-btn'; b.textContent = label; return b; }
 
-function hasSave(ctx) {
+function readSaveIndex(ctx) {
   const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
   if (sys) {
-    if (typeof sys.hasAnySave === 'function') { try { return !!sys.hasAnySave(); } catch (e) {} }
-    if (typeof sys.listSlots === 'function') { try { return Object.keys(sys.listSlots() || {}).length > 0; } catch (e) {} }
-    if (sys.index && typeof sys.index === 'object') return Object.keys(sys.index).length > 0;
+    if (typeof sys.listSlots === 'function') { try { return normalizeSlots(sys.listSlots()); } catch (e) {} }
+    if (sys.index && typeof sys.index === 'object') { try { return normalizeSlots(sys.index); } catch (e) {} }
   }
   try {
     if (typeof localStorage !== 'undefined') {
+      const idxRaw = localStorage.getItem(LS_PREFIX + 'index');
+      if (idxRaw) { try { return normalizeSlots(JSON.parse(idxRaw)); } catch (e) {} }
+      const out = {};
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && k.startsWith(LS_PREFIX) && k !== LS_PREFIX + 'index') return true;
+        if (!k || !k.startsWith(LS_PREFIX) || k === LS_PREFIX + 'index') continue;
+        const slot = k.slice(LS_PREFIX.length);
+        try {
+          const env = JSON.parse(localStorage.getItem(k));
+          const data = env && env.data;
+          const player = data && data.player;
+          const ownedShips = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+          const owned = ownedShips[(player && player.activeShipIndex) || 0] || null;
+          out[slot] = {
+            slot,
+            savedAt: (env && env.savedAt) || (data && data.meta && data.meta.lastSavedAt) || '',
+            playtimeS: (env && env.playtimeS) || (data && data.meta && data.meta.playtimeS) || 0,
+            credits: player && player.credits,
+            sectorName: '',
+            shipName: owned && owned.defId,
+          };
+        } catch (e) {}
       }
+      return out;
     }
   } catch (e) {}
-  return false;
+  return {};
+}
+
+function normalizeSlots(idx) {
+  if (!idx) return {};
+  const out = {};
+  if (Array.isArray(idx)) {
+    for (const item of idx) if (item && item.slot != null) out[String(item.slot)] = Object.assign({ slot: String(item.slot) }, item);
+    return out;
+  }
+  for (const slot in idx) if (idx[slot]) out[slot] = Object.assign({ slot }, idx[slot]);
+  return out;
+}
+
+function isOccupied(meta) {
+  return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
+}
+
+function latestSave(slots) {
+  let best = null;
+  let bestScore = -Infinity;
+  for (const slot in (slots || {})) {
+    const meta = slots[slot];
+    if (!isOccupied(meta)) continue;
+    const when = meta.savedAt || meta.lastSavedAt || '';
+    const savedAtScore = Date.parse(when) || 0;
+    const playtimeS = Number(meta.playtimeS);
+    const playtimeScore = Number.isFinite(playtimeS) ? playtimeS : 0;
+    const score = savedAtScore || playtimeScore;
+    if (score >= bestScore) { bestScore = score; best = { slot, meta }; }
+  }
+  return best;
+}
+
+function slotLabel(id) {
+  if (id === 'quick' || id === 'autosave' || id === 'auto') return id.charAt(0).toUpperCase() + id.slice(1);
+  return 'Slot ' + id;
+}
+
+function fmtPlaytime(playtimeS) {
+  const s = Number(playtimeS);
+  if (!Number.isFinite(s) || s < 0) return '';
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  return h > 0 ? (h + 'h ' + (m % 60) + 'm played') : (m + 'm played');
+}
+
+function fmtCredits(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  return Math.round(n).toLocaleString('en-US') + ' CR';
+}
+
+function titleCaseWords(s) {
+  return String(s).split(/[\s_]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function shipLabel(id) {
+  if (!id) return '';
+  return titleCaseWords(String(id).replace(/^ship_/, ''));
+}
+
+function saveSummaryText(slot, meta) {
+  const parts = [slotLabel(slot)];
+  if (meta && meta.sectorName) parts.push(meta.sectorName);
+  if (meta && meta.shipName) parts.push(shipLabel(meta.shipName));
+  const playtime = fmtPlaytime(meta && meta.playtimeS);
+  if (playtime) parts.push(playtime);
+  const credits = fmtCredits(meta && meta.credits);
+  if (credits) parts.push(credits);
+  const when = meta && (meta.savedAt || meta.lastSavedAt);
+  if (when) {
+    const d = new Date(when);
+    if (Number.isFinite(d.getTime())) parts.push('saved ' + d.toLocaleString());
+  }
+  return parts.filter(Boolean).join(' - ');
 }
 
 let refs = null;
@@ -94,6 +192,9 @@ export const mainMenuScreen = {
 
     rootEl.appendChild(el('h1', 'sf-title-logo', 'SPACEFACE'));
     rootEl.appendChild(el('div', 'sf-title-tag', 'A trade & combat sandbox'));
+
+    const saveSummary = el('div', 'sf-menu-save-summary', 'Checking saves...');
+    rootEl.appendChild(saveSummary);
 
     const col = el('div', 'sf-col');
     rootEl.appendChild(col);
@@ -122,13 +223,23 @@ export const mainMenuScreen = {
     bLoad.addEventListener('click', () => nav(ctx, 'pushScreen', 'saveLoad'));
     bSettings.addEventListener('click', () => nav(ctx, 'pushScreen', 'settings'));
 
-    refs = { bContinue };
+    refs = { bContinue, saveSummary };
     this._render(ctx);
   },
 
   _render(ctx) {
     if (!refs) return;
-    refs.bContinue.disabled = !hasSave(ctx);
+    const latest = latestSave(readSaveIndex(ctx));
+    refs.bContinue.disabled = !latest;
+    refs.saveSummary.classList.toggle('has-save', !!latest);
+    if (latest) {
+      const summary = saveSummaryText(latest.slot, latest.meta);
+      refs.saveSummary.textContent = 'Continue: ' + summary;
+      refs.bContinue.title = 'Load ' + summary;
+    } else {
+      refs.saveSummary.textContent = 'No save found - New Game starts Contract 47-A from the shared browser/desktop route.';
+      refs.bContinue.title = 'No save found yet';
+    }
   },
 
   onShow(ctx) {
