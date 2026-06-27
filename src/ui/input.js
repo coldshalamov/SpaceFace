@@ -139,8 +139,10 @@ export function createUiInput(ctx, screenManager) {
       case 'c': case 'C':
         // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base
         // screen for an already-claimed body to build modules / teleport.
-        ev.preventDefault();
-        claimOrOpenBase();
+        if (claimOrOpenBase()) {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        }
         return;
       case 'F5':
         ev.preventDefault(); bus.emit('game:save', { slot: 'quick' }); return;
@@ -187,13 +189,13 @@ export function createUiInput(ctx, screenManager) {
   function openClaimedBase(body, opts = {}) {
     if (!body || !body.id) {
       bus.emit('toast', { text: 'Claim record not ready — try again in a moment', kind: 'warn', ttl: 3 });
-      return false;
+      return true;
     }
     if (!state.ui) state.ui = {};
     state.ui.pendingClaimBodyId = body.id;
     if (screenManager.hasScreen && !screenManager.hasScreen('base')) {
       bus.emit('toast', { text: 'Base interface initializing — press C again in a moment', kind: 'info', ttl: 3 });
-      return false;
+      return true;
     }
     screenManager.pushScreen('base');
     if (opts.audio !== false) bus.emit('audio:cue', { id: 'ui_open' });
@@ -202,9 +204,9 @@ export function createUiInput(ctx, screenManager) {
 
   function claimOrOpenBase() {
     const claimsSys = ctx.registry && ctx.registry.get('claims');
-    if (!claimsSys) return;
+    if (!claimsSys) return false;
     const player = state.entities.get(state.playerId);
-    if (!player) return;
+    if (!player) return false;
     const RANGE = 220;
     // find claimable POI entities in range
     let nearest = null, bestD = RANGE * RANGE;
@@ -213,10 +215,7 @@ export function createUiInput(ctx, screenManager) {
       const d = (e.pos.x - player.pos.x) ** 2 + (e.pos.z - player.pos.z) ** 2;
       if (d < bestD) { bestD = d; nearest = e; }
     }
-    if (!nearest) {
-      bus.emit('toast', { text: 'No claimable body in range — fly near a colony/moon and press C', kind: 'warn', ttl: 3 });
-      return;
-    }
+    if (!nearest) return false;
     const poiDef = {
       id: nearest.data.poiId,
       name: nearest.data.name,
@@ -225,13 +224,13 @@ export function createUiInput(ctx, screenManager) {
     };
     // already claimed? open the Base screen for it
     if (claimsSys.isClaimed(poiDef.id)) {
-      openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id));
-      return;
+      return openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id));
     }
     // claim it (the system validates credits + emits feedback)
     if (claimsSys.claim(poiDef)) {
-      openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id), { audio: false });
+      return openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id), { audio: false });
     }
+    return true;
   }
 
   // Emit the intent only; uiRoot's dock:undocked handler owns clearing ui.docked and popping
