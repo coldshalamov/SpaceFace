@@ -636,23 +636,31 @@ export function applyTradeNavigation(ctx, stationId, cmdtyId) {
   state.nav = state.nav || {};
   // resolve the destination's world position: prefer a live station entity in this sector
   let pos = null;
+  let liveStation = null;
   for (const e of state.entityList) {
-    if (e.type === 'station' && e.data && e.data.stationId === stationId) { pos = { x: e.pos.x, z: e.pos.z }; break; }
+    if (e.type === 'station' && e.data && e.data.stationId === stationId) {
+      liveStation = e;
+      pos = { x: e.pos.x, z: e.pos.z };
+      break;
+    }
   }
   const cmdty = COMMODITY_BY_ID.get(cmdtyId);
   const sector = stationSectorInfo(state, stationId);
+  const currentSectorId = state.world && state.world.currentSectorId;
+  const currentSector = currentSectorId && state.world && state.world.sectors && state.world.sectors[currentSectorId];
+  const sectorId = sector.id || (liveStation ? currentSectorId : null);
+  const sectorName = sector.name || (liveStation && currentSector ? (currentSector.name || currentSector.id) : null);
   const waypoint = {
     kind: 'trade',
     stationId,
     pos: pos || null,
     label: stationName(state, stationId) + (cmdty ? ' · ' + cmdty.name : ''),
     reason: cmdty ? `Sell ${cmdty.name}` : 'Trade destination',
-    sectorId: sector.id,
-    sectorName: sector.name,
+    sectorId,
+    sectorName,
   };
   state.nav.waypoint = waypoint;
   ctx.bus.emit('nav:waypoint', waypoint);
-  const currentSectorId = state.world && state.world.currentSectorId;
   if (waypoint.sectorId && currentSectorId && waypoint.sectorId !== currentSectorId) {
     ctx.bus.emit('ui:setCourse', { sectorId: waypoint.sectorId, waypointKind: 'trade', stationId, commodityId: cmdtyId });
   }

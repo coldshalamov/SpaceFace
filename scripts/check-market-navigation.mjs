@@ -82,6 +82,28 @@ function checkLocalBestTradeUsesLivePositionOnly() {
   assert.match(eventPayload(events, 'toast').text, /Nav set:/, 'market nav should confirm the selected destination');
 }
 
+function checkUncatalogedLocalStationUsesCurrentSector() {
+  const { ctx, state, events } = makeHarness('sector_helios_prime');
+  state.entityList.push({
+    id: 42,
+    type: 'station',
+    alive: true,
+    pos: { x: -460, z: 320 },
+    data: { stationId: 'station_coalition', name: 'Coalition HQ' },
+  });
+
+  applyTradeNavigation(ctx, 'station_coalition', 'cmdty_food');
+
+  assert.equal(state.nav.waypoint.sectorId, 'sector_helios_prime',
+    'live local stations missing from the sector catalog should fall back to the current sector id');
+  assert.equal(state.nav.waypoint.sectorName, 'Helios Prime',
+    'live local stations missing from the sector catalog should fall back to the current sector name');
+  assert.deepEqual(state.nav.waypoint.pos, { x: -460, z: 320 },
+    'uncataloged local station waypoint should still use the live station position');
+  assert.equal(events.some((event) => event.name === 'ui:setCourse'), false,
+    'uncataloged local station nav should not request an off-sector route');
+}
+
 function checkFailedQuoteFallsBackToRolePrice() {
   const { ctx } = makeHarness('sector_helios_prime');
   ctx.registry = {
@@ -178,6 +200,7 @@ function checkBestTradeUsesWarmedMarketSnapshots() {
 
 checkOffSectorBestTradeSetsCourse();
 checkLocalBestTradeUsesLivePositionOnly();
+checkUncatalogedLocalStationUsesCurrentSector();
 checkFailedQuoteFallsBackToRolePrice();
 checkLiveQuoteStillWins();
 checkBestTradeShowsCurrentLoadAndProfit();

@@ -10,12 +10,13 @@
 // not test-only.
 //
 // Opened with the local-map binding (N by default). Canvas is DPI-scaled like the radar. Purely
-// read-only over sim state: it never writes movement/combat state (§0.6).
+// read-only over movement/combat state (§0.6); explicit route cards can set the nav waypoint.
 import { LocalSpaceIntel, rankTradeRoutes } from '../navigation/localSpaceMapModel.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { STORY_BEATS } from '../../data/missions.js';
 import { SECTORS } from '../../data/sectors.js';
 import { BINDINGS } from '../bindings.js';
+import { applyTradeNavigation } from './market.js';
 
 // Friendly commodity/station names for the route panel (single source: the data catalogs).
 const COMM_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
@@ -35,11 +36,13 @@ const LOCALMAP_STYLE = `
 #sf-localmap .lm-legend { position:absolute; left:12px; bottom:12px; font-size:.64rem; color:var(--ink-mute,#5e7393); background:rgba(6,12,22,.7); border:1px solid var(--panel-edge,#1d3350); border-radius:5px; padding:5px 9px; line-height:1.5; }
 #sf-localmap .lm-routes { position:absolute; right:12px; top:12px; width:230px; max-height:60%; overflow-y:auto; background:rgba(6,12,22,.82); border:1px solid var(--panel-edge,#1d3350); border-radius:6px; padding:8px 10px; font-size:.66rem; color:var(--ink,#cfe3ff); }
 #sf-localmap .lm-routes h4 { margin:0 0 6px 0; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent,#39d0ff); }
-#sf-localmap .lm-route { padding:4px 0; border-bottom:1px solid rgba(29,51,80,.5); line-height:1.4; }
+#sf-localmap .lm-route { display:block; width:100%; text-align:left; background:transparent; color:inherit; border:0; border-bottom:1px solid rgba(29,51,80,.5); padding:5px 2px; line-height:1.4; cursor:pointer; }
 #sf-localmap .lm-route:last-child { border-bottom:none; }
+#sf-localmap .lm-route:hover, #sf-localmap .lm-route:focus-visible { outline:0; background:rgba(57,208,255,.08); color:#fff; }
 #sf-localmap .lm-route .lm-route-hdr { display:flex; justify-content:space-between; gap:6px; }
 #sf-localmap .lm-route .lm-route-comm { color:var(--ink-dim,#7e93b3); }
 #sf-localmap .lm-route .lm-route-profit { color:#ffd66b; font-weight:600; }
+#sf-localmap .lm-route .lm-route-action { margin-top:2px; color:#7af7d0; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase; }
 #sf-localmap .lm-route .lm-route-stale { color:#ff8a8a; font-size:.58rem; }
 #sf-localmap .lm-routes-empty { color:var(--ink-mute,#5e7393); font-style:italic; }
 #sf-localmap .lm-objective { position:absolute; left:12px; top:12px; width:min(340px,calc(100% - 270px)); min-width:230px; background:rgba(6,12,22,.84); border:1px solid rgba(255,210,74,.38); border-radius:6px; padding:9px 11px; font-size:.68rem; color:var(--ink,#cfe3ff); box-shadow:0 0 18px rgba(255,210,74,.10); }
@@ -139,6 +142,11 @@ export const localmapScreen = {
     this._lastCanvasH = 0;
     this._lastDpr = 0;
     rootEl.querySelector('.lm-close').addEventListener('click', () => this._close());
+    this._routesPanel.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-act="route-nav"]');
+      if (!btn) return;
+      applyTradeNavigation(this._ctx, btn.getAttribute('data-destination'), btn.getAttribute('data-commodity'));
+    });
     // Auto-fit the canvas to its container (DPI-scaled).
     this._ro = new ResizeObserver(() => this._resize());
     this._ro.observe(this._body);
@@ -270,14 +278,19 @@ export const localmapScreen = {
       html = '<h4>Trade Routes <span style="float:right;color:var(--ink-mute,#5e7393)">profit/min</span></h4>';
       for (const r of routes) {
         const stale = (r.reliability || 1) < 0.5;
-        html += '<div class="lm-route">' +
+        const originName = stationName(r.originId);
+        const destinationName = stationName(r.destinationId);
+        const commodityName = commName(r.commodityId);
+        html += '<button class="lm-route" type="button" data-act="route-nav" data-destination="' + escapeAttr(r.destinationId) + '" data-commodity="' + escapeAttr(r.commodityId) + '"' +
+          ' aria-label="Set course to ' + escapeAttr(destinationName) + ' to sell ' + escapeAttr(commodityName) + '">' +
           '<div class="lm-route-hdr">' +
-            '<span class="lm-route-comm">' + commName(r.commodityId) + '</span>' +
+            '<span class="lm-route-comm">' + escapeHtml(commodityName) + '</span>' +
             '<span class="lm-route-profit">' + Math.round(r.profitPerMinute) + '/m</span>' +
           '</div>' +
-          '<div style="color:var(--ink-mute,#5e7393)">' + stationName(r.originId) + ' → ' + stationName(r.destinationId) + '</div>' +
+          '<div style="color:var(--ink-mute,#5e7393)">' + escapeHtml(originName) + ' → ' + escapeHtml(destinationName) + '</div>' +
+          '<div class="lm-route-action">Set course</div>' +
           (stale ? '<div class="lm-route-stale">stale intel (' + Math.round((r.reliability || 0) * 100) + '% reliable)</div>' : '') +
-        '</div>';
+        '</button>';
       }
     }
     if (html === this._routesSig) return;
@@ -596,6 +609,20 @@ function stationNameForRoute(state, stationId) {
     }
   }
   return stationId;
+}
+
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[ch]);
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value);
 }
 
 function appendSentence(base, sentence) {

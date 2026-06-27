@@ -99,11 +99,16 @@ try {
     const panel = document.querySelector('#sf-localmap-routes');
     if (!panel) return { panelPresent: false };
     const routes = [...panel.querySelectorAll('.lm-route')];
+    const buttons = [...panel.querySelectorAll('button.lm-route[data-act="route-nav"]')];
     return {
       panelPresent: true,
       routeCount: routes.length,
+      routeButtonCount: buttons.length,
       hasEmpty: !!panel.querySelector('.lm-routes-empty'),
       firstRoute: routes[0] ? routes[0].textContent.replace(/\\s+/g, ' ').trim().slice(0, 120) : null,
+      firstDestination: buttons[0] ? buttons[0].getAttribute('data-destination') : null,
+      firstCommodity: buttons[0] ? buttons[0].getAttribute('data-commodity') : null,
+      firstAriaLabel: buttons[0] ? buttons[0].getAttribute('aria-label') : null,
       // The routes must come from the live economy data (marketIntel) — confirm the panel isn't the
       // empty placeholder.
       populated: routes.length > 0,
@@ -117,7 +122,46 @@ try {
 
   assert.ok(report.panelPresent, 'routes: the trade-routes panel must exist in the local map');
   assert.ok(report.routeCount >= 1, `routes: the panel must show >=1 ranked route from live economy data (got ${report.routeCount})`);
+  assert.ok(report.routeButtonCount >= 1, `routes: ranked routes must be actionable Set Course buttons (got ${report.routeButtonCount})`);
+  assert.ok(report.firstDestination && report.firstCommodity, 'routes: first route button must carry destination + commodity ids');
+  assert.match(report.firstAriaLabel || '', /^Set course to /, 'routes: button aria label should describe the route action');
   assert.ok(report.populated, 'routes: the panel must not show the empty placeholder when intel exists');
+
+  const navClick = await evalJson(`JSON.stringify((() => {
+    const btn = document.querySelector('#sf-localmap-routes button.lm-route[data-act="route-nav"]');
+    if (!btn) return { clicked: false };
+    btn.click();
+    return {
+      clicked: true,
+      destination: btn.getAttribute('data-destination'),
+      commodity: btn.getAttribute('data-commodity'),
+    };
+  })())`);
+  await sleep(400);
+  const navReport = await evalJson(`JSON.stringify((() => {
+    const state = window.SF && window.SF.state;
+    const wp = state && state.nav && state.nav.waypoint || null;
+    const objective = document.querySelector('#sf-localmap-objective');
+    return {
+      waypoint: wp && {
+        kind: wp.kind,
+        stationId: wp.stationId,
+        sectorId: wp.sectorId,
+        hasPos: !!wp.pos,
+        label: wp.label,
+        reason: wp.reason,
+      },
+      objectiveText: objective ? objective.textContent.replace(/\\s+/g, ' ').trim().slice(0, 160) : '',
+    };
+  })())`);
+  console.log('Route nav report:', JSON.stringify(navReport, null, 2));
+
+  assert.equal(navClick.clicked, true, 'routes: clicking the first route must be possible');
+  assert.equal(navReport.waypoint && navReport.waypoint.kind, 'trade', 'routes: Set Course must create a trade waypoint');
+  assert.equal(navReport.waypoint && navReport.waypoint.stationId, navClick.destination, 'routes: waypoint must target the clicked route destination');
+  assert.match(navReport.waypoint && navReport.waypoint.reason || '', /Sell /, 'routes: waypoint should tell the player what to sell');
+  assert.ok(navReport.waypoint && navReport.waypoint.label && !/^station_/i.test(navReport.waypoint.label),
+    'routes: waypoint label should be player-readable, not a raw station id');
 
   const errors = issues.filter((i) => i.level === 'error');
   assert.equal(errors.length, 0, 'routes probe must not produce page errors: ' + JSON.stringify(errors.slice(0, 5)));
