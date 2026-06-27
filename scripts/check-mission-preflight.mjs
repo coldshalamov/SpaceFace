@@ -1,5 +1,5 @@
 // Guards mission-board preflight: impossible one-load cargo contracts must be visible before
-// accepting and rejected before collateral is charged or the offer leaves the board.
+// accepting and contract consequences must be legible before the player commits.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -7,19 +7,31 @@ import { fileURLToPath } from 'node:url';
 
 import { MISSION_TUNING } from '../src/data/missions.js';
 import { missions } from '../src/systems/missions.js';
-import { missionPreflight } from '../src/ui/missionPreflight.js';
+import { missionPreflight, missionRepGain, missionRepPenalty } from '../src/ui/missionPreflight.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const stationHubSrc = readFileSync(join(ROOT, 'src/ui/screens/stationHub.js'), 'utf8');
+const barSrc = readFileSync(join(ROOT, 'src/ui/screens/bar.js'), 'utf8');
 const missionPreflightSrc = readFileSync(join(ROOT, 'src/ui/missionPreflight.js'), 'utf8');
 const missionsSrc = readFileSync(join(ROOT, 'src/systems/missions.js'), 'utf8');
 
 assert.match(stationHubSrc, /import \{ missionPreflight \} from '\.\.\/missionPreflight\.js'/,
   'stationHub mission board must use the shared mission preflight helper');
+assert.match(barSrc, /import \{ missionPreflight \} from '\.\.\/missionPreflight\.js'/,
+  'Bar mission leads must use the shared mission preflight helper');
 assert.match(missionPreflightSrc, /export function missionPreflight/, 'shared mission preflight helper must be exported');
+assert.match(missionPreflightSrc, /function missionConsequenceChips/,
+  'shared preflight helper must include contract consequence chips');
+assert.match(missionPreflightSrc, /export function missionRepGain/,
+  'shared preflight helper must export the same risk-scaled rep gain math shown to players');
+assert.match(missionPreflightSrc, /export function missionRepPenalty/,
+  'shared preflight helper must export the same fail/expire rep penalty math shown to players');
 assert.match(stationHubSrc, /st-mission-preflight/, 'mission cards must render preflight chips');
+assert.match(barSrc, /st-bar-offer-preflight/, 'Bar mission leads must render preflight chips');
 assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
   'mission preflight must flag cargo capacity blockers');
+assert.match(missionPreflightSrc, /Bust risks law rep/,
+  'smuggling offers must surface the extra legal-faction consequence');
 assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
 assert.match(missionsSrc, /_acceptPreflight\(offer\)/, 'missions.acceptMission must call _acceptPreflight before accepting');
 assert.match(missionsSrc, /ONE_LOAD_CARGO_TYPES/, 'missions must define the one-load cargo mission set');
@@ -79,11 +91,15 @@ function makeBus() {
   };
 }
 
+function hasChip(report, kind, text) {
+  return report.chips.some((chip) => chip.kind === kind && chip.text === text);
+}
+
 const lowCapState = makeState(1);
 const lowCapUiPreflight = missionPreflight(makeOffer(), lowCapState);
 assert.equal(lowCapUiPreflight.blocker, 'Requires 5u cargo capacity',
   'shared UI preflight must surface impossible cargo capacity before accept');
-assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'bad' && chip.text === '5u hold required'),
+assert.ok(hasChip(lowCapUiPreflight, 'bad', '5u hold required'),
   'shared UI preflight must render a bad hold-required chip');
 const lowCapBus = makeBus();
 missions.init({ state: lowCapState, bus: lowCapBus, helpers: { hash32: () => 1 } });
@@ -95,6 +111,34 @@ assert.equal(lowCapBus.events.some((event) => event.type === 'economy:chargeCred
 assert.ok(lowCapBus.events.some((event) =>
   event.type === 'toast' && /cargo capacity/.test(event.payload && event.payload.text || '')),
   'blocked preflight must tell the player cargo capacity is the issue');
+
+const consequenceState = makeState(8);
+const consequencePreflight = missionPreflight(makeOffer(), consequenceState);
+assert.equal(missionRepGain(makeOffer(), consequenceState.missions.config), 4,
+  'UI rep gain math must match the mission-system risk-scaled gain');
+assert.equal(missionRepPenalty(makeOffer(), consequenceState.missions.config), -3,
+  'UI rep penalty math must match mission failure/expiry settlement');
+assert.ok(hasChip(consequencePreflight, 'info', 'Client Meridian'),
+  'mission preflight must name the contract client/faction before accept');
+assert.ok(hasChip(consequencePreflight, 'ok', 'Pays 1,200 cr'),
+  'mission preflight must surface the contract payout before accept');
+assert.ok(hasChip(consequencePreflight, 'ok', 'Meridian rep +4'),
+  'mission preflight must surface the success reputation consequence before accept');
+assert.ok(hasChip(consequencePreflight, 'warn', 'Fail Meridian rep -3'),
+  'mission preflight must surface the failure/expiry reputation consequence before accept');
+
+const smugglingPreflight = missionPreflight(makeOffer({
+  type: 'smuggling_run',
+  factionId: 'faction_quiet',
+  params: { cmdtyId: 'cmdty_illicit_weapons', qty: 2 },
+  reward_cr: 2400,
+  collateral_cr: 600,
+  riskTier: 2,
+}), consequenceState);
+assert.ok(hasChip(smugglingPreflight, 'info', 'Client Quiet'),
+  'smuggling preflight must still identify the actual client');
+assert.ok(hasChip(smugglingPreflight, 'warn', 'Bust risks law rep'),
+  'smuggling preflight must surface the extra law-faction risk');
 
 const lowFreeState = makeState(8);
 lowFreeState.player.cargo.usedVolume = 6;
@@ -113,4 +157,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - shared readiness is visible and impossible cargo contracts are rejected before collateral.');
+console.log('Mission preflight OK - readiness and contract consequences are visible before accept.');
