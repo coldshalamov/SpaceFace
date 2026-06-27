@@ -58,9 +58,19 @@ assert.match(src, /sig === this\._storySig/, 'story objective refresh should ski
 const dockBindingMentions = src.match(/BINDINGS\.dock\.label/g) || [];
 assert.ok(dockBindingMentions.length >= 4,
   'onboarding.js should source dock tutorial/control copy from BINDINGS.dock.label');
+const localMapBindingMentions = src.match(/BINDINGS\.localmap\.label/g) || [];
+const starMapBindingMentions = src.match(/BINDINGS\.starmap\.label/g) || [];
+assert.ok(localMapBindingMentions.length >= 2,
+  'onboarding.js should source local-map tutorial/control copy from BINDINGS.localmap.label');
+assert.ok(starMapBindingMentions.length >= 3,
+  'onboarding.js should source star-map tutorial/control copy from BINDINGS.starmap.label');
 for (const staleDockCopy of [/Press Enter at the dock prompt/, /Press ENTER to dock/, /Enter to dock/]) {
   assert.doesNotMatch(src, staleDockCopy,
     `onboarding.js must not use stale hard-coded dock copy: ${staleDockCopy}`);
+}
+for (const staleMapCopy of [/Star Map \(M\)/, /N local map/, /M star map/, /M open Star Map/]) {
+  assert.doesNotMatch(src, staleMapCopy,
+    `onboarding.js must not use stale hard-coded map copy: ${staleMapCopy}`);
 }
 
 console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft).`);

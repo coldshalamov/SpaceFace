@@ -121,7 +121,7 @@ export const onboarding = {
       this._gateControlInRange = !!inRange;
       if (!inRange) return;
       this._showHint('firstGate',
-        'Jump gates connect star systems. Open the Star Map (M) to plot a jump route.');
+        `Jump gates connect star systems. Open the Star Map (${BINDINGS.starmap.label}) to plot a jump route.`);
     });
 
     // First cargo full: teach the player to sell.
@@ -422,11 +422,11 @@ export const onboarding = {
     this._lastControlMode = mode;
 
     const HINTS = {
-      flight:  'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space Pulse Laser  •  RMB mass sample  •  Shift boost  •  Tab target  •  N local map  •  M star map',
+      flight:  `W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space Pulse Laser  •  RMB mass sample  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map`,
       mining:  'RMB hold to sample  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
       combat:  'LMB/Space Pulse Laser  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
       station: `${BINDINGS.dock.label} dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts`,
-      gate:    'M open Star Map  •  Select destination  •  Jump to travel between systems',
+      gate:    `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
     };
     el.textContent = HINTS[mode] || HINTS.flight;
     // Flash the bar for 3.5s on context change so the player sees the relevant hint, then it fades.
