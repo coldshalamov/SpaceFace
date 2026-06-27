@@ -586,7 +586,7 @@ export const ships = {
 
   /** Purchase a module or weapon by defId. Validates tech, credits, then deducts credits and
    *  pushes a new instance into moduleInventory. Returns true on success. */
-  buyModule({ defId }) {
+  buyModule({ defId, fitSlotIndex = null }) {
     const def = defById(defId);
     const p = this.state.player;
     if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return false; }
@@ -601,9 +601,12 @@ export const ships = {
     }
     // Deduct credits via the economy's sole-writer path (§0.6).
     if (price > 0) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyModule:' + defId });
-    p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId });
-    this.bus.emit('module:purchased', { defId, price });
-    this.bus.emit('toast', { text: 'Purchased ' + def.name, kind: 'success', ttl: 3 });
+    const item = { instanceId: this.nextInstanceId(), defId };
+    p.moduleInventory.push(item);
+    const shouldFit = Number.isInteger(fitSlotIndex);
+    const equipped = shouldFit ? this.fitModule({ slotIndex: fitSlotIndex, instanceId: item.instanceId }) : false;
+    this.bus.emit('module:purchased', { defId, price, fitSlotIndex: equipped ? fitSlotIndex : null });
+    this.bus.emit('toast', { text: (equipped ? 'Purchased and equipped ' : 'Purchased ') + def.name, kind: 'success', ttl: 3 });
     return true;
   },
 

@@ -244,7 +244,10 @@ export function createOutfittingPanel(ctx) {
     const btn = ev.target.closest('[data-act="buy"]');
     if (!btn || btn.disabled) return;
     const defId = btn.closest('[data-shop]').getAttribute('data-shop');
-    ctx.bus.emit('ui:buyModule', { defId });
+    const fitSlotIndex = Number(btn.getAttribute('data-fit-slot'));
+    const payload = { defId };
+    if (Number.isInteger(fitSlotIndex) && fitSlotIndex >= 0) payload.fitSlotIndex = fitSlotIndex;
+    ctx.bus.emit('ui:buyModule', payload);
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
     // Refresh after a short delay so the credits:changed event has processed.
     setTimeout(() => refresh(), 50);
@@ -337,6 +340,7 @@ export function createOutfittingPanel(ctx) {
 
       // Check if the ship has a compatible slot for this module
       const hasSlot = slots.some((s) => s.type === def.slotType && SIZE_RANK[s.size] >= SIZE_RANK[def.size]);
+      const emptyFitSlot = slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
 
       // Comparison delta: find the first fitted module of the same slot type and compare key stats.
       let deltaHtml = '';
@@ -365,6 +369,7 @@ export function createOutfittingPanel(ctx) {
       let btnHtml;
       if (!unlocked) btnHtml = '<button disabled title="Requires research">Locked</button>';
       else if (!afford) btnHtml = '<button disabled>Can\'t afford</button>';
+      else if (emptyFitSlot >= 0) btnHtml = '<button data-act="buy" data-fit-slot="' + emptyFitSlot + '">Buy &amp; Fit</button>';
       else btnHtml = '<button data-act="buy">Buy</button>';
 
       row.innerHTML =
