@@ -8,6 +8,7 @@ import { escapeHtml } from '../comms.js';
 import { SECTORS }      from '../../data/sectors.js';
 import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
+import { missionConsequenceSummary } from '../missionPreflight.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -841,6 +842,7 @@ export function createBarPanel(ctx) {
     if (result.missionOffer) {
       const offer = result.missionOffer;
       const preflight = missionPreflight(offer, ctx.state);
+      const consequences = missionConsequenceSummary(offer);
       const unmet = offer.requirementUnmet || offer.lockedReason || preflight.blocker || null;
       const offerWrap = document.createElement('div');
       offerWrap.className = 'st-bar-offer';
@@ -850,6 +852,12 @@ export function createBarPanel(ctx) {
         '<span class="st-mission-preflight-chip st-mission-preflight-chip--' + chip.kind + '">' + escapeHtml(chip.text) + '</span>'
       ).join('');
       offerWrap.appendChild(chips);
+      const outcome = document.createElement('div');
+      outcome.className = 'st-mission-consequences st-bar-offer-consequences';
+      outcome.innerHTML = consequences.chips.map((chip) =>
+        '<span class="st-mission-consequence st-mission-consequence--' + chip.kind + '"><b>' + escapeHtml(chip.label) + '</b> ' + escapeHtml(chip.text) + '</span>'
+      ).join('');
+      offerWrap.appendChild(outcome);
       if (preflight.warning) {
         const warning = document.createElement('div');
         warning.className = 'st-mission-preflight-warn st-bar-offer-warn';

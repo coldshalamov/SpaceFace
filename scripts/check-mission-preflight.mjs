@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { MISSION_TUNING } from '../src/data/missions.js';
 import { missions } from '../src/systems/missions.js';
-import { missionPreflight } from '../src/ui/missionPreflight.js';
+import { missionConsequenceSummary, missionPreflight } from '../src/ui/missionPreflight.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const stationHubSrc = readFileSync(join(ROOT, 'src/ui/screens/stationHub.js'), 'utf8');
@@ -17,7 +17,12 @@ const missionsSrc = readFileSync(join(ROOT, 'src/systems/missions.js'), 'utf8');
 assert.match(stationHubSrc, /import \{ missionPreflight \} from '\.\.\/missionPreflight\.js'/,
   'stationHub mission board must use the shared mission preflight helper');
 assert.match(missionPreflightSrc, /export function missionPreflight/, 'shared mission preflight helper must be exported');
+assert.match(stationHubSrc, /missionConsequenceSummary\(m\)/,
+  'mission cards must use the shared consequence helper');
+assert.match(missionPreflightSrc, /export function missionConsequenceSummary/,
+  'shared mission consequence helper must be exported');
 assert.match(stationHubSrc, /st-mission-preflight/, 'mission cards must render preflight chips');
+assert.match(stationHubSrc, /st-mission-consequences/, 'mission cards must render consequence chips');
 assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
   'mission preflight must flag cargo capacity blockers');
 assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
@@ -80,6 +85,16 @@ function makeBus() {
 }
 
 const lowCapState = makeState(1);
+const consequence = missionConsequenceSummary(makeOffer());
+assert.equal(consequence.reward, 1200, 'consequence helper must surface mission reward credits');
+assert.equal(consequence.repReward, 4, 'consequence helper must match risk-scaled completion rep');
+assert.equal(consequence.repPenalty, -3, 'consequence helper must match failure/expiry rep penalty');
+assert.ok(consequence.chips.some((chip) =>
+  chip.label === 'Success' && /\+1,200 cr/.test(chip.text) && /\+4 rep/.test(chip.text) && /collateral returned/.test(chip.text)),
+  'success consequence must show credits, rep, and collateral refund');
+assert.ok(consequence.chips.some((chip) =>
+  chip.label === 'Fail/expire' && /-3 rep/.test(chip.text) && /collateral forfeited/.test(chip.text) && /no payout/.test(chip.text)),
+  'failure consequence must show rep penalty, collateral loss, and no payout');
 const lowCapUiPreflight = missionPreflight(makeOffer(), lowCapState);
 assert.equal(lowCapUiPreflight.blocker, 'Requires 5u cargo capacity',
   'shared UI preflight must surface impossible cargo capacity before accept');
@@ -113,4 +128,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - shared readiness is visible and impossible cargo contracts are rejected before collateral.');
+console.log('Mission preflight OK - shared readiness and consequence stakes are visible before accept.');

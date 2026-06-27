@@ -20,10 +20,10 @@ import { createFactionsPanel } from './factions.js';
 import { createBarPanel } from './bar.js';
 import { SECTORS } from '../../data/sectors.js';
 import { FACTION_META } from '../../data/factions.js';
-import { MISSION_TUNING } from '../../data/missions.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { escapeHtml } from '../comms.js';
 import { missionPreflight } from '../missionPreflight.js';
+import { missionConsequenceSummary } from '../missionPreflight.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -327,14 +327,16 @@ export const stationHub = {
     for (const m of slots) {
       const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
       const risk = (m.riskTier != null ? m.riskTier : (m.risk != null ? m.risk : 0));
-      const reward = m.reward != null ? m.reward : (m.rewardCr != null ? m.rewardCr : (m.reward_cr != null ? m.reward_cr : 0));
-      const repAmt = (m.rep != null ? m.rep : (m.repReward != null ? m.repReward : (MISSION_TUNING.BASE_REP[m.type] || 0)));
       const mid = m.id != null ? m.id : m.missionId;
       const preflight = missionPreflight(m, ctx.state);
+      const consequences = missionConsequenceSummary(m);
       const unmet = m.requirementUnmet || m.lockedReason || preflight.blocker || null;
       const expires = m.expiresInS != null ? m.expiresInS : m.time_limit_s;
       const preflightHtml = preflight.chips.map((chip) =>
         '<span class="st-mission-preflight-chip st-mission-preflight-chip--' + chip.kind + '">' + escapeHtml(chip.text) + '</span>'
+      ).join('');
+      const consequenceHtml = consequences.chips.map((chip) =>
+        '<span class="st-mission-consequence st-mission-consequence--' + chip.kind + '"><b>' + escapeHtml(chip.label) + '</b> ' + escapeHtml(chip.text) + '</span>'
       ).join('');
       const card = document.createElement('div');
       card.className = 'st-mission-card' + (tracked && tracked === mid ? ' tracked' : '');
@@ -354,10 +356,11 @@ export const stationHub = {
         '<div class="st-mission-preflight">' + preflightHtml + '</div>' +
         (preflight.warning ? '<div class="st-mission-preflight-warn">' + escapeHtml(preflight.warning) + '</div>' : '') +
         '<div class="st-mission-rewards mono">' +
-          '<span class="st-mission-cr">+' + (reward || 0).toLocaleString('en-US') + ' cr</span>' +
-          (repAmt ? '<span class="st-mission-rep">+' + repAmt + ' rep</span>' : '') +
+          '<span class="st-mission-cr">+' + (consequences.reward || 0).toLocaleString('en-US') + ' cr</span>' +
+          (consequences.repReward ? '<span class="st-mission-rep">+' + consequences.repReward + ' rep</span>' : '') +
           (expires != null ? '<span class="st-mission-exp">' + fmtTime(expires) + '</span>' : '') +
         '</div>' +
+        '<div class="st-mission-consequences mono">' + consequenceHtml + '</div>' +
         '<div class="st-mission-btns">' +
           '<button data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled title="' + escapeHtml(unmet) + '"' : ' title="Accept, auto-track, and add to Mission Log"') + '>Accept + Track</button>' +
           (unmet ? '<span class="st-mission-unmet">' + escapeHtml(unmet) + '</span>' : '') +
@@ -1010,6 +1013,7 @@ const STATION_CSS = `
 .st-bar-reply.show { max-height: 120px; }
 .st-bar-offer { margin-top: 8px; display: grid; gap: 6px; justify-items: start; }
 .st-bar-offer .st-mission-preflight { margin: 0; }
+.st-bar-offer .st-mission-consequences { margin: 0; }
 .st-bar-offer.accepted { opacity: .82; }
 .st-bar-offer-warn { margin: -1px 0 0; }
 .st-bar-offer-blocker { margin: -1px 0 0; }
@@ -1045,6 +1049,14 @@ const STATION_CSS = `
 .st-mission-cr { color: var(--energy); }
 .st-mission-rep { color: var(--accent-2); }
 .st-mission-exp { color: var(--ink-mute); }
+.st-mission-consequences { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 8px; }
+.st-mission-consequence { font-size: .64rem; letter-spacing: .02em; line-height: 1.25;
+  padding: 3px 6px; border: 1px solid rgba(148,163,184,.18); border-radius: 4px;
+  color: var(--ink-dim); background: rgba(255,255,255,.025); }
+.st-mission-consequence b { color: var(--ink); font-weight: 700; text-transform: uppercase; }
+.st-mission-consequence--ok { border-color: rgba(98,224,138,.3); color: var(--good); }
+.st-mission-consequence--warn { border-color: rgba(255,198,77,.3); color: var(--warn); }
+.st-mission-consequence--bad { border-color: rgba(255,84,112,.34); color: var(--danger); }
 .st-mission-btns { display: flex; gap: 8px; align-items: center; }
 .st-mission-btns button { font-size: .78rem; }
 .st-mission-unmet { font-size: .7rem; color: var(--danger); }

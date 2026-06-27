@@ -8,6 +8,60 @@ function missionCollateral(m) {
   return Math.max(0, m && (m.collateral_cr || m.collateralCr || m.collateral || 0) || 0);
 }
 
+export function missionRewardCredits(m) {
+  const raw = m && (m.reward != null ? m.reward : (m.rewardCr != null ? m.rewardCr : m.reward_cr));
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+}
+
+export function missionRepReward(m) {
+  if (!m || !m.factionId) return 0;
+  const explicit = Number(m.rep != null ? m.rep : m.repReward);
+  if (Number.isFinite(explicit) && explicit !== 0) return Math.round(explicit);
+  const risk = Number(m.riskTier != null ? m.riskTier : (m.risk != null ? m.risk : 0));
+  const riskTier = Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
+  const base = MISSION_TUNING.BASE_REP[m.type] != null ? MISSION_TUNING.BASE_REP[m.type] : 3;
+  return Math.round(base * (1 + riskTier * 0.4));
+}
+
+export function missionRepPenalty(m) {
+  const reward = missionRepReward(m);
+  return reward > 0 ? -Math.ceil(reward * 0.6) : 0;
+}
+
+export function missionConsequenceSummary(m) {
+  const reward = missionRewardCredits(m);
+  const repReward = missionRepReward(m);
+  const repPenalty = missionRepPenalty(m);
+  const collateral = missionCollateral(m);
+  const chips = [];
+  const success = [];
+  if (reward > 0) success.push(`+${reward.toLocaleString('en-US')} cr`);
+  if (repReward > 0) success.push(`+${repReward} rep`);
+  if (collateral > 0) success.push(`${collateral.toLocaleString('en-US')} cr collateral returned`);
+  chips.push({
+    kind: 'ok',
+    label: 'Success',
+    text: success.length ? success.join(', ') : 'contract closes cleanly',
+  });
+
+  const fail = [];
+  if (repPenalty < 0) fail.push(`${repPenalty} rep`);
+  if (collateral > 0) fail.push('collateral forfeited');
+  fail.push('no payout');
+  chips.push({
+    kind: 'warn',
+    label: 'Fail/expire',
+    text: fail.join(', '),
+  });
+
+  if (m && m.type === 'smuggling_run') {
+    chips.push({ kind: 'bad', label: 'Heat', text: 'customs scans can add legal trouble' });
+  }
+
+  return { reward, repReward, repPenalty, collateral, chips };
+}
+
 export function missionCargoFootprint(m) {
   const p = m && m.params || {};
   if (!p.cmdtyId || !(p.qty > 0)) return { qty: 0, volume: 0 };

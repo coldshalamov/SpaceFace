@@ -128,6 +128,8 @@ try {
       reply: text(card, '.st-bar-reply'),
       chips: [...(offer ? offer.querySelectorAll('.st-mission-preflight-chip') : [])]
         .map((el) => (el.textContent || '').trim()),
+      consequenceChips: [...(offer ? offer.querySelectorAll('.st-mission-consequence') : [])]
+        .map((el) => (el.textContent || '').replace(/\s+/g, ' ').trim()),
       blocker: text(offer, '.st-bar-offer-blocker'),
       buttonText: button ? (button.textContent || '').trim() : '',
       buttonDisabled: button ? button.disabled : null,
@@ -145,6 +147,10 @@ try {
   assert.match(report.reply, /Accept \+ Track/i, 'bar reply should use tracking language: ' + JSON.stringify(report));
   assert(report.chips.some((chip) => /500 cr collateral/.test(chip)),
     'bar offer should show collateral readiness chip: ' + JSON.stringify(report));
+  assert(report.consequenceChips.some((chip) => /Success/.test(chip) && /\+1,200 cr/.test(chip) && /\+7 rep/.test(chip) && /collateral returned/.test(chip)),
+    'bar offer should show success consequence stakes: ' + JSON.stringify(report));
+  assert(report.consequenceChips.some((chip) => /Fail\/expire/.test(chip) && /-5 rep/.test(chip) && /collateral forfeited/.test(chip) && /no payout/.test(chip)),
+    'bar offer should show failure consequence stakes: ' + JSON.stringify(report));
   assert.equal(report.blocker, 'Need 500 cr collateral',
     'bar offer should show visible collateral blocker: ' + JSON.stringify(report));
   assert.equal(report.buttonText, 'ACCEPT + TRACK', 'bar button should match board tracking language');
