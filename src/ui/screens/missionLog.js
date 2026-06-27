@@ -128,6 +128,172 @@ function nextStepText(m) {
   }
 }
 
+function stripNextPrefix(text) {
+  return String(text || '').replace(/^Next:\s*/i, '');
+}
+
+function missionTitle(m) {
+  return (m && (m.title || m.name)) || prettyType(m && m.type);
+}
+
+function missionProgressLabel(m) {
+  const prog = Math.max(0, Number(m && m.objectiveProgress) || 0);
+  const tgt = Math.max(1, Number(m && m.objectiveTarget) || 1);
+  return Math.min(100, Math.round((prog / tgt) * 100)) + '% complete';
+}
+
+function cargoLoad(state) {
+  const cargo = state && state.player && state.player.cargo;
+  const cap = Math.max(0, Number(cargo && cargo.capVolume) || 0);
+  const used = Math.max(0, Number(cargo && cargo.usedVolume) || 0);
+  return { cap, used, free: Math.max(0, cap - used), ratio: cap > 0 ? used / cap : 0 };
+}
+
+function storyActionForBeat(beat, state) {
+  const story = state && state.story || {};
+  const branch = story.branch || null;
+  const chainProgress = story.chainProgress || 0;
+  switch (beat && beat.beat) {
+    case 0:
+      return {
+        tone: 'primary',
+        label: 'STORY',
+        title: 'Follow the anomaly',
+        body: 'Mine the 47-A signal, then dock at Helios before the manifest rolls over.',
+        meta: 'Mining',
+      };
+    case 1:
+      return {
+        tone: 'primary',
+        label: 'CONTRACT',
+        title: 'Take a haul',
+        body: 'Pick a low-risk cargo or trade contract from a station board, then track it before undocking.',
+        meta: 'Trade',
+      };
+    case 2:
+      return {
+        tone: 'primary',
+        label: 'COMBAT',
+        title: 'Arm for a bounty',
+        body: 'Fit the Kestrel for a low-risk bounty, track the target, and cash the first kill.',
+        meta: 'Bounty',
+      };
+    case 3:
+      return {
+        tone: 'primary',
+        label: 'SHIPYARD',
+        title: 'Fund the next hull',
+        body: 'Run short hauls, mining, or safe bounty work until a tier-2 hull is affordable.',
+        meta: ((state && state.player && state.player.credits) || 0).toLocaleString() + ' cr',
+      };
+    case 4:
+      return {
+        tone: 'primary',
+        label: 'FACTION',
+        title: 'Choose a sponsor',
+        body: 'Accept an intro contract from MTS, SCN, or the Free Captains to lock your first path.',
+        meta: 'Branch',
+      };
+    case 5:
+      return {
+        tone: 'primary',
+        label: 'CHAIN',
+        title: branch ? 'Advance ' + branch + ' work' : 'Prove a path',
+        body: 'Complete your faction chain and keep the next contract tracked between docks.',
+        meta: chainProgress ? (chainProgress + ' done') : 'Faction',
+      };
+    case 6:
+      return {
+        tone: 'primary',
+        label: 'ASSET',
+        title: 'Plant income',
+        body: 'Deploy a drone, trader, or outpost so the sector starts earning while you fly.',
+        meta: 'Passive',
+      };
+    case 7:
+      return {
+        tone: 'primary',
+        label: 'ENDGAME',
+        title: 'Build sector power',
+        body: 'Push toward 100,000cr net worth and 50 rep with your chosen faction.',
+        meta: 'Deep Reach',
+      };
+    default:
+      return beat ? {
+        tone: 'primary',
+        label: 'STORY',
+        title: String(beat.id || 'Story').replace(/_/g, ' '),
+        body: beat.objective || 'Follow the current story objective.',
+        meta: 'Beat ' + beat.beat,
+      } : null;
+  }
+}
+
+export function recommendedActions(state, activeMissions, trackedMissionId) {
+  const active = (activeMissions || []).filter((m) => m && m.status === 'active');
+  const tracked = trackedMissionId ? active.find((m) => m.id === trackedMissionId) : null;
+  const beatIndex = state && state.story ? (state.story.beatIndex || 0) : 0;
+  const storyBeat = STORY_BEATS[beatIndex];
+  const storyAction = storyActionForBeat(storyBeat, state);
+  const cargo = cargoLoad(state);
+  const actions = [];
+
+  if (tracked) {
+    actions.push({
+      tone: 'primary',
+      label: 'TRACKED',
+      title: missionTitle(tracked),
+      body: stripNextPrefix(nextStepText(tracked)),
+      meta: missionProgressLabel(tracked),
+    });
+  } else if (active.length) {
+    const candidate = active.find((m) => (m.deadline_s || 0) > (state && state.simTime || 0)) || active[0];
+    actions.push({
+      tone: 'warn',
+      label: 'UNTRACKED',
+      title: 'Track ' + missionTitle(candidate),
+      body: 'Set one active contract as your nav target before leaving the station lane.',
+      meta: active.length === 1 ? '1 active' : active.length + ' active',
+    });
+  } else if (storyAction) {
+    actions.push(storyAction);
+  }
+
+  if (cargo.cap > 0 && cargo.ratio >= 0.9) {
+    actions.push({
+      tone: 'warn',
+      label: 'HOLD',
+      title: 'Unload cargo',
+      body: 'The hold is nearly full. Sell goods or finish a delivery before taking another one-load contract.',
+      meta: cargo.free.toFixed(cargo.free < 10 ? 1 : 0) + 'u free',
+    });
+  } else if (!active.length && cargo.cap > 0 && storyBeat && (storyBeat.beat === 0 || storyBeat.beat === 1)) {
+    actions.push({
+      tone: 'info',
+      label: 'READINESS',
+      title: 'Keep the hold open',
+      body: 'Early mining and haul jobs pay fastest when you leave enough room for contract cargo.',
+      meta: cargo.free.toFixed(cargo.free < 10 ? 1 : 0) + 'u free',
+    });
+  }
+
+  if (storyAction && actions.every((a) => a.title !== storyAction.title) && actions.length < 3) {
+    actions.push(storyAction);
+  }
+
+  if (!active.length && actions.length < 3) {
+    actions.push({
+      tone: 'info',
+      label: 'BOARD',
+      title: 'Favor low risk',
+      body: 'Pick a nearby R0-R1 contract first; reliable payouts beat distant prestige early.',
+      meta: 'Starter work',
+    });
+  }
+
+  return actions.slice(0, 3);
+}
+
 function destStationName(id) {
   const info = STATION_INFO.get(id);
   return info ? info.name : 'destination';
@@ -146,6 +312,7 @@ export const missionLogScreen = {
   _ctx: null,
   _listEl: null,
   _compListEl: null,
+  _recommendEl: null,
   _subbed: false,
 
   mount(rootEl, ctx) {
@@ -184,6 +351,12 @@ export const missionLogScreen = {
     const storyEl = el('div', 'sf-mlog-story');
     rootEl.insertBefore(storyEl, activeH);
     this._storyEl = storyEl;
+
+    const recH = el('div', 'sf-mlog-section-h sf-mlog-section-rec', 'RECOMMENDED NEXT');
+    rootEl.insertBefore(recH, activeH);
+    const recEl = el('div', 'sf-mlog-recommend');
+    rootEl.insertBefore(recEl, activeH);
+    this._recommendEl = recEl;
 
     // Completed missions section
     const compH = el('div', 'sf-mlog-section-h sf-mlog-section-comp');
@@ -284,6 +457,7 @@ export const missionLogScreen = {
     // Story objective (P2-14): render the current beat first, before active missions, so the log is
     // always a valid "what should I do now" even with zero active contracts.
     this._renderStory(state);
+    this._renderRecommendations(state, activeMissions, tracked);
 
     this._listEl.innerHTML = '';
 
@@ -305,7 +479,7 @@ export const missionLogScreen = {
       const top = el('div', 'sf-mlog-card-top');
       const risk = m.riskTier != null ? m.riskTier : 0;
       top.innerHTML =
-        '<span class="sf-mlog-card-title">' + escapeHtml(m.title || prettyType(m.type)) + '</span>' +
+        '<span class="sf-mlog-card-title">' + escapeHtml(missionTitle(m)) + '</span>' +
         '<span class="sf-mlog-card-type">' + escapeHtml(prettyType(m.type)) + '</span>' +
         '<span class="sf-mlog-card-risk r' + risk + '">R' + risk + '</span>';
       card.appendChild(top);
@@ -372,6 +546,23 @@ export const missionLogScreen = {
       '</div>';
   },
 
+  _renderRecommendations(state, activeMissions, trackedMissionId) {
+    if (!this._recommendEl) return;
+    const actions = recommendedActions(state, activeMissions, trackedMissionId);
+    if (!actions.length) {
+      this._recommendEl.innerHTML = '';
+      return;
+    }
+    this._recommendEl.innerHTML = actions.map((a) => (
+      '<div class="sf-mlog-rec-item sf-mlog-rec-item--' + escapeHtml(a.tone || 'info') + '">' +
+        '<div class="sf-mlog-rec-label">' + escapeHtml(a.label || 'NEXT') + '</div>' +
+        '<div class="sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</div>' +
+        '<div class="sf-mlog-rec-body">' + escapeHtml(a.body || '') + '</div>' +
+        (a.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(a.meta) + '</div>' : '') +
+      '</div>'
+    )).join('');
+  },
+
   _renderCompleted() {
     if (!this._compListEl || !this._ctx) return;
     const log = (this._ctx.state.missions && this._ctx.state.missions.completedLog) || [];
@@ -421,6 +612,20 @@ const CSS = `
   text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
 .sf-mlog-story-objective { font-size: .92rem; color: var(--ink); line-height: 1.4; font-weight: 600; }
 .sf-mlog-story-introduces { font-size: .72rem; color: var(--ink-mute); margin-top: 6px; font-style: italic; }
+
+.sf-mlog-recommend { padding: 4px 16px 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px; }
+.sf-mlog-rec-item { min-width: 0; border: 1px solid var(--panel-edge); border-radius: 8px; padding: 10px 12px;
+  background: rgba(8,16,28,.58); }
+.sf-mlog-rec-item--primary { border-color: rgba(57,208,255,.7); box-shadow: 0 0 10px rgba(57,208,255,.12); }
+.sf-mlog-rec-item--warn { border-color: rgba(255,205,76,.7); box-shadow: 0 0 10px rgba(255,205,76,.1); }
+.sf-mlog-rec-label { font-family: var(--mono); font-size: .58rem; letter-spacing: .14em; color: var(--accent);
+  text-transform: uppercase; margin-bottom: 4px; overflow-wrap: anywhere; }
+.sf-mlog-rec-item--warn .sf-mlog-rec-label { color: var(--warn); }
+.sf-mlog-rec-title { font-size: .86rem; line-height: 1.25; color: var(--ink); font-weight: 700; margin-bottom: 4px;
+  overflow-wrap: anywhere; }
+.sf-mlog-rec-body { font-size: .74rem; line-height: 1.35; color: var(--ink-dim); overflow-wrap: anywhere; }
+.sf-mlog-rec-meta { margin-top: 6px; color: var(--energy); font-size: .68rem; overflow-wrap: anywhere; }
 
 .sf-mlog-list { flex: 1; overflow-y: auto; padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
 
