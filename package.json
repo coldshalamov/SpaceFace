@@ -54,6 +54,7 @@
     "check:ai": "npm run check:sg06:ai",
     "check:sg06": "npm run check:sg06:intake && npm run check:sg06:production-ports && npm run check:sg06:encounter-sink && npm run check:sg06:encounter-owner && npm run check:sg06:live-shadow && npm run check:sg06:registry-init && npm run check:sg06:live-registry && npm run check:sg06:tether-break && npm run check:sg06:formation && npm run check:sg06:ai",
     "check:sg03:save-reload": "node scripts/check-sg03-save-reload.mjs",
+    "check:save-resume-confidence": "node scripts/check-save-resume-confidence.mjs",
     "check:combat": "node scripts/check-combat-grammar.mjs && npm run check:sg03:save-reload",
     "bench:combat": "node scripts/bench-combat.mjs",
     "build:sg04:release-assets": "node scripts/build-sg04-release-assets.mjs",
