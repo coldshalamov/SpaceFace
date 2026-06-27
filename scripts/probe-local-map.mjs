@@ -124,6 +124,30 @@ try {
   assert.equal(uiClickReport.inputFire, false, 'clicking a HUD button must not latch state.input.fire: ' + JSON.stringify(uiClickReport));
   assert.equal(uiClickReport.inputFireGroup, null, 'clicking a HUD button must not latch a fire group: ' + JSON.stringify(uiClickReport));
 
+  const cargoOpenBeforeEsc = await evalJson(`JSON.stringify((() => {
+    const sf = window.SF;
+    if (!document.querySelector('.sf-cargo-panel.open') && sf && sf.bus && typeof sf.bus.emit === 'function') {
+      sf.bus.emit('ui:toggleCargo');
+    }
+    return { cargoOpen: !!document.querySelector('.sf-cargo-panel.open') };
+  })())`);
+  assert.equal(cargoOpenBeforeEsc.cargoOpen, true, 'cargo panel must be open before Escape regression: ' + JSON.stringify(cargoOpenBeforeEsc));
+  await sleep(250);
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await sleep(250);
+  const cargoEscReport = await evalJson(`JSON.stringify((() => {
+    const sf = window.SF;
+    const stack = sf && sf.state && sf.state.ui && sf.state.ui.screenStack;
+    return {
+      cargoStillOpen: !!document.querySelector('.sf-cargo-panel.open'),
+      topScreen: Array.isArray(stack) ? (stack[stack.length - 1] || null) : null,
+    };
+  })())`);
+  console.log('Cargo ESC report:', JSON.stringify(cargoEscReport, null, 2));
+  assert.equal(cargoEscReport.cargoStillOpen, false, 'Escape must close the cargo panel: ' + JSON.stringify(cargoEscReport));
+  assert.notEqual(cargoEscReport.topScreen, 'pause', 'Escape must not open Pause while closing the cargo panel: ' + JSON.stringify(cargoEscReport));
+
   // Open the local system map via the N key.
   await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'n', code: 'KeyN', windowsVirtualKeyCode: 78 });
   await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'n', code: 'KeyN', windowsVirtualKeyCode: 78 });

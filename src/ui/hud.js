@@ -673,6 +673,7 @@ export function createHud(ctx, alerts) {
   root.appendChild(cargoPanel);
 
   let cargoPanelOpen = false;
+  if (state.ui) state.ui.cargoPanelOpen = false;
   const cargoListEl = cargoPanel.querySelector('.sf-cargo-panel__list');
   const cargoSummaryUsed = cargoPanel.querySelector('.sf-cargo-summary-used');
   const cargoSummaryMass = cargoPanel.querySelector('.sf-cargo-summary-mass');
@@ -779,6 +780,7 @@ export function createHud(ctx, alerts) {
   // Toggle function
   function toggleCargoPanel() {
     cargoPanelOpen = !cargoPanelOpen;
+    if (state.ui) state.ui.cargoPanelOpen = cargoPanelOpen;
     cargoPanel.classList.toggle('open', cargoPanelOpen);
     if (cargoPanelOpen) refreshCargoPanel();
     ctx.bus.emit('audio:cue', { id: cargoPanelOpen ? 'ui_open' : 'ui_back' });
@@ -787,6 +789,7 @@ export function createHud(ctx, alerts) {
   function closeCargoPanel() {
     if (!cargoPanelOpen) return;
     cargoPanelOpen = false;
+    if (state.ui) state.ui.cargoPanelOpen = false;
     cargoPanel.classList.remove('open');
     ctx.bus.emit('audio:cue', { id: 'ui_back' });
   }
@@ -814,7 +817,7 @@ export function createHud(ctx, alerts) {
     }
   }
 
-  // Close on ESC when panel is open (handled via keydown on the panel)
+  // Close on ESC when panel focus is inside it; ui/input.js handles the global flight case.
   cargoPanel.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') { ev.stopPropagation(); closeCargoPanel(); }
   });

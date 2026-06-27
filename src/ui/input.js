@@ -84,6 +84,17 @@ export function createUiInput(ctx, screenManager) {
 
     switch (key) {
       case 'Escape':
+        if (state.ui && state.ui.commsBacklogOpen) {
+          ev.preventDefault();
+          bus.emit('ui:closeComms');
+          return;
+        }
+        if (state.ui && state.ui.cargoPanelOpen) {
+          ev.preventDefault();
+          bus.emit('ui:closeCargo');
+          return;
+        }
+        // fall through to Pause when no flight overlay owns Escape
       case 'p': case 'P':
         ev.preventDefault();
         screenManager.pushScreen('pause');

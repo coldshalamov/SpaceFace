@@ -186,8 +186,10 @@ export function createComms(ctx) {
   const backlogList = backlogView.querySelector('.sf-comm-backlog__list');
 
   let backlogOpen = false;
+  if (state.ui) state.ui.commsBacklogOpen = false;
   function openBacklog() {
     backlogOpen = true;
+    if (state.ui) state.ui.commsBacklogOpen = true;
     backlogBtn.classList.remove('sf-comm-backlog-btn--pulse');
     rebuildBacklog();
     backlogView.classList.add('open');
@@ -195,6 +197,7 @@ export function createComms(ctx) {
   }
   function closeBacklog() {
     backlogOpen = false;
+    if (state.ui) state.ui.commsBacklogOpen = false;
     backlogView.classList.remove('open');
     backlogView.setAttribute('aria-hidden', 'true');
   }
@@ -228,17 +231,9 @@ export function createComms(ctx) {
 
   backlogBtn.addEventListener('click', toggleBacklog);
   backlogView.querySelector('.sf-comm-backlog__close').addEventListener('click', closeBacklog);
-  function onBacklogKeydown(ev) {
-    if (!backlogOpen || ev.key !== 'Escape') return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    closeBacklog();
-  }
-
-  // Route the L key through the UI input bus; capture ESC before the global pause router.
+  // Route L/ESC through the central UI input bus so overlays close before Pause can open.
   bus.on('ui:toggleComms', toggleBacklog);
   bus.on('ui:closeComms', closeBacklog);
-  document.addEventListener('keydown', onBacklogKeydown, true);
 
   // ── 3. Bulkhead graffiti (player's own ship interior — shown on the HUD) ─────────────────
   // Appended to #ui-root (NOT #hud): createHud() does `root.innerHTML = ''` on #hud which would
