@@ -238,9 +238,78 @@ try {
     'Load & Nav should keep nav on the seeded buyer station');
   assert(loadReport.departureChips.some((chip) => chip.label === 'Route' && /Probe Buyer/.test(chip.text) && /\d/.test(chip.text)),
     'Departure Check should summarize loaded trade route cargo: ' + JSON.stringify(loadReport.departureChips));
+
+  const destinationPrep = await page.evaluate((cmdtyId) => {
+    const sf = window.SF;
+    const state = sf.state;
+    const sourceStationId = state.ui && state.ui.dockedStationId;
+    const sourceEntry = state.economy.markets[sourceStationId] && state.economy.markets[sourceStationId][cmdtyId];
+    if (!sourceEntry) return { ok: false, reason: 'missing-source-market', sourceStationId, cmdtyId };
+    state.economy.markets.__probe_trade_dest = state.economy.markets.__probe_trade_dest || {};
+    state.economy.markets.__probe_trade_dest[cmdtyId] = {
+      ...sourceEntry,
+      role: 'consume',
+      stock: Math.max(1, Math.floor((sourceEntry.baseEq || 100) * 0.38)),
+      equilibrium: sourceEntry.equilibrium || sourceEntry.baseEq || 100,
+      baseEq: sourceEntry.baseEq || 100,
+      eventMods: [],
+    };
+    sf.bus.emit('dock:undocked', {});
+    return {
+      ok: true,
+      sourceStationId,
+      beforeQty: (state.player.cargo.items[cmdtyId]) || 0,
+      beforeCredits: state.player.credits || 0,
+    };
+  }, loadStart.cmdtyId);
+  assert.equal(destinationPrep.ok, true, 'Destination market prep should have a source market: ' + JSON.stringify(destinationPrep));
+  await page.waitForFunction(() => {
+    const sf = window.SF;
+    const stack = sf.state && sf.state.ui && sf.state.ui.screenStack || [];
+    return sf.state && sf.state.ui && sf.state.ui.docked === false && !stack.includes('station');
+  }, null, { timeout: 5000 });
+  await page.evaluate(() => { window.SF.bus.emit('dock:docked', { stationId: '__probe_trade_dest' }); });
+  await waitForVisible(page, '[data-screen="station"] .st-market-route', DOCK_TIMEOUT_MS, 'route destination callout');
+  const destinationReport = await page.evaluate(() => {
+    const text = (el) => (el && el.textContent || '').replace(/\s+/g, ' ').trim();
+    const route = document.querySelector('[data-screen="station"] .st-market-route');
+    const btn = route && route.querySelector('[data-act="route-sell"]');
+    return {
+      dockedStationId: window.SF.state.ui && window.SF.state.ui.dockedStationId,
+      routeText: text(route),
+      sellButtonText: text(btn),
+      sellDisabled: !!(btn && btn.disabled),
+    };
+  });
+  assert.equal(destinationReport.dockedStationId, '__probe_trade_dest',
+    'Destination route probe should dock at the seeded buyer: ' + JSON.stringify(destinationReport));
+  assert.match(destinationReport.routeText, /TRADE ROUTE DESTINATION/i,
+    'Destination Market should identify route arrival: ' + JSON.stringify(destinationReport));
+  assert.match(destinationReport.routeText, /Probe Buyer/i,
+    'Destination Market should name the buyer station: ' + JSON.stringify(destinationReport));
+  assert.equal(destinationReport.sellButtonText, 'Sell Route Cargo',
+    'Destination Market should expose a route sell action: ' + JSON.stringify(destinationReport));
+  assert.equal(destinationReport.sellDisabled, false,
+    'Route sell action should be enabled while cargo is aboard: ' + JSON.stringify(destinationReport));
+
+  await page.evaluate(() => {
+    document.querySelector('[data-screen="station"] .st-market-route [data-act="route-sell"]').click();
+  });
+  await page.waitForFunction(({ cmdtyId, beforeQty, beforeCredits }) => {
+    const sf = window.SF;
+    const qty = (sf.state.player.cargo.items[cmdtyId]) || 0;
+    const credits = sf.state.player.credits || 0;
+    return qty < beforeQty && credits > beforeCredits;
+  }, { cmdtyId: loadStart.cmdtyId, beforeQty: destinationPrep.beforeQty, beforeCredits: destinationPrep.beforeCredits }, { timeout: 5000 });
+  const routeSellReport = await page.evaluate((cmdtyId) => ({
+    afterQty: (window.SF.state.player.cargo.items[cmdtyId]) || 0,
+    credits: window.SF.state.player.credits || 0,
+  }), loadStart.cmdtyId);
+  assert(routeSellReport.afterQty < destinationPrep.beforeQty,
+    'Sell Route Cargo should unload the route commodity through the economy path: ' + JSON.stringify({ destinationPrep, routeSellReport }));
   assert.deepEqual(issues.errorIssues(), [], 'market first-loop runtime probe should not record page errors');
 
-  console.log('Market first-loop runtime OK: New Game -> dock -> Market purpose/prices/Best Trades/Load & Nav/Set Nav are legible.');
+  console.log('Market first-loop runtime OK: New Game -> dock -> Market purpose/prices/Best Trades/Load & Nav/route sell are legible.');
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();

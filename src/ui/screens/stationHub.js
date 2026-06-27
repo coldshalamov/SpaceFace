@@ -961,6 +961,17 @@ const STATION_CSS = `
 .st-market-mission-line { display: block; margin-top: 3px; color: var(--accent); white-space: normal; line-height: 1.25; }
 .st-market-mission-line[hidden] { display: none; }
 .st-row.tracked-mission { border-color: rgba(57,208,255,.45); background: rgba(57,208,255,.045); }
+.st-market-route { margin: -2px 0 10px; border: 1px solid rgba(98,224,138,.42); border-radius: 6px;
+  padding: 9px 11px; background: rgba(18,48,34,.34); box-shadow: 0 0 12px rgba(98,224,138,.10); }
+.st-market-route[hidden] { display: none; }
+.st-market-route-label { color: var(--good); font-size: .6rem; letter-spacing: .14em; margin-bottom: 4px; }
+.st-market-route-title { color: var(--ink); font-weight: 700; font-size: .88rem; line-height: 1.3; }
+.st-market-route-body { color: var(--ink-dim); font-size: .78rem; line-height: 1.35; margin-top: 4px; }
+.st-market-route-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; }
+.st-market-route-meta { color: var(--good); font-size: .66rem; }
+.st-market-route button { padding: 4px 9px; font-size: .72rem; border-radius: 5px; cursor: pointer;
+  border-color: var(--good); color: var(--good); background: rgba(98,224,138,.08); white-space: nowrap; }
+.st-market-route button:hover:not(:disabled) { background: rgba(98,224,138,.15); }
 .st-row .c-qty { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
 .st-row .c-qty button { padding: 2px 7px; font-size: .72rem; }
 .st-row .c-qty button.on { border-color: var(--accent); color: var(--accent); }

@@ -200,6 +200,22 @@ function trackedMarketActionText(info) {
   return 'Tracked contract cargo is aboard: undock and follow nav guidance to ' + info.destination + '.';
 }
 
+function activeTradeRoute(state, stationId) {
+  const waypoint = state && state.nav && state.nav.waypoint;
+  if (!waypoint || waypoint.kind !== 'trade' || waypoint.stationId !== stationId || !waypoint.commodityId) return null;
+  const cmdtyId = waypoint.commodityId;
+  const def = COMMODITY_BY_ID.get(cmdtyId);
+  const cargo = state.player && state.player.cargo || {};
+  const owned = Math.max(0, Math.floor(Number(cargo.items && cargo.items[cmdtyId]) || 0));
+  return {
+    cmdtyId,
+    cmdtyName: def ? def.name : cmdtyId,
+    owned,
+    destination: stationName(state, stationId),
+    reason: waypoint.reason || (def ? 'Sell ' + def.name : 'Sell cargo'),
+  };
+}
+
 function selectedQtyFor(qtySetting, maxValue) {
   if (qtySetting === 'max') return Math.max(0, Math.floor(maxValue || 0));
   return Math.max(0, Math.floor(Number(qtySetting) || 0));
@@ -253,6 +269,22 @@ export function createMarketPanel(ctx) {
   missionCallout.className = 'st-market-mission';
   missionCallout.hidden = true;
   root.appendChild(missionCallout);
+
+  const routeCallout = document.createElement('div');
+  routeCallout.className = 'st-market-route';
+  routeCallout.hidden = true;
+  root.appendChild(routeCallout);
+  routeCallout.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-act="route-sell"]');
+    if (!btn) return;
+    const cmdtyId = btn.getAttribute('data-cmdty');
+    const owned = Math.max(0, Math.floor(Number(ctx.state.player && ctx.state.player.cargo && ctx.state.player.cargo.items && ctx.state.player.cargo.items[cmdtyId]) || 0));
+    if (owned <= 0) { ctx.bus.emit('audio:cue', { id: 'ui_deny' }); return; }
+    ctx.bus.emit('ui:sell', { commodityId: cmdtyId, qty: owned });
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    footer.querySelector('.st-foot-msg').textContent =
+      'Selling route cargo: ' + owned + ' ' + ((COMMODITY_BY_ID.get(cmdtyId) || {}).name || cmdtyId) + '...';
+  });
 
   // --- Phase 4: trade route planner ("Best Trades") ---
   // Scans marketIntel snapshots + this station's market for profitable buy-here→sell-there routes,
@@ -490,6 +522,7 @@ export function createMarketPanel(ctx) {
     if (purposeText) purposeText.textContent = stationMarketPurpose(state, stationId);
     const missionInfo = trackedMarketMission(state, stationId);
     renderMissionCallout(missionInfo);
+    renderRouteCallout(activeTradeRoute(state, stationId));
     refreshPlanner(state, stationId);
     if (!panel._rowEls) return;
     for (const cmdtyId in panel._rowEls) {
@@ -564,6 +597,30 @@ export function createMarketPanel(ctx) {
       '<div class="st-market-mission-body">' + escapeHtml(trackedMarketActionText(info)) + '</div>' +
       '<div class="st-market-mission-meta mono">' +
         escapeHtml(info.cmdtyName) + ' · hold ' + fmtCr(info.owned) + 'u / target ' + fmtCr(info.remaining) + 'u' +
+      '</div>';
+  }
+
+  function renderRouteCallout(info) {
+    if (!info) {
+      routeCallout.hidden = true;
+      routeCallout.innerHTML = '';
+      return;
+    }
+    const sellP = unitPrice(ctx, panel.stationId, info.cmdtyId, 'sell') || 0;
+    const gross = Math.round(sellP * info.owned);
+    const canSell = info.owned > 0;
+    routeCallout.hidden = false;
+    routeCallout.innerHTML =
+      '<div class="st-market-route-label mono">TRADE ROUTE DESTINATION</div>' +
+      '<div class="st-market-route-title">' + escapeHtml(info.destination) + '</div>' +
+      '<div class="st-market-route-body">' +
+        (canSell
+          ? 'Route cargo is aboard: sell ' + fmtCr(info.owned) + 'u ' + escapeHtml(info.cmdtyName) + ' here for about ' + fmtCr(gross) + ' CR.'
+          : 'Route nav is set here, but no ' + escapeHtml(info.cmdtyName) + ' is aboard.') +
+      '</div>' +
+      '<div class="st-market-route-actions">' +
+        '<span class="st-market-route-meta mono">' + escapeHtml(info.reason) + '</span>' +
+        '<button data-act="route-sell" data-cmdty="' + escapeHtml(info.cmdtyId) + '"' + (canSell ? '' : ' disabled') + '>Sell Route Cargo</button>' +
       '</div>';
   }
 

@@ -58,6 +58,7 @@ function checkOffSectorBestTradeSetsCourse() {
 
   assert.equal(state.nav.waypoint.kind, 'trade', 'market nav should create a trade waypoint');
   assert.equal(state.nav.waypoint.stationId, 'station_tethys', 'waypoint should target the selected station');
+  assert.equal(state.nav.waypoint.commodityId, 'cmdty_food', 'waypoint should retain the selected route commodity');
   assert.equal(state.nav.waypoint.sectorId, 'sector_tethys_junction', 'off-sector waypoint must preserve destination sector id');
   assert.equal(state.nav.waypoint.sectorName, 'Tethys Junction', 'off-sector waypoint should preserve destination sector name');
   assert.equal(state.nav.waypoint.pos, null, 'off-sector waypoint should not pretend to have a local position');
