@@ -261,12 +261,33 @@ export const ui = {
     const dockFade = document.createElement('div');
     dockFade.className = 'sf-dock-fade';
     dockFade.id = 'sf-dock-overlay';
+    dockFade.hidden = true;
+    dockFade.setAttribute('aria-hidden', 'true');
     document.getElementById('ui-root').appendChild(dockFade);
+    let dockFadeHideTimer = null;
+    const showDockFade = () => {
+      clearTimeout(dockFadeHideTimer);
+      dockFade.hidden = false;
+      dockFade.setAttribute('aria-hidden', 'false');
+      dockFade.style.pointerEvents = 'auto';
+      requestAnimationFrame(() => {
+        if (!dockFade.hidden) dockFade.classList.add('active');
+      });
+    };
+    const hideDockFade = () => {
+      clearTimeout(dockFadeHideTimer);
+      dockFade.classList.remove('active');
+      dockFadeHideTimer = setTimeout(() => {
+        if (dockFade.classList.contains('active')) return;
+        dockFade.style.pointerEvents = 'none';
+        dockFade.setAttribute('aria-hidden', 'true');
+        dockFade.hidden = true;
+      }, 420);
+    };
 
     this.bus.on('dock:docked', ({ stationId }) => {
       // Phase 1: fade to dark
-      dockFade.style.pointerEvents = 'auto'; // block input during transition
-      dockFade.classList.add('active');
+      showDockFade();
 
       // Dock fly-in: drive a scripted push-zoom via the camera controller instead of the old
       // hard-set on state.camera.zoom (which fought the dynamic-zoom damping and snapped). The
@@ -285,17 +306,13 @@ export const ui = {
 
         // Phase 3: fade back in
         setTimeout(() => {
-          dockFade.classList.remove('active');
-          setTimeout(() => {
-            dockFade.style.pointerEvents = 'none';
-          }, 400);
+          hideDockFade();
         }, 50); // brief hold at full dark before fading back
       }, 400); // matches the CSS transition duration
     });
     this.bus.on('dock:undocked', () => {
       // Phase 1: fade to dark
-      dockFade.style.pointerEvents = 'auto';
-      dockFade.classList.add('active');
+      showDockFade();
 
       // Launch reveal: a brief push-zoom on undock so emerging from the station reads as momentum.
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
@@ -310,10 +327,7 @@ export const ui = {
 
         // Phase 3: fade back in
         setTimeout(() => {
-          dockFade.classList.remove('active');
-          setTimeout(() => {
-            dockFade.style.pointerEvents = 'none';
-          }, 400);
+          hideDockFade();
         }, 50);
       }, 400);
     });
@@ -860,6 +874,7 @@ function injectHudCss() {
   .sf-dock-fade { position:fixed; inset:0; z-index:2500; pointer-events:none;
     background:radial-gradient(ellipse at 50% 60%, rgba(5,7,13,0) 0%, rgba(5,7,13,1) 70%);
     opacity:0; transition:opacity 0.4s ease-in-out; }
+  .sf-dock-fade[hidden] { display:none!important; }
   .sf-dock-fade.active { opacity:1; }
   `;
   document.head.appendChild(s);

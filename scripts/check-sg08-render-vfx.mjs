@@ -20,6 +20,15 @@ function makeBus() {
   };
 }
 
+function assertClose(actual, expected, message, epsilon = 1e-5) {
+  assert(Math.abs(actual - expected) <= epsilon, `${message}: expected ${expected}, got ${actual}`);
+}
+
+function assertAngleClose(actual, expected, message, epsilon = 1e-5) {
+  const delta = Math.atan2(Math.sin(actual - expected), Math.cos(actual - expected));
+  assert(Math.abs(delta) <= epsilon, `${message}: expected ${expected}, got ${actual}`);
+}
+
 function makeHarness(overrides = {}) {
   const scene = new THREE.Scene();
   const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12 };
@@ -46,6 +55,40 @@ function makeHarness(overrides = {}) {
   const system = Object.create(vfx);
   system.init({ state, bus, helpers: {} });
   return { scene, state, bus, system };
+}
+
+{
+  const { state, system } = makeHarness({ video: { energyMaterials: true } });
+  const player = state.entities.get(state.playerId);
+  player._flightFrame = { throttle: 1 };
+  player.rot = 0;
+
+  const root = new THREE.Group();
+  root.position.set(12, 0, -8);
+  root.rotation.y = -Math.PI / 2;
+  const socket = new THREE.Object3D();
+  socket.name = 'SOCKET_Trail_Main';
+  socket.position.set(-4, 1.25, 2);
+  socket.userData = { spacefaceSocket: true, forward: [-1, 0, 0] };
+  root.add(socket);
+  root.updateMatrixWorld(true);
+  player.view = { root };
+
+  system.update(1 / 60);
+  const plume = system._energy && system._energy.plume;
+  assert(plume && plume.visible, 'energy plume should be visible under throttle');
+  socket.updateWorldMatrix(true, false);
+  const expected = new THREE.Vector3();
+  const expectedQuat = new THREE.Quaternion();
+  const expectedScale = new THREE.Vector3();
+  socket.matrixWorld.decompose(expected, expectedQuat, expectedScale);
+  const expectedForward = new THREE.Vector3(-1, 0, 0).applyQuaternion(expectedQuat).normalize();
+  const expectedAngle = Math.atan2(expectedForward.z, expectedForward.x);
+  assertClose(plume.position.x, expected.x, 'energy plume should share trail socket x');
+  assertClose(plume.position.y, expected.y, 'energy plume should share trail socket y');
+  assertClose(plume.position.z, expected.z, 'energy plume should share trail socket z');
+  assertAngleClose(plume.rotation.y, Math.PI - expectedAngle, 'energy plume should align to trail socket direction');
+  assert(Math.abs(plume.rotation.y - player.rot) > 0.25, 'energy plume should not use entity rot when a socket pose exists');
 }
 
 {

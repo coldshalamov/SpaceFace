@@ -705,6 +705,7 @@ function engineProp(pal, R, scaleK, engineClass) {
   const flame = engineGlow(pal, -0.55 * s, 0, s * 0.9);
   g.add(flame);
   g.userData.plume = flame.userData.plume;
+  g.userData.plumePose = flame.userData.plume ? kit.captureDrivePose(flame.userData.plume) : null;
   g.userData.plumeBase = flame.userData.plume ? { x: flame.userData.plume.scale.x, y: flame.userData.plume.scale.y, z: flame.userData.plume.scale.z } : null;
   return g;
 }
@@ -1569,7 +1570,11 @@ function buildShipMesh(e, pal) {
       for (let i = 0; i < engines.length; i++) {
         const b = engines[i].userData.plumeBase;
         const p = engines[i].userData.plume;
-        if (p && b) { const s = 1 + 0.18 * Math.sin(t * 9 + ph + i); p.scale.set(b.x * s, b.y, b.z); }
+        const pose = engines[i].userData.plumePose || (p ? kit.captureDrivePose(p) : null);
+        if (p && b && pose) {
+          const s = 1 + 0.18 * Math.sin(t * 9 + ph + i);
+          kit.applyDrivePoseScale(p, pose, { x: s, y: 1, z: 1 }, { lockForwardEdgeX: true });
+        }
         const fan = engines[i].userData.fan;       // spin the turbine fan — reads as live machinery
         if (fan) fan.rotation.x = t * 18;
       }

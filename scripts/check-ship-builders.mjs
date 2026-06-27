@@ -42,9 +42,11 @@ globalThis.__SF_VISUAL_FACTORY_THROW__ = true;
 const THREE = await import('three');
 globalThis.THREE = THREE;
 
+const assert = (await import('node:assert/strict')).default;
 const { createVisualFactory } = await import('../src/render/visualFactory.js');
 const { ENEMY_TYPES } = await import('../src/data/enemies.js');
 const { SHIPS } = await import('../src/data/ships.js');
+const kit = await import('../src/render/ships/shipKit.js');
 
 const vf = createVisualFactory();
 
@@ -62,6 +64,44 @@ function mkEntity(over = {}) {
 // with the swallow disabled by monkey-patching console to surface the caught error path. Since
 // we can't reach the internal catch, we instead assert: a real ship build must produce >2 nodes.
 let failures = 0;
+function assertClose(actual, expected, message) {
+  assert(Math.abs(actual - expected) < 1e-6, `${message}: expected ${expected}, got ${actual}`);
+}
+
+function frontEdgeX(mesh) {
+  if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+  return mesh.position.x + mesh.geometry.boundingBox.max.x * mesh.scale.x;
+}
+
+function checkDrivePoseHelpers() {
+  const plume = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 1));
+  plume.position.set(-5, 0, 0);
+  plume.scale.set(0.5, 2, 3);
+  const plumePose = kit.captureDrivePose(plume);
+  const baseFront = frontEdgeX(plume);
+  kit.applyDrivePoseScale(plume, plumePose, { x: 2, y: 1, z: 1 }, { lockForwardEdgeX: true });
+  assertClose(frontEdgeX(plume), baseFront, 'plume scaling should keep the nozzle/front edge fixed');
+  assertClose(plume.scale.x, 1, 'plume x scale should be base-scaled by the animation factor');
+  assertClose(plume.scale.y, 2, 'plume y scale should preserve its authored base size');
+  assertClose(plume.scale.z, 3, 'plume z scale should preserve its authored base size');
+
+  const primary = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+  primary.scale.set(2, 4, 8);
+  const primaryPose = kit.captureDrivePose(primary);
+  kit.applyDrivePoseScale(primary, primaryPose, { x: 1.25, y: 0.5, z: 2 });
+  const factors = new THREE.Vector3();
+  kit.readDrivePoseScaleFactors(primary, primaryPose, factors);
+
+  const secondary = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+  secondary.scale.set(0.5, 3, 1.5);
+  const secondaryPose = kit.captureDrivePose(secondary);
+  kit.applyDrivePoseScale(secondary, secondaryPose, factors);
+  assertClose(secondary.scale.x, 0.625, 'secondary plume should keep its own authored x base');
+  assertClose(secondary.scale.y, 1.5, 'secondary plume should keep its own authored y base');
+  assertClose(secondary.scale.z, 3, 'secondary plume should keep its own authored z base');
+  console.log('ok   drive-pose helpers preserve authored plume anchors');
+}
+
 function tryBuild(label, entity) {
   try {
     const mesh = vf.build(entity);
@@ -76,6 +116,8 @@ function tryBuild(label, entity) {
     failures++;
   }
 }
+
+checkDrivePoseHelpers();
 
 console.log('=== ENEMY SILHOUETTES (Workstream D) ===');
 for (const def of ENEMY_TYPES) {

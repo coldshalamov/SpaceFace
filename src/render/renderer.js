@@ -39,6 +39,10 @@ const CONTACT_SHADOW_POS = new THREE.Vector3();
 const CONTACT_SHADOW_SCALE = new THREE.Vector3();
 const CONTACT_SHADOW_MATRIX = new THREE.Matrix4();
 const CONTACT_SHADOW_QUAT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+const SOCKET_WORLD_POS = new THREE.Vector3();
+const SOCKET_WORLD_QUAT = new THREE.Quaternion();
+const SOCKET_WORLD_SCALE = new THREE.Vector3();
+const SOCKET_FORWARD = new THREE.Vector3();
 const RUNTIME_MESH_BUILD_BUDGET = 1;
 function getContactShadowTex() {
   if (_shadowTex) return _shadowTex;
@@ -357,6 +361,7 @@ export const render = {
     ctx.helpers.worldToScreen = (v) => this.worldToScreen(v);
     ctx.helpers.raycastToPlane = (ndc) => this.raycastToPlane(ndc);
     ctx.helpers.addTrauma = (a) => cam.addTrauma(a);
+    ctx.helpers.socketWorldPose = (id, name) => this.socketWorldPose(id, name);
     ctx.helpers.socketWorldPos = (id, name) => this.socketWorldPos(id, name);
 
     bus.on('entity:spawned', () => { this._meshReconcileDirty = true; });
@@ -681,11 +686,11 @@ export const render = {
     }
   },
 
-  renderFrame(alpha, frameDt) {
+  prepareFrame(alpha, frameDt) {
     // While the GL context is lost, the renderer can't draw — skip all per-frame work until
     // webglcontextrestored rebuilds GPU resources. (cam.follow etc. would run against a dead
     // renderer; the context-restore handler re-applies everything that matters when it returns.)
-    if (this._contextLost) return;
+    if (this._contextLost) return false;
     if (this._meshReconcileDirty) this.reconcileMeshes();
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
@@ -704,6 +709,14 @@ export const render = {
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
     // an offset from its target; we move both together. No-op if shadows are disabled.
     this._updateShadowFollow();
+    // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
+    // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
+    if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
+    return true;
+  },
+
+  drawPreparedFrame() {
+    if (this._contextLost) return false;
     // Render path selection (INTEGRATION_MAP §8.1). The SpaceRenderGraph is a capability-aware HDR
     // pipeline (GTAO-lite ambient occlusion + multiscale bloom + ACES/grade composite) that
     // supersedes the monolithic bloom wrapper. It is opt-in behind settings.video.renderGraph so the
@@ -720,9 +733,12 @@ export const render = {
       this._lastRenderPath = 'straight';
       this.renderer.render(this.scene, this.cam.obj);
     }
-    // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
-    // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
-    if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
+    return true;
+  },
+
+  renderFrame(alpha, frameDt) {
+    if (!this.prepareFrame(alpha, frameDt)) return;
+    this.drawPreparedFrame();
   },
 
   // Center the key light + its shadow camera on the player each frame. The light direction stays
@@ -776,6 +792,11 @@ export const render = {
   // such socket. Used by VFX to originate weapon/mining/engine effects from authored hardware (spec
   // §9.9) instead of the entity center. Failure returns null so callers fall back to the payload origin.
   socketWorldPos(entityId, socketName) {
+    const pose = this.socketWorldPose(entityId, socketName);
+    return pose ? { x: pose.x, z: pose.z } : null;
+  },
+
+  socketWorldPose(entityId, socketName) {
     const m = this._meshes.get(entityId);
     if (!m) return null;
     let cache = m.userData.__socketCache;
@@ -788,7 +809,26 @@ export const render = {
     }
     if (!socket) return null;
     socket.updateWorldMatrix(true, false);
-    return { x: socket.matrixWorld.elements[12], z: socket.matrixWorld.elements[14] };
+    socket.matrixWorld.decompose(SOCKET_WORLD_POS, SOCKET_WORLD_QUAT, SOCKET_WORLD_SCALE);
+    const authoredForward = socket.userData && socket.userData.forward || [1, 0, 0];
+    const authoredForwardX = Array.isArray(authoredForward) ? authoredForward[0] : authoredForward.x;
+    const authoredForwardY = Array.isArray(authoredForward) ? authoredForward[1] : authoredForward.y;
+    const authoredForwardZ = Array.isArray(authoredForward) ? authoredForward[2] : authoredForward.z;
+    SOCKET_FORWARD.set(
+      Number.isFinite(authoredForwardX) ? authoredForwardX : 1,
+      Number.isFinite(authoredForwardY) ? authoredForwardY : 0,
+      Number.isFinite(authoredForwardZ) ? authoredForwardZ : 0,
+    );
+    if (SOCKET_FORWARD.lengthSq() < 1e-8) SOCKET_FORWARD.set(1, 0, 0);
+    SOCKET_FORWARD.normalize().applyQuaternion(SOCKET_WORLD_QUAT).normalize();
+    return {
+      x: SOCKET_WORLD_POS.x,
+      y: SOCKET_WORLD_POS.y,
+      z: SOCKET_WORLD_POS.z,
+      forwardX: SOCKET_FORWARD.x,
+      forwardY: SOCKET_FORWARD.y,
+      forwardZ: SOCKET_FORWARD.z,
+    };
   },
 
   onResize() {

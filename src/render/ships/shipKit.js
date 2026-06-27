@@ -22,6 +22,76 @@ import {
 import { attachDamageStateDriver } from './shipDamage.js';
 
 const TAU = Math.PI * 2;
+const DRIVE_POSE_KEY = 'spacefaceDrivePose';
+const DRIVE_BBOX_CORNERS = [
+  [0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1],
+  [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1],
+];
+const DRIVE_TMP_VECTOR = new THREE.Vector3();
+
+function finiteScale(value) {
+  return Number.isFinite(value) && Math.abs(value) > 1e-6 ? value : 1;
+}
+
+function driveMeshMaxParentX(mesh, scale) {
+  if (!mesh || !mesh.isMesh || !mesh.geometry || typeof mesh.geometry.computeBoundingBox !== 'function') return 0;
+  if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+  const box = mesh.geometry.boundingBox;
+  if (!box) return 0;
+  let maxX = -Infinity;
+  for (const corner of DRIVE_BBOX_CORNERS) {
+    DRIVE_TMP_VECTOR.set(
+      corner[0] ? box.max.x : box.min.x,
+      corner[1] ? box.max.y : box.min.y,
+      corner[2] ? box.max.z : box.min.z,
+    );
+    DRIVE_TMP_VECTOR.x *= scale.x;
+    DRIVE_TMP_VECTOR.y *= scale.y;
+    DRIVE_TMP_VECTOR.z *= scale.z;
+    DRIVE_TMP_VECTOR.applyQuaternion(mesh.quaternion);
+    maxX = Math.max(maxX, DRIVE_TMP_VECTOR.x);
+  }
+  return Number.isFinite(maxX) ? maxX : 0;
+}
+
+export function captureDrivePose(object) {
+  if (!object) return null;
+  const userData = object.userData || (object.userData = {});
+  if (userData[DRIVE_POSE_KEY]) return userData[DRIVE_POSE_KEY];
+  const scale = object.scale.clone();
+  const pose = {
+    position: object.position.clone(),
+    scale,
+    frontOffsetX: driveMeshMaxParentX(object, scale),
+    _nextScale: new THREE.Vector3(),
+  };
+  userData[DRIVE_POSE_KEY] = pose;
+  return pose;
+}
+
+export function readDrivePoseScaleFactors(object, pose, target = new THREE.Vector3()) {
+  if (!object || !pose) return target.set(1, 1, 1);
+  return target.set(
+    object.scale.x / finiteScale(pose.scale.x),
+    object.scale.y / finiteScale(pose.scale.y),
+    object.scale.z / finiteScale(pose.scale.z),
+  );
+}
+
+export function applyDrivePoseScale(object, pose, factors, options = {}) {
+  if (!object || !pose) return;
+  const sx = typeof factors === 'number' ? factors : factors && Number.isFinite(factors.x) ? factors.x : 1;
+  const sy = typeof factors === 'number' ? factors : factors && Number.isFinite(factors.y) ? factors.y : sx;
+  const sz = typeof factors === 'number' ? factors : factors && Number.isFinite(factors.z) ? factors.z : sx;
+  const next = pose._nextScale || (pose._nextScale = new THREE.Vector3());
+  next.set(pose.scale.x * sx, pose.scale.y * sy, pose.scale.z * sz);
+  object.scale.copy(next);
+  object.position.copy(pose.position);
+  if (options.lockForwardEdgeX) {
+    const currentFrontOffsetX = driveMeshMaxParentX(object, next);
+    object.position.x = pose.position.x + pose.frontOffsetX - currentFrontOffsetX;
+  }
+}
 
 // ---------------------------------------------------------------------------------------------
 // Stable hash → small int, for deterministic per-ship texture seeds (so the same hull color always
@@ -570,6 +640,8 @@ export function finalizeShip(options) {
   //      state-linked — the drive responds to actual speed, no ornamental animation.
   if (driveParts) {
     const { fan, driveCore, plume, plumeMat, basePlumeOpacity, flicker } = driveParts;
+    const driveCorePose = captureDrivePose(driveCore);
+    const plumePose = captureDrivePose(plume);
     if (fan) {
       fan.frustumCulled = false;
       fan.onBeforeRender = () => {
@@ -580,10 +652,12 @@ export function finalizeShip(options) {
         const drive = Math.min(1, speed / 135);
         fan.rotation.x = now * (1.5 + drive * 8.0);
         const pulse = 1 + Math.sin(now * 9.0) * (0.025 + drive * 0.025);
-        if (driveCore) driveCore.scale.setScalar(pulse * (0.92 + drive * 0.16));
+        if (driveCore) applyDrivePoseScale(driveCore, driveCorePose, pulse * (0.92 + drive * 0.16));
         if (plume) {
           const flick = flicker ? (0.85 + Math.sin(now * 17.3) * 0.1 + Math.sin(now * 31.7) * 0.05) : 1;
-          plume.scale.setScalar((0.88 + drive * 0.40 + Math.sin(now * 7.0) * 0.025) * flick);
+          applyDrivePoseScale(plume, plumePose,
+            (0.88 + drive * 0.40 + Math.sin(now * 7.0) * 0.025) * flick,
+            { lockForwardEdgeX: true });
         }
         if (plumeMat) plumeMat.opacity = (0.30 + drive * 0.35) * (flicker ? (0.8 + Math.sin(now * 13.0) * 0.15) : 1);
       };

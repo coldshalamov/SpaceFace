@@ -1440,7 +1440,7 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
       anchorMatrix.decompose(anchor.position, anchor.quaternion, anchor.scale);
       partRoot.add(anchor);
 
-      const material = mutableMaterialFor(
+      const material = dedicatedMaterialFor(
         primitive.material, primitive.tags, palette, mutableMaterials,
         `${record.url}|${placement.label}|${primitive.key}`
       );
@@ -1535,14 +1535,19 @@ function completeDriveBinding(bindings) {
   const driveCore = bindings.driveCores[0] || null;
   const plume = bindings.drivePlumes[0] || null;
   if (!fan || !driveCore || !plume) return null;
-  if (plume.material) {
-    plume.material.transparent = true;
-    plume.material.depthWrite = false;
-    if (!Number.isFinite(plume.material.opacity)) plume.material.opacity = 0.55;
+  for (const driveFan of bindings.driveFans) kit.captureDrivePose(driveFan);
+  for (const core of bindings.driveCores) kit.captureDrivePose(core);
+  for (const drivePlume of bindings.drivePlumes) {
+    kit.captureDrivePose(drivePlume);
+    if (drivePlume.material) {
+      drivePlume.material.transparent = true;
+      drivePlume.material.depthWrite = false;
+      if (!Number.isFinite(drivePlume.material.opacity)) drivePlume.material.opacity = 0.55;
+    }
+    drivePlume.castShadow = false;
+    drivePlume.receiveShadow = false;
+    drivePlume.renderOrder = Math.max(drivePlume.renderOrder || 0, 2);
   }
-  plume.castShadow = false;
-  plume.receiveShadow = false;
-  plume.renderOrder = Math.max(plume.renderOrder || 0, 2);
   return {
     fan,
     driveCore,
@@ -1554,20 +1559,38 @@ function completeDriveBinding(bindings) {
 }
 
 function synchronizeSecondaryDrives(primary, bindings) {
-  if (!primary || !primary.fan || bindings.driveFans.length < 2) return;
+  if (!primary || !primary.fan) return;
   const before = primary.fan.onBeforeRender;
+  const primaryCorePose = kit.captureDrivePose(primary.driveCore);
+  const primaryPlumePose = kit.captureDrivePose(primary.plume);
+  const coreFactor = new THREE.Vector3(1, 1, 1);
+  const plumeFactor = new THREE.Vector3(1, 1, 1);
+  const secondaryCores = bindings.driveCores.slice(1).map((mesh) => ({
+    mesh,
+    pose: kit.captureDrivePose(mesh),
+  }));
+  const secondaryPlumes = bindings.drivePlumes.slice(1).map((mesh) => ({
+    mesh,
+    pose: kit.captureDrivePose(mesh),
+  }));
   primary.fan.onBeforeRender = function synchronizedDrive(...args) {
     if (typeof before === 'function') before.apply(this, args);
     for (let i = 1; i < bindings.driveFans.length; i++) {
       bindings.driveFans[i].rotation.x = primary.fan.rotation.x;
     }
-    for (let i = 1; i < bindings.driveCores.length; i++) {
-      bindings.driveCores[i].scale.copy(primary.driveCore.scale);
+    if (primary.driveCore && primaryCorePose) {
+      kit.readDrivePoseScaleFactors(primary.driveCore, primaryCorePose, coreFactor);
+      for (const { mesh, pose } of secondaryCores) {
+        kit.applyDrivePoseScale(mesh, pose, coreFactor);
+      }
     }
-    for (let i = 1; i < bindings.drivePlumes.length; i++) {
-      bindings.drivePlumes[i].scale.copy(primary.plume.scale);
-      if (bindings.drivePlumes[i].material && primary.plume.material) {
-        bindings.drivePlumes[i].material.opacity = primary.plume.material.opacity;
+    if (primary.plume && primaryPlumePose) {
+      kit.readDrivePoseScaleFactors(primary.plume, primaryPlumePose, plumeFactor);
+      for (const { mesh, pose } of secondaryPlumes) {
+        kit.applyDrivePoseScale(mesh, pose, plumeFactor, { lockForwardEdgeX: true });
+        if (mesh.material && primary.plume.material) {
+          mesh.material.opacity = primary.plume.material.opacity;
+        }
       }
     }
   };
@@ -1893,8 +1916,9 @@ function releaseOwnerInstances(owner) {
 }
 
 // -------------------------------------------------------------------------------------------------
-// Material variants: opaque authored materials are immutable and shared by instance pools. Hooked
-// materials are cloned once per ship because damage/drive drivers mutate emissiveIntensity/opacity.
+// Material variants: immutable authored materials are shared even when their meshes must stay
+// separate for sockets, LOD, transparent sorting, damage movement, or drive transforms. Only surfaces
+// whose material uniforms are actually mutated at runtime receive ship-local clones.
 // -------------------------------------------------------------------------------------------------
 function sharedMaterialFor(base, tags, palette) {
   const role = tintRole(tags);
@@ -1903,7 +1927,7 @@ function sharedMaterialFor(base, tags, palette) {
   let material = sharedMaterialVariants.get(key);
   if (!material) {
     material = tintMaterial(base.clone(), tint, role);
-    material.name = `${base.name || 'Authored'}_${role}_${tint.replace('#', '')}`;
+    material.name = authoredMaterialName(base, tags, role, tint, false);
     material.userData = { ...(material.userData || {}), spacefaceSharedAsset: true, spacefaceBatchKey: key };
     material.dispose = () => {};
     sharedMaterialVariants.set(key, material);
@@ -1911,18 +1935,52 @@ function sharedMaterialFor(base, tags, palette) {
   return material;
 }
 
+function dedicatedMaterialFor(base, tags, palette, cache, instanceKey) {
+  if (!materialNeedsShipLocalMutation(tags)) return sharedMaterialFor(base, tags, palette);
+  return mutableMaterialFor(base, tags, palette, cache, instanceKey);
+}
+
+function materialNeedsShipLocalMutation(tags = {}) {
+  return tags.drive === 'plume' || tags.damageRole === 'navLight' || tags.damageRole === 'sensor';
+}
+
 function mutableMaterialFor(base, tags, palette, cache, instanceKey) {
   const role = tintRole(tags);
   const tint = tintHex(palette, role);
-  const independentlyDriven = !!tags.drive || tags.damageRole === 'navLight' || tags.damageRole === 'sensor';
-  const key = `${base.uuid}|${role}|${tint}|${independentlyDriven ? instanceKey : 'shared-within-ship'}`;
+  const key = `${materialBatchSignature(base)}|${role}|${tint}|${materialMutationScope(tags, instanceKey)}`;
   let material = cache.get(key);
   if (!material) {
     material = tintMaterial(base.clone(), tint, role);
-    material.name = `${base.name || 'Authored'}_${role}_mutable`;
+    material.name = authoredMaterialName(base, tags, role, tint, true);
     cache.set(key, material);
   }
   return material;
+}
+
+function materialMutationScope(tags = {}, instanceKey) {
+  if (tags.drive === 'plume') return 'ship-drive-plumes';
+  return instanceKey || 'ship-local';
+}
+
+function authoredMaterialName(base, tags, role, tint, mutable) {
+  const family = authoredMaterialFamily(base, tags, role);
+  const tintSuffix = role === 'none' ? 'native' : String(tint || '').replace('#', '') || 'native';
+  return `SF_${mutable ? 'Mutable' : 'Shared'}_${family}_${role}_${tintSuffix}`;
+}
+
+function authoredMaterialFamily(base, tags = {}, role = 'hull') {
+  if (tags.drive) return `drive_${tags.drive}`;
+  if (tags.canopy) return 'canopy';
+  if (tags.damageRole === 'navLight' || tags.damageRole === 'sensor') return 'signal';
+  const source = String(base && base.name || '').toLowerCase();
+  if (source.includes('glass') || source.includes('canopy')) return 'canopy';
+  if (source.includes('mechanical') || source.includes('mech') || source.includes('rib') || source.includes('clamp')) return 'mechanical';
+  if (source.includes('interior')) return 'interior';
+  if (source.includes('energy') || source.includes('emit') || source.includes('glow') || source.includes('nav')) return 'signal';
+  if (source.includes('accent')) return 'accent';
+  if (source.includes('plume')) return 'drive_plume';
+  if (base && (base.map || base.normalMap || base.aoMap || base.roughnessMap || base.metalnessMap)) return `${role}_textured`;
+  return role || 'authored';
 }
 
 function tintMaterial(material, hex, role) {

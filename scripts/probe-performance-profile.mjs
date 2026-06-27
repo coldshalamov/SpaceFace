@@ -281,7 +281,7 @@ async function sampleRuntime(cdp, durationMs) {
       const sf = window.SF || null;
       const state = sf && sf.state || {};
       const modalOpen = document.body.classList.contains('ui-modal-open');
-      const selectors = ['#screens', '#modal-backdrop', '#vignette', '#boot-overlay', '#hud'];
+      const selectors = ['#screens', '#modal-backdrop', '#sf-dock-overlay', '#vignette', '#boot-overlay', '#hud'];
       const shells = {};
       for (const selector of selectors) {
         const el = document.querySelector(selector);
@@ -292,18 +292,30 @@ async function sampleRuntime(cdp, durationMs) {
           visibility: cs.visibility,
           opacity: Number(cs.opacity) || 0,
           pointerEvents: cs.pointerEvents,
+          hiddenAttr: !!(el.hidden || el.hasAttribute('hidden')),
+          activeClass: el.classList.contains('active'),
           backdropFilter: cs.backdropFilter || cs.webkitBackdropFilter || 'none',
           filter: cs.filter || 'none',
           boxShadow: cs.boxShadow && cs.boxShadow !== 'none' ? true : false,
         };
       }
       const backdrop = shells['#modal-backdrop'];
+      const dockFade = shells['#sf-dock-overlay'];
+      const bootOverlay = shells['#boot-overlay'];
+      const legacyVignette = shells['#vignette'];
       const flightNoModal = state.mode === 'flight' && !modalOpen;
+      const inactiveDockFadeDisplayed = flightNoModal && dockFade && !dockFade.activeClass && dockFade.display !== 'none' ? 1 : 0;
+      const inactiveBootOverlayDisplayed = flightNoModal && bootOverlay && bootOverlay.display !== 'none' && bootOverlay.visibility !== 'hidden' ? 1 : 0;
+      const legacyVignetteDisplayed = flightNoModal && legacyVignette && legacyVignette.display !== 'none' ? 1 : 0;
       return {
         mode: state.mode || null,
         modalOpen,
         shells,
         hiddenBackdropActive: flightNoModal && backdrop && backdrop.display !== 'none' && backdrop.visibility !== 'hidden' ? 1 : 0,
+        inactiveDockFadeDisplayed,
+        inactiveBootOverlayDisplayed,
+        deadVignetteShells: legacyVignette ? 1 : 0,
+        inactiveFullscreenShellsDisplayed: inactiveDockFadeDisplayed + inactiveBootOverlayDisplayed + legacyVignetteDisplayed,
       };
     };
 
@@ -1228,6 +1240,12 @@ function evaluateBudgets({ rafFrameP95, diagnosticFrameP95, renderCallsPeak, hea
       'bloom down/up sample passes should stay bounded'),
     budget('ui.hiddenBackdropActive.max', compositorDiagnostic(finalSample, 'hiddenBackdropActive'), '<=', 0,
       'closed modal backdrop should not remain as an active fullscreen blur/compositor layer during flight'),
+    budget('ui.inactiveDockFadeDisplayed.max', compositorDiagnostic(finalSample, 'inactiveDockFadeDisplayed'), '<=', 0,
+      'inactive docking fade overlay should be display:none outside dock/undock transitions'),
+    budget('ui.deadVignetteShells.max', compositorDiagnostic(finalSample, 'deadVignetteShells'), '<=', 0,
+      'legacy fullscreen vignette shell should not exist; live damage vignette is pooled under #hud'),
+    budget('ui.inactiveFullscreenShellsDisplayed.max', compositorDiagnostic(finalSample, 'inactiveFullscreenShellsDisplayed'), '<=', 0,
+      'inactive fullscreen transition shells should not stay displayed during normal flight'),
   ];
   budgets.push({
     name: 'raf.frame.p95.target',

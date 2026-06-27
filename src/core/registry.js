@@ -107,13 +107,41 @@ export function createRegistry(ctx) {
       const perf = ensurePerfRuntime(state);
       try {
         let t = perfNow();
-        try { render.renderFrame(alpha, frameDt); }
-        finally { perf.recordPhase('render', perfNow() - t); }
+        let renderMs = 0;
+        let renderedPreparedScene = false;
+        const splitRender = typeof render.prepareFrame === 'function' && typeof render.drawPreparedFrame === 'function';
+        let renderError = null;
+        try {
+          if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, frameDt) !== false;
+          else render.renderFrame(alpha, frameDt);
+        }
+        catch (err) { renderError = err; }
+        finally { renderMs += perfNow() - t; }
+        if (renderError) {
+          perf.recordPhase('render', renderMs);
+          throw renderError;
+        }
+
+        let vfxError = null;
         if (vfx.update) {
           t = perfNow();
           try { vfx.update(frameDt, state); }
+          catch (err) { vfxError = err; }
           finally { perf.recordPhase('vfx', perfNow() - t); }
         }
+
+        if (splitRender) {
+          t = perfNow();
+          try { if (renderedPreparedScene) render.drawPreparedFrame(); }
+          finally {
+            renderMs += perfNow() - t;
+            perf.recordPhase('render', renderMs);
+          }
+        } else {
+          perf.recordPhase('render', renderMs);
+        }
+        if (vfxError) throw vfxError;
+
         if (feel.frame) {
           t = perfNow();
           try { feel.frame(frameDt, state); }

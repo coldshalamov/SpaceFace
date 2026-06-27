@@ -82,7 +82,11 @@ export const vfx = {
     this._trailCacheDirty = true;
     this._trailListRef = null;
     this._trailListLength = -1;
-    this._socketScratch = { x: 0, z: 0 };
+    this._socketScratch = { x: 0, y: 0, z: 0, forwardX: -1, forwardY: 0, forwardZ: 0, angle: Math.PI, rotationY: 0 };
+    this._socketWorldPos = new THREE.Vector3();
+    this._socketWorldQuat = new THREE.Quaternion();
+    this._socketWorldScale = new THREE.Vector3();
+    this._socketForward = new THREE.Vector3();
     this._liveSpriteCount = 0;
     this._activeLightCount = 0;
     this._presentationCueCount = 0;
@@ -429,7 +433,48 @@ export const vfx = {
     if (e && e.view) delete e.view.__vfxTrailSocket;
   },
 
-  _trailSocketWorldPos(e) {
+  _writeTrailSocketPose(x, y, z, forwardX, forwardY, forwardZ) {
+    const scratch = this._socketScratch;
+    const fx = Number.isFinite(forwardX) ? forwardX : -1;
+    const fy = Number.isFinite(forwardY) ? forwardY : 0;
+    const fz = Number.isFinite(forwardZ) ? forwardZ : 0;
+    const len = Math.hypot(fx, fy, fz) || 1;
+    scratch.x = Number.isFinite(x) ? x : 0;
+    scratch.y = Number.isFinite(y) ? y : 0;
+    scratch.z = Number.isFinite(z) ? z : 0;
+    scratch.forwardX = fx / len;
+    scratch.forwardY = fy / len;
+    scratch.forwardZ = fz / len;
+    scratch.angle = Math.atan2(scratch.forwardZ, scratch.forwardX);
+    scratch.rotationY = Math.PI - scratch.angle;
+    return scratch;
+  },
+
+  _trailSocketPoseFromObject(socket) {
+    socket.updateWorldMatrix(true, false);
+    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    const f = socket.userData && socket.userData.forward || [-1, 0, 0];
+    const fx = Array.isArray(f) ? f[0] : f.x;
+    const fy = Array.isArray(f) ? f[1] : f.y;
+    const fz = Array.isArray(f) ? f[2] : f.z;
+    this._socketForward.set(
+      Number.isFinite(fx) ? fx : -1,
+      Number.isFinite(fy) ? fy : 0,
+      Number.isFinite(fz) ? fz : 0,
+    );
+    if (this._socketForward.lengthSq() < 1e-8) this._socketForward.set(-1, 0, 0);
+    this._socketForward.normalize().applyQuaternion(this._socketWorldQuat).normalize();
+    return this._writeTrailSocketPose(
+      this._socketWorldPos.x,
+      this._socketWorldPos.y,
+      this._socketWorldPos.z,
+      this._socketForward.x,
+      this._socketForward.y,
+      this._socketForward.z,
+    );
+  },
+
+  _trailSocketWorldPose(e) {
     const view = e && e.view;
     const root = view && view.root;
     if (root && typeof root.traverse === 'function') {
@@ -442,14 +487,31 @@ export const vfx = {
         cache = view.__vfxTrailSocket = { root, socket };
       }
       if (cache.socket) {
-        cache.socket.updateWorldMatrix(true, false);
-        const el = cache.socket.matrixWorld.elements;
-        this._socketScratch.x = el[12];
-        this._socketScratch.z = el[14];
-        return this._socketScratch;
+        return this._trailSocketPoseFromObject(cache.socket);
       }
     }
-    return this.helpers.socketWorldPos ? this.helpers.socketWorldPos(e.id, 'SOCKET_Trail_Main') : null;
+    if (this.helpers.socketWorldPose) {
+      const pose = this.helpers.socketWorldPose(e.id, 'SOCKET_Trail_Main');
+      if (pose) {
+        return this._writeTrailSocketPose(
+          pose.x, pose.y || 0, pose.z,
+          pose.forwardX, pose.forwardY, pose.forwardZ,
+        );
+      }
+    }
+    if (this.helpers.socketWorldPos) {
+      const pos = this.helpers.socketWorldPos(e.id, 'SOCKET_Trail_Main');
+      if (pos) {
+        const cf = Math.cos(e && e.rot || 0);
+        const sf = Math.sin(e && e.rot || 0);
+        return this._writeTrailSocketPose(pos.x, pos.y || 0, pos.z, -cf, 0, -sf);
+      }
+    }
+    return null;
+  },
+
+  _trailSocketWorldPos(e) {
+    return this._trailSocketWorldPose(e);
   },
 
   // -------------------------------------------------------------------------
@@ -1067,20 +1129,22 @@ export const vfx = {
       // streak, expanding ring, and a dynamic light. The moment of ignition should read clearly.
       const col = this._engineColor(e);
       const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-      const sock = this._trailSocketWorldPos(e);
+      const sock = this._trailSocketWorldPose(e);
       const bx = sock ? sock.x : e.pos.x - cf * (e.radius + 2);
       const bz = sock ? sock.z : e.pos.z - sf * (e.radius + 2);
+      const exhaustX = sock ? sock.forwardX : -cf;
+      const exhaustZ = sock ? sock.forwardZ : -sf;
       // Core white flash — bigger
       this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.22, 6, 14, 1.0, 0.0, '#ffffff', 0, 0);
       // Coloured outer flare — wider, longer
       this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.35, 8, 18, 0.8, 0.0, col, 0, 0);
       // Expanding ring behind the ship — reads as the shockwave of ignition
-      this._spawnSprite(SPR_RING, bx, 0, bz, 0.30, 3, 16, 0.7, 0.0, col, -cf * 5, -sf * 5);
+      this._spawnSprite(SPR_RING, bx, 0, bz, 0.30, 3, 16, 0.7, 0.0, col, exhaustX * 5, exhaustZ * 5);
       // Dynamic light at the nozzle — lights up the rear of the ship
       this._flashLight({ x: bx, z: bz }, col, 5.0, 10, 160);
       // Afterburner particle streak — MORE particles, FASTER
       this._c0.set('#ffffff'); this._c1.set(col);
-      const baseA = Math.atan2(-sf, -cf);
+      const baseA = sock ? sock.angle : Math.atan2(-sf, -cf);
       const n = Math.max(10, Math.round(24 * (this._burst || 1)));
       for (let k = 0; k < n; k++) {
         const a = baseA + (Math.random() - 0.5) * 0.55;
@@ -1099,7 +1163,7 @@ export const vfx = {
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const nx = e.pos.x + cf * (e.radius + 1);   // nose
     const nz = e.pos.z + sf * (e.radius + 1);
-    const sock = this._trailSocketWorldPos(e);
+    const sock = this._trailSocketWorldPose(e);
     const bx = sock ? sock.x : e.pos.x - cf * (e.radius + 2);   // rear
     const bz = sock ? sock.z : e.pos.z - sf * (e.radius + 2);
     const VIOLET = '#c98cff', VIOLET2 = '#7a3df0';
@@ -1108,7 +1172,7 @@ export const vfx = {
     this._spawnSprite(SPR_FLASH, nx, 0, nz, 0.16, 5, 9, 0.9, 0.0, VIOLET, 0, 0);
     // violet afterburner streak behind (longer + faster than the white boost streak)
     this._c0.set('#ffffff'); this._c1.set(VIOLET2);
-    const baseA = Math.atan2(-sf, -cf);
+    const baseA = sock ? sock.angle : Math.atan2(-sf, -cf);
     const n = Math.max(8, Math.round(22 * (this._burst || 1)));
     for (let k = 0; k < n; k++) {
       const a = baseA + (Math.random() - 0.5) * 0.45;
@@ -1191,15 +1255,17 @@ export const vfx = {
     // Hero assets carry SOCKET_Trail_Main at the authored nozzle; originate the plume there so it
     // leaves the real engine, not a center-derived point (spec §9.9, §14.2). Falls back to the
     // radial-behind formula for procedural ships that have no socket.
-    let bx, bz;
-    const sock = this._trailSocketWorldPos(e);
-    if (sock) { bx = sock.x; bz = sock.z; }
+    let bx, bz, baseA;
+    const sock = this._trailSocketWorldPose(e);
+    if (sock) {
+      bx = sock.x; bz = sock.z; baseA = sock.angle;
+    }
     else {
       const back = (e.radius || 4) * 0.85;
       bx = e.pos.x - cf * back;
       bz = e.pos.z - sf * back;
+      baseA = Math.atan2(-sf, -cf);
     }
-    const baseA = Math.atan2(-sf, -cf);
 
     const pCount = Math.max(1, Math.min(5, Math.floor(1 + drive * 2.2 + boostBlend * 1.2 + Math.random() * 0.85)));
     const spread = 0.24 + drive * 0.22 + boostBlend * 0.16;
@@ -1328,9 +1394,9 @@ export const vfx = {
     const boostBlend = energy.boostBlend;
     const fade = Math.max(0, Math.min(1, (drive - 0.012) / 0.10 + boostBlend * 0.4));
     if (fade <= 0.01) { plume.visible = false; return; }
-    const socket = this._trailSocketWorldPos(player);
-    plume.position.set(socket ? socket.x : player.pos.x, 0, socket ? socket.z : player.pos.z);
-    plume.rotation.y = -(player.rot || 0);
+    const socket = this._trailSocketWorldPose(player);
+    plume.position.set(socket ? socket.x : player.pos.x, socket ? socket.y : 0, socket ? socket.z : player.pos.z);
+    plume.rotation.y = socket ? socket.rotationY : -(player.rot || 0);
     const width = 0.30 + drive * 0.42 + boostBlend * 0.22;
     const length = 0.18 + drive * 1.65 + boostBlend * 0.78;
     plume.scale.set(length, width, width);
@@ -1561,10 +1627,10 @@ export const vfx = {
       // sample from engine nozzle (rear of ship)
       const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
       const back = (e.radius || 14) * 0.88;
-      const sock = this._trailSocketWorldPos(e);
+      const sock = this._trailSocketWorldPose(e);
       const tx = sock ? sock.x : e.pos.x - cf * back;
       const tz = sock ? sock.z : e.pos.z - sf * back;
-      trail.push(tx, tz, e.rot);
+      trail.push(tx, tz, sock ? sock.angle + Math.PI : e.rot);
       trail.rebuild(0.16 + Math.min(1, driveInfo.drive) * 0.38 + driveInfo.boost * 0.12);
     }
     // dispose dead entities
