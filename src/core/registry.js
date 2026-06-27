@@ -39,6 +39,7 @@ import { vfx } from '../render/vfx.js';
 import { feel } from '../render/feel.js';
 import { audio } from '../audio/audioSystem.js';
 import { ui } from '../ui/uiRoot.js';
+import { navContinuity } from '../save/navContinuity.js';
 import { save } from '../save/saveSystem.js';
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 
@@ -50,7 +51,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, weapons, countermeasures, combat, mining, cargo, economy,
-    automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
+    automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, navContinuity, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
