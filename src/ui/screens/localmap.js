@@ -241,11 +241,11 @@ export const localmapScreen = {
       beacons.push({ stationId, quotes, capturedAtS: intel.seenAtT || 0, reliability: 1.0 });
     }
     const player = state.entities.get(state.playerId);
-    const cargo = (player && player.data && player.data.cargoCap) || 40;
+    const cargoState = state.player && state.player.cargo;
+    const cargo = Math.max(1, Number(cargoState && cargoState.capVolume) || (player && player.data && player.data.cargoCap) || 40);
     // Travel estimate: straight-line distance between stations, at the player's cruise speed.
-    const stationPos = (id) => { const s = state.entities.get(id); return s && s.pos; };
     const travelEstimator = (a, b) => {
-      const pa = stationPos(a), pb = stationPos(b);
+      const pa = stationPositionForRoute(state, a), pb = stationPositionForRoute(state, b);
       const dist = (pa && pb) ? Math.hypot(pa.x - pb.x, pa.z - pb.z) : 1000;
       const speed = (player && player.maxSpeed) || 200;
       return { timeS: dist / Math.max(50, speed), fuel: dist * 0.01 };
@@ -266,7 +266,7 @@ export const localmapScreen = {
       html = '<h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div>';
     } else {
       const commName = (cid) => COMM_NAME.get(cid) || cid;
-      const stationName = (id) => { const e = this._ctx.state.entities.get(id); return (e && e.data && e.data.name) || id; };
+      const stationName = (id) => stationNameForRoute(this._ctx.state, id);
       html = '<h4>Trade Routes <span style="float:right;color:var(--ink-mute,#5e7393)">profit/min</span></h4>';
       for (const r of routes) {
         const stale = (r.reliability || 1) < 0.5;
@@ -563,6 +563,39 @@ function routeGuidance(state, wp) {
 
 function sectorName(id) {
   return SECTOR_NAME.get(id) || id || 'target sector';
+}
+
+function stationPositionForRoute(state, stationId) {
+  if (!state || !stationId) return null;
+  const byStationId = state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && byStationId.get && byStationId.get(stationId);
+  if (indexed && indexed.alive !== false && indexed.pos) return indexed.pos;
+  for (const entity of state.entityList || []) {
+    if (!entity || entity.alive === false || entity.type !== 'station' || !entity.pos) continue;
+    const data = entity.data || {};
+    if (data.stationId === stationId) return entity.pos;
+  }
+  return null;
+}
+
+function stationNameForRoute(state, stationId) {
+  if (!state || !stationId) return stationId || 'Station';
+  const byStationId = state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && byStationId.get && byStationId.get(stationId);
+  if (indexed && indexed.data && (indexed.data.name || indexed.data.stationName)) {
+    return indexed.data.name || indexed.data.stationName;
+  }
+  for (const entity of state.entityList || []) {
+    if (!entity || entity.type !== 'station') continue;
+    const data = entity.data || {};
+    if (data.stationId === stationId) return data.name || data.stationName || stationId;
+  }
+  for (const sector of Object.values(state.world && state.world.sectors || {})) {
+    for (const station of sector.stations || []) {
+      if (station && station.id === stationId) return station.name || stationId;
+    }
+  }
+  return stationId;
 }
 
 function appendSentence(base, sentence) {
