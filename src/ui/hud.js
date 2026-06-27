@@ -662,7 +662,7 @@ export function createHud(ctx, alerts) {
   cargoPanel.innerHTML =
     '<div class="sf-cargo-panel__head">' +
       '<span class="sf-cargo-panel__title">CARGO HOLD</span>' +
-      '<button class="sf-cargo-panel__close">ESC</button>' +
+      '<button class="sf-cargo-panel__close" type="button">ESC</button>' +
     '</div>' +
     '<div class="sf-cargo-panel__summary">' +
       '<span class="sf-cargo-summary-used">0 / 40 u</span>' +
@@ -795,7 +795,12 @@ export function createHud(ctx, alerts) {
   }
 
   // Close button
-  cargoPanel.querySelector('.sf-cargo-panel__close').addEventListener('click', closeCargoPanel);
+  const cargoCloseBtn = cargoPanel.querySelector('.sf-cargo-panel__close');
+  cargoCloseBtn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    closeCargoPanel();
+  });
 
   // Refresh when cargo changes
   ctx.bus.on('cargo:changed', () => { if (cargoPanelOpen) refreshCargoPanel(); });

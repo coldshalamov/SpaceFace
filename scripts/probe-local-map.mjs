@@ -78,6 +78,13 @@ try {
   }
   // Let the world populate (stations/contacts spawn after flight starts).
   await sleep(1500);
+  const introReport = await evalJson(`JSON.stringify((() => {
+    const btn = document.querySelector('.sf-ob-intro .sf-ob-go');
+    if (btn) btn.click();
+    return { introVisible: !!document.querySelector('.sf-ob-intro') };
+  })())`);
+  assert.equal(introReport.introVisible, false, 'onboarding intro must be dismissed before HUD click regressions: ' + JSON.stringify(introReport));
+  await sleep(250);
 
   // Regression: clicking HUD/UI buttons must not become gameplay LMB fire.
   await evalJson(`JSON.stringify((() => {
@@ -95,6 +102,12 @@ try {
       sf.state.input.fire = false;
       sf.state.input.fireGroup = null;
     }
+    window.__sfCargoCloseClicks = 0;
+    const closeBtn = document.querySelector('.sf-cargo-panel__close');
+    if (closeBtn && !closeBtn.__sfProbeClickSubbed) {
+      closeBtn.__sfProbeClickSubbed = true;
+      closeBtn.addEventListener('click', () => { window.__sfCargoCloseClicks++; }, true);
+    }
     if (bus && typeof bus.emit === 'function') bus.emit('ui:toggleCargo');
     return { armed: true };
   })())`);
@@ -103,26 +116,48 @@ try {
     const btn = document.querySelector('.sf-cargo-panel.open .sf-cargo-panel__close');
     if (!btn) return { ok:false };
     const r = btn.getBoundingClientRect();
-    return { ok:true, x:r.left + r.width / 2, y:r.top + r.height / 2, w:r.width, h:r.height };
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    return {
+      ok:true,
+      x,
+      y,
+      w:r.width,
+      h:r.height,
+      hitTarget: hit ? {
+        tag: hit.tagName,
+        id: hit.id || '',
+        className: typeof hit.className === 'string' ? hit.className : '',
+      } : null,
+    };
   })())`);
   assert.equal(closeRect.ok, true, 'cargo-panel close button must be visible for UI-click regression: ' + JSON.stringify(closeRect));
+  assert.match(closeRect.hitTarget?.className || '', /sf-cargo-panel__close/, 'cargo close button must be the top hit target before click: ' + JSON.stringify(closeRect));
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: closeRect.x, y: closeRect.y });
   await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: closeRect.x, y: closeRect.y, button: 'left', clickCount: 1 });
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: closeRect.x, y: closeRect.y, button: 'left', clickCount: 1 });
   await sleep(400);
   const uiClickReport = await evalJson(`JSON.stringify((() => {
     const s = window.SF && window.SF.state;
+    const btn = document.querySelector('.sf-cargo-panel__close');
+    const panel = document.querySelector('.sf-cargo-panel');
     return {
       fireEvents: window.__sfUiClickFireEvents || 0,
       inputFire: !!(s && s.input && s.input.fire),
       inputFireGroup: s && s.input && s.input.fireGroup || null,
       cargoStillOpen: !!document.querySelector('.sf-cargo-panel.open'),
+      cargoCloseClicks: window.__sfCargoCloseClicks || 0,
+      closePointerEvents: btn ? getComputedStyle(btn).pointerEvents : null,
+      panelPointerEvents: panel ? getComputedStyle(panel).pointerEvents : null,
+      hudPointerEvents: document.getElementById('hud') ? getComputedStyle(document.getElementById('hud')).pointerEvents : null,
     };
   })())`);
   console.log('UI click report:', JSON.stringify(uiClickReport, null, 2));
   assert.equal(uiClickReport.fireEvents, 0, 'clicking a HUD button must not emit player combat:fire: ' + JSON.stringify(uiClickReport));
   assert.equal(uiClickReport.inputFire, false, 'clicking a HUD button must not latch state.input.fire: ' + JSON.stringify(uiClickReport));
   assert.equal(uiClickReport.inputFireGroup, null, 'clicking a HUD button must not latch a fire group: ' + JSON.stringify(uiClickReport));
+  assert.equal(uiClickReport.cargoStillOpen, false, 'clicking the cargo close button must close the cargo panel: ' + JSON.stringify(uiClickReport));
 
   const cargoOpenBeforeEsc = await evalJson(`JSON.stringify((() => {
     const sf = window.SF;

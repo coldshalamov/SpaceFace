@@ -486,6 +486,7 @@ function injectHudCss() {
   /* ===== SpaceFace flight HUD ===== */
   #hud { font-size: calc(15px * var(--ui-scale)); }
   #hud > * { pointer-events: none; }
+  #hud > .sf-cargo-panel { pointer-events: auto; }
   body.ui-modal-open #aim-reticle,
   body.ui-modal-open #pilot-portrait { display: none !important; }
   body.ui-modal-open #control-hints { opacity: 0 !important; pointer-events: none !important; }
