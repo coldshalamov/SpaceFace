@@ -8,16 +8,19 @@ import { escapeHtml } from '../comms.js';
 
 // 9 tiers over -1000..1000. Thresholds are the lower bound of each tier.
 const TIERS = [
-  { min: -1000, name: 'Nemesis',    cls: 'hostile' },
-  { min: -700,  name: 'Hated',      cls: 'hostile' },
-  { min: -400,  name: 'Hostile',    cls: 'hostile' },
-  { min: -150,  name: 'Unfriendly', cls: 'cool' },
-  { min: -40,   name: 'Neutral',    cls: 'neutral' },
-  { min: 40,    name: 'Cordial',    cls: 'warm' },
-  { min: 150,   name: 'Friendly',   cls: 'good' },
-  { min: 400,   name: 'Honored',    cls: 'good' },
-  { min: 700,   name: 'Allied',     cls: 'allied' },
+  { min: -1000, name: 'Sworn Enemy', cls: 'hostile' },
+  { min: -700,  name: 'Hated',       cls: 'hostile' },
+  { min: -400,  name: 'Hostile',     cls: 'hostile' },
+  { min: -149,  name: 'Disliked',    cls: 'cool' },
+  { min: -29,   name: 'Neutral',     cls: 'neutral' },
+  { min: 30,    name: 'Accepted',    cls: 'warm' },
+  { min: 150,   name: 'Trusted',     cls: 'good' },
+  { min: 400,   name: 'Allied',      cls: 'good' },
+  { min: 700,   name: 'Hero',        cls: 'allied' },
 ];
+
+const AGGRO_THRESHOLD = -150;
+const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
 function tierFor(rep) {
   let t = TIERS[0];
@@ -25,11 +28,39 @@ function tierFor(rep) {
   return t;
 }
 
+function factionShort(id) {
+  const f = FACTION_BY_ID.get(id);
+  return (f && (f.short || f.name)) || id;
+}
+
+function relationSummary(meta) {
+  const allies = [];
+  const rivals = [];
+  for (const [id, weight] of Object.entries(meta.relations || {})) {
+    if (weight >= 0.3) allies.push(factionShort(id));
+    else if (weight <= -0.3) rivals.push(factionShort(id));
+  }
+  return {
+    allies: allies.length ? allies.join(', ') : 'none',
+    rivals: rivals.length ? rivals.join(', ') : 'none',
+  };
+}
+
+function standingEffect(rep, meta) {
+  const short = meta.short || meta.name;
+  if (rep <= AGGRO_THRESHOLD) return short + ' forces may treat you as hostile on sight.';
+  if (rep >= 400) return short + ' stations regard you as a trusted operator.';
+  if (rep >= 150) return short + ' contract handlers are more likely to trust your work.';
+  if (rep <= -400) return short + ' crews are looking for a reason to escalate.';
+  if (rep < 0) return short + ' contacts are cold; small mistakes will travel.';
+  return short + ' remains neutral; contracts and trade can still move the needle.';
+}
+
 export function createFactionsPanel(ctx) {
   const root = document.createElement('div');
   root.className = 'st-panel st-factions';
   root.innerHTML = '<div class="st-sub-h">Faction Standings</div>' +
-    '<div class="st-fac-note mono">Reputation −1000 … +1000 · 9 tiers</div>' +
+    '<div class="st-fac-note mono">Reputation -1000 ... +1000 · aggro at -150 · 9 tiers</div>' +
     '<div class="st-fac-list"></div>';
   const list = root.querySelector('.st-fac-list');
 
@@ -47,6 +78,7 @@ export function createFactionsPanel(ctx) {
       const rep = repFor(meta.id);
       const tier = tierFor(rep);
       const fill = (rep + 1000) / 2000; // 0..1
+      const rel = relationSummary(meta);
       const row = document.createElement('div');
       row.className = 'st-fac-row';
       row.innerHTML =
@@ -59,7 +91,9 @@ export function createFactionsPanel(ctx) {
         '<div class="st-fac-bar"><div class="st-fac-bar-mid"></div>' +
           '<div class="st-fac-bar-fill st-fac-' + tier.cls + '" style="transform:scaleX(' + fill.toFixed(3) + ')"></div>' +
         '</div>' +
-        '<div class="st-fac-ctrl mono">' + escapeHtml((meta.controls || []).join(' · ')) + '</div>';
+        '<div class="st-fac-ctrl mono">Controls: ' + escapeHtml((meta.controls || []).join(' · ')) + '</div>' +
+        '<div class="st-fac-rel mono">Allies: ' + escapeHtml(rel.allies) + ' · Rivals: ' + escapeHtml(rel.rivals) + '</div>' +
+        '<div class="st-fac-effect">' + escapeHtml(standingEffect(rep, meta)) + '</div>';
       frag.appendChild(row);
     }
     list.textContent = '';

@@ -754,7 +754,9 @@ const STATION_CSS = `
 .st-fac-bar-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--ink-mute); opacity: .6; }
 .st-fac-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: left;
   background: var(--accent); opacity: .7; }
-.st-fac-ctrl { font-size: .66rem; color: var(--ink-mute); margin-top: 5px; }
+.st-fac-ctrl, .st-fac-rel { font-size: .66rem; color: var(--ink-mute); margin-top: 5px; }
+.st-fac-rel { color: var(--ink-dim); }
+.st-fac-effect { font-size: .74rem; color: var(--ink); line-height: 1.35; margin-top: 5px; }
 .st-fac-hostile { color: var(--danger); background: rgba(255,84,112,.12); }
 .st-fac-cool { color: var(--warn); background: rgba(255,179,71,.12); }
 .st-fac-neutral { color: var(--ink-dim); background: rgba(132,160,200,.1); }

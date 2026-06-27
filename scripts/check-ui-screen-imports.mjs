@@ -61,6 +61,7 @@ if (starmap) {
 
 const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
+const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
 if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
   console.log('FAIL helpScreen - shell title must be Help, not Codex');
   fail++;
@@ -82,6 +83,19 @@ if (missingFigureDossiers.length) {
   fail++;
 } else {
   console.log('ok   codexScreen - figure dossiers cover canonical cast');
+  ok++;
+}
+const runtimeTierLabels = ['Sworn Enemy', 'Hated', 'Hostile', 'Disliked', 'Neutral', 'Accepted', 'Trusted', 'Allied', 'Hero'];
+const missingRuntimeTiers = runtimeTierLabels.filter((tier) => !factionsSrc.includes(`name: '${tier}'`));
+const staleTierLabels = ['Nemesis', 'Unfriendly', 'Cordial', 'Friendly', 'Honored'].filter((tier) => factionsSrc.includes(tier));
+if (missingRuntimeTiers.length || staleTierLabels.length) {
+  console.log('FAIL factionsPanel - tier labels drifted (missing: ' + missingRuntimeTiers.join(', ') + '; stale: ' + staleTierLabels.join(', ') + ')');
+  fail++;
+} else if (!/AGGRO_THRESHOLD\s*=\s*-150/.test(factionsSrc) || !/relationSummary/.test(factionsSrc)) {
+  console.log('FAIL factionsPanel - missing aggro threshold or relation summary');
+  fail++;
+} else {
+  console.log('ok   factionsPanel - tiers match runtime labels and relations are shown');
   ok++;
 }
 
