@@ -75,6 +75,15 @@ function injectStyle() {
   .sf-ng-lore__line { font-size:11px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.06em; }
   .sf-ng-lore__quote { font-size:12px; color:var(--ink); font-style:italic; line-height:1.5; }
   .sf-ng-lore__attr { font-size:10px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.1em; text-align:right; }
+  .sf-ng-route { margin-top:10px; padding:10px 12px; border:1px solid var(--panel-edge); border-radius:6px;
+    background:rgba(57,208,255,.05); display:grid; gap:8px; }
+  .sf-ng-route__title { font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:.14em; text-transform:uppercase; }
+  .sf-ng-route__steps { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+  .sf-ng-route__step { min-width:0; border:1px solid rgba(57,208,255,.16); border-radius:5px; padding:7px 8px;
+    background:rgba(10,18,32,.6); }
+  .sf-ng-route__step b { display:block; font-size:12px; color:var(--ink); margin-bottom:2px; overflow-wrap:anywhere; }
+  .sf-ng-route__step span { display:block; font-size:11px; color:var(--ink-dim); line-height:1.35; overflow-wrap:anywhere; }
+  @media (max-width:520px) { .sf-ng-route__steps { grid-template-columns:1fr; } }
   /* UX-1: rotating 3D preview of the starter ship. Sits above the stat grid so the hull reads as a
      real object (with a history), not a table of numbers. */
   .sf-ng-preview { position: relative; height: 150px; margin: 6px 0 10px; border: 1px solid var(--panel-edge);
@@ -146,6 +155,18 @@ export const newGameScreen = {
     rootEl.appendChild(diffDesc);
     const setDesc = () => { const d = DIFFICULTIES.find((x) => x[0] === diff.value); diffDesc.textContent = d ? d[2] : ''; };
     diff.addEventListener('change', setDesc); setDesc();
+
+    const route = el('div', 'sf-ng-route');
+    route.setAttribute('aria-label', 'First 15 minutes route');
+    route.innerHTML =
+      '<div class="sf-ng-route__title">First 15 minutes</div>' +
+      '<div class="sf-ng-route__steps">' +
+        '<div class="sf-ng-route__step"><b>Follow the anomaly</b><span>47-A is already marked. Chase the signal before the manifest changes.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Mine the marked rock</b><span>Bring back a sample and keep room in the hold for the strange ore.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Dock at Helios</b><span>Sell the haul, repair the Tessera, and turn the first proof into credits.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Take one job</b><span>Mission Board and Bar contracts track into the log so the next route is ready.</span></div>' +
+      '</div>';
+    rootEl.appendChild(route);
 
     // Starter ship preview — ship identity comes first, then stats.
     // The Tessera has a history. The player should feel it before they click Launch.
