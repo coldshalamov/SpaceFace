@@ -26,6 +26,8 @@ const touchSrc = read('src/systems/touch.js');
 assert.match(gamepadSrc, /export function createGamepad/, 'gamepad.js must export createGamepad');
 assert.match(touchSrc, /export function createTouch/, 'touch.js must export createTouch');
 assert.match(gamepadSrc, /mine:\s*\['l2'\]/, 'gamepad.js must map LT/L2 to the mining action');
+assert.match(gamepadSrc, /tabPrev:\s*\['l1'\]/, 'gamepad LB/L1 must expose station tab-previous UI intent');
+assert.match(gamepadSrc, /tabNext:\s*\['r1'\]/, 'gamepad RB/R1 must expose station tab-next UI intent');
 assert.doesNotMatch(gamepadSrc, /fire:\s*\[[^\]]*accept/, 'gamepad A/Cross should be dock/activate, not a second fire trigger');
 
 // 2. input.js imports + creates both.
@@ -83,4 +85,11 @@ assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help C
 assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)/,
   'UI input must let gamepad A/Cross dock when the dock prompt is active');
 
-console.log('Input modalities OK — keyboard+mouse (always) + gamepad (getGamepads) + touch (virtual sticks) all wired + merged + normalized.');
+// 6. Controller parity for the docked station rail: LB/RB should cycle the same authored tablist
+// that keyboard navigation and mouse clicks use, without inventing another station route.
+assert.match(uiInputSrc, /function cycleStationTab\(dir\)/, 'UI input must support cycling docked station tabs from gamepad');
+assert.match(uiInputSrc, /root\.dataset\.screen !== 'station'/, 'station tab cycling must only run on the station screen');
+assert.match(uiInputSrc, /gp\.actions\.tabPrev[\s\S]*cycleStationTab\(-1\)/, 'station hub must support LB/L1 previous-tab cycling');
+assert.match(uiInputSrc, /gp\.actions\.tabNext[\s\S]*cycleStationTab\(1\)/, 'station hub must support RB/R1 next-tab cycling');
+
+console.log('Input modalities OK — keyboard+mouse + gamepad + touch are wired, normalized, and station controller tab parity is guarded.');
