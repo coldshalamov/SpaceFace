@@ -165,7 +165,7 @@ export function createMarketPanel(ctx) {
     if (!btn) return;
     const stationId = btn.getAttribute('data-station');
     const cmdtyId = btn.getAttribute('data-cmdty');
-    setNavTo(ctx, stationId, cmdtyId);
+    applyTradeNavigation(ctx, stationId, cmdtyId);
   });
 
   // --- table head ---
@@ -503,32 +503,41 @@ function stationName(state, stationId) {
   return stationId || 'Station';
 }
 
-function stationSectorName(state, stationId) {
+function stationSectorInfo(state, stationId) {
   for (const s of (state.world && state.world.sectors ? Object.values(state.world.sectors) : [])) {
     const stn = (s.stations || []).find((x) => x.id === stationId);
-    if (stn) return s.name || s.id || null;
+    if (stn) return { id: s.id || null, name: s.name || s.id || null };
   }
-  return null;
+  return { id: null, name: null };
 }
 
 /** Set a navigation waypoint to a destination station so the HUD arrow steers toward it. */
-function setNavTo(ctx, stationId, cmdtyId) {
+export function applyTradeNavigation(ctx, stationId, cmdtyId) {
   const state = ctx.state;
+  state.nav = state.nav || {};
   // resolve the destination's world position: prefer a live station entity in this sector
   let pos = null;
   for (const e of state.entityList) {
     if (e.type === 'station' && e.data && e.data.stationId === stationId) { pos = { x: e.pos.x, z: e.pos.z }; break; }
   }
   const cmdty = COMMODITY_BY_ID.get(cmdtyId);
-  state.nav.waypoint = {
+  const sector = stationSectorInfo(state, stationId);
+  const waypoint = {
     kind: 'trade',
     stationId,
     pos: pos || null,
     label: stationName(state, stationId) + (cmdty ? ' · ' + cmdty.name : ''),
     reason: cmdty ? `Sell ${cmdty.name}` : 'Trade destination',
-    sectorName: stationSectorName(state, stationId),
+    sectorId: sector.id,
+    sectorName: sector.name,
   };
-  ctx.bus.emit('toast', { text: 'Nav set: ' + state.nav.waypoint.label + (pos ? '' : ' (in another sector — undock & jump)'), kind: 'info', ttl: 3 });
+  state.nav.waypoint = waypoint;
+  ctx.bus.emit('nav:waypoint', waypoint);
+  const currentSectorId = state.world && state.world.currentSectorId;
+  if (waypoint.sectorId && currentSectorId && waypoint.sectorId !== currentSectorId) {
+    ctx.bus.emit('ui:setCourse', { sectorId: waypoint.sectorId, waypointKind: 'trade', stationId, commodityId: cmdtyId });
+  }
+  ctx.bus.emit('toast', { text: 'Nav set: ' + waypoint.label + (pos ? '' : ' (in another sector — undock & jump)'), kind: 'info', ttl: 3 });
   ctx.bus.emit('audio:cue', { id: 'ui_click' });
 }
 
