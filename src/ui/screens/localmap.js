@@ -42,6 +42,7 @@ const LOCALMAP_STYLE = `
 #sf-localmap .lm-route .lm-route-hdr { display:flex; justify-content:space-between; gap:6px; }
 #sf-localmap .lm-route .lm-route-comm { color:var(--ink-dim,#7e93b3); }
 #sf-localmap .lm-route .lm-route-profit { color:#ffd66b; font-weight:600; }
+#sf-localmap .lm-route .lm-route-meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:2px; color:var(--ink-dim,#7e93b3); font-size:.58rem; }
 #sf-localmap .lm-route .lm-route-action { margin-top:2px; color:#7af7d0; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase; }
 #sf-localmap .lm-route .lm-route-stale { color:#ff8a8a; font-size:.58rem; }
 #sf-localmap .lm-routes-empty { color:var(--ink-mute,#5e7393); font-style:italic; }
@@ -281,6 +282,9 @@ export const localmapScreen = {
         const originName = stationName(r.originId);
         const destinationName = stationName(r.destinationId);
         const commodityName = commName(r.commodityId);
+        const expectedProfit = formatCredits(r.expectedProfit);
+        const units = Math.max(0, Math.floor(Number(r.units) || 0));
+        const fuel = Math.round(Number(r.fuel) || 0);
         html += '<button class="lm-route" type="button" data-act="route-nav" data-destination="' + escapeAttr(r.destinationId) + '" data-commodity="' + escapeAttr(r.commodityId) + '"' +
           ' aria-label="Set course to ' + escapeAttr(destinationName) + ' to sell ' + escapeAttr(commodityName) + '">' +
           '<div class="lm-route-hdr">' +
@@ -288,6 +292,7 @@ export const localmapScreen = {
             '<span class="lm-route-profit">' + Math.round(r.profitPerMinute) + '/m</span>' +
           '</div>' +
           '<div style="color:var(--ink-mute,#5e7393)">' + escapeHtml(originName) + ' → ' + escapeHtml(destinationName) + '</div>' +
+          '<div class="lm-route-meta"><span>' + units + 'u load</span> <span>+' + expectedProfit + ' cr</span> <span>' + fuel + 'F est</span></div>' +
           '<div class="lm-route-action">Set course</div>' +
           (stale ? '<div class="lm-route-stale">stale intel (' + Math.round((r.reliability || 0) * 100) + '% reliable)</div>' : '') +
         '</button>';
@@ -623,6 +628,10 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value);
+}
+
+function formatCredits(value) {
+  return Math.round(Math.max(0, Number(value) || 0)).toLocaleString();
 }
 
 function appendSentence(base, sentence) {

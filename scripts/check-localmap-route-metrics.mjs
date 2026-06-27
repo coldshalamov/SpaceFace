@@ -24,7 +24,11 @@ assert.match(localmapSrc, /data-act="route-nav"/,
   'localmap route cards should render as actionable navigation controls');
 assert.match(localmapSrc, /Set course/,
   'localmap route cards should visibly invite the player to set a course');
+assert.match(localmapSrc, /lm-route-meta/,
+  'localmap route cards should expose load/profit/fuel decision metadata');
+assert.match(localmapSrc, /expectedProfit/,
+  'localmap route cards should show expected route profit, not only profit per minute');
 assert.doesNotMatch(localmapSrc, /state\.entities\.get\(id\)/,
   'localmap route metrics and labels must not treat station catalog ids as entity ids');
 
-console.log('Local map route metrics OK - routes resolve live station metrics and set trade nav.');
+console.log('Local map route metrics OK - routes resolve live station metrics, economics, and trade nav.');

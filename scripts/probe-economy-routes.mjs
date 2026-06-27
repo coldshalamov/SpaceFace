@@ -106,6 +106,9 @@ try {
       routeButtonCount: buttons.length,
       hasEmpty: !!panel.querySelector('.lm-routes-empty'),
       firstRoute: routes[0] ? routes[0].textContent.replace(/\\s+/g, ' ').trim().slice(0, 120) : null,
+      firstMeta: routes[0] && routes[0].querySelector('.lm-route-meta')
+        ? routes[0].querySelector('.lm-route-meta').textContent.replace(/\\s+/g, ' ').trim()
+        : null,
       firstDestination: buttons[0] ? buttons[0].getAttribute('data-destination') : null,
       firstCommodity: buttons[0] ? buttons[0].getAttribute('data-commodity') : null,
       firstAriaLabel: buttons[0] ? buttons[0].getAttribute('aria-label') : null,
@@ -125,6 +128,9 @@ try {
   assert.ok(report.routeButtonCount >= 1, `routes: ranked routes must be actionable Set Course buttons (got ${report.routeButtonCount})`);
   assert.ok(report.firstDestination && report.firstCommodity, 'routes: first route button must carry destination + commodity ids');
   assert.match(report.firstAriaLabel || '', /^Set course to /, 'routes: button aria label should describe the route action');
+  assert.match(report.firstMeta || '', /\d+u load/, 'routes: first route should show estimated cargo load');
+  assert.match(report.firstMeta || '', /\+\d[\d,]* cr/, 'routes: first route should show expected profit');
+  assert.match(report.firstMeta || '', /\d+F est/, 'routes: first route should show estimated fuel');
   assert.ok(report.populated, 'routes: the panel must not show the empty placeholder when intel exists');
 
   const navClick = await evalJson(`JSON.stringify((() => {
