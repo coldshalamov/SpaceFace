@@ -55,7 +55,14 @@ function injectStyle() {
     border-radius:6px; background:var(--panel); }
   .sf-slot.sel { border-color:var(--accent); box-shadow:0 0 10px rgba(57,208,255,.3); }
   .sf-slot .sf-slot-main { flex:1; min-width:0; }
+  .sf-slot .sf-slot-head { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:2px; }
   .sf-slot .sf-slot-name { font-size:14px; color:var(--ink); }
+  .sf-slot .sf-slot-badge { font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--accent); border:1px solid rgba(57,208,255,.45); border-radius:4px; padding:1px 5px;
+    background:rgba(57,208,255,.08); }
+  .sf-slot .sf-slot-context { font-size:12px; color:var(--ink-dim); margin-top:2px; overflow-wrap:anywhere; }
+  .sf-slot .sf-slot-detail { font-size:11px; color:var(--ink-mute); font-family:var(--mono); margin-top:2px;
+    overflow-wrap:anywhere; }
   .sf-slot .sf-slot-sub { font-size:11px; color:var(--ink-mute); font-family:var(--mono); }
   .sf-slot.empty .sf-slot-name { color:var(--ink-mute); font-style:italic; }
   .sf-title-logo { font-family:var(--mono); letter-spacing:.5em; font-size:46px; color:var(--accent);
@@ -114,12 +121,52 @@ function slotLabel(id) {
   if (id === 'quick' || id === 'autosave' || id === 'auto') return id[0].toUpperCase() + id.slice(1);
   return 'Slot ' + id;
 }
-function fmtMeta(meta) {
-  if (!meta || (!meta.savedAt && !meta.lastSavedAt && meta.playtimeS == null)) return 'Empty';
+export function fmtPlaytime(playtimeS) {
+  const s = Number(playtimeS);
+  if (!Number.isFinite(s) || s < 0) return '';
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  return h > 0 ? (h + 'h ' + (m % 60) + 'm played') : (m + 'm played');
+}
+export function fmtCredits(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  return Math.round(n).toLocaleString('en-US') + ' CR';
+}
+function titleCaseWords(s) {
+  return String(s).split(/[\s_]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+export function shipLabel(id) {
+  if (!id) return '';
+  return titleCaseWords(String(id).replace(/^ship_/, ''));
+}
+function fmtSavedAt(meta) {
   const when = meta.savedAt || meta.lastSavedAt;
-  const t = meta.playtimeS != null ? Math.floor(meta.playtimeS / 60) + 'm played' : '';
-  const date = when ? new Date(when).toLocaleString() : '';
-  return [date, t].filter(Boolean).join('  ·  ') || 'Saved';
+  if (!when) return '';
+  const d = new Date(when);
+  if (!Number.isFinite(d.getTime())) return '';
+  return 'saved ' + d.toLocaleString();
+}
+export function slotSummaryLines(meta) {
+  if (!isOccupied(meta)) return { context: 'Empty slot', detail: 'No save data yet' };
+  const context = [
+    meta && meta.sectorName,
+    shipLabel(meta && meta.shipName),
+  ].filter(Boolean).join(' - ') || 'Saved game';
+  const detail = [
+    fmtPlaytime(meta && meta.playtimeS),
+    fmtCredits(meta && meta.credits),
+    fmtSavedAt(meta),
+  ].filter(Boolean).join(' - ') || 'Saved';
+  return { context, detail };
+}
+export function slotBadges(id, meta, currentSlot, latestSlot) {
+  if (!isOccupied(meta)) return [];
+  const badges = [];
+  if (currentSlot && id === currentSlot) badges.push('Current');
+  if (latestSlot && id === latestSlot && id !== currentSlot) badges.push('Latest');
+  if (meta && meta.version != null) badges.push('v' + meta.version);
+  return badges;
 }
 function isOccupied(meta) {
   return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
@@ -187,23 +234,32 @@ export const saveLoadScreen = {
     const saveAllowed = canSave(ctx);
     refs.list.innerHTML = '';
     const ids = ['quick'];
+    if (slots.autosave || slots.auto) ids.push(slots.autosave ? 'autosave' : 'auto');
     for (let i = 1; i <= SLOT_COUNT - 1; i++) ids.push(String(i));
     // include any extra slots present in the index but not in our default list
     Object.keys(slots).forEach((k) => { if (!ids.includes(k) && k !== 'autosave' && k !== 'auto') ids.push(k); });
-    if (slots.autosave || slots.auto) ids.push(slots.autosave ? 'autosave' : 'auto');
     if (!refs.selected || !ids.includes(refs.selected)) {
       refs.selected = (ctx.state.save && ctx.state.save.currentSlot && ids.includes(ctx.state.save.currentSlot))
         ? ctx.state.save.currentSlot
         : (latestOccupiedSlot(slots) || 'quick');
     }
+    const currentSlot = ctx.state.save && ctx.state.save.currentSlot;
+    const latestSlot = latestOccupiedSlot(slots);
 
     ids.forEach((id) => {
       const meta = slots[id];
       const occupied = isOccupied(meta);
+      const summary = slotSummaryLines(meta);
       const row = el('div', 'sf-slot' + (occupied ? '' : ' empty') + (refs.selected === id ? ' sel' : ''));
       const main = el('div', 'sf-slot-main');
-      main.appendChild(el('div', 'sf-slot-name', slotLabel(id)));
-      main.appendChild(el('div', 'sf-slot-sub', fmtMeta(meta)));
+      const head = el('div', 'sf-slot-head');
+      head.appendChild(el('div', 'sf-slot-name', slotLabel(id)));
+      for (const badge of slotBadges(id, meta, currentSlot, latestSlot)) {
+        head.appendChild(el('span', 'sf-slot-badge', badge));
+      }
+      main.appendChild(head);
+      main.appendChild(el('div', 'sf-slot-context', summary.context));
+      main.appendChild(el('div', 'sf-slot-detail', summary.detail));
       row.appendChild(main);
 
       const bSave = el('button', 'sf-tab', 'Save'); bSave.style.minWidth = '64px';

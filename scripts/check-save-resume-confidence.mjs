@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fmtCredits, fmtPlaytime, shipLabel, slotBadges, slotSummaryLines } from '../src/ui/screens/saveLoad.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -45,5 +46,32 @@ assert.match(save, /this\.bus\.emit\('save:loaded'/, 'save system must emit save
 assert.match(saveLoad, /function readSlots\(ctx\)/, 'saveLoad must keep reading slots defensively');
 assert.match(saveLoad, /listSlots/, 'saveLoad should also prefer save.listSlots()');
 assert.match(saveLoad, /function latestOccupiedSlot\(slots\)/, 'saveLoad must preserve latest-slot resolution for export/selection');
+assert.match(saveLoad, /sf-slot-context/, 'saveLoad slot rows must show ship/sector context');
+assert.match(saveLoad, /sf-slot-detail/, 'saveLoad slot rows must show save details');
+assert.match(saveLoad, /sf-slot-badge/, 'saveLoad slot rows must show status/version badges');
+assert.match(saveLoad, /slotSummaryLines\(meta\)/, 'saveLoad must render slot summaries through the tested formatter');
+assert.match(saveLoad, /slotBadges\(id,\s*meta,\s*currentSlot,\s*latestSlot\)/,
+  'saveLoad must render current/latest/version badges through the tested formatter');
+assert.match(saveLoad, /const ids = \['quick'\];[\s\S]*if \(slots\.autosave \|\| slots\.auto\) ids\.push[\s\S]*for \(let i = 1; i <= SLOT_COUNT - 1; i\+\+\)/,
+  'saveLoad should list autosave directly after quick, before manual slots');
+
+assert.equal(fmtPlaytime(3660), '1h 1m played', 'saveLoad should format hour-scale playtime');
+assert.equal(fmtCredits(12345.4), '12,345 CR', 'saveLoad should format credits with separators');
+assert.equal(shipLabel('ship_kestrel_runner'), 'Kestrel Runner', 'saveLoad should turn ship ids into readable labels');
+const summary = slotSummaryLines({
+  savedAt: '2026-06-27T12:00:00Z',
+  playtimeS: 3660,
+  credits: 12345,
+  sectorName: 'Helios Reach',
+  shipName: 'ship_kestrel_runner',
+  version: 5,
+});
+assert.equal(summary.context, 'Helios Reach - Kestrel Runner', 'saveLoad context should combine sector and ship');
+assert.match(summary.detail, /1h 1m played/, 'saveLoad detail should include playtime');
+assert.match(summary.detail, /12,345 CR/, 'saveLoad detail should include credits');
+assert.deepEqual(slotBadges('quick', { savedAt: '2026-06-27T12:00:00Z', version: 5 }, 'quick', 'auto'), ['Current', 'v5'],
+  'current occupied slot should get current and version badges');
+assert.deepEqual(slotBadges('auto', { savedAt: '2026-06-27T12:00:00Z', version: 5 }, 'quick', 'auto'), ['Latest', 'v5'],
+  'latest non-current occupied slot should get latest and version badges');
 
 console.log('Save/resume confidence OK - title Continue shows latest-save context and uses the canonical save index.');
