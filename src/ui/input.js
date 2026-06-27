@@ -182,6 +182,22 @@ export function createUiInput(ctx, screenManager) {
   // V2 §6 / M3: claim the nearest claimable body POI in range, or — if the player is near an
   // already-claimed body — open the Base screen to build modules / teleport. Bails with a toast
   // if no claimable POI is nearby.
+  function openClaimedBase(body, opts = {}) {
+    if (!body || !body.id) {
+      bus.emit('toast', { text: 'Claim record not ready — try again in a moment', kind: 'warn', ttl: 3 });
+      return false;
+    }
+    if (!state.ui) state.ui = {};
+    state.ui.pendingClaimBodyId = body.id;
+    if (screenManager.hasScreen && !screenManager.hasScreen('base')) {
+      bus.emit('toast', { text: 'Base interface initializing — press C again in a moment', kind: 'info', ttl: 3 });
+      return false;
+    }
+    screenManager.pushScreen('base');
+    if (opts.audio !== false) bus.emit('audio:cue', { id: 'ui_open' });
+    return true;
+  }
+
   function claimOrOpenBase() {
     const claimsSys = ctx.registry && ctx.registry.get('claims');
     if (!claimsSys) return;
@@ -207,17 +223,13 @@ export function createUiInput(ctx, screenManager) {
     };
     // already claimed? open the Base screen for it
     if (claimsSys.isClaimed(poiDef.id)) {
-      if (!state.ui) state.ui = {};
-      state.ui.pendingClaimBodyId = (claimsSys.list().find((b) => b.poiId === poiDef.id) || {}).id;
-      if (screenManager.hasScreen && screenManager.hasScreen('base')) {
-        screenManager.pushScreen('base');
-      } else {
-        bus.emit('toast', { text: 'Body claimed. (Base screen coming soon — refinery auto-runs, teleporter ready.)', kind: 'info', ttl: 4 });
-      }
+      openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id));
       return;
     }
     // claim it (the system validates credits + emits feedback)
-    claimsSys.claim(poiDef);
+    if (claimsSys.claim(poiDef)) {
+      openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id), { audio: false });
+    }
   }
 
   // Emit the intent only; uiRoot's dock:undocked handler owns clearing ui.docked and popping
