@@ -3,7 +3,7 @@
 //   1. The build succeeded with zero errors.
 //   2. The bundled index.html has NO importmap (the bundle resolves bare specifiers itself).
 //   3. The bundled main.js is syntactically valid.
-//   4. Runtime-fetched data contracts are copied beside the bundle.
+//   4. Runtime-fetched data contracts and CSS-referenced runtime assets are copied beside the bundle.
 //   5. The bundled JS is meaningfully smaller than raw (src + vendor) — the whole point of bundling.
 //      We require >=20% smaller (the observed saving is ~45%); a result below 20% would mean the
 //      bundler regressed (e.g. minification disabled, or three/rapier double-included).
@@ -21,6 +21,10 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const BUILD_WEB = join(ROOT, 'build', 'web');
 const MIN_SAVING_PCT = 20; // the bundler must beat raw by at least this much
 const SCENARIO_47A_BUNDLE_PATH = join(BUILD_WEB, 'data', 'scenarios', '47a.scenario.json');
+const REQUIRED_BUNDLE_ASSETS = [
+  { label: 'menu background', path: join(BUILD_WEB, 'assets', 'cinematics', 'menu_background.jpg') },
+  { label: 'UI icons atlas', path: join(BUILD_WEB, 'assets', 'ui', 'icons_atlas.jpg') },
+];
 
 function runBuild() {
   return new Promise((resolve, reject) => {
@@ -64,12 +68,16 @@ assert.ok(/src="\.\/main\.js"/.test(html), 'bundled index.html must load ./main.
 // chunk imports that only resolve at runtime. esbuild already validates syntax during build; a
 // zero-error build is sufficient evidence.)
 
-// 4. Scenario contracts are fetched by URL at runtime; a missing copy boots to a player-visible 404.
+// 4. Scenario contracts and CSS-referenced runtime assets are fetched by URL at runtime; a missing copy
+// boots to a player-visible 404 or silently strips first-session menu/HUD identity in packaged builds.
 assert.ok(existsSync(SCENARIO_47A_BUNDLE_PATH),
   'build/web/data/scenarios/47a.scenario.json must exist for the bundled runtime');
 const scenario47a = JSON.parse(await readFile(SCENARIO_47A_BUNDLE_PATH, 'utf8'));
 assert.equal(scenario47a.id, 'scenario.47a.mass-discrepancy',
   'bundled 47-A scenario contract must be the canonical contract');
+for (const asset of REQUIRED_BUNDLE_ASSETS) {
+  assert.ok(existsSync(asset.path), `build/web must include the ${asset.label} runtime asset`);
+}
 
 // 5. The bundle is meaningfully smaller than raw JS. Compare JS-to-JS only (binary assets ship
 // identically either way).
@@ -82,4 +90,4 @@ assert.ok(savingPct >= MIN_SAVING_PCT,
   `bundled JS must be >= ${MIN_SAVING_PCT}% smaller than raw (got ${savingPct.toFixed(0)}%). ` +
   `A smaller saving means the bundler regressed — check that minification + tree-shaking are on and three/rapier aren't double-included.`);
 
-console.log(`[check-bundle] OK — bundle builds clean, no importmap, ${savingPct.toFixed(0)}% JS reduction (>= ${MIN_SAVING_PCT}% required).`);
+console.log(`[check-bundle] OK — bundle builds clean, includes runtime assets, no importmap, ${savingPct.toFixed(0)}% JS reduction (>= ${MIN_SAVING_PCT}% required).`);
