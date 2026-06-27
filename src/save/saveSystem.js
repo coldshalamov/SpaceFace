@@ -19,6 +19,7 @@ import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
+const PROFILE_SETTINGS_KEY = 'sf.settings.profile.v1';
 const FMT = 'spaceface-save';
 const AUTOSAVE_SLOT = 'auto';
 const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
@@ -59,9 +60,11 @@ export const save = {
     this._playerDead = false;          // set by player:death, cleared by player:respawn (autosave gate)
 
     const bus = this.bus;
+    this._loadProfileSettings();
     // UI / input route F5/F9 and menu buttons through these (§4.4).
     bus.on('game:save', (p) => this.save((p && p.slot) || 'quick'));
     bus.on('game:load', (p) => this.load((p && p.slot) || 'latest'));
+    bus.on('settings:changed', () => this._writeProfileSettings());
 
     // Death/respawn gate autosave (combat signals via events, not a state.player.dead field).
     bus.on('player:death', () => { this._playerDead = true; });
@@ -163,6 +166,42 @@ export const save = {
 
   _serializeSettings() {
     return clonePlain(this.state.settings);
+  },
+
+  _readProfileSettings() {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(PROFILE_SETTINGS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : null;
+    } catch (err) {
+      this.bus && this.bus.emit && this.bus.emit('save:error', { slot: 'settings', reason: 'settings_read_failed' });
+      return null;
+    }
+  },
+
+  _loadProfileSettings() {
+    const profile = this._readProfileSettings();
+    if (!profile) return false;
+    this.state.settings = sanitizeRestoredSettings(mergePlain(this.state.settings, profile));
+    return true;
+  },
+
+  _writeProfileSettings() {
+    if (typeof localStorage === 'undefined') return false;
+    try {
+      const payload = {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        settings: profileSettingsSnapshot(this.state.settings),
+      };
+      localStorage.setItem(PROFILE_SETTINGS_KEY, JSON.stringify(payload));
+      return true;
+    } catch (err) {
+      this.bus && this.bus.emit && this.bus.emit('save:error', { slot: 'settings', reason: 'settings_write_failed' });
+      return false;
+    }
   },
 
   // Only the player entity (and any flags.persistent entity) serializes; stations/asteroids/NPCs
@@ -599,7 +638,10 @@ export const save = {
   _restoreSettings(d) {
     if (!d) return;
     // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
-    this.state.settings = sanitizeRestoredSettings(mergePlain(this.state.settings, d));
+    let restored = sanitizeRestoredSettings(mergePlain(this.state.settings, d));
+    const profile = this._readProfileSettings();
+    if (profile) restored = sanitizeRestoredSettings(mergePlain(restored, profile));
+    this.state.settings = restored;
   },
 
   _callDeserialize(name, data) {
@@ -1084,6 +1126,22 @@ function sanitizeRestoredSettings(settings) {
   const tc = s.controls.touch;
   if (tc.enabled !== true && tc.enabled !== false) tc.enabled = null;
   return s;
+}
+
+function profileSettingsSnapshot(settings) {
+  const s = sanitizeRestoredSettings(clonePlain(settings || {}));
+  return {
+    uiScale: s.uiScale,
+    showDamageNumbers: s.showDamageNumbers,
+    audio: clonePlain(s.audio || {}),
+    video: clonePlain(s.video || {}),
+    controls: clonePlain(s.controls || {}),
+    accessibility: clonePlain(s.accessibility || {}),
+    gameplay: {
+      autosaveIntervalS: s.gameplay && s.gameplay.autosaveIntervalS,
+      tutorialHints: s.gameplay && s.gameplay.tutorialHints,
+    },
+  };
 }
 
 function normalizeControlBindings(bindings) {

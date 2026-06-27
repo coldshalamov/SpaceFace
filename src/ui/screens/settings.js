@@ -1,6 +1,6 @@
 // Settings screen (ARCHITECTURE §3.3, §5; design/specs/09).
 // Tabs: Audio / Video / Gameplay / Controls. Every change writes state.settings and
-// emits settings:changed {section,key,value} (audio/render/save listen + live-apply).
+// emits settings:changed {section,key,value} (audio/render/save listen + live-apply/profile-persist).
 // UI reads state.settings for display; the write to state.settings is the UI/settings
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
