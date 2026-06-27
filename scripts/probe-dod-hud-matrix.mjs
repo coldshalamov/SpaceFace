@@ -82,7 +82,7 @@ try {
     await sleep(400); await click('New Game');
     for (let i = 0; i < 60; i++) { const ng = JSON.parse((await cdp.send('Runtime.evaluate', { expression: ngExpr, returnByValue: true })).result?.value || '{}'); snap = await evalJson(snapExpr); if (snap.flightPlayable || ng.visible) break; await sleep(200); }
     snap = await evalJson(snapExpr);
-    if (!snap.flightPlayable) { await click('Launch'); await wait((s) => s.flightPlayable, 15000, 'flight'); }
+    if (!snap.flightPlayable) { await click('Launch'); await wait((s) => s.flightPlayable, 45000, 'flight'); }
   }
   await sleep(1500); // let the HUD fully render
 

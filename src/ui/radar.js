@@ -16,12 +16,14 @@ import { semanticColor, semanticShape } from './accessibility.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 
 // ── dimensions ──────────────────────────────────────────────────────────────────────────────
-// Canvas is always drawn at EXPAND_SIZE. The .sf-radar div transitions its width/height via CSS,
-// and overflow:hidden + border-radius:50% clips it to a circle. As the div grows from 180→340px
-// the canvas reveals from the center outward — a natural circular bloom with no JS timing needed.
-const EXPAND_SIZE = 340;
-const EXPAND_C    = EXPAND_SIZE / 2;   // 170
-const EXPAND_R    = 165;
+// Compact flight uses a true compact canvas. Expanded tactical mode switches to the larger canvas
+// only while open, avoiding a permanently composited 340px HiDPI surface during normal flight.
+const COMPACT_SIZE = 180;
+const COMPACT_C    = COMPACT_SIZE / 2;
+const COMPACT_R    = 86;
+const EXPAND_SIZE  = 340;
+const EXPAND_C     = EXPAND_SIZE / 2;
+const EXPAND_R     = 165;
 
 // ── colors ──────────────────────────────────────────────────────────────────────────────────
 const FACTION_COLOR = {
@@ -132,11 +134,11 @@ function drawAsteroidBlip(g, bx, by) {
   g.beginPath(); g.moveTo(bx, by - 2.5); g.lineTo(bx + 2.5, by); g.lineTo(bx, by + 2.5); g.lineTo(bx - 2.5, by); g.closePath(); g.fill();
 }
 
-function drawTargetRing(g, bx, by) {
+function drawTargetRing(g, bx, by, C) {
   // Thin dashed tether from the player (center) to the current target (Tactical-Visor §3D).
   g.save();
   g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1; g.setLineDash([3, 4]);
-  g.beginPath(); g.moveTo(EXPAND_C, EXPAND_C); g.lineTo(bx, by); g.stroke();
+  g.beginPath(); g.moveTo(C, C); g.lineTo(bx, by); g.stroke();
   g.restore();
   glow(g, '#fff', 8);
   g.strokeStyle = '#fff'; g.lineWidth = 1.3;
@@ -155,20 +157,32 @@ export function createRadar(ctx) {
   dial.className = 'sf-radar';
   dial.title = 'Click to expand tactical view';
 
-  // canvas pair: main draw surface + pre-rendered static background.
-  // Always at EXPAND_SIZE — CSS clips the dial div to the right circle via overflow:hidden.
+  // Canvas pair: main draw surface + pre-rendered static background. Normal flight keeps these at
+  // compact HUD size; tactical expansion opts into the larger surface on demand.
   const dpr      = Math.min(window.devicePixelRatio || 1, 2);
   const canvas   = document.createElement('canvas');
   const bgCanvas = document.createElement('canvas');
-  const px       = EXPAND_SIZE * dpr;
-  canvas.width   = px; canvas.height   = px;
-  canvas.style.width  = EXPAND_SIZE + 'px'; canvas.style.height = EXPAND_SIZE + 'px';
-  bgCanvas.width = px; bgCanvas.height = px;
   const g  = canvas.getContext('2d');
   const bg = bgCanvas.getContext('2d');
-  g.scale(dpr, dpr);
-  bg.scale(dpr, dpr);
-  drawBackground(bg, EXPAND_C, EXPAND_R);
+  let configuredSize = 0;
+  let configuredC = COMPACT_C;
+  let configuredR = COMPACT_R;
+
+  function configureCanvas(size, C, R) {
+    if (configuredSize === size) return;
+    configuredSize = size;
+    configuredC = C;
+    configuredR = R;
+    const px = Math.round(size * dpr);
+    canvas.width = px; canvas.height = px;
+    bgCanvas.width = px; bgCanvas.height = px;
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    bg.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawBackground(bg, C, R);
+  }
+  configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
 
   let expanded = false;
   dial.appendChild(canvas);
@@ -185,14 +199,14 @@ export function createRadar(ctx) {
   wrap.append(dial, legend);
 
   // ── expanded toggle ───────────────────────────────────────────────────────────────────────
-  // Toggling .sf-radar--expanded triggers the CSS width/height transition (300ms ease).
-  // The canvas is always 340px; overflow:hidden + border-radius:50% clips it. As the div
-  // grows from 180→340px the visible circle blooms outward from the player's position at center.
+  // Toggling .sf-radar--expanded grows the dial and switches to the larger tactical canvas.
   // position:fixed lifts the wrap out of the rightdock flow so it doesn't push other elements.
   function setExpanded(v) {
     expanded = v;
     dial.classList.toggle('sf-radar--expanded', v);
     legend.style.display = v ? 'none' : '';
+    if (v) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
+    else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
     wrap.style.cssText = v
       ? 'position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px;'
       : '';
@@ -289,10 +303,12 @@ export function createRadar(ctx) {
   // ── draw ──────────────────────────────────────────────────────────────────────────────────
   function draw() {
     const p = state.entities.get(state.playerId);
+    if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
+    else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
     const baseRange = state.ui.radarRange || 4000;
     const range     = expanded ? baseRange * 2 : baseRange;
     const rangeSq   = range * range;
-    const C = EXPAND_C, R = EXPAND_R, SIZE = EXPAND_SIZE;
+    const C = configuredC, R = configuredR, SIZE = configuredSize;
     const radarScale = R / range;
     const now = Date.now();
 
@@ -395,7 +411,7 @@ export function createRadar(ctx) {
       }
     }
     noGlow(g);
-    if (targetAsteroidBlip) drawTargetRing(g, targetAsteroidX, targetAsteroidY);
+    if (targetAsteroidBlip) drawTargetRing(g, targetAsteroidX, targetAsteroidY, C);
 
     let trailUpdates = 0;
     for (let i = 0; i < list.length; i++) {
@@ -484,7 +500,7 @@ export function createRadar(ctx) {
 
       // target ring
       if (e.id === targetId) {
-        drawTargetRing(g, bx, by);
+        drawTargetRing(g, bx, by, C);
       }
     }
 

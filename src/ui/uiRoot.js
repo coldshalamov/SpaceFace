@@ -613,13 +613,13 @@ function injectHudCss() {
   .sf-stat--info:hover .sf-tip { display:block; }
 
   /* ===== bottom-right: tactical node map (radar) + target readout (§3D) ===== */
-  /* Borderless: the radar reads as a raw projection. overflow:hidden is kept only because the
-     expand animation reveals a fixed 340px canvas from the center outward. */
+  /* Borderless: the radar reads as a raw projection. The canvas uses compact size in normal
+     flight and switches to the larger tactical surface only while expanded. */
   .sf-rightdock { position:absolute; right:22px; bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
   .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
   .sf-radar { position:relative; width:180px; height:180px; border-radius:50%; overflow:hidden; cursor:pointer; }
   .sf-radar--expanded { width:340px !important; height:340px !important; }
-  /* canvas is always 340px — centered so the overflow:hidden circle reveals from the player outward */
+  /* Canvas is centered so compact/expanded size changes stay anchored on the player marker. */
   .sf-radar canvas { display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
   .sf-radar-legend { width:220px; display:grid; grid-template-columns:repeat(5, auto); gap:4px 9px; justify-content:center;
     color:var(--text-secondary); font-family:var(--mono); font-size:9px; letter-spacing:.04em;

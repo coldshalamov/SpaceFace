@@ -164,8 +164,18 @@ try {
 
   // (a) Tactical radar — the HUD corner canvas, near-field combat contacts.
   const radarReport = await evalJson(`JSON.stringify((() => {
-    const radar = document.getElementById('radar') || document.querySelector('[id*="radar" i], canvas');
-    return { radarPresent: !!radar, radarIsCanvas: !!(radar && radar.tagName === 'CANVAS'), id: radar && radar.id };
+    const radar = document.querySelector('.sf-radar canvas');
+    const rect = radar && radar.getBoundingClientRect();
+    return {
+      radarPresent: !!radar,
+      radarIsCanvas: !!(radar && radar.tagName === 'CANVAS'),
+      selector: '.sf-radar canvas',
+      id: radar && radar.id,
+      cssWidth: rect && Math.round(rect.width),
+      cssHeight: rect && Math.round(rect.height),
+      backingWidth: radar && radar.width,
+      backingHeight: radar && radar.height
+    };
   })())`);
 
   // (b) Local system map — N key, the LocalSpaceIntel-fed local map.
