@@ -25,6 +25,8 @@ const gamepadSrc = read('src/systems/gamepad.js');
 const touchSrc = read('src/systems/touch.js');
 assert.match(gamepadSrc, /export function createGamepad/, 'gamepad.js must export createGamepad');
 assert.match(touchSrc, /export function createTouch/, 'touch.js must export createTouch');
+assert.match(gamepadSrc, /mine:\s*\['l2'\]/, 'gamepad.js must map LT/L2 to the mining action');
+assert.doesNotMatch(gamepadSrc, /fire:\s*\[[^\]]*accept/, 'gamepad A/Cross should be dock/activate, not a second fire trigger');
 
 // 2. input.js imports + creates both.
 const inputSrc = read('src/systems/input.js');
@@ -38,6 +40,8 @@ assert.match(inputSrc, /ctx\.touch = this\.touch/, 'input.js must expose touch o
 //    references — these are the evidence the modality is actually read, not just created.
 assert.match(inputSrc, /gp\.axes\.leftX/, 'input.js must merge gamepad left stick (gp.axes.leftX)');
 assert.match(inputSrc, /gp\.actions\.fire/, 'input.js must merge gamepad fire action');
+assert.match(inputSrc, /gp\.actions\.mine/, 'input.js must merge gamepad mine action');
+assert.match(inputSrc, /this\._m2 \|\| gpMine \|\| tpMine/, 'input.js must route gamepad mine to fireGroup 2');
 assert.match(inputSrc, /tp\.axes\.leftX/, 'input.js must merge touch left stick (tp.axes.leftX)');
 assert.match(inputSrc, /tp\.actions\.fire/, 'input.js must merge touch fire action');
 assert.match(inputSrc, /tp\.actions\.mine/, 'input.js must merge touch mine action (fireGroup 2)');
@@ -55,6 +59,9 @@ assert.match(saveSrc, /s\.controls\.touch/, 'saveSystem must normalize settings.
 
 // 5. Settings UI exposes toggles for both (so the player can enable/disable each).
 const settingsSrc = read('src/ui/screens/settings.js');
+const uiRootSrc = read('src/ui/uiRoot.js');
+const uiInputSrc = read('src/ui/input.js');
+const helpSrc = read('src/ui/screens/help.js');
 assert.match(settingsSrc, /Gamepad enabled/, 'Settings must expose a Gamepad enabled toggle');
 assert.match(settingsSrc, /Touch controls/, 'Settings must expose a Touch controls toggle');
 assert.doesNotMatch(settingsSrc, /rowToggle\('Touch controls'/, 'Touch controls must use a tri-state Auto/On/Off control, not the boolean toggle helper');
@@ -62,5 +69,11 @@ assert.match(settingsSrc, /touchModeLabel/, 'Touch controls must render Auto/On/
 assert.match(settingsSrc, /aria-pressed', mode === 'auto' \? 'mixed'/, 'Touch Auto state must use valid aria-pressed=mixed');
 assert.match(touchSrc, /should !== this\._enabledByAuto \|\| this\.active !== should/, 'Touch auto-detect must reconcile the current overlay when returning from manual On/Off');
 assert.match(touchSrc, /if \(on == null\) this\.autoDetect\(\);\s*else this\.setEnabled\(\!\!on\)/, 'Touch persistEnabled(null) must return to auto-detect immediately');
+assert.match(uiRootSrc, /RMB mine/, 'Keyboard flight hints must describe the mining control as mining, not sampling');
+assert.match(uiRootSrc, /LT mine/, 'Gamepad flight hints must advertise LT/L2 mining');
+assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document gamepad mining');
+assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');
+assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)/,
+  'UI input must let gamepad A/Cross dock when the dock prompt is active');
 
 console.log('Input modalities OK — keyboard+mouse (always) + gamepad (getGamepads) + touch (virtual sticks) all wired + merged + normalized.');

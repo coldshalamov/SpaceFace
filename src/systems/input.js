@@ -4,7 +4,7 @@
 //   ←→ / A D  YAW the ship's nose left/right (not strafe — the ship banks into the turn)
 //   Q/E  lateral thrusters left/right
 //   Mouse  independent aim for gimballed weapons + click to fire
-//   LMB / Space  fire group 1 (manual)   RMB  mining beam (group 2)   Shift  boost
+//   LMB / Space / RT  fire group 1 (manual)   RMB / LT  mining beam (group 2)   Shift / RB  boost
 //   F  toggle auto-fire (handled in weapons; only the toggle edge lives here)
 // Flight/combat keys are owned here; UI-owned global keys are handled in src/ui/input.js.
 // NOTE: NPC ships NEVER read state.input — they write e.data.intent directly (ai.js), so this
@@ -210,11 +210,12 @@ export const input = {
     const kbdBoost = this._held(state, 'boost');
     const kbdFire = this._m0 || this._held(state, 'fire');
 
-    // --- gamepad merge (left stick = yaw/throttle, right stick = aim, RT/RB fire/boost) ---
+    // --- gamepad merge (left stick = yaw/throttle, right stick = aim, RT/LT/RB fire/mine/boost) ---
     let gpTurn = 0;
     let gpMoveZ = 0;
     let gpBoost = false;
     let gpFire = false;
+    let gpMine = false;
     let gpBrake = false;
     let gpAimActive = false;
     if (gp && gp.isConnected()) {
@@ -222,6 +223,7 @@ export const input = {
       gpMoveZ = -gp.axes.leftY; // stick up = forward
       gpBoost = gp.actions.boost && gp.actions.boost.held;
       gpFire = gp.actions.fire && gp.actions.fire.held;
+      gpMine = gp.actions.mine && gp.actions.mine.held;
       gpBrake = gp.actions.brake && gp.actions.brake.held;
       gpAimActive = Math.abs(gp.axes.rightX) > 0.001 || Math.abs(gp.axes.rightY) > 0.001;
     }
@@ -251,7 +253,7 @@ export const input = {
     inp.boost = kbdBoost || gpBoost || tpBoost;
     inp.brake = down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55;
     inp.fire = kbdFire || gpFire || tpFire;
-    inp.fireGroup = (this._m2 || tpMine) ? 2 : (inp.fire ? 1 : null);
+    inp.fireGroup = (this._m2 || gpMine || tpMine) ? 2 : (inp.fire ? 1 : null);
 
     // Auto-fire toggle (edge-triggered): F flips state.input.autoFire.
     if (this._held(state, 'autoFire')) {

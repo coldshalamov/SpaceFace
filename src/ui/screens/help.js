@@ -130,6 +130,7 @@ const SECTIONS = [
     ['Fly (yaw + throttle)', null, 'Left stick'],
     ['Aim weapons', null, 'Right stick'],
     ['Fire', null, 'RT / R2'],
+    ['Mine beam', null, 'LT / L2'],
     ['Boost', null, 'RB / R1'],
     ['Brake / reverse', null, 'LB / L1'],
     ['Cycle target', null, 'X / □'],
@@ -137,7 +138,7 @@ const SECTIONS = [
     ['Open codex', null, 'Y / △'],
     ['Open mission log', null, 'Pause → Mission Log'],
     ['Pause', null, 'Start / Options'],
-    ['Accept / activate', null, 'A / X'],
+    ['Dock / activate', null, 'A / X (when prompted)'],
     ['Cancel / back', null, 'B / ○'],
   ]],
 ];

@@ -1,7 +1,8 @@
 // Mining system (ARCHITECTURE §2.3 step 9). Owns asteroid extraction, ore ejection as
 // collectible pickups, the magnet auto-collect pull, wreck salvage, and mining-beam heat.
 //
-// Drive: the player holds RIGHT-MOUSE → state.input.fireGroup === 2. The active mining beam
+// Drive: the player holds RIGHT-MOUSE / gamepad LT / touch MINE -> state.input.fireGroup === 2.
+// The active mining beam
 // runtime lives on state.player.miningBeam (gameState §3.5); we also honor a per-entity
 // entity.data.miningBeam override if a future ships/outfitting pass writes one there.
 //

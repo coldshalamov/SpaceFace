@@ -6,13 +6,13 @@
 // merged in src/systems/input.js; UI navigation is consumed in src/ui/input.js.
 //
 // Standard mapping (Xbox / PlayStation equivalent):
-//   0  A / Cross      -> accept / confirm (UI) or fire (flight)
+//   0  A / Cross      -> accept / confirm (UI) or dock / activate (flight)
 //   1  B / Circle      -> cancel / back
 //   2  X / Square      -> cycle target
 //   3  Y / Triangle    -> codex / journal
 //   4  LB / L1         -> brake / reverse thrust
 //   5  RB / R1         -> boost
-//   6  LT / L2         -> left trigger (analog)
+//   6  LT / L2         -> mine beam (analog)
 //   7  RT / R2         -> fire (analog)
 //   8  View / Select   -> star map
 //   9  Menu / Start    -> pause
@@ -43,7 +43,8 @@ const STD = {
 
 // An action can be bound to multiple physical buttons (e.g. accept also fires in flight).
 const ACTION_MAP = {
-  fire: ['r2', 'accept'],
+  fire: ['r2'],
+  mine: ['l2'],
   boost: ['r1'],
   brake: ['l1'],
   cycleTarget: ['action'],

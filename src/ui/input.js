@@ -392,6 +392,9 @@ export function createUiInput(ctx, screenManager) {
 
     // Global UI actions when no modal is open (mode must be flight).
     if (!modalOpen && state.mode === 'flight') {
+      if (gp.actions.accept && gp.actions.accept.pressed && dockInRange) {
+        doDock();
+      }
       if (gp.actions.pause && gp.actions.pause.pressed) {
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
