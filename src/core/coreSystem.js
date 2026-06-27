@@ -4,6 +4,7 @@ import { makeEntity } from './entity.js';
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physicsAuthority.js';
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
+import { navPersistence } from '../systems/navPersistence.js';
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
@@ -13,6 +14,8 @@ export const core = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this._lastDay = 0;
+    // Install the non-visual nav save/resume adapter before save.init() runs later in registry order.
+    navPersistence.init(ctx);
 
     const state = this.state, bus = this.bus;
 
