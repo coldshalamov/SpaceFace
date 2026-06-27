@@ -1,10 +1,10 @@
 // Help / codex screen (ARCHITECTURE §5.6; design/specs/09).
 // Tabbed reference: Controls, Loops, Ships, Commodities, Ores, Factions.
 // The Controls tab reads the LIVE keybindings the player set in Settings → Controls
-// (state.settings.controls.bindings), falling back to the input system's DEFAULT_BINDINGS so the
-// help always reflects what the keys actually do — previously it read a nonexistent
-// `settings.keybinds` field and so always showed the static documented defaults, even after a
-// rebind. Dismissed via the Close button or ESC (screen manager handles ESC).
+// (state.settings.controls.bindings), falling back to the input system's DEFAULT_BINDINGS for
+// flight actions and the UI binding registry for fixed interface actions, so the help always
+// reflects what the keys actually do. Dismissed via the Close button or ESC (screen manager handles
+// ESC).
 
 import { SHIPS } from '../../data/ships.js';
 import { COMMODITIES } from '../../data/commodities.js';
@@ -12,6 +12,7 @@ import { ORES, ASTEROIDS } from '../../data/mining.js';
 import { FACTION_META } from '../../data/factions.js';
 import { createListControls } from '../listControls.js';
 import { DEFAULTS } from '../../systems/input.js';
+import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-menu-style';
 
@@ -116,10 +117,10 @@ const SECTIONS = [
     ['Deep-drill (ant-farm)', null, 'B (target an asteroid)'],
     ['Claim body / open base', null, 'C (near a colony/moon)'],
     ['Cycle target', null, 'Tab'],
-    ['Dock', null, 'E (when prompted)'],
+    ['Dock', null, `${BINDINGS.dock.label} (when prompted)`],
     ['Pause', null, 'ESC / P'],
-    ['Star-map', null, 'M'],
-    ['Local system map', null, 'N'],
+    ['Star-map', null, BINDINGS.starmap.label],
+    ['Local system map', null, BINDINGS.localmap.label],
     ['Tech tree', null, 'T'],
     ['Mission log', null, 'J'],
     ['Help', null, 'F1 / H'],
@@ -171,11 +172,11 @@ function keyLabel(binds, action, def) {
 const TABS = ['Controls', 'Loops', 'Ships', 'Commodities', 'Ores', 'Factions'];
 
 const GAMEPLAY_LOOPS = [
-  ['Dock and choose work', 'E near a station -> Missions or Bar -> Accept + Track -> Undock', 'Contracts become Mission Log entries and tracked nav markers; rewards fund ship upgrades and supplies.'],
+  ['Dock and choose work', `${BINDINGS.dock.label} near a station -> Missions or Bar -> Accept + Track -> Undock`, 'Contracts become Mission Log entries and tracked nav markers; rewards fund ship upgrades and supplies.'],
   ['Trade for upgrades', 'Market -> buy cheap cargo -> Best Trades Set Nav -> sell high', 'Cargo space turns into credits; credits buy hulls, modules, repairs, and fuel.'],
   ['Mine into economy', 'Asteroid field -> mine ore -> sell at mining/refinery markets or manufacture', 'Mining rewards cargo space and mining slots; refined goods feed modules and hull production.'],
   ['Refit for a job', 'Shipyard for hull role -> Outfitting for modules -> Services before launch', 'Hull choice sets capacity and slots; modules decide whether the ship fights, hauls, mines, scans, or survives.'],
-  ['Track objectives', 'Mission Log (J) -> Track Nav -> HUD marker / local map (N) / star-map (M)', 'The log is the active objective home when you forget what the current flight is for.'],
+  ['Track objectives', `Mission Log (J) -> Track Nav -> HUD marker / local map (${BINDINGS.localmap.label}) / star-map (${BINDINGS.starmap.label})`, 'The log is the active objective home when you forget what the current flight is for.'],
 ];
 
 export const helpScreen = {

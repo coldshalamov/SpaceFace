@@ -71,6 +71,19 @@ if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
   console.log('ok   helpScreen - shell title is Help');
   ok++;
 }
+if (!helpSrc.includes("import { BINDINGS } from '../bindings.js'")
+  || !helpSrc.includes('BINDINGS.dock.label')
+  || !helpSrc.includes('BINDINGS.localmap.label')
+  || !helpSrc.includes('BINDINGS.starmap.label')) {
+  console.log('FAIL helpScreen - fixed UI key labels must read src/ui/bindings.js');
+  fail++;
+} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)/.test(helpSrc)) {
+  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap keys');
+  fail++;
+} else {
+  console.log('ok   helpScreen - fixed UI key labels read the binding registry');
+  ok++;
+}
 if (!/shell\(rootEl,\s*'Codex'/.test(codexSrc)) {
   console.log('FAIL codexScreen - shell title must be Codex');
   fail++;
