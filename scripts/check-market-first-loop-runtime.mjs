@@ -61,10 +61,10 @@ try {
 
   await waitForVisible(page, '[data-screen="station"]', DOCK_TIMEOUT_MS, 'station hub after dock');
 
-  const seededTrade = await page.evaluate(() => {
+  const seededTrade = await page.evaluate((fallbackStationId) => {
     const sf = window.SF;
     const state = sf && sf.state;
-    const stationId = state && state.ui && state.ui.dockedStationId || arguments[0];
+    const stationId = state && state.ui && state.ui.dockedStationId || fallbackStationId;
     const markets = state && state.economy && state.economy.markets || {};
     const here = markets[stationId] || {};
     const cmdtyId = Object.keys(here).find((id) => here[id] && Number.isFinite(here[id].lastBuy) && here[id].lastBuy > 0);
