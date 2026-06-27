@@ -1,5 +1,7 @@
 // Verifies browser-facing UI screen modules import cleanly and expose valid screen definitions.
 // This catches broken relative imports before the dynamic browser registry silently skips a screen.
+import { readFileSync } from 'node:fs';
+
 const checks = [
   ['../src/ui/screens/stationHub.js', 'stationHub'],
   ['../src/ui/screens/starmap.js', 'starmapScreen'],
@@ -55,6 +57,23 @@ if (starmap) {
     console.log('ok   starmapScreen - M shortcut closes');
     ok++;
   }
+}
+
+const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
+const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
+if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
+  console.log('FAIL helpScreen - shell title must be Help, not Codex');
+  fail++;
+} else {
+  console.log('ok   helpScreen - shell title is Help');
+  ok++;
+}
+if (!/shell\(rootEl,\s*'Codex'/.test(codexSrc)) {
+  console.log('FAIL codexScreen - shell title must be Codex');
+  fail++;
+} else {
+  console.log('ok   codexScreen - shell title is Codex');
+  ok++;
 }
 
 console.log(`\n${ok} UI screen imports ok, ${fail} fail`);

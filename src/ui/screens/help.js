@@ -184,7 +184,7 @@ export const helpScreen = {
 
   mount(rootEl, ctx) {
     injectStyle();
-    shell(rootEl, 'Codex', 'sf-menu-wide');
+    shell(rootEl, 'Help', 'sf-menu-wide');
 
     // Tab bar
     const bar = el('div', 'sf-tabbar');
