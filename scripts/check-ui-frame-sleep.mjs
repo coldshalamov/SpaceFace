@@ -196,11 +196,16 @@ function checkFullscreenCompositorShellsSleep() {
   const screenManager = readFileSync(new URL('../src/ui/screenManager.js', import.meta.url), 'utf8');
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+  const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
   const modalBackdrop = blockFor(css, '#modal-backdrop');
   const dockOverlay = blockFor(css, '#sf-dock-overlay');
   const dockOverlayInjected = blockFor(uiRoot, '.sf-dock-fade');
   const controlHints = blockFor(css, '#control-hints');
   const radarLegend = blockFor(uiRoot, '.sf-radar-legend');
+  const lockRing = blockFor(uiRoot, '.sf-lockring');
+  const lockRingActive = blockFor(uiRoot, '.sf-lockring.active');
+  const lockDiamond = blockFor(uiRoot, '.sf-lockdiamond');
+  const lockDiamondVisible = blockFor(uiRoot, '.sf-lockdiamond.visible');
 
   assert.match(modalBackdrop, /display:\s*none/, 'closed modal backdrop must not stay in the compositor tree');
   assert.doesNotMatch(modalBackdrop, /backdrop-filter|-webkit-backdrop-filter/, 'closed modal backdrop must not carry live backdrop filters');
@@ -222,6 +227,13 @@ function checkFullscreenCompositorShellsSleep() {
   assert.doesNotMatch(radarLegend, /text-shadow:\s*var\(--text-shadow-hard\)/, 'radar legend should stay flat next to the live canvas');
   assert.doesNotMatch(blockFor(uiRoot, '.sf-radar'), /transition\s*:/, 'radar dial should not keep idle width/height transitions next to the live canvas');
   assert.doesNotMatch(uiRoot, /\.sf-radar-legend \.stn\s*\{[^}]*box-shadow/i, 'radar legend swatches should not glow next to the live canvas');
+  assert.match(lockRing, /display:\s*none/, 'idle lock ring should not stay in the compositor tree');
+  assert.match(lockRingActive, /display:\s*block/, 'active lock ring should still mount for lock feedback');
+  assert.match(lockDiamond, /display:\s*none/, 'idle target diamond should not keep its pulsing glow mounted');
+  assert.match(lockDiamondVisible, /display:\s*block/, 'visible target diamond should still mount for selected targets');
+  assert.match(hud, /objWrap\.style\.display\s*=\s*'none'/, 'empty objective tracker should start out of the compositor tree');
+  assert.match(hud, /setDisplay\(objWrap,\s*false\)/, 'empty objective tracker should sleep after objectives clear');
+  assert.match(hud, /setDisplay\(objWrap,\s*true,\s*'flex'\)/, 'objective tracker should remount with its authored flex layout when populated');
 }
 
 function blockFor(source, selector) {

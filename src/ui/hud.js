@@ -464,6 +464,7 @@ export function createHud(ctx, alerts) {
   // ---- top-right: objective tracker + arrow ----
   const objWrap = document.createElement('div');
   objWrap.className = 'sf-objectives';
+  objWrap.style.display = 'none';
   root.appendChild(objWrap);
 
   // ---- Phase 4: nav readout (destination / distance / ETA) + fuel gauge (top-left) ----
@@ -919,7 +920,11 @@ export function createHud(ctx, alerts) {
     if (sig === lastObjectivesSig) return;
     lastObjectivesSig = sig;
     objWrap.innerHTML = '';
-    if (!items.length) return;
+    if (!items.length) {
+      setDisplay(objWrap, false);
+      return;
+    }
+    setDisplay(objWrap, true, 'flex');
     const frag = document.createDocumentFragment();
     for (const item of items) {
       const line = document.createElement('div');

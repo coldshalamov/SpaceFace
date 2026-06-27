@@ -700,10 +700,10 @@ function injectHudCss() {
   /* ===== combat HUD overlay (lock-on, weapon heat bars, target diamond) ===== */
 
   /* Lock-on progress arc — circular SVG indicator near reticle center */
-  .sf-lockring { position:absolute; left:50%; top:50%; width:72px; height:72px;
+  .sf-lockring { display:none; position:absolute; left:50%; top:50%; width:72px; height:72px;
     transform:translate(-50%,-50%); pointer-events:none; z-index:14; opacity:0;
     transition:opacity .15s ease; filter:drop-shadow(0 0 6px var(--accent)); }
-  .sf-lockring.active { opacity:1; }
+  .sf-lockring.active { display:block; opacity:1; }
   .sf-lockring.locked { filter:drop-shadow(0 0 10px var(--danger)); }
   .sf-lockring .sf-lockring__track { fill:none; stroke:var(--panel-edge); stroke-width:2.5; }
   .sf-lockring .sf-lockring__fill { fill:none; stroke:var(--accent); stroke-width:3;
@@ -732,10 +732,10 @@ function injectHudCss() {
   /* Target lock diamond — world-space overlay on locked/selected enemy.
      Outer div is the invisible positioning anchor (translate -50% centers on target).
      Inner div is the visible rotated diamond with pulsing glow. */
-  .sf-lockdiamond { position:absolute; width:32px; height:32px; pointer-events:none; z-index:13;
+  .sf-lockdiamond { display:none; position:absolute; width:32px; height:32px; pointer-events:none; z-index:13;
     transform:translate(-50%,-50%); opacity:0; transition:opacity .12s ease;
     --dia-glow:57,208,255; }
-  .sf-lockdiamond.visible { opacity:1; }
+  .sf-lockdiamond.visible { display:block; opacity:1; }
   .sf-lockdiamond.locked-tgt { --dia-glow:255,84,112; }
   .sf-lockdiamond__inner { position:absolute; inset:2px;
     transform:rotate(45deg);
