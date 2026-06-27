@@ -1,5 +1,5 @@
 // Pause menu (ARCHITECTURE §5.4, design/specs/09). Opened by ESC in flight.
-// Resume / Settings / Save / Load / Help / Main Menu.
+// Resume / Settings / Save / Load / Mission Log / Help / Main Menu.
 // On show: freeze sim (sim:pause + timeScale=0). On resume: sim:resume + timeScale=1.
 // UI emits intents only; it never mutates owned sim state beyond the documented
 // timeScale/mode toggle that the loop reads (§2.2 — timeScale gates stepSim).
@@ -114,6 +114,7 @@ export const pauseScreen = {
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     });
+    mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionLog'));
     mk('Help', () => nav(ctx, 'pushScreen', 'help'));
     mk('Codex', () => nav(ctx, 'pushScreen', 'codex'));
     // Main Menu discards the current session entirely — confirm first (UX-2).

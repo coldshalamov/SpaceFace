@@ -72,6 +72,7 @@ const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.m
 const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
 const automationSrc = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
+const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
 if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
   console.log('FAIL helpScreen - shell title must be Help, not Codex');
   fail++;
@@ -90,6 +91,16 @@ if (!helpSrc.includes("import { BINDINGS } from '../bindings.js'")
   fail++;
 } else {
   console.log('ok   helpScreen - fixed UI key labels read the binding registry');
+  ok++;
+}
+if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionLog'))")) {
+  console.log('FAIL pauseScreen - controller-friendly pause menu must expose Mission Log');
+  fail++;
+} else if (!helpSrc.includes("['Open mission log', null, 'Pause")) {
+  console.log('FAIL helpScreen - gamepad controls must document the Mission Log route');
+  fail++;
+} else {
+  console.log('ok   pause/help - mission log is reachable and documented for controller players');
   ok++;
 }
 if (!localmapSrc.includes("import { BINDINGS } from '../bindings.js'")
