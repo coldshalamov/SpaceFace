@@ -2,6 +2,7 @@
 // each step (§2.3), and the render-phase systems each frame. main.js builds it with the ctx.
 import { core } from './coreSystem.js';
 import { physics } from './physics.js';
+import { settingsPrefs } from '../systems/settingsPrefs.js';
 import { input } from '../systems/input.js';
 import { aiPorts } from '../systems/aiPorts.js';
 import { ai } from '../systems/ai.js';
@@ -49,7 +50,7 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, weapons, countermeasures, combat, mining, cargo, economy,
+    settingsPrefs, core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, weapons, countermeasures, combat, mining, cargo, economy,
     automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
