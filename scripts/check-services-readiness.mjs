@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { AMMO_BATCH, serviceQuote } from '../src/ui/screens/services.js';
+import { AMMO_BATCH, serviceQuote, serviceReadinessRecommendation } from '../src/ui/screens/services.js';
 
 function baseState(overrides = {}) {
   return {
@@ -87,10 +87,58 @@ function checkInsuranceQuoteShowsDeductibleGate() {
   assert.equal(active.buttonLabel, 'Cancel', 'active insurance should expose cancel action');
 }
 
+function checkReadinessRecommendsPartialRefuel() {
+  const state = baseState({
+    fuel: { current: 10, max: 100 },
+    player: { ...baseState().player, credits: 200 },
+  });
+  const rec = serviceReadinessRecommendation(state, playerShip({ hull: 100, armorHp: 60 }), ['refuel', 'repair']);
+
+  assert.equal(rec.service, 'refuel', 'low fuel should recommend refuel first when hull is safe');
+  assert.equal(rec.type, 'refuel', 'available low-fuel recommendation should be actionable');
+  assert.equal(rec.amount, 33, 'readiness action should reuse the partial refuel quote amount');
+  assert.equal(rec.actionLabel, 'Partial Refuel', 'readiness action should preserve the precise service label');
+  assert.match(rec.reason, /Fuel is at 10%/i, 'readiness copy should state the fuel problem plainly');
+}
+
+function checkReadinessPrefersCriticalRepair() {
+  const state = baseState({ fuel: { current: 90, max: 100 } });
+  const rec = serviceReadinessRecommendation(state, playerShip({ hull: 20, hullMax: 100, armorHp: 20, armorMax: 60 }), ['refuel', 'repair']);
+
+  assert.equal(rec.service, 'repair', 'critical hull should outrank non-critical service work');
+  assert.equal(rec.type, 'repair', 'available critical repair should be actionable');
+  assert.equal(rec.actionLabel, 'Repair Hull', 'readiness action should use the normal repair button label');
+  assert.match(rec.title, /Repair before undock/i, 'critical repair should use explicit departure-blocking language');
+}
+
+function checkReadinessSurfacesUnavailableRefuel() {
+  const state = baseState({ fuel: { current: 10, max: 100 } });
+  const rec = serviceReadinessRecommendation(state, playerShip({ hull: 100, armorHp: 60 }), ['repair']);
+
+  assert.equal(rec.service, 'refuel', 'low fuel should still surface when this station lacks refuel');
+  assert.equal(rec.type, null, 'unavailable refuel recommendation should not emit a service action');
+  assert.equal(rec.actionLabel, 'Unavailable', 'unavailable recommendation should render as disabled guidance');
+  assert.match(rec.reason, /does not offer Refuel/i, 'unavailable recommendation should explain the station limitation');
+}
+
+function checkReadinessAllClear() {
+  const state = baseState({ fuel: { current: 90, max: 100 } });
+  const rec = serviceReadinessRecommendation(state, playerShip({ hull: 100, armorHp: 60 }), ['refuel', 'repair']);
+
+  assert.equal(rec.service, null, 'healthy fuel and hull should not invent a service upsell');
+  assert.equal(rec.type, null, 'all-clear recommendation should be non-actionable');
+  assert.equal(rec.kind, 'ok', 'all-clear recommendation should be positive');
+  assert.match(rec.reason, /Choose a job or trade route/i, 'all-clear copy should point back to the player-facing loop');
+}
+
 checkRefuelQuoteAllowsPartialTopOff();
 checkRefuelQuoteBlocksZeroCreditTopOff();
 checkPartialRepairQuoteSpendsOnlyCurrentCredits();
 checkAmmoQuoteRespectsWalletAndCargo();
 checkInsuranceQuoteShowsDeductibleGate();
+checkReadinessRecommendsPartialRefuel();
+checkReadinessPrefersCriticalRepair();
+checkReadinessSurfacesUnavailableRefuel();
+checkReadinessAllClear();
 
 console.log('Services readiness checks OK');
