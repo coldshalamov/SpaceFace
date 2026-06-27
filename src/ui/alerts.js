@@ -5,7 +5,7 @@
 //   - `alert` events {key,sev,text,ttl} from any system,
 //   - contextual conditions we own here: low-shield, incoming-fire, and the dock prompt.
 //
-import { promptLabel } from './bindings.js';
+import { BINDINGS, promptLabel } from './bindings.js';
 
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
 // binding-sourced dock alert (no ttl). The dock key handling lives in input.js.
@@ -116,7 +116,7 @@ export function createAlerts(ctx) {
   bus.on('dock:docked', () => clear('dock'));
 
   bus.on('gate:range', ({ inRange, name }) => {
-    if (inRange) raise({ key: 'gate', sev: 'info', text: `${name || 'JUMP GATE'} · OPEN STARMAP (M) TO JUMP`, ttl: Infinity });
+    if (inRange) raise({ key: 'gate', sev: 'info', text: `${name || 'JUMP GATE'} · OPEN STARMAP (${BINDINGS.starmap.label}) TO JUMP`, ttl: Infinity });
     else clear('gate');
   });
 

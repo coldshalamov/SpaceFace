@@ -65,6 +65,9 @@ const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.ur
 const localmapSrc = readFileSync(new URL('../src/ui/screens/localmap.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
 const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
+const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+const alertsSrc = readFileSync(new URL('../src/ui/alerts.js', import.meta.url), 'utf8');
+const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
 const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
@@ -114,6 +117,24 @@ if (!missionLogSrc.includes("const activeMissions = active.filter((m) => m && m.
   fail++;
 } else {
   console.log('ok   missionLogScreen - completed ledger refreshes on empty active state');
+  ok++;
+}
+if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
+  || !hudSrc.includes('BINDINGS.dock.label')
+  || !hudSrc.includes('BINDINGS.localmap.label')
+  || !hudSrc.includes('BINDINGS.starmap.label')
+  || !alertsSrc.includes("import { BINDINGS, promptLabel } from './bindings.js'")
+  || !alertsSrc.includes('BINDINGS.starmap.label')
+  || !uiRootSrc.includes("import { BINDINGS } from './bindings.js'")
+  || !uiRootSrc.includes('BINDINGS.localmap.label')
+  || !uiRootSrc.includes('BINDINGS.starmap.label')) {
+  console.log('FAIL flight HUD - dock/localmap/starmap labels must read src/ui/bindings.js');
+  fail++;
+} else if (/'M Star Map'|'N Local Map'|'E', 'dock'|OPEN STARMAP \(M\)|N local map\s+•\s+M star map/.test(hudSrc + alertsSrc + uiRootSrc)) {
+  console.log('FAIL flight HUD - dock/localmap/starmap labels must not hard-code visible key text');
+  fail++;
+} else {
+  console.log('ok   flight HUD - dock/localmap/starmap labels read the binding registry');
   ok++;
 }
 const figureDossierKeys = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss', 'elroy', 'mira', 'rook', 'vale', 'kurtz'];

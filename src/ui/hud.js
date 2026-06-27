@@ -26,6 +26,7 @@ import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { BINDINGS } from './bindings.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -93,7 +94,7 @@ function mtRouteGuidance(state, waypoint) {
   }
   return {
     next: `Plot route to ${mtSectorName(waypoint.sectorId)}`,
-    summary: 'M Star Map',
+    summary: `${BINDINGS.starmap.label} Star Map`,
   };
 }
 
@@ -282,7 +283,7 @@ export function createHud(ctx, alerts) {
     ['LMB', 'pulse-laser'],
     ['RMB', 'mass-sample'],
     ['SHIFT', 'boost'],
-    ['E', 'dock'],
+    [BINDINGS.dock.label, 'dock'],
   ];
   const actionBar = document.createElement('div');
   actionBar.id = 'action-bar';
@@ -295,7 +296,7 @@ export function createHud(ctx, alerts) {
     actionBoxes[icon] = slot.querySelector('.icon-box');
   }
   root.appendChild(actionBar);
-  // Dock availability (physics emits dock:range as the player nears a station) → highlight the E slot.
+  // Dock availability (physics emits dock:range as the player nears a station) → highlight the dock slot.
   let dockInRange = false;
   ctx.bus.on('dock:range', (p) => { dockInRange = !!(p && p.inRange); });
 
@@ -1200,14 +1201,14 @@ export function createHud(ctx, alerts) {
         const wp = state.nav.waypoint;
         setText(mtTitle, 'Tutorial Objective');
         setText(mtObj, wp.reason || wp.label || 'Follow the yellow signal');
-        setText(mtTime, 'N Local Map');
+        setText(mtTime, `${BINDINGS.localmap.label} Local Map`);
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(missionTracker, true);
       } else if (state.story && STORY_BEATS[state.story.beatIndex]) {
         const beat = STORY_BEATS[state.story.beatIndex];
         setText(mtTitle, `Story: ${mtStoryTitle(beat)}`);
         setText(mtObj, beat.objective || 'Open the mission log for your next objective');
-        setText(mtTime, 'J Mission Log · N Local Map');
+        setText(mtTime, `J Mission Log · ${BINDINGS.localmap.label} Local Map`);
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(missionTracker, true);
       } else {
@@ -1307,7 +1308,7 @@ export function createHud(ctx, alerts) {
       const distText = route ? route.next : (navMeta.sectorName || (navMeta.sectorId ? 'Off-sector' : 'No local fix'));
       if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
       if (distText !== lastNavDist) { setText(elNavDist, distText); lastNavDist = distText; }
-      const etaText = route ? route.summary : 'M Star Map';
+      const etaText = route ? route.summary : `${BINDINGS.starmap.label} Star Map`;
       if (etaText !== lastNavEta) { setText(elNavEta, etaText); lastNavEta = etaText; }
       return;
     }
