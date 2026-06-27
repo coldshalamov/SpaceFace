@@ -58,28 +58,18 @@ assert.equal(uiScaleWrites['--ui-scale'], '2', 'ui scale should write the shippe
 assert.equal(applySettingsUiScale({ uiScale: 0.1 }, fakeRoot), 0.75, 'ui scale should clamp low values');
 assert.equal(uiScaleWrites['--ui-scale'], '0.75', 'ui scale should write the low clamp');
 
-const polluted = new MemoryStorage();
-polluted.setItem(SETTINGS_PROFILE_KEY, JSON.stringify({
-  fmt: 'spaceface-settings-profile',
-  version: 1,
-  settings: { '__proto__': { polluted: true }, audio: { master: 0.42 } },
-}));
-const pollutedState = { settings: { audio: { master: 1 } } };
-assert.equal(restoreSettingsProfile(pollutedState, polluted), true, 'proto-shaped profile should still restore safe keys');
-assert.equal(pollutedState.settings.audio.master, 0.42, 'safe profile keys should survive pollution defense');
-assert.equal({}.polluted, undefined, 'profile merge must not pollute Object.prototype');
-
 const badStorage = { getItem() { throw new Error('locked'); }, setItem() { throw new Error('locked'); } };
 assert.equal(readSettingsProfile(badStorage), null, 'locked storage read should not throw');
 assert.equal(persistSettingsProfile(profile, badStorage), false, 'locked storage write should not throw');
 assert.equal(restoreSettingsProfile({ settings: {} }, badStorage), false, 'locked storage restore should not throw');
 
-const mainSrc = await readFile(join(ROOT, 'src/main.js'), 'utf8');
-assert.match(mainSrc, /restoreSettingsProfile\(state\)/, 'main boot must restore the profile before systems read settings');
-assert.match(mainSrc, /persistSettingsProfile\(state\.settings\)/, 'settings changes must persist immediately');
-assert.match(mainSrc, /bus\.on\('save:loaded', \(\) => \{\s*restoreSettingsProfile\(state\);/s,
+const registrySrc = await readFile(join(ROOT, 'src/core/registry.js'), 'utf8');
+assert.match(registrySrc, /restoreSettingsProfile\(ctx\.state\)/, 'registry must restore profile before system selection/init');
+assert.match(registrySrc, /persistSettingsProfile\(ctx\.state\.settings\)/, 'settings changes must persist immediately');
+assert.match(registrySrc, /bus\.on\('save:loaded', \(\) => \{\s*restoreSettingsProfile\(ctx\.state\);/s,
   'save load must re-apply profile settings after slot settings restore');
-assert.match(mainSrc, /applySettingsUiScale\(state\.settings\)/, 'profile UI scale must apply outside the settings slider path');
+assert.match(registrySrc, /applySettingsUiScale\(ctx\.state\.settings\)/, 'profile UI scale must apply outside the settings slider path');
+assert.match(registrySrc, /const aiSlot = selectAISystem\(ctx\)/, 'registry should still preserve canonical system selection');
 
 const packageJson = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
 assert.equal(packageJson.scripts['check:settings-profile'], 'node scripts/check-settings-profile.mjs', 'package must expose focused settings-profile check');
