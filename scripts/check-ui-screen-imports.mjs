@@ -13,6 +13,7 @@ const checks = [
   ['../src/ui/screens/mainMenu.js', 'mainMenuScreen'],
   ['../src/ui/screens/newGame.js', 'newGameScreen'],
   ['../src/ui/screens/pause.js', 'pauseScreen'],
+  ['../src/ui/screens/gameOver.js', 'gameOverScreen'],
   ['../src/ui/screens/settings.js', 'settingsScreen'],
   ['../src/ui/screens/saveLoad.js', 'saveLoadScreen'],
   ['../src/ui/screens/help.js', 'helpScreen'],
@@ -64,6 +65,7 @@ const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.ur
 const localmapSrc = readFileSync(new URL('../src/ui/screens/localmap.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
+const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
 const automationSrc = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
 if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
@@ -141,6 +143,14 @@ if (!newGameSrc.includes('let launching = false') || !newGameSrc.includes("launc
   fail++;
 } else {
   console.log('ok   newGameScreen - Launch is guarded during async startup');
+  ok++;
+}
+if (!gameOverSrc.includes('_refreshSummary(ctx)') || !/onShow\(ctx\)\s*\{[\s\S]*this\._refreshSummary\(ctx\)/.test(gameOverSrc)
+  || !/refresh\(ctx\)\s*\{ this\._refreshSummary\(ctx\); \}/.test(gameOverSrc)) {
+  console.log('FAIL gameOverScreen - cached screen must refresh run summary on show/refresh');
+  fail++;
+} else {
+  console.log('ok   gameOverScreen - cached run summary refreshes on show');
   ok++;
 }
 

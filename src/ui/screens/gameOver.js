@@ -50,6 +50,7 @@ function getManager(ctx) {
 
 export const gameOverScreen = {
   id: 'gameOver',
+  _summaryEls: null,
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -65,25 +66,21 @@ export const gameOverScreen = {
     sub.textContent = 'Your ship was lost. In Ironman, death is final.';
     rootEl.appendChild(sub);
 
-    const state = ctx.state || {};
-    const player = state.player || {};
-    const stats = player.stats || {};
-    const missions = state.missions || {};
-    const meta = state.meta || {};
-
     const grid = document.createElement('div');
     grid.className = 'sf-go-grid';
+    this._summaryEls = Object.create(null);
     const rows = [
-      ['Time flown', fmtTime(meta.playtimeS)],
-      ['Final credits', fmtCr(player.credits)],
-      ['Lifetime profit', fmtCr(stats.lifetimeProfit)],
-      ['Kills', String(stats.kills || 0)],
-      ['Missions completed', String(stats.missionsDone || 0)],
-      ['Story beats reached', String((missions.completedLog || []).length)],
+      ['time', 'Time flown'],
+      ['credits', 'Final credits'],
+      ['profit', 'Lifetime profit'],
+      ['kills', 'Kills'],
+      ['missions', 'Missions completed'],
+      ['beats', 'Story beats reached'],
     ];
-    for (const [k, v] of rows) {
-      const kd = document.createElement('div'); kd.className = 'k'; kd.textContent = k; grid.appendChild(kd);
-      const vd = document.createElement('div'); vd.className = 'v'; vd.textContent = v; grid.appendChild(vd);
+    for (const [key, label] of rows) {
+      const kd = document.createElement('div'); kd.className = 'k'; kd.textContent = label; grid.appendChild(kd);
+      const vd = document.createElement('div'); vd.className = 'v'; vd.textContent = '0'; grid.appendChild(vd);
+      this._summaryEls[key] = vd;
     }
     rootEl.appendChild(grid);
 
@@ -119,14 +116,37 @@ export const gameOverScreen = {
     foot.appendChild(bMenu);
 
     rootEl.appendChild(foot);
+    this._refreshSummary(ctx);
   },
 
   onShow(ctx) {
+    this._refreshSummary(ctx);
     // Freeze the sim under the game-over screen (the run is over; nothing should advance).
     if (ctx.state) ctx.state.timeScale = 0;
     ctx.bus.emit('sim:pause', {});
   },
 
   onHide() {},
-  refresh() {},
+  refresh(ctx) { this._refreshSummary(ctx); },
+
+  _refreshSummary(ctx) {
+    const els = this._summaryEls;
+    if (!els) return;
+    const state = ctx && ctx.state || {};
+    const player = state.player || {};
+    const stats = player.stats || {};
+    const missions = state.missions || {};
+    const meta = state.meta || {};
+    const values = {
+      time: fmtTime(meta.playtimeS),
+      credits: fmtCr(player.credits),
+      profit: fmtCr(stats.lifetimeProfit),
+      kills: String(stats.kills || 0),
+      missions: String(stats.missionsDone || 0),
+      beats: String((missions.completedLog || []).length),
+    };
+    for (const key in values) {
+      if (els[key] && els[key].textContent !== values[key]) els[key].textContent = values[key];
+    }
+  },
 };
