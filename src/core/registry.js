@@ -39,10 +39,17 @@ import { vfx } from '../render/vfx.js';
 import { feel } from '../render/feel.js';
 import { audio } from '../audio/audioSystem.js';
 import { ui } from '../ui/uiRoot.js';
+import { applyAccessibility } from '../ui/accessibility.js';
 import { save } from '../save/saveSystem.js';
+import {
+  applySettingsUiScale,
+  persistSettingsProfile,
+  restoreSettingsProfile,
+} from '../save/settingsProfile.js';
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 
 export function createRegistry(ctx) {
+  installSettingsProfile(ctx);
   const aiSlot = selectAISystem(ctx);
   // Normal play is SG-06 tactical AI + Flight V3 on rapier-dynamic. Legacy/custom branches stay
   // available for explicit tool/test fixtures, not player-facing settings or save restore.
@@ -158,6 +165,29 @@ export function createRegistry(ctx) {
       }
     },
   };
+}
+
+function installSettingsProfile(ctx) {
+  if (!ctx || !ctx.state) return;
+  restoreSettingsProfile(ctx.state);
+  applyProfileSettings(ctx);
+  const bus = ctx.bus;
+  if (!bus || typeof bus.on !== 'function' || bus.__sfSettingsProfilePersistence) return;
+  bus.__sfSettingsProfilePersistence = true;
+  bus.on('settings:changed', () => {
+    persistSettingsProfile(ctx.state.settings);
+    applyProfileSettings(ctx);
+  });
+  bus.on('save:loaded', () => {
+    restoreSettingsProfile(ctx.state);
+    applyProfileSettings(ctx);
+  });
+}
+
+function applyProfileSettings(ctx) {
+  if (!ctx || !ctx.state) return;
+  applyAccessibility(ctx.state.settings);
+  applySettingsUiScale(ctx.state.settings);
 }
 
 function selectAISystem(ctx) {
