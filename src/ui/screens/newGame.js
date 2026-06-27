@@ -75,6 +75,14 @@ function injectStyle() {
   .sf-ng-lore__line { font-size:11px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.06em; }
   .sf-ng-lore__quote { font-size:12px; color:var(--ink); font-style:italic; line-height:1.5; }
   .sf-ng-lore__attr { font-size:10px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.1em; text-align:right; }
+  .sf-ng-route { margin-top:10px; padding:10px 12px; border:1px solid var(--panel-edge); border-radius:6px;
+    background:rgba(57,208,255,.05); display:grid; gap:8px; }
+  .sf-ng-route__title { font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:.14em; text-transform:uppercase; }
+  .sf-ng-route__steps { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+  .sf-ng-route__step { border:1px solid rgba(57,208,255,.16); border-radius:5px; padding:7px 8px;
+    background:rgba(10,18,32,.6); }
+  .sf-ng-route__step b { display:block; font-size:12px; color:var(--ink); margin-bottom:2px; }
+  .sf-ng-route__step span { display:block; font-size:11px; color:var(--ink-dim); line-height:1.35; }
   /* UX-1: rotating 3D preview of the starter ship. Sits above the stat grid so the hull reads as a
      real object (with a history), not a table of numbers. */
   .sf-ng-preview { position: relative; height: 150px; margin: 6px 0 10px; border: 1px solid var(--panel-edge);
@@ -176,6 +184,20 @@ export const newGameScreen = {
     addStat('Credits', '5,000 cr');
     for (const [slot, name] of starterLoadoutRows()) addStat(slot, name);
     rootEl.appendChild(grid);
+
+    // Steam-demo clarity: show the first viable loop before the player commits to launch.
+    // It does not fork gameplay; these are the same default route, station, cargo, and mission systems.
+    const route = el('div', 'sf-ng-route');
+    route.setAttribute('aria-label', 'First 15 minutes route');
+    route.innerHTML =
+      '<div class="sf-ng-route__title">First 15 minutes</div>' +
+      '<div class="sf-ng-route__steps">' +
+        '<div class="sf-ng-route__step"><b>Follow the anomaly</b><span>Use the yellow nav arrow; learn thrust, steer, and aim without a menu detour.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Mine the marked rock</b><span>Sample the mass reading, collect the drift, and see why cargo space matters.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Dock at Helios</b><span>Return to station services, sell the haul, and repair or refuel before leaving.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Take one job</b><span>Mission Board and Bar contracts auto-track into the log so the next route is never blank.</span></div>' +
+      '</div>';
+    rootEl.appendChild(route);
 
     // The friend's favor, in two lines. No cutscene. Just the facts.
     const lore = el('div', 'sf-ng-lore');
