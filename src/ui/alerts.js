@@ -8,7 +8,7 @@
 import { promptLabel } from './bindings.js';
 
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
-// "Press Enter to dock" alert (no ttl). The dock key handling lives in input.js.
+// binding-sourced dock alert (no ttl). The dock key handling lives in input.js.
 
 const SEV_RANK = { danger: 3, dock: 2.5, warn: 2, info: 1 };
 

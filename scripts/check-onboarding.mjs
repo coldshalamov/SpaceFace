@@ -52,4 +52,15 @@ assert.ok(!src.includes("document.querySelector('.sf-alert--info')"),
 assert.match(src, /_storySig/, 'story objective refresh should cache its last rendered content signature');
 assert.match(src, /sig === this\._storySig/, 'story objective refresh should skip DOM rebuilds when the objective text is unchanged');
 
+// The default dock binding is E, with Enter accepted only as a secondary convenience in input.js.
+// New-player copy must use the live binding label so the first dock objective, first-station hint,
+// control bar, alert prompt, help screen, and key handler do not contradict each other.
+const dockBindingMentions = src.match(/BINDINGS\.dock\.label/g) || [];
+assert.ok(dockBindingMentions.length >= 4,
+  'onboarding.js should source dock tutorial/control copy from BINDINGS.dock.label');
+for (const staleDockCopy of [/Press Enter at the dock prompt/, /Press ENTER to dock/, /Enter to dock/]) {
+  assert.doesNotMatch(src, staleDockCopy,
+    `onboarding.js must not use stale hard-coded dock copy: ${staleDockCopy}`);
+}
+
 console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft).`);

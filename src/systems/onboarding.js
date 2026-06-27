@@ -36,7 +36,7 @@ const STEPS = [
   { key: 'mine', title: 'Verify the signal and live tools', target: 'asteroid', qty: 3,
     hint: 'The Kestrel is armed: LMB or Space fires the Pulse Laser S. Hold RMB on the marked rock to sample the mass reading, then collect the drift.' },
   { key: 'dock', title: 'Dock at Helios Station', target: 'station',
-    hint: 'Follow the cyan station arrow. Press Enter at the dock prompt. Bring the discrepancy back before someone edits it out.' },
+    hint: `Follow the cyan station arrow. Press ${BINDINGS.dock.label} at the dock prompt. Bring the discrepancy back before someone edits it out.` },
   { key: 'sell', title: 'Push the sample through the market',
     hint: 'In the Market tab, sell the recovered sample. Watch what the ledger calls ordinary cargo.' },
   { key: 'next', title: 'Choose who gets the next answer',
@@ -113,7 +113,7 @@ export const onboarding = {
       this._dockControlInRange = !!inRange;
       if (!inRange) return;
       this._showHint('firstStation',
-        'Stations offer repairs, trading, upgrades, and mission boards. Press ENTER to dock.');
+        `Stations offer repairs, trading, upgrades, and mission boards. Press ${BINDINGS.dock.label} to dock.`);
     });
 
     // First jump gate approach: teach the player how gates work.
@@ -146,8 +146,6 @@ export const onboarding = {
       this._showHint('firstHub',
         'Station hub: Market (trade), Missions (contracts), Shipyard (buy ships), Outfitting (modules), Manufacture (craft), Services (repair/refuel), Factions, Bar. Press the tab labels at top.');
     });
-
-    // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
 
     // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
     bus.on('drill:start', () => {
@@ -427,7 +425,7 @@ export const onboarding = {
       flight:  'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space Pulse Laser  •  RMB mass sample  •  Shift boost  •  Tab target  •  N local map  •  M star map',
       mining:  'RMB hold to sample  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
       combat:  'LMB/Space Pulse Laser  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
-      station: 'Enter to dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts',
+      station: `${BINDINGS.dock.label} dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts`,
       gate:    'M open Star Map  •  Select destination  •  Jump to travel between systems',
     };
     el.textContent = HINTS[mode] || HINTS.flight;

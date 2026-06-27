@@ -1,7 +1,7 @@
 // UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
 //
 // UI owns: ESC (back/pause), N (local map), M (star-map), T (tech), J (mission log), F1/H (help),
-//          Tab (cycle target), P (pause), Enter (dock when in range), F5/F9 (quick save/load),
+//          Tab (cycle target), P (pause), E (dock when in range; Enter secondary), F5/F9 (quick save/load),
 //          mouse-wheel (camera zoom passthrough → camera:zoom).
 // Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
 //
