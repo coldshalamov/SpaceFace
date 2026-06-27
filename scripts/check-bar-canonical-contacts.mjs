@@ -35,5 +35,9 @@ for (const entry of expected) {
 assert.ok(source.includes('const canonical = canonicalContactForStation(stationId)'), 'bar contact generation must insert canonical contacts');
 assert.ok(source.includes('buildCanonicalReply(contact, choiceId, ctx, stationId)'), 'bar replies must dispatch to canonical contacts');
 assert.ok(source.includes('c.roleLabel || ROLE_LABELS[c.role]'), 'bar render must show canonical role labels');
+assert.ok(source.includes('function rewardCredits('), 'bar mission replies must share a reward formatter instead of ad hoc reward fields');
+assert.ok(!source.includes("|| '???'"), 'bar mission replies must not show ??? for unknown reward fields');
+assert.ok(source.includes('missionOfferAvailable(ctx, missionId)'), 'bar accept button must verify the offer is still available before/after the intent');
+assert.ok(source.includes('const accepted = wasAvailable && !missionOfferAvailable(ctx, missionId)'), 'bar accept button must only mark accepted after the mission system removes the offer');
 
 console.log(`Station bar canonical contacts OK - ${expected.length} recurring NPCs across ${stationIds.size} stations`);

@@ -299,6 +299,28 @@ function getMissionBoard(state, stationId) {
   return state.missions.boards[stationId] || null;
 }
 
+function rewardCredits(mission) {
+  const raw = mission && (mission.reward != null
+    ? mission.reward
+    : (mission.rewardCr != null ? mission.rewardCr : mission.reward_cr));
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+}
+
+function rewardCreditsText(mission) {
+  return rewardCredits(mission).toLocaleString('en-US');
+}
+
+function missionOfferAvailable(ctx, missionId) {
+  const boards = ctx && ctx.state && ctx.state.missions && ctx.state.missions.boards;
+  if (!missionId || !boards) return false;
+  for (const board of Object.values(boards)) {
+    const slots = board && board.slots;
+    if (Array.isArray(slots) && slots.some((offer) => offer && offer.id === missionId)) return true;
+  }
+  return false;
+}
+
 function commodityName(id) {
   const c = COMMODITY_BY_ID.get(id);
   return c ? c.name : id;
@@ -459,7 +481,7 @@ function buildReply(role, choiceId, ctx, stationId, contact = null) {
         const board = getMissionBoard(state, stationId);
         if (board && board.slots && board.slots.length > 0) {
           const offer = board.slots[0];
-          const reward = offer.reward_cr || offer.rewardCr || '???';
+          const reward = rewardCreditsText(offer);
           return {
             text: 'There\'s a ' + (offer.title || offer.type) + ' job on the board — pays ' + reward + ' cr. Interested?',
             missionOffer: offer,
@@ -531,7 +553,7 @@ function buildReply(role, choiceId, ctx, stationId, contact = null) {
         if (board && board.slots) {
           const bounty = board.slots.find(m => m.type === 'bounty_hunt' || m.type === 'patrol_clear');
           if (bounty) {
-            const reward = bounty.reward_cr || bounty.rewardCr || '???';
+            const reward = rewardCreditsText(bounty);
             return {
               text: 'Got one — "' + (bounty.title || bounty.type) + '." Pays ' + reward + ' cr. Dangerous work, but the credits are real.',
               missionOffer: bounty,
@@ -624,7 +646,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
           ? board.slots.find(m => m.type === 'bounty_hunt' || m.type === 'patrol_clear')
           : null;
         if (bounty) {
-          const reward = bounty.reward_cr || bounty.rewardCr || '???';
+          const reward = rewardCreditsText(bounty);
           return {
             text: 'Target is already posted: "' + (bounty.title || bounty.type) + '." Pays ' + reward + ' cr. The tag is clean enough for accounting.',
             missionOffer: bounty,
@@ -743,13 +765,30 @@ export function createBarPanel(ctx) {
     const acceptBtn = ev.target.closest('[data-accept-mission]');
     if (acceptBtn) {
       const missionId = acceptBtn.getAttribute('data-accept-mission');
+      const wasAvailable = missionOfferAvailable(ctx, missionId);
       ctx.bus.emit('ui:acceptMission', { missionId });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
-      // Update UI to show accepted
+      const accepted = wasAvailable && !missionOfferAvailable(ctx, missionId);
       const replyEl = acceptBtn.closest('.st-bar-card').querySelector('.st-bar-reply');
-      if (replyEl) replyEl.textContent = 'Mission accepted!';
-      acceptBtn.disabled = true;
-      acceptBtn.textContent = 'Accepted';
+      if (accepted) {
+        if (replyEl) {
+          replyEl.textContent = 'Mission accepted!';
+          replyEl.classList.add('show');
+        }
+        acceptBtn.disabled = true;
+        acceptBtn.textContent = 'Accepted';
+      } else {
+        if (replyEl) {
+          replyEl.textContent = wasAvailable
+            ? 'Mission still pending. Check collateral, active mission limit, or requirements.'
+            : 'That offer is no longer available.';
+          replyEl.classList.add('show');
+        }
+        if (!wasAvailable) {
+          acceptBtn.disabled = true;
+          acceptBtn.textContent = 'Unavailable';
+        }
+      }
       return;
     }
 
