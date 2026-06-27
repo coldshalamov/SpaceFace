@@ -134,9 +134,32 @@ try {
   assert.equal(final.focusedTab, 'missions', 'rail focus should remain on the selected tab after keyboard navigation');
   assert.equal(final.selectedCount, 1, 'station rail should retain a single selected tab after keyboard navigation');
   assert.equal(final.tabbableCount, 1, 'station rail should retain one roving tab stop after keyboard navigation');
+
+  const departure = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('[data-screen="station"] .st-departure-chip')];
+    return {
+      chips: chips.map((chip) => ({
+        text: String(chip.textContent || '').replace(/\s+/g, ' ').trim(),
+        tag: chip.tagName,
+        target: chip.getAttribute('data-departure-tab'),
+        label: chip.getAttribute('aria-label'),
+      })),
+    };
+  });
+  assert(departure.chips.length >= 4, 'Departure Check should expose route/track, hold, fuel, and hull chips');
+  for (const wanted of ['market', 'missions', 'services']) {
+    assert(departure.chips.some((chip) => chip.target === wanted),
+      'Departure Check should expose an actionable chip for ' + wanted + ': ' + JSON.stringify(departure.chips));
+  }
+  assert(departure.chips.every((chip) => chip.tag === 'BUTTON' && chip.label),
+    'Departure Check actionable chips should be keyboard-accessible buttons with labels: ' + JSON.stringify(departure.chips));
+
+  await clickDepartureAndExpect(page, 'services');
+  await clickDepartureAndExpect(page, 'market');
+  await clickDepartureAndExpect(page, 'missions');
   assert.deepEqual(issues.errorIssues(), [], 'station tab navigation probe should not record page errors');
 
-  console.log('Station tab navigation OK: canonical New Game -> dock -> keyboard rail -> coherent active panel');
+  console.log('Station tab navigation OK: canonical New Game -> dock -> keyboard rail + departure chips -> coherent active panel');
   console.log('Dock target:', dockTarget.stationId, dockTarget.label);
 } finally {
   if (browser) await browser.close();
@@ -157,6 +180,17 @@ async function focusAndExpect(page, tabId, key) {
   }, tabId);
   assert.equal(focused, true, 'probe should be able to focus station tab: ' + tabId);
   await pressAndExpect(page, key, tabId);
+}
+
+async function clickDepartureAndExpect(page, tabId) {
+  const clicked = await page.evaluate((wanted) => {
+    const chip = document.querySelector(`[data-screen="station"] .st-departure-chip[data-departure-tab="${wanted}"]`);
+    if (!chip) return null;
+    chip.click();
+    return String(chip.textContent || '').replace(/\s+/g, ' ').trim();
+  }, tabId);
+  assert(clicked, 'Departure Check should include a chip that routes to ' + tabId);
+  await waitForStationTab(page, tabId, 'departure chip ' + tabId);
 }
 
 async function waitForStationTab(page, tabId, sourceKey) {

@@ -96,6 +96,26 @@ function clipDepartureText(text) {
   return raw.length > 42 ? raw.slice(0, 39) + '...' : raw;
 }
 
+function departureChipActionTitle(chip) {
+  if (!chip || !chip.targetTab) return '';
+  const tab = TABS.find((t) => t.id === chip.targetTab);
+  const tabLabel = tab ? tab.label : 'station tab';
+  return chip.actionLabel || ('Open ' + tabLabel);
+}
+
+function departureChipHtml(chip) {
+  const cls = 'st-departure-chip st-departure-chip--' + chip.kind;
+  const body =
+    '<b>' + escapeHtml(chip.label) + '</b>' +
+    '<span>' + escapeHtml(chip.text) + '</span>';
+  if (!chip.targetTab) return '<span class="' + cls + '">' + body + '</span>';
+  const title = departureChipActionTitle(chip);
+  return '<button type="button" class="' + cls + '" data-departure-tab="' + escapeHtml(chip.targetTab) + '"' +
+    ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title + ': ' + chip.label + ' ' + chip.text) + '">' +
+    body +
+    '</button>';
+}
+
 function playerEntity(state) {
   return state && state.entities && state.entities.get && state.playerId != null
     ? state.entities.get(state.playerId)
@@ -117,12 +137,30 @@ function departureTradeWaypointChip(state, waypoint) {
   const cargo = state && state.player && state.player.cargo || {};
   const qty = commodityId ? Math.max(0, Math.floor(Number(cargo.items && cargo.items[commodityId]) || 0)) : 0;
   if (commodityId && qty <= 0) {
-    return { kind: 'warn', label: 'Route', text: clipDepartureText(destination + ': no ' + commodityName + ' aboard') };
+    return {
+      kind: 'warn',
+      label: 'Route',
+      text: clipDepartureText(destination + ': no ' + commodityName + ' aboard'),
+      targetTab: 'market',
+      actionLabel: 'Open Market to load route cargo',
+    };
   }
   if (commodityId) {
-    return { kind: 'ok', label: 'Route', text: clipDepartureText(destination + ': ' + fmtDepartUnits(qty) + 'u ' + commodityName) };
+    return {
+      kind: 'ok',
+      label: 'Route',
+      text: clipDepartureText(destination + ': ' + fmtDepartUnits(qty) + 'u ' + commodityName),
+      targetTab: 'market',
+      actionLabel: 'Open Market to review route cargo',
+    };
   }
-  return { kind: 'info', label: 'Route', text: clipDepartureText(waypoint.reason || rawLabel) };
+  return {
+    kind: 'info',
+    label: 'Route',
+    text: clipDepartureText(waypoint.reason || rawLabel),
+    targetTab: 'market',
+    actionLabel: 'Open Market to review route cargo',
+  };
 }
 
 function departureMissionChip(state) {
@@ -134,6 +172,8 @@ function departureMissionChip(state) {
       kind: 'ok',
       label: 'Track',
       text: clipDepartureText(tracked.title || prettyType(tracked.type)),
+      targetTab: 'missions',
+      actionLabel: 'Open Missions to review station contracts',
     };
   }
   const waypoint = state && state.nav && state.nav.waypoint;
@@ -141,9 +181,21 @@ function departureMissionChip(state) {
     const tradeChip = departureTradeWaypointChip(state, waypoint);
     if (tradeChip) return tradeChip;
     const label = waypoint.label || waypoint.reason || waypoint.stationName || waypoint.stationId || waypoint.sectorId || 'Nav guidance set';
-    return { kind: 'info', label: 'Nav', text: clipDepartureText(label) };
+    return {
+      kind: 'info',
+      label: 'Nav',
+      text: clipDepartureText(label),
+      targetTab: 'missions',
+      actionLabel: 'Open Missions to review objectives',
+    };
   }
-  return { kind: 'warn', label: 'Track', text: 'No tracked job' };
+  return {
+    kind: 'warn',
+    label: 'Track',
+    text: 'No tracked job',
+    targetTab: 'missions',
+    actionLabel: 'Open Missions to accept and track a job',
+  };
 }
 
 function departureCargoChip(state) {
@@ -155,7 +207,13 @@ function departureCargoChip(state) {
   const free = Math.max(0, cap - safeUsed);
   const freeFrac = free / cap;
   const kind = free <= 0.1 ? 'bad' : (freeFrac < 0.18 ? 'warn' : 'ok');
-  return { kind, label: 'Hold', text: fmtDepartUnits(free) + 'u free' };
+  return {
+    kind,
+    label: 'Hold',
+    text: fmtDepartUnits(free) + 'u free',
+    targetTab: 'market',
+    actionLabel: kind === 'ok' ? 'Open Market to review cargo' : 'Open Market to sell cargo',
+  };
 }
 
 function departureFuelChip(state) {
@@ -165,7 +223,13 @@ function departureFuelChip(state) {
   if (!(max > 0)) return { kind: 'warn', label: 'Fuel', text: 'Unknown' };
   const frac = clamp01(current / max, 0);
   const kind = frac < 0.25 ? 'bad' : (frac < 0.45 ? 'warn' : 'ok');
-  return { kind, label: 'Fuel', text: fmtPercent(frac) };
+  return {
+    kind,
+    label: 'Fuel',
+    text: fmtPercent(frac),
+    targetTab: 'services',
+    actionLabel: kind === 'ok' ? 'Open Services to review launch supplies' : 'Open Services to refuel',
+  };
 }
 
 function departureHullChip(state) {
@@ -173,7 +237,13 @@ function departureHullChip(state) {
   if (!ship || !(ship.hullMax > 0)) return { kind: 'warn', label: 'Hull', text: 'Unknown' };
   const frac = clamp01((ship.hull || 0) / ship.hullMax, 0);
   const kind = frac < 0.35 ? 'bad' : (frac < 0.7 ? 'warn' : 'ok');
-  return { kind, label: 'Hull', text: fmtPercent(frac) };
+  return {
+    kind,
+    label: 'Hull',
+    text: fmtPercent(frac),
+    targetTab: 'services',
+    actionLabel: kind === 'ok' ? 'Open Services to review ship readiness' : 'Open Services to repair hull',
+  };
 }
 
 function departureReadinessChips(state) {
@@ -245,6 +315,14 @@ export const stationHub = {
       '<div class="st-departure-chips"></div>';
     screen.appendChild(departure);
     this._departureEl = departure.querySelector('.st-departure-chips');
+    departure.addEventListener('click', (ev) => {
+      const chip = ev.target.closest('[data-departure-tab]');
+      if (!chip || !this._departureEl || !this._departureEl.contains(chip)) return;
+      const tabId = chip.getAttribute('data-departure-tab');
+      if (!TABS.some((t) => t.id === tabId)) return;
+      this.setTab(tabId, { focusRail: true });
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    });
 
     // body: rail + content
     const body = document.createElement('div');
@@ -582,12 +660,7 @@ export const stationHub = {
   _refreshDeparture() {
     if (!this._departureEl) return;
     const chips = departureReadinessChips(this._ctx && this._ctx.state);
-    this._departureEl.innerHTML = chips.map((chip) =>
-      '<span class="st-departure-chip st-departure-chip--' + chip.kind + '">' +
-        '<b>' + escapeHtml(chip.label) + '</b>' +
-        '<span>' + escapeHtml(chip.text) + '</span>' +
-      '</span>'
-    ).join('');
+    this._departureEl.innerHTML = chips.map((chip) => departureChipHtml(chip)).join('');
   },
 
   /** Called by screenManager when this screen becomes the top of the stack. */
@@ -899,7 +972,10 @@ const STATION_CSS = `
 .st-departure-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .st-departure-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; max-width: 230px;
   padding: 2px 8px; border: 1px solid var(--panel-edge); border-radius: 4px; background: rgba(10,18,32,.46);
-  color: var(--ink-dim); font-size: .72rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  color: var(--ink-dim); font: inherit; font-size: .72rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+button.st-departure-chip { margin: 0; appearance: none; cursor: pointer; text-align: left; }
+button.st-departure-chip:hover { background: rgba(57,208,255,.08); color: var(--ink); }
+button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .st-departure-chip b { color: var(--ink-mute); font-weight: 600; text-transform: uppercase; }
 .st-departure-chip span { overflow: hidden; text-overflow: ellipsis; }
 .st-departure-chip--ok { color: var(--good); border-color: rgba(98,224,138,.34); }

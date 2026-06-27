@@ -14,6 +14,10 @@ assert.match(source, /trackedMissionId/, 'departure readiness must read trackedM
 assert.match(source, /state && state\.nav && state\.nav\.waypoint/, 'departure readiness must fall back to nav waypoint');
 assert.match(source, /waypoint\.kind !== 'trade'/, 'departure readiness must identify trade waypoints');
 assert.match(source, /commodityId/, 'departure trade route readiness must read waypoint commodity ids');
+assert.match(source, /targetTab: 'market'/, 'trade and hold readiness chips must route to Market');
+assert.match(source, /targetTab: 'missions'/, 'tracked objective readiness chips must route to Missions');
+assert.match(source, /targetTab: 'services'/, 'fuel and hull readiness chips must route to Services');
+assert.match(source, /actionLabel:/, 'actionable departure chips must expose clear accessible action labels');
 assert.match(source, /departureCargoChip\(state\)/, 'departure readiness must include cargo hold free space');
 assert.match(source, /capVolume/, 'departure readiness must read cargo capVolume');
 assert.match(source, /departureFuelChip\(state\)/, 'departure readiness must include fuel state');
@@ -22,8 +26,14 @@ assert.match(source, /departureHullChip\(state\)/, 'departure readiness must inc
 assert.match(source, /state\.entities\.get\(state\.playerId\)/, 'departure readiness must read the live player entity');
 assert.match(source, /<div class="st-departure-label mono">Departure Check<\/div>/,
   'station hub must render a visible Departure Check strip');
+assert.match(source, /data-departure-tab/, 'station hub must render actionable departure readiness chips');
+assert.match(source, /departureChipHtml\(chip\)/, 'departure chip rendering must preserve action metadata');
+assert.match(source, /this\.setTab\(tabId, \{ focusRail: true \}\)/,
+  'departure chip actions must use the same tab activation path as the rail');
 assert.match(source, /st-departure-chip--warn/, 'departure readiness must style warning chips');
 assert.match(source, /st-departure-chip--bad/, 'departure readiness must style bad chips');
+assert.match(source, /button\.st-departure-chip:focus-visible/,
+  'actionable departure chips must keep keyboard focus visible');
 
 for (const eventName of [
   'cargo:changed',
