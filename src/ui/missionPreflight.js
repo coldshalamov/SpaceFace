@@ -75,6 +75,46 @@ export function fmtHoldUnits(value) {
   return (Math.round(value * 10) / 10).toLocaleString('en-US');
 }
 
+function missionCommodityName(m) {
+  const id = m && m.params && m.params.cmdtyId;
+  const commodity = id ? COMMODITY_BY_ID.get(id) : null;
+  return (commodity && commodity.name) || 'cargo';
+}
+
+function missionCargoOwned(m, state) {
+  const id = m && m.params && m.params.cmdtyId;
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  const owned = id && items ? Number(items[id]) : 0;
+  return Number.isFinite(owned) && owned > 0 ? owned : 0;
+}
+
+function missionCargoLoopChip(m, cargoNeed, state, options = {}) {
+  const p = m && m.params || {};
+  if (!p.cmdtyId || !(cargoNeed && cargoNeed.qty > 0) || options.impossible) return null;
+  const name = missionCommodityName(m);
+  const qtyText = fmtHoldUnits(cargoNeed.qty) + 'u ' + name;
+  const owned = missionCargoOwned(m, state);
+  const ownedClamped = Math.min(cargoNeed.qty, owned);
+  const ownedText = fmtHoldUnits(ownedClamped) + '/' + fmtHoldUnits(cargoNeed.qty) + 'u ' + name;
+
+  if (SINGLE_LOAD_CARGO_MISSIONS.has(m && m.type)) {
+    if (owned >= cargoNeed.qty) {
+      return { kind: 'ok', text: ownedText + ' aboard for delivery' };
+    }
+    const need = Math.max(0, cargoNeed.qty - owned);
+    return { kind: 'info', text: 'Load ' + fmtHoldUnits(need) + 'u ' + name + ' before undock' };
+  }
+
+  if (m && m.type === 'bulk_trade') {
+    if (owned >= cargoNeed.qty) {
+      return { kind: 'ok', text: 'Quota cargo aboard; sell ' + qtyText + ' at destination' };
+    }
+    return { kind: 'info', text: 'Buy/carry ' + qtyText + '; payout triggers when sold at destination' };
+  }
+
+  return null;
+}
+
 export function missionPreflight(m, state) {
   const chips = [];
   const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
@@ -108,9 +148,11 @@ export function missionPreflight(m, state) {
     const used = Number.isFinite(cargo.usedVolume) ? cargo.usedVolume : 0;
     const free = Math.max(0, cap - used);
     const oneLoad = SINGLE_LOAD_CARGO_MISSIONS.has(m && m.type);
+    let impossibleCargo = false;
     if (oneLoad) {
       if (cap < cargoNeed.volume) {
         blockers.push(`Requires ${fmtHoldUnits(cargoNeed.volume)}u cargo capacity`);
+        impossibleCargo = true;
       } else if (free < cargoNeed.volume) {
         warnings.push(`Only ${fmtHoldUnits(free)}u free now; clear space before carrying this cargo.`);
       }
@@ -121,6 +163,9 @@ export function missionPreflight(m, state) {
     } else {
       chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')}u quota` });
     }
+
+    const cargoLoopChip = missionCargoLoopChip(m, cargoNeed, state, { impossible: impossibleCargo });
+    if (cargoLoopChip) chips.push(cargoLoopChip);
   }
 
   return {

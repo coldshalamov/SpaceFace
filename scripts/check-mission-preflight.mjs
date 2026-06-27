@@ -25,6 +25,7 @@ assert.match(stationHubSrc, /st-mission-preflight/, 'mission cards must render p
 assert.match(stationHubSrc, /st-mission-consequences/, 'mission cards must render consequence chips');
 assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
   'mission preflight must flag cargo capacity blockers');
+assert.match(missionPreflightSrc, /missionCargoLoopChip/, 'mission preflight must centralize cargo-loop guidance chips');
 assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
 assert.match(missionsSrc, /_acceptPreflight\(offer\)/, 'missions.acceptMission must call _acceptPreflight before accepting');
 assert.match(missionsSrc, /ONE_LOAD_CARGO_TYPES/, 'missions must define the one-load cargo mission set');
@@ -47,6 +48,16 @@ function makeOffer(overrides = {}) {
     title: 'Preflight Hydrogen Delivery',
     ...overrides,
   };
+}
+
+function makeBulkOffer(overrides = {}) {
+  return makeOffer({
+    type: 'bulk_trade',
+    title: 'Preflight Hydrogen Sale',
+    collateral_cr: 0,
+    params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 3 },
+    ...overrides,
+  });
 }
 
 function makeState(capVolume) {
@@ -117,6 +128,26 @@ const lowFreeUiPreflight = missionPreflight(makeOffer(), lowFreeState);
 assert.equal(lowFreeUiPreflight.blocker, null, 'low free space should warn without blocking a capable hull');
 assert.match(lowFreeUiPreflight.warning || '', /clear space/, 'shared UI preflight must tell the player to clear cargo space');
 
+const cargoCueState = makeState(8);
+const cargoCue = missionPreflight(makeOffer(), cargoCueState);
+assert.ok(cargoCue.chips.some((chip) => chip.kind === 'info' && /Load 2u Hydrogen Gas before undock/.test(chip.text)),
+  'cargo delivery preflight should say contract cargo must be loaded before undock');
+const loadedCargoState = makeState(8);
+loadedCargoState.player.cargo.items.cmdty_gas_hydrogen = 2;
+loadedCargoState.player.cargo.usedVolume = 5;
+const loadedCargoCue = missionPreflight(makeOffer(), loadedCargoState);
+assert.ok(loadedCargoCue.chips.some((chip) => chip.kind === 'ok' && /2\/2u Hydrogen Gas aboard for delivery/.test(chip.text)),
+  'cargo delivery preflight should confirm when required cargo is already aboard');
+const bulkTradeCue = missionPreflight(makeBulkOffer(), makeState(8));
+assert.ok(bulkTradeCue.chips.some((chip) => chip.kind === 'info' && /Buy\/carry 3u Hydrogen Gas; payout triggers when sold at destination/.test(chip.text)),
+  'bulk trade preflight should explain that the payout happens on destination sale');
+const bulkReadyState = makeState(8);
+bulkReadyState.player.cargo.items.cmdty_gas_hydrogen = 3;
+bulkReadyState.player.cargo.usedVolume = 7.5;
+const bulkReadyCue = missionPreflight(makeBulkOffer(), bulkReadyState);
+assert.ok(bulkReadyCue.chips.some((chip) => chip.kind === 'ok' && /Quota cargo aboard; sell 3u Hydrogen Gas at destination/.test(chip.text)),
+  'bulk trade preflight should confirm when quota cargo is already aboard');
+
 const readyState = makeState(8);
 const readyBus = makeBus();
 missions.init({ state: readyState, bus: readyBus, helpers: { hash32: () => 1 } });
@@ -128,4 +159,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - shared readiness and consequence stakes are visible before accept.');
+console.log('Mission preflight OK - shared readiness, cargo-loop clarity, and consequence stakes are visible before accept.');
