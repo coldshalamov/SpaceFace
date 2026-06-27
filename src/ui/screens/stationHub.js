@@ -21,9 +21,16 @@ import { createBarPanel } from './bar.js';
 import { SECTORS } from '../../data/sectors.js';
 import { FACTION_META } from '../../data/factions.js';
 import { MISSION_TUNING } from '../../data/missions.js';
+import { COMMODITIES } from '../../data/commodities.js';
 import { escapeHtml } from '../comms.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const STATION_BY_ID = new Map();
+for (const sec of SECTORS) {
+  for (const stn of sec.stations || []) STATION_BY_ID.set(stn.id, stn);
+}
 
 // Tab order = the §5.3 rail. id === state.ui.activeStationTab value.
 const TABS = [
@@ -238,8 +245,9 @@ export const stationHub = {
         '<div class="st-mission-meta mono">' +
           (fac ? '<span class="st-mission-fac" style="color:' + (fac.color || '#aaa') + '">' + escapeHtml(fac.short || fac.name) + '</span> · ' : '') +
           escapeHtml(prettyType(m.type)) +
-          (m.destStationId || m.dest ? ' → ' + escapeHtml(m.destName || m.destStationId || m.dest) : '') +
+          (m.destStationId || m.destSectorId || m.dest ? ' → ' + escapeHtml(missionDestName(m)) : '') +
         '</div>' +
+        '<div class="st-mission-brief">' + escapeHtml(missionBriefText(m)) + '</div>' +
         '<div class="st-mission-purpose">' + escapeHtml(missionValueText(m)) + '</div>' +
         '<div class="st-mission-next">' + escapeHtml(missionNextStepText(m)) + '</div>' +
         '<div class="st-mission-rewards mono">' +
@@ -461,8 +469,82 @@ function fmtTime(s) {
   return s + 's';
 }
 
+function prettyId(id) {
+  return String(id || '')
+    .replace(/^(station|sector|cmdty|faction)_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function plural(count, singular, pluralForm) {
+  return count === 1 ? singular : (pluralForm || singular + 's');
+}
+
 function missionDestName(m) {
-  return m.destName || m.destStationName || m.destStationId || m.dest || 'the target area';
+  const direct = m.destName || m.destStationName;
+  if (direct) return direct;
+  const rawDest = m.dest || '';
+  const stationId = m.destStationId || (String(rawDest).startsWith('station_') ? rawDest : null);
+  const station = stationId ? STATION_BY_ID.get(stationId) : null;
+  if (station) return station.name;
+  const sectorId = m.destSectorId || (String(rawDest).startsWith('sector_') ? rawDest : null);
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  if (sector) return sector.name;
+  if (rawDest) return prettyId(rawDest);
+  return 'the target area';
+}
+
+function missionClientName(m) {
+  const fac = m && m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
+  return (fac && (fac.short || fac.name)) || 'The client';
+}
+
+function missionCommodityName(m) {
+  const id = m && m.params && m.params.cmdtyId;
+  const commodity = id ? COMMODITY_BY_ID.get(id) : null;
+  return (commodity && commodity.name) || 'cargo';
+}
+
+function missionCargoAmount(m) {
+  const p = m && m.params || {};
+  const cargo = missionCommodityName(m);
+  return p.qty ? p.qty + 'u ' + cargo : cargo;
+}
+
+function missionBriefText(m) {
+  const p = m && m.params || {};
+  const client = missionClientName(m);
+  const dest = missionDestName(m || {});
+  const cargo = missionCommodityName(m);
+  const amount = missionCargoAmount(m);
+  switch (m && m.type) {
+    case 'cargo_delivery':
+      return client + ' wants ' + amount + ' delivered to ' + dest + ' with the manifest clean and the route quiet.';
+    case 'bulk_trade':
+      return dest + ' is short on ' + cargo + '; sell the quota there before the board reprices the lane.';
+    case 'mining_quota':
+      return client + ' has a buyer waiting for ' + amount + '. Mine the quota and return with cargo space to spare.';
+    case 'salvage_retrieval':
+      return client + ' marked recoverable ' + amount + ' in hostile drift. Bring it back before another crew logs the claim.';
+    case 'smuggling_run':
+      return client + ' pays for ' + amount + ' that should not become a customs story. Reach ' + dest + ' without inviting scans.';
+    case 'bounty_hunt':
+      return client + ' posted a tag near ' + dest + '; expect a pilot who knows why the bounty is high.';
+    case 'escort':
+      return client + ' needs a convoy visible, intact, and boring all the way to ' + dest + '.';
+    case 'patrol_clear': {
+      const count = p.clearCount || 1;
+      return client + ' wants ' + count + ' hostile ' + plural(count, 'signature') + ' erased from the lane before traders notice.';
+    }
+    case 'recon_scan': {
+      const count = p.scanTargets || 1;
+      return client + ' needs ' + count + ' quiet scan ' + plural(count, 'sweep') + ' near ' + dest + '; measure the site and leave clean.';
+    }
+    case 'passenger_transport':
+      return client + ' has one passenger who paid for a dull manifest and a quiet berth to ' + dest + '.';
+    default:
+      return client + ' posted a contract with enough detail to plan the work before undocking.';
+  }
 }
 
 function missionValueText(m) {
@@ -796,6 +878,7 @@ const STATION_CSS = `
 .st-mission-risk.r0 { color: var(--good); } .st-mission-risk.r1 { color: var(--accent-2); }
 .st-mission-risk.r2 { color: var(--warn); } .st-mission-risk.r3, .st-mission-risk.r4 { color: var(--danger); }
 .st-mission-meta { font-size: .72rem; color: var(--ink-dim); margin: 4px 0; }
+.st-mission-brief { color: var(--ink); font-size: .82rem; line-height: 1.38; margin-top: 6px; }
 .st-mission-purpose { color: var(--ink); font-size: .78rem; line-height: 1.35; margin-top: 5px; }
 .st-mission-next { color: var(--ink-mute); font-size: .72rem; line-height: 1.35; margin: 3px 0 8px; }
 .st-mission-rewards { display: flex; gap: 14px; font-size: .8rem; margin-bottom: 8px; }

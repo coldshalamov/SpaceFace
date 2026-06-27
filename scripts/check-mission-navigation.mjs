@@ -152,6 +152,29 @@ function initHarness() {
   const stationHubSource = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
   assert.equal(stationHubSource.includes('Track Nav'), false, 'station mission board must not render dead Track Nav copy for offers');
   assert.equal(stationHubSource.includes('data-act="track"'), false, 'station mission board must not render dead Track Nav action for offers');
+  assert(stationHubSource.includes('function missionBriefText('), 'station mission board must render authored contract briefs');
+  assert(stationHubSource.includes('st-mission-brief'), 'station mission board must style contract briefs');
+  assert(stationHubSource.includes('STATION_BY_ID'), 'station mission board must resolve station ids into player-facing names');
+  assert.equal(stationHubSource.includes("m.destName || m.destStationId || m.dest"), false,
+    'station mission board must not fall back to raw destination ids in visible metadata');
+
+  const briefStart = stationHubSource.indexOf('function missionBriefText(');
+  const briefEnd = stationHubSource.indexOf('function missionValueText(');
+  const briefBody = stationHubSource.slice(briefStart, briefEnd);
+  for (const type of [
+    'cargo_delivery',
+    'bulk_trade',
+    'mining_quota',
+    'salvage_retrieval',
+    'smuggling_run',
+    'bounty_hunt',
+    'escort',
+    'patrol_clear',
+    'recon_scan',
+    'passenger_transport',
+  ]) {
+    assert(briefBody.includes(`case '${type}'`), `station mission board brief must cover ${type}`);
+  }
 }
 
 console.log('Mission navigation checks OK');
