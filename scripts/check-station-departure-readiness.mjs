@@ -8,8 +8,12 @@ const source = readFileSync(new URL('../src/ui/screens/stationHub.js', import.me
 assert.match(source, /function departureReadinessChips\(state\)/,
   'station hub must compute departure readiness chips from live state');
 assert.match(source, /departureMissionChip\(state\)/, 'departure readiness must include tracked mission/nav state');
+assert.match(source, /function departureTradeWaypointChip\(state, waypoint\)/,
+  'departure readiness must summarize trade route waypoints');
 assert.match(source, /trackedMissionId/, 'departure readiness must read trackedMissionId');
 assert.match(source, /state && state\.nav && state\.nav\.waypoint/, 'departure readiness must fall back to nav waypoint');
+assert.match(source, /waypoint\.kind !== 'trade'/, 'departure readiness must identify trade waypoints');
+assert.match(source, /commodityId/, 'departure trade route readiness must read waypoint commodity ids');
 assert.match(source, /departureCargoChip\(state\)/, 'departure readiness must include cargo hold free space');
 assert.match(source, /capVolume/, 'departure readiness must read cargo capVolume');
 assert.match(source, /departureFuelChip\(state\)/, 'departure readiness must include fuel state');
@@ -31,6 +35,7 @@ for (const eventName of [
   'mission:completed',
   'mission:failed',
   'mission:expired',
+  'nav:waypoint',
 ]) {
   assert(source.includes(`bus.on('${eventName}'`), `departure readiness must subscribe to ${eventName}`);
 }
@@ -38,4 +43,4 @@ for (const eventName of [
 assert.match(source, /const refreshDeparture = \(\) => \{ if \(this\._visible\(\)\) this\._refreshDeparture\(\); \};/,
   'station hub must only refresh departure readiness while visible');
 
-console.log('Station departure readiness OK - tracked objective, hold, fuel, and hull are visible before undock.');
+console.log('Station departure readiness OK - tracked objective, trade route, hold, fuel, and hull are visible before undock.');

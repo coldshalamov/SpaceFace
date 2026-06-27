@@ -106,6 +106,25 @@ function missionId(m) {
   return m && (m.id != null ? m.id : m.missionId);
 }
 
+function departureTradeWaypointChip(state, waypoint) {
+  if (!waypoint || waypoint.kind !== 'trade') return null;
+  const commodityId = waypoint.commodityId;
+  const commodity = commodityId ? COMMODITY_BY_ID.get(commodityId) : null;
+  const commodityName = (commodity && commodity.name) ||
+    String((waypoint.reason || '').replace(/^Sell\s+/i, '') || 'cargo');
+  const rawLabel = waypoint.label || waypoint.stationName || waypoint.stationId || waypoint.sectorName || 'Trade destination';
+  const destination = String(rawLabel).split(' · ')[0] || rawLabel;
+  const cargo = state && state.player && state.player.cargo || {};
+  const qty = commodityId ? Math.max(0, Math.floor(Number(cargo.items && cargo.items[commodityId]) || 0)) : 0;
+  if (commodityId && qty <= 0) {
+    return { kind: 'warn', label: 'Route', text: clipDepartureText(destination + ': no ' + commodityName + ' aboard') };
+  }
+  if (commodityId) {
+    return { kind: 'ok', label: 'Route', text: clipDepartureText(destination + ': ' + fmtDepartUnits(qty) + 'u ' + commodityName) };
+  }
+  return { kind: 'info', label: 'Route', text: clipDepartureText(waypoint.reason || rawLabel) };
+}
+
 function departureMissionChip(state) {
   const trackedId = state && state.ui && state.ui.trackedMissionId;
   const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
@@ -119,6 +138,8 @@ function departureMissionChip(state) {
   }
   const waypoint = state && state.nav && state.nav.waypoint;
   if (waypoint) {
+    const tradeChip = departureTradeWaypointChip(state, waypoint);
+    if (tradeChip) return tradeChip;
     const label = waypoint.label || waypoint.reason || waypoint.stationName || waypoint.stationId || waypoint.sectorId || 'Nav guidance set';
     return { kind: 'info', label: 'Nav', text: clipDepartureText(label) };
   }
@@ -654,6 +675,7 @@ export const stationHub = {
     // services-affecting
     bus.on('fuel:changed', onActive(['services']));
     bus.on('fuel:changed', refreshDeparture);
+    bus.on('nav:waypoint', refreshDeparture);
     // factions
     bus.on('faction:repChanged', onActive(['factions']));
     // missions

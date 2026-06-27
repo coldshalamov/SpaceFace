@@ -683,6 +683,7 @@ export function applyTradeNavigation(ctx, stationId, cmdtyId) {
   const waypoint = {
     kind: 'trade',
     stationId,
+    commodityId: cmdtyId,
     pos: pos || null,
     label: stationName(state, stationId) + (cmdty ? ' · ' + cmdty.name : ''),
     reason: cmdty ? `Sell ${cmdty.name}` : 'Trade destination',

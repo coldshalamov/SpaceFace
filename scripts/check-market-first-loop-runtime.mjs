@@ -219,15 +219,25 @@ try {
   const loadReport = await page.evaluate((cmdtyId) => {
     const sf = window.SF;
     const waypoint = sf.state && sf.state.nav && sf.state.nav.waypoint;
+    const departureChips = [...document.querySelectorAll('[data-screen="station"] .st-departure-chip')].map((chip) => ({
+      label: (chip.querySelector('b')?.textContent || '').trim(),
+      text: (chip.querySelector('span')?.textContent || '').trim(),
+      className: chip.className,
+    }));
     return {
       afterQty: (sf.state.player.cargo.items[cmdtyId]) || 0,
       waypoint,
+      departureChips,
     };
   }, loadStart.cmdtyId);
   assert(loadReport.afterQty > loadStart.beforeQty,
     'Load & Nav should buy cargo through the economy path: ' + JSON.stringify({ loadStart, loadReport }));
+  assert.equal(loadReport.waypoint && loadReport.waypoint.commodityId, loadStart.cmdtyId,
+    'Trade waypoint should retain the route commodity id');
   assert.equal(loadReport.waypoint && loadReport.waypoint.stationId, '__probe_trade_dest',
     'Load & Nav should keep nav on the seeded buyer station');
+  assert(loadReport.departureChips.some((chip) => chip.label === 'Route' && /Probe Buyer/.test(chip.text) && /\d/.test(chip.text)),
+    'Departure Check should summarize loaded trade route cargo: ' + JSON.stringify(loadReport.departureChips));
   assert.deepEqual(issues.errorIssues(), [], 'market first-loop runtime probe should not record page errors');
 
   console.log('Market first-loop runtime OK: New Game -> dock -> Market purpose/prices/Best Trades/Load & Nav/Set Nav are legible.');

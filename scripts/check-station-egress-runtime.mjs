@@ -109,7 +109,7 @@ try {
     assert(stationReport.departureChips.some((chip) => chip.label === label),
       `departure readiness missing ${label} chip: ${JSON.stringify(stationReport.departureChips)}`);
   }
-  assert(stationReport.departureChips.some((chip) => chip.label === 'Track' || chip.label === 'Nav'),
+  assert(stationReport.departureChips.some((chip) => chip.label === 'Track' || chip.label === 'Nav' || chip.label === 'Route'),
     'departure readiness must summarize tracked mission or nav guidance before undock');
 
   assert.equal(await clickButton(page, stationReport.undockText), true, 'station hub Undock button should be clickable');
