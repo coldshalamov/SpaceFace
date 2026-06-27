@@ -7,7 +7,23 @@ import { SERVICE_PRICES } from '../../systems/economy.js';
 export const AMMO_BATCH = 100;         // munitions per ammo purchase
 const MUNITIONS = COMMODITIES.find((c) => c.id === 'cmdty_munitions') || { volPerU: 1 };
 
+const FUEL_WARN_FRAC = 0.45;
+const FUEL_BAD_FRAC = 0.25;
+const PROTECTION_WARN_FRAC = 0.7;
+const PROTECTION_BAD_FRAC = 0.35;
+
+const SERVICE_ROWS = Object.freeze([
+  { type: 'refuel', label: 'Refuel', desc: 'Top off jump fuel', requires: ['refuel'] },
+  { type: 'repair', label: 'Repair Hull', desc: 'Restore hull integrity', requires: ['repair'] },
+  { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
+  { type: 'insurance', label: 'Hull Insurance', desc: 'Reduce loss on destruction', requires: [] },
+]);
+
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
+
+function fmtPct(frac) {
+  return Math.round(Math.max(0, Math.min(1, Number(frac) || 0)) * 100) + '%';
+}
 
 function repairMissing(e) {
   if (!e) return { hull: 0, armor: 0, total: 0 };
@@ -27,6 +43,109 @@ function cargoFreeVolume(state) {
 
 function afterCreditsChip(credits, cost) {
   return { text: 'after ' + fmtCr(Math.max(0, credits - cost)) + ' cr', kind: 'ok' };
+}
+
+function serviceRow(type) {
+  return SERVICE_ROWS.find((row) => row.type === type) || null;
+}
+
+function isServiceOffered(type, stationServices) {
+  const row = serviceRow(type);
+  if (!row) return false;
+  if (!Array.isArray(stationServices)) return true;
+  if (row.requires.length === 0) return true;
+  return row.requires.some((req) => stationServices.includes(req));
+}
+
+function fuelMissing(state) {
+  const fuel = state && state.fuel || {};
+  return Math.max(0, (fuel.max || 0) - (fuel.current || 0));
+}
+
+function fuelFraction(state) {
+  const fuel = state && state.fuel || {};
+  const max = Number(fuel.max);
+  if (!(max > 0)) return 1;
+  return Math.max(0, Math.min(1, Number(fuel.current || 0) / max));
+}
+
+function protectionFraction(entity) {
+  if (!entity) return 1;
+  const hullMax = Number(entity.hullMax);
+  const armorMax = Number(entity.armorMax);
+  const hullFrac = hullMax > 0 ? Math.max(0, Math.min(1, Number(entity.hull || 0) / hullMax)) : 1;
+  const armorFrac = armorMax > 0 ? Math.max(0, Math.min(1, Number(entity.armorHp || 0) / armorMax)) : 1;
+  return Math.min(hullFrac, armorFrac);
+}
+
+function recommendationCandidate(service, quote, stationServices, opts) {
+  const row = serviceRow(service);
+  const offered = isServiceOffered(service, stationServices);
+  const actionable = offered && !quote.disabled && quote.amount > 0;
+  const blockedReason = offered
+    ? (quote.disabledReason ? 'You need ' + quote.disabledReason.replace(/^need\s+/i, '') + ' before this service can clear the warning.' : 'This service is not actionable right now.')
+    : 'This station does not offer ' + (row && row.label || service) + '.';
+  return {
+    service,
+    type: actionable ? service : null,
+    amount: actionable ? quote.amount : 0,
+    cost: quote.cost || 0,
+    actionLabel: actionable ? quote.buttonLabel : (offered ? 'Blocked' : 'Unavailable'),
+    priority: opts.priority,
+    kind: opts.kind,
+    title: actionable ? opts.title : opts.blockedTitle,
+    reason: actionable ? opts.reason : blockedReason + ' ' + opts.fallback,
+    chips: quote.chips || [],
+  };
+}
+
+export function serviceReadinessRecommendation(state, entity, stationServices = null) {
+  const candidates = [];
+
+  const fuelFrac = fuelFraction(state);
+  if (fuelMissing(state) > 0 && fuelFrac < FUEL_WARN_FRAC) {
+    const quote = serviceQuote('refuel', state, entity);
+    candidates.push(recommendationCandidate('refuel', quote, stationServices, {
+      priority: (fuelFrac < FUEL_BAD_FRAC ? 120 : 80) + Math.round((1 - fuelFrac) * 20),
+      kind: fuelFrac < FUEL_BAD_FRAC ? 'bad' : 'warn',
+      title: fuelFrac < FUEL_BAD_FRAC ? 'Refuel before undock' : 'Top off fuel reserve',
+      blockedTitle: fuelFrac < FUEL_BAD_FRAC ? 'Fuel low; refuel blocked' : 'Fuel reserve thin; refuel blocked',
+      reason: 'Fuel is at ' + fmtPct(fuelFrac) + '; top off now so route changes and jumps stay safe.',
+      fallback: 'Keep the next hop local or find fuel soon.',
+    }));
+  }
+
+  const missing = repairMissing(entity);
+  const protFrac = protectionFraction(entity);
+  if (missing.total > 0.5 && protFrac < PROTECTION_WARN_FRAC) {
+    const quote = serviceQuote('repair', state, entity);
+    candidates.push(recommendationCandidate('repair', quote, stationServices, {
+      priority: (protFrac < PROTECTION_BAD_FRAC ? 130 : 75) + Math.round((1 - protFrac) * 20),
+      kind: protFrac < PROTECTION_BAD_FRAC ? 'bad' : 'warn',
+      title: protFrac < PROTECTION_BAD_FRAC ? 'Repair before undock' : 'Patch hull before risk work',
+      blockedTitle: protFrac < PROTECTION_BAD_FRAC ? 'Hull critical; repair blocked' : 'Hull worn; repair blocked',
+      reason: 'Protection is at ' + fmtPct(protFrac) + '; repair now before pirates, debris, or docking bumps tax the hull.',
+      fallback: 'Avoid combat and high-speed impacts until you can repair.',
+    }));
+  }
+
+  if (candidates.length) {
+    candidates.sort((a, b) => b.priority - a.priority);
+    return candidates[0];
+  }
+
+  return {
+    service: null,
+    type: null,
+    amount: 0,
+    cost: 0,
+    actionLabel: 'Ready',
+    priority: 0,
+    kind: 'ok',
+    title: 'Services clear',
+    reason: 'Fuel and hull are serviceable. Choose a job or trade route, then undock.',
+    chips: [{ text: 'fuel ok', kind: 'ok' }, { text: 'hull ok', kind: 'ok' }],
+  };
 }
 
 export function serviceQuote(type, state, entity) {
@@ -165,20 +284,30 @@ export function serviceQuote(type, state, entity) {
   return { amount: 0, cost: 0, detail: '', buttonLabel: '', disabled: true, chips: [] };
 }
 
+function renderRecommendation(rec) {
+  const row = document.createElement('div');
+  const actionable = !!rec.type;
+  row.className = 'st-svc-row st-svc-row--recommend st-svc-row--recommend-' + (rec.kind || 'ok') + (actionable ? '' : ' disabled');
+  const chips = (rec.chips || []).map((chip) =>
+    '<span class="st-svc-chip st-svc-chip--' + (chip.kind || 'cost') + '">' + chip.text + '</span>').join('');
+  const title = actionable
+    ? (rec.cost > 0 ? 'Spend ' + fmtCr(rec.cost) + ' credits.' : rec.reason)
+    : rec.reason;
+  row.innerHTML =
+    '<div class="st-svc-info"><div class="st-svc-name">Recommended Before Undock</div>' +
+    '<div class="st-svc-detail mono">' + rec.title + ' · ' + rec.reason + '</div>' +
+    '<div class="st-svc-meta">' + chips + '</div></div>' +
+    (actionable
+      ? '<button data-svc="' + rec.type + '" data-amount="' + rec.amount + '" title="' + title + '" aria-label="' + title + '">' + rec.actionLabel + '</button>'
+      : '<button disabled title="' + title + '" aria-label="' + title + '">' + rec.actionLabel + '</button>');
+  return row;
+}
+
 export function createServicesPanel(ctx) {
   const root = document.createElement('div');
   root.className = 'st-panel st-services';
   root.innerHTML = '<div class="st-sub-h">Station Services</div><div class="st-svc-list"></div>';
   const list = root.querySelector('.st-svc-list');
-
-  // Available services for the docked station (filtered against the station def's services[]).
-  // We keep all four rows but disable any the station doesn't offer.
-  const ROWS = [
-    { type: 'refuel', label: 'Refuel', desc: 'Top off jump fuel', requires: ['refuel'] },
-    { type: 'repair', label: 'Repair Hull', desc: 'Restore hull integrity', requires: ['repair'] },
-    { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
-    { type: 'insurance', label: 'Hull Insurance', desc: 'Reduce loss on destruction', requires: [] },
-  ];
 
   list.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-svc]');
@@ -232,8 +361,9 @@ export function createServicesPanel(ctx) {
     const svc = stationServices();
     const e = state.entities.get(state.playerId);
     const frag = document.createDocumentFragment();
-    for (const r of ROWS) {
-      const offered = !svc || r.requires.length === 0 || r.requires.some((req) => svc.includes(req));
+    frag.appendChild(renderRecommendation(serviceReadinessRecommendation(state, e, svc)));
+    for (const r of SERVICE_ROWS) {
+      const offered = isServiceOffered(r.type, svc);
       const quote = serviceQuote(r.type, state, e);
       const row = document.createElement('div');
       const dis = !offered || quote.disabled;

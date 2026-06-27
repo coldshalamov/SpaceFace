@@ -1208,6 +1208,12 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   border: 1px solid var(--panel-edge); border-radius: 6px; padding: 10px 14px; background: rgba(10,18,32,.5); }
 .st-svc-row.disabled { opacity: .5; }
 .st-svc-row--blocked { border-color: rgba(255,84,112,.32); }
+.st-svc-row--recommend { border-color: rgba(57,208,255,.34); background: linear-gradient(90deg, rgba(57,208,255,.12), rgba(10,18,32,.58)); }
+.st-svc-row--recommend-ok { border-color: rgba(98,224,138,.3); background: linear-gradient(90deg, rgba(98,224,138,.1), rgba(10,18,32,.56)); }
+.st-svc-row--recommend-warn { border-color: rgba(255,198,77,.36); background: linear-gradient(90deg, rgba(255,198,77,.12), rgba(10,18,32,.58)); }
+.st-svc-row--recommend-bad { border-color: rgba(255,84,112,.42); background: linear-gradient(90deg, rgba(255,84,112,.14), rgba(10,18,32,.58)); }
+.st-svc-row--recommend .st-svc-name { color: var(--accent); font-family: var(--mono); font-size: .72rem;
+  letter-spacing: .11em; text-transform: uppercase; }
 .st-svc-name { font-size: .92rem; }
 .st-svc-detail { font-size: .72rem; color: var(--ink-dim); margin-top: 2px; }
 .st-svc-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }

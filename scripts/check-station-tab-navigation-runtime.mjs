@@ -155,6 +155,7 @@ try {
     'Departure Check actionable chips should be keyboard-accessible buttons with labels: ' + JSON.stringify(departure.chips));
 
   await clickDepartureAndExpect(page, 'services');
+  await assertServicesRecommendation(page);
   await clickDepartureAndExpect(page, 'market');
   await clickDepartureAndExpect(page, 'missions');
   assert.deepEqual(issues.errorIssues(), [], 'station tab navigation probe should not record page errors');
@@ -191,6 +192,33 @@ async function clickDepartureAndExpect(page, tabId) {
   }, tabId);
   assert(clicked, 'Departure Check should include a chip that routes to ' + tabId);
   await waitForStationTab(page, tabId, 'departure chip ' + tabId);
+}
+
+async function assertServicesRecommendation(page) {
+  const report = await page.evaluate(() => {
+    const visible = (el) => {
+      if (!el) return false;
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && !el.hidden && r.width > 20 && r.height > 10;
+    };
+    const rows = [...document.querySelectorAll('[data-screen="station"] .st-svc-row--recommend')];
+    const row = rows[0] || null;
+    const button = row && row.querySelector('button');
+    return {
+      count: rows.length,
+      visible: visible(row),
+      text: row ? String(row.textContent || '').replace(/\s+/g, ' ').trim() : '',
+      buttonText: button ? String(button.textContent || '').replace(/\s+/g, ' ').trim() : '',
+      buttonDisabled: button ? !!button.disabled : null,
+      buttonLabel: button ? button.getAttribute('aria-label') : null,
+    };
+  });
+  assert.equal(report.count, 1, 'Services tab should render exactly one recommendation row: ' + JSON.stringify(report));
+  assert.equal(report.visible, true, 'Services recommendation should be visible: ' + JSON.stringify(report));
+  assert.match(report.text, /Recommended Before Undock/i, 'Services recommendation should be labeled: ' + JSON.stringify(report));
+  assert(report.buttonText && report.buttonLabel != null,
+    'Services recommendation should expose a labeled button state: ' + JSON.stringify(report));
 }
 
 async function waitForStationTab(page, tabId, sourceKey) {
