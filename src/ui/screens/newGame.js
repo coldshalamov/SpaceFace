@@ -121,6 +121,9 @@ export const newGameScreen = {
 
   mount(rootEl, ctx) {
     injectStyle();
+    if (refs && refs.unsubStartFailed) {
+      try { refs.unsubStartFailed(); } catch (e) {}
+    }
     shell(rootEl, 'New Game', 'sf-menu-narrow');
     rootEl.classList.remove('sf-menu-narrow');
     rootEl.style.width = '420px';
@@ -187,14 +190,27 @@ export const newGameScreen = {
     const back = el('button', 'sf-btn'); back.textContent = 'Back'; back.style.width = 'auto';
     back.addEventListener('click', () => nav(ctx, 'popScreen'));
     const launch = el('button', 'sf-btn'); launch.textContent = 'Launch'; launch.style.width = 'auto';
+    let launching = false;
+    const setLaunching = (active) => {
+      launching = !!active;
+      launch.disabled = launching;
+      back.disabled = launching;
+      name.disabled = launching;
+      diff.disabled = launching;
+      launch.textContent = launching ? 'Launching...' : 'Launch';
+    };
+    const restoreLaunch = () => setLaunching(false);
+    const unsubStartFailed = ctx.bus.on('game:startFailed', restoreLaunch);
     launch.addEventListener('click', () => {
+      if (launching) return;
+      setLaunching(true);
       const pilot = (name.value || '').trim() || 'Pilot';
       ctx.bus.emit('game:new', { name: pilot, shipId: STARTER_SHIP, difficulty: diff.value });
     });
     foot.appendChild(back); foot.appendChild(launch);
     rootEl.appendChild(foot);
 
-    refs = { name, preview: ngPreview, previewCanvas, ctx };
+    refs = { name, launch, setLaunching, unsubStartFailed, preview: ngPreview, previewCanvas, ctx };
   },
 
   onShow() {
@@ -210,6 +226,7 @@ export const newGameScreen = {
         refs.preview.show(STARTER_SHIP);
       } catch (e) { console.warn('[newGame] ship preview failed', e); }
     }
+    if (refs && refs.setLaunching) refs.setLaunching(false);
     if (refs && refs.name) try { refs.name.focus(); refs.name.select(); } catch (e) {}
   },
   onHide() {

@@ -61,6 +61,7 @@ if (starmap) {
 
 const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
+const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
 const automationSrc = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
 if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
@@ -105,6 +106,14 @@ if (automationSrc.includes('ore-u placeholder') || !automationSrc.includes('DRON
   fail++;
 } else {
   console.log('ok   automationScreen - drone yield display uses commodity baseline');
+  ok++;
+}
+if (!newGameSrc.includes('let launching = false') || !newGameSrc.includes("launch.textContent = launching ? 'Launching...' : 'Launch'")
+  || !newGameSrc.includes("ctx.bus.on('game:startFailed', restoreLaunch)") || !newGameSrc.includes('if (launching) return')) {
+  console.log('FAIL newGameScreen - Launch must guard duplicate async starts and restore after failure');
+  fail++;
+} else {
+  console.log('ok   newGameScreen - Launch is guarded during async startup');
   ok++;
 }
 
