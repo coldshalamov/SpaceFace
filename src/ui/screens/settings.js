@@ -306,19 +306,47 @@ export const settingsScreen = {
     rowToggle('Invert right-stick Y', () => !!gp.invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, invertY: v }));
     pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, RB boost, LB brake, X target, View star map, Y codex, Start pause.'));
 
+    const touchMode = () => {
+      const cfg = s.controls.touch || {};
+      return cfg.enabled == null ? 'auto' : (cfg.enabled ? 'on' : 'off');
+    };
+    const touchModeLabel = (mode) => ({ auto: 'Auto', on: 'On', off: 'Off' }[mode] || 'Auto');
+    const nextTouchValue = (mode) => (mode === 'auto' ? true : (mode === 'on' ? false : null));
+    const commitTouchValue = (next) => {
+      const tp = ctx.touch;
+      if (tp && typeof tp.persistEnabled === 'function') {
+        tp.persistEnabled(next);
+      } else {
+        this._set(ctx, 'controls', 'touch', { ...(s.controls.touch || {}), enabled: next });
+      }
+    };
+    const rowTouchMode = () => {
+      const row = el('div', 'sf-row');
+      row.appendChild(el('label', null, 'Touch controls'));
+      const ctl = el('div', 'sf-ctl');
+      const b = el('button', 'sf-tab');
+      b.type = 'button';
+      b.style.minWidth = '78px';
+      const sync = () => {
+        const mode = touchMode();
+        b.textContent = touchModeLabel(mode);
+        b.setAttribute('aria-pressed', mode === 'auto' ? 'mixed' : String(mode === 'on'));
+        b.classList.toggle('active', mode !== 'off');
+      };
+      b.addEventListener('click', () => {
+        commitTouchValue(nextTouchValue(touchMode()));
+        sync();
+      });
+      sync();
+      ctl.appendChild(b); row.appendChild(ctl); pane.appendChild(row);
+    };
+
     // Touch (P1-12): virtual dual-stick + buttons for touchscreens. Auto-detects on touch devices;
-    // this toggle lets the player force-enable (e.g. a touchscreen laptop) or force-disable.
+    // this tri-state lets the player force-enable (e.g. a touchscreen laptop), force-disable, or
+    // return to automatic detection.
     pane.appendChild(el('h2', null, 'Touch'));
     if (!s.controls.touch) s.controls.touch = { enabled: null }; // null = auto-detect
-    const tc = s.controls.touch;
-    rowToggle('Touch controls', () => (tc.enabled == null ? 'auto' : tc.enabled), (v) => {
-      // Cycle auto → on → off → auto so all three states are reachable from one control.
-      const cur = tc.enabled == null ? 'auto' : (tc.enabled ? 'on' : 'off');
-      const next = cur === 'auto' ? true : (cur === 'on' ? false : null);
-      this._set(ctx, 'controls', 'touch', { ...tc, enabled: next });
-      const tp = ctx.touch;
-      if (tp) tp.persistEnabled(next);
-    });
+    rowTouchMode();
     pane.appendChild(el('p', 'sf-muted', 'Virtual sticks: left = fly, right = aim, buttons = fire/mine/boost. Auto-enabled on touch devices.'));
   },
 

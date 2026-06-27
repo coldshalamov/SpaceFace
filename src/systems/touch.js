@@ -70,7 +70,7 @@ export function createTouch(ctx) {
       const hasTouch = (typeof window !== 'undefined') && ('ontouchstart' in window || (navigator.maxTouchPoints > 0));
       const bigEnough = (typeof window !== 'undefined') && (Math.min(innerWidth, innerHeight) >= AUTO_MIN_PX);
       const should = !!(hasTouch && bigEnough);
-      if (should !== this._enabledByAuto) {
+      if (should !== this._enabledByAuto || this.active !== should) {
         this._enabledByAuto = should;
         this.setEnabled(should);
       }
@@ -206,7 +206,8 @@ export function createTouch(ctx) {
       state.settings.controls = state.settings.controls || {};
       state.settings.controls.touch = state.settings.controls.touch || {};
       state.settings.controls.touch.enabled = on;
-      this.setEnabled(on);
+      if (on == null) this.autoDetect();
+      else this.setEnabled(!!on);
       if (bus && bus.emit) bus.emit('settings:changed', { section: 'controls' });
     },
   };

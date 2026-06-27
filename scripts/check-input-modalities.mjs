@@ -57,5 +57,10 @@ assert.match(saveSrc, /s\.controls\.touch/, 'saveSystem must normalize settings.
 const settingsSrc = read('src/ui/screens/settings.js');
 assert.match(settingsSrc, /Gamepad enabled/, 'Settings must expose a Gamepad enabled toggle');
 assert.match(settingsSrc, /Touch controls/, 'Settings must expose a Touch controls toggle');
+assert.doesNotMatch(settingsSrc, /rowToggle\('Touch controls'/, 'Touch controls must use a tri-state Auto/On/Off control, not the boolean toggle helper');
+assert.match(settingsSrc, /touchModeLabel/, 'Touch controls must render Auto/On/Off labels');
+assert.match(settingsSrc, /aria-pressed', mode === 'auto' \? 'mixed'/, 'Touch Auto state must use valid aria-pressed=mixed');
+assert.match(touchSrc, /should !== this\._enabledByAuto \|\| this\.active !== should/, 'Touch auto-detect must reconcile the current overlay when returning from manual On/Off');
+assert.match(touchSrc, /if \(on == null\) this\.autoDetect\(\);\s*else this\.setEnabled\(\!\!on\)/, 'Touch persistEnabled(null) must return to auto-detect immediately');
 
 console.log('Input modalities OK — keyboard+mouse (always) + gamepad (getGamepads) + touch (virtual sticks) all wired + merged + normalized.');
