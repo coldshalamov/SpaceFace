@@ -41,17 +41,36 @@ export function serviceQuote(type, state, entity) {
     if (missing <= 0) {
       return { amount: 0, cost: 0, detail: 'Fuel ' + current + '/' + max + ' · full', buttonLabel: 'Full', disabled: true, chips: [{ text: 'full', kind: 'ok' }] };
     }
-    const disabled = credits < cost;
+    const affordableUnits = Math.max(0, Math.floor(credits / SERVICE_PRICES.fuelCrPerUnit));
+    if (credits < cost && affordableUnits <= 0) {
+      return {
+        amount: 0,
+        cost,
+        detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(missing) + 'u @ ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
+        buttonLabel: 'Refuel',
+        disabled: true,
+        disabledReason: 'need ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
+        chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u', kind: 'bad' }],
+      };
+    }
+    if (credits < cost) {
+      const partialCost = Math.round(affordableUnits * SERVICE_PRICES.fuelCrPerUnit);
+      return {
+        amount: Math.min(missing, affordableUnits),
+        cost: partialCost,
+        detail: 'Fuel ' + current + '/' + max + ' · partial ' + affordableUnits + '/' + Math.round(missing) + 'u @ ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
+        buttonLabel: 'Partial Refuel',
+        disabled: false,
+        chips: [{ text: fmtCr(partialCost) + ' / ' + fmtCr(cost) + ' cr', kind: 'warn' }, afterCreditsChip(credits, partialCost)],
+      };
+    }
     return {
       amount: missing,
       cost,
       detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(missing) + 'u @ ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
       buttonLabel: 'Refuel',
-      disabled,
-      disabledReason: disabled ? 'need ' + fmtCr(cost - credits) + ' cr' : '',
-      chips: disabled
-        ? [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(cost - credits) + ' cr', kind: 'bad' }]
-        : [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, afterCreditsChip(credits, cost)],
+      disabled: false,
+      chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, afterCreditsChip(credits, cost)],
     };
   }
   if (type === 'repair') {

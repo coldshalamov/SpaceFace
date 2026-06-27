@@ -24,13 +24,23 @@ function playerShip(overrides = {}) {
   };
 }
 
-function checkRefuelQuoteShowsAffordability() {
+function checkRefuelQuoteAllowsPartialTopOff() {
   const state = baseState({ player: { ...baseState().player, credits: 200 } });
   const quote = serviceQuote('refuel', state, playerShip());
 
-  assert.equal(quote.cost, 360, 'refuel should price missing fuel at the economy unit rate');
-  assert.equal(quote.disabled, true, 'unaffordable refuel should be disabled before click');
-  assert.match(quote.disabledReason, /need 160 cr/i, 'refuel should show the missing credit delta');
+  assert.equal(quote.buttonLabel, 'Partial Refuel', 'underfunded refuel should be labeled as partial');
+  assert.equal(quote.disabled, false, 'partial refuel should remain actionable when at least one fuel unit is affordable');
+  assert.equal(quote.amount, 33, 'partial refuel should request only the affordable fuel amount');
+  assert.equal(quote.cost, 198, 'partial refuel should quote only the emitted affordable amount');
+  assert.match(quote.detail, /partial 33\/60u/i, 'refuel detail should show partial amount vs full missing fuel');
+}
+
+function checkRefuelQuoteBlocksZeroCreditTopOff() {
+  const state = baseState({ player: { ...baseState().player, credits: 0 } });
+  const quote = serviceQuote('refuel', state, playerShip());
+
+  assert.equal(quote.disabled, true, 'zero-credit refuel should remain blocked');
+  assert.match(quote.disabledReason, /need 6 cr\/u/i, 'zero-credit refuel should explain the per-unit threshold');
 }
 
 function checkPartialRepairQuoteSpendsOnlyCurrentCredits() {
@@ -77,7 +87,8 @@ function checkInsuranceQuoteShowsDeductibleGate() {
   assert.equal(active.buttonLabel, 'Cancel', 'active insurance should expose cancel action');
 }
 
-checkRefuelQuoteShowsAffordability();
+checkRefuelQuoteAllowsPartialTopOff();
+checkRefuelQuoteBlocksZeroCreditTopOff();
 checkPartialRepairQuoteSpendsOnlyCurrentCredits();
 checkAmmoQuoteRespectsWalletAndCargo();
 checkInsuranceQuoteShowsDeductibleGate();
