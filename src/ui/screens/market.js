@@ -205,6 +205,26 @@ function selectedQtyFor(qtySetting, maxValue) {
   return Math.max(0, Math.floor(Number(qtySetting) || 0));
 }
 
+async function confirmMarketPurchase(ctx, stationId, cmdtyId, qty, opts = {}) {
+  const state = ctx.state;
+  const unit = unitPrice(ctx, stationId, cmdtyId, 'buy') || 0;
+  const total = unit * qty;
+  const credits = state.player.credits || 0;
+  const bigShare = credits > 0 && total >= credits * 0.5;
+  const bigAbs = total >= 25000;
+  if (!bigShare && !bigAbs) return true;
+  const name = (COMMODITY_BY_ID.get(cmdtyId) || {}).name || cmdtyId;
+  const routeLine = opts.routeName
+    ? '\n\nThis loads the Best Trades route and sets nav for ' + opts.routeName + '.'
+    : '\n\nCargo only pays off when you sell it into demand, complete a contract, or feed manufacturing. Check Best Trades or Mission Log after buying.';
+  return confirm({
+    title: 'Confirm purchase',
+    body: 'Buy ' + qty + ' ' + name + ' for ' + Math.round(total).toLocaleString() + ' CR?' + routeLine,
+    confirmLabel: 'Buy',
+    danger: bigShare,
+  });
+}
+
 /**
  * createMarketPanel(ctx) -> { el, refresh(ctx), onShow(ctx) }
  * stationHub mounts el, calls onShow when the tab becomes active, refresh on data events.
@@ -244,12 +264,31 @@ export function createMarketPanel(ctx) {
     '<div class="st-planner-list"></div>';
   root.appendChild(planner);
   const plannerList = planner.querySelector('.st-planner-list');
-  plannerList.addEventListener('click', (ev) => {
-    const btn = ev.target.closest('[data-act="nav"]');
+  plannerList.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-act]');
     if (!btn) return;
-    const stationId = btn.getAttribute('data-station');
+    const act = btn.getAttribute('data-act');
+    const destStationId = btn.getAttribute('data-station');
     const cmdtyId = btn.getAttribute('data-cmdty');
-    applyTradeNavigation(ctx, stationId, cmdtyId);
+    if (act === 'nav') {
+      applyTradeNavigation(ctx, destStationId, cmdtyId);
+      return;
+    }
+    if (act === 'load-nav') {
+      const stationId = panel.stationId;
+      const requested = Math.max(0, Math.floor(Number(btn.getAttribute('data-qty')) || 0));
+      const qty = Math.min(requested, maxBuyable(ctx, stationId, cmdtyId));
+      if (qty <= 0) { ctx.bus.emit('audio:cue', { id: 'ui_deny' }); return; }
+      const ok = await confirmMarketPurchase(ctx, stationId, cmdtyId, qty, {
+        routeName: stationName(ctx.state, destStationId),
+      });
+      if (!ok) return;
+      ctx.bus.emit('ui:buy', { commodityId: cmdtyId, qty });
+      applyTradeNavigation(ctx, destStationId, cmdtyId);
+      footer.querySelector('.st-foot-msg').textContent =
+        'Loading ' + qty + ' ' + ((COMMODITY_BY_ID.get(cmdtyId) || {}).name || cmdtyId) +
+        ' and plotting ' + stationName(ctx.state, destStationId) + '...';
+    }
   });
 
   // --- table head ---
@@ -317,21 +356,8 @@ export function createMarketPanel(ctx) {
       // casual buy of a few units never prompts but a max-out does. Sells are reversible enough
       // (you can buy back) to skip the gate, so only buys are gated.
       if (act === 'buy') {
-        const unit = unitPrice(ctx, stationId, cmdtyId, 'buy') || 0;
-        const total = unit * qty;
-        const credits = state.player.credits || 0;
-        const bigShare = credits > 0 && total >= credits * 0.5;
-        const bigAbs = total >= 25000;
-        if (bigShare || bigAbs) {
-          const name = (COMMODITY_BY_ID.get(cmdtyId) || {}).name || cmdtyId;
-          const ok = await confirm({
-            title: 'Confirm purchase',
-            body: 'Buy ' + qty + ' ' + name + ' for ' + Math.round(total).toLocaleString() + ' CR?\n\nCargo only pays off when you sell it into demand, complete a contract, or feed manufacturing. Check Best Trades or Mission Log after buying.',
-            confirmLabel: 'Buy',
-            danger: bigShare,
-          });
-          if (!ok) return;
-        }
+        const ok = await confirmMarketPurchase(ctx, stationId, cmdtyId, qty);
+        if (!ok) return;
       }
       ctx.bus.emit(act === 'buy' ? 'ui:buy' : 'ui:sell', { commodityId: cmdtyId, qty });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -567,6 +593,10 @@ export function createMarketPanel(ctx) {
         '<span class="st-pl-margin st-pl-up">+' + fmtCr(t.margin) + '/u (' + pct + '%)</span>' +
         '<span class="st-pl-run ' + (runBlocked ? 'st-pl-run--blocked' : 'st-pl-run--ok') + '">' + escapeHtml(runLabel) + '</span>' +
         '<span class="st-pl-dest">' + escapeHtml(stationName(state, t.destStation)) + '</span>' +
+        (runBlocked ? '' :
+          '<button class="st-pl-load" data-act="load-nav" data-station="' + escapeHtml(t.destStation) +
+          '" data-cmdty="' + escapeHtml(t.cmdtyId) + '" data-qty="' + t.loadUnits +
+          '" title="Buy this route load and set nav to the buyer">Load &amp; Nav</button>') +
         '<button class="st-pl-nav" data-act="nav" data-station="' + escapeHtml(t.destStation) + '" data-cmdty="' + escapeHtml(t.cmdtyId) + '">Set Nav</button>';
       frag.appendChild(row);
     }

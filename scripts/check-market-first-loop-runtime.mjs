@@ -4,9 +4,9 @@
 // Boots the canonical player URL, starts New Game through the UI, docks via the normal dock:docked
 // event path, opens the station Market, and verifies the player can understand the first trade loop:
 // credits/cargo context, station purpose, commodity purpose copy, live prices, actionable buy/sell
-// labels, and a Best Trades row with current-run load/profit plus Set Nav. Test-only market intel
-// is injected after live boot so the planner path is deterministic without changing content defaults
-// or launch routes.
+// labels, and a Best Trades row with current-run load/profit plus route actions. Test-only market
+// intel is injected after live boot so the planner path is deterministic without changing content
+// defaults or launch routes.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -134,6 +134,7 @@ try {
       plannerRows,
       plannerRunTexts,
       plannerEmpty: text(document.querySelector('[data-screen="station"] .st-planner-empty')),
+      loadButtonText: text(document.querySelector('[data-screen="station"] .st-pl-load')),
       navButtonText: text(document.querySelector('[data-screen="station"] .st-pl-nav')),
     };
   });
@@ -168,6 +169,7 @@ try {
     'Best Trades row should show buy/sell spread and margin: ' + JSON.stringify(report.plannerRows));
   assert(report.plannerRunTexts.some((row) => /load\s+\d+/i.test(row) && /\+\d[\d,]*\s+CR/i.test(row)),
     'Best Trades row should show current-run load and expected profit: ' + JSON.stringify(report.plannerRunTexts));
+  assert.equal(report.loadButtonText, 'Load & Nav', 'Best Trades row should expose a route-load action');
   assert.equal(report.navButtonText, 'Set Nav', 'Best Trades row should expose Set Nav');
 
   const navReport = await page.evaluate(() => {
@@ -189,7 +191,7 @@ try {
   assert.match((navReport.waypoint && navReport.waypoint.label) || '', /Probe Buyer/, 'Trade waypoint should name the buyer station');
   assert.deepEqual(issues.errorIssues(), [], 'market first-loop runtime probe should not record page errors');
 
-  console.log('Market first-loop runtime OK: New Game -> dock -> Market purpose/prices/Best Trades/Set Nav are legible.');
+  console.log('Market first-loop runtime OK: New Game -> dock -> Market purpose/prices/Best Trades/Load & Nav/Set Nav are legible.');
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();

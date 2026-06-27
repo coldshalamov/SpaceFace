@@ -981,7 +981,7 @@ const STATION_CSS = `
 .st-planner-hint { color: var(--ink-mute); font-weight: 400; font-size: .7rem; letter-spacing: .02em; text-transform: none; }
 .st-planner-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .st-planner-empty { color: var(--ink-dim); font-size: .82rem; font-style: italic; padding: 4px 0; }
-.st-planner-row { display: grid; grid-template-columns: 1.3fr 2fr 1.4fr 1.45fr 1.25fr auto; align-items: center; gap: 10px;
+.st-planner-row { display: grid; grid-template-columns: 1.25fr 1.8fr 1.25fr 1.35fr 1.15fr auto auto; align-items: center; gap: 8px;
   padding: 6px 9px; background: rgba(10,18,32,.5); border: 1px solid var(--panel-edge); border-radius: 6px; font-size: .82rem; }
 .st-pl-cmdty { color: var(--ink); font-weight: 600; }
 .st-pl-prices { color: var(--ink-dim); font-size: .78rem; }
@@ -991,8 +991,10 @@ const STATION_CSS = `
 .st-pl-run--ok { color: var(--energy); }
 .st-pl-run--blocked { color: var(--ink-mute); font-style: italic; }
 .st-pl-dest { color: var(--ink-mute); font-size: .78rem; }
-.st-pl-nav { padding: 4px 10px; font-size: .72rem; border-color: var(--accent); color: var(--accent);
-  border-radius: 5px; cursor: pointer; }
+.st-pl-nav, .st-pl-load { padding: 4px 9px; font-size: .72rem; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+.st-pl-load { border-color: var(--good); color: var(--good); background: rgba(98,224,138,.08); }
+.st-pl-load:hover { background: rgba(98,224,138,.15); }
+.st-pl-nav { border-color: var(--accent); color: var(--accent); }
 .st-pl-nav:hover { background: rgba(57,208,255,.14); }
 .st-heat-up { color: var(--danger); }     /* dear = sell opportunity (red = you can sell high) */
 .st-heat-down { color: var(--good); }     /* cheap = buy opportunity (green = buy low) */
