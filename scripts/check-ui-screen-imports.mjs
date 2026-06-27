@@ -82,6 +82,7 @@ const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', im
 const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
 const alertsSrc = readFileSync(new URL('../src/ui/alerts.js', import.meta.url), 'utf8');
 const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+const controlPromptsSrc = readFileSync(new URL('../src/ui/controlPrompts.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
 const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
@@ -150,12 +151,16 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   || !hudSrc.includes('BINDINGS.starmap.label')
   || !alertsSrc.includes("import { BINDINGS, promptLabel } from './bindings.js'")
   || !alertsSrc.includes('BINDINGS.starmap.label')
-  || !uiRootSrc.includes("import { BINDINGS } from './bindings.js'")
-  || !uiRootSrc.includes('BINDINGS.localmap.label')
-  || !uiRootSrc.includes('BINDINGS.starmap.label')) {
+  || !uiRootSrc.includes("import { controlPrompt } from './controlPrompts.js'")
+  || !uiRootSrc.includes("controlPrompt('flight', 'kbm')")
+  || !uiRootSrc.includes("controlPrompt('flight', 'gamepad')")
+  || !controlPromptsSrc.includes("import { BINDINGS } from './bindings.js'")
+  || !controlPromptsSrc.includes('BINDINGS.dock.label')
+  || !controlPromptsSrc.includes('BINDINGS.localmap.label')
+  || !controlPromptsSrc.includes('BINDINGS.starmap.label')) {
   console.log('FAIL flight HUD - dock/localmap/starmap labels must read src/ui/bindings.js');
   fail++;
-} else if (/'M Star Map'|'N Local Map'|'E', 'dock'|OPEN STARMAP \(M\)|N local map\s+•\s+M star map/.test(hudSrc + alertsSrc + uiRootSrc)) {
+} else if (/'M Star Map'|'N Local Map'|'E', 'dock'|OPEN STARMAP \(M\)|N local map\s+•\s+M star map/.test(hudSrc + alertsSrc + uiRootSrc + controlPromptsSrc)) {
   console.log('FAIL flight HUD - dock/localmap/starmap labels must not hard-code visible key text');
   fail++;
 } else {

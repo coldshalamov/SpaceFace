@@ -62,6 +62,7 @@ const settingsSrc = read('src/ui/screens/settings.js');
 const uiRootSrc = read('src/ui/uiRoot.js');
 const uiInputSrc = read('src/ui/input.js');
 const helpSrc = read('src/ui/screens/help.js');
+const promptSrc = read('src/ui/controlPrompts.js');
 assert.match(settingsSrc, /Gamepad enabled/, 'Settings must expose a Gamepad enabled toggle');
 assert.match(settingsSrc, /Touch controls/, 'Settings must expose a Touch controls toggle');
 assert.doesNotMatch(settingsSrc, /rowToggle\('Touch controls'/, 'Touch controls must use a tri-state Auto/On/Off control, not the boolean toggle helper');
@@ -69,8 +70,12 @@ assert.match(settingsSrc, /touchModeLabel/, 'Touch controls must render Auto/On/
 assert.match(settingsSrc, /aria-pressed', mode === 'auto' \? 'mixed'/, 'Touch Auto state must use valid aria-pressed=mixed');
 assert.match(touchSrc, /should !== this\._enabledByAuto \|\| this\.active !== should/, 'Touch auto-detect must reconcile the current overlay when returning from manual On/Off');
 assert.match(touchSrc, /if \(on == null\) this\.autoDetect\(\);\s*else this\.setEnabled\(\!\!on\)/, 'Touch persistEnabled(null) must return to auto-detect immediately');
-assert.match(uiRootSrc, /RMB mine/, 'Keyboard flight hints must describe the mining control as mining, not sampling');
-assert.match(uiRootSrc, /LT mine/, 'Gamepad flight hints must advertise LT/L2 mining');
+assert.match(uiRootSrc, /controlPrompt\('flight', 'kbm'\)/, 'UI root must source keyboard flight hints from controlPrompts.js');
+assert.match(uiRootSrc, /controlPrompt\('flight', 'gamepad'\)/, 'UI root must source gamepad flight hints from controlPrompts.js');
+assert.match(promptSrc, /RMB mine/, 'Keyboard flight hints must describe the mining control as mining, not sampling');
+assert.match(promptSrc, /LT mine/, 'Gamepad flight hints must advertise LT/L2 mining');
+assert.match(promptSrc, /A dock/, 'Gamepad flight hints must advertise A/Cross docking');
+assert.match(promptSrc, /Mine button/, 'Touch flight hints must advertise the touch mining button');
 assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document gamepad mining');
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');
 assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)/,

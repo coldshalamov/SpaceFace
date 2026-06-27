@@ -22,7 +22,7 @@
 
 import { STORY_BEATS } from '../data/missions.js';
 import { BEAT_CONTENT } from '../data/narrative.js';
-import { BINDINGS } from '../ui/bindings.js';
+import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
@@ -32,11 +32,11 @@ const STYLE_ID = 'sf-onboarding-style';
 // Steps may complete out of order; the panel always shows the first incomplete one.
 const STEPS = [
   { key: 'claim', title: 'Reach the 47-A mass signal', target: 'asteroid', range: 420,
-    hint: 'Follow the yellow nav arrow to the bad reading. W / Up thrusts, A D / arrows steer, and the mouse aims.' },
+    hint: controlPrompt('tutorialFlight') },
   { key: 'mine', title: 'Verify the signal and live tools', target: 'asteroid', qty: 3,
-    hint: 'The Kestrel is armed: LMB or Space fires the Pulse Laser S. Hold RMB on the marked rock to sample the mass reading, then collect the drift.' },
+    hint: controlPrompt('tutorialMine') },
   { key: 'dock', title: 'Dock at Helios Station', target: 'station',
-    hint: `Follow the cyan station arrow. Press ${BINDINGS.dock.label} at the dock prompt. Bring the discrepancy back before someone edits it out.` },
+    hint: controlPrompt('tutorialDock') },
   { key: 'sell', title: 'Push the sample through the market',
     hint: 'In the Market tab, sell the recovered sample. Watch what the ledger calls ordinary cargo.' },
   { key: 'next', title: 'Choose who gets the next answer',
@@ -54,6 +54,8 @@ export const onboarding = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.gamepad = ctx.gamepad;
+    this.touch = ctx.touch;
     this._panel = null;
     this._intro = null;
     this._accum = 0;
@@ -98,7 +100,7 @@ export const onboarding = {
     bus.on('combat:damage', (p) => {
       if (!p || !p.isPlayer) return;
       this._showHint('firstCombat',
-        'Hostile detected! LMB or SPACE to fire. Hold aim on a target to lock on. F toggles auto-fire.');
+        controlPrompt('firstCombat', this._promptModality()));
     });
 
     // First shield break: triggered when shields drop to zero.
@@ -113,7 +115,7 @@ export const onboarding = {
       this._dockControlInRange = !!inRange;
       if (!inRange) return;
       this._showHint('firstStation',
-        `Stations offer repairs, trading, upgrades, and mission boards. Press ${BINDINGS.dock.label} to dock.`);
+        controlPrompt('firstStation', this._promptModality()));
     });
 
     // First jump gate approach: teach the player how gates work.
@@ -121,7 +123,7 @@ export const onboarding = {
       this._gateControlInRange = !!inRange;
       if (!inRange) return;
       this._showHint('firstGate',
-        `Jump gates connect star systems. Open the Star Map (${BINDINGS.starmap.label}) to plot a jump route.`);
+        controlPrompt('firstGate', this._promptModality()));
     });
 
     // First cargo full: teach the player to sell.
@@ -353,7 +355,7 @@ export const onboarding = {
       if (this._firstFlightTimer > 3.0) {
         this._firstFlightPending = false;
         this._showHint('firstFlight',
-          `W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE fires the Pulse Laser S, RMB samples the mass reading, SHIFT boosts, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} opens the star map, ${BINDINGS.dock.label} docks.`);
+          controlPrompt('firstFlight', this._promptModality()));
       }
     }
 
@@ -418,22 +420,21 @@ export const onboarding = {
       else if (this._gateControlInRange) mode = 'gate';
     }
 
-    if (mode === this._lastControlMode) return;
-    this._lastControlMode = mode;
+    const modality = this._promptModality();
+    const controlSig = `${modality}:${mode}`;
+    if (controlSig === this._lastControlMode) return;
+    this._lastControlMode = controlSig;
 
-    const HINTS = {
-      flight:  `W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space Pulse Laser  •  RMB mass sample  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map`,
-      mining:  'RMB hold to sample  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
-      combat:  'LMB/Space Pulse Laser  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
-      station: `${BINDINGS.dock.label} dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts`,
-      gate:    `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
-    };
-    el.textContent = HINTS[mode] || HINTS.flight;
+    el.textContent = controlPrompt(mode, modality);
     // Flash the bar for 3.5s on context change so the player sees the relevant hint, then it fades.
     // Skips flash on the generic 'flight' mode restore so returning from combat doesn't re-surface it.
     if (mode !== 'flight' && typeof window._sfShowHints === 'function') {
       window._sfShowHints(3500);
     }
+  },
+
+  _promptModality() {
+    return currentPromptModality({ gamepad: this.gamepad, touch: this.touch });
   },
 
   _completeClaimIfNear(step) {

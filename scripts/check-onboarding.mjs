@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const src = readFileSync(join(ROOT, 'src/systems/onboarding.js'), 'utf8');
+const promptSrc = readFileSync(join(ROOT, 'src/ui/controlPrompts.js'), 'utf8');
+const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
 const wfRest = readFileSync(join(ROOT, 'scripts/wf-rest.js'), 'utf8');
 
 // Each un-onboarded system → the event that fires on first interaction + the hint key that should
@@ -56,18 +58,25 @@ assert.match(src, /sig === this\._storySig/, 'story objective refresh should ski
 // The default dock binding is E, with Enter accepted only as a secondary convenience in input.js.
 // New-player copy must use the live binding label so the first dock objective, first-station hint,
 // control bar, alert prompt, help screen, and key handler do not contradict each other.
-const dockBindingMentions = src.match(/BINDINGS\.dock\.label/g) || [];
+assert.match(src, /controlPrompt/, 'onboarding.js should source control copy from src/ui/controlPrompts.js');
+assert.match(src, /currentPromptModality/, 'onboarding.js should resolve keyboard/gamepad/touch prompt modality live');
+assert.match(promptSrc, /export const CONTROL_PROMPTS/, 'controlPrompts.js must export the shared prompt catalog');
+assert.match(promptSrc, /export function controlPrompt/, 'controlPrompts.js must export the prompt resolver');
+assert.match(promptSrc, /export function currentPromptModality/, 'controlPrompts.js must export the modality resolver');
+const dockBindingMentions = promptSrc.match(/BINDINGS\.dock\.label/g) || [];
 assert.ok(dockBindingMentions.length >= 4,
-  'onboarding.js should source dock tutorial/control copy from BINDINGS.dock.label');
-const localMapBindingMentions = src.match(/BINDINGS\.localmap\.label/g) || [];
-const starMapBindingMentions = src.match(/BINDINGS\.starmap\.label/g) || [];
+  'controlPrompts.js should source dock tutorial/control copy from BINDINGS.dock.label');
+const localMapBindingMentions = promptSrc.match(/BINDINGS\.localmap\.label/g) || [];
+const starMapBindingMentions = promptSrc.match(/BINDINGS\.starmap\.label/g) || [];
 assert.ok(localMapBindingMentions.length >= 2,
-  'onboarding.js should source local-map tutorial/control copy from BINDINGS.localmap.label');
+  'controlPrompts.js should source local-map tutorial/control copy from BINDINGS.localmap.label');
 assert.ok(starMapBindingMentions.length >= 3,
-  'onboarding.js should source star-map tutorial/control copy from BINDINGS.starmap.label');
+  'controlPrompts.js should source star-map tutorial/control copy from BINDINGS.starmap.label');
 for (const staleDockCopy of [/Press Enter at the dock prompt/, /Press ENTER to dock/, /Enter to dock/]) {
   assert.doesNotMatch(src, staleDockCopy,
     `onboarding.js must not use stale hard-coded dock copy: ${staleDockCopy}`);
+  assert.doesNotMatch(readme, staleDockCopy,
+    `README.md must not teach stale dock copy: ${staleDockCopy}`);
   assert.doesNotMatch(wfRest, staleDockCopy,
     `wf-rest.js must not teach future agents stale dock copy: ${staleDockCopy}`);
 }
@@ -77,5 +86,14 @@ for (const staleMapCopy of [/Star Map \(M\)/, /N local map/, /M star map/, /M op
   assert.doesNotMatch(src, staleMapCopy,
     `onboarding.js must not use stale hard-coded map copy: ${staleMapCopy}`);
 }
+for (const staleControlCopy of [/RMB samples/, /RMB sample/, /RMB mass sample/, /RMB hold to sample/, /LMB\/SPACE/, /LMB\/Space Pulse Laser/]) {
+  assert.doesNotMatch(src, staleControlCopy,
+    `onboarding.js must not use stale hard-coded control copy: ${staleControlCopy}`);
+}
+assert.match(promptSrc, /RMB mine/, 'controlPrompts.js must advertise RMB mining for keyboard/mouse');
+assert.match(promptSrc, /LT mine/, 'controlPrompts.js must advertise LT mining for gamepad');
+assert.match(promptSrc, /A dock/, 'controlPrompts.js must advertise gamepad docking');
+assert.match(promptSrc, /Mine button/, 'controlPrompts.js must include touch mining copy');
+assert.match(readme, /\|\s*Dock\s*\|\s*\*\*E\*\*/, 'README controls must document E as the primary dock key');
 
 console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft).`);

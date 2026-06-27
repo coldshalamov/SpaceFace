@@ -14,7 +14,7 @@ import { createScreenManager } from './screenManager.js';
 import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
-import { BINDINGS } from './bindings.js';
+import { controlPrompt } from './controlPrompts.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -114,8 +114,8 @@ export const ui = {
     // Always-visible (when in flight) control hints. The default text below is the open-flight set;
     // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
     // hints based on the player's current activity (mining, combat, near station, near gate).
-    const HINTS_KBM = `W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  I cargo  •  L comms`;
-    const HINTS_PAD = 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine  •  RB boost  •  LB brake  •  A dock  •  X target  •  View star map  •  Start pause';
+    const HINTS_KBM = controlPrompt('flight', 'kbm');
+    const HINTS_PAD = controlPrompt('flight', 'gamepad');
     const hints = document.createElement('div');
     hints.id = 'control-hints';
     hints.textContent = HINTS_KBM;
