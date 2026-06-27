@@ -76,6 +76,94 @@ function tabPurpose(tabId) {
   return (tab && tab.help) || 'Pick a station action, then undock with a clearer next objective.';
 }
 
+function clamp01(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback == null ? 0 : fallback;
+  return Math.max(0, Math.min(1, n));
+}
+
+function fmtPercent(frac) {
+  return Math.round(clamp01(frac, 0) * 100) + '%';
+}
+
+function fmtDepartUnits(value) {
+  if (!Number.isFinite(value)) return '0';
+  return (Math.round(value * 10) / 10).toLocaleString('en-US');
+}
+
+function clipDepartureText(text) {
+  const raw = String(text || '').replace(/\s+/g, ' ').trim();
+  return raw.length > 42 ? raw.slice(0, 39) + '...' : raw;
+}
+
+function playerEntity(state) {
+  return state && state.entities && state.entities.get && state.playerId != null
+    ? state.entities.get(state.playerId)
+    : null;
+}
+
+function missionId(m) {
+  return m && (m.id != null ? m.id : m.missionId);
+}
+
+function departureMissionChip(state) {
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  const tracked = trackedId ? active.find((m) => missionId(m) === trackedId) : null;
+  if (tracked) {
+    return {
+      kind: 'ok',
+      label: 'Track',
+      text: clipDepartureText(tracked.title || prettyType(tracked.type)),
+    };
+  }
+  const waypoint = state && state.nav && state.nav.waypoint;
+  if (waypoint) {
+    const label = waypoint.label || waypoint.reason || waypoint.stationName || waypoint.stationId || waypoint.sectorId || 'Nav guidance set';
+    return { kind: 'info', label: 'Nav', text: clipDepartureText(label) };
+  }
+  return { kind: 'warn', label: 'Track', text: 'No tracked job' };
+}
+
+function departureCargoChip(state) {
+  const cargo = state && state.player && state.player.cargo || {};
+  const cap = Number(cargo.capVolume);
+  const used = Number(cargo.usedVolume);
+  if (!(cap > 0)) return { kind: 'bad', label: 'Hold', text: 'No cargo data' };
+  const safeUsed = Number.isFinite(used) ? Math.max(0, used) : 0;
+  const free = Math.max(0, cap - safeUsed);
+  const freeFrac = free / cap;
+  const kind = free <= 0.1 ? 'bad' : (freeFrac < 0.18 ? 'warn' : 'ok');
+  return { kind, label: 'Hold', text: fmtDepartUnits(free) + 'u free' };
+}
+
+function departureFuelChip(state) {
+  const fuel = state && state.fuel || {};
+  const current = Number(fuel.current);
+  const max = Number(fuel.max);
+  if (!(max > 0)) return { kind: 'warn', label: 'Fuel', text: 'Unknown' };
+  const frac = clamp01(current / max, 0);
+  const kind = frac < 0.25 ? 'bad' : (frac < 0.45 ? 'warn' : 'ok');
+  return { kind, label: 'Fuel', text: fmtPercent(frac) };
+}
+
+function departureHullChip(state) {
+  const ship = playerEntity(state);
+  if (!ship || !(ship.hullMax > 0)) return { kind: 'warn', label: 'Hull', text: 'Unknown' };
+  const frac = clamp01((ship.hull || 0) / ship.hullMax, 0);
+  const kind = frac < 0.35 ? 'bad' : (frac < 0.7 ? 'warn' : 'ok');
+  return { kind, label: 'Hull', text: fmtPercent(frac) };
+}
+
+function departureReadinessChips(state) {
+  return [
+    departureMissionChip(state),
+    departureCargoChip(state),
+    departureFuelChip(state),
+    departureHullChip(state),
+  ];
+}
+
 let cssInjected = false;
 function injectCss() {
   if (cssInjected || typeof document === 'undefined') return;
@@ -128,6 +216,14 @@ export const stationHub = {
       '<div class="st-purpose-sub"><span class="st-purpose-tab"></span><span class="st-purpose-services"></span></div>';
     screen.appendChild(purpose);
     this._purposeEl = purpose;
+
+    const departure = document.createElement('div');
+    departure.className = 'st-departure';
+    departure.innerHTML =
+      '<div class="st-departure-label mono">Departure Check</div>' +
+      '<div class="st-departure-chips"></div>';
+    screen.appendChild(departure);
+    this._departureEl = departure.querySelector('.st-departure-chips');
 
     // body: rail + content
     const body = document.createElement('div');
@@ -369,6 +465,17 @@ export const stationHub = {
     if (servicesEl) servicesEl.textContent = stationServiceSummary(stn);
   },
 
+  _refreshDeparture() {
+    if (!this._departureEl) return;
+    const chips = departureReadinessChips(this._ctx && this._ctx.state);
+    this._departureEl.innerHTML = chips.map((chip) =>
+      '<span class="st-departure-chip st-departure-chip--' + chip.kind + '">' +
+        '<b>' + escapeHtml(chip.label) + '</b>' +
+        '<span>' + escapeHtml(chip.text) + '</span>' +
+      '</span>'
+    ).join('');
+  },
+
   /** Called by screenManager when this screen becomes the top of the stack. */
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
@@ -376,6 +483,7 @@ export const stationHub = {
     this._refreshTopbar();
     this._refreshGraffiti();
     this._refreshPurpose();
+    this._refreshDeparture();
     // restore the last active tab (or default 'market')
     const tab = this._activePanelId();
     this.setTab(tab); // also refreshes the active panel via onShow
@@ -395,6 +503,7 @@ export const stationHub = {
     this._refreshTopbar();
     this._refreshGraffiti();
     this._refreshPurpose();
+    this._refreshDeparture();
     this._refreshActive(false);
   },
 
@@ -432,13 +541,17 @@ export const stationHub = {
       const id = this._activePanelId();
       if (!wantTab || wantTab.includes(id)) this._refreshActive(false);
     };
+    const refreshDeparture = () => { if (this._visible()) this._refreshDeparture(); };
     // market-affecting
     bus.on('economy:tradeCompleted', onActive(['market', 'services']));
     bus.on('economy:tick', onActive(['market']));
     bus.on('cargo:changed', onActive(['market', 'outfit', 'services']));
+    bus.on('cargo:changed', refreshDeparture);
     bus.on('credits:changed', onActive(['market', 'shipyard', 'outfit', 'services']));
+    bus.on('credits:changed', refreshDeparture);
     // ship/outfitting-affecting
     bus.on('ship:statsChanged', onActive(['outfit', 'shipyard', 'services']));
+    bus.on('ship:statsChanged', refreshDeparture);
     bus.on('ship:purchased', onActive(['shipyard', 'outfit']));
     bus.on('ship:sold', onActive(['shipyard', 'outfit']));
     bus.on('module:equipped', onActive(['outfit']));
@@ -447,11 +560,23 @@ export const stationHub = {
     bus.on('tech:researched', onActive(['shipyard', 'outfit']));
     // services-affecting
     bus.on('fuel:changed', onActive(['services']));
+    bus.on('fuel:changed', refreshDeparture);
     // factions
     bus.on('faction:repChanged', onActive(['factions']));
     // missions
-    bus.on('mission:updated', () => { if (this._visible() && this._activePanelId() === 'missions') this._refreshMissions(); });
-    bus.on('mission:accepted', () => { if (this._visible() && this._activePanelId() === 'missions') this._refreshMissions(); });
+    bus.on('mission:updated', () => {
+      if (!this._visible()) return;
+      if (this._activePanelId() === 'missions') this._refreshMissions();
+      this._refreshDeparture();
+    });
+    bus.on('mission:accepted', () => {
+      if (!this._visible()) return;
+      if (this._activePanelId() === 'missions') this._refreshMissions();
+      this._refreshDeparture();
+    });
+    bus.on('mission:completed', refreshDeparture);
+    bus.on('mission:failed', refreshDeparture);
+    bus.on('mission:expired', refreshDeparture);
     bus.on('economy:eventStarted', onActive(['market']));
     bus.on('economy:eventEnded', onActive(['market']));
   },
@@ -629,6 +754,19 @@ const STATION_CSS = `
 .st-purpose-sub { display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--ink-mute); font-size: .72rem; line-height: 1.35; }
 .st-purpose-tab { color: var(--ink-dim); }
 .st-undock:hover { background: var(--grad-accent); color: #04121a; box-shadow: 0 0 16px rgba(57,208,255,.4); }
+.st-departure { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 7px 20px;
+  border-bottom: 1px solid var(--panel-edge); background: rgba(4,9,18,.58); }
+.st-departure-label { flex: none; color: var(--ink-mute); font-size: .62rem; text-transform: uppercase; }
+.st-departure-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.st-departure-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; max-width: 230px;
+  padding: 2px 8px; border: 1px solid var(--panel-edge); border-radius: 4px; background: rgba(10,18,32,.46);
+  color: var(--ink-dim); font-size: .72rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-departure-chip b { color: var(--ink-mute); font-weight: 600; text-transform: uppercase; }
+.st-departure-chip span { overflow: hidden; text-overflow: ellipsis; }
+.st-departure-chip--ok { color: var(--good); border-color: rgba(98,224,138,.34); }
+.st-departure-chip--warn { color: var(--warn); border-color: rgba(255,198,77,.34); }
+.st-departure-chip--bad { color: var(--danger); border-color: rgba(255,84,112,.34); }
+.st-departure-chip--info { color: var(--accent); border-color: rgba(57,208,255,.28); }
 .st-body { display: flex; flex: 1; min-height: 0; }
 .st-rail { width: 176px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-3) var(--sp-2);
   border-right: 1px solid var(--panel-edge); background: rgba(6,10,20,.55); }

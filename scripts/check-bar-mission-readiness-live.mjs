@@ -41,6 +41,13 @@ try {
   await page.evaluate(() => {
     const sf = window.SF;
     sf.state.player.credits = 100;
+    sf.state.ui.trackedMissionId = 'departure_probe';
+    sf.state.missions.active = [{
+      id: 'departure_probe',
+      status: 'active',
+      type: 'cargo_delivery',
+      title: 'Probe Delivery',
+    }].concat(sf.state.missions.active || []);
     sf.state.missions.boards.station_coalition = {
       refreshEpoch: 0,
       slots: [{
@@ -63,20 +70,49 @@ try {
   });
   await waitForVisible(page, '.st-bar', 10000, 'station bar');
 
-  const clickedBounty = await page.evaluate(() => {
-    const visible = (el) => {
-      const cs = getComputedStyle(el);
-      const r = el.getBoundingClientRect();
-      return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 1 && r.height > 1;
+  const departureReport = await page.evaluate(() => {
+    const strip = document.querySelector('.st-departure');
+    const chips = [...document.querySelectorAll('.st-departure-chip')].map((chip) => ({
+      label: (chip.querySelector('b') && chip.querySelector('b').textContent || '').trim(),
+      text: (chip.querySelector('span') && chip.querySelector('span').textContent || '').trim(),
+      className: chip.className,
+    }));
+    return {
+      visible: !!strip && getComputedStyle(strip).display !== 'none',
+      label: (document.querySelector('.st-departure-label') && document.querySelector('.st-departure-label').textContent || '').trim(),
+      chips,
     };
-    const btn = [...document.querySelectorAll('.st-bar-card button[data-choice]')]
-      .find((b) => visible(b) && /bounties worth chasing/i.test(b.textContent || ''));
-    if (!btn) return false;
-    btn.click();
-    return true;
   });
-  assert.equal(clickedBounty, true, 'Rook bounty choice should be reachable in the Bar');
-  await page.waitForSelector('.st-bar-offer .st-mission-preflight-chip', { timeout: 5000 });
+  assert.equal(departureReport.visible, true, 'station should render the Departure Check strip');
+  assert.equal(departureReport.label, 'Departure Check', 'departure strip should be labeled for pre-undock trust');
+  for (const label of ['Track', 'Hold', 'Fuel', 'Hull']) {
+    assert(departureReport.chips.some((chip) => chip.label === label),
+      `departure strip missing ${label} chip: ${JSON.stringify(departureReport)}`);
+  }
+  assert(departureReport.chips.some((chip) => chip.label === 'Track' && /Probe Delivery/.test(chip.text)),
+    'departure strip should show the tracked mission title: ' + JSON.stringify(departureReport));
+
+  const bountyButton = page.getByRole('button', { name: 'Any bounties worth chasing?' });
+  assert.equal(await bountyButton.count(), 1, 'Rook bounty choice should be reachable in the Bar');
+  await bountyButton.click();
+  await page.waitForFunction(() => !!document.querySelector('.st-bar-offer .st-mission-preflight-chip'), null, {
+    timeout: 5000,
+  }).catch(async (err) => {
+    const debug = await page.evaluate(() => ({
+      activeTab: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.activeStationTab,
+      dockedStationId: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.dockedStationId,
+      boardSlots: window.SF && window.SF.state && window.SF.state.missions
+        && window.SF.state.missions.boards.station_coalition
+        && window.SF.state.missions.boards.station_coalition.slots
+        && window.SF.state.missions.boards.station_coalition.slots.map((slot) => ({ id: slot.id, type: slot.type, title: slot.title })),
+      barText: (document.querySelector('.st-bar') && document.querySelector('.st-bar').textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 1200),
+      offerCount: document.querySelectorAll('.st-bar-offer').length,
+    }));
+    throw new Error('Timed out waiting for Bar offer chips: ' + err.message + ' ' + JSON.stringify(debug));
+  });
 
   const report = await page.evaluate(() => {
     const offer = document.querySelector('.st-bar-offer');
