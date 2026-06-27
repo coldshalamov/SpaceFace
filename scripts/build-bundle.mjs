@@ -169,4 +169,4 @@ async function buildBundledHtml() {
     .replace('<script type="module" src="./src/main.js"></script>', '<script type="module" src="./main.js"></script>');
 }
 
-build().catch((err) => { console.error('[bundle] FAILED', err); process.exit(1); });
+build().catch((err) => { console.error('[bundle] FAILED:', err); process.exit(1); });
