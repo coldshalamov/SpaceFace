@@ -17,6 +17,7 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 const menu = read('src/ui/screens/mainMenu.js');
 const save = read('src/save/saveSystem.js');
 const saveLoad = read('src/ui/screens/saveLoad.js');
+const uiRoot = read('src/ui/uiRoot.js');
 
 // Main menu: Continue must be informative, not a blind button.
 assert.match(menu, /sf-menu-save-summary/, 'mainMenu must render a latest-save summary beside Continue');
@@ -40,6 +41,8 @@ assert.match(save, /idx\[slot\]\s*=\s*\{[\s\S]*sectorName[\s\S]*shipName[\s\S]*v
 assert.match(save, /this\.bus\.emit\('save:completed'/, 'save system must emit save:completed for UI confidence feedback');
 assert.match(save, /this\.bus\.emit\('save:error'/, 'save system must emit save:error for failed saves/loads');
 assert.match(save, /this\.bus\.emit\('save:loaded'/, 'save system must emit save:loaded after restore');
+assert.doesNotMatch(save, /Start or load a game before saving/,
+  'save system should leave no-player save feedback to uiRoot save-event listeners');
 
 // Save/Load remains the fuller slot inspector. Main menu and Save/Load must share the same source
 // of truth instead of inventing separate storage schemes.
@@ -73,5 +76,16 @@ assert.deepEqual(slotBadges('quick', { savedAt: '2026-06-27T12:00:00Z', version:
   'current occupied slot should get current and version badges');
 assert.deepEqual(slotBadges('auto', { savedAt: '2026-06-27T12:00:00Z', version: 5 }, 'quick', 'auto'), ['Latest', 'v5'],
   'latest non-current occupied slot should get latest and version badges');
+
+// UI save feedback: F5/F9/autosave and Save/Load screen actions all converge through save events.
+assert.match(uiRoot, /function wireSaveFeedback\(bus\)/, 'uiRoot must centralize save/load feedback');
+for (const eventName of ['save:started', 'save:completed', 'save:loaded', 'save:error']) {
+  assert.match(uiRoot, new RegExp(`bus\\.on\\('${eventName}'`), `uiRoot must listen for ${eventName}`);
+}
+assert.match(uiRoot, /function saveErrorText\(payload = \{\}\)/, 'uiRoot must translate save error reasons into player copy');
+assert.match(uiRoot, /Autosaved/, 'uiRoot should show a short autosave completion toast');
+assert.match(uiRoot, /Start or load a game before saving/, 'uiRoot should explain no-player save failures');
+assert.match(uiRoot, /No save found for /, 'uiRoot should explain load misses');
+assert.doesNotMatch(saveLoad, /Saving to /, 'saveLoad should not duplicate the centralized save:started toast');
 
 console.log('Save/resume confidence OK - title Continue shows latest-save context and uses the canonical save index.');

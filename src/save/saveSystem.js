@@ -203,7 +203,6 @@ export const save = {
     slot = slot || 'quick';
     if (!this._hasPlayerEntity()) {
       this.bus.emit('save:error', { slot, reason: 'no_player' });
-      this.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
       return false;
     }
     this.bus.emit('save:started', { slot });

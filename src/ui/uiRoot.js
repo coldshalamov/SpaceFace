@@ -71,6 +71,68 @@ const SCREEN_MODULES = [
 
 const HUD_STYLE_ID = 'sf-hud-style';
 
+function saveSlotLabel(slot) {
+  const id = slot || 'quick';
+  if (id === 'auto' || id === 'autosave') return 'Autosave';
+  if (id === 'latest') return 'latest save';
+  if (id === 'quick') return 'Quick';
+  return 'Slot ' + id;
+}
+
+function saveErrorText(payload = {}) {
+  const slot = saveSlotLabel(payload.slot);
+  switch (payload.reason) {
+    case 'no_player': return 'Start or load a game before saving';
+    case 'no_save': return 'No save found for ' + slot;
+    case 'read_failed': return 'Could not read ' + slot;
+    case 'parse_failed':
+    case 'bad_format':
+    case 'no_data':
+    case 'checksum':
+      return slot + ' is corrupt or not a SpaceFace save';
+    case 'newer_version': return slot + ' requires a newer game version';
+    case 'migration_failed': return 'Could not upgrade ' + slot;
+    case 'invalid_player': return slot + ' has no playable ship';
+    case 'serialize_failed':
+    case 'stringify_failed':
+      return 'Could not prepare ' + slot + ' for saving';
+    case 'no_storage': return 'Browser storage is unavailable';
+    case 'quota':
+    case 'write_failed':
+      return 'Save storage is full; export a backup';
+    case 'export_failed': return 'Export failed for ' + slot;
+    case 'visual_gate_failed': return 'Loaded ' + slot + ', but visuals did not finish';
+    case 'load_failed':
+    default:
+      return 'Save/load failed for ' + slot;
+  }
+}
+
+function wireSaveFeedback(bus) {
+  if (!bus || !bus.on) return;
+  bus.on('save:started', ({ slot } = {}) => {
+    if (slot === 'auto' || slot === 'autosave') return;
+    bus.emit('toast', { text: 'Saving ' + saveSlotLabel(slot), kind: 'info', ttl: 1600 });
+  });
+  bus.on('save:completed', ({ slot } = {}) => {
+    bus.emit('toast', {
+      text: (slot === 'auto' || slot === 'autosave') ? 'Autosaved' : 'Saved ' + saveSlotLabel(slot),
+      kind: 'good',
+      ttl: (slot === 'auto' || slot === 'autosave') ? 1400 : 2200,
+    });
+  });
+  bus.on('save:loaded', ({ slot, visualGatePending } = {}) => {
+    bus.emit('toast', {
+      text: (visualGatePending ? 'Restoring ' : 'Loaded ') + saveSlotLabel(slot),
+      kind: visualGatePending ? 'info' : 'good',
+      ttl: visualGatePending ? 2200 : 2400,
+    });
+  });
+  bus.on('save:error', (payload = {}) => {
+    bus.emit('toast', { text: saveErrorText(payload), kind: 'warn', ttl: 3200 });
+  });
+}
+
 export const ui = {
   name: 'ui',
 
@@ -88,6 +150,7 @@ export const ui = {
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
     this.alerts = createAlerts(ctx);
+    wireSaveFeedback(this.bus);
 
     // comms / graffiti / endgame narrative overlay (story system drives it via events)
     this.comms = createComms(ctx);

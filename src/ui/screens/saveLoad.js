@@ -283,7 +283,6 @@ export const saveLoadScreen = {
         }
         refs.selected = id;
         ctx.bus.emit('game:save', { slot: id });
-        ctx.bus.emit('toast', { text: 'Saving to ' + slotLabel(id), kind: 'info', ttl: 2500 });
         setTimeout(() => this._render(ctx), 120);
       });
       const bLoad = el('button', 'sf-tab', 'Load'); bLoad.style.minWidth = '64px';
