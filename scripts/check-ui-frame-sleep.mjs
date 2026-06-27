@@ -186,6 +186,10 @@ function checkModalChromeAvoidsFrameDomQueries() {
   const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
   const comms = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
   assert.ok(comms.includes('isModalOpen'), 'comms should expose modal state without forcing uiRoot DOM queries');
+  assert.match(comms, /document\.addEventListener\('keydown',\s*onBacklogKeydown,\s*true\)/, 'comms backlog should capture Escape before the global pause router');
+  assert.match(comms, /ev\.key !== 'Escape'/, 'comms backlog Escape handler should be scoped to Escape');
+  assert.match(comms, /ev\.stopPropagation\(\)/, 'comms backlog Escape handler should stop Escape from opening Pause');
+  assert.doesNotMatch(comms, /'C' (?:key|backlog)|toggle with 'C'|route the 'C' key/i, 'comms backlog docs should reference the live L binding, not stale C copy');
   assert.ok(uiRoot.includes('this.comms.isModalOpen'), 'uiRoot frame should consume comms modal state directly');
   assert.ok(!uiRoot.includes("document.querySelector('.sf-endgame--c.open')"), 'uiRoot frame should not query endgame modal DOM state');
   assert.ok(uiRoot.includes('_modalBackdropEl'), 'uiRoot should cache the shared modal backdrop element');

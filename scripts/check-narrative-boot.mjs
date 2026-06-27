@@ -8,6 +8,7 @@
 // Exits non-zero on any console error or failed assertion.
 import { fileURLToPath } from 'node:url';
 
+import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -16,50 +17,54 @@ const base = process.env.SF_PROBE_URL || 'http://localhost:8123';
 const { chromium } = await loadPlaywright();
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-const errors = [];
 const logs = [];
+const pageIssues = collectPageIssues(page);
 page.on('console', (m) => {
-  const t = m.type(); const txt = m.text();
-  logs.push(`[${t}] ${txt}`);
-  if (t === 'error') errors.push(txt);
+  logs.push(`[${m.type()}] ${m.text()}`);
 });
-page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
 
 const fail = (msg) => { console.error('FAIL:', msg); process.exitCode = 1; };
 
 await page.goto(base, { waitUntil: 'load', timeout: 30000 });
 await page.keyboard.press('Escape').catch(() => {});
 await page.waitForTimeout(1500);
+await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.registry, null, { timeout: 15000 });
 
 // 1. Boot + new game.
-const boot = await page.evaluate(async () => {
-  try {
-    const sf = window.SF;
-    if (!sf) return { ok: false, reason: 'NO_SF_HANDLE' };
-    sf.bus.emit('game:new', { name: 'Test', difficulty: 'standard' });
-    await new Promise((r) => setTimeout(r, 900));
-    return {
-      ok: true,
-      mode: sf.state.mode,
-      hasStorySys: !!sf.registry.get('story'),
-      systems: sf.registry.systems.map((s) => s.name),
-      storyKeys: Object.keys(sf.state.story || {}).sort(),
-      storyPhase: sf.state.story && sf.state.story.phase,
-      dom: {
-        comms: !!document.getElementById('sf-comms'),
-        bulkhead: !!document.getElementById('sf-bulkhead'),
-        stableLoad: !!document.getElementById('sf-stableload'),
-        tagFlicker: !!document.getElementById('sf-tagflicker'),
-        hudphase: !!document.getElementById('sf-hudphase'),
-        endgame: !!document.getElementById('sf-endgame'),
-        backlogBtn: !!document.getElementById('sf-comm-backlog-btn'),
-      },
-    };
-  } catch (e) { return { ok: false, reason: 'EVAL_ERR: ' + e.message }; }
+await page.evaluate(() => {
+  window.SF.bus.emit('game:new', { name: 'Test', difficulty: 'standard' });
+});
+await page.waitForFunction(
+  () => window.SF && window.SF.state && window.SF.state.mode === 'flight' && window.SF.state.playerId,
+  null,
+  { timeout: 70000 },
+);
+await page.waitForTimeout(500);
+const boot = await page.evaluate(() => {
+  const sf = window.SF;
+  return {
+    ok: true,
+    mode: sf.state.mode,
+    playerId: sf.state.playerId,
+    hasStorySys: !!sf.registry.get('story'),
+    systems: sf.registry.systems.map((s) => s.name),
+    storyKeys: Object.keys(sf.state.story || {}).sort(),
+    storyPhase: sf.state.story && sf.state.story.phase,
+    dom: {
+      comms: !!document.getElementById('sf-comms'),
+      bulkhead: !!document.getElementById('sf-bulkhead'),
+      stableLoad: !!document.getElementById('sf-stableload'),
+      tagFlicker: !!document.getElementById('sf-tagflicker'),
+      hudphase: !!document.getElementById('sf-hudphase'),
+      endgame: !!document.getElementById('sf-endgame'),
+      backlogBtn: !!document.getElementById('sf-comm-backlog-btn'),
+    },
+  };
 });
 console.log('=== BOOT ==='); console.log(JSON.stringify(boot, null, 2));
 
-if (!boot.ok) fail('boot failed: ' + boot.reason);
+if (!boot.ok) fail('boot failed');
+if (boot.mode !== 'flight') fail('new game did not reach flight mode');
 if (boot.hasStorySys === false) fail('story system not registered');
 // assertion keys use the ACTUAL camelCase state.story field names
 const wantStoryKeys = ['ambientQueue','ambientTimerS','endgameChoice','endgameOffered','graffitiShown','phase','seenComms'];
@@ -118,7 +123,7 @@ if (endgame.err) fail('endgame test errored: ' + endgame.err);
 if (!endgame.open) fail('endgame modal did not open');
 if (!(endgame.cards > 0)) fail('endgame modal rendered no choice cards');
 
-// 5. The 'L' key opens the comms backlog.
+// 5. The 'L' UI intent opens the comms backlog, and Escape closes it before Pause can open.
 const lkey = await page.evaluate(async () => {
   window.SF.bus.emit('ui:toggleComms');
   await new Promise((r) => setTimeout(r, 150));
@@ -128,8 +133,23 @@ const lkey = await page.evaluate(async () => {
 console.log('=== L KEY OPENS BACKLOG ===', lkey);
 if (!lkey) fail('L key did not open the comms backlog');
 
+await page.keyboard.press('Escape');
+await page.waitForTimeout(150);
+const escClose = await page.evaluate(() => {
+  const el = document.getElementById('sf-comm-backlog');
+  const stack = window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.screenStack;
+  return {
+    backlogOpen: !!(el && el.classList.contains('open')),
+    topScreen: Array.isArray(stack) ? (stack[stack.length - 1] || null) : null,
+  };
+});
+console.log('=== ESC CLOSES BACKLOG ==='); console.log(JSON.stringify(escClose, null, 2));
+if (escClose.backlogOpen) fail('Escape did not close the comms backlog');
+if (escClose.topScreen === 'pause') fail('Escape opened Pause instead of closing the comms backlog');
+
+const errors = pageIssues.errorIssues();
 console.log('=== CONSOLE ERRORS (' + errors.length + ') ===');
-for (const e of errors.slice(0, 25)) console.log('  ERR:', e);
+for (const e of summarizeIssues(errors)) console.log('  ERR:', JSON.stringify(e));
 
 await browser.close();
 if (errors.length > 0) { console.error('FAIL: ' + errors.length + ' console errors during boot'); process.exitCode = 1; }

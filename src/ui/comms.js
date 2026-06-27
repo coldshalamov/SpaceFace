@@ -4,7 +4,7 @@
 //
 //   1. COMMS LOG  — listens to `comms:popup`. A left-edge feed of channel noise. Most lines are
 //                   ambient (not for the player). The ones that ARE for the player don't name them.
-//                   Mirrors the alerts.js pattern (queue, raise, fade). Closable entries; a 'C' key
+//                   Mirrors the alerts.js pattern (queue, raise, fade). Closable entries; an 'L' key
 //                   opens a scrollable backlog so the player can re-read what they missed.
 //   2. GRAFFITI   — listens to `graffiti:show{ line, where }`. 'bulkhead' = a line that appears on
 //                   the player's own HUD (their ship's interior). airlock/shipyard/etc. = lines the
@@ -27,7 +27,7 @@ const CATEGORY_STYLE = {
 };
 
 const MAX_LIVE = 4;          // max simultaneous live comms entries on the feed
-const MAX_BACKLOG = 80;      // retained history for the 'C' backlog view
+const MAX_BACKLOG = 80;      // retained history for the 'L' backlog view
 const SCENARIO_DIALOGUE_TTL = 18; // authored mission comms need to survive cold-open/load stalls.
 
 export function branchLifecycleCommsPayload(payload) {
@@ -165,7 +165,7 @@ export function createComms(ctx) {
     if (comms) pushComms(comms);
   });
 
-  // ── 2. Backlog view (toggle with 'C') ────────────────────────────────────────────────────
+  // ── 2. Backlog view (toggle with 'L') ────────────────────────────────────────────────────
   const backlogBtn = document.createElement('button');
   backlogBtn.className = 'sf-comm-backlog-btn';
   backlogBtn.id = 'sf-comm-backlog-btn';
@@ -228,9 +228,17 @@ export function createComms(ctx) {
 
   backlogBtn.addEventListener('click', toggleBacklog);
   backlogView.querySelector('.sf-comm-backlog__close').addEventListener('click', closeBacklog);
-  // route the 'C' key + close-on-ESC through the UI input bus
+  function onBacklogKeydown(ev) {
+    if (!backlogOpen || ev.key !== 'Escape') return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    closeBacklog();
+  }
+
+  // Route the L key through the UI input bus; capture ESC before the global pause router.
   bus.on('ui:toggleComms', toggleBacklog);
   bus.on('ui:closeComms', closeBacklog);
+  document.addEventListener('keydown', onBacklogKeydown, true);
 
   // ── 3. Bulkhead graffiti (player's own ship interior — shown on the HUD) ─────────────────
   // Appended to #ui-root (NOT #hud): createHud() does `root.innerHTML = ''` on #hud which would
