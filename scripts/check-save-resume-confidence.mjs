@@ -18,6 +18,8 @@ const menu = read('src/ui/screens/mainMenu.js');
 const save = read('src/save/saveSystem.js');
 const saveLoad = read('src/ui/screens/saveLoad.js');
 const uiRoot = read('src/ui/uiRoot.js');
+const core = read('src/core/coreSystem.js');
+const navPersistence = read('src/systems/navPersistence.js');
 
 // Main menu: Continue must be informative, not a blind button.
 assert.match(menu, /sf-menu-save-summary/, 'mainMenu must render a latest-save summary beside Continue');
@@ -43,6 +45,15 @@ assert.match(save, /this\.bus\.emit\('save:error'/, 'save system must emit save:
 assert.match(save, /this\.bus\.emit\('save:loaded'/, 'save system must emit save:loaded after restore');
 assert.doesNotMatch(save, /Start or load a game before saving/,
   'save system should leave no-player save feedback to uiRoot save-event listeners');
+
+// Run-to-run objective continuity: player-selected trade/mission nav should survive save/load.
+assert.match(core, /navPersistence\.init\(ctx\)/,
+  'core init must install nav persistence before save.init wires game:save/game:load');
+assert.match(navPersistence, /serializeDataWithNav/, 'nav persistence must add state.nav to save payloads');
+assert.match(navPersistence, /data\.nav = serializeNavState/, 'nav persistence must serialize route and waypoint state');
+assert.match(navPersistence, /restoreWithNav/, 'nav persistence must restore saved nav after load');
+assert.match(navPersistence, /emit\('nav:waypoint'/, 'nav restore must notify HUD/departure UI after resume');
+assert.match(navPersistence, /normalizeWaypoint/, 'nav persistence must sanitize saved waypoints before restoring');
 
 // Save/Load remains the fuller slot inspector. Main menu and Save/Load must share the same source
 // of truth instead of inventing separate storage schemes.
@@ -88,4 +99,4 @@ assert.match(uiRoot, /Start or load a game before saving/, 'uiRoot should explai
 assert.match(uiRoot, /No save found for /, 'uiRoot should explain load misses');
 assert.doesNotMatch(saveLoad, /Saving to /, 'saveLoad should not duplicate the centralized save:started toast');
 
-console.log('Save/resume confidence OK - title Continue shows latest-save context and uses the canonical save index.');
+console.log('Save/resume confidence OK - Continue shows latest-save context and saved nav guidance resumes through the canonical save index.');
