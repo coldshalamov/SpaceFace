@@ -356,6 +356,15 @@ export function createUiInput(ctx, screenManager) {
     if (modalOpen) {
       if (isConfirmOpen()) return; // confirm dialog traps all keys/buttons
 
+      // Keyboard M already toggles the Star Map through starmap.onKey(); mirror that with
+      // View/Select so controller players can open and close the strategic map with one control.
+      if (top === 'starmap' && gp.actions.map && gp.actions.map.pressed) {
+        screenManager.popScreen();
+        bus.emit('ui:cancel', {});
+        bus.emit('audio:cue', { id: 'ui_back' });
+        return;
+      }
+
       // Accept / Cancel (A / B).
       if (gp.actions.accept && gp.actions.accept.pressed) {
         activateFocused();

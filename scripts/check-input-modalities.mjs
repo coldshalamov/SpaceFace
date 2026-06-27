@@ -82,5 +82,7 @@ assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document g
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');
 assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)/,
   'UI input must let gamepad A/Cross dock when the dock prompt is active');
+assert.match(uiInputSrc, /top === 'starmap'[\s\S]*gp\.actions\.map[\s\S]*screenManager\.popScreen\(\)/,
+  'UI input must let gamepad View/Select close the Star Map after opening it');
 
 console.log('Input modalities OK — keyboard+mouse (always) + gamepad (getGamepads) + touch (virtual sticks) all wired + merged + normalized.');
