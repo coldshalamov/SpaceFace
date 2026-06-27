@@ -173,6 +173,12 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
   const sceneStats = sampled.sceneStats;
   const settingsChanged = JSON.stringify(baselineState.settingsVideo) !== JSON.stringify(finalState.settingsVideo);
   const callbackP95 = callbackP95s(finalSample.perf);
+  const diagnosticSamples = Math.max(
+    samples.length,
+    Number(finalSample.perf && finalSample.perf.frame && finalSample.perf.frame.samples) || 0,
+    Number(finalSample.perf && finalSample.perf.frameCallback && finalSample.perf.frameCallback.samples) || 0,
+    Number(finalSample.perf && finalSample.perf.phases && finalSample.perf.phases.render && finalSample.perf.phases.render.samples) || 0,
+  );
   const budgets = evaluateBudgets({
     rafFrameP95: raf.p95,
     diagnosticFrameP95: diagFrameP95,
@@ -182,7 +188,7 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
     callbackP95,
     sceneStats,
     finalSample,
-    runtimeSamples: samples.length,
+    diagnosticSamples,
     rafSamples: sampled.raf.frames.length,
   });
   const bottleneck = classifyBottleneck({
@@ -208,6 +214,7 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
       warmupMs: WARMUP_MS,
       durationMs: DURATION_MS,
       runtimeSamples: samples.length,
+      diagnosticSamples,
       rafSamples: sampled.raf.frames.length,
     },
     budgets,
@@ -267,6 +274,7 @@ async function sampleRuntime(cdp, durationMs) {
     let lastRaf = null;
     let settled = false;
     let intervalId = null;
+    let lastDiagAt = -Infinity;
 
     const readHeap = () => {
       const mem = performance && performance.memory ? performance.memory : null;
@@ -344,8 +352,10 @@ async function sampleRuntime(cdp, durationMs) {
       };
     };
 
-    const pushDiag = () => {
+    const pushDiag = (force = false) => {
       const elapsed = performance.now() - started;
+      if (!force && elapsed - lastDiagAt < ${JSON.stringify(RUNTIME_SAMPLE_MS)}) return;
+      lastDiagAt = elapsed;
       const sample = readDiag();
       samples.push(sample);
       if (sample.heap) heapSamples.push({ atMs: elapsed, ...sample.heap });
@@ -544,7 +554,7 @@ async function sampleRuntime(cdp, durationMs) {
       if (settled) return;
       settled = true;
       if (intervalId != null) clearInterval(intervalId);
-      pushDiag();
+      pushDiag(true);
       resolve({
         raf: { frames: rafFrames },
         samples,
@@ -558,13 +568,14 @@ async function sampleRuntime(cdp, durationMs) {
       if (lastRaf != null) rafFrames.push(now - lastRaf);
       lastRaf = now;
       const elapsed = performance.now() - started;
+      pushDiag();
       if (elapsed >= ${JSON.stringify(durationMs)}) {
         finish();
       } else {
         requestAnimationFrame(step);
       }
     };
-    pushDiag();
+    pushDiag(true);
     intervalId = setInterval(pushDiag, ${JSON.stringify(RUNTIME_SAMPLE_MS)});
     setTimeout(finish, ${JSON.stringify(durationMs)} + 100);
     requestAnimationFrame(step);
@@ -1195,10 +1206,10 @@ async function readChromeMetrics(cdp) {
   return metrics;
 }
 
-function evaluateBudgets({ rafFrameP95, diagnosticFrameP95, renderCallsPeak, heapGrowthMB, phaseP95, callbackP95, sceneStats, finalSample, runtimeSamples, rafSamples }) {
+function evaluateBudgets({ rafFrameP95, diagnosticFrameP95, renderCallsPeak, heapGrowthMB, phaseP95, callbackP95, sceneStats, finalSample, diagnosticSamples, rafSamples }) {
   const budgets = [
     budget('sample.raf.count.min', rafSamples, '>=', 60, 'enough rAF samples for stable frame evidence'),
-    budget('sample.runtime.count.min', runtimeSamples, '>=', 20, 'enough diagnostics samples for stable phase/render evidence'),
+    budget('sample.runtime.count.min', diagnosticSamples, '>=', 20, 'enough diagnostics samples for stable phase/render evidence'),
     budget('raf.frame.p95.floor', rafFrameP95, '<=', FRAME_FLOOR_MS, '30fps floor from real requestAnimationFrame samples'),
     budget('diagnostics.frame.p95.floor', diagnosticFrameP95, '<=', FRAME_FLOOR_MS, 'renderer diagnostic p95 floor'),
     budget('frame.callback.p95', callbackP95.callback, '<=', FRAME_CALLBACK_BUDGET_MS,
@@ -1715,20 +1726,26 @@ function detectExternalPerfEnvironment() {
   const lockOwner = readJsonIfExists(lockOwnerPath);
   const releaseBuilding = statIfExists(releaseBuildingDir);
   const processHints = detectAssetProcessHints();
-  const activeAssetPipeline = !!(lockOwner || releaseBuilding || processHints.length);
+  const lockOwnerRunning = !!(lockOwner && Number.isInteger(lockOwner.pid) && lockOwner.pid > 0 && isProcessRunning(lockOwner.pid));
+  const releaseBuildingFresh = !!(releaseBuilding && Date.now() - releaseBuilding.mtimeMs < 120000);
+  const activeAssetPipeline = !!(lockOwnerRunning || releaseBuildingFresh || processHints.length);
   const notes = [];
-  if (lockOwner) notes.push('assets/ships/release.__lock/owner.json is present');
-  if (releaseBuilding) notes.push('assets/ships/release.__building is present');
+  if (lockOwnerRunning) notes.push('assets/ships/release.__lock/owner.json is present and owner pid is running');
+  else if (lockOwner) notes.push('assets/ships/release.__lock/owner.json is stale; owner pid is not running');
+  if (releaseBuildingFresh) notes.push('assets/ships/release.__building was modified recently');
+  else if (releaseBuilding) notes.push('assets/ships/release.__building is present but not recently modified');
   if (processHints.length) notes.push('Blender/export process hints are present');
   return {
     activeAssetPipeline,
     releaseLock: lockOwner ? {
       owner: lockOwner,
+      ownerRunning: lockOwnerRunning,
       path: 'assets/ships/release.__lock/owner.json',
     } : null,
     releaseBuilding: releaseBuilding ? {
       path: 'assets/ships/release.__building',
       mtimeMs: releaseBuilding.mtimeMs,
+      fresh: releaseBuildingFresh,
     } : null,
     processHints,
     notes,
@@ -1751,6 +1768,15 @@ function statIfExists(path) {
     return { mtimeMs: stat.mtimeMs };
   } catch (_) {
     return null;
+  }
+}
+
+function isProcessRunning(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error && error.code === 'EPERM';
   }
 }
 
@@ -1880,7 +1906,10 @@ function isIgnorablePageIssue(issue) {
 function isBootReady(cdp) {
   return evalJson(cdp, `(() => ({
     ready: !!(window.SF && window.SF.state && window.SF.bus && window.SF.bus.emit && window.SF.state.render && window.SF.state.render.renderer),
-  }))()`).then((value) => value.ready === true);
+    hasSF: !!window.SF,
+    mode: window.SF && window.SF.state && window.SF.state.mode || null,
+    tick: window.SF && window.SF.state && window.SF.state.tick || 0,
+  }))()`);
 }
 
 function isPlayable(cdp) {
@@ -1888,16 +1917,31 @@ function isPlayable(cdp) {
     const sf = window.SF || null;
     const state = sf && sf.state || null;
     const player = state && state.entities && state.entities.get(state.playerId);
+    const ships = state && Array.isArray(state.entityList)
+      ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
+      : [];
+    const assetStates = {};
+    for (const ship of ships) {
+      const assetState = ship.mesh && ship.mesh.userData && ship.mesh.userData.authoredAssetState || (ship.mesh ? 'unknown' : 'missingMesh');
+      assetStates[assetState] = (assetStates[assetState] || 0) + 1;
+    }
     return {
       ready: !!(state && state.mode === 'flight' && player && player.alive !== false && player.mesh),
       tick: state && state.tick || 0,
+      mode: state && state.mode || null,
+      playerId: state && state.playerId || null,
+      playerAlive: !!(player && player.alive !== false),
+      playerHasMesh: !!(player && player.mesh),
+      shipCount: ships.length,
+      assetStates,
+      screenStack: state && state.ui && Array.isArray(state.ui.screenStack) ? state.ui.screenStack.slice() : [],
     };
-  })()`).then((value) => value.ready ? value : false);
+  })()`);
 }
 
 function getTick(cdp, minimum) {
   return evalJson(cdp, `(() => ({ tick: window.SF && window.SF.state ? window.SF.state.tick : 0 }))()`)
-    .then((value) => value.tick >= minimum);
+    .then((value) => ({ ready: value.tick >= minimum, tick: value.tick, minimum }));
 }
 
 async function waitFor(cdp, predicate, timeoutMs, label) {
@@ -1905,7 +1949,7 @@ async function waitFor(cdp, predicate, timeoutMs, label) {
   let last = null;
   while (Date.now() - started < timeoutMs) {
     last = await predicate(cdp);
-    if (last) return last;
+    if (last && !(typeof last === 'object' && last.ready === false)) return last;
     await sleep(150);
   }
   throw new Error(`timeout waiting for ${label}; last=${JSON.stringify(last)}`);

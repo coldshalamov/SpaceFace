@@ -617,17 +617,16 @@ function injectHudCss() {
      expand animation reveals a fixed 340px canvas from the center outward. */
   .sf-rightdock { position:absolute; right:22px; bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
   .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
-  .sf-radar { position:relative; width:180px; height:180px; border-radius:50%; overflow:hidden; cursor:pointer;
-    transition:width .3s cubic-bezier(.4,0,.2,1), height .3s cubic-bezier(.4,0,.2,1); }
+  .sf-radar { position:relative; width:180px; height:180px; border-radius:50%; overflow:hidden; cursor:pointer; }
   .sf-radar--expanded { width:340px !important; height:340px !important; }
   /* canvas is always 340px — centered so the overflow:hidden circle reveals from the player outward */
   .sf-radar canvas { display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
   .sf-radar-legend { width:220px; display:grid; grid-template-columns:repeat(5, auto); gap:4px 9px; justify-content:center;
     color:var(--text-secondary); font-family:var(--mono); font-size:9px; letter-spacing:.04em;
-    text-shadow:var(--text-shadow-hard); }
+    text-shadow:none; }
   .sf-radar-legend span { display:flex; align-items:center; gap:4px; white-space:nowrap; }
   .sf-radar-legend i { display:inline-block; width:7px; height:7px; flex:0 0 auto; }
-  .sf-radar-legend .stn { background:var(--visor-cyan); box-shadow:0 0 4px var(--visor-cyan); }
+  .sf-radar-legend .stn { background:var(--visor-cyan); }
   .sf-radar-legend .gate { border:1px solid #b99cff; border-radius:50%; }
   .sf-radar-legend .rock { background:#6e7b8c; border-radius:50%; }
   .sf-radar-legend .bad { width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:7px solid var(--visor-red); }

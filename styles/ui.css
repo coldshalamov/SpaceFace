@@ -38,10 +38,11 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); }
 #gl-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
-#ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); }
+#ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); contain: layout style paint; }
 #ui-root > div { position: absolute; }
-#hud { inset: 0; z-index: 10; transition: opacity .12s ease; }
-#modal-backdrop { inset: 0; z-index: 90; background: radial-gradient(circle at 50% 40%, rgba(2,5,12,.45), rgba(2,5,12,.7)); backdrop-filter: blur(6px); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--dur) var(--ease), visibility 0s linear var(--dur); }
+#hud { inset: 0; z-index: 10; transition: opacity .12s ease; contain: layout style paint; }
+#modal-backdrop { inset: 0; z-index: 90; display: none; background: radial-gradient(circle at 50% 40%, rgba(2,5,12,.62), rgba(2,5,12,.86)); opacity: 0; visibility: hidden; pointer-events: none; }
+#modal-backdrop[hidden] { display: none !important; }
 #screens { inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
 #screens > * { pointer-events: auto; }
 
@@ -61,7 +62,7 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: 
 #alerts { left: 50%; top: 13%; transform: translateX(-50%); z-index: 1100; display: flex; flex-direction: column; gap: 6px; align-items: center; }
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
-body.ui-modal-open #modal-backdrop { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+body.ui-modal-open #modal-backdrop { display: block; opacity: 1; visibility: visible; pointer-events: auto; }
 body.ui-modal-open #sf-onboarding,
 body.ui-modal-open .sf-ob-intro { display: none; }
 
@@ -188,10 +189,8 @@ button:active { transform: translateY(1px); }
   z-index: 12;
   pointer-events: none;
   user-select: none;
-  backdrop-filter: blur(8px);
-  box-shadow: var(--sh-1);
+  /* Keep the hint visible without paying for live blur/shadow compositing during flight. */
   opacity: 0;
-  transition: opacity .6s ease;
 }
 #control-hints.sf-hint-visible { opacity: 1; }
 
@@ -362,6 +361,6 @@ button:active { transform: translateY(1px); }
 /* Screen-reader-only live-region text (still announced, never visually shown). */
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
-/* Contrast safety: caption + control hints over bright raw nebulae. */
+/* Contrast safety: caption + flat control hints over bright raw nebulae. */
 #hud .sf-caption { text-shadow:0 1px 5px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.7) !important; }
-#control-hints { text-shadow:0 1px 5px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.7); background:rgba(6,10,20,.72); }
+#control-hints { color:#eaf6ff; background:rgba(3,7,14,.86); border-color:rgba(122,247,208,.32); }

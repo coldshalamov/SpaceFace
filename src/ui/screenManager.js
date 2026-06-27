@@ -129,7 +129,10 @@ export function createScreenManager(ctx) {
     const modalOpen = open || state.ui.docked === true;
     document.body.classList.toggle('ui-modal-open', modalOpen);
     syncHudAccessibility(modalOpen || state.mode !== 'flight');
-    if (backdrop) backdrop.style.pointerEvents = open ? 'auto' : 'none';
+    if (backdrop) {
+      backdrop.hidden = !open;
+      backdrop.style.pointerEvents = open ? 'auto' : 'none';
+    }
     syncPause();
   }
 
