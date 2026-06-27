@@ -82,7 +82,103 @@ const ROLE_LINES = {
   miner:         'Rock dust and patience. That\'s the miner\'s life.',
 };
 
+const CANONICAL_CONTACTS = [
+  {
+    key: 'kessler',
+    stationIds: ['station_helios'],
+    name: 'Kessler',
+    role: 'merchant',
+    roleLabel: 'Cargo Registrar',
+    factionId: 'faction_scn',
+    line: '"Weight matches prior haul." Contract 47-A is still under review.',
+  },
+  {
+    key: 'rook',
+    stationIds: ['station_coalition'],
+    name: 'Rook',
+    role: 'bounty_hunter',
+    roleLabel: 'Bounty Broker',
+    factionId: 'faction_scn',
+    line: 'One name on the board, two payers in the back room.',
+  },
+  {
+    key: 'voss',
+    stationIds: ['station_beltout'],
+    name: 'Voss',
+    role: 'miner',
+    roleLabel: 'Claim Recorder',
+    factionId: 'faction_dmc',
+    line: '"Vein looks played out." His cutter is already warm.',
+  },
+  {
+    key: 'hale',
+    stationIds: ['station_customs'],
+    name: 'Hale',
+    role: 'pilot',
+    roleLabel: 'Customs Officer',
+    factionId: 'faction_scn',
+    line: 'Scan complete. No flags. The second fine is procedural.',
+  },
+  {
+    key: 'mira',
+    stationIds: ['station_tethys'],
+    name: 'Mira',
+    role: 'merchant',
+    roleLabel: 'Freight Seal Clerk',
+    factionId: 'faction_mts',
+    line: 'Route is clear. Payment on delivery. The seal stays closed.',
+  },
+  {
+    key: 'slate',
+    stationIds: ['station_forge'],
+    name: 'Slate',
+    role: 'engineer',
+    roleLabel: 'Shipyard Welder',
+    factionId: 'faction_dmc',
+    line: '"This will hold till the next gate." The weld knows which seam.',
+  },
+  {
+    key: 'drift',
+    stationIds: ['station_drift'],
+    name: 'Drift',
+    role: 'merchant',
+    roleLabel: 'Ore Ledger',
+    factionId: 'faction_mts',
+    line: 'Quota met. Credit transferred. The decimals can wait.',
+  },
+  {
+    key: 'quinn',
+    stationIds: ['station_smuggler', 'station_sker'],
+    name: 'Quinn',
+    role: 'barkeep',
+    roleLabel: 'Proprietor',
+    factionId: 'faction_quiet',
+    line: 'Same rates. Same management. Same drawer under the bar.',
+  },
+];
+
+const CANONICAL_BY_STATION = new Map();
+for (const contact of CANONICAL_CONTACTS) {
+  for (const stationId of contact.stationIds) {
+    CANONICAL_BY_STATION.set(stationId, contact);
+  }
+}
+
 /* ── contact generation ─────────────────────────────────────────────── */
+
+function canonicalContactForStation(stationId) {
+  const base = CANONICAL_BY_STATION.get(stationId);
+  if (!base) return null;
+  return {
+    id: 'contact_' + stationId + '_' + base.key,
+    name: base.name,
+    role: base.role,
+    roleLabel: base.roleLabel,
+    factionId: base.factionId,
+    line: base.line,
+    canonicalKey: base.key,
+  };
+}
 
 function generateContacts(stationId) {
   const seed = fnvHash('bar_contacts_' + stationId);
@@ -129,6 +225,16 @@ function generateContacts(stationId) {
       factionId,
       line: ROLE_LINES[role],
     });
+  }
+
+  const canonical = canonicalContactForStation(stationId);
+  if (canonical) {
+    if (canonical.role === 'barkeep') {
+      contacts[0] = canonical;
+    } else {
+      contacts.splice(1, 0, canonical);
+      if (contacts.length > 4) contacts.pop();
+    }
   }
 
   return contacts;
@@ -292,7 +398,12 @@ function bestTradeRoute(state, currentStationId) {
  * Build a reply for the given role + choiceId, pulling from ctx.state.
  * Returns { text, missionOffer? }.
  */
-function buildReply(role, choiceId, ctx, stationId) {
+function buildReply(role, choiceId, ctx, stationId, contact = null) {
+  const canonical = contact && contact.canonicalKey
+    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
+    : null;
+  if (canonical) return canonical;
+
   const state = ctx.state || {};
 
   switch (role) {
@@ -488,6 +599,101 @@ function buildReply(role, choiceId, ctx, stationId) {
   }
 }
 
+function buildCanonicalReply(contact, choiceId, ctx, stationId) {
+  const state = ctx.state || {};
+
+  switch (contact.canonicalKey) {
+    case 'kessler':
+      if (choiceId === 'routes') {
+        const route = bestTradeRoute(state, stationId);
+        if (route) {
+          return { text: 'Take ' + commodityName(route.cmdtyId) + ' to ' + stationName(route.sellStationId) + '. Keep the seal intact, let the spread explain itself, and do not ask why the weight changed.' };
+        }
+        return { text: 'No clean spread today. Contract 47-A is still the only line worth watching, and it is still pending.' };
+      }
+      if (choiceId === 'market') {
+        return { text: 'The board says balanced. My ledger says the same manifest weighs less after every handoff. Both records are official if the right clerk initials them.' };
+      }
+      if (choiceId === 'dismiss') return { text: 'Then do not sign the seal. Pilots always sign the seal.' };
+      return null;
+
+    case 'rook':
+      if (choiceId === 'bounties') {
+        const board = getMissionBoard(state, stationId);
+        const bounty = board && board.slots
+          ? board.slots.find(m => m.type === 'bounty_hunt' || m.type === 'patrol_clear')
+          : null;
+        if (bounty) {
+          const reward = bounty.reward_cr || bounty.rewardCr || '???';
+          return {
+            text: 'Target is already posted: "' + (bounty.title || bounty.type) + '." Pays ' + reward + ' cr. The tag is clean enough for accounting.',
+            missionOffer: bounty,
+          };
+        }
+        return { text: 'No open tag I like. That means the trouble has not been entered yet, not that it is gone.' };
+      }
+      if (choiceId === 'action') return { text: 'Follow the invoice trail. The fight is usually one jump behind the person who paid twice.' };
+      if (choiceId === 'low') return { text: 'I never do. Low heads miss the posted names.' };
+      return null;
+
+    case 'voss':
+      if (choiceId === 'fields') {
+        const miningData = findMiningFields();
+        const pick = miningData.find(m => m.sector.id === 'sector_charon_expanse') || miningData[0];
+        if (pick) return { text: pick.sector.name + ' has the rich rock. File late and the claim will be exhausted before your cutter cools.' };
+        return { text: 'No fields worth filing. Funny how a claim can be empty before anyone works it.' };
+      }
+      if (choiceId === 'ore_price') return { text: 'Ore is the decoy. The claim is the money. Watch who files the exhaustion notice.' };
+      if (choiceId === 'rocks') return { text: 'The rock remembers who filed first. The board only remembers who filed last.' };
+      return null;
+
+    case 'hale':
+      if (choiceId === 'work') return { text: 'There is always inspection work. Hold position, show the manifest, pay the second fine if the first one was inconvenient.' };
+      if (choiceId === 'outside') {
+        const danger = dangerousSector(stationId);
+        const name = danger ? danger.name : 'the outer lanes';
+        return { text: name + ' is not lawless. It is documented poorly, which is worse.' };
+      }
+      if (choiceId === 'bye') return { text: 'Scan complete. No flags. That is not the same as cleared.' };
+      return null;
+
+    case 'mira':
+      if (choiceId === 'routes') {
+        const route = bestTradeRoute(state, stationId);
+        if (route) return { text: 'Route is clear to ' + stationName(route.sellStationId) + '. Payment on delivery. The seal code should look familiar by then.' };
+        return { text: 'No route I would put my name on. Plenty I would put someone else on.' };
+      }
+      if (choiceId === 'market') return { text: 'Cargo insurance wants verified seals. Verification writes to the same database freight uses, so the seal becomes true when it arrives.' };
+      if (choiceId === 'dismiss') return { text: 'The seal was never yours. That is why it can protect you.' };
+      return null;
+
+    case 'slate':
+      if (choiceId === 'tech') return { text: 'Pulse Laser S keeps arguments short. Good shields keep repairs profitable. A bad weld keeps everybody employed.' };
+      if (choiceId === 'fix') return { text: 'Berth four needs a clean seam and will get a fast one. This will hold till the next gate.' };
+      if (choiceId === 'thanks') return { text: 'Do not thank the weld. Inspect it.' };
+      return null;
+
+    case 'drift':
+      if (choiceId === 'routes') {
+        const route = bestTradeRoute(state, stationId);
+        if (route) return { text: commodityName(route.cmdtyId) + ' moves well to ' + stationName(route.sellStationId) + '. Quota met, credit transferred, loss rounded down.' };
+        return { text: 'No margin today. Wait for the ledger to need a different answer.' };
+      }
+      if (choiceId === 'market') return { text: 'The exchange does not audit small losses. Enough small losses and a whole planet starts buying air.' };
+      if (choiceId === 'dismiss') return { text: 'The vein pays the hand that weighs it.' };
+      return null;
+
+    case 'quinn':
+      if (choiceId === 'rumors') return { text: 'Quinn\'s Place is under new management. Same rates. Funny how often new management knows where the old drawer is.' };
+      if (choiceId === 'word') return { text: 'Count the stack once under bar light, once under UV. If the totals match, somebody else already paid.' };
+      if (choiceId === 'drink') return { text: 'Rate is posted. No questions. The count ends when the drawer closes.' };
+      return null;
+
+    default:
+      return null;
+  }
+}
+
 /* ── avatar drawing ─────────────────────────────────────────────────── */
 
 function drawAvatar(canvas, contact) {
@@ -561,7 +767,7 @@ export function createBarPanel(ctx) {
     const reply   = card.querySelector('.st-bar-reply');
     if (!reply || !contact) return;
 
-    const result = buildReply(contact.role, choiceId, ctx, currentStationId);
+    const result = buildReply(contact.role, choiceId, ctx, currentStationId, contact);
 
     // Clear any previous mission buttons
     const oldAccept = reply.parentNode.querySelector('.st-bar-accept-btn');
@@ -589,6 +795,7 @@ export function createBarPanel(ctx) {
     for (const c of currentContacts) {
       const fac = c.factionId ? FACTION_BY_ID.get(c.factionId) : null;
       const choices = getChoices(c.role);
+      const roleLabel = c.roleLabel || ROLE_LABELS[c.role] || c.role;
 
       const card = document.createElement('div');
       card.className = 'st-bar-card';
@@ -603,7 +810,7 @@ export function createBarPanel(ctx) {
       body.className = 'st-bar-body';
       body.innerHTML =
         '<div class="st-bar-name">' + escapeHtml(c.name) +
-          ' <span class="st-bar-role mono">' + escapeHtml(ROLE_LABELS[c.role]) +
+          ' <span class="st-bar-role mono">' + escapeHtml(roleLabel) +
           (fac ? ' · ' + escapeHtml(fac.short || fac.name) : '') +
           '</span></div>' +
         '<div class="st-bar-line">' + escapeHtml(c.line) + '</div>' +
