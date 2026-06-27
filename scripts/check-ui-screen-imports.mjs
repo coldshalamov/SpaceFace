@@ -62,6 +62,7 @@ if (starmap) {
 const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
+const automationSrc = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
 if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
   console.log('FAIL helpScreen - shell title must be Help, not Codex');
   fail++;
@@ -96,6 +97,14 @@ if (missingRuntimeTiers.length || staleTierLabels.length) {
   fail++;
 } else {
   console.log('ok   factionsPanel - tiers match runtime labels and relations are shown');
+  ok++;
+}
+if (automationSrc.includes('ore-u placeholder') || !automationSrc.includes('DRONE_DISPLAY_ORE_VALUE')
+  || !automationSrc.includes('yield ~') || !automationSrc.includes('../../data/commodities.js')) {
+  console.log('FAIL automationScreen - drone yield display must use commodity baseline, not placeholder economics');
+  fail++;
+} else {
+  console.log('ok   automationScreen - drone yield display uses commodity baseline');
   ok++;
 }
 

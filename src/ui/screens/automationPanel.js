@@ -7,7 +7,11 @@
 // Export: automationScreen  (id 'automation'). No 'three' import.
 
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
+import { COMMODITIES } from '../../data/commodities.js';
 import { escapeHtml } from '../comms.js';
+
+const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
+const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
 
 const TABS = [
   { id: 'drones',   label: 'Drones'   },
@@ -297,6 +301,7 @@ export const automationScreen = {
             <div class="meta">
               <span>tier ${def.tier}</span>
               <span>mine ${def.mineRate}/s</span>
+              <span>yield ~${fmtCr(estDroneRate(d))}/min gross</span>
               <span>buffer ${Math.round(buf)}/${bufCap} ${miniBar(buf / bufCap)}</span>
               <span>fuel ${miniBar(fuelPct)}</span>
               <span>upkeep ${def.upkeepPerMin}/min</span>
@@ -322,6 +327,7 @@ export const automationScreen = {
           <div class="nm">${prettyId(def.id)} ${locked ? `<span class="au-locked">⛔ requires drone tier ${def.tier}</span>` : ''}</div>
           <div class="meta">
             <span>mine ${def.mineRate}/s</span>
+            <span>yield ~${fmtCr(estDroneRate(def))}/min gross</span>
             <span>buffer ${def.bufferCap}</span>
             <span>range ${def.deployRange}</span>
             <span>upkeep ${def.upkeepPerMin}/min</span>
@@ -540,10 +546,9 @@ export const automationScreen = {
 
 // ---- helpers ----------------------------------------------------------------
 function estDroneRate(d) {
-  // rough passive estimate when the asset hasn't reported a ratePerMin: mineRate (u/s) * 60 * a
-  // nominal ore value. Display-only; the authoritative number comes from automation when present.
+  // Display-only fallback when an asset has not reported ratePerMin yet; automation owns payouts.
   const def = DRONES.find((x) => x.id === d.defId) || d;
-  return (def.mineRate || 0) * 60 * 2; // ~2 cr per ore-u placeholder for display
+  return (def.mineRate || 0) * 60 * DRONE_DISPLAY_ORE_VALUE;
 }
 
 function recipeText(r) {
