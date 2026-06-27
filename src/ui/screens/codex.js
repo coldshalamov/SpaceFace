@@ -85,6 +85,47 @@ const BEAT_TITLES = [
   'B7 — The Deep Reach',
 ];
 
+const FIGURE_DOSSIERS = {
+  protagonist: {
+    body: 'Wren, current pilot of the Tessera. Concord Registry still lists the operator as UNKNOWN; the ship knows better than the paperwork.',
+  },
+  kessler: {
+    body: 'Cargo registrar tied to the 47-A weight variance. If a manifest changes mass, his initials usually survive the transfer.',
+    note: 'Signal phrases: weight, variance, seal, prior haul.',
+  },
+  hale: {
+    body: 'Gate 3 customs officer. Hale does not need to open a sealed hold; he only needs to file the second fine correctly.',
+    note: 'Signal phrases: REF 44-C, inspection, no flags, cleared.',
+  },
+  slate: {
+    body: 'Shipyard welder. His repairs look official because they are signed official, which is not the same as safe.',
+    note: 'Signal phrases: weld, berth, seam, next gate.',
+  },
+  quinn: {
+    body: 'Outpost bar proprietor. Rates stay posted, management keeps changing, and the drawer always closes on the same count.',
+    note: 'Signal phrases: same rates, under new management, no questions.',
+  },
+  voss: {
+    body: 'Drift claim recorder. Exhausted claims have a way of becoming fresh again for the crew that files second.',
+    note: 'Signal phrases: claim, vein, exhaustion notice, cutter.',
+  },
+  elroy: {
+    body: 'Pit Engineering maintenance worker attached to the recycler report. The bounty paperwork called him hostile; the ledger says why that mattered.',
+  },
+  mira: {
+    body: 'Bourse freight seal clerk. When the verification database agrees with the cargo seal, the seal becomes the story everyone else must use.',
+  },
+  rook: {
+    body: 'Bounty broker. A clean tag is useful because it can be billed twice before anyone asks which target was real.',
+  },
+  vale: {
+    body: 'Concord administrator. Vale appears through forwarded paperwork, authorization codes, and systems that make refusal more expensive than compliance.',
+  },
+  kurtz: {
+    body: 'The Ashfall figure. His station is less a confession than a ledger that kept running after everyone else left.',
+  },
+};
+
 function safeStory(ctx) {
   return (ctx.state && ctx.state.story) || { beatIndex: 0, seenComms: {}, graffitiShown: {}, endgameChoice: null, flags: {} };
 }
@@ -289,6 +330,9 @@ export const codexScreen = {
       const entry = el('div', 'sf-codex-entry');
       entry.appendChild(el('h3', null, f.name + (key === 'kurtz' ? '' : '')));
       entry.appendChild(el('div', 'sf-codex-meta', [f.org, f.role].filter(Boolean).join(' · ')));
+      const dossier = FIGURE_DOSSIERS[key];
+      if (dossier && dossier.body) entry.appendChild(el('div', 'sf-codex-body', dossier.body));
+      if (dossier && dossier.note) entry.appendChild(el('div', 'sf-codex-note', dossier.note));
       this._body.appendChild(entry);
     };
     for (const k of always) renderFig(k);

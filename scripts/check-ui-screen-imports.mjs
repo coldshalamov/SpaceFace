@@ -75,6 +75,15 @@ if (!/shell\(rootEl,\s*'Codex'/.test(codexSrc)) {
   console.log('ok   codexScreen - shell title is Codex');
   ok++;
 }
+const figureDossierKeys = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss', 'elroy', 'mira', 'rook', 'vale', 'kurtz'];
+const missingFigureDossiers = figureDossierKeys.filter((key) => !new RegExp(`${key}:\\s*\\{`).test(codexSrc));
+if (missingFigureDossiers.length) {
+  console.log('FAIL codexScreen - missing figure dossiers: ' + missingFigureDossiers.join(', '));
+  fail++;
+} else {
+  console.log('ok   codexScreen - figure dossiers cover canonical cast');
+  ok++;
+}
 
 console.log(`\n${ok} UI screen imports ok, ${fail} fail`);
 process.exit(fail ? 1 : 0);
