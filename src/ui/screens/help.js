@@ -130,6 +130,7 @@ const SECTIONS = [
     ['Fly (yaw + throttle)', null, 'Left stick'],
     ['Aim weapons', null, 'Right stick'],
     ['Fire', null, 'RT / R2'],
+    ['Mine beam', null, 'LT / L2 (hold near asteroid)'],
     ['Boost', null, 'RB / R1'],
     ['Brake / reverse', null, 'LB / L1'],
     ['Cycle target', null, 'X / □'],
