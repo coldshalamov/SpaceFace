@@ -970,8 +970,16 @@ const STATION_CSS = `
 .st-svc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px;
   border: 1px solid var(--panel-edge); border-radius: 6px; padding: 10px 14px; background: rgba(10,18,32,.5); }
 .st-svc-row.disabled { opacity: .5; }
+.st-svc-row--blocked { border-color: rgba(255,84,112,.32); }
 .st-svc-name { font-size: .92rem; }
 .st-svc-detail { font-size: .72rem; color: var(--ink-dim); margin-top: 2px; }
+.st-svc-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.st-svc-chip { font-family: var(--mono); font-size: .68rem; line-height: 1.2; padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--panel-edge); color: var(--ink-dim); background: rgba(132,160,200,.08); }
+.st-svc-chip--ok { color: var(--good); border-color: rgba(98,224,138,.32); background: rgba(98,224,138,.1); }
+.st-svc-chip--warn { color: var(--warn); border-color: rgba(255,198,77,.34); background: rgba(255,198,77,.1); }
+.st-svc-chip--bad { color: var(--danger); border-color: rgba(255,84,112,.34); background: rgba(255,84,112,.1); }
+.st-svc-chip--cost { color: var(--energy); border-color: rgba(255,216,74,.28); background: rgba(255,216,74,.08); }
 
 /* factions */
 .st-fac-note { font-size: .68rem; color: var(--ink-mute); margin-bottom: 12px; letter-spacing: .06em; }
