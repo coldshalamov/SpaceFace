@@ -230,6 +230,8 @@ export const stationHub = {
     body.className = 'st-body';
     const rail = document.createElement('div');
     rail.className = 'st-rail';
+    rail.setAttribute('role', 'tablist');
+    rail.setAttribute('aria-label', 'Station sections');
     const content = document.createElement('div');
     content.className = 'st-content';
     body.appendChild(rail);
@@ -241,7 +243,13 @@ export const stationHub = {
     for (const t of TABS) {
       const b = document.createElement('button');
       b.className = 'st-tab';
+      b.type = 'button';
+      b.id = 'st-tab-' + t.id;
       b.setAttribute('data-tab', t.id);
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', 'st-panel-' + t.id);
+      b.setAttribute('aria-selected', 'false');
+      b.setAttribute('tabindex', '-1');
       b.title = t.help;
       b.innerHTML = '<span class="st-tab-icon">' + t.icon + '</span><span class="st-tab-label">' + t.label + '</span>';
       railFrag.appendChild(b);
@@ -250,9 +258,10 @@ export const stationHub = {
     rail.addEventListener('click', (ev) => {
       const b = ev.target.closest('[data-tab]');
       if (!b) return;
-      this.setTab(b.getAttribute('data-tab'));
+      this.setTab(b.getAttribute('data-tab'), { focusRail: true });
       ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     });
+    rail.addEventListener('keydown', (ev) => this._onRailKeydown(ev));
 
     topbar.querySelector('.st-undock').addEventListener('click', () => {
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -272,7 +281,11 @@ export const stationHub = {
     // mount each panel's element (hidden until its tab is active)
     for (const id in this._panels) {
       const p = this._panels[id];
+      p.el.id = 'st-panel-' + id;
       p.el.classList.add('st-tabpanel');
+      p.el.setAttribute('role', 'tabpanel');
+      p.el.setAttribute('aria-labelledby', 'st-tab-' + id);
+      p.el.setAttribute('tabindex', '0');
       p.el.style.display = 'none';
       content.appendChild(p.el);
     }
@@ -293,6 +306,10 @@ export const stationHub = {
   _buildMissionsPanel(content, ctx) {
     const panel = document.createElement('div');
     panel.className = 'st-tabpanel st-panel st-missions';
+    panel.id = 'st-panel-missions';
+    panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('aria-labelledby', 'st-tab-missions');
+    panel.setAttribute('tabindex', '0');
     panel.style.display = 'none';
     panel.innerHTML =
       '<div class="st-sub-h">Mission Board</div>' +
@@ -371,7 +388,7 @@ export const stationHub = {
   },
 
   /** Activate a tab: toggle rail highlight + panel visibility, persist ui.activeStationTab. */
-  setTab(tabId) {
+  setTab(tabId, options = {}) {
     if (!TABS.some((t) => t.id === tabId)) tabId = 'market';
     const prevTab = this._activePanelId();
     if (prevTab !== tabId) {
@@ -382,15 +399,56 @@ export const stationHub = {
     }
     this._ctx.state.ui.activeStationTab = tabId;
     // rail highlight
+    let activeButton = null;
     this._rail.querySelectorAll('[data-tab]').forEach((b) => {
-      b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
+      const isActive = b.getAttribute('data-tab') === tabId;
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      b.setAttribute('tabindex', isActive ? '0' : '-1');
+      if (isActive) activeButton = b;
     });
     // panel visibility
-    for (const id in this._panels) this._panels[id].el.style.display = (id === tabId) ? '' : 'none';
-    if (this._missionEls) this._missionEls.panel.style.display = (tabId === 'missions') ? '' : 'none';
+    for (const id in this._panels) {
+      const isActive = id === tabId;
+      this._panels[id].el.style.display = isActive ? '' : 'none';
+      this._panels[id].el.hidden = !isActive;
+    }
+    if (this._missionEls) {
+      const isActive = tabId === 'missions';
+      this._missionEls.panel.style.display = isActive ? '' : 'none';
+      this._missionEls.panel.hidden = !isActive;
+    }
     this._refreshPurpose();
+    if (options.focusRail && activeButton && document.activeElement !== activeButton) {
+      activeButton.focus({ preventScroll: true });
+    }
     // refresh the now-visible panel
     this._refreshActive(true);
+  },
+
+  _onRailKeydown(ev) {
+    const currentButton = ev.target && ev.target.closest && ev.target.closest('[role="tab"][data-tab]');
+    if (!currentButton || !this._rail || !this._rail.contains(currentButton)) return;
+    const buttons = Array.from(this._rail.querySelectorAll('[role="tab"][data-tab]'));
+    if (!buttons.length) return;
+
+    const key = ev.key;
+    const currentIndex = Math.max(0, buttons.indexOf(currentButton));
+    let nextIndex = currentIndex;
+    if (key === 'ArrowDown' || key === 'ArrowRight' || key === 'PageDown') nextIndex = (currentIndex + 1) % buttons.length;
+    else if (key === 'ArrowUp' || key === 'ArrowLeft' || key === 'PageUp') nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+    else if (key === 'Home') nextIndex = 0;
+    else if (key === 'End') nextIndex = buttons.length - 1;
+    else if (key === 'Enter' || key === ' ') nextIndex = currentIndex;
+    else return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    const nextButton = buttons[nextIndex];
+    const tabId = nextButton && nextButton.getAttribute('data-tab');
+    if (!tabId) return;
+    this.setTab(tabId, { focusRail: true });
+    this._ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   },
 
   _activePanelId() { return (this._ctx.state.ui && this._ctx.state.ui.activeStationTab) || 'market'; },
@@ -777,6 +835,8 @@ const STATION_CSS = `
   border: 1px solid transparent; border-radius: var(--r-md); padding: 9px 12px; color: var(--ink-dim);
   transition: all var(--dur) var(--ease); }
 .st-tab:hover { color: var(--ink); background: rgba(57,208,255,.06); }
+.st-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; color: var(--ink);
+  background: rgba(57,208,255,.08); }
 .st-tab.active { color: #fff; background: linear-gradient(90deg, rgba(57,208,255,.18), rgba(57,208,255,.04));
   border-color: rgba(57,208,255,.35); box-shadow: inset 3px 0 0 var(--accent), 0 0 12px rgba(57,208,255,.12); }
 .st-tab-icon { width: 18px; text-align: center; opacity: .85; }
