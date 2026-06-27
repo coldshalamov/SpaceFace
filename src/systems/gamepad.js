@@ -12,7 +12,7 @@
 //   3  Y / Triangle    -> codex / journal
 //   4  LB / L1         -> brake / reverse thrust
 //   5  RB / R1         -> boost
-//   6  LT / L2         -> left trigger (analog)
+//   6  LT / L2         -> mining / sampling beam
 //   7  RT / R2         -> fire (analog)
 //   8  View / Select   -> star map
 //   9  Menu / Start    -> pause
@@ -44,6 +44,7 @@ const STD = {
 // An action can be bound to multiple physical buttons (e.g. accept also fires in flight).
 const ACTION_MAP = {
   fire: ['r2', 'accept'],
+  mine: ['l2'],
   boost: ['r1'],
   brake: ['l1'],
   cycleTarget: ['action'],
