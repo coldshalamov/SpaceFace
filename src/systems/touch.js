@@ -67,8 +67,12 @@ export function createTouch(ctx) {
     autoDetect() {
       const cfg = (state && state.settings && state.settings.controls && state.settings.controls.touch) || {};
       if (cfg.enabled != null) { this.setEnabled(cfg.enabled); return; }
-      const hasTouch = (typeof window !== 'undefined') && ('ontouchstart' in window || (navigator.maxTouchPoints > 0));
-      const bigEnough = (typeof window !== 'undefined') && (Math.min(innerWidth, innerHeight) >= AUTO_MIN_PX);
+      const win = typeof window !== 'undefined' ? window : null;
+      const nav = (typeof navigator !== 'undefined') ? navigator : (win && win.navigator) || null;
+      const hasTouch = !!(win && ('ontouchstart' in win || (nav && nav.maxTouchPoints > 0)));
+      const w = win && Number(win.innerWidth) || 0;
+      const h = win && Number(win.innerHeight) || 0;
+      const bigEnough = !!(win && Math.min(w, h) >= AUTO_MIN_PX);
       const should = !!(hasTouch && bigEnough);
       if (should !== this._enabledByAuto || this.active !== should) {
         this._enabledByAuto = should;

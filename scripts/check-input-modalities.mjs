@@ -70,6 +70,8 @@ assert.match(settingsSrc, /touchModeLabel/, 'Touch controls must render Auto/On/
 assert.match(settingsSrc, /aria-pressed', mode === 'auto' \? 'mixed'/, 'Touch Auto state must use valid aria-pressed=mixed');
 assert.match(touchSrc, /should !== this\._enabledByAuto \|\| this\.active !== should/, 'Touch auto-detect must reconcile the current overlay when returning from manual On/Off');
 assert.match(touchSrc, /if \(on == null\) this\.autoDetect\(\);\s*else this\.setEnabled\(\!\!on\)/, 'Touch persistEnabled(null) must return to auto-detect immediately');
+assert.match(touchSrc, /typeof navigator !== 'undefined'/, 'Touch auto-detect must guard navigator for headless Node harnesses');
+assert.match(touchSrc, /Number\(win\.innerWidth\)/, 'Touch auto-detect must read dimensions from the guarded window object');
 assert.match(uiRootSrc, /controlPrompt\('flight', 'kbm'\)/, 'UI root must source keyboard flight hints from controlPrompts.js');
 assert.match(uiRootSrc, /controlPrompt\('flight', 'gamepad'\)/, 'UI root must source gamepad flight hints from controlPrompts.js');
 assert.match(promptSrc, /RMB mine/, 'Keyboard flight hints must describe the mining control as mining, not sampling');
