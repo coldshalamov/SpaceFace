@@ -299,14 +299,21 @@ try {
     const sf = window.SF;
     const qty = (sf.state.player.cargo.items[cmdtyId]) || 0;
     const credits = sf.state.player.credits || 0;
-    return qty < beforeQty && credits > beforeCredits;
+    const nav = sf.state.nav || {};
+    const waypoint = nav.waypoint;
+    return qty < beforeQty && credits > beforeCredits && !(waypoint && waypoint.kind === 'trade');
   }, { cmdtyId: loadStart.cmdtyId, beforeQty: destinationPrep.beforeQty, beforeCredits: destinationPrep.beforeCredits }, { timeout: 5000 });
   const routeSellReport = await page.evaluate((cmdtyId) => ({
     afterQty: (window.SF.state.player.cargo.items[cmdtyId]) || 0,
     credits: window.SF.state.player.credits || 0,
+    waypoint: window.SF.state.nav && window.SF.state.nav.waypoint,
+    route: window.SF.state.nav && window.SF.state.nav.route,
+    autoTravel: window.SF.state.nav && window.SF.state.nav.autoTravel,
   }), loadStart.cmdtyId);
   assert(routeSellReport.afterQty < destinationPrep.beforeQty,
     'Sell Route Cargo should unload the route commodity through the economy path: ' + JSON.stringify({ destinationPrep, routeSellReport }));
+  assert.notEqual(routeSellReport.waypoint && routeSellReport.waypoint.kind, 'trade',
+    'Sell Route Cargo should clear the completed trade waypoint before any story guidance resumes: ' + JSON.stringify(routeSellReport));
   assert.deepEqual(issues.errorIssues(), [], 'market first-loop runtime probe should not record page errors');
 
   console.log('Market first-loop runtime OK: New Game -> dock -> Market purpose/prices/Best Trades/Load & Nav/route sell are legible.');

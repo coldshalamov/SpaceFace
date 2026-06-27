@@ -107,6 +107,7 @@ export const save = {
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
     data.sectorSim = this._callSerialize('sectorSim') || {};   // ADR-0002 / V2 §33 — offscreen sim state
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
+    data.nav = this._serializeNav();
     data.settings = this._serializeSettings();
     return data;
   },
@@ -162,6 +163,10 @@ export const save = {
 
   _serializeCrafting() {
     return clonePlain(this.state.crafting || { queues: {} });
+  },
+
+  _serializeNav() {
+    return sanitizeNavState(this.state.nav);
   },
 
   _serializeSettings() {
@@ -505,6 +510,7 @@ export const save = {
       this.state.interventions = [];
       this.state.drill = null;
       this.state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
+      this._restoreNav(data.nav);
       this._restoreSettings(data.settings);
 
       // 14. restore sim clock + rebuild the master RNG from the (unchanged) seed.
@@ -642,6 +648,14 @@ export const save = {
     const profile = this._readProfileSettings();
     if (profile) restored = sanitizeRestoredSettings(mergePlain(restored, profile));
     this.state.settings = restored;
+  },
+
+  _restoreNav(d) {
+    const restored = sanitizeNavState(d);
+    this.state.nav = restored;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('nav:waypoint', restored.waypoint || null);
+    }
   },
 
   _callDeserialize(name, data) {
@@ -1098,6 +1112,62 @@ function mergePlain(base, patch) {
     }
   }
   return out;
+}
+
+function sanitizeNavState(nav) {
+  const source = nav && typeof nav === 'object' && !Array.isArray(nav) ? nav : {};
+  const route = sanitizeNavRoute(source.route);
+  return {
+    route,
+    autoTravel: !!route && source.autoTravel === true,
+    waypoint: sanitizeNavWaypoint(source.waypoint),
+  };
+}
+
+function sanitizeNavRoute(route) {
+  if (!route || typeof route !== 'object' || Array.isArray(route)) return null;
+  const legs = Array.isArray(route.legs) ? route.legs.map(sanitizeNavLeg).filter(Boolean) : [];
+  if (!legs.length) return null;
+  const out = { legs };
+  if (Number.isFinite(route.totalFuel)) out.totalFuel = Math.max(0, route.totalFuel);
+  if (Number.isFinite(route.totalHops)) out.totalHops = Math.max(0, Math.floor(route.totalHops));
+  return out;
+}
+
+function sanitizeNavLeg(leg) {
+  if (!leg || typeof leg !== 'object' || Array.isArray(leg)) return null;
+  const from = navString(leg.from);
+  const to = navString(leg.to);
+  if (!from || !to) return null;
+  const out = { from, to };
+  if (Number.isFinite(leg.fuel)) out.fuel = Math.max(0, leg.fuel);
+  if (Number.isFinite(leg.charge)) out.charge = Math.max(0, leg.charge);
+  if (Number.isFinite(leg.interdict)) out.interdict = Math.max(0, Math.min(1, leg.interdict));
+  return out;
+}
+
+function sanitizeNavWaypoint(waypoint) {
+  if (!waypoint || typeof waypoint !== 'object' || Array.isArray(waypoint)) return null;
+  const out = {};
+  for (const field of ['kind', 'missionId', 'missionType', 'stationId', 'sectorId', 'sectorName', 'label', 'reason', 'commodityId']) {
+    const value = navString(waypoint[field]);
+    if (value) out[field] = value;
+  }
+  if (Number.isFinite(waypoint.storyBeat)) out.storyBeat = waypoint.storyBeat;
+  if (waypoint.onboarding === true) out.onboarding = true;
+  const pos = sanitizeNavPos(waypoint.pos);
+  if (pos) out.pos = pos;
+  return Object.keys(out).length ? out : null;
+}
+
+function sanitizeNavPos(pos) {
+  if (!pos || typeof pos !== 'object' || Array.isArray(pos)) return null;
+  if (!Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  return { x: pos.x, z: pos.z };
+}
+
+function navString(value) {
+  return typeof value === 'string' && value ? value : null;
 }
 
 function sanitizeRestoredSettings(settings) {

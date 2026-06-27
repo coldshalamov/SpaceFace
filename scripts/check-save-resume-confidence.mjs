@@ -18,6 +18,7 @@ const menu = read('src/ui/screens/mainMenu.js');
 const save = read('src/save/saveSystem.js');
 const saveLoad = read('src/ui/screens/saveLoad.js');
 const uiRoot = read('src/ui/uiRoot.js');
+const missions = read('src/systems/missions.js');
 
 // Main menu: Continue must be informative, not a blind button.
 assert.match(menu, /sf-menu-save-summary/, 'mainMenu must render a latest-save summary beside Continue');
@@ -43,6 +44,22 @@ assert.match(save, /this\.bus\.emit\('save:error'/, 'save system must emit save:
 assert.match(save, /this\.bus\.emit\('save:loaded'/, 'save system must emit save:loaded after restore');
 assert.doesNotMatch(save, /Start or load a game before saving/,
   'save system should leave no-player save feedback to uiRoot save-event listeners');
+
+// Save system: player-authored navigation intent must survive Continue/Load.
+assert.match(save, /data\.nav\s*=\s*this\._serializeNav\(\)/,
+  'save data must include the active navigation intent');
+assert.match(save, /_restoreNav\(data\.nav\)/,
+  'load restore must rebuild navigation intent before save:loaded listeners run');
+assert.match(save, /function sanitizeNavState\(nav\)/,
+  'saved navigation must be sanitized into a plain JSON contract');
+assert.match(save, /function sanitizeNavWaypoint\(waypoint\)[\s\S]*commodityId/s,
+  'trade route waypoints must persist the commodity id needed at the destination market');
+assert.match(save, /this\.bus\.emit\('nav:waypoint',\s*restored\.waypoint \|\| null\)/,
+  'restoring a save must rebroadcast the restored or cleared waypoint');
+assert.match(missions, /_restoreNavigationAfterLoad\(\)[\s\S]*_trackedOrFirstActiveMission\(\)[\s\S]*existing && existing\.kind === 'trade'/,
+  'mission save-load repair should preserve saved trade waypoints when no active mission owns navigation');
+assert.match(missions, /_restoreNavigationAfterLoad\(\)[\s\S]*_refreshNavigation\(\{\s*silent:\s*true\s*\}\)/,
+  'active missions should still reclaim navigation after load');
 
 // Save/Load remains the fuller slot inspector. Main menu and Save/Load must share the same source
 // of truth instead of inventing separate storage schemes.

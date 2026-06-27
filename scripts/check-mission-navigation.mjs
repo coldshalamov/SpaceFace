@@ -62,6 +62,11 @@ function createOffer(id = 'offer_offsector') {
   };
 }
 
+function eventPayload(events, name) {
+  const event = events.find((entry) => entry.name === name);
+  return event && event.payload;
+}
+
 function initHarness() {
   const state = createState();
   const bus = createBus();
@@ -110,6 +115,100 @@ function initHarness() {
 
   assert.equal(state.ui.trackedMissionId, active.id, 'accepted mission Track Nav must still work');
   assert.equal(state.nav.route && state.nav.route.legs[0].to, 'sector_tethys_junction', 'accepted mission Track Nav must refresh route guidance');
+}
+
+{
+  const { state, bus } = initHarness();
+  state.simTime = 20;
+  state.nav.waypoint = {
+    kind: 'trade',
+    stationId: 'station_tethys',
+    sectorId: 'sector_tethys_junction',
+    sectorName: 'Tethys Junction',
+    commodityId: 'cmdty_food',
+    label: 'Tethys Trade Hub - Provisions',
+    reason: 'Sell route cargo',
+  };
+  state.nav.route = null;
+  bus.events.length = 0;
+
+  bus.emit('save:loaded', { slot: 'quick' });
+
+  assert.equal(state.nav.waypoint && state.nav.waypoint.kind, 'trade',
+    'save load without active missions must preserve the player trade route waypoint');
+  assert.equal(state.nav.waypoint && state.nav.waypoint.commodityId, 'cmdty_food',
+    'saved trade route waypoint must keep the destination commodity');
+  assert.equal(state.nav.route && state.nav.route.legs[0].to, 'sector_tethys_junction',
+    'restored off-sector trade waypoint should refresh its plotted course');
+  assert.equal(eventPayload(bus.events, 'ui:setCourse') && eventPayload(bus.events, 'ui:setCourse').waypointKind, 'trade',
+    'restored trade route should request a trade course, not a story objective');
+}
+
+{
+  const { state, bus } = initHarness();
+  const active = {
+    ...createOffer('mission_saved_delivery'),
+    id: 'mission_saved_delivery',
+    status: 'active',
+    objectiveProgress: 0,
+    objectiveTarget: 2,
+    deadline_s: 600,
+    targetEntityIds: [],
+  };
+  state.missions.active = [active];
+  state.ui.trackedMissionId = active.id;
+  state.nav.waypoint = {
+    kind: 'trade',
+    stationId: 'station_tethys',
+    sectorId: 'sector_tethys_junction',
+    commodityId: 'cmdty_food',
+    label: 'Saved Trade',
+  };
+  bus.events.length = 0;
+
+  bus.emit('save:loaded', { slot: 'quick' });
+
+  assert.equal(state.nav.waypoint && state.nav.waypoint.kind, 'mission',
+    'active missions must reclaim navigation after load');
+  assert.equal(state.nav.waypoint && state.nav.waypoint.missionId, active.id,
+    'mission navigation after load should target the tracked active mission');
+}
+
+{
+  const { state, bus } = initHarness();
+  state.player.cargo.items.cmdty_food = 3;
+  state.nav.waypoint = {
+    kind: 'trade',
+    stationId: 'station_tethys',
+    sectorId: 'sector_tethys_junction',
+    commodityId: 'cmdty_food',
+    label: 'Saved Trade',
+  };
+  state.nav.route = { legs: [{ from: 'sector_helios_prime', to: 'sector_tethys_junction', fuel: 12 }] };
+  state.nav.autoTravel = true;
+
+  bus.emit('economy:tradeCompleted', {
+    stationId: 'station_tethys',
+    commodityId: 'cmdty_food',
+    side: 'sell',
+    qty: 2,
+  });
+  assert.equal(state.nav.waypoint && state.nav.waypoint.kind, 'trade',
+    'partial route cargo sells should keep the trade waypoint active');
+
+  state.player.cargo.items.cmdty_food = 0;
+  bus.emit('economy:tradeCompleted', {
+    stationId: 'station_tethys',
+    commodityId: 'cmdty_food',
+    side: 'sell',
+    qty: 3,
+  });
+
+  assert.equal(state.nav.waypoint, null, 'selling the last matching route cargo should clear the trade waypoint');
+  assert.equal(state.nav.route, null, 'selling the last matching route cargo should clear the plotted route');
+  assert.equal(state.nav.autoTravel, false, 'selling the last matching route cargo should stop route autotravel intent');
+  assert.equal(eventPayload(bus.events, 'nav:waypoint'), null,
+    'clearing route cargo should rebroadcast a null waypoint');
 }
 
 {

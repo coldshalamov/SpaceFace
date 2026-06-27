@@ -81,4 +81,19 @@ export const MIGRATIONS = [
       }
     },
   },
+  // v6: player-authored navigation intent. Old saves begin with no active route/waypoint, while
+  // current saves can resume a trade route or plotted course after Continue.
+  {
+    from: 5,
+    to: 6,
+    fn(data) {
+      if (!data.nav || typeof data.nav !== 'object' || Array.isArray(data.nav)) {
+        data.nav = { route: null, autoTravel: false, waypoint: null };
+        return;
+      }
+      if (!('route' in data.nav)) data.nav.route = null;
+      if (data.nav.autoTravel !== true) data.nav.autoTravel = false;
+      if (!('waypoint' in data.nav)) data.nav.waypoint = null;
+    },
+  },
 ];

@@ -600,6 +600,15 @@ export const missions = {
   },
 
   _restoreNavigationAfterLoad() {
+    if (this._trackedOrFirstActiveMission()) {
+      this._refreshNavigation({ silent: true });
+      return;
+    }
+    const existing = this.state.nav && this.state.nav.waypoint;
+    if (existing && existing.kind === 'trade') {
+      this._setNavWaypoint(existing);
+      return;
+    }
     this._refreshNavigation({ forceStory: true, silent: true });
   },
 
@@ -812,7 +821,23 @@ export const missions = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
+    this._clearCompletedTradeWaypoint(p);
     this._storyTrigger('trade', p); // first-sell story beat fires on any sell
+  },
+
+  _clearCompletedTradeWaypoint(p) {
+    if (!p || p.side !== 'sell' || !p.stationId || !p.commodityId) return;
+    const state = this.state;
+    const nav = state.nav;
+    const waypoint = nav && nav.waypoint;
+    if (!waypoint || waypoint.kind !== 'trade') return;
+    if (waypoint.stationId !== p.stationId || waypoint.commodityId !== p.commodityId) return;
+    const cargoItems = state.player && state.player.cargo && state.player.cargo.items || {};
+    if ((Number(cargoItems[p.commodityId]) || 0) > 0) return;
+    nav.waypoint = null;
+    nav.route = null;
+    nav.autoTravel = false;
+    this.bus.emit('nav:waypoint', null);
   },
 
   _onMiningYield(p) {

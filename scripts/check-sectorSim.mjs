@@ -168,7 +168,7 @@ function checkDeserializeReseeds() {
 // 5: v2→current migration round-trip — the headline integrity gate (ADR's untested-migration risk).
 // ------------------------------------------------------------------------------------------
 function checkMigrationRoundTrip() {
-  assert.equal(CURRENT_VERSION, 5, 'CURRENT_VERSION should include the SG-03 combat save schema bump');
+  assert.equal(CURRENT_VERSION, 6, 'CURRENT_VERSION should include the nav persistence save schema bump');
 
   // A v2-era blob has no data.sectorSim at all.
   const v2Data = {
@@ -202,12 +202,15 @@ function checkMigrationRoundTrip() {
     'migrated sectorSim should have a sectors map');
   assert.ok(data.sectorSim.meta && typeof data.sectorSim.meta === 'object',
     'migrated sectorSim should have a meta object');
+  assert.deepEqual(data.nav, { route: null, autoTravel: false, waypoint: null },
+    'v2->current migration should seed an empty navigation intent object');
 
   // The migration must be idempotent (re-runnable, never throws).
   const data2 = JSON.parse(JSON.stringify(v2Data));
   migrateFrom(data2, 2);
   migrateFrom(data2, 2);
   assert.deepEqual(data2.sectorSim, data.sectorSim, 'migration must be idempotent');
+  assert.deepEqual(data2.nav, data.nav, 'nav migration must be idempotent');
 
   // deserialize must accept the migrated blob without throwing and heal to full schema.
   const ctx = makeCtx(7);
