@@ -102,7 +102,7 @@ try {
     for (const phrase of ['First 15 minutes', 'Follow the anomaly', 'Mine the marked rock', 'Dock at Helios', 'Take one job']) {
       assert.match(text, new RegExp(escapeRegExp(phrase), 'i'), `route rail missing: ${phrase}`);
     }
-    assert.match(text, /Mission Board and Bar contracts auto-track/i, 'route rail must bridge launch into tracked mission work');
+    assert.match(text, /Mission Board and Bar contracts track into the log/i, 'route rail must bridge launch into mission/bar work');
   });
 
   await step('launch through default New Game button', async () => {
@@ -143,11 +143,11 @@ try {
   });
 
   if (STRICT) {
-    const serious = report.pageIssues.filter((issue) => issue.type === 'pageerror' || issue.type === 'requestfailed');
+    const serious = report.pageIssues.filter((issue) => issue.type === 'pageerror' || issue.type === 'requestfailed' || issue.type === 'console.error');
     assert.equal(serious.length, 0, 'strict first-session probe found page/runtime failures: ' + JSON.stringify(serious.slice(0, 5)));
   }
 
-  report.pass = report.checks.every((check) => check.pass) && (!STRICT || !report.pageIssues.some((issue) => issue.type === 'pageerror' || issue.type === 'requestfailed'));
+  report.pass = report.checks.every((check) => check.pass) && (!STRICT || !report.pageIssues.some((issue) => issue.type === 'pageerror' || issue.type === 'requestfailed' || issue.type === 'console.error'));
 } catch (err) {
   report.pass = false;
   report.error = err && err.stack ? err.stack : String(err);
