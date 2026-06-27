@@ -5,6 +5,8 @@ import { recommendedActions } from '../src/ui/screens/missionLog.js';
 const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
 
 assert.match(missionLogSrc, /sf-mlog-recommend/, 'mission log must render the recommended-next rail');
+assert.match(missionLogSrc, /data-rec-act="track"/, 'untracked recommendations must render a Track Nav action button');
+assert.match(missionLogSrc, /ui:trackMission/, 'recommendation actions must reuse the mission tracking intent');
 assert.match(missionLogSrc, /_renderRecommendations/, 'mission log must refresh recommendations with live state');
 assert.match(missionLogSrc, /export function recommendedActions/, 'recommendation policy must stay directly testable');
 
@@ -33,11 +35,15 @@ const activeMission = {
 actions = recommendedActions(baseState, [activeMission], null);
 assert.equal(actions[0].label, 'UNTRACKED', 'active but untracked contracts should be first');
 assert.match(actions[0].title, /Helios Priority Run/, 'untracked recommendation should name the contract');
+assert.equal(actions[0].action, 'track', 'untracked recommendation should be actionable');
+assert.equal(actions[0].actionLabel, 'TRACK NAV', 'untracked recommendation should name the Track Nav action');
+assert.equal(actions[0].missionId, 'mission_cargo_1', 'untracked recommendation should carry the mission id to track');
 assert(actions.some((a) => a.label === 'CONTRACT'), 'story action should remain visible behind active contract guidance');
 
 actions = recommendedActions(baseState, [activeMission], 'mission_cargo_1');
 assert.equal(actions[0].label, 'TRACKED', 'tracked contract should be first');
 assert.equal(actions[0].meta, '50% complete', 'tracked contract should show progress');
+assert.equal(actions[0].missionId, 'mission_cargo_1', 'tracked recommendation should carry the active mission id');
 assert(!/^Next:/i.test(actions[0].body), 'tracked body should read as an action, not repeat the card prefix');
 
 const fullHoldState = {

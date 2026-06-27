@@ -245,6 +245,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       title: missionTitle(tracked),
       body: stripNextPrefix(nextStepText(tracked)),
       meta: missionProgressLabel(tracked),
+      missionId: tracked.id,
     });
   } else if (active.length) {
     const candidate = active.find((m) => (m.deadline_s || 0) > (state && state.simTime || 0)) || active[0];
@@ -254,6 +255,9 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       title: 'Track ' + missionTitle(candidate),
       body: 'Set one active contract as your nav target before leaving the station lane.',
       meta: active.length === 1 ? '1 active' : active.length + ' active',
+      action: 'track',
+      actionLabel: 'TRACK NAV',
+      missionId: candidate.id,
     });
   } else if (storyAction) {
     actions.push(storyAction);
@@ -375,6 +379,17 @@ export const missionLogScreen = {
       compList.style.display = this._compVisible ? 'block' : 'none';
       compH.querySelector('.sf-mlog-toggle').textContent = this._compVisible ? 'Hide' : 'Show';
       if (this._compVisible) this._renderCompleted();
+    });
+
+    recEl.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-rec-act]');
+      if (!btn) return;
+      const act = btn.getAttribute('data-rec-act');
+      if (act === 'track') {
+        ctx.bus.emit('ui:trackMission', { missionId: btn.getAttribute('data-mid') });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        this._render();
+      }
     });
 
     // Delegated click handler for buttons
@@ -559,6 +574,7 @@ export const missionLogScreen = {
         '<div class="sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</div>' +
         '<div class="sf-mlog-rec-body">' + escapeHtml(a.body || '') + '</div>' +
         (a.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(a.meta) + '</div>' : '') +
+        (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
       '</div>'
     )).join('');
   },
@@ -626,6 +642,9 @@ const CSS = `
   overflow-wrap: anywhere; }
 .sf-mlog-rec-body { font-size: .74rem; line-height: 1.35; color: var(--ink-dim); overflow-wrap: anywhere; }
 .sf-mlog-rec-meta { margin-top: 6px; color: var(--energy); font-size: .68rem; overflow-wrap: anywhere; }
+.sf-mlog-rec-action { margin-top: 8px; font-size: .66rem; padding: 4px 10px; border-color: var(--warn);
+  color: var(--warn); background: rgba(255,205,76,.08); }
+.sf-mlog-rec-action:hover { border-color: var(--accent); color: var(--accent); background: rgba(57,208,255,.1); }
 
 .sf-mlog-list { flex: 1; overflow-y: auto; padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
 
