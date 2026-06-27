@@ -7,14 +7,18 @@ import { fileURLToPath } from 'node:url';
 
 import { MISSION_TUNING } from '../src/data/missions.js';
 import { missions } from '../src/systems/missions.js';
+import { missionPreflight } from '../src/ui/missionPreflight.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const stationHubSrc = readFileSync(join(ROOT, 'src/ui/screens/stationHub.js'), 'utf8');
+const missionPreflightSrc = readFileSync(join(ROOT, 'src/ui/missionPreflight.js'), 'utf8');
 const missionsSrc = readFileSync(join(ROOT, 'src/systems/missions.js'), 'utf8');
 
-assert.match(stationHubSrc, /function missionPreflight/, 'stationHub mission board must compute mission preflight');
+assert.match(stationHubSrc, /import \{ missionPreflight \} from '\.\.\/missionPreflight\.js'/,
+  'stationHub mission board must use the shared mission preflight helper');
+assert.match(missionPreflightSrc, /export function missionPreflight/, 'shared mission preflight helper must be exported');
 assert.match(stationHubSrc, /st-mission-preflight/, 'mission cards must render preflight chips');
-assert.match(stationHubSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
+assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
   'mission preflight must flag cargo capacity blockers');
 assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
 assert.match(missionsSrc, /_acceptPreflight\(offer\)/, 'missions.acceptMission must call _acceptPreflight before accepting');
@@ -76,6 +80,11 @@ function makeBus() {
 }
 
 const lowCapState = makeState(1);
+const lowCapUiPreflight = missionPreflight(makeOffer(), lowCapState);
+assert.equal(lowCapUiPreflight.blocker, 'Requires 5u cargo capacity',
+  'shared UI preflight must surface impossible cargo capacity before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'bad' && chip.text === '5u hold required'),
+  'shared UI preflight must render a bad hold-required chip');
 const lowCapBus = makeBus();
 missions.init({ state: lowCapState, bus: lowCapBus, helpers: { hash32: () => 1 } });
 assert.equal(missions.acceptMission('offer_preflight_1'), false, 'mission should reject impossible cargo-capacity accept');
@@ -86,6 +95,12 @@ assert.equal(lowCapBus.events.some((event) => event.type === 'economy:chargeCred
 assert.ok(lowCapBus.events.some((event) =>
   event.type === 'toast' && /cargo capacity/.test(event.payload && event.payload.text || '')),
   'blocked preflight must tell the player cargo capacity is the issue');
+
+const lowFreeState = makeState(8);
+lowFreeState.player.cargo.usedVolume = 6;
+const lowFreeUiPreflight = missionPreflight(makeOffer(), lowFreeState);
+assert.equal(lowFreeUiPreflight.blocker, null, 'low free space should warn without blocking a capable hull');
+assert.match(lowFreeUiPreflight.warning || '', /clear space/, 'shared UI preflight must tell the player to clear cargo space');
 
 const readyState = makeState(8);
 const readyBus = makeBus();
@@ -98,4 +113,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - board readiness is visible and impossible cargo contracts are rejected before collateral.');
+console.log('Mission preflight OK - shared readiness is visible and impossible cargo contracts are rejected before collateral.');

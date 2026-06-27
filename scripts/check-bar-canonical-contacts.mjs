@@ -39,5 +39,10 @@ assert.ok(source.includes('function rewardCredits('), 'bar mission replies must 
 assert.ok(!source.includes("|| '???'"), 'bar mission replies must not show ??? for unknown reward fields');
 assert.ok(source.includes('missionOfferAvailable(ctx, missionId)'), 'bar accept button must verify the offer is still available before/after the intent');
 assert.ok(source.includes('const accepted = wasAvailable && !missionOfferAvailable(ctx, missionId)'), 'bar accept button must only mark accepted after the mission system removes the offer');
+assert.ok(source.includes("import { missionPreflight } from '../missionPreflight.js'"), 'bar mission offers must use shared mission preflight');
+assert.ok(source.includes('st-bar-offer'), 'bar mission offers must render a readiness/action block');
+assert.ok(source.includes('st-bar-offer-blocker'), 'bar mission offers must show visible readiness blockers');
+assert.ok(source.includes('ACCEPT + TRACK'), 'bar mission accept button must use the same tracking language as the board');
+assert.ok(source.includes('offer.requirementUnmet || offer.lockedReason || preflight.blocker'), 'bar offer buttons must respect shared readiness blockers');
 
 console.log(`Station bar canonical contacts OK - ${expected.length} recurring NPCs across ${stationIds.size} stations`);

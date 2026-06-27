@@ -7,6 +7,7 @@ import { FACTION_META } from '../../data/factions.js';
 import { escapeHtml } from '../comms.js';
 import { SECTORS }      from '../../data/sectors.js';
 import { COMMODITIES }  from '../../data/commodities.js';
+import { missionPreflight } from '../missionPreflight.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -311,6 +312,26 @@ function rewardCreditsText(mission) {
   return rewardCredits(mission).toLocaleString('en-US');
 }
 
+function prettyType(t) {
+  if (!t) return 'Contract';
+  return String(t).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function missionOfferTitle(offer) {
+  return (offer && (offer.title || prettyType(offer.type))) || 'Contract';
+}
+
+function missionOfferTrackCopy(offer) {
+  const type = offer && offer.type;
+  if (type === 'cargo_delivery' || type === 'bulk_trade' || type === 'smuggling_run') {
+    return 'Accept + Track puts the route in your Mission Log and keeps cargo readiness visible.';
+  }
+  if (type === 'bounty_hunt' || type === 'patrol_clear' || type === 'escort') {
+    return 'Accept + Track puts the target in your Mission Log and sets nav when the lead is known.';
+  }
+  return 'Accept + Track adds it to the Mission Log and sets nav guidance when a destination exists.';
+}
+
 function missionOfferAvailable(ctx, missionId) {
   const boards = ctx && ctx.state && ctx.state.missions && ctx.state.missions.boards;
   if (!missionId || !boards) return false;
@@ -483,7 +504,7 @@ function buildReply(role, choiceId, ctx, stationId, contact = null) {
           const offer = board.slots[0];
           const reward = rewardCreditsText(offer);
           return {
-            text: 'There\'s a ' + (offer.title || offer.type) + ' job on the board — pays ' + reward + ' cr. Interested?',
+            text: 'There\'s a ' + missionOfferTitle(offer) + ' contract on the board - pays ' + reward + ' cr. ' + missionOfferTrackCopy(offer),
             missionOffer: offer,
           };
         }
@@ -555,7 +576,7 @@ function buildReply(role, choiceId, ctx, stationId, contact = null) {
           if (bounty) {
             const reward = rewardCreditsText(bounty);
             return {
-              text: 'Got one — "' + (bounty.title || bounty.type) + '." Pays ' + reward + ' cr. Dangerous work, but the credits are real.',
+              text: 'Got one - "' + missionOfferTitle(bounty) + '." Pays ' + reward + ' cr. Dangerous work, but Accept + Track will keep the target in your Mission Log.',
               missionOffer: bounty,
             };
           }
@@ -648,7 +669,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
         if (bounty) {
           const reward = rewardCreditsText(bounty);
           return {
-            text: 'Target is already posted: "' + (bounty.title || bounty.type) + '." Pays ' + reward + ' cr. The tag is clean enough for accounting.',
+            text: 'Target is already posted: "' + missionOfferTitle(bounty) + '." Pays ' + reward + ' cr. The tag is clean enough for accounting; Accept + Track if your ship is ready.',
             missionOffer: bounty,
           };
         }
@@ -770,17 +791,19 @@ export function createBarPanel(ctx) {
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
       const accepted = wasAvailable && !missionOfferAvailable(ctx, missionId);
       const replyEl = acceptBtn.closest('.st-bar-card').querySelector('.st-bar-reply');
+      const offerEl = acceptBtn.closest('.st-bar-offer');
       if (accepted) {
         if (replyEl) {
-          replyEl.textContent = 'Mission accepted!';
+          replyEl.textContent = 'Accepted + tracked. Check the Mission Log for the next step.';
           replyEl.classList.add('show');
         }
         acceptBtn.disabled = true;
-        acceptBtn.textContent = 'Accepted';
+        acceptBtn.textContent = 'Accepted + Tracked';
+        if (offerEl) offerEl.classList.add('accepted');
       } else {
         if (replyEl) {
           replyEl.textContent = wasAvailable
-            ? 'Mission still pending. Check collateral, active mission limit, or requirements.'
+            ? 'Mission still pending. Check the readiness chips, collateral, active mission limit, or requirements.'
             : 'That offer is no longer available.';
           replyEl.classList.add('show');
         }
@@ -809,19 +832,48 @@ export function createBarPanel(ctx) {
     const result = buildReply(contact.role, choiceId, ctx, currentStationId, contact);
 
     // Clear any previous mission buttons
-    const oldAccept = reply.parentNode.querySelector('.st-bar-accept-btn');
-    if (oldAccept) oldAccept.remove();
+    const oldOffer = reply.parentNode.querySelector('.st-bar-offer');
+    if (oldOffer) oldOffer.remove();
 
     reply.textContent = result.text;
     reply.classList.add('show');
 
-    // If there is a mission offer, add an accept button
     if (result.missionOffer) {
+      const offer = result.missionOffer;
+      const preflight = missionPreflight(offer, ctx.state);
+      const unmet = offer.requirementUnmet || offer.lockedReason || preflight.blocker || null;
+      const offerWrap = document.createElement('div');
+      offerWrap.className = 'st-bar-offer';
+      const chips = document.createElement('div');
+      chips.className = 'st-mission-preflight st-bar-offer-preflight';
+      chips.innerHTML = preflight.chips.map((chip) =>
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--' + chip.kind + '">' + escapeHtml(chip.text) + '</span>'
+      ).join('');
+      offerWrap.appendChild(chips);
+      if (preflight.warning) {
+        const warning = document.createElement('div');
+        warning.className = 'st-mission-preflight-warn st-bar-offer-warn';
+        warning.textContent = preflight.warning;
+        offerWrap.appendChild(warning);
+      }
+      if (unmet) {
+        const blocker = document.createElement('div');
+        blocker.className = 'st-mission-unmet st-bar-offer-blocker';
+        blocker.textContent = unmet;
+        offerWrap.appendChild(blocker);
+      }
       const acceptButton = document.createElement('button');
       acceptButton.className = 'st-bar-accept-btn';
-      acceptButton.setAttribute('data-accept-mission', result.missionOffer.id);
-      acceptButton.textContent = 'ACCEPT MISSION';
-      reply.after(acceptButton);
+      acceptButton.setAttribute('data-accept-mission', offer.id);
+      acceptButton.textContent = 'ACCEPT + TRACK';
+      if (unmet) {
+        acceptButton.disabled = true;
+        acceptButton.title = unmet;
+      } else {
+        acceptButton.title = 'Accept, auto-track, and add to Mission Log';
+      }
+      offerWrap.appendChild(acceptButton);
+      reply.after(offerWrap);
     }
   });
 
