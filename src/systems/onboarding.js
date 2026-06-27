@@ -355,7 +355,7 @@ export const onboarding = {
       if (this._firstFlightTimer > 3.0) {
         this._firstFlightPending = false;
         this._showHint('firstFlight',
-          `W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE fires the Pulse Laser S, RMB samples the mass reading, SHIFT boosts, ${BINDINGS.starmap.label} maps, ${BINDINGS.dock.label} docks.`);
+          `W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/SPACE fires the Pulse Laser S, RMB samples the mass reading, SHIFT boosts, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} opens the star map, ${BINDINGS.dock.label} docks.`);
       }
     }
 
@@ -424,7 +424,7 @@ export const onboarding = {
     this._lastControlMode = mode;
 
     const HINTS = {
-      flight:  'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space Pulse Laser  •  RMB mass sample  •  Shift boost  •  Tab target  •  M map',
+      flight:  'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space Pulse Laser  •  RMB mass sample  •  Shift boost  •  Tab target  •  N local map  •  M star map',
       mining:  'RMB hold to sample  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
       combat:  'LMB/Space Pulse Laser  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
       station: 'Enter to dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts',

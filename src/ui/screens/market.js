@@ -6,9 +6,10 @@
 //
 // Defensive by design: the economy system may be a stub at boot. We prefer
 //   ctx.registry.get('economy').quote(stationId, commodityId, side, qty)
-// when available, else fall back to the station's MarketEntry (lastBuy/lastSell) or the commodity
-// basePrice. Never throws if markets are empty.
+// when available, else fall back to the station's MarketEntry (lastBuy/lastSell) or a role-based
+// equilibrium estimate. Never throws if markets are empty.
 import { COMMODITIES } from '../../data/commodities.js';
+import { economyBaseEqForSize, economySpotPriceForRole } from '../../systems/economy.js';
 import { confirm } from '../confirm.js';
 import { createListControls, buildSortHeader, sortHeaderAria } from '../listControls.js';
 import { getPriceHistory } from '../priceHistory.js';
@@ -27,31 +28,57 @@ function marketEntry(state, stationId, cmdtyId) {
   return (m && m[cmdtyId]) || null;
 }
 
+function usableQuoteUnit(q) {
+  if (q == null || (typeof q === 'object' && q.ok === false)) return null;
+  const v = (typeof q === 'number') ? q : (q.unit != null ? q.unit : (q.unitAvg != null ? q.unitAvg : (q.total != null ? q.total : null)));
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+function usablePrice(v) {
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
 /** Best-effort unit price for a side ('buy' = player buys from station, 'sell' = player sells). */
-function unitPrice(ctx, stationId, cmdtyId, side) {
+export function unitPrice(ctx, stationId, cmdtyId, side) {
   const state = ctx.state;
   // 1) ask the economy system for an authoritative quote if it exposes one.
   const econ = ctx.registry && ctx.registry.get && ctx.registry.get('economy');
   if (econ && typeof econ.quote === 'function') {
     try {
       const q = econ.quote(stationId, cmdtyId, side, 1);
-      if (q != null) {
-        const v = (typeof q === 'number') ? q : (q.unit != null ? q.unit : (q.unitAvg != null ? q.unitAvg : (q.total != null ? q.total : null)));
-        if (v != null && isFinite(v)) return v;
-      }
+      const v = usableQuoteUnit(q);
+      if (v != null) return v;
     } catch (_) { /* fall through to data fallback */ }
   }
   // 2) station MarketEntry snapshot.
   const e = marketEntry(state, stationId, cmdtyId);
   if (e) {
-    if (side === 'buy' && e.lastBuy != null) return e.lastBuy;
-    if (side === 'sell' && e.lastSell != null) return e.lastSell;
-    if (e.lastMid != null) return e.lastMid;
+    if (side === 'buy') {
+      const buy = usablePrice(e.lastBuy);
+      if (buy != null) return buy;
+    }
+    if (side === 'sell') {
+      const sell = usablePrice(e.lastSell);
+      if (sell != null) return sell;
+    }
+    const mid = usablePrice(e.lastMid);
+    if (mid != null) return mid;
   }
-  // 3) static basePrice (buy slightly above mid, sell slightly below — a readable placeholder).
+  // 3) static equilibrium estimate from the commodity's station role.
+  return staticRolePrice(state, stationId, cmdtyId, side);
+}
+
+function staticRolePrice(state, stationId, cmdtyId, side) {
   const def = COMMODITY_BY_ID.get(cmdtyId);
   const base = def ? def.basePrice : 0;
-  return side === 'buy' ? Math.round(base * 1.1) : Math.round(base * 0.9);
+  const info = stationInfoFor(state, stationId);
+  const role = stationRoleFor(def, info && info.type);
+  if (def && role !== 'none') {
+    return Math.round(economySpotPriceForRole(def, role, side, {
+      baseEq: economyBaseEqForSize((info && info.size) || 'M'),
+    }));
+  }
+  return side === 'buy' ? Math.round(base * 1.04) : Math.round(base * 0.96);
 }
 
 /** Does this station trade the given commodity? Honest gate (UX-5): the economy only creates a
@@ -67,12 +94,11 @@ function stationTrades(state, stationId, cmdtyId) {
   if (!def) return false;
   const stationType = stationTypeFor(state, stationId);
   if (!stationType) return false;
-  return ((def.producedBy || []).includes(stationType)) || ((def.consumedBy || []).includes(stationType));
+  return stationRoleFor(def, stationType) !== 'none';
 }
 
-/** Look up a station's type (trade_hub / refinery / mining / fab / military / blackmarket / research)
- *  from the active sector or the static SECTORS table. Returns '' if not found. */
-function stationTypeFor(state, stationId) {
+/** Look up a station profile from the active sector or runtime sector catalog. */
+function stationInfoFor(state, stationId) {
   const sect = state.world && state.world.activeSector;
   let stn = sect && (sect.stations || []).find((x) => x.id === stationId);
   if (!stn) {
@@ -81,7 +107,21 @@ function stationTypeFor(state, stationId) {
       if (stn) break;
     }
   }
+  return stn || null;
+}
+
+/** Look up a station's type (trade_hub / refinery / mining / fab / military / blackmarket / research)
+ *  from the active sector or runtime sector catalog. Returns '' if not found. */
+function stationTypeFor(state, stationId) {
+  const stn = stationInfoFor(state, stationId);
   return (stn && stn.type) || '';
+}
+
+function stationRoleFor(def, stationType) {
+  if (!def || !stationType) return 'none';
+  if ((def.producedBy || []).includes(stationType)) return 'produce';
+  if ((def.consumedBy || []).includes(stationType)) return 'consume';
+  return 'none';
 }
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }

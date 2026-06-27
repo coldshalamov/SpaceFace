@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { applyTradeNavigation } from '../src/ui/screens/market.js';
+import { applyTradeNavigation, unitPrice } from '../src/ui/screens/market.js';
 
 function makeHarness(currentSectorId = 'sector_helios_prime') {
   const events = [];
@@ -78,7 +78,39 @@ function checkLocalBestTradeUsesLivePositionOnly() {
   assert.match(eventPayload(events, 'toast').text, /Nav set:/, 'market nav should confirm the selected destination');
 }
 
+function checkFailedQuoteFallsBackToRolePrice() {
+  const { ctx } = makeHarness('sector_helios_prime');
+  ctx.registry = {
+    get(name) {
+      if (name !== 'economy') return null;
+      return { quote: () => ({ ok: false, reason: 'booting', unitAvg: 0, total: 0 }) };
+    },
+  };
+
+  const buy = unitPrice(ctx, 'station_helios', 'cmdty_food', 'buy');
+  const sell = unitPrice(ctx, 'station_helios', 'cmdty_food', 'sell');
+
+  assert(buy > 0, 'failed market quote must not display as a zero buy price');
+  assert(sell > 0, 'failed market quote must not display as a zero sell price');
+  assert(buy < 40, 'producer fallback should read as a source price below food base price');
+  assert(sell < 40, 'producer fallback sell price should stay below food base price');
+}
+
+function checkLiveQuoteStillWins() {
+  const { ctx } = makeHarness('sector_helios_prime');
+  ctx.registry = {
+    get(name) {
+      if (name !== 'economy') return null;
+      return { quote: () => ({ ok: true, unitAvg: 123, total: 123 }) };
+    },
+  };
+
+  assert.equal(unitPrice(ctx, 'station_helios', 'cmdty_food', 'buy'), 123, 'live economy quote must win over fallback pricing');
+}
+
 checkOffSectorBestTradeSetsCourse();
 checkLocalBestTradeUsesLivePositionOnly();
+checkFailedQuoteFallsBackToRolePrice();
+checkLiveQuoteStillWins();
 
 console.log('Market navigation checks OK');

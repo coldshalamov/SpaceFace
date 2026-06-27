@@ -113,8 +113,8 @@ export const ui = {
     // Always-visible (when in flight) control hints. The default text below is the open-flight set;
     // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
     // hints based on the player's current activity (mining, combat, near station, near gate).
-    const HINTS_KBM = 'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB sample  •  Shift boost  •  Tab target  •  M map  •  I cargo  •  L comms';
-    const HINTS_PAD = 'Left stick fly  •  Right stick aim  •  RT fire  •  RB boost  •  LB brake  •  X target  •  View map  •  Y codex  •  Start pause';
+    const HINTS_KBM = 'W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB sample  •  Shift boost  •  Tab target  •  N local map  •  M star map  •  I cargo  •  L comms';
+    const HINTS_PAD = 'Left stick fly  •  Right stick aim  •  RT fire  •  RB boost  •  LB brake  •  X target  •  View star map  •  Y codex  •  Start pause';
     const hints = document.createElement('div');
     hints.id = 'control-hints';
     hints.textContent = HINTS_KBM;

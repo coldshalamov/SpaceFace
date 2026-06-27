@@ -1,6 +1,6 @@
 // UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
 //
-// UI owns: ESC (back/pause), M (star-map), T (tech), J (mission log), F1/H (help),
+// UI owns: ESC (back/pause), N (local map), M (star-map), T (tech), J (mission log), F1/H (help),
 //          Tab (cycle target), P (pause), Enter (dock when in range), F5/F9 (quick save/load),
 //          mouse-wheel (camera zoom passthrough → camera:zoom).
 // Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
@@ -89,11 +89,13 @@ export function createUiInput(ctx, screenManager) {
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
-      case 'm': case 'M':
-        // M = the local/system map (player position, objective, stations, gates) — the everyday
-        // "where am I / where do I go" map. The galaxy/star map moved to N.
+      case BINDINGS.localmap.key:
+      case 'N':
+        // N = the local/system map (player position, objective, stations, gates) — the everyday
+        // "where am I / where do I go" map.
         ev.preventDefault(); screenManager.pushScreen('localmap'); return;
-      case 'n': case 'N':
+      case BINDINGS.starmap.key:
+      case 'M':
         ev.preventDefault(); screenManager.pushScreen('starmap'); return;
       case 't': case 'T':
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;

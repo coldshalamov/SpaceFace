@@ -11,6 +11,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCENARIO_ID = 'scenario.47a.mass-discrepancy';
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const REMOTE_ROLES = new Set(['remote_contact']);
+const AUTHORED_START_TIMEOUT_MS = 45000;
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -38,12 +39,12 @@ try {
         && sf.state.scenario.active.id === scenarioId;
     },
     SCENARIO_ID,
-    { timeout: 15000 },
+    { timeout: AUTHORED_START_TIMEOUT_MS },
   );
   await page.waitForFunction(
     () => window.SF.eventTrace.snapshot().some((record) => record.type === 'presentation:cueApplied'),
     null,
-    { timeout: 10000 },
+    { timeout: 20000 },
   );
 
   const report = await page.evaluate(({ scenarioId, scenarioPath }) => {

@@ -34,6 +34,7 @@ const allowedRandomFiles = new Map([
   ['src/audio/synth.js', 'cosmetic procedural noise buffer'],
   ['src/audio/audioSystem.js', 'cosmetic audio variation'],
   ['src/render/camera.js', 'cosmetic camera shake offset'],
+  ['src/render/feel.js', 'cosmetic warp streak variation'],
   ['src/render/starfield.js', 'cosmetic starfield generation'],
   ['src/render/vfx.js', 'cosmetic particle variation'],
   ['src/systems/telemetry.js', 'local telemetry session id only'],

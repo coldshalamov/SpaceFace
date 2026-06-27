@@ -21,7 +21,7 @@ try {
     factionId: 'faction_free',
     role: 'player_massline_owner',
   }));
-  player.physicsBody = { dynamic: false, ccd: false, mass: 1000000, inertiaY: 1000000, radius: player.radius };
+  player.physicsBody = { dynamic: true, ccd: false, mass: 1000000, inertiaY: 1000000, radius: player.radius };
   const actor = helpers.spawnEntity(makeShipSpec({
     team: 1,
     x: 0,

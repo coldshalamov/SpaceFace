@@ -304,7 +304,7 @@ export const settingsScreen = {
     rowToggle('Gamepad enabled', () => !!gp.enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, enabled: v }));
     rowSlider('Stick deadzone', () => gp.deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, deadzone: v }));
     rowToggle('Invert right-stick Y', () => !!gp.invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, invertY: v }));
-    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, RB boost, LB brake, X target, View map, Y codex, Start pause.'));
+    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, RB boost, LB brake, X target, View star map, Y codex, Start pause.'));
 
     // Touch (P1-12): virtual dual-stick + buttons for touchscreens. Auto-detects on touch devices;
     // this toggle lets the player force-enable (e.g. a touchscreen laptop) or force-disable.
