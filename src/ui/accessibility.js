@@ -12,7 +12,7 @@
 // shapes are defined HERE as data, and the canvas systems consume the registry. The CSS handles the
 // DOM/CSS-var-driven UI (status bars, badges, alerts); JS handles the canvas.
 //
-// TWO SEPARATE motion flags (task requirement):
+// TWO SEPARATE motion flags (accessibility contract):
 //   - motionReduced  → vestibular: camera shake / FOV punch / hit-stop / parallax. This is the SAME
 //     field feel.js:131 and vfx.js:674 already read: settings.video.motionReduce. We do NOT fork a
 //     second source of truth — getMotionReduced() derives from that exact field so all three agree.
@@ -126,44 +126,41 @@ export const SEMANTIC_PALETTE = {
 };
 
 // ---------------------------------------------------------------------------------------------------
-// Recommended settings fields. The lead adds these toggles to settings.js / defaultSettings() later;
-// we do NOT edit those files. Annotated EXISTS vs NEW so the lead does not duplicate a control that
-// already ships (settings.js:245 already has the motion-reduce toggle; :246 the UI-scale slider).
+// Settings fields exposed by Settings > Access and Settings > Video. This schema is metadata for
+// docs, probes, and future UI work; every field below is part of the shipped settings tree.
 //
-// Proposed home: a single `settings.accessibility` subtree for the NEW fields (cleanest grouping).
-// motionReduce stays under settings.video (where feel.js/vfx.js read it) and uiScale stays at root —
+// The accessibility subtree owns the Access toggles. motionReduce stays under settings.video (where
+// feel.js/vfx.js read it) and uiScale stays at root —
 // applyAccessibility() reconciles by reading from all three locations.
 // ---------------------------------------------------------------------------------------------------
 export const ACCESSIBILITY_SETTINGS_SCHEMA = [
   {
     key: 'colorblindMode', path: 'accessibility.colorblindMode', type: 'select',
-    options: COLORBLIND_MODES, default: 'none', status: 'NEW',
+    options: COLORBLIND_MODES, default: 'none', status: 'EXISTS',
     label: 'Colorblind palette', help: 'Recolors radar blips, bars and alerts for dichromacy.',
   },
   {
-    key: 'highContrast', path: 'accessibility.highContrast', type: 'toggle', default: false, status: 'NEW',
+    key: 'highContrast', path: 'accessibility.highContrast', type: 'toggle', default: false, status: 'EXISTS',
     label: 'High contrast', help: 'Stronger panel borders, opaque backdrops, brighter text.',
   },
   {
-    key: 'flashReduce', path: 'accessibility.flashReduce', type: 'toggle', default: false, status: 'NEW',
+    key: 'flashReduce', path: 'accessibility.flashReduce', type: 'toggle', default: false, status: 'EXISTS',
     label: 'Reduce flashing', help: 'Suppresses strobe / death-flash / alarm-blink (photosensitivity).',
   },
   {
-    key: 'dyslexiaFont', path: 'accessibility.dyslexiaFont', type: 'toggle', default: false, status: 'NEW',
+    key: 'dyslexiaFont', path: 'accessibility.dyslexiaFont', type: 'toggle', default: false, status: 'EXISTS',
     label: 'Readable font', help: 'Switches UI to a higher-legibility font with looser spacing.',
   },
   {
-    // SEPARATE from motionReduce by design (task requirement: two flags). This one is the existing
-    // vestibular flag; surfaced here only so the schema is complete — DO NOT add a second toggle,
-    // settings.js:245 already renders it.
+    // Separate from flashReduce by design: this one is the vestibular flag. It remains under
+    // settings.video so feel.js, vfx.js, and this accessibility adapter all read one source.
     key: 'motionReduce', path: 'video.motionReduce', type: 'toggle', default: false, status: 'EXISTS',
-    label: 'Reduce motion', help: 'Already in Video tab. Suppresses camera shake / FOV punch / hit-stop.',
+    label: 'Reduce motion', help: 'Suppresses camera shake, FOV punch, hit-stop, and parallax.',
   },
   {
-    // Existing root-level UI scale (range 0.75–1.5). The task asks for a 100–200% scale via --sf-ui-scale;
-    // these RANGES DIFFER and must be reconciled by the lead (see styles/accessibility.css header).
-    key: 'uiScale', path: 'uiScale', type: 'slider', min: 1, max: 2, step: 0.05, default: 1, status: 'EXISTS',
-    label: 'UI scale', help: 'Existing field (settings.js:246, range 0.75–1.5). Task spec wants 1–2x.',
+    // Existing root-level UI scale, driven by the Settings > Video slider and the --ui-scale path.
+    key: 'uiScale', path: 'uiScale', type: 'slider', min: 0.75, max: 2, step: 0.05, default: 1, status: 'EXISTS',
+    label: 'UI scale', help: 'Scales the HUD and menus for readability.',
   },
 ];
 

@@ -56,14 +56,35 @@ const checks = [
       '.sf-sort:focus-visible',
     ],
   },
+  {
+    path: 'src/ui/accessibility.js',
+    label: 'accessibility schema reflects shipped settings',
+    needs: [
+      'Settings fields exposed by Settings > Access and Settings > Video',
+      "status: 'EXISTS'",
+      'min: 0.75, max: 2',
+      "help: 'Scales the HUD and menus for readability.'",
+    ],
+    forbids: [
+      'Task spec',
+      'task requirement',
+      'lead adds',
+      'must be reconciled by the lead',
+      'DO NOT add a second toggle',
+    ],
+  },
 ];
 
 let fail = 0;
 for (const check of checks) {
   const src = await readFile(join(ROOT, check.path), 'utf8');
   const missing = check.needs.filter((needle) => !src.includes(needle));
-  if (missing.length) {
-    console.log(`FAIL ${check.path} - ${check.label}: missing ${missing.join(', ')}`);
+  const forbidden = (check.forbids || []).filter((needle) => src.includes(needle));
+  if (missing.length || forbidden.length) {
+    const reasons = [];
+    if (missing.length) reasons.push(`missing ${missing.join(', ')}`);
+    if (forbidden.length) reasons.push(`forbidden ${forbidden.join(', ')}`);
+    console.log(`FAIL ${check.path} - ${check.label}: ${reasons.join('; ')}`);
     fail++;
   } else {
     console.log(`ok   ${check.path} - ${check.label}`);
