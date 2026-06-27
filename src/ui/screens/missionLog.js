@@ -277,6 +277,7 @@ export const missionLogScreen = {
     if (!ctx || !this._listEl) return;
     const state = ctx.state;
     const active = (state.missions && state.missions.active) || [];
+    const activeMissions = active.filter((m) => m && m.status === 'active');
     const tracked = state.ui && state.ui.trackedMissionId;
     const simTime = state.simTime || 0;
 
@@ -286,14 +287,14 @@ export const missionLogScreen = {
 
     this._listEl.innerHTML = '';
 
-    if (!active.length) {
+    if (!activeMissions.length) {
       this._listEl.innerHTML = '<div class="sf-mlog-empty">No active missions. Dock at a station, open Missions or the Bar, accept a contract, then undock and follow the tracked nav marker.</div>';
+      if (this._compVisible) this._renderCompleted();
       return;
     }
 
     const frag = document.createDocumentFragment();
-    for (const m of active) {
-      if (m.status !== 'active') continue;
+    for (const m of activeMissions) {
       const isTracked = tracked === m.id;
       const remaining = Math.max(0, (m.deadline_s || 0) - simTime);
       const urgent = remaining > 0 && remaining < 120;

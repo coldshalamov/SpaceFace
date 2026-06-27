@@ -64,6 +64,7 @@ if (starmap) {
 const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
 const localmapSrc = readFileSync(new URL('../src/ui/screens/localmap.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
+const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
 const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
@@ -105,6 +106,14 @@ if (!/shell\(rootEl,\s*'Codex'/.test(codexSrc)) {
   fail++;
 } else {
   console.log('ok   codexScreen - shell title is Codex');
+  ok++;
+}
+if (!missionLogSrc.includes("const activeMissions = active.filter((m) => m && m.status === 'active');")
+  || !/if \(!activeMissions\.length\) \{[\s\S]*this\._listEl\.innerHTML = '<div class="sf-mlog-empty">[\s\S]*if \(this\._compVisible\) this\._renderCompleted\(\);[\s\S]*return;[\s\S]*\}[\s\S]*for \(const m of activeMissions\)/.test(missionLogSrc)) {
+  console.log('FAIL missionLogScreen - completed ledger must refresh even when no active missions remain');
+  fail++;
+} else {
+  console.log('ok   missionLogScreen - completed ledger refreshes on empty active state');
   ok++;
 }
 const figureDossierKeys = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss', 'elroy', 'mira', 'rook', 'vale', 'kurtz'];
