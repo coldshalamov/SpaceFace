@@ -607,11 +607,14 @@ export const economy = {
       const units = Math.max(0, Math.min(want, fuel.max - fuel.current));
       const cost = round(units * FUEL_UNIT_CR);
       if (units <= 0) return;
-      if ((state.player.credits | 0) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for fuel', kind: 'error', ttl: 2 }); return; }
-      this.chargeCredits(cost, 'service:refuel');
-      fuel.current = Math.min(fuel.max, fuel.current + units);
+      const credits = state.player.credits | 0;
+      const realUnits = credits < cost ? Math.max(0, Math.min(units, Math.floor(credits / FUEL_UNIT_CR))) : units;
+      if (realUnits <= 0) { this.bus.emit('toast', { text: 'Insufficient credits for fuel', kind: 'error', ttl: 2 }); return; }
+      const realCost = round(realUnits * FUEL_UNIT_CR);
+      this.chargeCredits(realCost, 'service:refuel');
+      fuel.current = Math.min(fuel.max, fuel.current + realUnits);
       this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
-      this.bus.emit('toast', { text: `Refueled (${round(units)}u, ${cost}cr)`, kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: `${realUnits < units ? 'Partial refuel' : 'Refueled'} (${round(realUnits)}u, ${realCost}cr)`, kind: realUnits < units ? 'warn' : 'success', ttl: 2 });
     } else if (type === 'repair') {
       const e = state.entities && state.entities.get(state.playerId);
       if (!e) return;

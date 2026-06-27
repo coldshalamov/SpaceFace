@@ -2814,6 +2814,37 @@ function checkAmmoServiceOnlyChargesAcceptedCargo() {
   assert(fullEvents.some((e) => e.event === 'toast' && e.payload.kind === 'error'), 'rejected ammo service should notify the player');
 }
 
+function checkRefuelServiceOnlyChargesAffordableFuel() {
+  const state = {
+    player: { credits: 200 },
+    fuel: { current: 40, max: 100 },
+  };
+  const events = [];
+  economy.state = state;
+  economy.bus = { emit(event, payload) { events.push({ event, payload }); } };
+
+  economy.handleService({ type: 'refuel', amount: 60 });
+
+  assert.equal(state.player.credits, 2, 'partial refuel should charge only affordable fuel units');
+  assert.equal(state.fuel.current, 73, 'partial refuel should add only affordable fuel units');
+  assert(events.some((e) => e.event === 'fuel:changed' && e.payload.current === 73), 'partial refuel should emit fuel change');
+  assert(events.some((e) => e.event === 'toast' && e.payload.kind === 'warn' && /Partial refuel/.test(e.payload.text)), 'partial refuel should notify as partial');
+
+  const poorState = {
+    player: { credits: 5 },
+    fuel: { current: 40, max: 100 },
+  };
+  const poorEvents = [];
+  economy.state = poorState;
+  economy.bus = { emit(event, payload) { poorEvents.push({ event, payload }); } };
+
+  economy.handleService({ type: 'refuel', amount: 60 });
+
+  assert.equal(poorState.player.credits, 5, 'unaffordable refuel should not charge below one fuel unit');
+  assert.equal(poorState.fuel.current, 40, 'unaffordable refuel should not change fuel');
+  assert(poorEvents.some((e) => e.event === 'toast' && e.payload.kind === 'error'), 'unaffordable refuel should notify the player');
+}
+
 function checkInsuranceUsesDockedStationId() {
   const state = {
     player: {
@@ -4484,6 +4515,7 @@ checkInsuredRespawnUsesStationRefundAndCargoLoss();
 checkFailedCargoFitDoesNotDuplicateModules();
 checkNewGameOwnedShipDefaultsAreFitted();
 checkAmmoServiceOnlyChargesAcceptedCargo();
+checkRefuelServiceOnlyChargesAffordableFuel();
 checkInsuranceUsesDockedStationId();
 checkEconomyRngFollowsCurrentSaveSeed();
 checkAutomationRngContinuesAfterDeserialize();
