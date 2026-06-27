@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { BINDINGS } from '../src/ui/bindings.js';
 
 const ROOT = process.cwd();
 const WIDTH = 1280, HEIGHT = 800;
@@ -231,7 +232,9 @@ try {
   console.log('Off-sector local map report:', JSON.stringify(offSectorReport, null, 2));
   assert.equal(offSectorReport.objectivePanelVisible, true, 'off-sector objective panel must stay visible: ' + JSON.stringify(offSectorReport));
   assert.equal(offSectorReport.waypointHasPosition, false, 'off-sector waypoint probe must not have a local position: ' + JSON.stringify(offSectorReport));
-  assert.match(offSectorReport.objectiveText, /(Next jump|Plot route|M Star Map)/i, 'off-sector objective panel must surface route or next-jump guidance: ' + JSON.stringify(offSectorReport));
+  const starMapChip = `${BINDINGS.starmap.label} Star Map`;
+  assert.ok(/Next jump|Plot route/i.test(offSectorReport.objectiveText) || offSectorReport.objectiveText.includes(starMapChip),
+    'off-sector objective panel must surface route or next-jump guidance: ' + JSON.stringify(offSectorReport));
   assert.match(offSectorReport.objectiveText, /Tethys Junction/i, 'off-sector objective panel must name the destination sector: ' + JSON.stringify(offSectorReport));
   assert.ok(offSectorReport.routeHops >= 1, 'off-sector objective probe must include a plotted route: ' + JSON.stringify(offSectorReport));
 

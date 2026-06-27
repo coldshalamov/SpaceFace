@@ -9,12 +9,13 @@
 // flight-computer telemetry and the deterministic flightV3 spec — so the module is now live,
 // not test-only.
 //
-// Opened with N (see uiRoot key binding). Canvas is DPI-scaled like the radar. Purely read-only
-// over sim state: it never writes movement/combat state (§0.6).
+// Opened with the local-map binding (N by default). Canvas is DPI-scaled like the radar. Purely
+// read-only over sim state: it never writes movement/combat state (§0.6).
 import { LocalSpaceIntel, rankTradeRoutes } from '../navigation/localSpaceMapModel.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { STORY_BEATS } from '../../data/missions.js';
 import { SECTORS } from '../../data/sectors.js';
+import { BINDINGS } from '../bindings.js';
 
 // Friendly commodity/station names for the route panel (single source: the data catalogs).
 const COMM_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
@@ -109,18 +110,20 @@ export const localmapScreen = {
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-localmap';
+    const localMapKey = BINDINGS.localmap.label;
+    const starMapKey = BINDINGS.starmap.label;
     rootEl.innerHTML =
       '<div class="lm-head">' +
         '<div><div class="lm-title">Local System Map</div>' +
-        '<div class="lm-scale">SYSTEM SCALE · remembered contacts age + fade · press N or Esc to close</div></div>' +
-        '<button class="lm-close" type="button">Close (N)</button>' +
+        `<div class="lm-scale">SYSTEM SCALE · remembered contacts age + fade · press ${localMapKey} or Esc to close</div></div>` +
+        `<button class="lm-close" type="button">Close (${localMapKey})</button>` +
       '</div>' +
       '<div class="lm-body"><canvas></canvas>' +
       '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
       '<div class="lm-legend">' +
         '◆ station &nbsp; ◇ gate &nbsp; ▲ ship &nbsp; ● asteroid<br>' +
         'bright = fresh &nbsp;·&nbsp; faint = stale/uncertain<br>' +
-        'tactical radar = near-field &nbsp;·&nbsp; N map = this system &nbsp;·&nbsp; M map = galaxy' +
+        `tactical radar = near-field &nbsp;·&nbsp; ${localMapKey} map = this system &nbsp;·&nbsp; ${starMapKey} map = galaxy` +
       '</div>' +
       '<div class="lm-routes" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';
@@ -475,7 +478,7 @@ export const localmapScreen = {
       if (route) body = appendSentence(body, route.next);
       if (wp.sectorName) meta.push({ text: wp.sectorName, hot: !wp.pos });
     } else if (beat) {
-      meta.push({ text: 'N Local Map', hot: true });
+      meta.push({ text: `${BINDINGS.localmap.label} Local Map`, hot: true });
     }
 
     if (wp && wp.pos && player && player.pos) {
@@ -486,7 +489,7 @@ export const localmapScreen = {
     }
     if (route) {
       meta.push({ text: route.summary, hot: true });
-      meta.push({ text: 'M Star Map', hot: true });
+      meta.push({ text: `${BINDINGS.starmap.label} Star Map`, hot: true });
     }
 
     const readable = [kicker, title, body, ...meta.map((m) => m.text)].filter(Boolean).join(' ');

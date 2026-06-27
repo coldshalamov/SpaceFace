@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const checks = [
   ['../src/ui/screens/stationHub.js', 'stationHub'],
   ['../src/ui/screens/starmap.js', 'starmapScreen'],
+  ['../src/ui/screens/localmap.js', 'localmapScreen'],
   ['../src/ui/screens/techTree.js', 'techTreeScreen'],
   ['../src/ui/screens/automationPanel.js', 'automationScreen'],
   ['../src/ui/screens/drill.js', 'drillScreen'],
@@ -60,6 +61,7 @@ if (starmap) {
 }
 
 const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
+const localmapSrc = readFileSync(new URL('../src/ui/screens/localmap.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
@@ -82,6 +84,18 @@ if (!helpSrc.includes("import { BINDINGS } from '../bindings.js'")
   fail++;
 } else {
   console.log('ok   helpScreen - fixed UI key labels read the binding registry');
+  ok++;
+}
+if (!localmapSrc.includes("import { BINDINGS } from '../bindings.js'")
+  || !localmapSrc.includes('BINDINGS.localmap.label')
+  || !localmapSrc.includes('BINDINGS.starmap.label')) {
+  console.log('FAIL localmapScreen - visible map key labels must read src/ui/bindings.js');
+  fail++;
+} else if (/press N or Esc|Close \(N\)|N map = this system|M map = galaxy|N Local Map|M Star Map/.test(localmapSrc)) {
+  console.log('FAIL localmapScreen - visible map key labels must not hard-code localmap/starmap keys');
+  fail++;
+} else {
+  console.log('ok   localmapScreen - visible map key labels read the binding registry');
   ok++;
 }
 if (!/shell\(rootEl,\s*'Codex'/.test(codexSrc)) {
