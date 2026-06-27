@@ -81,4 +81,20 @@ export const MIGRATIONS = [
       }
     },
   },
+  // v6: durable navigation. Saves now carry data.nav so trade routes, mission waypoints, and
+  // cross-sector route intent can survive Continue/reload. Old saves are allowed to have no active
+  // nav; mission restore may still rebuild objective guidance from active mission state.
+  {
+    from: 5,
+    to: 6,
+    fn(data) {
+      if (!data.nav || typeof data.nav !== 'object') {
+        data.nav = { route: null, autoTravel: false, waypoint: null };
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(data.nav, 'route')) data.nav.route = null;
+      if (!Object.prototype.hasOwnProperty.call(data.nav, 'autoTravel')) data.nav.autoTravel = false;
+      if (!Object.prototype.hasOwnProperty.call(data.nav, 'waypoint')) data.nav.waypoint = null;
+    },
+  },
 ];
