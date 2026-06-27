@@ -95,6 +95,7 @@
       "electron/**",
       "package.json",
       "assets/cinematics/menu_background.jpg",
+      "assets/ui/**",
       "assets/ships/**"
     ],
     "win": {
