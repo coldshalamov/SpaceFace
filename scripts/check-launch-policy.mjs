@@ -21,6 +21,46 @@ assert.doesNotMatch(
   /\?|prod=1|release=1|debug=|dev=/,
   'Electron must not inject mode/query flags into the normal game launch URL'
 );
+assert.match(
+  electronMain,
+  /const PORT = 41788;/,
+  'Electron must use the fixed packaged-app port so localStorage saves survive relaunches'
+);
+assert.match(
+  electronMain,
+  /server\.listen\(PORT, '127\.0\.0\.1'/,
+  'Electron must try the fixed port before any fallback port'
+);
+assert.match(
+  electronMain,
+  /'\.glb': 'model\/gltf-binary'/,
+  'Electron MIME table must serve release-authored GLB ship assets as model/gltf-binary'
+);
+assert.match(
+  electronMain,
+  /'\.gltf': 'model\/gltf\+json; charset=utf-8'/,
+  'Electron MIME table must serve GLTF JSON assets consistently with the dev server'
+);
+assert.match(
+  electronMain,
+  /'\.ktx2': 'image\/ktx2'/,
+  'Electron MIME table must serve KTX2 textures consistently with the dev server'
+);
+assert.match(
+  electronMain,
+  /'Cache-Control': 'no-cache'/,
+  'Electron static server must keep no-cache semantics like the browser dev server'
+);
+assert.match(
+  electronMain,
+  /function isInsideRoot\(file\)[\s\S]*path\.resolve\(file\)[\s\S]*RESOLVED_ROOT/,
+  'Electron static server must resolve filesystem containment before serving files'
+);
+assert.match(
+  electronMain,
+  /stats\.isDirectory\(\).*index\.html/s,
+  'Electron static server must support directory index fallback like the browser dev server'
+);
 
 const releaseMode = read('src/render/releaseMode.js');
 assert.doesNotMatch(
@@ -112,7 +152,7 @@ assert.match(
   'save:loaded must expose whether playable flight is waiting on authored visual readiness'
 );
 
-console.log('Launch policy OK: one player URL, release-authored default assets, canonical runtime backends, no prod query fork.');
+console.log('Launch policy OK: one player URL, stable Electron save origin, release-authored default assets, packaged static-server parity, canonical runtime backends, no prod query fork.');
 
 function isPackagedRoot(root, patterns) {
   const relRoot = normalizeRel(root);

@@ -10,13 +10,14 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// WEB ROOT: the bundled release ships minified, tree-shoken output in build/web/ (produced by
+// WEB ROOT: the bundled release ships minified, tree-shaken output in build/web/ (produced by
 // `npm run build:bundle` / `npm run dist`). When that exists, serve IT (smaller, faster, no raw
 // source shipped). When it doesn't (dev: `npm run electron` without a build), fall back to the
 // project root so the raw ES modules + importmap load as in a browser — the zero-build dev path.
 const PROJECT_ROOT = path.join(__dirname, '..');
 const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
 const ROOT = fs.existsSync(path.join(BUNDLE_ROOT, 'index.html')) ? BUNDLE_ROOT : PROJECT_ROOT;
+const RESOLVED_ROOT = path.resolve(ROOT);
 // Dedicated fixed port for the packaged app (distinct from the dev server's 8123 so both can run).
 const PORT = 41788;
 const MIME = {
@@ -24,6 +25,7 @@ const MIME = {
   '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
+  '.ktx2': 'image/ktx2', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json; charset=utf-8',
   '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf',
   '.ico': 'image/x-icon', '.map': 'application/json; charset=utf-8',
 };
@@ -32,18 +34,31 @@ app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 
+function isInsideRoot(file) {
+  const resolved = path.resolve(file);
+  return resolved === RESOLVED_ROOT || resolved.startsWith(RESOLVED_ROOT + path.sep);
+}
+
 function startServer() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       let p = decodeURIComponent((req.url || '/').split('?')[0]);
       if (p === '/' || p === '') p = '/index.html';
       const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
-      const file = path.join(ROOT, safe);
-      if (!file.startsWith(ROOT)) { res.writeHead(403); res.end('Forbidden'); return; }
-      fs.readFile(file, (err, data) => {
-        if (err) { res.writeHead(404); res.end('404 ' + safe); return; }
-        res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });
-        res.end(data);
+      let file = path.join(ROOT, safe);
+      if (!isInsideRoot(file)) { res.writeHead(403); res.end('Forbidden'); return; }
+      fs.stat(file, (statErr, stats) => {
+        if (statErr) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 ' + safe); return; }
+        if (stats.isDirectory()) file = path.join(file, 'index.html');
+        if (!isInsideRoot(file)) { res.writeHead(403); res.end('Forbidden'); return; }
+        fs.readFile(file, (err, data) => {
+          if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 ' + safe); return; }
+          res.writeHead(200, {
+            'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+            'Cache-Control': 'no-cache',
+          });
+          res.end(data);
+        });
       });
     });
     // Fixed port for a stable origin (save persistence). If it's busy (rare — another app, or a stale
