@@ -314,7 +314,9 @@ export const stationHub = {
     panel.innerHTML =
       '<div class="st-sub-h">Mission Board</div>' +
       '<div class="st-mission-guide">Accepting a contract adds it to the Mission Log (J), auto-tracks it, and sets nav guidance when a destination exists. Rewards fund hulls, modules, repairs, and fuel.</div>' +
+      '<div class="st-mission-accepted" hidden></div>' +
       '<div class="st-mission-list"></div>';
+    const status = panel.querySelector('.st-mission-accepted');
     const list = panel.querySelector('.st-mission-list');
     list.addEventListener('click', (ev) => {
       const btn = ev.target.closest('[data-mid]');
@@ -325,12 +327,42 @@ export const stationHub = {
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     });
     content.appendChild(panel);
-    this._missionEls = { panel, list };
+    this._missionEls = { panel, list, status };
+  },
+
+  _setMissionAcceptedStatus(missionId) {
+    this._missionAcceptedId = missionId || null;
+    this._refreshMissionAcceptedStatus();
+  },
+
+  _refreshMissionAcceptedStatus() {
+    const status = this._missionEls && this._missionEls.status;
+    if (!status) return;
+    const active = this._ctx && this._ctx.state && this._ctx.state.missions && this._ctx.state.missions.active || [];
+    const mission = this._missionAcceptedId
+      ? active.find((m) => m && m.id === this._missionAcceptedId && m.status === 'active')
+      : null;
+    if (!mission) {
+      status.hidden = true;
+      status.innerHTML = '';
+      return;
+    }
+    const waypoint = this._ctx.state.nav && this._ctx.state.nav.waypoint;
+    const routeLine = waypoint && waypoint.reason
+      ? waypoint.reason
+      : missionAfterAcceptText(mission);
+    status.hidden = false;
+    status.innerHTML =
+      '<div class="st-mission-accepted-label mono">ACCEPTED + TRACKED</div>' +
+      '<div class="st-mission-accepted-title">' + escapeHtml(mission.title || prettyType(mission.type)) + '</div>' +
+      '<div class="st-mission-accepted-next">' + escapeHtml(routeLine) + '</div>' +
+      '<div class="st-mission-accepted-log mono">Mission Log (J) now carries the route, timer, and progress. Undock when Departure Check is green.</div>';
   },
 
   _refreshMissions() {
     const ctx = this._ctx;
     if (!this._missionEls) return;
+    this._refreshMissionAcceptedStatus();
     const list = this._missionEls.list;
     const board = ctx.state.missions && ctx.state.missions.boards && ctx.state.missions.boards[this._stationId];
     const slots = (board && board.slots) || [];
@@ -630,14 +662,15 @@ export const stationHub = {
       if (this._activePanelId() === 'missions') this._refreshMissions();
       this._refreshDeparture();
     });
-    bus.on('mission:accepted', () => {
+    bus.on('mission:accepted', (payload) => {
       if (!this._visible()) return;
+      this._setMissionAcceptedStatus(payload && payload.missionId);
       if (this._activePanelId() === 'missions') this._refreshMissions();
       this._refreshDeparture();
     });
-    bus.on('mission:completed', refreshDeparture);
-    bus.on('mission:failed', refreshDeparture);
-    bus.on('mission:expired', refreshDeparture);
+    bus.on('mission:completed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); });
+    bus.on('mission:failed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); });
+    bus.on('mission:expired', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); });
     bus.on('economy:eventStarted', onActive(['market']));
     bus.on('economy:eventEnded', onActive(['market']));
   },
@@ -780,6 +813,29 @@ function missionNextStepText(m) {
       return 'Next: accept, undock, follow tracked nav, and scan the marked sites.';
     default:
       return 'Next: accept to auto-track it, undock, then follow nav guidance toward ' + dest + '.';
+  }
+}
+
+function missionAfterAcceptText(m) {
+  const dest = missionDestName(m || {});
+  switch (m && m.type) {
+    case 'mining_quota':
+      return 'Undock to an asteroid field, mine the quota, then follow the tracker back for payout.';
+    case 'bulk_trade':
+      return 'Buy or carry the requested goods, then sell them where the tracked market points.';
+    case 'bounty_hunt':
+    case 'patrol_clear':
+      return 'Undock, follow tracked nav, and be ready to fight before the timer runs down.';
+    case 'recon_scan':
+      return 'Undock, follow tracked nav, and scan each marked site before returning.';
+    case 'cargo_delivery':
+    case 'passenger_transport':
+    case 'escort':
+    case 'smuggling_run':
+    case 'salvage_retrieval':
+      return 'Undock, follow nav guidance toward ' + dest + ', then dock to resolve the handoff.';
+    default:
+      return 'Undock, follow the tracked objective, and check Mission Log (J) for progress.';
   }
 }
 
@@ -1093,6 +1149,13 @@ const STATION_CSS = `
 /* missions */
 .st-mission-guide { margin: -2px 0 12px; border: 1px solid var(--panel-edge); border-radius: 6px;
   padding: 9px 11px; background: rgba(10,18,32,.5); color: var(--ink-dim); font-size: .8rem; line-height: 1.4; }
+.st-mission-accepted { margin: -2px 0 12px; border: 1px solid rgba(98,224,138,.42); border-radius: 6px;
+  padding: 10px 12px; background: rgba(25,54,42,.36); box-shadow: 0 0 12px rgba(98,224,138,.12); }
+.st-mission-accepted[hidden] { display: none; }
+.st-mission-accepted-label { color: var(--good); font-size: .62rem; letter-spacing: .14em; margin-bottom: 4px; }
+.st-mission-accepted-title { color: var(--ink); font-weight: 700; font-size: .9rem; line-height: 1.3; }
+.st-mission-accepted-next { color: var(--ink-dim); font-size: .78rem; line-height: 1.35; margin-top: 4px; }
+.st-mission-accepted-log { color: var(--ink-mute); font-size: .68rem; line-height: 1.35; margin-top: 6px; }
 .st-mission-list { display: flex; flex-direction: column; gap: 10px; }
 .st-mission-card { border: 1px solid var(--panel-edge); border-radius: 8px; padding: 11px 14px;
   background: rgba(10,18,32,.55); }

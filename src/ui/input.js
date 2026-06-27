@@ -73,6 +73,12 @@ export function createUiInput(ctx, screenManager) {
         try { if (def.onKey(ev, ctx) === true) { ev.preventDefault(); return; } }
         catch (e) { console.error('[uiInput] screen onKey error:', e); }
       }
+      if (def && def.id === 'station' && (key === 'j' || key === 'J')) {
+        ev.preventDefault();
+        screenManager.pushScreen('missionLog');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      }
       // global quick-save/load still work over a modal
       if (key === 'F5') { ev.preventDefault(); bus.emit('game:save', { slot: 'quick' }); return; }
       if (key === 'F9') { ev.preventDefault(); bus.emit('game:load', { slot: 'quick' }); return; }
