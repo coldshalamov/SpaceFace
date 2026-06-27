@@ -32,7 +32,7 @@ function createState() {
     entityList: [],
     entityIndex: { byStationId: new Map() },
     playerId: 'player',
-    player: { credits: 10000, cargo: { items: {} }, stats: {} },
+    player: { credits: 10000, cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 10, capMass: 10 }, stats: {} },
   };
 }
 

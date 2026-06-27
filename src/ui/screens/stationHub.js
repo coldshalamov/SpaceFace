@@ -233,8 +233,12 @@ export const stationHub = {
       const reward = m.reward != null ? m.reward : (m.rewardCr != null ? m.rewardCr : (m.reward_cr != null ? m.reward_cr : 0));
       const repAmt = (m.rep != null ? m.rep : (m.repReward != null ? m.repReward : (MISSION_TUNING.BASE_REP[m.type] || 0)));
       const mid = m.id != null ? m.id : m.missionId;
-      const unmet = m.requirementUnmet || m.lockedReason || null;
+      const preflight = missionPreflight(m, ctx.state);
+      const unmet = m.requirementUnmet || m.lockedReason || preflight.blocker || null;
       const expires = m.expiresInS != null ? m.expiresInS : m.time_limit_s;
+      const preflightHtml = preflight.chips.map((chip) =>
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--' + chip.kind + '">' + escapeHtml(chip.text) + '</span>'
+      ).join('');
       const card = document.createElement('div');
       card.className = 'st-mission-card' + (tracked && tracked === mid ? ' tracked' : '');
       card.innerHTML =
@@ -250,6 +254,8 @@ export const stationHub = {
         '<div class="st-mission-brief">' + escapeHtml(missionBriefText(m)) + '</div>' +
         '<div class="st-mission-purpose">' + escapeHtml(missionValueText(m)) + '</div>' +
         '<div class="st-mission-next">' + escapeHtml(missionNextStepText(m)) + '</div>' +
+        '<div class="st-mission-preflight">' + preflightHtml + '</div>' +
+        (preflight.warning ? '<div class="st-mission-preflight-warn">' + escapeHtml(preflight.warning) + '</div>' : '') +
         '<div class="st-mission-rewards mono">' +
           '<span class="st-mission-cr">+' + (reward || 0).toLocaleString('en-US') + ' cr</span>' +
           (repAmt ? '<span class="st-mission-rep">+' + repAmt + ' rep</span>' : '') +
@@ -509,6 +515,80 @@ function missionCargoAmount(m) {
   const p = m && m.params || {};
   const cargo = missionCommodityName(m);
   return p.qty ? p.qty + 'u ' + cargo : cargo;
+}
+
+const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
+
+function missionCollateral(m) {
+  return Math.max(0, m && (m.collateral_cr || m.collateralCr || m.collateral || 0) || 0);
+}
+
+function missionCargoFootprint(m) {
+  const p = m && m.params || {};
+  if (!p.cmdtyId || !(p.qty > 0)) return { qty: 0, volume: 0 };
+  const commodity = COMMODITY_BY_ID.get(p.cmdtyId);
+  const volPerU = commodity && commodity.volPerU > 0 ? commodity.volPerU : 1;
+  return { qty: Math.floor(p.qty), volume: Math.floor(p.qty) * volPerU };
+}
+
+function fmtHoldUnits(value) {
+  if (!Number.isFinite(value)) return '0';
+  return (Math.round(value * 10) / 10).toLocaleString('en-US');
+}
+
+function missionPreflight(m, state) {
+  const chips = [];
+  const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
+  const activeCount = (state && state.missions && Array.isArray(state.missions.active)) ? state.missions.active.length : 0;
+  const maxActive = cfg.maxActive || 8;
+  const blockers = [];
+  const warnings = [];
+
+  if (activeCount >= maxActive) blockers.push('Active mission limit reached');
+  chips.push({
+    kind: activeCount >= maxActive ? 'bad' : 'ok',
+    text: activeCount >= maxActive ? `Slots full ${activeCount}/${maxActive}` : `Slot ${activeCount + 1}/${maxActive}`,
+  });
+
+  const collateral = missionCollateral(m);
+  const credits = (state && state.player && state.player.credits) | 0;
+  if (collateral > 0) {
+    if (credits < collateral) blockers.push(`Need ${collateral.toLocaleString('en-US')} cr collateral`);
+    chips.push({
+      kind: credits < collateral ? 'bad' : 'ok',
+      text: `${collateral.toLocaleString('en-US')} cr collateral`,
+    });
+  } else {
+    chips.push({ kind: 'ok', text: 'No collateral' });
+  }
+
+  const cargoNeed = missionCargoFootprint(m);
+  if (cargoNeed.qty > 0) {
+    const cargo = state && state.player && state.player.cargo || {};
+    const cap = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 0;
+    const used = Number.isFinite(cargo.usedVolume) ? cargo.usedVolume : 0;
+    const free = Math.max(0, cap - used);
+    const oneLoad = SINGLE_LOAD_CARGO_MISSIONS.has(m && m.type);
+    if (oneLoad) {
+      if (cap < cargoNeed.volume) {
+        blockers.push(`Requires ${fmtHoldUnits(cargoNeed.volume)}u cargo capacity`);
+      } else if (free < cargoNeed.volume) {
+        warnings.push(`Only ${fmtHoldUnits(free)}u free now; clear space before carrying this cargo.`);
+      }
+      chips.push({
+        kind: cap < cargoNeed.volume ? 'bad' : (free < cargoNeed.volume ? 'warn' : 'ok'),
+        text: `${fmtHoldUnits(cargoNeed.volume)}u hold required`,
+      });
+    } else {
+      chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')}u quota` });
+    }
+  }
+
+  return {
+    blocker: blockers[0] || null,
+    warning: warnings[0] || null,
+    chips,
+  };
 }
 
 function missionBriefText(m) {
@@ -881,6 +961,15 @@ const STATION_CSS = `
 .st-mission-brief { color: var(--ink); font-size: .82rem; line-height: 1.38; margin-top: 6px; }
 .st-mission-purpose { color: var(--ink); font-size: .78rem; line-height: 1.35; margin-top: 5px; }
 .st-mission-next { color: var(--ink-mute); font-size: .72rem; line-height: 1.35; margin: 3px 0 8px; }
+.st-mission-preflight { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; }
+.st-mission-preflight-chip { font-family: var(--mono); font-size: .66rem; letter-spacing: .04em;
+  border: 1px solid var(--panel-edge); border-radius: 4px; padding: 2px 6px; color: var(--ink-dim);
+  background: rgba(10,18,32,.48); }
+.st-mission-preflight-chip--ok { color: var(--good); border-color: rgba(98,224,138,.34); }
+.st-mission-preflight-chip--warn { color: var(--warn); border-color: rgba(255,198,77,.34); }
+.st-mission-preflight-chip--bad { color: var(--danger); border-color: rgba(255,84,112,.34); }
+.st-mission-preflight-chip--info { color: var(--accent); border-color: rgba(57,208,255,.28); }
+.st-mission-preflight-warn { color: var(--warn); font-size: .7rem; line-height: 1.3; margin: -3px 0 8px; }
 .st-mission-rewards { display: flex; gap: 14px; font-size: .8rem; margin-bottom: 8px; }
 .st-mission-cr { color: var(--energy); }
 .st-mission-rep { color: var(--accent-2); }

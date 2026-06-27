@@ -68,6 +68,7 @@ const ALL_STATIONS = [...STATION_INFO.values()];
 const LEGAL_TRADE_CMDTYS = COMMODITIES.filter((c) => c.legality === 'legal').map((c) => c.id);
 const MINEABLE_CMDTYS = COMMODITIES.filter((c) => (c.producedBy || []).includes('mining')).map((c) => c.id);
 const CONTRABAND_CMDTYS = COMMODITIES.filter((c) => c.legality === 'contraband' || c.legality === 'restricted').map((c) => c.id);
+const ONE_LOAD_CARGO_TYPES = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
 
 // Station size → tier number used for slot count (S=0,M=1,L=2).
 const SIZE_TIER = { S: 0, M: 1, L: 2 };
@@ -78,6 +79,18 @@ const HOME_FACTION = 'faction_scn'; // resolves STORY_BEATS B0 reward.rep.factio
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
+
+function cargoFootprint(offer) {
+  const p = offer && offer.params || {};
+  if (!p.cmdtyId || !(p.qty > 0)) return 0;
+  const commodity = CMDTY_BY_ID.get(p.cmdtyId);
+  const volPerU = commodity && commodity.volPerU > 0 ? commodity.volPerU : 1;
+  return Math.floor(p.qty) * volPerU;
+}
+
+function fmtCargoUnits(value) {
+  return (Math.round(value * 10) / 10).toLocaleString('en-US');
+}
 
 // Map-space distance between two sectors → world-unit-ish path length (deterministic, bounded).
 // Sector map positions are small integers (±~11); scale to a sensible wu range and floor same-sector.
@@ -434,6 +447,11 @@ export const missions = {
     }
     const { offer, board } = this._findOffer(missionId);
     if (!offer) return false;
+    const preflight = this._acceptPreflight(offer);
+    if (!preflight.ok) {
+      this.bus.emit('toast', { text: preflight.reason, kind: 'error', ttl: 3 });
+      return false;
+    }
 
     // Collateral affordability check (read-only on credits; economy charges it).
     if (offer.collateral_cr > 0 && (state.player.credits | 0) < offer.collateral_cr) {
@@ -470,6 +488,21 @@ export const missions = {
     // B4 branch: accepting a faction intro contract sets the story branch.
     this._maybeSetBranch(inst);
     return true;
+  },
+
+  _acceptPreflight(offer) {
+    if (!offer || !ONE_LOAD_CARGO_TYPES.has(offer.type)) return { ok: true };
+    const requiredVolume = cargoFootprint(offer);
+    if (!(requiredVolume > 0)) return { ok: true };
+    const cargo = this.state.player && this.state.player.cargo || {};
+    const capVolume = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 0;
+    if (capVolume < requiredVolume) {
+      return {
+        ok: false,
+        reason: `Need ${fmtCargoUnits(requiredVolume)}u cargo capacity for this contract`,
+      };
+    }
+    return { ok: true };
   },
 
   trackMission(missionId, options = {}) {
