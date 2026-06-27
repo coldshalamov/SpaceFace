@@ -132,13 +132,10 @@ async function waitForVisible(page, selector, timeoutMs, label) {
 }
 
 async function clickButton(page, label) {
-  return page.evaluate((wanted) => {
-    const button = [...document.querySelectorAll('button')]
-      .find((b) => (b.textContent || '').trim() === wanted);
-    if (!button) return false;
-    button.click();
-    return true;
-  }, label);
+  const button = page.getByRole('button', { name: label, exact: true }).first();
+  if (await button.count() <= 0) return false;
+  await button.click({ timeout: 10000 });
+  return true;
 }
 
 async function startFreshServer() {

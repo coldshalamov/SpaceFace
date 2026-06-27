@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { applyTradeNavigation, unitPrice } from '../src/ui/screens/market.js';
+import { applyTradeNavigation, computeBestTrades, unitPrice } from '../src/ui/screens/market.js';
 
 function makeHarness(currentSectorId = 'sector_helios_prime') {
   const events = [];
@@ -21,6 +21,10 @@ function makeHarness(currentSectorId = 'sector_helios_prime') {
       },
     },
     nav: { route: null, autoTravel: false, waypoint: null },
+    player: {
+      credits: 55,
+      cargo: { usedVolume: 0, capVolume: 20, items: {} },
+    },
     entityList: [
       {
         id: 1,
@@ -108,9 +112,76 @@ function checkLiveQuoteStillWins() {
   assert.equal(unitPrice(ctx, 'station_helios', 'cmdty_food', 'buy'), 123, 'live economy quote must win over fallback pricing');
 }
 
+function checkBestTradeShowsCurrentLoadAndProfit() {
+  const { state } = makeHarness('sector_helios_prime');
+  state.economy = {
+    markets: {
+      station_helios: {
+        cmdty_food: { lastBuy: 10 },
+        cmdty_refined_metals: { lastBuy: 50 },
+      },
+    },
+    marketIntel: {
+      station_tethys: {
+        seenAtT: 12,
+        snapshot: {
+          cmdty_food: { sell: 18 },
+          cmdty_refined_metals: { sell: 70 },
+        },
+      },
+    },
+  };
+
+  const trades = computeBestTrades(state, 'station_helios');
+  const food = trades.find((trade) => trade.cmdtyId === 'cmdty_food');
+  const refined = trades.find((trade) => trade.cmdtyId === 'cmdty_refined_metals');
+
+  assert.equal(food.loadUnits, 5, 'food route should be limited by the current wallet');
+  assert.equal(food.loadCost, 50, 'food route should show the affordable buy-in');
+  assert.equal(food.loadProfit, 40, 'food route should show current-run gross profit');
+  assert.equal(food.loadVolume, 5, 'food route should show hold volume consumed');
+  assert.equal(refined.loadUnits, 1, 'refined route should account for commodity unit price');
+  assert.equal(refined.loadVolume, 0.5, 'refined route should account for non-1.0 cargo volume');
+  assert.equal(trades[0].cmdtyId, 'cmdty_food', 'ranking should prefer the best current-run profit');
+}
+
+function checkBestTradeExplainsBlockedLoad() {
+  const { state } = makeHarness('sector_helios_prime');
+  state.player.credits = 0;
+  state.player.cargo.capVolume = 4;
+  state.economy = {
+    markets: { station_helios: { cmdty_food: { lastBuy: 10 } } },
+    marketIntel: {
+      station_tethys: { seenAtT: 12, snapshot: { cmdty_food: { sell: 18 } } },
+    },
+  };
+
+  const trade = computeBestTrades(state, 'station_helios')[0];
+  assert.equal(trade.loadUnits, 0, 'blocked route should carry zero load units');
+  assert.match(trade.loadReason, /need 10 CR\/u/, 'blocked route should explain the wallet gate');
+}
+
+function checkBestTradeUsesWarmedMarketSnapshots() {
+  const { state } = makeHarness('sector_helios_prime');
+  state.economy = {
+    markets: {
+      station_helios: { cmdty_food: { lastBuy: 10, lastSell: 9, stock: 1000, role: 'produce' } },
+      station_tethys: { cmdty_food: { lastBuy: 19, lastSell: 18, stock: 500, role: 'consume' } },
+    },
+    marketIntel: {},
+  };
+
+  const trade = computeBestTrades(state, 'station_helios')[0];
+  assert.equal(trade.destStation, 'station_tethys', 'planner should use warmed public markets even before explicit visit intel');
+  assert.equal(trade.loadProfit, 40, 'warmed market route should still show current-run profit');
+}
+
 checkOffSectorBestTradeSetsCourse();
 checkLocalBestTradeUsesLivePositionOnly();
 checkFailedQuoteFallsBackToRolePrice();
 checkLiveQuoteStillWins();
+checkBestTradeShowsCurrentLoadAndProfit();
+checkBestTradeExplainsBlockedLoad();
+checkBestTradeUsesWarmedMarketSnapshots();
 
 console.log('Market navigation checks OK');

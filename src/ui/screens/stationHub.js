@@ -855,12 +855,15 @@ const STATION_CSS = `
 .st-planner-hint { color: var(--ink-mute); font-weight: 400; font-size: .7rem; letter-spacing: .02em; text-transform: none; }
 .st-planner-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .st-planner-empty { color: var(--ink-dim); font-size: .82rem; font-style: italic; padding: 4px 0; }
-.st-planner-row { display: grid; grid-template-columns: 1.4fr 2.2fr 1.6fr 1.4fr auto; align-items: center; gap: 10px;
+.st-planner-row { display: grid; grid-template-columns: 1.3fr 2fr 1.4fr 1.45fr 1.25fr auto; align-items: center; gap: 10px;
   padding: 6px 9px; background: rgba(10,18,32,.5); border: 1px solid var(--panel-edge); border-radius: 6px; font-size: .82rem; }
 .st-pl-cmdty { color: var(--ink); font-weight: 600; }
 .st-pl-prices { color: var(--ink-dim); font-size: .78rem; }
 .st-pl-margin { font-weight: 600; }
 .st-pl-up { color: var(--good); }
+.st-pl-run { font-family: var(--mono); font-size: .76rem; }
+.st-pl-run--ok { color: var(--energy); }
+.st-pl-run--blocked { color: var(--ink-mute); font-style: italic; }
 .st-pl-dest { color: var(--ink-mute); font-size: .78rem; }
 .st-pl-nav { padding: 4px 10px; font-size: .72rem; border-color: var(--accent); color: var(--accent);
   border-radius: 5px; cursor: pointer; }

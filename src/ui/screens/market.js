@@ -196,7 +196,7 @@ export function createMarketPanel(ctx) {
   // navigation waypoint to the destination station the HUD arrow steers toward.
   const planner = document.createElement('div');
   planner.className = 'st-market-planner';
-  planner.innerHTML = '<div class="st-sub-h">Best Trades <span class="st-planner-hint">(buy here → sell elsewhere)</span></div>' +
+  planner.innerHTML = '<div class="st-sub-h">Best Trades <span class="st-planner-hint">(current hold + credits)</span></div>' +
     '<div class="st-planner-list"></div>';
   root.appendChild(planner);
   const plannerList = planner.querySelector('.st-planner-list');
@@ -475,7 +475,7 @@ export function createMarketPanel(ctx) {
     const trades = computeBestTrades(state, stationId);
     plannerList.textContent = '';
     if (!trades.length) {
-      plannerList.innerHTML = '<div class="st-planner-empty">No profitable routes known yet — visit other stations to log their prices.</div>';
+      plannerList.innerHTML = '<div class="st-planner-empty">No profitable routes known yet — visit other stations, check a trade hub, or let market intel refresh.</div>';
       return;
     }
     const frag = document.createDocumentFragment();
@@ -483,10 +483,18 @@ export function createMarketPanel(ctx) {
       const row = document.createElement('div');
       row.className = 'st-planner-row';
       const pct = Math.round((t.margin / t.buyHere) * 100);
+      const runBlocked = t.loadUnits <= 0;
+      const runLabel = runBlocked
+        ? t.loadReason
+        : 'load ' + fmtCr(t.loadUnits) + ' · +' + fmtCr(t.loadProfit) + ' CR';
+      row.title = runBlocked
+        ? 'Profitable route, but you cannot load this cargo right now: ' + t.loadReason + '.'
+        : 'Current run estimate: buy ' + t.loadUnits + ' for ' + fmtCr(t.loadCost) + ' CR, hold ' + fmtCr(t.loadVolume) + 'u, expected gross profit +' + fmtCr(t.loadProfit) + ' CR.';
       row.innerHTML =
         '<span class="st-pl-cmdty">' + escapeHtml(t.cmdtyName) + '</span>' +
         '<span class="st-pl-prices mono">buy ' + fmtCr(t.buyHere) + ' → sell ' + fmtCr(t.sellThere) + '</span>' +
         '<span class="st-pl-margin st-pl-up">+' + fmtCr(t.margin) + '/u (' + pct + '%)</span>' +
+        '<span class="st-pl-run ' + (runBlocked ? 'st-pl-run--blocked' : 'st-pl-run--ok') + '">' + escapeHtml(runLabel) + '</span>' +
         '<span class="st-pl-dest">' + escapeHtml(stationName(state, t.destStation)) + '</span>' +
         '<button class="st-pl-nav" data-act="nav" data-station="' + escapeHtml(t.destStation) + '" data-cmdty="' + escapeHtml(t.cmdtyId) + '">Set Nav</button>';
       frag.appendChild(row);
@@ -581,12 +589,66 @@ export function applyTradeNavigation(ctx, stationId, cmdtyId) {
   ctx.bus.emit('audio:cue', { id: 'ui_click' });
 }
 
+function tradeRunCapacity(state, def, buyHere, margin) {
+  const player = (state && state.player) || {};
+  const cargo = player.cargo || {};
+  const credits = Math.max(0, Number(player.credits) || 0);
+  const cap = Math.max(0, Number(cargo.capVolume) || 0);
+  const used = Math.max(0, Number(cargo.usedVolume) || 0);
+  const freeVolume = Math.max(0, cap - used);
+  const vol = def && def.volPerU > 0 ? def.volPerU : 1;
+  const holdUnits = Math.max(0, Math.floor(freeVolume / vol));
+  const affordableUnits = buyHere > 0 ? Math.max(0, Math.floor(credits / buyHere)) : 0;
+  const loadUnits = Math.max(0, Math.min(holdUnits, affordableUnits));
+  let loadReason = 'no load available';
+  if (loadUnits <= 0) {
+    if (freeVolume < vol) loadReason = 'hold full';
+    else if (credits < buyHere) loadReason = 'need ' + fmtCr(buyHere) + ' CR/u';
+  }
+  return {
+    holdUnits,
+    affordableUnits,
+    loadUnits,
+    loadCost: Math.round(loadUnits * buyHere),
+    loadProfit: Math.round(loadUnits * margin),
+    loadVolume: Math.round(loadUnits * vol * 10) / 10,
+    loadReason,
+  };
+}
+
+function knownMarketSnapshots(state) {
+  const econ = state && state.economy;
+  const out = Object.create(null);
+  const intel = econ && econ.marketIntel;
+  if (intel) {
+    for (const sid in intel) {
+      if (intel[sid] && intel[sid].snapshot) out[sid] = intel[sid];
+    }
+  }
+  const markets = econ && econ.markets;
+  if (markets) {
+    for (const sid in markets) {
+      if (out[sid]) continue;
+      const market = markets[sid];
+      const snapshot = {};
+      for (const cid in market || {}) {
+        const e = market[cid];
+        if (!e) continue;
+        snapshot[cid] = { mid: e.lastMid, buy: e.lastBuy, sell: e.lastSell, stock: e.stock, role: e.role };
+      }
+      out[sid] = { snapshot, seenAtT: (state && state.simTime) || 0 };
+    }
+  }
+  return out;
+}
+
 /** Build the ranked "Best Trades" list: for each commodity traded HERE, find the best known
- *  SELL price across marketIntel snapshots, compute the per-unit and per-volume margin, and rank. */
-function computeBestTrades(state, hereStationId) {
-  const intel = state.economy && state.economy.marketIntel;
+ *  SELL price across marketIntel snapshots, compute the player-loadable profit and per-volume
+ *  margin, and rank. */
+export function computeBestTrades(state, hereStationId) {
   const hereMarket = state.economy && state.economy.markets && state.economy.markets[hereStationId];
   if (!hereMarket) return [];
+  const knownMarkets = knownMarketSnapshots(state);
   const out = [];
   for (const cmdtyId in hereMarket) {
     const entry = hereMarket[cmdtyId];
@@ -597,18 +659,28 @@ function computeBestTrades(state, hereStationId) {
     const buyHere = entry.lastBuy;
     // scan all known stations' snapshots for the best sell price
     let bestSell = -1, bestStation = null, bestSeen = 0;
-    for (const sid in intel) {
+    for (const sid in knownMarkets) {
       if (sid === hereStationId) continue;
-      const snap = intel[sid].snapshot || {};
+      const snap = knownMarkets[sid].snapshot || {};
       const s = snap[cmdtyId];
       if (!s || s.sell == null) continue;
-      if (s.sell > bestSell) { bestSell = s.sell; bestStation = sid; bestSeen = intel[sid].seenAtT || 0; }
+      if (s.sell > bestSell) { bestSell = s.sell; bestStation = sid; bestSeen = knownMarkets[sid].seenAtT || 0; }
     }
     if (!bestStation || bestSell <= buyHere) continue;
     const margin = bestSell - buyHere;
     const perVol = margin / vol;   // rank by profit per cargo-volume (what a hauler cares about)
-    out.push({ cmdtyId, cmdtyName: def.name, buyHere, sellThere: bestSell, margin, perVol, destStation: bestStation, age: bestSeen });
+    out.push({
+      cmdtyId,
+      cmdtyName: def.name,
+      buyHere,
+      sellThere: bestSell,
+      margin,
+      perVol,
+      destStation: bestStation,
+      age: bestSeen,
+      ...tradeRunCapacity(state, def, buyHere, margin),
+    });
   }
-  out.sort((a, b) => b.perVol - a.perVol);
+  out.sort((a, b) => (b.loadProfit - a.loadProfit) || (b.perVol - a.perVol));
   return out.slice(0, 5); // top 5
 }
