@@ -154,6 +154,7 @@ export function slotSummaryLines(meta) {
     shipLabel(meta && meta.shipName),
   ].filter(Boolean).join(' - ') || 'Saved game';
   const detail = [
+    meta && meta.objectiveSummary,
     fmtPlaytime(meta && meta.playtimeS),
     fmtCredits(meta && meta.credits),
     fmtSavedAt(meta),

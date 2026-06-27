@@ -303,6 +303,7 @@ export const save = {
         credits: state.player.credits,
         sectorName: (sector && sector.name) || sectorId || '',
         shipName: shipDef || '',
+        objectiveSummary: navObjectiveSummary(state.nav),
         version: envelope.version,
       };
       localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
@@ -1168,6 +1169,24 @@ function sanitizeNavPos(pos) {
 
 function navString(value) {
   return typeof value === 'string' && value ? value : null;
+}
+
+function navObjectiveSummary(nav) {
+  const waypoint = nav && nav.waypoint;
+  if (!waypoint || typeof waypoint !== 'object' || Array.isArray(waypoint)) return '';
+  const label = navString(waypoint.label);
+  const reason = navString(waypoint.reason);
+  const text = label || reason;
+  if (waypoint.kind === 'trade') return clipSaveSummary('Route: ' + (text || 'Trade destination'));
+  if (waypoint.kind === 'mission') return clipSaveSummary('Mission: ' + (text || 'Tracked contract'));
+  if (waypoint.kind === 'story') return clipSaveSummary('Story: ' + (text || 'Story objective'));
+  if (waypoint.onboarding) return clipSaveSummary('Tutorial: ' + (text || 'Tutorial objective'));
+  return clipSaveSummary('Objective: ' + (text || 'Waypoint'));
+}
+
+function clipSaveSummary(value) {
+  const s = String(value || '').replace(/\s+/g, ' ').trim();
+  return s.length > 96 ? s.slice(0, 93).trimEnd() + '...' : s;
 }
 
 function sanitizeRestoredSettings(settings) {

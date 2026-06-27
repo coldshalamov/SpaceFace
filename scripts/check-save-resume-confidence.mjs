@@ -34,11 +34,13 @@ assert.doesNotMatch(menu, /boots straight into flight/,
   'mainMenu comments must not claim a divergent/stale boot path');
 
 // Save system: the index must contain enough data for trustworthy resume copy.
-for (const field of ['savedAt', 'playtimeS', 'credits', 'sectorName', 'shipName', 'version']) {
+for (const field of ['savedAt', 'playtimeS', 'credits', 'sectorName', 'shipName', 'objectiveSummary', 'version']) {
   assert.match(save, new RegExp(field), `save index should include ${field} metadata`);
 }
-assert.match(save, /idx\[slot\]\s*=\s*\{[\s\S]*sectorName[\s\S]*shipName[\s\S]*version/s,
-  'save index metadata should include sector + ship context for the main menu');
+assert.match(save, /idx\[slot\]\s*=\s*\{[\s\S]*sectorName[\s\S]*shipName[\s\S]*objectiveSummary[\s\S]*version/s,
+  'save index metadata should include sector, ship, and objective context for the main menu');
+assert.match(save, /objectiveSummary:\s*navObjectiveSummary\(state\.nav\)/,
+  'save index objective metadata should be derived from the active nav waypoint');
 assert.match(save, /this\.bus\.emit\('save:completed'/, 'save system must emit save:completed for UI confidence feedback');
 assert.match(save, /this\.bus\.emit\('save:error'/, 'save system must emit save:error for failed saves/loads');
 assert.match(save, /this\.bus\.emit\('save:loaded'/, 'save system must emit save:loaded after restore');
@@ -72,6 +74,8 @@ assert.match(saveLoad, /sf-slot-badge/, 'saveLoad slot rows must show status/ver
 assert.match(saveLoad, /slotSummaryLines\(meta\)/, 'saveLoad must render slot summaries through the tested formatter');
 assert.match(saveLoad, /slotBadges\(id,\s*meta,\s*currentSlot,\s*latestSlot\)/,
   'saveLoad must render current/latest/version badges through the tested formatter');
+assert.match(menu, /objectiveSummary/, 'mainMenu Continue summary must include saved objective context when available');
+assert.match(saveLoad, /objectiveSummary/, 'saveLoad slot details must include saved objective context when available');
 assert.match(saveLoad, /const ids = \['quick'\];[\s\S]*if \(slots\.autosave \|\| slots\.auto\) ids\.push[\s\S]*for \(let i = 1; i <= SLOT_COUNT - 1; i\+\+\)/,
   'saveLoad should list autosave directly after quick, before manual slots');
 
@@ -84,9 +88,11 @@ const summary = slotSummaryLines({
   credits: 12345,
   sectorName: 'Helios Reach',
   shipName: 'ship_kestrel_runner',
+  objectiveSummary: 'Route: Tethys Trade Hub - Provisions',
   version: 5,
 });
 assert.equal(summary.context, 'Helios Reach - Kestrel Runner', 'saveLoad context should combine sector and ship');
+assert.match(summary.detail, /Route: Tethys Trade Hub - Provisions/, 'saveLoad detail should include saved objective context');
 assert.match(summary.detail, /1h 1m played/, 'saveLoad detail should include playtime');
 assert.match(summary.detail, /12,345 CR/, 'saveLoad detail should include credits');
 assert.deepEqual(slotBadges('quick', { savedAt: '2026-06-27T12:00:00Z', version: 5 }, 'quick', 'auto'), ['Current', 'v5'],

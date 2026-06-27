@@ -168,6 +168,7 @@ function saveSummaryText(slot, meta) {
   const parts = [slotLabel(slot)];
   if (meta && meta.sectorName) parts.push(meta.sectorName);
   if (meta && meta.shipName) parts.push(shipLabel(meta.shipName));
+  if (meta && meta.objectiveSummary) parts.push(meta.objectiveSummary);
   const playtime = fmtPlaytime(meta && meta.playtimeS);
   if (playtime) parts.push(playtime);
   const credits = fmtCredits(meta && meta.credits);
