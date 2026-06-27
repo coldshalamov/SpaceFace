@@ -388,7 +388,7 @@ export function createUiInput(ctx, screenManager) {
         screenManager.pushScreen('starmap');
       }
       if (gp.actions.codex && gp.actions.codex.pressed) {
-        screenManager.pushScreen('help');
+        screenManager.pushScreen('codex');
       }
       if (gp.actions.cycleTarget && gp.actions.cycleTarget.pressed) {
         bus.emit('ui:cycleTarget', { dir: 1 });

@@ -36,7 +36,7 @@ function press(listeners, key) {
   return event;
 }
 
-function makeHarness({ claimed = false, baseRegistered = true, claimSucceeds = true } = {}) {
+function makeHarness({ claimed = false, baseRegistered = true, claimSucceeds = true, gamepad = null } = {}) {
   const { documentListeners } = installDomHarness();
   const playerEntity = { id: 'player', alive: true, type: 'ship', pos: { x: 0, z: 0 }, data: {} };
   const claimPoi = {
@@ -76,6 +76,7 @@ function makeHarness({ claimed = false, baseRegistered = true, claimSucceeds = t
   const ctx = {
     state,
     bus,
+    gamepad,
     registry: { get(name) { return name === 'claims' ? claimsSys : null; } },
   };
   const screenManager = {
@@ -132,8 +133,27 @@ function checkRegistrationRaceDoesNotLie() {
   h.input.dispose();
 }
 
+function checkGamepadCodexOpensCodex() {
+  const gamepad = {
+    axes: { leftX: 0, leftY: 0 },
+    actions: {
+      pause: { pressed: false },
+      map: { pressed: false },
+      codex: { pressed: true },
+      cycleTarget: { pressed: false },
+    },
+    isConnected() { return true; },
+    tick() {},
+  };
+  const h = makeHarness({ gamepad });
+  h.input.tick(0.016);
+  assert.deepEqual(h.pushes, ['codex'], 'gamepad Y/Triangle codex action should open the Codex, not Help');
+  h.input.dispose();
+}
+
 checkAlreadyClaimedBodyOpensBase();
 checkNewClaimOpensBaseImmediately();
 checkRegistrationRaceDoesNotLie();
+checkGamepadCodexOpensCodex();
 
-console.log('Claim/base input checks OK');
+console.log('Claim/base and gamepad UI routing checks OK');
