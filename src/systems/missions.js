@@ -35,6 +35,7 @@ import {
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
 import { COMMODITIES } from '../data/commodities.js';
+import { FACTION_META } from '../data/factions.js';
 import { makeEnemySpawnSpec } from './combat.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
@@ -45,6 +46,7 @@ const TYPE_BY_ID = new Map(MISSION_TYPES.map((t) => [t.type, t]));
 // Offer-mix arrays are ordered to match MISSION_TYPES; remember that order for weighted picks.
 const TYPE_ORDER = MISSION_TYPES.map((t) => t.type);
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
 // station id → { type, size, factionId, sectorId, sectorTier, security } resolved from the SECTORS
 // graph (dock:docked only hands us a stationId, same pattern economy uses).
@@ -904,6 +906,74 @@ export const missions = {
 
   _cmdtyName(id) { const c = CMDTY_BY_ID.get(id); return c ? c.name : 'cargo'; },
 
+  _stationName(id) {
+    const st = id ? STATION_INFO.get(id) : null;
+    return st ? st.name : null;
+  },
+
+  _destName(m) {
+    const station = this._stationName(m && m.destStationId);
+    if (station) return station;
+    const sector = m && m.destSectorId ? SECTOR_BY_ID.get(m.destSectorId) : null;
+    return sector ? sector.name : 'the lane';
+  },
+
+  _missionClientName(m) {
+    const fac = m && m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
+    return fac ? (fac.short || fac.name) + ' Contract' : 'Contract Board';
+  },
+
+  _missionSuccessDebriefText(m) {
+    const p = (m && m.params) || {};
+    const cargo = this._cmdtyName(p.cmdtyId);
+    const dest = this._destName(m);
+    switch (m && m.type) {
+      case 'cargo_delivery':
+        return 'Manifest sealed at ' + dest + '. ' + cargo + ' cleared the dock and the client released payment.';
+      case 'bulk_trade':
+        return 'The shortage at ' + dest + ' is covered for now. Your sale moved the board and the client noticed.';
+      case 'mining_quota':
+        return 'Quota received. The assay office logged ' + cargo + '; the rest of the rock can stay quiet.';
+      case 'salvage_retrieval':
+        return 'Recovery logged. Useful wreckage became inventory before another crew filed the claim.';
+      case 'smuggling_run':
+        return 'The cargo disappeared into ' + dest + '\'s books without becoming a customs story.';
+      case 'bounty_hunt':
+        return 'Tag closed near ' + dest + '. The board will update before the rumor does.';
+      case 'escort':
+        return 'Convoy arrived at ' + dest + ' intact. That is all the client wanted written down.';
+      case 'patrol_clear':
+        return 'Lane report is clean. Hostile signatures cleared, trade traffic can pretend it was always safe.';
+      case 'recon_scan':
+        return 'Scan packet received. The map is now less wrong where it matters.';
+      case 'passenger_transport':
+        return 'Passenger transferred at ' + dest + '. Their name stays boring on the manifest.';
+      default:
+        return 'Contract closed. The board released payment and filed the work as routine.';
+    }
+  },
+
+  _missionLossDebriefText(m, reason) {
+    const dest = this._destName(m);
+    if (reason === 'deadline') return 'Deadline missed near ' + dest + '. The board has already marked the lane cold.';
+    if (reason === 'abandoned') return 'Contract abandoned. Progress was cleared from the board and the client will remember the gap.';
+    if (reason === 'escort_abandoned') return 'Escort contract voided. The convoy was left outside acceptable coverage.';
+    return 'Contract failed near ' + dest + '. The board closed the file without payment.';
+  },
+
+  _emitMissionDebrief(m, outcome, reason) {
+    if (!m) return;
+    const success = outcome === 'completed';
+    const text = success ? this._missionSuccessDebriefText(m) : this._missionLossDebriefText(m, reason);
+    this.bus.emit('comms:popup', {
+      sender: this._missionClientName(m),
+      text,
+      category: success ? 'personal' : 'trap',
+      ttl: success ? 8 : 7,
+      note: success ? ('Paid ' + (m.reward_cr || 0).toLocaleString('en-US') + ' cr.') : null,
+    });
+  },
+
   // =========================================================================================
   // COMPLETION / FAILURE / EXPIRY (settle)
   // =========================================================================================
@@ -937,6 +1007,7 @@ export const missions = {
     if (state.player.stats) state.player.stats.missionsDone = (state.player.stats.missionsDone || 0) + 1;
     this._logCompletion(m.type, m.reward_cr, true);
 
+    this._emitMissionDebrief(m, 'completed');
     this.bus.emit('toast', { text: `Mission complete: ${m.title} +${m.reward_cr}cr`, kind: 'success', ttl: 4 });
     this._cleanupTargets(m);
     this._removeActive(m.id, index);
@@ -976,6 +1047,7 @@ export const missions = {
     }
     // Collateral is forfeited (already charged at accept — nothing to refund).
     this._logCompletion(m.type, 0, false);
+    this._emitMissionDebrief(m, 'failed', reason || 'failed');
     this.bus.emit('mission:failed', { missionId: m.id, reason: reason || 'failed' });
     this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
     this._cleanupTargets(m);
@@ -994,6 +1066,7 @@ export const missions = {
       this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: penalty, reason: `mission_expired:${m.type}` });
     }
     this._logCompletion(m.type, 0, false);
+    this._emitMissionDebrief(m, 'expired', 'deadline');
     this.bus.emit('mission:expired', { missionId: m.id, reason: 'deadline' });
     this.bus.emit('toast', { text: `Mission expired: ${m.title}`, kind: 'warn', ttl: 4 });
     this._cleanupTargets(m);

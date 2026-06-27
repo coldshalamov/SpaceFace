@@ -149,6 +149,63 @@ function initHarness() {
 }
 
 {
+  const { state, bus } = initHarness();
+  const mission = {
+    id: 'mission_debrief_success',
+    status: 'active',
+    type: 'recon_scan',
+    factionId: 'faction_scn',
+    params: { scanTargets: 1 },
+    objectiveProgress: 1,
+    objectiveTarget: 1,
+    reward_cr: 900,
+    collateral_cr: 0,
+    riskTier: 1,
+    title: 'Scan one quiet site',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    targetEntityIds: [],
+  };
+  state.missions.active = [mission];
+
+  missions._completeMission(mission, 0);
+
+  const debrief = bus.events.find((e) => e.name === 'comms:popup');
+  assert(debrief, 'completed missions must emit a comms debrief');
+  assert.equal(debrief.payload.sender, 'Concord Contract', 'debrief sender should use the offering faction');
+  assert.equal(debrief.payload.category, 'personal', 'successful debrief should land in the personal comms lane');
+  assert.match(debrief.payload.text, /Scan packet received/, 'recon completion debrief should be authored, not generic');
+}
+
+{
+  const { state, bus } = initHarness();
+  const mission = {
+    id: 'mission_debrief_failure',
+    status: 'active',
+    type: 'escort',
+    factionId: 'faction_scn',
+    params: {},
+    objectiveProgress: 0,
+    objectiveTarget: 1,
+    reward_cr: 700,
+    collateral_cr: 0,
+    riskTier: 1,
+    title: 'Escort one convoy',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    targetEntityIds: [],
+  };
+  state.missions.active = [mission];
+
+  missions._failMission(mission, 0, 'escort_abandoned');
+
+  const debrief = bus.events.find((e) => e.name === 'comms:popup');
+  assert(debrief, 'failed missions must emit a comms debrief');
+  assert.equal(debrief.payload.category, 'trap', 'failed debrief should land in the alert comms lane');
+  assert.match(debrief.payload.text, /convoy/i, 'escort failure debrief should explain the contract outcome');
+}
+
+{
   const stationHubSource = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
   assert.equal(stationHubSource.includes('Track Nav'), false, 'station mission board must not render dead Track Nav copy for offers');
   assert.equal(stationHubSource.includes('data-act="track"'), false, 'station mission board must not render dead Track Nav action for offers');
