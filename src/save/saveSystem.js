@@ -72,6 +72,7 @@ export const save = {
 
     // Autosave triggers (§4.5): dock, sector entry, mission completion. Debounced ≤1/10s.
     bus.on('dock:docked', () => this.requestAutosave('dock'));
+    bus.on('dock:undocked', () => this.requestAutosave('undock', { force: true }));
     bus.on('sector:enter', () => this.requestAutosave('sector'));
     bus.on('mission:completed', () => this.requestAutosave('mission'));
   },
@@ -345,14 +346,14 @@ export const save = {
   // ── autosave ───────────────────────────────────────────────────────────────────────────────
 
   /** Debounced autosave to slot 'auto'. Never mid-jump, never while restoring / dead / not flying. */
-  requestAutosave(/* reason */) {
+  requestAutosave(_reason, options = {}) {
     const state = this.state;
     if (this._restoring) return false;
     if (state.mode !== 'flight') return false;
     if (this._playerDead) return false; // death/respawn pending (combat signals via events)
     if (state.jump && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING')) return false;
     const now = nowMs();
-    if (now - this._lastAutosaveAt < AUTOSAVE_DEBOUNCE_MS) return false;
+    if (!options.force && now - this._lastAutosaveAt < AUTOSAVE_DEBOUNCE_MS) return false;
     this._lastAutosaveAt = now;
     this._lastAutosavePlaytime = state.meta.playtimeS;
     state.save.lastAutosaveAt = now;

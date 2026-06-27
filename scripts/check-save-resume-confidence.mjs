@@ -46,6 +46,10 @@ assert.match(save, /this\.bus\.emit\('save:error'/, 'save system must emit save:
 assert.match(save, /this\.bus\.emit\('save:loaded'/, 'save system must emit save:loaded after restore');
 assert.doesNotMatch(save, /Start or load a game before saving/,
   'save system should leave no-player save feedback to uiRoot save-event listeners');
+assert.match(save, /bus\.on\('dock:undocked',\s*\(\)\s*=>\s*this\.requestAutosave\('undock',\s*\{\s*force:\s*true\s*\}\)\)/,
+  'station departure must force an autosave so cargo and nav intent are durable before the debounce window');
+assert.match(save, /if \(!options\.force && now - this\._lastAutosaveAt < AUTOSAVE_DEBOUNCE_MS\) return false;/,
+  'forced autosaves should bypass only the debounce gate');
 
 // Save system: player-authored navigation intent must survive Continue/Load.
 assert.match(save, /data\.nav\s*=\s*this\._serializeNav\(\)/,
