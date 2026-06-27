@@ -24,9 +24,15 @@ function assertClose(actual, expected, message, epsilon = 1e-5) {
   assert(Math.abs(actual - expected) <= epsilon, `${message}: expected ${expected}, got ${actual}`);
 }
 
-function assertAngleClose(actual, expected, message, epsilon = 1e-5) {
-  const delta = Math.atan2(Math.sin(actual - expected), Math.cos(actual - expected));
-  assert(Math.abs(delta) <= epsilon, `${message}: expected ${expected}, got ${actual}`);
+function assertQuaternionClose(actual, expected, message, epsilon = 1e-5) {
+  const dot = Math.abs(actual.dot(expected));
+  assert(1 - dot <= epsilon, `${message}: expected quaternion ${expected.toArray().join(',')}, got ${actual.toArray().join(',')}`);
+}
+
+function assertVectorClose(actual, expected, message, epsilon = 1e-5) {
+  assertClose(actual.x, expected.x, `${message} x`, epsilon);
+  assertClose(actual.y, expected.y, `${message} y`, epsilon);
+  assertClose(actual.z, expected.z, `${message} z`, epsilon);
 }
 
 function makeHarness(overrides = {}) {
@@ -65,30 +71,46 @@ function makeHarness(overrides = {}) {
 
   const root = new THREE.Group();
   root.position.set(12, 0, -8);
-  root.rotation.y = -Math.PI / 2;
+  root.rotation.set(0.22, -Math.PI / 2, -0.18);
   const socket = new THREE.Object3D();
   socket.name = 'SOCKET_Trail_Main';
   socket.position.set(-4, 1.25, 2);
   socket.userData = { spacefaceSocket: true, forward: [-1, 0, 0] };
   root.add(socket);
+  const portSocket = new THREE.Object3D();
+  portSocket.name = 'SOCKET_Trail_Port';
+  portSocket.position.set(-4, 1.25, -2);
+  portSocket.userData = { spacefaceSocket: true, forward: [-1, 0, 0] };
+  root.add(portSocket);
   root.updateMatrixWorld(true);
   player.view = { root };
 
   system.update(1 / 60);
   const plume = system._energy && system._energy.plume;
   assert(plume && plume.visible, 'energy plume should be visible under throttle');
+  const portPlume = system._energy && system._energy.plumes && system._energy.plumes[1];
+  assert(portPlume && portPlume.visible, 'energy plume should spawn for each trail socket');
   socket.updateWorldMatrix(true, false);
   const expected = new THREE.Vector3();
   const expectedQuat = new THREE.Quaternion();
   const expectedScale = new THREE.Vector3();
   socket.matrixWorld.decompose(expected, expectedQuat, expectedScale);
   const expectedForward = new THREE.Vector3(-1, 0, 0).applyQuaternion(expectedQuat).normalize();
-  const expectedAngle = Math.atan2(expectedForward.z, expectedForward.x);
   assertClose(plume.position.x, expected.x, 'energy plume should share trail socket x');
   assertClose(plume.position.y, expected.y, 'energy plume should share trail socket y');
   assertClose(plume.position.z, expected.z, 'energy plume should share trail socket z');
-  assertAngleClose(plume.rotation.y, Math.PI - expectedAngle, 'energy plume should align to trail socket direction');
+  assertQuaternionClose(plume.quaternion, expectedQuat, 'energy plume should inherit the full trail socket orientation');
+  const plumeForward = new THREE.Vector3(-1, 0, 0).applyQuaternion(plume.quaternion).normalize();
+  assertVectorClose(plumeForward, expectedForward, 'energy plume should align to trail socket direction');
   assert(Math.abs(plume.rotation.y - player.rot) > 0.25, 'energy plume should not use entity rot when a socket pose exists');
+  portSocket.updateWorldMatrix(true, false);
+  const portExpected = new THREE.Vector3();
+  const portExpectedQuat = new THREE.Quaternion();
+  portSocket.matrixWorld.decompose(portExpected, portExpectedQuat, expectedScale);
+  assertClose(portPlume.position.x, portExpected.x, 'port energy plume should share its socket x');
+  assertClose(portPlume.position.y, portExpected.y, 'port energy plume should share its socket y');
+  assertClose(portPlume.position.z, portExpected.z, 'port energy plume should share its socket z');
+  assertQuaternionClose(portPlume.quaternion, portExpectedQuat, 'port energy plume should inherit its socket orientation');
 }
 
 {

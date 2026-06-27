@@ -707,7 +707,28 @@ function engineProp(pal, R, scaleK, engineClass) {
   g.userData.plume = flame.userData.plume;
   g.userData.plumePose = flame.userData.plume ? kit.captureDrivePose(flame.userData.plume) : null;
   g.userData.plumeBase = flame.userData.plume ? { x: flame.userData.plume.scale.x, y: flame.userData.plume.scale.y, z: flame.userData.plume.scale.z } : null;
+  g.userData.trailSocketOffset = new THREE.Vector3(-0.55 * s, 0, 0);
   return g;
+}
+
+function addShipSocket(parent, name, position, role, forward = [1, 0, 0]) {
+  const socket = new THREE.Object3D();
+  socket.name = name;
+  socket.position.set(position[0], position[1], position[2]);
+  socket.userData = { spacefaceSocket: true, role, forward };
+  parent.add(socket);
+  return socket;
+}
+
+function addEngineTrailSocket(parent, engine, index) {
+  if (!parent || !engine) return null;
+  const offset = engine.userData && engine.userData.trailSocketOffset;
+  const name = index === 0 ? 'SOCKET_Trail_Main' : `SOCKET_Trail_${index}`;
+  return addShipSocket(parent, name, [
+    engine.position.x + (offset ? offset.x : 0),
+    engine.position.y + (offset ? offset.y : 0),
+    engine.position.z + (offset ? offset.z : 0),
+  ], 'vfx', [-1, 0, 0]);
 }
 
 // ---- mining drill prop -----------------------------------------------------------------------
@@ -1508,6 +1529,7 @@ function buildShipMesh(e, pal) {
     const en = engineProp(pal, R, m.scaleK || 1, loadout.engineClass || 60);
     en.position.set((m.pos[0] || 0) * R, (m.pos[1] || 0) * R, (m.pos[2] || 0) * R);
     g.add(en);
+    addEngineTrailSocket(g, en, i);
     outer.userData.engines.push(en);
   }
   // fallback: if no mounts authored, place a pair by recipe (back-compat for defs lacking visuals)
@@ -1516,7 +1538,7 @@ function buildShipMesh(e, pal) {
     for (let i = 0; i < n; i++) {
       const z = n === 1 ? 0 : (-(n - 1) / 2 + i) * 0.24 * 2;
       const en = engineProp(pal, R, 0.9, loadout.engineClass || 60);
-      en.position.set(-0.7 * R, 0, z * R); g.add(en); outer.userData.engines.push(en);
+      en.position.set(-0.7 * R, 0, z * R); g.add(en); addEngineTrailSocket(g, en, i); outer.userData.engines.push(en);
     }
   }
 

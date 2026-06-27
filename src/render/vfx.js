@@ -7,6 +7,8 @@
 import * as THREE from 'three';
 import { createEnergyVolume, createMasslineRibbonMaterial, updateEnergyMaterial } from './energy/energyMaterials.js';
 
+const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
+
 // Duplicate lightweight external texture loader (same as visualFactory) so VFX can use our generated fx_* and ore assets without extra modules.
 // Falls back silently.
 const _extTexVfx = new Map();
@@ -87,6 +89,9 @@ export const vfx = {
     this._socketWorldQuat = new THREE.Quaternion();
     this._socketWorldScale = new THREE.Vector3();
     this._socketForward = new THREE.Vector3();
+    this._socketLocalForward = new THREE.Vector3();
+    this._socketForwardQuat = new THREE.Quaternion();
+    this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
     this._liveSpriteCount = 0;
     this._activeLightCount = 0;
     this._presentationCueCount = 0;
@@ -426,11 +431,19 @@ export const vfx = {
 
   _invalidateTrailSocket(id) {
     if (id == null) {
-      for (const e of this._trailCandidates) if (e && e.view) delete e.view.__vfxTrailSocket;
+      for (const e of this._trailCandidates) {
+        if (e && e.view) {
+          delete e.view.__vfxTrailSocket;
+          delete e.view.__vfxTrailSockets;
+        }
+      }
       return;
     }
     const e = this._ent(id);
-    if (e && e.view) delete e.view.__vfxTrailSocket;
+    if (e && e.view) {
+      delete e.view.__vfxTrailSocket;
+      delete e.view.__vfxTrailSockets;
+    }
   },
 
   _writeTrailSocketPose(x, y, z, forwardX, forwardY, forwardZ) {
@@ -475,21 +488,8 @@ export const vfx = {
   },
 
   _trailSocketWorldPose(e) {
-    const view = e && e.view;
-    const root = view && view.root;
-    if (root && typeof root.traverse === 'function') {
-      let cache = view.__vfxTrailSocket;
-      if (!cache || cache.root !== root) {
-        let socket = null;
-        root.traverse((o) => {
-          if (!socket && o.userData && o.userData.spacefaceSocket && o.name === 'SOCKET_Trail_Main') socket = o;
-        });
-        cache = view.__vfxTrailSocket = { root, socket };
-      }
-      if (cache.socket) {
-        return this._trailSocketPoseFromObject(cache.socket);
-      }
-    }
+    const sockets = this._trailSocketObjects(e);
+    if (sockets.length) return this._trailSocketPoseFromObject(sockets[0]);
     if (this.helpers.socketWorldPose) {
       const pose = this.helpers.socketWorldPose(e.id, 'SOCKET_Trail_Main');
       if (pose) {
@@ -508,6 +508,29 @@ export const vfx = {
       }
     }
     return null;
+  },
+
+  _trailSocketObjects(e) {
+    const view = e && e.view;
+    const root = view && view.root;
+    if (root && typeof root.traverse === 'function') {
+      let cache = view.__vfxTrailSockets;
+      if (!cache || cache.root !== root) {
+        const sockets = [];
+        const drivePlumes = [];
+        root.traverse((o) => {
+          if (!o || !o.userData || o.userData.spacefaceEnergyPlume) return;
+          if (isTrailSocketObject(o)) sockets.push(o);
+          else if (isDrivePlumeAnchor(o)) drivePlumes.push(o);
+        });
+        sockets.sort(sortTrailAnchors);
+        drivePlumes.sort(sortTrailAnchors);
+        cache = view.__vfxTrailSockets = { root, sockets: sockets.length ? sockets : drivePlumes };
+        view.__vfxTrailSocket = { root, socket: cache.sockets[0] || null };
+      }
+      return cache.sockets;
+    }
+    return EMPTY_TRAIL_SOCKETS;
   },
 
   _trailSocketWorldPos(e) {
@@ -1373,16 +1396,21 @@ export const vfx = {
     });
 
     plume.visible = false;
+    plume.userData.spacefaceEnergyPlume = true;
     ribbonCore.visible = false;
-    this._scene.add(plume, ribbonCore);
-    this._energy = { plume, plumeGeo, ribbon: ribbonCore, ribbonGeo, plumeDrive: 0, boostBlend: 0 };
+    this._scene.add(ribbonCore);
+    this._energy = { plume, plumes: [plume], plumeGeo, ribbon: ribbonCore, ribbonGeo, plumeDrive: 0, boostBlend: 0 };
   },
 
   _updateEnergyPlume(dt) {
     const energy = this._energy;
-    const { plume } = energy;
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (!player || !player.alive) { plume.visible = false; energy.plumeDrive = 0; energy.boostBlend = 0; return; }
+    if (!player || !player.alive) {
+      this._hideEnergyPlumes(0);
+      energy.plumeDrive = 0;
+      energy.boostBlend = 0;
+      return;
+    }
     const driveInfo = this._engineDriveFor(player);
     const targetBoost = driveInfo.boost;
     const rawDrive = driveInfo.drive;
@@ -1393,20 +1421,82 @@ export const vfx = {
     const drive = energy.plumeDrive;
     const boostBlend = energy.boostBlend;
     const fade = Math.max(0, Math.min(1, (drive - 0.012) / 0.10 + boostBlend * 0.4));
-    if (fade <= 0.01) { plume.visible = false; return; }
-    const socket = this._trailSocketWorldPose(player);
-    plume.position.set(socket ? socket.x : player.pos.x, socket ? socket.y : 0, socket ? socket.z : player.pos.z);
-    plume.rotation.y = socket ? socket.rotationY : -(player.rot || 0);
+    if (fade <= 0.01) { this._hideEnergyPlumes(0); return; }
     const width = 0.30 + drive * 0.42 + boostBlend * 0.22;
     const length = 0.18 + drive * 1.65 + boostBlend * 0.78;
-    plume.scale.set(length, width, width);
-    plume.visible = true;
-    const core = plume.userData.energyCore;
-    const halo = plume.userData.energyHalo;
     const coreColor = this._c0.set('#36c8ff').lerp(this._c1.set('#fff4dd'), boostBlend);
     const haloColor = this._ctmp.set('#6a4cff').lerp(this._c1.set('#c98cff'), boostBlend);
-    if (core) updateEnergyMaterial(core.material, { time: this._t, colorA: coreColor, colorB: haloColor, intensity: 4.7 + drive * 5.3 + boostBlend * 2.4, opacity: (0.22 + drive * 0.46 + boostBlend * 0.18) * fade });
-    if (halo) updateEnergyMaterial(halo.material, { time: this._t, colorA: haloColor, colorB: coreColor, intensity: 1.8 + drive * 2.1 + boostBlend * 1.5, opacity: (0.10 + drive * 0.18 + boostBlend * 0.08) * fade });
+    const sockets = this._trailSocketObjects(player);
+    const count = Math.max(1, sockets.length);
+    for (let i = 0; i < count; i++) {
+      const plume = this._ensureEnergyPlume(i);
+      const socket = sockets[i] || null;
+      if (socket) this._placeEnergyPlumeAtSocket(plume, socket, length, width);
+      else this._placeEnergyPlumeFallback(plume, player, length, width);
+      plume.visible = true;
+      const core = plume.userData.energyCore;
+      const halo = plume.userData.energyHalo;
+      if (core) updateEnergyMaterial(core.material, { time: this._t, colorA: coreColor, colorB: haloColor, intensity: 4.7 + drive * 5.3 + boostBlend * 2.4, opacity: (0.22 + drive * 0.46 + boostBlend * 0.18) * fade });
+      if (halo) updateEnergyMaterial(halo.material, { time: this._t, colorA: haloColor, colorB: coreColor, intensity: 1.8 + drive * 2.1 + boostBlend * 1.5, opacity: (0.10 + drive * 0.18 + boostBlend * 0.08) * fade });
+    }
+    this._hideEnergyPlumes(count);
+  },
+
+  _ensureEnergyPlume(index) {
+    const energy = this._energy;
+    while (energy.plumes.length <= index) {
+      const plume = createEnergyVolume(energy.plumeGeo, {
+        name: `sf-energy-plume-${energy.plumes.length}`,
+        colorA: 0x36c8ff, colorB: 0x6a4cff,
+        coreIntensity: 6.5, haloIntensity: 2.6, noiseScale: 1.6, flowSpeed: 2.4,
+      });
+      plume.visible = false;
+      plume.userData.spacefaceEnergyPlume = true;
+      energy.plumes.push(plume);
+    }
+    if (!energy.plume) energy.plume = energy.plumes[0];
+    return energy.plumes[index];
+  },
+
+  _hideEnergyPlumes(startIndex) {
+    const energy = this._energy;
+    if (!energy || !energy.plumes) return;
+    for (let i = startIndex; i < energy.plumes.length; i++) {
+      const plume = energy.plumes[i];
+      if (plume) plume.visible = false;
+    }
+  },
+
+  _placeEnergyPlumeAtSocket(plume, socket, length, width) {
+    socket.updateWorldMatrix(true, false);
+    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    this._socketLocalForward.copy(this._socketReferenceForward);
+    const authoredForward = socket.userData && socket.userData.forward;
+    if (authoredForward) {
+      const fx = Array.isArray(authoredForward) ? authoredForward[0] : authoredForward.x;
+      const fy = Array.isArray(authoredForward) ? authoredForward[1] : authoredForward.y;
+      const fz = Array.isArray(authoredForward) ? authoredForward[2] : authoredForward.z;
+      this._socketLocalForward.set(
+        Number.isFinite(fx) ? fx : -1,
+        Number.isFinite(fy) ? fy : 0,
+        Number.isFinite(fz) ? fz : 0,
+      );
+      if (this._socketLocalForward.lengthSq() < 1e-8) this._socketLocalForward.copy(this._socketReferenceForward);
+      this._socketLocalForward.normalize();
+    }
+    this._socketForwardQuat.setFromUnitVectors(this._socketReferenceForward, this._socketLocalForward);
+    plume.position.copy(this._socketWorldPos);
+    plume.quaternion.copy(this._socketWorldQuat).multiply(this._socketForwardQuat);
+    plume.scale.set(length, width, width);
+    if (!plume.parent) this._scene.add(plume);
+  },
+
+  _placeEnergyPlumeFallback(plume, player, length, width) {
+    const socket = this._trailSocketWorldPose(player);
+    plume.position.set(socket ? socket.x : player.pos.x, socket ? socket.y : 0, socket ? socket.z : player.pos.z);
+    plume.rotation.set(0, socket ? socket.rotationY : -(player.rot || 0), 0);
+    plume.scale.set(length, width, width);
+    if (!plume.parent) this._scene.add(plume);
   },
 
   _updateEnergyMassline(dt) {
@@ -1445,9 +1535,16 @@ export const vfx = {
 
   _disposeEnergy() {
     if (!this._energy) return;
-    this._scene.remove(this._energy.plume, this._energy.ribbon);
-    this._energy.plumeGeo.dispose();
-    this._energy.ribbonGeo.dispose();
+    const plumes = this._energy.plumes || (this._energy.plume ? [this._energy.plume] : []);
+    for (const plume of plumes) {
+      if (!plume) continue;
+      if (plume.parent) plume.parent.remove(plume);
+      disposeEnergyVolumeMaterials(plume);
+    }
+    if (this._energy.ribbon && this._energy.ribbon.parent) this._energy.ribbon.parent.remove(this._energy.ribbon);
+    disposeEnergyVolumeMaterials(this._energy.ribbon);
+    if (this._energy.plumeGeo) this._energy.plumeGeo.dispose();
+    if (this._energy.ribbonGeo) this._energy.ribbonGeo.dispose();
     this._energy = null;
   },
 
@@ -1846,6 +1943,40 @@ function makeRibbonTrail(scene, color, nSeg, baseWidth) {
 // ---------------------------------------------------------------------------
 // pure helpers (module scope)
 // ---------------------------------------------------------------------------
+function isTrailSocketObject(object) {
+  if (!object || !object.userData || !object.userData.spacefaceSocket) return false;
+  const name = String(object.name || '');
+  return name === 'SOCKET_Trail_Main' || /^SOCKET_Trail_/i.test(name);
+}
+
+function isDrivePlumeAnchor(object) {
+  if (!object || !object.userData || object.userData.spacefaceEnergyPlume) return false;
+  const tags = object.userData.spacefaceTags || {};
+  if (tags.drive === 'plume') return true;
+  if (object.userData.damageRole === 'plume') return true;
+  return /(?:^|_)Plume(?:_|$)/i.test(String(object.name || ''));
+}
+
+function sortTrailAnchors(a, b) {
+  const an = String(a && a.name || '');
+  const bn = String(b && b.name || '');
+  if (an === 'SOCKET_Trail_Main') return -1;
+  if (bn === 'SOCKET_Trail_Main') return 1;
+  return an.localeCompare(bn);
+}
+
+function disposeEnergyVolumeMaterials(group) {
+  if (!group || typeof group.traverse !== 'function') return;
+  group.traverse((object) => {
+    const material = object && object.material;
+    if (!material) return;
+    const materials = Array.isArray(material) ? material : [material];
+    for (const entry of materials) {
+      if (entry && typeof entry.dispose === 'function') entry.dispose();
+    }
+  });
+}
+
 function dirOf(rot) { return { x: Math.cos(rot), z: Math.sin(rot) }; }
 function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
 

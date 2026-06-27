@@ -1238,6 +1238,10 @@ function evaluateBudgets({ rafFrameP95, diagnosticFrameP95, renderCallsPeak, hea
       'bloom should keep full-frame passes bounded'),
     budget('post.bloomPasses.max', postDiagnostic(finalSample, 'bloomPasses'), '<=', BLOOM_PASS_BUDGET,
       'bloom down/up sample passes should stay bounded'),
+    budget('post.legacyAnalyticGrain.max', legacyAnalyticGrainDiagnostic(finalSample), '<=', 0,
+      'film grain should use the optimized quantized composite path, not the old per-refresh analytic grain hash'),
+    budget('post.grainFps.max', postDiagnostic(finalSample, 'grainFps'), '<=', 15,
+      'film grain should animate at a film-like cadence instead of changing every rendered frame'),
     budget('ui.hiddenBackdropActive.max', compositorDiagnostic(finalSample, 'hiddenBackdropActive'), '<=', 0,
       'closed modal backdrop should not remain as an active fullscreen blur/compositor layer during flight'),
     budget('ui.inactiveDockFadeDisplayed.max', compositorDiagnostic(finalSample, 'inactiveDockFadeDisplayed'), '<=', 0,
@@ -1301,6 +1305,11 @@ function postDiagnostic(finalSample, key) {
   const bloom = finalSample.post.bloom;
   if (!bloom) return 0;
   return Number(bloom[key]);
+}
+
+function legacyAnalyticGrainDiagnostic(finalSample) {
+  if (!finalSample || !finalSample.post || !finalSample.post.bloom) return NaN;
+  return finalSample.post.bloom.grainSource === 'analytic' ? 1 : 0;
 }
 
 function compositorDiagnostic(finalSample, key) {

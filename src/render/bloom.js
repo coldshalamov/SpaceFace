@@ -38,6 +38,7 @@ import * as THREE from 'three';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
+const FILM_GRAIN_FPS = 12;
 
 // --- GLSL (inlined as strings; no external shader files) -------------------------------------
 
@@ -138,10 +139,10 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform float uStrength;
   uniform float uExposure;
   uniform float uAces;
-  uniform float uGrain;     // film grain amount 0..1 (cinematic; animated via uTime)
+  uniform float uGrain;     // film grain amount 0..1 (cinematic; animated via uGrainFrame)
   uniform float uVignette;  // atmospheric corner darkening 0..1
   uniform float uGrade;     // color-grade blend 0..1 (0 = off, 1 = full cyberpunk-noir LUT)
-  uniform float uTime;
+  uniform float uGrainFrame;
 
   // Narkowicz 2015 ACES approximation (input in linear, output 0-1)
   vec3 acesFilmic(vec3 x) {
@@ -153,8 +154,9 @@ const COMPOSITE_FRAG = /* glsl */`
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
   }
 
-  // Interleaved gradient noise: one cheap ALU hash, no texture fetch. The floor() below makes it
-  // a fine 2x2 film-grain cell instead of a full-resolution snow field.
+  // Interleaved gradient noise: one cheap ALU hash, no texture fetch. uGrainFrame advances at a
+  // film-like cadence instead of every display refresh, keeping the grain alive without forcing the
+  // full-screen composite shader through extra floor()/time-hash work on every pixel.
   float grainNoise(vec2 p) {
     return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
   }
@@ -202,7 +204,7 @@ const COMPOSITE_FRAG = /* glsl */`
     //      it's stronger in darks (where film grain naturally lives) and invisible in brights.
     if (uGrain > 0.001) {
       float luma = dot(srgb, vec3(0.2126, 0.7152, 0.0722));
-      vec2 grainCell = floor(gl_FragCoord.xy * 0.5) + floor(vec2(uTime * 37.0, uTime * 61.0));
+      vec2 grainCell = gl_FragCoord.xy * 0.5 + vec2(uGrainFrame * 17.0, uGrainFrame * 31.0);
       float n = grainNoise(grainCell) - 0.5;
       srgb += n * uGrain * (0.25 + 0.75 * (1.0 - luma)) * 0.10;
     }
@@ -318,7 +320,7 @@ export function createBloom(renderer, width, height) {
     uGrain:     { value: 0.35 },   // film grain (cyberpunk-noir mood)
     uVignette:  { value: 0.85 },   // atmospheric corner fall-off
     uGrade:     { value: 0.55 },   // teal-shadow/amber-highlight color grade
-    uTime:      { value: 0 },
+    uGrainFrame: { value: 0 },
   });
 
   // draw the shared quad with a given material into a given target (null = screen)
@@ -391,7 +393,7 @@ export function createBloom(renderer, width, height) {
     compositeMat.uniforms.uExposure.value = exposure;
     compositeMat.uniforms.uAces.value = aces;
     const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
-    compositeMat.uniforms.uTime.value = timeS;
+    compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * FILM_GRAIN_FPS);
     blit(compositeMat, null);
 
     renderer.autoClear = prevAutoClear;
@@ -467,7 +469,8 @@ export function createBloom(renderer, width, height) {
       strength,
       threshold,
       exposure,
-      grainSource: 'analytic',
+      grainSource: 'quantized-interleaved-gradient',
+      grainFps: FILM_GRAIN_FPS,
       targets: 1 + down.length + 2,
       fullFramePasses: enabled && strength > 0.0001 ? 2 : 1,
       bloomPasses: enabled && strength > 0.0001 ? down.length + Math.max(0, down.length - 1) : 0,
