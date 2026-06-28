@@ -9,6 +9,28 @@ import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-base-style';
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
+const BASE_PLAN_STEPS = [
+  {
+    moduleId: 'mod_depot',
+    title: 'First useful build: Cargo Depot',
+    body: 'Create a drone dropoff and overflow store so this claim starts feeding cargo loops instead of just existing on the map.',
+  },
+  {
+    moduleId: 'mod_defense',
+    title: 'Stabilize the claim: Defense Battery',
+    body: 'Add a local deterrent before unattended routes and mining runs depend on this body staying safe.',
+  },
+  {
+    moduleId: 'mod_refinery',
+    title: 'Industry upgrade: On-Site Refinery',
+    body: 'Convert raw ore into denser materials at the source, cutting station round-trips and improving trade value.',
+  },
+  {
+    moduleId: 'mod_teleporter',
+    title: 'Late route rewrite: Quantum Teleporter',
+    body: 'Collapse the worst cargo leg to a station link once the base is already producing.',
+  },
+];
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
@@ -20,6 +42,18 @@ function injectStyle() {
 #sf-base .base-title { font-family:var(--mono); letter-spacing:.22em; font-size:17px;
   color:var(--accent); text-shadow:0 0 14px rgba(57,208,255,.35); text-transform:uppercase; }
 #sf-base .base-sub { color:var(--ink-mute); font-size:12px; }
+#sf-base .base-plan { border:1px solid rgba(57,208,255,.28); border-radius:8px; padding:10px 12px;
+  background:rgba(57,208,255,.07); box-shadow:0 0 18px rgba(57,208,255,.06); }
+#sf-base .base-plan-k { color:var(--accent); font-family:var(--mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; }
+#sf-base .base-plan-title { margin-top:4px; color:var(--ink); font-size:13px; font-weight:700; }
+#sf-base .base-plan-body { margin-top:4px; color:var(--ink-dim); font-size:12px; line-height:1.45; }
+#sf-base .base-plan-cta { margin-top:7px; color:var(--good); font-family:var(--mono); font-size:11px;
+  letter-spacing:.06em; text-transform:uppercase; }
+#sf-base .base-plan--locked .base-plan-cta,
+#sf-base .base-plan--funding .base-plan-cta,
+#sf-base .base-plan--slots .base-plan-cta { color:var(--warn); }
+#sf-base .base-plan--complete .base-plan-cta { color:var(--ink-mute); }
 #sf-base .base-slots { display:flex; gap:10px; flex-wrap:wrap; }
 #sf-base .base-slot { flex:1; min-width:120px; border:1px solid var(--panel-edge); border-radius:8px;
   padding:12px; background:var(--panel); position:relative; }
@@ -110,6 +144,60 @@ export function describeBaseBuildAction(mod, player = {}, body = {}) {
   };
 }
 
+export function describeBasePlan(body = {}, player = {}) {
+  if (!body) {
+    return {
+      state: 'missing',
+      moduleId: null,
+      title: 'Pick a claimed body',
+      body: 'Press ' + BINDINGS.claimBase.label + ' near a claimed body to review modules and build blockers.',
+      actionLabel: 'Find claim',
+    };
+  }
+  const modules = Array.isArray(body.modules) ? body.modules : [];
+  const slots = Math.max(0, Number(body.slots) || 0);
+  if (slots <= 0) {
+    return {
+      state: 'complete',
+      moduleId: null,
+      title: 'No module slots available',
+      body: (body.name || 'This body') + ' cannot mount base modules. Find a larger claim for automation infrastructure.',
+      actionLabel: 'Scout larger claim',
+    };
+  }
+  if (modules.length >= slots) {
+    return {
+      state: 'complete',
+      moduleId: null,
+      title: 'Base slots full',
+      body: (body.name || 'This base') + ' has ' + modules.length + '/' + slots + ' slots filled. Future upgrades need a larger claim or a different build order.',
+      actionLabel: 'Review build order',
+    };
+  }
+
+  const step = BASE_PLAN_STEPS.find((entry) => !modules.includes(entry.moduleId) && BODY_MODULE_BY_ID.has(entry.moduleId));
+  if (!step) {
+    return {
+      state: 'complete',
+      moduleId: null,
+      title: 'Base plan complete',
+      body: 'Every known module type is already represented here. Use this claim as an anchor for cargo, industry, or route collapse.',
+      actionLabel: 'Plan complete',
+    };
+  }
+
+  const mod = BODY_MODULE_BY_ID.get(step.moduleId);
+  const action = describeBaseBuildAction(mod, player, body);
+  const ready = !action.disabled;
+  return {
+    state: ready ? 'ready' : action.state,
+    moduleId: mod.id,
+    title: step.title,
+    body: step.body + ' ' + (ready ? 'Ready now: ' : 'Next blocker: ') + action.title,
+    actionLabel: action.label,
+  };
+}
+
 export const baseScreen = {
   id: 'base',
   _rootEl: null,
@@ -164,6 +252,15 @@ export const baseScreen = {
     const usedSlots = body.modules.length;
     sub.textContent = body.size + '-class body · ' + usedSlots + '/' + body.slots + ' module slots · sector ' + (body.sectorId || '?');
     wrap.appendChild(sub);
+
+    const plan = describeBasePlan(body, state.player);
+    const planEl = document.createElement('div');
+    planEl.className = 'base-plan base-plan--' + plan.state;
+    planEl.innerHTML = '<div class="base-plan-k">Base Plan</div>' +
+      '<div class="base-plan-title">' + escapeHtml(plan.title) + '</div>' +
+      '<div class="base-plan-body">' + escapeHtml(plan.body) + '</div>' +
+      '<div class="base-plan-cta">Next: ' + escapeHtml(plan.actionLabel) + '</div>';
+    wrap.appendChild(planEl);
 
     // ---- installed modules (slot grid) ----
     const slotsWrap = document.createElement('div');
