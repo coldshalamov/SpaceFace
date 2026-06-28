@@ -10,6 +10,7 @@ import { missions } from '../src/systems/missions.js';
 import {
   missionConsequenceSummary,
   missionPreflight,
+  missionRouteIntel,
   missionRouteScope,
   missionTimePacing,
 } from '../src/ui/missionPreflight.js';
@@ -25,8 +26,14 @@ assert.match(stationHubSrc, /import \{ missionPreflight \} from '\.\.\/missionPr
 assert.match(missionPreflightSrc, /export function missionPreflight/, 'shared mission preflight helper must be exported');
 assert.match(missionPreflightSrc, /export function missionRouteScope/,
   'shared mission preflight helper must expose route-scope policy for direct tests');
+assert.match(missionPreflightSrc, /export function missionRouteIntel/,
+  'shared mission preflight helper must expose route-risk intel for direct tests');
 assert.match(missionPreflightSrc, /export function missionTimePacing/,
   'shared mission preflight helper must expose timer-pacing policy for direct tests');
+assert.match(missionPreflightSrc, /sectorSignalFor/,
+  'mission preflight route intel must read the same sector signal contract as Star Map risk');
+assert.match(missionPreflightSrc, /forecastTransitFor/,
+  'mission preflight route intel must reuse the shared transit forecast contract');
 assert.match(stationHubSrc, /missionConsequenceSummary\(m\)/,
   'mission cards must use the shared consequence helper');
 assert.match(missionPreflightSrc, /export function missionConsequenceSummary/,
@@ -127,6 +134,10 @@ assert.equal(lowCapUiPreflight.blocker, 'Requires 5u cargo capacity',
   'shared UI preflight must surface impossible cargo capacity before accept');
 assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'info' && chip.text === 'Jump route: Ceres Belt'),
   'shared UI preflight must show off-sector route scope before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === 'Route risk: Calm 34%'),
+  'shared UI preflight must expose route-risk before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === 'Market: balanced'),
+  'shared UI preflight must expose target-market pressure before accept');
 assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === '15m timer'),
   'shared UI preflight must show deadline length before accept');
 assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'bad' && chip.text === '5u hold required'),
@@ -165,6 +176,28 @@ const stationFallbackScope = missionRouteScope(makeOffer({
 }), makeState(8));
 assert.equal(stationFallbackScope.text, 'Jump route: Ceres Belt',
   'route scope should resolve station-only destinations through the static sector graph');
+
+const highRiskIntel = missionRouteIntel(makeOffer({
+  id: 'sker_run',
+  destStationId: 'station_sker',
+  destSectorId: 'sector_sker_haven',
+  distance: 3500,
+}), makeState(8));
+assert.equal(highRiskIntel.label, 'Hostile', 'route intel should label high-danger frontier destinations plainly');
+assert.ok(highRiskIntel.chips.some((chip) => chip.kind === 'bad' && chip.text === 'Route risk: Hostile 94%'),
+  'route intel should render the modeled danger as a scannable risk chip');
+assert.match(highRiskIntel.warning || '', /refuel, repair/,
+  'route intel should translate high danger into prep guidance instead of a hidden penalty');
+const highRiskPreflight = missionPreflight(makeOffer({
+  id: 'sker_run',
+  destStationId: 'station_sker',
+  destSectorId: 'sector_sker_haven',
+  distance: 3500,
+}), makeState(8));
+assert.equal(missionBoardReadiness(highRiskPreflight).state, 'caution',
+  'high route risk should downgrade mission board readiness to a check state, not a blocker');
+assert.match(highRiskPreflight.warning || '', /Hostile route risk/,
+  'high route risk should explain exactly why the player should check prep');
 
 const deadlinePacing = missionTimePacing(makeOffer({
   deadline_s: 420,
@@ -207,4 +240,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - shared route scope, timer pacing, readiness, and consequence stakes are visible before accept.');
+console.log('Mission preflight OK - shared route scope, route-risk intel, timer pacing, readiness, and consequence stakes are visible before accept.');
