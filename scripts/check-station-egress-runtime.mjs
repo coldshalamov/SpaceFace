@@ -3,8 +3,9 @@
 //
 // Boots the normal player URL, starts a real New Game through the UI, opens the station hub through
 // the same dock:docked event used by flight, verifies the hub exposes the core station affordances,
-// then clicks the visible Undock button and proves the default route returns to playable flight.
-// This is a QA probe only: it does not change assets, render settings, launch URLs, or gameplay.
+// then proves both visible Undock and backdrop dismissal return to playable flight through the same
+// undock contract. This is a QA probe only: it does not change assets, render settings, launch URLs,
+// or gameplay.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -144,9 +145,65 @@ try {
   assert.notEqual(egressReport.topScreen, 'station', 'station screen should be closed after undock');
   assert.equal(egressReport.screenStack.includes('station'), false, 'screen stack should not retain station after undock');
   assert.equal(egressReport.playerAlive, true, 'player should remain alive after station egress');
+
+  await page.evaluate((stationId) => {
+    const sf = window.SF;
+    if (!sf || !sf.bus) throw new Error('SpaceFace bus unavailable for backdrop egress probe');
+    sf.bus.emit('dock:docked', { stationId });
+  }, dockTarget.stationId);
+  await waitForVisible(page, '[data-screen="station"]', DOCK_TIMEOUT_MS, 'station hub before backdrop egress');
+  const backdropReport = await page.evaluate(() => {
+    const sf = window.SF;
+    const backdrop = document.getElementById('modal-backdrop');
+    if (!backdrop) throw new Error('modal backdrop missing');
+    const beforeDocked = sf && sf.state && sf.state.ui && sf.state.ui.docked;
+    const beforeTop = sf && sf.ctx && sf.ctx.screenManager && sf.ctx.screenManager.top();
+    backdrop.click();
+    return { clicked: true, beforeDocked, beforeTop };
+  });
+  assert.equal(backdropReport.clicked, true, 'station backdrop should be clickable in the probe');
+  assert.equal(backdropReport.beforeDocked, true, 'backdrop probe should start docked: ' + JSON.stringify(backdropReport));
+  assert.equal(backdropReport.beforeTop, 'station', 'backdrop probe should start on station screen: ' + JSON.stringify(backdropReport));
+
+  await page.waitForFunction(() => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const stack = state && state.ui && state.ui.screenStack || [];
+    return !!(state && state.mode === 'flight' && state.ui && state.ui.docked === false &&
+      !stack.includes('station') && player && player.alive && player.hull > 0);
+  }, null, { timeout: DOCK_TIMEOUT_MS });
+
+  const backdropEgressReport = await page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const player = state.entities.get(state.playerId);
+    const dockOverlay = document.getElementById('sf-dock-overlay');
+    const hud = document.getElementById('hud');
+    return {
+      mode: state.mode,
+      docked: state.ui.docked,
+      dockedStationId: state.ui.dockedStationId,
+      topScreen: sf.ctx.screenManager.top(),
+      screenStack: state.ui.screenStack.slice(),
+      playerAlive: !!(player && player.alive && player.hull > 0),
+      overlayHidden: !dockOverlay || dockOverlay.hidden || dockOverlay.getAttribute('aria-hidden') === 'true',
+      bodyModalOpen: document.body.classList.contains('ui-modal-open'),
+      hudAriaHidden: hud ? hud.getAttribute('aria-hidden') === 'true' : null,
+    };
+  });
+
+  assert.equal(backdropEgressReport.mode, 'flight', 'backdrop egress should return to flight mode');
+  assert.equal(backdropEgressReport.docked, false, 'backdrop egress should clear state.ui.docked');
+  assert.equal(backdropEgressReport.dockedStationId, null, 'backdrop egress should clear dockedStationId');
+  assert.notEqual(backdropEgressReport.topScreen, 'station', 'backdrop egress should close station screen');
+  assert.equal(backdropEgressReport.screenStack.includes('station'), false, 'backdrop egress should not retain station in screen stack');
+  assert.equal(backdropEgressReport.playerAlive, true, 'player should remain alive after backdrop egress');
+  assert.equal(backdropEgressReport.bodyModalOpen, false, 'backdrop egress should restore body modal state');
+  assert.equal(backdropEgressReport.hudAriaHidden, false, 'backdrop egress should restore HUD accessibility');
   assert.deepEqual(issues.errorIssues(), [], 'station egress runtime probe should not record page errors');
 
-  console.log('Station egress runtime OK: default New Game -> station hub -> visible Undock -> playable flight');
+  console.log('Station egress runtime OK: default New Game -> station hub -> visible Undock/backdrop -> playable flight');
   console.log('Dock target:', dockTarget.stationId, dockTarget.label);
 } finally {
   if (browser) await browser.close();
