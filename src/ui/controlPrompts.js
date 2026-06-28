@@ -1,9 +1,9 @@
 import { BINDINGS } from './bindings.js';
 
 const KBM_PROMPTS = Object.freeze({
-  flight: `W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  J log  •  ${BINDINGS.codex.label} codex  •  I cargo  •  L comms`,
+  flight: `W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  X countermeasure  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  J log  •  ${BINDINGS.codex.label} codex  •  I cargo  •  L comms`,
   mining: 'RMB hold to mine  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
-  combat: 'LMB/Space fire  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
+  combat: 'LMB/Space fire  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge  •  X countermeasure',
   station: `${BINDINGS.dock.label} dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts`,
   gate: `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. W / Up thrusts, A D / arrows steer, and the mouse aims.',
@@ -16,9 +16,9 @@ const KBM_PROMPTS = Object.freeze({
 });
 
 const GAMEPAD_PROMPTS = Object.freeze({
-  flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine  •  RB boost  •  LB brake  •  A dock  •  X target  •  View star map  •  Y codex  •  Start pause',
+  flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine  •  RB boost  •  R3 countermeasure  •  LB brake  •  A dock  •  X target  •  View star map  •  Y codex  •  Start pause',
   mining: 'LT hold to mine  •  Release to cool  •  Fly through cargo drift  •  X next signal',
-  combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  RB boost to dodge  •  Start pause',
+  combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  RB boost to dodge  •  R3 countermeasure  •  Start pause',
   station: 'A dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts',
   gate: 'View open Star Map  •  Select destination  •  Jump to travel between systems',
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',
