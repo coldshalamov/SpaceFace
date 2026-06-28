@@ -185,6 +185,7 @@ wingmanState = describeWingmanDeployment({ id: 'f4', status: 'lost' });
 assert.equal(wingmanState.state, 'lost', 'lost wingmen should get a distinct deployment state');
 
 const src = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
+const automationSrc = readFileSync(new URL('../src/systems/automation.js', import.meta.url), 'utf8');
 assert.match(src, /Operations Board/, 'automation panel should render the operations board');
 assert.match(src, /const action = next\.action \|\| 'switchTab'/, 'operations board CTA should use direct action metadata with a switch-tab fallback');
 assert.match(src, /data-act="\$\{escapeHtml\(action\)\}"/, 'operations board CTA should render the recommended intent');
@@ -200,5 +201,19 @@ assert.match(src, /fs\._liveId \|\| ''/, 'fleet tab body signature should refres
 assert.match(src, /deploy \$\{deploymentPill\(deployment\)\}/, 'fleet cards should show a deployment pill');
 assert.doesNotMatch(src, /<button class="au-buy" data-act="hireTrader" data-ref="\$\{def\.id\}" \$\{hireUnlocked \? '' : 'disabled'\}>/, 'trader buttons should not be blind tech-only gates');
 assert.doesNotMatch(src, /No NPC traders hired\.<\/|No outposts established\.<\/|No wingmen in your fleet/, 'empty states should be specific and actionable');
+assert.match(automationSrc, /name: st\.name/, 'automation system should retain authored station names for route/deploy toasts');
+assert.match(automationSrc, /sectorName: sec\.name/, 'automation system should retain authored sector names for place toasts');
+assert.match(automationSrc, /SECTOR_BY_ID\.get\(id\)/, 'automation sector labels should resolve from the sector catalog');
+assert.match(automationSrc, /STATION_SECTOR\.get\(id\)/, 'automation station labels should resolve from the station catalog');
+assert.doesNotMatch(
+  automationSrc,
+  /function prettySector\(id\) \{\s*return String\(id \|\| ''\)\.replace/,
+  'automation toasts must not derive sector names by trimming sector_* ids',
+);
+assert.doesNotMatch(
+  automationSrc,
+  /function prettyStation\(id\) \{\s*return String\(id \|\| '\?'\)\.replace/,
+  'automation toasts must not derive station names by trimming station_* ids',
+);
 
 console.log('Automation operations board OK');
