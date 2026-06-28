@@ -22,13 +22,16 @@ assert.match(source, /activeJobs\.length > 0/,
   'departure readiness must distinguish active-but-untracked missions from having no job');
 assert.match(source, /1 untracked job/,
   'departure readiness must tell players when an active mission still needs tracking');
-assert.match(source, /Open Missions to track the active job/,
-  'untracked mission readiness must route players to the Missions tab with a clear action');
+assert.match(source, /Open Mission Log to track the active job/,
+  'untracked mission readiness must route players to the Mission Log with a clear action');
 assert.match(source, /state && state\.nav && state\.nav\.waypoint/, 'departure readiness must fall back to nav waypoint');
 assert.match(source, /waypoint\.kind !== 'trade'/, 'departure readiness must identify trade waypoints');
 assert.match(source, /commodityId/, 'departure trade route readiness must read waypoint commodity ids');
 assert.match(source, /targetTab: 'market'/, 'trade and hold readiness chips must route to Market');
-assert.match(source, /targetTab: 'missions'/, 'tracked objective readiness chips must route to Missions');
+assert.match(source, /targetScreen: 'missionLog'/, 'tracked objective readiness chips must route to Mission Log');
+assert.match(source, /Open Missions to accept and track a job/,
+  'empty mission readiness must still route players to the station contract board');
+assert.match(source, /targetTab: 'missions'/, 'contract-board readiness chips must route to Missions');
 assert.match(source, /targetTab: 'services'/, 'fuel and hull readiness chips must route to Services');
 assert.match(source, /actionLabel:/, 'actionable departure chips must expose clear accessible action labels');
 assert.match(source, /departureCargoChip\(state\)/, 'departure readiness must include cargo hold free space');
@@ -44,9 +47,12 @@ assert.match(source, /this\._undockBtn\.setAttribute\('data-readiness', summary\
 assert.match(source, /\.st-undock\[data-readiness="risk"\]/,
   'Undock command must visually distinguish risky departure state');
 assert.match(source, /data-departure-tab/, 'station hub must render actionable departure readiness chips');
+assert.match(source, /data-departure-screen/, 'station hub must render actionable departure chips for non-station screens');
 assert.match(source, /departureChipHtml\(chip\)/, 'departure chip rendering must preserve action metadata');
 assert.match(source, /this\.setTab\(tabId, \{ focusRail: true \}\)/,
   'departure chip actions must use the same tab activation path as the rail');
+assert.match(source, /pushDepartureScreen\(ctx, screenId\)/,
+  'departure screen chip actions must use the shared screen manager path');
 assert.match(source, /st-departure-chip--warn/, 'departure readiness must style warning chips');
 assert.match(source, /st-departure-chip--bad/, 'departure readiness must style bad chips');
 assert.match(source, /button\.st-departure-chip:focus-visible/,

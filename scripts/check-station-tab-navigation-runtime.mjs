@@ -142,15 +142,18 @@ try {
         text: String(chip.textContent || '').replace(/\s+/g, ' ').trim(),
         tag: chip.tagName,
         target: chip.getAttribute('data-departure-tab'),
+        screen: chip.getAttribute('data-departure-screen'),
         label: chip.getAttribute('aria-label'),
       })),
     };
   });
   assert(departure.chips.length >= 4, 'Departure Check should expose route/track, hold, fuel, and hull chips');
-  for (const wanted of ['market', 'missions', 'services']) {
+  for (const wanted of ['market', 'services']) {
     assert(departure.chips.some((chip) => chip.target === wanted),
       'Departure Check should expose an actionable chip for ' + wanted + ': ' + JSON.stringify(departure.chips));
   }
+  assert(departure.chips.some((chip) => chip.target === 'missions' || chip.screen === 'missionLog'),
+    'Departure Check should expose a route to contracts or the active Mission Log: ' + JSON.stringify(departure.chips));
   assert(departure.chips.every((chip) => chip.tag === 'BUTTON' && chip.label),
     'Departure Check actionable chips should be keyboard-accessible buttons with labels: ' + JSON.stringify(departure.chips));
 
@@ -175,24 +178,24 @@ try {
     /untracked job|Untracked Departure Probe/i,
     'active mission readiness',
   );
-  assert.equal(activeMissionDeparture.target, 'missions',
-    'active mission chip should route to Missions: ' + JSON.stringify(activeMissionDeparture));
+  assert.equal(activeMissionDeparture.screen, 'missionLog',
+    'active mission chip should route to Mission Log: ' + JSON.stringify(activeMissionDeparture));
   if (/untracked job/i.test(activeMissionDeparture.text)) {
     assert.match(activeMissionDeparture.text, /1 untracked job/,
       'Departure Check should name active-but-untracked mission state: ' + JSON.stringify(activeMissionDeparture));
-    assert.match(activeMissionDeparture.label || '', /track the active job/i,
+    assert.match(activeMissionDeparture.label || '', /mission log.*track the active job/i,
       'untracked mission chip should expose an actionable accessible label: ' + JSON.stringify(activeMissionDeparture));
   } else {
     assert.match(activeMissionDeparture.text, /Untracked Departure Probe/,
       'Departure Check should name the auto-tracked active mission: ' + JSON.stringify(activeMissionDeparture));
-    assert.match(activeMissionDeparture.label || '', /review station contracts/i,
+    assert.match(activeMissionDeparture.label || '', /mission log.*review tracked job/i,
       'auto-tracked mission chip should expose an actionable accessible label: ' + JSON.stringify(activeMissionDeparture));
   }
 
   await clickDepartureAndExpect(page, 'services');
   await assertServicesRecommendation(page);
   await clickDepartureAndExpect(page, 'market');
-  await clickDepartureAndExpect(page, 'missions');
+  await clickDepartureScreenAndExpect(page, 'missionLog');
   assert.deepEqual(issues.errorIssues(), [], 'station tab navigation probe should not record page errors');
 
   console.log('Station tab navigation OK: canonical New Game -> dock -> keyboard rail + departure chips -> coherent active panel');
@@ -223,6 +226,7 @@ async function waitForDepartureChip(page, textPattern, label) {
         .map((chip) => ({
           text: String(chip.textContent || '').replace(/\s+/g, ' ').trim(),
           target: chip.getAttribute('data-departure-tab'),
+          screen: chip.getAttribute('data-departure-screen'),
           label: chip.getAttribute('aria-label'),
         })),
     }));
@@ -236,6 +240,7 @@ async function waitForDepartureChip(page, textPattern, label) {
     return {
       text: chip ? String(chip.textContent || '').replace(/\s+/g, ' ').trim() : '',
       target: chip && chip.getAttribute('data-departure-tab'),
+      screen: chip && chip.getAttribute('data-departure-screen'),
       label: chip && chip.getAttribute('aria-label'),
     };
   }, textPattern.source);
@@ -266,6 +271,21 @@ async function clickDepartureAndExpect(page, tabId) {
   }, tabId);
   assert(clicked, 'Departure Check should include a chip that routes to ' + tabId);
   await waitForStationTab(page, tabId, 'departure chip ' + tabId);
+}
+
+async function clickDepartureScreenAndExpect(page, screenId) {
+  const clicked = await page.evaluate((wanted) => {
+    const chip = document.querySelector(`[data-screen="station"] .st-departure-chip[data-departure-screen="${wanted}"]`);
+    if (!chip) return null;
+    chip.click();
+    return String(chip.textContent || '').replace(/\s+/g, ' ').trim();
+  }, screenId);
+  assert(clicked, 'Departure Check should include a chip that routes to ' + screenId);
+  await page.waitForFunction((wanted) => {
+    const top = window.SF && window.SF.ctx && window.SF.ctx.screenManager && window.SF.ctx.screenManager.top &&
+      window.SF.ctx.screenManager.top();
+    return top === wanted || !!document.querySelector(`[data-screen="${wanted}"]`);
+  }, screenId, { timeout: 5000 });
 }
 
 async function assertServicesRecommendation(page) {

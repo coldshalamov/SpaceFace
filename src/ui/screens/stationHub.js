@@ -46,6 +46,10 @@ const TABS = [
   { id: 'bar', label: 'Bar', icon: '☕', help: 'Find rumors, contacts, and station-side leads.' },
 ];
 
+const DEPARTURE_SCREEN_LABELS = {
+  missionLog: 'Mission Log',
+};
+
 const STATION_TYPE_PURPOSE = {
   trade_hub: 'Trade hubs are the safest place to compare prices, find legal cargo, and turn credits into better hulls.',
   refinery: 'Refineries want ore and gas, then turn raw mining runs into refined materials for manufacturing.',
@@ -59,6 +63,29 @@ const STATION_TYPE_PURPOSE = {
 function stationTypeLabel(type) {
   if (!type) return 'Station';
   return String(type).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getManager(ctx) {
+  if (ctx && ctx.screenManager) return ctx.screenManager;
+  if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  if (ui && ui.screenManager) return ui.screenManager;
+  if (ui && ui.manager) return ui.manager;
+  return null;
+}
+
+function pushDepartureScreen(ctx, screenId) {
+  if (!screenId || !Object.prototype.hasOwnProperty.call(DEPARTURE_SCREEN_LABELS, screenId)) return false;
+  const mgr = getManager(ctx);
+  if (mgr && typeof mgr.pushScreen === 'function') {
+    mgr.pushScreen(screenId);
+    return true;
+  }
+  if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('ui:pushScreen', { id: screenId });
+    return true;
+  }
+  return false;
 }
 
 function stationPurpose(stn) {
@@ -125,7 +152,12 @@ function clipDepartureText(text) {
 }
 
 function departureChipActionTitle(chip) {
-  if (!chip || !chip.targetTab) return '';
+  if (!chip) return '';
+  if (chip.targetScreen) {
+    const screenLabel = DEPARTURE_SCREEN_LABELS[chip.targetScreen] || 'screen';
+    return chip.actionLabel || ('Open ' + screenLabel);
+  }
+  if (!chip.targetTab) return '';
   const tab = TABS.find((t) => t.id === chip.targetTab);
   const tabLabel = tab ? tab.label : 'station tab';
   return chip.actionLabel || ('Open ' + tabLabel);
@@ -136,9 +168,12 @@ function departureChipHtml(chip) {
   const body =
     '<b>' + escapeHtml(chip.label) + '</b>' +
     '<span>' + escapeHtml(chip.text) + '</span>';
-  if (!chip.targetTab) return '<span class="' + cls + '">' + body + '</span>';
+  const targetAttr = chip.targetScreen
+    ? ' data-departure-screen="' + escapeHtml(chip.targetScreen) + '"'
+    : (chip.targetTab ? ' data-departure-tab="' + escapeHtml(chip.targetTab) + '"' : '');
+  if (!targetAttr) return '<span class="' + cls + '">' + body + '</span>';
   const title = departureChipActionTitle(chip);
-  return '<button type="button" class="' + cls + '" data-departure-tab="' + escapeHtml(chip.targetTab) + '"' +
+  return '<button type="button" class="' + cls + '"' + targetAttr +
     ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title + ': ' + chip.label + ' ' + chip.text) + '">' +
     body +
     '</button>';
@@ -201,8 +236,8 @@ function departureMissionChip(state) {
       kind: 'ok',
       label: 'Track',
       text: clipDepartureText(tracked.title || prettyType(tracked.type)),
-      targetTab: 'missions',
-      actionLabel: 'Open Missions to review station contracts',
+      targetScreen: 'missionLog',
+      actionLabel: 'Open Mission Log to review tracked job',
     };
   }
   if (activeJobs.length > 0) {
@@ -211,8 +246,8 @@ function departureMissionChip(state) {
       kind: 'warn',
       label: 'Track',
       text: one ? '1 untracked job' : activeJobs.length + ' untracked jobs',
-      targetTab: 'missions',
-      actionLabel: one ? 'Open Missions to track the active job' : 'Open Missions to pick a tracked job',
+      targetScreen: 'missionLog',
+      actionLabel: one ? 'Open Mission Log to track the active job' : 'Open Mission Log to pick a tracked job',
     };
   }
   const waypoint = state && state.nav && state.nav.waypoint;
@@ -224,8 +259,8 @@ function departureMissionChip(state) {
       kind: 'info',
       label: 'Nav',
       text: clipDepartureText(label),
-      targetTab: 'missions',
-      actionLabel: 'Open Missions to review objectives',
+      targetScreen: 'missionLog',
+      actionLabel: 'Open Mission Log to review objectives',
     };
   }
   return {
@@ -469,8 +504,14 @@ export const stationHub = {
     screen.appendChild(departure);
     this._departureEl = departure.querySelector('.st-departure-chips');
     departure.addEventListener('click', (ev) => {
-      const chip = ev.target.closest('[data-departure-tab]');
+      const chip = ev.target.closest('[data-departure-tab],[data-departure-screen]');
       if (!chip || !this._departureEl || !this._departureEl.contains(chip)) return;
+      const screenId = chip.getAttribute('data-departure-screen');
+      if (screenId) {
+        if (!pushDepartureScreen(ctx, screenId)) return;
+        ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+        return;
+      }
       const tabId = chip.getAttribute('data-departure-tab');
       if (!TABS.some((t) => t.id === tabId)) return;
       this.setTab(tabId, { focusRail: true });
