@@ -1425,7 +1425,16 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-sy-guide, .st-sy-purpose, .st-sy-card-purpose { color: var(--ink-dim); font-size: .74rem; line-height: 1.35; }
 .st-sy-guide { margin: -2px 0 10px; border: 1px solid var(--panel-edge); border-radius: 6px;
   padding: 9px 11px; background: rgba(10,18,32,.5); }
+.st-sy-job-guide { border-color: rgba(57,208,255,.34); background: linear-gradient(90deg, rgba(57,208,255,.10), rgba(10,18,32,.54)); }
+.st-sy-job-title { color: var(--ink); font-weight: 700; font-size: .84rem; margin-top: 6px; }
+.st-sy-job-body { color: var(--ink-dim); font-size: .76rem; line-height: 1.35; margin-top: 3px; }
 .st-sy-purpose { display: block; margin-top: 3px; white-space: normal; }
+.st-sy-fitline { display: block; margin-top: 3px; white-space: normal; font-size: .7rem; line-height: 1.3; }
+.st-sy-fitline--ok { color: var(--good); }
+.st-sy-fitline--warn { color: var(--warn); }
+.st-sy-fitline--bad { color: var(--ink-mute); }
+.st-shipyard .st-row.mission-fit-ok { border-color: rgba(98,224,138,.34); background: rgba(98,224,138,.045); }
+.st-shipyard .st-row.mission-fit-warn { border-color: rgba(255,198,77,.26); background: rgba(255,198,77,.035); }
 .st-sy-card-purpose { margin: -3px 0 8px; color: var(--ink-mute); }
 .st-sy-btns { display: flex; gap: 6px; }
 .st-sy-btns button { font-size: .75rem; padding: 4px 8px; }

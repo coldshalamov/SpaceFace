@@ -145,6 +145,127 @@ function slotCount(def, type) {
   return (def.slots && def.slots[type]) ? def.slots[type].length : 0;
 }
 
+function missionId(m) {
+  return m && (m.id != null ? m.id : m.missionId);
+}
+
+function prettyMissionType(t) {
+  if (!t) return 'Contract';
+  return String(t).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+export function missionPickForShipyard(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  if (trackedId != null) {
+    const tracked = active.find((m) => m && m.status === 'active' && String(missionId(m)) === String(trackedId));
+    if (tracked) return { mission: tracked, tracked: true };
+  }
+  const fallback = active.find((m) => m && m.status === 'active') || null;
+  return { mission: fallback, tracked: false };
+}
+
+export function missionHullGuide(mission) {
+  if (!mission) {
+    return {
+      label: 'Hull Fit',
+      text: 'Track a contract before buying a hull to highlight ships that match the job.',
+      wants: ['cargo', 'weapon', 'utility'],
+      roles: ['multirole'],
+    };
+  }
+  switch (mission.type) {
+    case 'cargo_delivery':
+    case 'bulk_trade':
+    case 'passenger_transport':
+      return {
+        label: 'Haulage Hull',
+        text: 'Cargo space makes the payout clean; shields and engines keep the route from becoming an emergency.',
+        wants: ['cargo', 'shield', 'engine'],
+        roles: ['freighter', 'heavy_hauler', 'multirole'],
+      };
+    case 'mining_quota':
+      return {
+        label: 'Mining Hull',
+        text: 'Mining slots and cargo space shorten the loop; shields keep the ore run intact.',
+        wants: ['mining', 'cargo', 'shield'],
+        roles: ['mining', 'mining_barge', 'multirole'],
+      };
+    case 'salvage_retrieval':
+      return {
+        label: 'Recovery Hull',
+        text: 'Cargo and utility capacity matter at the wreck, with shields covering dirty approach vectors.',
+        wants: ['cargo', 'utility', 'shield'],
+        roles: ['explorer', 'multirole', 'freighter'],
+      };
+    case 'smuggling_run':
+      return {
+        label: 'Smuggling Hull',
+        text: 'Speed, cargo, and enough shielding beat fair fights when patrols get curious.',
+        wants: ['engine', 'cargo', 'shield'],
+        roles: ['interceptor', 'explorer', 'multirole'],
+      };
+    case 'bounty_hunt':
+    case 'patrol_clear':
+    case 'escort':
+      return {
+        label: 'Combat Hull',
+        text: 'Weapons make the clock honest; shields and engines decide whether the contract pays out.',
+        wants: ['weapon', 'shield', 'engine'],
+        roles: ['fighter', 'interceptor', 'gunship', 'corvette', 'battlecruiser', 'flagship'],
+      };
+    case 'recon_scan':
+      return {
+        label: 'Scout Hull',
+        text: 'Utility capacity and engines make the sweep fast, while shields forgive hostile lanes.',
+        wants: ['utility', 'engine', 'shield'],
+        roles: ['explorer', 'multirole', 'interceptor'],
+      };
+    default:
+      return {
+        label: 'Mission Hull',
+        text: 'Buy toward the tracked job instead of buying anonymous numbers in a vacuum.',
+        wants: ['weapon', 'shield', 'cargo'],
+        roles: ['multirole'],
+      };
+  }
+}
+
+export function describeShipyardMissionFit(def, mission) {
+  if (!def || !mission) return null;
+  const guide = missionHullGuide(mission);
+  const hits = guide.wants.filter((slotType) => slotCount(def, slotType) > 0);
+  const missing = guide.wants.filter((slotType) => slotCount(def, slotType) <= 0);
+  const roleMatch = guide.roles.includes(def.role);
+  const score = hits.length * 2 + (roleMatch ? 3 : 0);
+  const kind = roleMatch && hits.length === guide.wants.length ? 'ok' : (hits.length >= 2 ? 'warn' : 'bad');
+  const label = kind === 'ok' ? 'JOB FIT' : (kind === 'warn' ? 'WORKABLE' : 'OFF ROLE');
+  const hitText = hits.length ? 'matches ' + hits.join(', ') : 'misses the requested slot families';
+  const missText = missing.length ? '; missing ' + missing.join(', ') : '';
+  const roleText = roleMatch ? '; role match' : '; role is ' + (def.role || 'unknown');
+  return {
+    kind,
+    label,
+    score,
+    title: def.name + ' for ' + guide.label,
+    body: hitText + missText + roleText + '.',
+    missionType: mission.type || '',
+  };
+}
+
+export function bestShipyardMissionFit(mission, ships = SHIPS) {
+  if (!mission) return null;
+  let best = null;
+  for (const def of ships) {
+    const fit = describeShipyardMissionFit(def, mission);
+    if (!fit) continue;
+    if (!best || fit.score > best.fit.score || (fit.score === best.fit.score && (def.tier || 0) < (best.def.tier || 0))) {
+      best = { def, fit };
+    }
+  }
+  return best;
+}
+
 // ---- Comparison tooltip CSS (injected once) ----
 const CMP_STYLE_ID = 'sf-sy-cmp-style';
 function injectCmpStyle() {
@@ -203,6 +324,9 @@ export function createShipyardPanel(ctx) {
   buyGuide.className = 'st-sy-guide';
   buyGuide.textContent = 'A hull purchase changes what loops are practical: cargo space for trade and delivery, hardpoints for combat, mining slots for ore work, and utility slots for recon. Buying the hull is step one; Outfitting turns it into a build.';
   buyWrap.appendChild(buyGuide);
+  const jobGuide = document.createElement('div');
+  jobGuide.className = 'st-sy-guide st-sy-job-guide';
+  buyWrap.appendChild(jobGuide);
 
   // UX-1: rotating 3D ship preview pane. Shows the hovered hull so the player buys with their eyes,
   // not from a stat table. Built via the same visualFactory the game uses, in an isolated renderer so
@@ -422,6 +546,31 @@ export function createShipyardPanel(ctx) {
     return (ctx.state.player.researchedNodes || []).includes(def.requiresTech);
   }
 
+  function renderJobGuide() {
+    const pick = missionPickForShipyard(ctx.state);
+    const mission = pick.mission;
+    const guide = missionHullGuide(mission);
+    if (!mission) {
+      jobGuide.innerHTML =
+        '<div><span class="st-mission-preflight-chip st-mission-preflight-chip--info">HULL FIT ADVISOR</span></div>' +
+        '<div class="st-sy-job-title">No tracked contract</div>' +
+        '<div class="st-sy-job-body">' + escapeHtml(guide.text) + '</div>';
+      return;
+    }
+    const unlockedCatalog = SHIPS.filter((def) => isUnlocked(def));
+    const best = bestShipyardMissionFit(mission, unlockedCatalog.length ? unlockedCatalog : SHIPS);
+    const status = pick.tracked ? 'TRACKED JOB' : 'ACTIVE JOB';
+    const bestText = best ? 'Best catalog fit: ' + best.def.name + ' (' + best.fit.label.toLowerCase() + ', score ' + best.fit.score + ').' : '';
+    jobGuide.innerHTML =
+      '<div class="st-mission-preflight">' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">HULL FIT ADVISOR</span>' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--ok">' + escapeHtml(status) + '</span>' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">' + escapeHtml(guide.label.toUpperCase()) + '</span>' +
+      '</div>' +
+      '<div class="st-sy-job-title">' + escapeHtml(mission.title || prettyMissionType(mission.type)) + '</div>' +
+      '<div class="st-sy-job-body">' + escapeHtml(guide.text + (bestText ? ' ' + bestText : '')) + '</div>';
+  }
+
   function rebuildOwned() {
     const p = ctx.state.player;
     const frag = document.createDocumentFragment();
@@ -448,6 +597,7 @@ export function createShipyardPanel(ctx) {
   function rebuildBuyable() {
     const p = ctx.state.player;
     const ownedDefIds = new Set((p.ownedShips || []).map((o) => o.defId));
+    const mission = missionPickForShipyard(ctx.state).mission;
     // UX-3: refresh sort-header arrows for the current sort key/dir.
     head.querySelectorAll('.sf-sort').forEach((el) => {
       const isActive = el.getAttribute('data-sk') === _sort.key;
@@ -490,13 +640,18 @@ export function createShipyardPanel(ctx) {
       const unlocked = isUnlocked(def);
       const owned = ownedDefIds.has(def.id);
       const purchase = describeShipyardPurchase(def, p, unlocked);
+      const fit = describeShipyardMissionFit(def, mission);
+      const purchaseTitle = purchase.title + (fit ? ' ' + fit.title + ': ' + fit.body : '');
       const btn = '<button' + (purchase.disabled ? ' disabled' : ' data-act="buy"') +
-        ' title="' + escapeHtml(purchase.title) + '" aria-label="' + escapeHtml(purchase.title) + '">' +
+        ' title="' + escapeHtml(purchaseTitle) + '" aria-label="' + escapeHtml(purchaseTitle) + '">' +
         escapeHtml(purchase.label) + '</button>';
+      if (fit) row.classList.add('mission-fit', 'mission-fit-' + fit.kind);
       row.innerHTML =
         '<span class="c-name">' + escapeHtml(def.name) + (owned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
+          (fit ? ' <span class="st-tag st-tag-active">' + escapeHtml(fit.label.toLowerCase()) + '</span>' : '') +
           '<br><span class="st-slotline mono">' + escapeHtml(slotSummary(def)) + '</span>' +
-          '<span class="st-sy-purpose">' + escapeHtml(hullPurpose(def)) + '</span></span>' +
+          '<span class="st-sy-purpose">' + escapeHtml(hullPurpose(def)) + '</span>' +
+          (fit ? '<span class="st-sy-fitline st-sy-fitline--' + fit.kind + '">' + escapeHtml(fit.body) + '</span>' : '') + '</span>' +
         '<span class="c-num mono">T' + def.tier + '</span>' +
         '<span class="c-num mono">' + def.hull + '</span>' +
         '<span class="c-num mono">' + def.shield + '</span>' +
@@ -517,7 +672,7 @@ export function createShipyardPanel(ctx) {
     }
   }
 
-  function refresh() { rebuildOwned(); rebuildBuyable(); cmpPanel.style.display = 'none'; }
+  function refresh() { renderJobGuide(); rebuildOwned(); rebuildBuyable(); cmpPanel.style.display = 'none'; }
 
   return {
     el: root,
