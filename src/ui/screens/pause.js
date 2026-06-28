@@ -6,7 +6,7 @@
 
 import { confirm } from '../confirm.js';
 
-const STYLE_ID = 'sf-menu-style';
+const STYLE_ID = 'sf-pause-menu-style';
 
 /** Find the screen manager regardless of where uiRoot exposed it. Screens navigate
  *  by asking the manager to push/pop/replace; if it is not reachable we degrade to

@@ -6,7 +6,7 @@ import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { createShipPreviewMount } from '../shipPreviewMount.js';
 
-const STYLE_ID = 'sf-menu-style';
+const STYLE_ID = 'sf-new-game-style';
 const STARTER_SHIP = 'ship_kestrel';
 const FITTABLE_BY_ID = new Map();
 for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);

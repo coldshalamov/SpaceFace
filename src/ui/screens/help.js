@@ -14,7 +14,7 @@ import { createListControls } from '../listControls.js';
 import { DEFAULTS } from '../../systems/input.js';
 import { BINDINGS } from '../bindings.js';
 
-const STYLE_ID = 'sf-menu-style';
+const STYLE_ID = 'sf-help-menu-style';
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;

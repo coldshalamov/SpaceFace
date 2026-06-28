@@ -3,7 +3,7 @@
 // the exact latest slot metadata so players trust resume before committing to a load.
 // Browser, Electron dev, and packaged desktop all arrive here through the same player route.
 
-const STYLE_ID = 'sf-menu-style';
+const STYLE_ID = 'sf-main-menu-style';
 const LS_PREFIX = 'sf.save.';
 
 function getManager(ctx) {

@@ -5,7 +5,7 @@
 
 import { confirm } from '../confirm.js';
 
-const STYLE_ID = 'sf-menu-style';
+const STYLE_ID = 'sf-save-load-style';
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
 

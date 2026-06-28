@@ -6,7 +6,7 @@
 
 import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
 
-const STYLE_ID = 'sf-menu-style';
+const STYLE_ID = 'sf-settings-menu-style';
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;

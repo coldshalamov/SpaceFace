@@ -89,6 +89,33 @@ const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
 const automationSrc = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
+const settingsSrc = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
+const saveLoadSrc = readFileSync(new URL('../src/ui/screens/saveLoad.js', import.meta.url), 'utf8');
+
+const menuStyleSources = [
+  ['mainMenu', mainMenuSrc],
+  ['newGame', newGameSrc],
+  ['pause', pauseSrc],
+  ['settings', settingsSrc],
+  ['saveLoad', saveLoadSrc],
+  ['help', helpSrc],
+];
+const menuStyleIds = menuStyleSources.map(([name, src]) => {
+  const match = src.match(/const STYLE_ID = '([^']+)'/);
+  return [name, match && match[1]];
+});
+const missingStyleIds = menuStyleIds.filter(([, id]) => !id).map(([name]) => name);
+const duplicateStyleIds = menuStyleIds
+  .filter(([, id], index, all) => id && all.findIndex(([, other]) => other === id) !== index)
+  .map(([name, id]) => `${name}:${id}`);
+if (missingStyleIds.length || duplicateStyleIds.length) {
+  console.log('FAIL menu screens - injected STYLE_ID values must be present and unique (missing: ' +
+    missingStyleIds.join(', ') + '; duplicate: ' + duplicateStyleIds.join(', ') + ')');
+  fail++;
+} else {
+  console.log('ok   menu screens - injected STYLE_ID values are unique');
+  ok++;
+}
 if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
   console.log('FAIL helpScreen - shell title must be Help, not Codex');
   fail++;
