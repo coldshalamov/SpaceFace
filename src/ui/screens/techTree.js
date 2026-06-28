@@ -74,6 +74,76 @@ function injectStyle() {
 
 function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
 
+function nodeName(id, nodes = TECH_NODES) {
+  const node = (nodes || []).find((n) => n && n.id === id);
+  return (node && node.name) || cleanId(id);
+}
+
+function researchedSetFrom(stateOrIds) {
+  if (Array.isArray(stateOrIds)) return new Set(stateOrIds);
+  const player = stateOrIds && stateOrIds.player || {};
+  return new Set(player.researchedNodes || []);
+}
+
+function missingCostParts(cost, player) {
+  const credits = Math.max(0, Number(player && player.credits) || 0);
+  const rp = Math.max(0, Number(player && player.researchPoints) || 0);
+  const neededCredits = Math.max(0, Math.round((cost && cost.credits || 0) - credits));
+  const neededRp = Math.max(0, Math.round((cost && cost.rp || 0) - rp));
+  const parts = [];
+  if (neededCredits > 0) parts.push(fmtCr(neededCredits) + ' cr');
+  if (neededRp > 0) parts.push(neededRp.toLocaleString() + ' RP');
+  return { neededCredits, neededRp, parts };
+}
+
+export function describeTechNodeReadiness(node, state, nodes = TECH_NODES) {
+  if (!node) return { state: 'missing', actionLabel: 'Select a node', actionTitle: 'Select a tech node to inspect it.' };
+  const player = state && state.player || {};
+  const researched = researchedSetFrom(player.researchedNodes || []);
+  const prereqs = node.prereqs || [];
+  const missingPrereqs = prereqs.filter((id) => !researched.has(id)).map((id) => nodeName(id, nodes));
+  if (researched.has(node.id)) {
+    return {
+      state: 'researched',
+      actionLabel: 'Already researched',
+      actionTitle: node.name + ' is already researched.',
+      missingPrereqs,
+      missingCost: [],
+    };
+  }
+  if (missingPrereqs.length) {
+    const label = missingPrereqs.length === 1
+      ? 'Research ' + missingPrereqs[0] + ' first'
+      : 'Research ' + missingPrereqs.length + ' prerequisites first';
+    return {
+      state: 'locked',
+      actionLabel: label,
+      actionTitle: 'Missing prerequisites: ' + missingPrereqs.join(', '),
+      missingPrereqs,
+      missingCost: [],
+    };
+  }
+  const missing = missingCostParts(node.cost || {}, player);
+  if (missing.parts.length) {
+    return {
+      state: 'funding',
+      actionLabel: 'Need ' + missing.parts.join(' / '),
+      actionTitle: 'Missing resources: ' + missing.parts.join(', '),
+      missingPrereqs,
+      missingCost: missing.parts,
+      neededCredits: missing.neededCredits,
+      neededRp: missing.neededRp,
+    };
+  }
+  return {
+    state: 'available',
+    actionLabel: '⟫ Research',
+    actionTitle: 'Research ' + node.name,
+    missingPrereqs,
+    missingCost: [],
+  };
+}
+
 // Build once: id -> node, plus per-node layout depth (longest prereq chain) and row index.
 function buildLayout(nodes) {
   const byId = {};
@@ -464,6 +534,7 @@ export const techTreeScreen = {
     const rp = (st.player && st.player.researchPoints) || 0;
     const canAfford = creds >= (cost.credits || 0) && rp >= (cost.rp || 0);
     const bcol = BRANCH_COLOR[n.branch] || '#39d0ff';
+    const readiness = describeTechNodeReadiness(n, st, this._nodes());
 
     const prereqHtml = (n.prereqs && n.prereqs.length)
       ? n.prereqs.map((p) => {
@@ -486,13 +557,13 @@ export const techTreeScreen = {
     `;
 
     if (stt === 'researched') {
-      actions.innerHTML = `<button disabled>Already researched</button>`;
+      actions.innerHTML = disabledActionHtml(readiness);
     } else if (stt === 'locked') {
-      actions.innerHTML = `<button disabled>Prerequisites not met</button>`;
+      actions.innerHTML = disabledActionHtml(readiness);
     } else if (!canAfford) {
-      actions.innerHTML = `<button disabled>Insufficient credits / RP</button>`;
+      actions.innerHTML = disabledActionHtml(readiness);
     } else {
-      actions.innerHTML = `<button class="tt-unlock" data-act="unlock">⟫ Research</button>`;
+      actions.innerHTML = `<button class="tt-unlock" data-act="unlock" title="${escapeHtml(readiness.actionTitle)}" aria-label="${escapeHtml(readiness.actionTitle)}">${escapeHtml(readiness.actionLabel)}</button>`;
     }
   },
 
@@ -531,6 +602,12 @@ export const techTreeScreen = {
 // ---- helpers ----------------------------------------------------------------
 function stateLabel(s) { return s === 'researched' ? 'RESEARCHED' : s === 'available' ? 'AVAILABLE' : 'LOCKED'; }
 function stateColor(s) { return s === 'researched' ? '#62e08a' : s === 'available' ? '#39d0ff' : '#84a0c8'; }
+
+function disabledActionHtml(readiness) {
+  const label = readiness && readiness.actionLabel || 'Unavailable';
+  const title = readiness && readiness.actionTitle || label;
+  return `<button disabled title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
+}
 
 function formatUnlocks(u) {
   if (!u) return '<b>Effects:</b> —';
