@@ -32,7 +32,8 @@ function nowMs() {
 }
 
 function isMenuAction(action) {
-  return action === 'localmap' || action === 'missionLog' || action === 'starmap';
+  return action === 'dock' || action === 'localmap' || action === 'missionLog' ||
+    action === 'starmap' || action === 'pause';
 }
 
 export function createTouch(ctx) {
@@ -50,6 +51,8 @@ export function createTouch(ctx) {
       localmap: { held: false, pressed: false, released: false, value: 0 },
       missionLog: { held: false, pressed: false, released: false, value: 0 },
       starmap: { held: false, pressed: false, released: false, value: 0 },
+      dock: { held: false, pressed: false, released: false, value: 0 },
+      pause: { held: false, pressed: false, released: false, value: 0 },
     },
     _overlay: null,
     _sticks: {},   // touchId -> { side: 'left'|'right', originX, originY, curX, curY }
@@ -114,8 +117,8 @@ export function createTouch(ctx) {
         #${OVERLAY_ID} .sf-touch-fire { width:84px; height:84px; right:170px; }
         #${OVERLAY_ID} .sf-touch-mine { width:68px; height:68px; right:96px; bottom:30px; }
         #${OVERLAY_ID} .sf-touch-boost { width:68px; height:68px; bottom:108px; right:30px; }
-        #${OVERLAY_ID} .sf-touch-menu { position:absolute; right:18px; top:112px; display:flex;
-          flex-direction:column; gap:8px; pointer-events:auto; }
+        #${OVERLAY_ID} .sf-touch-menu { position:absolute; right:18px; top:112px; display:grid;
+          grid-template-columns:repeat(2,58px); gap:8px; pointer-events:auto; }
         #${OVERLAY_ID} .sf-touch-menu .sf-touch-btn { position:static; width:58px; height:42px;
           border-radius:8px; font-size:10px; line-height:1.05; }
         @media (max-width: 760px) {
@@ -135,9 +138,11 @@ export function createTouch(ctx) {
         '<button class="sf-touch-btn sf-touch-mine" data-act="mine">Mine</button>' +
         '<button class="sf-touch-btn sf-touch-boost" data-act="boost">Boost</button>' +
         '<div class="sf-touch-menu" aria-label="Touch navigation shortcuts">' +
+          '<button class="sf-touch-btn sf-touch-dock" data-act="dock" aria-label="Dock or activate station prompt">Dock</button>' +
           '<button class="sf-touch-btn sf-touch-localmap" data-act="localmap" aria-label="Open Local Map">Map</button>' +
           '<button class="sf-touch-btn sf-touch-mission-log" data-act="missionLog" aria-label="Open Mission Log">Log</button>' +
           '<button class="sf-touch-btn sf-touch-starmap" data-act="starmap" aria-label="Open Star Map">Star</button>' +
+          '<button class="sf-touch-btn sf-touch-pause" data-act="pause" aria-label="Pause game">Pause</button>' +
         '</div>';
       document.body.appendChild(ov);
       this._overlay = ov;
@@ -224,7 +229,7 @@ export function createTouch(ctx) {
       if (!this.active) return;
       // Translate button-held flags into action state (pressed/released edges computed in input.js
       // merge; here we only reflect current held state, matching gamepad.js's approach).
-      for (const act of ['fire', 'mine', 'boost', 'localmap', 'missionLog', 'starmap']) {
+      for (const act of ['fire', 'mine', 'boost', 'dock', 'localmap', 'missionLog', 'starmap', 'pause']) {
         const held = !!this._btnHeld[act];
         const pulse = !!this._btnPulse[act];
         const prev = !!this.actions[act] && this.actions[act].held;

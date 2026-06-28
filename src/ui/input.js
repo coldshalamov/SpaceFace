@@ -408,16 +408,27 @@ export function createUiInput(ctx, screenManager) {
 
   function handleTouchUi() {
     if (isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return;
+    if (touchActionPressed('dock')) { routeTouchUiAction('dock'); return; }
     if (touchActionPressed('missionLog')) { routeTouchUiAction('missionLog'); return; }
     if (touchActionPressed('localmap')) { routeTouchUiAction('localmap'); return; }
     if (touchActionPressed('starmap')) { routeTouchUiAction('starmap'); }
+    if (touchActionPressed('pause')) { routeTouchUiAction('pause'); }
   }
 
   function routeTouchUiAction(action) {
     if (isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return false;
+    if (action === 'dock') {
+      if (dockInRange && !state.ui.docked) {
+        doDock();
+        return true;
+      }
+      bus.emit('toast', { text: 'No dock prompt active', kind: 'info', ttl: 2 });
+      return false;
+    }
     if (action === 'missionLog') { openScreenFromTouch('missionLog'); return true; }
     if (action === 'localmap') { openScreenFromTouch('localmap'); return true; }
     if (action === 'starmap') { openScreenFromTouch('starmap'); return true; }
+    if (action === 'pause') { openScreenFromTouch('pause'); return true; }
     return false;
   }
 
