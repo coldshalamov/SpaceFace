@@ -222,7 +222,7 @@ function makeStorage() {
     key(i) { return Array.from(map.keys())[i] || null; },
     getItem(key) { key = String(key); return map.has(key) ? map.get(key) : null; },
     setItem(key, value) { map.set(String(key), String(value)); },
-    removeItem(key) { map.delete(key); },
+    removeItem(key) { map.delete(String(key)); },
     clear() { map.clear(); },
   };
 }
