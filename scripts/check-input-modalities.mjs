@@ -63,6 +63,7 @@ const uiRootSrc = read('src/ui/uiRoot.js');
 const uiInputSrc = read('src/ui/input.js');
 const helpSrc = read('src/ui/screens/help.js');
 const promptSrc = read('src/ui/controlPrompts.js');
+const screenManagerSrc = read('src/ui/screenManager.js');
 assert.match(settingsSrc, /Gamepad enabled/, 'Settings must expose a Gamepad enabled toggle');
 assert.match(settingsSrc, /Touch controls/, 'Settings must expose a Touch controls toggle');
 assert.doesNotMatch(settingsSrc, /rowToggle\('Touch controls'/, 'Touch controls must use a tri-state Auto/On/Off control, not the boolean toggle helper');
@@ -84,5 +85,9 @@ assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)
   'UI input must let gamepad A/Cross dock when the dock prompt is active');
 assert.match(uiInputSrc, /top === 'starmap'[\s\S]*gp\.actions\.map[\s\S]*screenManager\.popScreen\(\)/,
   'UI input must let gamepad View/Select close the Star Map after opening it');
+assert.match(screenManagerSrc, /state\.mode === 'menu' && stack\.length === 1 && top\(\) === 'mainMenu'/,
+  'ScreenManager must treat the root title menu as a locked modal route');
+assert.match(uiInputSrc, /key === 'Escape'[\s\S]*screenManager\.locked[\s\S]*if \(locked\) return;[\s\S]*def && def\.id === 'station'[\s\S]*undock\(\)/,
+  'Keyboard Escape must honor ScreenManager.locked() before popping so the root title menu cannot vanish');
 
 console.log('Input modalities OK — keyboard+mouse (always) + gamepad (getGamepads) + touch (virtual sticks) all wired + merged + normalized.');

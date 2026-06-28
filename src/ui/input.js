@@ -67,7 +67,8 @@ export function createUiInput(ctx, screenManager) {
       const def = screenManager.getActiveScreenDef();
       if (key === 'Escape') {
         ev.preventDefault();
-        if (def && def.data && def.data.locked) return; // mid-transaction confirm traps ESC
+        const locked = (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked);
+        if (locked) return; // root title / mid-transaction screens trap ESC
         // Undock if leaving the station hub
         if (def && def.id === 'station') undock();
         else screenManager.popScreen();
