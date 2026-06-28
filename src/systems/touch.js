@@ -6,7 +6,8 @@
 //   - RIGHT half of screen → aim joystick (the delta sets aimAngle independent of the nose, like
 //                            the right gamepad stick / mouse). Tap-to-fire on release is avoided —
 //                            fire is an explicit button so the player can hold it.
-//   - On-screen buttons (bottom-right): FIRE (hold), MINE (hold), BOOST (hold).
+//   - On-screen action buttons: FIRE (hold), MINE (hold), BOOST (hold), plus DOCK/LOG/MAP/PAUSE
+//     menu buttons so touch-only pilots can complete the first station handoff without a keyboard.
 //
 // The layer is intentionally dumb (like gamepad.js): it only translates touches into normalized
 // axes + action state. Flight behavior is merged in src/systems/input.js; the overlay DOM is built
@@ -31,6 +32,13 @@ function nowMs() {
   return Date.now();
 }
 
+function touchMapScreen(state) {
+  const wp = state && state.nav && state.nav.waypoint;
+  const currentSectorId = state && state.world && state.world.currentSectorId;
+  if (wp && wp.sectorId && currentSectorId && wp.sectorId !== currentSectorId && !wp.pos) return 'starmap';
+  return 'localmap';
+}
+
 export function createTouch(ctx) {
   const bus = ctx && ctx.bus;
   const state = ctx && ctx.state;
@@ -49,6 +57,7 @@ export function createTouch(ctx) {
     _btns: {},     // button element -> action name
     _btnHeld: {},  // action -> bool (button touches, tracked separately from sticks)
     _enabledByAuto: false,
+    _lastTouchMenuMs: 0,
 
     isConnected() { return this.active; },
 
@@ -88,6 +97,14 @@ export function createTouch(ctx) {
         s.textContent = `
         #${OVERLAY_ID} { position:fixed; inset:0; pointer-events:none; z-index:60; touch-action:none;
           user-select:none; -webkit-user-select:none; }
+        body.ui-modal-open #${OVERLAY_ID} { display:none !important; }
+        #${OVERLAY_ID} .sf-touch-menu { position:absolute; top:18px; right:18px; display:flex; flex-wrap:wrap;
+          justify-content:flex-end; gap:8px; max-width:min(92vw,360px); pointer-events:auto; }
+        #${OVERLAY_ID} .sf-touch-menu-btn { min-width:58px; height:40px; border-radius:999px;
+          border:1px solid rgba(120,160,200,.4); background:rgba(8,14,24,.58); color:var(--ink,#d7e6ff);
+          font-family:var(--mono,monospace); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+          transition:background .08s, transform .08s, border-color .08s; }
+        #${OVERLAY_ID} .sf-touch-menu-btn.held { background:rgba(57,208,255,.28); border-color:rgba(57,208,255,.72); transform:scale(.96); }
         #${OVERLAY_ID} .sf-touch-stick { position:absolute; bottom:18px; width:140px; height:140px;
           border-radius:50%; border:2px solid rgba(120,160,200,.25); background:rgba(8,14,24,.30);
           pointer-events:auto; }
@@ -106,13 +123,23 @@ export function createTouch(ctx) {
         #${OVERLAY_ID} .sf-touch-fire { width:84px; height:84px; right:170px; }
         #${OVERLAY_ID} .sf-touch-mine { width:68px; height:68px; right:96px; bottom:30px; }
         #${OVERLAY_ID} .sf-touch-boost { width:68px; height:68px; bottom:108px; right:30px; }
-        @media (max-width: 760px) { #${OVERLAY_ID} .sf-touch-stick { width:110px; height:110px; } }
+        @media (max-width: 760px) {
+          #${OVERLAY_ID} .sf-touch-stick { width:110px; height:110px; }
+          #${OVERLAY_ID} .sf-touch-menu { top:12px; right:12px; gap:6px; }
+          #${OVERLAY_ID} .sf-touch-menu-btn { min-width:52px; height:36px; font-size:9px; }
+        }
         `;
         document.head.appendChild(s);
       }
       const ov = document.createElement('div');
       ov.id = OVERLAY_ID;
       ov.innerHTML =
+        '<div class="sf-touch-menu" aria-label="Touch flight menus">' +
+          '<button class="sf-touch-menu-btn" type="button" data-menu-act="dock" aria-label="Dock or activate station prompt">Dock</button>' +
+          '<button class="sf-touch-menu-btn" type="button" data-menu-act="missionLog" aria-label="Open Mission Log">Log</button>' +
+          '<button class="sf-touch-menu-btn" type="button" data-menu-act="map" aria-label="Open contextual map">Map</button>' +
+          '<button class="sf-touch-menu-btn" type="button" data-menu-act="pause" aria-label="Pause game">Pause</button>' +
+        '</div>' +
         '<div class="sf-touch-stick left"><div class="sf-touch-knob"></div></div>' +
         '<div class="sf-touch-stick right"><div class="sf-touch-knob"></div></div>' +
         '<button class="sf-touch-btn sf-touch-fire" data-act="fire">Fire</button>' +
@@ -122,6 +149,7 @@ export function createTouch(ctx) {
       this._overlay = ov;
       this._wireSticks(ov);
       this._wireButtons(ov);
+      this._wireMenuButtons(ov);
     },
 
     // The two joystick zones. A touch that STARTS inside a stick owns that touch until release;
@@ -177,6 +205,68 @@ export function createTouch(ctx) {
       const ay = max > 0 ? ny / max : 0;
       if (st.side === 'left') { this.axes.leftX = ax; this.axes.leftY = ay; }
       else { this.axes.rightX = ax; this.axes.rightY = ay; }
+    },
+
+    _touchMenuScreen(act) {
+      if (act === 'missionLog') return 'missionLog';
+      if (act === 'map') return touchMapScreen(state);
+      if (act === 'pause') return 'pause';
+      return null;
+    },
+
+    _openTouchMenu(screenId) {
+      if (!screenId || !bus || !bus.emit) return;
+      const ui = state && state.ui;
+      if (ui && Array.isArray(ui.screenStack) && ui.screenStack.length > 0) return;
+      bus.emit('ui:pushScreen', { id: screenId });
+      bus.emit('audio:cue', { id: screenId === 'pause' ? 'ui_open' : 'ui_click' });
+      this.lastActiveMs = nowMs();
+    },
+
+    _touchDock() {
+      const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+      if (ui && ui.input && typeof ui.input.doDock === 'function') {
+        ui.input.doDock();
+        this.lastActiveMs = nowMs();
+        return;
+      }
+      if (bus && bus.emit) bus.emit('toast', { text: 'Dock controls are still initializing', kind: 'info', ttl: 2 });
+    },
+
+    _wireMenuButtons(ov) {
+      const btns = ov.querySelectorAll('.sf-touch-menu-btn');
+      btns.forEach((b) => {
+        let armed = false;
+        const activate = (e) => {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          const act = b.getAttribute('data-menu-act');
+          if (act === 'dock') this._touchDock();
+          else this._openTouchMenu(this._touchMenuScreen(act));
+        };
+        const down = (e) => { e.preventDefault(); e.stopPropagation(); b.classList.add('held'); armed = true; this.lastActiveMs = nowMs(); };
+        const up = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          b.classList.remove('held');
+          if (!armed) return;
+          armed = false;
+          this._lastTouchMenuMs = nowMs();
+          activate(e);
+        };
+        const cancel = (e) => { e.preventDefault(); e.stopPropagation(); b.classList.remove('held'); armed = false; };
+        const click = (e) => {
+          if (nowMs() - (this._lastTouchMenuMs || 0) < 350) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          activate(e);
+        };
+        b.addEventListener('touchstart', down, { passive: false });
+        b.addEventListener('touchend', up, { passive: false });
+        b.addEventListener('touchcancel', cancel, { passive: false });
+        b.addEventListener('click', click);
+      });
     },
 
     _wireButtons(ov) {
