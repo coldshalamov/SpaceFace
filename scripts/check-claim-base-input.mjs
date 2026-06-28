@@ -107,7 +107,7 @@ function checkAlreadyClaimedBodyOpensBase() {
   const h = makeHarness({ claimed: true });
   const event = press(h.listeners, 'c');
   assert.equal(event.defaultPrevented, true, 'claim key should be UI-owned in flight');
-  assert.equal(event.propagationStopped, true, 'claim key should not also reach gameplay countermeasure input when it opens a base');
+  assert.equal(event.propagationStopped, true, 'claim key should not also reach gameplay input when it opens a base');
   assert.deepEqual(h.pushes, ['base'], 'pressing C near an already-claimed body should open the Base screen');
   assert.equal(h.state.ui.pendingClaimBodyId, 'claim_existing', 'base handoff should target the existing claim record');
   assertNoComingSoon(h.events);
@@ -118,7 +118,7 @@ function checkNewClaimOpensBaseImmediately() {
   const h = makeHarness({ claimed: false });
   const event = press(h.listeners, 'c');
   assert.equal(event.defaultPrevented, true, 'claim key should be UI-owned when a claimable body is in range');
-  assert.equal(event.propagationStopped, true, 'claim key should not also deploy countermeasures while claiming a body');
+  assert.equal(event.propagationStopped, true, 'claim key should not also reach gameplay input while claiming a body');
   assert.equal(h.events.some((event) => event.name === 'claim:call'), true, 'unclaimed body should call claims.claim');
   assert.equal(h.bodies.length, 1, 'successful claim should create a claim record');
   assert.deepEqual(h.pushes, ['base'], 'successful claim should open the Base screen immediately');
@@ -130,14 +130,14 @@ function checkNewClaimOpensBaseImmediately() {
 function checkClaimKeyFallsThroughAwayFromBodies() {
   const h = makeHarness({ withClaimPoi: false });
   const event = press(h.listeners, 'c');
-  assert.equal(event.defaultPrevented, false, 'C away from claimable bodies should fall through to gameplay countermeasure input');
+  assert.equal(event.defaultPrevented, false, 'C away from claimable bodies should fall through to normal flight input');
   assert.equal(event.propagationStopped, false, 'C away from claimable bodies should not stop gameplay input');
   assert.deepEqual(h.pushes, [], 'C away from claimable bodies should not open the Base screen');
   const toastText = h.events
     .filter((ev) => ev.name === 'toast')
     .map((ev) => String(ev.payload && ev.payload.text || ''))
     .join('\n');
-  assert.equal(/No claimable body/i.test(toastText), false, 'countermeasure C should not show a claim/body warning in open space');
+  assert.equal(/No claimable body/i.test(toastText), false, 'claim key should not show a claim/body warning in open space');
   h.input.dispose();
 }
 
@@ -145,7 +145,7 @@ function checkRegistrationRaceDoesNotLie() {
   const h = makeHarness({ claimed: true, baseRegistered: false });
   const event = press(h.listeners, 'c');
   assert.equal(event.defaultPrevented, true, 'base registration race should still consume the claim key');
-  assert.equal(event.propagationStopped, true, 'base registration race should not also reach gameplay countermeasure input');
+  assert.equal(event.propagationStopped, true, 'base registration race should not also reach gameplay input');
   assert.deepEqual(h.pushes, [], 'unregistered base screen should not be pushed');
   assert.equal(h.state.ui.pendingClaimBodyId, 'claim_existing', 'base target should stay primed while screen registration catches up');
   assert.equal(h.events.some((event) => event.name === 'toast' && /initializing/i.test(event.payload.text)), true,

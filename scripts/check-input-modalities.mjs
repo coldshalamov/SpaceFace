@@ -26,6 +26,7 @@ const touchSrc = read('src/systems/touch.js');
 assert.match(gamepadSrc, /export function createGamepad/, 'gamepad.js must export createGamepad');
 assert.match(touchSrc, /export function createTouch/, 'touch.js must export createTouch');
 assert.match(gamepadSrc, /mine:\s*\['l2'\]/, 'gamepad.js must map LT/L2 to the mining action');
+assert.match(gamepadSrc, /countermeasure:\s*\['r3'\]/, 'gamepad.js must map R3 to the countermeasure action');
 assert.doesNotMatch(gamepadSrc, /fire:\s*\[[^\]]*accept/, 'gamepad A/Cross should be dock/activate, not a second fire trigger');
 
 // 2. input.js imports + creates both.
@@ -78,8 +79,10 @@ assert.match(uiRootSrc, /controlPrompt\('flight', 'gamepad'\)/, 'UI root must so
 assert.match(promptSrc, /RMB mine/, 'Keyboard flight hints must describe the mining control as mining, not sampling');
 assert.match(promptSrc, /LT mine/, 'Gamepad flight hints must advertise LT/L2 mining');
 assert.match(promptSrc, /A dock/, 'Gamepad flight hints must advertise A/Cross docking');
+assert.match(promptSrc, /R3 countermeasure/, 'Gamepad flight/combat hints must advertise R3 countermeasure');
 assert.match(promptSrc, /Mine button/, 'Touch flight hints must advertise the touch mining button');
 assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document gamepad mining');
+assert.match(helpSrc, /Countermeasure[\s\S]*R3/, 'Help Controls must document gamepad countermeasure');
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');
 assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)/,
   'UI input must let gamepad A/Cross dock when the dock prompt is active');

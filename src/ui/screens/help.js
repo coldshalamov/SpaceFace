@@ -110,6 +110,7 @@ const SECTIONS = [
     ['Boost (hold) / Dash (tap)', 'boost', 'Shift'],
     ['Fire weapons', 'fire', 'LMB / Space'],
     ['Auto-fire toggle', 'autoFire', 'F'],
+    ['Countermeasure', 'countermeasure', 'X'],
   ]],
   ['Interface (fixed keys)', [
     ['Aim weapons', null, 'Mouse'],
@@ -136,6 +137,7 @@ const SECTIONS = [
     ['Mine beam', null, 'LT / L2'],
     ['Boost', null, 'RB / R1'],
     ['Brake / reverse', null, 'LB / L1'],
+    ['Countermeasure', null, 'R3'],
     ['Cycle target', null, 'X / □'],
     ['Open star-map', null, 'View / Select'],
     ['Open codex', null, 'Y / △'],

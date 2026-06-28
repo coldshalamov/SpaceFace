@@ -8,7 +8,7 @@
 //   ECM   — jams homing guidance: any missile within the effect radius has its turnRate zeroed for
 //           the effect duration (it flies straight, easy to dodge). Also partially breaks locks.
 //
-// Deploy trigger: the player presses the countermeasure keybind (default C, remappable); AI ships
+// Deploy trigger: the player presses the countermeasure keybind (default X, remappable); AI ships
 // auto-deploy when a missile is locked onto them or within a close threshold. Effects are timed
 // (durationS) and cooldown-gated (cooldownS) — NOT consumable ammo, keeping the equipment loop simple.
 //

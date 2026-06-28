@@ -54,8 +54,24 @@ assert.match(regSrc, /weapons, countermeasures,/, 'countermeasures must appear a
 
 // 4. input.js exposes the deploy keybind + sets the flag.
 const inputSrc = read('src/systems/input.js');
-assert.match(inputSrc, /countermeasure:\s*\['KeyC'\]/, 'input.js must default the countermeasure keybind to KeyC');
+const gamepadSrc = read('src/systems/gamepad.js');
+const promptSrc = read('src/ui/controlPrompts.js');
+const helpSrc = read('src/ui/screens/help.js');
+const readmeSrc = read('README.md');
+assert.match(inputSrc, /countermeasure:\s*\['KeyX'\]/, 'input.js must default the countermeasure keybind to KeyX');
+assert.doesNotMatch(inputSrc, /countermeasure:\s*\['KeyC'\]/,
+  'countermeasure must not share KeyC with claim/base interaction');
+assert.match(inputSrc, /x:\s*'KeyX'/, 'input fallback map must recognize X as the countermeasure key');
+assert.match(gamepadSrc, /countermeasure:\s*\['r3'\]/, 'gamepad R3 must deploy countermeasures');
+assert.match(inputSrc, /gp\.actions\.countermeasure[\s\S]*inp\.deployCountermeasure/,
+  'input.js must merge the gamepad countermeasure action into deployCountermeasure');
 assert.match(inputSrc, /inp\.deployCountermeasure/, 'input.js must set state.input.deployCountermeasure on deploy');
+assert.match(promptSrc, /X countermeasure/, 'keyboard prompts must teach X as countermeasure');
+assert.match(promptSrc, /R3 countermeasure/, 'gamepad prompts must teach R3 as countermeasure');
+assert.match(helpSrc, /Countermeasure[\s\S]*X/, 'Help must document keyboard countermeasure');
+assert.match(helpSrc, /Countermeasure[\s\S]*R3/, 'Help must document gamepad countermeasure');
+assert.match(readmeSrc, /\|\s*Countermeasure\s*\|\s*\*\*X\*\* \/ \*\*R3\*\*/,
+  'README controls must document X / R3 countermeasure');
 
 // 5. weapons.js homing-steering reads the fields the countermeasure writes.
 const weaponsSrc = read('src/systems/weapons.js');

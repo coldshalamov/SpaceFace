@@ -16,6 +16,7 @@
 //   7  RT / R2         -> fire (analog)
 //   8  View / Select   -> star map
 //   9  Menu / Start    -> pause
+//  11  R3              -> countermeasure
 //  12  D-pad up        -> UI nav up
 //  13  D-pad down      -> UI nav down
 //  14  D-pad left      -> UI nav left
@@ -51,6 +52,7 @@ const ACTION_MAP = {
   map: ['view'],
   codex: ['alt'],
   pause: ['menu'],
+  countermeasure: ['r3'],
   accept: ['accept'],
   cancel: ['cancel'],
 };

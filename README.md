@@ -32,6 +32,7 @@ Source GLBs under `assets/ships/parts/` are authoring/build inputs. Normal play 
 | Fire weapons | **Left‑mouse / Space** |
 | Mining beam | **Right‑mouse** (hold, near an asteroid) / **LT** on gamepad |
 | Afterburner | **Shift** / **RB** on gamepad |
+| Countermeasure | **X** / **R3** on gamepad |
 | Dock | **E** when the dock prompt shows; **Enter** is a secondary key |
 | Star map | **M** | · Tech tree **T** · Missions/journal **J** |
 | Codex | **K** |
