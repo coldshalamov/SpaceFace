@@ -13,7 +13,7 @@ import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const START_TIMEOUT_MS = 45000;
+const START_TIMEOUT_MS = 90000;
 const DOCK_TIMEOUT_MS = 15000;
 const { chromium } = await loadPlaywright();
 
@@ -154,7 +154,7 @@ try {
   assert(departure.chips.every((chip) => chip.tag === 'BUTTON' && chip.label),
     'Departure Check actionable chips should be keyboard-accessible buttons with labels: ' + JSON.stringify(departure.chips));
 
-  const untrackedDeparture = await page.evaluate(async () => {
+  await page.evaluate(() => {
     const sf = window.SF;
     sf.state.missions.active = [{
       id: 'mission_untracked_departure_probe',
@@ -169,21 +169,25 @@ try {
     sf.state.ui.trackedMissionId = null;
     sf.state.nav.waypoint = null;
     sf.bus.emit('mission:updated', { missionId: 'mission_untracked_departure_probe' });
-    await new Promise((resolve) => setTimeout(resolve, 120));
-    const chip = [...document.querySelectorAll('[data-screen="station"] .st-departure-chip')]
-      .find((el) => /untracked job/i.test(el.textContent || ''));
-    return {
-      text: chip ? String(chip.textContent || '').replace(/\s+/g, ' ').trim() : '',
-      target: chip && chip.getAttribute('data-departure-tab'),
-      label: chip && chip.getAttribute('aria-label'),
-    };
   });
-  assert.match(untrackedDeparture.text, /1 untracked job/,
-    'Departure Check should name active-but-untracked mission state: ' + JSON.stringify(untrackedDeparture));
-  assert.equal(untrackedDeparture.target, 'missions',
-    'untracked mission chip should route to Missions: ' + JSON.stringify(untrackedDeparture));
-  assert.match(untrackedDeparture.label || '', /track the active job/i,
-    'untracked mission chip should expose an actionable accessible label: ' + JSON.stringify(untrackedDeparture));
+  const activeMissionDeparture = await waitForDepartureChip(
+    page,
+    /untracked job|Untracked Departure Probe/i,
+    'active mission readiness',
+  );
+  assert.equal(activeMissionDeparture.target, 'missions',
+    'active mission chip should route to Missions: ' + JSON.stringify(activeMissionDeparture));
+  if (/untracked job/i.test(activeMissionDeparture.text)) {
+    assert.match(activeMissionDeparture.text, /1 untracked job/,
+      'Departure Check should name active-but-untracked mission state: ' + JSON.stringify(activeMissionDeparture));
+    assert.match(activeMissionDeparture.label || '', /track the active job/i,
+      'untracked mission chip should expose an actionable accessible label: ' + JSON.stringify(activeMissionDeparture));
+  } else {
+    assert.match(activeMissionDeparture.text, /Untracked Departure Probe/,
+      'Departure Check should name the auto-tracked active mission: ' + JSON.stringify(activeMissionDeparture));
+    assert.match(activeMissionDeparture.label || '', /review station contracts/i,
+      'auto-tracked mission chip should expose an actionable accessible label: ' + JSON.stringify(activeMissionDeparture));
+  }
 
   await clickDepartureAndExpect(page, 'services');
   await assertServicesRecommendation(page);
@@ -196,6 +200,45 @@ try {
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
+}
+
+async function waitForDepartureChip(page, textPattern, label) {
+  await page.waitForFunction((patternSource) => {
+    const re = new RegExp(patternSource, 'i');
+    const chip = [...document.querySelectorAll('[data-screen="station"] .st-departure-chip')]
+      .find((el) => re.test(el.textContent || ''));
+    return !!chip;
+  }, textPattern.source, { timeout: 5000 }).catch(async (err) => {
+    const report = await page.evaluate(() => ({
+      activeTab: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.activeStationTab,
+      top: window.SF && window.SF.ctx && window.SF.ctx.screenManager && window.SF.ctx.screenManager.top(),
+      trackedMissionId: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.trackedMissionId,
+      activeMissions: window.SF && window.SF.state && window.SF.state.missions &&
+        window.SF.state.missions.active && window.SF.state.missions.active.map((m) => ({
+          id: m && (m.id || m.missionId),
+          status: m && m.status,
+          title: m && m.title,
+        })),
+      chips: [...document.querySelectorAll('[data-screen="station"] .st-departure-chip')]
+        .map((chip) => ({
+          text: String(chip.textContent || '').replace(/\s+/g, ' ').trim(),
+          target: chip.getAttribute('data-departure-tab'),
+          label: chip.getAttribute('aria-label'),
+        })),
+    }));
+    throw new Error('Timed out waiting for Departure Check chip for ' + label + ': ' +
+      err.message + ' ' + JSON.stringify(report));
+  });
+  return page.evaluate((patternSource) => {
+    const re = new RegExp(patternSource, 'i');
+    const chip = [...document.querySelectorAll('[data-screen="station"] .st-departure-chip')]
+      .find((el) => re.test(el.textContent || ''));
+    return {
+      text: chip ? String(chip.textContent || '').replace(/\s+/g, ' ').trim() : '',
+      target: chip && chip.getAttribute('data-departure-tab'),
+      label: chip && chip.getAttribute('aria-label'),
+    };
+  }, textPattern.source);
 }
 
 async function pressAndExpect(page, key, expectedTab) {

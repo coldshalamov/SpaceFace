@@ -1,12 +1,9 @@
 # Continuous integration for SpaceFace.
 #
-# Runs the HEADLESS portion of the project's check suite on every push and pull request. The full
-# `npm run check` additionally includes a handful of scripts that drive a real browser via
-# Playwright (check:47a:live-cold-open, check:flight:clean) — those need a running static server
-# + a browser install and are intentionally excluded from CI (Playwright is not a declared
-# dependency). The `check:ci` alias runs everything else: data/ref integrity, balance sim,
-# deterministic replay verification, AI/physics/combat contracts, the presentation/render/audio
-# checks, and the gameplay-core assertions (including the boss-spawn + ironman-permadeath guards).
+# Runs the CI-safe portion of the project's check suite on every push and pull request. The
+# `check:ci` alias includes headless browser probes that boot the normal player route through
+# Playwright, so CI installs the declared Playwright dependency plus its Chromium browser before
+# running checks.
 #
 # A green run here means every namespaced data ref resolves, the fixed-timestep sim is
 # deterministic across save/reload, and no wired gameplay contract has regressed.
@@ -26,7 +23,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,10 +36,20 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      # Install dev dependencies. The headless checks are dependency-free, but check:bundle (the
-      # production bundler verification) needs esbuild. npm ci is faster + deterministic on CI.
+      # Install dev dependencies. npm ci is faster + deterministic on CI.
       - name: Install dependencies
         run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Run headless check suite (+ bundle verification)
         run: npm run check:ci

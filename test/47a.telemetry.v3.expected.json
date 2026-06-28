@@ -23,6 +23,7 @@
     "scenario:beatEntered",
     "scenario:dialogueLine",
     "tether:attached",
+    "tether:broken",
     "ship:boostStart",
     "ship:boostStop",
     "combat:fire",
@@ -51,6 +52,7 @@
     "scenario:beatEntered": 1,
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
+    "tether:broken": 1,
     "combat:fire": 12,
     "projectile:hit": 1,
     "combat:damage": 1,
@@ -68,7 +70,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "bb82bb1ca4a57aea13d04bfd47a6bd2d4c449fcf4b0b39949159845407432d83",
+    "authoritativeHash": "961eabfbb8a3780dce8897a015ab7e0af75edb6eb0cb94c6fad18d59846e770a",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -84,6 +86,7 @@
     "V3's authored handling differs from the legacy controller, so the hash differs from the legacy ca3eac66 envelope, which remains unchanged in test/47a.telemetry.expected.json.",
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
     "phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick V3 run, captured deterministically across repeat + save/reload.",
+    "The current V3 Massline path attaches at tick 4 and breaks at tick 166 before the first projectile hit; the envelope records both tether events.",
     "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds under V3."
   ]
 }

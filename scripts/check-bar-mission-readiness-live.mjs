@@ -13,7 +13,7 @@ import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const START_TIMEOUT_MS = 45000;
+const START_TIMEOUT_MS = 90000;
 const { chromium } = await loadPlaywright();
 
 let server = null;

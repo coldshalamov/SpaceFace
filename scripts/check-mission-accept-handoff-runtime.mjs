@@ -14,7 +14,7 @@ import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const START_TIMEOUT_MS = 45000;
+const START_TIMEOUT_MS = 90000;
 const DOCK_TIMEOUT_MS = 15000;
 const MISSION_LOG_LABEL = `Mission Log (${BINDINGS.missionLog.label})`;
 const { chromium } = await loadPlaywright();

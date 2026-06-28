@@ -11,7 +11,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCENARIO_ID = 'scenario.47a.mass-discrepancy';
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const REMOTE_ROLES = new Set(['remote_contact']);
-const AUTHORED_START_TIMEOUT_MS = 45000;
+const AUTHORED_START_TIMEOUT_MS = 90000;
 const { chromium } = await loadPlaywright();
 
 let server = null;
