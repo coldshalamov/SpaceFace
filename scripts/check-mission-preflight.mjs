@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { MISSION_TUNING } from '../src/data/missions.js';
 import { missions } from '../src/systems/missions.js';
 import {
+  missionCargoStaging,
   missionConsequenceSummary,
   missionPreflight,
   missionRiskRewardSummary,
@@ -28,6 +29,10 @@ assert.match(stationHubSrc, /import \{ missionPreflight \} from '\.\.\/missionPr
 assert.match(missionPreflightSrc, /export function missionPreflight/, 'shared mission preflight helper must be exported');
 assert.match(missionPreflightSrc, /export function missionRouteScope/,
   'shared mission preflight helper must expose route-scope policy for direct tests');
+assert.match(missionPreflightSrc, /export function missionCargoStaging/,
+  'shared mission preflight helper must expose cargo-staging policy for direct tests');
+assert.match(missionPreflightSrc, /MARKET_STAGED_CARGO_MISSIONS/,
+  'mission preflight must distinguish cargo contracts that should be staged through markets');
 assert.match(missionPreflightSrc, /export function missionRouteIntel/,
   'shared mission preflight helper must expose route-risk intel for direct tests');
 assert.match(missionPreflightSrc, /export function missionTimePacing/,
@@ -117,6 +122,18 @@ function makeState(capVolume) {
   };
 }
 
+function stockMissionCargo(state, stock = 12) {
+  state.ui.dockedStationId = 'station_helios';
+  state.economy = {
+    markets: {
+      station_helios: {
+        cmdty_gas_hydrogen: { stock, lastBuy: 20, lastMid: 20 },
+      },
+    },
+  };
+  return state;
+}
+
 function makeBus() {
   const events = [];
   return {
@@ -193,6 +210,33 @@ assert.equal(missionBoardReadiness(lowFreeUiPreflight).label, 'CHECK',
   'caution mission cards should ask the player to check prep details');
 assert.equal(lowFreeUiPreflight.blocker, null, 'low free space should warn without blocking a capable hull');
 assert.match(lowFreeUiPreflight.warning || '', /clear space/, 'shared UI preflight must tell the player to clear cargo space');
+
+const stockedCargoState = stockMissionCargo(makeState(8), 12);
+const stockedCargo = missionCargoStaging(makeOffer(), stockedCargoState);
+assert.equal(stockedCargo.chip.kind, 'info', 'stocked current markets should render cargo staging as an actionable info chip');
+assert.equal(stockedCargo.chip.text, 'Buy 2u Hydrogen Gas here',
+  'mission preflight should tell the player when required cargo can be bought at the current station');
+const stockedCargoPreflight = missionPreflight(makeOffer(), stockedCargoState);
+assert.ok(stockedCargoPreflight.chips.some((chip) => chip.text === 'Buy 2u Hydrogen Gas here'),
+  'mission preflight chips should include current-station cargo sourcing');
+
+const aboardCargoState = makeState(8);
+aboardCargoState.player.cargo.items.cmdty_gas_hydrogen = 2;
+const aboardCargo = missionCargoStaging(makeOffer(), aboardCargoState);
+assert.equal(aboardCargo.chip.kind, 'ok', 'already loaded mission cargo should read as ready');
+assert.equal(aboardCargo.chip.text, '2/2u Hydrogen Gas aboard',
+  'mission preflight should show loaded cargo against the contract need');
+
+const activeCargo = missionCargoStaging(makeOffer({ objectiveTarget: 1 }), makeState(8));
+assert.equal(activeCargo.chip.text, '0/2u Hydrogen Gas aboard',
+  'cargo staging should use cargo quantity rather than boolean objective target for delivery-style contracts');
+
+const shortStockState = stockMissionCargo(makeState(8), 1);
+const shortStockPreflight = missionPreflight(makeOffer(), shortStockState);
+assert.ok(shortStockPreflight.chips.some((chip) => chip.kind === 'warn' && chip.text === 'Market has 1u Hydrogen Gas'),
+  'mission preflight should flag partial cargo availability before accept');
+assert.match(shortStockPreflight.warning || '', /only shows 1u/,
+  'partial cargo availability should explain that another source is needed');
 
 const localScope = missionRouteScope(makeOffer({
   destStationId: 'station_helios',
@@ -299,4 +343,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - shared route scope, route-risk intel, timer pacing, payout/risk, ship readiness, and consequence stakes are visible before accept.');
+console.log('Mission preflight OK - shared route scope, cargo staging, route-risk intel, timer pacing, payout/risk, ship readiness, and consequence stakes are visible before accept.');

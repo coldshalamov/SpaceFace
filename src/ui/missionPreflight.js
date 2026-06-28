@@ -10,6 +10,7 @@ for (const sector of SECTORS) {
   for (const station of sector.stations || []) STATION_SECTOR_BY_ID.set(station.id, sector.id);
 }
 const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
+const MARKET_STAGED_CARGO_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run']);
 const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport']);
 const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
 const TIMER_TIGHT_S = 5 * 60;
@@ -133,6 +134,95 @@ function fmtClock(value) {
   if (m >= 60) return (m / 60).toFixed(m >= 600 ? 0 : 1) + 'h';
   if (m >= 1) return m + 'm';
   return s + 's';
+}
+
+function commodityName(id) {
+  const commodity = id ? COMMODITY_BY_ID.get(id) : null;
+  return (commodity && commodity.name) || String(id || 'cargo').replace(/^cmdty_/, '').replace(/_/g, ' ');
+}
+
+function missionCargoTargetUnits(m) {
+  const p = m && m.params || {};
+  const cargoQty = Math.floor(Number(p.qty) || 0);
+  if (cargoQty > 0 && MARKET_STAGED_CARGO_MISSIONS.has(m && m.type)) return cargoQty;
+  const raw = m && (m.objectiveTarget != null ? m.objectiveTarget : p.qty);
+  const target = Math.floor(Number(raw) || 0);
+  return target > 0 ? target : 0;
+}
+
+function missionCargoProgressUnits(m) {
+  const raw = m && m.objectiveProgress;
+  const progress = Math.floor(Number(raw) || 0);
+  return progress > 0 ? progress : 0;
+}
+
+function missionCargoOwnedUnits(m, state) {
+  const cmdtyId = m && m.params && m.params.cmdtyId;
+  const cargo = state && state.player && state.player.cargo || {};
+  return Math.max(0, Math.floor(Number(cargo.items && cargo.items[cmdtyId]) || 0));
+}
+
+function dockedMarketEntry(state, cmdtyId) {
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  const markets = state && state.economy && state.economy.markets;
+  const market = stationId && markets && markets[stationId];
+  return market && cmdtyId ? market[cmdtyId] || null : null;
+}
+
+function marketStockUnits(entry) {
+  const stock = Math.floor(Number(entry && entry.stock) || 0);
+  return stock > 0 ? stock : 0;
+}
+
+function marketHasBuyPrice(entry) {
+  const price = Number(entry && (entry.lastBuy != null ? entry.lastBuy : entry.lastMid));
+  return Number.isFinite(price) && price > 0;
+}
+
+export function missionCargoStaging(m, state) {
+  const p = m && m.params || {};
+  const cmdtyId = p.cmdtyId;
+  if (!cmdtyId || !MARKET_STAGED_CARGO_MISSIONS.has(m && m.type)) return null;
+  const target = missionCargoTargetUnits(m);
+  if (target <= 0) return null;
+  const remaining = Math.max(0, target - missionCargoProgressUnits(m));
+  const name = commodityName(cmdtyId);
+  if (remaining <= 0) return { chip: { kind: 'ok', text: name + ' objective complete' }, warning: null };
+
+  const owned = missionCargoOwnedUnits(m, state);
+  if (owned >= remaining) {
+    return {
+      chip: { kind: 'ok', text: fmtHoldUnits(owned) + '/' + fmtHoldUnits(remaining) + 'u ' + name + ' aboard' },
+      warning: null,
+    };
+  }
+
+  const need = Math.max(0, remaining - owned);
+  const entry = dockedMarketEntry(state, cmdtyId);
+  const stock = marketStockUnits(entry);
+  if (entry && marketHasBuyPrice(entry)) {
+    if (stock >= need) {
+      return {
+        chip: { kind: 'info', text: 'Buy ' + fmtHoldUnits(need) + 'u ' + name + ' here' },
+        warning: null,
+      };
+    }
+    if (stock > 0) {
+      return {
+        chip: { kind: 'warn', text: 'Market has ' + fmtHoldUnits(stock) + 'u ' + name },
+        warning: 'Load ' + fmtHoldUnits(need) + 'u more ' + name + '; this market only shows ' + fmtHoldUnits(stock) + 'u.',
+      };
+    }
+    return {
+      chip: { kind: 'warn', text: 'Source ' + fmtHoldUnits(need) + 'u ' + name },
+      warning: 'This station is not stocking enough ' + name + '; check Market or another station before undocking.',
+    };
+  }
+
+  return {
+    chip: { kind: owned > 0 ? 'warn' : 'info', text: fmtHoldUnits(owned) + '/' + fmtHoldUnits(remaining) + 'u ' + name + ' aboard' },
+    warning: null,
+  };
 }
 
 function clamp01(value, fallback = 0) {
@@ -414,6 +504,9 @@ export function missionPreflight(m, state) {
     } else {
       chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')}u quota` });
     }
+    const staging = missionCargoStaging(m, state);
+    if (staging && staging.chip) chips.push(staging.chip);
+    if (staging && staging.warning) warnings.push(staging.warning);
   }
 
   const shipReadiness = missionShipReadiness(m, state);
