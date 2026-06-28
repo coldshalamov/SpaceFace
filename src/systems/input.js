@@ -5,7 +5,7 @@
 //   Q/E  lateral thrusters left/right
 //   Mouse  independent aim for gimballed weapons + click to fire
 //   LMB / Space / RT  fire group 1 (manual)   RMB / LT  mining beam (group 2)   Shift / RB  boost
-//   F  toggle auto-fire (handled in weapons; only the toggle edge lives here)
+//   F  toggle auto-fire (handled in weapons); X / R3 deploys countermeasures if equipped
 // Flight/combat keys are owned here; UI-owned global keys are handled in src/ui/input.js.
 // NOTE: NPC ships NEVER read state.input — they write e.data.intent directly (ai.js), so this
 // control remap does not affect them.
@@ -32,7 +32,7 @@ const DEFAULT_BINDINGS = {
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     ['Space'],          // mouse LMB also fires (see update)
   autoFire: ['KeyF'],
-  countermeasure: ['KeyC'],    // deploy chaff/ECM (P1-7) — C by default, remappable
+  countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
   // Mouse buttons (LMB=fire, RMB=group2/mine) are not remappable in this pass — they're ergonomic
   // constants. Keyboard equivalents (Space to fire) ARE remappable.
 };
@@ -56,6 +56,7 @@ const KEY_CODE_FALLBACKS = {
   e: 'KeyE',
   f: 'KeyF',
   c: 'KeyC',
+  x: 'KeyX',
   ' ': 'Space',
   space: 'Space',
   arrowup: 'ArrowUp',
@@ -217,6 +218,7 @@ export const input = {
     let gpFire = false;
     let gpMine = false;
     let gpBrake = false;
+    let gpCountermeasure = false;
     let gpAimActive = false;
     if (gp && gp.isConnected()) {
       gpTurn = gp.axes.leftX;
@@ -225,6 +227,7 @@ export const input = {
       gpFire = gp.actions.fire && gp.actions.fire.held;
       gpMine = gp.actions.mine && gp.actions.mine.held;
       gpBrake = gp.actions.brake && gp.actions.brake.held;
+      gpCountermeasure = gp.actions.countermeasure && gp.actions.countermeasure.held;
       gpAimActive = Math.abs(gp.axes.rightX) > 0.001 || Math.abs(gp.axes.rightY) > 0.001;
     }
 
@@ -269,7 +272,7 @@ export const input = {
     // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
     // We set a flag (not deploy directly) so the countermeasures system owns the cooldown/equip
     // logic + AI auto-deploy in one place.
-    if (this._held(state, 'countermeasure')) {
+    if (this._held(state, 'countermeasure') || gpCountermeasure) {
       if (!this._cmHeld) { inp.deployCountermeasure = true; this._cmHeld = true; }
     } else {
       this._cmHeld = false;
