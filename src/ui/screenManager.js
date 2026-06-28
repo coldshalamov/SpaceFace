@@ -36,11 +36,19 @@ export function createScreenManager(ctx) {
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     )).filter((el) => {
       if (el.disabled) return false;
+      if (el.hidden) return false;
       if (el.getAttribute('aria-hidden') === 'true') return false;
+      if (el.style && el.style.display === 'none') return false;
       const t = el.getAttribute('tabindex');
       if (t != null && Number(t) < 0) return false;
       // skip elements in a hidden subtree
-      let p = el; while (p && p !== root) { if (p.style && p.style.display === 'none') return false; p = p.parentNode; }
+      let p = el.parentNode;
+      while (p && p !== root) {
+        if (p.hidden) return false;
+        if (p.style && p.style.display === 'none') return false;
+        if (p.getAttribute && p.getAttribute('aria-hidden') === 'true') return false;
+        p = p.parentNode;
+      }
       return true;
     });
   }
