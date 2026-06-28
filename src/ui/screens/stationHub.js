@@ -408,6 +408,21 @@ function missionRiskTier(m) {
   return Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
 }
 
+function missionRiskCopy(riskValue) {
+  const risk = Math.max(0, Math.round(Number(riskValue) || 0));
+  const band = risk >= 4 ? 'severe'
+    : risk >= 3 ? 'high'
+      : risk >= 2 ? 'elevated'
+        : risk >= 1 ? 'moderate'
+          : 'low';
+  const prep = risk >= 3
+    ? 'review hull, fuel, and escape route before accepting'
+    : risk >= 2
+      ? 'review route and ship readiness before accepting'
+      : 'routine work for a prepared ship';
+  return 'Risk ' + risk + ': ' + band + ' threat; ' + prep + '.';
+}
+
 function missionRecommendationReason(m, preflight, readiness, consequences) {
   const risk = missionRiskTier(m);
   const reward = consequences && consequences.reward > 0
@@ -722,7 +737,8 @@ export const stationHub = {
     const tracked = ctx.state.ui && ctx.state.ui.trackedMissionId;
     for (const m of slots) {
       const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
-      const risk = (m.riskTier != null ? m.riskTier : (m.risk != null ? m.risk : 0));
+      const risk = missionRiskTier(m);
+      const riskTitle = missionRiskCopy(risk);
       const mid = m.id != null ? m.id : m.missionId;
       const preflight = missionPreflight(m, ctx.state);
       const readiness = missionBoardReadiness(preflight);
@@ -749,7 +765,7 @@ export const stationHub = {
           '<span class="st-mission-badges">' +
             (recommended ? '<span class="st-mission-recommended st-mission-recommended--' + recommendation.kind + '">PICK</span>' : '') +
             '<span class="st-mission-readiness st-mission-readiness--' + readiness.kind + '" title="' + escapeHtml(readiness.title) + '" aria-label="' + escapeHtml(readiness.title) + '">' + escapeHtml(readiness.label) + '</span>' +
-            '<span class="st-mission-risk r' + risk + '">RISK ' + risk + '</span>' +
+            '<span class="st-mission-risk r' + risk + '" title="' + escapeHtml(riskTitle) + '" aria-label="' + escapeHtml(riskTitle) + '">RISK ' + risk + '</span>' +
           '</span>' +
         '</div>' +
         '<div class="st-mission-meta mono">' +
