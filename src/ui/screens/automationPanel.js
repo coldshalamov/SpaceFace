@@ -13,6 +13,13 @@ import { escapeHtml } from '../comms.js';
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
 
+const PROGRAM_OPTIONS = Object.freeze([
+  { value: '', label: 'Manual (mine -> bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
+  { value: 'mine_to_depot', label: 'Mine -> Haul -> Sell', meta: 'Loops field mining into depot sales through the passive cap.' },
+  { value: 'patrol_guard', label: 'Guard Player', meta: 'Keeps the drone close as a defensive escort.' },
+  { value: 'scout_report', label: 'Scout -> Report', meta: 'Tests beacon movement and a short overwatch loop.' },
+]);
+
 const TABS = [
   { id: 'drones',   label: 'Drones'   },
   { id: 'traders',  label: 'Traders'  },
@@ -45,6 +52,28 @@ const CSS = `
 #sf-automation .au-tab.active { background: rgba(57,208,255,.14); border-color: var(--accent); color: #fff;
   text-shadow: 0 0 8px rgba(57,208,255,.5); }
 #sf-automation .au-body { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 18px; }
+#sf-automation .au-command { display: grid; grid-template-columns: minmax(230px, 1.08fr) minmax(0, 1.92fr);
+  gap: 12px; align-items: stretch; }
+#sf-automation .au-next, #sf-automation .au-summary {
+  border: 1px solid var(--panel-edge); border-radius: 8px; background: rgba(10,18,30,.62);
+  padding: 12px 13px; }
+#sf-automation .au-next { display: flex; flex-direction: column; gap: 8px; border-color: rgba(57,208,255,.42); }
+#sf-automation .au-kicker { font-family: var(--mono); font-size: .68em; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--accent-2); }
+#sf-automation .au-next-title { font-size: 1em; color: var(--ink); }
+#sf-automation .au-next-body { font-size: .82em; line-height: 1.35; color: var(--ink-dim); }
+#sf-automation .au-next-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; }
+#sf-automation .au-next-meta { font-family: var(--mono); font-size: .72em; color: var(--energy); }
+#sf-automation .au-cta { padding: 7px 12px; white-space: nowrap; border-color: var(--accent-2);
+  background: rgba(57,208,255,.11); color: var(--ink); }
+#sf-automation .au-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+#sf-automation .au-metric { min-width: 0; border: 1px solid rgba(57,208,255,.16); border-radius: 6px;
+  background: rgba(6,10,18,.5); padding: 8px 9px; }
+#sf-automation .au-metric .k { font-family: var(--mono); font-size: .66em; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-mute); }
+#sf-automation .au-metric .v { margin-top: 4px; font-family: var(--mono); font-size: .88em; color: var(--ink); }
+#sf-automation .au-metric .s { margin-top: 3px; font-size: .72em; line-height: 1.25; color: var(--ink-dim); }
+#sf-automation .au-note { font-size: .78em; color: var(--ink-dim); line-height: 1.35; margin-top: 6px; }
 #sf-automation .au-section-h { font-family: var(--mono); font-size: .76em; letter-spacing: .14em; text-transform: uppercase;
   color: var(--ink-mute); border-bottom: 1px solid var(--panel-edge); padding-bottom: 5px; margin-bottom: 2px; }
 #sf-automation .au-card { display: flex; align-items: center; gap: 14px; padding: 11px 13px;
@@ -74,6 +103,10 @@ const CSS = `
   overflow: hidden; display: inline-block; vertical-align: middle; }
 #sf-automation .au-minibar > i { display: block; height: 100%; background: var(--good); }
 #sf-automation .au-locked { font-size: .8em; color: var(--warn); }
+@media (max-width: 760px) {
+  #sf-automation .au-command { grid-template-columns: 1fr; }
+  #sf-automation .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 `;
 
 function injectStyle() {
@@ -177,22 +210,12 @@ export const automationScreen = {
   },
 
   _passiveCapPerMin() {
-    const bal = this._balance();
-    const ref = bal.activeRefByTier || AUTO_BALANCE.activeRefByTier;
-    const tier = this._playerTier();
-    const active = ref[Math.min(tier, ref.length) - 1] || ref[0];
-    const frac = bal.passiveCapFrac != null ? bal.passiveCapFrac : 0.45;
-    return active * frac;
+    return passiveCapPerMin(this._ctx.state);
   },
 
   // current passive rate: sum of net (income - upkeep) across deployed assets.
   _currentRatePerMin() {
-    const a = this._auto();
-    let rate = 0;
-    for (const d of a.drones || []) rate += (d.ratePerMin != null ? d.ratePerMin : estDroneRate(d)) - (d.upkeepPerMin || 0);
-    for (const t of a.traders || []) rate += (t.ratePerMin != null ? t.ratePerMin : 0) - (t.upkeepPerMin || 0);
-    for (const o of a.outposts || []) rate += (o.ratePerMin != null ? o.ratePerMin : 0) - (o.upkeepPerMin || 0);
-    return rate;
+    return summarizeAutomationOperations(this._ctx.state).netRatePerMin;
   },
 
   _syncHeader() {
@@ -221,7 +244,21 @@ export const automationScreen = {
     const a = this._auto();
     const st = this._ctx.state;
     const player = st.player || {};
-    const parts = [this._tab, this._playerTier(), player.activeShipIndex || 0];
+    const summary = summarizeAutomationOperations(st);
+    const next = automationNextAction(st);
+    const parts = [
+      this._tab,
+      this._playerTier(),
+      player.activeShipIndex || 0,
+      Math.round(player.credits || 0),
+      Math.round(summary.grossRatePerMin || 0),
+      Math.round(summary.netRatePerMin || 0),
+      Math.round(summary.upkeepPerMin || 0),
+      Math.round(summary.capUsedPct || 0),
+      Math.round(summary.totalPassiveEarnedLifetime || 0),
+      next && next.tab,
+      next && next.title,
+    ];
     if (this._tab === 'drones') {
       for (const d of a.drones || []) {
         const program = d.program && d.program.templateId;
@@ -255,6 +292,7 @@ export const automationScreen = {
     const body = this._els && this._els.body;
     if (!body) return;
     const frag = document.createDocumentFragment();
+    this._renderOperationsBoard(frag);
     if (this._tab === 'drones') this._renderDrones(frag);
     else if (this._tab === 'traders') this._renderTraders(frag);
     else if (this._tab === 'outposts') this._renderOutposts(frag);
@@ -269,6 +307,30 @@ export const automationScreen = {
     return h;
   },
 
+  _renderOperationsBoard(frag) {
+    const summary = summarizeAutomationOperations(this._ctx.state);
+    const next = automationNextAction(this._ctx.state);
+    const wrap = document.createElement('div');
+    wrap.className = 'au-command';
+    wrap.innerHTML = `
+      <div class="au-next">
+        <div class="au-kicker">Operations Board</div>
+        <div class="au-next-title">${escapeHtml(next.title)}</div>
+        <div class="au-next-body">${escapeHtml(next.body)}</div>
+        <div class="au-next-row">
+          <span class="au-next-meta">${escapeHtml(next.meta)}</span>
+          <button class="au-cta" data-act="switchTab" data-ref="${escapeHtml(next.tab)}">${escapeHtml(next.cta)}</button>
+        </div>
+      </div>
+      <div class="au-summary" aria-label="Automation summary">
+        ${metricHtml('Assets', String(summary.activeAssets), `${summary.drones} drones / ${summary.traders} traders / ${summary.outposts} outposts`)}
+        ${metricHtml('Net Flow', `${fmtCr(summary.netRatePerMin)} cr/min`, `gross ${fmtCr(summary.grossRatePerMin)} - upkeep ${fmtCr(summary.upkeepPerMin)}`)}
+        ${metricHtml('Cap Load', `${Math.round(summary.capUsedPct)}%`, `${fmtCr(Math.max(0, summary.capHeadroomPerMin))} cr/min headroom`)}
+        ${metricHtml('Lifetime', `${fmtCr(summary.totalPassiveEarnedLifetime)} cr`, summary.distressedAssets ? `${summary.distressedAssets} distressed` : 'stable')}
+      </div>`;
+    frag.appendChild(wrap);
+  },
+
   _renderDrones(frag) {
     const a = this._auto();
     const owned = a.drones || [];
@@ -276,7 +338,7 @@ export const automationScreen = {
 
     frag.appendChild(this._section(`Deployed Drones (${owned.length})`));
     if (!owned.length) {
-      frag.appendChild(emptyEl('No drones deployed. Purchase a mining drone below.'));
+      frag.appendChild(emptyEl('No drones deployed. Buy a Mk1 near an asteroid field, then recall it before fuel runs dry to bank ore.'));
     } else {
       for (const d of owned) {
         const def = DRONES.find((x) => x.id === d.defId) || d;
@@ -286,13 +348,11 @@ export const automationScreen = {
         // V2 §4 / cut-list #28: program dropdown. Shows the drone's current alphabet template (or
         // Manual for the legacy mine-to-buffer loop). Switching emits assignProgram.
         const curTpl = (d.program && d.program.templateId) || '';
-        const programOpts = [
-          ['manual', 'Manual (mine→bank)', ''],
-          ['mine_to_depot', 'Mine → Haul → Sell', 'mine_to_depot'],
-          ['patrol_guard', 'Guard Player', 'patrol_guard'],
-          ['scout_report', 'Scout → Report', 'scout_report'],
-        ].map(([v, label, id]) => `<option value="${escapeHtml(id)}" ${curTpl === id ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
-        const programBadge = curTpl ? ` <span class="au-program-badge">⚙ ${escapeHtml(curTpl)}</span>` : '';
+        const programOpts = PROGRAM_OPTIONS
+          .map((opt) => `<option value="${escapeHtml(opt.value)}" ${curTpl === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`)
+          .join('');
+        const programBadge = curTpl ? ` <span class="au-program-badge">${escapeHtml(programLabel(curTpl))}</span>` : '';
+        const programMeta = curTpl ? programMetaText(curTpl) : PROGRAM_OPTIONS[0].meta;
         const card = document.createElement('div');
         card.className = 'au-card';
         card.innerHTML = `
@@ -310,6 +370,7 @@ export const automationScreen = {
               <span class="au-program-label">Program:</span>
               <select class="au-program" data-act="assignProgram" data-ref="${d.id != null ? d.id : def.id}" data-kind="drone">${programOpts}</select>
             </div>
+            <div class="au-note">${escapeHtml(programMeta)}</div>
           </div>
           <button class="au-order" data-act="recall" data-ref="${d.id != null ? d.id : def.id}" data-kind="drone">Recall</button>`;
         frag.appendChild(card);
@@ -324,7 +385,7 @@ export const automationScreen = {
       card.className = 'au-card';
       card.innerHTML = `
         <div class="grow">
-          <div class="nm">${prettyId(def.id)} ${locked ? `<span class="au-locked">⛔ requires drone tier ${def.tier}</span>` : ''}</div>
+          <div class="nm">${prettyId(def.id)} ${locked ? `<span class="au-locked">requires drone tier ${def.tier}</span>` : ''}</div>
           <div class="meta">
             <span>mine ${def.mineRate}/s</span>
             <span>yield ~${fmtCr(estDroneRate(def))}/min gross</span>
@@ -332,6 +393,7 @@ export const automationScreen = {
             <span>range ${def.deployRange}</span>
             <span>upkeep ${def.upkeepPerMin}/min</span>
           </div>
+          ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first passive asset: low upkeep, visible in the field, and reversible on recall.</div>`}
         </div>
         <button class="au-buy" data-act="buyDrone" data-ref="${def.id}" ${locked ? 'disabled' : ''}>Buy ${fmtCr(def.cost)} cr</button>`;
       frag.appendChild(card);
@@ -346,13 +408,16 @@ export const automationScreen = {
 
     frag.appendChild(this._section(`Active Traders (${owned.length})`));
     if (!owned.length) {
-      frag.appendChild(emptyEl('No NPC traders hired.'));
+      frag.appendChild(emptyEl(hireUnlocked
+        ? 'No NPC traders hired. Hire one to turn known price spreads into capped passive income.'
+        : 'No NPC traders hired. Research Autonomous Fleets, then hire haulers for managed trade routes.'));
     } else {
       for (const t of owned) {
         const def = TRADERS.find((x) => x.id === t.defId) || t;
         const card = document.createElement('div');
         card.className = 'au-card';
         const route = t.route ? `${escapeHtml(t.route.from || '?')} → ${escapeHtml(t.route.to || '?')}` : 'idle (assign route)';
+        const hot = Math.round((t.hotness || 0) * 100);
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${prettyId(def.id)} ${statusPill(t.status)}</div>
@@ -360,8 +425,10 @@ export const automationScreen = {
               <span>cargo ${def.cargoVol}u</span>
               <span>cycle ${def.cycleTime}s</span>
               <span>route ${route}</span>
+              <span>route heat ${hot}%</span>
               <span>upkeep ${def.upkeepPerMin}/min</span>
             </div>
+            <div class="au-note">${t.route ? 'Reroute when heat rises or spreads collapse; escorts lower loss risk on dangerous lanes.' : 'Use Route to assign a profitable two-station lane.'}</div>
           </div>
           <button class="au-order" data-act="assignRoute" data-ref="${t.id != null ? t.id : def.id}" data-kind="trader">Route</button>
           <button class="au-recall" data-act="dismiss" data-ref="${t.id != null ? t.id : def.id}" data-kind="trader">Dismiss</button>`;
@@ -371,7 +438,7 @@ export const automationScreen = {
 
     frag.appendChild(this._section('Hire Trader'));
     if (!hireUnlocked) {
-      frag.appendChild(lockedEl('NPC trader hiring requires the Autonomous Fleets tech.'));
+      frag.appendChild(lockedEl('NPC trader hiring requires Autonomous Fleets in the logistics tech branch.'));
     }
     for (const def of TRADERS) {
       const card = document.createElement('div');
@@ -386,6 +453,7 @@ export const automationScreen = {
             <span>loss/cycle ${Math.round(def.baseLossPerCycle * 100)}%</span>
             <span>upkeep ${def.upkeepPerMin}/min</span>
           </div>
+          <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm, when the player has seen enough logistics to manage risk.'}</div>
         </div>
         <button class="au-buy" data-act="hireTrader" data-ref="${def.id}" ${hireUnlocked ? '' : 'disabled'}>Hire ${fmtCr(def.hireCost)} cr</button>`;
       frag.appendChild(card);
@@ -400,7 +468,9 @@ export const automationScreen = {
 
     frag.appendChild(this._section(`Outposts (${owned.length})`));
     if (!owned.length) {
-      frag.appendChild(emptyEl('No outposts established.'));
+      frag.appendChild(emptyEl(buildUnlocked
+        ? 'No outposts established. Build one in a sector you can defend to anchor long-term income.'
+        : 'No outposts established. Research Outpost Charter after Autonomous Fleets to start sector ownership.'));
     } else {
       for (const o of owned) {
         const def = OUTPOSTS.find((x) => x.id === o.defId) || o;
@@ -417,6 +487,7 @@ export const automationScreen = {
               <span>defense ${def.defense}</span>
               <span>upkeep ${def.upkeepPerMin}/min</span>
             </div>
+            <div class="au-note">${o.autoSell ? 'Auto-sells stored output every minute through the passive cap.' : 'Stored output is waiting for manual logistics.'}</div>
           </div>
           <button class="au-recall" data-act="decommission" data-ref="${o.id != null ? o.id : def.id}" data-kind="outpost">Decommission</button>`;
         frag.appendChild(card);
@@ -425,7 +496,7 @@ export const automationScreen = {
 
     frag.appendChild(this._section('Construct Outpost'));
     if (!buildUnlocked) {
-      frag.appendChild(lockedEl('Outpost construction requires the Outpost Charter tech.'));
+      frag.appendChild(lockedEl('Outpost construction requires Outpost Charter in the logistics tech branch.'));
     }
     for (const def of OUTPOSTS) {
       const card = document.createElement('div');
@@ -440,6 +511,7 @@ export const automationScreen = {
             <span>defense ${def.defense}</span>
             <span>upkeep ${def.upkeepPerMin}/min</span>
           </div>
+          <div class="au-note">${buildUnlocked ? 'High upkeep, high commitment: best after you can protect the sector or fund losses.' : 'This is the empire layer; reach it after traders prove the route economy.'}</div>
         </div>
         <button class="au-buy" data-act="buildOutpost" data-ref="${def.id}" ${buildUnlocked ? '' : 'disabled'}>Build ${fmtCr(def.buildCost)} cr</button>`;
       frag.appendChild(card);
@@ -455,7 +527,7 @@ export const automationScreen = {
     frag.appendChild(h);
 
     if (!fleet.length) {
-      frag.appendChild(emptyEl('No wingmen in your fleet. Owned ships can be assigned as AI escorts.'));
+      frag.appendChild(emptyEl('No wingmen assigned. Spare owned ships can launch as escorts and reduce automation loss risk.'));
     } else {
       for (const fs of fleet) {
         const card = document.createElement('div');
@@ -468,6 +540,7 @@ export const automationScreen = {
               <span>order ${escapeHtml(order)}</span>
               ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
             </div>
+            <div class="au-note">Escort protects you now and can guard automation assets as the fleet layer expands.</div>
           </div>
           <button class="au-order" data-act="orderEscort" data-ref="${fs.id != null ? fs.id : fs.defId}" data-kind="fleet">Escort</button>
           <button class="au-order" data-act="orderMine" data-ref="${fs.id != null ? fs.id : fs.defId}" data-kind="fleet">Mine</button>
@@ -483,7 +556,7 @@ export const automationScreen = {
     frag.appendChild(this._section('Assign Owned Ship'));
     const assignable = owned.map((s, i) => ({ s, i })).filter(({ i }) => i !== activeIdx);
     if (!assignable.length) {
-      frag.appendChild(emptyEl('No spare ships to assign. Buy additional hulls at a shipyard.'));
+      frag.appendChild(emptyEl('No spare ships to assign. Buy a second hull at a shipyard, then return here to crew it as a wingman.'));
     } else if (fleet.length >= cap) {
       frag.appendChild(lockedEl(`Fleet at capacity (${cap}). Research higher Drone/Fleet tiers to expand.`));
     } else {
@@ -493,7 +566,8 @@ export const automationScreen = {
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${escapeHtml(s.customName) || prettyId(s.defId)}</div>
-            <div class="meta"><span>${prettyId(s.defId)}</span></div>
+            <div class="meta"><span>${prettyId(s.defId)}</span><span>starts on escort</span></div>
+            <div class="au-note">Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.</div>
           </div>
           <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;
         frag.appendChild(card);
@@ -504,6 +578,14 @@ export const automationScreen = {
   // ---- intent dispatch ----------------------------------------------------
   // `extra` carries the selected value for <select>-driven actions (e.g. assignProgram templateId).
   _onAction(act, ref, kind, extra) {
+    if (act === 'switchTab') {
+      if (TABS.some((t) => t.id === ref)) {
+        this._tab = ref;
+        this.refresh(this._ctx, { forceBody: true });
+      }
+      return;
+    }
+
     const bus = this._ctx.bus;
     // single intent channel into automation: ui:fleetOrder {shipId, order, targetRef} (§4.4).
     // shipId carries the instance id for existing assets; targetRef carries the catalog defId or
@@ -545,10 +627,168 @@ export const automationScreen = {
 };
 
 // ---- helpers ----------------------------------------------------------------
+export function summarizeAutomationOperations(state) {
+  const a = automationState(state);
+  const drones = (a.drones || []).length;
+  const traders = (a.traders || []).length;
+  const outposts = (a.outposts || []).length;
+  const fleet = (a.fleet || []).length;
+  const grossRatePerMin = grossRatePerMinFromAutomation(a);
+  const upkeepPerMin = estimateUpkeepPerMin(a);
+  const netRatePerMin = grossRatePerMin - upkeepPerMin;
+  const capPerMin = passiveCapPerMin(state);
+  const distressedAssets = countDistressedAssets(a);
+  return {
+    drones,
+    traders,
+    outposts,
+    fleet,
+    activeAssets: drones + traders + outposts + fleet,
+    grossRatePerMin,
+    upkeepPerMin,
+    netRatePerMin,
+    capPerMin,
+    capHeadroomPerMin: capPerMin - Math.max(0, grossRatePerMin),
+    capUsedPct: capPerMin > 0 ? Math.min(999, Math.max(0, grossRatePerMin / capPerMin * 100)) : 0,
+    totalPassiveEarnedLifetime: (a.meta && a.meta.totalPassiveEarnedLifetime) || 0,
+    distressedAssets,
+  };
+}
+
+export function automationNextAction(state) {
+  const a = automationState(state);
+  const player = (state && state.player) || {};
+  const credits = player.credits || 0;
+  const researched = player.researchedNodes || [];
+  const summary = summarizeAutomationOperations(state);
+  const hasTraderTech = researched.includes('tech_autonomous_fleets');
+  const hasOutpostTech = researched.includes('tech_outpost_charter');
+  const droneMk1 = DRONES[0] || {};
+  const spareShips = ((player.ownedShips || []).length - 1) > 0;
+  if (summary.distressedAssets > 0) {
+    return nextAction('drones', 'Stabilize distressed assets',
+      'Your automation is unpaid or under attack. Bank drone buffers, cut upkeep, or fly rescue before repossession.',
+      `${summary.distressedAssets} distressed`, 'Review Assets');
+  }
+  if (!(a.drones || []).length) {
+    return nextAction('drones', 'Deploy a mining drone',
+      credits >= (droneMk1.cost || 0)
+        ? 'Start the passive layer with a Mk1 drone. It is cheap, visible in the field, and recallable if the route goes bad.'
+        : 'Earn enough credits for a Mk1 mining drone, then start automation with a reversible low-upkeep asset.',
+      `${fmtCr(droneMk1.cost || 0)} cr starter`, 'Open Drone Bay');
+  }
+  if (summary.capUsedPct >= 90) {
+    return nextAction('drones', 'Raise automation ceiling',
+      'Passive production is pressing into the cap. Research logistics tiers or rebalance assets before buying more raw output.',
+      `${Math.round(summary.capUsedPct)}% cap load`, 'Review Drones');
+  }
+  if (!(a.traders || []).length) {
+    if (hasTraderTech) {
+      return nextAction('traders', 'Hire a route trader',
+        'Turn market spreads into managed income. Reroute when heat climbs so the lane keeps paying.',
+        'Autonomous Fleets ready', 'Open Traders');
+    }
+    return nextAction('traders', 'Research Autonomous Fleets',
+      'Traders unlock after the drone layer, giving the player a second automation verb: managing route heat and danger.',
+      'Tech locked', 'View Traders');
+  }
+  if (!(a.outposts || []).length) {
+    if (hasOutpostTech) {
+      return nextAction('outposts', 'Found a sector outpost',
+        'Outposts convert money into territory. Build one where your fleet can absorb raids and upkeep.',
+        'Charter ready', 'Open Outposts');
+    }
+    return nextAction('outposts', 'Work toward Outpost Charter',
+      'The empire layer should come after traders prove the route economy and the player can fund higher upkeep.',
+      'Tech locked', 'View Outposts');
+  }
+  if (!(a.fleet || []).length && spareShips) {
+    return nextAction('fleet', 'Assign a spare hull',
+      'Crew a second owned ship as a wingman so automation risk starts feeling protectable, not random.',
+      `${(player.ownedShips || []).length - 1} spare hulls`, 'Open Fleet');
+  }
+  return nextAction('fleet', 'Keep routes defended',
+    'Your automation stack is online. Keep the cap healthy, rotate hot trader routes, and add escorts before dangerous expansion.',
+    `${fmtCr(summary.netRatePerMin)} cr/min net`, 'Review Fleet');
+}
+
+function nextAction(tab, title, body, meta, cta) {
+  return { tab, title, body, meta, cta };
+}
+
+function automationState(state) {
+  return (state && state.automation) || { drones: [], traders: [], outposts: [], fleet: [], fleetCap: 0,
+    meta: {}, accumulators: {}, balance: AUTO_BALANCE };
+}
+
+function passiveCapPerMin(state) {
+  const a = automationState(state);
+  const bal = a.balance || AUTO_BALANCE;
+  const ref = bal.activeRefByTier || AUTO_BALANCE.activeRefByTier;
+  const tier = playerTierFromState(state);
+  const active = ref[Math.min(tier, ref.length) - 1] || ref[0] || 0;
+  const frac = bal.passiveCapFrac != null ? bal.passiveCapFrac : 0.45;
+  return active * frac;
+}
+
+function playerTierFromState(state) {
+  const player = (state && state.player) || {};
+  const cap = player.droneTierCap || 1;
+  return Math.max(1, Math.min(5, Math.round(cap) || 1));
+}
+
+function grossRatePerMinFromAutomation(a) {
+  let rate = 0;
+  for (const d of a.drones || []) rate += d.ratePerMin != null ? d.ratePerMin : estDroneRate(d);
+  for (const t of a.traders || []) rate += t.ratePerMin != null ? t.ratePerMin : 0;
+  for (const o of a.outposts || []) rate += o.ratePerMin != null ? o.ratePerMin : 0;
+  return rate;
+}
+
+function estimateUpkeepPerMin(a) {
+  let sum = 0;
+  for (const d of a.drones || []) sum += defUpkeep(DRONES, d);
+  for (const t of a.traders || []) sum += defUpkeep(TRADERS, t);
+  for (const o of a.outposts || []) {
+    const def = OUTPOSTS.find((x) => x.id === o.defId) || o;
+    sum += (def.upkeepPerMin || 0) * Math.pow(1.5, (o.level || 1) - 1);
+  }
+  return sum;
+}
+
+function defUpkeep(defs, inst) {
+  const def = defs.find((x) => x.id === inst.defId) || inst;
+  return def.upkeepPerMin || 0;
+}
+
+function countDistressedAssets(a) {
+  let n = 0;
+  for (const list of [a.drones || [], a.traders || [], a.outposts || [], a.fleet || []]) {
+    for (const asset of list) {
+      if (asset && (asset.status === 'distressed' || asset.status === 'raided' || asset.status === 'lowfuel')) n++;
+    }
+  }
+  return n;
+}
+
 function estDroneRate(d) {
   // Display-only fallback when an asset has not reported ratePerMin yet; automation owns payouts.
   const def = DRONES.find((x) => x.id === d.defId) || d;
   return (def.mineRate || 0) * 60 * DRONE_DISPLAY_ORE_VALUE;
+}
+
+function programLabel(id) {
+  const opt = PROGRAM_OPTIONS.find((x) => x.value === id);
+  return opt ? opt.label : prettyId(id);
+}
+
+function programMetaText(id) {
+  const opt = PROGRAM_OPTIONS.find((x) => x.value === id);
+  return opt ? opt.meta : 'Custom program assigned.';
+}
+
+function metricHtml(k, v, s) {
+  return `<div class="au-metric"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div><div class="s">${escapeHtml(s)}</div></div>`;
 }
 
 function recipeText(r) {
