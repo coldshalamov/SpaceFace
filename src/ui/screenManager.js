@@ -265,13 +265,25 @@ export function createScreenManager(ctx) {
     return state.mode === 'menu' && stack.length === 1 && top() === 'mainMenu';
   }
 
+  function dismissTopFromBackdrop() {
+    if (!isOpen() || locked()) return;
+    const d = activeDef();
+    if (d && d.id === 'station') {
+      bus.emit('ui:undock', { source: 'backdrop' });
+      return;
+    }
+    popScreen();
+  }
+
   function shieldModalPointerEvent(ev) {
     if (!isOpen()) return;
     if (ev.type === 'contextmenu') ev.preventDefault();
     ev.stopPropagation();
   }
 
-  // Backdrop click pops the top (unless the screen is mid-transaction locked).
+  // Backdrop click dismisses the top screen (unless mid-transaction locked). Station is special:
+  // dismissing it must use the undock route so ui.docked, dockedStationId, HUD state, and autosave all
+  // transition through the same path as Escape/gamepad Cancel/the visible Undock button.
   const shieldedPointerEvents = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu'];
   if (screensRoot) {
     shieldedPointerEvents.forEach((type) => {
@@ -282,7 +294,7 @@ export function createScreenManager(ctx) {
     shieldedPointerEvents.forEach((type) => {
       backdrop.addEventListener(type, shieldModalPointerEvent);
     });
-    backdrop.addEventListener('click', () => { if (isOpen() && !locked()) popScreen(); });
+    backdrop.addEventListener('click', dismissTopFromBackdrop);
   }
 
   return {

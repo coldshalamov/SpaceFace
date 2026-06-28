@@ -3,8 +3,9 @@
 //
 // Boots the normal player URL, starts a real New Game through the UI, opens the station hub through
 // the same dock:docked event used by flight, verifies the hub exposes the core station affordances,
-// then clicks the visible Undock button and proves the default route returns to playable flight.
-// This is a QA probe only: it does not change assets, render settings, launch URLs, or gameplay.
+// then exits through both the visible Undock button and the modal backdrop, proving each default
+// route returns to playable flight through the same undock contract. This is a QA probe only: it does
+// not change assets, render settings, launch URLs, or gameplay.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -45,7 +46,96 @@ try {
     return !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0);
   }, null, { timeout: START_TIMEOUT_MS });
 
-  const dockTarget = await page.evaluate(() => {
+  const dockTarget = await dockFirstStation(page);
+
+  await waitForVisible(page, '[data-screen="station"]', DOCK_TIMEOUT_MS, 'station hub after dock');
+  await page.waitForTimeout(100);
+
+  const stationReport = await stationHubReport(page);
+
+  assert.equal(stationReport.visible, true, 'station hub should be visible after docking');
+  assert.equal(stationReport.docked, true, 'state.ui.docked should be true while station hub is open');
+  assert.equal(stationReport.hasUndock, true, 'station hub should expose a visible Undock button');
+  for (const tab of ['Market', 'Missions', 'Services', 'Bar']) {
+    assert(stationReport.tabs.some((label) => label.includes(tab)), 'station hub missing rail tab: ' + tab);
+  }
+  assert.match(stationReport.purpose, /Current tab:|Available here:/, 'station hub should explain current tab and services before exit');
+  assert.equal(stationReport.departureVisible, true, 'station hub should expose the Departure Check strip before exit');
+  assert.equal(stationReport.departureLabel, 'Departure Check', 'departure readiness strip should be labeled');
+  for (const label of ['Hold', 'Fuel', 'Hull']) {
+    assert(stationReport.departureChips.some((chip) => chip.label === label),
+      `departure readiness missing ${label} chip: ${JSON.stringify(stationReport.departureChips)}`);
+  }
+  assert(stationReport.departureChips.some((chip) => chip.label === 'Track' || chip.label === 'Nav' || chip.label === 'Route'),
+    'departure readiness must summarize tracked mission or nav guidance before undock');
+
+  assert.equal(await clickButton(page, stationReport.undockText), true, 'station hub Undock button should be clickable');
+  await waitForPlayableFlight(page, 'visible Undock button');
+
+  const undockReport = await egressReport(page);
+  assertPlayableEgress(undockReport, 'undock button');
+
+  await dockFirstStation(page);
+  await waitForVisible(page, '[data-screen="station"]', DOCK_TIMEOUT_MS, 'station hub after second dock');
+  const backdropReport = await page.evaluate(() => {
+    const sf = window.SF;
+    const backdrop = document.getElementById('modal-backdrop');
+    if (!backdrop) throw new Error('modal backdrop missing');
+    backdrop.click();
+    return {
+      clicked: true,
+      beforeDocked: sf && sf.state && sf.state.ui && sf.state.ui.docked,
+      beforeTop: sf && sf.ctx && sf.ctx.screenManager && sf.ctx.screenManager.top(),
+    };
+  });
+  assert.equal(backdropReport.clicked, true, 'station backdrop should be clickable in the probe');
+  assert.equal(backdropReport.beforeDocked, true, 'backdrop probe should start docked: ' + JSON.stringify(backdropReport));
+  assert.equal(backdropReport.beforeTop, 'station', 'backdrop probe should start on station screen: ' + JSON.stringify(backdropReport));
+  await waitForPlayableFlight(page, 'station backdrop dismiss');
+
+  const backdropEgressReport = await egressReport(page);
+  assertPlayableEgress(backdropEgressReport, 'station backdrop');
+  assert.equal(backdropEgressReport.bodyModalOpen, false,
+    'station backdrop egress should not leave body.ui-modal-open stuck after undock');
+  assert.equal(backdropEgressReport.hudAriaHidden, false,
+    'station backdrop egress should restore HUD accessibility after undock');
+
+  assert.deepEqual(issues.errorIssues(), [], 'station egress runtime probe should not record page errors');
+
+  console.log('Station egress runtime OK: default New Game -> station hub -> visible Undock/backdrop -> playable flight');
+  console.log('Dock target:', dockTarget.stationId, dockTarget.label);
+} finally {
+  if (browser) await browser.close();
+  if (server && server.kill) server.kill();
+}
+
+async function waitForVisible(page, selector, timeoutMs, label) {
+  await page.waitForFunction((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
+  }, selector, { timeout: timeoutMs }).catch((err) => {
+    throw new Error('Timed out waiting for ' + label + ': ' + err.message);
+  });
+}
+
+async function clickButton(page, label) {
+  return page.evaluate((wanted) => {
+    const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const exact = [...document.querySelectorAll('button')]
+      .find((b) => normalize(b.textContent) === normalize(wanted));
+    const button = exact || [...document.querySelectorAll('button')]
+      .find((b) => normalize(b.textContent).includes(normalize(wanted)));
+    if (!button || button.disabled) return false;
+    button.click();
+    return true;
+  }, label);
+}
+
+async function dockFirstStation(page) {
+  return page.evaluate(() => {
     const sf = window.SF;
     const state = sf && sf.state;
     const station = state && state.entityList && state.entityList.find((e) =>
@@ -57,11 +147,10 @@ try {
       label: station.data.name || station.data.stationName || station.data.stationId,
     };
   });
+}
 
-  await waitForVisible(page, '[data-screen="station"]', DOCK_TIMEOUT_MS, 'station hub after dock');
-  await page.waitForTimeout(100);
-
-  const stationReport = await page.evaluate(() => {
+async function stationHubReport(page) {
+  return page.evaluate(() => {
     const visible = (el) => {
       if (!el) return false;
       const cs = getComputedStyle(el);
@@ -95,24 +184,9 @@ try {
       docked: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.docked,
     };
   });
+}
 
-  assert.equal(stationReport.visible, true, 'station hub should be visible after docking');
-  assert.equal(stationReport.docked, true, 'state.ui.docked should be true while station hub is open');
-  assert.equal(stationReport.hasUndock, true, 'station hub should expose a visible Undock button');
-  for (const tab of ['Market', 'Missions', 'Services', 'Bar']) {
-    assert(stationReport.tabs.some((label) => label.includes(tab)), 'station hub missing rail tab: ' + tab);
-  }
-  assert.match(stationReport.purpose, /Current tab:|Available here:/, 'station hub should explain current tab and services before exit');
-  assert.equal(stationReport.departureVisible, true, 'station hub should expose the Departure Check strip before exit');
-  assert.equal(stationReport.departureLabel, 'Departure Check', 'departure readiness strip should be labeled');
-  for (const label of ['Hold', 'Fuel', 'Hull']) {
-    assert(stationReport.departureChips.some((chip) => chip.label === label),
-      `departure readiness missing ${label} chip: ${JSON.stringify(stationReport.departureChips)}`);
-  }
-  assert(stationReport.departureChips.some((chip) => chip.label === 'Track' || chip.label === 'Nav' || chip.label === 'Route'),
-    'departure readiness must summarize tracked mission or nav guidance before undock');
-
-  assert.equal(await clickButton(page, stationReport.undockText), true, 'station hub Undock button should be clickable');
+async function waitForPlayableFlight(page, label) {
   await page.waitForFunction(() => {
     const sf = window.SF;
     const state = sf && sf.state;
@@ -120,13 +194,18 @@ try {
     const stack = state && state.ui && state.ui.screenStack || [];
     return !!(state && state.mode === 'flight' && state.ui && state.ui.docked === false &&
       !stack.includes('station') && player && player.alive && player.hull > 0);
-  }, null, { timeout: DOCK_TIMEOUT_MS });
+  }, null, { timeout: DOCK_TIMEOUT_MS }).catch((err) => {
+    throw new Error('Timed out waiting for playable flight after ' + label + ': ' + err.message);
+  });
+}
 
-  const egressReport = await page.evaluate(() => {
+async function egressReport(page) {
+  return page.evaluate(() => {
     const sf = window.SF;
     const state = sf.state;
     const player = state.entities.get(state.playerId);
     const dockOverlay = document.getElementById('sf-dock-overlay');
+    const hud = document.getElementById('hud');
     return {
       mode: state.mode,
       docked: state.ui.docked,
@@ -135,47 +214,19 @@ try {
       screenStack: state.ui.screenStack.slice(),
       playerAlive: !!(player && player.alive && player.hull > 0),
       overlayHidden: !dockOverlay || dockOverlay.hidden || dockOverlay.getAttribute('aria-hidden') === 'true',
+      bodyModalOpen: document.body.classList.contains('ui-modal-open'),
+      hudAriaHidden: hud ? hud.getAttribute('aria-hidden') === 'true' : null,
     };
   });
-
-  assert.equal(egressReport.mode, 'flight', 'undock should return to flight mode');
-  assert.equal(egressReport.docked, false, 'undock should clear state.ui.docked');
-  assert.equal(egressReport.dockedStationId, null, 'undock should clear dockedStationId');
-  assert.notEqual(egressReport.topScreen, 'station', 'station screen should be closed after undock');
-  assert.equal(egressReport.screenStack.includes('station'), false, 'screen stack should not retain station after undock');
-  assert.equal(egressReport.playerAlive, true, 'player should remain alive after station egress');
-  assert.deepEqual(issues.errorIssues(), [], 'station egress runtime probe should not record page errors');
-
-  console.log('Station egress runtime OK: default New Game -> station hub -> visible Undock -> playable flight');
-  console.log('Dock target:', dockTarget.stationId, dockTarget.label);
-} finally {
-  if (browser) await browser.close();
-  if (server && server.kill) server.kill();
 }
 
-async function waitForVisible(page, selector, timeoutMs, label) {
-  await page.waitForFunction((sel) => {
-    const el = document.querySelector(sel);
-    if (!el) return false;
-    const cs = getComputedStyle(el);
-    const r = el.getBoundingClientRect();
-    return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
-  }, selector, { timeout: timeoutMs }).catch((err) => {
-    throw new Error('Timed out waiting for ' + label + ': ' + err.message);
-  });
-}
-
-async function clickButton(page, label) {
-  return page.evaluate((wanted) => {
-    const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-    const exact = [...document.querySelectorAll('button')]
-      .find((b) => normalize(b.textContent) === normalize(wanted));
-    const button = exact || [...document.querySelectorAll('button')]
-      .find((b) => normalize(b.textContent).includes(normalize(wanted)));
-    if (!button || button.disabled) return false;
-    button.click();
-    return true;
-  }, label);
+function assertPlayableEgress(report, route) {
+  assert.equal(report.mode, 'flight', route + ' should return to flight mode');
+  assert.equal(report.docked, false, route + ' should clear state.ui.docked');
+  assert.equal(report.dockedStationId, null, route + ' should clear dockedStationId');
+  assert.notEqual(report.topScreen, 'station', route + ' should close station screen');
+  assert.equal(report.screenStack.includes('station'), false, route + ' should not retain station in screen stack');
+  assert.equal(report.playerAlive, true, route + ' should leave player alive after station egress');
 }
 
 async function startFreshServer() {
