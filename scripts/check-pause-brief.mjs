@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pauseStatusLines } from '../src/ui/screens/pause.js';
+import { pauseExitConfirmBody, pauseStatusLines } from '../src/ui/screens/pause.js';
 
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
 
@@ -10,6 +10,16 @@ assert.match(pauseSrc, /aria-live/, 'flight brief should announce refreshed obje
 assert.match(pauseSrc, /Mission Log \(' \+ BINDINGS\.missionLog\.label \+ '\)/,
   'pause menu should label the Mission Log action with the live binding');
 assert.match(pauseSrc, /export function pauseStatusLines/, 'pause brief policy should stay directly testable');
+assert.match(pauseSrc, /export function pauseExitConfirmBody/,
+  'pause exit confirmation policy should stay directly testable');
+assert.match(pauseSrc, /body: pauseExitConfirmBody\(ctx && ctx\.state, 'load'\)/,
+  'Load confirmation should repeat the live run context before opening load slots');
+assert.match(pauseSrc, /body: pauseExitConfirmBody\(ctx && ctx\.state, 'menu'\)/,
+  'Main Menu confirmation should repeat the live run context before closing the session');
+assert.doesNotMatch(pauseSrc, /Loading will discard any unsaved progress in the current session\./,
+  'Pause Load confirmation must not fall back to generic unsaved-progress copy');
+assert.doesNotMatch(pauseSrc, /Any unsaved progress will be lost\. You can Save first if you want to keep it\./,
+  'Pause Main Menu confirmation must not fall back to generic unsaved-progress copy');
 
 const trackedState = {
   simTime: 100,
@@ -39,6 +49,19 @@ assert.match(lines.next, /Helios Gate/);
 assert.match(lines.save, /Quick/);
 assert.match(lines.save, /F5 quick-saves/);
 
+let body = pauseExitConfirmBody(trackedState, 'load');
+assert.match(body, /Opening Load lets you review slots/);
+assert.match(body, /TRACKED - Helios Priority Run/);
+assert.match(body, /Helios Gate/);
+assert.match(body, /Save status: Saved .* to Quick/);
+assert.match(body, /If you complete a load, unsaved progress is lost/);
+
+body = pauseExitConfirmBody(trackedState, 'menu');
+assert.match(body, /Returning to main menu closes the current session/);
+assert.match(body, /TRACKED - Helios Priority Run/);
+assert.match(body, /Save status: Saved .* to Quick/);
+assert.match(body, /Unsaved progress will be lost/);
+
 lines = pauseStatusLines({
   ...trackedState,
   ui: { trackedMissionId: null },
@@ -56,6 +79,17 @@ lines = pauseStatusLines({
 assert.match(lines.objective, /^NAV SET/);
 assert.match(lines.objective, /Sell Food at Vesta Exchange/);
 assert.match(lines.save, /^Unsaved run/);
+
+body = pauseExitConfirmBody({
+  simTime: 10,
+  missions: { active: [] },
+  nav: { waypoint: { label: 'Sell Food at Vesta Exchange' } },
+  meta: {},
+  save: {},
+}, 'menu');
+assert.match(body, /NAV SET - Sell Food at Vesta Exchange/);
+assert.match(body, /Save status: Unsaved run/);
+assert.match(body, /Use Save or F5 before quitting/);
 
 lines = pauseStatusLines({
   simTime: 10,
