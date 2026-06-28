@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../src/data/narrative.js';
 import { STORY_BEATS } from '../src/data/missions.js';
 import { cargo, isPersistentCargo, removeCargo } from '../src/systems/cargo.js';
+import { codexProgressSummary } from '../src/ui/screens/codex.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const readSource = (path) => readFileSync(join(ROOT, path), 'utf8');
@@ -90,12 +91,67 @@ assert.match(codexSource, /querySelectorAll\('\.sf-codex-entry'\)/,
   'Codex search must filter rendered entries rather than raw narrative data');
 assert.match(codexSource, /No matching unlocked entries\./,
   'Codex search must show an empty state for no unlocked matches');
+assert.match(codexSource, /export function codexProgressSummary/,
+  'Codex must expose a pure unlock-summary helper for progression trust checks');
+assert.match(codexSource, /Codex Unlock Status/,
+  'Codex must render a visible unlock-status strip');
+assert.match(codexSource, /Locked counts mean future entries are intentionally hidden/,
+  'Codex status copy must explain that hidden entries are intentionally gated');
+assert.match(codexSource, /this\._renderStatus\(ctx\);[\s\S]*switch \(this\._activeTab\)/,
+  'Codex status should render before the active tab entries');
+assert.match(codexSource, /querySelectorAll\('\.sf-codex-entry'\)/,
+  'Codex search should continue filtering only entries, not the status strip');
 assert.match(bindingSource, /codex:\s*\{\s*key:\s*'k',\s*code:\s*'KeyK',\s*label:\s*'K'\s*\}/,
   'BINDINGS must expose K as the fixed Codex key');
 assert.match(uiInputSource, /case BINDINGS\.codex\.key:[\s\S]*case 'K':[\s\S]*screenManager\.pushScreen\('codex'\)/,
   'Keyboard K must open Codex from flight');
 assert.match(uiInputSource, /matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenManager\.pushScreen\('codex'\)/,
   'Keyboard K must open Codex from the station hub without undocking');
+
+{
+  const commsTotal = COLD_START.length + COMMS_CATS.reduce((sum, key) => sum + COMMS[key].length, 0);
+  const beat0Comms = COLD_START.length + COMMS_CATS.reduce((sum, key) =>
+    sum + COMMS[key].filter((entry) => (entry.beat != null ? entry.beat : 0) <= 0).length, 0);
+  const lateEntry = COMMS.late.find((entry) => entry.beat > 0) || COMMS.story.find((entry) => entry.beat > 0);
+  const valueFor = (summary, key) => {
+    const item = summary.items.find((entry) => entry.key === key);
+    return item && item.value;
+  };
+
+  let summary = codexProgressSummary({ beatIndex: 0, seenComms: {}, graffitiShown: {} });
+  assert.equal(valueFor(summary, 'Story'), '1/8 beats',
+    'new games should show only the current story beat as unlocked');
+  assert.equal(valueFor(summary, 'Comms'), beat0Comms + '/' + commsTotal + ' unlocked',
+    'Codex status should count beat-reached comms without exposing future lines');
+  assert.equal(valueFor(summary, 'Figures'), '6/11 known',
+    'Codex status should count only always-visible figures at beat 0');
+  assert.equal(valueFor(summary, 'Graffiti'), '1/' + Object.keys(GRAFFITI).length + ' encountered',
+    'Codex status should count the always-present ship graffiti mark');
+  assert.equal(valueFor(summary, 'Endgame'), '0/5 revealed',
+    'Codex status should not reveal endgame choices before beat 7');
+  assert.equal(valueFor(summary, 'Phase'), 'Phase 1',
+    'Codex status should show the current narrative phase');
+
+  summary = codexProgressSummary({
+    beatIndex: 4,
+    seenComms: lateEntry ? { [lateEntry.id]: true } : {},
+    graffitiShown: { ['airlock:' + GRAFFITI.REDISTRIBUTED]: true },
+  });
+  const beat4Comms = COLD_START.length + COMMS_CATS.reduce((sum, key) =>
+    sum + COMMS[key].filter((entry) => (entry.beat != null ? entry.beat : 0) <= 4 || (lateEntry && entry.id === lateEntry.id)).length, 0);
+  assert.equal(valueFor(summary, 'Story'), '5/8 beats',
+    'Codex status should advance story counts with beat progress');
+  assert.equal(valueFor(summary, 'Figures'), '10/11 known',
+    'Codex status should count beat-gated figures through beat 4');
+  assert.equal(valueFor(summary, 'Graffiti'), '2/' + Object.keys(GRAFFITI).length + ' encountered',
+    'Codex status should include encountered graffiti flags without leaking unseen lines');
+  assert.equal(valueFor(summary, 'Comms'), beat4Comms + '/' + commsTotal + ' unlocked',
+    'Codex status should count explicit seen flags even when a comm is above the current beat');
+
+  summary = codexProgressSummary({ beatIndex: 7, seenComms: {}, graffitiShown: {} });
+  assert.equal(valueFor(summary, 'Endgame'), '5/5 revealed',
+    'Codex status should reveal endgame counts only at the final beat');
+}
 
 // PERSISTENT_CARGO — unsellable personal effects (Ship tab).
 assert.ok(Array.isArray(PERSISTENT_CARGO) && PERSISTENT_CARGO.length >= 1, 'PERSISTENT_CARGO must be a non-empty array');
