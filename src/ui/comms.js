@@ -4,7 +4,7 @@
 //
 //   1. COMMS LOG  — listens to `comms:popup`. A left-edge feed of channel noise. Most lines are
 //                   ambient (not for the player). The ones that ARE for the player don't name them.
-//                   Mirrors the alerts.js pattern (queue, raise, fade). Closable entries; an 'L' key
+//                   Mirrors the alerts.js pattern (queue, raise, fade). Closable entries; the comms key
 //                   opens a scrollable backlog so the player can re-read what they missed.
 //   2. GRAFFITI   — listens to `graffiti:show{ line, where }`. 'bulkhead' = a line that appears on
 //                   the player's own HUD (their ship's interior). airlock/shipyard/etc. = lines the
@@ -14,6 +14,8 @@
 //
 // Pure DOM + event listeners. Reads ctx.state only for the backlog; never mutates sim state (§0.6).
 // CSS is injected once (injectCommsCss) so this module is self-contained.
+
+import { BINDINGS } from './bindings.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
 
@@ -27,7 +29,7 @@ const CATEGORY_STYLE = {
 };
 
 const MAX_LIVE = 4;          // max simultaneous live comms entries on the feed
-const MAX_BACKLOG = 80;      // retained history for the 'L' backlog view
+const MAX_BACKLOG = 80;      // retained history for the comms backlog view
 const SCENARIO_DIALOGUE_TTL = 18; // authored mission comms need to survive cold-open/load stalls.
 
 export function branchLifecycleCommsPayload(payload) {
@@ -165,11 +167,11 @@ export function createComms(ctx) {
     if (comms) pushComms(comms);
   });
 
-  // ── 2. Backlog view (toggle with 'L') ────────────────────────────────────────────────────
+  // ── 2. Backlog view (toggle with the comms binding) ──────────────────────────────────────
   const backlogBtn = document.createElement('button');
   backlogBtn.className = 'sf-comm-backlog-btn';
   backlogBtn.id = 'sf-comm-backlog-btn';
-  backlogBtn.title = 'Comms log (L)';
+  backlogBtn.title = 'Comms log (' + BINDINGS.comms.label + ')';
   backlogBtn.setAttribute('aria-label', 'Open comms log');
   backlogBtn.textContent = '\u2261';  // trigram — "the channel"
   document.getElementById('ui-root').appendChild(backlogBtn);

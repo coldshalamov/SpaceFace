@@ -85,6 +85,7 @@ const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', im
 const stationHubSrc = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
 const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
 const alertsSrc = readFileSync(new URL('../src/ui/alerts.js', import.meta.url), 'utf8');
+const commsSrc = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
 const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
 const controlPromptsSrc = readFileSync(new URL('../src/ui/controlPrompts.js', import.meta.url), 'utf8');
 const mainMenuSrc = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
@@ -132,11 +133,13 @@ if (!helpSrc.includes("import { BINDINGS } from '../bindings.js'")
   || !helpSrc.includes('BINDINGS.localmap.label')
   || !helpSrc.includes('BINDINGS.starmap.label')
   || !helpSrc.includes('BINDINGS.missionLog.label')
+  || !helpSrc.includes('BINDINGS.cargo.label')
+  || !helpSrc.includes('BINDINGS.comms.label')
   || !helpSrc.includes('BINDINGS.codex.label')) {
   console.log('FAIL helpScreen - fixed UI key labels must read src/ui/bindings.js');
   fail++;
-} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)|Mission Log \(J\)|'J'|'K'/.test(helpSrc)) {
-  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap/missionLog/codex keys');
+} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)|Mission Log \(J\)|'J'|'I'|'L'|'K'/.test(helpSrc)) {
+  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap/missionLog/cargo/comms/codex keys');
   fail++;
 } else {
   console.log('ok   helpScreen - fixed UI key labels read the binding registry');
@@ -160,6 +163,27 @@ if (!bindingsSrc.includes("missionLog: { key: 'j', code: 'KeyJ', label: 'J' }")
   fail++;
 } else {
   console.log('ok   missionLog binding - input and visible copy read the binding registry');
+  ok++;
+}
+if (!bindingsSrc.includes("cargo: { key: 'i', code: 'KeyI', label: 'I' }")
+  || !bindingsSrc.includes("comms: { key: 'l', code: 'KeyL', label: 'L' }")
+  || BINDINGS.cargo.key !== 'i'
+  || BINDINGS.comms.key !== 'l'
+  || !inputSrc.includes('BINDINGS.cargo.key')
+  || !inputSrc.includes('BINDINGS.comms.key')
+  || !helpSrc.includes('BINDINGS.cargo.label')
+  || !helpSrc.includes('BINDINGS.comms.label')
+  || !controlPromptsSrc.includes('BINDINGS.cargo.label')
+  || !controlPromptsSrc.includes('BINDINGS.comms.label')
+  || !commsSrc.includes("import { BINDINGS } from './bindings.js'")
+  || !commsSrc.includes('BINDINGS.comms.label')) {
+  console.log('FAIL cargo/comms binding - cargo and comms keys must read src/ui/bindings.js across input, Help, HUD prompt, and backlog button');
+  fail++;
+} else if (/case 'i'|case 'l'|I cargo|L comms|Comms log \(L\)|Cargo hold', null, 'I'|Comms log', null, 'L'/.test(inputSrc + helpSrc + controlPromptsSrc + commsSrc)) {
+  console.log('FAIL cargo/comms binding - visible cargo/comms key text must not hard-code I/L');
+  fail++;
+} else {
+  console.log('ok   cargo/comms binding - input and visible copy read the binding registry');
   ok++;
 }
 if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionLog'))")) {

@@ -2,7 +2,7 @@
 //
 // UI owns: ESC (back/pause), N (local map), M (star-map), T (tech), mission log, K (codex), F1/H (help),
 //          Tab (cycle target), P (pause), E (dock when in range; Enter secondary), F5/F9 (quick save/load),
-//          mouse-wheel (camera zoom passthrough → camera:zoom).
+//          cargo/comms overlays, mouse-wheel (camera zoom passthrough → camera:zoom).
 // Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
 //
 // Routing rule: if a modal screen is open and it has a key handler, route there first
@@ -152,12 +152,14 @@ export function createUiInput(ctx, screenManager) {
         ev.preventDefault();
         openDrill();
         return;
-      case 'i': case 'I':
+      case BINDINGS.cargo.key:
+      case BINDINGS.cargo.label:
         ev.preventDefault();
         bus.emit('ui:toggleCargo');
         return;
-      case 'l': case 'L':
-        // Comms log (narrative overlay): open the channel backlog. 'L' for Log. The feed itself
+      case BINDINGS.comms.key:
+      case BINDINGS.comms.label:
+        // Comms log (narrative overlay): open the channel backlog. The feed itself
         // streams on the left edge continuously; this opens the full searchable history.
         ev.preventDefault();
         bus.emit('ui:toggleComms');

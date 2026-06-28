@@ -1,7 +1,7 @@
 import { BINDINGS } from './bindings.js';
 
 const KBM_PROMPTS = Object.freeze({
-  flight: `W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  J log  •  ${BINDINGS.codex.label} codex  •  I cargo  •  L comms`,
+  flight: `W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.codex.label} codex  •  ${BINDINGS.cargo.label} cargo  •  ${BINDINGS.comms.label} comms`,
   mining: 'RMB hold to mine  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
   combat: 'LMB/Space fire  •  Mouse aim at target  •  Tab cycle targets  •  F auto-fire  •  Shift boost to dodge',
   station: `${BINDINGS.dock.label} dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts`,

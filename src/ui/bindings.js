@@ -13,6 +13,8 @@ export const BINDINGS = Object.freeze({
   localmap: { key: 'n', code: 'KeyN', label: 'N' },
   starmap: { key: 'm', code: 'KeyM', label: 'M' },
   missionLog: { key: 'j', code: 'KeyJ', label: 'J' },
+  cargo: { key: 'i', code: 'KeyI', label: 'I' },
+  comms: { key: 'l', code: 'KeyL', label: 'L' },
   codex: { key: 'k', code: 'KeyK', label: 'K' },
 });
 
