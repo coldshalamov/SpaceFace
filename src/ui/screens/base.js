@@ -20,6 +20,11 @@ function injectStyle() {
 #sf-base .base-title { font-family:var(--mono); letter-spacing:.22em; font-size:17px;
   color:var(--accent); text-shadow:0 0 14px rgba(57,208,255,.35); text-transform:uppercase; }
 #sf-base .base-sub { color:var(--ink-mute); font-size:12px; }
+#sf-base .base-next { border:1px solid var(--panel-edge); border-radius:8px; padding:12px; background:rgba(57,208,255,.06); }
+#sf-base .base-next .eyebrow { font-family:var(--mono); letter-spacing:.12em; font-size:10px; color:var(--ink-dim);
+  text-transform:uppercase; margin-bottom:4px; }
+#sf-base .base-next .nm { color:var(--ink); font-weight:700; font-size:13px; margin-bottom:4px; }
+#sf-base .base-next .desc { color:var(--ink-mute); font-size:11px; line-height:1.45; }
 #sf-base .base-slots { display:flex; gap:10px; flex-wrap:wrap; }
 #sf-base .base-slot { flex:1; min-width:120px; border:1px solid var(--panel-edge); border-radius:8px;
   padding:12px; background:var(--panel); position:relative; }
@@ -47,6 +52,7 @@ function techName(id) {
   const node = TECH_BY_ID.get(id);
   return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
 }
+function slotLabel(count) { return count === 1 ? 'module slot' : 'module slots'; }
 
 export function describeBaseBuildAction(mod, player = {}, body = {}) {
   if (!mod) {
@@ -110,6 +116,64 @@ export function describeBaseBuildAction(mod, player = {}, body = {}) {
   };
 }
 
+export function describeBaseNextStep(body = {}, player = {}) {
+  const modules = Array.isArray(body.modules) ? body.modules : [];
+  const slots = Math.max(0, Number(body.slots) || 0);
+  const usedSlots = modules.length;
+  const bodyName = body.name || 'This base';
+
+  if (usedSlots >= slots) {
+    return {
+      state: 'slots',
+      kind: 'blocked',
+      title: 'Base slots full',
+      detail: bodyName + ' has ' + usedSlots + '/' + slots + ' module slots filled. Scout or claim another body for the next structure.',
+    };
+  }
+
+  const candidates = BODY_MODULES
+    .filter((mod) => !modules.includes(mod.id))
+    .map((mod) => ({ mod, action: describeBaseBuildAction(mod, player, body) }));
+
+  const available = candidates.find((entry) => entry.action.state === 'available');
+  if (available) {
+    const remaining = Math.max(0, slots - usedSlots - 1);
+    return {
+      state: 'available',
+      kind: 'available',
+      title: 'Next build: ' + available.mod.name,
+      detail: available.action.title + ' Pick Build below; this leaves ' + remaining + ' ' + slotLabel(remaining) + ' for the rest of the base plan.',
+    };
+  }
+
+  const funding = candidates.find((entry) => entry.action.state === 'funding');
+  if (funding) {
+    return {
+      state: 'funding',
+      kind: 'blocked',
+      title: funding.action.label + ' for ' + funding.mod.name,
+      detail: funding.action.title + ' Run a trade route, mission, or mining pass, then return to this base.',
+    };
+  }
+
+  const locked = candidates.find((entry) => entry.action.state === 'locked');
+  if (locked) {
+    return {
+      state: 'locked',
+      kind: 'blocked',
+      title: locked.action.label,
+      detail: locked.action.title + ' Track the prerequisite in the Tech Tree, then build here.',
+    };
+  }
+
+  return {
+    state: 'complete',
+    kind: 'ok',
+    title: 'Base plan complete',
+    detail: 'Every compatible structure is either installed or blocked by this body. Use another claim to expand the network.',
+  };
+}
+
 export const baseScreen = {
   id: 'base',
   _rootEl: null,
@@ -164,6 +228,14 @@ export const baseScreen = {
     const usedSlots = body.modules.length;
     sub.textContent = body.size + '-class body · ' + usedSlots + '/' + body.slots + ' module slots · sector ' + (body.sectorId || '?');
     wrap.appendChild(sub);
+
+    const nextStep = describeBaseNextStep(body, state.player || {});
+    const next = document.createElement('div');
+    next.className = 'base-next base-next--' + (nextStep.kind || 'ok');
+    next.innerHTML = '<div class="eyebrow">Recommended base step</div>' +
+      '<div class="nm">' + escapeHtml(nextStep.title) + '</div>' +
+      '<div class="desc">' + escapeHtml(nextStep.detail) + '</div>';
+    wrap.appendChild(next);
 
     // ---- installed modules (slot grid) ----
     const slotsWrap = document.createElement('div');
