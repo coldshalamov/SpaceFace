@@ -1,6 +1,7 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
+import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -9,8 +10,11 @@ for (const sector of SECTORS) {
   for (const station of sector.stations || []) STATION_SECTOR_BY_ID.set(station.id, sector.id);
 }
 const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
+const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport']);
 const TIMER_TIGHT_S = 5 * 60;
 const TIMER_CRITICAL_S = 2 * 60;
+const ROUTE_RISK_WARNING_DANGER = 0.72;
+const ROUTE_RISK_BAD_DANGER = 0.84;
 const TASK_TIME_FALLBACK = {
   cargo_delivery: 20,
   bulk_trade: 30,
@@ -103,6 +107,37 @@ function fmtClock(value) {
   return s + 's';
 }
 
+function clamp01(value, fallback = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(1, n));
+}
+
+function fmtPct(value) {
+  return Math.round(clamp01(value) * 100) + '%';
+}
+
+function routeRiskLabel(danger) {
+  if (danger >= ROUTE_RISK_BAD_DANGER) return 'Hostile';
+  if (danger >= ROUTE_RISK_WARNING_DANGER) return 'Hazardous';
+  if (danger >= 0.48) return 'Guarded';
+  return 'Calm';
+}
+
+function routeRiskChipKind(danger, forecast) {
+  if (danger >= ROUTE_RISK_BAD_DANGER) return 'bad';
+  if (danger >= ROUTE_RISK_WARNING_DANGER) return 'warn';
+  if (forecast && forecast.survivalMargin < 0 && forecast.incidentChance >= 0.18) return 'warn';
+  return 'ok';
+}
+
+function pressureLabel(value) {
+  const pressure = Number(value) || 0;
+  if (pressure > 0.18) return 'scarcity';
+  if (pressure < -0.18) return 'surplus';
+  return 'balanced';
+}
+
 function missionDestSectorId(m) {
   if (!m) return null;
   if (m.destSectorId) return m.destSectorId;
@@ -133,6 +168,52 @@ export function missionRouteScope(m, state) {
     return { kind: 'info', text: `${Math.round(distance).toLocaleString('en-US')}u route` };
   }
   return null;
+}
+
+export function missionRouteIntel(m, state) {
+  const targetSectorId = missionDestSectorId(m);
+  if (!targetSectorId) return null;
+  const currentSectorId = state && state.world && state.world.currentSectorId || null;
+  const local = !!(currentSectorId && currentSectorId === targetSectorId);
+  const signal = sectorSignalFor(state, targetSectorId);
+  if (!signal) return null;
+  const danger = clamp01(signal.danger);
+  const label = routeRiskLabel(danger);
+  const forecast = local ? null : forecastTransitFor(state, targetSectorId, {
+    fromSectorId: currentSectorId,
+    via: 'gate',
+  });
+  const chips = [{
+    kind: local ? (danger >= ROUTE_RISK_WARNING_DANGER ? 'warn' : 'ok') : routeRiskChipKind(danger, forecast),
+    text: (local ? 'Local risk: ' : 'Route risk: ') + label + ' ' + fmtPct(danger),
+  }];
+
+  if (ECONOMY_ROUTE_MISSIONS.has(m && m.type)) {
+    chips.push({
+      kind: Math.abs(Number(signal.pricePressure) || 0) > 0.18 ? 'info' : 'ok',
+      text: 'Market: ' + pressureLabel(signal.pricePressure),
+    });
+  }
+
+  let warning = null;
+  if (!local && danger >= ROUTE_RISK_WARNING_DANGER) {
+    warning = label + ' route risk to ' + sectorName(targetSectorId) + '; refuel, repair, and consider escort before accepting.';
+  } else if (!local && forecast && forecast.survivalMargin < 0 && forecast.incidentChance >= 0.18) {
+    warning = 'Projected transit exposure may exceed current defenses; repair or upgrade before accepting.';
+  } else if (local && danger >= ROUTE_RISK_BAD_DANGER) {
+    warning = label + ' local-sector risk near ' + sectorName(targetSectorId) + '; launch ready for contact.';
+  }
+
+  return {
+    targetSectorId,
+    targetName: sectorName(targetSectorId),
+    danger,
+    label,
+    marketPressure: Number(signal.pricePressure) || 0,
+    forecast,
+    chips,
+    warning,
+  };
 }
 
 function missionTaskEstimate(m) {
@@ -203,6 +284,13 @@ export function missionPreflight(m, state) {
   const route = missionRouteScope(m, state);
   if (route) chips.push(route);
 
+  const routeIntel = missionRouteIntel(m, state);
+  let routeIntelWarning = null;
+  if (routeIntel) {
+    chips.push(...routeIntel.chips);
+    routeIntelWarning = routeIntel.warning || null;
+  }
+
   const pacing = missionTimePacing(m, state);
   let pacingWarning = null;
   if (pacing && pacing.chip) {
@@ -232,6 +320,7 @@ export function missionPreflight(m, state) {
     }
   }
 
+  if (routeIntelWarning) warnings.push(routeIntelWarning);
   if (pacingWarning) warnings.push(pacingWarning);
 
   return {
