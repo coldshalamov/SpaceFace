@@ -6,8 +6,10 @@
 
 import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
+import { SECTORS } from '../../data/sectors.js';
 
 const STYLE_ID = 'sf-pause-menu-style';
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
 /** Find the screen manager regardless of where uiRoot exposed it. Screens navigate
  *  by asking the manager to push/pop/replace; if it is not reachable we degrade to
@@ -168,24 +170,62 @@ function waypointText(wp) {
   return wp.label || wp.reason || wp.stationName || prettyId(wp.stationId || wp.sectorId || wp.kind) || 'Nav marker set';
 }
 
+function sectorDisplayName(sectorId, fallback) {
+  if (fallback) return String(fallback);
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  return (sector && sector.name) || prettyId(sectorId);
+}
+
+function routeCommitment(state, wp) {
+  const currentSectorId = state && state.world && state.world.currentSectorId || null;
+  const targetSectorId = wp && wp.sectorId || null;
+  const hasLocalFix = !!(wp && wp.pos);
+  const targetSectorName = targetSectorId ? sectorDisplayName(targetSectorId, wp && wp.sectorName) : '';
+  if (targetSectorId && !hasLocalFix && (!currentSectorId || targetSectorId !== currentSectorId)) {
+    return { kind: 'inter-system', objectiveLabel: 'INTER-SYSTEM ROUTE', targetSectorName };
+  }
+  if (hasLocalFix || (targetSectorId && currentSectorId && targetSectorId === currentSectorId)) {
+    return { kind: 'local', objectiveLabel: 'LOCAL ROUTE', targetSectorName };
+  }
+  return { kind: 'nav', objectiveLabel: 'NAV SET', targetSectorName: '' };
+}
+
 export function pauseMapAction(state) {
   const wp = state && state.nav && state.nav.waypoint;
   if (!wp) return null;
-  const currentSectorId = state && state.world && state.world.currentSectorId;
-  const targetSectorId = wp.sectorId || null;
-  const hasLocalFix = !!wp.pos;
-  if (hasLocalFix || !targetSectorId || (currentSectorId && targetSectorId === currentSectorId)) {
+  const commitment = routeCommitment(state, wp);
+  if (commitment.kind !== 'inter-system') {
+    const place = commitment.targetSectorName ? ' in ' + commitment.targetSectorName : ' in this system';
+    const hint = commitment.kind === 'local'
+      ? 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker' + place + '; no jump route is required.'
+      : 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker in this system.';
     return {
       screenId: 'localmap',
       label: 'Local Map (' + BINDINGS.localmap.label + ')',
-      hint: 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker in this system.',
+      hint,
+      commitment: commitment.kind,
+      objectiveLabel: commitment.objectiveLabel,
     };
   }
+  const target = commitment.targetSectorName ? ' to ' + commitment.targetSectorName : '';
   return {
     screenId: 'starmap',
     label: 'Star Map (' + BINDINGS.starmap.label + ')',
-    hint: 'Open Star Map (' + BINDINGS.starmap.label + ') to review the inter-system route.',
+    hint: 'Open Star Map (' + BINDINGS.starmap.label + ') to review the inter-system route' + target + ' before committing a jump.',
+    commitment: commitment.kind,
+    objectiveLabel: commitment.objectiveLabel,
   };
+}
+
+function routeNextText(mapAction) {
+  if (!mapAction) return 'resume and follow the current marker; open the map if the route gets muddy.';
+  if (mapAction.commitment === 'inter-system') {
+    return mapAction.hint + ' Resume after the destination sector looks right.';
+  }
+  if (mapAction.commitment === 'local') {
+    return mapAction.hint + ' Resume and fly the marker in-system.';
+  }
+  return 'resume and follow the current marker; ' + mapAction.hint;
 }
 
 function slotLabel(id) {
@@ -238,9 +278,8 @@ export function pauseStatusLines(state) {
   if (wp) {
     const mapAction = pauseMapAction(state);
     return {
-      objective: 'NAV SET - ' + waypointText(wp),
-      next: 'Next: resume and follow the current marker; ' +
-        (mapAction ? mapAction.hint : 'open the map if the route gets muddy.'),
+      objective: ((mapAction && mapAction.objectiveLabel) || 'NAV SET') + ' - ' + waypointText(wp),
+      next: 'Next: ' + routeNextText(mapAction),
       save: saveLine(state),
     };
   }
