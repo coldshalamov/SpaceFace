@@ -20,15 +20,130 @@ const TIERS = [
 ];
 
 const AGGRO_THRESHOLD = -150;
+const REP_CAP = 1000;
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
-function tierFor(rep) {
+const REP_REASON_LABELS = {
+  init: 'new-save baseline',
+  complete_faction_mission: 'completed faction mission',
+  fail_faction_mission: 'failed or expired mission',
+  trade_at_faction_station: 'station trade',
+  caught_contraband: 'contraband scan',
+  rescue_faction_distress: 'distress rescue',
+  kill_faction_ship: 'faction ship kill',
+  kill_faction_enemy_ship: 'rival kill bounty',
+  war_won: 'war outcome support',
+  war_lost: 'war outcome loss',
+  decay: 'reputation decay',
+};
+
+export const FACTION_TIERS = TIERS;
+export const FACTION_AGGRO_THRESHOLD = AGGRO_THRESHOLD;
+
+function safeRep(rep) {
+  const n = Number(rep);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(-REP_CAP, Math.min(REP_CAP, Math.round(n)));
+}
+
+function signed(value) {
+  const n = Number(value) || 0;
+  return (n > 0 ? '+' : '') + n;
+}
+
+function repMark(value) {
+  return '(' + signed(value) + ')';
+}
+
+export function tierFor(rep) {
+  const r = safeRep(rep);
   let t = TIERS[0];
-  for (const x of TIERS) if (rep >= x.min) t = x;
+  for (const x of TIERS) if (r >= x.min) t = x;
   return t;
 }
 
-function factionShort(id) {
+function nextTierFor(rep) {
+  const r = safeRep(rep);
+  for (const t of TIERS) if (r < t.min) return t;
+  return null;
+}
+
+function repReasonLabel(reason) {
+  const raw = String(reason || '').trim();
+  if (!raw) return 'unknown event';
+  if (raw.startsWith('spillover:')) {
+    const base = repReasonLabel(raw.slice('spillover:'.length));
+    return 'ally/rival spillover (' + base + ')';
+  }
+  return REP_REASON_LABELS[raw] || raw.replace(/[_-]+/g, ' ');
+}
+
+function factionShort(meta = {}) {
+  const f = meta && meta.id ? FACTION_BY_ID.get(meta.id) : null;
+  return (meta && (meta.short || meta.name)) || (f && (f.short || f.name)) || 'this faction';
+}
+
+export function factionLastDeltaText(lastDelta) {
+  const value = Number(lastDelta && lastDelta.value);
+  if (!lastDelta || !Number.isFinite(value) || value === 0) return 'none recorded this save';
+  return signed(value) + ' rep from ' + repReasonLabel(lastDelta.reason);
+}
+
+export function factionNextTierText(rep) {
+  const r = safeRep(rep);
+  const next = nextTierFor(r);
+  if (!next) return 'Hero tier secured (+1000 cap)';
+  return (next.min - r) + ' rep to ' + next.name + ' ' + repMark(next.min);
+}
+
+export function factionRiskText(rep) {
+  const r = safeRep(rep);
+  if (r <= AGGRO_THRESHOLD) {
+    const needed = (AGGRO_THRESHOLD + 1) - r;
+    return 'aggro active; earn ' + needed + ' rep to cross -149 and calm patrol locks';
+  }
+  const buffer = r - AGGRO_THRESHOLD;
+  if (buffer <= 40) return buffer + ' rep above aggro; one failed job, kill, or scan can turn patrols hostile';
+  if (r < 0) return 'below neutral; repair before failures or scans push the faction into aggro';
+  if (r >= 400) return 'high standing; rival contracts and contraband scans can still spill back';
+  return buffer + ' rep above aggro; stable enough for normal contracts and trade';
+}
+
+export function factionActionPlan(rep, meta = {}) {
+  const r = safeRep(rep);
+  const short = factionShort(meta);
+  if (r <= AGGRO_THRESHOLD) {
+    return 'repair standing with low-risk ' + short + ' contracts or station trade; avoid kills and scans in their space';
+  }
+  if (r < 0) {
+    return 'repair reputation with ' + short + ' before taking risky opposing work';
+  }
+  if (r < 30) {
+    return 'earn trust with ' + short + ' contracts; station trade gives smaller, safer gains';
+  }
+  if (r < 150) {
+    return 'push to Trusted by chaining ' + short + ' work and avoiding their named rivals';
+  }
+  if (r < 400) {
+    return 'push to Allied with higher-value ' + short + ' contracts; protect the route from failures';
+  }
+  if (r < 700) {
+    return 'push to Hero with sustained ' + short + ' wins, then stop bleeding trust to rival work';
+  }
+  return 'hold Hero standing: keep work clean and avoid contraband or rival spillover';
+}
+
+export function factionStandingGuidance(rep, meta = {}, lastDelta = null) {
+  const r = safeRep(rep);
+  return {
+    next: factionNextTierText(r),
+    last: factionLastDeltaText(lastDelta),
+    plan: factionActionPlan(r, meta),
+    risk: factionRiskText(r),
+  };
+}
+
+function factionShortById(id) {
   const f = FACTION_BY_ID.get(id);
   return (f && (f.short || f.name)) || id;
 }
@@ -37,8 +152,8 @@ function relationSummary(meta) {
   const allies = [];
   const rivals = [];
   for (const [id, weight] of Object.entries(meta.relations || {})) {
-    if (weight >= 0.3) allies.push(factionShort(id));
-    else if (weight <= -0.3) rivals.push(factionShort(id));
+    if (weight >= 0.3) allies.push(factionShortById(id));
+    else if (weight <= -0.3) rivals.push(factionShortById(id));
   }
   return {
     allies: allies.length ? allies.join(', ') : 'none',
@@ -64,8 +179,12 @@ export function createFactionsPanel(ctx) {
     '<div class="st-fac-list"></div>';
   const list = root.querySelector('.st-fac-list');
 
+  function recordFor(fid) {
+    return ctx.state.factions && ctx.state.factions[fid] || null;
+  }
+
   function repFor(fid) {
-    const f = ctx.state.factions && ctx.state.factions[fid];
+    const f = recordFor(fid);
     if (f && typeof f.rep === 'number') return f.rep;
     // fallback to starting reps (factions system not yet populated)
     if (NEW_GAME.factionRep && typeof NEW_GAME.factionRep[fid] === 'number') return NEW_GAME.factionRep[fid];
@@ -75,8 +194,10 @@ export function createFactionsPanel(ctx) {
   function refresh() {
     const frag = document.createDocumentFragment();
     for (const meta of FACTION_META) {
+      const rec = recordFor(meta.id);
       const rep = repFor(meta.id);
       const tier = tierFor(rep);
+      const guidance = factionStandingGuidance(rep, meta, rec && rec.lastDelta);
       const fill = (rep + 1000) / 2000; // 0..1
       const rel = relationSummary(meta);
       const row = document.createElement('div');
@@ -93,7 +214,11 @@ export function createFactionsPanel(ctx) {
         '</div>' +
         '<div class="st-fac-ctrl mono">Controls: ' + escapeHtml((meta.controls || []).join(' · ')) + '</div>' +
         '<div class="st-fac-rel mono">Allies: ' + escapeHtml(rel.allies) + ' · Rivals: ' + escapeHtml(rel.rivals) + '</div>' +
-        '<div class="st-fac-effect">' + escapeHtml(standingEffect(rep, meta)) + '</div>';
+        '<div class="st-fac-effect">' + escapeHtml(standingEffect(rep, meta)) + '</div>' +
+        '<div class="st-fac-rel mono">Next: ' + escapeHtml(guidance.next) + '</div>' +
+        '<div class="st-fac-rel mono">Last: ' + escapeHtml(guidance.last) + '</div>' +
+        '<div class="st-fac-rel mono">Plan: ' + escapeHtml(guidance.plan) + '</div>' +
+        '<div class="st-fac-rel mono">Risk: ' + escapeHtml(guidance.risk) + '</div>';
       frag.appendChild(row);
     }
     list.textContent = '';
