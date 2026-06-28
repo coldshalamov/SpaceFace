@@ -12,6 +12,10 @@ assert.match(pauseSrc, /Mission Log \(' \+ BINDINGS\.missionLog\.label \+ '\)/,
   'pause menu should label the Mission Log action with the live binding');
 assert.match(pauseSrc, /export function pauseStatusLines/, 'pause brief policy should stay directly testable');
 assert.match(pauseSrc, /export function pauseMapAction/, 'pause map action policy should stay directly testable');
+assert.match(pauseSrc, /INTER-SYSTEM ROUTE/,
+  'pause brief should name inter-system route commitment before the player resumes');
+assert.match(pauseSrc, /no jump route is required/,
+  'pause brief should explicitly separate local routes from jump-route commitments');
 assert.match(pauseSrc, /mk\('Review ' \+ mapAction\.label/,
   'pause menu should expose a waypoint map review action when nav is set');
 assert.match(pauseSrc, /export function pauseExitConfirmBody/,
@@ -92,13 +96,41 @@ assert.match(lines.objective, /Sell Food at Vesta Exchange/);
 assert.match(lines.next, /Local Map \(N\)/);
 assert.match(lines.save, /^Unsaved run/);
 
+lines = pauseStatusLines({
+  simTime: 10,
+  world: { currentSectorId: 'sector_helios' },
+  missions: { active: [] },
+  nav: { waypoint: { label: 'Survey Helios Belt', pos: { x: 100, z: -60 }, sectorId: 'sector_helios' } },
+  meta: {},
+  save: {},
+});
+assert.match(lines.objective, /^LOCAL ROUTE/);
+assert.match(lines.objective, /Survey Helios Belt/);
+assert.match(lines.next, /no jump route is required/);
+assert.match(lines.next, /fly the marker in-system/);
+
+lines = pauseStatusLines({
+  simTime: 10,
+  world: { currentSectorId: 'sector_helios' },
+  missions: { active: [] },
+  nav: { waypoint: { label: 'Sell Food at Meridian Exchange', sectorId: 'sector_meridian' } },
+  meta: {},
+  save: {},
+});
+assert.match(lines.objective, /^INTER-SYSTEM ROUTE/);
+assert.match(lines.objective, /Sell Food at Meridian Exchange/);
+assert.match(lines.next, /Star Map \(M\).*Meridian/);
+assert.match(lines.next, /before committing a jump/);
+
 let mapAction = pauseMapAction({
   world: { currentSectorId: 'sector_helios' },
   nav: { waypoint: { label: 'Sell Food at Vesta Exchange', pos: { x: 100, z: -60 }, sectorId: 'sector_helios' } },
 });
 assert.equal(mapAction.screenId, 'localmap');
 assert.equal(mapAction.label, 'Local Map (N)');
+assert.equal(mapAction.commitment, 'local');
 assert.match(mapAction.hint, /live marker/);
+assert.match(mapAction.hint, /no jump route is required/);
 
 mapAction = pauseMapAction({
   world: { currentSectorId: 'sector_helios' },
@@ -106,7 +138,10 @@ mapAction = pauseMapAction({
 });
 assert.equal(mapAction.screenId, 'starmap');
 assert.equal(mapAction.label, 'Star Map (M)');
+assert.equal(mapAction.commitment, 'inter-system');
 assert.match(mapAction.hint, /inter-system route/);
+assert.match(mapAction.hint, /Meridian/);
+assert.match(mapAction.hint, /before committing a jump/);
 
 assert.equal(pauseMapAction({ nav: {} }), null);
 
