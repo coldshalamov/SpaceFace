@@ -476,7 +476,7 @@ export const missionLogScreen = {
     head.innerHTML =
       '<span class="sf-mlog-title">MISSION LOG</span>' +
       '<span class="sf-mlog-hint mono">' + BINDINGS.missionLog.label + ' to close</span>' +
-      '<button class="sf-mlog-close">CLOSE</button>';
+      '<button class="sf-mlog-close" type="button" aria-label="Close Mission Log">CLOSE</button>';
     rootEl.appendChild(head);
 
     head.querySelector('.sf-mlog-close').addEventListener('click', () => {
@@ -509,11 +509,12 @@ export const missionLogScreen = {
 
     // Completed missions section
     const compH = el('div', 'sf-mlog-section-h sf-mlog-section-comp');
-    compH.innerHTML = '<span>COMPLETED</span><button class="sf-mlog-toggle">Show</button>';
+    compH.innerHTML = '<span>COMPLETED</span><button class="sf-mlog-toggle" type="button" aria-expanded="false" aria-controls="sf-mlog-completed-list">Show</button>';
     rootEl.appendChild(compH);
     this._compHeader = compH;
 
     const compList = el('div', 'sf-mlog-comp-list');
+    compList.id = 'sf-mlog-completed-list';
     compList.style.display = 'none';
     rootEl.appendChild(compList);
     this._compListEl = compList;
@@ -522,7 +523,9 @@ export const missionLogScreen = {
     compH.querySelector('.sf-mlog-toggle').addEventListener('click', () => {
       this._compVisible = !this._compVisible;
       compList.style.display = this._compVisible ? 'block' : 'none';
-      compH.querySelector('.sf-mlog-toggle').textContent = this._compVisible ? 'Hide' : 'Show';
+      const toggle = compH.querySelector('.sf-mlog-toggle');
+      toggle.textContent = this._compVisible ? 'Hide' : 'Show';
+      toggle.setAttribute('aria-expanded', this._compVisible ? 'true' : 'false');
       if (this._compVisible) this._renderCompleted();
     });
 
@@ -683,12 +686,13 @@ export const missionLogScreen = {
       // Buttons: Track / map handoff / abandon
       const mapAction = missionMapAction(state, m, isTracked);
       const btns = el('div', 'sf-mlog-btns');
+      const titleText = missionTitle(m);
       btns.innerHTML =
-        '<button class="sf-mlog-btn-track' + (isTracked ? ' active' : '') + '" data-act="track" data-mid="' + escapeHtml(m.id) + '">' +
+        '<button class="sf-mlog-btn-track' + (isTracked ? ' active' : '') + '" type="button" data-act="track" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml(isTracked ? 'Tracking ' + titleText : 'Track navigation for ' + titleText) + '">' +
           (isTracked ? 'TRACKING' : 'TRACK NAV') +
         '</button>' +
-        (mapAction ? '<button class="sf-mlog-btn-map" data-act="openMap" data-screen-id="' + escapeHtml(mapAction.screenId) + '" data-mid="' + escapeHtml(m.id) + '" title="' + escapeHtml(mapAction.title) + '">' + escapeHtml(mapAction.label) + '</button>' : '') +
-        '<button class="sf-mlog-btn-abandon" data-act="abandon" data-mid="' + escapeHtml(m.id) + '">ABANDON</button>';
+        (mapAction ? '<button class="sf-mlog-btn-map" type="button" data-act="openMap" data-screen-id="' + escapeHtml(mapAction.screenId) + '" data-mid="' + escapeHtml(m.id) + '" title="' + escapeHtml(mapAction.title) + '" aria-label="' + escapeHtml(mapAction.title) + '">' + escapeHtml(mapAction.label) + '</button>' : '') +
+        '<button class="sf-mlog-btn-abandon" type="button" data-act="abandon" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml('Abandon ' + titleText) + '">ABANDON</button>';
       card.appendChild(btns);
 
       frag.appendChild(card);

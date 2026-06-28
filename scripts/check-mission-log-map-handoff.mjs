@@ -98,6 +98,16 @@ function state(overrides = {}) {
 assert.match(source, /export function missionMapAction/, 'mission map handoff policy must stay directly testable');
 assert.match(source, /data-act="openMap"/, 'active mission cards must render map handoff buttons');
 assert.match(source, /data-rec-act="openMap"/, 'tracked recommendation must render a map handoff button');
+assert.match(source, /aria-label="' \+ escapeHtml\(isTracked \? 'Tracking ' \+ titleText : 'Track navigation for ' \+ titleText\)/,
+  'Mission Log track buttons must expose the concrete mission tracking action to assistive tech');
+assert.match(source, /class="sf-mlog-btn-map" type="button"[\s\S]*aria-label="' \+ escapeHtml\(mapAction\.title\)/,
+  'Mission Log map handoff buttons must expose the concrete map destination to assistive tech');
+assert.match(source, /class="sf-mlog-btn-abandon" type="button"[\s\S]*aria-label="' \+ escapeHtml\('Abandon ' \+ titleText\)/,
+  'Mission Log abandon buttons must expose the concrete mission abandonment action to assistive tech');
+assert.match(source, /aria-controls="sf-mlog-completed-list"/,
+  'Mission Log completed toggle must expose its controlled completed-mission list');
+assert.match(source, /toggle\.setAttribute\('aria-expanded'/,
+  'Mission Log completed toggle must update aria-expanded with the visible completed list state');
 assert.match(source, /sf-mlog-btn-map/, 'active mission map handoff must have a dedicated style hook');
 assert.match(source, /sf-mlog-rec-map/, 'recommendation map handoff must have a dedicated style hook');
 assert.match(source, /ui:pushScreen/, 'map handoff must fall back to the shared UI screen event');
