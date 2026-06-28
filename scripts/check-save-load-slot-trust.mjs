@@ -4,13 +4,15 @@
 // The Save / Load slot list already displays sector, ship, objective, playtime,
 // credits, and saved-at metadata. The destructive Load/Overwrite confirmations
 // must repeat that concrete context so a returning player can trust the action
-// before replacing the current session or clobbering an old save.
+// before replacing the current session or clobbering an old save. Importing an
+// external save file is also a destructive load path, so it must get the same
+// explicit confirmation before file selection mutates the live run.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { slotConfirmSummary } from '../src/ui/screens/saveLoad.js';
+import { importConfirmBody, slotConfirmSummary } from '../src/ui/screens/saveLoad.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -28,6 +30,10 @@ assert.match(saveLoad, /title: 'Load this save\?',\s*\n\s*body: loadConfirmBody\
   'Load dialog must call the trust-hardened body helper');
 assert.match(saveLoad, /title: 'Overwrite save\?',\s*\n\s*body: overwriteConfirmBody\(id, meta\),/,
   'Overwrite dialog must call the trust-hardened body helper');
+assert.match(saveLoad, /async _import\(ctx, fileIn\)[\s\S]*title: 'Import save file\?',\s*\n\s*body: importConfirmBody\(f\),\s*\n\s*confirmLabel: 'Import & Load', danger: true,/,
+  'Import must confirm before loading an external file into the live session');
+assert.match(saveLoad, /if \(!confirmed\) \{ fileIn\.value = ''; return; \}/,
+  'Cancelling import confirmation must clear the file input and leave the current run untouched');
 assert.doesNotMatch(saveLoad, /save from ' \+ slotLabel\(id\)/,
   'Load dialog must not fall back to slot-only copy');
 assert.doesNotMatch(saveLoad, /existing save in ' \+ slotLabel\(id\) \+ '\. This cannot be undone\.'/,
@@ -46,9 +52,14 @@ assert.match(summary, /Route: Tethys Trade Hub - Provisions/, 'confirmation summ
 assert.match(summary, /1h 1m played/, 'confirmation summary should include playtime context');
 assert.match(summary, /12,345 CR/, 'confirmation summary should include credit context');
 
+const importSummary = importConfirmBody({ name: 'spaceface_quick_2026-06-28.json' });
+assert.match(importSummary, /spaceface_quick_2026-06-28\.json/, 'import confirmation should name the selected file');
+assert.match(importSummary, /validate and load that save immediately/, 'import confirmation should disclose the immediate load');
+assert.match(importSummary, /Unsaved progress is lost/, 'import confirmation should warn about replacing unsaved progress');
+
 assert.match(pkg, /"check:save-load-slot-trust": "node scripts\/check-save-load-slot-trust\.mjs"/,
   'package.json must expose the focused Save/Load slot-trust check');
 assert.match(pkg, /check:title-continue-runtime && npm run check:save-load-slot-trust/,
   'Full check must include Save/Load slot trust after title Continue trust');
 
-console.log('Save/Load slot trust OK - destructive confirmations repeat concrete slot context before replacing or overwriting a save.');
+console.log('Save/Load slot trust OK - destructive confirmations repeat concrete slot context before replacing, overwriting, or importing a save.');
