@@ -161,6 +161,7 @@ function storyBeatIndex(story = {}) {
 function commUnlocked(entry, story, beat) {
   const seen = story && story.seenComms || {};
   if (entry && seen[entry.id]) return true;
+  if (entry && seen['trap_' + entry.id]) return true;
   const b = entry && entry.beat != null ? entry.beat : 0;
   return b <= beat;
 }
@@ -387,7 +388,6 @@ export const codexScreen = {
   _renderComms(ctx) {
     const s = safeStory(ctx);
     const beat = storyBeatIndex(s);
-    const seen = s.seenComms || {};
 
     // Cold start lines (B0 — always seen once a new game has begun).
     this._body.appendChild(el('div', 'sf-codex-section-h', 'Cold Start'));
@@ -405,11 +405,9 @@ export const codexScreen = {
       const entries = Array.isArray(COMMS[key]) ? COMMS[key] : [];
       if (!entries.length) continue;
       const visible = entries.filter((c) => {
-        if (seen[c.id]) return true;
         // Ambient lines from a reached beat are fair game (they cycle in normal play); beat-gated
         // personal/late/story lines unlock at their beat even if the once-flag hasn't stuck yet.
-        const b = c.beat != null ? c.beat : 0;
-        return b <= beat;
+        return commUnlocked(c, s, beat);
       });
       this._body.appendChild(el('div', 'sf-codex-section-h', label + ' (' + visible.length + '/' + entries.length + ')'));
       if (!visible.length) {
