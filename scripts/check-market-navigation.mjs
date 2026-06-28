@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { applyTradeNavigation, computeBestTrades, unitPrice } from '../src/ui/screens/market.js';
+import { applyTradeNavigation, computeBestTrades, describeTradeIntel, unitPrice } from '../src/ui/screens/market.js';
 
 function makeHarness(currentSectorId = 'sector_helios_prime') {
   const events = [];
@@ -137,6 +137,7 @@ function checkLiveQuoteStillWins() {
 
 function checkBestTradeShowsCurrentLoadAndProfit() {
   const { state } = makeHarness('sector_helios_prime');
+  state.simTime = 132;
   state.economy = {
     markets: {
       station_helios: {
@@ -163,6 +164,8 @@ function checkBestTradeShowsCurrentLoadAndProfit() {
   assert.equal(food.loadCost, 50, 'food route should show the affordable buy-in');
   assert.equal(food.loadProfit, 40, 'food route should show current-run gross profit');
   assert.equal(food.loadVolume, 5, 'food route should show hold volume consumed');
+  assert.equal(food.intelSource, 'scanned', 'marketIntel routes should carry the scanned intel source');
+  assert.equal(food.intelLabel, '2m intel', 'marketIntel routes should expose readable intel age');
   assert.equal(refined.loadUnits, 1, 'refined route should account for commodity unit price');
   assert.equal(refined.loadVolume, 0.5, 'refined route should account for non-1.0 cargo volume');
   assert.equal(trades[0].cmdtyId, 'cmdty_food', 'ranking should prefer the best current-run profit');
@@ -197,6 +200,8 @@ function checkBestTradeUsesWarmedMarketSnapshots() {
   const trade = computeBestTrades(state, 'station_helios')[0];
   assert.equal(trade.destStation, 'station_tethys', 'planner should use warmed public markets even before explicit visit intel');
   assert.equal(trade.loadProfit, 40, 'warmed market route should still show current-run profit');
+  assert.equal(trade.intelSource, 'market', 'warmed public market routes should carry market-feed source');
+  assert.equal(describeTradeIntel(state, trade), 'market feed', 'warmed public market routes should disclose they are market-feed projections');
 }
 
 checkOffSectorBestTradeSetsCourse();

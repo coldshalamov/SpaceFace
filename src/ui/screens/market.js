@@ -644,15 +644,16 @@ export function createMarketPanel(ctx) {
       const runLabel = runBlocked
         ? t.loadReason
         : 'load ' + fmtCr(t.loadUnits) + ' · +' + fmtCr(t.loadProfit) + ' CR';
+      const intelLabel = t.intelLabel || describeTradeIntel(state, t);
       row.title = runBlocked
-        ? 'Profitable route, but you cannot load this cargo right now: ' + t.loadReason + '.'
-        : 'Current run estimate: buy ' + t.loadUnits + ' for ' + fmtCr(t.loadCost) + ' CR, hold ' + fmtCr(t.loadVolume) + 'u, expected gross profit +' + fmtCr(t.loadProfit) + ' CR.';
+        ? 'Profitable route, but you cannot load this cargo right now: ' + t.loadReason + '. ' + intelLabel + '.'
+        : 'Current run estimate: buy ' + t.loadUnits + ' for ' + fmtCr(t.loadCost) + ' CR, hold ' + fmtCr(t.loadVolume) + 'u, expected gross profit +' + fmtCr(t.loadProfit) + ' CR. ' + intelLabel + '.';
       row.innerHTML =
         '<span class="st-pl-cmdty">' + escapeHtml(t.cmdtyName) + '</span>' +
         '<span class="st-pl-prices mono">buy ' + fmtCr(t.buyHere) + ' → sell ' + fmtCr(t.sellThere) + '</span>' +
         '<span class="st-pl-margin st-pl-up">+' + fmtCr(t.margin) + '/u (' + pct + '%)</span>' +
         '<span class="st-pl-run ' + (runBlocked ? 'st-pl-run--blocked' : 'st-pl-run--ok') + '">' + escapeHtml(runLabel) + '</span>' +
-        '<span class="st-pl-dest">' + escapeHtml(stationName(state, t.destStation)) + '</span>' +
+        '<span class="st-pl-dest">' + escapeHtml(stationName(state, t.destStation)) + '<b class="st-pl-intel mono">' + escapeHtml(intelLabel) + '</b></span>' +
         (runBlocked ? '' :
           '<button class="st-pl-load" data-act="load-nav" data-station="' + escapeHtml(t.destStation) +
           '" data-cmdty="' + escapeHtml(t.cmdtyId) + '" data-qty="' + t.loadUnits +
@@ -792,7 +793,7 @@ function knownMarketSnapshots(state) {
   const intel = econ && econ.marketIntel;
   if (intel) {
     for (const sid in intel) {
-      if (intel[sid] && intel[sid].snapshot) out[sid] = intel[sid];
+      if (intel[sid] && intel[sid].snapshot) out[sid] = { ...intel[sid], intelSource: 'scanned' };
     }
   }
   const markets = econ && econ.markets;
@@ -806,10 +807,21 @@ function knownMarketSnapshots(state) {
         if (!e) continue;
         snapshot[cid] = { mid: e.lastMid, buy: e.lastBuy, sell: e.lastSell, stock: e.stock, role: e.role };
       }
-      out[sid] = { snapshot, seenAtT: (state && state.simTime) || 0 };
+      out[sid] = { snapshot, seenAtT: (state && state.simTime) || 0, intelSource: 'market' };
     }
   }
   return out;
+}
+
+export function describeTradeIntel(state, trade) {
+  if (!trade) return 'unknown intel';
+  if (trade.intelSource === 'market') return 'market feed';
+  const now = Math.max(0, Number(state && state.simTime) || 0);
+  const seen = Math.max(0, Number(trade.seenAtT != null ? trade.seenAtT : trade.age) || 0);
+  const ageS = Math.max(0, now - seen);
+  if (ageS < 120) return 'fresh intel';
+  const minutes = Math.max(1, Math.round(ageS / 60));
+  return (minutes >= 15 ? 'stale ' : '') + minutes + 'm intel';
 }
 
 /** Build the ranked "Best Trades" list: for each commodity traded HERE, find the best known
@@ -828,18 +840,24 @@ export function computeBestTrades(state, hereStationId) {
     const vol = def.volPerU > 0 ? def.volPerU : 1;
     const buyHere = entry.lastBuy;
     // scan all known stations' snapshots for the best sell price
-    let bestSell = -1, bestStation = null, bestSeen = 0;
+    let bestSell = -1, bestStation = null, bestSeen = 0, bestSource = 'unknown';
     for (const sid in knownMarkets) {
       if (sid === hereStationId) continue;
-      const snap = knownMarkets[sid].snapshot || {};
+      const known = knownMarkets[sid];
+      const snap = known.snapshot || {};
       const s = snap[cmdtyId];
       if (!s || s.sell == null) continue;
-      if (s.sell > bestSell) { bestSell = s.sell; bestStation = sid; bestSeen = knownMarkets[sid].seenAtT || 0; }
+      if (s.sell > bestSell) {
+        bestSell = s.sell;
+        bestStation = sid;
+        bestSeen = known.seenAtT || 0;
+        bestSource = known.intelSource || 'unknown';
+      }
     }
     if (!bestStation || bestSell <= buyHere) continue;
     const margin = bestSell - buyHere;
     const perVol = margin / vol;   // rank by profit per cargo-volume (what a hauler cares about)
-    out.push({
+    const trade = {
       cmdtyId,
       cmdtyName: def.name,
       buyHere,
@@ -848,8 +866,12 @@ export function computeBestTrades(state, hereStationId) {
       perVol,
       destStation: bestStation,
       age: bestSeen,
+      seenAtT: bestSeen,
+      intelSource: bestSource,
       ...tradeRunCapacity(state, def, buyHere, margin),
-    });
+    };
+    trade.intelLabel = describeTradeIntel(state, trade);
+    out.push(trade);
   }
   out.sort((a, b) => (b.loadProfit - a.loadProfit) || (b.perVol - a.perVol));
   return out.slice(0, 5); // top 5

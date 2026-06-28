@@ -1269,7 +1269,8 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-pl-run { font-family: var(--mono); font-size: .76rem; }
 .st-pl-run--ok { color: var(--energy); }
 .st-pl-run--blocked { color: var(--ink-mute); font-style: italic; }
-.st-pl-dest { color: var(--ink-mute); font-size: .78rem; }
+.st-pl-dest { color: var(--ink-mute); font-size: .78rem; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-pl-intel { color: var(--accent-2); font-size: .62rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
 .st-pl-nav, .st-pl-load { padding: 4px 9px; font-size: .72rem; border-radius: 5px; cursor: pointer; white-space: nowrap; }
 .st-pl-load { border-color: var(--good); color: var(--good); background: rgba(98,224,138,.08); }
 .st-pl-load:hover { background: rgba(98,224,138,.15); }

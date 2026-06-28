@@ -167,6 +167,8 @@ try {
   assert(report.plannerRows.length > 0, 'Seeded first-loop market intel should create a Best Trades row');
   assert(report.plannerRows.some((row) => /buy/i.test(row) && /sell/i.test(row) && /\+/.test(row)),
     'Best Trades row should show buy/sell spread and margin: ' + JSON.stringify(report.plannerRows));
+  assert(report.plannerRows.some((row) => /fresh intel|market feed|stale \d+m intel|\d+m intel/i.test(row)),
+    'Best Trades row should disclose route intel quality: ' + JSON.stringify(report.plannerRows));
   assert(report.plannerRunTexts.some((row) => /load\s+\d+/i.test(row) && /\+\d[\d,]*\s+CR/i.test(row)),
     'Best Trades row should show current-run load and expected profit: ' + JSON.stringify(report.plannerRunTexts));
   assert.equal(report.loadButtonText, 'Load & Nav', 'Best Trades row should expose a route-load action');
