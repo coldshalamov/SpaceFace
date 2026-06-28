@@ -26,6 +26,7 @@ const touchSrc = read('src/systems/touch.js');
 assert.match(gamepadSrc, /export function createGamepad/, 'gamepad.js must export createGamepad');
 assert.match(touchSrc, /export function createTouch/, 'touch.js must export createTouch');
 assert.match(gamepadSrc, /mine:\s*\['l2'\]/, 'gamepad.js must map LT/L2 to the mining action');
+assert.match(gamepadSrc, /countermeasure:\s*\['r3'\]/, 'gamepad.js must map R3/right-stick to countermeasure');
 assert.doesNotMatch(gamepadSrc, /fire:\s*\[[^\]]*accept/, 'gamepad A/Cross should be dock/activate, not a second fire trigger');
 
 // 2. input.js imports + creates both.
@@ -41,6 +42,7 @@ assert.match(inputSrc, /ctx\.touch = this\.touch/, 'input.js must expose touch o
 assert.match(inputSrc, /gp\.axes\.leftX/, 'input.js must merge gamepad left stick (gp.axes.leftX)');
 assert.match(inputSrc, /gp\.actions\.fire/, 'input.js must merge gamepad fire action');
 assert.match(inputSrc, /gp\.actions\.mine/, 'input.js must merge gamepad mine action');
+assert.match(inputSrc, /gp\.actions\.countermeasure/, 'input.js must merge gamepad countermeasure action');
 assert.match(inputSrc, /this\._m2 \|\| gpMine \|\| tpMine/, 'input.js must route gamepad mine to fireGroup 2');
 assert.match(inputSrc, /tp\.axes\.leftX/, 'input.js must merge touch left stick (tp.axes.leftX)');
 assert.match(inputSrc, /tp\.actions\.fire/, 'input.js must merge touch fire action');
@@ -77,6 +79,8 @@ assert.match(uiRootSrc, /controlPrompt\('flight', 'gamepad'\)/, 'UI root must so
 assert.match(promptSrc, /RMB mine/, 'Keyboard flight hints must describe the mining control as mining, not sampling');
 assert.match(promptSrc, /LT mine/, 'Gamepad flight hints must advertise LT/L2 mining');
 assert.match(promptSrc, /A dock/, 'Gamepad flight hints must advertise A/Cross docking');
+assert.match(promptSrc, /X countermeasure/, 'Keyboard combat/flight hints must advertise X countermeasure');
+assert.match(promptSrc, /R3 countermeasure/, 'Gamepad combat/flight hints must advertise R3 countermeasure');
 assert.match(promptSrc, /Mine button/, 'Touch flight hints must advertise the touch mining button');
 assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document gamepad mining');
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');
