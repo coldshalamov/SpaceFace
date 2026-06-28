@@ -16,6 +16,7 @@
 //   7  RT / R2         -> fire (analog)
 //   8  View / Select   -> star map
 //   9  Menu / Start    -> pause
+//  11  R3 / R-stick    -> countermeasure
 //  12  D-pad up        -> UI nav up
 //  13  D-pad down      -> UI nav down
 //  14  D-pad left      -> UI nav left
@@ -47,6 +48,7 @@ const ACTION_MAP = {
   mine: ['l2'],
   boost: ['r1'],
   brake: ['l1'],
+  countermeasure: ['r3'],
   cycleTarget: ['action'],
   map: ['view'],
   codex: ['alt'],
