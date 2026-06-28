@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pauseExitConfirmBody, pauseStatusLines } from '../src/ui/screens/pause.js';
+import { pauseExitConfirmBody, pauseMapAction, pauseStatusLines } from '../src/ui/screens/pause.js';
 
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
 const uiInputSrc = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
@@ -10,6 +10,10 @@ assert.match(pauseSrc, /FLIGHT BRIEF/, 'pause menu should render a visible fligh
 assert.match(pauseSrc, /aria-live/, 'flight brief should announce refreshed objective state politely');
 assert.match(pauseSrc, /Mission Log \(' \+ BINDINGS\.missionLog\.label \+ '\)/,
   'pause menu should label the Mission Log action with the live binding');
+assert.match(pauseSrc, /function pauseMapAction\(state\)/,
+  'pause menu should keep contextual map routing policy directly testable');
+assert.match(pauseSrc, /pauseMapAction\(ctx && ctx\.state\)[\s\S]*nav\(ctx, 'pushScreen', mapAction\.id\)/,
+  'pause menu should expose a contextual map action when a waypoint is set');
 assert.match(pauseSrc, /export function pauseStatusLines/, 'pause brief policy should stay directly testable');
 assert.match(pauseSrc, /export function pauseExitConfirmBody/,
   'pause exit confirmation policy should stay directly testable');
@@ -86,7 +90,22 @@ lines = pauseStatusLines({
 });
 assert.match(lines.objective, /^NAV SET/);
 assert.match(lines.objective, /Sell Food at Vesta Exchange/);
+assert.match(lines.next, /Star Map \(/);
 assert.match(lines.save, /^Unsaved run/);
+
+let mapAction = pauseMapAction({
+  nav: { waypoint: { label: 'Local salvage marker', pos: { x: 10, z: 20 } } },
+  world: { currentSectorId: 'sector_helios_prime' },
+});
+assert.equal(mapAction.id, 'localmap');
+assert.match(mapAction.label, /Local Map \(/);
+
+mapAction = pauseMapAction({
+  nav: { waypoint: { label: 'Off-sector trade', sectorId: 'sector_vesta' } },
+  world: { currentSectorId: 'sector_helios_prime' },
+});
+assert.equal(mapAction.id, 'starmap');
+assert.match(mapAction.label, /Star Map \(/);
 
 body = pauseExitConfirmBody({
   simTime: 10,

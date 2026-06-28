@@ -168,6 +168,17 @@ function waypointText(wp) {
   return wp.label || wp.reason || wp.stationName || prettyId(wp.stationId || wp.sectorId || wp.kind) || 'Nav marker set';
 }
 
+export function pauseMapAction(state) {
+  const wp = state && state.nav && state.nav.waypoint;
+  if (!wp) return null;
+  const currentSectorId = state && state.world && state.world.currentSectorId;
+  const sameSector = !!(wp.sectorId && currentSectorId && wp.sectorId === currentSectorId);
+  if (wp.pos || sameSector) {
+    return { id: 'localmap', label: 'Local Map (' + BINDINGS.localmap.label + ')' };
+  }
+  return { id: 'starmap', label: 'Star Map (' + BINDINGS.starmap.label + ')' };
+}
+
 function slotLabel(id) {
   if (!id) return '';
   if (id === 'quick' || id === 'autosave' || id === 'auto') return id.charAt(0).toUpperCase() + id.slice(1);
@@ -216,9 +227,10 @@ export function pauseStatusLines(state) {
   }
   const wp = state && state.nav && state.nav.waypoint;
   if (wp) {
+    const mapAction = pauseMapAction(state);
     return {
       objective: 'NAV SET - ' + waypointText(wp),
-      next: 'Next: resume and follow the current marker; open the map if the route gets muddy.',
+      next: 'Next: resume and follow the current marker; open ' + (mapAction ? mapAction.label : 'the map') + ' if the route gets muddy.',
       save: saveLine(state),
     };
   }
@@ -293,6 +305,8 @@ export const pauseScreen = {
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     });
     mk('Mission Log (' + BINDINGS.missionLog.label + ')', () => nav(ctx, 'pushScreen', 'missionLog'));
+    const mapAction = pauseMapAction(ctx && ctx.state);
+    if (mapAction) mk(mapAction.label, () => nav(ctx, 'pushScreen', mapAction.id));
     mk('Help / Controls', () => nav(ctx, 'pushScreen', 'help'));
     mk('Codex', () => nav(ctx, 'pushScreen', 'codex'));
     // Main Menu discards the current session entirely — confirm with the live run context first.
