@@ -158,11 +158,13 @@ function storyBeatIndex(story = {}) {
   return Math.max(0, Math.min(BEAT_CONTENT.length - 1, beat));
 }
 
-function commUnlocked(entry, story, beat) {
+export function commUnlocked(entry, story, beat, categoryKey) {
   const seen = story && story.seenComms || {};
-  if (entry && seen[entry.id]) return true;
-  if (entry && seen['trap_' + entry.id]) return true;
-  const b = entry && entry.beat != null ? entry.beat : 0;
+  if (!entry) return false;
+  if (seen[entry.id]) return true;
+  if (seen['trap_' + entry.id]) return true;
+  if (categoryKey === 'traps') return false;
+  const b = entry.beat != null ? entry.beat : 0;
   return b <= beat;
 }
 
@@ -184,7 +186,7 @@ export function codexProgressSummary(story = {}) {
   for (const [, key] of COMMS_CATEGORIES) {
     const entries = Array.isArray(COMMS[key]) ? COMMS[key] : [];
     commsTotal += entries.length;
-    commsUnlocked += entries.filter((entry) => commUnlocked(entry, story, beat)).length;
+    commsUnlocked += entries.filter((entry) => commUnlocked(entry, story, beat, key)).length;
   }
   const figureTotal = FIGURE_ALWAYS.length + Object.keys(FIGURE_GATED).length;
   const figureUnlocked = FIGURE_ALWAYS.length + Object.values(FIGURE_GATED).filter((unlockBeat) => beat >= unlockBeat).length;
@@ -196,7 +198,7 @@ export function codexProgressSummary(story = {}) {
   return {
     beat,
     phase,
-    note: 'Locked counts mean future entries are intentionally hidden until story progress or encounter flags reveal them.',
+    note: 'Locked counts mean future entries are intentionally hidden until story progress, encounter flags, or conditional signal triggers reveal them.',
     items: [
       { key: 'Story', value: storyUnlocked + '/' + BEAT_CONTENT.length + ' beats' },
       { key: 'Comms', value: commsUnlocked + '/' + commsTotal + ' unlocked' },
@@ -381,10 +383,10 @@ export const codexScreen = {
 
   // Comms catalog. COMMS is { ambient:[...], traps:[...], personal:[...], late:[...], story:[...] }
   // — category-keyed arrays. An entry is readable if it's in seenComms (fired once and stuck) OR
-  // it's an ambient line from a beat the player has reached (ambient cycles in normal play, so a
-  // reached-beat ambient line has effectively been seen). Author notes are included — they enrich a
-  // re-read without spoiling future beats (a future-beat note references a beat the player hasn't
-  // hit, but the entry itself is gated out, so the note never shows early).
+  // it's a non-trap line from a beat the player has reached. Conditional trap warnings unlock only
+  // when the story system persists a seen flag, so Codex browsing does not leak unseen ambushes.
+  // Author notes are included — they enrich a re-read without spoiling future beats (a future-beat
+  // note references a beat the player hasn't hit, but the entry itself is gated out, so the note never shows early).
   _renderComms(ctx) {
     const s = safeStory(ctx);
     const beat = storyBeatIndex(s);
@@ -407,11 +409,11 @@ export const codexScreen = {
       const visible = entries.filter((c) => {
         // Ambient lines from a reached beat are fair game (they cycle in normal play); beat-gated
         // personal/late/story lines unlock at their beat even if the once-flag hasn't stuck yet.
-        return commUnlocked(c, s, beat);
+        return commUnlocked(c, s, beat, key);
       });
       this._body.appendChild(el('div', 'sf-codex-section-h', label + ' (' + visible.length + '/' + entries.length + ')'));
       if (!visible.length) {
-        this._body.appendChild(el('div', 'sf-codex-empty', '— nothing encountered yet —'));
+        this._body.appendChild(el('div', 'sf-codex-empty', key === 'traps' ? '— no conditional signals encountered yet —' : '— nothing encountered yet —'));
         continue;
       }
       for (const c of visible) {
