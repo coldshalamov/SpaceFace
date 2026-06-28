@@ -5,6 +5,7 @@
 // the mission-accept button which emits ui:acceptMission.
 import { FACTION_META } from '../../data/factions.js';
 import { escapeHtml } from '../comms.js';
+import { BINDINGS } from '../bindings.js';
 import { SECTORS }      from '../../data/sectors.js';
 import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
@@ -339,6 +340,32 @@ function missionOfferAvailable(ctx, missionId) {
   for (const board of Object.values(boards)) {
     const slots = board && board.slots;
     if (Array.isArray(slots) && slots.some((offer) => offer && offer.id === missionId)) return true;
+  }
+  return false;
+}
+
+function missionLogLabel() {
+  return 'Mission Log (' + BINDINGS.missionLog.label + ')';
+}
+
+function getScreenManager(ctx) {
+  if (ctx && ctx.screenManager) return ctx.screenManager;
+  if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  if (ui && ui.screenManager) return ui.screenManager;
+  if (ui && ui.manager) return ui.manager;
+  return null;
+}
+
+function openMissionLog(ctx) {
+  const mgr = getScreenManager(ctx);
+  if (mgr && typeof mgr.pushScreen === 'function') {
+    mgr.pushScreen('missionLog');
+    return true;
+  }
+  if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('ui:pushScreen', { id: 'missionLog' });
+    return true;
   }
   return false;
 }
@@ -783,6 +810,13 @@ export function createBarPanel(ctx) {
 
   /* ── click handler (dialog choices + mission accept) ──────────── */
   list.addEventListener('click', (ev) => {
+    const logBtn = ev.target.closest('[data-open-mission-log]');
+    if (logBtn) {
+      openMissionLog(ctx);
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      return;
+    }
+
     // Mission accept button
     const acceptBtn = ev.target.closest('[data-accept-mission]');
     if (acceptBtn) {
@@ -795,12 +829,15 @@ export function createBarPanel(ctx) {
       const offerEl = acceptBtn.closest('.st-bar-offer');
       if (accepted) {
         if (replyEl) {
-          replyEl.textContent = 'Accepted + tracked. Check the Mission Log for the next step.';
+          replyEl.textContent = 'Accepted + tracked. ' + missionLogLabel() + ' now carries route, timer, and progress. Undock when Departure Check is green.';
           replyEl.classList.add('show');
         }
-        acceptBtn.disabled = true;
-        acceptBtn.textContent = 'Accepted + Tracked';
-        acceptBtn.title = 'Mission accepted and tracked in the Mission Log.';
+        acceptBtn.disabled = false;
+        acceptBtn.classList.add('st-bar-log-btn');
+        acceptBtn.removeAttribute('data-accept-mission');
+        acceptBtn.setAttribute('data-open-mission-log', missionId);
+        acceptBtn.textContent = 'OPEN ' + missionLogLabel().toUpperCase();
+        acceptBtn.title = 'Open ' + missionLogLabel() + ' for the tracked route, timer, and progress.';
         acceptBtn.setAttribute('aria-label', acceptBtn.title);
         if (offerEl) offerEl.classList.add('accepted');
       } else {

@@ -11,9 +11,11 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { BINDINGS } from '../src/ui/bindings.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
+const MISSION_LOG_LABEL = `Mission Log (${BINDINGS.missionLog.label})`;
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -155,9 +157,109 @@ try {
     'bar offer should show visible collateral blocker: ' + JSON.stringify(report));
   assert.equal(report.buttonText, 'ACCEPT + TRACK', 'bar button should match board tracking language');
   assert.equal(report.buttonDisabled, true, 'bar button should disable blocked offers');
+
+  await page.evaluate(() => {
+    const sf = window.SF;
+    sf.state.player.credits = 5000;
+    sf.state.missions.boards.station_coalition = {
+      refreshEpoch: 0,
+      slots: [{
+        id: 'bar_probe_ready_bounty',
+        type: 'bounty_hunt',
+        title: 'Ready Bar Bounty',
+        factionId: 'faction_scn',
+        reward_cr: 1500,
+        collateral_cr: 0,
+        riskTier: 0,
+        destSectorId: 'sector_ceres',
+        distance: 800,
+        params: { targetName: 'Ready Probe Target' },
+        time_limit_s: 900,
+      }],
+    };
+    sf.bus.emit('mission:updated', { missionId: null });
+  });
+  await bountyButton.click();
+  await page.waitForFunction(() => {
+    const button = document.querySelector('.st-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
+    return !!(button && !button.disabled);
+  }, null, { timeout: 5000 });
+  await page.evaluate(() => {
+    const button = document.querySelector('.st-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
+    if (!button) throw new Error('Ready Bar bounty accept button not found');
+    button.click();
+  });
+  await page.waitForFunction(() => {
+    const button = document.querySelector('.st-bar-offer [data-open-mission-log]');
+    return !!(button && !button.disabled);
+  }, null, { timeout: 5000 });
+
+  const acceptedReport = await page.evaluate((missionLogLabel) => {
+    const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const state = window.SF.state;
+    const trackedId = state.ui && state.ui.trackedMissionId;
+    const tracked = state.missions.active.find((m) => m && m.id === trackedId);
+    const offer = document.querySelector('.st-bar-offer');
+    const card = offer && offer.closest('.st-bar-card');
+    const button = offer && offer.querySelector('[data-open-mission-log]');
+    return {
+      top: window.SF.ctx.screenManager.top(),
+      activeTab: state.ui.activeStationTab,
+      trackedId,
+      trackedTitle: tracked && tracked.title,
+      trackedType: tracked && tracked.type,
+      reply: normalize(card && card.querySelector('.st-bar-reply') && card.querySelector('.st-bar-reply').textContent),
+      buttonText: normalize(button && button.textContent),
+      buttonTitle: button && button.title || '',
+      buttonDisabled: button ? button.disabled : null,
+      offerAccepted: !!(offer && offer.classList.contains('accepted')),
+      hasAcceptButton: !!(offer && offer.querySelector('[data-accept-mission]')),
+      missionLogLabel,
+    };
+  }, MISSION_LOG_LABEL);
+  assert.equal(acceptedReport.top, 'station', 'Bar should remain in the station after accepting before handoff: ' + JSON.stringify(acceptedReport));
+  assert.equal(acceptedReport.activeTab, 'bar', 'Bar tab should stay active before Mission Log handoff: ' + JSON.stringify(acceptedReport));
+  assert.equal(acceptedReport.trackedTitle, 'Ready Bar Bounty', 'ready Bar offer should become the tracked mission: ' + JSON.stringify(acceptedReport));
+  assert.equal(acceptedReport.offerAccepted, true, 'accepted Bar offer should mark the offer wrapper accepted: ' + JSON.stringify(acceptedReport));
+  assert.equal(acceptedReport.hasAcceptButton, false, 'accepted Bar offer should replace the accept intent with a handoff intent: ' + JSON.stringify(acceptedReport));
+  assert(acceptedReport.reply.includes(MISSION_LOG_LABEL),
+    'accepted Bar reply should name the bound Mission Log shortcut: ' + JSON.stringify(acceptedReport));
+  assert.match(acceptedReport.reply, /Departure Check is green/i,
+    'accepted Bar reply should route players through Departure Check before undock: ' + JSON.stringify(acceptedReport));
+  assert.match(acceptedReport.buttonText, /OPEN MISSION LOG/i,
+    'accepted Bar button should become an Open Mission Log action: ' + JSON.stringify(acceptedReport));
+  assert(acceptedReport.buttonText.includes(BINDINGS.missionLog.label),
+    'accepted Bar button should include the bound Mission Log key: ' + JSON.stringify(acceptedReport));
+  assert.equal(acceptedReport.buttonDisabled, false,
+    'accepted Bar Mission Log handoff button should stay enabled: ' + JSON.stringify(acceptedReport));
+
+  await page.evaluate(() => {
+    const button = document.querySelector('.st-bar-offer [data-open-mission-log]');
+    if (!button) throw new Error('Open Mission Log button not found');
+    button.click();
+  });
+  await waitForVisible(page, '[data-screen="missionLog"]', 10000, 'Mission Log opened from Bar handoff');
+  const logReport = await page.evaluate(() => {
+    const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const state = window.SF.state;
+    const trackedId = state.ui && state.ui.trackedMissionId;
+    const tracked = state.missions.active.find((m) => m && m.id === trackedId);
+    const screen = document.querySelector('[data-screen="missionLog"]');
+    return {
+      top: window.SF.ctx.screenManager.top(),
+      trackedTitle: tracked && tracked.title,
+      text: normalize(screen && screen.textContent),
+      trackedCard: normalize(screen && screen.querySelector('.sf-mlog-card.tracked') && screen.querySelector('.sf-mlog-card.tracked').textContent),
+    };
+  });
+  assert.equal(logReport.top, 'missionLog', 'Bar handoff button should push Mission Log: ' + JSON.stringify(logReport));
+  assert(logReport.text.includes('Ready Bar Bounty'),
+    'Mission Log should show the Bar-accepted mission: ' + JSON.stringify(logReport));
+  assert(logReport.trackedCard.includes('TRACKING'),
+    'Mission Log should show the Bar-accepted mission as tracked: ' + JSON.stringify(logReport));
   assert.deepEqual(issues.errorIssues(), [], 'bar live smoke should not record page errors');
 
-  console.log('Bar mission readiness live OK: Bar offer chips, blocker, and Accept + Track button render on the default route.');
+  console.log('Bar mission readiness live OK: Bar offer chips, blocker, Accept + Track, and Mission Log handoff render on the default route.');
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
