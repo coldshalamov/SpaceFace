@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { importConfirmBody, slotConfirmSummary } from '../src/ui/screens/saveLoad.js';
+import { importConfirmBody, shouldOfferNewGameShortcut, slotConfirmSummary } from '../src/ui/screens/saveLoad.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -57,9 +57,20 @@ assert.match(importSummary, /spaceface_quick_2026-06-28\.json/, 'import confirma
 assert.match(importSummary, /validate and load that save immediately/, 'import confirmation should disclose the immediate load');
 assert.match(importSummary, /Unsaved progress is lost/, 'import confirmation should warn about replacing unsaved progress');
 
+assert.equal(shouldOfferNewGameShortcut({}, false), true,
+  'title/load flow should offer New Game on empty slots when no live run can be saved');
+assert.equal(shouldOfferNewGameShortcut(null, false), true,
+  'missing slot metadata should count as empty for title New Game shortcut');
+assert.equal(shouldOfferNewGameShortcut({ savedAt: '2026-06-27T12:00:00.000Z' }, false), false,
+  'occupied slots should never show the New Game shortcut');
+assert.equal(shouldOfferNewGameShortcut({}, true), false,
+  'live Save/Load surfaces must not offer New Game on empty slots while current progress can be saved');
+assert.match(saveLoad, /if \(shouldOfferNewGameShortcut\(meta, saveAllowed\)\) \{/,
+  'New Game shortcut must be gated by live-run save availability, not just empty-slot state');
+
 assert.match(pkg, /"check:save-load-slot-trust": "node scripts\/check-save-load-slot-trust\.mjs"/,
   'package.json must expose the focused Save/Load slot-trust check');
 assert.match(pkg, /check:title-continue-runtime && npm run check:save-load-slot-trust/,
   'Full check must include Save/Load slot trust after title Continue trust');
 
-console.log('Save/Load slot trust OK - destructive confirmations repeat concrete slot context before replacing, overwriting, or importing a save.');
+console.log('Save/Load slot trust OK - destructive confirmations repeat concrete slot context, and live Save/Load empty slots do not route to New Game.');
