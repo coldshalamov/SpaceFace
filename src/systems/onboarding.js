@@ -148,7 +148,7 @@ export const onboarding = {
     // the tutorial's dock step) so returning players who skipped the tutorial still get oriented.
     bus.on('dock:docked', () => {
       this._showHint('firstHub',
-        'Station hub: Market (trade), Missions (contracts), Shipyard (buy ships), Outfitting (modules), Manufacture (craft), Services (repair/refuel), Factions, Bar. Press the tab labels at top.');
+        'Station hub: use the left rail for Market, Missions, Services, Shipyard, Outfitting, Manufacture, Factions, and Bar. First loop: sell the sample, accept one low-risk job, then undock when Departure Check looks safe.');
     });
 
     // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
