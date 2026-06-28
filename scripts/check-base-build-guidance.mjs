@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { BODY_MODULES } from '../src/data/claimableBodies.js';
-import { describeBaseBuildAction } from '../src/ui/screens/base.js';
+import { describeBaseBuildAction, describeBasePlan } from '../src/ui/screens/base.js';
 
 const source = readFileSync(new URL('../src/ui/screens/base.js', import.meta.url), 'utf8');
 const moduleById = (id) => BODY_MODULES.find((entry) => entry.id === id);
@@ -53,10 +53,60 @@ assert.equal(guidance.state, 'built');
 assert.equal(guidance.disabled, true);
 assert.equal(guidance.label, 'Built');
 
+let plan = describeBasePlan({
+  name: 'Arden Moon', modules: [], slots: 3,
+}, {
+  credits: 100000,
+  researchedNodes: ['tech_outpost_charter'],
+});
+assert.equal(plan.state, 'ready');
+assert.equal(plan.moduleId, 'mod_depot');
+assert.match(plan.title, /Cargo Depot/);
+assert.match(plan.body, /drone dropoff/i);
+assert.match(plan.body, /Ready now: Build Cargo Depot/i);
+assert.equal(plan.actionLabel, 'Build');
+
+plan = describeBasePlan({
+  name: 'Arden Moon', modules: [], slots: 3,
+}, {
+  credits: 1000,
+  researchedNodes: [],
+});
+assert.equal(plan.state, 'locked');
+assert.equal(plan.moduleId, 'mod_depot');
+assert.equal(plan.actionLabel, 'Research Outpost Charter');
+assert.match(plan.body, /Next blocker: Cargo Depot requires Outpost Charter/i);
+
+plan = describeBasePlan({
+  name: 'Arden Moon', modules: ['mod_depot'], slots: 3,
+}, {
+  credits: 100000,
+  researchedNodes: ['tech_outpost_charter'],
+});
+assert.equal(plan.state, 'ready');
+assert.equal(plan.moduleId, 'mod_defense');
+assert.match(plan.title, /Defense Battery/);
+assert.match(plan.body, /deterrent/i);
+
+plan = describeBasePlan({
+  name: 'Packed Rock', modules: ['mod_depot', 'mod_defense'], slots: 2,
+}, {
+  credits: 100000,
+  researchedNodes: ['tech_outpost_charter'],
+});
+assert.equal(plan.state, 'complete');
+assert.equal(plan.moduleId, null);
+assert.match(plan.title, /Base slots full/);
+assert.match(plan.body, /2\/2 slots filled/);
+
 assert.match(source, /export function describeBaseBuildAction/);
+assert.match(source, /export function describeBasePlan/);
+assert.match(source, /BASE_PLAN_STEPS/);
+assert.match(source, /base-plan/);
+assert.match(source, /describeBasePlan\(body, state\.player\)/);
 assert.match(source, /describeBaseBuildAction\(mod, player, body\)/);
 assert.match(source, /btn\.setAttribute\('aria-label', buildAction\.title\)/);
 assert.doesNotMatch(source, /Too expensive/);
 assert.doesNotMatch(source, /textContent = !techOk \? 'Locked'/);
 
-console.log('Base build guidance OK - module buttons explain tech, credit, and slot blockers.');
+console.log('Base build guidance OK - module buttons and the base plan explain next build blockers.');
