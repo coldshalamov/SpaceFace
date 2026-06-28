@@ -47,8 +47,15 @@ const STATION_SECTOR = new Map();
 const ALL_STATIONS = [];
 for (const sec of SECTORS) {
   for (const st of sec.stations || []) {
-    STATION_SECTOR.set(st.id, { sectorId: sec.id, factionId: st.factionId, type: st.type, position: sec.position });
-    ALL_STATIONS.push({ id: st.id, type: st.type, sectorId: sec.id, position: sec.position });
+    STATION_SECTOR.set(st.id, {
+      name: st.name,
+      sectorId: sec.id,
+      sectorName: sec.name,
+      factionId: st.factionId,
+      type: st.type,
+      position: sec.position,
+    });
+    ALL_STATIONS.push({ id: st.id, name: st.name, type: st.type, sectorId: sec.id, sectorName: sec.name, position: sec.position });
   }
 }
 
@@ -1498,8 +1505,13 @@ function kindOf(list, a) {
   return 'asset';
 }
 
+function titleCaseWords(value) {
+  return String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function prettySector(id) {
-  return String(id || '').replace(/^sector_/, '').replace(/_/g, ' ');
+  const sector = SECTOR_BY_ID.get(id);
+  return (sector && sector.name) || titleCaseWords(String(id || '').replace(/^sector_/, ''));
 }
 
 function routeLabel(route) {
@@ -1508,5 +1520,6 @@ function routeLabel(route) {
 }
 
 function prettyStation(id) {
-  return String(id || '?').replace(/^station_/, '').replace(/_/g, ' ');
+  const station = STATION_SECTOR.get(id);
+  return (station && station.name) || titleCaseWords(String(id || '?').replace(/^station_/, ''));
 }
