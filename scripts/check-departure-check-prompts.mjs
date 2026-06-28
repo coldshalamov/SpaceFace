@@ -17,7 +17,7 @@ for (const [modality, label] of firstStationPrompts) {
 
 assert.match(
   controlPrompt('firstStation', 'kbm'),
-  /Departure Check shows what needs attention before you use .* or Escape to undock/,
+  /Departure Check shows what needs attention before .*\/Escape undocks/,
   'keyboard/mouse prompt should point to the readiness gate before E/Escape undock',
 );
 assert.match(

@@ -11,7 +11,7 @@ const KBM_PROMPTS = Object.freeze({
   tutorialDock: `Follow the cyan station arrow. Press ${BINDINGS.dock.label} at the dock prompt. Bring the discrepancy back before someone edits it out.`,
   firstFlight: `W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/Space fires the Pulse Laser S, RMB mines marked rocks, Shift boosts, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} opens the star map, ${BINDINGS.missionLog.label} opens the Mission Log, ${BINDINGS.dock.label} docks.`,
   firstCombat: 'Hostile detected! LMB or Space to fire. Hold aim on a target to lock on. F toggles auto-fire.',
-  firstStation: `Stations offer repairs, trading, upgrades, and mission boards. Press ${BINDINGS.dock.label} to dock; inside the hub, arrow keys change tabs, Enter/Space acts, and Departure Check shows what needs attention before you use ${BINDINGS.dock.label} or Escape to undock.`,
+  firstStation: `Stations offer repairs, trading, upgrades, and mission boards. Press ${BINDINGS.dock.label} to dock; inside the hub, arrow keys change tabs, Enter/Space acts, and Departure Check shows what needs attention before ${BINDINGS.dock.label}/Escape undocks.`,
   firstGate: `Jump gates connect star systems. Open the Star Map (${BINDINGS.starmap.label}) to plot a jump route.`,
 });
 
