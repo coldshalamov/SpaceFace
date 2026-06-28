@@ -39,8 +39,10 @@ assert.match(menu, /function saveSummaryText\(slot, meta\)/, 'mainMenu must form
 assert.match(menu, /function objectiveSummaryText\(meta\)/,
   'mainMenu must accept nav, mission, or story resume metadata from the save index');
 assert.match(menu, /Continue: /, 'mainMenu summary must explicitly label what Continue will load');
-assert.match(menu, /ctx\.bus\.emit\('game:load',\s*\{\s*slot:\s*'latest'\s*\}\)/,
-  'Continue should still use the canonical save-system latest-slot load path');
+assert.match(menu, /const latest = latestSave\(readSaveIndex\(ctx\)\);[\s\S]*ctx\.bus\.emit\('game:load',\s*\{\s*slot:\s*latest\.slot\s*\}\)/,
+  'Continue should load the exact latest slot displayed in the title summary');
+assert.doesNotMatch(menu, /slot:\s*'latest'/,
+  'Continue must not ask a second latest resolver to reinterpret the player-visible summary');
 assert.doesNotMatch(menu, /boots straight into flight/,
   'mainMenu comments must not claim a divergent/stale boot path');
 
@@ -193,7 +195,7 @@ assert.match(uiRoot, /Start or load a game before saving/, 'uiRoot should explai
 assert.match(uiRoot, /No save found for /, 'uiRoot should explain load misses');
 assert.doesNotMatch(saveLoad, /Saving to /, 'saveLoad should not duplicate the centralized save:started toast');
 
-console.log('Save/resume confidence OK - title Continue shows latest-save context and uses the canonical save index.');
+console.log('Save/resume confidence OK - title Continue shows latest-save context and loads the displayed slot.');
 
 function makeEnvelope({ slot, savedAt, playtimeS, credits, shipName, objective }) {
   return {
