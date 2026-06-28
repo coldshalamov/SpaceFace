@@ -224,6 +224,12 @@ function canSave(ctx) {
   return !!(state && state.playerId && state.entities && state.entities.get(state.playerId));
 }
 
+export function shouldOfferNewGameShortcut(meta, saveAllowed) {
+  // Empty-slot New Game is a title/no-active-run convenience. During a live run, Save/Load is a
+  // preservation surface; do not offer a shortcut that routes toward replacing current progress.
+  return !isOccupied(meta) && !saveAllowed;
+}
+
 let refs = null;
 
 export const saveLoadScreen = {
@@ -329,10 +335,9 @@ export const saveLoadScreen = {
 
       row.appendChild(bSave);
       row.appendChild(bLoad);
-      // Empty slots offer a direct "New Game" so the player isn't forced back to the main menu to
-      // start — addressing the confusing "only a Back button" flow. Primary CTA styling so it stands
-      // out as the constructive action (the Save/Load beside it are secondary .sf-tab chips).
-      if (!occupied) {
+      // Empty slots offer a direct "New Game" only from the title/no-active-run flow, so the player
+      // is not forced back to the main menu. Live Save/Load stays a preservation surface.
+      if (shouldOfferNewGameShortcut(meta, saveAllowed)) {
         const bNew = el('button', 'sf-btn sf-btn--primary', 'New Game');
         bNew.addEventListener('click', () => { refs.selected = id; this._render(ctx); nav(ctx, 'pushScreen', 'newGame'); });
         row.appendChild(bNew);
