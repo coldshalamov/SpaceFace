@@ -123,6 +123,38 @@ function checkFailedQuoteFallsBackToRolePrice() {
   assert(sell < 40, 'producer fallback sell price should stay below food base price');
 }
 
+function checkLiveActiveStationRecordUsesStationIdForRolePrice() {
+  const { ctx, state } = makeHarness('sector_helios_prime');
+  state.world.activeSector = {
+    stations: [{ id: 99, stationId: 'station_mobile_refinery', pos: { x: -180, z: 260 } }],
+  };
+  state.world.sectors = {};
+  state.entityList = [{
+    id: 99,
+    type: 'station',
+    alive: true,
+    pos: { x: -180, z: 260 },
+    data: {
+      stationId: 'station_mobile_refinery',
+      name: 'Mobile Refinery',
+      stationTypeId: 'refinery',
+      services: ['repair', 'refuel'],
+    },
+  }];
+  ctx.registry = {
+    get(name) {
+      if (name !== 'economy') return null;
+      return { quote: () => ({ ok: false, reason: 'offline', unitAvg: 0, total: 0 }) };
+    },
+  };
+
+  const buy = unitPrice(ctx, 'station_mobile_refinery', 'cmdty_refined_metals', 'buy');
+
+  assert(buy > 0, 'live active-sector station fallback should produce a usable price');
+  assert(buy < 85,
+    'live active-sector station records must resolve by stationId so refinery producer pricing beats generic fallback');
+}
+
 function checkLiveQuoteStillWins() {
   const { ctx } = makeHarness('sector_helios_prime');
   ctx.registry = {
@@ -208,6 +240,7 @@ checkOffSectorBestTradeSetsCourse();
 checkLocalBestTradeUsesLivePositionOnly();
 checkUncatalogedLocalStationUsesCurrentSector();
 checkFailedQuoteFallsBackToRolePrice();
+checkLiveActiveStationRecordUsesStationIdForRolePrice();
 checkLiveQuoteStillWins();
 checkBestTradeShowsCurrentLoadAndProfit();
 checkBestTradeExplainsBlockedLoad();

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
+const servicesSource = readFileSync(new URL('../src/ui/screens/services.js', import.meta.url), 'utf8');
 
 assert.match(source, /function departureReadinessChips\(state\)/,
   'station hub must compute departure readiness chips from live state');
@@ -44,6 +45,20 @@ assert.match(source, /st-departure-chip--warn/, 'departure readiness must style 
 assert.match(source, /st-departure-chip--bad/, 'departure readiness must style bad chips');
 assert.match(source, /button\.st-departure-chip:focus-visible/,
   'actionable departure chips must keep keyboard focus visible');
+assert.match(source, /function stationRecordId\(stn\)/,
+  'station hub must resolve live active-sector station records through stationId, not only entity id');
+assert.match(source, /stationRecordId\(x\) === sid/,
+  'station hub active-sector lookup must match authored station ids carried on live records');
+assert.match(source, /Object\.values\(sectors\)/,
+  'station hub must prefer the runtime sector catalog before falling back to static data');
+assert.match(source, /stationDefFrom\(catalogRecord \|\| activeRecord, liveStationEntity\(state, sid\), sid\)/,
+  'station hub must merge live entity station data when catalog records are thin');
+assert.match(servicesSource, /function stationRecordId\(station\)/,
+  'services panel must share stationId-aware live station resolution');
+assert.match(servicesSource, /stationRecordId\(x\) === sid/,
+  'services panel active-sector lookup must match stationId records');
+assert.match(servicesSource, /liveStationData\(s, sid\)/,
+  'services panel must fall back to live station services when runtime catalogs are thin');
 
 for (const eventName of [
   'cargo:changed',

@@ -71,6 +71,33 @@ function stationServiceSummary(stn) {
   return 'Available here: ' + services.map((s) => String(s).replace(/_/g, ' ')).join(', ') + '.';
 }
 
+function stationRecordId(stn) {
+  if (!stn) return null;
+  if (typeof stn.stationId === 'string' && stn.stationId) return stn.stationId;
+  return (typeof stn.id === 'string' && stn.id) ? stn.id : null;
+}
+
+function liveStationEntity(state, stationId) {
+  for (const e of ((state && state.entityList) || [])) {
+    if (e && e.type === 'station' && e.data && e.data.stationId === stationId) return e;
+  }
+  return null;
+}
+
+function stationDefFrom(record, entity, stationId) {
+  if (!record && !entity) return null;
+  const data = (entity && entity.data) || {};
+  return {
+    ...(record || {}),
+    id: stationId || stationRecordId(record) || data.stationId || null,
+    name: (record && record.name) || data.name || data.stationName || data.stationId || stationId || 'Station',
+    type: (record && (record.type || record.stationTypeId)) || data.stationTypeId || data.type || '',
+    size: (record && record.size) || data.size || 'M',
+    services: (record && record.services) || data.services || [],
+    factionId: (record && record.factionId) || data.factionId || (entity && entity.factionId) || null,
+  };
+}
+
 function tabPurpose(tabId) {
   const tab = TABS.find((t) => t.id === tabId);
   return (tab && tab.help) || 'Pick a station action, then undock with a clearer next objective.';
@@ -775,15 +802,22 @@ export const stationHub = {
   _stationDef() {
     const state = this._ctx.state;
     const sid = this._stationId;
+    if (!sid) return null;
     const sect = state.world && state.world.activeSector;
-    let stn = sect && (sect.stations || []).find((x) => x.id === sid);
-    if (!stn) {
+    const activeRecord = sect && (sect.stations || []).find((x) => stationRecordId(x) === sid);
+    let catalogRecord = null;
+    const sectors = state.world && state.world.sectors;
+    for (const s of (sectors ? Object.values(sectors) : [])) {
+      const f = (s.stations || []).find((x) => stationRecordId(x) === sid);
+      if (f) { catalogRecord = f; break; }
+    }
+    if (!catalogRecord) {
       for (const s of SECTORS) {
-        const f = (s.stations || []).find((x) => x.id === sid);
-        if (f) { stn = f; break; }
+        const f = (s.stations || []).find((x) => stationRecordId(x) === sid);
+        if (f) { catalogRecord = f; break; }
       }
     }
-    return stn || null;
+    return stationDefFrom(catalogRecord || activeRecord, liveStationEntity(state, sid), sid);
   },
 
   _refreshTopbar() {

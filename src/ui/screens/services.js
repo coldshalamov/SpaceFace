@@ -49,6 +49,19 @@ function serviceRow(type) {
   return SERVICE_ROWS.find((row) => row.type === type) || null;
 }
 
+function stationRecordId(station) {
+  if (!station) return null;
+  if (typeof station.stationId === 'string' && station.stationId) return station.stationId;
+  return (typeof station.id === 'string' && station.id) ? station.id : null;
+}
+
+function liveStationData(state, stationId) {
+  for (const e of ((state && state.entityList) || [])) {
+    if (e && e.type === 'station' && e.data && e.data.stationId === stationId) return e.data;
+  }
+  return null;
+}
+
 function isServiceOffered(type, stationServices) {
   const row = serviceRow(type);
   if (!row) return false;
@@ -345,15 +358,16 @@ export function createServicesPanel(ctx) {
     const sid = panel.stationId;
     // find the station def in the active sector or the sectors map.
     const sect = s.world && s.world.activeSector;
-    let stn = sect && (sect.stations || []).find((x) => x.id === sid);
+    let stn = sect && (sect.stations || []).find((x) => stationRecordId(x) === sid);
     if (!stn) {
       const sectors = s.world && s.world.sectors;
       for (const k in (sectors || {})) {
-        const found = (sectors[k].stations || []).find((x) => x.id === sid);
+        const found = (sectors[k].stations || []).find((x) => stationRecordId(x) === sid);
         if (found) { stn = found; break; }
       }
     }
-    return (stn && stn.services) || null;
+    const data = liveStationData(s, sid);
+    return (stn && stn.services) || (data && data.services) || null;
   }
 
   function refresh() {

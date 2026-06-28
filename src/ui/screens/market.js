@@ -28,6 +28,33 @@ function marketEntry(state, stationId, cmdtyId) {
   return (m && m[cmdtyId]) || null;
 }
 
+function stationRecordId(station) {
+  if (!station) return null;
+  if (typeof station.stationId === 'string' && station.stationId) return station.stationId;
+  return (typeof station.id === 'string' && station.id) ? station.id : null;
+}
+
+function liveStationEntity(state, stationId) {
+  for (const e of ((state && state.entityList) || [])) {
+    if (e && e.type === 'station' && e.data && e.data.stationId === stationId) return e;
+  }
+  return null;
+}
+
+function stationInfoFrom(record, entity, stationId) {
+  if (!record && !entity) return null;
+  const data = (entity && entity.data) || {};
+  return {
+    ...(record || {}),
+    id: stationId || stationRecordId(record) || data.stationId || null,
+    name: (record && record.name) || data.name || data.stationName || data.stationId || stationId || 'Station',
+    type: (record && (record.type || record.stationTypeId)) || data.stationTypeId || data.type || '',
+    size: (record && record.size) || data.size || 'M',
+    services: (record && record.services) || data.services || [],
+    factionId: (record && record.factionId) || data.factionId || (entity && entity.factionId) || null,
+  };
+}
+
 function usableQuoteUnit(q) {
   if (q == null || (typeof q === 'object' && q.ok === false)) return null;
   const v = (typeof q === 'number') ? q : (q.unit != null ? q.unit : (q.unitAvg != null ? q.unitAvg : (q.total != null ? q.total : null)));
@@ -100,14 +127,15 @@ function stationTrades(state, stationId, cmdtyId) {
 /** Look up a station profile from the active sector or runtime sector catalog. */
 function stationInfoFor(state, stationId) {
   const sect = state.world && state.world.activeSector;
-  let stn = sect && (sect.stations || []).find((x) => x.id === stationId);
+  const live = liveStationEntity(state, stationId);
+  let stn = sect && (sect.stations || []).find((x) => stationRecordId(x) === stationId);
   if (!stn) {
     for (const s of (state.world && state.world.sectors ? Object.values(state.world.sectors) : [])) {
-      stn = (s.stations || []).find((x) => x.id === stationId);
+      stn = (s.stations || []).find((x) => stationRecordId(x) === stationId);
       if (stn) break;
     }
   }
-  return stn || null;
+  return stationInfoFrom(stn, live, stationId);
 }
 
 /** Look up a station's type (trade_hub / refinery / mining / fab / military / blackmarket / research)
@@ -742,21 +770,18 @@ function maxBuyable(ctx, stationId, cmdtyId) {
 
 /** Resolve a station's display name from its entity or the sectors data catalog. */
 function stationName(state, stationId) {
-  for (const e of state.entityList) {
-    if (e.type === 'station' && e.data && e.data.stationId === stationId) {
-      return e.data.name || e.data.stationName || e.data.stationId || 'Station';
-    }
-  }
-  for (const s of (state.world && state.world.sectors ? Object.values(state.world.sectors) : [])) {
-    const stn = (s.stations || []).find((x) => x.id === stationId);
-    if (stn) return stn.name || stationId || 'Station';
-  }
-  return stationId || 'Station';
+  const info = stationInfoFor(state, stationId);
+  return (info && info.name) || stationId || 'Station';
 }
 
 function stationSectorInfo(state, stationId) {
-  for (const s of (state.world && state.world.sectors ? Object.values(state.world.sectors) : [])) {
-    const stn = (s.stations || []).find((x) => x.id === stationId);
+  const world = (state && state.world) || {};
+  const currentSectorId = world.currentSectorId;
+  const currentSector = currentSectorId && world.sectors && world.sectors[currentSectorId];
+  const active = world.activeSector && (world.activeSector.stations || []).find((x) => stationRecordId(x) === stationId);
+  if (active && currentSectorId) return { id: currentSectorId, name: (currentSector && (currentSector.name || currentSector.id)) || currentSectorId };
+  for (const s of (world.sectors ? Object.values(world.sectors) : [])) {
+    const stn = (s.stations || []).find((x) => stationRecordId(x) === stationId);
     if (stn) return { id: s.id || null, name: s.name || s.id || null };
   }
   return { id: null, name: null };
@@ -769,7 +794,7 @@ export function applyTradeNavigation(ctx, stationId, cmdtyId) {
   // resolve the destination's world position: prefer a live station entity in this sector
   let pos = null;
   let liveStation = null;
-  for (const e of state.entityList) {
+  for (const e of (state.entityList || [])) {
     if (e.type === 'station' && e.data && e.data.stationId === stationId) {
       liveStation = e;
       pos = { x: e.pos.x, z: e.pos.z };
