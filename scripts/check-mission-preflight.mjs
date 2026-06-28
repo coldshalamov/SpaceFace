@@ -11,6 +11,7 @@ import {
   missionConsequenceSummary,
   missionPreflight,
   missionRouteScope,
+  missionShipReadiness,
   missionTimePacing,
 } from '../src/ui/missionPreflight.js';
 import { missionBoardReadiness } from '../src/ui/screens/stationHub.js';
@@ -27,6 +28,8 @@ assert.match(missionPreflightSrc, /export function missionRouteScope/,
   'shared mission preflight helper must expose route-scope policy for direct tests');
 assert.match(missionPreflightSrc, /export function missionTimePacing/,
   'shared mission preflight helper must expose timer-pacing policy for direct tests');
+assert.match(missionPreflightSrc, /export function missionShipReadiness/,
+  'shared mission preflight helper must expose ship-readiness policy for direct tests');
 assert.match(stationHubSrc, /missionConsequenceSummary\(m\)/,
   'mission cards must use the shared consequence helper');
 assert.match(missionPreflightSrc, /export function missionConsequenceSummary/,
@@ -41,6 +44,10 @@ assert.match(missionPreflightSrc, /TIMER_CRITICAL_S/,
   'mission preflight must distinguish critical timers before accept');
 assert.match(missionPreflightSrc, /deadline_s/,
   'mission preflight must support active absolute mission deadlines as well as board timers');
+assert.match(missionPreflightSrc, /DANGEROUS_MISSION_TYPES/,
+  'mission preflight must distinguish risky/combat contracts for ship-readiness warnings');
+assert.match(missionPreflightSrc, /Hull is worn/,
+  'mission preflight must explain damaged-hull risk before recommending dangerous work');
 assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
   'mission preflight must flag cargo capacity blockers');
 assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
@@ -105,6 +112,12 @@ function makeBus() {
     on() {},
     emit(type, payload) { events.push({ type, payload }); },
   };
+}
+
+function stageShip(state, { hull = 100, hullMax = 100, fuel = 100, fuelMax = 100 } = {}) {
+  state.entities.set(state.playerId, { id: state.playerId, type: 'ship', hull, hullMax });
+  state.fuel = { current: fuel, max: fuelMax };
+  return state;
 }
 
 const lowCapState = makeState(1);
@@ -192,6 +205,34 @@ const tightLowFreePreflight = missionPreflight(tightOffer, tightLowFreeState);
 assert.match(tightLowFreePreflight.warning || '', /clear space/,
   'cargo-space warnings should remain first when a tight timer also applies');
 
+const damagedBountyState = stageShip(makeState(8), { hull: 60, fuel: 100 });
+const damagedBountyOffer = makeOffer({
+  type: 'bounty_hunt',
+  riskTier: 2,
+  params: {},
+  collateral_cr: 0,
+  title: 'Damaged Bounty Check',
+});
+const damagedReadiness = missionShipReadiness(damagedBountyOffer, damagedBountyState);
+assert.ok(damagedReadiness.chips.some((chip) => chip.kind === 'warn' && chip.text === 'Hull 60%'),
+  'ship readiness should flag a worn hull for risky combat work');
+assert.match(damagedReadiness.warning || '', /repair before accepting combat/,
+  'ship readiness should explain the damaged-hull action before risky work');
+const damagedBountyPreflight = missionPreflight(damagedBountyOffer, damagedBountyState);
+assert.equal(missionBoardReadiness(damagedBountyPreflight).state, 'caution',
+  'risky offers with a worn hull should be CHECK instead of READY');
+assert.ok(damagedBountyPreflight.chips.some((chip) => chip.text === 'Hull 60%'),
+  'shared mission preflight should render the hull readiness chip on the mission card');
+
+const lowFuelRouteState = stageShip(makeState(8), { hull: 100, fuel: 20 });
+const lowFuelRoutePreflight = missionPreflight(makeOffer({ params: {}, collateral_cr: 0 }), lowFuelRouteState);
+assert.equal(missionBoardReadiness(lowFuelRoutePreflight).state, 'caution',
+  'off-sector routed offers with critical fuel should be CHECK instead of READY');
+assert.ok(lowFuelRoutePreflight.chips.some((chip) => chip.kind === 'bad' && chip.text === 'Critical fuel 20%'),
+  'shared mission preflight should render a critical fuel chip before accepting routed work');
+assert.match(lowFuelRoutePreflight.warning || '', /refuel before accepting/,
+  'critical fuel warnings should tell the player to refuel before accepting routed work');
+
 const readyState = makeState(8);
 assert.equal(missionBoardReadiness(missionPreflight(makeOffer(), readyState)).state, 'ready',
   'mission board readiness should mark clean offers as ready');
@@ -207,4 +248,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - shared route scope, timer pacing, readiness, and consequence stakes are visible before accept.');
+console.log('Mission preflight OK - shared route scope, timer pacing, ship readiness, and consequence stakes are visible before accept.');
