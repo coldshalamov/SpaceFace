@@ -79,6 +79,7 @@ assert.match(touchSrc, /Number\(win\.innerWidth\)/, 'Touch auto-detect must read
 assert.match(uiRootSrc, /controlPrompt\('flight', 'kbm'\)/, 'UI root must source keyboard flight hints from controlPrompts.js');
 assert.match(uiRootSrc, /controlPrompt\('flight', 'gamepad'\)/, 'UI root must source gamepad flight hints from controlPrompts.js');
 assert.match(promptSrc, /RMB mine/, 'Keyboard flight hints must describe the mining control as mining, not sampling');
+assert.match(promptSrc, /opens the Mission Log/, 'Keyboard first-flight hint must teach the objective-home shortcut before the player docks');
 assert.match(promptSrc, /LT mine/, 'Gamepad flight hints must advertise LT/L2 mining');
 assert.match(promptSrc, /A dock/, 'Gamepad flight hints must advertise A/Cross docking');
 assert.match(promptSrc, /R3 countermeasure/, 'Gamepad flight/combat hints must advertise R3 countermeasure');
