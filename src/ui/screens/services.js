@@ -396,17 +396,21 @@ export function createServicesPanel(ctx) {
       const quote = serviceQuote(r.type, state, e);
       const row = document.createElement('div');
       const dis = !offered || quote.disabled;
-      row.className = 'st-svc-row' + (offered ? '' : ' disabled') + (quote.disabledReason ? ' st-svc-row--blocked' : '');
-      const chips = (quote.chips || []).map((chip) =>
+      row.className = 'st-svc-row' + (offered ? '' : ' disabled') + ((!offered || quote.disabledReason) ? ' st-svc-row--blocked' : '');
+      const chips = [
+        ...(!offered ? [{ text: 'not offered', kind: 'bad' }] : []),
+        ...(quote.chips || []),
+      ].map((chip) =>
         '<span class="st-svc-chip st-svc-chip--' + (chip.kind || 'cost') + '">' + chip.text + '</span>').join('');
       const title = offered
         ? (quote.disabledReason || (quote.cost > 0 ? 'Spend ' + fmtCr(quote.cost) + ' credits.' : r.desc))
         : 'This station does not offer ' + r.label + '.';
+      const buttonLabel = offered ? quote.buttonLabel : 'Unavailable';
       row.innerHTML =
         '<div class="st-svc-info"><div class="st-svc-name">' + r.label + '</div>' +
         '<div class="st-svc-detail mono">' + quote.detail + (offered ? '' : ' · not offered here') + '</div>' +
         '<div class="st-svc-meta">' + chips + '</div></div>' +
-        '<button data-svc="' + r.type + '" data-amount="' + quote.amount + '" title="' + title + '" aria-label="' + title + '"' + (dis ? ' disabled' : '') + '>' + quote.buttonLabel + '</button>';
+        '<button data-svc="' + r.type + '" data-amount="' + quote.amount + '" title="' + title + '" aria-label="' + title + '"' + (dis ? ' disabled' : '') + '>' + buttonLabel + '</button>';
       frag.appendChild(row);
     }
     list.textContent = '';
