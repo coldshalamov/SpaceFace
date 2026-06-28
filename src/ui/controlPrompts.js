@@ -16,7 +16,7 @@ const KBM_PROMPTS = Object.freeze({
 });
 
 const GAMEPAD_PROMPTS = Object.freeze({
-  flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine  •  RB boost  •  LB brake  •  R3 countermeasure  •  A dock  •  X target  •  View star map  •  Y codex  •  Start pause',
+  flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine  •  RB boost  •  LB brake  •  R3 countermeasure  •  A dock  •  X target  •  View star map  •  Y codex  •  Start pause/log',
   mining: 'LT hold to mine  •  Release to cool  •  Fly through cargo drift  •  X next signal',
   combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  R3 countermeasure  •  RB boost to dodge  •  Start pause',
   station: 'A dock  •  Hub: LB/RB tabs  •  D-pad/left stick focus  •  A act  •  B undock',
@@ -24,7 +24,7 @@ const GAMEPAD_PROMPTS = Object.freeze({
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',
   tutorialMine: 'The Kestrel is armed: RT fires the Pulse Laser S. Hold LT on the marked rock to mine the mass reading, then collect the drift.',
   tutorialDock: 'Follow the cyan station arrow. Press A at the dock prompt. Bring the discrepancy back before someone edits it out.',
-  firstFlight: 'Left stick flies, right stick aims, RT fires the Pulse Laser S, LT mines marked rocks, RB boosts, View opens the star map, and A docks.',
+  firstFlight: 'Left stick flies, right stick aims, RT fires the Pulse Laser S, LT mines marked rocks, RB boosts, View opens the star map, Start opens pause/log, and A docks.',
   firstCombat: 'Hostile detected! RT to fire. Hold right-stick aim on a target to lock on. X cycles targets.',
   firstStation: 'Stations offer repairs, trading, upgrades, and mission boards. Press A to dock; inside the hub, LB/RB changes tabs, D-pad or left stick moves focus, A acts, and B undocks.',
   firstGate: 'Jump gates connect star systems. Press View to open the Star Map and plot a jump route.',
