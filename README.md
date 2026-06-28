@@ -36,8 +36,8 @@ Source GLBs under `assets/ships/parts/` are authoring/build inputs. Normal play 
 | Boost / dash | **Shift** / **RB** on gamepad |
 | Countermeasure | **X** / **R3** on gamepad (if equipped) |
 | Dock | **E** when the dock prompt shows; **Enter** is a secondary key |
-| Star map | **M** | · Tech tree **T** · Missions/journal **J** |
-| Codex | **K** |
+| Local / star map | **N / M** |
+| Tech / missions / codex | **T / J / K** |
 | Pause / back | **Esc** |
 | Quick save / load | **F5 / F9** |
 | Zoom | **Mouse wheel** |
