@@ -8,8 +8,14 @@
 // restructures COMMS would silently break these screens (empty/garbled sections, no error). This
 // check pins the shapes so that drift fails the gate loudly.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../src/data/narrative.js';
 import { STORY_BEATS } from '../src/data/missions.js';
+
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const codexSource = readFileSync(join(ROOT, 'src/ui/screens/codex.js'), 'utf8');
 
 // SHIP — the Tessera's sealed history (Ship tab).
 for (const k of ['name', 'registration', 'incident', 'incidentRef', 'previousOperator', 'crewStatus', 'impoundMonths', 'friend']) {
@@ -65,6 +71,19 @@ ENDGAME_CHOICES.forEach((c, i) => {
 
 // GRAFFITI — the ever-present bulkhead line (Graffiti tab).
 assert.ok(GRAFFITI.GANG_DIDNT_MAKE_IT, 'GRAFFITI.GANG_DIDNT_MAKE_IT must exist (codex Graffiti tab shows it always)');
+
+// Codex browsing: the screen promises a searchable journal. Search must filter already-rendered
+// entries only, so locked future story content stays hidden and the player gets a clear empty state.
+assert.match(codexSource, /el\('input', 'sf-codex-search'\)/, 'Codex must render a search input');
+assert.match(codexSource, /placeholder = 'Search Codex'/, 'Codex search must have a stable player-facing placeholder');
+assert.match(codexSource, /setAttribute\('aria-label', 'Search Codex'\)/,
+  'Codex search must expose an accessible name');
+assert.match(codexSource, /function normalizeSearch\(value\)/, 'Codex search must normalize case and whitespace');
+assert.match(codexSource, /_applySearchFilter\(\)/, 'Codex must apply search filtering after each tab render');
+assert.match(codexSource, /querySelectorAll\('\.sf-codex-entry'\)/,
+  'Codex search must filter rendered entries rather than raw narrative data');
+assert.match(codexSource, /No matching unlocked entries\./,
+  'Codex search must show an empty state for no unlocked matches');
 
 // PERSISTENT_CARGO — unsellable personal effects (Ship tab).
 assert.ok(Array.isArray(PERSISTENT_CARGO) && PERSISTENT_CARGO.length >= 1, 'PERSISTENT_CARGO must be a non-empty array');

@@ -47,6 +47,12 @@ function injectStyle() {
   .sf-codex-beat.current { box-shadow:0 0 12px rgba(57,208,255,.2); border-color:#fff; }
   .sf-codex-section-h { font-size:11px; letter-spacing:.16em; text-transform:uppercase;
     color:var(--ink-dim, #8fa3c0); margin:14px 0 6px; }
+  .sf-codex-search { width:100%; box-sizing:border-box; margin:8px 0 2px; padding:9px 11px;
+    color:var(--ink, #d7e6ff); background:rgba(8,14,24,.72);
+    border:1px solid var(--panel-edge, rgba(120,160,200,.22)); border-radius:6px;
+    font-family:var(--mono, monospace); font-size:12px; letter-spacing:.04em; pointer-events:auto; }
+  .sf-codex-search:focus { outline:none; border-color:var(--accent, #39d0ff);
+    box-shadow:0 0 0 2px rgba(57,208,255,.14); }
   `;
   document.head.appendChild(s);
 }
@@ -130,9 +136,14 @@ function safeStory(ctx) {
   return (ctx.state && ctx.state.story) || { beatIndex: 0, seenComms: {}, graffitiShown: {}, endgameChoice: null, flags: {} };
 }
 
+function normalizeSearch(value) {
+  return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
 export const codexScreen = {
   id: 'codex',
   _activeTab: 'Story',
+  _query: '',
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -147,6 +158,18 @@ export const codexScreen = {
       this._tabBtns[t] = b;
     });
     rootEl.appendChild(bar);
+
+    const search = el('input', 'sf-codex-search');
+    search.type = 'search';
+    search.placeholder = 'Search Codex';
+    search.setAttribute('aria-label', 'Search Codex');
+    search.value = this._query;
+    search.addEventListener('input', () => {
+      this._query = search.value || '';
+      this._render(ctx);
+    });
+    rootEl.appendChild(search);
+    this._search = search;
 
     const body = el('div', 'sf-col');
     body.style.overflowY = 'auto';
@@ -182,6 +205,7 @@ export const codexScreen = {
     for (const t of TABS) {
       if (this._tabBtns[t]) this._tabBtns[t].classList.toggle('active', t === this._activeTab);
     }
+    if (this._search && this._search.value !== this._query) this._search.value = this._query;
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
@@ -189,6 +213,43 @@ export const codexScreen = {
       case 'Figures':  this._renderFigures(ctx); break;
       case 'Ship':     this._renderShip(ctx); break;
     }
+    this._applySearchFilter();
+  },
+
+  _applySearchFilter() {
+    if (!this._body) return;
+    const query = normalizeSearch(this._query);
+    const entries = Array.from(this._body.querySelectorAll('.sf-codex-entry'));
+    const headers = Array.from(this._body.querySelectorAll('.sf-codex-section-h'));
+    const emptyRows = Array.from(this._body.querySelectorAll('.sf-codex-empty'));
+    const oldEmpty = this._body.querySelector('.sf-codex-empty-search');
+    if (oldEmpty) oldEmpty.remove();
+    if (!query) {
+      entries.forEach((entry) => { entry.hidden = false; });
+      headers.forEach((header) => { header.hidden = false; });
+      emptyRows.forEach((row) => { row.hidden = false; });
+      return;
+    }
+    let visible = 0;
+    entries.forEach((entry) => {
+      const matched = normalizeSearch(entry.textContent).includes(query);
+      entry.hidden = !matched;
+      if (matched) visible++;
+    });
+    emptyRows.forEach((row) => { row.hidden = true; });
+    headers.forEach((header) => {
+      let hasVisibleEntry = false;
+      let node = header.nextElementSibling;
+      while (node && !node.classList.contains('sf-codex-section-h')) {
+        if (node.classList.contains('sf-codex-entry') && !node.hidden) {
+          hasVisibleEntry = true;
+          break;
+        }
+        node = node.nextElementSibling;
+      }
+      header.hidden = !hasVisibleEntry;
+    });
+    if (!visible) this._body.appendChild(el('div', 'sf-codex-empty sf-codex-empty-search', 'No matching unlocked entries.'));
   },
 
   // The 8-beat spine. Beats up to the player's current beatIndex are readable; future beats show
