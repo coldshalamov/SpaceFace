@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../src/data/narrative.js';
 import { STORY_BEATS } from '../src/data/missions.js';
-import { isPersistentCargo, removeCargo } from '../src/systems/cargo.js';
+import { cargo, isPersistentCargo, removeCargo } from '../src/systems/cargo.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const readSource = (path) => readFileSync(join(ROOT, path), 'utf8');
@@ -110,6 +110,8 @@ assert.match(hudSource, /PERSISTENT_CARGO_BY_ID/,
   'HUD cargo panel should resolve personal-effects names from narrative data');
 assert.match(hudSource, /Personal effects cannot be jettisoned/,
   'HUD cargo panel must not show personal effects as disposable cargo');
+assert.match(hudSource, /function cargoVolumeForRow/,
+  'HUD cargo panel must render the authored zero-volume footprint for personal effects');
 {
   const lockedState = {
     story: { persistentCargo: ['cmdty_ore_iron'] },
@@ -130,6 +132,24 @@ assert.match(hudSource, /Personal effects cannot be jettisoned/,
     'normal cargo should still be removable');
   assert.equal(normalState.player.cargo.items.cmdty_ore_iron, 1,
     'normal cargo removal should decrement the item quantity');
+
+  const personal = PERSISTENT_CARGO.find((p) => p.id === 'cmdty_personal_ledger') || PERSISTENT_CARGO[0];
+  const storyState = {
+    story: { persistentCargo: [personal.id] },
+    player: { cargo: { items: { [personal.id]: 2 }, usedVolume: 99, usedMass: 0, capVolume: 1, capMass: 40 } },
+  };
+  const events = [];
+  const bus = {
+    on() {},
+    emit(event, payload) { events.push({ event, payload }); },
+  };
+  cargo.init({ state: storyState, bus, helpers: {}, registry: { get: () => null } });
+  assert.equal(storyState.player.cargo.usedVolume, 0,
+    'personal effects should not consume cargo volume');
+  assert.equal(storyState.player.cargo.usedMass, personal.mass * 2,
+    'personal effects should still contribute authored cargo mass');
+  assert.ok(events.some((e) => e.event === 'cargo:changed' && e.payload.massT === personal.mass * 2),
+    'personal-effect mass recompute should notify cargo UI listeners');
 }
 
 // STORY_BEATS — the 8-beat spine (read by the story objective tracker, P2-14). The tracker indexes

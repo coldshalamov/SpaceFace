@@ -80,6 +80,12 @@ function isPersistentCargoId(state, id) {
   return Array.isArray(locked) && locked.includes(id);
 }
 
+function cargoVolumeForRow(state, id, qty, def) {
+  if (isPersistentCargoId(state, id) && PERSISTENT_CARGO_BY_ID.has(id)) return 0;
+  const volPerU = def ? (def.volPerU || 1) : 1;
+  return qty * volPerU;
+}
+
 function mtStationName(id) {
   return MT_STATION_BY_ID.get(id) || 'destination';
 }
@@ -754,9 +760,8 @@ export function createHud(ctx, alerts) {
       const qty = items[id];
       const def = CMDTY_MAP.get(id);
       const name = cargoDisplayName(id);
-      const volPerU = def ? (def.volPerU || 1) : 1;
       const price = def ? (def.basePrice || 0) : 0;
-      const vol = Math.round(qty * volPerU);
+      const vol = Math.round(cargoVolumeForRow(state, id, qty, def));
       const val = qty * price;
       const persistent = isPersistentCargoId(state, id);
       totalVal += val;

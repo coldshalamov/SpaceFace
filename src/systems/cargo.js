@@ -3,11 +3,17 @@
 // VOLUME is the only hard cap; MASS is informational (flight reads it as a handling penalty, never blocks).
 // All cargo mutation funnels through addCargo/removeCargo so the usedVolume/usedMass caches never desync.
 import { COMMODITIES } from '../data/commodities.js';
+import { PERSISTENT_CARGO } from '../data/narrative.js';
 
 // commodityId -> { volPerU, massPerU } lookup, built once from the static registry.
 const VOL = Object.create(null);
 const MASS = Object.create(null);
 for (const c of COMMODITIES) { VOL[c.id] = c.volPerU; MASS[c.id] = c.massPerU; }
+const PERSISTENT_FOOTPRINT = new Map(PERSISTENT_CARGO.map((c) => [c.id, { vol: 0, mass: c.mass, persistent: true }]));
+
+function volumePerUnit(def) {
+  return def.persistent ? 0 : (def.vol > 0 ? def.vol : 1);
+}
 
 // Resolve per-unit footprint, preferring a runtime content registry if one was loaded.
 function defOf(state, id) {
@@ -17,6 +23,7 @@ function defOf(state, id) {
     if (c) return { vol: c.volPerU, mass: c.massPerU };
   }
   if (id in VOL) return { vol: VOL[id], mass: MASS[id] };
+  if (PERSISTENT_FOOTPRINT.has(id)) return PERSISTENT_FOOTPRINT.get(id);
   return null;
 }
 
@@ -41,10 +48,11 @@ export function addCargo(state, commodityId, qty) {
   const cargo = state.player.cargo;
   const def = defOf(state, commodityId);
   if (!def || !(qty > 0)) return 0;
-  const volPerU = def.vol > 0 ? def.vol : 1;
+  const volPerU = volumePerUnit(def);
   const free = cargo.capVolume - cargo.usedVolume;
   // floor so a bulky item (vol>1) only takes whole units that fit; max(0) guards over-capacity/float drift.
-  const accepted = Math.max(0, Math.min(Math.floor(qty), Math.floor(free / volPerU)));
+  const requested = Math.floor(qty);
+  const accepted = volPerU === 0 ? Math.max(0, requested) : Math.max(0, Math.min(requested, Math.floor(free / volPerU)));
   if (accepted > 0) {
     cargo.items[commodityId] = (cargo.items[commodityId] || 0) + accepted;
     cargo.usedVolume += accepted * volPerU;
@@ -66,7 +74,7 @@ export function removeCargo(state, commodityId, qty) {
   if (removed <= 0) return 0;
   const left = have - removed;
   if (left > 0) cargo.items[commodityId] = left; else delete cargo.items[commodityId];
-  cargo.usedVolume -= removed * (def.vol > 0 ? def.vol : 1);
+  cargo.usedVolume -= removed * volumePerUnit(def);
   cargo.usedMass -= removed * def.mass;
   if (cargo.usedVolume < 0) cargo.usedVolume = 0;
   if (cargo.usedMass < 0) cargo.usedMass = 0;
@@ -130,7 +138,7 @@ export const cargo = {
       const q = cargo.items[id];
       const def = defOf(state, id);
       if (!def) continue;
-      vol += q * (def.vol > 0 ? def.vol : 1);
+      vol += q * volumePerUnit(def);
       mass += q * def.mass;
     }
     cargo.usedVolume = vol;
