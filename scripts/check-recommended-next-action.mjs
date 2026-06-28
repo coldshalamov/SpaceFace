@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { STORY_BEATS } from '../src/data/missions.js';
 import { recommendedActions } from '../src/ui/screens/missionLog.js';
 
 const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
@@ -9,6 +10,15 @@ assert.match(missionLogSrc, /data-rec-act="track"/, 'untracked recommendations m
 assert.match(missionLogSrc, /ui:trackMission/, 'recommendation actions must reuse the mission tracking intent');
 assert.match(missionLogSrc, /_renderRecommendations/, 'mission log must refresh recommendations with live state');
 assert.match(missionLogSrc, /export function recommendedActions/, 'recommendation policy must stay directly testable');
+
+const honestWork = STORY_BEATS.find((beat) => beat && beat.id === 'honest_work');
+assert(honestWork, 'honest_work story beat must exist');
+assert.match(honestWork.objective, /low-risk haul or trade contract/i,
+  'first contract story objective should bias new pilots toward safe paid work');
+assert.match(honestWork.objective, /TRACKED in Mission Log/,
+  'first contract story objective should teach where to verify tracked status');
+assert.match(honestWork.objective, /marked station/i,
+  'first contract story objective should connect contract acceptance to route following');
 
 const baseState = {
   simTime: 100,
