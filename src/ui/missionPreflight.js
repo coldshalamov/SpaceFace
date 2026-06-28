@@ -11,10 +11,15 @@ for (const sector of SECTORS) {
 }
 const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
 const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport']);
+const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
 const TIMER_TIGHT_S = 5 * 60;
 const TIMER_CRITICAL_S = 2 * 60;
 const ROUTE_RISK_WARNING_DANGER = 0.72;
 const ROUTE_RISK_BAD_DANGER = 0.84;
+const HULL_WARN_FRAC = 0.70;
+const HULL_CRITICAL_FRAC = 0.35;
+const FUEL_WARN_FRAC = 0.45;
+const FUEL_CRITICAL_FRAC = 0.25;
 const TASK_TIME_FALLBACK = {
   cargo_delivery: 20,
   bulk_trade: 30,
@@ -138,6 +143,32 @@ function pressureLabel(value) {
   return 'balanced';
 }
 
+function missionRiskTier(m) {
+  const raw = m && (m.riskTier != null ? m.riskTier : (m.risk != null ? m.risk : 0));
+  const risk = Number(raw);
+  return Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
+}
+
+function playerShip(state) {
+  return state && state.entities && state.entities.get && state.playerId != null
+    ? state.entities.get(state.playerId)
+    : null;
+}
+
+function shipHullFraction(state) {
+  const ship = playerShip(state);
+  const max = Number(ship && ship.hullMax);
+  if (!(max > 0)) return null;
+  return clamp01((Number(ship.hull) || 0) / max, 0);
+}
+
+function shipFuelFraction(state) {
+  const fuel = state && state.fuel || {};
+  const max = Number(fuel.max);
+  if (!(max > 0)) return null;
+  return clamp01((Number(fuel.current) || 0) / max, 0);
+}
+
 function missionDestSectorId(m) {
   if (!m) return null;
   if (m.destSectorId) return m.destSectorId;
@@ -255,6 +286,45 @@ export function missionTimePacing(m, state) {
   };
 }
 
+export function missionShipReadiness(m, state) {
+  const issues = [];
+  const risk = missionRiskTier(m);
+  const dangerous = risk >= 2 || DANGEROUS_MISSION_TYPES.has(m && m.type);
+  const targetSectorId = missionDestSectorId(m);
+  const currentSectorId = state && state.world && state.world.currentSectorId || null;
+  const offSector = !!(targetSectorId && currentSectorId && targetSectorId !== currentSectorId);
+
+  const hullFrac = shipHullFraction(state);
+  if (hullFrac != null && (hullFrac < HULL_CRITICAL_FRAC || (dangerous && hullFrac < HULL_WARN_FRAC))) {
+    const critical = hullFrac < HULL_CRITICAL_FRAC;
+    issues.push({
+      severity: critical ? 2 : 1,
+      chip: { kind: critical ? 'bad' : 'warn', text: (critical ? 'Critical hull ' : 'Hull ') + fmtPct(hullFrac) },
+      warning: critical
+        ? 'Hull is critical; repair before accepting risky work.'
+        : 'Hull is worn for a risky contract; repair before accepting combat or smuggling work.',
+    });
+  }
+
+  const fuelFrac = shipFuelFraction(state);
+  if (fuelFrac != null && (fuelFrac < FUEL_CRITICAL_FRAC || ((offSector || dangerous) && fuelFrac < FUEL_WARN_FRAC))) {
+    const critical = fuelFrac < FUEL_CRITICAL_FRAC;
+    issues.push({
+      severity: critical ? 2 : 1,
+      chip: { kind: critical ? 'bad' : 'warn', text: (critical ? 'Critical fuel ' : 'Fuel ') + fmtPct(fuelFrac) },
+      warning: critical
+        ? 'Fuel is critical; refuel before accepting routed work.'
+        : (offSector ? 'Fuel is low for this route; refuel before launch.' : 'Fuel is low for risky work; refuel before accepting.'),
+    });
+  }
+
+  issues.sort((a, b) => (b.severity - a.severity));
+  return {
+    chips: issues.map((issue) => issue.chip),
+    warning: issues[0] ? issues[0].warning : null,
+  };
+}
+
 export function missionPreflight(m, state) {
   const chips = [];
   const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
@@ -320,6 +390,9 @@ export function missionPreflight(m, state) {
     }
   }
 
+  const shipReadiness = missionShipReadiness(m, state);
+  for (const chip of shipReadiness.chips) chips.push(chip);
+  if (shipReadiness.warning) warnings.push(shipReadiness.warning);
   if (routeIntelWarning) warnings.push(routeIntelWarning);
   if (pacingWarning) warnings.push(pacingWarning);
 
