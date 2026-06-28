@@ -10,6 +10,7 @@ assert.match(missionLogSrc, /data-rec-act="track"/, 'untracked recommendations m
 assert.match(missionLogSrc, /ui:trackMission/, 'recommendation actions must reuse the mission tracking intent');
 assert.match(missionLogSrc, /_renderRecommendations/, 'mission log must refresh recommendations with live state');
 assert.match(missionLogSrc, /export function recommendedActions/, 'recommendation policy must stay directly testable');
+assert.match(missionLogSrc, /TRADE ROUTE/, 'mission log should recognize active trade-route waypoints as recommended actions');
 
 const honestWork = STORY_BEATS.find((beat) => beat && beat.id === 'honest_work');
 assert(honestWork, 'honest_work story beat must exist');
@@ -55,6 +56,43 @@ assert.equal(actions[0].label, 'TRACKED', 'tracked contract should be first');
 assert.equal(actions[0].meta, '50% complete', 'tracked contract should show progress');
 assert.equal(actions[0].missionId, 'mission_cargo_1', 'tracked recommendation should carry the active mission id');
 assert(!/^Next:/i.test(actions[0].body), 'tracked body should read as an action, not repeat the card prefix');
+
+const tradeRouteState = {
+  ...baseState,
+  world: { currentSectorId: 'sector_helios_prime' },
+  nav: {
+    waypoint: {
+      kind: 'trade',
+      stationId: 'station_tethys',
+      commodityId: 'cmdty_food',
+      sectorId: 'sector_tethys_junction',
+      sectorName: 'Tethys Junction',
+      label: 'Tethys Trade Hub · Provisions',
+      reason: 'Sell Provisions',
+    },
+  },
+  player: { credits: 120, cargo: { usedVolume: 12, capVolume: 40, items: { cmdty_food: 12 } } },
+};
+actions = recommendedActions(tradeRouteState, [], null);
+assert.equal(actions[0].label, 'TRADE ROUTE', 'active trade nav should be first when no mission is tracked');
+assert.equal(actions[0].title, 'Tethys Trade Hub', 'trade route recommendation should name the buyer station');
+assert.match(actions[0].body, /Sell 12u Provisions at Tethys Trade Hub/, 'trade route recommendation should name cargo, quantity, and destination');
+assert.match(actions[0].meta, /12u aboard/, 'trade route recommendation should expose aboard cargo');
+assert.match(actions[0].meta, /Tethys Junction/, 'trade route recommendation should expose destination sector');
+assert.equal(actions[0].mapAction.screenId, 'starmap', 'off-sector trade route should hand off to the Star Map');
+
+actions = recommendedActions({
+  ...tradeRouteState,
+  nav: {
+    waypoint: {
+      ...tradeRouteState.nav.waypoint,
+      pos: { x: 10, z: -20 },
+      sectorId: 'sector_helios_prime',
+      sectorName: 'Helios Prime',
+    },
+  },
+}, [], null);
+assert.equal(actions[0].mapAction.screenId, 'localmap', 'same-sector trade route should hand off to the Local Map');
 
 const lowFuelState = {
   ...baseState,

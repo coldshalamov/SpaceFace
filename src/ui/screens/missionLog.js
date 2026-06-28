@@ -70,6 +70,16 @@ function titleCaseWords(value) {
   return String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function prettyId(value, fallback = 'Target') {
+  const text = String(value || '')
+    .replace(/^__probe_/, 'probe_')
+    .replace(/^station_/, '')
+    .replace(/^sector_/, '')
+    .replace(/_/g, ' ')
+    .trim();
+  return text ? titleCaseWords(text) : fallback;
+}
+
 export function storyBeatDisplayName(id) {
   return titleCaseWords(id || 'Story');
 }
@@ -180,6 +190,92 @@ export function missionMapAction(state, mission, isTracked) {
     label: 'STAR MAP',
     title: 'Open Star Map',
     body: 'Plot or review the jump route to this objective.',
+  };
+}
+
+function tradeRouteWaypoint(state) {
+  const waypoint = state && state.nav && state.nav.waypoint;
+  return waypoint && waypoint.kind === 'trade' && waypoint.stationId ? waypoint : null;
+}
+
+function tradeRouteStationName(waypoint) {
+  if (!waypoint) return 'Trade destination';
+  const info = STATION_INFO.get(waypoint.stationId);
+  if (info && info.name) return info.name;
+  const label = String(waypoint.label || '').split('·')[0].trim();
+  return label || prettyId(waypoint.stationId, 'Trade destination');
+}
+
+function tradeRouteSectorName(waypoint) {
+  if (!waypoint) return '';
+  const info = waypoint.stationId ? STATION_INFO.get(waypoint.stationId) : null;
+  const sectorId = waypoint.sectorId || (info && info.sectorId) || null;
+  const sec = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  return waypoint.sectorName || (sec && sec.name) || prettyId(sectorId, '');
+}
+
+function tradeRouteCommodityName(waypoint) {
+  const commodityId = waypoint && waypoint.commodityId;
+  const def = commodityId ? CMDTY_BY_ID.get(commodityId) : null;
+  return def ? def.name : prettyId(commodityId, 'cargo');
+}
+
+function tradeRouteCargoUnits(state, commodityId) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  const raw = commodityId && items ? items[commodityId] : 0;
+  const qty = Math.max(0, Number(raw) || 0);
+  return Math.round(qty * 10) / 10;
+}
+
+function formatUnits(value) {
+  return (Math.round((Number(value) || 0) * 10) / 10).toLocaleString('en-US');
+}
+
+export function tradeRouteMapAction(state, waypoint = tradeRouteWaypoint(state)) {
+  if (!state || !waypoint) return null;
+  const info = waypoint.stationId ? STATION_INFO.get(waypoint.stationId) : null;
+  const targetSectorId = waypoint.sectorId || (info && info.sectorId) || null;
+  const currentSectorId = state.world && state.world.currentSectorId || null;
+  const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
+  const hasLocalFix = !!waypoint.pos;
+  if (hasLocalFix || sameSector || !targetSectorId) {
+    return {
+      screenId: 'localmap',
+      label: 'LOCAL MAP',
+      title: 'Open Local Map',
+      body: 'Show the trade destination marker and nearby station contacts.',
+    };
+  }
+  return {
+    screenId: 'starmap',
+    label: 'STAR MAP',
+    title: 'Open Star Map',
+    body: 'Plot or review the jump route to this trade destination.',
+  };
+}
+
+function tradeRouteAction(state) {
+  const waypoint = tradeRouteWaypoint(state);
+  if (!waypoint) return null;
+  const commodityName = tradeRouteCommodityName(waypoint);
+  const stationName = tradeRouteStationName(waypoint);
+  const sectorName = tradeRouteSectorName(waypoint);
+  const owned = tradeRouteCargoUnits(state, waypoint.commodityId);
+  const mapAction = tradeRouteMapAction(state, waypoint);
+  const body = owned > 0
+    ? `Sell ${formatUnits(owned)}u ${commodityName} at ${stationName}; use the map handoff if the route needs a jump.`
+    : `Route set to ${stationName} for ${commodityName}. Load cargo from the Market, or review the destination before launch.`;
+  const meta = [
+    owned > 0 ? `${formatUnits(owned)}u aboard` : 'No cargo aboard',
+    sectorName,
+  ].filter(Boolean).join(' · ');
+  return {
+    tone: owned > 0 ? 'primary' : 'warn',
+    label: 'TRADE ROUTE',
+    title: stationName,
+    body,
+    meta,
+    mapAction,
   };
 }
 
@@ -391,6 +487,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   const beatIndex = state && state.story ? (state.story.beatIndex || 0) : 0;
   const storyBeat = STORY_BEATS[beatIndex];
   const storyAction = storyActionForBeat(storyBeat, state);
+  const activeTradeRoute = tradeRouteAction(state);
   const cargo = cargoLoad(state);
   const readiness = serviceReadinessAction(state, tracked ? [tracked] : active);
   const actions = [];
@@ -406,6 +503,8 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       missionId: tracked.id,
       mapAction,
     });
+  } else if (activeTradeRoute) {
+    actions.push(activeTradeRoute);
   } else if (active.length) {
     const candidate = active.find((m) => (m.deadline_s || 0) > (state && state.simTime || 0)) || active[0];
     actions.push({

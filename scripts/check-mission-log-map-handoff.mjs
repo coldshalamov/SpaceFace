@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   missionMapAction,
   recommendedActions,
+  tradeRouteMapAction,
 } from '../src/ui/screens/missionLog.js';
 
 const source = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
@@ -95,7 +96,43 @@ function state(overrides = {}) {
   assert.equal(actions[0].mapAction.screenId, 'starmap', 'tracked recommendation should carry the Star Map handoff');
 }
 
+{
+  const action = tradeRouteMapAction(state({
+    ui: { trackedMissionId: null },
+    nav: {
+      waypoint: {
+        kind: 'trade',
+        stationId: 'station_tethys',
+        commodityId: 'cmdty_food',
+        sectorId: 'sector_tethys_junction',
+        sectorName: 'Tethys Junction',
+      },
+    },
+  }));
+  assert.equal(action.screenId, 'starmap', 'off-sector trade routes should hand off to the Star Map');
+  assert.equal(action.label, 'STAR MAP', 'off-sector trade handoff should have a player-facing label');
+}
+
+{
+  const action = tradeRouteMapAction(state({
+    ui: { trackedMissionId: null },
+    nav: {
+      waypoint: {
+        kind: 'trade',
+        stationId: 'station_helios',
+        commodityId: 'cmdty_food',
+        sectorId: 'sector_helios_prime',
+        sectorName: 'Helios Prime',
+        pos: { x: 12, z: 24 },
+      },
+    },
+  }));
+  assert.equal(action.screenId, 'localmap', 'same-sector trade routes should hand off to the Local Map');
+  assert.equal(action.label, 'LOCAL MAP', 'same-sector trade handoff should have a player-facing label');
+}
+
 assert.match(source, /export function missionMapAction/, 'mission map handoff policy must stay directly testable');
+assert.match(source, /export function tradeRouteMapAction/, 'trade route map handoff policy must stay directly testable');
 assert.match(source, /data-act="openMap"/, 'active mission cards must render map handoff buttons');
 assert.match(source, /data-rec-act="openMap"/, 'tracked recommendation must render a map handoff button');
 assert.match(source, /aria-label="' \+ escapeHtml\(isTracked \? 'Tracking ' \+ titleText : 'Track navigation for ' \+ titleText\)/,
