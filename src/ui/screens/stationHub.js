@@ -46,6 +46,21 @@ const TABS = [
   { id: 'bar', label: 'Bar', icon: '☕', help: 'Find rumors, contacts, and station-side leads.' },
 ];
 
+const SERVICE_LABELS = {
+  trade: 'Market',
+  shipyard: 'Shipyard',
+  refuel: 'Refuel',
+  repair: 'Repair',
+  missions: 'Missions',
+  ore_buy: 'Ore Buyer',
+  refine: 'Refinery',
+  module_craft: 'Manufacture',
+  toll: 'Customs Toll',
+  scan: 'Security Scan',
+  black_market: 'Black Market',
+  scan_tech: 'Survey Lab',
+};
+
 const DEPARTURE_SCREEN_LABELS = {
   missionLog: 'Mission Log',
 };
@@ -62,7 +77,15 @@ const STATION_TYPE_PURPOSE = {
 
 function stationTypeLabel(type) {
   if (!type) return 'Station';
-  return String(type).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return titleCaseWords(type);
+}
+
+function titleCaseWords(value) {
+  return String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function stationServiceLabel(serviceId) {
+  return SERVICE_LABELS[serviceId] || titleCaseWords(serviceId);
 }
 
 function getManager(ctx) {
@@ -96,7 +119,7 @@ function stationPurpose(stn) {
 function stationServiceSummary(stn) {
   const services = (stn && Array.isArray(stn.services)) ? stn.services : [];
   if (!services.length) return 'Available actions depend on this station type and your standing.';
-  return 'Available here: ' + services.map((s) => String(s).replace(/_/g, ' ')).join(', ') + '.';
+  return 'Available here: ' + services.map(stationServiceLabel).join(', ') + '.';
 }
 
 function stationRecordId(stn) {

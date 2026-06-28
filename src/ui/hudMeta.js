@@ -14,6 +14,18 @@
 //
 // Pure DOM. Reads ctx.state. Never mutates sim state.
 
+import { COMMODITIES } from '../data/commodities.js';
+import { PERSISTENT_CARGO } from '../data/narrative.js';
+
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const PERSISTENT_CARGO_BY_ID = new Map(PERSISTENT_CARGO.map((c) => [c.id, c]));
+
+function manifestCargoLabel(id) {
+  const authored = COMMODITY_BY_ID.get(id) || PERSISTENT_CARGO_BY_ID.get(id);
+  if (authored && authored.name) return authored.name.toUpperCase();
+  return String(id || 'cargo').replace(/^cmdty_/, '').replace(/_/g, ' ').toUpperCase();
+}
+
 export function createHudMeta(ctx) {
   const { bus, state } = ctx;
 
@@ -168,7 +180,7 @@ export function createHudMeta(ctx) {
     return null;
   }
   function labelOf(id) {
-    return String(id).replace(/^cmdty_/, '').replace(/_/g, ' ').toUpperCase();
+    return manifestCargoLabel(id);
   }
 
   function setVisible(v) {
