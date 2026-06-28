@@ -20,6 +20,11 @@ function defOf(state, id) {
   return null;
 }
 
+export function isPersistentCargo(state, commodityId) {
+  const locked = state && state.story && state.story.persistentCargo;
+  return Array.isArray(locked) && locked.includes(commodityId);
+}
+
 // Module-level bus reference so the exported helpers can emit cargo:changed when called
 // from outside the system instance (economy/mining/salvage). Stays null in unit tests → silent.
 let busRef = null;
@@ -52,6 +57,7 @@ export function addCargo(state, commodityId, qty) {
 
 /** Remove up to `qty` units of `commodityId`. Returns the amount actually removed. */
 export function removeCargo(state, commodityId, qty) {
+  if (isPersistentCargo(state, commodityId)) return 0;
   const cargo = state.player.cargo;
   const have = cargo.items[commodityId] || 0;
   const def = defOf(state, commodityId);

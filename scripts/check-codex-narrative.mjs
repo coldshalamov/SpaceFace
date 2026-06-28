@@ -13,12 +13,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../src/data/narrative.js';
 import { STORY_BEATS } from '../src/data/missions.js';
+import { isPersistentCargo, removeCargo } from '../src/systems/cargo.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const readSource = (path) => readFileSync(join(ROOT, path), 'utf8');
 const codexSource = readSource('src/ui/screens/codex.js');
 const bindingSource = readSource('src/ui/bindings.js');
 const uiInputSource = readSource('src/ui/input.js');
+const cargoSource = readSource('src/systems/cargo.js');
+const hudSource = readSource('src/ui/hud.js');
 
 // SHIP — the Tessera's sealed history (Ship tab).
 for (const k of ['name', 'registration', 'incident', 'incidentRef', 'previousOperator', 'crewStatus', 'impoundMonths', 'friend']) {
@@ -101,6 +104,33 @@ PERSISTENT_CARGO.forEach((p, i) => {
     assert.ok(k in p, `PERSISTENT_CARGO[${i}] missing "${k}"`);
   }
 });
+assert.match(cargoSource, /export function isPersistentCargo/,
+  'cargo system must expose an explicit persistent-cargo guard');
+assert.match(hudSource, /PERSISTENT_CARGO_BY_ID/,
+  'HUD cargo panel should resolve personal-effects names from narrative data');
+assert.match(hudSource, /Personal effects cannot be jettisoned/,
+  'HUD cargo panel must not show personal effects as disposable cargo');
+{
+  const lockedState = {
+    story: { persistentCargo: ['cmdty_ore_iron'] },
+    player: { cargo: { items: { cmdty_ore_iron: 2 }, usedVolume: 2, usedMass: 2, capVolume: 40, capMass: 40 } },
+  };
+  assert.equal(isPersistentCargo(lockedState, 'cmdty_ore_iron'), true,
+    'persistent cargo ids should be recognized from story.persistentCargo');
+  assert.equal(removeCargo(lockedState, 'cmdty_ore_iron', 1), 0,
+    'persistent cargo should not be removable through the cargo helper');
+  assert.equal(lockedState.player.cargo.items.cmdty_ore_iron, 2,
+    'failed persistent-cargo removal should leave the cargo quantity unchanged');
+
+  const normalState = {
+    story: { persistentCargo: [] },
+    player: { cargo: { items: { cmdty_ore_iron: 2 }, usedVolume: 2, usedMass: 2, capVolume: 40, capMass: 40 } },
+  };
+  assert.equal(removeCargo(normalState, 'cmdty_ore_iron', 1), 1,
+    'normal cargo should still be removable');
+  assert.equal(normalState.player.cargo.items.cmdty_ore_iron, 1,
+    'normal cargo removal should decrement the item quantity');
+}
 
 // STORY_BEATS — the 8-beat spine (read by the story objective tracker, P2-14). The tracker indexes
 // STORY_BEATS[beat].objective for beat = state.story.beatIndex (0..7); every beat MUST have a

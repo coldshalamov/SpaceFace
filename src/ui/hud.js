@@ -24,6 +24,7 @@ import { SHIPS } from '../data/ships.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
+import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { BINDINGS } from './bindings.js';
@@ -62,10 +63,21 @@ for (const sec of SECTORS) {
   }
 }
 const MT_CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const PERSISTENT_CARGO_BY_ID = new Map(PERSISTENT_CARGO.map((c) => [c.id, c]));
 
 function mtCmdtyName(id) {
   const c = MT_CMDTY_BY_ID.get(id);
   return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
+}
+
+function cargoDisplayName(id) {
+  const c = MT_CMDTY_BY_ID.get(id) || PERSISTENT_CARGO_BY_ID.get(id);
+  return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
+}
+
+function isPersistentCargoId(state, id) {
+  const locked = state && state.story && state.story.persistentCargo;
+  return Array.isArray(locked) && locked.includes(id);
 }
 
 function mtStationName(id) {
@@ -741,11 +753,12 @@ export function createHud(ctx, alerts) {
     for (const id of keys) {
       const qty = items[id];
       const def = CMDTY_MAP.get(id);
-      const name = def ? def.name : id.replace('cmdty_', '').replace(/_/g, ' ');
+      const name = cargoDisplayName(id);
       const volPerU = def ? (def.volPerU || 1) : 1;
       const price = def ? (def.basePrice || 0) : 0;
       const vol = Math.round(qty * volPerU);
       const val = qty * price;
+      const persistent = isPersistentCargoId(state, id);
       totalVal += val;
 
       const row = document.createElement('div');
@@ -766,8 +779,16 @@ export function createHud(ctx, alerts) {
       const jetBtn = document.createElement('button');
       jetBtn.className = 'sf-cargo-row__jet';
       jetBtn.dataset.id = id;
-      jetBtn.title = 'Jettison 1 unit';
-      jetBtn.textContent = 'JET';
+      if (persistent) {
+        jetBtn.disabled = true;
+        jetBtn.title = 'Personal effects cannot be jettisoned';
+        jetBtn.setAttribute('aria-label', name + ' is personal effects and cannot be jettisoned');
+        jetBtn.textContent = 'LOCK';
+      } else {
+        jetBtn.title = 'Jettison 1 unit of ' + name;
+        jetBtn.setAttribute('aria-label', 'Jettison 1 unit of ' + name);
+        jetBtn.textContent = 'JET';
+      }
       row.append(nameSpan, qtySpan, volSpan, valSpan, jetBtn);
       frag.appendChild(row);
     }
@@ -782,6 +803,11 @@ export function createHud(ctx, alerts) {
     if (!btn) return;
     const id = btn.dataset.id;
     if (!id) return;
+    if (btn.disabled || isPersistentCargoId(state, id)) {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      ctx.bus.emit('toast', { text: 'Personal effects cannot be jettisoned', kind: 'info', ttl: 2 });
+      return;
+    }
     ctx.bus.emit('cargo:jettison', { commodityId: id, qty: 1 });
   });
 

@@ -916,6 +916,9 @@ function injectHudCss() {
     color:var(--danger); font-size:9px; padding:1px 6px; cursor:pointer; font-family:var(--mono);
     letter-spacing:.06em; opacity:0.7; }
   .sf-cargo-row__jet:hover { opacity:1; background:rgba(255,84,112,.12); }
+  .sf-cargo-row__jet:disabled { border-color:rgba(180,200,220,.35); color:var(--ink-mute);
+    cursor:not-allowed; opacity:.75; background:rgba(180,200,220,.04); }
+  .sf-cargo-row__jet:disabled:hover { background:rgba(180,200,220,.04); opacity:.75; }
   .sf-cargo-empty { padding:20px 14px; text-align:center; color:var(--ink-mute); font-size:12px; }
   @media (max-width: 760px) {
     .sf-cargo-panel { width:calc(100vw - 24px); bottom:110px; }
