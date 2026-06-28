@@ -7,6 +7,12 @@ const source = readFileSync(new URL('../src/ui/screens/stationHub.js', import.me
 
 assert.match(source, /function departureReadinessChips\(state\)/,
   'station hub must compute departure readiness chips from live state');
+assert.match(source, /function departureReadinessSummary\(chips\)/,
+  'station hub must summarize departure readiness on the Undock command');
+assert.match(source, /label: '⏏ UNDOCK · ' \+ status/,
+  'Undock button must show READY, CHECK, or RISK from live departure readiness');
+assert.match(source, /Undock remains available/,
+  'departure summary must explain that readiness warnings do not hard-block undock');
 assert.match(source, /departureMissionChip\(state\)/, 'departure readiness must include tracked mission/nav state');
 assert.match(source, /function departureTradeWaypointChip\(state, waypoint\)/,
   'departure readiness must summarize trade route waypoints');
@@ -26,6 +32,10 @@ assert.match(source, /departureHullChip\(state\)/, 'departure readiness must inc
 assert.match(source, /state\.entities\.get\(state\.playerId\)/, 'departure readiness must read the live player entity');
 assert.match(source, /<div class="st-departure-label mono">Departure Check<\/div>/,
   'station hub must render a visible Departure Check strip');
+assert.match(source, /this\._undockBtn\.setAttribute\('data-readiness', summary\.state\)/,
+  'Undock command must expose its readiness state for styling and inspection');
+assert.match(source, /\.st-undock\[data-readiness="risk"\]/,
+  'Undock command must visually distinguish risky departure state');
 assert.match(source, /data-departure-tab/, 'station hub must render actionable departure readiness chips');
 assert.match(source, /departureChipHtml\(chip\)/, 'departure chip rendering must preserve action metadata');
 assert.match(source, /this\.setTab\(tabId, \{ focusRail: true \}\)/,

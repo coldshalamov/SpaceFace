@@ -255,6 +255,27 @@ function departureReadinessChips(state) {
   ];
 }
 
+function departureReadinessSummary(chips) {
+  const list = Array.isArray(chips) ? chips.filter(Boolean) : [];
+  const issues = list.filter((chip) => chip.kind === 'bad' || chip.kind === 'warn');
+  const hasBad = issues.some((chip) => chip.kind === 'bad');
+  const hasWarn = issues.some((chip) => chip.kind === 'warn');
+  const state = hasBad ? 'risk' : (hasWarn ? 'check' : 'ready');
+  const status = hasBad ? 'RISK' : (hasWarn ? 'CHECK' : 'READY');
+  const issueText = issues
+    .map((chip) => (String(chip.label || 'Check') + ': ' + String(chip.text || '')).trim())
+    .filter((text) => text.length > 2)
+    .join('; ');
+  return {
+    state,
+    status,
+    label: '⏏ UNDOCK · ' + status,
+    title: issueText
+      ? 'Departure Check: ' + status + '. ' + issueText + '. Undock remains available.'
+      : 'Departure Check: READY. Tracked work, cargo, fuel, and hull look serviceable.',
+  };
+}
+
 export function missionBoardReadiness(preflight = {}) {
   if (preflight.blocker) {
     return {
@@ -387,7 +408,9 @@ export const stationHub = {
     });
     rail.addEventListener('keydown', (ev) => this._onRailKeydown(ev));
 
-    topbar.querySelector('.st-undock').addEventListener('click', () => {
+    const undockBtn = topbar.querySelector('.st-undock');
+    this._undockBtn = undockBtn;
+    undockBtn.addEventListener('click', () => {
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
       ctx.bus.emit('dock:undocked', {});
     });
@@ -694,6 +717,13 @@ export const stationHub = {
     if (!this._departureEl) return;
     const chips = departureReadinessChips(this._ctx && this._ctx.state);
     this._departureEl.innerHTML = chips.map((chip) => departureChipHtml(chip)).join('');
+    if (this._undockBtn) {
+      const summary = departureReadinessSummary(chips);
+      this._undockBtn.textContent = summary.label;
+      this._undockBtn.title = summary.title;
+      this._undockBtn.setAttribute('aria-label', summary.title);
+      this._undockBtn.setAttribute('data-readiness', summary.state);
+    }
   },
 
   /** Called by screenManager when this screen becomes the top of the stack. */
@@ -980,6 +1010,9 @@ const STATION_CSS = `
   letter-spacing: .14em; text-transform: uppercase; padding: 2px 10px; border-radius: var(--r-pill);
   border: 1px solid rgba(57,208,255,.3); background: rgba(57,208,255,.08); }
 .st-undock { border-color: var(--accent); color: var(--accent); letter-spacing: .08em; font-weight: 600; }
+.st-undock[data-readiness="ready"] { border-color: var(--good); color: var(--good); }
+.st-undock[data-readiness="check"] { border-color: var(--warn); color: var(--warn); }
+.st-undock[data-readiness="risk"] { border-color: var(--danger); color: var(--danger); }
 /* airlock graffiti strip — the threshold on entry. Reads as vandalism; is the most accurate text. */
 .st-airlock { display:flex; align-items:stretch; gap:0; border-bottom:1px solid var(--panel-edge);
   background:linear-gradient(180deg, rgba(6,10,18,.6), rgba(4,7,14,.4)); min-height:0; }
@@ -999,6 +1032,9 @@ const STATION_CSS = `
 .st-purpose-sub { display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--ink-mute); font-size: .72rem; line-height: 1.35; }
 .st-purpose-tab { color: var(--ink-dim); }
 .st-undock:hover { background: var(--grad-accent); color: #04121a; box-shadow: 0 0 16px rgba(57,208,255,.4); }
+.st-undock[data-readiness="ready"]:hover { background: var(--good); color: #021008; box-shadow: 0 0 16px rgba(98,224,138,.34); }
+.st-undock[data-readiness="check"]:hover { background: var(--warn); color: #1a1000; box-shadow: 0 0 16px rgba(255,198,77,.28); }
+.st-undock[data-readiness="risk"]:hover { background: var(--danger); color: #21040a; box-shadow: 0 0 16px rgba(255,84,112,.3); }
 .st-departure { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 7px 20px;
   border-bottom: 1px solid var(--panel-edge); background: rgba(4,9,18,.58); }
 .st-departure-label { flex: none; color: var(--ink-mute); font-size: .62rem; text-transform: uppercase; }
