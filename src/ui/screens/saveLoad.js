@@ -154,12 +154,16 @@ export function slotSummaryLines(meta) {
     shipLabel(meta && meta.shipName),
   ].filter(Boolean).join(' - ') || 'Saved game';
   const detail = [
-    meta && meta.objectiveSummary,
+    slotObjectiveSummary(meta),
     fmtPlaytime(meta && meta.playtimeS),
     fmtCredits(meta && meta.credits),
     fmtSavedAt(meta),
   ].filter(Boolean).join(' - ') || 'Saved';
   return { context, detail };
+}
+export function slotObjectiveSummary(meta) {
+  if (!meta) return '';
+  return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
 }
 export function slotBadges(id, meta, currentSlot, latestSlot) {
   if (!isOccupied(meta)) return [];

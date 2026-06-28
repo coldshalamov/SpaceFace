@@ -187,7 +187,8 @@ function saveSummaryText(slot, meta) {
   const parts = [slotLabel(slot)];
   if (meta && meta.sectorName) parts.push(meta.sectorName);
   if (meta && meta.shipName) parts.push(shipLabel(meta.shipName));
-  if (meta && meta.objectiveSummary) parts.push(meta.objectiveSummary);
+  const objective = objectiveSummaryText(meta);
+  if (objective) parts.push(objective);
   const playtime = fmtPlaytime(meta && meta.playtimeS);
   if (playtime) parts.push(playtime);
   const credits = fmtCredits(meta && meta.credits);
@@ -198,6 +199,11 @@ function saveSummaryText(slot, meta) {
     if (Number.isFinite(d.getTime())) parts.push('saved ' + d.toLocaleString());
   }
   return parts.filter(Boolean).join(' - ');
+}
+
+function objectiveSummaryText(meta) {
+  if (!meta) return '';
+  return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
 }
 
 let refs = null;

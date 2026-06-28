@@ -9,7 +9,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fmtCredits, fmtPlaytime, shipLabel, slotBadges, slotSummaryLines } from '../src/ui/screens/saveLoad.js';
+import {
+  fmtCredits,
+  fmtPlaytime,
+  shipLabel,
+  slotBadges,
+  slotObjectiveSummary,
+  slotSummaryLines,
+} from '../src/ui/screens/saveLoad.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -27,6 +34,8 @@ assert.match(menu, /listSlots/, 'mainMenu should prefer save.listSlots() when th
 assert.match(menu, /LS_PREFIX \+ 'index'/, 'mainMenu should fall back to the canonical localStorage save index');
 assert.match(menu, /function latestSave\(slots\)/, 'mainMenu must resolve the latest occupied save slot');
 assert.match(menu, /function saveSummaryText\(slot, meta\)/, 'mainMenu must format human-readable save metadata');
+assert.match(menu, /function objectiveSummaryText\(meta\)/,
+  'mainMenu must accept nav, mission, or story resume metadata from the save index');
 assert.match(menu, /Continue: /, 'mainMenu summary must explicitly label what Continue will load');
 assert.match(menu, /ctx\.bus\.emit\('game:load',\s*\{\s*slot:\s*'latest'\s*\}\)/,
   'Continue should still use the canonical save-system latest-slot load path');
@@ -37,10 +46,18 @@ assert.doesNotMatch(menu, /boots straight into flight/,
 for (const field of ['savedAt', 'playtimeS', 'credits', 'sectorName', 'shipName', 'objectiveSummary', 'version']) {
   assert.match(save, new RegExp(field), `save index should include ${field} metadata`);
 }
-assert.match(save, /idx\[slot\]\s*=\s*\{[\s\S]*sectorName[\s\S]*shipName[\s\S]*objectiveSummary[\s\S]*version/s,
+assert.match(save, /idx\[slot\]\s*=\s*\{[\s\S]*sectorName[\s\S]*shipName[\s\S]*navObjectiveSummary[\s\S]*missionSummary[\s\S]*storySummary[\s\S]*objectiveSummary[\s\S]*version/s,
   'save index metadata should include sector, ship, and objective context for the main menu');
-assert.match(save, /objectiveSummary:\s*navObjectiveSummary\(state\.nav\)/,
-  'save index objective metadata should be derived from the active nav waypoint');
+assert.match(save, /const navSummary = navObjectiveSummary\(state\.nav\)/,
+  'save index should preserve active navigation as the first resume hint');
+assert.match(save, /const missionSummary = missionObjectiveSummary\(state\.missions,\s*state\.ui && state\.ui\.trackedMissionId\)/,
+  'save index should fall back to active mission context when nav is clear');
+assert.match(save, /const storySummary = storyObjectiveSummary\(state\.story\)/,
+  'save index should fall back to story context when no nav or active mission exists');
+assert.match(save, /objectiveSummary:\s*resumeObjectiveSummary\(\{\s*navSummary,\s*missionSummary,\s*storySummary\s*\}\)/,
+  'save index objective metadata should pick nav, then active mission, then story');
+assert.match(save, /import \{ STORY_BEATS \} from '\.\.\/data\/missions\.js'/,
+  'save index story fallback should use the canonical story beat table');
 assert.match(save, /this\.bus\.emit\('save:completed'/, 'save system must emit save:completed for UI confidence feedback');
 assert.match(save, /this\.bus\.emit\('save:error'/, 'save system must emit save:error for failed saves/loads');
 assert.match(save, /this\.bus\.emit\('save:loaded'/, 'save system must emit save:loaded after restore');
@@ -76,6 +93,8 @@ assert.match(saveLoad, /sf-slot-context/, 'saveLoad slot rows must show ship/sec
 assert.match(saveLoad, /sf-slot-detail/, 'saveLoad slot rows must show save details');
 assert.match(saveLoad, /sf-slot-badge/, 'saveLoad slot rows must show status/version badges');
 assert.match(saveLoad, /slotSummaryLines\(meta\)/, 'saveLoad must render slot summaries through the tested formatter');
+assert.match(saveLoad, /function slotObjectiveSummary\(meta\)/,
+  'saveLoad slot details must read nav, mission, or story resume metadata');
 assert.match(saveLoad, /slotBadges\(id,\s*meta,\s*currentSlot,\s*latestSlot\)/,
   'saveLoad must render current/latest/version badges through the tested formatter');
 assert.match(menu, /objectiveSummary/, 'mainMenu Continue summary must include saved objective context when available');
@@ -99,6 +118,12 @@ assert.equal(summary.context, 'Helios Reach - Kestrel Runner', 'saveLoad context
 assert.match(summary.detail, /Route: Tethys Trade Hub - Provisions/, 'saveLoad detail should include saved objective context');
 assert.match(summary.detail, /1h 1m played/, 'saveLoad detail should include playtime');
 assert.match(summary.detail, /12,345 CR/, 'saveLoad detail should include credits');
+assert.equal(slotObjectiveSummary({ storySummary: 'Story: Honest Work - Accept a haul' }), 'Story: Honest Work - Accept a haul',
+  'saveLoad should show story context for quiet saves without active nav');
+assert.equal(slotObjectiveSummary({ missionSummary: 'Mission: Supply Run', storySummary: 'Story: Honest Work' }), 'Mission: Supply Run',
+  'saveLoad should prefer active mission context over story context');
+assert.equal(slotObjectiveSummary({ navObjectiveSummary: 'Route: Helios Gate', missionSummary: 'Mission: Supply Run' }), 'Route: Helios Gate',
+  'saveLoad should prefer active navigation context over mission context');
 assert.deepEqual(slotBadges('quick', { savedAt: '2026-06-27T12:00:00Z', version: 5 }, 'quick', 'auto'), ['Current', 'v5'],
   'current occupied slot should get current and version badges');
 assert.deepEqual(slotBadges('auto', { savedAt: '2026-06-27T12:00:00Z', version: 5 }, 'quick', 'auto'), ['Latest', 'v5'],

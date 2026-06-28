@@ -14,6 +14,7 @@ import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32 } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 
@@ -297,6 +298,9 @@ export const save = {
       const sectorId = state.world.currentSectorId;
       const sector = sectorId && state.world.sectors[sectorId];
       const shipDef = (state.player.ownedShips[state.player.activeShipIndex] || {}).defId || null;
+      const navSummary = navObjectiveSummary(state.nav);
+      const missionSummary = missionObjectiveSummary(state.missions, state.ui && state.ui.trackedMissionId);
+      const storySummary = storyObjectiveSummary(state.story);
       idx[slot] = {
         slot,
         savedAt: envelope.savedAt,
@@ -304,7 +308,10 @@ export const save = {
         credits: state.player.credits,
         sectorName: (sector && sector.name) || sectorId || '',
         shipName: shipDef || '',
-        objectiveSummary: navObjectiveSummary(state.nav),
+        navObjectiveSummary: navSummary,
+        missionSummary,
+        storySummary,
+        objectiveSummary: resumeObjectiveSummary({ navSummary, missionSummary, storySummary }),
         version: envelope.version,
       };
       localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
@@ -1183,6 +1190,36 @@ function navObjectiveSummary(nav) {
   if (waypoint.kind === 'story') return clipSaveSummary('Story: ' + (text || 'Story objective'));
   if (waypoint.onboarding) return clipSaveSummary('Tutorial: ' + (text || 'Tutorial objective'));
   return clipSaveSummary('Objective: ' + (text || 'Waypoint'));
+}
+
+function missionObjectiveSummary(missions, trackedMissionId) {
+  const active = missions && Array.isArray(missions.active) ? missions.active.filter((m) => m && m.status === 'active') : [];
+  if (!active.length) return '';
+  const tracked = trackedMissionId ? active.find((m) => m.id === trackedMissionId) : null;
+  const mission = tracked || active[0];
+  const title = mission && (mission.title || mission.name || readableMissionType(mission.type));
+  return clipSaveSummary('Mission: ' + (title || 'Active contract'));
+}
+
+function storyObjectiveSummary(story) {
+  const beatIndex = Number.isFinite(story && story.beatIndex) ? story.beatIndex : 0;
+  const beat = STORY_BEATS[beatIndex];
+  if (!beat) return '';
+  const title = readableMissionType(beat.id || ('beat_' + beatIndex));
+  const objective = beat.objective || 'Follow the current story objective.';
+  return clipSaveSummary('Story: ' + title + ' - ' + objective);
+}
+
+function resumeObjectiveSummary(parts) {
+  return parts.navSummary || parts.missionSummary || parts.storySummary || '';
+}
+
+function readableMissionType(value) {
+  return String(value || 'contract')
+    .split(/[\s_]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 function clipSaveSummary(value) {
