@@ -76,6 +76,21 @@ function mtSectorName(id) {
   return MT_SECTOR_BY_ID.get(id) || id || 'target sector';
 }
 
+function respawnStationName(id) {
+  return MT_STATION_BY_ID.get(id) || String(id || 'safe station').replace(/^station_/, '').replace(/_/g, ' ');
+}
+
+export function respawnToastText(payload = {}) {
+  const parts = ['Recovered at ' + respawnStationName(payload.stationId)];
+  const refund = Math.max(0, Math.round(Number(payload.refundCr) || 0));
+  if (refund > 0) parts.push('insurance +' + refund.toLocaleString('en-US') + ' cr');
+  const cargoLostQty = Math.max(0, Math.round(Number(payload.cargoLostQty) || 0));
+  if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + 'u');
+  else if (payload.cargoLost) parts.push('cargo lost');
+  parts.push('3s shields online');
+  return parts.join(' - ');
+}
+
 function mtRouteGuidance(state, waypoint) {
   if (!state || !waypoint || !waypoint.sectorId) return null;
   const currentSectorId = state.world && state.world.currentSectorId;
@@ -575,8 +590,12 @@ export function createHud(ctx, alerts) {
       deathBanner.setAttribute('aria-hidden', 'true');
     }, 2500);
   });
-  ctx.bus.on('player:respawn', () => {
-    ctx.bus.emit('toast', { text: 'Hull rebuilt — fly safe, pilot. (3s shields online)', kind: 'good', ttl: 4 });
+  ctx.bus.on('player:respawn', (payload) => {
+    ctx.bus.emit('toast', {
+      text: respawnToastText(payload || {}),
+      kind: payload && payload.cargoLost ? 'warn' : 'good',
+      ttl: 5,
+    });
   });
 
   // ---- presentation captions (accessibility: subtitles for audio/gameplay cues) ----

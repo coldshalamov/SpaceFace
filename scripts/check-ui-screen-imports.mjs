@@ -277,6 +277,24 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   console.log('ok   flight HUD - dock/localmap/starmap/missionLog/codex labels read the binding registry');
   ok++;
 }
+{
+  const { respawnToastText } = await import('../src/ui/hud.js');
+  const text = respawnToastText({
+    stationId: 'station_helios',
+    refundCr: 18400,
+    cargoLost: true,
+    cargoLostQty: 3,
+  });
+  if (!hudSrc.includes('respawnToastText(payload || {})')
+    || !hudSrc.includes("kind: payload && payload.cargoLost ? 'warn' : 'good'")
+    || text !== 'Recovered at Helios Station - insurance +18,400 cr - cargo lost 3u - 3s shields online') {
+    console.log('FAIL flight HUD - respawn toast must name station, insurance refund, cargo loss, and shield grace');
+    fail++;
+  } else {
+    console.log('ok   flight HUD - respawn toast explains recovery consequences');
+    ok++;
+  }
+}
 const figureDossierKeys = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss', 'elroy', 'mira', 'rook', 'vale', 'kurtz'];
 const missingFigureDossiers = figureDossierKeys.filter((key) => !new RegExp(`${key}:\\s*\\{`).test(codexSrc));
 if (missingFigureDossiers.length) {
