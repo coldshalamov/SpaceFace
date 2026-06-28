@@ -124,6 +124,10 @@ for (const staleControlCopy of [/RMB samples/, /RMB sample/, /RMB mass sample/, 
   assert.doesNotMatch(src, staleControlCopy,
     `onboarding.js must not use stale hard-coded control copy: ${staleControlCopy}`);
 }
+assert.doesNotMatch(src, /sampling beam/i,
+  'fresh-game intro must call the starter utility a mining beam, not stale sampling equipment');
+assert.match(src, /Pulse Laser S and a mining beam/,
+  'fresh-game intro should describe the starter weapon and mining beam with live control vocabulary');
 assert.match(promptSrc, /RMB mine/, 'controlPrompts.js must advertise RMB mining for keyboard/mouse');
 assert.match(promptSrc, /LT mine/, 'controlPrompts.js must advertise LT mining for gamepad');
 assert.match(promptSrc, /A dock/, 'controlPrompts.js must advertise gamepad docking');

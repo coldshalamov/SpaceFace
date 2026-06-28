@@ -623,7 +623,7 @@ export const onboarding = {
       + '<h1 id="sf-ob-intro-title">The manifest says one mass. Your instruments say another.</h1>'
       + '<div id="sf-ob-intro-body">'
         + '<p>Follow the yellow signal, verify the discrepancy, and get back to Helios before the registry decides the shipment never existed.</p>'
-        + '<p>The Kestrel carries a Pulse Laser S and a sampling beam. Gray dots are rocks, cyan/green squares are stations, purple rings are gates, red triangles are trouble, and yellow diamonds are cargo or objectives.</p>'
+        + '<p>The Kestrel carries a Pulse Laser S and a mining beam. Gray dots are rocks, cyan/green squares are stations, purple rings are gates, red triangles are trouble, and yellow diamonds are cargo or objectives.</p>'
       + '</div>'
       + '<div class="sf-ob-row"><button class="sf-ob-skip" type="button">Skip tutorial</button><button class="sf-ob-go">Begin →</button></div>';
     root.appendChild(el);
