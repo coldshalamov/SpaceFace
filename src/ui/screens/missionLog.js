@@ -26,6 +26,11 @@ for (const sec of SECTORS) {
 }
 
 const STYLE_ID = 'sf-missionlog-style';
+const FUEL_WARN_FRAC = 0.45;
+const FUEL_CRITICAL_FRAC = 0.25;
+const PROTECTION_WARN_FRAC = 0.70;
+const PROTECTION_CRITICAL_FRAC = 0.35;
+const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
@@ -179,6 +184,99 @@ function cargoLoad(state) {
   return { cap, used, free: Math.max(0, cap - used), ratio: cap > 0 ? used / cap : 0 };
 }
 
+function clamp01(value, fallback = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(1, n));
+}
+
+function pct(frac) {
+  return Math.round(clamp01(frac, 0) * 100) + '%';
+}
+
+function fuelFraction(state) {
+  const fuel = state && state.fuel || {};
+  const max = Number(fuel.max);
+  if (!(max > 0)) return null;
+  return clamp01((Number(fuel.current) || 0) / max, 0);
+}
+
+function playerShip(state) {
+  return state && state.entities && state.entities.get && state.playerId != null
+    ? state.entities.get(state.playerId)
+    : null;
+}
+
+function protectionFraction(state) {
+  const ship = playerShip(state);
+  if (!ship) return null;
+  const hullMax = Number(ship.hullMax);
+  const armorMax = Number(ship.armorMax);
+  const hull = hullMax > 0 ? clamp01((Number(ship.hull) || 0) / hullMax, 0) : 1;
+  const armor = armorMax > 0 ? clamp01((Number(ship.armorHp) || 0) / armorMax, 0) : 1;
+  return Math.min(hull, armor);
+}
+
+function missionRiskTier(m) {
+  const raw = Number(m && (m.riskTier != null ? m.riskTier : m.risk));
+  return Number.isFinite(raw) ? Math.max(0, Math.min(4, Math.round(raw))) : 0;
+}
+
+function missionDestSectorId(m) {
+  if (!m) return null;
+  if (m.destSectorId) return m.destSectorId;
+  const stnInfo = m.destStationId ? STATION_INFO.get(m.destStationId) : null;
+  if (stnInfo && stnInfo.sectorId) return stnInfo.sectorId;
+  const raw = String(m.dest || '');
+  return raw.startsWith('sector_') ? raw : null;
+}
+
+function missionLeavesSector(state, m) {
+  const target = missionDestSectorId(m);
+  const current = state && state.world && state.world.currentSectorId || null;
+  return !!(target && current && target !== current);
+}
+
+function isRiskWork(m) {
+  return !!(m && (DANGEROUS_MISSION_TYPES.has(m.type) || missionRiskTier(m) >= 2));
+}
+
+function serviceReadinessAction(state, activeMissions) {
+  const active = activeMissions || [];
+  const fuel = fuelFraction(state);
+  const protection = protectionFraction(state);
+  const routePressure = active.some((m) => missionLeavesSector(state, m));
+  const riskPressure = active.some((m) => isRiskWork(m));
+
+  if (fuel != null && (fuel < FUEL_CRITICAL_FRAC || (fuel < FUEL_WARN_FRAC && (active.length || routePressure)))) {
+    const critical = fuel < FUEL_CRITICAL_FRAC;
+    return {
+      tone: critical ? 'bad' : 'warn',
+      label: 'SERVICE',
+      title: critical ? 'Refuel before committing' : 'Top off fuel',
+      body: critical
+        ? 'Fuel reserves are critical. Dock for Services before trusting a jump route or timed handoff.'
+        : 'Fuel reserves are thin. Refuel at the next station before a contract sends you off-route.',
+      meta: pct(fuel) + ' fuel',
+    };
+  }
+
+  if (protection != null && (protection < PROTECTION_CRITICAL_FRAC || (protection < PROTECTION_WARN_FRAC && riskPressure))) {
+    const critical = protection < PROTECTION_CRITICAL_FRAC;
+    return {
+      tone: critical ? 'bad' : 'warn',
+      label: 'SERVICE',
+      title: critical ? 'Repair before committing' : 'Patch hull before risk work',
+      body: critical
+        ? 'Hull or armor is critical. Dock for repairs before taking fire, debris, or hard docking bumps.'
+        : 'This contract may turn hostile. Patch hull and armor before you turn the tracker into a fight.',
+      meta: pct(protection) + ' protection',
+    };
+  }
+
+  return null;
+}
+
 function openMapScreen(ctx, screenId) {
   if (!screenId) return;
   const mgr = getManager(ctx);
@@ -278,6 +376,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   const storyBeat = STORY_BEATS[beatIndex];
   const storyAction = storyActionForBeat(storyBeat, state);
   const cargo = cargoLoad(state);
+  const readiness = serviceReadinessAction(state, tracked ? [tracked] : active);
   const actions = [];
 
   if (tracked) {
@@ -306,6 +405,8 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   } else if (storyAction) {
     actions.push(storyAction);
   }
+
+  if (readiness) actions.push(readiness);
 
   if (cargo.cap > 0 && cargo.ratio >= 0.9) {
     actions.push({
@@ -691,9 +792,11 @@ const CSS = `
   background: rgba(8,16,28,.58); }
 .sf-mlog-rec-item--primary { border-color: rgba(57,208,255,.7); box-shadow: 0 0 10px rgba(57,208,255,.12); }
 .sf-mlog-rec-item--warn { border-color: rgba(255,205,76,.7); box-shadow: 0 0 10px rgba(255,205,76,.1); }
+.sf-mlog-rec-item--bad { border-color: rgba(255,84,112,.76); box-shadow: 0 0 12px rgba(255,84,112,.14); }
 .sf-mlog-rec-label { font-family: var(--mono); font-size: .58rem; letter-spacing: .14em; color: var(--accent);
   text-transform: uppercase; margin-bottom: 4px; overflow-wrap: anywhere; }
 .sf-mlog-rec-item--warn .sf-mlog-rec-label { color: var(--warn); }
+.sf-mlog-rec-item--bad .sf-mlog-rec-label { color: var(--danger); }
 .sf-mlog-rec-title { font-size: .86rem; line-height: 1.25; color: var(--ink); font-weight: 700; margin-bottom: 4px;
   overflow-wrap: anywhere; }
 .sf-mlog-rec-body { font-size: .74rem; line-height: 1.35; color: var(--ink-dim); overflow-wrap: anywhere; }

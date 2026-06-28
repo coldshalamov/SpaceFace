@@ -46,6 +46,38 @@ assert.equal(actions[0].meta, '50% complete', 'tracked contract should show prog
 assert.equal(actions[0].missionId, 'mission_cargo_1', 'tracked recommendation should carry the active mission id');
 assert(!/^Next:/i.test(actions[0].body), 'tracked body should read as an action, not repeat the card prefix');
 
+const lowFuelState = {
+  ...baseState,
+  fuel: { current: 9, max: 100 },
+};
+actions = recommendedActions(lowFuelState, [activeMission], 'mission_cargo_1');
+assert.equal(actions[0].label, 'TRACKED', 'tracked mission should stay the top recommendation');
+assert.equal(actions[1].label, 'SERVICE', 'critical fuel should add a service-readiness recommendation');
+assert.equal(actions[1].title, 'Refuel before committing', 'critical fuel copy should name the required station service');
+assert.equal(actions[1].meta, '9% fuel', 'fuel readiness should expose the live fuel fraction');
+
+const riskyMission = {
+  id: 'mission_bounty_1',
+  status: 'active',
+  type: 'bounty_hunt',
+  title: 'Cutlass Wake',
+  objectiveProgress: 0,
+  objectiveTarget: 1,
+  riskTier: 2,
+  deadline_s: 700,
+};
+const damagedState = {
+  ...baseState,
+  fuel: { current: 80, max: 100 },
+  playerId: 'ship_player',
+  entities: new Map([['ship_player', { hull: 48, hullMax: 100, armorHp: 66, armorMax: 100 }]]),
+};
+actions = recommendedActions(damagedState, [riskyMission], 'mission_bounty_1');
+assert.equal(actions[0].label, 'TRACKED', 'tracked combat work should stay first');
+assert.equal(actions[1].label, 'SERVICE', 'risk work with damaged protection should add a repair recommendation');
+assert.equal(actions[1].title, 'Patch hull before risk work', 'repair readiness should name combat preparation');
+assert.equal(actions[1].meta, '48% protection', 'repair readiness should expose the weaker protection layer');
+
 const fullHoldState = {
   ...baseState,
   player: { credits: 120, cargo: { usedVolume: 39, capVolume: 40 } },
