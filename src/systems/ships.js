@@ -9,7 +9,7 @@
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
-import { TECH_NODES } from '../data/tech.js';
+import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 
@@ -591,7 +591,7 @@ export const ships = {
     const p = this.state.player;
     if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return false; }
     if (!this.isUnlocked(def)) {
-      this.bus.emit('toast', { text: 'Research required: ' + (def.requiresTech || 'unknown tech'), kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
       return false;
     }
     const price = def.price || 0;
@@ -619,7 +619,7 @@ export const ships = {
     // grant=true: crafted ship — materials were the cost, tech already gated by the blueprint.
     if (!grant) {
       if (!this.isUnlocked(def)) {
-        this.bus.emit('toast', { text: 'Research required: ' + def.requiresTech, kind: 'error', ttl: 3 });
+        this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
         return false;
       }
       const price = def.price || 0;
@@ -707,7 +707,7 @@ export const ships = {
       return false;
     }
     if (!this.isUnlocked(def)) {
-      this.bus.emit('toast', { text: 'Research required: ' + def.requiresTech, kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
       return false;
     }
 

@@ -152,3 +152,8 @@ export const TECH_NODES = [
     unlocks: { droneTierCap: 4, outpostConstruction: true },
   },
 ];
+
+export function techDisplayName(id) {
+  const node = TECH_NODES.find((entry) => entry.id === id);
+  return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}

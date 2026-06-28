@@ -12,6 +12,7 @@
 // enough that planning your production is a real decision. Recipes with timeS:0 remain instant for
 // backward compatibility (basic refining).
 import { BLUEPRINTS, BLUEPRINT_BY_ID } from '../data/blueprints.js';
+import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
 
 // Sensible build durations by category when a blueprint doesn't specify one (the data ships with
@@ -156,7 +157,7 @@ export const crafting = {
     const p = this.state.player;
     const st = this.status(bp, p);
     if (!st.techOk) {
-      this.bus.emit('toast', { text: 'Research required: ' + (bp.requiresTech || 'unknown'), kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(bp.requiresTech), kind: 'error', ttl: 3 });
       return false;
     }
     if (bp.category === 'augment' && !st.sourceOk) {

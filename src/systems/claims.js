@@ -17,6 +17,7 @@
 // context exists). The body's sectorId + POI id are stable seeds so the claim re-attaches to the
 // same POI after load.
 import { BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE, CLAIM_COST } from '../data/claimableBodies.js';
+import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
@@ -96,7 +97,7 @@ export const claims = {
     }
     const player = this.state.player;
     if (mod.techReq && !player.researchedNodes.includes(mod.techReq)) {
-      this.bus.emit('toast', { text: 'Research required: ' + mod.techReq, kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(mod.techReq), kind: 'error', ttl: 3 });
       return false;
     }
     if (player.credits < mod.cost) {
