@@ -53,6 +53,14 @@ function injectStyle() {
     font-family:var(--mono, monospace); font-size:12px; letter-spacing:.04em; pointer-events:auto; }
   .sf-codex-search:focus { outline:none; border-color:var(--accent, #39d0ff);
     box-shadow:0 0 0 2px rgba(57,208,255,.14); }
+  .sf-codex-progress { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:8px 0 6px;
+    padding:8px 10px; border:1px solid var(--panel-edge, rgba(120,160,200,.22)); border-radius:6px;
+    background:rgba(8,14,24,.5); color:var(--ink-dim, #8fa3c0); font-size:11.5px; line-height:1.35; }
+  .sf-codex-progress__label { color:var(--accent, #39d0ff); text-transform:uppercase; letter-spacing:.12em;
+    margin-right:2px; }
+  .sf-codex-progress__chip { padding:2px 6px; border-radius:999px; background:rgba(120,160,200,.12);
+    color:var(--ink, #d7e6ff); font-family:var(--mono, monospace); }
+  .sf-codex-progress__trust { flex-basis:100%; color:var(--ink-mute, #6b7d99); font-style:italic; }
   `;
   document.head.appendChild(s);
 }
@@ -90,6 +98,10 @@ const BEAT_TITLES = [
   'B6 — Empire Seed',
   'B7 — The Deep Reach',
 ];
+
+const FIGURE_ALWAYS_KEYS = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss'];
+const FIGURE_GATED_BEATS = { elroy: 2, mira: 4, rook: 4, vale: 3, kurtz: 6 };
+const COMMS_CATEGORIES = ['ambient', 'traps', 'personal', 'late', 'story'];
 
 const FIGURE_DOSSIERS = {
   protagonist: {
@@ -140,6 +152,61 @@ function normalizeSearch(value) {
   return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+function clampBeatIndex(value) {
+  const beat = Math.floor(Number(value) || 0);
+  return Math.max(0, Math.min(BEAT_CONTENT.length - 1, beat));
+}
+
+function codexCommsProgress(story) {
+  const beat = clampBeatIndex(story && story.beatIndex);
+  const seen = story && story.seenComms || {};
+  let unlocked = COLD_START.length;
+  let total = COLD_START.length;
+  for (const key of COMMS_CATEGORIES) {
+    const entries = Array.isArray(COMMS[key]) ? COMMS[key] : [];
+    total += entries.length;
+    for (const c of entries) {
+      const entryBeat = c && c.beat != null ? c.beat : 0;
+      if ((c && seen[c.id]) || entryBeat <= beat) unlocked++;
+    }
+  }
+  return { unlocked, total };
+}
+
+function codexFigureProgress(story) {
+  const beat = clampBeatIndex(story && story.beatIndex);
+  const gated = Object.entries(FIGURE_GATED_BEATS);
+  const unlocked = FIGURE_ALWAYS_KEYS.length + gated.filter(([, unlockBeat]) => beat >= unlockBeat).length;
+  return { unlocked, total: FIGURE_ALWAYS_KEYS.length + gated.length };
+}
+
+function codexGraffitiProgress(story) {
+  const shown = story && story.graffitiShown || {};
+  let encountered = 0;
+  for (const key of Object.keys(shown)) {
+    const line = key.includes(':') ? key.slice(key.indexOf(':') + 1) : key;
+    if (line) encountered++;
+  }
+  return { unlocked: 1 + encountered };
+}
+
+function codexProgressSummary(ctx) {
+  const story = safeStory(ctx);
+  const beat = clampBeatIndex(story.beatIndex);
+  const comms = codexCommsProgress(story);
+  const figures = codexFigureProgress(story);
+  const graffiti = codexGraffitiProgress(story);
+  return {
+    chips: [
+      'Beat ' + (beat + 1) + '/' + BEAT_CONTENT.length,
+      'Comms ' + comms.unlocked + '/' + comms.total,
+      'Figures ' + figures.unlocked + '/' + figures.total,
+      'Graffiti ' + graffiti.unlocked + ' marks',
+    ],
+    trust: 'Locked entries stay hidden until encountered.',
+  };
+}
+
 export const codexScreen = {
   id: 'codex',
   _activeTab: 'Story',
@@ -170,6 +237,11 @@ export const codexScreen = {
     });
     rootEl.appendChild(search);
     this._search = search;
+
+    const progress = el('div', 'sf-codex-progress');
+    progress.setAttribute('aria-live', 'polite');
+    rootEl.appendChild(progress);
+    this._progress = progress;
 
     const body = el('div', 'sf-col');
     body.style.overflowY = 'auto';
@@ -206,6 +278,7 @@ export const codexScreen = {
       if (this._tabBtns[t]) this._tabBtns[t].classList.toggle('active', t === this._activeTab);
     }
     if (this._search && this._search.value !== this._query) this._search.value = this._query;
+    this._renderProgress(ctx);
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
@@ -214,6 +287,15 @@ export const codexScreen = {
       case 'Ship':     this._renderShip(ctx); break;
     }
     this._applySearchFilter();
+  },
+
+  _renderProgress(ctx) {
+    if (!this._progress) return;
+    const summary = codexProgressSummary(ctx);
+    this._progress.innerHTML =
+      '<span class="sf-codex-progress__label mono">Discovery</span>' +
+      summary.chips.map((chip) => '<span class="sf-codex-progress__chip">' + chip + '</span>').join('') +
+      '<span class="sf-codex-progress__trust">' + summary.trust + '</span>';
   },
 
   _applySearchFilter() {
@@ -256,7 +338,7 @@ export const codexScreen = {
   // only their title with a locked hint (no spoiler of the in-world voice).
   _renderStory(ctx) {
     const s = safeStory(ctx);
-    const beat = s.beatIndex || 0;
+    const beat = clampBeatIndex(s.beatIndex);
     this._body.appendChild(el('div', 'sf-codex-section-h', 'The Eight Beats'));
     BEAT_CONTENT.forEach((content, i) => {
       const reached = i <= beat;
@@ -297,7 +379,7 @@ export const codexScreen = {
   // hit, but the entry itself is gated out, so the note never shows early).
   _renderComms(ctx) {
     const s = safeStory(ctx);
-    const beat = s.beatIndex || 0;
+    const beat = clampBeatIndex(s.beatIndex);
     const seen = s.seenComms || {};
 
     // Cold start lines (B0 — always seen once a new game has begun).
@@ -347,7 +429,7 @@ export const codexScreen = {
   _renderGraffiti(ctx) {
     const s = safeStory(ctx);
     const shown = s.graffitiShown || {};
-    const beat = s.beatIndex || 0;
+    const beat = clampBeatIndex(s.beatIndex);
 
     this._body.appendChild(el('div', 'sf-codex-section-h', 'Bulkhead — The Previous Crew'));
     this._body.appendChild(el('div', 'sf-codex-entry', null)).appendChild(
@@ -379,12 +461,8 @@ export const codexScreen = {
   // unlock when the player has reached the beat where they appear.
   _renderFigures(ctx) {
     const s = safeStory(ctx);
-    const beat = s.beatIndex || 0;
+    const beat = clampBeatIndex(s.beatIndex);
     this._body.appendChild(el('div', 'sf-codex-section-h', 'Named Figures'));
-    // Always-visible: protagonist + the cold-start figures (KAEL is met at B0).
-    const always = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss'];
-    // Unlock by beat: Elroy at B2, Mira around B4, Rook B4, Vale B3+, Kurtz B6+.
-    const gated = { elroy: 2, mira: 4, rook: 4, vale: 3, kurtz: 6 };
     const renderFig = (key) => {
       const f = FIGURES[key];
       if (!f) return;
@@ -396,8 +474,8 @@ export const codexScreen = {
       if (dossier && dossier.note) entry.appendChild(el('div', 'sf-codex-note', dossier.note));
       this._body.appendChild(entry);
     };
-    for (const k of always) renderFig(k);
-    for (const [k, unlockBeat] of Object.entries(gated)) {
+    for (const k of FIGURE_ALWAYS_KEYS) renderFig(k);
+    for (const [k, unlockBeat] of Object.entries(FIGURE_GATED_BEATS)) {
       if (beat >= unlockBeat) renderFig(k);
       else {
         const entry = el('div', 'sf-codex-entry sf-codex-locked');
