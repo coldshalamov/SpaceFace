@@ -113,6 +113,17 @@ function checkInsuranceCancelIsConfirmed() {
     'declining insurance cancel must not emit ui:service');
 }
 
+function checkUnavailableServicesExposeVisibleReason() {
+  assert(servicesSource.includes("((!offered || quote.disabledReason) ? ' st-svc-row--blocked' : '')"),
+    'not-offered station services should use blocked styling, not only a disabled button');
+  assert(servicesSource.includes("...(!offered ? [{ text: 'not offered', kind: 'bad' }] : []),"),
+    'not-offered station services should render a visible not-offered chip');
+  assert(servicesSource.includes("const buttonLabel = offered ? quote.buttonLabel : 'Unavailable';"),
+    'not-offered service buttons should say Unavailable rather than naming a blocked action');
+  assert(servicesSource.includes("'>' + buttonLabel + '</button>'"),
+    'service row button should render the availability-aware label');
+}
+
 function checkReadinessRecommendsPartialRefuel() {
   const state = baseState({
     fuel: { current: 10, max: 100 },
@@ -163,6 +174,7 @@ checkPartialRepairQuoteSpendsOnlyCurrentCredits();
 checkAmmoQuoteRespectsWalletAndCargo();
 checkInsuranceQuoteShowsDeductibleGate();
 checkInsuranceCancelIsConfirmed();
+checkUnavailableServicesExposeVisibleReason();
 checkReadinessRecommendsPartialRefuel();
 checkReadinessPrefersCriticalRepair();
 checkReadinessSurfacesUnavailableRefuel();
