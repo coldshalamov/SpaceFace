@@ -255,6 +255,31 @@ function departureReadinessChips(state) {
   ];
 }
 
+export function missionBoardReadiness(preflight = {}) {
+  if (preflight.blocker) {
+    return {
+      state: 'blocked',
+      kind: 'bad',
+      label: 'BLOCKED',
+      title: preflight.blocker,
+    };
+  }
+  if (preflight.warning) {
+    return {
+      state: 'caution',
+      kind: 'warn',
+      label: 'CHECK',
+      title: preflight.warning,
+    };
+  }
+  return {
+    state: 'ready',
+    kind: 'ok',
+    label: 'READY',
+    title: 'Ready to accept, auto-track, and add to Mission Log.',
+  };
+}
+
 let cssInjected = false;
 function injectCss() {
   if (cssInjected || typeof document === 'undefined') return;
@@ -477,9 +502,13 @@ export const stationHub = {
       const risk = (m.riskTier != null ? m.riskTier : (m.risk != null ? m.risk : 0));
       const mid = m.id != null ? m.id : m.missionId;
       const preflight = missionPreflight(m, ctx.state);
+      const readiness = missionBoardReadiness(preflight);
       const consequences = missionConsequenceSummary(m);
       const unmet = m.requirementUnmet || m.lockedReason || preflight.blocker || null;
       const expires = m.expiresInS != null ? m.expiresInS : m.time_limit_s;
+      const acceptTitle = unmet
+        ? 'Cannot accept: ' + unmet
+        : 'Accept, auto-track, and add ' + (m.title || prettyType(m.type)) + ' to Mission Log.';
       const preflightHtml = preflight.chips.map((chip) =>
         '<span class="st-mission-preflight-chip st-mission-preflight-chip--' + chip.kind + '">' + escapeHtml(chip.text) + '</span>'
       ).join('');
@@ -491,7 +520,10 @@ export const stationHub = {
       card.innerHTML =
         '<div class="st-mission-top">' +
           '<span class="st-mission-title">' + escapeHtml(m.title || prettyType(m.type)) + '</span>' +
-          '<span class="st-mission-risk r' + risk + '">RISK ' + risk + '</span>' +
+          '<span class="st-mission-badges">' +
+            '<span class="st-mission-readiness st-mission-readiness--' + readiness.kind + '" title="' + escapeHtml(readiness.title) + '" aria-label="' + escapeHtml(readiness.title) + '">' + escapeHtml(readiness.label) + '</span>' +
+            '<span class="st-mission-risk r' + risk + '">RISK ' + risk + '</span>' +
+          '</span>' +
         '</div>' +
         '<div class="st-mission-meta mono">' +
           (fac ? '<span class="st-mission-fac" style="color:' + (fac.color || '#aaa') + '">' + escapeHtml(fac.short || fac.name) + '</span> · ' : '') +
@@ -510,7 +542,8 @@ export const stationHub = {
         '</div>' +
         '<div class="st-mission-consequences mono">' + consequenceHtml + '</div>' +
         '<div class="st-mission-btns">' +
-          '<button data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled title="' + escapeHtml(unmet) + '"' : ' title="Accept, auto-track, and add to Mission Log"') + '>Accept + Track</button>' +
+          '<button data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled' : '') +
+            ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">Accept + Track</button>' +
           (unmet ? '<span class="st-mission-unmet">' + escapeHtml(unmet) + '</span>' : '') +
         '</div>';
       frag.appendChild(card);
@@ -1287,8 +1320,14 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-mission-card { border: 1px solid var(--panel-edge); border-radius: 8px; padding: 11px 14px;
   background: rgba(10,18,32,.55); }
 .st-mission-card.tracked { border-color: var(--accent); box-shadow: 0 0 10px rgba(57,208,255,.2); }
-.st-mission-top { display: flex; align-items: center; justify-content: space-between; }
-.st-mission-title { font-size: .95rem; }
+.st-mission-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.st-mission-title { font-size: .95rem; min-width: 0; }
+.st-mission-badges { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.st-mission-readiness { font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; padding: 1px 7px;
+  border-radius: 4px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); }
+.st-mission-readiness--ok { color: var(--good); border-color: rgba(98,224,138,.32); }
+.st-mission-readiness--warn { color: var(--warn); border-color: rgba(255,198,77,.34); }
+.st-mission-readiness--bad { color: var(--danger); border-color: rgba(255,84,112,.36); }
 .st-mission-risk { font-size: .62rem; letter-spacing: .08em; padding: 1px 7px; border-radius: 4px;
   background: var(--panel-2); color: var(--ink-dim); }
 .st-mission-risk.r0 { color: var(--good); } .st-mission-risk.r1 { color: var(--accent-2); }

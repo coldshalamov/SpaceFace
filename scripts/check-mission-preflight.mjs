@@ -13,6 +13,7 @@ import {
   missionRouteScope,
   missionTimePacing,
 } from '../src/ui/missionPreflight.js';
+import { missionBoardReadiness } from '../src/ui/screens/stationHub.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const stationHubSrc = readFileSync(join(ROOT, 'src/ui/screens/stationHub.js'), 'utf8');
@@ -43,6 +44,11 @@ assert.match(missionPreflightSrc, /deadline_s/,
 assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
   'mission preflight must flag cargo capacity blockers');
 assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
+assert.match(stationHubSrc, /st-mission-readiness/, 'mission cards must render a fast readiness badge');
+assert.match(stationHubSrc, /missionBoardReadiness\(preflight\)/,
+  'mission cards must derive the readiness badge from shared preflight state');
+assert.match(stationHubSrc, /aria-label="' \+ escapeHtml\(acceptTitle\)/,
+  'mission accept buttons must expose exact ready/blocked guidance to assistive tech');
 assert.match(missionsSrc, /_acceptPreflight\(offer\)/, 'missions.acceptMission must call _acceptPreflight before accepting');
 assert.match(missionsSrc, /ONE_LOAD_CARGO_TYPES/, 'missions must define the one-load cargo mission set');
 assert.match(missionsSrc, /Need \$\{fmtCargoUnits\(requiredVolume\)\}u cargo capacity/,
@@ -113,6 +119,10 @@ assert.ok(consequence.chips.some((chip) =>
   chip.label === 'Fail/expire' && /-3 rep/.test(chip.text) && /collateral forfeited/.test(chip.text) && /no payout/.test(chip.text)),
   'failure consequence must show rep penalty, collateral loss, and no payout');
 const lowCapUiPreflight = missionPreflight(makeOffer(), lowCapState);
+assert.equal(missionBoardReadiness(lowCapUiPreflight).state, 'blocked',
+  'mission board readiness should mark cargo-capacity blockers as blocked');
+assert.equal(missionBoardReadiness(lowCapUiPreflight).label, 'BLOCKED',
+  'blocked mission cards should be scannable before reading details');
 assert.equal(lowCapUiPreflight.blocker, 'Requires 5u cargo capacity',
   'shared UI preflight must surface impossible cargo capacity before accept');
 assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'info' && chip.text === 'Jump route: Ceres Belt'),
@@ -135,6 +145,10 @@ assert.ok(lowCapBus.events.some((event) =>
 const lowFreeState = makeState(8);
 lowFreeState.player.cargo.usedVolume = 6;
 const lowFreeUiPreflight = missionPreflight(makeOffer(), lowFreeState);
+assert.equal(missionBoardReadiness(lowFreeUiPreflight).state, 'caution',
+  'mission board readiness should mark non-blocking cargo-space warnings as caution');
+assert.equal(missionBoardReadiness(lowFreeUiPreflight).label, 'CHECK',
+  'caution mission cards should ask the player to check prep details');
 assert.equal(lowFreeUiPreflight.blocker, null, 'low free space should warn without blocking a capable hull');
 assert.match(lowFreeUiPreflight.warning || '', /clear space/, 'shared UI preflight must tell the player to clear cargo space');
 
@@ -179,6 +193,10 @@ assert.match(tightLowFreePreflight.warning || '', /clear space/,
   'cargo-space warnings should remain first when a tight timer also applies');
 
 const readyState = makeState(8);
+assert.equal(missionBoardReadiness(missionPreflight(makeOffer(), readyState)).state, 'ready',
+  'mission board readiness should mark clean offers as ready');
+assert.equal(missionBoardReadiness(missionPreflight(makeOffer(), readyState)).label, 'READY',
+  'ready mission cards should be scannable before accept');
 const readyBus = makeBus();
 missions.init({ state: readyState, bus: readyBus, helpers: { hash32: () => 1 } });
 assert.equal(missions.acceptMission('offer_preflight_1'), true, 'mission should accept when hull capacity can carry it');
