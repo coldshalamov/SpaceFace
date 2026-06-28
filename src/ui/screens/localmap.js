@@ -489,7 +489,7 @@ export const localmapScreen = {
 
     let kicker = 'Story';
     let title = beat ? `Beat ${beat.beat} / 7` : 'Objective';
-    let body = beat ? beat.objective : 'Open the mission log for available contracts.';
+    let body = beat ? beat.objective : 'Open Mission Log (' + BINDINGS.missionLog.label + ') for available contracts.';
     const meta = [];
 
     if (tracked) {

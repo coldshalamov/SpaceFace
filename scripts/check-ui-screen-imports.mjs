@@ -228,7 +228,8 @@ if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionL
 }
 if (!localmapSrc.includes("import { BINDINGS } from '../bindings.js'")
   || !localmapSrc.includes('BINDINGS.localmap.label')
-  || !localmapSrc.includes('BINDINGS.starmap.label')) {
+  || !localmapSrc.includes('BINDINGS.starmap.label')
+  || !localmapSrc.includes('BINDINGS.missionLog.label')) {
   console.log('FAIL localmapScreen - visible map key labels must read src/ui/bindings.js');
   fail++;
 } else if (/press N or Esc|Close \(N\)|N map = this system|M map = galaxy|N Local Map|M Star Map/.test(localmapSrc)) {
