@@ -348,7 +348,7 @@ export const automationScreen = {
       const owned = player.ownedShips || [];
       parts.push(a.fleetCap || 0, owned.length);
       for (const fs of a.fleet || []) {
-        parts.push(fs.id, fs.defId, fs.name || '', fs.status, fs.order || '', fs.hullPct != null ? Math.round(fs.hullPct * 100) : '');
+        parts.push(fs.id, fs.defId, fs.name || '', fs.status, fs.order || '', fs._liveId || '', fs.hullPct != null ? Math.round(fs.hullPct * 100) : '');
       }
       for (let i = 0; i < owned.length; i++) parts.push(i, owned[i] && owned[i].defId, owned[i] && owned[i].customName);
     }
@@ -608,14 +608,16 @@ export const automationScreen = {
         const card = document.createElement('div');
         card.className = 'au-card';
         const order = fs.order || 'escort';
+        const deployment = describeWingmanDeployment(fs);
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${escapeHtml(fs.name) || prettyId(fs.defId || 'wingman')} ${statusPill(fs.status)}</div>
             <div class="meta">
               <span>order ${escapeHtml(order)}</span>
+              <span>deploy ${deploymentPill(deployment)}</span>
               ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
             </div>
-            <div class="au-note">Escort protects you now and can guard automation assets as the fleet layer expands.</div>
+            <div class="au-note">${escapeHtml(deployment.detail)} Escort protects you now and can guard automation assets as the fleet layer expands.</div>
           </div>
           <button class="au-order" data-act="orderEscort" data-ref="${fs.id != null ? fs.id : fs.defId}" data-kind="fleet">Escort</button>
           <button class="au-order" data-act="orderMine" data-ref="${fs.id != null ? fs.id : fs.defId}" data-kind="fleet">Mine</button>
@@ -753,6 +755,40 @@ export function describeAutomationCapLoad(summary = {}) {
     detail: fmtCr(headroom) + ' cr/min headroom',
     overagePerMin: 0,
     headroomPerMin: headroom,
+  };
+}
+
+export function describeWingmanDeployment(fs = {}) {
+  const status = String(fs.status || fs.order || '').toLowerCase();
+  if (fs._liveId != null) {
+    return {
+      state: 'live',
+      label: 'LIVE',
+      className: 'ok',
+      detail: 'Deployed in the current sector; hull updates from live combat.',
+    };
+  }
+  if (status === 'lost' || status === 'destroyed') {
+    return {
+      state: 'lost',
+      label: 'LOST',
+      className: 'bad',
+      detail: 'Removed from the active wing; replace it from an owned spare hull.',
+    };
+  }
+  if (status === 'idle') {
+    return {
+      state: 'standby',
+      label: 'STANDBY',
+      className: 'warn',
+      detail: 'Recalled to the ledger; order Escort to redeploy on the next sector entry.',
+    };
+  }
+  return {
+    state: 'ready',
+    label: 'READY',
+    className: '',
+    detail: 'Ready in the fleet ledger; deploys beside you on the next sector entry.',
   };
 }
 
@@ -979,6 +1015,11 @@ function statusPill(status) {
   if (status === 'distressed' || status === 'lowfuel' || status === 'idle') return `<span class="au-pill warn">${escapeHtml(status)}</span>`;
   if (status === 'lost' || status === 'raided' || status === 'destroyed') return `<span class="au-pill bad">${escapeHtml(status)}</span>`;
   return `<span class="au-pill">${escapeHtml(status)}</span>`;
+}
+
+function deploymentPill(deployment) {
+  const cls = deployment.className ? ' ' + deployment.className : '';
+  return `<span class="au-pill${cls}">${escapeHtml(deployment.label)}</span>`;
 }
 
 function miniBar(frac) {

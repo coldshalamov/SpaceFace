@@ -6,6 +6,7 @@ import {
   automationScreen,
   describeAutomationCapLoad,
   describeAutomationPurchase,
+  describeWingmanDeployment,
   summarizeAutomationOperations,
 } from '../src/ui/screens/automationPanel.js';
 
@@ -168,6 +169,21 @@ const distressedState = {
 next = automationNextAction(distressedState);
 assert.match(next.title, /Stabilize/, 'distressed assets should override growth recommendations');
 
+let wingmanState = describeWingmanDeployment({ id: 'f1', status: 'escort', order: 'escort', _liveId: 'ship_live_1' });
+assert.equal(wingmanState.state, 'live', 'live wingmen should be labeled as deployed in-sector');
+assert.match(wingmanState.detail, /current sector/i, 'live wingmen should explain that hull comes from live combat');
+
+wingmanState = describeWingmanDeployment({ id: 'f2', status: 'escort', order: 'escort' });
+assert.equal(wingmanState.state, 'ready', 'assigned wingmen without a live id should be ready for next sector entry');
+assert.match(wingmanState.detail, /next sector entry/i, 'ready wingmen should not imply they are already spawned');
+
+wingmanState = describeWingmanDeployment({ id: 'f3', status: 'idle', order: 'idle' });
+assert.equal(wingmanState.state, 'standby', 'idle wingmen should read as standby/recalled');
+assert.match(wingmanState.detail, /redeploy/i, 'standby wingmen should tell players how to redeploy');
+
+wingmanState = describeWingmanDeployment({ id: 'f4', status: 'lost' });
+assert.equal(wingmanState.state, 'lost', 'lost wingmen should get a distinct deployment state');
+
 const src = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
 assert.match(src, /Operations Board/, 'automation panel should render the operations board');
 assert.match(src, /const action = next\.action \|\| 'switchTab'/, 'operations board CTA should use direct action metadata with a switch-tab fallback');
@@ -179,6 +195,9 @@ assert.match(src, /overflow dropped/, 'over-cap UI should explain the hard cap c
 assert.match(src, /describeAutomationPurchase/, 'automation panel should centralize purchase guidance');
 assert.match(src, /aria-label="\$\{escapeHtml\(purchase\.title\)\}"/, 'automation purchase buttons should expose guidance to assistive tech');
 assert.match(src, /route heat/, 'trader cards should surface route heat management');
+assert.match(src, /describeWingmanDeployment/, 'fleet cards should centralize live/ready/standby deployment copy');
+assert.match(src, /fs\._liveId \|\| ''/, 'fleet tab body signature should refresh when live wingman deployment changes');
+assert.match(src, /deploy \$\{deploymentPill\(deployment\)\}/, 'fleet cards should show a deployment pill');
 assert.doesNotMatch(src, /<button class="au-buy" data-act="hireTrader" data-ref="\$\{def\.id\}" \$\{hireUnlocked \? '' : 'disabled'\}>/, 'trader buttons should not be blind tech-only gates');
 assert.doesNotMatch(src, /No NPC traders hired\.<\/|No outposts established\.<\/|No wingmen in your fleet/, 'empty states should be specific and actionable');
 
