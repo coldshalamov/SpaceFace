@@ -5,8 +5,8 @@
 // Design: renders into a top-level overlay above #screens (z-index 5000) using the existing design
 // tokens (sf-card / sf-btn--primary / sf-btn--ghost) so it inherits the cohesive identity without a
 // new stylesheet. Focus-trapped: Tab cycles within the dialog, Esc cancels, focus moves to the
-// confirm button on open and restores to the opener on close. Accessible (role=dialog, aria-modal,
-// labelled). Honors the existing body.ui-modal-open class so the HUD hides underneath.
+// safe default on open, and restores to the opener on close. Accessible (role=dialog, aria-modal,
+// labelled/described). Honors the existing body.ui-modal-open class so the HUD hides underneath.
 //
 // Usage:
 //   import { confirm } from './confirm.js';
@@ -106,8 +106,9 @@ export function confirm(opts) {
   document.body.classList.add('ui-modal-open');
   // animate in next frame
   requestAnimationFrame(() => root.classList.add('sf-confirm--in'));
-  // focus the confirm button (the affirmative action is usually what keyboard users want)
-  setTimeout(() => { try { okBtn.focus(); } catch (e) {} }, 30);
+  // Danger dialogs default to Cancel so a stray Enter never commits an irreversible action.
+  const initialFocus = opts.danger ? cancelBtn : okBtn;
+  setTimeout(() => { try { initialFocus.focus(); } catch (e) {} }, 30);
 
   // build the promise + a settle closure that tears down the dialog, restores focus, and resolves.
   let _resolve;
@@ -137,12 +138,16 @@ export function confirm(opts) {
   cancelBtn.addEventListener('click', () => close(false));
   // backdrop click (on the root, not the dialog) cancels
   root.addEventListener('click', onBackdropClick);
-  // Esc cancels; Enter confirms. Focus-trap Tab between the two buttons.
+  // Esc cancels. Enter follows the focused button so danger dialogs can default safely to Cancel.
   dialog.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(false); }
-    else if (ev.key === 'Enter') { ev.preventDefault(); close(true); }
+    else if (ev.key === 'Enter') {
+      if (document.activeElement === okBtn) { ev.preventDefault(); ev.stopPropagation(); close(true); }
+      else if (document.activeElement === cancelBtn) { ev.preventDefault(); ev.stopPropagation(); close(false); }
+    }
     else if (ev.key === 'Tab') {
       ev.preventDefault();
+      ev.stopPropagation();
       // cycle between cancel and ok
       if (document.activeElement === okBtn) cancelBtn.focus(); else okBtn.focus();
     }
