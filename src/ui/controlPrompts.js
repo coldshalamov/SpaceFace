@@ -36,7 +36,7 @@ const TOUCH_PROMPTS = Object.freeze({
   combat: 'Fire button  •  Right stick aim at target  •  Boost button to dodge',
   station: `${BINDINGS.dock.label} dock  •  Market: audit cargo  •  Shipyard: buy ships  •  Missions: take contracts`,
   gate: `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
-  tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right sticks aims.',
+  tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',
   tutorialMine: 'The Kestrel is armed: Fire shoots the Pulse Laser S. Hold Mine on the marked rock to mine the mass reading, then collect the drift.',
   tutorialDock: `Follow the cyan station arrow. Press ${BINDINGS.dock.label} at the dock prompt. Bring the discrepancy back before someone edits it out.`,
   firstFlight: `Left stick flies, right stick aims, Fire shoots, Mine mines marked rocks, Boost dashes, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} opens the star map, ${BINDINGS.dock.label} docks.`,
