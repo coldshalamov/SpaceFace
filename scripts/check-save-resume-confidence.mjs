@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import {
   fmtCredits,
   fmtPlaytime,
+  latestOccupiedSlot,
   shipLabel,
   slotBadges,
   slotObjectiveSummary,
@@ -172,6 +173,14 @@ assert.deepEqual(slotBadges('quick', { savedAt: '2026-06-27T12:00:00Z', version:
   'current occupied slot should get current and version badges');
 assert.deepEqual(slotBadges('auto', { savedAt: '2026-06-27T12:00:00Z', version: 5 }, 'quick', 'auto'), ['Latest', 'v5'],
   'latest non-current occupied slot should get latest and version badges');
+assert.equal(latestOccupiedSlot({
+  quick: { playtimeS: 120, version: 5 },
+  auto: { playtimeS: 420, version: 5 },
+}), 'auto', 'saveLoad latest-slot badges should fall back to playtime when timestamps are absent');
+assert.equal(latestOccupiedSlot({
+  quick: { savedAt: '2026-06-27T12:00:00Z', playtimeS: 900, version: 5 },
+  auto: { lastSavedAt: '2026-06-27T12:05:00Z', playtimeS: 1, version: 5 },
+}), 'auto', 'saveLoad latest-slot badges should prefer savedAt/lastSavedAt timestamps when present');
 
 // UI save feedback: F5/F9/autosave and Save/Load screen actions all converge through save events.
 assert.match(uiRoot, /function wireSaveFeedback\(bus\)/, 'uiRoot must centralize save/load feedback');

@@ -176,13 +176,19 @@ export function slotBadges(id, meta, currentSlot, latestSlot) {
 function isOccupied(meta) {
   return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
 }
-function latestOccupiedSlot(slots) {
+function slotMetaScore(meta) {
+  const savedAtScore = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
+  if (savedAtScore) return savedAtScore;
+  const playtimeS = Number(meta && meta.playtimeS);
+  return Number.isFinite(playtimeS) ? playtimeS : 0;
+}
+export function latestOccupiedSlot(slots) {
   let best = null;
   let bestT = -1;
   Object.keys(slots || {}).forEach((slot) => {
     const meta = slots[slot];
     if (!isOccupied(meta)) return;
-    const t = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
+    const t = slotMetaScore(meta);
     if (t >= bestT) { bestT = t; best = slot; }
   });
   return best;
