@@ -609,6 +609,9 @@ export function createMarketPanel(ctx) {
     const sellP = unitPrice(ctx, panel.stationId, info.cmdtyId, 'sell') || 0;
     const gross = Math.round(sellP * info.owned);
     const canSell = info.owned > 0;
+    const routeSellTitle = canSell
+      ? 'Sell ' + fmtCr(info.owned) + 'u ' + info.cmdtyName + ' here for about ' + fmtCr(gross) + ' CR and clear the completed trade waypoint.'
+      : 'No ' + info.cmdtyName + ' is aboard for this trade route.';
     routeCallout.hidden = false;
     routeCallout.innerHTML =
       '<div class="st-market-route-label mono">TRADE ROUTE DESTINATION</div>' +
@@ -620,7 +623,7 @@ export function createMarketPanel(ctx) {
       '</div>' +
       '<div class="st-market-route-actions">' +
         '<span class="st-market-route-meta mono">' + escapeHtml(info.reason) + '</span>' +
-        '<button data-act="route-sell" data-cmdty="' + escapeHtml(info.cmdtyId) + '"' + (canSell ? '' : ' disabled') + '>Sell Route Cargo</button>' +
+        '<button data-act="route-sell" data-cmdty="' + escapeHtml(info.cmdtyId) + '" title="' + escapeHtml(routeSellTitle) + '" aria-label="' + escapeHtml(routeSellTitle) + '"' + (canSell ? '' : ' disabled') + '>Sell Route Cargo</button>' +
       '</div>';
   }
 

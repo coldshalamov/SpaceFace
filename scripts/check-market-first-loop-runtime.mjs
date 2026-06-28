@@ -278,6 +278,7 @@ try {
       dockedStationId: window.SF.state.ui && window.SF.state.ui.dockedStationId,
       routeText: text(route),
       sellButtonText: text(btn),
+      sellButtonHint: btn ? (btn.getAttribute('aria-label') || btn.title || '') : '',
       sellDisabled: !!(btn && btn.disabled),
     };
   });
@@ -289,6 +290,8 @@ try {
     'Destination Market should name the buyer station: ' + JSON.stringify(destinationReport));
   assert.equal(destinationReport.sellButtonText, 'Sell Route Cargo',
     'Destination Market should expose a route sell action: ' + JSON.stringify(destinationReport));
+  assert.match(destinationReport.sellButtonHint, /clear the completed trade waypoint/i,
+    'Route sell action should explain the sell consequence: ' + JSON.stringify(destinationReport));
   assert.equal(destinationReport.sellDisabled, false,
     'Route sell action should be enabled while cargo is aboard: ' + JSON.stringify(destinationReport));
 
