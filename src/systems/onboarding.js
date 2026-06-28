@@ -58,6 +58,8 @@ export const onboarding = {
     this.touch = ctx.touch;
     this._panel = null;
     this._intro = null;
+    this._introKeydown = null;
+    this._introOpener = null;
     this._accum = 0;
     this._fadeT = 0;
     this._controlHintsEl = null;
@@ -248,7 +250,7 @@ export const onboarding = {
   _teardown() {
     const ob = this.state.onboarding; if (ob) ob.active = false;
     if (this._panel) { this._panel.remove(); this._panel = null; }
-    if (this._intro) { this._intro.remove(); this._intro = null; }
+    this._closeIntro({ restoreFocus: false });
     this._clearObjectiveWaypoint();
     this._storyMode = false;
     this._storySig = '';
@@ -542,6 +544,7 @@ export const onboarding = {
     .sf-ob-intro button.sf-ob-go:hover { background:linear-gradient(180deg,#2080cc,#155aa0); }
     .sf-ob-intro button.sf-ob-skip { color:var(--ink-mute,#4d6a90); font-size:12px; cursor:pointer; text-decoration:underline; background:none; border:none; padding:0; }
     .sf-ob-intro button.sf-ob-skip:hover { color:var(--ink-dim,#84a0c8); }
+    .sf-ob-intro button:focus-visible { outline:2px solid var(--accent,#39d0ff); outline-offset:3px; }
     `;
     document.head.appendChild(s);
   },
@@ -592,28 +595,70 @@ export const onboarding = {
     }
   },
 
+  _closeIntro(options = {}) {
+    const intro = this._intro;
+    const opener = this._introOpener;
+    if (!intro) return;
+    if (this._introKeydown) intro.removeEventListener('keydown', this._introKeydown);
+    this._introKeydown = null;
+    this._intro = null;
+    this._introOpener = null;
+    if (intro.parentNode) intro.remove();
+    if (options.restoreFocus !== false && opener && opener.isConnected && typeof opener.focus === 'function') {
+      try { opener.focus(); } catch (e) {}
+    }
+  },
+
   _showIntro() {
-    if (this._intro) this._intro.remove();
+    this._closeIntro({ restoreFocus: false });
     const root = document.getElementById('ui-root') || document.body;
     const el = document.createElement('div');
     el.className = 'sf-ob-intro';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-labelledby', 'sf-ob-intro-title');
+    el.setAttribute('aria-describedby', 'sf-ob-intro-body');
     el.innerHTML = ''
       + '<h2>Helios System · Contract 47-A</h2>'
-      + '<h1>The manifest says one mass. Your instruments say another.</h1>'
-      + '<p>Follow the yellow signal, verify the discrepancy, and get back to Helios before the registry decides the shipment never existed.</p>'
-      + '<p>The Kestrel carries a Pulse Laser S and a sampling beam. Gray dots are rocks, cyan/green squares are stations, purple rings are gates, red triangles are trouble, and yellow diamonds are cargo or objectives.</p>'
+      + '<h1 id="sf-ob-intro-title">The manifest says one mass. Your instruments say another.</h1>'
+      + '<div id="sf-ob-intro-body">'
+        + '<p>Follow the yellow signal, verify the discrepancy, and get back to Helios before the registry decides the shipment never existed.</p>'
+        + '<p>The Kestrel carries a Pulse Laser S and a sampling beam. Gray dots are rocks, cyan/green squares are stations, purple rings are gates, red triangles are trouble, and yellow diamonds are cargo or objectives.</p>'
+      + '</div>'
       + '<div class="sf-ob-row"><button class="sf-ob-skip" type="button">Skip tutorial</button><button class="sf-ob-go">Begin →</button></div>';
     root.appendChild(el);
     this._intro = el;
-    const close = () => { if (this._intro) { this._intro.remove(); this._intro = null; } };
-    el.querySelector('.sf-ob-go').addEventListener('click', close);
-    el.querySelector('.sf-ob-skip').addEventListener('click', () => {
-      close();
+    this._introOpener = document.activeElement;
+    const skipBtn = el.querySelector('.sf-ob-skip');
+    const beginBtn = el.querySelector('.sf-ob-go');
+    const close = () => this._closeIntro();
+    this._introKeydown = (ev) => {
+      if (!this._intro || !this._intro.isConnected) return;
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        close();
+        return;
+      }
+      if (ev.key !== 'Tab') return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const active = document.activeElement;
+      if (active === beginBtn && !ev.shiftKey) skipBtn.focus();
+      else if (active === skipBtn && ev.shiftKey) beginBtn.focus();
+      else if (ev.shiftKey) skipBtn.focus();
+      else beginBtn.focus();
+    };
+    el.addEventListener('keydown', this._introKeydown);
+    beginBtn.addEventListener('click', close);
+    skipBtn.addEventListener('click', () => {
+      this._closeIntro();
       const ob = this.state.onboarding; if (ob) { ob.active = false; }
       if (this.state.settings && this.state.settings.gameplay) this.state.settings.gameplay.tutorialHints = false;
       this._teardown();
       this._beginStoryMode();
       this.bus.emit('toast', { text: 'Tutorial hints off (re-enable in Settings).', kind: 'info', ttl: 3 });
     });
+    setTimeout(() => { try { beginBtn.focus(); } catch (e) {} }, 30);
   },
 };

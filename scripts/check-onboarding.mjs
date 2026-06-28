@@ -54,6 +54,25 @@ assert.ok(!src.includes("document.querySelector('.sf-alert--info')"),
   'control bar must not query the gate alert DOM during flight updates');
 assert.match(src, /_storySig/, 'story objective refresh should cache its last rendered content signature');
 assert.match(src, /sig === this\._storySig/, 'story objective refresh should skip DOM rebuilds when the objective text is unchanged');
+assert.match(src, /className = 'sf-ob-intro'/, 'fresh-game intro card must remain the player-facing tutorial entry');
+assert.match(src, /setAttribute\('role', 'dialog'\)/,
+  'fresh-game intro must expose dialog semantics for assistive tech');
+assert.match(src, /setAttribute\('aria-modal', 'true'\)/,
+  'fresh-game intro must mark the rest of the game as modal while the card owns focus');
+assert.match(src, /setAttribute\('aria-labelledby', 'sf-ob-intro-title'\)/,
+  'fresh-game intro must label the dialog with its headline');
+assert.match(src, /setAttribute\('aria-describedby', 'sf-ob-intro-body'\)/,
+  'fresh-game intro must describe the dialog with the tutorial body copy');
+assert.match(src, /_closeIntro\(options = \{\}\)/,
+  'fresh-game intro must centralize teardown so listeners and focus restoration stay paired');
+assert.match(src, /ev\.key === 'Escape'/,
+  'fresh-game intro must let keyboard players dismiss it with Escape');
+assert.match(src, /ev\.key !== 'Tab'/,
+  'fresh-game intro must trap Tab focus between Skip tutorial and Begin');
+assert.match(src, /beginBtn\.focus\(\)/,
+  'fresh-game intro must move initial focus to the Begin action');
+assert.match(src, /button:focus-visible/,
+  'fresh-game intro must preserve a visible keyboard focus ring');
 
 // The default dock binding is E, with Enter accepted only as a secondary convenience in input.js.
 // New-player copy must use the live binding label so the first dock objective, first-station hint,
