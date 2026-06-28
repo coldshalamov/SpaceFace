@@ -61,6 +61,45 @@ const SERVICE_LABELS = {
   scan_tech: 'Survey Lab',
 };
 
+const TAB_SERVICE_RULES = {
+  market: {
+    any: ['trade', 'black_market'],
+    availableLabel: 'trade desk here',
+    unavailableLabel: 'no trade desk',
+    unavailableHint: 'Use the Local Map or Star Map to find a market station.',
+  },
+  shipyard: {
+    any: ['shipyard'],
+    availableLabel: 'shipyard here',
+    unavailableLabel: 'no shipyard',
+    unavailableHint: 'Look for a trade hub or fabricator with shipyard service.',
+  },
+  outfit: {
+    any: ['shipyard', 'module_craft'],
+    availableLabel: 'outfitting here',
+    unavailableLabel: 'no outfitting bay',
+    unavailableHint: 'Look for shipyards or fabricators before buying gear.',
+  },
+  manufacture: {
+    any: ['module_craft', 'refine'],
+    availableLabel: 'fab bay here',
+    unavailableLabel: 'no fabrication bay',
+    unavailableHint: 'Bring materials to a refinery or fabricator station.',
+  },
+  missions: {
+    any: ['missions', 'black_market'],
+    availableLabel: 'contracts here',
+    unavailableLabel: 'no mission desk',
+    unavailableHint: 'Try a station with missions or a black-market contact.',
+  },
+  services: {
+    any: ['refuel', 'repair', 'toll', 'scan', 'scan_tech'],
+    availableLabel: 'services here',
+    unavailableLabel: 'limited services',
+    unavailableHint: 'Fuel, repair, toll, and scan services vary by station.',
+  },
+};
+
 const DEPARTURE_SCREEN_LABELS = {
   missionLog: 'Mission Log',
 };
@@ -86,6 +125,48 @@ function titleCaseWords(value) {
 
 export function stationServiceLabel(serviceId) {
   return SERVICE_LABELS[serviceId] || titleCaseWords(serviceId);
+}
+
+function tabLabel(tabId) {
+  const tab = TABS.find((t) => t.id === tabId);
+  return (tab && tab.label) || titleCaseWords(tabId);
+}
+
+export function stationTabServiceStatus(tabId, stn) {
+  const rule = TAB_SERVICE_RULES[tabId];
+  const label = tabLabel(tabId);
+  if (!rule) {
+    return {
+      state: 'neutral',
+      offered: true,
+      label: 'station-wide',
+      title: label + ': station-wide information. ' + tabPurpose(tabId),
+    };
+  }
+  const services = (stn && Array.isArray(stn.services)) ? stn.services : [];
+  if (!services.length) {
+    return {
+      state: 'unknown',
+      offered: true,
+      label: 'check services',
+      title: label + ': service list unknown. ' + tabPurpose(tabId),
+    };
+  }
+  const offered = rule.any.some((service) => services.includes(service));
+  if (offered) {
+    return {
+      state: 'available',
+      offered: true,
+      label: rule.availableLabel,
+      title: label + ': ' + rule.availableLabel + '. ' + tabPurpose(tabId),
+    };
+  }
+  return {
+    state: 'unavailable',
+    offered: false,
+    label: rule.unavailableLabel,
+    title: label + ': ' + rule.unavailableLabel + ' at ' + ((stn && stn.name) || 'this station') + '. ' + rule.unavailableHint,
+  };
 }
 
 function getManager(ctx) {
@@ -582,7 +663,11 @@ export const stationHub = {
       b.setAttribute('aria-selected', 'false');
       b.setAttribute('tabindex', '-1');
       b.title = t.help;
-      b.innerHTML = '<span class="st-tab-icon">' + t.icon + '</span><span class="st-tab-label">' + t.label + '</span>';
+      b.setAttribute('aria-label', t.label + ': ' + t.help);
+      b.innerHTML =
+        '<span class="st-tab-icon">' + t.icon + '</span>' +
+        '<span class="st-tab-label">' + t.label + '</span>' +
+        '<span class="st-tab-service mono" aria-hidden="true"></span>';
       railFrag.appendChild(b);
     }
     rail.appendChild(railFrag);
@@ -825,6 +910,7 @@ export const stationHub = {
       this._missionEls.panel.style.display = isActive ? '' : 'none';
       this._missionEls.panel.hidden = !isActive;
     }
+    this._refreshRailServiceStatus();
     this._refreshPurpose();
     if (options.focusRail && activeButton && document.activeElement !== activeButton) {
       activeButton.focus({ preventScroll: true });
@@ -927,6 +1013,25 @@ export const stationHub = {
     }
   },
 
+  _refreshRailServiceStatus() {
+    if (!this._rail) return;
+    const stn = this._stationDef();
+    this._rail.querySelectorAll('[data-tab]').forEach((b) => {
+      const tabId = b.getAttribute('data-tab');
+      const status = stationTabServiceStatus(tabId, stn);
+      b.setAttribute('data-service-status', status.state);
+      b.classList.toggle('st-tab--service-unavailable', status.state === 'unavailable');
+      b.title = status.title;
+      b.setAttribute('aria-label', tabLabel(tabId) + ': ' + status.label + '. ' + tabPurpose(tabId));
+      const badge = b.querySelector('.st-tab-service');
+      if (badge) {
+        const showBadge = status.state === 'available' || status.state === 'unavailable';
+        badge.hidden = !showBadge;
+        badge.textContent = showBadge ? status.label : '';
+      }
+    });
+  },
+
   _refreshPurpose() {
     if (!this._purposeEl) return;
     const stn = this._stationDef();
@@ -936,7 +1041,12 @@ export const stationHub = {
     const servicesEl = this._purposeEl.querySelector('.st-purpose-services');
     if (typeEl) typeEl.textContent = stationTypeLabel(stn && stn.type);
     if (copyEl) copyEl.textContent = stationPurpose(stn);
-    if (tabEl) tabEl.textContent = 'Current tab: ' + tabPurpose(this._activePanelId());
+    if (tabEl) {
+      const tabId = this._activePanelId();
+      const status = stationTabServiceStatus(tabId, stn);
+      const note = status.state === 'unavailable' ? ' Service note: ' + status.label + '.' : '';
+      tabEl.textContent = 'Current tab: ' + tabPurpose(tabId) + note;
+    }
     if (servicesEl) servicesEl.textContent = stationServiceSummary(stn);
   },
 
@@ -959,6 +1069,7 @@ export const stationHub = {
     this._resolveStation();
     this._refreshTopbar();
     this._refreshGraffiti();
+    this._refreshRailServiceStatus();
     this._refreshPurpose();
     this._refreshDeparture();
     // restore the last active tab (or default 'market')
@@ -979,6 +1090,7 @@ export const stationHub = {
     if (!this._el) return;
     this._refreshTopbar();
     this._refreshGraffiti();
+    this._refreshRailServiceStatus();
     this._refreshPurpose();
     this._refreshDeparture();
     if (!(options.periodic && this._activePanelId() === 'bar')) this._refreshActive(false);
@@ -1290,7 +1402,15 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-tab.active { color: #fff; background: linear-gradient(90deg, rgba(57,208,255,.18), rgba(57,208,255,.04));
   border-color: rgba(57,208,255,.35); box-shadow: inset 3px 0 0 var(--accent), 0 0 12px rgba(57,208,255,.12); }
 .st-tab-icon { width: 18px; text-align: center; opacity: .85; }
-.st-tab-label { letter-spacing: .04em; font-size: .92rem; }
+.st-tab-label { letter-spacing: .04em; font-size: .92rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-tab-service { margin-left: auto; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: .5rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); opacity: .78; }
+.st-tab-service[hidden] { display: none; }
+.st-tab[data-service-status="available"] .st-tab-service { color: var(--accent-2); }
+.st-tab[data-service-status="unavailable"] { opacity: .72; }
+.st-tab[data-service-status="unavailable"] .st-tab-service { color: var(--warn); }
+.st-tab[data-service-status="unavailable"].active { opacity: 1; border-color: rgba(255,198,77,.35);
+  box-shadow: inset 3px 0 0 var(--warn), 0 0 12px rgba(255,198,77,.10); }
 .st-content { flex: 1; min-width: 0; overflow: hidden; position: relative; }
 .st-tabpanel { position: absolute; inset: 0; overflow-y: auto; padding: var(--sp-4) var(--sp-5);
   animation: sf-fadein .22s var(--ease) both; }
