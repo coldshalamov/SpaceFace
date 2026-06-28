@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../src/data/narrative.js';
 import { STORY_BEATS } from '../src/data/missions.js';
 import { cargo, isPersistentCargo, removeCargo } from '../src/systems/cargo.js';
-import { codexProgressSummary } from '../src/ui/screens/codex.js';
+import { codexProgressSummary, commUnlocked } from '../src/ui/screens/codex.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const readSource = (path) => readFileSync(join(ROOT, path), 'utf8');
@@ -101,6 +101,16 @@ assert.match(codexSource, /this\._renderStatus\(ctx\);[\s\S]*switch \(this\._act
   'Codex status should render before the active tab entries');
 assert.match(codexSource, /querySelectorAll\('\.sf-codex-entry'\)/,
   'Codex search should continue filtering only entries, not the status strip');
+assert.match(codexSource, /export function commUnlocked/,
+  'Codex must expose a pure comm unlock helper for trap-gating checks');
+assert.match(codexSource, /seen\['trap_' \+ entry\.id\]/,
+  'Codex must recognize persisted trap_<id> seen flags from the story system');
+assert.match(codexSource, /if \(categoryKey === 'traps'\) return false;/,
+  'Unseen conditional trap comms must stay hidden from the Codex');
+assert.match(codexSource, /commUnlocked\(c, s, beat, key\)/,
+  'Rendered comms must use the same unlock helper as the status summary');
+assert.match(codexSource, /Dossier sealed until story beat B/,
+  'Locked figure dossiers must explain the story-beat unlock state without revealing the dossier');
 assert.match(bindingSource, /codex:\s*\{\s*key:\s*'k',\s*code:\s*'KeyK',\s*label:\s*'K'\s*\}/,
   'BINDINGS must expose K as the fixed Codex key');
 assert.match(uiInputSource, /case BINDINGS\.codex\.key:[\s\S]*case 'K':[\s\S]*screenManager\.pushScreen\('codex'\)/,
@@ -108,21 +118,33 @@ assert.match(uiInputSource, /case BINDINGS\.codex\.key:[\s\S]*case 'K':[\s\S]*sc
 assert.match(uiInputSource, /matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenManager\.pushScreen\('codex'\)/,
   'Keyboard K must open Codex from the station hub without undocking');
 
+// Codex progression trust: conditional trap comms use the story system's persisted `trap_<id>` key.
+// They must not become visible merely because the player reached a later beat; that leaks unseen
+// ambush/warning copy and makes the Codex feel like a spoiler list rather than a save-backed journal.
 {
   const commsTotal = COLD_START.length + COMMS_CATS.reduce((sum, key) => sum + COMMS[key].length, 0);
-  const beat0Comms = COLD_START.length + COMMS_CATS.reduce((sum, key) =>
-    sum + COMMS[key].filter((entry) => (entry.beat != null ? entry.beat : 0) <= 0).length, 0);
-  const lateEntry = COMMS.late.find((entry) => entry.beat > 0) || COMMS.story.find((entry) => entry.beat > 0);
   const valueFor = (summary, key) => {
     const item = summary.items.find((entry) => entry.key === key);
     return item && item.value;
   };
+  const countUnlockedComms = (story, beat) => COLD_START.length + COMMS_CATS.reduce((sum, key) =>
+    sum + COMMS[key].filter((entry) => commUnlocked(entry, story, beat, key)).length, 0);
+  const firstTrap = COMMS.traps[0];
+  const lateEntry = COMMS.late.find((entry) => entry.beat > 0) || COMMS.story.find((entry) => entry.beat > 0);
+  assert.ok(firstTrap, 'COMMS.traps must contain at least one conditional signal for gating coverage');
+  assert.equal(commUnlocked(firstTrap, { beatIndex: 7, seenComms: {} }, 7, 'traps'), false,
+    'unseen trap comms must stay hidden even after late story progression');
+  assert.equal(commUnlocked(firstTrap, { beatIndex: 0, seenComms: { ['trap_' + firstTrap.id]: true } }, 0, 'traps'), true,
+    'trap comms must unlock when the persisted story seenComms key exists');
+  assert.equal(commUnlocked(COMMS.ambient[0], { beatIndex: 0, seenComms: {} }, 0, 'ambient'), true,
+    'beat-0 ambient comms must remain readable on a fresh Codex');
 
-  let summary = codexProgressSummary({ beatIndex: 0, seenComms: {}, graffitiShown: {} });
+  let storyState = { beatIndex: 0, seenComms: {}, graffitiShown: {} };
+  let summary = codexProgressSummary(storyState);
   assert.equal(valueFor(summary, 'Story'), '1/8 beats',
     'new games should show only the current story beat as unlocked');
-  assert.equal(valueFor(summary, 'Comms'), beat0Comms + '/' + commsTotal + ' unlocked',
-    'Codex status should count beat-reached comms without exposing future lines');
+  assert.equal(valueFor(summary, 'Comms'), countUnlockedComms(storyState, 0) + '/' + commsTotal + ' unlocked',
+    'Codex status should count beat-reached comms without exposing future or unseen conditional lines');
   assert.equal(valueFor(summary, 'Figures'), '6/11 known',
     'Codex status should count only always-visible figures at beat 0');
   assert.equal(valueFor(summary, 'Graffiti'), '1/' + Object.keys(GRAFFITI).length + ' encountered',
@@ -132,21 +154,20 @@ assert.match(uiInputSource, /matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenM
   assert.equal(valueFor(summary, 'Phase'), 'Phase 1',
     'Codex status should show the current narrative phase');
 
-  summary = codexProgressSummary({
+  storyState = {
     beatIndex: 4,
-    seenComms: lateEntry ? { [lateEntry.id]: true } : {},
+    seenComms: lateEntry ? { [lateEntry.id]: true, ['trap_' + firstTrap.id]: true } : { ['trap_' + firstTrap.id]: true },
     graffitiShown: { ['airlock:' + GRAFFITI.REDISTRIBUTED]: true },
-  });
-  const beat4Comms = COLD_START.length + COMMS_CATS.reduce((sum, key) =>
-    sum + COMMS[key].filter((entry) => (entry.beat != null ? entry.beat : 0) <= 4 || (lateEntry && entry.id === lateEntry.id)).length, 0);
+  };
+  summary = codexProgressSummary(storyState);
   assert.equal(valueFor(summary, 'Story'), '5/8 beats',
     'Codex status should advance story counts with beat progress');
   assert.equal(valueFor(summary, 'Figures'), '10/11 known',
     'Codex status should count beat-gated figures through beat 4');
   assert.equal(valueFor(summary, 'Graffiti'), '2/' + Object.keys(GRAFFITI).length + ' encountered',
     'Codex status should include encountered graffiti flags without leaking unseen lines');
-  assert.equal(valueFor(summary, 'Comms'), beat4Comms + '/' + commsTotal + ' unlocked',
-    'Codex status should count explicit seen flags even when a comm is above the current beat');
+  assert.equal(valueFor(summary, 'Comms'), countUnlockedComms(storyState, 4) + '/' + commsTotal + ' unlocked',
+    'Codex status should count explicit seen flags, including persisted conditional trap signals');
 
   summary = codexProgressSummary({ beatIndex: 7, seenComms: {}, graffitiShown: {} });
   assert.equal(valueFor(summary, 'Endgame'), '5/5 revealed',
