@@ -10,9 +10,11 @@ import {
   sectorSignalFor,
   forecastTransitFor,
 } from '../../systems/sectorSim.js';
+import { BINDINGS } from '../bindings.js';
 
 const FACTION_COLOR = Object.create(null);
 const FACTION_NAME = Object.create(null);
+const SECTOR_NAME = new Map(SECTORS.map((s) => [s.id, s.name]));
 for (const f of FACTION_META) {
   FACTION_COLOR[f.id] = f.color || '#9aa8bc';
   FACTION_NAME[f.id] = f.short || f.name || f.id;
@@ -71,6 +73,22 @@ const CSS = `
 #sf-starmap .sm-kv b { color:var(--ink); font-weight:600; text-align:right; }
 #sf-starmap .sm-driver { font-size:.72em; color:var(--ink-mute); line-height:1.35; margin:3px 0 6px; }
 #sf-starmap .sm-hint { font-size:.76em; color:var(--ink-mute); line-height:1.45; }
+#sf-starmap .sm-objective { border:1px solid rgba(255,210,74,.34); border-radius:6px; padding:9px 10px;
+  background:rgba(255,210,74,.065); box-shadow:0 0 18px rgba(255,210,74,.08); }
+#sf-starmap .sm-objective[hidden] { display:none; }
+#sf-starmap .sm-objective-k { font-family:var(--mono); font-size:.66em; letter-spacing:.14em; text-transform:uppercase;
+  color:#ffd24a; }
+#sf-starmap .sm-objective-title { margin-top:4px; color:#fff; font-weight:700; line-height:1.25; }
+#sf-starmap .sm-objective-body { margin-top:5px; color:var(--ink-dim); font-size:.78em; line-height:1.42; }
+#sf-starmap .sm-objective-meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; font-family:var(--mono);
+  font-size:.68em; color:var(--ink-mute); }
+#sf-starmap .sm-objective-meta span { border:1px solid rgba(255,210,74,.18); border-radius:999px; padding:2px 6px;
+  background:rgba(6,11,21,.38); }
+#sf-starmap .sm-objective-meta .hot { color:#ffd24a; border-color:rgba(255,210,74,.36); }
+#sf-starmap .sm-objective button { width:100%; margin-top:9px; padding:8px; border-color:rgba(255,210,74,.46);
+  color:#fff; background:rgba(255,210,74,.12); }
+#sf-starmap .sm-objective button:hover, #sf-starmap .sm-objective button:focus-visible {
+  border-color:#ffd24a; box-shadow:0 0 0 1px rgba(255,210,74,.25), 0 0 16px rgba(255,210,74,.16); }
 #sf-starmap .sm-route { font-family:var(--mono); font-size:.78em; color:var(--accent-2); margin-top:7px; }
 #sf-starmap .sm-route-leg { font-family:var(--mono); font-size:.72em; color:var(--ink-dim); padding:2px 0 2px 9px;
   border-left:2px solid rgba(57,208,255,.3); }
@@ -147,10 +165,153 @@ function trendColor(v, goodWhenPositive = false) {
 function driverLabel(id) { return DRIVER_LABEL[id] || String(id || '').replace(/_/g, ' '); }
 function securityLabel(sec) { return sec >= 0.7 ? 'High' : sec >= 0.4 ? 'Mid' : sec >= 0.15 ? 'Low' : 'Null'; }
 function enemyDensityLabel(d) { return d <= 0.15 ? 'Low' : d <= 0.35 ? 'Medium' : d <= 0.55 ? 'High' : 'Extreme'; }
+function sectorName(id) { return SECTOR_NAME.get(id) || id || 'target sector'; }
+function appendSentence(base, sentence) {
+  const head = String(base || '').trim();
+  const tail = String(sentence || '').trim();
+  if (!head) return tail;
+  if (!tail) return head;
+  return /[.!?]$/.test(head) ? `${head} ${tail}.` : `${head}. ${tail}.`;
+}
 function hashText(s) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return h >>> 0;
+}
+
+function activeTrackedMission(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  if (trackedId) {
+    const tracked = active.find((m) => m && m.id === trackedId && m.status === 'active');
+    if (tracked) return tracked;
+  }
+  return active.find((m) => m && m.status === 'active') || null;
+}
+
+function missionSummary(mission) {
+  if (!mission) return 'Proceed to the objective';
+  const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
+  const target = Math.max(1, Number(mission.objectiveTarget) || 1);
+  if (mission.type === 'mining_quota') return `Mine ${progress}/${target} units`;
+  if (mission.type === 'bulk_trade') return `Sell ${progress}/${target} units`;
+  if (mission.type === 'patrol_clear') return `Clear ${progress}/${target} hostiles`;
+  if (mission.type === 'recon_scan') return `Scan ${progress}/${target} sites`;
+  return mission.objectiveProgress ? `${progress}/${target}` : 'Proceed to the objective';
+}
+
+function objectiveKindFor(waypoint) {
+  if (!waypoint) return 'mission';
+  if (waypoint.onboarding) return 'onboarding';
+  return waypoint.kind || 'waypoint';
+}
+
+function objectiveKicker(kind) {
+  if (kind === 'mission') return 'Tracked Mission';
+  if (kind === 'trade') return 'Trade Route';
+  if (kind === 'story') return 'Story Objective';
+  if (kind === 'onboarding') return 'Tutorial Objective';
+  return 'Waypoint';
+}
+
+function objectiveFromWaypoint(waypoint, mission = null) {
+  const kind = objectiveKindFor(waypoint);
+  return {
+    kind,
+    kicker: objectiveKicker(kind),
+    title: (mission && mission.title) || waypoint.label || waypoint.reason || waypoint.sectorName || 'Objective',
+    detail: waypoint.reason || missionSummary(mission) || waypoint.label || 'Set course for the active objective.',
+    missionId: waypoint.missionId || (mission && mission.id) || null,
+    missionType: waypoint.missionType || (mission && mission.type) || null,
+    stationId: waypoint.stationId || null,
+    commodityId: waypoint.commodityId || null,
+    sectorId: waypoint.sectorId || null,
+    sectorName: waypoint.sectorName || sectorName(waypoint.sectorId),
+    hasLocalFix: !!waypoint.pos,
+  };
+}
+
+function objectiveFromMission(mission) {
+  return {
+    kind: 'mission',
+    kicker: objectiveKicker('mission'),
+    title: mission.title || mission.name || 'Mission',
+    detail: missionSummary(mission),
+    missionId: mission.id || null,
+    missionType: mission.type || null,
+    stationId: mission.destStationId || null,
+    commodityId: mission.params && mission.params.cmdtyId || null,
+    sectorId: mission.destSectorId || null,
+    sectorName: sectorName(mission.destSectorId),
+    hasLocalFix: false,
+  };
+}
+
+export function resolveStarmapObjective(state) {
+  if (!state) return null;
+  const waypoint = state.nav && state.nav.waypoint;
+  const mission = activeTrackedMission(state);
+  if (waypoint) {
+    const waypointMission = waypoint.missionId && mission && waypoint.missionId === mission.id ? mission : null;
+    return objectiveFromWaypoint(waypoint, waypointMission);
+  }
+  if (mission) return objectiveFromMission(mission);
+  return null;
+}
+
+export function describeStarmapObjectiveRoute(state, objective, nameOf = sectorName) {
+  if (!state || !objective) return null;
+  const targetSectorId = objective.sectorId;
+  if (!targetSectorId && objective.hasLocalFix) {
+    return {
+      state: 'local-fix',
+      next: `Use ${BINDINGS.localmap.label} Local Map`,
+      summary: 'local fix acquired',
+      canPlot: false,
+      actionLabel: '',
+    };
+  }
+  if (!targetSectorId) {
+    return {
+      state: 'missing',
+      next: 'No sector fix yet',
+      summary: 'Open Mission Log',
+      canPlot: false,
+      actionLabel: '',
+    };
+  }
+  const route = state.nav && state.nav.route;
+  const legs = route && Array.isArray(route.legs) ? route.legs : [];
+  const first = legs[0];
+  const last = legs[legs.length - 1];
+  const currentSectorId = state.world && state.world.currentSectorId || first && first.from || null;
+  if (currentSectorId && currentSectorId === targetSectorId) {
+    return {
+      state: 'local',
+      next: `In ${nameOf(targetSectorId)}`,
+      summary: `Use ${BINDINGS.localmap.label} Local Map`,
+      canPlot: false,
+      actionLabel: '',
+    };
+  }
+  if (first && last && (!currentSectorId || first.from === currentSectorId) && last.to === targetSectorId) {
+    const hops = route.totalHops || legs.length;
+    const fuel = Math.round(route.totalFuel || legs.reduce((sum, leg) => sum + (Number(leg.fuel) || 0), 0));
+    return {
+      state: 'plotted',
+      next: `Next jump: ${nameOf(first.to)}`,
+      summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
+      canPlot: true,
+      actionLabel: 'Refresh Objective Route',
+    };
+  }
+  return {
+    state: 'needed',
+    next: `Plot route to ${nameOf(targetSectorId)}`,
+    summary: `${BINDINGS.starmap.label} route needed`,
+    canPlot: !!targetSectorId,
+    actionLabel: 'Plot Objective Route',
+  };
 }
 
 function closeScreen(ctx) {
@@ -232,6 +393,7 @@ export const starmapScreen = {
       <div class="sm-body">
         <div class="sm-canvas-wrap"><canvas></canvas></div>
         <div class="sm-side">
+          <div class="sm-objective" data-objective hidden></div>
           <div data-sel><div class="sm-hint">Select a sector to inspect the live danger, market, and influence fields.</div></div>
           <div class="sm-actions" data-actions></div>
         </div>
@@ -243,7 +405,7 @@ export const starmapScreen = {
           <span><i class="sm-dot" style="background:#64ffda"></i>surplus</span>
           <span><i class="sm-dot" style="background:#c08bff"></i>contested</span>
         </div>
-        <div>M close · scroll zoom · drag pan · moving beads show commodity flow</div>
+        <div>${BINDINGS.starmap.label} close · scroll zoom · drag pan · moving beads show commodity flow</div>
       </div>`;
 
     this._canvas = rootEl.querySelector('canvas');
@@ -253,6 +415,7 @@ export const starmapScreen = {
       jumpState: rootEl.querySelector('[data-jstate]'),
       range: rootEl.querySelector('[data-range]'),
       epoch: rootEl.querySelector('[data-epoch]'),
+      objective: rootEl.querySelector('[data-objective]'),
       selected: rootEl.querySelector('[data-sel]'),
       actions: rootEl.querySelector('[data-actions]'),
     };
@@ -265,6 +428,10 @@ export const starmapScreen = {
     this._canvas.addEventListener('dblclick', (e) => this._onDblClick(e));
     this._canvas.addEventListener('wheel', (e) => this._onWheel(e), { passive: false });
     this._els.actions.addEventListener('click', (e) => {
+      const button = e.target.closest('button[data-act]');
+      if (button) this._onAction(button.dataset.act);
+    });
+    this._els.objective.addEventListener('click', (e) => {
       const button = e.target.closest('button[data-act]');
       if (button) this._onAction(button.dataset.act);
     });
@@ -706,6 +873,7 @@ export const starmapScreen = {
     const selected = this._els.selected, actions = this._els.actions;
     if (!selected || !actions) return;
     this._sidebarSig = this._sidebarSignature();
+    this._syncObjective();
     const routeHtml = this._routeHtml();
     if (!this._selectedId) {
       selected.innerHTML = `<div class="sm-hint">Select a sector to inspect the live danger, market, and influence fields.</div>${routeHtml}`;
@@ -791,6 +959,40 @@ export const starmapScreen = {
     else actions.innerHTML = '<button class="sm-course" data-act="route">⟫ Plot Route</button>';
   },
 
+  _syncObjective() {
+    const panel = this._els && this._els.objective;
+    if (!panel) return;
+    const objective = resolveStarmapObjective(this._ctx.state);
+    if (!objective) {
+      panel.hidden = true;
+      panel.innerHTML = '';
+      panel.removeAttribute('aria-label');
+      return;
+    }
+    const guidance = describeStarmapObjectiveRoute(this._ctx.state, objective, (id) => this._nameOf(id));
+    const meta = [];
+    if (objective.sectorId) meta.push({ text: objective.sectorName || this._nameOf(objective.sectorId), hot: guidance && guidance.state !== 'local' });
+    if (guidance && guidance.summary) meta.push({ text: guidance.summary, hot: guidance.state !== 'local' });
+    if (objective.hasLocalFix && (!guidance || guidance.summary !== 'local fix acquired')) meta.push({ text: 'local fix acquired', hot: false });
+    if (objective.commodityId) meta.push({ text: 'cargo route', hot: true });
+    const body = guidance && guidance.next
+      ? appendSentence(objective.detail || 'Proceed to the objective.', guidance.next)
+      : objective.detail || 'Proceed to the objective.';
+    const action = guidance && guidance.canPlot
+      ? `<button type="button" data-act="objective-route">${escapeHtml(guidance.actionLabel || 'Plot Objective Route')}</button>`
+      : '';
+    const html = `
+      <div class="sm-objective-k">${escapeHtml(objective.kicker)}</div>
+      <div class="sm-objective-title">${escapeHtml(objective.title)}</div>
+      <div class="sm-objective-body">${escapeHtml(body)}</div>
+      ${meta.length ? `<div class="sm-objective-meta">${meta.map((m) => `<span${m.hot ? ' class="hot"' : ''}>${escapeHtml(m.text)}</span>`).join('')}</div>` : ''}
+      ${action}`;
+    const readable = [objective.kicker, objective.title, body, ...meta.map((m) => m.text)].filter(Boolean).join(' ');
+    if (panel.innerHTML !== html) panel.innerHTML = html;
+    if (panel.getAttribute('aria-label') !== readable) panel.setAttribute('aria-label', readable);
+    panel.hidden = false;
+  },
+
   _riskHtml(label, risk) {
     const color = risk.incidentChance > 0.55 ? '#ff5470' : risk.incidentChance > 0.25 ? '#ffb347' : '#62e08a';
     const marginColor = risk.survivalMargin < 0 ? '#ff5470' : '#62e08a';
@@ -814,6 +1016,30 @@ export const starmapScreen = {
   },
 
   _onAction(action) {
+    if (action === 'objective-route') {
+      const objective = resolveStarmapObjective(this._ctx.state);
+      const targetSectorId = objective && objective.sectorId;
+      if (!targetSectorId) {
+        this._ctx.bus.emit('toast', { text: 'Objective has no sector fix yet', kind: 'warn', ttl: 3000 });
+        return;
+      }
+      const payload = {
+        sectorId: targetSectorId,
+        path: null,
+        waypointKind: objective.kind || null,
+        missionId: objective.missionId || null,
+        stationId: objective.stationId || null,
+        commodityId: objective.commodityId || null,
+      };
+      this._ctx.bus.emit('world:requestRoute', { targetSectorId, mode: 'fuel' });
+      this._ctx.bus.emit('ui:setCourse', payload);
+      if (this._isDiscovered(targetSectorId)) this._selectedId = targetSectorId;
+      this._ctx.bus.emit('toast', { text: `Plotting objective route to ${this._nameOf(targetSectorId)}`, kind: 'info', ttl: 3000 });
+      this._syncHeader();
+      this._syncSidebar();
+      this._draw();
+      return;
+    }
     const target = this._selectedId;
     if (!target) return;
     const bus = this._ctx.bus;
@@ -849,12 +1075,16 @@ export const starmapScreen = {
     const signal = id && this._signal(id);
     const field = this._ctx.state.sectorSim && this._ctx.state.sectorSim.field;
     const player = this._ctx.state.entities && this._ctx.state.entities.get && this._ctx.state.entities.get(this._ctx.state.playerId);
+    const objective = resolveStarmapObjective(this._ctx.state);
+    const guidance = describeStarmapObjectiveRoute(this._ctx.state, objective, (sectorId) => this._nameOf(sectorId));
     return [
       id || '', this._currentId() || '', field && field.epochDays || 0,
       signal && Math.round(signal.danger * 10000), signal && Math.round(signal.pricePressure * 10000),
       signal && signal.dominantFactionId, signal && Math.round(signal.contestMargin * 10000),
       player && Math.round(player.maxSpeed || 0), player && Math.round((player.shield || 0) + (player.armorHp || 0) + (player.hull || 0)),
       this._route() && this._route().legs && this._route().legs.length || 0,
+      objective && objective.kind || '', objective && objective.sectorId || '', objective && objective.title || '',
+      guidance && guidance.state || '', guidance && guidance.summary || '',
     ].join('|');
   },
 

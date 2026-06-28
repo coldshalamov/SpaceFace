@@ -557,7 +557,9 @@ function injectHudCss() {
   #hud > .sf-cargo-panel { pointer-events: auto; }
   body.ui-modal-open #aim-reticle,
   body.ui-modal-open #pilot-portrait { display: none !important; }
-  body.ui-modal-open #control-hints { opacity: 0 !important; pointer-events: none !important; }
+  body.ui-modal-open #control-hints,
+  body.ui-modal-open #alerts,
+  body.ui-modal-open #toasts { opacity: 0 !important; pointer-events: none !important; }
 
   /* Reticle reflects fire mode: amber tint + slight pulse when auto-fire is engaging hostiles,
      cyan when the pilot aims/fires manually (Phase 2). */

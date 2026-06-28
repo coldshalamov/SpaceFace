@@ -201,8 +201,20 @@ try {
     const sm = (ui && ui.screenManager) || null;
     const top = sm && typeof sm.top === 'function' ? sm.top() : null;
     const canvas = el && el.querySelector('canvas');
-    return { open: top === 'starmap', elVisible: !!(el && el.getBoundingClientRect().height > 2), hasCanvas: !!canvas };
+    const objective = el && el.querySelector('[data-objective]');
+    const objectiveRect = objective && objective.getBoundingClientRect();
+    return {
+      open: top === 'starmap',
+      elVisible: !!(el && el.getBoundingClientRect().height > 2),
+      hasCanvas: !!canvas,
+      objectiveVisible: !!(objective && !objective.hidden && objectiveRect && objectiveRect.height > 8),
+      objectiveText: objective ? objective.textContent.replace(/\s+/g, ' ').trim() : null,
+      objectiveHasRouteAction: !!(objective && objective.querySelector('[data-act="objective-route"]')),
+    };
   })())`);
+  const starMapShot = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 88 });
+  mkdirSync(dirname('.devshots/perf/starmap-objective.jpg'), { recursive: true });
+  writeFileSync('.devshots/perf/starmap-objective.jpg', Buffer.from(starMapShot.data, 'base64'));
   await press('Escape', 'Escape', 27); await sleep(300);
 
   console.log('Three-scale report:', JSON.stringify({ radar: radarReport, local: localReport, galaxy: galaxyReport }, null, 2));
@@ -213,13 +225,23 @@ try {
   assert.match(localReport.scaleLabel || '', /SYSTEM/i, 'three-scale: local map must label its SYSTEM scale');
   assert.equal(galaxyReport.open, true, 'three-scale: M must open the galaxy star map');
   assert.ok(galaxyReport.elVisible, 'three-scale: galaxy map must be a distinct visible surface');
+  assert.equal(galaxyReport.objectiveVisible, true,
+    'three-scale: galaxy map must surface the active objective handoff');
+  assert.match(galaxyReport.objectiveText || '', /Objective|Mission|Trade|Story|Tutorial|Waypoint|route|Local Map/i,
+    'three-scale: galaxy map objective handoff must be readable: ' + JSON.stringify(galaxyReport));
   // The three are distinct DOM elements with distinct ids/screens — not the same view.
   assert.notEqual(localReport.open && galaxyReport.open, false, 'three-scale: local and galaxy are separate screens');
 
   evidence.scenarios.localMapThreeScale = {
     tacticalRadar: { canvas: radarReport.radarIsCanvas, id: radarReport.id },
     localSystem: { openedWith: 'N', canvasDrawn: localReport.canvasDrawn, scaleLabel: localReport.scaleLabel },
-    galaxy: { openedWith: 'M', visible: galaxyReport.elVisible },
+    galaxy: {
+      openedWith: 'M',
+      visible: galaxyReport.elVisible,
+      objectiveVisible: galaxyReport.objectiveVisible,
+      objectiveText: galaxyReport.objectiveText,
+      objectiveHasRouteAction: galaxyReport.objectiveHasRouteAction,
+    },
     pass: true,
     contract: 'Three distinct navigation scales: tactical radar (HUD) vs local system map (N) vs galaxy star map (M)',
   };

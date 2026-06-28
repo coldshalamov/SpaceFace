@@ -424,7 +424,7 @@ function injectCommsCss() {
   #sf-comms { position:absolute; left:16px; top:118px; bottom:170px; width:300px; display:flex;
     flex-direction:column-reverse; gap:8px; pointer-events:none; z-index:1050; overflow:hidden; }
   #sf-comms .sf-comm { pointer-events:auto; }
-  body.ui-modal-open #sf-comms { opacity:.25; }
+  body.ui-modal-open #sf-comms { opacity:0; pointer-events:none; }
   .sf-comm { --comm-color:var(--text-secondary); --comm-glow:none; position:relative; padding:6px 11px;
     border-left:2px solid var(--comm-color); box-shadow:-1px 0 8px -2px var(--comm-color);
     color:var(--text-primary); font-size:12px; text-shadow:var(--text-shadow-hard);
