@@ -34,8 +34,12 @@ assert.match(stationHubSrc, /st-mission-preflight/, 'mission cards must render p
 assert.match(stationHubSrc, /st-mission-consequences/, 'mission cards must render consequence chips');
 assert.match(missionPreflightSrc, /Jump route: \$\{sectorName\(targetSectorId\)\}/,
   'mission preflight must label off-sector destination scope before accept');
-assert.match(missionPreflightSrc, /\(tight \? 'Tight ' : ''\) \+ `\$\{fmtClock\(timeLimit\)\} timer`/,
-  'mission preflight must flag tight route timers before accept');
+assert.match(missionPreflightSrc, /STATION_SECTOR_BY_ID/,
+  'mission preflight must resolve station-only destinations into route-scope chips');
+assert.match(missionPreflightSrc, /TIMER_CRITICAL_S/,
+  'mission preflight must distinguish critical timers before accept');
+assert.match(missionPreflightSrc, /deadline_s/,
+  'mission preflight must support active absolute mission deadlines as well as board timers');
 assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
   'mission preflight must flag cargo capacity blockers');
 assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
@@ -141,10 +145,33 @@ const localScope = missionRouteScope(makeOffer({
 }), makeState(8));
 assert.equal(localScope.text, 'Local sector', 'route scope should distinguish local-sector work');
 
-const tightOffer = makeOffer({ time_limit_s: 25, distance: 1200, params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2, taskTime: 20 } });
+const stationFallbackScope = missionRouteScope(makeOffer({
+  destStationId: 'station_beltout',
+  destSectorId: null,
+}), makeState(8));
+assert.equal(stationFallbackScope.text, 'Jump route: Ceres Belt',
+  'route scope should resolve station-only destinations through the static sector graph');
+
+const deadlinePacing = missionTimePacing(makeOffer({
+  deadline_s: 420,
+  time_limit_s: null,
+  distance: 0,
+  params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2, taskTime: 20 },
+}), { ...makeState(8), simTime: 120 });
+assert.equal(deadlinePacing.chip.text, 'Tight 5m timer',
+  'absolute active deadlines should count down from state.simTime');
+
+const tightOffer = makeOffer({ time_limit_s: 240, distance: 1200, params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2, taskTime: 20 } });
 const tightPacing = missionTimePacing(tightOffer, makeState(8));
 assert.equal(tightPacing.chip.kind, 'warn', 'tight route timers should render as warning chips');
 assert.match(tightPacing.warning || '', /launch directly/, 'tight route timers should explain the player action');
+const criticalPacing = missionTimePacing(makeOffer({
+  time_limit_s: 90,
+  distance: 1200,
+  params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2, taskTime: 20 },
+}), makeState(8));
+assert.equal(criticalPacing.chip.kind, 'bad', 'critical route timers should render as bad chips');
+assert.match(criticalPacing.warning || '', /critical/, 'critical route timers should explain the risk');
 const tightLowFreeState = makeState(8);
 tightLowFreeState.player.cargo.usedVolume = 6;
 const tightLowFreePreflight = missionPreflight(tightOffer, tightLowFreeState);
@@ -162,4 +189,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - shared readiness and consequence stakes are visible before accept.');
+console.log('Mission preflight OK - shared route scope, timer pacing, readiness, and consequence stakes are visible before accept.');

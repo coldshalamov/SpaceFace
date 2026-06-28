@@ -4,7 +4,13 @@ import { SECTORS } from '../data/sectors.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const STATION_SECTOR_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) STATION_SECTOR_BY_ID.set(station.id, sector.id);
+}
 const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
+const TIMER_TIGHT_S = 5 * 60;
+const TIMER_CRITICAL_S = 2 * 60;
 const TASK_TIME_FALLBACK = {
   cargo_delivery: 20,
   bulk_trade: 30,
@@ -100,6 +106,7 @@ function fmtClock(value) {
 function missionDestSectorId(m) {
   if (!m) return null;
   if (m.destSectorId) return m.destSectorId;
+  if (m.destStationId && STATION_SECTOR_BY_ID.has(m.destStationId)) return STATION_SECTOR_BY_ID.get(m.destStationId);
   const raw = String(m.dest || '');
   return raw.startsWith('sector_') ? raw : null;
 }
@@ -142,20 +149,27 @@ function missionTaskEstimate(m) {
 }
 
 export function missionTimePacing(m, state) {
-  const timeLimit = Number(m && (m.expiresInS != null ? m.expiresInS : m.time_limit_s));
+  const simTime = Number(state && state.simTime) || 0;
+  const deadline = Number(m && (m.deadline_s != null ? m.deadline_s : m.deadlineS));
+  const timeLimit = Number.isFinite(deadline) && deadline > 0
+    ? Math.max(0, deadline - simTime)
+    : Number(m && (m.expiresInS != null ? m.expiresInS : (m.timeLimitS != null ? m.timeLimitS : m.time_limit_s)));
   if (!Number.isFinite(timeLimit) || timeLimit <= 0) return null;
   const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
   const cruise = Number(cfg && cfg.cruiseSpeedRef) || MISSION_TUNING.cruiseSpeedRef || 140;
   const distance = Math.max(0, Number(m && m.distance) || 0);
   const estimate = distance / Math.max(1, cruise) + missionTaskEstimate(m);
   const slack = estimate > 0 ? timeLimit / estimate : null;
-  const tight = slack != null && slack < 1.6;
+  const critical = timeLimit <= TIMER_CRITICAL_S;
+  const tight = critical || timeLimit <= TIMER_TIGHT_S || (slack != null && slack < 1.6);
   return {
     chip: {
-      kind: tight ? 'warn' : 'ok',
-      text: (tight ? 'Tight ' : '') + `${fmtClock(timeLimit)} timer`,
+      kind: critical ? 'bad' : (tight ? 'warn' : 'ok'),
+      text: (critical ? 'Critical ' : (tight ? 'Tight ' : '')) + `${fmtClock(timeLimit)} timer`,
     },
-    warning: tight ? 'Timer is tight for the route distance; refuel, repair, and launch directly after accepting.' : null,
+    warning: critical
+      ? 'Timer is critical; accept only if the route is staged and the ship is ready to launch.'
+      : (tight ? 'Timer is tight for the route distance; refuel, repair, and launch directly after accepting.' : null),
     slack,
   };
 }
