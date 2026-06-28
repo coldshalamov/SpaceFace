@@ -146,6 +146,99 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
   };
 }
 
+function normalizeWantedSlots(value) {
+  if (value instanceof Set) return new Set([...value].filter(Boolean));
+  if (Array.isArray(value)) return new Set(value.filter(Boolean));
+  return value ? new Set([value]) : new Set();
+}
+
+function tierAllows(def, tier) {
+  const stationTierValue = Number(tier);
+  if (!Number.isFinite(stationTierValue)) return true;
+  return (Number(def && def.tier) || 0) <= stationTierValue + 1;
+}
+
+function purchaseRecommendationScore(def, purchase, wantedSlots) {
+  const wanted = wantedSlots.size === 0 || wantedSlots.has(def.slotType);
+  let score = wanted ? 10000 : 0;
+  if (!purchase.disabled && purchase.hasSlot) score += 5000;
+  if (purchase.state === 'fit') score += 1500;
+  else if (purchase.state === 'inventory' && purchase.hasSlot) score += 900;
+  else if (purchase.state === 'funding') score += 700;
+  else if (purchase.state === 'locked') score += 500;
+  else if (!purchase.hasSlot) score += 250;
+  score += (Number(def.tier) || 0) * 100;
+  score -= Math.max(0, Number(def.price) || 0) / 1000;
+  return score;
+}
+
+export function recommendOutfittingPurchase(player = {}, slots = [], fittings = [], opts = {}) {
+  const wantedSlots = normalizeWantedSlots(opts.wantedSlots);
+  const buyable = Array.isArray(opts.items) ? opts.items : ALL_BUYABLE;
+  const candidates = buyable
+    .filter((def) => def && tierAllows(def, opts.tier))
+    .map((def) => ({
+      def,
+      purchase: describeOutfittingPurchase(def, player, slots, fittings),
+    }));
+  const missionPool = wantedSlots.size
+    ? candidates.filter((entry) => wantedSlots.has(entry.def.slotType))
+    : candidates;
+  const pool = missionPool.length ? missionPool : candidates;
+
+  if (!pool.length) {
+    return {
+      state: 'empty',
+      kind: 'info',
+      title: 'No next buy',
+      detail: 'This station has no modules that match the current job or hull tier.',
+    };
+  }
+
+  const sorted = pool.slice().sort((a, b) =>
+    purchaseRecommendationScore(b.def, b.purchase, wantedSlots) -
+    purchaseRecommendationScore(a.def, a.purchase, wantedSlots));
+  const currentHullBuy = sorted.find((entry) => !entry.purchase.disabled && entry.purchase.hasSlot);
+  const pick = currentHullBuy || sorted[0];
+  const missionFit = wantedSlots.has(pick.def.slotType);
+
+  if (currentHullBuy) {
+    return {
+      state: pick.purchase.state,
+      kind: 'ok',
+      defId: pick.def.id,
+      title: 'Next buy: ' + pick.def.name,
+      label: pick.purchase.label,
+      detail: pick.purchase.title + (missionFit ? ' Matches the tracked job fit.' : ' Improves the current hull.'),
+    };
+  }
+
+  if (!pick.purchase.hasSlot) {
+    return {
+      state: 'hull',
+      kind: 'warn',
+      defId: pick.def.id,
+      title: 'Need compatible hull slot: ' + pick.def.name,
+      label: 'Hull slot',
+      detail: pick.purchase.title + ' Switch hulls or buy a ship with the required slot before making this the job fit.',
+    };
+  }
+
+  const blockerTail = pick.purchase.state === 'locked'
+    ? ' Track the prerequisite in the Tech Tree before buying.'
+    : (pick.purchase.state === 'funding'
+      ? ' Run a contract or trade loop to fund the upgrade.'
+      : ' Clear the blocker, then return to Outfitting.');
+  return {
+    state: pick.purchase.state,
+    kind: 'warn',
+    defId: pick.def.id,
+    title: pick.purchase.label + ': ' + pick.def.name,
+    label: pick.purchase.label,
+    detail: pick.purchase.title + blockerTail,
+  };
+}
+
 /** Resolve the sector tier for the station the player is docked at. */
 function stationTier(stationId) {
   for (const sec of SECTORS) {
@@ -466,14 +559,20 @@ export function createOutfittingPanel(ctx) {
     const guide = missionFitGuide(mission);
     const chips = guide.wants.map((slotType) => missionAdvisorChipHtml(slotReadiness(slots, owned, slotType))).join('');
     const status = pick.tracked ? 'TRACKED JOB' : 'ACTIVE JOB';
+    const nextBuy = recommendOutfittingPurchase(ctx.state.player, slots, (owned && owned.fittings) || [], {
+      wantedSlots: guide.wants,
+      tier: stationTier(panel.stationId),
+    });
     advisor.innerHTML =
       '<div class="st-mission-preflight">' +
         '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">MISSION FIT ADVISOR</span>' +
         '<span class="st-mission-preflight-chip st-mission-preflight-chip--ok">' + escapeHtml(status) + '</span>' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--' + escapeHtml(nextBuy.kind) + '">' + escapeHtml(nextBuy.state.toUpperCase()) + '</span>' +
         chips +
       '</div>' +
       '<div class="st-mission-accepted-title">' + escapeHtml(mission.title || prettyMissionType(mission.type)) + '</div>' +
-      '<div class="st-mission-purpose"><b>' + escapeHtml(guide.label) + ':</b> ' + escapeHtml(guide.text) + '</div>';
+      '<div class="st-mission-purpose"><b>' + escapeHtml(guide.label) + ':</b> ' + escapeHtml(guide.text) + '</div>' +
+      '<div class="st-mission-purpose st-outfit-nextbuy"><b>' + escapeHtml(nextBuy.title) + ':</b> ' + escapeHtml(nextBuy.detail) + '</div>';
   }
 
   function rebuildSlots() {
