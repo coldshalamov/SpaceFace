@@ -32,6 +32,10 @@ const REFINE_MAP = { // raw ore -> refined commodity
 
 let _nextClaimId = 1;
 
+function fmtCr(value) {
+  return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
+}
+
 export const claims = {
   name: 'claims',
 
@@ -56,7 +60,8 @@ export const claims = {
     }
     const player = this.state.player;
     if (player.credits < CLAIM_COST) {
-      this.bus.emit('toast', { text: 'Need ' + CLAIM_COST + ' credits to claim', kind: 'error', ttl: 3 });
+      const missing = CLAIM_COST - (Number(player.credits) || 0);
+      this.bus.emit('toast', { text: 'Need ' + fmtCr(missing) + ' more cr to claim ' + (poi.name || 'this body'), kind: 'error', ttl: 3 });
       return false;
     }
     // charge via the canonical economy path
@@ -101,7 +106,8 @@ export const claims = {
       return false;
     }
     if (player.credits < mod.cost) {
-      this.bus.emit('toast', { text: 'Need ' + mod.cost + ' credits for ' + mod.name, kind: 'error', ttl: 3 });
+      const missing = mod.cost - (Number(player.credits) || 0);
+      this.bus.emit('toast', { text: 'Need ' + fmtCr(missing) + ' more cr for ' + mod.name, kind: 'error', ttl: 3 });
       return false;
     }
     this.bus.emit('economy:chargeCredits', { amount: mod.cost, reason: 'build_module' });
