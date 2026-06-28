@@ -278,23 +278,34 @@ export const localmapScreen = {
       const stationName = (id) => stationNameForRoute(this._ctx.state, id);
       html = '<h4>Trade Routes <span style="float:right;color:var(--ink-mute,#5e7393)">profit/min</span></h4>';
       for (const r of routes) {
-        const stale = (r.reliability || 1) < 0.5;
+        const reliability = Number.isFinite(Number(r.reliability)) ? Number(r.reliability) : 1;
+        const stale = reliability < 0.5;
         const originName = stationName(r.originId);
         const destinationName = stationName(r.destinationId);
         const commodityName = commName(r.commodityId);
         const expectedProfit = formatCredits(r.expectedProfit);
         const units = Math.max(0, Math.floor(Number(r.units) || 0));
         const fuel = Math.round(Number(r.fuel) || 0);
+        const routeActionLabel = tradeRouteActionLabel({
+          originName,
+          destinationName,
+          commodityName,
+          units,
+          expectedProfit,
+          fuel,
+          stale,
+          reliability,
+        });
         html += '<button class="lm-route" type="button" data-act="route-nav" data-destination="' + escapeAttr(r.destinationId) + '" data-commodity="' + escapeAttr(r.commodityId) + '"' +
-          ' aria-label="Set course to ' + escapeAttr(destinationName) + ' to sell ' + escapeAttr(commodityName) + '">' +
+          ' title="' + escapeAttr(routeActionLabel) + '" aria-label="' + escapeAttr(routeActionLabel) + '">' +
           '<div class="lm-route-hdr">' +
             '<span class="lm-route-comm">' + escapeHtml(commodityName) + '</span>' +
             '<span class="lm-route-profit">' + Math.round(r.profitPerMinute) + '/m</span>' +
           '</div>' +
           '<div style="color:var(--ink-mute,#5e7393)">' + escapeHtml(originName) + ' → ' + escapeHtml(destinationName) + '</div>' +
           '<div class="lm-route-meta"><span>' + units + 'u load</span> <span>+' + expectedProfit + ' cr</span> <span>' + fuel + 'F est</span></div>' +
-          '<div class="lm-route-action">Set course</div>' +
-          (stale ? '<div class="lm-route-stale">stale intel (' + Math.round((r.reliability || 0) * 100) + '% reliable)</div>' : '') +
+          '<div class="lm-route-action">Set sell course</div>' +
+          (stale ? '<div class="lm-route-stale">stale intel (' + Math.round(reliability * 100) + '% reliable)</div>' : '') +
         '</button>';
       }
     }
@@ -637,6 +648,25 @@ function escapeAttr(value) {
 
 function formatCredits(value) {
   return Math.round(Math.max(0, Number(value) || 0)).toLocaleString();
+}
+
+function tradeRouteActionLabel(route) {
+  const originName = route.originName || 'origin station';
+  const destinationName = route.destinationName || 'buyer station';
+  const commodityName = route.commodityName || 'cargo';
+  const units = Math.max(0, Math.floor(Number(route.units) || 0));
+  const load = units > 0
+    ? 'buy ' + units + 'u ' + commodityName + ' at ' + originName + ' first'
+    : 'load ' + commodityName + ' at ' + originName + ' first';
+  const reliability = Math.max(0, Math.min(1, Number(route.reliability) || 0));
+  const parts = [
+    'Set sell course to ' + destinationName,
+    load,
+    'projected profit +' + (route.expectedProfit || '0') + ' cr',
+    Math.max(0, Math.round(Number(route.fuel) || 0)) + 'F estimated',
+  ];
+  if (route.stale) parts.push('stale intel ' + Math.round(reliability * 100) + '% reliable');
+  return parts.join('; ');
 }
 
 function appendSentence(base, sentence) {
