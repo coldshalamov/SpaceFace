@@ -94,6 +94,18 @@ assert.ok(starMapBindingMentions.length >= 3,
   'controlPrompts.js should source star-map tutorial/control copy from BINDINGS.starmap.label');
 assert.ok(codexBindingMentions.length >= 1,
   'controlPrompts.js should source codex control copy from BINDINGS.codex.label');
+assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: arrow keys change tabs[\s\S]*Enter\/Space act/,
+  'keyboard station control bar must teach hub tab navigation and activation');
+assert.match(promptSrc, /firstStation: `Stations offer[\s\S]*arrow keys change tabs[\s\S]*Enter\/Space acts[\s\S]*Escape undocks/,
+  'keyboard first-station hint must explain how to operate the station hub after docking');
+assert.match(promptSrc, /station: 'A dock[\s\S]*Hub: LB\/RB tabs[\s\S]*D-pad\/left stick focus[\s\S]*A act[\s\S]*B undock'/,
+  'gamepad station control bar must teach LB/RB tab cycling, focus, activation, and undock');
+assert.match(promptSrc, /firstStation: 'Stations offer[\s\S]*LB\/RB changes tabs[\s\S]*D-pad or left stick moves focus[\s\S]*A acts[\s\S]*B undocks'/,
+  'gamepad first-station hint must explain controller station hub flow after docking');
+assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: tap tabs\/actions[\s\S]*Tap Undock when ready/,
+  'touch station control bar must teach touch station tab/action flow');
+assert.match(promptSrc, /firstStation: `Stations offer[\s\S]*tap tabs and actions directly[\s\S]*tap Undock when Departure Check looks safe/,
+  'touch first-station hint must explain touch station hub flow after docking');
 for (const staleDockCopy of [/Press Enter at the dock prompt/, /Press ENTER to dock/, /Enter to dock/]) {
   assert.doesNotMatch(src, staleDockCopy,
     `onboarding.js must not use stale hard-coded dock copy: ${staleDockCopy}`);
@@ -119,4 +131,4 @@ assert.match(promptSrc, /Mine button/, 'controlPrompts.js must include touch min
 assert.match(readme, /\|\s*Dock\s*\|\s*\*\*E\*\*/, 'README controls must document E as the primary dock key');
 assert.match(readme, /\|\s*Codex\s*\|\s*\*\*K\*\*/, 'README controls must document K as the Codex key');
 
-console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft).`);
+console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft), with station hub control prompts guarded.`);
