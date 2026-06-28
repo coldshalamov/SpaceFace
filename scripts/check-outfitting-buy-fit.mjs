@@ -34,6 +34,10 @@ assert.match(outfitSource, /describeOutfittingPurchase/, 'Outfitting shop should
 assert.match(outfitSource, /data-fit-slot/, 'Outfitting shop should carry the target slot index on Buy & Fit buttons');
 assert.match(outfitSource, /fitSlotIndex/, 'Outfitting shop should emit fitSlotIndex through ui:buyModule');
 assert.match(outfitSource, /aria-label="/, 'Outfitting shop buttons should expose accessible action guidance');
+assert.match(outfitSource, /MISSION FIT ADVISOR/, 'Outfitting should explain how the tracked mission maps to the fitting bay');
+assert.match(outfitSource, /Pick a contract on the Mission Board/, 'Outfitting should send uncommitted players back to the Mission Board first');
+assert.match(outfitSource, /job fit/, 'Outfitting shop should tag modules that match the tracked mission fit');
+assert.match(outfitSource, /missionFitGuide/, 'Outfitting should centralize mission-type fit guidance');
 
 const shipDef = SHIPS.find((entry) => entry.id === 'ship_kestrel');
 const slots = buildSlotList(shipDef);
