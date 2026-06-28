@@ -1,6 +1,7 @@
 // Main Menu / title screen (ARCHITECTURE §1.3 step 6, §5; design/specs/09).
-// New Game / Continue / Load / Settings. Continue is enabled iff a save exists and shows
-// the exact latest slot metadata so players trust resume before committing to a load.
+// New Game / Continue / Load / Settings. Continue is enabled iff a save exists, shows
+// the exact latest slot metadata, and loads that displayed slot so players trust resume before
+// committing to a load.
 // Browser, Electron dev, and packaged desktop all arrive here through the same player route.
 
 const STYLE_ID = 'sf-menu-style';
@@ -242,9 +243,15 @@ export const mainMenuScreen = {
 
     bNew.addEventListener('click', () => pushWhenReady(ctx, 'newGame', 'New Game'));
     bContinue.addEventListener('click', () => {
-      // Continue = load the most recent save. Defer slot choice to the save system; emit a
-      // plain game:load with no slot (save resolves "latest"); else open the slot list.
-      ctx.bus.emit('game:load', { slot: 'latest' });
+      const latest = latestSave(readSaveIndex(ctx));
+      if (!latest) {
+        this._render(ctx);
+        return;
+      }
+      // Continue = load the exact slot described by the title summary. Avoid a second "latest"
+      // resolver pass so legacy or repaired indexes cannot make the button promise one save and
+      // load another.
+      ctx.bus.emit('game:load', { slot: latest.slot });
     });
     bLoad.addEventListener('click', () => pushWhenReady(ctx, 'saveLoad', 'Load Game'));
     bSettings.addEventListener('click', () => pushWhenReady(ctx, 'settings', 'Settings'));
