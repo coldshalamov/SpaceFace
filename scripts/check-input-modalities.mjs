@@ -1,7 +1,7 @@
 // check-input-modalities.mjs — guards the input-modality contract (goal P1-12).
 //
 // SpaceFace supports THREE input modalities merged into one state.input: keyboard+mouse (always on),
-// gamepad (navigator.getGamePads poller), and touch (virtual dual-stick + buttons for touchscreens).
+// gamepad (navigator.getGamepads poller), and touch (virtual dual-stick + buttons for touchscreens).
 // A modality can be silently dropped by a refactor that removes an import or a merge line — the
 // player would just find controls dead with no error. This check pins the contract:
 //   1. gamepad.js + touch.js exist and export their factory functions.
