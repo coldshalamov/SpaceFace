@@ -63,7 +63,7 @@ function injectStyle() {
   .sf-slot .sf-slot-context { font-size:12px; color:var(--ink-dim); margin-top:2px; overflow-wrap:anywhere; }
   .sf-slot .sf-slot-detail { font-size:11px; color:var(--ink-mute); font-family:var(--mono); margin-top:2px;
     overflow-wrap:anywhere; }
-  .sf-slot .sf-slot-sub { font-size:11px; color:var(--ink-mute); font-family:var(--mono); }
+  .sf-slot .sf-slot-sub { font-size:11px; color:var(--ink-mute); }
   .sf-slot.empty .sf-slot-name { color:var(--ink-mute); font-style:italic; }
   .sf-title-logo { font-family:var(--mono); letter-spacing:.5em; font-size:46px; color:var(--accent);
     text-shadow:0 0 40px rgba(57,208,255,.5); text-align:center; margin:0; }
@@ -176,13 +176,19 @@ export function slotBadges(id, meta, currentSlot, latestSlot) {
 function isOccupied(meta) {
   return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
 }
-function latestOccupiedSlot(slots) {
+function slotMetaScore(meta) {
+  const savedAtScore = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
+  if (savedAtScore) return savedAtScore;
+  const playtimeS = Number(meta && meta.playtimeS);
+  return Number.isFinite(playtimeS) ? playtimeS : 0;
+}
+export function latestOccupiedSlot(slots) {
   let best = null;
   let bestT = -1;
   Object.keys(slots || {}).forEach((slot) => {
     const meta = slots[slot];
     if (!isOccupied(meta)) return;
-    const t = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
+    const t = slotMetaScore(meta);
     if (t >= bestT) { bestT = t; best = slot; }
   });
   return best;
