@@ -36,6 +36,12 @@ function techName(id) {
   return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
 }
 
+function blueprintOutputLabel(bp) {
+  if (!bp || !bp.outputs) return 'unknown output';
+  const qty = Math.max(1, Number(bp.outputs.qty) || 1);
+  return rawName(bp.outputs.id, bp.outputs.kind) + (qty > 1 ? ' ×' + qty : '');
+}
+
 export function describeManufactureBuildAction(bp, player = {}, opts = {}) {
   if (!bp) {
     return {
@@ -95,6 +101,62 @@ export function describeManufactureBuildAction(bp, player = {}, opts = {}) {
   };
 }
 
+export function recommendManufactureStep(player = {}, opts = {}) {
+  const blueprints = Array.isArray(opts.blueprints) ? opts.blueprints : BLUEPRINTS;
+  const entries = blueprints.map((bp) => ({ bp, action: describeManufactureBuildAction(bp, player, opts) }));
+  const available = entries.find((entry) => entry.action.state === 'available');
+  if (available) {
+    return {
+      state: 'available',
+      kind: 'ok',
+      title: 'Ready build: ' + available.bp.name,
+      detail: available.action.title + ' Output: ' + blueprintOutputLabel(available.bp) + '.',
+    };
+  }
+  const busy = entries.find((entry) => entry.action.state === 'busy');
+  if (busy) {
+    return {
+      state: 'busy',
+      kind: 'warn',
+      title: 'Fabricator occupied',
+      detail: busy.action.title + ' Review the queue before committing more materials.',
+    };
+  }
+  const materials = entries.find((entry) => entry.action.state === 'materials');
+  if (materials) {
+    return {
+      state: 'materials',
+      kind: 'warn',
+      title: materials.action.label,
+      detail: materials.action.title + ' Mine, salvage, buy cargo, or follow a trade route for the missing input.',
+    };
+  }
+  const source = entries.find((entry) => entry.action.state === 'source');
+  if (source) {
+    return {
+      state: 'source',
+      kind: 'warn',
+      title: source.action.label,
+      detail: source.action.title + ' Buy, build, or unfit the source module before augmenting it.',
+    };
+  }
+  const tech = entries.find((entry) => entry.action.state === 'tech');
+  if (tech) {
+    return {
+      state: 'tech',
+      kind: 'warn',
+      title: tech.action.label,
+      detail: tech.action.title + ' Track the prerequisite in the Tech Tree, then return to this station.',
+    };
+  }
+  return {
+    state: 'empty',
+    kind: 'info',
+    title: 'No manufacturing step available',
+    detail: 'This station has no usable blueprint path right now. Check another fab/refinery or bring more inputs.',
+  };
+}
+
 function countOwnedModule(player, defId) {
   let count = 0;
   for (const item of (player.moduleInventory || [])) if (item && item.defId === defId) count++;
@@ -117,6 +179,10 @@ export function createManufacturePanel(ctx) {
   intro.className = 'st-manuf-intro';
   intro.textContent = 'Convert mined ore and salvaged materials into refined stock, modules, and whole ships. Research unlocks higher tiers.';
   root.appendChild(intro);
+
+  const advisor = document.createElement('div');
+  advisor.className = 'st-mission-guide st-manuf-advisor';
+  root.appendChild(advisor);
 
   const list = document.createElement('div');
   list.className = 'st-manuf-list';
@@ -143,6 +209,17 @@ export function createManufacturePanel(ctx) {
     const state = ctx.state;
     const p = state.player;
     const items = p.cargo.items || {};
+    const sid = ctx.state.ui && ctx.state.ui.dockedStationId;
+    const busy = crafting && crafting.isBusy && crafting.isBusy(sid);
+    const inProgress = busy && crafting.progress && crafting._currentJobName
+      ? crafting._currentJobName(sid) : null;
+    const nextStep = recommendManufactureStep(p, { busy, inProgress });
+    advisor.innerHTML =
+      '<div class="st-mission-preflight">' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">MANUFACTURING ADVISOR</span>' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--' + (nextStep.kind === 'ok' ? 'ok' : 'warn') + '">' + escapeHtml(nextStep.state.toUpperCase()) + '</span>' +
+      '</div>' +
+      '<div class="st-mission-purpose"><b>' + escapeHtml(nextStep.title) + ':</b> ' + escapeHtml(nextStep.detail) + '</div>';
     list.textContent = '';
     const frag = document.createDocumentFragment();
 
@@ -184,11 +261,8 @@ export function createManufacturePanel(ctx) {
 
         // V2 cut-list #3: timed recipes share a 1-slot queue per station — disable build while busy
         const timeS = crafting ? crafting.buildTime(bp) : 0;
-        const sid = ctx.state.ui && ctx.state.ui.dockedStationId;
-        const busy = timeS > 0 && crafting && crafting.isBusy(sid);
-        const inProgress = busy && crafting.progress && crafting._currentJobName
-          ? crafting._currentJobName(sid) : null;
-        const buildAction = describeManufactureBuildAction(bp, p, { busy, inProgress });
+        const bpBusy = timeS > 0 && busy;
+        const buildAction = describeManufactureBuildAction(bp, p, { busy: bpBusy, inProgress });
         const canBuild = !buildAction.disabled;
 
         const timeLabel = timeS > 0 ? `<span class="st-manuf-time">${Math.round(timeS)}s fab</span>` : '';
