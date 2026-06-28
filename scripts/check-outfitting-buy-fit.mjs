@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { ships } from '../src/systems/ships.js';
+import { MODULES } from '../src/data/modules.js';
+import { SHIPS } from '../src/data/ships.js';
+import { describeOutfittingPurchase } from '../src/ui/screens/outfitting.js';
+import { buildSlotList, ships } from '../src/systems/ships.js';
 
 function createBus() {
   const handlers = new Map();
@@ -25,9 +28,59 @@ function eventPayload(events, name) {
 }
 
 const outfitSource = readFileSync(new URL('../src/ui/screens/outfitting.js', import.meta.url), 'utf8');
-assert.match(outfitSource, /Buy &amp; Fit/, 'Outfitting shop should expose a Buy & Fit action for empty compatible slots');
+assert.match(outfitSource, /Buy & Fit/, 'Outfitting shop should expose a Buy & Fit action for empty compatible slots');
+assert.match(outfitSource, /Buy to Inventory/, 'Outfitting shop should name inventory-only purchases');
+assert.match(outfitSource, /describeOutfittingPurchase/, 'Outfitting shop should centralize purchase guidance');
 assert.match(outfitSource, /data-fit-slot/, 'Outfitting shop should carry the target slot index on Buy & Fit buttons');
 assert.match(outfitSource, /fitSlotIndex/, 'Outfitting shop should emit fitSlotIndex through ui:buyModule');
+assert.match(outfitSource, /aria-label="/, 'Outfitting shop buttons should expose accessible action guidance');
+
+const shipDef = SHIPS.find((entry) => entry.id === 'ship_kestrel');
+const slots = buildSlotList(shipDef);
+const moduleById = (id) => MODULES.find((entry) => entry.id === id);
+
+let guidance = describeOutfittingPurchase(moduleById('mod_shield_capacitor_m'), {
+  credits: 100000,
+  researchedNodes: [],
+}, slots, []);
+assert.equal(guidance.state, 'locked');
+assert.equal(guidance.disabled, true);
+assert.equal(guidance.label, 'Research Deflector Theory');
+assert.match(guidance.title, /requires Deflector Theory/);
+
+guidance = describeOutfittingPurchase(moduleById('mod_shield_booster_s'), {
+  credits: 500,
+  researchedNodes: [],
+}, slots, []);
+assert.equal(guidance.state, 'funding');
+assert.equal(guidance.disabled, true);
+assert.equal(guidance.label, 'Need 5,500 cr');
+
+guidance = describeOutfittingPurchase(moduleById('mod_shield_booster_s'), {
+  credits: 10000,
+  researchedNodes: [],
+}, slots, []);
+assert.equal(guidance.state, 'fit');
+assert.equal(guidance.disabled, false);
+assert.equal(guidance.label, 'Buy & Fit');
+assert.equal(guidance.fitSlotIndex, 1);
+
+guidance = describeOutfittingPurchase(moduleById('mod_shield_booster_s'), {
+  credits: 10000,
+  researchedNodes: [],
+}, slots, [null, 'mod_shield_booster_s']);
+assert.equal(guidance.state, 'inventory');
+assert.equal(guidance.label, 'Buy to Inventory');
+assert.match(guidance.title, /compatible slot is full/);
+
+guidance = describeOutfittingPurchase(moduleById('mod_cargo_pod_m'), {
+  credits: 10000,
+  researchedNodes: [],
+}, slots, []);
+assert.equal(guidance.state, 'inventory');
+assert.equal(guidance.hasSlot, false);
+assert.equal(guidance.label, 'Buy to Inventory');
+assert.match(guidance.title, /No compatible cargo M slot/);
 
 const bus = createBus();
 const state = {

@@ -12,10 +12,12 @@ import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { SECTORS } from '../../data/sectors.js';
+import { TECH_NODES } from '../../data/tech.js';
 import { confirm } from '../confirm.js';
 import { escapeHtml } from '../comms.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 
 // Drive-family label for the preview header. The hull's driveId resolves to one of five propulsion
 // families (spec §6); surfacing it in outfitting lets the player feel the family switch on a new hull.
@@ -53,6 +55,96 @@ function fits(slot, def) {
 }
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
+function techName(id) {
+  const node = TECH_BY_ID.get(id);
+  return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}
+
+export function describeOutfittingPurchase(def, player = {}, slots = [], fittings = []) {
+  if (!def) {
+    return {
+      state: 'missing',
+      unlocked: false,
+      afford: false,
+      hasSlot: false,
+      fitSlotIndex: -1,
+      disabled: true,
+      label: 'Unavailable',
+      title: 'Select a module to inspect purchase options.',
+    };
+  }
+  const researched = new Set(player.researchedNodes || []);
+  const credits = Math.max(0, Number(player.credits) || 0);
+  const price = Math.max(0, Number(def.price) || 0);
+  const unlocked = !def.requiresTech || researched.has(def.requiresTech);
+  const afford = credits >= price;
+  const safeSlots = Array.isArray(slots) ? slots : [];
+  const safeFittings = Array.isArray(fittings) ? fittings : [];
+  const hasSlot = safeSlots.some((s) => s.type === def.slotType && SIZE_RANK[s.size] >= SIZE_RANK[def.size]);
+  const fitSlotIndex = safeSlots.findIndex((s, i) => !safeFittings[i] && fits(s, def));
+
+  if (!unlocked) {
+    const req = techName(def.requiresTech);
+    return {
+      state: 'locked',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: true,
+      label: 'Research ' + req,
+      title: def.name + ' requires ' + req + ' before purchase.',
+    };
+  }
+  if (!afford) {
+    const missing = Math.max(0, price - credits);
+    return {
+      state: 'funding',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: true,
+      label: 'Need ' + fmtCr(missing) + ' cr',
+      title: def.name + ' costs ' + fmtCr(price) + ' cr. You need ' + fmtCr(missing) + ' more credits.',
+    };
+  }
+  if (fitSlotIndex >= 0) {
+    const slot = safeSlots[fitSlotIndex] || {};
+    return {
+      state: 'fit',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: false,
+      label: 'Buy & Fit',
+      title: 'Buy ' + def.name + ' and fit it to the ' + (slot.type || def.slotType) + ' ' + (slot.size || def.size) + ' slot.',
+    };
+  }
+  if (hasSlot) {
+    return {
+      state: 'inventory',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: false,
+      label: 'Buy to Inventory',
+      title: def.name + ' fits this hull, but every compatible slot is full. Buy it into inventory or unfit a module first.',
+    };
+  }
+  return {
+    state: 'inventory',
+    unlocked,
+    afford,
+    hasSlot,
+    fitSlotIndex,
+    disabled: false,
+    label: 'Buy to Inventory',
+    title: 'No compatible ' + def.slotType + ' ' + def.size + ' slot on this hull. Buy it into inventory for another ship.',
+  };
+}
 
 /** Resolve the sector tier for the station the player is docked at. */
 function stationTier(stationId) {
@@ -311,8 +403,8 @@ export function createOutfittingPanel(ctx) {
     const owned = activeOwned();
     const shipDef = owned ? SHIP_BY_ID.get(owned.defId) : null;
     const slots = shipDef ? buildSlotList(shipDef) : [];
+    const fittings = owned && Array.isArray(owned.fittings) ? owned.fittings : [];
     const tier = stationTier(panel.stationId);
-    const researched = new Set(p.researchedNodes || []);
 
     shopCredits.textContent = 'CREDITS: ' + fmtCr(p.credits);
 
@@ -324,9 +416,6 @@ export function createOutfittingPanel(ctx) {
       // Station tier filter: station sells modules up to tier+1 (a T0 station sells T0 and T1).
       if (def.tier > tier + 1) continue;
 
-      // Tech lock check
-      const unlocked = !def.requiresTech || researched.has(def.requiresTech);
-      const afford = p.credits >= (def.price || 0);
       const alreadyOwned = (p.moduleInventory || []).some((m) => m.defId === def.id);
 
       // Slot-type group header
@@ -339,8 +428,7 @@ export function createOutfittingPanel(ctx) {
       }
 
       // Check if the ship has a compatible slot for this module
-      const hasSlot = slots.some((s) => s.type === def.slotType && SIZE_RANK[s.size] >= SIZE_RANK[def.size]);
-      const emptyFitSlot = slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+      const purchase = describeOutfittingPurchase(def, p, slots, fittings);
 
       // Comparison delta: find the first fitted module of the same slot type and compare key stats.
       let deltaHtml = '';
@@ -364,18 +452,16 @@ export function createOutfittingPanel(ctx) {
       }
 
       const row = document.createElement('div');
-      row.className = 'st-shop-row' + (!unlocked ? ' locked' : '') + (!afford ? ' noafford' : '') + (!hasSlot ? ' nofit' : '');
+      row.className = 'st-shop-row' + (!purchase.unlocked ? ' locked' : '') + (!purchase.afford ? ' noafford' : '') + (!purchase.hasSlot ? ' nofit' : '');
       row.setAttribute('data-shop', def.id);
-      let btnHtml;
-      if (!unlocked) btnHtml = '<button disabled title="Requires research">Locked</button>';
-      else if (!afford) btnHtml = '<button disabled>Can\'t afford</button>';
-      else if (emptyFitSlot >= 0) btnHtml = '<button data-act="buy" data-fit-slot="' + emptyFitSlot + '">Buy &amp; Fit</button>';
-      else btnHtml = '<button data-act="buy">Buy</button>';
+      const fitAttr = purchase.fitSlotIndex >= 0 ? ' data-fit-slot="' + purchase.fitSlotIndex + '"' : '';
+      const actionAttrs = purchase.disabled ? ' disabled' : ' data-act="buy"' + fitAttr;
+      const btnHtml = '<button' + actionAttrs + ' title="' + escapeHtml(purchase.title) + '" aria-label="' + escapeHtml(purchase.title) + '">' + escapeHtml(purchase.label) + '</button>';
 
       row.innerHTML =
         '<span class="c-name">' + escapeHtml(def.name) +
           (alreadyOwned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
-          (!hasSlot && unlocked ? ' <span class="st-tag">no slot</span>' : '') +
+          (!purchase.hasSlot && purchase.unlocked ? ' <span class="st-tag">no slot</span>' : '') +
         '</span>' +
         '<span class="c-num st-shop-slot mono">' + escapeHtml(def.slotType[0].toUpperCase()) + ':' + escapeHtml(def.size) + '</span>' +
         '<span class="c-num st-shop-stats">' + escapeHtml(statSnippet(def)) + deltaHtml + '</span>' +
