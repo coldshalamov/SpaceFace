@@ -3,6 +3,7 @@
 // economy/world own the credit charge + the effect (§0.6, §4.4). Read-only over sim state.
 import { COMMODITIES } from '../../data/commodities.js';
 import { SERVICE_PRICES } from '../../systems/economy.js';
+import { confirm } from '../confirm.js';
 
 export const AMMO_BATCH = 100;         // munitions per ammo purchase
 const MUNITIONS = COMMODITIES.find((c) => c.id === 'cmdty_munitions') || { volPerU: 1 };
@@ -323,7 +324,7 @@ export function createServicesPanel(ctx) {
   root.innerHTML = '<div class="st-sub-h">Station Services</div><div class="st-svc-list"></div>';
   const list = root.querySelector('.st-svc-list');
 
-  list.addEventListener('click', (ev) => {
+  list.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-svc]');
     if (!btn) return;
     const type = btn.getAttribute('data-svc');
@@ -346,6 +347,19 @@ export function createServicesPanel(ctx) {
       ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       ctx.bus.emit('toast', { text: type === 'ammo' ? 'No munitions can fit right now' : 'Nothing to ' + type, kind: 'info', ttl: 2 });
       return;
+    }
+    if (type === 'insurance' && amount === 0 && state.player.insurance && state.player.insurance.insuredModules) {
+      const ok = await confirm({
+        title: 'Cancel hull insurance?',
+        body: 'Station recovery will no longer protect installed modules on death. Cargo loss still applies either way, and cancelling does not refund the paid deductible.',
+        confirmLabel: 'Cancel Insurance',
+        cancelLabel: 'Keep Insurance',
+        danger: true,
+      });
+      if (!ok) {
+        ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return;
+      }
     }
     ctx.bus.emit('ui:service', { type, amount });
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
