@@ -1,8 +1,8 @@
 // UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
 //
-// UI owns: ESC (back/pause), N (local map), M (star-map), T (tech), J (mission log), F1/H (help),
-//          Tab (cycle target), P (pause), E (dock when in range; Enter secondary), F5/F9 (quick save/load),
-//          mouse-wheel (camera zoom passthrough → camera:zoom).
+// UI owns: ESC (back/pause), N (local map), M (star-map), T (tech), J (mission log), K (codex),
+//          F1/H (help), Tab (cycle target), P (pause), E (dock when in range; Enter secondary),
+//          F5/F9 (quick save/load), mouse-wheel (camera zoom passthrough → camera:zoom).
 // Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
 //
 // Routing rule: if a modal screen is open and it has a key handler, route there first
@@ -43,6 +43,11 @@ export function createUiInput(ctx, screenManager) {
     bus.emit('audio:cue', { id: 'ui_dock' });
   }
 
+  function matchesBinding(ev, binding) {
+    if (!binding) return false;
+    return ev.key === binding.key || ev.key === binding.label || ev.code === binding.code;
+  }
+
   function onKeyDown(ev) {
     // never intercept typing into inputs/textareas
     const t = ev.target;
@@ -76,6 +81,12 @@ export function createUiInput(ctx, screenManager) {
       if (def && def.id === 'station' && (key === 'j' || key === 'J')) {
         ev.preventDefault();
         screenManager.pushScreen('missionLog');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      }
+      if (def && def.id === 'station' && matchesBinding(ev, BINDINGS.codex)) {
+        ev.preventDefault();
+        screenManager.pushScreen('codex');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
       }
@@ -118,6 +129,9 @@ export function createUiInput(ctx, screenManager) {
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;
       case 'j': case 'J':
         ev.preventDefault(); screenManager.pushScreen('missionLog'); return;
+      case BINDINGS.codex.key:
+      case 'K':
+        ev.preventDefault(); screenManager.pushScreen('codex'); return;
       case 'F1': case 'h': case 'H':
         ev.preventDefault(); screenManager.pushScreen('help'); return;
       case 'Tab':
