@@ -119,6 +119,8 @@ function makeState(overrides = {}) {
   const guidance = describeStarmapObjectiveRoute(state, objective, nameOf);
   assert.equal(guidance.state, 'local', 'same-sector objective should hand off to the Local Map');
   assert.equal(guidance.canPlot, false, 'same-sector objective should not show a route plot CTA');
+  assert.equal(guidance.canOpenLocalMap, true, 'same-sector objective should expose a Local Map handoff CTA');
+  assert.equal(guidance.actionLabel, 'Open Local Map', 'same-sector objective should label the Local Map handoff');
   assert.match(guidance.summary, /Local Map/, 'same-sector guidance should point at the local map');
 }
 
@@ -139,6 +141,7 @@ function makeState(overrides = {}) {
   const guidance = describeStarmapObjectiveRoute(state, objective, nameOf);
   assert.equal(objective.kind, 'onboarding', 'onboarding local fix should resolve as tutorial guidance');
   assert.equal(guidance.state, 'local-fix', 'local fix without a sector id should not read as missing');
+  assert.equal(guidance.canOpenLocalMap, true, 'local fixes should expose a Local Map handoff CTA');
   assert.match(guidance.summary, /local fix acquired/, 'local fix should tell the player the objective is in local space');
   assert.match(guidance.next, /Local Map/, 'local fix should hand off to the Local Map');
 }
@@ -167,11 +170,14 @@ function makeState(overrides = {}) {
 
 assert.match(source, /data-objective/, 'Star Map must render an objective panel in the side rail');
 assert.match(source, /data-act="objective-route"/, 'objective panel must expose a route plotting action');
+assert.match(source, /data-act="objective-localmap"/, 'objective panel must expose a Local Map handoff action');
 assert.match(source, /resolveStarmapObjective\(this\._ctx\.state\)/,
   'Star Map UI must resolve its objective from live state');
 assert.match(source, /world:requestRoute/, 'objective route action must reuse world:requestRoute');
 assert.match(source, /ui:setCourse/, 'objective route action must reuse ui:setCourse');
+assert.match(source, /pushScreen\(this\._ctx, 'localmap'\)/,
+  'local objective action must hand off through the shared screen manager path');
 assert.match(source, /BINDINGS\.starmap\.label/, 'Star Map visible key labels must read src/ui/bindings.js');
 assert.doesNotMatch(source, /<div>M close/, 'Star Map footer must not hard-code the M key label');
 
-console.log('Star Map objective handoff OK - mission/trade waypoints resolve to route guidance and reuse the existing course events.');
+console.log('Star Map objective handoff OK - mission/trade waypoints resolve to route guidance and local fixes open Local Map.');

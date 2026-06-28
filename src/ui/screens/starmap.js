@@ -268,7 +268,8 @@ export function describeStarmapObjectiveRoute(state, objective, nameOf = sectorN
       next: `Use ${BINDINGS.localmap.label} Local Map`,
       summary: 'local fix acquired',
       canPlot: false,
-      actionLabel: '',
+      canOpenLocalMap: true,
+      actionLabel: 'Open Local Map',
     };
   }
   if (!targetSectorId) {
@@ -291,7 +292,8 @@ export function describeStarmapObjectiveRoute(state, objective, nameOf = sectorN
       next: `In ${nameOf(targetSectorId)}`,
       summary: `Use ${BINDINGS.localmap.label} Local Map`,
       canPlot: false,
-      actionLabel: '',
+      canOpenLocalMap: true,
+      actionLabel: 'Open Local Map',
     };
   }
   if (first && last && (!currentSectorId || first.from === currentSectorId) && last.to === targetSectorId) {
@@ -319,6 +321,14 @@ function closeScreen(ctx) {
   const mgr = (ctx && (ctx.screenManager || ctx.screens)) || (ui && (ui.screenManager || ui.manager));
   if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
   else if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
+}
+
+function pushScreen(ctx, screenId) {
+  if (!ctx || !screenId) return;
+  const ui = ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  const mgr = (ctx.screenManager || ctx.screens) || (ui && (ui.screenManager || ui.manager));
+  if (mgr && typeof mgr.pushScreen === 'function') mgr.pushScreen(screenId);
+  else if (ctx.bus) ctx.bus.emit('ui:pushScreen', { id: screenId });
 }
 
 function drawHexPath(g, cx, cy, r) {
@@ -980,7 +990,9 @@ export const starmapScreen = {
       : objective.detail || 'Proceed to the objective.';
     const action = guidance && guidance.canPlot
       ? `<button type="button" data-act="objective-route">${escapeHtml(guidance.actionLabel || 'Plot Objective Route')}</button>`
-      : '';
+      : guidance && guidance.canOpenLocalMap
+        ? `<button type="button" data-act="objective-localmap">${escapeHtml(guidance.actionLabel || 'Open Local Map')}</button>`
+        : '';
     const html = `
       <div class="sm-objective-k">${escapeHtml(objective.kicker)}</div>
       <div class="sm-objective-title">${escapeHtml(objective.title)}</div>
@@ -1016,6 +1028,11 @@ export const starmapScreen = {
   },
 
   _onAction(action) {
+    if (action === 'objective-localmap') {
+      pushScreen(this._ctx, 'localmap');
+      this._ctx.bus.emit('toast', { text: 'Opening Local Map for the active objective', kind: 'info', ttl: 3000 });
+      return;
+    }
     if (action === 'objective-route') {
       const objective = resolveStarmapObjective(this._ctx.state);
       const targetSectorId = objective && objective.sectorId;

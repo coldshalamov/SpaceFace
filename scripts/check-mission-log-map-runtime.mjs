@@ -85,6 +85,38 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 120));
     const starTop = sm.top && sm.top();
 
+    const starLocalMission = {
+      id: 'mission_runtime_star_local',
+      status: 'active',
+      type: 'recon_scan',
+      title: 'Runtime Star Local Fix',
+      destSectorId: 'sector_helios_prime',
+      objectiveProgress: 0,
+      objectiveTarget: 1,
+      deadline_s: 999,
+      reward_cr: 400,
+    };
+    sf.state.world.currentSectorId = 'sector_helios_prime';
+    sf.state.missions.active = [starLocalMission];
+    sf.state.ui.trackedMissionId = starLocalMission.id;
+    sf.state.nav.waypoint = {
+      kind: 'mission',
+      missionId: starLocalMission.id,
+      sectorId: 'sector_helios_prime',
+      sectorName: 'Helios Prime',
+      reason: 'Scan the local runtime fix from Star Map',
+      pos: { x: 260, z: -60 },
+    };
+    if (sm.closeAll) sm.closeAll();
+    sm.pushScreen('starmap');
+    if (sm.syncVisibility) sm.syncVisibility();
+    await new Promise((resolve) => setTimeout(resolve, 160));
+    const starLocalButton = document.querySelector('#sf-starmap [data-act="objective-localmap"]');
+    const starLocalText = visibleText('#sf-starmap [data-objective]');
+    if (starLocalButton) starLocalButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 160));
+    const starLocalTop = sm.top && sm.top();
+
     const localMission = {
       id: 'mission_runtime_local',
       status: 'active',
@@ -118,6 +150,9 @@ try {
       recStarButton: !!recStarButton,
       starText,
       starTop,
+      starLocalButton: !!starLocalButton,
+      starLocalText,
+      starLocalTop,
       localButton: !!localButton,
       recLocalButton: !!recLocalButton,
       localText,
@@ -132,6 +167,10 @@ try {
   assert.equal(report.recStarButton, true, 'tracked recommendation should render a Star Map button');
   assert.match(report.starText, /STAR MAP/, 'off-sector Mission Log text should include the Star Map handoff');
   assert.equal(report.starTop, 'starmap', 'clicking the off-sector handoff should open the Star Map');
+  assert.equal(report.starLocalButton, true, 'Star Map local objective should render a Local Map handoff button');
+  assert.match(report.starLocalText, /LOCAL MAP|Open Local Map/i,
+    'Star Map local objective should explain the Local Map handoff');
+  assert.equal(report.starLocalTop, 'localmap', 'clicking the Star Map local objective handoff should open the Local Map');
   assert.equal(report.localButton, true, 'same-sector tracked mission should render a Local Map button');
   assert.equal(report.recLocalButton, true, 'tracked recommendation should render a Local Map button');
   assert.match(report.localText, /LOCAL MAP/, 'same-sector Mission Log text should include the Local Map handoff');
