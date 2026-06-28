@@ -295,6 +295,18 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
     ok++;
   }
 }
+if (!helpSrc.includes("['Recover from losses'")
+  || !helpSrc.includes('Services -> Hull Insurance -> launch')
+  || !helpSrc.includes('normal death returns to a station with cargo loss and 3s shields')
+  || !helpSrc.includes('Ironman is final: Run Over shows loss cause and sortie stats')
+  || !helpSrc.includes('Saves avoid death/respawn limbo')
+  || !helpSrc.includes('Save/F5 before quitting')) {
+  console.log('FAIL helpScreen - loops tab must teach normal recovery, Ironman finality, and save timing');
+  fail++;
+} else {
+  console.log('ok   helpScreen - loops tab teaches recovery and save timing');
+  ok++;
+}
 const figureDossierKeys = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss', 'elroy', 'mira', 'rook', 'vale', 'kurtz'];
 const missingFigureDossiers = figureDossierKeys.filter((key) => !new RegExp(`${key}:\\s*\\{`).test(codexSrc));
 if (missingFigureDossiers.length) {
