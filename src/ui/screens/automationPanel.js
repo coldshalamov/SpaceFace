@@ -8,10 +8,12 @@
 
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
+const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 
 const PROGRAM_OPTIONS = Object.freeze([
   { value: '', label: 'Manual (mine -> bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
@@ -26,6 +28,69 @@ const TABS = [
   { id: 'outposts', label: 'Outposts' },
   { id: 'fleet',    label: 'Fleet'    },
 ];
+
+export function describeAutomationPurchase(kind, def, state = {}) {
+  if (!def) {
+    return {
+      state: 'missing',
+      disabled: true,
+      label: 'Unavailable',
+      title: 'Select an automation asset to inspect purchase options.',
+    };
+  }
+  const player = (state && state.player) || {};
+  const researched = new Set(player.researchedNodes || []);
+  const credits = Math.max(0, Number(player.credits) || 0);
+  const assetName = prettyLabel(def.id);
+  const cost = automationPurchaseCost(kind, def);
+
+  if (kind === 'drone') {
+    const tier = playerTierFromState(state);
+    if ((def.tier || 1) > tier) {
+      const req = techName(droneTierTechId(def.tier));
+      return {
+        state: 'tier',
+        disabled: true,
+        label: 'Research ' + req,
+        title: assetName + ' requires drone tier ' + def.tier + ', unlocked by ' + req + '.',
+      };
+    }
+  } else if (kind === 'trader' && !researched.has('tech_autonomous_fleets')) {
+    const req = techName('tech_autonomous_fleets');
+    return {
+      state: 'tech',
+      disabled: true,
+      label: 'Research ' + req,
+      title: assetName + ' hiring requires ' + req + '.',
+    };
+  } else if (kind === 'outpost' && !researched.has('tech_outpost_charter')) {
+    const req = techName('tech_outpost_charter');
+    return {
+      state: 'tech',
+      disabled: true,
+      label: 'Research ' + req,
+      title: assetName + ' construction requires ' + req + '.',
+    };
+  }
+
+  if (credits < cost) {
+    const missing = Math.max(0, cost - credits);
+    return {
+      state: 'funding',
+      disabled: true,
+      label: 'Need ' + fmtCr(missing) + ' cr',
+      title: assetName + ' costs ' + fmtCr(cost) + ' cr. You need ' + fmtCr(missing) + ' more credits.',
+    };
+  }
+
+  const verb = kind === 'trader' ? 'Hire' : kind === 'outpost' ? 'Build' : 'Buy';
+  return {
+    state: 'available',
+    disabled: false,
+    label: verb + ' ' + fmtCr(cost) + ' cr',
+    title: verb + ' ' + assetName + ' for ' + fmtCr(cost) + ' cr.',
+  };
+}
 
 const STYLE_ID = 'sf-automation-style';
 const CSS = `
@@ -381,6 +446,7 @@ export const automationScreen = {
     const cap = this._balance().fleetCapByTier ? null : null; // drones gated by tier, not fleetCap
     for (const def of DRONES) {
       const locked = def.tier > tier;
+      const purchase = describeAutomationPurchase('drone', def, this._ctx.state);
       const card = document.createElement('div');
       card.className = 'au-card';
       card.innerHTML = `
@@ -395,7 +461,7 @@ export const automationScreen = {
           </div>
           ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first passive asset: low upkeep, visible in the field, and reversible on recall.</div>`}
         </div>
-        <button class="au-buy" data-act="buyDrone" data-ref="${def.id}" ${locked ? 'disabled' : ''}>Buy ${fmtCr(def.cost)} cr</button>`;
+        <button class="au-buy" data-act="buyDrone" data-ref="${def.id}" title="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
   },
@@ -441,6 +507,7 @@ export const automationScreen = {
       frag.appendChild(lockedEl('NPC trader hiring requires Autonomous Fleets in the logistics tech branch.'));
     }
     for (const def of TRADERS) {
+      const purchase = describeAutomationPurchase('trader', def, this._ctx.state);
       const card = document.createElement('div');
       card.className = 'au-card';
       card.innerHTML = `
@@ -455,7 +522,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm, when the player has seen enough logistics to manage risk.'}</div>
         </div>
-        <button class="au-buy" data-act="hireTrader" data-ref="${def.id}" ${hireUnlocked ? '' : 'disabled'}>Hire ${fmtCr(def.hireCost)} cr</button>`;
+        <button class="au-buy" data-act="hireTrader" data-ref="${def.id}" title="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
   },
@@ -499,6 +566,7 @@ export const automationScreen = {
       frag.appendChild(lockedEl('Outpost construction requires Outpost Charter in the logistics tech branch.'));
     }
     for (const def of OUTPOSTS) {
+      const purchase = describeAutomationPurchase('outpost', def, this._ctx.state);
       const card = document.createElement('div');
       card.className = 'au-card';
       card.innerHTML = `
@@ -513,7 +581,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${buildUnlocked ? 'High upkeep, high commitment: best after you can protect the sector or fund losses.' : 'This is the empire layer; reach it after traders prove the route economy.'}</div>
         </div>
-        <button class="au-buy" data-act="buildOutpost" data-ref="${def.id}" ${buildUnlocked ? '' : 'disabled'}>Build ${fmtCr(def.buildCost)} cr</button>`;
+        <button class="au-buy" data-act="buildOutpost" data-ref="${def.id}" title="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
   },
@@ -737,6 +805,25 @@ function playerTierFromState(state) {
   return Math.max(1, Math.min(5, Math.round(cap) || 1));
 }
 
+function automationPurchaseCost(kind, def) {
+  if (kind === 'trader') return Math.max(0, Number(def.hireCost) || 0);
+  if (kind === 'outpost') return Math.max(0, Number(def.buildCost) || 0);
+  return Math.max(0, Number(def.cost) || 0);
+}
+
+function droneTierTechId(tier) {
+  const want = Math.max(1, Math.round(tier || 1));
+  const match = TECH_NODES
+    .filter((node) => node.unlocks && node.unlocks.droneTierCap >= want)
+    .sort((a, b) => (a.unlocks.droneTierCap || 0) - (b.unlocks.droneTierCap || 0))[0];
+  return match ? match.id : 'tech_drone_control';
+}
+
+function techName(id) {
+  const node = TECH_BY_ID.get(id);
+  return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}
+
 function grossRatePerMinFromAutomation(a) {
   let rate = 0;
   for (const d of a.drones || []) rate += d.ratePerMin != null ? d.ratePerMin : estDroneRate(d);
@@ -826,9 +913,13 @@ function lockedEl(text) {
 }
 
 function prettyId(id) {
-  return escapeHtml(String(id || '')
+  return escapeHtml(prettyLabel(id));
+}
+
+function prettyLabel(id) {
+  return String(id || '')
     .replace(/^(drone_|trader_|outpost_|cmdty_|ship_|sector_|mod_)/, '')
-    .replace(/_/g, ' '));
+    .replace(/_/g, ' ');
 }
 
 function numOr(v) {
