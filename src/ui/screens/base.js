@@ -3,9 +3,11 @@
 // teleporter. Reuses the screen-modal pattern (like station hub). Entry: pushed when the player
 // presses C near an already-claimed body (input.js sets state.ui.pendingClaimBodyId first).
 import { BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE } from '../../data/claimableBodies.js';
+import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
 
 const STYLE_ID = 'sf-base-style';
+const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
@@ -39,6 +41,73 @@ function injectStyle() {
 }
 
 function pretty(id) { return (id || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); }
+function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
+function techName(id) {
+  const node = TECH_BY_ID.get(id);
+  return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}
+
+export function describeBaseBuildAction(mod, player = {}, body = {}) {
+  if (!mod) {
+    return {
+      state: 'missing',
+      disabled: true,
+      label: 'Unavailable',
+      title: 'Select a module to inspect build options.',
+    };
+  }
+  const modules = Array.isArray(body.modules) ? body.modules : [];
+  const slots = Math.max(0, Number(body.slots) || 0);
+  const usedSlots = modules.length;
+  const researched = new Set(player.researchedNodes || []);
+  const credits = Math.max(0, Number(player.credits) || 0);
+  const cost = Math.max(0, Number(mod.cost) || 0);
+  const built = modules.includes(mod.id);
+  const techOk = !mod.techReq || researched.has(mod.techReq);
+  const afford = credits >= cost;
+  const slotFree = usedSlots < slots;
+
+  if (built) {
+    return {
+      state: 'built',
+      disabled: true,
+      label: 'Built',
+      title: mod.name + ' is already installed on this base.',
+    };
+  }
+  if (!techOk) {
+    const req = techName(mod.techReq);
+    return {
+      state: 'locked',
+      disabled: true,
+      label: 'Research ' + req,
+      title: mod.name + ' requires ' + req + ' before this base can build it.',
+    };
+  }
+  if (!afford) {
+    const missing = Math.max(0, cost - credits);
+    return {
+      state: 'funding',
+      disabled: true,
+      label: 'Need ' + fmtCr(missing) + ' cr',
+      title: mod.name + ' costs ' + fmtCr(cost) + ' cr. You need ' + fmtCr(missing) + ' more credits.',
+    };
+  }
+  if (!slotFree) {
+    return {
+      state: 'slots',
+      disabled: true,
+      label: 'No free base slot',
+      title: (body.name || 'This base') + ' has ' + usedSlots + '/' + slots + ' module slots filled.',
+    };
+  }
+  return {
+    state: 'available',
+    disabled: false,
+    label: 'Build',
+    title: 'Build ' + mod.name + ' on ' + (body.name || 'this base') + ' for ' + fmtCr(cost) + ' cr.',
+  };
+}
 
 export const baseScreen = {
   id: 'base',
@@ -141,20 +210,20 @@ export const baseScreen = {
       const card = document.createElement('div');
       card.className = 'base-mod';
       const built = body.modules.includes(mod.id);
-      const techOk = !mod.techReq || player.researchedNodes.includes(mod.techReq);
-      const afford = player.credits >= mod.cost;
-      const slotFree = usedSlots < body.slots;
-      const canBuild = !built && techOk && afford && slotFree;
+      const buildAction = describeBaseBuildAction(mod, player, body);
+      const techLabel = mod.techReq ? ' · ' + techName(mod.techReq) : '';
       card.innerHTML =
         '<div class="nm">' + escapeHtml(mod.name) + (built ? ' <span style="color:var(--good)">✓ built</span>' : '') + '</div>' +
         '<div class="desc">' + escapeHtml(mod.desc || '') + '</div>' +
-        '<div class="meta"><span>' + mod.cost.toLocaleString() + ' cr' + (mod.techReq ? ' · ' + escapeHtml(mod.techReq) : '') + '</span></div>';
+        '<div class="meta"><span>' + mod.cost.toLocaleString() + ' cr' + escapeHtml(techLabel) + '</span></div>';
       if (!built) {
         const btn = document.createElement('button');
         btn.className = 'sf-btn sf-btn--primary';
         btn.style.cssText = 'width:100%;margin-top:8px;padding:6px;';
-        btn.textContent = !techOk ? 'Locked' : !afford ? 'Too expensive' : !slotFree ? 'No free slot' : 'Build';
-        btn.disabled = !canBuild;
+        btn.textContent = buildAction.label;
+        btn.disabled = buildAction.disabled;
+        btn.title = buildAction.title;
+        btn.setAttribute('aria-label', buildAction.title);
         btn.addEventListener('click', () => {
           if (claims.buildModule(body.id, mod.id)) this._render();
         });
