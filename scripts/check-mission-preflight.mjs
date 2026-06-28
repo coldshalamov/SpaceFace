@@ -26,6 +26,9 @@ assert.match(stationHubSrc, /st-mission-consequences/, 'mission cards must rende
 assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
   'mission preflight must flag cargo capacity blockers');
 assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
+assert.match(missionPreflightSrc, /SECTORS/, 'mission preflight must read the sector graph for route-scope chips');
+assert.match(missionPreflightSrc, /Jump to \$\{sectorLabel\(destSectorId\)\}/,
+  'mission preflight must explain cross-sector contracts before accept');
 assert.match(missionsSrc, /_acceptPreflight\(offer\)/, 'missions.acceptMission must call _acceptPreflight before accepting');
 assert.match(missionsSrc, /ONE_LOAD_CARGO_TYPES/, 'missions must define the one-load cargo mission set');
 assert.match(missionsSrc, /Need \$\{fmtCargoUnits\(requiredVolume\)\}u cargo capacity/,
@@ -117,6 +120,40 @@ const lowFreeUiPreflight = missionPreflight(makeOffer(), lowFreeState);
 assert.equal(lowFreeUiPreflight.blocker, null, 'low free space should warn without blocking a capable hull');
 assert.match(lowFreeUiPreflight.warning || '', /clear space/, 'shared UI preflight must tell the player to clear cargo space');
 
+const routeState = makeState(8);
+routeState.world.currentSectorId = 'sector_helios_prime';
+const routeUiPreflight = missionPreflight(makeOffer({
+  destStationId: 'station_beltout',
+  destSectorId: 'sector_ceres_belt',
+  time_limit_s: 900,
+}), routeState);
+assert.ok(routeUiPreflight.chips.some((chip) => chip.kind === 'info' && chip.text === 'Jump to Ceres Belt'),
+  'cross-sector contracts should tell the player which sector jump is required');
+assert.ok(routeUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === 'Timer 15m'),
+  'mission preflight should surface timer pacing before the player accepts');
+
+const stationLookupPreflight = missionPreflight(makeOffer({
+  destStationId: 'station_beltout',
+  destSectorId: null,
+  time_limit_s: 900,
+}), routeState);
+assert.ok(stationLookupPreflight.chips.some((chip) => chip.text === 'Jump to Ceres Belt'),
+  'station-only destinations should resolve their sector from the static sector graph');
+
+const localTightState = makeState(8);
+localTightState.world.currentSectorId = 'sector_helios_prime';
+const localTightPreflight = missionPreflight(makeOffer({
+  destStationId: 'station_helios',
+  destSectorId: 'sector_helios_prime',
+  time_limit_s: 240,
+}), localTightState);
+assert.ok(localTightPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === 'Same-sector route'),
+  'local station contracts should distinguish same-sector work from jump routes');
+assert.ok(localTightPreflight.chips.some((chip) => chip.kind === 'warn' && chip.text === 'Timer 4m tight'),
+  'tight contracts should warn directly on the mission card');
+assert.match(localTightPreflight.warning || '', /Timer is tight/,
+  'tight-timer cards should carry a non-blocking readiness warning');
+
 const readyState = makeState(8);
 const readyBus = makeBus();
 missions.init({ state: readyState, bus: readyBus, helpers: { hash32: () => 1 } });
@@ -128,4 +165,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - shared readiness and consequence stakes are visible before accept.');
+console.log('Mission preflight OK - shared readiness, route scope, timer pace, and consequence stakes are visible before accept.');
