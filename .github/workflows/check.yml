@@ -1,15 +1,14 @@
 # Continuous integration for SpaceFace.
 #
-# Runs the HEADLESS portion of the project's check suite on every push and pull request. The full
-# `npm run check` additionally includes a handful of scripts that drive a real browser via
-# Playwright (check:47a:live-cold-open, check:flight:clean) — those need a running static server
-# + a browser install and are intentionally excluded from CI (Playwright is not a declared
-# dependency). The `check:ci` alias runs everything else: data/ref integrity, balance sim,
-# deterministic replay verification, AI/physics/combat contracts, the presentation/render/audio
-# checks, and the gameplay-core assertions (including the boss-spawn + ironman-permadeath guards).
+# Runs the PR-safe portion of the project's check suite on every push and pull request. The
+# `check:ci` alias now includes several default-route browser probes (first-15, station flow,
+# mission handoff/map, automation board, market loop, etc.) because those checks protect shipped
+# player trust surfaces. CI therefore installs the Playwright probe runtime explicitly instead of
+# relying on a developer machine, a Codex runtime cache, or a global browser install.
 #
 # A green run here means every namespaced data ref resolves, the fixed-timestep sim is
-# deterministic across save/reload, and no wired gameplay contract has regressed.
+# deterministic across save/reload, the default browser route can exercise the critical onboarding
+# and station/economy probes, and no wired gameplay contract has regressed.
 name: check
 
 on:
@@ -26,7 +25,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,15 +33,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 20 LTS. The headless check scripts use Node built-ins + vendored three.module.js;
-          # the bundle check (check:bundle) additionally needs esbuild, so deps ARE installed now.
+          # Node 20 LTS. The headless/gameplay scripts use Node built-ins + vendored three.module.js;
+          # the bundle check additionally needs esbuild, so root dependencies are installed first.
           node-version: '20'
           cache: 'npm'
 
-      # Install dev dependencies. The headless checks are dependency-free, but check:bundle (the
-      # production bundler verification) needs esbuild. npm ci is faster + deterministic on CI.
       - name: Install dependencies
         run: npm ci
 
-      - name: Run headless check suite (+ bundle verification)
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.60.0
+
+      - name: Install Playwright browser probe runtime
+        run: |
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --no-save --no-package-lock playwright@1.60.0
+          npx playwright install --with-deps chromium
+
+      - name: Run CI check suite (+ default-route browser probes)
         run: npm run check:ci
