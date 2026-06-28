@@ -132,6 +132,35 @@ function stripNextPrefix(text) {
   return String(text || '').replace(/^Next:\s*/i, '');
 }
 
+function missionWaypoint(state, mission) {
+  const wp = state && state.nav && state.nav.waypoint;
+  if (!wp || !mission || wp.missionId !== mission.id) return null;
+  return wp;
+}
+
+export function missionMapAction(state, mission, isTracked) {
+  if (!state || !mission || !isTracked) return null;
+  const wp = missionWaypoint(state, mission);
+  const currentSectorId = state.world && state.world.currentSectorId || null;
+  const targetSectorId = (wp && wp.sectorId) || mission.destSectorId || null;
+  const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
+  const hasLocalFix = !!(wp && wp.pos);
+  if (hasLocalFix || sameSector || !targetSectorId) {
+    return {
+      screenId: 'localmap',
+      label: 'LOCAL MAP',
+      title: 'Open Local Map',
+      body: 'Show the live objective marker and nearby contacts.',
+    };
+  }
+  return {
+    screenId: 'starmap',
+    label: 'STAR MAP',
+    title: 'Open Star Map',
+    body: 'Plot or review the jump route to this objective.',
+  };
+}
+
 function missionTitle(m) {
   return (m && (m.title || m.name)) || prettyType(m && m.type);
 }
@@ -147,6 +176,13 @@ function cargoLoad(state) {
   const cap = Math.max(0, Number(cargo && cargo.capVolume) || 0);
   const used = Math.max(0, Number(cargo && cargo.usedVolume) || 0);
   return { cap, used, free: Math.max(0, cap - used), ratio: cap > 0 ? used / cap : 0 };
+}
+
+function openMapScreen(ctx, screenId) {
+  if (!screenId) return;
+  const mgr = getManager(ctx);
+  if (mgr && typeof mgr.pushScreen === 'function') mgr.pushScreen(screenId);
+  else if (ctx && ctx.bus) ctx.bus.emit('ui:pushScreen', { id: screenId });
 }
 
 function storyActionForBeat(beat, state) {
@@ -239,6 +275,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   const actions = [];
 
   if (tracked) {
+    const mapAction = missionMapAction(state, tracked, true);
     actions.push({
       tone: 'primary',
       label: 'TRACKED',
@@ -246,6 +283,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       body: stripNextPrefix(nextStepText(tracked)),
       meta: missionProgressLabel(tracked),
       missionId: tracked.id,
+      mapAction,
     });
   } else if (active.length) {
     const candidate = active.find((m) => (m.deadline_s || 0) > (state && state.simTime || 0)) || active[0];
@@ -389,6 +427,9 @@ export const missionLogScreen = {
         ctx.bus.emit('ui:trackMission', { missionId: btn.getAttribute('data-mid') });
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         this._render();
+      } else if (act === 'openMap') {
+        openMapScreen(ctx, btn.getAttribute('data-screen-id'));
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
     });
 
@@ -400,6 +441,10 @@ export const missionLogScreen = {
       const act = btn.getAttribute('data-act');
       if (act === 'track') {
         ctx.bus.emit('ui:trackMission', { missionId });
+      } else if (act === 'openMap') {
+        openMapScreen(ctx, btn.getAttribute('data-screen-id'));
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        return;
       } else if (act === 'abandon') {
         // Abandoning a mission forfeits progress + any standing/reputation gain — confirm (UX-2).
         const active = (ctx.state.missions && ctx.state.missions.active) || [];
@@ -528,12 +573,14 @@ export const missionLogScreen = {
         (fac ? '<span class="sf-mlog-fac" style="color:' + (fac.color || 'var(--accent-2)') + '">' + escapeHtml(fac.short || fac.name) + '</span>' : '');
       card.appendChild(meta);
 
-      // Buttons: Track / Abandon
+      // Buttons: Track / map handoff / abandon
+      const mapAction = missionMapAction(state, m, isTracked);
       const btns = el('div', 'sf-mlog-btns');
       btns.innerHTML =
         '<button class="sf-mlog-btn-track' + (isTracked ? ' active' : '') + '" data-act="track" data-mid="' + escapeHtml(m.id) + '">' +
           (isTracked ? 'TRACKING' : 'TRACK NAV') +
         '</button>' +
+        (mapAction ? '<button class="sf-mlog-btn-map" data-act="openMap" data-screen-id="' + escapeHtml(mapAction.screenId) + '" data-mid="' + escapeHtml(m.id) + '" title="' + escapeHtml(mapAction.title) + '">' + escapeHtml(mapAction.label) + '</button>' : '') +
         '<button class="sf-mlog-btn-abandon" data-act="abandon" data-mid="' + escapeHtml(m.id) + '">ABANDON</button>';
       card.appendChild(btns);
 
@@ -574,7 +621,10 @@ export const missionLogScreen = {
         '<div class="sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</div>' +
         '<div class="sf-mlog-rec-body">' + escapeHtml(a.body || '') + '</div>' +
         (a.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(a.meta) + '</div>' : '') +
-        (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
+        ((a.action === 'track' && a.missionId) || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
+          (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
+          (a.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap" data-screen-id="' + escapeHtml(a.mapAction.screenId) + '" data-mid="' + escapeHtml(a.missionId || '') + '" title="' + escapeHtml(a.mapAction.body || a.mapAction.title || '') + '">' + escapeHtml(a.mapAction.label) + '</button>' : '') +
+        '</div>' : '') +
       '</div>'
     )).join('');
   },
@@ -642,9 +692,11 @@ const CSS = `
   overflow-wrap: anywhere; }
 .sf-mlog-rec-body { font-size: .74rem; line-height: 1.35; color: var(--ink-dim); overflow-wrap: anywhere; }
 .sf-mlog-rec-meta { margin-top: 6px; color: var(--energy); font-size: .68rem; overflow-wrap: anywhere; }
-.sf-mlog-rec-action { margin-top: 8px; font-size: .66rem; padding: 4px 10px; border-color: var(--warn);
+.sf-mlog-rec-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.sf-mlog-rec-action { font-size: .66rem; padding: 4px 10px; border-color: var(--warn);
   color: var(--warn); background: rgba(255,205,76,.08); }
 .sf-mlog-rec-action:hover { border-color: var(--accent); color: var(--accent); background: rgba(57,208,255,.1); }
+.sf-mlog-rec-map { border-color: rgba(57,208,255,.55); color: var(--accent); background: rgba(57,208,255,.08); }
 
 .sf-mlog-list { flex: 1; overflow-y: auto; padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
 
@@ -682,11 +734,14 @@ const CSS = `
 .sf-mlog-cr { color: var(--energy); }
 .sf-mlog-fac { font-size: .7rem; }
 
-.sf-mlog-btns { display: flex; gap: 8px; }
+.sf-mlog-btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .sf-mlog-btn-track { font-size: .72rem; padding: 4px 12px; border-color: var(--panel-edge-2); color: var(--ink-dim); }
 .sf-mlog-btn-track:hover { border-color: var(--accent); color: var(--accent); }
 .sf-mlog-btn-track.active { border-color: var(--accent); color: var(--accent);
   box-shadow: 0 0 8px rgba(57,208,255,.25); background: rgba(57,208,255,.1); }
+.sf-mlog-btn-map { font-size: .72rem; padding: 4px 12px; border-color: rgba(57,208,255,.55); color: var(--accent);
+  background: rgba(57,208,255,.08); }
+.sf-mlog-btn-map:hover { border-color: var(--energy); color: var(--energy); }
 .sf-mlog-btn-abandon { font-size: .72rem; padding: 4px 12px; border-color: var(--panel-edge); color: var(--ink-mute); }
 .sf-mlog-btn-abandon:hover { border-color: var(--danger); color: var(--danger); }
 

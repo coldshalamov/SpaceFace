@@ -514,7 +514,12 @@ export const localmapScreen = {
       const d = Math.hypot(wp.pos.x - player.pos.x, wp.pos.z - player.pos.z);
       meta.push({ text: Math.round(d) + ' u', hot: false });
     } else if (wp && !wp.pos) {
-      meta.push({ text: 'Off-sector fix', hot: true });
+      const targetSectorId = wp.sectorId || null;
+      const currentSectorId = state.world && state.world.currentSectorId || null;
+      const fixLabel = targetSectorId && currentSectorId && targetSectorId === currentSectorId
+        ? 'Sector fix'
+        : 'Off-sector fix';
+      meta.push({ text: fixLabel, hot: true });
     }
     if (route) {
       meta.push({ text: route.summary, hot: true });
