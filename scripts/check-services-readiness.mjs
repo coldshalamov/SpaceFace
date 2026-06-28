@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { AMMO_BATCH, serviceQuote, serviceReadinessRecommendation } from '../src/ui/screens/services.js';
+
+const servicesSource = readFileSync(new URL('../src/ui/screens/services.js', import.meta.url), 'utf8');
 
 function baseState(overrides = {}) {
   return {
@@ -91,6 +94,25 @@ function checkInsuranceQuoteShowsDeductibleGate() {
   assert.match(active.detail, /cargo loss still applies/i, 'active insurance detail should preserve cargo-loss copy');
 }
 
+function checkInsuranceCancelIsConfirmed() {
+  assert.match(servicesSource, /import \{ confirm \} from '\.\.\/confirm\.js';/,
+    'Services must use the shared confirm dialog for destructive service toggles');
+  assert.match(servicesSource, /list\.addEventListener\('click', async \(ev\) => \{/,
+    'Services click handler must be async so insurance cancellation can await confirmation');
+  assert.match(servicesSource, /type === 'insurance' && amount === 0 && state\.player\.insurance && state\.player\.insurance\.insuredModules/,
+    'active insurance cancellation should be the only insurance service action gated by confirm');
+  assert.match(servicesSource, /title: 'Cancel hull insurance\?'/,
+    'insurance cancel confirm should name the destructive action');
+  assert.match(servicesSource, /confirmLabel: 'Cancel Insurance'/,
+    'insurance cancel confirm should make the destructive button explicit');
+  assert.match(servicesSource, /cancelLabel: 'Keep Insurance'/,
+    'insurance cancel confirm should make the safe escape explicit');
+  assert.match(servicesSource, /danger: true/,
+    'insurance cancel confirm should use danger mode so the shared modal defaults to the safe button');
+  assert.match(servicesSource, /if \(!ok\) \{\s*ctx\.bus\.emit\('audio:cue', \{ id: 'ui_deny' \}\);\s*return;\s*\}/s,
+    'declining insurance cancel must not emit ui:service');
+}
+
 function checkReadinessRecommendsPartialRefuel() {
   const state = baseState({
     fuel: { current: 10, max: 100 },
@@ -140,6 +162,7 @@ checkRefuelQuoteBlocksZeroCreditTopOff();
 checkPartialRepairQuoteSpendsOnlyCurrentCredits();
 checkAmmoQuoteRespectsWalletAndCargo();
 checkInsuranceQuoteShowsDeductibleGate();
+checkInsuranceCancelIsConfirmed();
 checkReadinessRecommendsPartialRefuel();
 checkReadinessPrefersCriticalRepair();
 checkReadinessSurfacesUnavailableRefuel();
