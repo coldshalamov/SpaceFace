@@ -93,6 +93,10 @@ assert.match(codexSource, /No matching unlocked entries\./,
   'Codex search must show an empty state for no unlocked matches');
 assert.match(codexSource, /export function codexProgressSummary/,
   'Codex must expose a pure unlock-summary helper for progression trust checks');
+assert.match(codexSource, /seen\['trap_' \+ entry\.id\]/,
+  'Codex comm visibility must accept story-system trap_<id> seen keys');
+assert.match(codexSource, /return commUnlocked\(c, s, beat\)/,
+  'Codex Comms tab should share the same visibility helper as the status strip');
 assert.match(codexSource, /Codex Unlock Status/,
   'Codex must render a visible unlock-status strip');
 assert.match(codexSource, /Locked counts mean future entries are intentionally hidden/,
@@ -147,6 +151,14 @@ assert.match(uiInputSource, /matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenM
     'Codex status should include encountered graffiti flags without leaking unseen lines');
   assert.equal(valueFor(summary, 'Comms'), beat4Comms + '/' + commsTotal + ' unlocked',
     'Codex status should count explicit seen flags even when a comm is above the current beat');
+
+  summary = codexProgressSummary({
+    beatIndex: 0,
+    seenComms: lateEntry ? { ['trap_' + lateEntry.id]: true } : {},
+    graffitiShown: {},
+  });
+  assert.equal(valueFor(summary, 'Comms'), (beat0Comms + (lateEntry ? 1 : 0)) + '/' + commsTotal + ' unlocked',
+    'Codex status should honor persisted trap_<id> comm keys from the story system');
 
   summary = codexProgressSummary({ beatIndex: 7, seenComms: {}, graffitiShown: {} });
   assert.equal(valueFor(summary, 'Endgame'), '5/5 revealed',
