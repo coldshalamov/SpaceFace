@@ -1,6 +1,7 @@
 // Verifies browser-facing UI screen modules import cleanly and expose valid screen definitions.
 // This catches broken relative imports before the dynamic browser registry silently skips a screen.
 import { readFileSync } from 'node:fs';
+import { BINDINGS } from '../src/ui/bindings.js';
 
 const checks = [
   ['../src/ui/screens/stationHub.js', 'stationHub'],
@@ -76,9 +77,12 @@ if (localmap) {
 }
 
 const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
+const bindingsSrc = readFileSync(new URL('../src/ui/bindings.js', import.meta.url), 'utf8');
+const inputSrc = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
 const localmapSrc = readFileSync(new URL('../src/ui/screens/localmap.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
 const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
+const stationHubSrc = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
 const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
 const alertsSrc = readFileSync(new URL('../src/ui/alerts.js', import.meta.url), 'utf8');
 const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
@@ -127,14 +131,35 @@ if (!helpSrc.includes("import { BINDINGS } from '../bindings.js'")
   || !helpSrc.includes('BINDINGS.dock.label')
   || !helpSrc.includes('BINDINGS.localmap.label')
   || !helpSrc.includes('BINDINGS.starmap.label')
+  || !helpSrc.includes('BINDINGS.missionLog.label')
   || !helpSrc.includes('BINDINGS.codex.label')) {
   console.log('FAIL helpScreen - fixed UI key labels must read src/ui/bindings.js');
   fail++;
-} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)|'K'/.test(helpSrc)) {
-  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap/codex keys');
+} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)|Mission Log \(J\)|'J'|'K'/.test(helpSrc)) {
+  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap/missionLog/codex keys');
   fail++;
 } else {
   console.log('ok   helpScreen - fixed UI key labels read the binding registry');
+  ok++;
+}
+if (!bindingsSrc.includes("missionLog: { key: 'j', code: 'KeyJ', label: 'J' }")
+  || BINDINGS.missionLog.key !== 'j'
+  || BINDINGS.missionLog.label !== 'J'
+  || !inputSrc.includes('BINDINGS.missionLog.key')
+  || !inputSrc.includes('BINDINGS.missionLog.label')
+  || !hudSrc.includes('BINDINGS.missionLog.label')
+  || !helpSrc.includes('BINDINGS.missionLog.label')
+  || !missionLogSrc.includes("import { BINDINGS } from '../bindings.js'")
+  || !missionLogSrc.includes('BINDINGS.missionLog.label')
+  || !stationHubSrc.includes("import { BINDINGS } from '../bindings.js'")
+  || !stationHubSrc.includes('BINDINGS.missionLog.label')) {
+  console.log('FAIL missionLog binding - mission log key must read src/ui/bindings.js across input and UI copy');
+  fail++;
+} else if (/case 'j'|key === 'j'|J Mission Log|Mission Log \(J\)|J to close|Mission log', null, 'J'/.test(inputSrc + hudSrc + helpSrc + missionLogSrc + stationHubSrc)) {
+  console.log('FAIL missionLog binding - visible mission log key text must not hard-code J');
+  fail++;
+} else {
+  console.log('ok   missionLog binding - input and visible copy read the binding registry');
   ok++;
 }
 if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionLog'))")) {
@@ -178,6 +203,7 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   || !hudSrc.includes('BINDINGS.dock.label')
   || !hudSrc.includes('BINDINGS.localmap.label')
   || !hudSrc.includes('BINDINGS.starmap.label')
+  || !hudSrc.includes('BINDINGS.missionLog.label')
   || !alertsSrc.includes("import { BINDINGS, promptLabel } from './bindings.js'")
   || !alertsSrc.includes('BINDINGS.starmap.label')
   || !uiRootSrc.includes("import { controlPrompt } from './controlPrompts.js'")
@@ -194,7 +220,7 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   console.log('FAIL flight HUD - dock/localmap/starmap/codex labels must not hard-code visible key text');
   fail++;
 } else {
-  console.log('ok   flight HUD - dock/localmap/starmap/codex labels read the binding registry');
+  console.log('ok   flight HUD - dock/localmap/starmap/missionLog/codex labels read the binding registry');
   ok++;
 }
 const figureDossierKeys = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss', 'elroy', 'mira', 'rook', 'vale', 'kurtz'];

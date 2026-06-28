@@ -12,6 +12,7 @@ export const BINDINGS = Object.freeze({
   dock: { key: 'e', code: 'KeyE', label: 'E' },
   localmap: { key: 'n', code: 'KeyN', label: 'N' },
   starmap: { key: 'm', code: 'KeyM', label: 'M' },
+  missionLog: { key: 'j', code: 'KeyJ', label: 'J' },
   codex: { key: 'k', code: 'KeyK', label: 'K' },
 });
 

@@ -1,6 +1,6 @@
 // UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
 //
-// UI owns: ESC (back/pause), N (local map), M (star-map), T (tech), J (mission log), K (codex), F1/H (help),
+// UI owns: ESC (back/pause), N (local map), M (star-map), T (tech), mission log, K (codex), F1/H (help),
 //          Tab (cycle target), P (pause), E (dock when in range; Enter secondary), F5/F9 (quick save/load),
 //          mouse-wheel (camera zoom passthrough → camera:zoom).
 // Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
@@ -43,6 +43,11 @@ export function createUiInput(ctx, screenManager) {
     bus.emit('audio:cue', { id: 'ui_dock' });
   }
 
+  function matchesBinding(ev, binding) {
+    const k = ev && ev.key;
+    return !!binding && (k === binding.key || k === binding.label);
+  }
+
   function onKeyDown(ev) {
     // never intercept typing into inputs/textareas
     const t = ev.target;
@@ -73,7 +78,7 @@ export function createUiInput(ctx, screenManager) {
         try { if (def.onKey(ev, ctx) === true) { ev.preventDefault(); return; } }
         catch (e) { console.error('[uiInput] screen onKey error:', e); }
       }
-      if (def && def.id === 'station' && (key === 'j' || key === 'J')) {
+      if (def && def.id === 'station' && matchesBinding(ev, BINDINGS.missionLog)) {
         ev.preventDefault();
         screenManager.pushScreen('missionLog');
         bus.emit('audio:cue', { id: 'ui_open' });
@@ -116,7 +121,8 @@ export function createUiInput(ctx, screenManager) {
         ev.preventDefault(); screenManager.pushScreen('starmap'); return;
       case 't': case 'T':
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;
-      case 'j': case 'J':
+      case BINDINGS.missionLog.key:
+      case BINDINGS.missionLog.label:
         ev.preventDefault(); screenManager.pushScreen('missionLog'); return;
       case BINDINGS.codex.key:
       case 'K':

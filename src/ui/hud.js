@@ -1216,7 +1216,7 @@ export function createHud(ctx, alerts) {
         const beat = STORY_BEATS[state.story.beatIndex];
         setText(mtTitle, `Story: ${mtStoryTitle(beat)}`);
         setText(mtObj, beat.objective || 'Open the mission log for your next objective');
-        setText(mtTime, `J Mission Log · ${BINDINGS.localmap.label} Local Map`);
+        setText(mtTime, `${BINDINGS.missionLog.label} Mission Log · ${BINDINGS.localmap.label} Local Map`);
         mtTime.classList.remove('sf-mt-urgent');
         setDisplay(missionTracker, true);
       } else {

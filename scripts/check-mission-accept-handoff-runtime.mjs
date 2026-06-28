@@ -2,19 +2,21 @@
 // check-mission-accept-handoff-runtime.mjs - browser smoke for Accept + Track continuity.
 //
 // Boots the canonical player route, accepts a real station-board mission, verifies the station
-// confirmation, opens Mission Log via J while docked, then undocks and proves the HUD tracker and
-// nav waypoint still point at the same mission.
+// confirmation, opens Mission Log via the fixed UI binding while docked, then undocks and proves
+// the HUD tracker and nav waypoint still point at the same mission.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
+import { BINDINGS } from '../src/ui/bindings.js';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 45000;
 const DOCK_TIMEOUT_MS = 15000;
+const MISSION_LOG_LABEL = `Mission Log (${BINDINGS.missionLog.label})`;
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -206,7 +208,8 @@ try {
   assert.equal(stationReport.activeTab, 'missions', 'station should remain on the Missions tab after accept');
   assert.equal(stationReport.statusVisible, true, 'station should show the accepted + tracked confirmation');
   assert.match(stationReport.statusText, /ACCEPTED \+ TRACKED/i, 'accepted status should label the handoff');
-  assert.match(stationReport.statusText, /Mission Log \(J\)/, 'accepted status should point to Mission Log J while docked');
+  assert(stationReport.statusText.includes(MISSION_LOG_LABEL),
+    'accepted status should point to ' + MISSION_LOG_LABEL + ' while docked');
   assert(stationReport.trackedTitle && stationReport.statusText.includes(stationReport.trackedTitle),
     'accepted status should name the tracked mission: ' + JSON.stringify(stationReport));
   assert.equal(stationReport.waypoint && stationReport.waypoint.missionId, stationReport.trackedId,
@@ -312,7 +315,7 @@ try {
     'HUD tracker should name the accepted mission: ' + JSON.stringify(hudReport));
   assert.deepEqual(issues.errorIssues(), [], 'mission accept handoff probe should not record page errors');
 
-  console.log('Mission accept handoff OK: station confirmation -> Mission Log J -> tracked HUD after undock');
+  console.log('Mission accept handoff OK: station confirmation -> ' + MISSION_LOG_LABEL + ' -> tracked HUD after undock');
   console.log('Dock target:', dockTarget.stationId, dockTarget.label);
   console.log('Mission:', logReport.trackedId, logReport.trackedTitle);
 } finally {

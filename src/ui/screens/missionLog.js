@@ -1,4 +1,4 @@
-// src/ui/screens/missionLog.js — In-flight mission log (J key).
+// src/ui/screens/missionLog.js — In-flight mission log.
 // Shows all active + recently completed missions with progress, timer, reward, and a TRACK button.
 // READ-ONLY on state; emits ui:trackMission + ui:abandonMission intents only (§5, §0.6).
 //
@@ -10,6 +10,7 @@ import { confirm } from '../confirm.js';
 import { FACTION_META } from '../../data/factions.js';
 import { STORY_BEATS } from '../../data/missions.js';
 import { escapeHtml } from '../comms.js';
+import { BINDINGS } from '../bindings.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -183,6 +184,11 @@ function openMapScreen(ctx, screenId) {
   const mgr = getManager(ctx);
   if (mgr && typeof mgr.pushScreen === 'function') mgr.pushScreen(screenId);
   else if (ctx && ctx.bus) ctx.bus.emit('ui:pushScreen', { id: screenId });
+}
+
+function isMissionLogKey(ev) {
+  const key = ev && ev.key;
+  return key === BINDINGS.missionLog.key || key === BINDINGS.missionLog.label;
 }
 
 function storyActionForBeat(beat, state) {
@@ -368,7 +374,7 @@ export const missionLogScreen = {
     const head = el('div', 'sf-mlog-head');
     head.innerHTML =
       '<span class="sf-mlog-title">MISSION LOG</span>' +
-      '<span class="sf-mlog-hint mono">J to close</span>' +
+      '<span class="sf-mlog-hint mono">' + BINDINGS.missionLog.label + ' to close</span>' +
       '<button class="sf-mlog-close">CLOSE</button>';
     rootEl.appendChild(head);
 
@@ -479,7 +485,7 @@ export const missionLogScreen = {
   },
 
   onKey(ev) {
-    if (ev.key === 'j' || ev.key === 'J') {
+    if (isMissionLogKey(ev)) {
       const mgr = getManager(this._ctx);
       if (mgr) mgr.popScreen();
       return true; // consumed

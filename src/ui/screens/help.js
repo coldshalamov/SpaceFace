@@ -122,7 +122,7 @@ const SECTIONS = [
     ['Star-map', null, BINDINGS.starmap.label],
     ['Local system map', null, BINDINGS.localmap.label],
     ['Tech tree', null, 'T'],
-    ['Mission log', null, 'J'],
+    ['Mission log', null, BINDINGS.missionLog.label],
     ['Codex', null, BINDINGS.codex.label],
     ['Help', null, 'F1 / H'],
     ['Quick save / load', null, 'F5 / F9'],
@@ -179,7 +179,7 @@ const GAMEPLAY_LOOPS = [
   ['Trade for upgrades', 'Market -> buy cheap cargo -> Best Trades Set Nav -> sell high', 'Cargo space turns into credits; credits buy hulls, modules, repairs, and fuel.'],
   ['Mine into economy', 'Asteroid field -> mine ore -> sell at mining/refinery markets or manufacture', 'Mining rewards cargo space and mining slots; refined goods feed modules and hull production.'],
   ['Refit for a job', 'Shipyard for hull role -> Outfitting for modules -> Services before launch', 'Hull choice sets capacity and slots; modules decide whether the ship fights, hauls, mines, scans, or survives.'],
-  ['Track objectives', `Mission Log (J) -> Track Nav -> HUD marker / local map (${BINDINGS.localmap.label}) / star-map (${BINDINGS.starmap.label})`, 'The log is the active objective home when you forget what the current flight is for.'],
+  ['Track objectives', `Mission Log (${BINDINGS.missionLog.label}) -> Track Nav -> HUD marker / local map (${BINDINGS.localmap.label}) / star-map (${BINDINGS.starmap.label})`, 'The log is the active objective home when you forget what the current flight is for.'],
 ];
 
 export const helpScreen = {

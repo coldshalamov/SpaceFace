@@ -24,6 +24,7 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { escapeHtml } from '../comms.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
+import { BINDINGS } from '../bindings.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -566,7 +567,7 @@ export const stationHub = {
     panel.style.display = 'none';
     panel.innerHTML =
       '<div class="st-sub-h">Mission Board</div>' +
-      '<div class="st-mission-guide">Accepting a contract adds it to the Mission Log (J), auto-tracks it, and sets nav guidance when a destination exists. Rewards fund hulls, modules, repairs, and fuel.</div>' +
+      '<div class="st-mission-guide">Accepting a contract adds it to the Mission Log (' + BINDINGS.missionLog.label + '), auto-tracks it, and sets nav guidance when a destination exists. Rewards fund hulls, modules, repairs, and fuel.</div>' +
       '<div class="st-mission-recommend" hidden></div>' +
       '<div class="st-mission-accepted" hidden></div>' +
       '<div class="st-mission-list"></div>';
@@ -613,7 +614,7 @@ export const stationHub = {
       '<div class="st-mission-accepted-label mono">ACCEPTED + TRACKED</div>' +
       '<div class="st-mission-accepted-title">' + escapeHtml(mission.title || prettyType(mission.type)) + '</div>' +
       '<div class="st-mission-accepted-next">' + escapeHtml(routeLine) + '</div>' +
-      '<div class="st-mission-accepted-log mono">Mission Log (J) now carries the route, timer, and progress. Undock when Departure Check is green.</div>';
+      '<div class="st-mission-accepted-log mono">Mission Log (' + BINDINGS.missionLog.label + ') now carries the route, timer, and progress. Undock when Departure Check is green.</div>';
   },
 
   _refreshMissions() {
@@ -650,7 +651,7 @@ export const stationHub = {
       }
     }
     if (!slots.length) {
-      list.innerHTML = '<div class="st-empty">No contracts posted right now. Try the Bar for leads, check another station, or undock and use the Mission Log (J) for active objectives.</div>';
+      list.innerHTML = '<div class="st-empty">No contracts posted right now. Try the Bar for leads, check another station, or undock and use the Mission Log (' + BINDINGS.missionLog.label + ') for active objectives.</div>';
       return;
     }
     const frag = document.createDocumentFragment();
@@ -1139,7 +1140,7 @@ function missionAfterAcceptText(m) {
     case 'salvage_retrieval':
       return 'Undock, follow nav guidance toward ' + dest + ', then dock to resolve the handoff.';
     default:
-      return 'Undock, follow the tracked objective, and check Mission Log (J) for progress.';
+      return 'Undock, follow the tracked objective, and check Mission Log (' + BINDINGS.missionLog.label + ') for progress.';
   }
 }
 
