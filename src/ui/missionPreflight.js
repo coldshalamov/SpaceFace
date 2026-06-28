@@ -1,8 +1,19 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { MISSION_TUNING } from '../data/missions.js';
+import { SECTORS } from '../data/sectors.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const STATION_SECTOR_BY_ID = new Map();
+for (const sec of SECTORS) {
+  for (const stn of sec.stations || []) {
+    STATION_SECTOR_BY_ID.set(stn.id, sec.id);
+  }
+}
+
 const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
+const TIMER_TIGHT_S = 5 * 60;
+const TIMER_CRITICAL_S = 2 * 60;
 
 function missionCollateral(m) {
   return Math.max(0, m && (m.collateral_cr || m.collateralCr || m.collateral || 0) || 0);
@@ -75,6 +86,77 @@ export function fmtHoldUnits(value) {
   return (Math.round(value * 10) / 10).toLocaleString('en-US');
 }
 
+function titleCaseId(id) {
+  return String(id || '')
+    .replace(/^sector_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function sectorLabel(id) {
+  const sec = SECTOR_BY_ID.get(id);
+  return sec ? sec.name : titleCaseId(id);
+}
+
+function missionDestinationSectorId(m) {
+  if (!m) return null;
+  if (m.destSectorId) return m.destSectorId;
+  if (m.destStationId && STATION_SECTOR_BY_ID.has(m.destStationId)) return STATION_SECTOR_BY_ID.get(m.destStationId);
+  return null;
+}
+
+function missionSecondsAvailable(m, state) {
+  if (!m) return null;
+  const simTime = Number(state && state.simTime) || 0;
+  const deadline = Number(m.deadline_s != null ? m.deadline_s : m.deadlineS);
+  if (Number.isFinite(deadline) && deadline > 0) return Math.max(0, deadline - simTime);
+  const relative = Number(m.time_limit_s != null ? m.time_limit_s
+    : (m.timeLimitS != null ? m.timeLimitS : (m.expiresInS != null ? m.expiresInS : null)));
+  return Number.isFinite(relative) && relative > 0 ? relative : null;
+}
+
+function fmtMissionTime(seconds) {
+  const s = Math.max(0, Math.ceil(Number(seconds) || 0));
+  if (s >= 3600) {
+    const h = s / 3600;
+    return h >= 10 ? Math.round(h) + 'h' : (Math.round(h * 10) / 10).toLocaleString('en-US') + 'h';
+  }
+  if (s >= 60) return Math.ceil(s / 60) + 'm';
+  return s + 's';
+}
+
+function pushRouteAndPaceChips(chips, warnings, m, state) {
+  const destSectorId = missionDestinationSectorId(m);
+  const currentSectorId = state && state.world && state.world.currentSectorId;
+  if (destSectorId) {
+    if (currentSectorId && currentSectorId === destSectorId) {
+      chips.push({ kind: 'ok', text: 'Same-sector route' });
+    } else {
+      chips.push({ kind: 'info', text: `Jump to ${sectorLabel(destSectorId)}` });
+    }
+  } else if (m && (m.destStationId || m.dest)) {
+    chips.push({ kind: 'info', text: 'Destination route' });
+  } else {
+    chips.push({ kind: 'info', text: 'Local objective' });
+  }
+
+  const seconds = missionSecondsAvailable(m, state);
+  if (seconds == null) return;
+  const time = fmtMissionTime(seconds);
+  if (seconds <= 0) {
+    chips.push({ kind: 'bad', text: 'Timer expired' });
+    warnings.push('This contract timer has already run out; pick a live board offer.');
+  } else if (seconds <= TIMER_CRITICAL_S) {
+    chips.push({ kind: 'bad', text: `Timer ${time} critical` });
+    warnings.push('Timer is critical; undock only if the route is already staged.');
+  } else if (seconds <= TIMER_TIGHT_S) {
+    chips.push({ kind: 'warn', text: `Timer ${time} tight` });
+    warnings.push('Timer is tight; clear cargo, repair, and route before accepting.');
+  } else {
+    chips.push({ kind: 'ok', text: `Timer ${time}` });
+  }
+}
+
 export function missionPreflight(m, state) {
   const chips = [];
   const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
@@ -122,6 +204,8 @@ export function missionPreflight(m, state) {
       chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')}u quota` });
     }
   }
+
+  pushRouteAndPaceChips(chips, warnings, m, state);
 
   return {
     blocker: blockers[0] || null,
