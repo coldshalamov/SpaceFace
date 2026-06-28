@@ -6,6 +6,9 @@
 // Export: techTreeScreen  (id 'techTree'). No 'three' import.
 
 import { TECH_NODES } from '../../data/tech.js';
+import { SHIPS } from '../../data/ships.js';
+import { MODULES } from '../../data/modules.js';
+import { WEAPONS } from '../../data/weapons.js';
 import { escapeHtml } from '../comms.js';
 
 // Branch -> column index and accent colour. The DAG is laid out as columns by branch,
@@ -20,6 +23,7 @@ const BRANCH_INDEX = {};
 BRANCHES.forEach((b, i) => { BRANCH_INDEX[b.id] = i; });
 const BRANCH_COLOR = {};
 BRANCHES.forEach((b) => { BRANCH_COLOR[b.id] = b.color; });
+const UNLOCK_NAME_BY_ID = new Map([...SHIPS, ...MODULES, ...WEAPONS].map((entry) => [entry.id, entry.name]));
 
 const NODE_W = 150, NODE_H = 58, COL_GAP = 26, ROW_GAP = 30, PAD_X = 28, PAD_Y = 54;
 
@@ -612,8 +616,8 @@ function disabledActionHtml(readiness) {
 function formatUnlocks(u) {
   if (!u) return '<b>Effects:</b> —';
   const parts = [];
-  if (u.ships && u.ships.length) parts.push(`<b>Ships:</b> ${u.ships.map(cleanId).join(', ')}`);
-  if (u.modules && u.modules.length) parts.push(`<b>Modules:</b> ${u.modules.map(cleanId).join(', ')}`);
+  if (u.ships && u.ships.length) parts.push(`<b>Ships:</b> ${u.ships.map(unlockDisplayName).join(', ')}`);
+  if (u.modules && u.modules.length) parts.push(`<b>Modules:</b> ${u.modules.map(unlockDisplayName).join(', ')}`);
   if (u.efficiency) {
     const e = Object.entries(u.efficiency).map(([k, v]) => `${k} ${(v > 0 ? '+' : '') + Math.round(v * 100)}%`);
     parts.push(`<b>Bonuses:</b> ${e.join(', ')}`);
@@ -628,6 +632,11 @@ function formatUnlocks(u) {
 
 function cleanId(id) {
   return escapeHtml(String(id).replace(/^(ship_|mod_|wpn_)/, '').replace(/_/g, ' '));
+}
+
+export function unlockDisplayName(id) {
+  const authored = UNLOCK_NAME_BY_ID.get(id);
+  return authored ? escapeHtml(authored) : cleanId(id);
 }
 
 function fmtCr(v) {
