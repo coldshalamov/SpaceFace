@@ -172,10 +172,19 @@ function checkGamepadCodexOpensCodex() {
   h.input.dispose();
 }
 
+function checkKeyboardCodexOpensCodex() {
+  const h = makeHarness();
+  const event = press(h.listeners, 'k');
+  assert.equal(event.defaultPrevented, true, 'keyboard codex shortcut should be UI-owned in flight');
+  assert.deepEqual(h.pushes, ['codex'], 'K should open the Codex directly for keyboard players');
+  h.input.dispose();
+}
+
 checkAlreadyClaimedBodyOpensBase();
 checkNewClaimOpensBaseImmediately();
 checkRegistrationRaceDoesNotLie();
 checkClaimKeyFallsThroughAwayFromBodies();
+checkKeyboardCodexOpensCodex();
 checkGamepadCodexOpensCodex();
 
-console.log('Claim/base and gamepad UI routing checks OK');
+console.log('Claim/base and Codex UI routing checks OK');

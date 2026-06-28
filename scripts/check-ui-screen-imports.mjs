@@ -99,11 +99,12 @@ if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
 if (!helpSrc.includes("import { BINDINGS } from '../bindings.js'")
   || !helpSrc.includes('BINDINGS.dock.label')
   || !helpSrc.includes('BINDINGS.localmap.label')
-  || !helpSrc.includes('BINDINGS.starmap.label')) {
+  || !helpSrc.includes('BINDINGS.starmap.label')
+  || !helpSrc.includes('BINDINGS.codex.label')) {
   console.log('FAIL helpScreen - fixed UI key labels must read src/ui/bindings.js');
   fail++;
-} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)/.test(helpSrc)) {
-  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap keys');
+} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)|'K'/.test(helpSrc)) {
+  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap/codex keys');
   fail++;
 } else {
   console.log('ok   helpScreen - fixed UI key labels read the binding registry');
@@ -158,14 +159,15 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   || !controlPromptsSrc.includes("import { BINDINGS } from './bindings.js'")
   || !controlPromptsSrc.includes('BINDINGS.dock.label')
   || !controlPromptsSrc.includes('BINDINGS.localmap.label')
-  || !controlPromptsSrc.includes('BINDINGS.starmap.label')) {
-  console.log('FAIL flight HUD - dock/localmap/starmap labels must read src/ui/bindings.js');
+  || !controlPromptsSrc.includes('BINDINGS.starmap.label')
+  || !controlPromptsSrc.includes('BINDINGS.codex.label')) {
+  console.log('FAIL flight HUD - dock/localmap/starmap/codex labels must read src/ui/bindings.js');
   fail++;
-} else if (/'M Star Map'|'N Local Map'|'E', 'dock'|OPEN STARMAP \(M\)|N local map\s+•\s+M star map/.test(hudSrc + alertsSrc + uiRootSrc + controlPromptsSrc)) {
-  console.log('FAIL flight HUD - dock/localmap/starmap labels must not hard-code visible key text');
+} else if (/'M Star Map'|'N Local Map'|'E', 'dock'|OPEN STARMAP \(M\)|N local map\s+•\s+M star map|K codex/.test(hudSrc + alertsSrc + uiRootSrc + controlPromptsSrc)) {
+  console.log('FAIL flight HUD - dock/localmap/starmap/codex labels must not hard-code visible key text');
   fail++;
 } else {
-  console.log('ok   flight HUD - dock/localmap/starmap labels read the binding registry');
+  console.log('ok   flight HUD - dock/localmap/starmap/codex labels read the binding registry');
   ok++;
 }
 const figureDossierKeys = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss', 'elroy', 'mira', 'rook', 'vale', 'kurtz'];

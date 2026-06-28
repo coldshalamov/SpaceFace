@@ -68,10 +68,13 @@ assert.ok(dockBindingMentions.length >= 4,
   'controlPrompts.js should source dock tutorial/control copy from BINDINGS.dock.label');
 const localMapBindingMentions = promptSrc.match(/BINDINGS\.localmap\.label/g) || [];
 const starMapBindingMentions = promptSrc.match(/BINDINGS\.starmap\.label/g) || [];
+const codexBindingMentions = promptSrc.match(/BINDINGS\.codex\.label/g) || [];
 assert.ok(localMapBindingMentions.length >= 2,
   'controlPrompts.js should source local-map tutorial/control copy from BINDINGS.localmap.label');
 assert.ok(starMapBindingMentions.length >= 3,
   'controlPrompts.js should source star-map tutorial/control copy from BINDINGS.starmap.label');
+assert.ok(codexBindingMentions.length >= 1,
+  'controlPrompts.js should source codex control copy from BINDINGS.codex.label');
 for (const staleDockCopy of [/Press Enter at the dock prompt/, /Press ENTER to dock/, /Enter to dock/]) {
   assert.doesNotMatch(src, staleDockCopy,
     `onboarding.js must not use stale hard-coded dock copy: ${staleDockCopy}`);
@@ -95,5 +98,6 @@ assert.match(promptSrc, /LT mine/, 'controlPrompts.js must advertise LT mining f
 assert.match(promptSrc, /A dock/, 'controlPrompts.js must advertise gamepad docking');
 assert.match(promptSrc, /Mine button/, 'controlPrompts.js must include touch mining copy');
 assert.match(readme, /\|\s*Dock\s*\|\s*\*\*E\*\*/, 'README controls must document E as the primary dock key');
+assert.match(readme, /\|\s*Codex\s*\|\s*\*\*K\*\*/, 'README controls must document K as the Codex key');
 
 console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft).`);

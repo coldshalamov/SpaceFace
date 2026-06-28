@@ -123,6 +123,7 @@ const SECTIONS = [
     ['Local system map', null, BINDINGS.localmap.label],
     ['Tech tree', null, 'T'],
     ['Mission log', null, 'J'],
+    ['Codex', null, BINDINGS.codex.label],
     ['Help', null, 'F1 / H'],
     ['Quick save / load', null, 'F5 / F9'],
   ]],

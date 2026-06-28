@@ -12,6 +12,7 @@ export const BINDINGS = Object.freeze({
   dock: { key: 'e', code: 'KeyE', label: 'E' },
   localmap: { key: 'n', code: 'KeyN', label: 'N' },
   starmap: { key: 'm', code: 'KeyM', label: 'M' },
+  codex: { key: 'k', code: 'KeyK', label: 'K' },
 });
 
 // Render a bracketed prompt label, e.g. "[ E ] DOCK AT STATION".
