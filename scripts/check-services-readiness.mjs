@@ -74,6 +74,8 @@ function checkInsuranceQuoteShowsDeductibleGate() {
   const inactive = serviceQuote('insurance', state, playerShip());
   assert.equal(inactive.disabled, true, 'inactive insurance should be disabled when deductible is unaffordable');
   assert.match(inactive.disabledReason, /need 300 cr/i, 'insurance should show missing deductible credits');
+  assert.match(inactive.detail, /station recovery/i, 'insurance detail should explain the recovery destination');
+  assert.match(inactive.detail, /cargo loss still applies/i, 'insurance detail should not imply cargo is protected');
 
   const activeState = baseState({
     player: {
@@ -85,6 +87,8 @@ function checkInsuranceQuoteShowsDeductibleGate() {
   const active = serviceQuote('insurance', activeState, playerShip());
   assert.equal(active.disabled, false, 'active insurance cancellation should stay free');
   assert.equal(active.buttonLabel, 'Cancel', 'active insurance should expose cancel action');
+  assert.match(active.detail, /station recovery/i, 'active insurance detail should preserve recovery copy');
+  assert.match(active.detail, /cargo loss still applies/i, 'active insurance detail should preserve cargo-loss copy');
 }
 
 function checkReadinessRecommendsPartialRefuel() {

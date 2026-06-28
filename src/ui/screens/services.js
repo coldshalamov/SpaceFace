@@ -16,7 +16,7 @@ const SERVICE_ROWS = Object.freeze([
   { type: 'refuel', label: 'Refuel', desc: 'Top off jump fuel', requires: ['refuel'] },
   { type: 'repair', label: 'Repair Hull', desc: 'Restore hull integrity', requires: ['repair'] },
   { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
-  { type: 'insurance', label: 'Hull Insurance', desc: 'Reduce loss on destruction', requires: [] },
+  { type: 'insurance', label: 'Hull Insurance', desc: 'Station recovery payout; cargo loss still applies', requires: [] },
 ]);
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
@@ -271,11 +271,12 @@ export function serviceQuote(type, state, entity) {
     const ins = p.insurance || {};
     const active = !!ins.insuredModules;
     const deductible = Math.max(0, Math.round(ins.deductibleCr || 0));
+    const recovery = 'station recovery · cargo loss still applies';
     if (active) {
       return {
         amount: 0,
         cost: 0,
-        detail: 'Active · payout ' + Math.round((ins.rate || 0.6) * 100) + '% · deductible ' + fmtCr(deductible) + ' cr',
+        detail: 'Active · ' + recovery + ' · payout ' + Math.round((ins.rate || 0.6) * 100) + '% · deductible ' + fmtCr(deductible) + ' cr',
         buttonLabel: 'Cancel',
         disabled: false,
         chips: [{ text: 'active', kind: 'ok' }],
@@ -285,7 +286,7 @@ export function serviceQuote(type, state, entity) {
     return {
       amount: 1,
       cost: deductible,
-      detail: 'Inactive · payout ' + Math.round((ins.rate || 0.6) * 100) + '% · deductible ' + fmtCr(deductible) + ' cr',
+      detail: 'Inactive · ' + recovery + ' · payout ' + Math.round((ins.rate || 0.6) * 100) + '% · deductible ' + fmtCr(deductible) + ' cr',
       buttonLabel: 'Purchase',
       disabled,
       disabledReason: disabled ? 'need ' + fmtCr(deductible - credits) + ' cr' : '',
