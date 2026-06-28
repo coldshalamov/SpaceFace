@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { TECH_NODES } from '../src/data/tech.js';
-import { describeTechNodeReadiness } from '../src/ui/screens/techTree.js';
+import { describeTechNodeReadiness, unlockDisplayName } from '../src/ui/screens/techTree.js';
 
 const source = readFileSync(new URL('../src/ui/screens/techTree.js', import.meta.url), 'utf8');
 const node = (id) => TECH_NODES.find((entry) => entry.id === id);
@@ -45,7 +45,17 @@ readiness = describeTechNodeReadiness(node('tech_combat_basics'), state({
 assert.equal(readiness.state, 'researched');
 assert.equal(readiness.actionLabel, 'Already researched');
 
+assert.equal(unlockDisplayName('ship_wasp'), 'Wasp');
+assert.equal(unlockDisplayName('wpn_pulse_laser_s'), 'Pulse Laser S');
+assert.equal(unlockDisplayName('mod_mining_beam_m'), 'Mining Beam M');
+assert.equal(unlockDisplayName('mod_unlisted_fixture'), 'unlisted fixture');
+
 assert.match(source, /export function describeTechNodeReadiness/);
+assert.match(source, /export function unlockDisplayName/);
+assert.match(source, /UNLOCK_NAME_BY_ID/);
+assert.match(source, /u\.ships\.map\(unlockDisplayName\)/);
+assert.match(source, /u\.modules\.map\(unlockDisplayName\)/);
+assert.doesNotMatch(source, /u\.(?:ships|modules)\.map\(cleanId\)/);
 assert.match(source, /disabledActionHtml\(readiness\)/);
 assert.match(source, /aria-label="\$\{escapeHtml\(readiness\.actionTitle\)\}"/);
 assert.doesNotMatch(source, />Prerequisites not met</);
