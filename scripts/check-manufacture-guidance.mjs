@@ -96,10 +96,35 @@ assert.equal(nextStep.state, 'tech');
 assert.equal(nextStep.title, 'Research Combat Basics');
 assert.match(nextStep.detail, /Tech Tree/);
 
+nextStep = recommendManufactureStep({
+  researchedNodes: [],
+  cargo: { items: { cmdty_ore_iron: 3, cmdty_ore_titanium: 1 } },
+}, {
+  busy: true,
+  inProgress: 'Pulse Laser S',
+  blueprints: [bp('bp_refine_metals')],
+  buildTime: () => 0,
+});
+assert.equal(nextStep.state, 'available');
+assert.equal(nextStep.title, 'Ready build: Refine Metals');
+
+nextStep = recommendManufactureStep({
+  researchedNodes: ['tech_combat_basics'],
+  cargo: { items: { cmdty_comp_circuitry: 2, cmdty_refined_metals: 2, cmdty_microchips: 1 } },
+}, {
+  busy: true,
+  inProgress: 'Shield Booster M',
+  blueprints: [bp('bp_build_pulse_laser_s')],
+  buildTime: () => 20,
+});
+assert.equal(nextStep.state, 'busy');
+assert.match(nextStep.detail, /Finish Shield Booster M/);
+
 assert.match(source, /export function describeManufactureBuildAction/);
 assert.match(source, /export function recommendManufactureStep/);
+assert.match(source, /function blueprintBusy\(bp, opts = \{\}\)/);
 assert.match(source, /MANUFACTURING ADVISOR/);
-assert.match(source, /recommendManufactureStep\(p, \{ busy, inProgress \}\)/);
+assert.match(source, /buildTime: \(bp\) => \(crafting \? crafting\.buildTime\(bp\) : 0\)/);
 assert.match(source, /aria-label="\$\{escapeHtml\(buildAction\.title\)\}"/);
 assert.match(source, /techName\(bp\.requiresTech\)/);
 assert.doesNotMatch(source, />BUILD<\/button>/);

@@ -42,6 +42,13 @@ function blueprintOutputLabel(bp) {
   return rawName(bp.outputs.id, bp.outputs.kind) + (qty > 1 ? ' ×' + qty : '');
 }
 
+function blueprintBusy(bp, opts = {}) {
+  if (!opts.busy) return false;
+  if (typeof opts.busyForBlueprint === 'function') return !!opts.busyForBlueprint(bp);
+  if (typeof opts.buildTime === 'function') return Number(opts.buildTime(bp)) > 0;
+  return true;
+}
+
 export function describeManufactureBuildAction(bp, player = {}, opts = {}) {
   if (!bp) {
     return {
@@ -103,7 +110,13 @@ export function describeManufactureBuildAction(bp, player = {}, opts = {}) {
 
 export function recommendManufactureStep(player = {}, opts = {}) {
   const blueprints = Array.isArray(opts.blueprints) ? opts.blueprints : BLUEPRINTS;
-  const entries = blueprints.map((bp) => ({ bp, action: describeManufactureBuildAction(bp, player, opts) }));
+  const entries = blueprints.map((bp) => ({
+    bp,
+    action: describeManufactureBuildAction(bp, player, {
+      ...opts,
+      busy: blueprintBusy(bp, opts),
+    }),
+  }));
   const available = entries.find((entry) => entry.action.state === 'available');
   if (available) {
     return {
@@ -213,7 +226,11 @@ export function createManufacturePanel(ctx) {
     const busy = crafting && crafting.isBusy && crafting.isBusy(sid);
     const inProgress = busy && crafting.progress && crafting._currentJobName
       ? crafting._currentJobName(sid) : null;
-    const nextStep = recommendManufactureStep(p, { busy, inProgress });
+    const nextStep = recommendManufactureStep(p, {
+      busy,
+      inProgress,
+      buildTime: (bp) => (crafting ? crafting.buildTime(bp) : 0),
+    });
     advisor.innerHTML =
       '<div class="st-mission-preflight">' +
         '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">MANUFACTURING ADVISOR</span>' +
