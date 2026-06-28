@@ -124,7 +124,7 @@ export const OFFER_MIX = {
 export const STORY_BEATS = [
   { beat: 0, id: 'cold_start',     objective: 'Follow the 47-A mass signal, sample the discrepancy, then dock at Helios before the manifest is rewritten.',
     reward: { credits: 400, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
-  { beat: 1, id: 'honest_work',    objective: 'Accept a haul or trade contract and carry cargo to a neighboring station for profit.',
+  { beat: 1, id: 'honest_work',    objective: 'Accept a low-risk haul or trade contract, confirm it is TRACKED in Mission Log, then carry the required cargo to the marked station for profit.',
     reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'trade', next: 2 },
   { beat: 2, id: 'first_blood',    objective: 'Arm the Kestrel, track a low-risk bounty, and destroy the marked hostile.',
     reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'combat', next: 3 },
