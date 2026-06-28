@@ -229,13 +229,17 @@ export const ui = {
         this._pendingMainMenu = false;
         return;
       }
-      if (this.screenManager && this._registeredScreens && this._registeredScreens.has('mainMenu')) {
+      const menuReady = this._registeredScreens &&
+        this._registeredScreens.has('mainMenu') &&
+        this._registeredScreens.has('newGame');
+      if (this.screenManager && menuReady) {
         if (!this.screenManager.top()) this.screenManager.pushScreen('mainMenu');
         this._pendingMainMenu = false;
       } else {
         this._pendingMainMenu = true;
       }
     };
+    this._showMainMenuWhenReady = showMainMenuWhenReady;
 
     let shouldShowCinematic = false;
     try { shouldShowCinematic = !sessionStorage.getItem(CINEMATIC_SEEN_KEY); } catch (e) { shouldShowCinematic = true; }
@@ -445,10 +449,15 @@ export const ui = {
           catch (err) { console.error(`[ui] register("${def.id}") failed:`, err); return; }
           if (!this._registeredScreens) this._registeredScreens = new Set();
           this._registeredScreens.add(def.id);
-          // if we are in menu mode and the main menu just became available, show it
-          if (def.id === 'mainMenu' && this.state.mode === 'menu' && (this._pendingMainMenu || !this.screenManager.isOpen())) {
-            this._pendingMainMenu = false;
-            try { this.screenManager.pushScreen('mainMenu'); } catch (e) { console.error(e); }
+          if (this.state.mode === 'menu' && this.screenManager.top && this.screenManager.top() === 'mainMenu') {
+            try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
+          }
+          // If we are in menu mode and the title flow just became usable, show it. The title screen
+          // waits for its primary New Game target so players never click a half-registered menu.
+          if ((def.id === 'mainMenu' || def.id === 'newGame') &&
+            this.state.mode === 'menu' && (this._pendingMainMenu || !this.screenManager.isOpen())) {
+            try { if (this._showMainMenuWhenReady) this._showMainMenuWhenReady(); }
+            catch (e) { console.error(e); }
           }
           // if docked already but the station hub registered late, open it
           if (def.id === 'station' && this.state.ui.docked && this.screenManager.top() !== 'station') {
@@ -489,11 +498,7 @@ export const ui = {
       this._rt = (this._rt || 0) + 1;
       if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {
         const def = this.screenManager.getActiveScreenDef && this.screenManager.getActiveScreenDef();
-        if (def && (def.id === 'automation' || def.id === 'starmap' || def.id === 'localmap' || def.id === 'techTree' || def.id === 'missionLog') && def.refresh) {
-          def.refresh(this.ctx, { periodic: true });
-        } else {
-          this.screenManager.refreshTop();
-        }
+        if (def && def.refresh) def.refresh(this.ctx, { periodic: true });
       }
     } catch (err) {
       this._fe = (this._fe || 0) + 1;

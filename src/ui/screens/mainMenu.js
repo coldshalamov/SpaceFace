@@ -14,6 +14,25 @@ function getManager(ctx) {
   if (ui && ui.manager) return ui.manager;
   return null;
 }
+function screenReady(ctx, id) {
+  const mgr = getManager(ctx);
+  return !!(!mgr || typeof mgr.hasScreen !== 'function' || mgr.hasScreen(id));
+}
+function setScreenButtonReady(button, ctx, id, label) {
+  if (!button) return;
+  const ready = screenReady(ctx, id);
+  button.disabled = !ready;
+  button.title = ready ? '' : label + ' is initializing';
+}
+function pushWhenReady(ctx, id, label) {
+  if (!screenReady(ctx, id)) {
+    if (ctx && ctx.bus && ctx.bus.emit) {
+      ctx.bus.emit('toast', { text: label + ' is initializing - try again in a moment', kind: 'info', ttl: 2200 });
+    }
+    return;
+  }
+  nav(ctx, 'pushScreen', id);
+}
 function nav(ctx, method, arg) {
   const mgr = getManager(ctx);
   if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
@@ -215,21 +234,24 @@ export const mainMenuScreen = {
       else if (window.playSpaceFaceCinematic) window.playSpaceFaceCinematic('assets/cinematics/C-INTRO-02_6s.mp4', 'Fighter Close-up — 60° Chase');
     });
 
-    bNew.addEventListener('click', () => nav(ctx, 'pushScreen', 'newGame'));
+    bNew.addEventListener('click', () => pushWhenReady(ctx, 'newGame', 'New Game'));
     bContinue.addEventListener('click', () => {
       // Continue = load the most recent save. Defer slot choice to the save system; emit a
       // plain game:load with no slot (save resolves "latest"); else open the slot list.
       ctx.bus.emit('game:load', { slot: 'latest' });
     });
-    bLoad.addEventListener('click', () => nav(ctx, 'pushScreen', 'saveLoad'));
-    bSettings.addEventListener('click', () => nav(ctx, 'pushScreen', 'settings'));
+    bLoad.addEventListener('click', () => pushWhenReady(ctx, 'saveLoad', 'Load Game'));
+    bSettings.addEventListener('click', () => pushWhenReady(ctx, 'settings', 'Settings'));
 
-    refs = { bContinue, saveSummary };
+    refs = { bNew, bContinue, bLoad, bSettings, saveSummary };
     this._render(ctx);
   },
 
   _render(ctx) {
     if (!refs) return;
+    setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game');
+    setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
+    setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings');
     const latest = latestSave(readSaveIndex(ctx));
     refs.bContinue.disabled = !latest;
     refs.saveSummary.classList.toggle('has-save', !!latest);

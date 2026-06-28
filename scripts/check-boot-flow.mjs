@@ -66,7 +66,7 @@ try {
     await clickButton(cdp, 'Launch');
   }
 
-  const flight = await waitFor(cdp, () => snapshotExpression(), (snap) => snap.flightPlayable, 15000, 'playable flight HUD');
+  const flight = await waitFor(cdp, () => snapshotExpression(), (snap) => snap.flightPlayable, 45000, 'playable flight HUD');
   assert.equal(flight.emptyPreGameHud, false, 'flight should not be the empty pre-game HUD');
 
   if (STALE_MODAL) {

@@ -83,6 +83,7 @@ const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8'
 const alertsSrc = readFileSync(new URL('../src/ui/alerts.js', import.meta.url), 'utf8');
 const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
 const controlPromptsSrc = readFileSync(new URL('../src/ui/controlPrompts.js', import.meta.url), 'utf8');
+const mainMenuSrc = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
 const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
 const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
@@ -203,6 +204,20 @@ if (!newGameSrc.includes('let launching = false') || !newGameSrc.includes("launc
   fail++;
 } else {
   console.log('ok   newGameScreen - Launch is guarded during async startup');
+  ok++;
+}
+if (!mainMenuSrc.includes("setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game')")
+  || !mainMenuSrc.includes("pushWhenReady(ctx, 'newGame', 'New Game')")
+  || !mainMenuSrc.includes("setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game')")
+  || !mainMenuSrc.includes("setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings')")
+  || !uiRootSrc.includes("this._registeredScreens.has('newGame')")
+  || !uiRootSrc.includes('this._showMainMenuWhenReady = showMainMenuWhenReady')
+  || !uiRootSrc.includes("this.screenManager.top() === 'mainMenu'")
+  || !uiRootSrc.includes('this.screenManager.refreshTop()')) {
+  console.log('FAIL mainMenuScreen - dynamic screen buttons must wait for registered targets');
+  fail++;
+} else {
+  console.log('ok   mainMenuScreen - dynamic screen buttons wait for registered targets');
   ok++;
 }
 if (!gameOverSrc.includes('_refreshSummary(ctx)') || !/onShow\(ctx\)\s*\{[\s\S]*this\._refreshSummary\(ctx\)/.test(gameOverSrc)

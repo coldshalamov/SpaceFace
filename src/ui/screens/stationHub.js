@@ -684,14 +684,14 @@ export const stationHub = {
   },
 
   /** Generic refresh (data-event driven). Refreshes only the active panel for cheapness. */
-  refresh(ctx) {
+  refresh(ctx, options = {}) {
     if (ctx) this._ctx = ctx;
     if (!this._el) return;
     this._refreshTopbar();
     this._refreshGraffiti();
     this._refreshPurpose();
     this._refreshDeparture();
-    this._refreshActive(false);
+    if (!(options.periodic && this._activePanelId() === 'bar')) this._refreshActive(false);
   },
 
   /** Render the airlock graffiti from state.ui.graffiti (stashed by the narrative overlay).
