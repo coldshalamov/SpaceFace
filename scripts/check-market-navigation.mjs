@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
-import { applyTradeNavigation, computeBestTrades, describeTradeIntel, unitPrice } from '../src/ui/screens/market.js';
+import { applyTradeNavigation, computeBestTrades, describeTradeIntel, formatCargoUnits, unitPrice } from '../src/ui/screens/market.js';
+
+const MARKET_SOURCE = readFileSync(new URL('../src/ui/screens/market.js', import.meta.url), 'utf8');
 
 function makeHarness(currentSectorId = 'sector_helios_prime') {
   const events = [];
@@ -203,6 +206,18 @@ function checkBestTradeShowsCurrentLoadAndProfit() {
   assert.equal(trades[0].cmdtyId, 'cmdty_food', 'ranking should prefer the best current-run profit');
 }
 
+function checkMarketCargoUnitFormatting() {
+  assert.equal(formatCargoUnits(0.5), '0.5', 'cargo formatter should preserve fractional hold units');
+  assert.equal(formatCargoUnits(1234.56), '1,234.6', 'cargo formatter should group cargo quantities');
+  assert.equal(formatCargoUnits(Number.NaN), '0', 'cargo formatter should fail closed for invalid values');
+  assert.doesNotMatch(MARKET_SOURCE, /fmtCr\([^)]*\) \+ 'u/,
+    'market cargo-unit copy should not use the credit formatter');
+  assert.match(MARKET_SOURCE, /using about ' \+ formatCargoUnits\(buyQty \* vol\) \+ 'u cargo/,
+    'buy title should format hold volume with the cargo-unit formatter');
+  assert.match(MARKET_SOURCE, /hold ' \+ formatCargoUnits\(t\.loadVolume\) \+ 'u/,
+    'trade planner title should format hold volume with the cargo-unit formatter');
+}
+
 function checkBestTradeExplainsBlockedLoad() {
   const { state } = makeHarness('sector_helios_prime');
   state.player.credits = 0;
@@ -242,6 +257,7 @@ checkUncatalogedLocalStationUsesCurrentSector();
 checkFailedQuoteFallsBackToRolePrice();
 checkLiveActiveStationRecordUsesStationIdForRolePrice();
 checkLiveQuoteStillWins();
+checkMarketCargoUnitFormatting();
 checkBestTradeShowsCurrentLoadAndProfit();
 checkBestTradeExplainsBlockedLoad();
 checkBestTradeUsesWarmedMarketSnapshots();

@@ -154,6 +154,11 @@ function stationRoleFor(def, stationType) {
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
 
+export function formatCargoUnits(value) {
+  if (!Number.isFinite(value)) return '0';
+  return (Math.round(value * 10) / 10).toLocaleString('en-US');
+}
+
 function tradeFailureText(reason) {
   switch (reason) {
     case 'credits': return 'insufficient credits';
@@ -236,10 +241,10 @@ function trackedMarketMission(state, stationId) {
 function trackedMarketActionText(info) {
   if (!info) return '';
   if (info.atDestination) {
-    return 'Tracked contract destination: sell ' + fmtCr(info.remaining) + 'u here to finish the job.';
+    return 'Tracked contract destination: sell ' + formatCargoUnits(info.remaining) + 'u here to finish the job.';
   }
   if (info.needToLoad > 0) {
-    return 'Tracked contract cargo: load ' + fmtCr(info.needToLoad) + 'u more before undocking for ' + info.destination + '.';
+    return 'Tracked contract cargo: load ' + formatCargoUnits(info.needToLoad) + 'u more before undocking for ' + info.destination + '.';
   }
   return 'Tracked contract cargo is aboard: undock and follow nav guidance to ' + info.destination + '.';
 }
@@ -421,7 +426,7 @@ export function createMarketPanel(ctx) {
       applyTradeNavigation(ctx, pending.destStationId, pending.cmdtyId);
       const cmdty = COMMODITY_BY_ID.get(pending.cmdtyId);
       setFooterText(footer,
-        'Loaded ' + fmtCr(p.qty || pending.qty) + ' ' + ((cmdty && cmdty.name) || pending.cmdtyId) +
+        'Loaded ' + formatCargoUnits(p.qty || pending.qty) + ' ' + ((cmdty && cmdty.name) || pending.cmdtyId) +
         ' and plotted ' + stationName(ctx.state, pending.destStationId) + '.');
     });
     ctx.bus.on('economy:tradeFailed', (p) => {
@@ -464,7 +469,7 @@ export function createMarketPanel(ctx) {
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
       // optimistic footer note; the real refresh comes from economy:tradeCompleted / cargo:changed.
       footer.querySelector('.st-foot-msg').textContent =
-        (act === 'buy' ? 'Buying ' : 'Selling ') + qty + ' ' + (COMMODITY_BY_ID.get(cmdtyId) || {}).name + '...';
+        (act === 'buy' ? 'Buying ' : 'Selling ') + formatCargoUnits(qty) + ' ' + (COMMODITY_BY_ID.get(cmdtyId) || {}).name + '...';
       return;
     }
     if (act === 'step') {
@@ -586,7 +591,7 @@ export function createMarketPanel(ctx) {
     const p = state.player;
     header.querySelector('.st-credits').textContent = fmtCr(p.credits);
     const cap = p.cargo.capVolume || 0;
-    header.querySelector('.st-cargo').textContent = Math.round(p.cargo.usedVolume || 0) + ' / ' + cap + ' u';
+    header.querySelector('.st-cargo').textContent = formatCargoUnits(p.cargo.usedVolume || 0) + ' / ' + formatCargoUnits(cap) + ' u';
     const purposeText = purpose.querySelector('.st-market-purpose-text');
     if (purposeText) purposeText.textContent = stationMarketPurpose(state, stationId);
     const missionInfo = trackedMarketMission(state, stationId);
@@ -641,10 +646,10 @@ export function createMarketPanel(ctx) {
         ? (!room ? 'No cargo room for ' + cName + '. Sell cargo, refit cargo modules, or buy a larger hull.' :
           (buyQty > maxBuy ? 'Selected quantity exceeds current credits or cargo room. Pick Max or a smaller amount.' :
             'Need ' + fmtCr(Math.max(buyP, buyTotal)) + ' CR for the selected ' + cName + ' purchase.'))
-        : 'Buy ' + buyQty + ' ' + cName + ' for ' + fmtCr(buyTotal) + ' CR, using about ' + fmtCr(buyQty * vol) + 'u cargo. ' + purposeLine;
+        : 'Buy ' + formatCargoUnits(buyQty) + ' ' + cName + ' for ' + fmtCr(buyTotal) + ' CR, using about ' + formatCargoUnits(buyQty * vol) + 'u cargo. ' + purposeLine;
       const sellTitle = sellBtn.disabled
-        ? (owned <= 0 ? 'You do not own any ' + cName + ' to sell here.' : 'Selected quantity exceeds the ' + owned + ' ' + cName + ' you own. Pick Max or a smaller amount.')
-        : 'Sell ' + sellQty + ' ' + cName + ' for about ' + fmtCr(sellTotal) + ' CR. Use proceeds for missions, hulls, modules, repairs, and fuel.';
+        ? (owned <= 0 ? 'You do not own any ' + cName + ' to sell here.' : 'Selected quantity exceeds the ' + formatCargoUnits(owned) + ' ' + cName + ' you own. Pick Max or a smaller amount.')
+        : 'Sell ' + formatCargoUnits(sellQty) + ' ' + cName + ' for about ' + fmtCr(sellTotal) + ' CR. Use proceeds for missions, hulls, modules, repairs, and fuel.';
       buyBtn.title = buyTitle;
       sellBtn.title = sellTitle;
       buyBtn.setAttribute('aria-label', buyTitle);
@@ -665,7 +670,7 @@ export function createMarketPanel(ctx) {
       '<div class="st-market-mission-title">' + escapeHtml(title) + '</div>' +
       '<div class="st-market-mission-body">' + escapeHtml(trackedMarketActionText(info)) + '</div>' +
       '<div class="st-market-mission-meta mono">' +
-        escapeHtml(info.cmdtyName) + ' · hold ' + fmtCr(info.owned) + 'u / target ' + fmtCr(info.remaining) + 'u' +
+        escapeHtml(info.cmdtyName) + ' · hold ' + formatCargoUnits(info.owned) + 'u / target ' + formatCargoUnits(info.remaining) + 'u' +
       '</div>';
   }
 
@@ -679,7 +684,7 @@ export function createMarketPanel(ctx) {
     const gross = Math.round(sellP * info.owned);
     const canSell = info.owned > 0;
     const routeSellTitle = canSell
-      ? 'Sell ' + fmtCr(info.owned) + 'u ' + info.cmdtyName + ' here for about ' + fmtCr(gross) + ' CR and clear the completed trade waypoint.'
+      ? 'Sell ' + formatCargoUnits(info.owned) + 'u ' + info.cmdtyName + ' here for about ' + fmtCr(gross) + ' CR and clear the completed trade waypoint.'
       : 'No ' + info.cmdtyName + ' is aboard for this trade route.';
     routeCallout.hidden = false;
     routeCallout.innerHTML =
@@ -687,7 +692,7 @@ export function createMarketPanel(ctx) {
       '<div class="st-market-route-title">' + escapeHtml(info.destination) + '</div>' +
       '<div class="st-market-route-body">' +
         (canSell
-          ? 'Route cargo is aboard: sell ' + fmtCr(info.owned) + 'u ' + escapeHtml(info.cmdtyName) + ' here for about ' + fmtCr(gross) + ' CR.'
+          ? 'Route cargo is aboard: sell ' + formatCargoUnits(info.owned) + 'u ' + escapeHtml(info.cmdtyName) + ' here for about ' + fmtCr(gross) + ' CR.'
           : 'Route nav is set here, but no ' + escapeHtml(info.cmdtyName) + ' is aboard.') +
       '</div>' +
       '<div class="st-market-route-actions">' +
@@ -712,11 +717,11 @@ export function createMarketPanel(ctx) {
       const runBlocked = t.loadUnits <= 0;
       const runLabel = runBlocked
         ? t.loadReason
-        : 'load ' + fmtCr(t.loadUnits) + ' · +' + fmtCr(t.loadProfit) + ' CR';
+        : 'load ' + formatCargoUnits(t.loadUnits) + 'u · +' + fmtCr(t.loadProfit) + ' CR';
       const intelLabel = t.intelLabel || describeTradeIntel(state, t);
       row.title = runBlocked
         ? 'Profitable route, but you cannot load this cargo right now: ' + t.loadReason + '. ' + intelLabel + '.'
-        : 'Current run estimate: buy ' + t.loadUnits + ' for ' + fmtCr(t.loadCost) + ' CR, hold ' + fmtCr(t.loadVolume) + 'u, expected gross profit +' + fmtCr(t.loadProfit) + ' CR. ' + intelLabel + '.';
+        : 'Current run estimate: buy ' + formatCargoUnits(t.loadUnits) + 'u for ' + fmtCr(t.loadCost) + ' CR, hold ' + formatCargoUnits(t.loadVolume) + 'u, expected gross profit +' + fmtCr(t.loadProfit) + ' CR. ' + intelLabel + '.';
       row.innerHTML =
         '<span class="st-pl-cmdty">' + escapeHtml(t.cmdtyName) + '</span>' +
         '<span class="st-pl-prices mono">buy ' + fmtCr(t.buyHere) + ' → sell ' + fmtCr(t.sellThere) + '</span>' +
