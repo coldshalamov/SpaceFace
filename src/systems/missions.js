@@ -193,12 +193,11 @@ export const missions = {
     if (state.mode && state.mode !== 'flight') return; // sim frozen while docked/paused
     const active = state.missions.active;
     const now = state.simTime;
-    let changed = false;
     for (let i = active.length - 1; i >= 0; i--) {
       const m = active[i];
       if (m.status !== 'active') continue;
       // Expiry by deadline.
-      if (now >= m.deadline_s) { this._expireMission(m, i); changed = true; continue; }
+      if (now >= m.deadline_s) { this._expireMission(m, i); continue; }
       // Escort: steer the friendly escortee toward the destination each tick.
       if (m.type === 'escort' && m._escorteeId != null) this._steerEscortee(m, state, dt);
     }
@@ -209,7 +208,6 @@ export const missions = {
       this._navRefreshT = 0;
       this._refreshNavigation();
     }
-    if (changed) this.bus.emit('mission:updated', { missionId: null });
   },
 
   // =========================================================================================
@@ -1129,6 +1127,7 @@ export const missions = {
     this.bus.emit('toast', { text: `Mission expired: ${m.title}`, kind: 'warn', ttl: 4 });
     this._cleanupTargets(m);
     this._removeActive(m.id, index);
+    this.bus.emit('mission:updated', { missionId: m.id });
   },
 
   _removeActive(missionId, hintIndex) {

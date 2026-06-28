@@ -336,6 +336,44 @@ function initHarness() {
 }
 
 {
+  const { state, bus } = initHarness();
+  const mission = {
+    id: 'mission_expiry_refresh',
+    status: 'active',
+    type: 'cargo_delivery',
+    factionId: 'faction_scn',
+    params: { cmdtyId: 'cmdty_food', qty: 1 },
+    objectiveProgress: 0,
+    objectiveTarget: 1,
+    reward_cr: 400,
+    collateral_cr: 0,
+    riskTier: 0,
+    title: 'Expired food run',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    deadline_s: 5,
+    targetEntityIds: [],
+  };
+  state.missions.active = [mission];
+  state.ui.trackedMissionId = mission.id;
+  state.nav.waypoint = { kind: 'mission', missionId: mission.id, sectorId: mission.destSectorId };
+  state.simTime = 6;
+  bus.events.length = 0;
+
+  missions.update(0.016, state);
+
+  assert.equal(state.missions.active.length, 0, 'deadline expiry must remove the expired active mission');
+  assert.equal(state.ui.trackedMissionId, null, 'deadline expiry must clear stale tracked mission state');
+  assert.equal(state.nav.waypoint && state.nav.waypoint.missionId, undefined,
+    'deadline expiry must clear the expired mission waypoint before refreshing story navigation');
+  assert.equal(eventPayload(bus.events, 'mission:expired').missionId, mission.id,
+    'deadline expiry must emit mission:expired for subscribers');
+  const updates = bus.events.filter((e) => e.name === 'mission:updated');
+  assert.deepEqual(updates.map((e) => e.payload), [{ missionId: mission.id }],
+    'deadline expiry must emit one mission-specific mission:updated refresh');
+}
+
+{
   const stationHubSource = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
   assert.equal(stationHubSource.includes('Track Nav'), false, 'station mission board must not render dead Track Nav copy for offers');
   assert.equal(stationHubSource.includes('data-act="track"'), false, 'station mission board must not render dead Track Nav action for offers');
