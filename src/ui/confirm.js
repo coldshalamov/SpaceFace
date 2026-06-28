@@ -104,11 +104,28 @@ export function confirm(opts) {
   root.innerHTML = '';
   root.appendChild(dialog);
   document.body.classList.add('ui-modal-open');
-  // animate in next frame
-  requestAnimationFrame(() => root.classList.add('sf-confirm--in'));
   // Danger dialogs default to Cancel so a stray Enter never commits an irreversible action.
   const initialFocus = opts.danger ? cancelBtn : okBtn;
-  setTimeout(() => { try { initialFocus.focus(); } catch (e) {} }, 30);
+  const focusInitial = () => {
+    if (root._sfConfirmToken !== token) return;
+    try { initialFocus.focus({ preventScroll: true }); }
+    catch (e) {
+      try { initialFocus.focus(); } catch (_) {}
+    }
+  };
+  const onFocusIn = (ev) => {
+    if (root._sfConfirmToken !== token || dialog.contains(ev.target)) return;
+    ev.stopPropagation();
+    focusInitial();
+  };
+  document.addEventListener('focusin', onFocusIn, true);
+  focusInitial();
+  // animate in next frame, then re-assert focus in case the game shell bootstraps late
+  requestAnimationFrame(() => {
+    root.classList.add('sf-confirm--in');
+    focusInitial();
+  });
+  setTimeout(focusInitial, 30);
 
   // build the promise + a settle closure that tears down the dialog, restores focus, and resolves.
   let _resolve;
@@ -123,6 +140,7 @@ export function confirm(opts) {
     root.classList.remove('sf-confirm--in');
     if (!hadModalOpen) document.body.classList.remove('ui-modal-open');
     root.removeEventListener('click', onBackdropClick);
+    document.removeEventListener('focusin', onFocusIn, true);
     _openResolver = null;
     setTimeout(() => {
       const sameDialog = root._sfConfirmToken === token;
