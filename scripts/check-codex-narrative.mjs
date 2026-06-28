@@ -15,7 +15,12 @@ import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME
 import { STORY_BEATS } from '../src/data/missions.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const codexSource = readFileSync(join(ROOT, 'src/ui/screens/codex.js'), 'utf8');
+const readSource = (path) => readFileSync(join(ROOT, path), 'utf8');
+const codexSource = readSource('src/ui/screens/codex.js');
+const bindingSource = readSource('src/ui/bindings.js');
+const uiInputSource = readSource('src/ui/input.js');
+const helpSource = readSource('src/ui/screens/help.js');
+const promptSource = readSource('src/ui/controlPrompts.js');
 
 // SHIP — the Tessera's sealed history (Ship tab).
 for (const k of ['name', 'registration', 'incident', 'incidentRef', 'previousOperator', 'crewStatus', 'impoundMonths', 'friend']) {
@@ -85,6 +90,23 @@ assert.match(codexSource, /querySelectorAll\('\.sf-codex-entry'\)/,
 assert.match(codexSource, /No matching unlocked entries\./,
   'Codex search must show an empty state for no unlocked matches');
 
+// Codex reachability: the journal cannot be a trust surface if only controller players discover the
+// direct route. Keyboard+mouse gets K, station can push the codex without undocking, and player-facing
+// help / prompts must name the same fixed binding.
+assert.match(bindingSource, /codex:\s*\{\s*key:\s*'k',\s*code:\s*'KeyK',\s*label:\s*'K'\s*\}/,
+  'BINDINGS must expose K as the fixed Codex key');
+assert.match(uiInputSource, /case BINDINGS\.codex\.key:[\s\S]*case 'K':[\s\S]*screenManager\.pushScreen\('codex'\)/,
+  'Keyboard K must open Codex from flight');
+assert.match(uiInputSource, /def && def\.id === 'station' && matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenManager\.pushScreen\('codex'\)/,
+  'Keyboard K must open Codex from the station hub without undocking');
+assert.match(helpSource, /Codex \/ story journal[\s\S]*BINDINGS\.codex\.label/,
+  'Help Controls must document the keyboard Codex binding');
+assert.match(helpSource, /Open codex \/ journal[\s\S]*Y \/ △/,
+  'Help Controls must keep gamepad Codex documentation visible');
+assert.ok(promptSource.includes('${BINDINGS.codex.label} codex'),
+  'Keyboard flight prompt must advertise K Codex access');
+assert.match(promptSource, /Y codex/, 'Gamepad flight prompt must advertise Y Codex access');
+
 // PERSISTENT_CARGO — unsellable personal effects (Ship tab).
 assert.ok(Array.isArray(PERSISTENT_CARGO) && PERSISTENT_CARGO.length >= 1, 'PERSISTENT_CARGO must be a non-empty array');
 PERSISTENT_CARGO.forEach((p, i) => {
@@ -117,4 +139,4 @@ BEAT_CONTENT.forEach((b, i) => {
 console.log('Codex/narrative data contract OK — SHIP, COLD_START(' + COLD_START.length + '), COMMS(' +
   COMMS_CATS.reduce((n, c) => n + COMMS[c].length, 0) + ' across ' + COMMS_CATS.length + ' cats), BEAT_CONTENT(' +
   BEAT_CONTENT.length + '), ENDGAME_CHOICES(' + ENDGAME_CHOICES.length + '), FIGURES(' + FIGURE_KEYS.length +
-  '), PERSISTENT_CARGO(' + PERSISTENT_CARGO.length + '), STORY_BEATS(' + STORY_BEATS.length + ')');
+  '), PERSISTENT_CARGO(' + PERSISTENT_CARGO.length + '), STORY_BEATS(' + STORY_BEATS.length + '), Codex hotkey(K)');
