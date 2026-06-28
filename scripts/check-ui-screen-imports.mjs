@@ -226,6 +226,18 @@ if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionL
   console.log('ok   pause/help - mission log is reachable and documented for controller players');
   ok++;
 }
+if (!helpSrc.includes("['Touch (phone / tablet)'")
+  || !helpSrc.includes("['Dock / activate', null, 'Dock button (when prompted)'")
+  || !helpSrc.includes("['Open local map', null, 'Map button'")
+  || !helpSrc.includes("['Open mission log', null, 'Log button'")
+  || !helpSrc.includes("['Open star-map', null, 'Star button'")
+  || !helpSrc.includes("['Pause / Help route', null, 'Pause button -> Help / Controls'")) {
+  console.log('FAIL helpScreen - touch controls must document Dock/Map/Log/Star/Pause on-screen buttons');
+  fail++;
+} else {
+  console.log('ok   helpScreen - touch controls document on-screen menu buttons');
+  ok++;
+}
 if (!localmapSrc.includes("import { BINDINGS } from '../bindings.js'")
   || !localmapSrc.includes('BINDINGS.localmap.label')
   || !localmapSrc.includes('BINDINGS.starmap.label')

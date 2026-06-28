@@ -146,6 +146,18 @@ const SECTIONS = [
     ['Dock / activate', null, 'A / X (when prompted)'],
     ['Cancel / back', null, 'B / ○'],
   ]],
+  ['Touch (phone / tablet)', [
+    ['Fly (yaw + throttle)', null, 'Left stick'],
+    ['Aim weapons', null, 'Right stick'],
+    ['Fire', null, 'Fire button'],
+    ['Mine beam', null, 'Mine button'],
+    ['Boost', null, 'Boost button'],
+    ['Dock / activate', null, 'Dock button (when prompted)'],
+    ['Open local map', null, 'Map button'],
+    ['Open mission log', null, 'Log button'],
+    ['Open star-map', null, 'Star button'],
+    ['Pause / Help route', null, 'Pause button -> Help / Controls'],
+  ]],
 ];
 
 // Normalize a single KeyboardEvent.code to a friendly label (matches humanizeCode in settings.js).
