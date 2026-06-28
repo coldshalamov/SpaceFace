@@ -46,5 +46,7 @@ assert.ok(source.includes('st-bar-offer-consequences'), 'bar mission offers must
 assert.ok(source.includes('st-bar-offer-blocker'), 'bar mission offers must show visible readiness blockers');
 assert.ok(source.includes('ACCEPT + TRACK'), 'bar mission accept button must use the same tracking language as the board');
 assert.ok(source.includes('offer.requirementUnmet || offer.lockedReason || preflight.blocker'), 'bar offer buttons must respect shared readiness blockers');
+assert.ok(source.includes("acceptButton.setAttribute('aria-label', acceptButton.title)"), 'bar mission offer buttons must expose readiness titles to assistive tech');
+assert.ok(source.includes("acceptBtn.textContent = 'No Longer Available'"), 'stale bar mission offers must avoid generic unavailable copy');
 
 console.log(`Station bar canonical contacts OK - ${expected.length} recurring NPCs across ${stationIds.size} stations`);

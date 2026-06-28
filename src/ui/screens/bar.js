@@ -800,6 +800,8 @@ export function createBarPanel(ctx) {
         }
         acceptBtn.disabled = true;
         acceptBtn.textContent = 'Accepted + Tracked';
+        acceptBtn.title = 'Mission accepted and tracked in the Mission Log.';
+        acceptBtn.setAttribute('aria-label', acceptBtn.title);
         if (offerEl) offerEl.classList.add('accepted');
       } else {
         if (replyEl) {
@@ -810,7 +812,9 @@ export function createBarPanel(ctx) {
         }
         if (!wasAvailable) {
           acceptBtn.disabled = true;
-          acceptBtn.textContent = 'Unavailable';
+          acceptBtn.textContent = 'No Longer Available';
+          acceptBtn.title = 'This bar offer is no longer available.';
+          acceptBtn.setAttribute('aria-label', acceptBtn.title);
         }
       }
       return;
@@ -880,6 +884,7 @@ export function createBarPanel(ctx) {
       } else {
         acceptButton.title = 'Accept, auto-track, and add to Mission Log';
       }
+      acceptButton.setAttribute('aria-label', acceptButton.title);
       offerWrap.appendChild(acceptButton);
       reply.after(offerWrap);
     }
