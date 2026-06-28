@@ -1,8 +1,22 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { MISSION_TUNING } from '../data/missions.js';
+import { SECTORS } from '../data/sectors.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
+const TASK_TIME_FALLBACK = {
+  cargo_delivery: 20,
+  bulk_trade: 30,
+  bounty_hunt: 60,
+  mining_quota: 45,
+  salvage_retrieval: 30,
+  escort: 90,
+  patrol_clear: 45,
+  smuggling_run: 20,
+  passenger_transport: 20,
+  recon_scan: 25,
+};
 
 function missionCollateral(m) {
   return Math.max(0, m && (m.collateral_cr || m.collateralCr || m.collateral || 0) || 0);
@@ -75,6 +89,77 @@ export function fmtHoldUnits(value) {
   return (Math.round(value * 10) / 10).toLocaleString('en-US');
 }
 
+function fmtClock(value) {
+  const s = Math.max(0, Math.floor(Number(value) || 0));
+  const m = Math.floor(s / 60);
+  if (m >= 60) return (m / 60).toFixed(m >= 600 ? 0 : 1) + 'h';
+  if (m >= 1) return m + 'm';
+  return s + 's';
+}
+
+function missionDestSectorId(m) {
+  if (!m) return null;
+  if (m.destSectorId) return m.destSectorId;
+  const raw = String(m.dest || '');
+  return raw.startsWith('sector_') ? raw : null;
+}
+
+function sectorName(id) {
+  const sector = id ? SECTOR_BY_ID.get(id) : null;
+  return sector ? sector.name : (id || '').replace(/^sector_/, '').replace(/_/g, ' ') || 'target sector';
+}
+
+export function missionRouteScope(m, state) {
+  const targetSectorId = missionDestSectorId(m);
+  const currentSectorId = state && state.world && state.world.currentSectorId || null;
+  const distance = Number(m && m.distance);
+  if (targetSectorId && currentSectorId && targetSectorId === currentSectorId) {
+    return { kind: 'ok', text: 'Local sector' };
+  }
+  if (targetSectorId) {
+    return {
+      kind: 'info',
+      text: currentSectorId ? `Jump route: ${sectorName(targetSectorId)}` : `Route: ${sectorName(targetSectorId)}`,
+    };
+  }
+  if (Number.isFinite(distance) && distance > 0) {
+    return { kind: 'info', text: `${Math.round(distance).toLocaleString('en-US')}u route` };
+  }
+  return null;
+}
+
+function missionTaskEstimate(m) {
+  const p = m && m.params || {};
+  const explicit = Number(p.taskTime);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  switch (m && m.type) {
+    case 'bulk_trade': return Math.max(1, Number(p.qty) || 1) * 1.5;
+    case 'mining_quota': return Math.max(1, Number(p.qty) || 1) * 3;
+    case 'patrol_clear': return Math.max(1, Number(p.clearCount) || 1) * 45;
+    case 'recon_scan': return Math.max(1, Number(p.scanTargets) || 1) * 25;
+    default: return TASK_TIME_FALLBACK[m && m.type] || 30;
+  }
+}
+
+export function missionTimePacing(m, state) {
+  const timeLimit = Number(m && (m.expiresInS != null ? m.expiresInS : m.time_limit_s));
+  if (!Number.isFinite(timeLimit) || timeLimit <= 0) return null;
+  const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
+  const cruise = Number(cfg && cfg.cruiseSpeedRef) || MISSION_TUNING.cruiseSpeedRef || 140;
+  const distance = Math.max(0, Number(m && m.distance) || 0);
+  const estimate = distance / Math.max(1, cruise) + missionTaskEstimate(m);
+  const slack = estimate > 0 ? timeLimit / estimate : null;
+  const tight = slack != null && slack < 1.6;
+  return {
+    chip: {
+      kind: tight ? 'warn' : 'ok',
+      text: (tight ? 'Tight ' : '') + `${fmtClock(timeLimit)} timer`,
+    },
+    warning: tight ? 'Timer is tight for the route distance; refuel, repair, and launch directly after accepting.' : null,
+    slack,
+  };
+}
+
 export function missionPreflight(m, state) {
   const chips = [];
   const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
@@ -101,6 +186,16 @@ export function missionPreflight(m, state) {
     chips.push({ kind: 'ok', text: 'No collateral' });
   }
 
+  const route = missionRouteScope(m, state);
+  if (route) chips.push(route);
+
+  const pacing = missionTimePacing(m, state);
+  let pacingWarning = null;
+  if (pacing && pacing.chip) {
+    chips.push(pacing.chip);
+    pacingWarning = pacing.warning || null;
+  }
+
   const cargoNeed = missionCargoFootprint(m);
   if (cargoNeed.qty > 0) {
     const cargo = state && state.player && state.player.cargo || {};
@@ -122,6 +217,8 @@ export function missionPreflight(m, state) {
       chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')}u quota` });
     }
   }
+
+  if (pacingWarning) warnings.push(pacingWarning);
 
   return {
     blocker: blockers[0] || null,

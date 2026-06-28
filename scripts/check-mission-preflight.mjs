@@ -7,7 +7,12 @@ import { fileURLToPath } from 'node:url';
 
 import { MISSION_TUNING } from '../src/data/missions.js';
 import { missions } from '../src/systems/missions.js';
-import { missionConsequenceSummary, missionPreflight } from '../src/ui/missionPreflight.js';
+import {
+  missionConsequenceSummary,
+  missionPreflight,
+  missionRouteScope,
+  missionTimePacing,
+} from '../src/ui/missionPreflight.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const stationHubSrc = readFileSync(join(ROOT, 'src/ui/screens/stationHub.js'), 'utf8');
@@ -17,12 +22,20 @@ const missionsSrc = readFileSync(join(ROOT, 'src/systems/missions.js'), 'utf8');
 assert.match(stationHubSrc, /import \{ missionPreflight \} from '\.\.\/missionPreflight\.js'/,
   'stationHub mission board must use the shared mission preflight helper');
 assert.match(missionPreflightSrc, /export function missionPreflight/, 'shared mission preflight helper must be exported');
+assert.match(missionPreflightSrc, /export function missionRouteScope/,
+  'shared mission preflight helper must expose route-scope policy for direct tests');
+assert.match(missionPreflightSrc, /export function missionTimePacing/,
+  'shared mission preflight helper must expose timer-pacing policy for direct tests');
 assert.match(stationHubSrc, /missionConsequenceSummary\(m\)/,
   'mission cards must use the shared consequence helper');
 assert.match(missionPreflightSrc, /export function missionConsequenceSummary/,
   'shared mission consequence helper must be exported');
 assert.match(stationHubSrc, /st-mission-preflight/, 'mission cards must render preflight chips');
 assert.match(stationHubSrc, /st-mission-consequences/, 'mission cards must render consequence chips');
+assert.match(missionPreflightSrc, /Jump route: \$\{sectorName\(targetSectorId\)\}/,
+  'mission preflight must label off-sector destination scope before accept');
+assert.match(missionPreflightSrc, /\(tight \? 'Tight ' : ''\) \+ `\$\{fmtClock\(timeLimit\)\} timer`/,
+  'mission preflight must flag tight route timers before accept');
 assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
   'mission preflight must flag cargo capacity blockers');
 assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
@@ -42,7 +55,7 @@ function makeOffer(overrides = {}) {
     collateral_cr: 500,
     riskTier: 1,
     destStationId: 'station_beltout',
-    destSectorId: 'sector_ceres',
+    destSectorId: 'sector_ceres_belt',
     distance: 1200,
     title: 'Preflight Hydrogen Delivery',
     ...overrides,
@@ -70,7 +83,7 @@ function makeState(capVolume) {
     story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
     ui: {},
     nav: {},
-    world: { currentSectorId: 'sector_sol' },
+    world: { currentSectorId: 'sector_helios_prime' },
     entities: new Map(),
   };
 }
@@ -98,6 +111,10 @@ assert.ok(consequence.chips.some((chip) =>
 const lowCapUiPreflight = missionPreflight(makeOffer(), lowCapState);
 assert.equal(lowCapUiPreflight.blocker, 'Requires 5u cargo capacity',
   'shared UI preflight must surface impossible cargo capacity before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'info' && chip.text === 'Jump route: Ceres Belt'),
+  'shared UI preflight must show off-sector route scope before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === '15m timer'),
+  'shared UI preflight must show deadline length before accept');
 assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'bad' && chip.text === '5u hold required'),
   'shared UI preflight must render a bad hold-required chip');
 const lowCapBus = makeBus();
@@ -116,6 +133,23 @@ lowFreeState.player.cargo.usedVolume = 6;
 const lowFreeUiPreflight = missionPreflight(makeOffer(), lowFreeState);
 assert.equal(lowFreeUiPreflight.blocker, null, 'low free space should warn without blocking a capable hull');
 assert.match(lowFreeUiPreflight.warning || '', /clear space/, 'shared UI preflight must tell the player to clear cargo space');
+
+const localScope = missionRouteScope(makeOffer({
+  destStationId: 'station_helios',
+  destSectorId: 'sector_helios_prime',
+  distance: 0,
+}), makeState(8));
+assert.equal(localScope.text, 'Local sector', 'route scope should distinguish local-sector work');
+
+const tightOffer = makeOffer({ time_limit_s: 25, distance: 1200, params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2, taskTime: 20 } });
+const tightPacing = missionTimePacing(tightOffer, makeState(8));
+assert.equal(tightPacing.chip.kind, 'warn', 'tight route timers should render as warning chips');
+assert.match(tightPacing.warning || '', /launch directly/, 'tight route timers should explain the player action');
+const tightLowFreeState = makeState(8);
+tightLowFreeState.player.cargo.usedVolume = 6;
+const tightLowFreePreflight = missionPreflight(tightOffer, tightLowFreeState);
+assert.match(tightLowFreePreflight.warning || '', /clear space/,
+  'cargo-space warnings should remain first when a tight timer also applies');
 
 const readyState = makeState(8);
 const readyBus = makeBus();
