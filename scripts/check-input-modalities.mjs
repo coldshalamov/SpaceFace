@@ -30,6 +30,14 @@ assert.match(gamepadSrc, /countermeasure:\s*\['r3'\]/, 'gamepad.js must map R3 t
 assert.match(gamepadSrc, /tabPrev:\s*\['l1'\]/, 'gamepad LB/L1 must expose station tab-previous UI intent');
 assert.match(gamepadSrc, /tabNext:\s*\['r1'\]/, 'gamepad RB/R1 must expose station tab-next UI intent');
 assert.doesNotMatch(gamepadSrc, /fire:\s*\[[^\]]*accept/, 'gamepad A/Cross should be dock/activate, not a second fire trigger');
+assert.match(touchSrc, /data-menu-act="dock"/, 'Touch overlay must expose a touch Dock button for the first station handoff');
+assert.match(touchSrc, /data-menu-act="missionLog"/, 'Touch overlay must expose a touch Mission Log button');
+assert.match(touchSrc, /data-menu-act="map"/, 'Touch overlay must expose a touch contextual Map button');
+assert.match(touchSrc, /data-menu-act="pause"/, 'Touch overlay must expose a touch Pause button');
+assert.match(touchSrc, /ui\.input\.doDock\(\)/, 'Touch Dock must use the shared UI input docking path');
+assert.match(touchSrc, /bus\.emit\('ui:pushScreen'/, 'Touch menu buttons must use the shared UI screen route');
+assert.match(touchSrc, /body\.ui-modal-open #\$\{OVERLAY_ID\}/, 'Touch overlay must hide under modal screens so it cannot steal modal focus');
+assert.match(touchSrc, /function touchMapScreen\(state\)/, 'Touch Map must choose Local Map vs Star Map from live nav context');
 
 // 2. input.js imports + creates both.
 const inputSrc = read('src/systems/input.js');
@@ -87,6 +95,8 @@ assert.match(promptSrc, /Start pause\/log/, 'Gamepad flight hints must surface t
 assert.match(promptSrc, /Start opens pause\/log/, 'Gamepad first-flight hint must teach the controller path to Mission Log');
 assert.match(settingsSrc, /Start pause\/log/, 'Gamepad settings copy must match the shipped Start pause/log route');
 assert.match(promptSrc, /Mine button/, 'Touch flight hints must advertise the touch mining button');
+assert.match(promptSrc, /Dock\/Log\/Map\/Pause buttons/, 'Touch flight hints must name the touch menu buttons');
+assert.match(promptSrc, /Tap Dock when the station prompt appears/, 'Touch tutorial docking copy must teach the touch Dock button');
 assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document gamepad mining');
 assert.match(helpSrc, /Countermeasure[\s\S]*R3/, 'Help Controls must document gamepad countermeasure');
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');
@@ -108,4 +118,4 @@ assert.match(uiInputSrc, /root\.dataset\.screen !== 'station'/, 'station tab cyc
 assert.match(uiInputSrc, /gp\.actions\.tabPrev[\s\S]*cycleStationTab\(-1\)/, 'station hub must support LB/L1 previous-tab cycling');
 assert.match(uiInputSrc, /gp\.actions\.tabNext[\s\S]*cycleStationTab\(1\)/, 'station hub must support RB/R1 next-tab cycling');
 
-console.log('Input modalities OK — keyboard+mouse + gamepad + touch are wired, normalized, and station controller tab parity is guarded.');
+console.log('Input modalities OK — keyboard+mouse + gamepad + touch are wired, normalized, menu-reachable, and station controller tab parity is guarded.');
