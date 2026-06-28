@@ -229,6 +229,18 @@ export function pauseStatusLines(state) {
   };
 }
 
+export function pauseExitConfirmBody(state, target = 'menu') {
+  const lines = pauseStatusLines(state);
+  const opening = target === 'load'
+    ? 'Opening Load lets you review slots; choosing one will replace the current session.'
+    : 'Returning to main menu closes the current session.';
+  const loss = target === 'load'
+    ? 'If you complete a load, unsaved progress is lost.'
+    : 'Unsaved progress will be lost.';
+  return opening + ' Current objective: ' + lines.objective + '. ' + lines.next +
+    ' Save status: ' + lines.save + ' ' + loss;
+}
+
 let els = null;
 
 function renderFlightBrief(ctx) {
@@ -271,23 +283,23 @@ export const pauseScreen = {
     const bResume = mk('Resume', () => this._resume(ctx));
     mk('Settings', () => nav(ctx, 'pushScreen', 'settings'));
     mk('Save', () => nav(ctx, 'pushScreen', 'saveLoad'));
-    // Load discards unsaved current progress — confirm first (UX-2).
+    // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
     mk('Load', async () => {
       const ok = await confirm({
-        title: 'Load game?',
-        body: 'Loading will discard any unsaved progress in the current session.',
-        confirmLabel: 'Load', danger: true,
+        title: 'Open load screen?',
+        body: pauseExitConfirmBody(ctx && ctx.state, 'load'),
+        confirmLabel: 'Open Load', danger: true,
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     });
     mk('Mission Log (' + BINDINGS.missionLog.label + ')', () => nav(ctx, 'pushScreen', 'missionLog'));
     mk('Help / Controls', () => nav(ctx, 'pushScreen', 'help'));
     mk('Codex', () => nav(ctx, 'pushScreen', 'codex'));
-    // Main Menu discards the current session entirely — confirm first (UX-2).
+    // Main Menu discards the current session entirely — confirm with the live run context first.
     mk('Main Menu', async () => {
       const ok = await confirm({
         title: 'Return to main menu?',
-        body: 'Any unsaved progress will be lost. You can Save first if you want to keep it.',
+        body: pauseExitConfirmBody(ctx && ctx.state, 'menu'),
         confirmLabel: 'Main Menu', danger: true,
       });
       if (ok) this._toMenu(ctx);
