@@ -161,6 +161,19 @@ export function slotSummaryLines(meta) {
   ].filter(Boolean).join(' - ') || 'Saved';
   return { context, detail };
 }
+export function slotConfirmSummary(meta) {
+  if (!isOccupied(meta)) return 'Empty slot';
+  const summary = slotSummaryLines(meta);
+  return [summary.context, summary.detail]
+    .filter((text) => text && text !== 'Empty slot' && text !== 'No save data yet' && text !== 'Saved')
+    .join(' - ') || 'Saved game';
+}
+function loadConfirmBody(id, meta) {
+  return 'Loading will replace your current game with ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. Unsaved progress is lost.';
+}
+function overwriteConfirmBody(id, meta) {
+  return 'This will replace the existing save in ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. This cannot be undone.';
+}
 export function slotObjectiveSummary(meta) {
   if (!meta) return '';
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
@@ -287,7 +300,7 @@ export const saveLoadScreen = {
         if (occupied) {
           const ok = await confirm({
             title: 'Overwrite save?',
-            body: 'This will replace the existing save in ' + slotLabel(id) + '. This cannot be undone.',
+            body: overwriteConfirmBody(id, meta),
             confirmLabel: 'Overwrite', danger: true,
           });
           if (!ok) return;
@@ -302,7 +315,7 @@ export const saveLoadScreen = {
       bLoad.addEventListener('click', async () => {
         const ok = await confirm({
           title: 'Load this save?',
-          body: 'Loading will replace your current game with the save from ' + slotLabel(id) + '. Unsaved progress is lost.',
+          body: loadConfirmBody(id, meta),
           confirmLabel: 'Load', danger: true,
         });
         if (!ok) return;
