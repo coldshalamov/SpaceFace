@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../src/data/narrative.js';
 import { STORY_BEATS } from '../src/data/missions.js';
 import { cargo, isPersistentCargo, removeCargo } from '../src/systems/cargo.js';
+import { codexProgressSummary } from '../src/ui/screens/codex.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const readSource = (path) => readFileSync(join(ROOT, path), 'utf8');
@@ -90,12 +91,54 @@ assert.match(codexSource, /querySelectorAll\('\.sf-codex-entry'\)/,
   'Codex search must filter rendered entries rather than raw narrative data');
 assert.match(codexSource, /No matching unlocked entries\./,
   'Codex search must show an empty state for no unlocked matches');
+assert.match(codexSource, /export function codexProgressSummary/,
+  'Codex must expose a pure progress summary helper for progression-trust checks');
+assert.match(codexSource, /sf-codex-progress/,
+  'Codex must render a visible progress summary rail');
+assert.match(codexSource, /Archive progress/,
+  'Codex progress rail should have plain player-facing copy');
+assert.match(codexSource, /_renderProgress\(ctx\)/,
+  'Codex should refresh the progress rail on each render');
+assert.match(codexSource, /isCodexCommsUnlocked\(c, s\)/,
+  'Codex progress and Comms tab should share the same no-spoiler unlock predicate');
 assert.match(bindingSource, /codex:\s*\{\s*key:\s*'k',\s*code:\s*'KeyK',\s*label:\s*'K'\s*\}/,
   'BINDINGS must expose K as the fixed Codex key');
 assert.match(uiInputSource, /case BINDINGS\.codex\.key:[\s\S]*case 'K':[\s\S]*screenManager\.pushScreen\('codex'\)/,
   'Keyboard K must open Codex from flight');
 assert.match(uiInputSource, /matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenManager\.pushScreen\('codex'\)/,
   'Keyboard K must open Codex from the station hub without undocking');
+
+{
+  const commsTotal = COLD_START.length + COMMS_CATS.reduce((n, cat) => n + COMMS[cat].length, 0);
+  const beat0Comms = COLD_START.length + COMMS_CATS.reduce((n, cat) => n + COMMS[cat].filter((c) => {
+    const beat = c.beat != null ? Number(c.beat) : 0;
+    return (Number.isFinite(beat) ? beat : 0) <= 0;
+  }).length, 0);
+  const early = codexProgressSummary({ state: { story: { beatIndex: 0, seenComms: {}, graffitiShown: {} } } });
+  assert.equal(early.story.unlocked, 1, 'fresh Codex progress should count only B0 as story-unlocked');
+  assert.equal(early.story.total, BEAT_CONTENT.length, 'Codex progress should show the 8-beat denominator');
+  assert.equal(early.comms.unlocked, beat0Comms, 'Codex progress should use the same beat-gated comms rules as the Comms tab');
+  assert.equal(early.comms.total, commsTotal, 'Codex progress should count the full comms catalog denominator');
+  assert.equal(early.figures.unlocked, 6, 'Codex progress should expose the always-visible figure count without naming future figures');
+  assert.equal(early.figures.total, FIGURE_KEYS.length, 'Codex progress should show the figure denominator');
+  assert.equal(early.graffiti.sightings, 1, 'Codex progress should include the always-visible bulkhead graffiti sighting');
+  assert.equal(early.endgame.revealed, false, 'Codex progress must not reveal the endgame before B7/choice');
+
+  const futureSeen = COMMS_CATS.flatMap((cat) => COMMS[cat]).find((c) => (Number(c.beat) || 0) > 4);
+  if (futureSeen) {
+    const base = codexProgressSummary({ state: { story: { beatIndex: 4, seenComms: {}, graffitiShown: {} } } });
+    const seen = codexProgressSummary({ state: { story: { beatIndex: 4, seenComms: { [futureSeen.id]: true }, graffitiShown: {} } } });
+    assert.equal(seen.comms.unlocked, base.comms.unlocked + 1,
+      'Codex progress should credit explicitly seen future-beat comms without unlocking their whole beat');
+  }
+
+  const late = codexProgressSummary({
+    state: { story: { beatIndex: 7, endgameChoice: 'A', seenComms: {}, graffitiShown: { 'station:WATCH': true, 'bar:LEDGER': true } } },
+  });
+  assert.equal(late.story.unlocked, BEAT_CONTENT.length, 'B7 progress should show the full story spine unlocked');
+  assert.equal(late.endgame.revealed, true, 'B7/choice progress should mark the endgame as revealed');
+  assert.equal(late.graffiti.sightings, 3, 'Codex progress should include bulkhead plus encountered graffiti count');
+}
 
 // PERSISTENT_CARGO — unsellable personal effects (Ship tab).
 assert.ok(Array.isArray(PERSISTENT_CARGO) && PERSISTENT_CARGO.length >= 1, 'PERSISTENT_CARGO must be a non-empty array');
