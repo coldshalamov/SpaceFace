@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pauseExitConfirmBody, pauseStatusLines } from '../src/ui/screens/pause.js';
+import { pauseExitConfirmBody, pauseMapAction, pauseStatusLines } from '../src/ui/screens/pause.js';
 
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
 const uiInputSrc = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
@@ -11,6 +11,9 @@ assert.match(pauseSrc, /aria-live/, 'flight brief should announce refreshed obje
 assert.match(pauseSrc, /Mission Log \(' \+ BINDINGS\.missionLog\.label \+ '\)/,
   'pause menu should label the Mission Log action with the live binding');
 assert.match(pauseSrc, /export function pauseStatusLines/, 'pause brief policy should stay directly testable');
+assert.match(pauseSrc, /export function pauseMapAction/, 'pause map action policy should stay directly testable');
+assert.match(pauseSrc, /mk\('Review ' \+ mapAction\.label/,
+  'pause menu should expose a waypoint map review action when nav is set');
 assert.match(pauseSrc, /export function pauseExitConfirmBody/,
   'pause exit confirmation policy should stay directly testable');
 assert.match(pauseSrc, /body: pauseExitConfirmBody\(ctx && ctx\.state, 'load'\)/,
@@ -86,7 +89,26 @@ lines = pauseStatusLines({
 });
 assert.match(lines.objective, /^NAV SET/);
 assert.match(lines.objective, /Sell Food at Vesta Exchange/);
+assert.match(lines.next, /Local Map \(N\)/);
 assert.match(lines.save, /^Unsaved run/);
+
+let mapAction = pauseMapAction({
+  world: { currentSectorId: 'sector_helios' },
+  nav: { waypoint: { label: 'Sell Food at Vesta Exchange', pos: { x: 100, z: -60 }, sectorId: 'sector_helios' } },
+});
+assert.equal(mapAction.screenId, 'localmap');
+assert.equal(mapAction.label, 'Local Map (N)');
+assert.match(mapAction.hint, /live marker/);
+
+mapAction = pauseMapAction({
+  world: { currentSectorId: 'sector_helios' },
+  nav: { waypoint: { label: 'Sell Food at Meridian Exchange', sectorId: 'sector_meridian' } },
+});
+assert.equal(mapAction.screenId, 'starmap');
+assert.equal(mapAction.label, 'Star Map (M)');
+assert.match(mapAction.hint, /inter-system route/);
+
+assert.equal(pauseMapAction({ nav: {} }), null);
 
 body = pauseExitConfirmBody({
   simTime: 10,
