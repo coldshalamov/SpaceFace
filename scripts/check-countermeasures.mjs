@@ -2,12 +2,14 @@
 //
 // Homing missiles are the biggest single combat threat, and before P1-7 the only counterplay was
 // dodging. This check pins the full countermeasure contract so a refactor can't silently break the
-// interception:
+// interception or teach a stale survival control:
 //   1. The countermeasure modules exist (chaff + ECM) with the required config fields.
 //   2. systems/countermeasures.js exists, exports the system, and reads the module config.
 //   3. The system is registered in UPDATE_ORDER (after weapons, before combat).
-//   4. input.js exposes the deploy keybind + sets state.input.deployCountermeasure.
-//   5. weapons.js homing-steering reads data.turnRate (so ECM jamming actually takes effect) and
+//   4. input.js exposes a non-conflicting deploy keybind + sets state.input.deployCountermeasure.
+//   5. gamepad.js exposes a controller deploy action that input.js consumes.
+//   6. Player-facing control copy teaches the same keyboard/gamepad defensive action.
+//   7. weapons.js homing-steering reads data.turnRate (so ECM jamming actually takes effect) and
 //      data.targetId (so chaff diversion actually retargets missiles).
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
@@ -54,17 +56,38 @@ assert.match(regSrc, /weapons, countermeasures,/, 'countermeasures must appear a
 
 // 4. input.js exposes the deploy keybind + sets the flag.
 const inputSrc = read('src/systems/input.js');
-assert.match(inputSrc, /countermeasure:\s*\['KeyC'\]/, 'input.js must default the countermeasure keybind to KeyC');
+assert.match(inputSrc, /countermeasure:\s*\['KeyX'\]/,
+  'input.js must default countermeasure to KeyX so C remains the claim/base UI key');
+assert.doesNotMatch(inputSrc, /countermeasure:\s*\['KeyC'\]/,
+  'countermeasure must not default to KeyC because C is owned by claim/base interaction');
+assert.match(inputSrc, /x:\s*'KeyX'/, 'input.js must map lowercase x to KeyboardEvent.code KeyX');
+assert.match(inputSrc, /gp\.actions\.countermeasure/, 'input.js must merge the gamepad countermeasure action');
 assert.match(inputSrc, /inp\.deployCountermeasure/, 'input.js must set state.input.deployCountermeasure on deploy');
 
-// 5. weapons.js homing-steering reads the fields the countermeasure writes.
+// 5. gamepad.js exposes the controller deploy action.
+const gamepadSrc = read('src/systems/gamepad.js');
+assert.match(gamepadSrc, /r3:\s*11/, 'gamepad.js must name the R3/right-stick button');
+assert.match(gamepadSrc, /countermeasure:\s*\['r3'\]/, 'gamepad.js must map R3 to countermeasure');
+
+// 6. Player-facing copy teaches the same controls and preserves C for claim/base.
+const promptSrc = read('src/ui/controlPrompts.js');
+const readme = read('README.md');
+const uiInputSrc = read('src/ui/input.js');
+assert.match(promptSrc, /X countermeasure/, 'keyboard control prompts must teach X countermeasure');
+assert.match(promptSrc, /R3 countermeasure/, 'gamepad control prompts must teach R3 countermeasure');
+assert.match(readme, /\|\s*Countermeasure\s*\|\s*\*\*X\*\* \/ \*\*R3\*\*/,
+  'README controls must document X/R3 countermeasure');
+assert.match(uiInputSrc, /case 'c': case 'C':[\s\S]*claimOrOpenBase\(\)/,
+  'C must remain the UI-owned claim/open-base control, not the countermeasure default');
+
+// 7. weapons.js homing-steering reads the fields the countermeasure writes.
 const weaponsSrc = read('src/systems/weapons.js');
 assert.match(weaponsSrc, /d\.turnRate/, 'weapons.js homing-steering must read data.turnRate (ECM jamming target)');
 assert.match(weaponsSrc, /d\.targetId/, 'weapons.js homing-steering must read data.targetId (chaff diversion target)');
 assert.match(weaponsSrc, /'missile'/, "weapons.js must reference the 'missile' kind (homing-steering + projectile spawn)");
 
-// 6. The deploy input flag is part of the default input state (so reading it never yields undefined).
+// 8. The deploy input flag is part of the default input state (so reading it never yields undefined).
 const gsSrc = read('src/core/gameState.js');
 assert.match(gsSrc, /deployCountermeasure/, 'gameState default input must include deployCountermeasure');
 
-console.log(`Countermeasures OK — ${cms.length} modules (${cms.map((m) => m.mods.countermeasure.kind).join(', ')}), system registered, deploy keybind wired, homing-steering integration confirmed.`);
+console.log(`Countermeasures OK — ${cms.length} modules (${cms.map((m) => m.mods.countermeasure.kind).join(', ')}), X/R3 deploy controls wired, homing-steering integration confirmed.`);
