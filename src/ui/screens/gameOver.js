@@ -42,12 +42,62 @@ function fmtTime(s) {
 
 function fmtCr(c) { return (Math.max(0, Math.round(c || 0))).toLocaleString() + ' cr'; }
 
+function fmtMs(ms) {
+  const s = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+  return fmtTime(s);
+}
+
+function prettyLabel(value) {
+  return String(value || 'unknown')
+    .replace(/^(faction|ship|sector|station)_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function storyProgressLabel(state = {}) {
   const story = state.story || (state.missions && state.missions.story) || {};
   const raw = Number(story.beatIndex);
   const maxBeat = Math.max(0, STORY_BEATS.length - 1);
   const beat = Number.isFinite(raw) ? Math.max(0, Math.min(maxBeat, Math.floor(raw))) : 0;
   return 'Beat ' + beat + ' / ' + maxBeat;
+}
+
+function telemetryHandle(ctx) {
+  if (ctx && ctx.telemetry && typeof ctx.telemetry.getSessionStats === 'function') return ctx.telemetry;
+  const globalTelemetry = typeof window !== 'undefined' ? window.__SF_TELEMETRY__ : null;
+  return globalTelemetry && typeof globalTelemetry.getSessionStats === 'function' ? globalTelemetry : null;
+}
+
+export function deathCauseLabel(entry = null) {
+  if (!entry) return 'Unknown loss';
+  const cause = String(entry.cause || 'unknown');
+  if (cause === 'environmental') return 'Environmental hazard';
+  if (cause === 'self') return 'Self-inflicted damage';
+  if (cause.startsWith('collision:')) return 'Collision with ' + prettyLabel(cause.slice('collision:'.length));
+  if (cause.startsWith('ship:')) {
+    const killer = prettyLabel(entry.killerType || cause.slice('ship:'.length));
+    const faction = entry.killerFaction ? ' (' + prettyLabel(entry.killerFaction) + ')' : '';
+    return 'Destroyed by ' + killer + faction;
+  }
+  return cause === 'unknown' ? 'Unknown loss' : prettyLabel(cause);
+}
+
+export function lastDeathSummary(ctx = {}) {
+  const telemetry = telemetryHandle(ctx);
+  let entry = null;
+  if (telemetry) {
+    try {
+      const stats = telemetry.getSessionStats();
+      const log = stats && Array.isArray(stats.deathLog) ? stats.deathLog : [];
+      entry = log.length ? log[log.length - 1] : null;
+    } catch (e) {
+      entry = null;
+    }
+  }
+  return {
+    cause: deathCauseLabel(entry),
+    lifespan: entry && entry.lifespanMs != null ? fmtMs(entry.lifespanMs) : '-',
+  };
 }
 
 function getManager(ctx) {
@@ -86,6 +136,8 @@ export const gameOverScreen = {
       ['kills', 'Kills'],
       ['missions', 'Missions completed'],
       ['beats', 'Story progress'],
+      ['cause', 'Loss cause'],
+      ['lifespan', 'Final sortie'],
     ];
     for (const [key, label] of rows) {
       const kd = document.createElement('div'); kd.className = 'k'; kd.textContent = label; grid.appendChild(kd);
@@ -146,6 +198,7 @@ export const gameOverScreen = {
     const player = state.player || {};
     const stats = player.stats || {};
     const meta = state.meta || {};
+    const death = lastDeathSummary(ctx);
     const values = {
       time: fmtTime(meta.playtimeS),
       credits: fmtCr(player.credits),
@@ -153,6 +206,8 @@ export const gameOverScreen = {
       kills: String(stats.kills || 0),
       missions: String(stats.missionsDone || 0),
       beats: storyProgressLabel(state),
+      cause: death.cause,
+      lifespan: death.lifespan,
     };
     for (const key in values) {
       if (els[key] && els[key].textContent !== values[key]) els[key].textContent = values[key];

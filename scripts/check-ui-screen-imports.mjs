@@ -87,6 +87,7 @@ const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8'
 const alertsSrc = readFileSync(new URL('../src/ui/alerts.js', import.meta.url), 'utf8');
 const commsSrc = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
 const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+const mainSrc = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const controlPromptsSrc = readFileSync(new URL('../src/ui/controlPrompts.js', import.meta.url), 'utf8');
 const mainMenuSrc = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
@@ -344,7 +345,7 @@ if (!gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';") || gameOver
   ok++;
 }
 {
-  const { storyProgressLabel } = await import('../src/ui/screens/gameOver.js');
+  const { storyProgressLabel, deathCauseLabel, lastDeathSummary } = await import('../src/ui/screens/gameOver.js');
   const direct = storyProgressLabel({
     story: { beatIndex: 3 },
     missions: { completedLog: [{ type: 'cargo_delivery' }, { type: 'recon_scan' }] },
@@ -358,6 +359,31 @@ if (!gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';") || gameOver
     fail++;
   } else {
     console.log('ok   gameOverScreen - run summary reports story progress');
+    ok++;
+  }
+  const deathSummary = lastDeathSummary({
+    telemetry: {
+      getSessionStats() {
+        return {
+          deathLog: [
+            { cause: 'collision:asteroid', lifespanMs: 7000 },
+            { cause: 'ship:capital', killerType: 'capital', killerFaction: 'faction_vael', lifespanMs: 125000 },
+          ],
+        };
+      },
+    },
+  });
+  if (!gameOverSrc.includes("['cause', 'Loss cause']")
+    || !gameOverSrc.includes("['lifespan', 'Final sortie']")
+    || !gameOverSrc.includes('ctx.telemetry')
+    || !mainSrc.includes('ctx.telemetry = telemetry')
+    || deathCauseLabel({ cause: 'environmental' }) !== 'Environmental hazard'
+    || deathSummary.cause !== 'Destroyed by Capital (Vael)'
+    || deathSummary.lifespan !== '2m 5s') {
+    console.log('FAIL gameOverScreen - run summary must show latest death cause and final sortie duration from telemetry');
+    fail++;
+  } else {
+    console.log('ok   gameOverScreen - run summary shows accountable death telemetry');
     ok++;
   }
 }

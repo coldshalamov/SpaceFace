@@ -90,6 +90,7 @@ async function boot() {
     // Local telemetry sink (privacy-safe, no network): onboarding funnel, balance/career stats,
     // death heatmap. Subscribes to the live bus; mirrored to window.__SF_TELEMETRY__ for dev.
     const telemetry = createTelemetry(bus, state);
+    ctx.telemetry = telemetry;
     const eventTrace = createDeterministicEventTrace(bus, state);
     // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
     applyAccessibility(state.settings);
