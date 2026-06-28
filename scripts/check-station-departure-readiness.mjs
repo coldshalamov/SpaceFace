@@ -18,6 +18,12 @@ assert.match(source, /departureMissionChip\(state\)/, 'departure readiness must 
 assert.match(source, /function departureTradeWaypointChip\(state, waypoint\)/,
   'departure readiness must summarize trade route waypoints');
 assert.match(source, /trackedMissionId/, 'departure readiness must read trackedMissionId');
+assert.match(source, /activeJobs\.length > 0/,
+  'departure readiness must distinguish active-but-untracked missions from having no job');
+assert.match(source, /1 untracked job/,
+  'departure readiness must tell players when an active mission still needs tracking');
+assert.match(source, /Open Missions to track the active job/,
+  'untracked mission readiness must route players to the Missions tab with a clear action');
 assert.match(source, /state && state\.nav && state\.nav\.waypoint/, 'departure readiness must fall back to nav waypoint');
 assert.match(source, /waypoint\.kind !== 'trade'/, 'departure readiness must identify trade waypoints');
 assert.match(source, /commodityId/, 'departure trade route readiness must read waypoint commodity ids');

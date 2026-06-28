@@ -154,6 +154,37 @@ try {
   assert(departure.chips.every((chip) => chip.tag === 'BUTTON' && chip.label),
     'Departure Check actionable chips should be keyboard-accessible buttons with labels: ' + JSON.stringify(departure.chips));
 
+  const untrackedDeparture = await page.evaluate(async () => {
+    const sf = window.SF;
+    sf.state.missions.active = [{
+      id: 'mission_untracked_departure_probe',
+      status: 'active',
+      type: 'cargo_delivery',
+      title: 'Untracked Departure Probe',
+      objectiveProgress: 0,
+      objectiveTarget: 1,
+      deadline_s: 900,
+      reward_cr: 500,
+    }];
+    sf.state.ui.trackedMissionId = null;
+    sf.state.nav.waypoint = null;
+    sf.bus.emit('mission:updated', { missionId: 'mission_untracked_departure_probe' });
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    const chip = [...document.querySelectorAll('[data-screen="station"] .st-departure-chip')]
+      .find((el) => /untracked job/i.test(el.textContent || ''));
+    return {
+      text: chip ? String(chip.textContent || '').replace(/\s+/g, ' ').trim() : '',
+      target: chip && chip.getAttribute('data-departure-tab'),
+      label: chip && chip.getAttribute('aria-label'),
+    };
+  });
+  assert.match(untrackedDeparture.text, /1 untracked job/,
+    'Departure Check should name active-but-untracked mission state: ' + JSON.stringify(untrackedDeparture));
+  assert.equal(untrackedDeparture.target, 'missions',
+    'untracked mission chip should route to Missions: ' + JSON.stringify(untrackedDeparture));
+  assert.match(untrackedDeparture.label || '', /track the active job/i,
+    'untracked mission chip should expose an actionable accessible label: ' + JSON.stringify(untrackedDeparture));
+
   await clickDepartureAndExpect(page, 'services');
   await assertServicesRecommendation(page);
   await clickDepartureAndExpect(page, 'market');

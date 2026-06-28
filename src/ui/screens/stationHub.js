@@ -193,6 +193,7 @@ function departureTradeWaypointChip(state, waypoint) {
 function departureMissionChip(state) {
   const trackedId = state && state.ui && state.ui.trackedMissionId;
   const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  const activeJobs = active.filter((m) => m && (m.status == null || m.status === 'active'));
   const tracked = trackedId ? active.find((m) => missionId(m) === trackedId) : null;
   if (tracked) {
     return {
@@ -201,6 +202,16 @@ function departureMissionChip(state) {
       text: clipDepartureText(tracked.title || prettyType(tracked.type)),
       targetTab: 'missions',
       actionLabel: 'Open Missions to review station contracts',
+    };
+  }
+  if (activeJobs.length > 0) {
+    const one = activeJobs.length === 1;
+    return {
+      kind: 'warn',
+      label: 'Track',
+      text: one ? '1 untracked job' : activeJobs.length + ' untracked jobs',
+      targetTab: 'missions',
+      actionLabel: one ? 'Open Missions to track the active job' : 'Open Missions to pick a tracked job',
     };
   }
   const waypoint = state && state.nav && state.nav.waypoint;
