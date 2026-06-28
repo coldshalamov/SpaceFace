@@ -58,6 +58,29 @@ export function missionRepPenalty(m) {
   return reward > 0 ? -Math.ceil(reward * 0.6) : 0;
 }
 
+export function missionRiskTier(m) {
+  const raw = Number(m && (m.riskTier != null ? m.riskTier : m.risk));
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(4, Math.round(raw)));
+}
+
+export function missionRiskRewardSummary(m) {
+  const risk = missionRiskTier(m);
+  const reward = missionRewardCredits(m);
+  const collateral = missionCollateral(m);
+  const rewardText = reward > 0 ? `+${reward.toLocaleString('en-US')} cr` : 'no listed payout';
+  const stakeText = collateral > 0 ? ` - stake ${collateral.toLocaleString('en-US')} cr` : '';
+  return {
+    risk,
+    reward,
+    collateral,
+    chip: {
+      kind: risk >= 3 ? 'warn' : (reward > 0 ? 'ok' : 'info'),
+      text: `Payout ${rewardText} / R${risk}${stakeText}`,
+    },
+  };
+}
+
 export function missionConsequenceSummary(m) {
   const reward = missionRewardCredits(m);
   const repReward = missionRepReward(m);
@@ -143,7 +166,7 @@ function pressureLabel(value) {
   return 'balanced';
 }
 
-function missionRiskTier(m) {
+function missionRiskBand(m) {
   const raw = m && (m.riskTier != null ? m.riskTier : (m.risk != null ? m.risk : 0));
   const risk = Number(raw);
   return Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
@@ -288,7 +311,7 @@ export function missionTimePacing(m, state) {
 
 export function missionShipReadiness(m, state) {
   const issues = [];
-  const risk = missionRiskTier(m);
+  const risk = missionRiskBand(m);
   const dangerous = risk >= 2 || DANGEROUS_MISSION_TYPES.has(m && m.type);
   const targetSectorId = missionDestSectorId(m);
   const currentSectorId = state && state.world && state.world.currentSectorId || null;
@@ -350,6 +373,9 @@ export function missionPreflight(m, state) {
   } else {
     chips.push({ kind: 'ok', text: 'No collateral' });
   }
+
+  const riskReward = missionRiskRewardSummary(m);
+  chips.push(riskReward.chip);
 
   const route = missionRouteScope(m, state);
   if (route) chips.push(route);

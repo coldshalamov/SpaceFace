@@ -10,6 +10,7 @@ import { missions } from '../src/systems/missions.js';
 import {
   missionConsequenceSummary,
   missionPreflight,
+  missionRiskRewardSummary,
   missionRouteIntel,
   missionRouteScope,
   missionShipReadiness,
@@ -41,6 +42,8 @@ assert.match(stationHubSrc, /missionConsequenceSummary\(m\)/,
   'mission cards must use the shared consequence helper');
 assert.match(missionPreflightSrc, /export function missionConsequenceSummary/,
   'shared mission consequence helper must be exported');
+assert.match(missionPreflightSrc, /export function missionRiskRewardSummary/,
+  'shared mission risk/reward helper must be exported for direct tests');
 assert.match(stationHubSrc, /st-mission-preflight/, 'mission cards must render preflight chips');
 assert.match(stationHubSrc, /st-mission-consequences/, 'mission cards must render consequence chips');
 assert.match(missionPreflightSrc, /Jump route: \$\{sectorName\(targetSectorId\)\}/,
@@ -51,6 +54,8 @@ assert.match(missionPreflightSrc, /TIMER_CRITICAL_S/,
   'mission preflight must distinguish critical timers before accept');
 assert.match(missionPreflightSrc, /deadline_s/,
   'mission preflight must support active absolute mission deadlines as well as board timers');
+assert.match(missionPreflightSrc, /Payout \$\{rewardText\} \/ R\$\{risk\}/,
+  'mission preflight must put payout and risk in one scannable chip');
 assert.match(missionPreflightSrc, /DANGEROUS_MISSION_TYPES/,
   'mission preflight must distinguish risky/combat contracts for ship-readiness warnings');
 assert.match(missionPreflightSrc, /Hull is worn/,
@@ -138,6 +143,17 @@ assert.ok(consequence.chips.some((chip) =>
 assert.ok(consequence.chips.some((chip) =>
   chip.label === 'Fail/expire' && /-3 rep/.test(chip.text) && /collateral forfeited/.test(chip.text) && /no payout/.test(chip.text)),
   'failure consequence must show rep penalty, collateral loss, and no payout');
+const riskReward = missionRiskRewardSummary(makeOffer());
+const riskRewardChipText = 'Payout +1,200 cr / R1 - stake 500 cr';
+assert.equal(riskReward.risk, 1, 'risk/reward summary must normalize the mission risk tier');
+assert.equal(riskReward.reward, 1200, 'risk/reward summary must surface the credit payout');
+assert.equal(riskReward.collateral, 500, 'risk/reward summary must surface the posted stake');
+assert.equal(riskReward.chip.kind, 'ok', 'low-risk payout chips should read as ready information');
+assert.equal(riskReward.chip.text, riskRewardChipText,
+  'risk/reward chip should combine payout, risk, and stake into one scanline');
+const highRisk = missionRiskRewardSummary(makeOffer({ riskTier: 4, reward_cr: 3600, collateral_cr: 0 }));
+assert.equal(highRisk.chip.kind, 'warn', 'high-risk payout chips should warn without blocking acceptance');
+assert.equal(highRisk.chip.text, 'Payout +3,600 cr / R4', 'high-risk payout chips should stay compact');
 const lowCapUiPreflight = missionPreflight(makeOffer(), lowCapState);
 assert.equal(missionBoardReadiness(lowCapUiPreflight).state, 'blocked',
   'mission board readiness should mark cargo-capacity blockers as blocked');
@@ -145,6 +161,8 @@ assert.equal(missionBoardReadiness(lowCapUiPreflight).label, 'BLOCKED',
   'blocked mission cards should be scannable before reading details');
 assert.equal(lowCapUiPreflight.blocker, 'Requires 5u cargo capacity',
   'shared UI preflight must surface impossible cargo capacity before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === riskRewardChipText),
+  'shared UI preflight must expose payout/risk/stake before accept');
 assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'info' && chip.text === 'Jump route: Ceres Belt'),
   'shared UI preflight must show off-sector route scope before accept');
 assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === 'Route risk: Calm 34%'),
@@ -281,4 +299,4 @@ assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'
 assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
   'accepted preflight should emit mission:accepted');
 
-console.log('Mission preflight OK - shared route scope, route-risk intel, timer pacing, ship readiness, and consequence stakes are visible before accept.');
+console.log('Mission preflight OK - shared route scope, route-risk intel, timer pacing, payout/risk, ship readiness, and consequence stakes are visible before accept.');
