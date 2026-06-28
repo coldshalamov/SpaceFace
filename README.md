@@ -33,7 +33,7 @@ Source GLBs under `assets/ships/parts/` are authoring/build inputs. Normal play 
 | Mining beam | **Right‑mouse** (hold, near an asteroid) / **LT** on gamepad |
 | Afterburner | **Shift** / **RB** on gamepad |
 | Dock | **E** when the dock prompt shows; **Enter** is a secondary key |
-| Star map | **M** | · Tech tree **T** · Missions/journal **J** |
+| Maps / logs | Star map **M** · Local map **N** · Tech tree **T** · Mission log **J** · Codex **K** |
 | Pause / back | **Esc** |
 | Quick save / load | **F5 / F9** |
 | Zoom | **Mouse wheel** |
