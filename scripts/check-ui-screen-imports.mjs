@@ -219,8 +219,8 @@ if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionL
     !pauseSrc.includes("mk('Mission Log (' + BINDINGS.missionLog.label + ')', () => nav(ctx, 'pushScreen', 'missionLog'))")) {
   console.log('FAIL pauseScreen - controller-friendly pause menu must expose Mission Log');
   fail++;
-} else if (!helpSrc.includes("['Open mission log', null, 'Pause")) {
-  console.log('FAIL helpScreen - gamepad controls must document the Mission Log route');
+} else if (!helpSrc.includes("['Open mission log', null, 'Start / Options")) {
+  console.log('FAIL helpScreen - gamepad controls must document the concrete Mission Log route through Start/Options');
   fail++;
 } else {
   console.log('ok   pause/help - mission log is reachable and documented for controller players');

@@ -141,7 +141,7 @@ const SECTIONS = [
     ['Cycle target', null, 'X / □'],
     ['Open star-map', null, 'View / Select'],
     ['Open codex', null, 'Y / △'],
-    ['Open mission log', null, 'Pause → Mission Log'],
+    ['Open mission log', null, 'Start / Options → Mission Log'],
     ['Pause', null, 'Start / Options'],
     ['Dock / activate', null, 'A / X (when prompted)'],
     ['Cancel / back', null, 'B / ○'],
