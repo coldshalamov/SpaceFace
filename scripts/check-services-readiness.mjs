@@ -147,6 +147,15 @@ function checkReadinessSurfacesUnavailableRefuel() {
   assert.match(rec.reason, /does not offer Refuel/i, 'unavailable recommendation should explain the station limitation');
 }
 
+function checkUnavailableServiceButtonsUseUnavailableCopy() {
+  assert.match(servicesSource, /const actionLabel = offered \? quote\.buttonLabel : 'Unavailable';/,
+    'service rows must show a clear Unavailable button label when the station lacks that service');
+  assert.match(servicesSource, /quote\.detail \+ \(offered \? '' : ' · not offered here'\)/,
+    'service rows must keep a visible not-offered reason beside unavailable services');
+  assert.match(servicesSource, /'>' \+ actionLabel \+ '<\/button>'/,
+    'service row buttons must render the availability-aware action label');
+}
+
 function checkReadinessAllClear() {
   const state = baseState({ fuel: { current: 90, max: 100 } });
   const rec = serviceReadinessRecommendation(state, playerShip({ hull: 100, armorHp: 60 }), ['refuel', 'repair']);
@@ -166,6 +175,7 @@ checkInsuranceCancelIsConfirmed();
 checkReadinessRecommendsPartialRefuel();
 checkReadinessPrefersCriticalRepair();
 checkReadinessSurfacesUnavailableRefuel();
+checkUnavailableServiceButtonsUseUnavailableCopy();
 checkReadinessAllClear();
 
 console.log('Services readiness checks OK');

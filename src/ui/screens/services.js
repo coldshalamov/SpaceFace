@@ -399,6 +399,7 @@ export function createServicesPanel(ctx) {
       row.className = 'st-svc-row' + (offered ? '' : ' disabled') + (quote.disabledReason ? ' st-svc-row--blocked' : '');
       const chips = (quote.chips || []).map((chip) =>
         '<span class="st-svc-chip st-svc-chip--' + (chip.kind || 'cost') + '">' + chip.text + '</span>').join('');
+      const actionLabel = offered ? quote.buttonLabel : 'Unavailable';
       const title = offered
         ? (quote.disabledReason || (quote.cost > 0 ? 'Spend ' + fmtCr(quote.cost) + ' credits.' : r.desc))
         : 'This station does not offer ' + r.label + '.';
@@ -406,7 +407,7 @@ export function createServicesPanel(ctx) {
         '<div class="st-svc-info"><div class="st-svc-name">' + r.label + '</div>' +
         '<div class="st-svc-detail mono">' + quote.detail + (offered ? '' : ' · not offered here') + '</div>' +
         '<div class="st-svc-meta">' + chips + '</div></div>' +
-        '<button data-svc="' + r.type + '" data-amount="' + quote.amount + '" title="' + title + '" aria-label="' + title + '"' + (dis ? ' disabled' : '') + '>' + quote.buttonLabel + '</button>';
+        '<button data-svc="' + r.type + '" data-amount="' + quote.amount + '" title="' + title + '" aria-label="' + title + '"' + (dis ? ' disabled' : '') + '>' + actionLabel + '</button>';
       frag.appendChild(row);
     }
     list.textContent = '';
