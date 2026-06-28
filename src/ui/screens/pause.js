@@ -172,11 +172,20 @@ export function pauseMapAction(state) {
   const wp = state && state.nav && state.nav.waypoint;
   if (!wp) return null;
   const currentSectorId = state && state.world && state.world.currentSectorId;
-  const sameSector = !!(wp.sectorId && currentSectorId && wp.sectorId === currentSectorId);
-  if (wp.pos || sameSector) {
-    return { id: 'localmap', label: 'Local Map (' + BINDINGS.localmap.label + ')' };
+  const targetSectorId = wp.sectorId || null;
+  const hasLocalFix = !!wp.pos;
+  if (hasLocalFix || !targetSectorId || (currentSectorId && targetSectorId === currentSectorId)) {
+    return {
+      screenId: 'localmap',
+      label: 'Local Map (' + BINDINGS.localmap.label + ')',
+      hint: 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker in this system.',
+    };
   }
-  return { id: 'starmap', label: 'Star Map (' + BINDINGS.starmap.label + ')' };
+  return {
+    screenId: 'starmap',
+    label: 'Star Map (' + BINDINGS.starmap.label + ')',
+    hint: 'Open Star Map (' + BINDINGS.starmap.label + ') to review the inter-system route.',
+  };
 }
 
 function slotLabel(id) {
@@ -230,7 +239,8 @@ export function pauseStatusLines(state) {
     const mapAction = pauseMapAction(state);
     return {
       objective: 'NAV SET - ' + waypointText(wp),
-      next: 'Next: resume and follow the current marker; open ' + (mapAction ? mapAction.label : 'the map') + ' if the route gets muddy.',
+      next: 'Next: resume and follow the current marker; ' +
+        (mapAction ? mapAction.hint : 'open the map if the route gets muddy.'),
       save: saveLine(state),
     };
   }
@@ -306,7 +316,7 @@ export const pauseScreen = {
     });
     mk('Mission Log (' + BINDINGS.missionLog.label + ')', () => nav(ctx, 'pushScreen', 'missionLog'));
     const mapAction = pauseMapAction(ctx && ctx.state);
-    if (mapAction) mk(mapAction.label, () => nav(ctx, 'pushScreen', mapAction.id));
+    if (mapAction) mk('Review ' + mapAction.label, () => nav(ctx, 'pushScreen', mapAction.screenId));
     mk('Help / Controls', () => nav(ctx, 'pushScreen', 'help'));
     mk('Codex', () => nav(ctx, 'pushScreen', 'codex'));
     // Main Menu discards the current session entirely — confirm with the live run context first.
