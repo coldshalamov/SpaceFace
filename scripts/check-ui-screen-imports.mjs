@@ -96,6 +96,7 @@ const automationSrc = readFileSync(new URL('../src/ui/screens/automationPanel.js
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
 const settingsSrc = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
 const saveLoadSrc = readFileSync(new URL('../src/ui/screens/saveLoad.js', import.meta.url), 'utf8');
+const baseSrc = readFileSync(new URL('../src/ui/screens/base.js', import.meta.url), 'utf8');
 
 const menuStyleSources = [
   ['mainMenu', mainMenuSrc],
@@ -132,14 +133,17 @@ if (!helpSrc.includes("import { BINDINGS } from '../bindings.js'")
   || !helpSrc.includes('BINDINGS.dock.label')
   || !helpSrc.includes('BINDINGS.localmap.label')
   || !helpSrc.includes('BINDINGS.starmap.label')
+  || !helpSrc.includes('BINDINGS.techTree.label')
   || !helpSrc.includes('BINDINGS.missionLog.label')
+  || !helpSrc.includes('BINDINGS.drill.label')
+  || !helpSrc.includes('BINDINGS.claimBase.label')
   || !helpSrc.includes('BINDINGS.cargo.label')
   || !helpSrc.includes('BINDINGS.comms.label')
   || !helpSrc.includes('BINDINGS.codex.label')) {
   console.log('FAIL helpScreen - fixed UI key labels must read src/ui/bindings.js');
   fail++;
-} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)|Mission Log \(J\)|'J'|'I'|'L'|'K'/.test(helpSrc)) {
-  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap/missionLog/cargo/comms/codex keys');
+} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)|Tech tree', null, 'T'|Deep-drill \(ant-farm\)', null, 'B|Claim body \/ open base', null, 'C|Mission Log \(J\)|'J'|'I'|'L'|'K'/.test(helpSrc)) {
+  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap/tech/drill/claim/missionLog/cargo/comms/codex keys');
   fail++;
 } else {
   console.log('ok   helpScreen - fixed UI key labels read the binding registry');
@@ -184,6 +188,30 @@ if (!bindingsSrc.includes("cargo: { key: 'i', code: 'KeyI', label: 'I' }")
   fail++;
 } else {
   console.log('ok   cargo/comms binding - input and visible copy read the binding registry');
+  ok++;
+}
+if (!bindingsSrc.includes("techTree: { key: 't', code: 'KeyT', label: 'T' }")
+  || !bindingsSrc.includes("drill: { key: 'b', code: 'KeyB', label: 'B' }")
+  || !bindingsSrc.includes("claimBase: { key: 'c', code: 'KeyC', label: 'C' }")
+  || BINDINGS.techTree.key !== 't'
+  || BINDINGS.drill.key !== 'b'
+  || BINDINGS.claimBase.key !== 'c'
+  || !inputSrc.includes('BINDINGS.techTree.key')
+  || !inputSrc.includes('BINDINGS.drill.key')
+  || !inputSrc.includes('BINDINGS.claimBase.key')
+  || !helpSrc.includes('BINDINGS.techTree.label')
+  || !helpSrc.includes('BINDINGS.drill.label')
+  || !helpSrc.includes('BINDINGS.claimBase.label')
+  || !controlPromptsSrc.includes('BINDINGS.drill.label')
+  || !baseSrc.includes("import { BINDINGS } from '../bindings.js'")
+  || !baseSrc.includes('BINDINGS.claimBase.label')) {
+  console.log('FAIL tech/drill/claim binding - fixed action keys must read src/ui/bindings.js across input, Help, prompts, and base fallback copy');
+  fail++;
+} else if (/case 't'|case 'b'|case 'c'|B drill view|press B|press C|Press C|Tech tree', null, 'T'|Deep-drill \(ant-farm\)', null, 'B|Claim body \/ open base', null, 'C'/.test(inputSrc + helpSrc + controlPromptsSrc + baseSrc)) {
+  console.log('FAIL tech/drill/claim binding - visible tech/drill/claim key text must not hard-code T/B/C');
+  fail++;
+} else {
+  console.log('ok   tech/drill/claim binding - input and visible copy read the binding registry');
   ok++;
 }
 if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionLog'))")) {

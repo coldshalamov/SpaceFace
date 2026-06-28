@@ -119,7 +119,8 @@ export function createUiInput(ctx, screenManager) {
       case BINDINGS.starmap.key:
       case 'M':
         ev.preventDefault(); screenManager.pushScreen('starmap'); return;
-      case 't': case 'T':
+      case BINDINGS.techTree.key:
+      case BINDINGS.techTree.label:
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;
       case BINDINGS.missionLog.key:
       case BINDINGS.missionLog.label:
@@ -146,7 +147,8 @@ export function createUiInput(ctx, screenManager) {
         if (dbg) { const on = dbg.toggle(); bus.emit('audio:cue', { id: on ? 'ui_open' : 'ui_back' }); }
         return;
       }
-      case 'b': case 'B':
+      case BINDINGS.drill.key:
+      case BINDINGS.drill.label:
         // Drill lens (V2 §7 / cut-list #27): open the ant-farm mining screen on the targeted
         // asteroid (or the mining system's soft-locked one). Bails with a toast if no asteroid.
         ev.preventDefault();
@@ -164,7 +166,8 @@ export function createUiInput(ctx, screenManager) {
         ev.preventDefault();
         bus.emit('ui:toggleComms');
         return;
-      case 'c': case 'C':
+      case BINDINGS.claimBase.key:
+      case BINDINGS.claimBase.label:
         // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base
         // screen for an already-claimed body to build modules / teleport.
         if (claimOrOpenBase()) {
@@ -202,7 +205,7 @@ export function createUiInput(ctx, screenManager) {
       }
     }
     if (astId == null) {
-      bus.emit('toast', { text: 'No asteroid targeted — target a rock and press B to drill', kind: 'warn', ttl: 3 });
+      bus.emit('toast', { text: 'No asteroid targeted — target a rock and press ' + BINDINGS.drill.label + ' to drill', kind: 'warn', ttl: 3 });
       return;
     }
     if (!state.ui) state.ui = {};
@@ -222,7 +225,7 @@ export function createUiInput(ctx, screenManager) {
     if (!state.ui) state.ui = {};
     state.ui.pendingClaimBodyId = body.id;
     if (screenManager.hasScreen && !screenManager.hasScreen('base')) {
-      bus.emit('toast', { text: 'Base interface initializing — press C again in a moment', kind: 'info', ttl: 3 });
+      bus.emit('toast', { text: 'Base interface initializing — press ' + BINDINGS.claimBase.label + ' again in a moment', kind: 'info', ttl: 3 });
       return true;
     }
     screenManager.pushScreen('base');

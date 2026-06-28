@@ -1,10 +1,11 @@
 // Base screen (V2 §6 / M3). The base-management view for a claimed body — shows the body's module
 // slots, lets the player build modules (depot/refinery/teleporter/defense), and fire the
-// teleporter. Reuses the screen-modal pattern (like station hub). Entry: pushed when the player
-// presses C near an already-claimed body (input.js sets state.ui.pendingClaimBodyId first).
+// teleporter. Reuses the screen-modal pattern (like station hub). Entry: pushed from the claim/base
+// binding near an already-claimed body (input.js sets state.ui.pendingClaimBodyId first).
 import { BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE } from '../../data/claimableBodies.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
+import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-base-style';
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
@@ -140,7 +141,7 @@ export const baseScreen = {
     wrap.id = 'sf-base';
 
     if (!body) {
-      wrap.innerHTML = '<div class="base-title">No body selected</div><div class="base-sub">Press C near a claimed body to manage it.</div>';
+      wrap.innerHTML = '<div class="base-title">No body selected</div><div class="base-sub">Press ' + BINDINGS.claimBase.label + ' near a claimed body to manage it.</div>';
       const foot = document.createElement('div');
       foot.className = 'base-foot';
       const close = document.createElement('button');
