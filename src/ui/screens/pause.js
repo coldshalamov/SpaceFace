@@ -5,6 +5,7 @@
 // timeScale/mode toggle that the loop reads (§2.2 — timeScale gates stepSim).
 
 import { confirm } from '../confirm.js';
+import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-pause-menu-style';
 
@@ -92,7 +93,151 @@ function button(label, cls) {
   return b;
 }
 
+function prettyId(id) {
+  return String(id || '')
+    .replace(/^(mission|station|sector|cmdty|ship)_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function missionId(m) {
+  return m && (m.id != null ? m.id : m.missionId);
+}
+
+function missionTitle(m) {
+  return (m && (m.title || m.name)) || prettyId(m && m.type) || 'Contract';
+}
+
+function fmtTime(seconds) {
+  const s = Math.max(0, Math.floor(Number(seconds) || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h > 0) return h + 'h ' + m + 'm';
+  if (m > 0) return m + 'm';
+  return s + 's';
+}
+
+function missionProgress(m) {
+  const prog = Math.max(0, Number(m && m.objectiveProgress) || 0);
+  const tgt = Math.max(1, Number(m && m.objectiveTarget) || 1);
+  return Math.min(100, Math.round((prog / tgt) * 100)) + '% complete';
+}
+
+function deadlineText(state, mission) {
+  const deadline = Number(mission && mission.deadline_s);
+  const now = Number(state && state.simTime) || 0;
+  if (!Number.isFinite(deadline) || deadline <= now) return '';
+  return ' - ' + fmtTime(deadline - now) + ' left';
+}
+
+function missionDestination(m) {
+  return (m && (m.destName || m.destStationName || m.stationName)) ||
+    prettyId(m && (m.destStationId || m.destSectorId || m.dest)) || 'the objective';
+}
+
+function missionCommodity(m) {
+  const id = m && m.params && m.params.cmdtyId;
+  return id ? prettyId(id) : 'cargo';
+}
+
+function missionNextStep(m) {
+  const dest = missionDestination(m);
+  switch (m && m.type) {
+    case 'cargo_delivery':
+    case 'passenger_transport':
+    case 'escort':
+    case 'smuggling_run':
+    case 'salvage_retrieval':
+      return 'Next: resume, follow tracked nav to ' + dest + ', then dock to resolve the handoff.';
+    case 'bulk_trade':
+      return 'Next: buy or carry ' + missionCommodity(m) + ', then sell into the tracked destination market.';
+    case 'mining_quota':
+      return 'Next: mine ' + missionCommodity(m) + ', keep cargo room open, then follow the tracker for payout.';
+    case 'bounty_hunt':
+    case 'patrol_clear':
+      return 'Next: resume, follow tracked nav, and expect combat before the timer runs down.';
+    case 'recon_scan':
+      return 'Next: resume, follow tracked nav, and scan each marked site.';
+    default:
+      return 'Next: resume and follow the tracked objective; Mission Log (' + BINDINGS.missionLog.label + ') has the details.';
+  }
+}
+
+function waypointText(wp) {
+  if (!wp) return '';
+  return wp.label || wp.reason || wp.stationName || prettyId(wp.stationId || wp.sectorId || wp.kind) || 'Nav marker set';
+}
+
+function slotLabel(id) {
+  if (!id) return '';
+  if (id === 'quick' || id === 'autosave' || id === 'auto') return id.charAt(0).toUpperCase() + id.slice(1);
+  return 'Slot ' + id;
+}
+
+function fmtSavedAt(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (!Number.isFinite(d.getTime())) return '';
+  return d.toLocaleString();
+}
+
+function saveLine(state) {
+  const slot = state && state.save && state.save.currentSlot;
+  const savedAt = state && state.meta && state.meta.lastSavedAt;
+  const savedWhen = fmtSavedAt(savedAt);
+  if (savedWhen) {
+    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '. F5 quick-saves; F9 loads quick.';
+  }
+  if (slot) {
+    return 'Loaded ' + slotLabel(slot) + ', but no save has landed this session. Use Save or F5 before quitting.';
+  }
+  return 'Unsaved run. Use Save or F5 before quitting; autosaves fire after dock, undock, sector entry, and completed jobs.';
+}
+
+export function pauseStatusLines(state) {
+  const active = (state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [])
+    .filter((m) => m && (!m.status || m.status === 'active'));
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const tracked = trackedId ? active.find((m) => missionId(m) === trackedId) : null;
+  if (tracked) {
+    return {
+      objective: 'TRACKED - ' + missionTitle(tracked) + ' - ' + missionProgress(tracked) + deadlineText(state, tracked),
+      next: missionNextStep(tracked),
+      save: saveLine(state),
+    };
+  }
+  if (active.length) {
+    const candidate = active[0];
+    return {
+      objective: 'UNTRACKED CONTRACT - ' + missionTitle(candidate) + ' - ' + missionProgress(candidate) + deadlineText(state, candidate),
+      next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + '), Track Nav on a contract, then resume with a clear marker.',
+      save: saveLine(state),
+    };
+  }
+  const wp = state && state.nav && state.nav.waypoint;
+  if (wp) {
+    return {
+      objective: 'NAV SET - ' + waypointText(wp),
+      next: 'Next: resume and follow the current marker; open the map if the route gets muddy.',
+      save: saveLine(state),
+    };
+  }
+  return {
+    objective: 'NO ACTIVE CONTRACT',
+    next: 'Next: dock at a station, open Missions or the Bar, accept + track work, then undock.',
+    save: saveLine(state),
+  };
+}
+
 let els = null;
+
+function renderFlightBrief(ctx) {
+  if (!els || !els.briefObjective) return;
+  const lines = pauseStatusLines(ctx && ctx.state);
+  els.briefObjective.textContent = lines.objective;
+  els.briefNext.textContent = lines.next;
+  els.briefSave.textContent = lines.save;
+}
 
 export const pauseScreen = {
   id: 'pause',
@@ -100,6 +245,27 @@ export const pauseScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     const { body } = screenShell(rootEl, 'Paused', 'sf-menu-narrow');
+
+    const brief = document.createElement('div');
+    brief.className = 'sf-slot';
+    brief.setAttribute('aria-live', 'polite');
+    const briefMain = document.createElement('div');
+    briefMain.className = 'sf-slot-main';
+    const briefKicker = document.createElement('div');
+    briefKicker.className = 'sf-slot-sub';
+    briefKicker.textContent = 'FLIGHT BRIEF';
+    const briefObjective = document.createElement('div');
+    briefObjective.className = 'sf-slot-name';
+    const briefNext = document.createElement('div');
+    briefNext.className = 'sf-muted';
+    const briefSave = document.createElement('div');
+    briefSave.className = 'sf-slot-sub';
+    briefMain.appendChild(briefKicker);
+    briefMain.appendChild(briefObjective);
+    briefMain.appendChild(briefNext);
+    briefMain.appendChild(briefSave);
+    brief.appendChild(briefMain);
+    body.appendChild(brief);
 
     const mk = (label, fn) => { const b = button(label); b.addEventListener('click', fn); body.appendChild(b); return b; };
     const bResume = mk('Resume', () => this._resume(ctx));
@@ -114,8 +280,8 @@ export const pauseScreen = {
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     });
-    mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionLog'));
-    mk('Help', () => nav(ctx, 'pushScreen', 'help'));
+    mk('Mission Log (' + BINDINGS.missionLog.label + ')', () => nav(ctx, 'pushScreen', 'missionLog'));
+    mk('Help / Controls', () => nav(ctx, 'pushScreen', 'help'));
     mk('Codex', () => nav(ctx, 'pushScreen', 'codex'));
     // Main Menu discards the current session entirely — confirm first (UX-2).
     mk('Main Menu', async () => {
@@ -127,7 +293,8 @@ export const pauseScreen = {
       if (ok) this._toMenu(ctx);
     });
 
-    els = { bResume };
+    els = { bResume, briefObjective, briefNext, briefSave };
+    renderFlightBrief(ctx);
   },
 
   _resume(ctx) {
@@ -154,9 +321,10 @@ export const pauseScreen = {
     ctx.state.timeScale = 0;
     if (ctx.state.mode === 'flight') ctx.state.mode = 'paused';
     ctx.bus.emit('sim:pause', {});
+    renderFlightBrief(ctx);
     if (els && els.bResume) try { els.bResume.focus(); } catch (e) {}
   },
 
   onHide() {},
-  refresh() {},
+  refresh(ctx) { renderFlightBrief(ctx); },
 };

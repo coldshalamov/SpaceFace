@@ -214,7 +214,8 @@ if (!bindingsSrc.includes("techTree: { key: 't', code: 'KeyT', label: 'T' }")
   console.log('ok   tech/drill/claim binding - input and visible copy read the binding registry');
   ok++;
 }
-if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionLog'))")) {
+if (!pauseSrc.includes("mk('Mission Log', () => nav(ctx, 'pushScreen', 'missionLog'))") &&
+    !pauseSrc.includes("mk('Mission Log (' + BINDINGS.missionLog.label + ')', () => nav(ctx, 'pushScreen', 'missionLog'))")) {
   console.log('FAIL pauseScreen - controller-friendly pause menu must expose Mission Log');
   fail++;
 } else if (!helpSrc.includes("['Open mission log', null, 'Pause")) {
