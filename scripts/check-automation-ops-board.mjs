@@ -4,6 +4,7 @@ import { DRONES, OUTPOSTS, TRADERS } from '../src/data/automation.js';
 import {
   automationNextAction,
   automationScreen,
+  describeAutomationCapLoad,
   describeAutomationPurchase,
   summarizeAutomationOperations,
 } from '../src/ui/screens/automationPanel.js';
@@ -85,6 +86,26 @@ next = automationNextAction(droneState);
 assert.equal(next.tab, 'traders', 'post-drone recommendation should point at trader progression');
 assert.match(next.title, /Autonomous Fleets/, 'locked trader recommendation should name the required tech');
 
+const overCapState = {
+  player: { credits: 50000, droneTierCap: 1, researchedNodes: [], ownedShips: [{ defId: 'ship_kestrel' }] },
+  automation: {
+    drones: [{ id: 1, defId: 'drone_mk1', status: 'mining', ratePerMin: 240, fuel: 200, fuelMax: 240 }],
+    traders: [],
+    outposts: [],
+    fleet: [],
+    meta: {},
+  },
+};
+summary = summarizeAutomationOperations(overCapState);
+assert(Math.round(summary.capOveragePerMin) > 0, 'summary should expose over-cap production separately from headroom');
+const capLoad = describeAutomationCapLoad(summary);
+assert.equal(capLoad.state, 'over-cap', 'over-cap automation should get a distinct cap load state');
+assert.match(capLoad.detail, /over cap; overflow dropped/, 'cap load detail should explain that hard-cap overflow is dropped');
+next = automationNextAction(overCapState);
+assert.equal(next.title, 'Raise automation ceiling', 'over-cap automation should recommend cap progression before more assets');
+assert.match(next.body, /overflow is dropped/i, 'over-cap recommendation should explain lost passive output');
+assert.match(next.meta, /over cap/, 'over-cap recommendation meta should name the overage');
+
 const traderReadyState = {
   ...droneState,
   player: { ...droneState.player, researchedNodes: ['tech_autonomous_fleets'] },
@@ -153,6 +174,8 @@ assert.match(src, /const action = next\.action \|\| 'switchTab'/, 'operations bo
 assert.match(src, /data-act="\$\{escapeHtml\(action\)\}"/, 'operations board CTA should render the recommended intent');
 assert.match(src, /data-kind="\$\{escapeHtml\(next\.kind\)\}"/, 'direct automation CTA should carry the intent kind when needed');
 assert.match(src, /summarizeAutomationOperations/, 'automation panel should expose a pure summary helper for tests');
+assert.match(src, /describeAutomationCapLoad/, 'automation panel should centralize passive-cap load copy');
+assert.match(src, /overflow dropped/, 'over-cap UI should explain the hard cap consequence');
 assert.match(src, /describeAutomationPurchase/, 'automation panel should centralize purchase guidance');
 assert.match(src, /aria-label="\$\{escapeHtml\(purchase\.title\)\}"/, 'automation purchase buttons should expose guidance to assistive tech');
 assert.match(src, /route heat/, 'trader cards should surface route heat management');

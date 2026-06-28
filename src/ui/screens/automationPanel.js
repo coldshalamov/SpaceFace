@@ -377,6 +377,7 @@ export const automationScreen = {
   _renderOperationsBoard(frag) {
     const summary = summarizeAutomationOperations(this._ctx.state);
     const next = automationNextAction(this._ctx.state);
+    const capLoad = describeAutomationCapLoad(summary);
     const action = next.action || 'switchTab';
     const actionTarget = next.targetRef != null ? next.targetRef : next.tab;
     const actionTitle = next.actionTitle || next.cta;
@@ -396,7 +397,7 @@ export const automationScreen = {
       <div class="au-summary" aria-label="Automation summary">
         ${metricHtml('Assets', String(summary.activeAssets), `${summary.drones} drones / ${summary.traders} traders / ${summary.outposts} outposts`)}
         ${metricHtml('Net Flow', `${fmtCr(summary.netRatePerMin)} cr/min`, `gross ${fmtCr(summary.grossRatePerMin)} - upkeep ${fmtCr(summary.upkeepPerMin)}`)}
-        ${metricHtml('Cap Load', `${Math.round(summary.capUsedPct)}%`, `${fmtCr(Math.max(0, summary.capHeadroomPerMin))} cr/min headroom`)}
+        ${metricHtml('Cap Load', capLoad.label, capLoad.detail)}
         ${metricHtml('Lifetime', `${fmtCr(summary.totalPassiveEarnedLifetime)} cr`, summary.distressedAssets ? `${summary.distressedAssets} distressed` : 'stable')}
       </div>`;
     frag.appendChild(wrap);
@@ -723,9 +724,35 @@ export function summarizeAutomationOperations(state) {
     netRatePerMin,
     capPerMin,
     capHeadroomPerMin: capPerMin - Math.max(0, grossRatePerMin),
+    capOveragePerMin: Math.max(0, Math.max(0, grossRatePerMin) - capPerMin),
     capUsedPct: capPerMin > 0 ? Math.min(999, Math.max(0, grossRatePerMin / capPerMin * 100)) : 0,
     totalPassiveEarnedLifetime: (a.meta && a.meta.totalPassiveEarnedLifetime) || 0,
     distressedAssets,
+  };
+}
+
+export function describeAutomationCapLoad(summary = {}) {
+  const cap = Math.max(0, Number(summary.capPerMin) || 0);
+  const gross = Math.max(0, Number(summary.grossRatePerMin) || 0);
+  const pctValue = cap > 0 ? Math.min(999, Math.max(0, gross / cap * 100)) : 0;
+  const label = Math.round(pctValue) + '%';
+  const overage = Math.max(0, Number(summary.capOveragePerMin) || (gross - cap));
+  if (overage > 0) {
+    return {
+      state: 'over-cap',
+      label,
+      detail: fmtCr(overage) + ' cr/min over cap; overflow dropped',
+      overagePerMin: overage,
+      headroomPerMin: 0,
+    };
+  }
+  const headroom = Math.max(0, cap - gross);
+  return {
+    state: pctValue >= 90 ? 'tight' : 'healthy',
+    label,
+    detail: fmtCr(headroom) + ' cr/min headroom',
+    overagePerMin: 0,
+    headroomPerMin: headroom,
   };
 }
 
@@ -763,9 +790,14 @@ export function automationNextAction(state) {
       } : { actionTitle: purchase.title });
   }
   if (summary.capUsedPct >= 90) {
+    const capLoad = describeAutomationCapLoad(summary);
+    const overCap = capLoad.state === 'over-cap';
     return nextAction('drones', 'Raise automation ceiling',
-      'Passive production is pressing into the cap. Research logistics tiers or rebalance assets before buying more raw output.',
-      `${Math.round(summary.capUsedPct)}% cap load`, 'Review Drones');
+      overCap
+        ? 'Passive production is over the hard cap, so overflow is dropped. Research logistics tiers or rebalance assets before buying more raw output.'
+        : 'Passive production is pressing into the cap. Research logistics tiers or rebalance assets before buying more raw output.',
+      overCap ? `${fmtCr(capLoad.overagePerMin)} cr/min over cap` : `${Math.round(summary.capUsedPct)}% cap load`,
+      'Review Drones');
   }
   if (!(a.traders || []).length) {
     const trader = TRADERS[0] || {};
