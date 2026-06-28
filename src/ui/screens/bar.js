@@ -383,6 +383,11 @@ function sectorForStation(id) {
   return info ? info.sector : null;
 }
 
+function stationFor(stationId) {
+  const info = STATION_INDEX.get(stationId);
+  return info ? info.station : null;
+}
+
 /** Find the sector this stationId belongs to */
 function currentSector(stationId) {
   const info = STATION_INDEX.get(stationId);
@@ -433,6 +438,108 @@ function fieldTypeName(type) {
     ast_gas_cloud:    'gas cloud',
   };
   return MAP[type] || type;
+}
+
+function missionBoardSlots(state, stationId) {
+  const board = getMissionBoard(state, stationId);
+  return board && Array.isArray(board.slots) ? board.slots.filter(Boolean) : [];
+}
+
+function localEconEvent(state, stationId) {
+  const events = getEconEvents(state);
+  return events.find((ev) => ev && ev.stationId === stationId) || events[0] || null;
+}
+
+function securityLabel(sec) {
+  if (!sec) return 'unknown lane';
+  if (sec.security >= 0.72) return 'secure lane';
+  if (sec.security >= 0.45) return 'watchful lane';
+  if (sec.security >= 0.18) return 'rough lane';
+  return 'lawless lane';
+}
+
+function combatSlots(slots) {
+  return slots.filter((m) => m && (m.type === 'bounty_hunt' || m.type === 'patrol_clear' || m.type === 'escort'));
+}
+
+function blackmarketLead(stationId) {
+  const here = currentSector(stationId);
+  const markets = findBlackmarkets();
+  return markets.find((m) => m.sector.id === here.id)
+    || markets.find((m) => (here.neighbors || []).includes(m.sector.id))
+    || markets[0]
+    || null;
+}
+
+function miningLead(stationId) {
+  const here = currentSector(stationId);
+  const fields = findMiningFields();
+  return fields.find((m) => m.sector.id === here.id)
+    || fields.find((m) => (here.neighbors || []).includes(m.sector.id))
+    || fields.find((m) => m.fields.some((f) => f.type === 'ast_rare_exotic' || f.type === 'ast_crystalline'))
+    || fields[0]
+    || null;
+}
+
+function serviceSummary(stationId) {
+  const st = stationFor(stationId);
+  const services = st && Array.isArray(st.services) ? st.services : [];
+  if (!services.length) return 'field repairs only';
+  const names = [];
+  if (services.includes('shipyard')) names.push('shipyard');
+  if (services.includes('module_craft') || services.includes('refine')) names.push('fabrication');
+  if (services.includes('repair')) names.push('repair');
+  if (services.includes('refuel')) names.push('fuel');
+  if (services.includes('trade') || services.includes('black_market')) names.push('market');
+  return names.slice(0, 3).join(' / ') || services.slice(0, 3).join(' / ');
+}
+
+export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
+  const role = contact.role || 'barkeep';
+  const sec = currentSector(stationId);
+  const slots = missionBoardSlots(state, stationId);
+  const tags = [];
+  const add = (label, text, kind = 'info') => {
+    if (!text) return;
+    tags.push({ label, text, kind });
+  };
+
+  if (contact.canonicalKey) add('Recurring', contact.roleLabel || ROLE_LABELS[role] || 'known contact', 'story');
+
+  if (role === 'merchant') {
+    const route = bestTradeRoute(state, stationId);
+    if (route) add('Route', commodityName(route.cmdtyId) + ' -> ' + stationName(route.sellStationId) + ' +' + Math.round(route.spread) + '/u', 'ok');
+    const ev = localEconEvent(state, stationId);
+    if (ev) add('Market', commodityName(ev.commodityId) + ' ' + String(ev.type || 'event'), 'warn');
+  } else if (role === 'pilot') {
+    add('Board', slots.length ? slots.length + ' live contract' + (slots.length === 1 ? '' : 's') : 'board quiet', slots.length ? 'ok' : 'warn');
+    const danger = dangerousSector(stationId);
+    if (danger) add('Outside', danger.name + ' ' + securityLabel(danger), danger.security < 0.35 ? 'bad' : 'warn');
+  } else if (role === 'smuggler') {
+    const market = blackmarketLead(stationId);
+    if (market) add('Black Market', market.station.name + ' / ' + market.sector.name, market.sector.security < 0.2 ? 'bad' : 'warn');
+    add('Scan Risk', sec.security >= 0.6 ? 'high security customs' : 'patrol gaps', sec.security >= 0.6 ? 'bad' : 'ok');
+  } else if (role === 'engineer') {
+    add('Station', serviceSummary(stationId), 'ok');
+    add('Hull Note', sec.hazards && sec.hazards.length ? 'hazards tax armor' : 'routine wear', sec.hazards && sec.hazards.length ? 'warn' : 'info');
+  } else if (role === 'bounty_hunter') {
+    const combat = combatSlots(slots);
+    add('Targets', combat.length ? combat.length + ' combat posting' + (combat.length === 1 ? '' : 's') : 'no clean tags', combat.length ? 'ok' : 'warn');
+    const danger = dangerousSector(stationId);
+    if (danger) add('Heat', danger.name + ' density ' + Math.round((danger.enemyDensity || 0) * 100) + '%', (danger.enemyDensity || 0) > 0.45 ? 'bad' : 'warn');
+  } else if (role === 'miner') {
+    const field = miningLead(stationId);
+    if (field && field.fields.length) add('Field', field.sector.name + ' / ' + fieldTypeName(field.fields[0].type), field.sector.security < 0.4 ? 'warn' : 'ok');
+    const services = serviceSummary(stationId);
+    add('Buyer', services.includes('market') ? 'sell ore here' : 'find ore buyer', services.includes('market') ? 'ok' : 'warn');
+  } else {
+    const ev = localEconEvent(state, stationId);
+    if (ev) add('Rumor', commodityName(ev.commodityId) + ' ' + String(ev.type || 'event'), 'warn');
+    else add('Lane', sec.name + ' / ' + securityLabel(sec), sec.security < 0.35 ? 'bad' : 'info');
+  }
+
+  if (!tags.length) add('Local', sec.name + ' / ' + securityLabel(sec), 'info');
+  return tags.slice(0, 2);
 }
 
 /** Find best trade spread from marketIntel */
@@ -955,6 +1062,13 @@ export function createBarPanel(ctx) {
           (fac ? ' · ' + escapeHtml(fac.short || fac.name) : '') +
           '</span></div>' +
         '<div class="st-bar-line">' + escapeHtml(c.line) + '</div>' +
+        '<div class="st-bar-intel">' +
+          barContactIntelTags(c, ctx.state || {}, currentStationId).map((tag) =>
+            '<span class="st-bar-intel-chip st-bar-intel-chip--' + escapeHtml(tag.kind || 'info') + '">' +
+              '<b>' + escapeHtml(tag.label) + '</b> ' + escapeHtml(tag.text) +
+            '</span>'
+          ).join('') +
+        '</div>' +
         '<div class="st-bar-choices">' +
           choices.map(ch => '<button data-choice="' + escapeHtml(ch.id) + '">' + escapeHtml(ch.label) + '</button>').join('') +
         '</div>' +

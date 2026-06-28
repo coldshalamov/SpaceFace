@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SECTORS } from '../src/data/sectors.js';
+import { barContactIntelTags } from '../src/ui/screens/bar.js';
 
 const source = readFileSync(new URL('../src/ui/screens/bar.js', import.meta.url), 'utf8');
 const stationIds = new Set();
@@ -48,5 +49,52 @@ assert.ok(source.includes('ACCEPT + TRACK'), 'bar mission accept button must use
 assert.ok(source.includes('offer.requirementUnmet || offer.lockedReason || preflight.blocker'), 'bar offer buttons must respect shared readiness blockers');
 assert.ok(source.includes("acceptButton.setAttribute('aria-label', acceptButton.title)"), 'bar mission offer buttons must expose readiness titles to assistive tech');
 assert.ok(source.includes("acceptBtn.textContent = 'No Longer Available'"), 'stale bar mission offers must avoid generic unavailable copy');
+assert.ok(source.includes('export function barContactIntelTags'), 'bar contact intel tags must stay directly testable');
+assert.ok(source.includes('class="st-bar-intel"'), 'bar contact cards must render a visible intel strip before dialogue choices');
+assert.ok(source.includes('st-bar-intel-chip--'), 'bar contact intel tags must expose stable tone style hooks');
+
+const routeState = {
+  economy: {
+    marketIntel: {
+      station_helios: { snapshot: { cmdty_food: { buy: 10 } } },
+      station_tethys: { snapshot: { cmdty_food: { sell: 18 } } },
+    },
+  },
+  missions: { boards: {} },
+};
+let tags = barContactIntelTags({ role: 'merchant' }, routeState, 'station_helios');
+assert.equal(tags[0].label, 'Route', 'merchant intel should surface the best known trade route first');
+assert.match(tags[0].text, /Provisions -> Tethys Trade Hub \+8\/u/, 'merchant route intel should name cargo, buyer, and spread');
+assert.equal(tags[0].kind, 'ok', 'profitable route intel should use the positive tone');
+
+tags = barContactIntelTags({ role: 'pilot' }, {
+  missions: {
+    boards: {
+      station_coalition: {
+        slots: [{ id: 'm1', type: 'cargo_delivery' }, { id: 'm2', type: 'bounty_hunt' }],
+      },
+    },
+  },
+}, 'station_coalition');
+assert.equal(tags[0].label, 'Board', 'pilot intel should summarize the live board');
+assert.match(tags[0].text, /2 live contracts/, 'pilot intel should count available contracts');
+
+tags = barContactIntelTags({ role: 'bounty_hunter' }, {
+  missions: { boards: { station_coalition: { slots: [{ id: 'b1', type: 'bounty_hunt' }] } } },
+}, 'station_coalition');
+assert.equal(tags[0].label, 'Targets', 'bounty hunter intel should summarize combat postings');
+assert.match(tags[0].text, /1 combat posting/, 'bounty hunter intel should count combat work');
+
+tags = barContactIntelTags({ role: 'smuggler' }, { missions: { boards: {} } }, 'station_helios');
+assert.equal(tags[0].label, 'Black Market', 'smuggler intel should point toward black-market access');
+assert.match(tags[0].text, /Smuggler Den|Sker Bazaar|Ruined Cache Station/, 'smuggler intel should name a real black-market station');
+
+tags = barContactIntelTags({ role: 'miner' }, { missions: { boards: {} } }, 'station_beltout');
+assert.equal(tags[0].label, 'Field', 'miner intel should point at a real asteroid field');
+assert.match(tags[0].text, /Ceres Belt/, 'miner intel should prefer local mining fields');
+
+tags = barContactIntelTags({ role: 'engineer' }, { missions: { boards: {} } }, 'station_forge');
+assert.equal(tags[0].label, 'Station', 'engineer intel should summarize local station services');
+assert.match(tags[0].text, /shipyard|fabrication|repair|fuel|market/, 'engineer intel should name actionable service context');
 
 console.log(`Station bar canonical contacts OK - ${expected.length} recurring NPCs across ${stationIds.size} stations`);

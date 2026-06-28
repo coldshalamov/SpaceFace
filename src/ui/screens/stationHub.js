@@ -1690,6 +1690,18 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-bar-name { font-size: .98rem; }
 .st-bar-role { color: var(--ink-mute); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; }
 .st-bar-line { color: var(--ink-dim); font-size: .85rem; margin: 6px 0 8px; font-style: italic; }
+.st-bar-intel { display: flex; gap: 5px; flex-wrap: wrap; margin: -2px 0 8px; }
+.st-bar-intel-chip { font-size: .66rem; line-height: 1.25; border: 1px solid rgba(57,208,255,.22);
+  border-radius: 5px; padding: 2px 6px; color: var(--ink-dim); background: rgba(6,12,22,.48); }
+.st-bar-intel-chip b { font-family: var(--mono); color: var(--accent); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.st-bar-intel-chip--ok { border-color: rgba(98,224,138,.3); color: var(--good); }
+.st-bar-intel-chip--ok b { color: var(--good); }
+.st-bar-intel-chip--warn { border-color: rgba(255,198,77,.32); color: var(--warn); }
+.st-bar-intel-chip--warn b { color: var(--warn); }
+.st-bar-intel-chip--bad { border-color: rgba(255,84,112,.36); color: var(--danger); }
+.st-bar-intel-chip--bad b { color: var(--danger); }
+.st-bar-intel-chip--story { border-color: rgba(192,139,255,.36); color: var(--accent-2); }
+.st-bar-intel-chip--story b { color: var(--accent-2); }
 .st-bar-choices { display: flex; gap: 6px; flex-wrap: wrap; }
 .st-bar-choices button { font-size: .78rem; }
 .st-bar-reply { margin-top: 8px; font-size: .82rem; color: var(--accent-2); max-height: 0; overflow: hidden;
