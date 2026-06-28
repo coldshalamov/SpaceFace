@@ -9,6 +9,7 @@ import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-base-style';
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
+const BASE_BUILD_PRIORITY = ['mod_depot', 'mod_defense', 'mod_refinery', 'mod_teleporter'];
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
@@ -20,6 +21,17 @@ function injectStyle() {
 #sf-base .base-title { font-family:var(--mono); letter-spacing:.22em; font-size:17px;
   color:var(--accent); text-shadow:0 0 14px rgba(57,208,255,.35); text-transform:uppercase; }
 #sf-base .base-sub { color:var(--ink-mute); font-size:12px; }
+#sf-base .base-plan { border:1px solid rgba(57,208,255,.28); border-radius:8px; padding:10px 12px;
+  background:rgba(10,18,32,.58); display:grid; gap:4px; }
+#sf-base .base-plan--ok { border-color:rgba(98,224,138,.35); background:rgba(25,54,42,.28); }
+#sf-base .base-plan--warn { border-color:rgba(255,198,77,.38); background:rgba(55,43,18,.28); }
+#sf-base .base-plan--bad { border-color:rgba(255,84,112,.38); background:rgba(52,18,28,.26); }
+#sf-base .base-plan-k { color:var(--accent); font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; }
+#sf-base .base-plan--ok .base-plan-k { color:var(--good); }
+#sf-base .base-plan--warn .base-plan-k { color:var(--warn); }
+#sf-base .base-plan--bad .base-plan-k { color:var(--danger); }
+#sf-base .base-plan-title { color:var(--ink); font-weight:700; font-size:13px; }
+#sf-base .base-plan-body { color:var(--ink-dim); font-size:12px; line-height:1.35; }
 #sf-base .base-slots { display:flex; gap:10px; flex-wrap:wrap; }
 #sf-base .base-slot { flex:1; min-width:120px; border:1px solid var(--panel-edge); border-radius:8px;
   padding:12px; background:var(--panel); position:relative; }
@@ -110,6 +122,78 @@ export function describeBaseBuildAction(mod, player = {}, body = {}) {
   };
 }
 
+function orderedBaseModules() {
+  const byId = new Map(BODY_MODULES.map((mod) => [mod.id, mod]));
+  const ordered = BASE_BUILD_PRIORITY.map((id) => byId.get(id)).filter(Boolean);
+  for (const mod of BODY_MODULES) {
+    if (!BASE_BUILD_PRIORITY.includes(mod.id)) ordered.push(mod);
+  }
+  return ordered;
+}
+
+export function recommendBaseBuildPlan(player = {}, body = {}) {
+  const modules = Array.isArray(body.modules) ? body.modules : [];
+  const slots = Math.max(0, Number(body.slots) || 0);
+  const usedSlots = modules.length;
+  const baseName = body.name || 'This base';
+  if (!(slots > 0)) {
+    return {
+      kind: 'bad',
+      state: 'missing',
+      label: 'BUILD PLAN',
+      title: 'No module slots detected',
+      body: 'Open this panel from a claimed body with module slots to plan construction.',
+    };
+  }
+  if (usedSlots >= slots) {
+    return {
+      kind: 'warn',
+      state: 'filled',
+      label: 'BASE FILLED',
+      title: baseName + ' has no free module slots',
+      body: usedSlots + '/' + slots + ' slots are committed. Claim a larger body for more infrastructure, or use this base as a finished outpost.',
+    };
+  }
+
+  for (const mod of orderedBaseModules()) {
+    if (modules.includes(mod.id)) continue;
+    const action = describeBaseBuildAction(mod, player, body);
+    if (action.state === 'available') {
+      return {
+        kind: 'ok',
+        state: 'available',
+        label: 'NEXT BUILD',
+        title: 'Build ' + mod.name + ' next',
+        body: action.title + ' ' + (mod.desc || ''),
+        moduleId: mod.id,
+      };
+    }
+  }
+
+  const blocked = orderedBaseModules()
+    .filter((mod) => !modules.includes(mod.id))
+    .map((mod) => ({ mod, action: describeBaseBuildAction(mod, player, body) }))
+    .find((entry) => entry.action && entry.action.state !== 'built');
+  if (blocked) {
+    return {
+      kind: blocked.action.state === 'locked' ? 'warn' : 'bad',
+      state: blocked.action.state,
+      label: blocked.action.state === 'locked' ? 'RESEARCH NEXT' : 'PREP NEXT',
+      title: blocked.mod.name,
+      body: blocked.action.title,
+      moduleId: blocked.mod.id,
+    };
+  }
+
+  return {
+    kind: 'ok',
+    state: 'complete',
+    label: 'BASE COMPLETE',
+    title: baseName + ' has every available module',
+    body: 'This claim is fully built for the current module catalog.',
+  };
+}
+
 export const baseScreen = {
   id: 'base',
   _rootEl: null,
@@ -133,6 +217,7 @@ export const baseScreen = {
     const ctx = this._ctx;
     if (!rootEl || !ctx) return;
     const state = ctx.state;
+    const player = state.player || {};
     const claims = ctx.registry && ctx.registry.get('claims');
     const body = this._bodyId && claims ? claims.list().find((b) => b.id === this._bodyId) : null;
 
@@ -164,6 +249,16 @@ export const baseScreen = {
     const usedSlots = body.modules.length;
     sub.textContent = body.size + '-class body · ' + usedSlots + '/' + body.slots + ' module slots · sector ' + (body.sectorId || '?');
     wrap.appendChild(sub);
+
+    const plan = recommendBaseBuildPlan(player, body);
+    const planEl = document.createElement('div');
+    planEl.className = 'base-plan base-plan--' + plan.kind;
+    planEl.setAttribute('aria-label', [plan.label, plan.title, plan.body].filter(Boolean).join(': '));
+    planEl.innerHTML =
+      '<div class="base-plan-k">' + escapeHtml(plan.label) + '</div>' +
+      '<div class="base-plan-title">' + escapeHtml(plan.title) + '</div>' +
+      '<div class="base-plan-body">' + escapeHtml(plan.body) + '</div>';
+    wrap.appendChild(planEl);
 
     // ---- installed modules (slot grid) ----
     const slotsWrap = document.createElement('div');
@@ -206,7 +301,6 @@ export const baseScreen = {
 
     const shop = document.createElement('div');
     shop.className = 'base-shop';
-    const player = state.player;
     for (const mod of BODY_MODULES) {
       const card = document.createElement('div');
       card.className = 'base-mod';
