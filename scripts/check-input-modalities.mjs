@@ -85,6 +85,7 @@ assert.match(promptSrc, /A dock/, 'Gamepad flight hints must advertise A/Cross d
 assert.match(promptSrc, /R3 countermeasure/, 'Gamepad flight/combat hints must advertise R3 countermeasure');
 assert.match(promptSrc, /Start pause\/log/, 'Gamepad flight hints must surface the Mission Log route through Pause');
 assert.match(promptSrc, /Start opens pause\/log/, 'Gamepad first-flight hint must teach the controller path to Mission Log');
+assert.match(settingsSrc, /Start pause\/log/, 'Gamepad settings copy must match the shipped Start pause/log route');
 assert.match(promptSrc, /Mine button/, 'Touch flight hints must advertise the touch mining button');
 assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document gamepad mining');
 assert.match(helpSrc, /Countermeasure[\s\S]*R3/, 'Help Controls must document gamepad countermeasure');
