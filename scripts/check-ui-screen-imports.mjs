@@ -264,6 +264,24 @@ if (!gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';") || gameOver
   console.log('ok   gameOverScreen - Main Menu action uses ctx.state');
   ok++;
 }
+{
+  const { storyProgressLabel } = await import('../src/ui/screens/gameOver.js');
+  const direct = storyProgressLabel({
+    story: { beatIndex: 3 },
+    missions: { completedLog: [{ type: 'cargo_delivery' }, { type: 'recon_scan' }] },
+  });
+  const legacy = storyProgressLabel({
+    missions: { story: { beatIndex: 5 }, completedLog: [] },
+  });
+  if (direct !== 'Beat 3 / 7' || legacy !== 'Beat 5 / 7' ||
+    gameOverSrc.includes("beats: String((missions.completedLog || []).length)")) {
+    console.log('FAIL gameOverScreen - run summary must report story beat progress, not completed mission ledger size');
+    fail++;
+  } else {
+    console.log('ok   gameOverScreen - run summary reports story progress');
+    ok++;
+  }
+}
 
 console.log(`\n${ok} UI screen imports ok, ${fail} fail`);
 process.exit(fail ? 1 : 0);

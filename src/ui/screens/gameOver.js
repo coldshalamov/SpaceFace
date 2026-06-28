@@ -4,6 +4,8 @@
 // The save slot is preserved (Ironman is single-slot; the player may still import a prior export),
 // but the run is over — no respawn, no continue from the dead state.
 
+import { STORY_BEATS } from '../../data/missions.js';
+
 const STYLE_ID = 'sf-gameover-style';
 
 function injectStyle() {
@@ -40,6 +42,14 @@ function fmtTime(s) {
 
 function fmtCr(c) { return (Math.max(0, Math.round(c || 0))).toLocaleString() + ' cr'; }
 
+export function storyProgressLabel(state = {}) {
+  const story = state.story || (state.missions && state.missions.story) || {};
+  const raw = Number(story.beatIndex);
+  const maxBeat = Math.max(0, STORY_BEATS.length - 1);
+  const beat = Number.isFinite(raw) ? Math.max(0, Math.min(maxBeat, Math.floor(raw))) : 0;
+  return 'Beat ' + beat + ' / ' + maxBeat;
+}
+
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
   if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
@@ -75,7 +85,7 @@ export const gameOverScreen = {
       ['profit', 'Lifetime profit'],
       ['kills', 'Kills'],
       ['missions', 'Missions completed'],
-      ['beats', 'Story beats reached'],
+      ['beats', 'Story progress'],
     ];
     for (const [key, label] of rows) {
       const kd = document.createElement('div'); kd.className = 'k'; kd.textContent = label; grid.appendChild(kd);
@@ -135,7 +145,6 @@ export const gameOverScreen = {
     const state = ctx && ctx.state || {};
     const player = state.player || {};
     const stats = player.stats || {};
-    const missions = state.missions || {};
     const meta = state.meta || {};
     const values = {
       time: fmtTime(meta.playtimeS),
@@ -143,7 +152,7 @@ export const gameOverScreen = {
       profit: fmtCr(stats.lifetimeProfit),
       kills: String(stats.kills || 0),
       missions: String(stats.missionsDone || 0),
-      beats: String((missions.completedLog || []).length),
+      beats: storyProgressLabel(state),
     };
     for (const key in values) {
       if (els[key] && els[key].textContent !== values[key]) els[key].textContent = values[key];
