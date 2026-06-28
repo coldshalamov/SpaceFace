@@ -454,6 +454,97 @@ function departureReadinessSummary(chips) {
   };
 }
 
+function activeMissionCount(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  return active.filter((m) => m && (m.status == null || m.status === 'active')).length;
+}
+
+function firstDockStoryIndex(state) {
+  const story = state && state.story || {};
+  const raw = story.beatIndex != null ? story.beatIndex :
+    (story.currentBeatIndex != null ? story.currentBeatIndex : story.beat);
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function firstDockHandoffVisible(state, stationId) {
+  if (!state || !stationId) return false;
+  const ob = state.onboarding || null;
+  const done = ob && ob.done || {};
+  const storyIndex = firstDockStoryIndex(state);
+  const firstLoopOpen = !!ob && ob.finished !== true && done.next !== true;
+  const earlyStory = storyIndex != null && storyIndex <= 1;
+  if (!firstLoopOpen && !earlyStory) return false;
+  if (activeMissionCount(state) > 0 && (done.sell === true || done.next === true || (ob && ob.finished === true))) return false;
+  return true;
+}
+
+function firstDockDepartureTarget(chips) {
+  const issue = (Array.isArray(chips) ? chips : []).find((chip) => chip && (chip.kind === 'bad' || chip.kind === 'warn'));
+  if (issue && issue.targetTab) return issue.targetTab;
+  return 'services';
+}
+
+export function firstDockHandoffSteps(state = {}) {
+  const ob = state.onboarding || {};
+  const done = ob.done || {};
+  const activeJobs = activeMissionCount(state);
+  const missionDone = activeJobs > 0 || done.next === true;
+  const departureChips = departureReadinessChips(state);
+  const departure = departureReadinessSummary(departureChips);
+  const marketDone = done.sell === true;
+  return [
+    {
+      key: 'market',
+      label: 'Market',
+      title: 'Sell / audit sample',
+      text: marketDone
+        ? 'Sample cleared; credits and hold space are ready.'
+        : 'Sell mined cargo, free hold space, and confirm the manifest.',
+      kind: marketDone ? 'ok' : 'warn',
+      done: marketDone,
+      targetTab: 'market',
+    },
+    {
+      key: 'missions',
+      label: 'Missions',
+      title: 'Accept one low-risk job',
+      text: missionDone
+        ? (activeJobs === 1 ? 'One job is active; Mission Log carries the route.' : activeJobs + ' jobs active; track the one you want next.')
+        : 'Pick a nearby R0-R1 contract; Accept + Track feeds nav.',
+      kind: missionDone ? 'ok' : 'warn',
+      done: missionDone,
+      targetTab: 'missions',
+    },
+    {
+      key: 'departure',
+      label: 'Departure Check',
+      title: 'Launch when safe',
+      text: departure.state === 'ready'
+        ? 'Fuel, hull, cargo, and tracked work look serviceable.'
+        : departure.status + ': fix the highlighted launch concern.',
+      kind: departure.state === 'risk' ? 'bad' : (departure.state === 'check' ? 'warn' : 'ok'),
+      done: departure.state === 'ready' && missionDone,
+      targetTab: firstDockDepartureTarget(departureChips),
+    },
+  ];
+}
+
+function handoffStepHtml(step) {
+  const done = step.done ? ' is-done' : '';
+  const cls = 'st-handoff-step st-handoff-step--' + step.kind + done;
+  const body =
+    '<span class="st-handoff-step-label mono">' + escapeHtml(step.label) + '</span>' +
+    '<span class="st-handoff-step-title">' + escapeHtml(step.title) + '</span>' +
+    '<span class="st-handoff-step-copy">' + escapeHtml(step.text) + '</span>';
+  if (!step.targetTab) return '<span class="' + cls + '">' + body + '</span>';
+  return '<button type="button" class="' + cls + '" data-handoff-tab="' + escapeHtml(step.targetTab) + '"' +
+    ' title="' + escapeHtml('Open ' + tabLabel(step.targetTab) + ': ' + step.title) + '"' +
+    ' aria-label="' + escapeHtml('Open ' + tabLabel(step.targetTab) + ': ' + step.title + '. ' + step.text) + '">' +
+    body +
+    '</button>';
+}
+
 export function missionBoardReadiness(preflight = {}) {
   if (preflight.blocker) {
     return {
@@ -614,6 +705,26 @@ export const stationHub = {
       '<div class="st-purpose-sub"><span class="st-purpose-tab"></span><span class="st-purpose-services"></span></div>';
     screen.appendChild(purpose);
     this._purposeEl = purpose;
+
+    const handoff = document.createElement('div');
+    handoff.className = 'st-handoff';
+    handoff.hidden = true;
+    handoff.innerHTML =
+      '<div class="st-handoff-head">' +
+        '<span class="st-handoff-label mono">First Dock Handoff</span>' +
+        '<span class="st-handoff-copy">Sell the sample, take one safe job, then launch only when Departure Check reads clean.</span>' +
+      '</div>' +
+      '<div class="st-handoff-steps"></div>';
+    screen.appendChild(handoff);
+    this._handoffEl = handoff;
+    handoff.addEventListener('click', (ev) => {
+      const target = ev.target.closest('[data-handoff-tab]');
+      if (!target || !this._handoffEl || !this._handoffEl.contains(target)) return;
+      const tabId = target.getAttribute('data-handoff-tab');
+      if (!TABS.some((t) => t.id === tabId)) return;
+      this.setTab(tabId, { focusRail: true });
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    });
 
     const departure = document.createElement('div');
     departure.className = 'st-departure';
@@ -912,6 +1023,7 @@ export const stationHub = {
     }
     this._refreshRailServiceStatus();
     this._refreshPurpose();
+    this._refreshHandoff();
     if (options.focusRail && activeButton && document.activeElement !== activeButton) {
       activeButton.focus({ preventScroll: true });
     }
@@ -1063,6 +1175,16 @@ export const stationHub = {
     }
   },
 
+  _refreshHandoff() {
+    if (!this._handoffEl) return;
+    const state = this._ctx && this._ctx.state;
+    const visible = firstDockHandoffVisible(state, this._stationId);
+    this._handoffEl.hidden = !visible;
+    if (!visible) return;
+    const stepsEl = this._handoffEl.querySelector('.st-handoff-steps');
+    if (stepsEl) stepsEl.innerHTML = firstDockHandoffSteps(state).map((step) => handoffStepHtml(step)).join('');
+  },
+
   /** Called by screenManager when this screen becomes the top of the stack. */
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
@@ -1072,6 +1194,7 @@ export const stationHub = {
     this._refreshRailServiceStatus();
     this._refreshPurpose();
     this._refreshDeparture();
+    this._refreshHandoff();
     // restore the last active tab (or default 'market')
     const tab = this._activePanelId();
     this.setTab(tab); // also refreshes the active panel via onShow
@@ -1093,6 +1216,7 @@ export const stationHub = {
     this._refreshRailServiceStatus();
     this._refreshPurpose();
     this._refreshDeparture();
+    this._refreshHandoff();
     if (!(options.periodic && this._activePanelId() === 'bar')) this._refreshActive(false);
   },
 
@@ -1131,16 +1255,20 @@ export const stationHub = {
       if (!wantTab || wantTab.includes(id)) this._refreshActive(false);
     };
     const refreshDeparture = () => { if (this._visible()) this._refreshDeparture(); };
+    const refreshHandoff = () => { if (this._visible()) this._refreshHandoff(); };
     // market-affecting
     bus.on('economy:tradeCompleted', onActive(['market', 'services']));
+    bus.on('economy:tradeCompleted', refreshHandoff);
     bus.on('economy:tick', onActive(['market']));
     bus.on('cargo:changed', onActive(['market', 'outfit', 'services']));
     bus.on('cargo:changed', refreshDeparture);
+    bus.on('cargo:changed', refreshHandoff);
     bus.on('credits:changed', onActive(['market', 'shipyard', 'outfit', 'services']));
     bus.on('credits:changed', refreshDeparture);
     // ship/outfitting-affecting
     bus.on('ship:statsChanged', onActive(['outfit', 'shipyard', 'services']));
     bus.on('ship:statsChanged', refreshDeparture);
+    bus.on('ship:statsChanged', refreshHandoff);
     bus.on('ship:purchased', onActive(['shipyard', 'outfit']));
     bus.on('ship:sold', onActive(['shipyard', 'outfit']));
     bus.on('module:equipped', onActive(['outfit']));
@@ -1150,7 +1278,9 @@ export const stationHub = {
     // services-affecting
     bus.on('fuel:changed', onActive(['services']));
     bus.on('fuel:changed', refreshDeparture);
+    bus.on('fuel:changed', refreshHandoff);
     bus.on('nav:waypoint', refreshDeparture);
+    bus.on('nav:waypoint', refreshHandoff);
     // factions
     bus.on('faction:repChanged', onActive(['factions']));
     // missions
@@ -1158,16 +1288,18 @@ export const stationHub = {
       if (!this._visible()) return;
       if (this._activePanelId() === 'missions') this._refreshMissions();
       this._refreshDeparture();
+      this._refreshHandoff();
     });
     bus.on('mission:accepted', (payload) => {
       if (!this._visible()) return;
       this._setMissionAcceptedStatus(payload && payload.missionId);
       if (this._activePanelId() === 'missions') this._refreshMissions();
       this._refreshDeparture();
+      this._refreshHandoff();
     });
-    bus.on('mission:completed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); });
-    bus.on('mission:failed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); });
-    bus.on('mission:expired', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); });
+    bus.on('mission:completed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
+    bus.on('mission:failed', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
+    bus.on('mission:expired', () => { this._refreshMissionAcceptedStatus(); refreshDeparture(); refreshHandoff(); });
     bus.on('economy:eventStarted', onActive(['market']));
     bus.on('economy:eventEnded', onActive(['market']));
   },
@@ -1370,6 +1502,29 @@ const STATION_CSS = `
 .st-purpose-copy { color: var(--ink); font-size: .82rem; line-height: 1.35; }
 .st-purpose-sub { display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--ink-mute); font-size: .72rem; line-height: 1.35; }
 .st-purpose-tab { color: var(--ink-dim); }
+.st-handoff { display: grid; gap: 8px; padding: 9px 20px 10px; border-bottom: 1px solid rgba(57,208,255,.18);
+  background: linear-gradient(90deg, rgba(57,208,255,.07), rgba(10,18,32,.38)); }
+.st-handoff[hidden] { display: none; }
+.st-handoff-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; min-width: 0; }
+.st-handoff-label { color: var(--accent); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; }
+.st-handoff-copy { color: var(--ink-dim); font-size: .74rem; line-height: 1.35; }
+.st-handoff-steps { display: flex; flex-wrap: wrap; gap: 7px; }
+.st-handoff-step { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "label title" "copy copy";
+  gap: 2px 7px; min-width: min(100%, 188px); max-width: 286px; border: 1px solid rgba(57,208,255,.22);
+  border-radius: 6px; padding: 7px 9px; color: var(--ink-dim); background: rgba(6,12,22,.45); text-align: left; }
+button.st-handoff-step { appearance: none; cursor: pointer; font: inherit; }
+button.st-handoff-step:hover { background: rgba(57,208,255,.09); color: var(--ink); }
+button.st-handoff-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.st-handoff-step-label { grid-area: label; align-self: center; color: var(--ink-mute); font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; }
+.st-handoff-step-title { grid-area: title; min-width: 0; color: var(--ink); font-size: .78rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-handoff-step-copy { grid-area: copy; color: var(--ink-dim); font-size: .7rem; line-height: 1.3; }
+.st-handoff-step--ok { border-color: rgba(98,224,138,.34); }
+.st-handoff-step--ok .st-handoff-step-label { color: var(--good); }
+.st-handoff-step--warn { border-color: rgba(255,198,77,.34); }
+.st-handoff-step--warn .st-handoff-step-label { color: var(--warn); }
+.st-handoff-step--bad { border-color: rgba(255,84,112,.38); }
+.st-handoff-step--bad .st-handoff-step-label { color: var(--danger); }
+.st-handoff-step.is-done { background: rgba(98,224,138,.06); }
 .st-undock:hover { background: var(--grad-accent); color: #04121a; box-shadow: 0 0 16px rgba(57,208,255,.4); }
 .st-undock[data-readiness="ready"]:hover { background: var(--good); color: #021008; box-shadow: 0 0 16px rgba(98,224,138,.34); }
 .st-undock[data-readiness="check"]:hover { background: var(--warn); color: #1a1000; box-shadow: 0 0 16px rgba(255,198,77,.28); }

@@ -83,7 +83,14 @@ try {
   await waitForVisible(page, '[data-screen="station"]', DOCK_TIMEOUT_MS, 'station hub after dock');
 
   const initial = await page.evaluate(() => {
+    const visible = (el) => {
+      if (!el) return false;
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && !el.hidden && r.width > 20 && r.height > 10;
+    };
     const rail = document.querySelector('[data-screen="station"] .st-rail');
+    const handoff = document.querySelector('[data-screen="station"] .st-handoff');
     const tabs = [...document.querySelectorAll('[data-screen="station"] [role="tab"][data-tab]')];
     const panels = [...document.querySelectorAll('[data-screen="station"] [role="tabpanel"]')];
     const active = tabs.find((tab) => tab.getAttribute('aria-selected') === 'true') || tabs[0];
@@ -91,6 +98,14 @@ try {
     return {
       railRole: rail && rail.getAttribute('role'),
       railLabel: rail && rail.getAttribute('aria-label'),
+      handoffVisible: visible(handoff),
+      handoffTitle: (handoff && handoff.querySelector('.st-handoff-label') && handoff.querySelector('.st-handoff-label').textContent || '').trim(),
+      handoffText: (handoff && handoff.textContent || '').replace(/\s+/g, ' ').trim(),
+      handoffTargets: [...document.querySelectorAll('[data-screen="station"] [data-handoff-tab]')].map((button) => ({
+        target: button.getAttribute('data-handoff-tab'),
+        label: button.getAttribute('aria-label'),
+        text: (button.textContent || '').replace(/\s+/g, ' ').trim(),
+      })),
       tabs: tabs.map((tab) => ({
         id: tab.id,
         tabId: tab.getAttribute('data-tab'),
@@ -107,6 +122,16 @@ try {
 
   assert.equal(initial.railRole, 'tablist', 'station rail should expose role=tablist');
   assert.equal(initial.railLabel, 'Station sections', 'station rail should have a useful accessible label');
+  assert.equal(initial.handoffVisible, true, 'first dock handoff should be visible on the opening docked route');
+  assert.equal(initial.handoffTitle, 'First Dock Handoff', 'first dock handoff should expose a stable title');
+  for (const text of ['Sell / audit sample', 'Accept one low-risk job', 'Launch when safe']) {
+    assert.match(initial.handoffText, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      'first dock handoff missing step copy: ' + text + ' in ' + initial.handoffText);
+  }
+  for (const wanted of ['market', 'missions', 'services']) {
+    assert(initial.handoffTargets.some((button) => button.target === wanted && button.label),
+      'first dock handoff should expose an accessible button for ' + wanted + ': ' + JSON.stringify(initial.handoffTargets));
+  }
   assert.deepEqual(initial.tabs.map((tab) => tab.tabId), [
     'market', 'shipyard', 'outfit', 'manufacture', 'missions', 'services', 'factions', 'bar',
   ], 'station rail should preserve authored tab order');
@@ -117,6 +142,10 @@ try {
   assert.equal(initial.tabs.filter((tab) => tab.selected === 'true').length, 1, 'exactly one station tab should be selected');
   assert.equal(initial.tabs.filter((tab) => tab.tabIndex === '0').length, 1, 'exactly one station tab should be tabbable');
   assert.equal(initial.focusedTab, initial.activeTab, 'focus should start on the active station tab');
+
+  await clickHandoffAndExpect(page, 'market');
+  await clickHandoffAndExpect(page, 'missions');
+  await clickHandoffAndExpect(page, 'services');
 
   await pressAndExpect(page, 'End', 'bar');
   await pressAndExpect(page, 'Home', 'market');
@@ -260,6 +289,17 @@ async function focusAndExpect(page, tabId, key) {
   }, tabId);
   assert.equal(focused, true, 'probe should be able to focus station tab: ' + tabId);
   await pressAndExpect(page, key, tabId);
+}
+
+async function clickHandoffAndExpect(page, tabId) {
+  const clicked = await page.evaluate((wanted) => {
+    const button = document.querySelector(`[data-screen="station"] .st-handoff [data-handoff-tab="${wanted}"]`);
+    if (!button) return null;
+    button.click();
+    return button.getAttribute('aria-label') || String(button.textContent || '').replace(/\s+/g, ' ').trim();
+  }, tabId);
+  assert(clicked, 'First Dock Handoff should include a button that routes to ' + tabId);
+  await waitForStationTab(page, tabId, 'handoff button ' + tabId);
 }
 
 async function clickDepartureAndExpect(page, tabId) {
