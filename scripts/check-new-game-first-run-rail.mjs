@@ -27,6 +27,10 @@ for (const phrase of [
 assert.match(newGame, /47-A is already marked/, 'route rail must connect launch to the canonical 47-A opening');
 assert.match(newGame, /Mission Board and Bar contracts track into the log/,
   'route rail must connect first launch to tracked mission/cargo work');
+assert.match(newGame, /mining:\s*'Mining'/,
+  'starter loadout must label the mining slot as mining, not stale sampling language');
+assert.doesNotMatch(newGame, /mining:\s*'Sampler'/,
+  'New Game starter loadout must not call the mining slot a sampler');
 assert.match(newGame, /rootEl\.appendChild\(route\);[\s\S]*const lore = el\('div', 'sf-ng-lore'\)/,
   'route rail should sit before lore/footer so it is seen before Launch');
 assert.match(newGame, /rootEl\.appendChild\(route\);[\s\S]*rootEl\.appendChild\(el\('h2', null, 'Starting Ship'\)\)/,
