@@ -130,6 +130,7 @@ export function createUiInput(ctx, screenManager) {
       // Dock / interact: default binding is `E` (spec §15.4), sourced from the live binding
       // registry so the prompt and handler can never drift. Enter remains a secondary trigger.
       case BINDINGS.dock.key:
+      case 'E':
       case 'Enter':
         if (dockInRange) { ev.preventDefault(); doDock(); }
         return;
