@@ -25,7 +25,12 @@ function injectStyle() {
     align-items:center; font-size:14px; padding:10px 0; }
   .sf-gameover .sf-go-grid .k { color:var(--ink-dim); font-family:var(--mono); letter-spacing:.05em; font-size:12px; }
   .sf-gameover .sf-go-grid .v { color:var(--ink); font-family:var(--mono); text-align:right; }
-  .sf-gameover .sf-go-foot { display:flex; gap:10px; justify-content:center; margin-top:10px; }
+  .sf-gameover .sf-go-recovery { border:1px solid rgba(255,205,76,.36); border-radius:8px;
+    background:rgba(255,205,76,.06); color:var(--ink-dim); font-size:12px; line-height:1.5;
+    padding:10px 12px; }
+  .sf-gameover .sf-go-recovery b { color:var(--warn); font-family:var(--mono); letter-spacing:.08em;
+    text-transform:uppercase; }
+  .sf-gameover .sf-go-foot { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:10px; }
   .sf-gameover button.sf-btn { padding:12px 22px; font-size:14px; letter-spacing:.08em; min-width:150px; }
   .sf-gameover .sf-go-newgame { border-color:var(--accent); color:var(--accent); }
   `;
@@ -111,6 +116,7 @@ function getManager(ctx) {
 export const gameOverScreen = {
   id: 'gameOver',
   _summaryEls: null,
+  _defaultButton: null,
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -146,12 +152,19 @@ export const gameOverScreen = {
     }
     rootEl.appendChild(grid);
 
+    const recovery = document.createElement('div');
+    recovery.className = 'sf-go-recovery';
+    recovery.innerHTML = '<b>Recovery</b> This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.';
+    rootEl.appendChild(recovery);
+
     const foot = document.createElement('div');
     foot.className = 'sf-go-foot';
 
     const bNew = document.createElement('button');
     bNew.className = 'sf-btn sf-go-newgame';
     bNew.textContent = 'New Game';
+    bNew.title = 'Start a fresh Ironman run';
+    bNew.setAttribute('aria-label', 'Start a fresh Ironman run');
     bNew.addEventListener('click', () => {
       const mgr = getManager(ctx);
       // A fresh new game clears the dead run; main.js's game:new handler resets all run state.
@@ -159,11 +172,14 @@ export const gameOverScreen = {
       ctx.bus.emit('game:new', { name: null, difficulty: 'ironman' });
       if (mgr && mgr.popScreen) { try { mgr.popScreen(); } catch (e) {} }
     });
+    this._defaultButton = bNew;
     foot.appendChild(bNew);
 
     const bMenu = document.createElement('button');
     bMenu.className = 'sf-btn';
-    bMenu.textContent = 'Main Menu';
+    bMenu.textContent = 'Main Menu / Load';
+    bMenu.title = 'Return to title screen to continue or load another save';
+    bMenu.setAttribute('aria-label', 'Return to title screen to continue or load another save');
     bMenu.addEventListener('click', () => {
       if (ctx.state) ctx.state.mode = 'menu';
       ctx.bus.emit('game:over:dismissed', {});
@@ -186,6 +202,9 @@ export const gameOverScreen = {
     // Freeze the sim under the game-over screen (the run is over; nothing should advance).
     if (ctx.state) ctx.state.timeScale = 0;
     ctx.bus.emit('sim:pause', {});
+    if (this._defaultButton) {
+      try { this._defaultButton.focus({ preventScroll: true }); } catch (e) { try { this._defaultButton.focus(); } catch (err) {} }
+    }
   },
 
   onHide() {},
