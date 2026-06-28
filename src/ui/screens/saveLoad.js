@@ -174,6 +174,10 @@ function loadConfirmBody(id, meta) {
 function overwriteConfirmBody(id, meta) {
   return 'This will replace the existing save in ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. This cannot be undone.';
 }
+export function importConfirmBody(file) {
+  const name = (typeof file === 'string' ? file : (file && file.name)) || 'selected save file';
+  return 'Importing ' + name + ' will validate and load that save immediately. Unsaved progress is lost.';
+}
 export function slotObjectiveSummary(meta) {
   if (!meta) return '';
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
@@ -364,9 +368,15 @@ export const saveLoadScreen = {
     } catch (e) { ctx.bus.emit('toast', { text: 'Export failed', kind: 'warn', ttl: 2500 }); }
   },
 
-  _import(ctx, fileIn) {
+  async _import(ctx, fileIn) {
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
+    const confirmed = await confirm({
+      title: 'Import save file?',
+      body: importConfirmBody(f),
+      confirmLabel: 'Import & Load', danger: true,
+    });
+    if (!confirmed) { fileIn.value = ''; return; }
     const finish = (ok) => {
       ctx.bus.emit('toast', { text: ok ? 'Save imported' : 'Import failed', kind: ok ? 'good' : 'warn', ttl: 2800 });
       fileIn.value = '';
