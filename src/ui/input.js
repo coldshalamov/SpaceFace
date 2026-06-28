@@ -334,6 +334,39 @@ export function createUiInput(ctx, screenManager) {
     return null;
   }
 
+  function stationTabButtons() {
+    const root = activeScreenEl();
+    if (!root || root.dataset.screen !== 'station') return [];
+    return Array.from(root.querySelectorAll('[role="tab"][data-tab], .st-rail [data-tab]')).filter((el) => {
+      if (!el || el.disabled) return false;
+      let p = el;
+      while (p && p !== root) {
+        if (p.style && p.style.display === 'none') return false;
+        p = p.parentNode;
+      }
+      return true;
+    });
+  }
+
+  function clickStationTab(btn) {
+    if (!btn || btn.disabled) return false;
+    if (typeof btn.click === 'function') btn.click();
+    else if (typeof MouseEvent !== 'undefined') btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    else return false;
+    try { btn.focus(); } catch (e) {}
+    return true;
+  }
+
+  function cycleStationTab(dir) {
+    const tabs = stationTabButtons();
+    if (!tabs.length) return false;
+    let idx = tabs.findIndex((el) => el.classList && el.classList.contains('active'));
+    if (idx < 0) idx = tabs.findIndex((el) => el.getAttribute('aria-selected') === 'true');
+    if (idx < 0) idx = 0;
+    const next = (idx + dir + tabs.length) % tabs.length;
+    return clickStationTab(tabs[next]);
+  }
+
   function moveFocus(dir) {
     const root = activeScreenEl();
     const items = focusableInside(root);
@@ -388,6 +421,18 @@ export function createUiInput(ctx, screenManager) {
     if (modalOpen) {
       if (isConfirmOpen()) return; // confirm dialog traps all keys/buttons
 
+      const def = screenManager.getActiveScreenDef && screenManager.getActiveScreenDef();
+      if (def && def.id === 'station') {
+        if (gp.actions.tabPrev && gp.actions.tabPrev.pressed && cycleStationTab(-1)) {
+          bus.emit('ui:navigate', {});
+          return;
+        }
+        if (gp.actions.tabNext && gp.actions.tabNext.pressed && cycleStationTab(1)) {
+          bus.emit('ui:navigate', {});
+          return;
+        }
+      }
+
       // Keyboard M already toggles the Star Map through starmap.onKey(); mirror that with
       // View/Select so controller players can open and close the strategic map with one control.
       if (top === 'starmap' && gp.actions.map && gp.actions.map.pressed) {
@@ -404,7 +449,6 @@ export function createUiInput(ctx, screenManager) {
         bus.emit('audio:cue', { id: 'ui_confirm' });
       }
       if (gp.actions.cancel && gp.actions.cancel.pressed) {
-        const def = screenManager.getActiveScreenDef && screenManager.getActiveScreenDef();
         if (def && def.id === 'station') undock();
         else if (!screenManager.locked || !screenManager.locked()) screenManager.popScreen();
         bus.emit('ui:cancel', {});

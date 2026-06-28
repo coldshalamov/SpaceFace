@@ -55,6 +55,8 @@ const ACTION_MAP = {
   countermeasure: ['r3'],
   accept: ['accept'],
   cancel: ['cancel'],
+  tabPrev: ['l1'],
+  tabNext: ['r1'],
 };
 
 const DEFAULT_DEADZONE = 0.12;

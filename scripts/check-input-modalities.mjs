@@ -27,6 +27,8 @@ assert.match(gamepadSrc, /export function createGamepad/, 'gamepad.js must expor
 assert.match(touchSrc, /export function createTouch/, 'touch.js must export createTouch');
 assert.match(gamepadSrc, /mine:\s*\['l2'\]/, 'gamepad.js must map LT/L2 to the mining action');
 assert.match(gamepadSrc, /countermeasure:\s*\['r3'\]/, 'gamepad.js must map R3 to the countermeasure action');
+assert.match(gamepadSrc, /tabPrev:\s*\['l1'\]/, 'gamepad LB/L1 must expose station tab-previous UI intent');
+assert.match(gamepadSrc, /tabNext:\s*\['r1'\]/, 'gamepad RB/R1 must expose station tab-next UI intent');
 assert.doesNotMatch(gamepadSrc, /fire:\s*\[[^\]]*accept/, 'gamepad A/Cross should be dock/activate, not a second fire trigger');
 
 // 2. input.js imports + creates both.
@@ -95,4 +97,11 @@ assert.match(screenManagerSrc, /state\.mode === 'menu' && stack\.length === 1 &&
 assert.match(uiInputSrc, /key === 'Escape'[\s\S]*screenManager\.locked[\s\S]*if \(locked\) return;[\s\S]*def && def\.id === 'station'[\s\S]*undock\(\)/,
   'Keyboard Escape must honor ScreenManager.locked() before popping so the root title menu cannot vanish');
 
-console.log('Input modalities OK — keyboard+mouse (always) + gamepad (getGamepads) + touch (virtual sticks) all wired + merged + normalized.');
+// 6. Controller parity for the docked station rail: LB/RB should cycle the same authored tablist
+// that keyboard navigation and mouse clicks use, without inventing another station route.
+assert.match(uiInputSrc, /function cycleStationTab\(dir\)/, 'UI input must support cycling docked station tabs from gamepad');
+assert.match(uiInputSrc, /root\.dataset\.screen !== 'station'/, 'station tab cycling must only run on the station screen');
+assert.match(uiInputSrc, /gp\.actions\.tabPrev[\s\S]*cycleStationTab\(-1\)/, 'station hub must support LB/L1 previous-tab cycling');
+assert.match(uiInputSrc, /gp\.actions\.tabNext[\s\S]*cycleStationTab\(1\)/, 'station hub must support RB/R1 next-tab cycling');
+
+console.log('Input modalities OK — keyboard+mouse + gamepad + touch are wired, normalized, and station controller tab parity is guarded.');
