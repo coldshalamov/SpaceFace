@@ -822,7 +822,8 @@ export function createHud(ctx, alerts) {
     if (cargoSys && cargoSys.jettison) {
       const dumped = cargoSys.jettison(commodityId, qty || 1);
       if (dumped > 0) {
-        ctx.bus.emit('toast', { text: `Jettisoned ${dumped}x ${commodityId.replace('cmdty_', '').replace(/_/g, ' ')}`, kind: 'warn', ttl: 2 });
+        const name = cargoDisplayName(commodityId);
+        ctx.bus.emit('toast', { text: `Jettisoned ${dumped}x ${name}`, kind: 'warn', ttl: 2 });
       }
     }
   });
