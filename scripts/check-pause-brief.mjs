@@ -10,11 +10,10 @@ assert.match(pauseSrc, /FLIGHT BRIEF/, 'pause menu should render a visible fligh
 assert.match(pauseSrc, /aria-live/, 'flight brief should announce refreshed objective state politely');
 assert.match(pauseSrc, /Mission Log \(' \+ BINDINGS\.missionLog\.label \+ '\)/,
   'pause menu should label the Mission Log action with the live binding');
-assert.match(pauseSrc, /function pauseMapAction\(state\)/,
-  'pause menu should keep contextual map routing policy directly testable');
-assert.match(pauseSrc, /pauseMapAction\(ctx && ctx\.state\)[\s\S]*nav\(ctx, 'pushScreen', mapAction\.id\)/,
-  'pause menu should expose a contextual map action when a waypoint is set');
 assert.match(pauseSrc, /export function pauseStatusLines/, 'pause brief policy should stay directly testable');
+assert.match(pauseSrc, /export function pauseMapAction/, 'pause map action policy should stay directly testable');
+assert.match(pauseSrc, /mk\('Review ' \+ mapAction\.label/,
+  'pause menu should expose a waypoint map review action when nav is set');
 assert.match(pauseSrc, /export function pauseExitConfirmBody/,
   'pause exit confirmation policy should stay directly testable');
 assert.match(pauseSrc, /body: pauseExitConfirmBody\(ctx && ctx\.state, 'load'\)/,
@@ -90,22 +89,26 @@ lines = pauseStatusLines({
 });
 assert.match(lines.objective, /^NAV SET/);
 assert.match(lines.objective, /Sell Food at Vesta Exchange/);
-assert.match(lines.next, /Star Map \(/);
+assert.match(lines.next, /Local Map \(N\)/);
 assert.match(lines.save, /^Unsaved run/);
 
 let mapAction = pauseMapAction({
-  nav: { waypoint: { label: 'Local salvage marker', pos: { x: 10, z: 20 } } },
-  world: { currentSectorId: 'sector_helios_prime' },
+  world: { currentSectorId: 'sector_helios' },
+  nav: { waypoint: { label: 'Sell Food at Vesta Exchange', pos: { x: 100, z: -60 }, sectorId: 'sector_helios' } },
 });
-assert.equal(mapAction.id, 'localmap');
-assert.match(mapAction.label, /Local Map \(/);
+assert.equal(mapAction.screenId, 'localmap');
+assert.equal(mapAction.label, 'Local Map (N)');
+assert.match(mapAction.hint, /live marker/);
 
 mapAction = pauseMapAction({
-  nav: { waypoint: { label: 'Off-sector trade', sectorId: 'sector_vesta' } },
-  world: { currentSectorId: 'sector_helios_prime' },
+  world: { currentSectorId: 'sector_helios' },
+  nav: { waypoint: { label: 'Sell Food at Meridian Exchange', sectorId: 'sector_meridian' } },
 });
-assert.equal(mapAction.id, 'starmap');
-assert.match(mapAction.label, /Star Map \(/);
+assert.equal(mapAction.screenId, 'starmap');
+assert.equal(mapAction.label, 'Star Map (M)');
+assert.match(mapAction.hint, /inter-system route/);
+
+assert.equal(pauseMapAction({ nav: {} }), null);
 
 body = pauseExitConfirmBody({
   simTime: 10,
