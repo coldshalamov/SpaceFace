@@ -8,22 +8,100 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { SHIPS } from '../../data/ships.js';
+import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 const WPN_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 const TIER_LABEL = { refine: 'REFINE', assemble: 'ASSEMBLE', augment: 'AUGMENT', ship: 'SHIPYARD' };
 
-function niceName(id, kind) {
-  const raw = (() => {
+function rawName(id, kind) {
+  return (() => {
     if (kind === 'ship') return (SHIP_BY_ID.get(id) || {}).name || id;
     if (kind === 'weapon') return (WPN_BY_ID.get(id) || {}).name || id;
     if (kind === 'module') return (MOD_BY_ID.get(id) || {}).name || id;
     return (CMDTY_BY_ID.get(id) || {}).name || id;
   })();
-  return escapeHtml(raw);
+}
+
+function niceName(id, kind) {
+  return escapeHtml(rawName(id, kind));
+}
+
+function techName(id) {
+  const node = TECH_BY_ID.get(id);
+  return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}
+
+export function describeManufactureBuildAction(bp, player = {}, opts = {}) {
+  if (!bp) {
+    return {
+      state: 'missing',
+      disabled: true,
+      label: 'Unavailable',
+      title: 'Select a blueprint to inspect build options.',
+    };
+  }
+  const researched = new Set(player.researchedNodes || []);
+  const items = (player.cargo && player.cargo.items) || {};
+  if (bp.requiresTech && !researched.has(bp.requiresTech)) {
+    const req = techName(bp.requiresTech);
+    return {
+      state: 'tech',
+      disabled: true,
+      label: 'Research ' + req,
+      title: bp.name + ' requires ' + req + ' before manufacturing.',
+    };
+  }
+  if (bp.category === 'augment' && bp.fromModule && countOwnedModule(player, bp.fromModule) <= 0) {
+    const source = rawName(bp.fromModule, 'module');
+    return {
+      state: 'source',
+      disabled: true,
+      label: 'Need ' + source,
+      title: bp.name + ' consumes one owned ' + source + '.',
+    };
+  }
+  for (const id in (bp.inputs || {})) {
+    const need = Math.max(0, Number(bp.inputs[id]) || 0);
+    const have = Math.max(0, Number(items[id]) || 0);
+    if (have < need) {
+      const missing = need - have;
+      const material = rawName(id, 'commodity');
+      return {
+        state: 'materials',
+        disabled: true,
+        label: 'Need ' + missing + ' ' + material,
+        title: bp.name + ' needs ' + need + ' ' + material + '; you have ' + have + '.',
+      };
+    }
+  }
+  if (opts.busy) {
+    return {
+      state: 'busy',
+      disabled: true,
+      label: 'Fab busy',
+      title: 'Finish ' + (opts.inProgress || 'the current fabrication job') + ' before starting ' + bp.name + '.',
+    };
+  }
+  return {
+    state: 'available',
+    disabled: false,
+    label: 'Build',
+    title: 'Build ' + bp.name + '.',
+  };
+}
+
+function countOwnedModule(player, defId) {
+  let count = 0;
+  for (const item of (player.moduleInventory || [])) if (item && item.defId === defId) count++;
+  for (const ship of (player.ownedShips || [])) {
+    for (const fitting of (ship && ship.fittings) || []) if (fitting === defId) count++;
+  }
+  return count;
 }
 
 export function createManufacturePanel(ctx) {
@@ -98,30 +176,27 @@ export function createManufacturePanel(ctx) {
 
         const outNm = niceName(bp.outputs.id, bp.outputs.kind);
         const qtyLabel = bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : '';
-        const techLabel = (!techOk && bp.requiresTech) ? `<span class="sf-badge sf-badge--warn">🔒 ${escapeHtml(bp.requiresTech)}</span>` : '';
+        const techLabel = (!techOk && bp.requiresTech) ? `<span class="sf-badge sf-badge--warn">🔒 ${escapeHtml(techName(bp.requiresTech))}</span>` : '';
 
         // augment: note the consumed source module
         const augNote = (bp.category === 'augment' && bp.fromModule)
           ? `<div class="st-manuf-augnote">Consumes 1× ${niceName(bp.fromModule, 'module')}</div>` : '';
 
-        // buildable check (mirror crafting.status, but cheap local version for the button state)
-        let canBuild = techOk;
-        for (const id in bp.inputs) if ((items[id] || 0) < bp.inputs[id]) canBuild = false;
         // V2 cut-list #3: timed recipes share a 1-slot queue per station — disable build while busy
         const timeS = crafting ? crafting.buildTime(bp) : 0;
         const sid = ctx.state.ui && ctx.state.ui.dockedStationId;
         const busy = timeS > 0 && crafting && crafting.isBusy(sid);
-        if (busy) canBuild = false;
         const inProgress = busy && crafting.progress && crafting._currentJobName
           ? crafting._currentJobName(sid) : null;
+        const buildAction = describeManufactureBuildAction(bp, p, { busy, inProgress });
+        const canBuild = !buildAction.disabled;
 
         const timeLabel = timeS > 0 ? `<span class="st-manuf-time">${Math.round(timeS)}s fab</span>` : '';
-        const buildBtnText = inProgress ? 'BUILDING…' : 'BUILD';
 
         card.innerHTML =
           `<div class="st-manuf-card-h">
              <div class="st-manuf-title">${escapeHtml(bp.name)}${techLabel}</div>
-             <button class="sf-btn sf-btn--primary st-manuf-build" data-act="build" data-bp="${escapeHtml(bp.id)}" ${canBuild ? '' : 'disabled'}>${escapeHtml(buildBtnText)}</button>
+             <button class="sf-btn sf-btn--primary st-manuf-build" data-act="build" data-bp="${escapeHtml(bp.id)}" title="${escapeHtml(buildAction.title)}" aria-label="${escapeHtml(buildAction.title)}" ${canBuild ? '' : 'disabled'}>${escapeHtml(buildAction.label)}</button>
            </div>
            <div class="st-manuf-desc">${escapeHtml(bp.desc || '')}${timeLabel}</div>
            ${augNote}

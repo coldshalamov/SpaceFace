@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+import { BLUEPRINTS } from '../src/data/blueprints.js';
+import { describeManufactureBuildAction } from '../src/ui/screens/manufacture.js';
+
+const source = readFileSync(new URL('../src/ui/screens/manufacture.js', import.meta.url), 'utf8');
+const bp = (id) => BLUEPRINTS.find((entry) => entry.id === id);
+
+let guidance = describeManufactureBuildAction(bp('bp_build_pulse_laser_s'), {
+  researchedNodes: [],
+  cargo: { items: {} },
+});
+assert.equal(guidance.state, 'tech');
+assert.equal(guidance.disabled, true);
+assert.equal(guidance.label, 'Research Combat Basics');
+assert.match(guidance.title, /requires Combat Basics/);
+
+guidance = describeManufactureBuildAction(bp('bp_refine_metals'), {
+  researchedNodes: [],
+  cargo: { items: { cmdty_ore_iron: 2, cmdty_ore_titanium: 1 } },
+});
+assert.equal(guidance.state, 'materials');
+assert.equal(guidance.disabled, true);
+assert.equal(guidance.label, 'Need 1 Iron Ore');
+assert.match(guidance.title, /needs 3 Iron Ore; you have 2/);
+
+guidance = describeManufactureBuildAction(bp('bp_aug_shield_s_to_m'), {
+  researchedNodes: ['tech_deflector_theory'],
+  cargo: { items: {
+    cmdty_comp_circuitry: 2,
+    cmdty_alloys: 2,
+    cmdty_quantum_cores: 1,
+  } },
+  moduleInventory: [],
+  ownedShips: [],
+});
+assert.equal(guidance.state, 'source');
+assert.equal(guidance.disabled, true);
+assert.equal(guidance.label, 'Need Shield Booster S');
+assert.match(guidance.title, /consumes one owned Shield Booster S/);
+
+guidance = describeManufactureBuildAction(bp('bp_refine_metals'), {
+  researchedNodes: [],
+  cargo: { items: { cmdty_ore_iron: 3, cmdty_ore_titanium: 1 } },
+}, { busy: true, inProgress: 'Build Cargo Pod (M)' });
+assert.equal(guidance.state, 'busy');
+assert.equal(guidance.disabled, true);
+assert.equal(guidance.label, 'Fab busy');
+assert.match(guidance.title, /Finish Build Cargo Pod/);
+
+guidance = describeManufactureBuildAction(bp('bp_refine_metals'), {
+  researchedNodes: [],
+  cargo: { items: { cmdty_ore_iron: 3, cmdty_ore_titanium: 1 } },
+});
+assert.equal(guidance.state, 'available');
+assert.equal(guidance.disabled, false);
+assert.equal(guidance.label, 'Build');
+
+assert.match(source, /export function describeManufactureBuildAction/);
+assert.match(source, /aria-label="\$\{escapeHtml\(buildAction\.title\)\}"/);
+assert.match(source, /techName\(bp\.requiresTech\)/);
+assert.doesNotMatch(source, />BUILD<\/button>/);
+assert.doesNotMatch(source, /escapeHtml\(bp\.requiresTech\)/);
+
+console.log('Manufacturing guidance OK - build buttons explain tech, material, source, and queue blockers.');
