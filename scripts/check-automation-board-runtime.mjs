@@ -48,22 +48,32 @@ try {
     const screen = document.getElementById('sf-automation');
     const board = screen && screen.querySelector('.au-command');
     const summary = screen && screen.querySelector('.au-summary');
-    const cta = board && board.querySelector('button[data-act="switchTab"]');
+    const cta = board && board.querySelector('button.au-cta[data-act]');
+    const beforeAssets = (sf.state.automation.drones || []).length +
+      (sf.state.automation.traders || []).length +
+      (sf.state.automation.outposts || []).length +
+      (sf.state.automation.fleet || []).length;
+    const ctaAct = cta ? cta.dataset.act : null;
     const ctaRef = cta ? cta.dataset.ref : null;
     const otherTab = screen && [...screen.querySelectorAll('.au-tab')]
-      .find((tab) => tab.dataset.tab && tab.dataset.tab !== ctaRef);
+      .find((tab) => tab.dataset.tab && tab.dataset.tab !== (ctaAct === 'switchTab' ? ctaRef : null));
     if (otherTab) otherTab.click();
     await new Promise((resolve) => setTimeout(resolve, 80));
     const liveBoard = screen && screen.querySelector('.au-command');
-    const liveCta = liveBoard && liveBoard.querySelector('button[data-act="switchTab"]');
+    const liveCta = liveBoard && liveBoard.querySelector('button.au-cta[data-act]');
     const initialTab = [...screen.querySelectorAll('.au-tab')]
       .find((tab) => tab.classList.contains('active'))?.dataset.tab || null;
     const liveCtaText = liveCta ? liveCta.textContent.trim() : null;
+    const liveCtaAct = liveCta ? liveCta.dataset.act : null;
     const liveCtaRef = liveCta ? liveCta.dataset.ref : null;
     if (liveCta) liveCta.click();
     await new Promise((resolve) => setTimeout(resolve, 80));
     const afterTab = [...screen.querySelectorAll('.au-tab')]
       .find((tab) => tab.classList.contains('active'))?.dataset.tab || null;
+    const afterAssets = (sf.state.automation.drones || []).length +
+      (sf.state.automation.traders || []).length +
+      (sf.state.automation.outposts || []).length +
+      (sf.state.automation.fleet || []).length;
     const text = screen ? screen.textContent.replace(/\s+/g, ' ').trim() : '';
     const rect = screen ? screen.getBoundingClientRect() : null;
     return {
@@ -73,8 +83,11 @@ try {
       summaryVisible: !!summary,
       initialTab,
       ctaText: liveCtaText,
+      ctaAct: liveCtaAct,
       ctaRef: liveCtaRef,
       afterTab,
+      beforeAssets,
+      afterAssets,
       text,
     };
   });
@@ -84,13 +97,21 @@ try {
   assert.equal(report.visible, true, 'Automation screen should be visible');
   assert.equal(report.boardVisible, true, 'Operations Board should render');
   assert.equal(report.summaryVisible, true, 'Automation summary metrics should render');
-  assert.ok(report.ctaRef, 'Operations Board CTA should declare a target tab');
+  assert.ok(report.ctaAct, 'Operations Board CTA should declare an action');
+  assert.ok(['switchTab', 'buyDrone', 'hireTrader', 'buildOutpost', 'assignFleet'].includes(report.ctaAct),
+    'Operations Board CTA should use a supported automation action');
+  assert.ok(report.ctaRef, 'Operations Board CTA should declare an action target');
   assert.ok(report.ctaText, 'Operations Board CTA should have a visible label');
-  assert.notEqual(report.initialTab, report.ctaRef, 'Runtime probe should start from a different tab than the board target');
   assert.match(report.text, /Operations Board/, 'screen text should include the board heading');
   assert.match(report.text, /Deploy a mining drone|Stabilize distressed assets|Raise automation ceiling|route trader|Outpost Charter|Keep routes defended/,
     'board should show a concrete next action');
-  assert.equal(report.afterTab, report.ctaRef, 'Operations Board CTA should switch to its recommended tab');
+  if (report.ctaAct === 'switchTab') {
+    assert.notEqual(report.initialTab, report.ctaRef, 'Runtime probe should start from a different tab than the board target');
+    assert.equal(report.afterTab, report.ctaRef, 'Operations Board CTA should switch to its recommended tab');
+  } else {
+    assert(report.afterAssets > report.beforeAssets,
+      'Operations Board direct CTA should create or assign the recommended automation asset');
+  }
   assert.deepEqual(issues.errorIssues(), [], 'automation board runtime should not record page errors');
 
   mkdirSync(dirname(SHOT), { recursive: true });

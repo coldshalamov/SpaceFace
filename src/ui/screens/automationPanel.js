@@ -323,6 +323,8 @@ export const automationScreen = {
       Math.round(summary.totalPassiveEarnedLifetime || 0),
       next && next.tab,
       next && next.title,
+      next && next.action,
+      next && next.targetRef,
     ];
     if (this._tab === 'drones') {
       for (const d of a.drones || []) {
@@ -375,6 +377,10 @@ export const automationScreen = {
   _renderOperationsBoard(frag) {
     const summary = summarizeAutomationOperations(this._ctx.state);
     const next = automationNextAction(this._ctx.state);
+    const action = next.action || 'switchTab';
+    const actionTarget = next.targetRef != null ? next.targetRef : next.tab;
+    const actionTitle = next.actionTitle || next.cta;
+    const kindAttr = next.kind ? ` data-kind="${escapeHtml(next.kind)}"` : '';
     const wrap = document.createElement('div');
     wrap.className = 'au-command';
     wrap.innerHTML = `
@@ -384,7 +390,7 @@ export const automationScreen = {
         <div class="au-next-body">${escapeHtml(next.body)}</div>
         <div class="au-next-row">
           <span class="au-next-meta">${escapeHtml(next.meta)}</span>
-          <button class="au-cta" data-act="switchTab" data-ref="${escapeHtml(next.tab)}">${escapeHtml(next.cta)}</button>
+          <button class="au-cta" data-act="${escapeHtml(action)}" data-ref="${escapeHtml(actionTarget)}"${kindAttr} title="${escapeHtml(actionTitle)}" aria-label="${escapeHtml(actionTitle)}">${escapeHtml(next.cta)}</button>
         </div>
       </div>
       <div class="au-summary" aria-label="Automation summary">
@@ -732,18 +738,29 @@ export function automationNextAction(state) {
   const hasTraderTech = researched.includes('tech_autonomous_fleets');
   const hasOutpostTech = researched.includes('tech_outpost_charter');
   const droneMk1 = DRONES[0] || {};
-  const spareShips = ((player.ownedShips || []).length - 1) > 0;
+  const ownedShips = player.ownedShips || [];
+  const activeShipIndex = player.activeShipIndex || 0;
+  const spareShipIndex = ownedShips.findIndex((_ship, index) => index !== activeShipIndex);
+  const spareShips = spareShipIndex >= 0;
   if (summary.distressedAssets > 0) {
     return nextAction('drones', 'Stabilize distressed assets',
       'Your automation is unpaid or under attack. Bank drone buffers, cut upkeep, or fly rescue before repossession.',
       `${summary.distressedAssets} distressed`, 'Review Assets');
   }
   if (!(a.drones || []).length) {
+    const purchase = describeAutomationPurchase('drone', droneMk1, state);
     return nextAction('drones', 'Deploy a mining drone',
       credits >= (droneMk1.cost || 0)
         ? 'Start the passive layer with a Mk1 drone. It is cheap, visible in the field, and recallable if the route goes bad.'
         : 'Earn enough credits for a Mk1 mining drone, then start automation with a reversible low-upkeep asset.',
-      `${fmtCr(droneMk1.cost || 0)} cr starter`, 'Open Drone Bay');
+      `${fmtCr(droneMk1.cost || 0)} cr starter`,
+      purchase.state === 'available' ? 'Deploy Mk1' : 'Open Drone Bay',
+      purchase.state === 'available' ? {
+        action: 'buyDrone',
+        targetRef: droneMk1.id,
+        kind: 'drone',
+        actionTitle: purchase.title,
+      } : { actionTitle: purchase.title });
   }
   if (summary.capUsedPct >= 90) {
     return nextAction('drones', 'Raise automation ceiling',
@@ -751,10 +768,19 @@ export function automationNextAction(state) {
       `${Math.round(summary.capUsedPct)}% cap load`, 'Review Drones');
   }
   if (!(a.traders || []).length) {
+    const trader = TRADERS[0] || {};
+    const purchase = describeAutomationPurchase('trader', trader, state);
     if (hasTraderTech) {
       return nextAction('traders', 'Hire a route trader',
         'Turn market spreads into managed income. Reroute when heat climbs so the lane keeps paying.',
-        'Autonomous Fleets ready', 'Open Traders');
+        'Autonomous Fleets ready',
+        purchase.state === 'available' ? 'Hire Hauler' : 'Open Traders',
+        purchase.state === 'available' ? {
+          action: 'hireTrader',
+          targetRef: trader.id,
+          kind: 'trader',
+          actionTitle: purchase.title,
+        } : { actionTitle: purchase.title });
     }
     return nextAction('traders', 'Research Autonomous Fleets',
       'Traders unlock after the drone layer, giving the player a second automation verb: managing route heat and danger.',
@@ -762,9 +788,18 @@ export function automationNextAction(state) {
   }
   if (!(a.outposts || []).length) {
     if (hasOutpostTech) {
+      const outpost = cheapestOutpost();
+      const purchase = describeAutomationPurchase('outpost', outpost, state);
       return nextAction('outposts', 'Found a sector outpost',
         'Outposts convert money into territory. Build one where your fleet can absorb raids and upkeep.',
-        'Charter ready', 'Open Outposts');
+        'Charter ready',
+        purchase.state === 'available' ? 'Build Outpost' : 'Open Outposts',
+        purchase.state === 'available' ? {
+          action: 'buildOutpost',
+          targetRef: outpost.id,
+          kind: 'outpost',
+          actionTitle: purchase.title,
+        } : { actionTitle: purchase.title });
     }
     return nextAction('outposts', 'Work toward Outpost Charter',
       'The empire layer should come after traders prove the route economy and the player can fund higher upkeep.',
@@ -773,15 +808,36 @@ export function automationNextAction(state) {
   if (!(a.fleet || []).length && spareShips) {
     return nextAction('fleet', 'Assign a spare hull',
       'Crew a second owned ship as a wingman so automation risk starts feeling protectable, not random.',
-      `${(player.ownedShips || []).length - 1} spare hulls`, 'Open Fleet');
+      `${ownedShips.length - 1} spare hulls`, 'Assign Wingman', {
+        action: 'assignFleet',
+        targetRef: spareShipIndex,
+        kind: 'ownedShip',
+        actionTitle: 'Assign spare hull as a wingman.',
+      });
   }
   return nextAction('fleet', 'Keep routes defended',
     'Your automation stack is online. Keep the cap healthy, rotate hot trader routes, and add escorts before dangerous expansion.',
     `${fmtCr(summary.netRatePerMin)} cr/min net`, 'Review Fleet');
 }
 
-function nextAction(tab, title, body, meta, cta) {
-  return { tab, title, body, meta, cta };
+function nextAction(tab, title, body, meta, cta, options = {}) {
+  return {
+    tab,
+    title,
+    body,
+    meta,
+    cta,
+    action: options.action || 'switchTab',
+    targetRef: options.targetRef != null ? options.targetRef : tab,
+    kind: options.kind || null,
+    actionTitle: options.actionTitle || cta,
+  };
+}
+
+function cheapestOutpost() {
+  return OUTPOSTS
+    .slice()
+    .sort((a, b) => automationPurchaseCost('outpost', a) - automationPurchaseCost('outpost', b))[0] || {};
 }
 
 function automationState(state) {

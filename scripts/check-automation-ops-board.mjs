@@ -23,6 +23,16 @@ let next = automationNextAction(baseState);
 assert.equal(next.tab, 'drones', 'first automation recommendation should send players to drones');
 assert.match(next.title, /Deploy a mining drone/, 'first recommendation should name the concrete starter asset');
 assert.match(next.body, /Mk1 drone/, 'first recommendation should explain why the starter asset matters');
+assert.equal(next.action, 'buyDrone', 'funded starter drone recommendation should be directly actionable');
+assert.equal(next.targetRef, 'drone_mk1', 'starter drone recommendation should target the Mk1 catalog id');
+assert.equal(next.kind, 'drone', 'starter drone recommendation should carry the automation kind');
+
+next = automationNextAction({
+  player: { credits: 1000, droneTierCap: 1, researchedNodes: [], ownedShips: [{ defId: 'ship_kestrel' }] },
+  automation: { drones: [], traders: [], outposts: [], fleet: [], meta: {} },
+});
+assert.equal(next.action, 'switchTab', 'unfunded starter drone recommendation should review the bay instead of firing a buy intent');
+assert.equal(next.targetRef, 'drones');
 
 let guidance = describeAutomationPurchase('drone', DRONES.find((entry) => entry.id === 'drone_mk2'), baseState);
 assert.equal(guidance.state, 'tier', 'locked drone tiers should be explained before credits');
@@ -82,6 +92,47 @@ const traderReadyState = {
 next = automationNextAction(traderReadyState);
 assert.equal(next.tab, 'traders', 'trader-ready recommendation should stay on the trader tab');
 assert.match(next.title, /Hire a route trader/, 'trader-ready recommendation should become actionable');
+assert.equal(next.action, 'hireTrader', 'funded trader recommendation should fire the hire intent directly');
+assert.equal(next.targetRef, 'trader_hauler_l');
+
+const outpostReadyState = {
+  player: {
+    credits: 120000,
+    droneTierCap: 4,
+    researchedNodes: ['tech_autonomous_fleets', 'tech_outpost_charter'],
+    ownedShips: [{ defId: 'ship_kestrel' }],
+  },
+  automation: {
+    drones: [{ id: 1, defId: 'drone_mk1', status: 'mining', ratePerMin: 80 }],
+    traders: [{ id: 2, defId: 'trader_hauler_l', status: 'active', ratePerMin: 110 }],
+    outposts: [],
+    fleet: [],
+    meta: {},
+  },
+};
+next = automationNextAction(outpostReadyState);
+assert.equal(next.action, 'buildOutpost', 'funded outpost recommendation should fire the build intent directly');
+assert.equal(next.targetRef, 'outpost_fuelsynth', 'outpost recommendation should target the cheapest chartered starter outpost');
+
+const spareHullState = {
+  player: {
+    credits: 120000,
+    droneTierCap: 4,
+    researchedNodes: ['tech_autonomous_fleets', 'tech_outpost_charter'],
+    activeShipIndex: 0,
+    ownedShips: [{ defId: 'ship_kestrel' }, { defId: 'ship_pelican' }],
+  },
+  automation: {
+    drones: [{ id: 1, defId: 'drone_mk1', status: 'mining', ratePerMin: 80 }],
+    traders: [{ id: 2, defId: 'trader_hauler_l', status: 'active', ratePerMin: 110 }],
+    outposts: [{ id: 3, defId: 'outpost_fuelsynth', status: 'active', ratePerMin: 90 }],
+    fleet: [],
+    meta: {},
+  },
+};
+next = automationNextAction(spareHullState);
+assert.equal(next.action, 'assignFleet', 'spare-hull recommendation should assign the first non-active owned ship');
+assert.equal(next.targetRef, 1);
 
 const distressedState = {
   player: traderReadyState.player,
@@ -98,7 +149,9 @@ assert.match(next.title, /Stabilize/, 'distressed assets should override growth 
 
 const src = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
 assert.match(src, /Operations Board/, 'automation panel should render the operations board');
-assert.match(src, /data-act="switchTab"/, 'operations board CTA should switch to the recommended tab');
+assert.match(src, /const action = next\.action \|\| 'switchTab'/, 'operations board CTA should use direct action metadata with a switch-tab fallback');
+assert.match(src, /data-act="\$\{escapeHtml\(action\)\}"/, 'operations board CTA should render the recommended intent');
+assert.match(src, /data-kind="\$\{escapeHtml\(next\.kind\)\}"/, 'direct automation CTA should carry the intent kind when needed');
 assert.match(src, /summarizeAutomationOperations/, 'automation panel should expose a pure summary helper for tests');
 assert.match(src, /describeAutomationPurchase/, 'automation panel should centralize purchase guidance');
 assert.match(src, /aria-label="\$\{escapeHtml\(purchase\.title\)\}"/, 'automation purchase buttons should expose guidance to assistive tech');
