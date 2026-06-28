@@ -94,6 +94,13 @@ export function createScreenManager(ctx) {
     registry.set(def.id, { def, el: null, mounted: false });
   }
 
+  function ensureLocalmapCloseLabel(el) {
+    if (!el || el.dataset.screen !== 'localmap') return;
+    const btn = el.querySelector('.lm-close');
+    if (!btn) return;
+    btn.setAttribute('aria-label', 'Close Local Map');
+  }
+
   function build(id) {
     const rec = registry.get(id);
     if (!rec) return null;
@@ -106,6 +113,7 @@ export function createScreenManager(ctx) {
       rec.el = el;
       try { if (rec.def.mount) rec.def.mount(el, ctx); }
       catch (err) { console.error(`[screenManager] mount("${id}") failed:`, err); }
+      ensureLocalmapCloseLabel(el);
       rec.mounted = true;
     }
     return rec;
