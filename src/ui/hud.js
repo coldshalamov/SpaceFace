@@ -425,7 +425,8 @@ export function createHud(ctx, alerts) {
     const lines = [`Cargo: ${used} / ${cap} u`];
     for (const id of keys.slice(0, 8)) {
       const qty = items[id];
-      if (qty > 0) lines.push(`  ${id.replace('cmdty_', '').replace(/_/g, ' ')}: ${qty}`);
+      const name = cargoDisplayName(id);
+      if (qty > 0) lines.push(`  ${name}: ${qty}`);
     }
     if (keys.length > 8) lines.push(`  ... +${keys.length - 8} more`);
     return lines.join('\n');

@@ -21,6 +21,16 @@ assert.doesNotMatch(
 );
 assert.match(
   source,
+  /const name = cargoDisplayName\(id\);[\s\S]*lines\.push\(`  \$\{name\}: \$\{qty\}`\)/,
+  'cargo tooltip must use authored commodity names rather than raw cargo ids',
+);
+assert.doesNotMatch(
+  source,
+  /lines\.push\(`  \$\{id\.replace\('cmdty_'/,
+  'cargo tooltip must not leak raw cmdty_* ids through simple string replacement',
+);
+assert.match(
+  source,
   /Personal effects cannot be jettisoned/,
   'personal effects must remain protected from cargo jettison copy/actions',
 );
@@ -30,4 +40,4 @@ assert.match(
   'persistent cargo names must still resolve from narrative data',
 );
 
-console.log('Cargo jettison copy checks OK');
+console.log('Cargo display copy checks OK');
