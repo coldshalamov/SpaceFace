@@ -6,12 +6,14 @@
 // Catalog source: the ships system (ctx.registry.get('ships')) exposes nothing public for the
 // catalog, so we read the static SHIPS data and use the system only for unlock checks / sell.
 import { SHIPS } from '../../data/ships.js';
+import { TECH_NODES } from '../../data/tech.js';
 import { confirm } from '../confirm.js';
 import { createListControls, buildSortHeader, sortHeaderAria } from '../listControls.js';
 import { createShipPreviewMount } from '../shipPreviewMount.js';
 import { escapeHtml } from '../comms.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 
 // Drive-family short labels for the comparison header. Hulls carry a driveId that resolves to one
 // of the five propulsion families (spec §6): reaction, gravimetric, pulse plate, torch, or sail.
@@ -36,6 +38,47 @@ function driveLabelFor(def) {
 }
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
+function techName(id) {
+  const node = TECH_BY_ID.get(id);
+  return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}
+
+export function describeShipyardPurchase(def, player = {}, unlocked = true) {
+  if (!def) {
+    return {
+      state: 'missing',
+      disabled: true,
+      label: 'Unavailable',
+      title: 'Select a hull to inspect purchase options.',
+    };
+  }
+  const credits = Math.max(0, Number(player.credits) || 0);
+  const price = Math.max(0, Number(def.price) || 0);
+  if (!unlocked) {
+    const req = techName(def.requiresTech);
+    return {
+      state: 'locked',
+      disabled: true,
+      label: 'Research ' + req,
+      title: def.name + ' requires ' + req + ' before purchase.',
+    };
+  }
+  if (credits < price) {
+    const missing = Math.max(0, price - credits);
+    return {
+      state: 'funding',
+      disabled: true,
+      label: 'Need ' + fmtCr(missing) + ' cr',
+      title: def.name + ' costs ' + fmtCr(price) + ' cr. You need ' + fmtCr(missing) + ' more credits.',
+    };
+  }
+  return {
+    state: price > 0 ? 'available' : 'free',
+    disabled: false,
+    label: price > 0 ? 'Buy' : 'Claim',
+    title: (price > 0 ? 'Buy ' : 'Claim ') + def.name + ': ' + hullPurpose(def) + ' ' + hullNextStep(def),
+  };
+}
 
 function slotSummary(def) {
   const order = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
@@ -446,15 +489,10 @@ export function createShipyardPanel(ctx) {
       row.setAttribute('data-ship', def.id);
       const unlocked = isUnlocked(def);
       const owned = ownedDefIds.has(def.id);
-      const afford = p.credits >= (def.price || 0);
-      let btn;
-      if (!unlocked) btn = '<button disabled title="Requires ' + escapeHtml(def.requiresTech) + '">Locked</button>';
-      else {
-        const title = afford
-          ? 'Buy ' + def.name + ': ' + hullPurpose(def) + ' ' + hullNextStep(def)
-          : 'Need ' + fmtCr(def.price || 0) + ' CR to buy ' + def.name + '. Earn credits through missions, trade, mining, or salvage.';
-        btn = '<button data-act="buy"' + (afford ? '' : ' disabled') + ' title="' + escapeHtml(title) + '">Buy</button>';
-      }
+      const purchase = describeShipyardPurchase(def, p, unlocked);
+      const btn = '<button' + (purchase.disabled ? ' disabled' : ' data-act="buy"') +
+        ' title="' + escapeHtml(purchase.title) + '" aria-label="' + escapeHtml(purchase.title) + '">' +
+        escapeHtml(purchase.label) + '</button>';
       row.innerHTML =
         '<span class="c-name">' + escapeHtml(def.name) + (owned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
           '<br><span class="st-slotline mono">' + escapeHtml(slotSummary(def)) + '</span>' +
