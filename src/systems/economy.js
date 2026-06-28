@@ -547,7 +547,17 @@ export const economy = {
   handleTrade(commodityId, side, qty) {
     const state = this.state;
     const stationId = this.dockedStationId();
-    if (!stationId) { this.bus.emit('toast', { text: 'Not docked', kind: 'error', ttl: 2 }); return; }
+    if (!stationId) {
+      this.bus.emit('toast', { text: 'Not docked', kind: 'error', ttl: 2 });
+      this.bus.emit('economy:tradeFailed', {
+        stationId: null,
+        commodityId,
+        side,
+        qty: Math.max(0, Math.floor(Number(qty) || 0)),
+        reason: 'not_docked',
+      });
+      return;
+    }
     const res = this.execute(stationId, commodityId, side, qty);
     if (!res.ok) {
       const msg = res.reason === 'credits' ? 'Insufficient credits'
@@ -556,6 +566,14 @@ export const economy = {
         : res.reason === 'no_stock' ? 'Station out of stock'
         : 'Trade failed';
       this.bus.emit('toast', { text: msg, kind: 'error', ttl: 2 });
+      this.bus.emit('economy:tradeFailed', {
+        stationId,
+        commodityId,
+        side,
+        qty: Math.max(0, Math.floor(Number(qty) || 0)),
+        reason: res.reason || 'invalid',
+        need: res.need,
+      });
     }
     return res;
   },

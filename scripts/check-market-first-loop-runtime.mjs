@@ -192,6 +192,61 @@ try {
   assert.equal(navReport.waypoint && navReport.waypoint.stationId, '__probe_trade_dest', 'Set Nav should target the seeded buyer station');
   assert.match((navReport.waypoint && navReport.waypoint.label) || '', /Probe Buyer/, 'Trade waypoint should name the buyer station');
 
+  const blockedLoadStart = await page.evaluate(() => {
+    const btn = document.querySelector('[data-screen="station"] .st-pl-load');
+    if (!btn) return { clicked: false };
+    const sf = window.SF;
+    const state = sf.state;
+    const stationId = state.ui && state.ui.dockedStationId;
+    const cmdtyId = btn.getAttribute('data-cmdty');
+    const entry = state.economy.markets[stationId] && state.economy.markets[stationId][cmdtyId];
+    if (!entry) return { clicked: false, reason: 'missing-entry', stationId, cmdtyId };
+    const oldStock = entry.stock;
+    entry.stock = 1;
+    state.nav.waypoint = null;
+    state.nav.route = null;
+    state.nav.autoTravel = false;
+    const beforeQty = (state.player.cargo.items[cmdtyId]) || 0;
+    btn.click();
+    return {
+      clicked: true,
+      stationId,
+      cmdtyId,
+      oldStock,
+      beforeQty,
+      confirmOpen: !!document.querySelector('#sf-confirm-root .sf-confirm'),
+    };
+  });
+  assert.equal(blockedLoadStart.clicked, true, 'Blocked Load & Nav probe should be clickable: ' + JSON.stringify(blockedLoadStart));
+  if (blockedLoadStart.confirmOpen) {
+    await page.locator('#sf-confirm-root .sf-confirm__ok').click({ timeout: 10000 });
+  }
+  await page.waitForFunction(({ cmdtyId, beforeQty }) => {
+    const sf = window.SF;
+    const afterQty = (sf.state.player.cargo.items[cmdtyId]) || 0;
+    const waypoint = sf.state.nav && sf.state.nav.waypoint;
+    const foot = document.querySelector('[data-screen="station"] .st-foot-msg');
+    const footText = (foot && foot.textContent || '').toLowerCase();
+    return afterQty === beforeQty && !(waypoint && waypoint.kind === 'trade') &&
+      /route load (failed|did not complete)|nav unchanged/.test(footText);
+  }, { cmdtyId: blockedLoadStart.cmdtyId, beforeQty: blockedLoadStart.beforeQty }, { timeout: 5000 });
+  const blockedLoadReport = await page.evaluate((cmdtyId) => ({
+    afterQty: (window.SF.state.player.cargo.items[cmdtyId]) || 0,
+    waypoint: window.SF.state.nav && window.SF.state.nav.waypoint,
+    footer: (document.querySelector('[data-screen="station"] .st-foot-msg')?.textContent || '').replace(/\s+/g, ' ').trim(),
+  }), blockedLoadStart.cmdtyId);
+  assert.equal(blockedLoadReport.afterQty, blockedLoadStart.beforeQty,
+    'Failed Load & Nav should not add cargo: ' + JSON.stringify({ blockedLoadStart, blockedLoadReport }));
+  assert.notEqual(blockedLoadReport.waypoint && blockedLoadReport.waypoint.kind, 'trade',
+    'Failed Load & Nav should not set a trade waypoint: ' + JSON.stringify(blockedLoadReport));
+  assert.match(blockedLoadReport.footer, /nav unchanged/i,
+    'Failed Load & Nav should tell the player nav is unchanged: ' + JSON.stringify(blockedLoadReport));
+  await page.evaluate(({ stationId, cmdtyId, oldStock }) => {
+    const sf = window.SF;
+    const entry = sf.state.economy.markets[stationId] && sf.state.economy.markets[stationId][cmdtyId];
+    if (entry) entry.stock = oldStock;
+  }, blockedLoadStart);
+
   const loadStart = await page.evaluate(() => {
     const btn = document.querySelector('[data-screen="station"] .st-pl-load');
     if (!btn) return { clicked: false };

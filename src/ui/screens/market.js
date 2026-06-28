@@ -2,7 +2,7 @@
 // Lists commodities with the station's buy/sell prices, a qty stepper, and Buy/Sell buttons that
 // EMIT ui:buy / ui:sell {commodityId, qty}. Shows player cargo + credits. Read-only over sim state;
 // the economy system owns the trade + credits (§0.6, §4.4). Refreshes on
-// economy:tradeCompleted / economy:tick / cargo:changed.
+// economy:tradeCompleted / economy:tradeFailed / economy:tick / cargo:changed.
 //
 // Defensive by design: the economy system may be a stub at boot. We prefer
 //   ctx.registry.get('economy').quote(stationId, commodityId, side, qty)
@@ -125,6 +125,22 @@ function stationRoleFor(def, stationType) {
 }
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
+
+function tradeFailureText(reason) {
+  switch (reason) {
+    case 'credits': return 'insufficient credits';
+    case 'cargo_full': return 'cargo hold full';
+    case 'no_cargo': return 'nothing to sell';
+    case 'no_stock': return 'station out of stock';
+    case 'not_docked': return 'not docked';
+    default: return 'trade failed';
+  }
+}
+
+function setFooterText(footer, text) {
+  const msg = footer && footer.querySelector && footer.querySelector('.st-foot-msg');
+  if (msg) msg.textContent = text;
+}
 
 function commodityPurpose(c) {
   const cat = (c && c.category) || '';
@@ -251,6 +267,7 @@ export function createMarketPanel(ctx) {
 
   // qty per-row stepper state (commodityId -> qty), defaulting to 1.
   const qtyState = Object.create(null);
+  let pendingLoadNav = null;
 
   // --- header: credits + cargo summary ---
   const header = document.createElement('div');
@@ -315,11 +332,14 @@ export function createMarketPanel(ctx) {
         routeName: stationName(ctx.state, destStationId),
       });
       if (!ok) return;
+      pendingLoadNav = { stationId, destStationId, cmdtyId, qty };
       ctx.bus.emit('ui:buy', { commodityId: cmdtyId, qty });
-      applyTradeNavigation(ctx, destStationId, cmdtyId);
-      footer.querySelector('.st-foot-msg').textContent =
-        'Loading ' + qty + ' ' + ((COMMODITY_BY_ID.get(cmdtyId) || {}).name || cmdtyId) +
-        ' and plotting ' + stationName(ctx.state, destStationId) + '...';
+      if (pendingLoadNav && pendingLoadNav.stationId === stationId &&
+          pendingLoadNav.destStationId === destStationId && pendingLoadNav.cmdtyId === cmdtyId) {
+        pendingLoadNav = null;
+        ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        setFooterText(footer, 'Route load did not complete; nav unchanged.');
+      }
     }
   });
 
@@ -363,6 +383,27 @@ export function createMarketPanel(ctx) {
   footer.className = 'st-market-foot';
   footer.innerHTML = '<span class="st-foot-msg">Buy cargo for missions or profitable routes; sell mined, looted, or delivered goods to fund hulls, modules, repairs, and fuel.</span>';
   root.appendChild(footer);
+
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    ctx.bus.on('economy:tradeCompleted', (p) => {
+      if (!pendingLoadNav || !p || p.side !== 'buy') return;
+      if (p.stationId !== pendingLoadNav.stationId || p.commodityId !== pendingLoadNav.cmdtyId) return;
+      const pending = pendingLoadNav;
+      pendingLoadNav = null;
+      applyTradeNavigation(ctx, pending.destStationId, pending.cmdtyId);
+      const cmdty = COMMODITY_BY_ID.get(pending.cmdtyId);
+      setFooterText(footer,
+        'Loaded ' + fmtCr(p.qty || pending.qty) + ' ' + ((cmdty && cmdty.name) || pending.cmdtyId) +
+        ' and plotted ' + stationName(ctx.state, pending.destStationId) + '.');
+    });
+    ctx.bus.on('economy:tradeFailed', (p) => {
+      if (!pendingLoadNav || !p || p.side !== 'buy') return;
+      if (p.stationId !== pendingLoadNav.stationId || p.commodityId !== pendingLoadNav.cmdtyId) return;
+      pendingLoadNav = null;
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      setFooterText(footer, 'Route load failed: ' + tradeFailureText(p.reason) + '; nav unchanged.');
+    });
+  }
 
   // ONE delegated listener for the whole list (perf §5.5).
   list.addEventListener('click', async (ev) => {
