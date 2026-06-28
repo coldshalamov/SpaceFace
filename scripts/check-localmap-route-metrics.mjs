@@ -28,6 +28,22 @@ assert.match(localmapSrc, /lm-route-meta/,
   'localmap route cards should expose load/profit/fuel decision metadata');
 assert.match(localmapSrc, /expectedProfit/,
   'localmap route cards should show expected route profit, not only profit per minute');
+assert.match(localmapSrc, /function tradeRouteActionLabel\(route\)/,
+  'localmap route cards should centralize the accessible route action label');
+assert.match(localmapSrc, /Set sell course/,
+  'localmap route cards should make clear the action commits the sell-side course');
+assert.match(localmapSrc, /projected profit \+/,
+  'localmap route action labels should include projected profit for accessibility');
+assert.match(localmapSrc, /stale intel/,
+  'localmap route action labels should include stale-intel risk when applicable');
+assert.match(localmapSrc, /Number\.isFinite\(Number\(r\.reliability\)\)/,
+  'localmap stale-intel detection should not treat 0% reliability as fresh');
+assert.doesNotMatch(localmapSrc, /r\.reliability \|\| 1/,
+  'localmap stale-intel detection must preserve explicit zero reliability');
+assert.match(localmapSrc, /title="' \+ escapeAttr\(routeActionLabel\)/,
+  'localmap route cards should expose full route commitment context as a title');
+assert.match(localmapSrc, /aria-label="' \+ escapeAttr\(routeActionLabel\)/,
+  'localmap route cards should expose full route commitment context to assistive tech');
 assert.doesNotMatch(localmapSrc, /state\.entities\.get\(id\)/,
   'localmap route metrics and labels must not treat station catalog ids as entity ids');
 
