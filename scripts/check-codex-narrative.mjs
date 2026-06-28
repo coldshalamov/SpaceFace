@@ -90,6 +90,18 @@ assert.match(codexSource, /querySelectorAll\('\.sf-codex-entry'\)/,
   'Codex search must filter rendered entries rather than raw narrative data');
 assert.match(codexSource, /No matching unlocked entries\./,
   'Codex search must show an empty state for no unlocked matches');
+assert.match(codexSource, /sf-codex-progress/,
+  'Codex must render a visible discovery progress strip so locked content feels intentional');
+assert.match(codexSource, /function codexProgressSummary\(ctx\)/,
+  'Codex discovery progress must be built from story state, not static copy');
+assert.match(codexSource, /Locked entries stay hidden until encountered\./,
+  'Codex discovery progress must explain why unreached entries remain locked');
+assert.match(codexSource, /'Comms ' \+ comms\.unlocked \+ '\/' \+ comms\.total/,
+  'Codex discovery progress must show unlocked/total comms coverage');
+assert.match(codexSource, /const FIGURE_ALWAYS_KEYS = \[/,
+  'Codex figure progress and rendering must share a single always-visible figure list');
+assert.match(codexSource, /aria-live', 'polite'/,
+  'Codex discovery progress should be announced politely when story state refreshes');
 assert.match(bindingSource, /codex:\s*\{\s*key:\s*'k',\s*code:\s*'KeyK',\s*label:\s*'K'\s*\}/,
   'BINDINGS must expose K as the fixed Codex key');
 assert.match(uiInputSource, /case BINDINGS\.codex\.key:[\s\S]*case 'K':[\s\S]*screenManager\.pushScreen\('codex'\)/,
