@@ -31,7 +31,7 @@ const GAMEPAD_PROMPTS = Object.freeze({
 });
 
 const TOUCH_PROMPTS = Object.freeze({
-  flight: 'Left stick fly  •  Right stick aim  •  Fire button  •  Mine button  •  Boost button  •  Touch UI buttons for menus',
+  flight: 'Left stick fly  •  Right stick aim  •  Fire button  •  Mine button  •  Boost button  •  Map/Log/Star buttons for menus',
   mining: 'Mine button hold to mine  •  Release to cool  •  Fly through cargo drift  •  Touch target controls for signals',
   combat: 'Fire button  •  Right stick aim at target  •  Boost button to dodge',
   station: `${BINDINGS.dock.label} dock  •  Hub: tap tabs/actions  •  Tap Undock when ready`,
@@ -39,7 +39,7 @@ const TOUCH_PROMPTS = Object.freeze({
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',
   tutorialMine: 'The Kestrel is armed: Fire shoots the Pulse Laser S. Hold Mine on the marked rock to mine the mass reading, then collect the drift.',
   tutorialDock: `Follow the cyan station arrow. Press ${BINDINGS.dock.label} at the dock prompt. Bring the discrepancy back before someone edits it out.`,
-  firstFlight: `Left stick flies, right stick aims, Fire shoots, Mine mines marked rocks, Boost dashes, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} opens the star map, ${BINDINGS.dock.label} docks.`,
+  firstFlight: `Left stick flies, right stick aims, Fire shoots, Mine mines marked rocks, Boost dashes, Map opens the local map, Log opens the Mission Log, Star opens the star map, ${BINDINGS.dock.label} docks.`,
   firstCombat: 'Hostile detected! Fire to shoot. Hold right-stick aim on a target to lock on.',
   firstStation: `Stations offer repairs, trading, upgrades, and mission boards. Press ${BINDINGS.dock.label} to dock; inside the hub, tap tabs and actions directly, then tap Undock when Departure Check looks safe.`,
   firstGate: `Jump gates connect star systems. Open the Star Map (${BINDINGS.starmap.label}) to plot a jump route.`,

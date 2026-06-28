@@ -87,6 +87,29 @@ assert.match(promptSrc, /Start pause\/log/, 'Gamepad flight hints must surface t
 assert.match(promptSrc, /Start opens pause\/log/, 'Gamepad first-flight hint must teach the controller path to Mission Log');
 assert.match(settingsSrc, /Start pause\/log/, 'Gamepad settings copy must match the shipped Start pause/log route');
 assert.match(promptSrc, /Mine button/, 'Touch flight hints must advertise the touch mining button');
+assert.match(touchSrc, /data-act="localmap"/, 'Touch overlay must expose a Local Map menu button');
+assert.match(touchSrc, /data-act="missionLog"/, 'Touch overlay must expose a Mission Log menu button');
+assert.match(touchSrc, /data-act="starmap"/, 'Touch overlay must expose a Star Map menu button');
+assert.match(touchSrc, /_btnPulse/, 'Touch buttons must queue one-shot pressed edges for quick taps');
+assert.match(touchSrc, /this\._btnPulse\[act\] = true/, 'Touch button touchstart must queue a pressed pulse');
+assert.match(touchSrc, /bus\.emit\('touch:uiAction', \{ action: act \}\)/,
+  'Touch menu buttons must emit immediate UI intents for tap-only actions');
+assert.match(touchSrc, /\['fire', 'mine', 'boost', 'localmap', 'missionLog', 'starmap'\]/,
+  'Touch tick must compute pressed/released edges for flight and menu buttons');
+assert.match(touchSrc, /pressed: pulse \|\| \(held && !prev\)/,
+  'Touch tick must consume queued pulses as pressed edges');
+assert.match(uiInputSrc, /bus\.on\('touch:uiAction'[\s\S]*routeTouchUiAction\(action\)/,
+  'UI input must listen for immediate touch menu intents');
+assert.match(uiInputSrc, /function routeTouchUiAction\(action\)/,
+  'UI input must centralize touch menu routing through shared modal and flight guards');
+assert.match(uiInputSrc, /touchActionPressed\('missionLog'\)[\s\S]*openScreenFromTouch\('missionLog'\)/,
+  'UI input must route the touch Log button to the shared Mission Log screen');
+assert.match(uiInputSrc, /touchActionPressed\('localmap'\)[\s\S]*openScreenFromTouch\('localmap'\)/,
+  'UI input must route the touch Map button to the shared Local Map screen');
+assert.match(uiInputSrc, /touchActionPressed\('starmap'\)[\s\S]*openScreenFromTouch\('starmap'\)/,
+  'UI input must route the touch Star button to the shared Star Map screen');
+assert.match(promptSrc, /Map\/Log\/Star buttons/, 'Touch flight hints must match the actual Map/Log/Star overlay buttons');
+assert.match(promptSrc, /Log opens the Mission Log/, 'Touch first-flight hint must teach the objective-home button');
 assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document gamepad mining');
 assert.match(helpSrc, /Countermeasure[\s\S]*R3/, 'Help Controls must document gamepad countermeasure');
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');

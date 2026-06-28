@@ -306,6 +306,7 @@ export function createUiInput(ctx, screenManager) {
 
   // let other modules (uiRoot Undock button) trigger an undock
   bus.on('ui:undock', undock);
+  bus.on('touch:uiAction', ({ action } = {}) => { routeTouchUiAction(action); });
 
   // ---- gamepad UI layer -----------------------------------------------------
 
@@ -393,6 +394,31 @@ export function createUiInput(ctx, screenManager) {
     else {
       active.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
     }
+  }
+
+  function touchActionPressed(name) {
+    const tp = ctx.touch;
+    return !!(tp && tp.isConnected && tp.isConnected() && tp.actions && tp.actions[name] && tp.actions[name].pressed);
+  }
+
+  function openScreenFromTouch(id) {
+    screenManager.pushScreen(id);
+    bus.emit('audio:cue', { id: 'ui_open' });
+  }
+
+  function handleTouchUi() {
+    if (isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return;
+    if (touchActionPressed('missionLog')) { routeTouchUiAction('missionLog'); return; }
+    if (touchActionPressed('localmap')) { routeTouchUiAction('localmap'); return; }
+    if (touchActionPressed('starmap')) { routeTouchUiAction('starmap'); }
+  }
+
+  function routeTouchUiAction(action) {
+    if (isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return false;
+    if (action === 'missionLog') { openScreenFromTouch('missionLog'); return true; }
+    if (action === 'localmap') { openScreenFromTouch('localmap'); return true; }
+    if (action === 'starmap') { openScreenFromTouch('starmap'); return true; }
+    return false;
   }
 
   function handleGamepadUi(dt) {
@@ -529,6 +555,10 @@ export function createUiInput(ctx, screenManager) {
     if (gp && (state.mode !== 'flight' || state.timeScale === 0)) {
       gp.tick(dt);
     }
+    if (ctx.touch && (state.mode !== 'flight' || state.timeScale === 0)) {
+      ctx.touch.tick(dt);
+    }
+    handleTouchUi();
     handleGamepadUi(dt);
   }
 

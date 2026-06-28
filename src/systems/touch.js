@@ -6,7 +6,7 @@
 //   - RIGHT half of screen → aim joystick (the delta sets aimAngle independent of the nose, like
 //                            the right gamepad stick / mouse). Tap-to-fire on release is avoided —
 //                            fire is an explicit button so the player can hold it.
-//   - On-screen buttons (bottom-right): FIRE (hold), MINE (hold), BOOST (hold).
+//   - On-screen buttons: FIRE/MINE/BOOST for flight, plus MAP/LOG/STAR for navigation menus.
 //
 // The layer is intentionally dumb (like gamepad.js): it only translates touches into normalized
 // axes + action state. Flight behavior is merged in src/systems/input.js; the overlay DOM is built
@@ -31,6 +31,10 @@ function nowMs() {
   return Date.now();
 }
 
+function isMenuAction(action) {
+  return action === 'localmap' || action === 'missionLog' || action === 'starmap';
+}
+
 export function createTouch(ctx) {
   const bus = ctx && ctx.bus;
   const state = ctx && ctx.state;
@@ -43,11 +47,15 @@ export function createTouch(ctx) {
       fire: { held: false, pressed: false, released: false, value: 0 },
       mine: { held: false, pressed: false, released: false, value: 0 },
       boost: { held: false, pressed: false, released: false, value: 0 },
+      localmap: { held: false, pressed: false, released: false, value: 0 },
+      missionLog: { held: false, pressed: false, released: false, value: 0 },
+      starmap: { held: false, pressed: false, released: false, value: 0 },
     },
     _overlay: null,
     _sticks: {},   // touchId -> { side: 'left'|'right', originX, originY, curX, curY }
     _btns: {},     // button element -> action name
     _btnHeld: {},  // action -> bool (button touches, tracked separately from sticks)
+    _btnPulse: {}, // action -> one-shot pressed edge, so quick taps cannot vanish between ticks
     _enabledByAuto: false,
 
     isConnected() { return this.active; },
@@ -106,7 +114,15 @@ export function createTouch(ctx) {
         #${OVERLAY_ID} .sf-touch-fire { width:84px; height:84px; right:170px; }
         #${OVERLAY_ID} .sf-touch-mine { width:68px; height:68px; right:96px; bottom:30px; }
         #${OVERLAY_ID} .sf-touch-boost { width:68px; height:68px; bottom:108px; right:30px; }
-        @media (max-width: 760px) { #${OVERLAY_ID} .sf-touch-stick { width:110px; height:110px; } }
+        #${OVERLAY_ID} .sf-touch-menu { position:absolute; right:18px; top:112px; display:flex;
+          flex-direction:column; gap:8px; pointer-events:auto; }
+        #${OVERLAY_ID} .sf-touch-menu .sf-touch-btn { position:static; width:58px; height:42px;
+          border-radius:8px; font-size:10px; line-height:1.05; }
+        @media (max-width: 760px) {
+          #${OVERLAY_ID} .sf-touch-stick { width:110px; height:110px; }
+          #${OVERLAY_ID} .sf-touch-menu { top:92px; right:12px; gap:6px; }
+          #${OVERLAY_ID} .sf-touch-menu .sf-touch-btn { width:52px; height:38px; font-size:9px; }
+        }
         `;
         document.head.appendChild(s);
       }
@@ -117,7 +133,12 @@ export function createTouch(ctx) {
         '<div class="sf-touch-stick right"><div class="sf-touch-knob"></div></div>' +
         '<button class="sf-touch-btn sf-touch-fire" data-act="fire">Fire</button>' +
         '<button class="sf-touch-btn sf-touch-mine" data-act="mine">Mine</button>' +
-        '<button class="sf-touch-btn sf-touch-boost" data-act="boost">Boost</button>';
+        '<button class="sf-touch-btn sf-touch-boost" data-act="boost">Boost</button>' +
+        '<div class="sf-touch-menu" aria-label="Touch navigation shortcuts">' +
+          '<button class="sf-touch-btn sf-touch-localmap" data-act="localmap" aria-label="Open Local Map">Map</button>' +
+          '<button class="sf-touch-btn sf-touch-mission-log" data-act="missionLog" aria-label="Open Mission Log">Log</button>' +
+          '<button class="sf-touch-btn sf-touch-starmap" data-act="starmap" aria-label="Open Star Map">Star</button>' +
+        '</div>';
       document.body.appendChild(ov);
       this._overlay = ov;
       this._wireSticks(ov);
@@ -184,7 +205,14 @@ export function createTouch(ctx) {
       btns.forEach((b) => {
         const act = b.getAttribute('data-act');
         this._btns[b] = act;
-        const down = (e) => { e.preventDefault(); b.classList.add('held'); this._btnHeld[act] = true; this.lastActiveMs = nowMs(); };
+        const down = (e) => {
+          e.preventDefault();
+          b.classList.add('held');
+          this._btnHeld[act] = true;
+          this._btnPulse[act] = true;
+          this.lastActiveMs = nowMs();
+          if (isMenuAction(act) && bus && bus.emit) bus.emit('touch:uiAction', { action: act });
+        };
         const up = (e) => { e.preventDefault(); b.classList.remove('held'); this._btnHeld[act] = false; };
         b.addEventListener('touchstart', down, { passive: false });
         b.addEventListener('touchend', up, { passive: false });
@@ -196,10 +224,12 @@ export function createTouch(ctx) {
       if (!this.active) return;
       // Translate button-held flags into action state (pressed/released edges computed in input.js
       // merge; here we only reflect current held state, matching gamepad.js's approach).
-      for (const act of ['fire', 'mine', 'boost']) {
+      for (const act of ['fire', 'mine', 'boost', 'localmap', 'missionLog', 'starmap']) {
         const held = !!this._btnHeld[act];
+        const pulse = !!this._btnPulse[act];
         const prev = !!this.actions[act] && this.actions[act].held;
-        this.actions[act] = { held, pressed: held && !prev, released: !held && prev, value: held ? 1 : 0 };
+        this.actions[act] = { held, pressed: pulse || (held && !prev), released: !held && prev, value: held ? 1 : 0 };
+        this._btnPulse[act] = false;
       }
     },
 
