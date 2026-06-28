@@ -1557,6 +1557,8 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-bar-offer-warn { margin: -1px 0 0; }
 .st-bar-offer-blocker { margin: -1px 0 0; }
 .st-bar-accept-btn { font-size: .78rem; }
+.st-bar-log-btn { border-color: rgba(98,224,138,.42); color: var(--good); }
+.st-bar-log-btn:hover { background: rgba(98,224,138,.12); }
 
 /* missions */
 .st-mission-guide { margin: -2px 0 12px; border: 1px solid var(--panel-edge); border-radius: 6px;
