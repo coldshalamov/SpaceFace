@@ -525,7 +525,7 @@ export const missions = {
     const id = `m_${state.missions.nextId++}`;
     const def = TYPE_BY_ID.get(offer.type);
     return {
-      id, type: offer.type, factionId: offer.factionId,
+      id, type: offer.type, stationId: offer.stationId || null, factionId: offer.factionId,
       params: JSON.parse(JSON.stringify(offer.params)), // own copy (progress mutates)
       objectiveProgress: 0,
       objectiveTarget: this._objectiveTarget(offer.type, offer.params),

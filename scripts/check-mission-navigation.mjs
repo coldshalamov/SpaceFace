@@ -119,6 +119,37 @@ function initHarness() {
 
 {
   const { state, bus } = initHarness();
+  const offer = {
+    ...createOffer('offer_chain_origin'),
+    stationId: 'station_helios',
+    type: 'bulk_trade',
+    params: { cmdtyId: 'cmdty_food', qty: 1, cargoValue: 50, fValue: 1, taskTime: 1 },
+    reward_cr: 100,
+    collateral_cr: 0,
+    title: 'Sell one food at Tethys',
+  };
+  state.missions.boards.station_helios = { refreshEpoch: 0, slots: [offer] };
+  state.missions.boards.station_tethys = { refreshEpoch: 0, slots: [] };
+
+  bus.emit('ui:acceptMission', { missionId: offer.id });
+  const active = state.missions.active[0];
+  assert(active, 'accepting chainable offer must create an active mission');
+  assert.equal(active.stationId, 'station_helios',
+    'accepted missions must preserve the origin station for follow-up chains');
+
+  active.objectiveProgress = active.objectiveTarget;
+  missions._completeMission(active, 0);
+
+  const originSlots = state.missions.boards.station_helios.slots || [];
+  const destSlots = state.missions.boards.station_tethys.slots || [];
+  assert(originSlots.some((o) => /_chain$/.test(o.id)),
+    'chainable mission completion must post the follow-up on the origin board');
+  assert.equal(destSlots.some((o) => /_chain$/.test(o.id)), false,
+    'chainable mission completion must not post the follow-up on the destination board');
+}
+
+{
+  const { state, bus } = initHarness();
   state.simTime = 20;
   state.nav.waypoint = {
     kind: 'trade',
