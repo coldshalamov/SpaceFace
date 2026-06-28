@@ -83,6 +83,8 @@ assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document g
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');
 assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)/,
   'UI input must let gamepad A/Cross dock when the dock prompt is active');
+assert.match(uiInputSrc, /case BINDINGS\.dock\.key:\s*case BINDINGS\.dock\.label:\s*case 'Enter':/,
+  'UI input must route the live dock key, visible dock label, and Enter to the dock action');
 assert.match(uiInputSrc, /top === 'starmap'[\s\S]*gp\.actions\.map[\s\S]*screenManager\.popScreen\(\)/,
   'UI input must let gamepad View/Select close the Star Map after opening it');
 assert.match(screenManagerSrc, /state\.mode === 'menu' && stack\.length === 1 && top\(\) === 'mainMenu'/,
