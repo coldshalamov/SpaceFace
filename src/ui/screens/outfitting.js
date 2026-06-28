@@ -195,6 +195,107 @@ function statSnippet(def) {
   return parts.join(' · ');
 }
 
+function missionId(m) {
+  return m && (m.id != null ? m.id : m.missionId);
+}
+
+function prettyMissionType(t) {
+  if (!t) return 'Contract';
+  return String(t).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+export function missionPickForOutfitting(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  if (trackedId != null) {
+    const tracked = active.find((m) => m && m.status === 'active' && String(missionId(m)) === String(trackedId));
+    if (tracked) return { mission: tracked, tracked: true };
+  }
+  const fallback = active.find((m) => m && m.status === 'active') || null;
+  return { mission: fallback, tracked: false };
+}
+
+export function missionFitGuide(mission) {
+  if (!mission) return null;
+  switch (mission.type) {
+    case 'cargo_delivery':
+    case 'bulk_trade':
+      return {
+        label: 'Haulage Fit',
+        text: 'Cargo space is the payout lever; add engine or shield margin only after the hold can carry the contract cleanly.',
+        wants: ['cargo', 'engine', 'shield'],
+      };
+    case 'mining_quota':
+      return {
+        label: 'Mining Fit',
+        text: 'Mining beams and cargo racks shorten the loop; shields keep the ore run from turning into debris.',
+        wants: ['mining', 'cargo', 'shield'],
+      };
+    case 'salvage_retrieval':
+      return {
+        label: 'Recovery Fit',
+        text: 'Bring cargo space for the claim and enough shield or utility support to survive the wreck field.',
+        wants: ['cargo', 'shield', 'utility'],
+      };
+    case 'smuggling_run':
+      return {
+        label: 'Smuggling Fit',
+        text: 'Speed and cargo beat fair fights here; shields are the apology letter if a patrol gets curious.',
+        wants: ['engine', 'cargo', 'shield'],
+      };
+    case 'passenger_transport':
+      return {
+        label: 'Courier Fit',
+        text: 'Engine and shield upgrades protect the schedule; cargo is secondary unless the job also asks for freight.',
+        wants: ['engine', 'shield', 'utility'],
+      };
+    case 'bounty_hunt':
+    case 'patrol_clear':
+      return {
+        label: 'Combat Fit',
+        text: 'Weapons make the timer honest; shields and engines decide whether you leave with the bounty or become it.',
+        wants: ['weapon', 'shield', 'engine'],
+      };
+    case 'escort':
+      return {
+        label: 'Escort Fit',
+        text: 'Sustained weapons and shields matter more than cargo; fit to stay alive beside the convoy.',
+        wants: ['weapon', 'shield', 'utility'],
+      };
+    case 'recon_scan':
+      return {
+        label: 'Scout Fit',
+        text: 'Utility and engine upgrades shorten the sweep; shields cover mistakes in dirty lanes.',
+        wants: ['utility', 'engine', 'shield'],
+      };
+    default:
+      return {
+        label: 'Mission Fit',
+        text: 'Use the tracked contract to buy toward a job instead of buying anonymous numbers in a vacuum.',
+        wants: ['weapon', 'shield', 'cargo'],
+      };
+  }
+}
+
+export function slotReadiness(slots, owned, slotType) {
+  const fittings = owned && owned.fittings || [];
+  let total = 0, fitted = 0, open = 0;
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i].type !== slotType) continue;
+    total++;
+    if (fittings[i]) fitted++;
+    else open++;
+  }
+  if (!total) return { kind: 'bad', text: slotType.toUpperCase() + ': no slot' };
+  if (fitted > 0) return { kind: 'ok', text: slotType.toUpperCase() + ': ' + fitted + ' fitted' };
+  if (open > 0) return { kind: 'warn', text: slotType.toUpperCase() + ': ' + open + ' open' };
+  return { kind: 'bad', text: slotType.toUpperCase() + ': blocked' };
+}
+
+function missionAdvisorChipHtml(chip) {
+  return '<span class="st-mission-preflight-chip st-mission-preflight-chip--' + chip.kind + '">' + escapeHtml(chip.text) + '</span>';
+}
+
 // Stat fields shown in the preview (label, key, higherIsBetter, suffix).
 const PREVIEW_STATS = [
   { k: 'hullMax', l: 'Hull', up: true },
@@ -212,6 +313,10 @@ const PREVIEW_STATS = [
 export function createOutfittingPanel(ctx) {
   const root = document.createElement('div');
   root.className = 'st-panel st-outfit';
+
+  const advisor = document.createElement('div');
+  advisor.className = 'st-mission-guide st-outfit-advisor';
+  root.appendChild(advisor);
 
   const top = document.createElement('div');
   top.className = 'st-outfit-top';
@@ -346,6 +451,31 @@ export function createOutfittingPanel(ctx) {
   });
 
   // ---- builders ----
+  function renderMissionAdvisor() {
+    const pick = missionPickForOutfitting(ctx.state);
+    const mission = pick.mission;
+    const owned = activeOwned();
+    const shipDef = owned ? SHIP_BY_ID.get(owned.defId) : null;
+    const slots = shipDef ? buildSlotList(shipDef) : [];
+    if (!mission) {
+      advisor.innerHTML =
+        '<div><span class="st-mission-preflight-chip st-mission-preflight-chip--info">MISSION FIT ADVISOR</span></div>' +
+        '<div class="st-mission-purpose"><b>Pick a contract on the Mission Board before buying gear.</b> Then this bay turns into a checklist: haulage wants cargo, combat wants weapons and shields, scans want utility.</div>';
+      return;
+    }
+    const guide = missionFitGuide(mission);
+    const chips = guide.wants.map((slotType) => missionAdvisorChipHtml(slotReadiness(slots, owned, slotType))).join('');
+    const status = pick.tracked ? 'TRACKED JOB' : 'ACTIVE JOB';
+    advisor.innerHTML =
+      '<div class="st-mission-preflight">' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">MISSION FIT ADVISOR</span>' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--ok">' + escapeHtml(status) + '</span>' +
+        chips +
+      '</div>' +
+      '<div class="st-mission-accepted-title">' + escapeHtml(mission.title || prettyMissionType(mission.type)) + '</div>' +
+      '<div class="st-mission-purpose"><b>' + escapeHtml(guide.label) + ':</b> ' + escapeHtml(guide.text) + '</div>';
+  }
+
   function rebuildSlots() {
     const owned = activeOwned();
     slotGrid.textContent = '';
@@ -405,6 +535,9 @@ export function createOutfittingPanel(ctx) {
     const slots = shipDef ? buildSlotList(shipDef) : [];
     const fittings = owned && Array.isArray(owned.fittings) ? owned.fittings : [];
     const tier = stationTier(panel.stationId);
+    const mission = missionPickForOutfitting(ctx.state).mission;
+    const guide = missionFitGuide(mission);
+    const wantedSlots = new Set(guide ? guide.wants : []);
 
     shopCredits.textContent = 'CREDITS: ' + fmtCr(p.credits);
 
@@ -417,6 +550,7 @@ export function createOutfittingPanel(ctx) {
       if (def.tier > tier + 1) continue;
 
       const alreadyOwned = (p.moduleInventory || []).some((m) => m.defId === def.id);
+      const missionFit = wantedSlots.has(def.slotType);
 
       // Slot-type group header
       if (def.slotType !== lastSlotType) {
@@ -452,7 +586,7 @@ export function createOutfittingPanel(ctx) {
       }
 
       const row = document.createElement('div');
-      row.className = 'st-shop-row' + (!purchase.unlocked ? ' locked' : '') + (!purchase.afford ? ' noafford' : '') + (!purchase.hasSlot ? ' nofit' : '');
+      row.className = 'st-shop-row' + (!purchase.unlocked ? ' locked' : '') + (!purchase.afford ? ' noafford' : '') + (!purchase.hasSlot ? ' nofit' : '') + (missionFit ? ' mission-fit' : '');
       row.setAttribute('data-shop', def.id);
       const fitAttr = purchase.fitSlotIndex >= 0 ? ' data-fit-slot="' + purchase.fitSlotIndex + '"' : '';
       const actionAttrs = purchase.disabled ? ' disabled' : ' data-act="buy"' + fitAttr;
@@ -460,6 +594,7 @@ export function createOutfittingPanel(ctx) {
 
       row.innerHTML =
         '<span class="c-name">' + escapeHtml(def.name) +
+          (missionFit ? ' <span class="st-tag st-tag-active">job fit</span>' : '') +
           (alreadyOwned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
           (!purchase.hasSlot && purchase.unlocked ? ' <span class="st-tag">no slot</span>' : '') +
         '</span>' +
@@ -524,7 +659,7 @@ export function createOutfittingPanel(ctx) {
     statTable.appendChild(frag);
   }
 
-  function refresh() { rebuildSlots(); rebuildInventory(); rebuildShop(); renderPreview(); }
+  function refresh() { renderMissionAdvisor(); rebuildSlots(); rebuildInventory(); rebuildShop(); renderPreview(); }
 
   const panel = {
     el: root,

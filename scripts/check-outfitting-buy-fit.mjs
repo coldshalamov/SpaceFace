@@ -3,7 +3,12 @@ import { readFileSync } from 'node:fs';
 
 import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
-import { describeOutfittingPurchase } from '../src/ui/screens/outfitting.js';
+import {
+  describeOutfittingPurchase,
+  missionFitGuide,
+  missionPickForOutfitting,
+  slotReadiness,
+} from '../src/ui/screens/outfitting.js';
 import { buildSlotList, ships } from '../src/systems/ships.js';
 
 function createBus() {
@@ -34,6 +39,45 @@ assert.match(outfitSource, /describeOutfittingPurchase/, 'Outfitting shop should
 assert.match(outfitSource, /data-fit-slot/, 'Outfitting shop should carry the target slot index on Buy & Fit buttons');
 assert.match(outfitSource, /fitSlotIndex/, 'Outfitting shop should emit fitSlotIndex through ui:buyModule');
 assert.match(outfitSource, /aria-label="/, 'Outfitting shop buttons should expose accessible action guidance');
+assert.match(outfitSource, /MISSION FIT ADVISOR/, 'Outfitting should explain how the tracked mission maps to the fitting bay');
+assert.match(outfitSource, /Pick a contract on the Mission Board/, 'Outfitting should send uncommitted players back to the Mission Board first');
+assert.match(outfitSource, /job fit/, 'Outfitting shop should tag modules that match the tracked mission fit');
+assert.match(outfitSource, /missionFitGuide/, 'Outfitting should centralize mission-type fit guidance');
+
+const trackedPick = missionPickForOutfitting({
+  ui: { trackedMissionId: 'm_smuggle' },
+  missions: {
+    active: [
+      { id: 'm_haul', type: 'cargo_delivery', status: 'active' },
+      { id: 'm_smuggle', type: 'smuggling_run', status: 'active' },
+    ],
+  },
+});
+assert.equal(trackedPick.tracked, true, 'outfitting advisor should prefer the tracked mission');
+assert.equal(trackedPick.mission.id, 'm_smuggle');
+
+const fallbackPick = missionPickForOutfitting({
+  ui: { trackedMissionId: 'missing' },
+  missions: {
+    active: [
+      { id: 'm_failed', type: 'cargo_delivery', status: 'completed' },
+      { id: 'm_bounty', type: 'bounty_hunt', status: 'active' },
+    ],
+  },
+});
+assert.equal(fallbackPick.tracked, false, 'outfitting advisor should mark untracked active fallback honestly');
+assert.equal(fallbackPick.mission.id, 'm_bounty');
+
+assert.deepEqual(missionFitGuide({ type: 'bounty_hunt' }).wants, ['weapon', 'shield', 'engine'],
+  'combat contracts should guide the shop toward weapons, shields, and engines');
+assert.deepEqual(missionFitGuide({ type: 'mining_quota' }).wants, ['mining', 'cargo', 'shield'],
+  'mining contracts should guide the shop toward mining beams, cargo, and shields');
+assert.deepEqual(slotReadiness([{ type: 'weapon' }, { type: 'shield' }], { fittings: [null, 'mod_shield_booster_s'] }, 'shield'),
+  { kind: 'ok', text: 'SHIELD: 1 fitted' },
+  'slot readiness should show fitted mission-critical slots');
+assert.deepEqual(slotReadiness([{ type: 'weapon' }, { type: 'shield' }], { fittings: [null, null] }, 'engine'),
+  { kind: 'bad', text: 'ENGINE: no slot' },
+  'slot readiness should warn when this hull cannot satisfy a mission slot family');
 
 const shipDef = SHIPS.find((entry) => entry.id === 'ship_kestrel');
 const slots = buildSlotList(shipDef);
