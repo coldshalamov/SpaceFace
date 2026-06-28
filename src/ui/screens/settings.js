@@ -5,6 +5,7 @@
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
 import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
+import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-settings-menu-style';
 
@@ -58,6 +59,8 @@ function injectStyle() {
   .sf-menu .sf-grid2 { display:grid; grid-template-columns:auto 1fr; gap:6px 18px; align-items:center; font-size:13px; }
   .sf-menu .sf-grid2 .k { color:var(--ink-dim); font-family:var(--mono); letter-spacing:.05em; }
   .sf-menu .sf-grid2 .v { color:var(--ink); }
+  .sf-controls-fixed-shortcuts { margin-top:4px; grid-template-columns:1fr 120px 1.5fr !important; }
+  .sf-controls-fixed-shortcuts .k { color:var(--accent); }
   .sf-menu .sf-foot { display:flex; gap:10px; justify-content:flex-end; margin-top:8px; }
   .sf-menu .sf-muted { color:var(--ink-mute); font-size:12px; }
   .sf-bind-btn { font-family:var(--mono) !important; letter-spacing:.04em; text-align:center !important; }
@@ -106,6 +109,21 @@ const REBIND_LABELS = {
   boost: 'Boost',
   autoFire: 'Toggle auto-fire',
 };
+
+export const CONTROL_SHORTCUTS = Object.freeze([
+  { label: 'Dock / interact', key: BINDINGS.dock.label, note: 'when prompted' },
+  { label: 'Mission Log', key: BINDINGS.missionLog.label, note: 'active + completed contracts' },
+  { label: 'Local Map', key: BINDINGS.localmap.label, note: 'same-sector contacts/objectives' },
+  { label: 'Star Map', key: BINDINGS.starmap.label, note: 'jump routes and sector objectives' },
+  { label: 'Codex', key: BINDINGS.codex.label, note: 'reference and unlocked journal' },
+  { label: 'Tech Tree', key: BINDINGS.techTree.label, note: 'unlock path and blockers' },
+  { label: 'Cargo Hold', key: BINDINGS.cargo.label, note: 'cargo value and capacity' },
+  { label: 'Comms Log', key: BINDINGS.comms.label, note: 'messages and contacts' },
+  { label: 'Drill / asteroid base', key: BINDINGS.drill.label, note: 'target asteroid first' },
+  { label: 'Claim / open base', key: BINDINGS.claimBase.label, note: 'near claimable body/base' },
+  { label: 'Pause', key: 'Esc / P', note: 'resume, settings, map review' },
+]);
+
 // Turn a KeyboardEvent.code into a short, readable label: 'KeyW' -> 'W', 'ShiftLeft' -> 'L-Shift',
 // 'ArrowUp' -> '↑', 'Space' -> 'Space'.
 function humanizeCode(code) {
@@ -260,8 +278,9 @@ export const settingsScreen = {
       rowToggle('Reduce motion', () => !!s.video.motionReduce, (v) => this._set(ctx, 'video', 'motionReduce', v));
       pane.appendChild(el('p', 'sf-muted', 'UI scale is on the Video tab. Colorblind mode also recolors radar blips and adds redundant shapes.'));
     } else if (refs.active === 'Controls') {
-      pane.appendChild(el('p', 'sf-muted', 'Click a key to rebind it, then press a new key. Mouse buttons (fire/mine) are fixed.'));
+      pane.appendChild(el('p', 'sf-muted', 'Click a flight key to rebind it, then press a new key. Fixed ship/system shortcuts are listed below so you do not have to leave Settings to find them.'));
       this._renderControlsRebind(ctx, pane);
+      this._renderFixedShortcuts(pane);
       this._renderGamepadSettings(ctx, pane);
     }
   },
@@ -348,6 +367,18 @@ export const settingsScreen = {
     if (!s.controls.touch) s.controls.touch = { enabled: null }; // null = auto-detect
     rowTouchMode();
     pane.appendChild(el('p', 'sf-muted', 'Virtual sticks: left = fly, right = aim, buttons = fire/mine/boost. Auto-enabled on touch devices.'));
+  },
+
+  _renderFixedShortcuts(pane) {
+    pane.appendChild(el('h2', null, 'Ship/System Shortcuts'));
+    const grid = el('div', 'sf-grid2 sf-controls-fixed-shortcuts');
+    CONTROL_SHORTCUTS.forEach((shortcut) => {
+      grid.appendChild(el('div', 'v', shortcut.label));
+      grid.appendChild(el('div', 'k', shortcut.key));
+      grid.appendChild(el('div', 'sf-muted', shortcut.note));
+    });
+    pane.appendChild(grid);
+    pane.appendChild(el('p', 'sf-muted', 'Flight keys above are rebindable here; these interface shortcuts follow the shared binding registry.'));
   },
 
   // Live rebind UI for flight actions. Reads defaults from input.js + any saved overrides in
