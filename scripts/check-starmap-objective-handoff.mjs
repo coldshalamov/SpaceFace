@@ -179,5 +179,9 @@ assert.match(source, /pushScreen\(this\._ctx, 'localmap'\)/,
   'local objective action must hand off through the shared screen manager path');
 assert.match(source, /BINDINGS\.starmap\.label/, 'Star Map visible key labels must read src/ui/bindings.js');
 assert.doesNotMatch(source, /<div>M close/, 'Star Map footer must not hard-code the M key label');
+assert.match(source, /class="sm-close" type="button" aria-label="Close Star Map">Close \(\$\{BINDINGS\.starmap\.label\}\)<\/button>/,
+  'Star Map must expose a visible close button using the live starmap binding label');
+assert.match(source, /this\._els\.close\.addEventListener\('click', \(\) => closeScreen\(this\._ctx\)\)/,
+  'Star Map close button must use the same shared close helper as the keyboard shortcut');
 
 console.log('Star Map objective handoff OK - mission/trade waypoints resolve to route guidance and local fixes open Local Map.');

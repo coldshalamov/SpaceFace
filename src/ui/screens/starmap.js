@@ -56,8 +56,13 @@ const CSS = `
   border-bottom:1px solid var(--panel-edge); background:rgba(8,14,26,.72); }
 #sf-starmap .sm-title { font-size:1.2em; letter-spacing:.12em; text-transform:uppercase; color:var(--accent);
   text-shadow:0 0 12px rgba(57,208,255,.5); }
+#sf-starmap .sm-head-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; }
 #sf-starmap .sm-stats { font-family:var(--mono); font-size:.8em; color:var(--ink-dim); display:flex; gap:16px; flex-wrap:wrap; }
 #sf-starmap .sm-stats b { color:var(--ink); font-weight:600; }
+#sf-starmap .sm-close { background:transparent; border:1px solid var(--panel-edge); color:var(--ink);
+  padding:5px 12px; border-radius:5px; cursor:pointer; font-family:var(--mono); font-size:.72em; letter-spacing:.08em; }
+#sf-starmap .sm-close:hover, #sf-starmap .sm-close:focus-visible {
+  border-color:var(--accent); color:#fff; box-shadow:0 0 0 1px rgba(57,208,255,.18), 0 0 12px rgba(57,208,255,.14); }
 #sf-starmap .sm-body { flex:1; display:flex; min-height:0; }
 #sf-starmap .sm-canvas-wrap { flex:1; position:relative; min-width:0; }
 #sf-starmap canvas { position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; display:block; }
@@ -393,11 +398,14 @@ export const starmapScreen = {
     rootEl.innerHTML = `
       <div class="sm-head">
         <div class="sm-title">Star Map · Live Grid</div>
-        <div class="sm-stats">
-          <div>FUEL <b data-fuel>--/--</b></div>
-          <div>JUMP <b data-jstate>IDLE</b></div>
-          <div>RANGE <b data-range>adjacent</b></div>
-          <div>FIELD <b data-epoch>0.0d</b></div>
+        <div class="sm-head-actions">
+          <div class="sm-stats">
+            <div>FUEL <b data-fuel>--/--</b></div>
+            <div>JUMP <b data-jstate>IDLE</b></div>
+            <div>RANGE <b data-range>adjacent</b></div>
+            <div>FIELD <b data-epoch>0.0d</b></div>
+          </div>
+          <button class="sm-close" type="button" aria-label="Close Star Map">Close (${BINDINGS.starmap.label})</button>
         </div>
       </div>
       <div class="sm-body">
@@ -428,8 +436,10 @@ export const starmapScreen = {
       objective: rootEl.querySelector('[data-objective]'),
       selected: rootEl.querySelector('[data-sel]'),
       actions: rootEl.querySelector('[data-actions]'),
+      close: rootEl.querySelector('.sm-close'),
     };
 
+    this._els.close.addEventListener('click', () => closeScreen(this._ctx));
     this._canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
     this._canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
     this._canvas.addEventListener('mouseup', () => this._onMouseUp());
