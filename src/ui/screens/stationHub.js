@@ -1458,6 +1458,10 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-fac-ctrl, .st-fac-rel { font-size: .66rem; color: var(--ink-mute); margin-top: 5px; }
 .st-fac-rel { color: var(--ink-dim); }
 .st-fac-effect { font-size: .74rem; color: var(--ink); line-height: 1.35; margin-top: 5px; }
+.st-fac-guidance { display: grid; grid-template-columns: minmax(52px, auto) 1fr; gap: 4px 10px;
+  margin-top: 8px; padding: 8px 9px; border: 1px solid rgba(57,208,255,.12); border-radius: 6px;
+  background: rgba(4,12,24,.34); color: var(--ink-dim); font-size: .7rem; line-height: 1.35; }
+.st-fac-guidance-label { color: var(--accent); text-transform: uppercase; letter-spacing: .08em; font-size: .62rem; }
 .st-fac-hostile { color: var(--danger); background: rgba(255,84,112,.12); }
 .st-fac-cool { color: var(--warn); background: rgba(255,179,71,.12); }
 .st-fac-neutral { color: var(--ink-dim); background: rgba(132,160,200,.1); }
