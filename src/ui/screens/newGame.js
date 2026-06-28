@@ -111,7 +111,7 @@ function starterShip(ctx) {
 function starterLoadoutRows() {
   const labels = {
     weapon: 'Primary',
-    mining: 'Sampler',
+    mining: 'Mining',
     engine: 'Drive',
     shield: 'Shield',
     cargo: 'Cargo',
@@ -242,7 +242,7 @@ export const newGameScreen = {
       } catch (e) { console.warn('[newGame] ship preview resume failed', e); }
     } else if (refs && refs.previewCanvas) {
       try {
-        const envMap = refs.ctx && refs.ctx.state && refs.ctx.state.render && refs.ctx.state.render.envMap;
+        const envMap = refs.ctx && refs.ctx.state && refs.ctx.state.render && refs.ctx.render.envMap;
         refs.preview = createShipPreviewMount(refs.previewCanvas, { envMap });
         refs.preview.show(STARTER_SHIP);
       } catch (e) { console.warn('[newGame] ship preview failed', e); }
