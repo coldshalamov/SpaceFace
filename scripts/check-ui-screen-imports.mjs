@@ -230,6 +230,13 @@ if (!gameOverSrc.includes('_refreshSummary(ctx)') || !/onShow\(ctx\)\s*\{[\s\S]*
   console.log('ok   gameOverScreen - cached run summary refreshes on show');
   ok++;
 }
+if (!gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';") || gameOverSrc.includes("\n      state.mode = 'menu';")) {
+  console.log('FAIL gameOverScreen - Main Menu action must use ctx.state, not an undefined global state');
+  fail++;
+} else {
+  console.log('ok   gameOverScreen - Main Menu action uses ctx.state');
+  ok++;
+}
 
 console.log(`\n${ok} UI screen imports ok, ${fail} fail`);
 process.exit(fail ? 1 : 0);

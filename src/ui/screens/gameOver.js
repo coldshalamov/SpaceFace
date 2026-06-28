@@ -103,7 +103,7 @@ export const gameOverScreen = {
     bMenu.className = 'sf-btn';
     bMenu.textContent = 'Main Menu';
     bMenu.addEventListener('click', () => {
-      state.mode = 'menu';
+      if (ctx.state) ctx.state.mode = 'menu';
       ctx.bus.emit('game:over:dismissed', {});
       ctx.bus.emit('sim:pause', {});
       const mgr = getManager(ctx);
