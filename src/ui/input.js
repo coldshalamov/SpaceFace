@@ -45,7 +45,8 @@ export function createUiInput(ctx, screenManager) {
 
   function matchesBinding(ev, binding) {
     const k = ev && ev.key;
-    return !!binding && (k === binding.key || k === binding.label);
+    const code = ev && ev.code;
+    return !!binding && (k === binding.key || k === binding.label || code === binding.code);
   }
 
   function onKeyDown(ev) {
@@ -82,6 +83,12 @@ export function createUiInput(ctx, screenManager) {
       if (def && def.id === 'station' && matchesBinding(ev, BINDINGS.missionLog)) {
         ev.preventDefault();
         screenManager.pushScreen('missionLog');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      }
+      if (def && def.id === 'station' && matchesBinding(ev, BINDINGS.codex)) {
+        ev.preventDefault();
+        screenManager.pushScreen('codex');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
       }
