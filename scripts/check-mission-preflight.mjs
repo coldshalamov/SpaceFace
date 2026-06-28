@@ -71,6 +71,12 @@ assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must ren
 assert.match(stationHubSrc, /st-mission-readiness/, 'mission cards must render a fast readiness badge');
 assert.match(stationHubSrc, /missionBoardReadiness\(preflight\)/,
   'mission cards must derive the readiness badge from shared preflight state');
+assert.match(stationHubSrc, /function missionRiskCopy\(riskValue\)/,
+  'mission cards must explain compact risk badges for accessibility');
+assert.match(stationHubSrc, /const risk = missionRiskTier\(m\)/,
+  'mission cards must normalize risk tiers before rendering risk badge classes');
+assert.match(stationHubSrc, /aria-label="' \+ escapeHtml\(riskTitle\)/,
+  'mission risk badges must expose the risk-band meaning to assistive tech');
 assert.match(stationHubSrc, /aria-label="' \+ escapeHtml\(acceptTitle\)/,
   'mission accept buttons must expose exact ready/blocked guidance to assistive tech');
 assert.match(missionsSrc, /_acceptPreflight\(offer\)/, 'missions.acceptMission must call _acceptPreflight before accepting');
