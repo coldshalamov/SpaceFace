@@ -19,6 +19,10 @@ const checks = [
       "hud.setAttribute('aria-hidden', 'true')",
       "hud.removeAttribute('aria-hidden')",
       'hud.inert = hidden',
+      'el.hidden',
+      "el.style && el.style.display === 'none'",
+      'p.hidden',
+      "p.getAttribute && p.getAttribute('aria-hidden') === 'true'",
     ],
   },
   {
