@@ -123,14 +123,16 @@ export function confirm(opts) {
     root.classList.remove('sf-confirm--in');
     if (!hadModalOpen) document.body.classList.remove('ui-modal-open');
     root.removeEventListener('click', onBackdropClick);
-    setTimeout(() => {
-      if (root._sfConfirmToken !== token) return;
-      if (opener && typeof opener.focus === 'function') { try { opener.focus(); } catch (e) {} }
-      if (root.parentNode) root.innerHTML = '';
-      root._sfConfirmToken = null;
-    }, 160);
     _openResolver = null;
-    _resolve(v);
+    setTimeout(() => {
+      const sameDialog = root._sfConfirmToken === token;
+      if (sameDialog) {
+        if (opener && typeof opener.focus === 'function') { try { opener.focus(); } catch (e) {} }
+        if (root.parentNode) root.innerHTML = '';
+        root._sfConfirmToken = null;
+      }
+      _resolve(v);
+    }, 160);
   };
   _openResolver = close;
 

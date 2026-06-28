@@ -68,6 +68,7 @@
     "build:bundle": "node scripts/build-bundle.mjs",
     "check:bundle": "node scripts/check-bundle.mjs",
     "check:launch-policy": "node scripts/check-launch-policy.mjs",
+    "check:non-graphics": "node scripts/check-non-graphics-ci.mjs",
     "check:assets:live": "node scripts/probe-authored-assets-live.mjs",
     "check:perf:control": "node scripts/probe-raf-control.mjs --headed --strict --width 1830 --height 973 --warmup 1000 --duration 5000",
     "check:perf": "node scripts/probe-performance-profile.mjs --headed --strict --width 1830 --height 973 --warmup 2500 --duration 7000 --diagnostic-variants",

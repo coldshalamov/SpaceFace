@@ -46,6 +46,7 @@ const checks = [
       'if (!hadModalOpen) document.body.classList.remove',
       '_sfConfirmToken',
       'root.removeEventListener',
+      'const sameDialog = root._sfConfirmToken === token',
       'const initialFocus = opts.danger ? cancelBtn : okBtn',
       'Enter follows the focused button',
       'document.activeElement === okBtn',

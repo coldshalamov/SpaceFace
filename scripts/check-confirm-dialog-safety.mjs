@@ -45,6 +45,7 @@ try {
   const dangerEnter = await waitForConfirmResult(page);
   assert.equal(dangerEnter.result, false, 'Enter on default-focused danger confirm must cancel, not commit');
   assert.equal(dangerEnter.focusRestored, true, 'confirm should restore focus to the opener after cancel');
+  assert.equal(dangerEnter.dialogOpen, false, 'confirm should be removed before the promise resolves after cancel');
 
   const normalOpen = await openConfirm(page, {
     title: 'Buy route load?',
@@ -58,6 +59,7 @@ try {
   await page.keyboard.press('Enter');
   const normalEnter = await waitForConfirmResult(page);
   assert.equal(normalEnter.result, true, 'Enter on default-focused non-danger confirm should commit');
+  assert.equal(normalEnter.dialogOpen, false, 'confirm should be removed before the promise resolves after confirm');
 
   const tabOpen = await openConfirm(page, {
     title: 'Abandon mission?',
@@ -73,6 +75,7 @@ try {
   await page.keyboard.press('Enter');
   const tabEnter = await waitForConfirmResult(page);
   assert.equal(tabEnter.result, true, 'Enter should commit only after focus moves to Confirm');
+  assert.equal(tabEnter.dialogOpen, false, 'confirm should be removed after tab-to-confirm activation');
 
   assert.deepEqual(issues.errorIssues(), [], 'confirm safety probe should not record page errors');
   console.log('Confirm dialog safety OK - danger dialogs default to Cancel and Enter follows focused button intent.');
@@ -117,7 +120,6 @@ async function openConfirm(page, opts) {
 
 async function waitForConfirmResult(page) {
   await page.waitForFunction(() => window.__sfConfirmResult !== 'pending', null, { timeout: 5000 });
-  await page.waitForTimeout(220);
   return page.evaluate(() => ({
     result: window.__sfConfirmResult,
     focusRestored: document.activeElement && document.activeElement.id === 'sf-confirm-probe-opener',
