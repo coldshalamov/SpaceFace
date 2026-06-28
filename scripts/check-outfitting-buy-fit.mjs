@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs';
 
 import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
+import { WEAPONS } from '../src/data/weapons.js';
 import {
   describeOutfittingPurchase,
   missionFitGuide,
   missionPickForOutfitting,
+  recommendOutfittingPurchase,
   slotReadiness,
 } from '../src/ui/screens/outfitting.js';
 import { buildSlotList, ships } from '../src/systems/ships.js';
@@ -43,6 +45,9 @@ assert.match(outfitSource, /MISSION FIT ADVISOR/, 'Outfitting should explain how
 assert.match(outfitSource, /Pick a contract on the Mission Board/, 'Outfitting should send uncommitted players back to the Mission Board first');
 assert.match(outfitSource, /job fit/, 'Outfitting shop should tag modules that match the tracked mission fit');
 assert.match(outfitSource, /missionFitGuide/, 'Outfitting should centralize mission-type fit guidance');
+assert.match(outfitSource, /recommendOutfittingPurchase/, 'Outfitting should centralize next-buy recommendation guidance');
+assert.match(outfitSource, /Next buy:/, 'Outfitting advisor should name the next concrete shop action');
+assert.match(outfitSource, /st-outfit-nextbuy/, 'Outfitting advisor should render the next-buy guidance as player-facing copy');
 
 const trackedPick = missionPickForOutfitting({
   ui: { trackedMissionId: 'm_smuggle' },
@@ -82,6 +87,49 @@ assert.deepEqual(slotReadiness([{ type: 'weapon' }, { type: 'shield' }], { fitti
 const shipDef = SHIPS.find((entry) => entry.id === 'ship_kestrel');
 const slots = buildSlotList(shipDef);
 const moduleById = (id) => MODULES.find((entry) => entry.id === id);
+const weaponById = (id) => WEAPONS.find((entry) => entry.id === id);
+
+let nextBuy = recommendOutfittingPurchase({
+  credits: 10000,
+  researchedNodes: [],
+}, slots, [], {
+  wantedSlots: ['weapon', 'shield', 'engine'],
+  tier: 0,
+  items: [
+    weaponById('wpn_pulse_laser_s'),
+    moduleById('mod_shield_booster_s'),
+    moduleById('mod_engine_ion_m'),
+  ],
+});
+assert.equal(nextBuy.kind, 'ok', 'affordable mission-fit gear should be a positive recommendation');
+assert.equal(nextBuy.state, 'fit', 'next buy should prefer a module that can fit the active hull now');
+assert.equal(nextBuy.title, 'Next buy: Pulse Laser S');
+assert.match(nextBuy.detail, /Matches the tracked job fit/);
+
+nextBuy = recommendOutfittingPurchase({
+  credits: 1000,
+  researchedNodes: [],
+}, slots, [], {
+  wantedSlots: ['shield'],
+  tier: 0,
+  items: [moduleById('mod_shield_booster_s')],
+});
+assert.equal(nextBuy.kind, 'warn', 'unaffordable mission-fit gear should be a prep warning');
+assert.equal(nextBuy.state, 'funding');
+assert.match(nextBuy.title, /Need 5,000 cr: Shield Booster S/);
+assert.match(nextBuy.detail, /Run a contract or trade loop/);
+
+nextBuy = recommendOutfittingPurchase({
+  credits: 10000,
+  researchedNodes: [],
+}, slots, [], {
+  wantedSlots: ['cargo'],
+  tier: 0,
+  items: [moduleById('mod_cargo_pod_m')],
+});
+assert.equal(nextBuy.kind, 'warn', 'gear that cannot fit the current hull should not be pitched as ready');
+assert.equal(nextBuy.state, 'hull');
+assert.match(nextBuy.title, /Need compatible hull slot: Cargo Pod M/);
 
 let guidance = describeOutfittingPurchase(moduleById('mod_shield_capacitor_m'), {
   credits: 100000,
