@@ -25,6 +25,15 @@ function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || nu
 const SIZE_RANK = { S: 1, M: 2, L: 3 };
 const SLOT_TYPES = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
 
+function fmtCr(value) {
+  return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
+}
+
+function purchaseFundingText(def, price, credits) {
+  const missing = Math.max(0, (Number(price) || 0) - (Number(credits) || 0));
+  return 'Need ' + fmtCr(missing) + ' more cr for ' + ((def && def.name) || 'this purchase');
+}
+
 // Legacy fallback for pre-explicit-loadout saves. NEW_GAME now fits this weapon directly; the
 // fallback keeps old saves playable without letting the current starter gun hide from loadout UI.
 const STARTER_WEAPON_ID = 'wpn_pulse_laser_s';
@@ -596,7 +605,7 @@ export const ships = {
     }
     const price = def.price || 0;
     if (price > 0 && p.credits < price) {
-      this.bus.emit('toast', { text: 'Insufficient credits (' + price.toLocaleString('en-US') + ' cr)', kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
       return false;
     }
     // Deduct credits via the economy's sole-writer path (§0.6).
@@ -624,7 +633,7 @@ export const ships = {
       }
       const price = def.price || 0;
       if (p.credits < price) {
-        this.bus.emit('toast', { text: 'Insufficient credits', kind: 'error', ttl: 3 });
+        this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
         return false;
       }
       if (price) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyShip:' + defId });
