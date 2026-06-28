@@ -11,7 +11,7 @@ const KBM_PROMPTS = Object.freeze({
   tutorialDock: `Follow the cyan station arrow. Press ${BINDINGS.dock.label} at the dock prompt. Bring the discrepancy back before someone edits it out.`,
   firstFlight: `W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/Space fires the Pulse Laser S, RMB mines marked rocks, Shift boosts, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} opens the star map, ${BINDINGS.missionLog.label} opens the Mission Log, ${BINDINGS.dock.label} docks.`,
   firstCombat: 'Hostile detected! LMB or Space to fire. Hold aim on a target to lock on. F toggles auto-fire.',
-  firstStation: `Stations offer repairs, trading, upgrades, and mission boards. Press ${BINDINGS.dock.label} to dock; inside the hub, arrow keys change tabs, Enter/Space acts, and ${BINDINGS.dock.label} or Escape undocks.`,
+  firstStation: `Stations offer repairs, trading, upgrades, and mission boards. Press ${BINDINGS.dock.label} to dock; inside the hub, arrow keys change tabs, Enter/Space acts, and Departure Check shows what needs attention before you use ${BINDINGS.dock.label} or Escape to undock.`,
   firstGate: `Jump gates connect star systems. Open the Star Map (${BINDINGS.starmap.label}) to plot a jump route.`,
 });
 
@@ -26,7 +26,7 @@ const GAMEPAD_PROMPTS = Object.freeze({
   tutorialDock: 'Follow the cyan station arrow. Press A at the dock prompt. Bring the discrepancy back before someone edits it out.',
   firstFlight: 'Left stick flies, right stick aims, RT fires the Pulse Laser S, LT mines marked rocks, RB boosts, View opens the star map, Start opens pause/log, and A docks.',
   firstCombat: 'Hostile detected! RT to fire. Hold right-stick aim on a target to lock on. X cycles targets.',
-  firstStation: 'Stations offer repairs, trading, upgrades, and mission boards. Press A to dock; inside the hub, LB/RB changes tabs, D-pad or left stick moves focus, A acts, and B undocks.',
+  firstStation: 'Stations offer repairs, trading, upgrades, and mission boards. Press A to dock; inside the hub, LB/RB changes tabs, D-pad or left stick moves focus, A acts, and Departure Check shows what needs attention before B undocks.',
   firstGate: 'Jump gates connect star systems. Press View to open the Star Map and plot a jump route.',
 });
 
