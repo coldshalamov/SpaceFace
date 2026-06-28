@@ -12,6 +12,8 @@
 // enough that planning your production is a real decision. Recipes with timeS:0 remain instant for
 // backward compatibility (basic refining).
 import { BLUEPRINTS, BLUEPRINT_BY_ID } from '../data/blueprints.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { MODULES } from '../data/modules.js';
 import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
 
@@ -25,6 +27,33 @@ const DEFAULT_TIME_S = {
   ship: 120,       // manufacturing a whole ship is a serious commitment — the empire-building beat
 };
 const QUEUE_CAPACITY = 1; // one slot per station — capacity IS the strategic constraint
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+
+function registryName(map, id) {
+  const entry = map.get(id);
+  return (entry && entry.name) || String(id || '').replace(/_/g, ' ');
+}
+
+function commodityName(id) {
+  return registryName(COMMODITY_BY_ID, id);
+}
+
+function moduleName(id) {
+  return registryName(MODULE_BY_ID, id);
+}
+
+function fmtQty(value) {
+  const n = Number(value) || 0;
+  return Number.isInteger(n) ? String(n) : n.toLocaleString('en-US', { maximumFractionDigits: 1 });
+}
+
+export function craftingMaterialBlockerText(bp, materials = []) {
+  const missing = materials.find((item) => item && item.have < item.need);
+  if (!missing) return 'Not enough materials for ' + ((bp && bp.name) || 'this blueprint');
+  const qty = Math.max(0, (Number(missing.need) || 0) - (Number(missing.have) || 0));
+  return 'Need ' + fmtQty(qty) + ' ' + commodityName(missing.id) + ' for ' + ((bp && bp.name) || 'this blueprint');
+}
 
 function buildDuration(bp) {
   if (!bp) return 0;
@@ -161,11 +190,11 @@ export const crafting = {
       return false;
     }
     if (bp.category === 'augment' && !st.sourceOk) {
-      this.bus.emit('toast', { text: 'Need a ' + bp.fromModule + ' to augment', kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: 'Need a ' + moduleName(bp.fromModule) + ' to augment', kind: 'error', ttl: 3 });
       return false;
     }
     if (!st.matsOk) {
-      this.bus.emit('toast', { text: 'Not enough materials', kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: craftingMaterialBlockerText(bp, st.materials), kind: 'error', ttl: 3 });
       return false;
     }
     // queue capacity gate: one job per station at a time (the strategic constraint)
