@@ -63,7 +63,7 @@ function injectStyle() {
   .sf-slot .sf-slot-context { font-size:12px; color:var(--ink-dim); margin-top:2px; overflow-wrap:anywhere; }
   .sf-slot .sf-slot-detail { font-size:11px; color:var(--ink-mute); font-family:var(--mono); margin-top:2px;
     overflow-wrap:anywhere; }
-  .sf-slot .sf-slot-sub { font-size:11px; color:var(--ink-mute); }
+  .sf-slot .sf-slot-sub { font-size:11px; color:var(--ink-mute); font-family:var(--mono); }
   .sf-slot.empty .sf-slot-name { color:var(--ink-mute); font-style:italic; }
   .sf-title-logo { font-family:var(--mono); letter-spacing:.5em; font-size:46px; color:var(--accent);
     text-shadow:0 0 40px rgba(57,208,255,.5); text-align:center; margin:0; }
