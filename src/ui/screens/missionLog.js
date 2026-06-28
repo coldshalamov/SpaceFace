@@ -63,7 +63,23 @@ function cmdtyName(id) {
 
 function prettyType(t) {
   if (!t) return 'Contract';
-  return String(t).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return titleCaseWords(t);
+}
+
+function titleCaseWords(value) {
+  return String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function storyBeatDisplayName(id) {
+  return titleCaseWords(id || 'Story');
+}
+
+export function storyIntroducesDisplayName(value) {
+  return String(value || '')
+    .split('+')
+    .map((part) => titleCaseWords(part.trim()))
+    .filter(Boolean)
+    .join(' + ');
 }
 
 function fmtTime(s) {
@@ -338,7 +354,7 @@ function storyActionForBeat(beat, state) {
       return {
         tone: 'primary',
         label: 'CHAIN',
-        title: branch ? 'Advance ' + branch + ' work' : 'Prove a path',
+        title: branch ? 'Advance ' + storyBeatDisplayName(branch) + ' work' : 'Prove a path',
         body: 'Complete your faction chain and keep the next contract tracked between docks.',
         meta: chainProgress ? (chainProgress + ' done') : 'Faction',
       };
@@ -362,7 +378,7 @@ function storyActionForBeat(beat, state) {
       return beat ? {
         tone: 'primary',
         label: 'STORY',
-        title: String(beat.id || 'Story').replace(/_/g, ' '),
+        title: storyBeatDisplayName(beat.id),
         body: beat.objective || 'Follow the current story objective.',
         meta: 'Beat ' + beat.beat,
       } : null;
@@ -710,10 +726,10 @@ export const missionLogScreen = {
     const beat = (state.story && state.story.beatIndex) || 0;
     const sb = STORY_BEATS[beat];
     if (!sb) { this._storyEl.innerHTML = ''; return; }
-    const introduces = sb.introduces ? '<div class="sf-mlog-story-introduces">Introduces: ' + escapeHtml(sb.introduces.replace(/_/g, ' ')) + '</div>' : '';
+    const introduces = sb.introduces ? '<div class="sf-mlog-story-introduces">Introduces: ' + escapeHtml(storyIntroducesDisplayName(sb.introduces)) + '</div>' : '';
     this._storyEl.innerHTML =
       '<div class="sf-mlog-story-card">' +
-        '<div class="sf-mlog-story-beat">Beat ' + beat + ' / 7 · ' + escapeHtml((sb.id || '').replace(/_/g, ' ')) + '</div>' +
+        '<div class="sf-mlog-story-beat">Beat ' + beat + ' / 7 · ' + escapeHtml(storyBeatDisplayName(sb.id)) + '</div>' +
         '<div class="sf-mlog-story-objective">' + escapeHtml(sb.objective) + '</div>' +
         introduces +
       '</div>';

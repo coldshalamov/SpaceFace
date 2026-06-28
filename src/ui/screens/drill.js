@@ -7,8 +7,10 @@
 // vertical slice we expose a 'drill' screen that the game can push with the asteroid id passed via
 // state.ui.pendingDrillAsteroidId (set before pushScreen). The screen reads it on mount.
 import { DRILL_CONST } from '../../systems/drill.js';
+import { COMMODITIES } from '../../data/commodities.js';
 
 const { COLS, ROWS, TILE } = DRILL_CONST;
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
 // Ore -> render colour (mirrors the ore palette loosely; distinct enough to read at a glance).
 const ORE_COLOR = {
@@ -29,6 +31,15 @@ const TILE_COLOR = {
 const GAS_TELL_TINT = 'rgba(180,60,200,0.28)'; // the discoloration that warns an alert player
 
 const STYLE_ID = 'sf-drill-style';
+
+function titleCaseWords(value) {
+  return String(value || '').replace(/^cmdty_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function commodityName(id) {
+  const commodity = COMMODITY_BY_ID.get(id);
+  return (commodity && commodity.name) || titleCaseWords(id || 'ore');
+}
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
@@ -160,7 +171,7 @@ export const drillScreen = {
       const d = state.drill;
       const total = d ? Object.values(d.yieldLog).reduce((a, b) => a + b, 0) : 0;
       if (ctx.screenManager) ctx.screenManager.popScreen();
-      if (total > 0 && ctx.bus) ctx.bus.emit('toast', { text: 'Drill complete: +' + total + ' ore extracted', kind: 'good', ttl: 4 });
+      if (total > 0 && ctx.bus) ctx.bus.emit('toast', { text: 'Drill complete: +' + total + ' resources extracted', kind: 'good', ttl: 4 });
     }
 
     // ---- render + tick loop (rAF; we own time since sim is paused) ----
@@ -171,7 +182,7 @@ export const drillScreen = {
     const yieldFlash = { t: 0, text: '' };
 
     ctx.bus.on('drill:yield', (p) => {
-      yieldFlash.t = 0.9; yieldFlash.text = '+' + p.qty + ' ' + (p.commodityId || '').replace('cmdty_ore_', '');
+      yieldFlash.t = 0.9; yieldFlash.text = '+' + p.qty + ' ' + commodityName(p.commodityId);
     });
     ctx.bus.on('drill:gasHit', (p) => {
       gasHitFlash.t = 0.6;
