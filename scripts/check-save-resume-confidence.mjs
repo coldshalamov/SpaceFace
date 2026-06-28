@@ -17,6 +17,7 @@ import {
   slotObjectiveSummary,
   slotSummaryLines,
 } from '../src/ui/screens/saveLoad.js';
+import { save as saveSystem } from '../src/save/saveSystem.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -67,6 +68,49 @@ assert.match(save, /bus\.on\('dock:undocked',\s*\(\)\s*=>\s*this\.requestAutosav
   'station departure must force an autosave so cargo and nav intent are durable before the debounce window');
 assert.match(save, /if \(!options\.force && now - this\._lastAutosaveAt < AUTOSAVE_DEBOUNCE_MS\) return false;/,
   'forced autosaves should bypass only the debounce gate');
+assert.match(save, /_slotIndexWithFallback\(\)/,
+  'save system must recover slot metadata from stored envelopes when sf.save.index is missing or corrupt');
+assert.match(save, /_scanStoredSlots\(\)/,
+  'save system must scan stored slot envelopes as a best-effort index recovery path');
+
+const previousLocalStorage = globalThis.localStorage;
+globalThis.localStorage = makeStorage();
+try {
+  localStorage.setItem('sf.save.quick', JSON.stringify(makeEnvelope({
+    slot: 'quick',
+    savedAt: '2026-06-27T12:00:00.000Z',
+    playtimeS: 120,
+    credits: 900,
+    shipName: 'ship_kestrel',
+    objective: { kind: 'story', label: 'Cold Start', reason: 'Mine the marked rock' },
+  })));
+  localStorage.setItem('sf.save.auto', JSON.stringify(makeEnvelope({
+    slot: 'auto',
+    savedAt: '2026-06-27T12:05:00.000Z',
+    playtimeS: 420,
+    credits: 1300,
+    shipName: 'ship_kestrel_runner',
+    objective: { kind: 'trade', label: 'Probe Buyer', commodityId: 'cmdty_food' },
+  })));
+  localStorage.setItem('sf.save.index', '{corrupt');
+
+  const recovered = saveSystem.listSlots();
+  assert.equal(recovered.quick.slot, 'quick', 'save.listSlots should recover quick when index is corrupt');
+  assert.equal(recovered.auto.slot, 'auto', 'save.listSlots should recover autosave when index is corrupt');
+  assert.match(recovered.auto.objectiveSummary, /Route: Probe Buyer/,
+    'recovered slot metadata should preserve objective summary for Continue/Load trust');
+  assert.equal(saveSystem._latestSlot(), 'auto',
+    'save.load("latest") resolver should use recovered slot metadata, not only sf.save.index');
+
+  localStorage.setItem('sf.save.index', JSON.stringify({
+    auto: { slot: 'auto', savedAt: '2026-01-01T00:00:00.000Z', playtimeS: 1 },
+  }));
+  assert.equal(saveSystem.listSlots().auto.savedAt, '2026-06-27T12:05:00.000Z',
+    'slot scan should beat stale index metadata when the stored envelope is newer');
+} finally {
+  if (previousLocalStorage === undefined) delete globalThis.localStorage;
+  else globalThis.localStorage = previousLocalStorage;
+}
 
 // Save system: player-authored navigation intent must survive Continue/Load.
 assert.match(save, /data\.nav\s*=\s*this\._serializeNav\(\)/,
@@ -141,3 +185,35 @@ assert.match(uiRoot, /No save found for /, 'uiRoot should explain load misses');
 assert.doesNotMatch(saveLoad, /Saving to /, 'saveLoad should not duplicate the centralized save:started toast');
 
 console.log('Save/resume confidence OK - title Continue shows latest-save context and uses the canonical save index.');
+
+function makeEnvelope({ slot, savedAt, playtimeS, credits, shipName, objective }) {
+  return {
+    fmt: 'spaceface-save',
+    version: 5,
+    savedAt,
+    playtimeS,
+    slot,
+    data: {
+      meta: { playtimeS, lastSavedAt: savedAt },
+      player: { credits, activeShipIndex: 0, ownedShips: [{ defId: shipName }] },
+      world: {
+        currentSectorId: 'sector_helios_prime',
+        sectors: { sector_helios_prime: { id: 'sector_helios_prime', name: 'Helios Prime' } },
+      },
+      nav: { waypoint: objective || null },
+      missions: { active: [], story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 } },
+    },
+  };
+}
+
+function makeStorage() {
+  const map = new Map();
+  return {
+    get length() { return map.size; },
+    key(i) { return Array.from(map.keys())[i] || null; },
+    getItem(key) { key = String(key); return map.has(key) ? map.get(key) : null; },
+    setItem(key, value) { map.set(String(key), String(value)); },
+    removeItem(key) { map.delete(String(key)); },
+    clear() { map.clear(); },
+  };
+}

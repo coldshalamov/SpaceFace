@@ -293,7 +293,7 @@ export const save = {
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
   _updateIndex(slot, envelope) {
     try {
-      const idx = this._readIndex();
+      const idx = this._slotIndexWithFallback();
       const state = this.state;
       const sectorId = state.world.currentSectorId;
       const sector = sectorId && state.world.sectors[sectorId];
@@ -327,16 +327,44 @@ export const save = {
     } catch (err) { return {}; }
   },
 
-  /** Public API for the Save/Load screen (§ saveLoad.js readSlots). Returns {slot: meta}. */
-  listSlots() { return this._readIndex(); },
+  _slotIndexWithFallback() {
+    const indexed = normalizeSlotIndex(this._readIndex());
+    const scanned = this._scanStoredSlots();
+    return mergeSlotIndexes(indexed, scanned);
+  },
+
+  _scanStoredSlots() {
+    const out = {};
+    if (typeof localStorage === 'undefined') return out;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
+        const slot = key.slice(LS_PREFIX.length);
+        if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+        let env = null;
+        try { env = JSON.parse(localStorage.getItem(key)); }
+        catch (err) { continue; }
+        const meta = slotMetaFromEnvelope(slot, env);
+        if (meta) out[slot] = meta;
+      }
+    } catch (err) {
+      // localStorage scans are a recovery path; never break title/load screens.
+    }
+    return out;
+  },
+
+  /** Public API for title + Save/Load (§ saveLoad.js readSlots). Returns {slot: meta}. */
+  listSlots() { return this._slotIndexWithFallback(); },
 
   /** Resolve a 'latest' request to the newest slot in the index (used by Continue / mainMenu). */
   _latestSlot() {
-    const idx = this._readIndex();
+    const idx = this._slotIndexWithFallback();
     let best = null, bestT = -1;
     for (const slot in idx) {
-      const t = Date.parse((idx[slot] && idx[slot].savedAt) || '') || 0;
-      if (t > bestT) { bestT = t; best = slot; }
+      if (!isOccupiedSlotMeta(idx[slot])) continue;
+      const t = slotMetaScore(idx[slot]);
+      if (t >= bestT) { bestT = t; best = slot; }
     }
     return best;
   },
@@ -344,7 +372,7 @@ export const save = {
   deleteSlot(slot) {
     try {
       if (typeof localStorage !== 'undefined') localStorage.removeItem(LS_PREFIX + slot);
-      const idx = this._readIndex();
+      const idx = this._slotIndexWithFallback();
       delete idx[slot];
       if (typeof localStorage !== 'undefined') localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
     } catch (err) { /* ignore */ }
@@ -1212,6 +1240,106 @@ function storyObjectiveSummary(story) {
 
 function resumeObjectiveSummary(parts) {
   return parts.navSummary || parts.missionSummary || parts.storySummary || '';
+}
+
+function normalizeSlotIndex(idx) {
+  const out = {};
+  if (!idx || typeof idx !== 'object') return out;
+  if (Array.isArray(idx)) {
+    for (const item of idx) {
+      if (!item || item.slot == null) continue;
+      const slot = String(item.slot);
+      if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+      out[slot] = clonePlain(Object.assign({ slot }, item));
+    }
+    return out;
+  }
+  for (const slot in idx) {
+    if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+    const meta = idx[slot];
+    if (!meta || typeof meta !== 'object' || Array.isArray(meta)) continue;
+    out[slot] = clonePlain(Object.assign({ slot }, meta));
+  }
+  return out;
+}
+
+function mergeSlotIndexes(indexed, scanned) {
+  const out = {};
+  for (const slot in (scanned || {})) out[slot] = scanned[slot];
+  for (const slot in (indexed || {})) out[slot] = mergeSlotMeta(indexed[slot], out[slot]);
+  return out;
+}
+
+function mergeSlotMeta(indexed, scanned) {
+  if (!indexed) return scanned || null;
+  if (!scanned) return indexed;
+  const indexedScore = slotMetaScore(indexed);
+  const scannedScore = slotMetaScore(scanned);
+  const scannedIsNewer = scannedScore > indexedScore;
+  const scannedIsTieWithContext = scannedScore === indexedScore && !hasSlotContext(indexed) && hasSlotContext(scanned);
+  return scannedIsNewer || scannedIsTieWithContext
+    ? Object.assign({}, indexed, scanned, { slot: scanned.slot || indexed.slot })
+    : Object.assign({}, scanned, indexed, { slot: indexed.slot || scanned.slot });
+}
+
+function hasSlotContext(meta) {
+  return !!(meta && (
+    meta.sectorName || meta.shipName || meta.objectiveSummary ||
+    meta.navObjectiveSummary || meta.missionSummary || meta.storySummary
+  ));
+}
+
+function isOccupiedSlotMeta(meta) {
+  return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
+}
+
+function slotMetaScore(meta) {
+  const t = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
+  if (t) return t;
+  const playtimeS = Number(meta && meta.playtimeS);
+  return Number.isFinite(playtimeS) ? playtimeS : 0;
+}
+
+function slotMetaFromEnvelope(slot, env) {
+  if (!env || typeof env !== 'object' || env.fmt !== FMT) return null;
+  const version = env.version | 0;
+  if (version > CURRENT_VERSION) return null;
+  const data = env.data;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  if (env.checksum) {
+    try {
+      if (fnv1a(safeStringify(data)) !== env.checksum) return null;
+    } catch (err) {
+      return null;
+    }
+  }
+  const player = data.player && typeof data.player === 'object' && !Array.isArray(data.player) ? data.player : {};
+  const world = data.world && typeof data.world === 'object' && !Array.isArray(data.world) ? data.world : {};
+  const meta = data.meta && typeof data.meta === 'object' && !Array.isArray(data.meta) ? data.meta : {};
+  const sectorId = world.currentSectorId || '';
+  const sector = sectorId && world.sectors && world.sectors[sectorId];
+  const activeIndex = Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0;
+  const ownedShips = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const activeShip = ownedShips[activeIndex] || ownedShips[0] || {};
+  const missions = normalizeMissionSavePayload(data.missions);
+  const story = data.story || missions.story;
+  const navSummary = navObjectiveSummary(data.nav);
+  const missionSummary = missionObjectiveSummary(missions, null);
+  const storySummary = storyObjectiveSummary(story);
+  const playtimeS = Number.isFinite(env.playtimeS) ? env.playtimeS : meta.playtimeS;
+  return {
+    slot,
+    savedAt: env.savedAt || meta.lastSavedAt || meta.savedAt || '',
+    playtimeS: Number.isFinite(playtimeS) ? playtimeS : 0,
+    credits: Number.isFinite(player.credits) ? player.credits : undefined,
+    sectorName: (sector && (sector.name || sector.id)) || sectorId || '',
+    shipName: activeShip.defId || '',
+    navObjectiveSummary: navSummary,
+    missionSummary,
+    storySummary,
+    objectiveSummary: resumeObjectiveSummary({ navSummary, missionSummary, storySummary }),
+    version: env.version,
+  };
 }
 
 function readableMissionType(value) {
