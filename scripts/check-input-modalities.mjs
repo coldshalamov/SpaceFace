@@ -1,7 +1,7 @@
 // check-input-modalities.mjs — guards the input-modality contract (goal P1-12).
 //
 // SpaceFace supports THREE input modalities merged into one state.input: keyboard+mouse (always on),
-// gamepad (navigator.getGamepads poller), and touch (virtual dual-stick + buttons for touchscreens).
+// gamepad (navigator.getGamePads poller), and touch (virtual dual-stick + buttons for touchscreens).
 // A modality can be silently dropped by a refactor that removes an import or a merge line — the
 // player would just find controls dead with no error. This check pins the contract:
 //   1. gamepad.js + touch.js exist and export their factory functions.
@@ -69,7 +69,7 @@ assert.doesNotMatch(settingsSrc, /rowToggle\('Touch controls'/, 'Touch controls 
 assert.match(settingsSrc, /touchModeLabel/, 'Touch controls must render Auto/On/Off labels');
 assert.match(settingsSrc, /aria-pressed', mode === 'auto' \? 'mixed'/, 'Touch Auto state must use valid aria-pressed=mixed');
 assert.match(touchSrc, /should !== this\._enabledByAuto \|\| this\.active !== should/, 'Touch auto-detect must reconcile the current overlay when returning from manual On/Off');
-assert.match(touchSrc, /if \(on == null\) this\.autoDetect\(\);\s*else this\.setEnabled\(\!\!on\)/, 'Touch persistEnabled(null) must return to auto-detect immediately');
+assert.match(touchSrc, /if \(on == null\) this\.autoDetect\(\);\s*else this\.setEnabled\(!!on\)/, 'Touch persistEnabled(null) must return to auto-detect immediately');
 assert.match(touchSrc, /typeof navigator !== 'undefined'/, 'Touch auto-detect must guard navigator for headless Node harnesses');
 assert.match(touchSrc, /Number\(win\.innerWidth\)/, 'Touch auto-detect must read dimensions from the guarded window object');
 assert.match(uiRootSrc, /controlPrompt\('flight', 'kbm'\)/, 'UI root must source keyboard flight hints from controlPrompts.js');
@@ -82,6 +82,8 @@ assert.match(helpSrc, /Mine beam[\s\S]*LT \/ L2/, 'Help Controls must document g
 assert.match(helpSrc, /Dock \/ activate[\s\S]*A \/ X \(when prompted\)/, 'Help Controls must document gamepad dock/activate');
 assert.match(uiInputSrc, /gp\.actions\.accept[\s\S]*dockInRange[\s\S]*doDock\(\)/,
   'UI input must let gamepad A/Cross dock when the dock prompt is active');
+assert.match(uiInputSrc, /case BINDINGS\.dock\.key:\s*case 'E':\s*case 'Enter':/,
+  'UI input must route lowercase e, uppercase E, and Enter to the dock action');
 assert.match(uiInputSrc, /top === 'starmap'[\s\S]*gp\.actions\.map[\s\S]*screenManager\.popScreen\(\)/,
   'UI input must let gamepad View/Select close the Star Map after opening it');
 
