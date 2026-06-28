@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { pauseExitConfirmBody, pauseStatusLines } from '../src/ui/screens/pause.js';
 
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
+const uiInputSrc = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
 
 assert.match(pauseSrc, /FLIGHT BRIEF/, 'pause menu should render a visible flight brief panel');
 assert.match(pauseSrc, /aria-live/, 'flight brief should announce refreshed objective state politely');
@@ -20,6 +21,13 @@ assert.doesNotMatch(pauseSrc, /Loading will discard any unsaved progress in the 
   'Pause Load confirmation must not fall back to generic unsaved-progress copy');
 assert.doesNotMatch(pauseSrc, /Any unsaved progress will be lost\. You can Save first if you want to keep it\./,
   'Pause Main Menu confirmation must not fall back to generic unsaved-progress copy');
+
+assert.match(uiInputSrc, /function allowsMissionLogShortcut\(def\)/,
+  'UI input should keep modal Mission Log shortcut scope explicit');
+assert.match(uiInputSrc, /def\.id === 'station' \|\| def\.id === 'pause'/,
+  'Mission Log shortcut should work from station and Pause, not every modal route');
+assert.match(uiInputSrc, /allowsMissionLogShortcut\(def\) && matchesBinding\(ev, BINDINGS\.missionLog\)[\s\S]*screenManager\.pushScreen\('missionLog'\)/,
+  'Pause and station should honor the live Mission Log binding over modal UI');
 
 const trackedState = {
   simTime: 100,

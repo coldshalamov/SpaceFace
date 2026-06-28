@@ -49,6 +49,10 @@ export function createUiInput(ctx, screenManager) {
     return !!binding && (k === binding.key || k === binding.label || code === binding.code);
   }
 
+  function allowsMissionLogShortcut(def) {
+    return !!def && (def.id === 'station' || def.id === 'pause');
+  }
+
   function onKeyDown(ev) {
     // never intercept typing into inputs/textareas
     const t = ev.target;
@@ -89,7 +93,9 @@ export function createUiInput(ctx, screenManager) {
         try { if (def.onKey(ev, ctx) === true) { ev.preventDefault(); return; } }
         catch (e) { console.error('[uiInput] screen onKey error:', e); }
       }
-      if (def && def.id === 'station' && matchesBinding(ev, BINDINGS.missionLog)) {
+      // The Pause menu labels Mission Log with the live binding. Keep that promise there and in
+      // the station hub, without teaching root/title/setup modals to open an in-run objective log.
+      if (allowsMissionLogShortcut(def) && matchesBinding(ev, BINDINGS.missionLog)) {
         ev.preventDefault();
         screenManager.pushScreen('missionLog');
         bus.emit('audio:cue', { id: 'ui_open' });
