@@ -152,6 +152,60 @@ function setVecXZ(vec, x, z) {
   else { vec.x = x; vec.y = 0; vec.z = z; }
 }
 
+function activeSectorStations(state) {
+  return state && state.world && state.world.activeSector && Array.isArray(state.world.activeSector.stations)
+    ? state.world.activeSector.stations
+    : [];
+}
+
+function stationRecordId(station) {
+  if (!station) return null;
+  if (station.stationId) return station.stationId;
+  return typeof station.id === 'string' && station.id.startsWith('station_') ? station.id : null;
+}
+
+function stationRecordFor(state, stationId) {
+  if (!stationId) return null;
+  return activeSectorStations(state).find((station) => stationRecordId(station) === stationId) || null;
+}
+
+function firstActiveStationId(state) {
+  for (const station of activeSectorStations(state)) {
+    const stationId = stationRecordId(station);
+    if (stationId) return stationId;
+  }
+  const live = firstLiveStation(state);
+  return live && live.data && live.data.stationId || null;
+}
+
+function liveStationFor(state, stationId) {
+  if (!state || !stationId) return null;
+  const index = state.entityIndex;
+  const indexed = index && index.byStationId && typeof index.byStationId.get === 'function'
+    ? index.byStationId.get(stationId)
+    : null;
+  if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+  const stations = index && Array.isArray(index.stations) ? index.stations : null;
+  const candidates = stations || state.entityList || [];
+  for (const entity of candidates) {
+    if (entity && entity.alive !== false && entity.type === 'station' && entity.data && entity.data.stationId === stationId) {
+      return entity;
+    }
+  }
+  return null;
+}
+
+function firstLiveStation(state) {
+  if (!state) return null;
+  const stations = state.entityIndex && Array.isArray(state.entityIndex.stations)
+    ? state.entityIndex.stations
+    : state.entityList || [];
+  for (const entity of stations) {
+    if (entity && entity.alive !== false && entity.type === 'station' && entity.data && entity.data.stationId) return entity;
+  }
+  return null;
+}
+
 export const combat = {
   name: 'combat',
   init(ctx) {
@@ -294,15 +348,23 @@ export const combat = {
   respawnStationId() {
     const player = this.state && this.state.player;
     const ins = player && player.insurance;
-    if (ins && ins.lastStationId) return ins.lastStationId;
-    const stations = this.state && this.state.world && this.state.world.activeSector && this.state.world.activeSector.stations;
-    return stations && stations[0] ? stations[0].stationId || null : null;
+    if (ins && ins.lastStationId && (stationRecordFor(this.state, ins.lastStationId) || liveStationFor(this.state, ins.lastStationId))) {
+      return ins.lastStationId;
+    }
+    return firstActiveStationId(this.state);
   },
 
   respawnPosition(stationId) {
-    const stations = this.state && this.state.world && this.state.world.activeSector && this.state.world.activeSector.stations;
-    const station = stationId && stations && stations.find((s) => s.stationId === stationId);
-    const pos = station && station.pos;
+    const station = stationRecordFor(this.state, stationId);
+    let pos = station && station.pos;
+    if (!pos && station && typeof station.id === 'number' && this.state && this.state.entities) {
+      const entity = this.state.entities.get(station.id);
+      pos = entity && entity.pos;
+    }
+    if (!pos) {
+      const live = liveStationFor(this.state, stationId);
+      pos = live && live.pos;
+    }
     return pos ? { x: pos.x || 0, z: pos.z || 0 } : { x: 0, z: 0 };
   },
 

@@ -2688,6 +2688,76 @@ function checkInsuredRespawnUsesStationRefundAndCargoLoss() {
   assert.equal(player.cap, player.capMax, 'respawn should restore capacitor');
 }
 
+function checkRespawnUsesReachableSectorStationWhenLastDockIsElsewhere() {
+  const makeVec = (x, z) => ({
+    x,
+    y: 0,
+    z,
+    set(nx, ny, nz) { this.x = nx; this.y = ny || 0; this.z = nz; return this; },
+    copy(pos) { this.x = pos.x; this.y = pos.y || 0; this.z = pos.z; return this; },
+  });
+  const state = {
+    playerId: 1,
+    simTime: 77,
+    player: {
+      credits: 100,
+      insurance: { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: 'station_helios' },
+      ownedShips: [{ defId: 'ship_pelican', fittings: [] }],
+      activeShipIndex: 0,
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 100, capMass: 100 },
+    },
+    entities: new Map(),
+    entityList: [],
+    world: {
+      currentSectorId: 'sector_tethys_junction',
+      activeSector: {
+        stations: [{ id: 22, stationId: 'station_tethys' }],
+      },
+    },
+  };
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: makeVec(900, 900),
+    prevPos: makeVec(900, 900),
+    vel: makeVec(12, -4),
+    flags: {},
+    data: { defId: 'ship_pelican' },
+    hull: 0,
+    hullMax: 180,
+    shield: 0,
+    shieldMax: 60,
+    cap: 0,
+    capMax: 110,
+  };
+  const liveStation = {
+    id: 22,
+    type: 'station',
+    alive: true,
+    pos: { x: -240, z: 510 },
+    data: { stationId: 'station_tethys' },
+  };
+  state.entities.set(player.id, player);
+  state.entities.set(liveStation.id, liveStation);
+  state.entityList.push(player, liveStation);
+  state.entityIndex = { byStationId: new Map([[liveStation.data.stationId, liveStation]]), stations: [liveStation] };
+  const events = [];
+
+  combat.state = state;
+  combat.bus = { emit: (event, payload) => events.push({ event, payload }) };
+
+  combat.respawnPlayer(player, 99);
+
+  const respawn = events.find((e) => e.event === 'player:respawn');
+  assert(respawn, 'normal death should emit player:respawn');
+  assert.equal(respawn.payload.stationId, 'station_tethys', 'respawn should not report an unreachable previous-sector station');
+  assert.equal(player.pos.x, -240, 'respawn should use the current sector live station x position');
+  assert.equal(player.pos.z, 510, 'respawn should use the current sector live station z position');
+  assert.equal(player.vel.x, 0, 'respawn should clear stale ship velocity');
+  assert.equal(player.vel.z, 0, 'respawn should clear stale ship velocity');
+}
+
 function checkFailedCargoFitDoesNotDuplicateModules() {
   const atlas = SHIPS.find((s) => s.id === 'ship_atlas');
   const slots = buildSlotList(atlas);
@@ -4512,6 +4582,7 @@ checkCombatPrefersAuthoredProjectilePacket();
 checkBeamDamageUsesSpatialCandidatesForCrowdedScenes();
 checkHeatUsesTargetFactionContext();
 checkInsuredRespawnUsesStationRefundAndCargoLoss();
+checkRespawnUsesReachableSectorStationWhenLastDockIsElsewhere();
 checkFailedCargoFitDoesNotDuplicateModules();
 checkNewGameOwnedShipDefaultsAreFitted();
 checkAmmoServiceOnlyChargesAcceptedCargo();
