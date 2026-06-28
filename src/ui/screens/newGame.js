@@ -111,7 +111,7 @@ function starterShip(ctx) {
 function starterLoadoutRows() {
   const labels = {
     weapon: 'Primary',
-    mining: 'Sampler',
+    mining: 'Mining',
     engine: 'Drive',
     shield: 'Shield',
     cargo: 'Cargo',
