@@ -301,6 +301,74 @@ export function missionBoardReadiness(preflight = {}) {
   };
 }
 
+function missionOfferId(m) {
+  return m && (m.id != null ? m.id : m.missionId);
+}
+
+function missionRiskTier(m) {
+  const raw = m && (m.riskTier != null ? m.riskTier : (m.risk != null ? m.risk : 0));
+  const risk = Number(raw);
+  return Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
+}
+
+function missionRecommendationReason(m, preflight, readiness, consequences) {
+  const risk = missionRiskTier(m);
+  const reward = consequences && consequences.reward > 0
+    ? '+' + consequences.reward.toLocaleString('en-US') + ' cr'
+    : 'contract payout';
+  const routeChip = (preflight.chips || []).find((chip) =>
+    chip && (chip.text === 'Local sector' || /^Jump route: /.test(chip.text) || /^Route: /.test(chip.text))
+  );
+  const route = routeChip ? routeChip.text : missionDestName(m || {});
+  if (readiness.state === 'blocked') {
+    return 'Prep first: ' + (preflight.blocker || readiness.title || 'clear the blocker') + '.';
+  }
+  if (readiness.state === 'caution') {
+    return 'Strong pick after one check: ' + (preflight.warning || readiness.title || 'review readiness') +
+      '. ' + reward + ', Risk ' + risk + ', ' + route + '.';
+  }
+  return 'Best board pick: ready now, ' + reward + ', Risk ' + risk + ', ' + route + '.';
+}
+
+export function recommendMissionBoardOffer(slots = [], state = {}) {
+  const candidates = (Array.isArray(slots) ? slots : [])
+    .map((mission, index) => {
+      if (!mission) return null;
+      const id = missionOfferId(mission);
+      if (id == null || id === '') return null;
+      const preflight = missionPreflight(mission, state);
+      const readiness = missionBoardReadiness(preflight);
+      const consequences = missionConsequenceSummary(mission);
+      const risk = missionRiskTier(mission);
+      const collateral = consequences.collateral || 0;
+      const reward = consequences.reward || 0;
+      const readinessScore = readiness.state === 'ready' ? 10000 : (readiness.state === 'caution' ? 6500 : 1000);
+      const score = readinessScore +
+        Math.min(2200, reward / 8) -
+        risk * 350 -
+        Math.min(1600, collateral / 15) -
+        (preflight.warning ? 250 : 0);
+      return { mission, missionId: id, index, preflight, readiness, consequences, risk, score };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (b.score - a.score) || (a.risk - b.risk) || (a.index - b.index));
+
+  const best = candidates[0];
+  if (!best) return null;
+  const blocked = best.readiness.state === 'blocked';
+  return {
+    mission: best.mission,
+    missionId: best.missionId,
+    kind: best.readiness.kind,
+    state: best.readiness.state,
+    label: blocked ? 'PREP FIRST' : (best.readiness.state === 'caution' ? 'RECOMMENDED - CHECK' : 'RECOMMENDED'),
+    title: best.mission.title || prettyType(best.mission.type),
+    reason: missionRecommendationReason(best.mission, best.preflight, best.readiness, best.consequences),
+    actionLabel: blocked ? 'Resolve Prep' : 'Accept Recommended',
+    disabled: blocked,
+  };
+}
+
 let cssInjected = false;
 function injectCss() {
   if (cssInjected || typeof document === 'undefined') return;
@@ -461,20 +529,24 @@ export const stationHub = {
     panel.innerHTML =
       '<div class="st-sub-h">Mission Board</div>' +
       '<div class="st-mission-guide">Accepting a contract adds it to the Mission Log (J), auto-tracks it, and sets nav guidance when a destination exists. Rewards fund hulls, modules, repairs, and fuel.</div>' +
+      '<div class="st-mission-recommend" hidden></div>' +
       '<div class="st-mission-accepted" hidden></div>' +
       '<div class="st-mission-list"></div>';
     const status = panel.querySelector('.st-mission-accepted');
+    const recommend = panel.querySelector('.st-mission-recommend');
     const list = panel.querySelector('.st-mission-list');
-    list.addEventListener('click', (ev) => {
+    const handleMissionAction = (ev) => {
       const btn = ev.target.closest('[data-mid]');
       if (!btn) return;
       const missionId = btn.getAttribute('data-mid');
       const act = btn.getAttribute('data-act');
       if (act === 'accept') ctx.bus.emit('ui:acceptMission', { missionId });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
-    });
+    };
+    list.addEventListener('click', handleMissionAction);
+    recommend.addEventListener('click', handleMissionAction);
     content.appendChild(panel);
-    this._missionEls = { panel, list, status };
+    this._missionEls = { panel, list, status, recommend };
   },
 
   _setMissionAcceptedStatus(missionId) {
@@ -511,9 +583,34 @@ export const stationHub = {
     if (!this._missionEls) return;
     this._refreshMissionAcceptedStatus();
     const list = this._missionEls.list;
+    const recommend = this._missionEls.recommend;
     const board = ctx.state.missions && ctx.state.missions.boards && ctx.state.missions.boards[this._stationId];
     const slots = (board && board.slots) || [];
     list.textContent = '';
+    const recommendation = recommendMissionBoardOffer(slots, ctx.state);
+    if (recommend) {
+      if (!recommendation) {
+        recommend.hidden = true;
+        recommend.innerHTML = '';
+      } else {
+        const acceptTitle = recommendation.disabled
+          ? recommendation.reason
+          : 'Accept, auto-track, and add ' + recommendation.title + ' to Mission Log.';
+        recommend.hidden = false;
+        recommend.className = 'st-mission-recommend st-mission-recommend--' + recommendation.kind;
+        recommend.innerHTML =
+          '<div class="st-mission-recommend-copy">' +
+            '<div class="st-mission-recommend-label mono">' + escapeHtml(recommendation.label) + '</div>' +
+            '<div class="st-mission-recommend-title">' + escapeHtml(recommendation.title) + '</div>' +
+            '<div class="st-mission-recommend-reason">' + escapeHtml(recommendation.reason) + '</div>' +
+          '</div>' +
+          '<button data-act="accept" data-mid="' + escapeHtml(recommendation.missionId) + '"' +
+            (recommendation.disabled ? ' disabled' : '') +
+            ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">' +
+            escapeHtml(recommendation.actionLabel) +
+          '</button>';
+      }
+    }
     if (!slots.length) {
       list.innerHTML = '<div class="st-empty">No contracts posted right now. Try the Bar for leads, check another station, or undock and use the Mission Log (J) for active objectives.</div>';
       return;
@@ -539,11 +636,15 @@ export const stationHub = {
         '<span class="st-mission-consequence st-mission-consequence--' + chip.kind + '"><b>' + escapeHtml(chip.label) + '</b> ' + escapeHtml(chip.text) + '</span>'
       ).join('');
       const card = document.createElement('div');
-      card.className = 'st-mission-card' + (tracked && tracked === mid ? ' tracked' : '');
+      const recommended = recommendation && recommendation.missionId === mid;
+      card.className = 'st-mission-card' +
+        (tracked && tracked === mid ? ' tracked' : '') +
+        (recommended ? ' recommended recommended--' + recommendation.kind : '');
       card.innerHTML =
         '<div class="st-mission-top">' +
           '<span class="st-mission-title">' + escapeHtml(m.title || prettyType(m.type)) + '</span>' +
           '<span class="st-mission-badges">' +
+            (recommended ? '<span class="st-mission-recommended st-mission-recommended--' + recommendation.kind + '">PICK</span>' : '') +
             '<span class="st-mission-readiness st-mission-readiness--' + readiness.kind + '" title="' + escapeHtml(readiness.title) + '" aria-label="' + escapeHtml(readiness.title) + '">' + escapeHtml(readiness.label) + '</span>' +
             '<span class="st-mission-risk r' + risk + '">RISK ' + risk + '</span>' +
           '</span>' +
@@ -1345,6 +1446,21 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 /* missions */
 .st-mission-guide { margin: -2px 0 12px; border: 1px solid var(--panel-edge); border-radius: 6px;
   padding: 9px 11px; background: rgba(10,18,32,.5); color: var(--ink-dim); font-size: .8rem; line-height: 1.4; }
+.st-mission-recommend { margin: -2px 0 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; border: 1px solid rgba(57,208,255,.34); border-radius: 6px; padding: 10px 12px;
+  background: linear-gradient(90deg, rgba(57,208,255,.12), rgba(10,18,32,.58)); }
+.st-mission-recommend[hidden] { display: none; }
+.st-mission-recommend--ok { border-color: rgba(98,224,138,.36); background: linear-gradient(90deg, rgba(98,224,138,.11), rgba(10,18,32,.58)); }
+.st-mission-recommend--warn { border-color: rgba(255,198,77,.38); background: linear-gradient(90deg, rgba(255,198,77,.12), rgba(10,18,32,.58)); }
+.st-mission-recommend--bad { border-color: rgba(255,84,112,.42); background: linear-gradient(90deg, rgba(255,84,112,.13), rgba(10,18,32,.58)); }
+.st-mission-recommend-copy { min-width: 0; display: grid; gap: 3px; }
+.st-mission-recommend-label { color: var(--accent); font-size: .62rem; letter-spacing: .14em; }
+.st-mission-recommend--ok .st-mission-recommend-label { color: var(--good); }
+.st-mission-recommend--warn .st-mission-recommend-label { color: var(--warn); }
+.st-mission-recommend--bad .st-mission-recommend-label { color: var(--danger); }
+.st-mission-recommend-title { color: var(--ink); font-weight: 700; font-size: .88rem; line-height: 1.3; }
+.st-mission-recommend-reason { color: var(--ink-dim); font-size: .74rem; line-height: 1.34; }
+.st-mission-recommend button { flex: none; max-width: 100%; font-size: .75rem; white-space: nowrap; }
 .st-mission-accepted { margin: -2px 0 12px; border: 1px solid rgba(98,224,138,.42); border-radius: 6px;
   padding: 10px 12px; background: rgba(25,54,42,.36); box-shadow: 0 0 12px rgba(98,224,138,.12); }
 .st-mission-accepted[hidden] { display: none; }
@@ -1356,9 +1472,18 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-mission-card { border: 1px solid var(--panel-edge); border-radius: 8px; padding: 11px 14px;
   background: rgba(10,18,32,.55); }
 .st-mission-card.tracked { border-color: var(--accent); box-shadow: 0 0 10px rgba(57,208,255,.2); }
-.st-mission-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.st-mission-card.recommended--ok { border-color: rgba(98,224,138,.38); box-shadow: 0 0 12px rgba(98,224,138,.16); }
+.st-mission-card.recommended--warn { border-color: rgba(255,198,77,.4); box-shadow: 0 0 12px rgba(255,198,77,.14); }
+.st-mission-card.recommended--bad { border-color: rgba(255,84,112,.42); box-shadow: 0 0 12px rgba(255,84,112,.14); }
+.st-mission-card.tracked.recommended { border-color: var(--accent); box-shadow: 0 0 12px rgba(57,208,255,.22); }
+.st-mission-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; }
 .st-mission-title { font-size: .95rem; min-width: 0; }
 .st-mission-badges { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.st-mission-recommended { font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; padding: 1px 7px;
+  border-radius: 4px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); }
+.st-mission-recommended--ok { color: var(--good); border-color: rgba(98,224,138,.34); }
+.st-mission-recommended--warn { color: var(--warn); border-color: rgba(255,198,77,.34); }
+.st-mission-recommended--bad { color: var(--danger); border-color: rgba(255,84,112,.36); }
 .st-mission-readiness { font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; padding: 1px 7px;
   border-radius: 4px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); }
 .st-mission-readiness--ok { color: var(--good); border-color: rgba(98,224,138,.32); }
