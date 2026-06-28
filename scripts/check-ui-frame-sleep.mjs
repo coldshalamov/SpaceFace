@@ -176,7 +176,7 @@ function checkHudMetaCargoIsEventDriven() {
   const src = readFileSync(new URL('../src/ui/hudMeta.js', import.meta.url), 'utf8');
   assert.ok(src.includes("bus.on('cargo:changed', maybeShowManifestGhost)"), 'HUD meta manifest ghost should wake from cargo:changed');
   assert.ok(!src.includes('snapshotCargo'), 'HUD meta should not clone cargo every overlay tick');
-  const tickBody = src.match(/function tick\(dt\) \{([\s\S]*?)\n  \}\n\n  function diffCargo/);
+  const tickBody = src.match(/function tick\(dt\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  function diffCargo/);
   assert.ok(tickBody, 'HUD meta tick body should remain parseable by the sleep check');
   assert.ok(!tickBody[1].includes('diffCargo('), 'HUD meta tick should not diff cargo every overlay tick');
   assert.ok(!tickBody[1].includes('cargoItems('), 'HUD meta tick should not read cargo every overlay tick');
