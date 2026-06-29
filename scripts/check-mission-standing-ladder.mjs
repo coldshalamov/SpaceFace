@@ -8,6 +8,7 @@ import {
   MISSION_STANDING_LADDER,
   MISSION_TUNING,
   missionMinRepForRisk,
+  missionStandingGateForMinRep,
   missionStandingGateForRisk,
 } from '../src/data/missions.js';
 import { missions } from '../src/systems/missions.js';
@@ -50,6 +51,8 @@ assert.equal(missionMinRepForRisk(3), 30, 'R3 work should require Accepted stand
 assert.equal(missionMinRepForRisk(4), 150, 'R4 work should require Trusted standing');
 assert.equal(missionStandingGateForRisk(4).name, 'Trusted Work',
   'R4 should map to the Trusted Work gate, not the aspirational Allied tier');
+assert.equal(missionStandingGateForMinRep(-29).name, 'Neutral Board',
+  'effective intro-safe standing thresholds should display the Neutral gate');
 
 function offer(overrides = {}) {
   return {
@@ -133,6 +136,14 @@ assert.equal(branchReq.ok, true,
   'B4 faction-choice offers should stay available at neutral standing even if generated risk is high');
 assert.equal(branchReq.minRep, -29,
   'B4 faction-choice offers should derive the intro-safe Neutral gate');
+assert.equal(branchReq.gateName, 'Neutral Board',
+  'B4 faction-choice offers should display the intro-safe Neutral gate, not the generated risk gate');
+assert.equal(branchReq.gateShort, 'Neutral+',
+  'B4 faction-choice chips should name the effective Neutral gate');
+assert.equal(branchReq.chip.text, 'Neutral+ standing met',
+  'B4 faction-choice chips should not claim Trusted standing was met');
+assert.doesNotMatch(branchReq.gateName + ' ' + branchReq.chip.text, /Trusted/,
+  'B4 faction-choice display copy must not leak the generated R4 Trusted gate');
 
 let recommendation = recommendMissionBoardOffer([
   offer({ id: 'locked_r4', title: 'Severe Contract', riskTier: 4, reward_cr: 12000 }),

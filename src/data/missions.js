@@ -72,6 +72,15 @@ export function missionStandingGateForRisk(riskTier) {
   return MISSION_STANDING_LADDER[MISSION_STANDING_LADDER.length - 2];
 }
 
+export function missionStandingGateForMinRep(minRep) {
+  const rep = Math.round(Number(minRep) || 0);
+  let gate = MISSION_STANDING_LADDER[0];
+  for (const candidate of MISSION_STANDING_LADDER) {
+    if (rep >= candidate.minRep) gate = candidate;
+  }
+  return gate;
+}
+
 export function missionMinRepForRisk(riskTier) {
   const gate = missionStandingGateForRisk(riskTier);
   return gate ? gate.minRep : 0;

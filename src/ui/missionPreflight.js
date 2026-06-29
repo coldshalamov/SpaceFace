@@ -1,6 +1,6 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
-import { MISSION_TUNING, missionMinRepForRisk, missionStandingGateForRisk } from '../data/missions.js';
+import { MISSION_TUNING, missionMinRepForRisk, missionStandingGateForMinRep } from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
 
@@ -103,7 +103,7 @@ export function missionStandingRequirement(m, state) {
     ? storyMinRep
     : (Number.isFinite(explicit) ? Math.round(explicit) : missionMinRepForRisk(missionRiskTier(m)));
   const rep = stateRepFor(state, m.factionId);
-  const gate = missionStandingGateForRisk(missionRiskTier(m));
+  const gate = missionStandingGateForMinRep(minRep);
   const ok = rep >= minRep;
   const faction = factionShortName(m.factionId);
   return {
