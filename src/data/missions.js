@@ -25,6 +25,58 @@ export const MISSION_TUNING = {
   maxActive: 8,
 };
 
+export const MISSION_STANDING_LADDER = [
+  {
+    minRep: -149,
+    maxRisk: 1,
+    name: 'Recovery Work',
+    short: 'Disliked+',
+    unlocks: 'R0-R1 local hauling, mining, courier, and recovery contracts',
+  },
+  {
+    minRep: -29,
+    maxRisk: 2,
+    name: 'Neutral Board',
+    short: 'Neutral+',
+    unlocks: 'R2 standard trade, recon, bounty, and patrol postings',
+  },
+  {
+    minRep: 30,
+    maxRisk: 3,
+    name: 'Accepted Contracts',
+    short: 'Accepted+',
+    unlocks: 'R3 higher-risk escorts, smuggling, and combat contracts',
+  },
+  {
+    minRep: 150,
+    maxRisk: 4,
+    name: 'Trusted Work',
+    short: 'Trusted+',
+    unlocks: 'R4 severe contracts and loyalty-grade payouts',
+  },
+  {
+    minRep: 400,
+    maxRisk: 4,
+    name: 'Allied Retainers',
+    short: 'Allied+',
+    unlocks: 'future faction-chain retainers and faction-exclusive work',
+    aspirational: true,
+  },
+];
+
+export function missionStandingGateForRisk(riskTier) {
+  const risk = Math.max(0, Math.min(4, Math.round(Number(riskTier) || 0)));
+  for (const gate of MISSION_STANDING_LADDER) {
+    if (risk <= gate.maxRisk) return gate;
+  }
+  return MISSION_STANDING_LADDER[MISSION_STANDING_LADDER.length - 2];
+}
+
+export function missionMinRepForRisk(riskTier) {
+  const gate = missionStandingGateForRisk(riskTier);
+  return gate ? gate.minRep : 0;
+}
+
 export const MISSION_TYPES = [
   {
     type: 'cargo_delivery', riskTierRange: [0, 1], chainable: true,

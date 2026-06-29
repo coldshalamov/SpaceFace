@@ -31,6 +31,7 @@
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING,
+  missionMinRepForRisk,
 } from '../data/missions.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
@@ -76,6 +77,7 @@ const SIZE_TIER = { S: 0, M: 1, L: 2 };
 
 // Story branch → faction mapping (B4/B5 spec).
 const BRANCH_FACTION = { traders: 'faction_mts', patrol: 'faction_scn', free: 'faction_free' };
+const BRANCH_FACTION_IDS = new Set(Object.values(BRANCH_FACTION));
 const HOME_FACTION = 'faction_scn'; // resolves STORY_BEATS B0 reward.rep.faction === 'home'
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -91,6 +93,31 @@ function cargoFootprint(offer) {
 
 function fmtCargoUnits(value) {
   return (Math.round(value * 10) / 10).toLocaleString('en-US');
+}
+
+function signedRep(value) {
+  const n = Math.round(Number(value) || 0);
+  return (n > 0 ? '+' : '') + n;
+}
+
+function factionShortName(factionId) {
+  const fac = factionId ? FACTION_BY_ID.get(factionId) : null;
+  return (fac && (fac.short || fac.name)) || 'this faction';
+}
+
+function isStoryBranchIntroOffer(offer, state) {
+  return !!(
+    offer && offer.factionId &&
+    state && state.story && state.story.beatIndex === 4 &&
+    BRANCH_FACTION_IDS.has(offer.factionId)
+  );
+}
+
+function missionOfferMinRep(offer, state = null) {
+  if (isStoryBranchIntroOffer(offer, state)) return -29;
+  const explicit = Number(offer && offer.minRep);
+  if (Number.isFinite(explicit)) return Math.round(explicit);
+  return missionMinRepForRisk(offer && offer.riskTier);
 }
 
 // Map-space distance between two sectors → world-unit-ish path length (deterministic, bounded).
@@ -324,7 +351,6 @@ export const missions = {
 
     // ── collateral (anti accept-then-dump on bulk_trade / smuggling) ──
     const collateral_cr = def.collateral ? round((cfg.collateralPct || 0.25) * reward_cr) : 0;
-
     const id = `mo_${info.id}_${epoch}_${idx}`;
     return {
       id, type: typeId, stationId: info.id, factionId: info.factionId,
@@ -491,6 +517,16 @@ export const missions = {
   },
 
   _acceptPreflight(offer) {
+    if (offer && offer.factionId) {
+      const minRep = missionOfferMinRep(offer, this.state);
+      const rep = this._repOf(offer.factionId);
+      if (rep < minRep) {
+        return {
+          ok: false,
+          reason: `${factionShortName(offer.factionId)} standing ${signedRep(minRep)} required`,
+        };
+      }
+    }
     if (!offer || !ONE_LOAD_CARGO_TYPES.has(offer.type)) return { ok: true };
     const requiredVolume = cargoFootprint(offer);
     if (!(requiredVolume > 0)) return { ok: true };

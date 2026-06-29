@@ -1,9 +1,11 @@
 import { COMMODITIES } from '../data/commodities.js';
-import { MISSION_TUNING } from '../data/missions.js';
+import { FACTION_META } from '../data/factions.js';
+import { MISSION_TUNING, missionMinRepForRisk, missionStandingGateForRisk } from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const STATION_SECTOR_BY_ID = new Map();
 for (const sector of SECTORS) {
@@ -13,6 +15,7 @@ const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval
 const MARKET_STAGED_CARGO_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run']);
 const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport']);
 const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
+const STORY_BRANCH_FACTIONS = new Set(['faction_mts', 'faction_scn', 'faction_free']);
 const TIMER_TIGHT_S = 5 * 60;
 const TIMER_CRITICAL_S = 2 * 60;
 const ROUTE_RISK_WARNING_DANGER = 0.72;
@@ -36,6 +39,33 @@ const TASK_TIME_FALLBACK = {
 
 function missionCollateral(m) {
   return Math.max(0, m && (m.collateral_cr || m.collateralCr || m.collateral || 0) || 0);
+}
+
+function signedRep(value) {
+  const n = Math.round(Number(value) || 0);
+  return (n > 0 ? '+' : '') + n;
+}
+
+function factionShortName(id) {
+  const fac = id ? FACTION_BY_ID.get(id) : null;
+  return (fac && (fac.short || fac.name)) || 'this faction';
+}
+
+function stateRepFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  const rep = Number(rec && rec.rep);
+  return Number.isFinite(rep) ? Math.round(rep) : 0;
+}
+
+function storyBranchIntroMinRep(m, state) {
+  if (
+    m && m.factionId &&
+    state && state.story && state.story.beatIndex === 4 &&
+    STORY_BRANCH_FACTIONS.has(m.factionId)
+  ) {
+    return -29;
+  }
+  return null;
 }
 
 export function missionRewardCredits(m) {
@@ -63,6 +93,36 @@ export function missionRiskTier(m) {
   const raw = Number(m && (m.riskTier != null ? m.riskTier : m.risk));
   if (!Number.isFinite(raw)) return 0;
   return Math.max(0, Math.min(4, Math.round(raw)));
+}
+
+export function missionStandingRequirement(m, state) {
+  if (!m || !m.factionId) return null;
+  const explicit = Number(m.minRep);
+  const storyMinRep = storyBranchIntroMinRep(m, state);
+  const minRep = storyMinRep != null
+    ? storyMinRep
+    : (Number.isFinite(explicit) ? Math.round(explicit) : missionMinRepForRisk(missionRiskTier(m)));
+  const rep = stateRepFor(state, m.factionId);
+  const gate = missionStandingGateForRisk(missionRiskTier(m));
+  const ok = rep >= minRep;
+  const faction = factionShortName(m.factionId);
+  return {
+    ok,
+    factionId: m.factionId,
+    faction,
+    minRep,
+    currentRep: rep,
+    gateName: gate ? gate.name : 'Faction Standing',
+    gateShort: gate ? gate.short : signedRep(minRep),
+    missingRep: Math.max(0, minRep - rep),
+    chip: {
+      kind: ok ? 'ok' : 'bad',
+      text: ok
+        ? (gate ? gate.short : signedRep(minRep)) + ' standing met'
+        : signedRep(minRep) + ' ' + faction + ' standing required',
+    },
+    blocker: ok ? null : 'Need ' + signedRep(minRep) + ' standing with ' + faction,
+  };
 }
 
 export function missionRiskRewardSummary(m) {
@@ -466,6 +526,12 @@ export function missionPreflight(m, state) {
 
   const riskReward = missionRiskRewardSummary(m);
   chips.push(riskReward.chip);
+
+  const standing = missionStandingRequirement(m, state);
+  if (standing) {
+    if (!standing.ok) blockers.push(standing.blocker);
+    chips.push(standing.chip);
+  }
 
   const route = missionRouteScope(m, state);
   if (route) chips.push(route);

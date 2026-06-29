@@ -24,6 +24,7 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { escapeHtml } from '../comms.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
+import { missionStandingRequirement } from '../missionPreflight.js';
 import { BINDINGS } from '../bindings.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -939,6 +940,7 @@ export const stationHub = {
       const preflight = missionPreflight(m, ctx.state);
       const readiness = missionBoardReadiness(preflight);
       const consequences = missionConsequenceSummary(m);
+      const standing = missionStandingRequirement(m, ctx.state);
       const unmet = m.requirementUnmet || m.lockedReason || preflight.blocker || null;
       const expires = m.expiresInS != null ? m.expiresInS : m.time_limit_s;
       const acceptTitle = unmet
@@ -950,6 +952,13 @@ export const stationHub = {
       const consequenceHtml = consequences.chips.map((chip) =>
         '<span class="st-mission-consequence st-mission-consequence--' + chip.kind + '"><b>' + escapeHtml(chip.label) + '</b> ' + escapeHtml(chip.text) + '</span>'
       ).join('');
+      const standingHtml = standing
+        ? '<div class="st-mission-standing st-mission-standing--' + (standing.ok ? 'ok' : 'locked') + '">' +
+            '<span class="mono">' + escapeHtml(standing.ok ? 'Standing ready' : 'Standing locked') + '</span>' +
+            '<span>' + escapeHtml(standing.gateName + ': ' + standing.faction + ' ' + signedRep(standing.currentRep) +
+              ' / needs ' + signedRep(standing.minRep)) + '</span>' +
+          '</div>'
+        : '';
       const card = document.createElement('div');
       const recommended = recommendation && recommendation.missionId === mid;
       card.className = 'st-mission-card' +
@@ -973,6 +982,7 @@ export const stationHub = {
         '<div class="st-mission-purpose">' + escapeHtml(missionValueText(m)) + '</div>' +
         '<div class="st-mission-next">' + escapeHtml(missionNextStepText(m)) + '</div>' +
         '<div class="st-mission-preflight">' + preflightHtml + '</div>' +
+        standingHtml +
         (preflight.warning ? '<div class="st-mission-preflight-warn">' + escapeHtml(preflight.warning) + '</div>' : '') +
         '<div class="st-mission-rewards mono">' +
           '<span class="st-mission-cr">+' + (consequences.reward || 0).toLocaleString('en-US') + ' cr</span>' +
@@ -1316,6 +1326,12 @@ function prettyType(t) {
   if (!t) return 'Contract';
   return String(t).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
+
+function signedRep(value) {
+  const n = Math.round(Number(value) || 0);
+  return (n > 0 ? '+' : '') + n;
+}
+
 function fmtTime(s) {
   s = Math.max(0, Math.floor(s));
   const m = Math.floor(s / 60);
@@ -1826,6 +1842,15 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   margin-top: 8px; padding: 8px 9px; border: 1px solid rgba(57,208,255,.12); border-radius: 6px;
   background: rgba(4,12,24,.34); color: var(--ink-dim); font-size: .7rem; line-height: 1.35; }
 .st-fac-guidance-label { color: var(--accent); text-transform: uppercase; letter-spacing: .08em; font-size: .62rem; }
+.st-fac-contracts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.st-fac-contract { font-size: .62rem; line-height: 1.25; padding: 3px 6px; border-radius: 4px;
+  border: 1px solid rgba(148,163,184,.18); color: var(--ink-mute); background: rgba(255,255,255,.025); }
+.st-fac-contract b { font-family: var(--mono); font-size: .58rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim); margin-right: 3px; }
+.st-fac-contract.unlocked { color: var(--good); border-color: rgba(98,224,138,.28); background: rgba(98,224,138,.08); }
+.st-fac-contract.unlocked b { color: var(--good); }
+.st-fac-contract.locked:not(.aspirational) { color: var(--warn); border-color: rgba(255,198,77,.26); }
+.st-fac-contract.aspirational { border-style: dashed; }
 .st-fac-hostile { color: var(--danger); background: rgba(255,84,112,.12); }
 .st-fac-cool { color: var(--warn); background: rgba(255,179,71,.12); }
 .st-fac-neutral { color: var(--ink-dim); background: rgba(132,160,200,.1); }
@@ -1934,6 +1959,11 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-mission-preflight-chip--warn { color: var(--warn); border-color: rgba(255,198,77,.34); }
 .st-mission-preflight-chip--bad { color: var(--danger); border-color: rgba(255,84,112,.34); }
 .st-mission-preflight-chip--info { color: var(--accent); border-color: rgba(57,208,255,.28); }
+.st-mission-standing { display: flex; gap: 8px; align-items: baseline; font-size: .68rem; line-height: 1.3;
+  margin: -3px 0 8px; color: var(--ink-mute); }
+.st-mission-standing .mono { font-size: .6rem; letter-spacing: .08em; text-transform: uppercase; }
+.st-mission-standing--ok .mono { color: var(--good); }
+.st-mission-standing--locked .mono { color: var(--danger); }
 .st-mission-preflight-warn { color: var(--warn); font-size: .7rem; line-height: 1.3; margin: -3px 0 8px; }
 .st-mission-rewards { display: flex; gap: 14px; font-size: .8rem; margin-bottom: 8px; }
 .st-mission-cr { color: var(--energy); }

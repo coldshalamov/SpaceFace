@@ -3,6 +3,7 @@
 // Reads state.factions[id].rep; the factions system is the sole writer (§0.6). Falls back to the
 // NEW_GAME starting reps and FACTION_META when state.factions hasn't been populated yet (stub).
 import { FACTION_META } from '../../data/factions.js';
+import { MISSION_STANDING_LADDER } from '../../data/missions.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { escapeHtml } from '../comms.js';
 
@@ -143,6 +144,25 @@ export function factionStandingGuidance(rep, meta = {}, lastDelta = null) {
   };
 }
 
+export function factionContractLadderRows(rep) {
+  const r = safeRep(rep);
+  return MISSION_STANDING_LADDER.map((gate) => ({
+    name: gate.name,
+    short: gate.short,
+    minRep: gate.minRep,
+    unlocks: gate.unlocks,
+    aspirational: !!gate.aspirational,
+    unlocked: !gate.aspirational && r >= gate.minRep,
+  }));
+}
+
+export function factionContractLadderText(rep) {
+  const rows = factionContractLadderRows(rep);
+  const next = rows.find((row) => !row.aspirational && !row.unlocked);
+  if (!next) return 'Trusted work unlocked; Allied retainers are the next long-term faction target.';
+  return (next.minRep - safeRep(rep)) + ' rep to unlock ' + next.name + ' (' + next.short + ')';
+}
+
 function factionShortById(id) {
   const f = FACTION_BY_ID.get(id);
   return (f && (f.short || f.name)) || id;
@@ -198,8 +218,15 @@ export function createFactionsPanel(ctx) {
       const rep = repFor(meta.id);
       const tier = tierFor(rep);
       const guidance = factionStandingGuidance(rep, meta, rec && rec.lastDelta);
+      const ladder = factionContractLadderRows(rep);
       const fill = (rep + 1000) / 2000; // 0..1
       const rel = relationSummary(meta);
+      const ladderHtml = ladder.map((row) =>
+        '<span class="st-fac-contract ' + (row.unlocked ? 'unlocked' : 'locked') + (row.aspirational ? ' aspirational' : '') + '"' +
+          ' title="' + escapeHtml(row.unlocks) + '">' +
+          '<b>' + escapeHtml(row.short) + '</b> ' + escapeHtml(row.name) +
+        '</span>'
+      ).join('');
       const row = document.createElement('div');
       row.className = 'st-fac-row';
       row.innerHTML =
@@ -220,6 +247,11 @@ export function createFactionsPanel(ctx) {
           '<span class="st-fac-guidance-label mono">Last</span><span>' + escapeHtml(guidance.last) + '</span>' +
           '<span class="st-fac-guidance-label mono">Risk</span><span>' + escapeHtml(guidance.risk) + '</span>' +
           '<span class="st-fac-guidance-label mono">Plan</span><span>' + escapeHtml(guidance.plan) + '</span>' +
+          '<span class="st-fac-guidance-label mono">Contracts</span><span>' + escapeHtml(factionContractLadderText(rep)) + '</span>' +
+        '</div>';
+      row.innerHTML +=
+        '<div class="st-fac-contracts" aria-label="' + escapeHtml(meta.name) + ' contract ladder">' +
+          ladderHtml +
         '</div>';
       frag.appendChild(row);
     }
