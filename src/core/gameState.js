@@ -94,7 +94,7 @@ export function createGameState(seed) {
     economy: { markets: {}, econEvents: [], econClock: { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }, marketIntel: {} },
     factions: {},
     conflicts: {},
-    missions: { boards: {}, active: [], completedLog: [], nextId: 1, config: null },
+    missions: { boards: {}, active: [], completedLog: [], receipts: [], nextId: 1, config: null },
     scenario: {
       schemaVersion: 1,
       active: null,

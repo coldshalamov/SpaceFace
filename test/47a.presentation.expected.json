@@ -4,7 +4,7 @@
   "seed": 47,
   "ticks": 720,
   "inputTape": "test/47a.inputs.json",
-  "stateHash": "b84c92c98084da6ebc5dff94acf9217584cd8791a349782abf9d2fdde0ea1980",
+  "stateHash": "0fb0e5228eeb8e7e6cab8022b08ffd7adb4e12a31de68512e9f010e310b91133",
   "traceLimit": 120,
   "events": [
     "scenario.*",

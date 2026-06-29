@@ -70,7 +70,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "961eabfbb8a3780dce8897a015ab7e0af75edb6eb0cb94c6fad18d59846e770a",
+    "authoritativeHash": "730403fc8beca599788aad12007844f75a9b30cfdf4a5f687282a5739433b90d",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -83,7 +83,7 @@
   },
   "notes": [
     "Flight V3 envelope: the generated propulsion kernel drives live Rapier bodies via the physics authority membrane behind flightBackend='v3'. Boost/dash ported into flightV3.js.",
-    "V3's authored handling differs from the legacy controller, so the hash differs from the legacy ca3eac66 envelope, which remains unchanged in test/47a.telemetry.expected.json.",
+    "V3's authored handling differs from the legacy controller, so the hash differs from the legacy envelope in test/47a.telemetry.expected.json.",
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
     "phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick V3 run, captured deterministically across repeat + save/reload.",
     "The current V3 Massline path attaches at tick 4 and breaks at tick 166 before the first projectile hit; the envelope records both tether events.",
