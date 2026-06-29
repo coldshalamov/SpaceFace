@@ -69,6 +69,7 @@ const LEGAL_TRADE_CMDTYS = COMMODITIES.filter((c) => c.legality === 'legal').map
 const MINEABLE_CMDTYS = COMMODITIES.filter((c) => (c.producedBy || []).includes('mining')).map((c) => c.id);
 const CONTRABAND_CMDTYS = COMMODITIES.filter((c) => c.legality === 'contraband' || c.legality === 'restricted').map((c) => c.id);
 const ONE_LOAD_CARGO_TYPES = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
+const MISSION_RECEIPT_LIMIT = 10;
 
 // Station size → tier number used for slot count (S=0,M=1,L=2).
 const SIZE_TIER = { S: 0, M: 1, L: 2 };
@@ -134,7 +135,8 @@ export const missions = {
     const state = this.state, bus = this.bus;
 
     // Ensure the state tree exists (gameState seeds it, but be defensive for headless tests).
-    if (!state.missions) state.missions = { boards: {}, active: [], completedLog: [], nextId: 1, config: null };
+    if (!state.missions) state.missions = { boards: {}, active: [], completedLog: [], receipts: [], nextId: 1, config: null };
+    state.missions.receipts = normalizeMissionReceipts(state.missions.receipts);
     if (!state.story) state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
     if (!state.missions.config) state.missions.config = MISSION_TUNING;
 
@@ -1047,14 +1049,15 @@ export const missions = {
 
     // ── offering-faction rep: route through mission:completed{repMult} (factions applies 15*repMult).
     // We size repMult so factions' applied rep ≈ the spec's risk-scaled BASE_REP value.
-    const baseRep = (MISSION_BASE_REP[m.type] != null ? MISSION_BASE_REP[m.type] : 3);
-    const specRep = round(baseRep * (1 + (m.riskTier || 0) * 0.4));
+    const specRep = missionSpecRep(m);
     const repMult = specRep / 15;
     const completedPayload = { missionId: m.id, type: m.type, factionId: m.factionId, repMult };
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
+    let researchPoints = 0;
     if (m.type === 'recon_scan' || m.type === 'salvage_retrieval') {
       const rp = m.type === 'recon_scan' ? (3 + (m.riskTier || 0)) : (1 + (m.riskTier || 0));
+      researchPoints = rp;
       state.player.researchPoints = (state.player.researchPoints || 0) + rp;
       this.bus.emit('research:pointsChanged', { researchPoints: state.player.researchPoints });
     }
@@ -1062,6 +1065,12 @@ export const missions = {
     // ── stats / ledger ──
     if (state.player.stats) state.player.stats.missionsDone = (state.player.stats.missionsDone || 0) + 1;
     this._logCompletion(m.type, m.reward_cr, true);
+    this._recordMissionReceipt(m, 'completed', null, {
+      rewardCr: m.reward_cr || 0,
+      collateralRefundCr: m.collateral_cr || 0,
+      repDelta: m.factionId ? specRep : 0,
+      researchPoints,
+    });
 
     this._emitMissionDebrief(m, 'completed');
     this.bus.emit('toast', { text: `Mission complete: ${m.title} +${m.reward_cr}cr`, kind: 'success', ttl: 4 });
@@ -1095,14 +1104,17 @@ export const missions = {
 
     // Failure rep penalty to the offering faction. We emit faction:repDelta directly and keep the
     // mission:failed payload factionId-FREE so factions' onMissionLost doesn't ALSO penalise.
-    const baseRep = (MISSION_BASE_REP[m.type] != null ? MISSION_BASE_REP[m.type] : 3);
-    const specRep = round(baseRep * (1 + (m.riskTier || 0) * 0.4));
-    const penalty = -Math.ceil(specRep * 0.6);
+    const penalty = missionRepDeltaFor(m, 'failed');
     if (m.factionId && penalty < 0) {
       this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: penalty, reason: `mission_failed:${m.type}` });
     }
     // Collateral is forfeited (already charged at accept — nothing to refund).
     this._logCompletion(m.type, 0, false);
+    this._recordMissionReceipt(m, 'failed', reason || 'failed', {
+      rewardCr: 0,
+      collateralLostCr: m.collateral_cr || 0,
+      repDelta: penalty,
+    });
     this._emitMissionDebrief(m, 'failed', reason || 'failed');
     this.bus.emit('mission:failed', { missionId: m.id, reason: reason || 'failed' });
     this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
@@ -1115,13 +1127,16 @@ export const missions = {
     if (m.status !== 'active') return;
     m.status = 'expired';
     this._clearMissionNav(m.id);
-    const baseRep = (MISSION_BASE_REP[m.type] != null ? MISSION_BASE_REP[m.type] : 3);
-    const specRep = round(baseRep * (1 + (m.riskTier || 0) * 0.4));
-    const penalty = -Math.ceil(specRep * 0.6);
+    const penalty = missionRepDeltaFor(m, 'expired');
     if (m.factionId && penalty < 0) {
       this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: penalty, reason: `mission_expired:${m.type}` });
     }
     this._logCompletion(m.type, 0, false);
+    this._recordMissionReceipt(m, 'expired', 'deadline', {
+      rewardCr: 0,
+      collateralLostCr: m.collateral_cr || 0,
+      repDelta: penalty,
+    });
     this._emitMissionDebrief(m, 'expired', 'deadline');
     this.bus.emit('mission:expired', { missionId: m.id, reason: 'deadline' });
     this.bus.emit('toast', { text: `Mission expired: ${m.title}`, kind: 'warn', ttl: 4 });
@@ -1150,6 +1165,18 @@ export const missions = {
     if (!rec) { rec = { type, count: 0, totalCr: 0, success: 0, fail: 0 }; log.push(rec); }
     rec.count++; rec.totalCr += (cr || 0);
     if (success) rec.success++; else rec.fail++;
+  },
+
+  _recordMissionReceipt(m, outcome, reason, settlement = {}) {
+    if (!this.state.missions) return null;
+    this.state.missions.receipts = normalizeMissionReceipts(this.state.missions.receipts);
+    const receipt = missionReceiptFor(m, outcome, reason, { ...settlement, at_s: this.state.simTime || 0 });
+    const key = receipt.missionId + ':' + receipt.outcome;
+    this.state.missions.receipts = [
+      receipt,
+      ...this.state.missions.receipts.filter((r) => r && (r.missionId + ':' + r.outcome) !== key),
+    ].slice(0, MISSION_RECEIPT_LIMIT);
+    return receipt;
   },
 
   // =========================================================================================
@@ -1464,6 +1491,7 @@ export const missions = {
     state.missions.boards = {};
     state.missions.active = [];
     state.missions.completedLog = [];
+    state.missions.receipts = [];
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
     state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 };
@@ -1490,7 +1518,7 @@ export const missions = {
       return { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
     });
     return {
-      boards: m.boards, active, completedLog: m.completedLog,
+      boards: m.boards, active, completedLog: m.completedLog, receipts: normalizeMissionReceipts(m.receipts),
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
@@ -1501,6 +1529,7 @@ export const missions = {
     const state = this.state;
     state.missions.boards = data.boards || {};
     state.missions.completedLog = data.completedLog || [];
+    state.missions.receipts = normalizeMissionReceipts(data.receipts);
     state.missions.nextId = data.nextId || 1;
     state.missions.config = data.config || MISSION_TUNING;
     // Stale-target GC: clear live entity ids; targets re-spawn when the player (re-)enters the sector.
@@ -1520,14 +1549,75 @@ export const missions = {
   },
 };
 
-// ── Static tables (module-scope, derived from spec) ──────────────────────────────────────────
+// ── Receipt helpers (module-scope, derived from shared mission tuning) ───────────────────────
 
-// Base rep per type (spec Formulas REP GAIN table).
-const MISSION_BASE_REP = {
-  cargo_delivery: 3, bulk_trade: 3, bounty_hunt: 5, mining_quota: 2,
-  salvage_retrieval: 3, escort: 4, patrol_clear: 5, smuggling_run: 4,
-  passenger_transport: 2, recon_scan: 4,
-};
+function normalizeMissionReceipts(value) {
+  if (!Array.isArray(value)) return [];
+  const receipts = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue;
+    const outcome = String(raw.outcome || 'settled');
+    const missionId = raw.missionId != null
+      ? String(raw.missionId)
+      : String(raw.id || '').split(':')[0];
+    if (!missionId) continue;
+    receipts.push({
+      ...raw,
+      id: raw.id || missionId + ':' + outcome,
+      missionId,
+      outcome,
+    });
+    if (receipts.length >= MISSION_RECEIPT_LIMIT) break;
+  }
+  return receipts;
+}
+
+function receiptTitle(m) {
+  return (m && (m.title || m.name)) || String(m && m.type || 'contract')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function missionSpecRep(m) {
+  const baseRep = MISSION_TUNING.BASE_REP[m && m.type] != null ? MISSION_TUNING.BASE_REP[m.type] : 3;
+  return round(baseRep * (1 + ((m && m.riskTier) || 0) * 0.4));
+}
+
+export function missionRepDeltaFor(m, outcome) {
+  if (!m || !m.factionId) return 0;
+  const specRep = missionSpecRep(m);
+  return outcome === 'completed' ? specRep : -Math.ceil(specRep * 0.6);
+}
+
+export function missionReceiptFor(m, outcome, reason, settlement = {}) {
+  const completed = outcome === 'completed';
+  const missionId = String(m && m.id || 'mission');
+  const rewardCr = Math.max(0, Math.round(Number(settlement.rewardCr != null ? settlement.rewardCr : (completed ? (m && m.reward_cr) : 0)) || 0));
+  const collateral = Math.max(0, Math.round(Number(m && m.collateral_cr) || 0));
+  const collateralRefundCr = Math.max(0, Math.round(Number(settlement.collateralRefundCr != null ? settlement.collateralRefundCr : (completed ? collateral : 0)) || 0));
+  const collateralLostCr = Math.max(0, Math.round(Number(settlement.collateralLostCr != null ? settlement.collateralLostCr : (!completed ? collateral : 0)) || 0));
+  const repDelta = Number.isFinite(Number(settlement.repDelta)) ? Math.round(Number(settlement.repDelta)) : missionRepDeltaFor(m, outcome);
+  const researchPoints = Math.max(0, Math.round(Number(settlement.researchPoints) || 0));
+  const at_s = Math.max(0, Number(settlement.at_s) || 0);
+  return {
+    id: missionId + ':' + String(outcome || 'settled'),
+    missionId,
+    title: receiptTitle(m),
+    type: m && m.type || 'contract',
+    outcome: outcome || 'settled',
+    reason: reason || null,
+    at_s,
+    factionId: m && m.factionId || null,
+    stationId: m && m.stationId || null,
+    destStationId: m && m.destStationId || null,
+    destSectorId: m && m.destSectorId || null,
+    rewardCr,
+    collateralRefundCr,
+    collateralLostCr,
+    repDelta,
+    researchPoints,
+  };
+}
 
 // Story-beat trigger kind (first-X model). Gate-only beats (3/6/7) use discrete events / gates.
 const BEAT_TRIGGER = {

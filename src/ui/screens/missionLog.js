@@ -640,6 +640,83 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   return actions.slice(0, 3);
 }
 
+function receiptDestinationLabel(receipt) {
+  const stnInfo = receipt && receipt.destStationId ? STATION_INFO.get(receipt.destStationId) : null;
+  if (stnInfo && stnInfo.name) return stnInfo.name;
+  const secInfo = receipt && receipt.destSectorId ? SECTOR_BY_ID.get(receipt.destSectorId) : null;
+  return secInfo && secInfo.name ? secInfo.name : '';
+}
+
+function receiptOutcomeLabel(outcome) {
+  switch (outcome) {
+    case 'completed': return 'Completed';
+    case 'failed': return 'Failed';
+    case 'expired': return 'Expired';
+    default: return 'Settled';
+  }
+}
+
+function receiptTone(outcome) {
+  if (outcome === 'completed') return 'ok';
+  if (outcome === 'failed') return 'bad';
+  return 'warn';
+}
+
+function receiptReasonLabel(reason) {
+  switch (reason) {
+    case 'deadline': return 'Deadline missed';
+    case 'abandoned': return 'Abandoned by pilot';
+    case 'escort_abandoned': return 'Convoy left behind';
+    case 'escortee_lost': return 'Escort lost';
+    case 'busted': return 'Customs scan detected contraband';
+    case 'failed': return 'Contract failed';
+    default: return reason ? prettyId(reason, 'settled') : '';
+  }
+}
+
+export function missionReceiptRows(state, limit = 5) {
+  const receipts = state && state.missions && Array.isArray(state.missions.receipts)
+    ? state.missions.receipts
+    : [];
+  const max = Math.max(0, Math.floor(Number(limit) || 0));
+  return receipts.filter(Boolean).slice(0, max).map((receipt) => {
+    const outcome = receipt.outcome || 'settled';
+    const completed = outcome === 'completed';
+    const rewardCr = Math.max(0, Number(receipt.rewardCr) || 0);
+    const refundCr = Math.max(0, Number(receipt.collateralRefundCr) || 0);
+    const lostCr = Math.max(0, Number(receipt.collateralLostCr) || 0);
+    const repDelta = Math.round(Number(receipt.repDelta) || 0);
+    const researchPoints = Math.max(0, Math.round(Number(receipt.researchPoints) || 0));
+    const parts = [];
+
+    if (completed) {
+      parts.push(rewardCr > 0 ? 'Paid +' + formatCredits(rewardCr) : 'Closed without payout');
+      if (repDelta > 0) parts.push('+' + repDelta + ' contract standing');
+      if (refundCr > 0) parts.push(formatCredits(refundCr) + ' stake returned');
+      if (researchPoints > 0) parts.push('+' + researchPoints + ' research');
+    } else {
+      parts.push('No payout');
+      if (repDelta < 0) parts.push(repDelta + ' contract standing');
+      if (lostCr > 0) parts.push(formatCredits(lostCr) + ' stake forfeited');
+    }
+
+    const dest = receiptDestinationLabel(receipt);
+    const meta = [
+      prettyType(receipt.type),
+      dest,
+      receipt.reason ? 'Reason: ' + receiptReasonLabel(receipt.reason) : '',
+    ].filter(Boolean).join(' · ');
+
+    return {
+      tone: receiptTone(outcome),
+      outcome: receiptOutcomeLabel(outcome),
+      title: receipt.title || prettyType(receipt.type),
+      body: parts.join(' · '),
+      meta,
+    };
+  });
+}
+
 function destStationName(id) {
   const info = STATION_INFO.get(id);
   return info ? info.name : 'destination';
@@ -757,9 +834,14 @@ export const missionLogScreen = {
         const active = (ctx.state.missions && ctx.state.missions.active) || [];
         const m = active.find((x) => x.id === missionId);
         const title = (m && (m.title || m.name)) || 'this mission';
+        const consequences = m ? missionConsequenceSummary(m) : null;
+        const loss = ['You will lose all progress on this contract.'];
+        if (consequences && consequences.collateral > 0) loss.push(formatCredits(consequences.collateral) + ' stake forfeited');
+        if (consequences && consequences.repPenalty < 0) loss.push(consequences.repPenalty + ' contract standing');
+        loss.push('No payout will be issued.');
         const ok = await confirm({
           title: 'Abandon ' + title + '?',
-          body: 'You will lose all progress on this contract. Any reputation or reward is forfeit.',
+          body: loss.join(' '),
           confirmLabel: 'Abandon', danger: true,
         });
         if (!ok) return;
@@ -941,18 +1023,39 @@ export const missionLogScreen = {
   _renderCompleted() {
     if (!this._compListEl || !this._ctx) return;
     const log = (this._ctx.state.missions && this._ctx.state.missions.completedLog) || [];
+    const receipts = missionReceiptRows(this._ctx.state, 5);
     this._compListEl.innerHTML = '';
-    if (!log.length) {
-      this._compListEl.innerHTML = '<div class="sf-mlog-empty">No completed missions yet.</div>';
+    if (!receipts.length && !log.length) {
+      this._compListEl.innerHTML = '<div class="sf-mlog-empty">No settlement receipts yet.</div>';
       return;
     }
     const frag = document.createDocumentFragment();
+    if (!receipts.length && log.length) {
+      frag.appendChild(el('div', 'sf-mlog-empty', 'No recent receipts in this save yet. Career totals below were restored from older records.'));
+    }
+    for (const rowData of receipts) {
+      const row = el('div', 'sf-mlog-receipt-row sf-mlog-receipt-row--' + rowData.tone);
+      row.innerHTML =
+        '<div class="sf-mlog-receipt-outcome mono">' + escapeHtml(rowData.outcome) + '</div>' +
+        '<div class="sf-mlog-receipt-main">' +
+          '<div class="sf-mlog-receipt-title">' + escapeHtml(rowData.title) + '</div>' +
+          '<div class="sf-mlog-receipt-body">' + escapeHtml(rowData.body) + '</div>' +
+          (rowData.meta ? '<div class="sf-mlog-receipt-meta mono">' + escapeHtml(rowData.meta) + '</div>' : '') +
+        '</div>';
+      frag.appendChild(row);
+    }
+    if (log.length) {
+      frag.appendChild(el('div', 'sf-mlog-comp-subhead mono', 'CAREER TOTALS'));
+    }
     for (const rec of log) {
       const row = el('div', 'sf-mlog-comp-row mono');
+      const success = Math.max(0, Number(rec.success) || 0);
+      const count = Math.max(success, Number(rec.count) || 0);
+      const failed = Math.max(0, count - success);
       row.innerHTML =
         '<span class="sf-mlog-comp-type">' + escapeHtml(prettyType(rec.type)) + '</span>' +
-        '<span class="sf-mlog-comp-count">' + rec.success + '/' + rec.count + ' done</span>' +
-        '<span class="sf-mlog-comp-cr">+' + (rec.totalCr || 0).toLocaleString() + ' cr</span>';
+        '<span class="sf-mlog-comp-count">' + success + ' completed · ' + failed + ' failed</span>' +
+        '<span class="sf-mlog-comp-cr">+' + (rec.totalCr || 0).toLocaleString() + ' cr paid</span>';
       frag.appendChild(row);
     }
     this._compListEl.appendChild(frag);
@@ -1067,6 +1170,25 @@ const CSS = `
 .sf-mlog-btn-abandon:hover { border-color: var(--danger); color: var(--danger); }
 
 .sf-mlog-comp-list { padding: 4px 16px 12px; }
+.sf-mlog-receipt-row { display: grid; grid-template-columns: 82px 1fr; gap: 9px; align-items: start;
+  padding: 8px 9px; margin-bottom: 7px; border: 1px solid rgba(88,112,145,.28); border-radius: 6px;
+  background: rgba(8,16,28,.5); }
+.sf-mlog-receipt-row--ok { border-color: rgba(98,224,138,.34); }
+.sf-mlog-receipt-row--warn { border-color: rgba(255,198,77,.36); }
+.sf-mlog-receipt-row--bad { border-color: rgba(255,84,112,.42); }
+.sf-mlog-receipt-outcome { font-size: .58rem; letter-spacing: .11em; text-transform: uppercase; color: var(--ink-mute);
+  overflow-wrap: anywhere; }
+.sf-mlog-receipt-row--ok .sf-mlog-receipt-outcome { color: var(--good); }
+.sf-mlog-receipt-row--warn .sf-mlog-receipt-outcome { color: var(--warn); }
+.sf-mlog-receipt-row--bad .sf-mlog-receipt-outcome { color: var(--danger); }
+.sf-mlog-receipt-main { min-width: 0; }
+.sf-mlog-receipt-title { color: var(--ink); font-size: .82rem; font-weight: 700; line-height: 1.25;
+  overflow-wrap: anywhere; }
+.sf-mlog-receipt-body { color: var(--ink-dim); font-size: .72rem; line-height: 1.35; margin-top: 3px;
+  overflow-wrap: anywhere; }
+.sf-mlog-receipt-meta { color: var(--ink-mute); font-size: .62rem; line-height: 1.3; margin-top: 4px;
+  overflow-wrap: anywhere; }
+.sf-mlog-comp-subhead { color: var(--ink-mute); font-size: .58rem; letter-spacing: .14em; margin: 10px 2px 4px; }
 .sf-mlog-comp-row { display: flex; gap: 16px; align-items: center; padding: 5px 8px;
   border-bottom: 1px solid rgba(29,51,80,.35); font-size: .76rem; color: var(--ink-mute); }
 .sf-mlog-comp-type { flex: 1; }

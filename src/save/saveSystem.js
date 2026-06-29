@@ -71,11 +71,13 @@ export const save = {
     bus.on('player:death', () => { this._playerDead = true; });
     bus.on('player:respawn', () => { this._playerDead = false; });
 
-    // Autosave triggers (§4.5): dock, sector entry, mission completion. Debounced ≤1/10s.
+    // Autosave triggers (§4.5): dock, sector entry, mission settlement. Debounced ≤1/10s.
     bus.on('dock:docked', () => this.requestAutosave('dock'));
     bus.on('dock:undocked', () => this.requestAutosave('undock', { force: true }));
     bus.on('sector:enter', () => this.requestAutosave('sector'));
     bus.on('mission:completed', () => this.requestAutosave('mission'));
+    bus.on('mission:failed', () => this.requestAutosave('mission'));
+    bus.on('mission:expired', () => this.requestAutosave('mission'));
   },
 
   // Interval autosave is the only periodic job; playtime accrual is core's (§ core.preStep).
@@ -623,10 +625,11 @@ export const save = {
     if (sys && typeof sys.deserialize === 'function') {
       try { sys.deserialize(payload); return; } catch (err) { console.error('[save] deserialize missions', err); }
     }
-    if (payload.boards || payload.active || payload.completedLog) {
+    if (payload.boards || payload.active || payload.completedLog || payload.receipts) {
       this.state.missions.boards = payload.boards || {};
       this.state.missions.active = payload.active || [];
       this.state.missions.completedLog = payload.completedLog || [];
+      this.state.missions.receipts = Array.isArray(payload.receipts) ? payload.receipts.slice(0, 10) : [];
       this.state.missions.nextId = payload.nextId || 1;
       this.state.missions.config = payload.config || null;
     }
