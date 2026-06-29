@@ -184,15 +184,66 @@ try {
     const button = document.querySelector('.st-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
     return !!(button && !button.disabled);
   }, null, { timeout: 5000 });
-  await page.evaluate(() => {
+  const acceptClickReport = await page.evaluate((missionLogLabel) => {
+    const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
     const button = document.querySelector('.st-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
     if (!button) throw new Error('Ready Bar bounty accept button not found');
     button.click();
-  });
+    const state = window.SF.state;
+    const trackedId = state.ui && state.ui.trackedMissionId;
+    const tracked = state.missions.active.find((m) => m && m.id === trackedId);
+    const board = state.missions.boards.station_coalition;
+    const offer = document.querySelector('.st-bar-offer');
+    const card = offer && offer.closest('.st-bar-card');
+    const openButton = offer && offer.querySelector('[data-open-mission-log]');
+    return {
+      trackedId,
+      trackedTitle: tracked && tracked.title,
+      trackedType: tracked && tracked.type,
+      activeCount: state.missions.active.length,
+      boardSlots: board && board.slots && board.slots.map((slot) => slot && slot.id),
+      reply: normalize(card && card.querySelector('.st-bar-reply') && card.querySelector('.st-bar-reply').textContent),
+      hasOpenButton: !!openButton,
+      openButtonText: normalize(openButton && openButton.textContent),
+      openButtonDisabled: openButton ? openButton.disabled : null,
+      hasAcceptButton: !!(offer && offer.querySelector('[data-accept-mission]')),
+      offerAccepted: !!(offer && offer.classList.contains('accepted')),
+      missionLogLabel,
+    };
+  }, MISSION_LOG_LABEL);
   await page.waitForFunction(() => {
     const button = document.querySelector('.st-bar-offer [data-open-mission-log]');
     return !!(button && !button.disabled);
-  }, null, { timeout: 5000 });
+  }, null, { timeout: 10000 }).catch(async (err) => {
+    const debug = await page.evaluate((clickReport) => {
+      const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+      const state = window.SF.state;
+      const trackedId = state.ui && state.ui.trackedMissionId;
+      const tracked = state.missions.active.find((m) => m && m.id === trackedId);
+      const board = state.missions.boards.station_coalition;
+      const offer = document.querySelector('.st-bar-offer');
+      const button = offer && (offer.querySelector('[data-open-mission-log]') || offer.querySelector('[data-accept-mission]'));
+      return {
+        clickReport,
+        top: window.SF.ctx.screenManager.top(),
+        activeTab: state.ui && state.ui.activeStationTab,
+        trackedId,
+        trackedTitle: tracked && tracked.title,
+        trackedType: tracked && tracked.type,
+        activeMissions: state.missions.active.map((m) => ({ id: m.id, title: m.title, type: m.type, status: m.status })),
+        boardSlots: board && board.slots && board.slots.map((slot) => ({ id: slot.id, title: slot.title, type: slot.type })),
+        offerText: normalize(offer && offer.textContent),
+        buttonText: normalize(button && button.textContent),
+        buttonAttrs: button ? {
+          accept: button.getAttribute('data-accept-mission'),
+          open: button.getAttribute('data-open-mission-log'),
+          disabled: button.disabled,
+        } : null,
+        visibleBarText: normalize(document.querySelector('.st-bar') && document.querySelector('.st-bar').textContent).slice(0, 1000),
+      };
+    }, acceptClickReport);
+    throw new Error('Timed out waiting for accepted Bar Mission Log handoff: ' + err.message + ' ' + JSON.stringify(debug));
+  });
 
   const acceptedReport = await page.evaluate((missionLogLabel) => {
     const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim();
