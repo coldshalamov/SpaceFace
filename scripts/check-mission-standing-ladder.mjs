@@ -163,6 +163,17 @@ assert.equal(branchReq.chip.text, 'Neutral+ standing met',
 assert.doesNotMatch(branchReq.gateName + ' ' + branchReq.chip.text, /Trusted/,
   'B4 faction-choice display copy must not leak the generated R4 Trusted gate');
 
+const malformedBranchReq = missionStandingRequirement(offer({
+  riskTier: 4,
+  factionId: 'faction_mts',
+  storyTag: STORY_BRANCH_INTRO_TAG,
+  storyBranch: 'patrol',
+}), branchState);
+assert.equal(malformedBranchReq.ok, false,
+  'malformed tagged B4 intros should not receive the neutral waiver');
+assert.equal(malformedBranchReq.minRep, 150,
+  'malformed tagged B4 intros should fall back to the risk-derived standing gate');
+
 let recommendation = recommendMissionBoardOffer([
   offer({ id: 'locked_r4', title: 'Severe Contract', riskTier: 4, reward_cr: 12000 }),
   offer({ id: 'open_r1', title: 'Open Contract', riskTier: 1, reward_cr: 900 }),
@@ -240,6 +251,22 @@ assert.equal(missions.acceptMission('offer_untagged_branch_faction'), false,
 assert.equal(untaggedAcceptState.story.branch, null,
   'untagged B4 branch-faction offers should not select a story branch');
 
+const malformedAcceptState = state({ rep: 0 });
+malformedAcceptState.story.beatIndex = 4;
+malformedAcceptState.missions.boards.station_helios.slots = [offer({
+  id: 'offer_malformed_branch_intro',
+  factionId: 'faction_mts',
+  riskTier: 4,
+  storyTag: STORY_BRANCH_INTRO_TAG,
+  storyBranch: 'patrol',
+})];
+const malformedBus = bus();
+missions.init({ state: malformedAcceptState, bus: malformedBus, helpers: { hash32: () => 1 } });
+assert.equal(missions.acceptMission('offer_malformed_branch_intro'), false,
+  'malformed tagged B4 intros should not bypass the contract ladder in the system accept path');
+assert.equal(malformedAcceptState.story.branch, null,
+  'malformed tagged B4 intros should not select a story branch');
+
 const generatedIntroState = state({ rep: 0 });
 generatedIntroState.story.beatIndex = 4;
 generatedIntroState.missions.boards = {};
@@ -257,6 +284,40 @@ assert.equal(generatedIntro.factionId, 'faction_mts',
   'B4 MTS intro contract should keep the offering faction');
 assert.equal(generatedIntro.type, STORY_BRANCH_INTROS.find((intro) => intro.branch === 'traders').type,
   'B4 intro contract type should come from canonical story intro data');
+
+const staleIntroState = state({ rep: 0 });
+staleIntroState.story.beatIndex = 3;
+staleIntroState.missions.boards = {};
+const staleIntroBus = bus();
+missions.init({ state: staleIntroState, bus: staleIntroBus, helpers: { hash32: () => 91 } });
+const stalePreBeatBoard = missions.ensureBoard('station_tethys');
+assert.ok(stalePreBeatBoard && stalePreBeatBoard.slots && stalePreBeatBoard.slots.length,
+  'pre-B4 branch station boards should generate normal cached mission slots');
+assert.notEqual(stalePreBeatBoard.slots[0].storyTag, STORY_BRANCH_INTRO_TAG,
+  'pre-B4 cached boards should not already contain the B4 story intro');
+staleIntroState.story.beatIndex = 4;
+const staleRefreshedBoard = missions.ensureBoard('station_tethys');
+assert.notEqual(staleRefreshedBoard, stalePreBeatBoard,
+  'same-epoch cached branch boards should regenerate when Beat 4 requires an intro contract');
+assert.equal(staleRefreshedBoard.slots[0].storyTag, STORY_BRANCH_INTRO_TAG,
+  'same-epoch cached branch boards should put the tagged B4 intro first after story advancement');
+assert.equal(staleRefreshedBoard.slots[0].storyBranch, 'traders',
+  'same-epoch cached MTS boards should refresh into the authored traders intro');
+
+const transitionIntroState = state({ rep: 0 });
+transitionIntroState.story.beatIndex = 3;
+transitionIntroState.missions.boards = {};
+const transitionIntroBus = bus();
+missions.init({ state: transitionIntroState, bus: transitionIntroBus, helpers: { hash32: () => 99 } });
+const transitionPreBeatBoard = missions.ensureBoard('station_tethys');
+missions._advanceStory({ id: 'test_enter_branch_choice', beat: 3, next: 4 });
+const transitionRefreshedBoard = transitionIntroState.missions.boards.station_tethys;
+assert.notEqual(transitionRefreshedBoard, transitionPreBeatBoard,
+  'Beat 4 story advancement should refresh already-cached branch station boards');
+assert.equal(transitionRefreshedBoard.slots[0].storyTag, STORY_BRANCH_INTRO_TAG,
+  'Beat 4 story advancement should leave cached branch boards with a tagged intro first');
+assert.ok(transitionIntroBus.events.some((event) => event.type === 'mission:updated'),
+  'Beat 4 story advancement should notify station UI after refreshing cached intro boards');
 
 const trustedState = state({ rep: 150 });
 const trustedOffer = offer({ id: 'offer_unlocked_r4', riskTier: 4, minRep: 150 });

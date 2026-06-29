@@ -80,7 +80,6 @@ const SIZE_TIER = { S: 0, M: 1, L: 2 };
 
 // Story branch → faction mapping (B4/B5 spec).
 const BRANCH_FACTION = Object.fromEntries(STORY_BRANCH_INTROS.map((intro) => [intro.branch, intro.factionId]));
-const BRANCH_FACTION_IDS = new Set(Object.values(BRANCH_FACTION));
 const BRANCH_INTRO_BY_FACTION = new Map(STORY_BRANCH_INTROS.map((intro) => [intro.factionId, intro]));
 const BRANCH_INTRO_BY_BRANCH = new Map(STORY_BRANCH_INTROS.map((intro) => [intro.branch, intro]));
 const HOME_FACTION = 'faction_scn'; // resolves STORY_BEATS B0 reward.rep.faction === 'home'
@@ -111,12 +110,20 @@ function factionShortName(factionId) {
 }
 
 function isStoryBranchIntroOffer(offer, state) {
+  const intro = storyBranchIntroForOffer(offer);
   return !!(
-    offer && offer.factionId &&
+    intro &&
     state && state.story && state.story.beatIndex === 4 &&
-    (offer.storyTag === STORY_BRANCH_INTRO_TAG || offer.storyTag === 4) &&
-    BRANCH_FACTION_IDS.has(offer.factionId)
+    (offer.storyTag === STORY_BRANCH_INTRO_TAG || offer.storyTag === 4)
   );
+}
+
+function storyBranchIntroForOffer(offer) {
+  if (!offer || !offer.factionId) return null;
+  const intro = BRANCH_INTRO_BY_FACTION.get(offer.factionId);
+  if (!intro) return null;
+  if (offer.storyBranch && offer.storyBranch !== intro.branch) return null;
+  return intro;
 }
 
 function missionOfferMinRep(offer, state = null) {
@@ -263,11 +270,38 @@ export const missions = {
     if (!info) return null; // gates / unknown stations have no board
     const epoch = this._epoch();
     let board = state.missions.boards[stationId];
-    if (board && board.refreshEpoch === epoch && board.slots) return board;
+    if (board && board.refreshEpoch === epoch && board.slots && !this._boardNeedsStoryBranchIntro(info, board)) return board;
     board = { refreshEpoch: epoch, slots: this._generateOffers(info, epoch) };
     state.missions.boards[stationId] = board;
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  _boardNeedsStoryBranchIntro(info, board) {
+    const story = this.state && this.state.story;
+    const intro = info && BRANCH_INTRO_BY_FACTION.get(info.factionId);
+    if (!story || story.beatIndex !== 4 || story.branch || !intro) return false;
+    const slots = board && Array.isArray(board.slots) ? board.slots : [];
+    return !slots.some((offer) => (
+      offer &&
+      offer.storyTag === STORY_BRANCH_INTRO_TAG &&
+      offer.factionId === intro.factionId &&
+      offer.storyBranch === intro.branch
+    ));
+  },
+
+  _refreshStoryBranchIntroBoards() {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 4 || story.branch) return false;
+    let changed = false;
+    for (const [stationId, board] of Object.entries(this.state.missions.boards || {})) {
+      const info = STATION_INFO.get(stationId);
+      if (!info || !this._boardNeedsStoryBranchIntro(info, board)) continue;
+      const epoch = this._epoch();
+      this.state.missions.boards[stationId] = { refreshEpoch: epoch, slots: this._generateOffers(info, epoch) };
+      changed = true;
+    }
+    return changed;
   },
 
   /** Deterministically generate S offers for a station at an epoch (seeded, no Math.random). */
@@ -1507,6 +1541,7 @@ export const missions = {
     if (beat.next == null) story.flags.endgame = true;
 
     this.bus.emit('story:beatAdvanced', { fromIndex, toIndex, branch: story.branch || undefined });
+    if (toIndex === 4) this._refreshStoryBranchIntroBoards();
     // Direction toast: tell the player what the NEW current beat wants.
     // NOTE: the sandbox fallback (past B7) deliberately does NOT grant a title. Per
     // ENDGAME-B7-REDESIGN.md, "None of these choices is rewarded with a title." The story system

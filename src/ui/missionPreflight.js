@@ -22,7 +22,7 @@ const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval
 const MARKET_STAGED_CARGO_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run']);
 const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport']);
 const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
-const STORY_BRANCH_FACTIONS = new Set(STORY_BRANCH_INTROS.map((intro) => intro.factionId));
+const STORY_BRANCH_INTRO_BY_FACTION = new Map(STORY_BRANCH_INTROS.map((intro) => [intro.factionId, intro]));
 const TIMER_TIGHT_S = 5 * 60;
 const TIMER_CRITICAL_S = 2 * 60;
 const ROUTE_RISK_WARNING_DANGER = 0.72;
@@ -65,11 +65,13 @@ function stateRepFor(state, factionId) {
 }
 
 function storyBranchIntroMinRep(m, state) {
+  const intro = m && m.factionId ? STORY_BRANCH_INTRO_BY_FACTION.get(m.factionId) : null;
   if (
     m && m.factionId &&
     state && state.story && state.story.beatIndex === 4 &&
     (m.storyTag === STORY_BRANCH_INTRO_TAG || m.storyTag === 4) &&
-    STORY_BRANCH_FACTIONS.has(m.factionId)
+    intro &&
+    (!m.storyBranch || m.storyBranch === intro.branch)
   ) {
     return STORY_BRANCH_INTRO_MIN_REP;
   }
