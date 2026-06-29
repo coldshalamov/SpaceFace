@@ -1,6 +1,13 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
-import { MISSION_TUNING, missionMinRepForRisk, missionStandingGateForMinRep } from '../data/missions.js';
+import {
+  MISSION_TUNING,
+  missionMinRepForRisk,
+  missionStandingGateForMinRep,
+  STORY_BRANCH_INTROS,
+  STORY_BRANCH_INTRO_MIN_REP,
+  STORY_BRANCH_INTRO_TAG,
+} from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
 
@@ -15,7 +22,7 @@ const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval
 const MARKET_STAGED_CARGO_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run']);
 const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport']);
 const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
-const STORY_BRANCH_FACTIONS = new Set(['faction_mts', 'faction_scn', 'faction_free']);
+const STORY_BRANCH_FACTIONS = new Set(STORY_BRANCH_INTROS.map((intro) => intro.factionId));
 const TIMER_TIGHT_S = 5 * 60;
 const TIMER_CRITICAL_S = 2 * 60;
 const ROUTE_RISK_WARNING_DANGER = 0.72;
@@ -61,9 +68,10 @@ function storyBranchIntroMinRep(m, state) {
   if (
     m && m.factionId &&
     state && state.story && state.story.beatIndex === 4 &&
+    (m.storyTag === STORY_BRANCH_INTRO_TAG || m.storyTag === 4) &&
     STORY_BRANCH_FACTIONS.has(m.factionId)
   ) {
-    return -29;
+    return STORY_BRANCH_INTRO_MIN_REP;
   }
   return null;
 }

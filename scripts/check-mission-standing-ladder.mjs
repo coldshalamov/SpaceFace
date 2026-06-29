@@ -10,6 +10,8 @@ import {
   missionMinRepForRisk,
   missionStandingGateForMinRep,
   missionStandingGateForRisk,
+  STORY_BRANCH_INTROS,
+  STORY_BRANCH_INTRO_TAG,
 } from '../src/data/missions.js';
 import { missions } from '../src/systems/missions.js';
 import {
@@ -36,6 +38,8 @@ assert.match(missionsSrc, /function missionOfferMinRep\(offer, state = null\)/,
   'acceptance must derive standing requirements for old saves as well as new offers');
 assert.match(preflightSrc, /export function missionStandingRequirement/,
   'mission preflight must expose the shared standing requirement helper');
+assert.match(missionsSrc, /_rollStoryBranchIntroOffer/,
+  'Beat 4 story-intro offers must be explicitly generated and tagged');
 assert.match(stationHubSrc, /st-mission-standing/,
   'mission cards must render a dedicated standing gate line');
 assert.match(factionsSrc, /export function factionContractLadderRows/,
@@ -53,6 +57,9 @@ assert.equal(missionStandingGateForRisk(4).name, 'Trusted Work',
   'R4 should map to the Trusted Work gate, not the aspirational Allied tier');
 assert.equal(missionStandingGateForMinRep(-29).name, 'Neutral Board',
   'effective intro-safe standing thresholds should display the Neutral gate');
+assert.equal(STORY_BRANCH_INTROS.length, 3, 'Beat 4 must author one explicit intro for each branch path');
+assert.deepEqual(STORY_BRANCH_INTROS.map((intro) => intro.branch).sort(), ['free', 'patrol', 'traders'],
+  'Beat 4 intro identities must cover Free, Patrol, and Traders branches');
 
 function offer(overrides = {}) {
   return {
@@ -131,7 +138,18 @@ assert.equal(trustedReq.chip.text, 'Trusted+ standing met',
 
 const branchState = state({ rep: 0 });
 branchState.story.beatIndex = 4;
-const branchReq = missionStandingRequirement(offer({ riskTier: 4, factionId: 'faction_mts' }), branchState);
+const untaggedBranchReq = missionStandingRequirement(offer({ riskTier: 4, factionId: 'faction_mts' }), branchState);
+assert.equal(untaggedBranchReq.ok, false,
+  'untagged B4 faction offers should remain normal standing-gated contracts');
+assert.equal(untaggedBranchReq.minRep, 150,
+  'untagged B4 faction offers should keep the risk-derived Trusted gate');
+
+const branchReq = missionStandingRequirement(offer({
+  riskTier: 4,
+  factionId: 'faction_mts',
+  storyTag: STORY_BRANCH_INTRO_TAG,
+  storyBranch: 'traders',
+}), branchState);
 assert.equal(branchReq.ok, true,
   'B4 faction-choice offers should stay available at neutral standing even if generated risk is high');
 assert.equal(branchReq.minRep, -29,
@@ -191,7 +209,13 @@ assert.ok(lockedBus.events.some((event) =>
 
 const branchAcceptState = state({ rep: 0 });
 branchAcceptState.story.beatIndex = 4;
-const branchOffer = offer({ id: 'offer_branch_intro', factionId: 'faction_mts', riskTier: 4 });
+const branchOffer = offer({
+  id: 'offer_branch_intro',
+  factionId: 'faction_mts',
+  riskTier: 4,
+  storyTag: STORY_BRANCH_INTRO_TAG,
+  storyBranch: 'traders',
+});
 branchAcceptState.missions.boards.station_helios.slots = [branchOffer];
 const branchBus = bus();
 missions.init({ state: branchAcceptState, bus: branchBus, helpers: { hash32: () => 1 } });
@@ -199,6 +223,40 @@ assert.equal(missions.acceptMission('offer_branch_intro'), true,
   'B4 branch intro offer should pass the system accept path at neutral standing');
 assert.equal(branchAcceptState.missions.active.length, 1,
   'B4 branch intro offer should become active instead of being standing-locked');
+assert.equal(branchAcceptState.story.branch, 'traders',
+  'tagged B4 branch intro offer should choose the authored branch identity');
+
+const untaggedAcceptState = state({ rep: 0 });
+untaggedAcceptState.story.beatIndex = 4;
+untaggedAcceptState.missions.boards.station_helios.slots = [offer({
+  id: 'offer_untagged_branch_faction',
+  factionId: 'faction_mts',
+  riskTier: 4,
+})];
+const untaggedBus = bus();
+missions.init({ state: untaggedAcceptState, bus: untaggedBus, helpers: { hash32: () => 1 } });
+assert.equal(missions.acceptMission('offer_untagged_branch_faction'), false,
+  'untagged B4 branch-faction offers should not bypass the contract ladder');
+assert.equal(untaggedAcceptState.story.branch, null,
+  'untagged B4 branch-faction offers should not select a story branch');
+
+const generatedIntroState = state({ rep: 0 });
+generatedIntroState.story.beatIndex = 4;
+generatedIntroState.missions.boards = {};
+const generatedIntroBus = bus();
+missions.init({ state: generatedIntroState, bus: generatedIntroBus, helpers: { hash32: () => 77 } });
+const generatedBoard = missions.ensureBoard('station_tethys');
+assert.ok(generatedBoard && generatedBoard.slots && generatedBoard.slots.length,
+  'B4 branch station boards should generate normal mission slots');
+const generatedIntro = generatedBoard.slots[0];
+assert.equal(generatedIntro.storyTag, STORY_BRANCH_INTRO_TAG,
+  'B4 branch station boards should put an explicitly tagged intro contract first');
+assert.equal(generatedIntro.storyBranch, 'traders',
+  'B4 MTS intro contract should carry the authored traders branch identity');
+assert.equal(generatedIntro.factionId, 'faction_mts',
+  'B4 MTS intro contract should keep the offering faction');
+assert.equal(generatedIntro.type, STORY_BRANCH_INTROS.find((intro) => intro.branch === 'traders').type,
+  'B4 intro contract type should come from canonical story intro data');
 
 const trustedState = state({ rep: 150 });
 const trustedOffer = offer({ id: 'offer_unlocked_r4', riskTier: 4, minRep: 150 });
@@ -211,4 +269,4 @@ assert.equal(trustedState.missions.active.length, 1, 'unlocked offer should beco
 assert.equal(trustedState.missions.boards.station_helios.slots.length, 0,
   'unlocked offer should leave the board after accept');
 
-console.log('Mission standing ladder OK - contract risk gates, board copy, faction dossier, and accept enforcement agree.');
+console.log('Mission standing ladder OK - contract risk gates, story-intro identity, board copy, faction dossier, and accept enforcement agree.');

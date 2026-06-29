@@ -86,6 +86,30 @@ export function missionMinRepForRisk(riskTier) {
   return gate ? gate.minRep : 0;
 }
 
+export const STORY_BRANCH_INTRO_TAG = 'story.branch_intro';
+export const STORY_BRANCH_INTRO_MIN_REP = -29;
+
+export const STORY_BRANCH_INTROS = [
+  {
+    branch: 'traders',
+    factionId: 'faction_mts',
+    type: 'bulk_trade',
+    title: 'Meridian Charter Trial',
+  },
+  {
+    branch: 'patrol',
+    factionId: 'faction_scn',
+    type: 'patrol_clear',
+    title: 'Concord Patrol Trial',
+  },
+  {
+    branch: 'free',
+    factionId: 'faction_free',
+    type: 'smuggling_run',
+    title: 'Free Captain Intro Run',
+  },
+];
+
 export const MISSION_TYPES = [
   {
     type: 'cargo_delivery', riskTierRange: [0, 1], chainable: true,
