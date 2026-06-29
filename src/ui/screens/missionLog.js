@@ -11,6 +11,10 @@ import { FACTION_META } from '../../data/factions.js';
 import { STORY_BEATS } from '../../data/missions.js';
 import { escapeHtml } from '../comms.js';
 import { BINDINGS } from '../bindings.js';
+import {
+  missionConsequenceSummary,
+  missionTimePacing,
+} from '../missionPreflight.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -289,6 +293,10 @@ function missionProgressLabel(m) {
   return Math.min(100, Math.round((prog / tgt) * 100)) + '% complete';
 }
 
+function formatCredits(value) {
+  return (Math.max(0, Math.round(Number(value) || 0))).toLocaleString('en-US') + ' cr';
+}
+
 function cargoLoad(state) {
   const cargo = state && state.player && state.player.cargo;
   const cap = Math.max(0, Number(cargo && cargo.capVolume) || 0);
@@ -349,8 +357,82 @@ function missionLeavesSector(state, m) {
   return !!(target && current && target !== current);
 }
 
+function missionRouteTermText(state, m) {
+  const target = missionDestSectorId(m);
+  const current = state && state.world && state.world.currentSectorId || null;
+  if (target && current && target !== current) return 'off-sector route';
+  if (target && current && target === current) return 'local route';
+  return 'route pending';
+}
+
 function isRiskWork(m) {
   return !!(m && (DANGEROUS_MISSION_TYPES.has(m.type) || missionRiskTier(m) >= 2));
+}
+
+export function activeMissionContractTerms(m, state) {
+  if (!m) return [];
+  const terms = [];
+  const consequences = missionConsequenceSummary(m);
+  const pays = [];
+  if (consequences.reward > 0) pays.push('+' + formatCredits(consequences.reward));
+  if (consequences.repReward > 0) pays.push('+' + consequences.repReward + ' rep');
+  terms.push({
+    kind: 'ok',
+    label: 'Pays',
+    text: pays.length ? pays.join(' / ') : 'close cleanly',
+  });
+
+  const pacing = missionTimePacing(m, state);
+  if (pacing && pacing.chip) {
+    terms.push({
+      kind: pacing.chip.kind || 'info',
+      label: 'Clock',
+      text: pacing.chip.text,
+    });
+  }
+
+  const risk = missionRiskTier(m);
+  terms.push({
+    kind: risk >= 3 ? 'warn' : (risk >= 2 ? 'info' : 'ok'),
+    label: 'Risk',
+    text: 'R' + risk + ' / ' + missionRouteTermText(state, m),
+  });
+
+  if (consequences.collateral > 0) {
+    terms.push({
+      kind: 'warn',
+      label: 'Stake',
+      text: formatCredits(consequences.collateral) + ' collateral',
+    });
+  }
+
+  const miss = [];
+  if (consequences.repPenalty < 0) miss.push(consequences.repPenalty + ' rep');
+  if (consequences.collateral > 0) miss.push('stake forfeited');
+  miss.push('no payout');
+  terms.push({
+    kind: (consequences.repPenalty < 0 || consequences.collateral > 0) ? 'warn' : 'info',
+    label: 'Miss',
+    text: miss.join(' / '),
+  });
+
+  if (m.type === 'smuggling_run') {
+    terms.push({ kind: 'bad', label: 'Heat', text: 'customs scans escalate' });
+  }
+
+  return terms.slice(0, 6);
+}
+
+function contractTermsHtml(m, state) {
+  const terms = activeMissionContractTerms(m, state);
+  if (!terms.length) return '';
+  return '<div class="sf-mlog-terms mono" aria-label="Contract terms">' + terms.map((term) => {
+    const kind = ['ok', 'info', 'warn', 'bad'].includes(term.kind) ? term.kind : 'info';
+    return '<span class="sf-mlog-term sf-mlog-term--' + kind + '">' +
+      '<b>' + escapeHtml(term.label) + '</b>' +
+      '<span>' + escapeHtml(term.text) + '</span>' +
+    '</span>';
+  }).join('') + '</div>';
 }
 
 function serviceReadinessAction(state, activeMissions) {
@@ -797,6 +879,7 @@ export const missionLogScreen = {
         '<span class="sf-mlog-cr">+' + (m.reward_cr || 0).toLocaleString() + ' cr</span>' +
         (fac ? '<span class="sf-mlog-fac" style="color:' + (fac.color || 'var(--accent-2)') + '">' + escapeHtml(fac.short || fac.name) + '</span>' : '');
       card.appendChild(meta);
+      card.insertAdjacentHTML('beforeend', contractTermsHtml(m, state));
 
       // Buttons: Track / map handoff / abandon
       const mapAction = missionMapAction(state, m, isTracked);
@@ -961,6 +1044,16 @@ const CSS = `
 .sf-mlog-time.urgent { color: var(--warn); font-weight: 600; }
 .sf-mlog-cr { color: var(--energy); }
 .sf-mlog-fac { font-size: .7rem; }
+.sf-mlog-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 6px;
+  margin: 0 0 9px; }
+.sf-mlog-term { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 5px 7px;
+  border: 1px solid rgba(88,112,145,.34); border-radius: 6px; background: rgba(255,255,255,.035);
+  font-size: .64rem; line-height: 1.25; color: var(--ink-dim); overflow-wrap: anywhere; }
+.sf-mlog-term b { font-size: .55rem; letter-spacing: .11em; text-transform: uppercase; color: var(--ink-mute); }
+.sf-mlog-term--ok { border-color: rgba(98,224,138,.34); color: var(--good); }
+.sf-mlog-term--info { border-color: rgba(57,208,255,.28); color: var(--accent); }
+.sf-mlog-term--warn { border-color: rgba(255,198,77,.38); color: var(--warn); }
+.sf-mlog-term--bad { border-color: rgba(255,84,112,.46); color: var(--danger); }
 
 .sf-mlog-btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .sf-mlog-btn-track { font-size: .72rem; padding: 4px 12px; border-color: var(--panel-edge-2); color: var(--ink-dim); }
