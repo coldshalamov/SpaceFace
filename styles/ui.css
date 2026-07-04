@@ -633,3 +633,40 @@ button:active { transform: translateY(1px); }
   font-size: 10px;
   letter-spacing: 0.05em;
 }
+/* Contacts strip v2: one-word state chip, threat-tier pips, derelict manifest line. */
+.sf-overview-row { flex-wrap: wrap; }
+.sf-overview-row__state {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.sf-overview-row__tier {
+  font-size: 9px;
+  letter-spacing: -0.5px;
+}
+.sf-overview-row__detail {
+  flex-basis: 100%;
+  margin-top: 2px;
+  padding-left: 20px;
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  color: var(--ink-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Unscanned derelict: ghost outline + italic "??? UNSCANNED" until a scan pulse resolves it. */
+.sf-overview-row.unscanned {
+  border-left-style: dashed;
+  opacity: 0.72;
+}
+.sf-overview-row.unscanned .sf-overview-row__detail { font-style: italic; }
+/* State colours (mirrors radar/IFF language). */
+.sf-cs--hostile { color: var(--danger); }
+.sf-cs--patrol { color: var(--visor-cyan, var(--accent)); }
+.sf-cs--derelict { color: var(--ink-mute); }
+.sf-cs--trader { color: var(--good); }
+.sf-cs--miner { color: var(--visor-amber, var(--warn)); }
+.sf-cs--ally { color: var(--good); }
+.sf-cs--neutral { color: var(--ink-dim); }

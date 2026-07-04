@@ -37,6 +37,7 @@ import { traffic } from '../systems/traffic.js';
 import { drill } from '../systems/drill.js';
 import { intervention } from '../systems/intervention.js';
 import { claims } from '../systems/claims.js';
+import { beacons } from '../systems/beacons.js';
 import { onboarding } from '../systems/onboarding.js';
 import { render } from '../render/renderer.js';
 import { vfx } from '../render/vfx.js';
@@ -54,7 +55,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, input, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, mining, cargo, economy,
-    automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
+    automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -74,9 +75,11 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, scanner, aiSlot, aiEncounter, actions, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, mining, cargo, automation, wingmen, crafting,
+    input, scanner, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, mining, cargo, automation, wingmen, crafting,
     economy, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding,
   ];
+  // beacons runs after AI/actions and before flight so its lure can override a hostile's intent for
+  // this tick (drift toward the beacon) without touching AI internals; it is a no-op when none exist.
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
   byName.set('ai', aiSlot);
   byName.set('flight', flightSlot);

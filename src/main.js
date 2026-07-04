@@ -177,7 +177,7 @@ async function startNewGame(state, helpers, bus, registry, opts) {
   resetRunState(state, opts || {});
   enterLoadingMode(state, bus);
 
-  for (const name of ['world', 'factions', 'economy', 'automation', 'intervention', 'sectorSim', 'missions', 'aiEncounter', 'crafting', 'traffic', 'drill', 'claims']) {
+  for (const name of ['world', 'factions', 'economy', 'automation', 'intervention', 'sectorSim', 'missions', 'aiEncounter', 'crafting', 'traffic', 'drill', 'claims', 'beacons']) {
     const sys = registry.get(name);
     if (sys && typeof sys.newGame === 'function') sys.newGame();
   }

@@ -21,6 +21,10 @@ export const BINDINGS = Object.freeze({
   cargo: { key: 'i', code: 'KeyI', label: 'I' },
   comms: { key: 'l', code: 'KeyL', label: 'L' },
   codex: { key: 'k', code: 'KeyK', label: 'K' },
+  // Wingman command radial (Micro-Loops). The comms LOG owns L, so the quick fleet-comms radial
+  // lives on Z — a free key next to the movement cluster for a thumb-reachable "hands stay on the
+  // stick" fleet command.
+  fleetCommand: { key: 'z', code: 'KeyZ', label: 'Z' },
 });
 
 // Render a bracketed prompt label, e.g. "[ E ] DOCK AT STATION".

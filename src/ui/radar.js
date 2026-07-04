@@ -642,6 +642,29 @@ export function createRadar(ctx) {
       }
     }
 
+    // ── claim beacons ─────────────────────────────────────────────────────────────────────
+    // Drawn straight from state.beacons (not the contact list) so a deployed beacon always shows a
+    // pulsing amber marker regardless of how the entity index buckets it.
+    const beaconList = state.beacons;
+    if (Array.isArray(beaconList) && beaconList.length) {
+      const bpulse = 0.5 + 0.5 * Math.sin(now * 0.006);
+      g.save();
+      g.lineWidth = 1.2;
+      for (const b of beaconList) {
+        if (!b || b.alive === false) continue;
+        const dx = b.x - px, dz = b.z - pz;
+        if (dx * dx + dz * dz > rangeSq) continue;
+        const bx = C - dx * radarScale, by = C - dz * radarScale;
+        glow(g, '#ffd24a', 6 + 4 * bpulse);
+        g.strokeStyle = 'rgba(255,210,74,' + (0.45 + 0.45 * bpulse).toFixed(2) + ')';
+        g.beginPath(); g.arc(bx, by, 4 + 2 * bpulse, 0, Math.PI * 2); g.stroke();
+        g.fillStyle = 'rgba(255,210,74,0.9)';
+        g.beginPath(); g.moveTo(bx, by - 2.4); g.lineTo(bx + 2.4, by); g.lineTo(bx, by + 2.4); g.lineTo(bx - 2.4, by); g.closePath(); g.fill();
+        noGlow(g);
+      }
+      g.restore();
+    }
+
     // ── player marker ─────────────────────────────────────────────────────────────────────
     // rot + π projects the nose onto canvas in the same direction the player faces on screen.
     g.save(); g.translate(C, C); g.rotate(Math.PI + p.rot);

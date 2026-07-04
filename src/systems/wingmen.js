@@ -142,5 +142,14 @@ export const wingmen = {
     e.data.ai = e.data.ai || {};
     e.data.ai.archetype = archetype;
     e.data.wingmanOrder = order;
+    // "Attack my target" (radial): point the live wing's combat target at the player's selected
+    // target so the archetype's targeting locks onto it directly, not just the nearest hostile.
+    if (order === 'attack') {
+      const targetId = fs.targetRef && fs.targetRef.refId != null ? fs.targetRef.refId : null;
+      if (targetId != null) {
+        e.data.combat = e.data.combat || {};
+        e.data.combat.targetId = targetId;
+      }
+    }
   },
 };

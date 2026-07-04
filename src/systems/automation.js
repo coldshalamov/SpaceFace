@@ -887,6 +887,10 @@ export const automation = {
       case 'orderEscort': return this.setFleetOrder(p.shipId, 'escort', p.targetRef);
       case 'orderMine': return this.setFleetOrder(p.shipId, 'mine', p.targetRef);
       case 'orderRecall': return this.setFleetOrder(p.shipId, 'idle', p.targetRef);
+      // Wingman command radial (Micro-Loops): "attack my target" / "defend me". targetRef carries the
+      // player's current target id (attack) so wingmen.js can point the live wing at it.
+      case 'orderAttack': return this.setFleetOrder(p.shipId, 'attack', p.targetRef);
+      case 'orderGuard': return this.setFleetOrder(p.shipId, 'guard', p.targetRef);
       // V2 §4 / cut-list #28: assign an alphabet template to a drone group (program it). targetRef
       // is the templateId ('mine_to_depot' | 'patrol_guard' | 'scout_report'); null/'' clears it.
       case 'assignProgram': return this.assignProgram(p.shipId, p.targetRef);

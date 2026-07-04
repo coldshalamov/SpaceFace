@@ -46,6 +46,7 @@ import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
+import { createWingmanRadial } from './wingmanRadial.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
 // Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
@@ -155,6 +156,9 @@ export const ui = {
 
     // comms / graffiti / endgame narrative overlay (story system drives it via events)
     this.comms = createComms(ctx);
+
+    // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
+    this.wingmanRadial = createWingmanRadial(ctx);
 
     // screen manager — expose on ctx + on this system so screens can reach it (§ screens
     // resolve ctx.screenManager / registry.get('ui').screenManager / .manager).
@@ -818,6 +822,11 @@ function injectHudCss() {
   .sf-wpn-heat.overheated .sf-wpn-heat__fill { background:var(--visor-red); box-shadow:0 0 8px var(--visor-red); }
   .sf-wpn-heat.overheated { animation:sf-wpnpulse .5s ease-in-out infinite alternate; }
   @keyframes sf-wpnpulse { from { opacity:.7; } to { opacity:1; } }
+  /* Forced vent: every weapon bar goes hot-red and pulses while the 2 s lockout runs. */
+  .sf-wpn-heats.venting .sf-wpn-heat__bar { box-shadow:0 0 8px var(--visor-red); }
+  .sf-wpn-heats.venting .sf-wpn-heat__fill { background:var(--visor-red); box-shadow:0 0 10px var(--visor-red); }
+  .sf-wpn-heats.venting .sf-wpn-heat__label { color:var(--visor-red); }
+  .sf-wpn-heats.venting { animation:sf-wpnpulse .4s ease-in-out infinite alternate; }
 
   /* Target lock diamond — world-space overlay on locked/selected enemy.
      Outer div is the invisible positioning anchor (translate -50% centers on target).

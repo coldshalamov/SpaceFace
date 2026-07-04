@@ -187,6 +187,12 @@ export function createUiInput(ctx, screenManager) {
         ev.preventDefault();
         bus.emit('ui:toggleOverview');
         return;
+      case BINDINGS.fleetCommand.key:
+      case BINDINGS.fleetCommand.label:
+        // Wingman command radial (Micro-Loops): pop the quick fleet-command wheel.
+        ev.preventDefault();
+        bus.emit('ui:wingmanRadial');
+        return;
       case BINDINGS.comms.key:
       case BINDINGS.comms.label:
         // Comms log (narrative overlay): open the channel backlog. The feed itself
@@ -197,10 +203,14 @@ export function createUiInput(ctx, screenManager) {
       case BINDINGS.claimBase.key:
       case BINDINGS.claimBase.label:
         // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base
-        // screen for an already-claimed body to build modules / teleport.
+        // screen for an already-claimed body to build modules / teleport. With no claimable body in
+        // range, the same key drops a CLAIM BEACON (Micro-Loops) — a cheap temporary marked zone.
         if (claimOrOpenBase()) {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        } else {
+          ev.preventDefault();
+          bus.emit('beacon:deploy');
         }
         return;
       case 'F5':

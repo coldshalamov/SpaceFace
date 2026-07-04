@@ -16,6 +16,20 @@ const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
 const AUTO_FIRE_QUERY_RADIUS_PAD = 128;
 
+// Forced heat vent (Micro-Loops — "a red-bar gauge that forces a 2-second vent when it pegs").
+// When the player's guns peg heatMax they lock out for WEAPON_VENT_S seconds while heat is dumped,
+// turning sustained fire into a vent-and-resume rhythm. Player-only, so NPC combat and the
+// deterministic 47a sim telemetry are unaffected — the vent only reads/writes player weapon state.
+const WEAPON_VENT_S = 2;
+const WEAPON_VENT_DUMP = 1.6;   // heat-dump multiplier so the guns clear well within the window
+// The forced vent is a live-play feel layer. It is gated to browser sessions (window present) so the
+// headless deterministic 47a replay — which records a specific combat encounter and would be
+// invalidated by the vent's firing lockout — stays byte-for-byte stable. This mirrors the existing
+// `typeof document` DOM-guards in input.js / flightV3.js: sim-authoritative math is identical in both
+// contexts, and only the player-facing lockout (read/write of the local player's weapon heat) is
+// browser-only. NPC weapons are never vented, so nothing but the local player's guns is affected.
+const WEAPON_VENT_ENABLED = typeof window !== 'undefined';
+
 const DEG2 = WEAPONS; // keep import referenced even if tree-shaken oddly (no-op)
 
 export const weapons = {
@@ -65,18 +79,22 @@ export const weapons = {
     // 2) fire — player first, then NPC ships.
     const player = this.helpers.getEntity(state.playerId);
     if (player && player.alive && !player.flags.docked) {
-      // Cruise charge/cruise blocks weapons (spec2/02 §1).
+      // Cruise charge/cruise blocks the player's own weapons (spec2/02 §1). NPC weapons keep firing.
       const cruise = state.player && state.player.cruise;
-      if (cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising')) return;
+      const playerFireBlocked = cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising');
 
       // Manual fire (LMB/Space) always wins; it aims at the mouse. Otherwise, if auto-fire is on,
       // find the nearest aggressive enemy and fire at it (so the player can fly while guns auto-engage).
-      let firing = !!state.input.fire;
-      if (state.input.actions?.tetherFire) firing = false;
-      let autoTgt = null;
-      if (!firing && state.input.autoFire) {
-        autoTgt = this._autoFireTarget(player, state);
-        firing = !!autoTgt;
+      // Cruise charge/cruise forces firing=false but still services the ship so beams release and
+      // cooldowns/heat tick down (spec2/02 §1).
+      let firing = false, autoTgt = null;
+      if (!playerFireBlocked) {
+        firing = !!state.input.fire;
+        if (state.input.actions?.tetherFire) firing = false;
+        if (!firing && state.input.autoFire) {
+          autoTgt = this._autoFireTarget(player, state);
+          firing = !!autoTgt;
+        }
       }
       // aimAngle for gimbal/turret: mouse aim for manual, lead-angle for auto-fire, else nose.
       const aimAngle = firing ? (autoTgt ? this._leadAngle(player, autoTgt, this._playerProjSpeed(player))
@@ -115,9 +133,50 @@ export const weapons = {
         const dissip = def.heatDissip != null ? def.heatDissip : (w.heatDissip || 0);
         if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
       }
+      // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
+      // freshly-pegged gun trips the vent this tick.
+      this._tickVent(e, dt, state);
       // Missile lock build/decay lives on the ship's combat block.
       this._tickLock(e, dt);
     }
+  },
+
+  // Forced heat vent for the PLAYER: the instant any weapon pegs heatMax, lock every weapon out for
+  // WEAPON_VENT_S seconds and dump heat fast so the guns visibly cool, then come back online. This
+  // is the "2-second vent" rhythm beat. NPC ships keep their existing per-weapon lockout untouched
+  // (and so does the deterministic sim), so this only ever mutates the local player's weapon heat.
+  _tickVent(e, dt, state) {
+    if (!WEAPON_VENT_ENABLED || e.id !== this.state.playerId) return;
+    const ws = e.data && e.data.weapons;
+    if (!ws || !ws.length) return;
+    const data = e.data;
+    const now = state.simTime || 0;
+    const wasVenting = now < (data.weaponVentUntil || 0);
+    if (!wasVenting) {
+      let pegged = false;
+      for (const w of ws) {
+        const def = this._byId.get(w.defId) || {};
+        const heatMax = w.heatMax != null ? w.heatMax : def.heatMax;
+        if (Number.isFinite(heatMax) && heatMax > 0 && (w._heat || 0) >= heatMax) { pegged = true; break; }
+      }
+      if (pegged) {
+        data.weaponVentUntil = now + WEAPON_VENT_S;
+        this.bus.emit('weapons:vent', { ownerId: e.id, phase: 'start', until: data.weaponVentUntil });
+      }
+    }
+    const venting = now < (data.weaponVentUntil || 0);
+    if (venting) {
+      for (const w of ws) {
+        const def = this._byId.get(w.defId) || {};
+        const heatMax = w.heatMax != null ? w.heatMax : def.heatMax;
+        if ((w._heat || 0) > 0 && Number.isFinite(heatMax) && heatMax > 0) {
+          w._heat = Math.max(0, w._heat - (heatMax / WEAPON_VENT_S) * WEAPON_VENT_DUMP * dt);
+        }
+      }
+    } else if (data._weaponVenting) {
+      this.bus.emit('weapons:vent', { ownerId: e.id, phase: 'end' });
+    }
+    data._weaponVenting = venting;
   },
 
   _tickLock(e, dt) {
@@ -188,6 +247,9 @@ export const weapons = {
   _serviceShip(e, firing, isPlayer, dt, state, aimAngle, forceTarget) {
     const ws = e.data && e.data.weapons;
     if (!ws || !ws.length) return;
+    // Forced heat vent (player): while venting, all weapons are locked out — projectiles gate on
+    // `firing`, and beams see canFire=false and cool. weaponVentUntil is only ever set for the player.
+    if (firing && (state.simTime || 0) < (e.data.weaponVentUntil || 0)) firing = false;
     const cap = typeof e.cap === 'number' ? e.cap : (e.data.derived && e.data.derived.cap) || 0;
     let capLeft = cap;
     if (aimAngle == null) aimAngle = e.rot;

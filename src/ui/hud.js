@@ -29,6 +29,7 @@ import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { BINDINGS } from './bindings.js';
 import { SEMANTIC_PALETTE } from './accessibility.js';
+import { contactThreatTier, contactStateWord, isWreckLike, wreckScanned } from '../systems/scanner.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -522,6 +523,10 @@ export function createHud(ctx, alerts) {
     </svg>
   `;
   root.appendChild(targetArcs);
+  const targetArcsSvg = targetArcs.querySelector('svg');
+  const targetArcShield = targetArcs.querySelector('.sf-arc-shield');
+  const targetArcArmor = targetArcs.querySelector('.sf-arc-armor');
+  const targetArcHull = targetArcs.querySelector('.sf-arc-hull');
 
   // floating combat text (damage numbers, ore yield, credits, kills)
   const floatingText = createFloatingText(ctx);
@@ -575,6 +580,18 @@ export function createHud(ctx, alerts) {
   const lockFill = lockRing.querySelector('.sf-lockring__fill');
   const lockLabel = lockRing.querySelector('.sf-lockring__label');
   let _wasLocked = false;   // rising-edge tracker for the lock-acquired audio cue
+
+  // FR-1: prograde (velocity-vector) tick. An always-on, unlabeled read of where inertia carries
+  // the ship if thrust cuts now — projected through the authoritative worldToScreen, never a magic
+  // screen anchor. It is a gauge (constant size, never animates) that fades out near rest. When it
+  // and the centered aim reticle diverge, you can read "facing vs travel" without instruments.
+  const proTick = document.createElement('div');
+  proTick.className = 'sf-protick';
+  proTick.style.cssText =
+    'position:absolute;left:0;top:0;width:8px;height:2px;margin-left:-4px;margin-top:-1px;' +
+    'background:#d7e6ff;border-radius:1px;opacity:0;pointer-events:none;will-change:transform,opacity;transform-origin:center;';
+  root.appendChild(proTick);
+  let _proAlpha = 0;   // smooth-damped opacity so it eases in/out, never pops
 
   // Per-weapon heat bars. Built once per ship load, updated per frame.
   const wpnHeatsWrap = document.createElement('div');
@@ -951,6 +968,20 @@ export function createHud(ctx, alerts) {
     });
   }
 
+  // Forced weapon-heat vent (Micro-Loops): when the player's guns peg heatMax, weapons.js locks them
+  // out for ~2s while heat dumps. Flash the heat bars red + raise a top-center alert so the lockout
+  // reads as a rhythm beat ("vent, then resume"), not a dead trigger.
+  ctx.bus.on('weapons:vent', (p) => {
+    if (!p || p.ownerId !== state.playerId) return;
+    const venting = p.phase === 'start';
+    wpnHeatsWrap.classList.toggle('venting', venting);
+    if (alerts) {
+      if (venting) alerts.raise({ key: 'wpn-vent', sev: 'warn', text: 'WEAPONS VENTING', ttl: 2.3 });
+      else alerts.clear('wpn-vent');
+    }
+    if (venting) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+  });
+
   // Credit count-up tween. Instead of snapping the digits to the new value on a credits:changed
   // event, we ease the displayed number from the previously-shown value toward the target over
   // CRED_TWEEN seconds. This makes a bounty / sale land as a fast count-up rather than an instant
@@ -1161,6 +1192,15 @@ export function createHud(ctx, alerts) {
     })[ch]);
   }
 
+  function setSvgAttr(el, name, value) {
+    if (!el) return;
+    const text = String(value);
+    const cache = el.__sfAttrCache || (el.__sfAttrCache = {});
+    if (cache[name] === text) return;
+    el.setAttribute(name, text);
+    cache[name] = text;
+  }
+
   function getIffData(e, playerTeam) {
     let iff = 'neutral';
     if (e.team === playerTeam || e.team === 0) {
@@ -1214,106 +1254,192 @@ export function createHud(ctx, alerts) {
 
   let overviewTick = 0;
   let lastOverviewSignature = '';
-  
+  // On-demand contacts strip (GDD 2.0 "Radar & Contacts"): at rest the strip stays quiet so it
+  // never fights the physics action for attention ("one voice at a time"). It reveals for a beat
+  // when a scan pulse lands or a fresh hostile/derelict enters range, and holds open while a hostile
+  // is close. state.settings.ui.overviewOpen is the manual PIN (O key) that keeps it always-on.
+  const OVERVIEW_HOSTILE_REVEAL_R = 2600;   // a hostile inside this radius keeps the strip open
+  const OVERVIEW_SCAN_REVEAL_MS = 7000;     // how long a scan pulse holds the strip open
+  const OVERVIEW_CONTACT_REVEAL_MS = 5000;  // how long a newly-arrived contact holds it open
+  let _overviewRevealUntil = 0;
+  let _knownContactIds = new Set();
+  function revealOverview(ms) {
+    const until = performance.now() + ms;
+    if (until > _overviewRevealUntil) _overviewRevealUntil = until;
+  }
+  // A scan pulse is the player explicitly asking "what's out there" — surface the strip immediately.
+  ctx.bus.on('scan:completed', () => { revealOverview(OVERVIEW_SCAN_REVEAL_MS); updateOverview(); });
+  ctx.bus.on('scan:pulse', () => revealOverview(OVERVIEW_SCAN_REVEAL_MS));
+
   if (!state.settings) state.settings = {};
   if (!state.settings.ui) state.settings.ui = {};
   if (state.settings.ui.overviewOpen === undefined) {
-    state.settings.ui.overviewOpen = true;
+    // Default to on-demand (unpinned): the strip speaks only when scanned or when a threat arrives.
+    state.settings.ui.overviewOpen = false;
   }
-  
+
   ctx.bus.on('ui:toggleOverview', () => {
     state.settings.ui.overviewOpen = !state.settings.ui.overviewOpen;
+    if (state.settings.ui.overviewOpen) revealOverview(OVERVIEW_SCAN_REVEAL_MS);
     updateOverview();
+    ctx.bus.emit('toast', {
+      text: state.settings.ui.overviewOpen ? 'Contacts strip pinned' : 'Contacts strip on-demand',
+      kind: 'info', ttl: 1.6,
+    });
     ctx.bus.emit('audio:cue', { id: state.settings.ui.overviewOpen ? 'ui_open' : 'ui_back' });
   });
 
+  // One-word state → CSS class for the row's state chip + tier pips.
+  const OVERVIEW_STATE_CLASS = {
+    HOSTILE: 'hostile', PATROL: 'patrol', DERELICT: 'derelict', TRADER: 'trader',
+    MINER: 'miner', WINGMAN: 'ally', ALLY: 'ally', NEUTRAL: 'neutral',
+  };
+  function tierPips(tier) {
+    let s = '';
+    for (let i = 0; i < 3; i++) s += i < tier ? '▰' : '▱';
+    return s;
+  }
+  function manifestSummary(e) {
+    const man = e.data && e.data.manifest;
+    if (!Array.isArray(man) || !man.length) return 'stripped';
+    const top = man.slice(0, 2).map((it) => `${cargoDisplayName(it.id)} ×${it.qty}`).join(', ');
+    return man.length > 2 ? `${top} +${man.length - 2}` : top;
+  }
+
   function updateOverview() {
-    if (!state.settings.ui.overviewOpen) {
+    const player = state.entities.get(state.playerId);
+    if (!player) {
       if (elOverview.style.display !== 'none') elOverview.style.display = 'none';
       return;
     }
-    const player = state.entities.get(state.playerId);
-    if (!player) return;
     const playerTeam = player.team;
-    
+
     const contacts = [];
     for (const e of state.entityList || []) {
       if (!e.alive || e === player) continue;
-      if (e.type !== 'ship' && e.type !== 'drone') continue;
-      
+      const isShip = e.type === 'ship' || e.type === 'drone';
+      const isWreck = isWreckLike(e);
+      if (!isShip && !isWreck) continue;
+
       const dx = e.pos.x - player.pos.x;
       const dz = e.pos.z - player.pos.z;
       const dist = Math.hypot(dx, dz);
       if (dist > 5200) continue;
-      
-      contacts.push({ e, dist, dx, dz });
+
+      contacts.push({ e, dist, dx, dz, isWreck });
     }
-    
+
+    // On-demand reveal bookkeeping: a fresh hostile/derelict arriving, or a hostile closing inside
+    // the reveal radius, surfaces the strip for a beat even when it isn't pinned (one-voice rule).
+    const nowMs = performance.now();
+    const curIds = new Set();
+    let nearbyHostile = false;
+    for (const c of contacts) {
+      curIds.add(c.e.id);
+      const hostile = c.e.team !== playerTeam && c.e.team !== 0;
+      if (hostile && c.dist < OVERVIEW_HOSTILE_REVEAL_R) nearbyHostile = true;
+      if (!_knownContactIds.has(c.e.id) && (hostile || c.isWreck)) revealOverview(OVERVIEW_CONTACT_REVEAL_MS);
+    }
+    _knownContactIds = curIds;
+
+    const pinned = !!state.settings.ui.overviewOpen;
+    const visible = pinned || nearbyHostile || nowMs < _overviewRevealUntil;
+    if (!visible) {
+      if (elOverview.style.display !== 'none') elOverview.style.display = 'none';
+      lastOverviewSignature = '';   // force a fresh render when it next reveals
+      return;
+    }
+
+    const targetId = state.player.targetId;
     contacts.sort((a, b) => {
+      // The selected target always surfaces — it's how the player focuses a contact to scan/salvage
+      // it, so a targeted derelict can't get buried under ambient traffic beyond the 8-row cap.
+      const aTgt = a.e.id === targetId, bTgt = b.e.id === targetId;
+      if (aTgt && !bTgt) return -1;
+      if (!aTgt && bTgt) return 1;
+
       const aHostile = a.e.team !== playerTeam && a.e.team !== 0;
       const bHostile = b.e.team !== playerTeam && b.e.team !== 0;
       if (aHostile && !bHostile) return -1;
       if (!aHostile && bHostile) return 1;
-      
+
       const aNeutral = a.e.team === 0;
       const bNeutral = b.e.team === 0;
       if (aNeutral && !bNeutral) return -1;
       if (!aNeutral && bNeutral) return 1;
-      
+
       return a.dist - b.dist;
     });
-    
+
     const signature = contacts.map(c => {
       const isGhost = c.e.data && (c.e.data.isGhost || c.e.data.ghost || c.e.data.kind === 'unknown');
       const rvx = c.e.vel.x - player.vel.x;
       const rvz = c.e.vel.z - player.vel.z;
       const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
-      return `${c.e.id}:${c.e.team}:${isGhost}:${Math.round(c.dist)}:${Math.round(closingSpeed)}:${c.e.id === state.player.targetId}`;
+      const scanned = c.isWreck ? (wreckScanned(c.e) ? 1 : 0) : '';
+      const fsm = (c.e.data && c.e.data.ai && c.e.data.ai.fsm) || '';
+      return `${c.e.id}:${c.e.team}:${isGhost}:${Math.round(c.dist)}:${Math.round(closingSpeed)}:${c.e.id === state.player.targetId}:${scanned}:${fsm}`;
     }).join('|');
-    
+
     if (signature === lastOverviewSignature) {
       if (elOverview.style.display === 'none') elOverview.style.display = 'flex';
       return;
     }
     lastOverviewSignature = signature;
-    
+
     elOverview.innerHTML = '';
     if (elOverview.style.display === 'none') elOverview.style.display = 'flex';
-    
+
     const visibleCount = Math.min(8, contacts.length);
     for (let i = 0; i < visibleCount; i++) {
       const c = contacts[i];
       const e = c.e;
       const iff = getIffData(e, playerTeam);
       const glyph = getClassGlyph(e);
-      const name = e.data && e.data.name || e.role || 'Ship';
-      
+      const hostile = e.team !== playerTeam && e.team !== 0;
+      const sword = contactStateWord(e, playerTeam, state);
+      const stateCls = OVERVIEW_STATE_CLASS[sword] || 'neutral';
+      const tier = contactThreatTier(e, hostile);
+      const scannedWreck = c.isWreck && wreckScanned(e);
+      const name = e.data && e.data.name || e.role || (c.isWreck ? 'Derelict' : 'Ship');
+
+      // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
+      // + weak-point callout (GDD 2.0 §7.4).
+      let detail = '';
+      if (c.isWreck) {
+        detail = scannedWreck ? `${manifestSummary(e)} · WEAK ${e.data.weakPoint || '—'}` : '??? UNSCANNED';
+      }
+
       const rvx = e.vel.x - player.vel.x;
       const rvz = e.vel.z - player.vel.z;
       const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
-      
+
       const speedIcon = closingSpeed >= 0.5 ? '▸' : (closingSpeed <= -0.5 ? '▹' : '');
       const speedText = Math.abs(closingSpeed) >= 0.5 ? `${speedIcon}${Math.round(Math.abs(closingSpeed))}` : '';
-      
+
       const row = document.createElement('div');
       row.className = 'sf-overview-row';
+      if (c.isWreck && !scannedWreck) row.classList.add('unscanned');
       if (e.id === state.player.targetId) {
         row.classList.add('selected');
       }
       row.style.setProperty('--iff-color', iff.color);
-      
+
       row.innerHTML = `
         <div class="sf-overview-row__left">
           <span style="color:${iff.color}; font-weight:bold;">${iff.icon}</span>
           <span style="color:var(--ink-dim); font-size:10px;">${glyph}</span>
           <span class="sf-overview-row__name">${escapeHtml(name)}</span>
+          <span class="sf-overview-row__state sf-cs--${stateCls}">${sword}</span>
         </div>
         <div class="sf-overview-row__right">
+          <span class="sf-overview-row__tier sf-cs--${stateCls}" title="Threat tier (mass + faction)">${tierPips(tier)}</span>
           <span>${Math.round(c.dist)}</span>
           <span style="width: 24px; text-align: right;">${speedText}</span>
         </div>
+        ${detail ? `<div class="sf-overview-row__detail">${escapeHtml(detail)}</div>` : ''}
       `;
-      
+
       row.addEventListener('click', () => {
         state.player.targetId = e.id;
         ctx.bus.emit('toast', { text: `Selected target: ${name}`, kind: 'info', ttl: 2 });
@@ -1321,7 +1447,7 @@ export function createHud(ctx, alerts) {
       });
       elOverview.appendChild(row);
     }
-    
+
     if (contacts.length > 8) {
       const footer = document.createElement('div');
       footer.className = 'sf-overview-footer';
@@ -1388,31 +1514,26 @@ export function createHud(ctx, alerts) {
     
     if (targetArcs.style.display === 'none') {
       targetArcs.style.display = 'block';
-      targetArcs.getBoundingClientRect();
     }
     targetArcs.classList.add('visible');
     
     const size = rShield * 2 + 10;
-    targetArcs.style.width = `${size}px`;
-    targetArcs.style.height = `${size}px`;
-    targetArcs.style.left = `${center.x - size / 2}px`;
-    targetArcs.style.top = `${center.y - size / 2}px`;
-    
-    const svg = targetArcs.querySelector('svg');
-    svg.setAttribute('width', size);
-    svg.setAttribute('height', size);
-    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    setStyle(targetArcs, 'width', `${size}px`);
+    setStyle(targetArcs, 'height', `${size}px`);
+    setStyle(targetArcs, 'left', `${center.x - size / 2}px`);
+    setStyle(targetArcs, 'top', `${center.y - size / 2}px`);
+
+    if (!targetArcsSvg || !targetArcShield || !targetArcArmor || !targetArcHull) return;
+    setSvgAttr(targetArcsSvg, 'width', size);
+    setSvgAttr(targetArcsSvg, 'height', size);
+    setSvgAttr(targetArcsSvg, 'viewBox', `0 0 ${size} ${size}`);
     
     const cx = size / 2;
     const cy = size / 2;
     
-    const cShield = svg.querySelector('.sf-arc-shield');
-    const cArmor = svg.querySelector('.sf-arc-armor');
-    const cHull = svg.querySelector('.sf-arc-hull');
-    
-    cShield.setAttribute('cx', cx); cShield.setAttribute('cy', cy); cShield.setAttribute('r', rShield);
-    cArmor.setAttribute('cx', cx);  cArmor.setAttribute('cy', cy);  cArmor.setAttribute('r', rArmor);
-    cHull.setAttribute('cx', cx);   cHull.setAttribute('cy', cy);   cHull.setAttribute('r', rHull);
+    setSvgAttr(targetArcShield, 'cx', cx); setSvgAttr(targetArcShield, 'cy', cy); setSvgAttr(targetArcShield, 'r', rShield);
+    setSvgAttr(targetArcArmor, 'cx', cx);  setSvgAttr(targetArcArmor, 'cy', cy);  setSvgAttr(targetArcArmor, 'r', rArmor);
+    setSvgAttr(targetArcHull, 'cx', cx);   setSvgAttr(targetArcHull, 'cy', cy);   setSvgAttr(targetArcHull, 'r', rHull);
     
     const shieldFrac = tgt.shieldMax ? Math.max(0, Math.min(1, tgt.shield / tgt.shieldMax)) : 0;
     const armorFrac = tgt.armorMax ? Math.max(0, Math.min(1, tgt.armorHp / tgt.armorMax)) : 0;
@@ -1422,13 +1543,13 @@ export function createHud(ctx, alerts) {
       const c = 2 * Math.PI * radius;
       const maxArc = c * (300 / 360);
       const fill = fraction * maxArc;
-      el.setAttribute('stroke-dasharray', `${fill} ${c}`);
-      el.setAttribute('transform', `rotate(-150 ${cx} ${cy})`);
+      setSvgAttr(el, 'stroke-dasharray', `${fill} ${c}`);
+      setSvgAttr(el, 'transform', `rotate(-150 ${cx} ${cy})`);
     }
-    
-    setArc(cShield, rShield, shieldFrac);
-    setArc(cArmor, rArmor, armorFrac);
-    setArc(cHull, rHull, hullFrac);
+
+    setArc(targetArcShield, rShield, shieldFrac);
+    setArc(targetArcArmor, rArmor, armorFrac);
+    setArc(targetArcHull, rHull, hullFrac);
   }
 
   function frame(dt) {
@@ -1504,6 +1625,36 @@ export function createHud(ctx, alerts) {
       setClass(actionBoxes['mass-sample'], 'sf-act-active', inp.fireGroup === 2);
       setClass(actionBoxes['boost'], 'sf-act-active', !!inp.boost);
       setClass(actionBoxes['dock'], 'sf-act-active', dockInRange);
+
+      // FR-1: prograde tick — where inertia is carrying us, projected each frame. Fades below
+      // 2 wu/s so a stationary ship shows nothing (never animates at rest).
+      {
+        const vel = p.vel;
+        const spd = vel ? Math.hypot(vel.x, vel.z) : 0;
+        const wantA = spd > 2 ? 0.9 : 0;
+        _proAlpha += (wantA - _proAlpha) * (1 - Math.exp(-6 * frameDt));
+        if (_proAlpha <= 0.02 || !helpers.worldToScreen) {
+          if (proTick.style.opacity !== '0') proTick.style.opacity = '0';
+        } else {
+          const k = (p.radius || 6) * 3;
+          const inv = 1 / (spd || 1);
+          const ux = vel.x * inv, uz = vel.z * inv;
+          const A = helpers.worldToScreen({ x: p.pos.x, y: 0, z: p.pos.z });
+          const B = helpers.worldToScreen({ x: p.pos.x + ux * k, y: 0, z: p.pos.z + uz * k });
+          let dx = B.x - A.x, dy = B.y - A.y;
+          const dl = Math.hypot(dx, dy);
+          if (A.onScreen && dl > 0.001) {
+            dx /= dl; dy /= dl;
+            const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+            proTick.style.left = (A.x + dx * 40).toFixed(1) + 'px';
+            proTick.style.top = (A.y + dy * 40).toFixed(1) + 'px';
+            proTick.style.transform = `rotate(${ang.toFixed(1)}deg)`;
+            proTick.style.opacity = _proAlpha.toFixed(3);
+          } else if (proTick.style.opacity !== '0') {
+            proTick.style.opacity = '0';
+          }
+        }
+      }
     }
 
     // --- speed (numerics @10Hz) — THR/STOP live in the SPD hover tip now (HUD 2.0) ---
