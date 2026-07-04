@@ -34,13 +34,19 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_starter.glb",
-      "tris": 1558,
-      "bytes": 1227212,
+      "tris": 2803,
+      "bytes": 1396300,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
       },
-      "hooks": [],
+      "hooks": [
+        "MOUNT_COCKPIT",
+        "MOUNT_ENGINE_L",
+        "MOUNT_ENGINE_R",
+        "MOUNT_FIN_L",
+        "MOUNT_FIN_R"
+      ],
       "sockets": [
         "SOCKET_Trail_Main",
         "SOCKET_Weapon_Front"
@@ -53,25 +59,43 @@
           -1.86
         ],
         "max": [
-          5.3418,
+          5.34178,
           1.3213,
           1.86
         ],
         "dimensionsM": [
-          10.4918,
+          10.49178,
           2.0413,
           3.72
         ]
       },
-      "note": "Class-authored starter hull with three LODs and assembly mounts."
+      "note": "Class-authored starter hull with three LODs and assembly mounts.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
     },
     {
       "id": "hull_fighter",
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_fighter.glb",
-      "tris": 2348,
-      "bytes": 1341996,
+      "tris": 4226,
+      "bytes": 1529484,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -92,28 +116,46 @@
         "min": [
           -5.15,
           -0.32,
-          -2.9423
+          -2.94226
         ],
         "max": [
-          5.299,
+          5.29899,
           0.8719,
-          2.9423
+          2.94226
         ],
         "dimensionsM": [
-          10.449,
+          10.44899,
           1.1919,
-          5.8845
+          5.88452
         ]
       },
-      "note": "Class-authored fighter hull with three LODs and assembly mounts."
+      "note": "Class-authored fighter hull with three LODs and assembly mounts.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
     },
     {
       "id": "hull_miner",
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_miner.glb",
-      "tris": 2376,
-      "bytes": 1439604,
+      "tris": 4276,
+      "bytes": 1529812,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -138,24 +180,42 @@
         ],
         "max": [
           5.8,
-          2.3849,
+          2.38495,
           2.7
         ],
         "dimensionsM": [
           10.95,
-          3.6099,
+          3.60995,
           5.4
         ]
       },
-      "note": "Class-authored miner hull with three LODs and assembly mounts."
+      "note": "Class-authored miner hull with three LODs and assembly mounts.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
     },
     {
       "id": "hull_freighter",
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_freighter.glb",
-      "tris": 2384,
-      "bytes": 1488596,
+      "tris": 4291,
+      "bytes": 1530360,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -179,25 +239,43 @@
           -2.12
         ],
         "max": [
-          5.8006,
+          5.80062,
           2.275,
           2.12
         ],
         "dimensionsM": [
-          11.3506,
+          11.35063,
           3.425,
           4.24
         ]
       },
-      "note": "Class-authored freighter hull with three LODs and assembly mounts."
+      "note": "Class-authored freighter hull with three LODs and assembly mounts.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
     },
     {
       "id": "hull_interceptor",
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_interceptor.glb",
-      "tris": 2348,
-      "bytes": 1340068,
+      "tris": 4226,
+      "bytes": 1530808,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -218,28 +296,46 @@
         "min": [
           -5.45,
           -0.26,
-          -2.6961
+          -2.69607
         ],
         "max": [
-          5.6987,
+          5.69869,
           0.6716,
-          2.6961
+          2.69607
         ],
         "dimensionsM": [
-          11.1487,
+          11.14869,
           0.9316,
-          5.3921
+          5.39215
         ]
       },
-      "note": "Class-authored interceptor hull with three LODs and assembly mounts."
+      "note": "Class-authored interceptor hull with three LODs and assembly mounts.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
     },
     {
       "id": "hull_corvette",
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_corvette.glb",
-      "tris": 2376,
-      "bytes": 1479060,
+      "tris": 4276,
+      "bytes": 1531576,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -273,15 +369,213 @@
           5.05
         ]
       },
-      "note": "Class-authored corvette hull with three LODs and assembly mounts."
+      "note": "Class-authored corvette hull with three LODs and assembly mounts.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "hull_frigate",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_frigate.glb",
+      "tris": 4384,
+      "bytes": 1543904,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [
+        "MOUNT_COCKPIT",
+        "MOUNT_ENGINE_L",
+        "MOUNT_ENGINE_R",
+        "MOUNT_FIN_L",
+        "MOUNT_FIN_R"
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.994,
+          -2.525,
+          -2.625
+        ],
+        "max": [
+          7.021,
+          2.62682,
+          2.69803
+        ],
+        "dimensionsM": [
+          13.015,
+          5.15182,
+          5.32303
+        ]
+      },
+      "note": "Class-authored frigate hull with broadside blisters, dorsal turret deck, and three LODs.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "hull_capital",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_capital.glb",
+      "tris": 4406,
+      "bytes": 1539448,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [
+        "MOUNT_COCKPIT",
+        "MOUNT_ENGINE_L",
+        "MOUNT_ENGINE_R",
+        "MOUNT_FIN_L",
+        "MOUNT_FIN_R"
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -6.496,
+          -3.245,
+          -3.525
+        ],
+        "max": [
+          7.616,
+          3.365,
+          3.525
+        ],
+        "dimensionsM": [
+          14.112,
+          6.61,
+          7.05
+        ]
+      },
+      "note": "Class-authored capital hull with command citadel, broadside casemates, and three LODs.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "hull_multirole",
+      "category": "hulls",
+      "priority": "P0",
+      "file": "hulls/hull_multirole.glb",
+      "tris": 2917,
+      "bytes": 1405188,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [
+        "MOUNT_COCKPIT",
+        "MOUNT_ENGINE_L",
+        "MOUNT_ENGINE_R",
+        "MOUNT_FIN_L",
+        "MOUNT_FIN_R"
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.665,
+          -1.86,
+          -2.225
+        ],
+        "max": [
+          6.51698,
+          1.92,
+          2.225
+        ],
+        "dimensionsM": [
+          12.18198,
+          3.78,
+          4.45
+        ]
+      },
+      "note": "Class-authored multirole hull with twin nacelles, winglets, cargo bulge, and three LODs.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
     },
     {
       "id": "hull_gunship",
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_gunship.glb",
-      "tris": 2376,
-      "bytes": 1464640,
+      "tris": 4276,
+      "bytes": 1528348,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -315,19 +609,55 @@
           5.5
         ]
       },
-      "note": "Class-authored gunship hull with three LODs and assembly mounts."
+      "note": "Class-authored gunship hull with three LODs and assembly mounts.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
     },
     {
       "id": "cockpit_dome",
       "category": "cockpits",
       "priority": "P0",
       "file": "cockpits/cockpit_dome.glb",
-      "tris": 2834,
-      "bytes": 870500,
+      "tris": 2120,
+      "bytes": 238756,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -337,18 +667,18 @@
       "bounds": {
         "min": [
           -1.1,
-          -1.1385,
-          -1.6185
+          -1.15,
+          -1.63
         ],
         "max": [
           3.5,
-          2.0985,
-          1.6185
+          2.11,
+          1.63
         ],
         "dimensionsM": [
           4.6,
-          3.237,
-          3.237
+          3.26,
+          3.26
         ]
       },
       "note": "Bubble canopy with interior deck and structural frame."
@@ -359,11 +689,29 @@
       "priority": "P0",
       "file": "cockpits/cockpit_slab.glb",
       "tris": 1564,
-      "bytes": 1388180,
+      "bytes": 229424,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -373,12 +721,12 @@
       "bounds": {
         "min": [
           -0.8,
-          -0.0451,
+          -0.045,
           -1.85
         ],
         "max": [
           4.055,
-          1.8099,
+          1.81,
           1.85
         ],
         "dimensionsM": [
@@ -394,12 +742,30 @@
       "category": "cockpits",
       "priority": "P0",
       "file": "cockpits/cockpit_recessed.glb",
-      "tris": 1028,
-      "bytes": 621576,
+      "tris": 960,
+      "bytes": 217068,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -409,18 +775,18 @@
       "bounds": {
         "min": [
           -0.9,
-          -0.0501,
-          -1.7499
+          -0.05,
+          -1.75
         ],
         "max": [
-          4.837,
-          1.1799,
-          1.7499
+          4.8,
+          1.18,
+          1.75
         ],
         "dimensionsM": [
-          5.737,
+          5.7,
           1.23,
-          3.4998
+          3.5
         ]
       },
       "note": "Flush sensor-slot cockpit with armored brow."
@@ -430,17 +796,32 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_ion_small.glb",
-      "tris": 4656,
-      "bytes": 1803700,
+      "tris": 3212,
+      "bytes": 287632,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
       "hooks": [
-        "HOOK_Emissive",
-        "HOOK_Spin",
-        "MOUNT_Child",
         "HOOK_DRIVE_CORE",
         "HOOK_DRIVE_FAN",
         "HOOK_DRIVE_PLUME"
@@ -449,19 +830,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.12,
-          -1.0509,
-          -1.0509
+          -0.22,
+          -1.062,
+          -1.062
         ],
         "max": [
           2.5,
-          1.0509,
-          1.0509
+          1.062,
+          1.062
         ],
         "dimensionsM": [
-          2.62,
-          2.1017,
-          2.1017
+          2.72,
+          2.124,
+          2.124
         ]
       },
       "note": "Compact ion drive with fan, core and heat ribs."
@@ -471,12 +852,30 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_ion_twin.glb",
-      "tris": 1584,
-      "bytes": 1942140,
+      "tris": 1968,
+      "bytes": 268416,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_DRIVE_CORE_P",
@@ -491,19 +890,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.0501,
-          -1.624,
-          -1.0267
+          -0.22,
+          -0.82,
+          -1.87
         ],
         "max": [
-          3,
-          2.024,
-          1.0267
+          2.8,
+          0.82,
+          1.87
         ],
         "dimensionsM": [
-          3.0501,
-          3.648,
-          2.0534
+          3.02,
+          1.64,
+          3.74
         ]
       },
       "note": "Serialized twin-nozzle fighter drive."
@@ -513,17 +912,32 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_industrial.glb",
-      "tris": 5828,
-      "bytes": 2608580,
+      "tris": 4000,
+      "bytes": 310784,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
       "hooks": [
-        "HOOK_Emissive",
-        "HOOK_Spin",
-        "MOUNT_Child",
         "HOOK_DRIVE_CORE",
         "HOOK_DRIVE_FAN",
         "HOOK_DRIVE_PLUME"
@@ -532,19 +946,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.12,
-          -1.4256,
-          -1.4256
+          -0.22,
+          -1.4396,
+          -1.4396
         ],
         "max": [
           3.3,
-          1.471,
-          1.4256
+          1.47102,
+          1.4396
         ],
         "dimensionsM": [
-          3.42,
-          2.8966,
-          2.8512
+          3.52,
+          2.91062,
+          2.8792
         ]
       },
       "note": "Asymmetric serviced industrial drive with coolant plumbing."
@@ -554,17 +968,32 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_resonator.glb",
-      "tris": 2916,
-      "bytes": 2067964,
+      "tris": 2608,
+      "bytes": 273668,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
       "hooks": [
-        "HOOK_Emissive",
-        "HOOK_Spin",
-        "MOUNT_Child",
         "HOOK_DRIVE_CORE",
         "HOOK_DRIVE_FAN",
         "HOOK_DRIVE_PLUME"
@@ -573,34 +1002,164 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.4601,
-          -1.2881,
-          -1.2881
+          -0.63,
+          -1.3,
+          -1.3
         ],
         "max": [
           2.6,
-          1.2881,
-          1.2881
+          1.3,
+          1.3
         ],
         "dimensionsM": [
-          3.0601,
-          2.5762,
-          2.5762
+          3.23,
+          2.6,
+          2.6
         ]
       },
       "note": "Nozzle-less alien resonator with nested faceted hoops."
+    },
+    {
+      "id": "engine_vector",
+      "category": "engines",
+      "priority": "P1",
+      "file": "engines/engine_vector.glb",
+      "tris": 1076,
+      "bytes": 242708,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "HOOK_DRIVE_PLUME"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.7,
+          -0.85919,
+          -0.8
+        ],
+        "max": [
+          2.6,
+          0.85919,
+          0.8
+        ],
+        "dimensionsM": [
+          3.3,
+          1.71838,
+          1.6
+        ]
+      },
+      "note": "Angular vector-thrust block with external struts."
+    },
+    {
+      "id": "engine_plasma_ring",
+      "category": "engines",
+      "priority": "P1",
+      "file": "engines/engine_plasma_ring.glb",
+      "tris": 1888,
+      "bytes": 248812,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "HOOK_DRIVE_PLUME"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.37,
+          -1.04,
+          -1.04
+        ],
+        "max": [
+          2.4,
+          1.04,
+          1.04
+        ],
+        "dimensionsM": [
+          2.77,
+          2.08,
+          2.08
+        ]
+      },
+      "note": "Torus-ring plasma drive with suspended core."
     },
     {
       "id": "weapon_pulse_cannon",
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_pulse_cannon.glb",
-      "tris": 740,
-      "bytes": 1052372,
+      "tris": 1944,
+      "bytes": 238672,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -611,19 +1170,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.08,
-          -0.3,
-          -0.3
+          -0.15,
+          -0.52,
+          -0.5
         ],
         "max": [
-          4.075,
-          0.3,
-          0.3
+          4.64,
+          0.52,
+          0.5
         ],
         "dimensionsM": [
-          4.155,
-          0.6,
-          0.6
+          4.79,
+          1.04,
+          1
         ]
       },
       "note": "Fixed pulse cannon with visible cooling train."
@@ -633,12 +1192,30 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_heavy_cannon.glb",
-      "tris": 3672,
-      "bytes": 2425004,
+      "tris": 2296,
+      "bytes": 246040,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -651,17 +1228,17 @@
         "min": [
           -0.3,
           -0.725,
-          -0.8504
+          -0.85
         ],
         "max": [
           6.13,
           0.77,
-          0.8504
+          0.85
         ],
         "dimensionsM": [
           6.43,
           1.495,
-          1.7009
+          1.7
         ]
       },
       "note": "Oversized bolted cannon with recoil cylinders."
@@ -671,12 +1248,30 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_turret_dual.glb",
-      "tris": 2352,
-      "bytes": 1822596,
+      "tris": 1808,
+      "bytes": 240720,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive",
@@ -698,7 +1293,7 @@
           1.125
         ],
         "dimensionsM": [
-          5.2801,
+          5.28,
           2.1,
           2.25
         ]
@@ -710,12 +1305,30 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_lance.glb",
-      "tris": 1700,
-      "bytes": 1485748,
+      "tris": 1112,
+      "bytes": 219672,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -727,33 +1340,164 @@
       "bounds": {
         "min": [
           -0.3,
-          -0.523,
-          -0.8501
+          -0.535,
+          -0.85
         ],
         "max": [
           7.35,
-          0.523,
-          0.8501
+          0.535,
+          0.85
         ],
         "dimensionsM": [
           7.65,
-          1.0461,
-          1.7002
+          1.07,
+          1.7
         ]
       },
       "note": "Long crystalline focusing lance."
+    },
+    {
+      "id": "weapon_gatling",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_gatling.glb",
+      "tris": 1688,
+      "bytes": 233776,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "HOOK_Spin"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.2,
+          -0.5,
+          -0.5
+        ],
+        "max": [
+          4.76,
+          0.5,
+          0.5
+        ],
+        "dimensionsM": [
+          4.96,
+          1,
+          1
+        ]
+      },
+      "note": "Rotary barrel cluster with spin-addressable head."
+    },
+    {
+      "id": "weapon_railgun",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_railgun.glb",
+      "tris": 1788,
+      "bytes": 237172,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.2,
+          -0.45,
+          -0.4628
+        ],
+        "max": [
+          6.1,
+          0.52,
+          0.4628
+        ],
+        "dimensionsM": [
+          6.3,
+          0.97,
+          0.9256
+        ]
+      },
+      "note": "Slim electromagnetic rail accelerator."
     },
     {
       "id": "fin_wedge",
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_wedge.glb",
-      "tris": 916,
-      "bytes": 710208,
+      "tris": 584,
+      "bytes": 195072,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -762,19 +1506,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.4269,
-          -0.1399,
-          -0.0446
+          -0.4,
+          -0.14,
+          0
         ],
         "max": [
-          3.8384,
+          3.8,
           0.3325,
-          4.127
+          4.1
         ],
         "dimensionsM": [
-          4.2653,
-          0.4724,
-          4.1716
+          4.2,
+          0.4725,
+          4.1
         ]
       },
       "note": "Chamfered combat wing with structural ribs."
@@ -785,11 +1529,29 @@
       "priority": "P1",
       "file": "fins/fin_radiator_grid.glb",
       "tris": 652,
-      "bytes": 2170400,
+      "bytes": 209000,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -799,7 +1561,7 @@
       "bounds": {
         "min": [
           0,
-          -0.1199,
+          -0.12,
           0
         ],
         "max": [
@@ -808,8 +1570,8 @@
           3.8
         ],
         "dimensionsM": [
-          3.6001,
-          0.4399,
+          3.6,
+          0.44,
           3.8
         ]
       },
@@ -820,12 +1582,30 @@
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_swept_smuggler.glb",
-      "tris": 628,
-      "bytes": 562124,
+      "tris": 576,
+      "bytes": 194864,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -834,19 +1614,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2381,
+          -0.2,
           -0.09,
-          -0.0386
+          0
         ],
         "max": [
-          4.9204,
+          4.8,
           0.2,
-          4.0381
+          4
         ],
         "dimensionsM": [
-          5.1585,
+          5,
           0.29,
-          4.0766
+          4
         ]
       },
       "note": "Low-profile swept smuggler blade."
@@ -856,12 +1636,30 @@
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_crystalline.glb",
-      "tris": 604,
-      "bytes": 732132,
+      "tris": 540,
+      "bytes": 194080,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -870,34 +1668,160 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.3257,
-          -0.1311,
-          -0.0408
+          -0.3,
+          -0.11,
+          0
         ],
         "max": [
-          3.8361,
+          3.8,
           0.2,
-          4.3335
+          4.3
         ],
         "dimensionsM": [
-          4.1618,
-          0.3311,
-          4.3743
+          4.1,
+          0.31,
+          4.3
         ]
       },
       "note": "Alien faceted plane with emissive veins."
+    },
+    {
+      "id": "fin_delta",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_delta.glb",
+      "tris": 584,
+      "bytes": 194940,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          0,
+          -0.11,
+          0
+        ],
+        "max": [
+          5.2,
+          0.3025,
+          5.5
+        ],
+        "dimensionsM": [
+          5.2,
+          0.4125,
+          5.5
+        ]
+      },
+      "note": "Sharp delta wing for fighter-class silhouettes."
+    },
+    {
+      "id": "fin_stabilator",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_stabilator.glb",
+      "tris": 520,
+      "bytes": 197448,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.2,
+          -0.175,
+          -1.8
+        ],
+        "max": [
+          4.6,
+          0.66,
+          1.8
+        ],
+        "dimensionsM": [
+          4.8,
+          0.835,
+          3.6
+        ]
+      },
+      "note": "T-tail stabilator with tip running lights."
     },
     {
       "id": "greeble_vents",
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_vents.glb",
-      "tris": 1076,
-      "bytes": 2204032,
+      "tris": 968,
+      "bytes": 243904,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [],
       "sockets": [],
@@ -905,18 +1829,18 @@
       "bounds": {
         "min": [
           -0.2,
-          -0.252,
-          -1.2999
+          -0.26,
+          -1.3
         ],
         "max": [
           3.8,
-          1.092,
-          1.2999
+          1.1,
+          1.3
         ],
         "dimensionsM": [
           4,
-          1.3441,
-          2.5998
+          1.36,
+          2.6
         ]
       },
       "note": "Vent slat and intake kit."
@@ -926,12 +1850,30 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_hatches.glb",
-      "tris": 1812,
-      "bytes": 2599948,
+      "tris": 1620,
+      "bytes": 256716,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [],
       "sockets": [],
@@ -944,13 +1886,13 @@
         ],
         "max": [
           2.8,
-          0.575,
+          0.585,
           1.925
         ],
         "dimensionsM": [
           3.7,
-          0.5849,
-          2.6251
+          0.595,
+          2.625
         ]
       },
       "note": "Access hatch and fastener kit."
@@ -960,12 +1902,30 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_pipes.glb",
-      "tris": 1932,
-      "bytes": 562964,
+      "tris": 1180,
+      "bytes": 240400,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [],
       "sockets": [],
@@ -974,17 +1934,17 @@
         "min": [
           -0.4,
           -0.03,
-          -1.4001
+          -1.4
         ],
         "max": [
           3.8,
-          0.5081,
-          1.4001
+          0.52,
+          1.4
         ],
         "dimensionsM": [
           4.2,
-          0.5381,
-          2.8002
+          0.55,
+          2.8
         ]
       },
       "note": "Coolant pipe and coupling kit."
@@ -994,48 +1954,30 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_rcs.glb",
-      "tris": 1456,
-      "bytes": 637664,
+      "tris": 1040,
+      "bytes": 238024,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
-      "sockets": [],
-      "mount": "origin",
-      "bounds": {
-        "min": [
-          -0.4,
-          -0.0399,
-          -1.6
-        ],
-        "max": [
-          2.8,
-          0.6251,
-          1.6
-        ],
-        "dimensionsM": [
-          3.2,
-          0.6651,
-          3.2
-        ]
-      },
-      "note": "Reaction-control thruster quad."
-    },
-    {
-      "id": "greeble_antennas",
-      "category": "greebles",
-      "priority": "P1",
-      "file": "greebles/greeble_antennas.glb",
-      "tris": 1828,
-      "bytes": 2331340,
-      "textureSize": 1024,
-      "tintable": {
-        "hull": "Material_Hull",
-        "accent": "Material_Accent"
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive"
@@ -1046,7 +1988,61 @@
         "min": [
           -0.4,
           -0.04,
-          -1.4386
+          -1.6
+        ],
+        "max": [
+          2.8,
+          0.63,
+          1.6
+        ],
+        "dimensionsM": [
+          3.2,
+          0.67,
+          3.2
+        ]
+      },
+      "note": "Reaction-control thruster quad."
+    },
+    {
+      "id": "greeble_antennas",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_antennas.glb",
+      "tris": 1214,
+      "bytes": 243016,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.4,
+          -0.04,
+          -1.43861
         ],
         "max": [
           2.4,
@@ -1056,22 +2052,146 @@
         "dimensionsM": [
           2.8,
           3.35,
-          2.6386
+          2.63861
         ]
       },
       "note": "Sensor mast, loop, dish and beacon kit."
+    },
+    {
+      "id": "greeble_nav_lights",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_nav_lights.glb",
+      "tris": 572,
+      "bytes": 229512,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.3,
+          -0.01,
+          -1.2
+        ],
+        "max": [
+          3.3,
+          0.2725,
+          1.275
+        ],
+        "dimensionsM": [
+          3.6,
+          0.2825,
+          2.475
+        ]
+      },
+      "note": "Port/starboard/dorsal navigation light kit."
+    },
+    {
+      "id": "greeble_armor_plates",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_armor_plates.glb",
+      "tris": 852,
+      "bytes": 236036,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1,
+          -0.0818,
+          -1.5
+        ],
+        "max": [
+          2.94457,
+          0.29,
+          0.9
+        ],
+        "dimensionsM": [
+          3.94457,
+          0.3718,
+          2.4
+        ]
+      },
+      "note": "Bolted armor patch plates with irregular overlap."
     },
     {
       "id": "skid_trio",
       "category": "gear",
       "priority": "P2",
       "file": "gear/skid_trio.glb",
-      "tris": 1328,
-      "bytes": 1248344,
+      "tris": 1040,
+      "bytes": 214084,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [],
       "sockets": [],
@@ -1080,17 +2200,17 @@
         "min": [
           -0.65,
           -0.02,
-          -1.3999
+          -1.4
         ],
         "max": [
           3.75,
-          1.278,
-          1.3999
+          1.2728,
+          1.4
         ],
         "dimensionsM": [
           4.4,
-          1.2981,
-          2.7997
+          1.2928,
+          2.8
         ]
       },
       "note": "Three-skid frontier landing set with replacement foot."
@@ -1100,12 +2220,30 @@
       "category": "gear",
       "priority": "P2",
       "file": "gear/skid_quad.glb",
-      "tris": 2524,
-      "bytes": 2634560,
+      "tris": 1532,
+      "bytes": 225708,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [],
       "sockets": [],
@@ -1118,12 +2256,12 @@
         ],
         "max": [
           3.775,
-          1.81,
+          1.82,
           1.8
         ],
         "dimensionsM": [
           4.35,
-          1.8499,
+          1.86,
           3.6
         ]
       },
@@ -1135,11 +2273,29 @@
       "priority": "P2",
       "file": "pods/pod_utility.glb",
       "tris": 952,
-      "bytes": 1314404,
+      "bytes": 230044,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "HOOK_Emissive",
@@ -1150,7 +2306,7 @@
       "bounds": {
         "min": [
           -0.45,
-          -0.0951,
+          -0.095,
           -1.34
         ],
         "max": [
@@ -1160,7 +2316,7 @@
         ],
         "dimensionsM": [
           4.2,
-          1.7551,
+          1.755,
           2.68
         ]
       },
@@ -1172,11 +2328,29 @@
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
       "tris": 1216,
-      "bytes": 1927908,
+      "bytes": 237452,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [
         "MOUNT_Child"
@@ -1186,17 +2360,17 @@
       "bounds": {
         "min": [
           -0.5,
-          -0.1249,
+          -0.125,
           -1.5
         ],
         "max": [
           4.7,
-          2.1249,
+          2.125,
           1.5
         ],
         "dimensionsM": [
           5.2,
-          2.2499,
+          2.25,
           3
         ]
       },
@@ -1207,34 +2381,791 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_repair_patch.glb",
-      "tris": 1896,
-      "bytes": 659672,
+      "tris": 1688,
+      "bytes": 240644,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
       },
       "hooks": [],
       "sockets": [],
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2695,
-          -0.0761,
-          -1.5694
+          -0.25,
+          -0.06,
+          -1.56937
         ],
         "max": [
-          4.6196,
+          4.6,
           0.23,
-          1.5686
+          1.55
         ],
         "dimensionsM": [
-          4.8891,
-          0.3061,
-          3.138
+          4.85,
+          0.29,
+          3.11937
         ]
       },
       "note": "Irregular bolted field-repair panel."
+    },
+    {
+      "id": "place_lane_beacon",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_lane_beacon.glb",
+      "tris": 700,
+      "bytes": 189604,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Beacon_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1.2,
+          -0.01,
+          -1.2
+        ],
+        "max": [
+          5.2,
+          11.54,
+          1.2
+        ],
+        "dimensionsM": [
+          6.4,
+          11.55,
+          2.4
+        ]
+      },
+      "note": "Core trade-lane pylon with cyan emissive ring."
+    },
+    {
+      "id": "place_nav_buoy",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_nav_buoy.glb",
+      "tris": 540,
+      "bytes": 184488,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Buoy_Top"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1.1,
+          0.05,
+          -1.1
+        ],
+        "max": [
+          2,
+          5.43,
+          1.1
+        ],
+        "dimensionsM": [
+          3.1,
+          5.38,
+          2.2
+        ]
+      },
+      "note": "Fringe navigation buoy with flicker stack."
+    },
+    {
+      "id": "place_asteroid_seamed",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_asteroid_seamed.glb",
+      "tris": 1232,
+      "bytes": 201132,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Seam"
+      ],
+      "sockets": [
+        "SOCKET_Scan_Target"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -14,
+          -11,
+          -12
+        ],
+        "max": [
+          14,
+          11,
+          12
+        ],
+        "dimensionsM": [
+          28,
+          22,
+          24
+        ]
+      },
+      "note": "Irregular asteroid with scan-target ore seam."
+    },
+    {
+      "id": "place_debris_chunk",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_debris_chunk.glb",
+      "tris": 524,
+      "bytes": 186732,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Tether_Massline"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          0,
+          -3.21168,
+          -4.86956
+        ],
+        "max": [
+          24.2,
+          4.11933,
+          5.58455
+        ],
+        "dimensionsM": [
+          24.2,
+          7.33101,
+          10.45411
+        ]
+      },
+      "note": "Tether-haul salvage fragment (>20u span)."
+    },
+    {
+      "id": "place_station_billboard",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_station_billboard.glb",
+      "tris": 588,
+      "bytes": 191068,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.95,
+          0,
+          -9
+        ],
+        "max": [
+          9.05,
+          12.0525,
+          9
+        ],
+        "dimensionsM": [
+          18,
+          12.0525,
+          18
+        ]
+      },
+      "note": "Station approach billboard with emissive face."
+    },
+    {
+      "id": "place_dead_hulk",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_dead_hulk.glb",
+      "tris": 988,
+      "bytes": 196656,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Hazard_Core",
+        "SOCKET_Salvage_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          0,
+          -1.4,
+          -3.5
+        ],
+        "max": [
+          48,
+          6.31056,
+          3.5
+        ],
+        "dimensionsM": [
+          48,
+          7.71056,
+          7
+        ]
+      },
+      "note": "Salvageable dead hulk with fracture arc."
+    },
+    {
+      "id": "place_conveyor_barge",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_conveyor_barge.glb",
+      "tris": 936,
+      "bytes": 203364,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_DRIVE_PLUME",
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -2.5,
+          -2,
+          -9
+        ],
+        "max": [
+          70.175,
+          8,
+          9
+        ],
+        "dimensionsM": [
+          72.675,
+          10,
+          18
+        ]
+      },
+      "note": "Slow belt ore conveyor with drive plume loop."
+    },
+    {
+      "id": "place_mining_drone",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_mining_drone.glb",
+      "tris": 580,
+      "bytes": 189216,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Spin",
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Mining_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.4,
+          -0.05,
+          -1.2
+        ],
+        "max": [
+          4.6,
+          1.2775,
+          1.2
+        ],
+        "dimensionsM": [
+          5,
+          1.3275,
+          2.4
+        ]
+      },
+      "note": "Belt mining drone with spin drill and beam head."
+    },
+    {
+      "id": "place_asteroid_rock_a",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_asteroid_rock_a.glb",
+      "tris": 808,
+      "bytes": 189532,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -10,
+          -8.5,
+          -8.86327
+        ],
+        "max": [
+          10,
+          8.5,
+          8.86327
+        ],
+        "dimensionsM": [
+          20,
+          17,
+          17.72654
+        ]
+      },
+      "note": "Chunky metallic belt rock variant A."
+    },
+    {
+      "id": "place_asteroid_rock_b",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_asteroid_rock_b.glb",
+      "tris": 688,
+      "bytes": 187152,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -16,
+          -7,
+          -8
+        ],
+        "max": [
+          16,
+          7,
+          8
+        ],
+        "dimensionsM": [
+          32,
+          14,
+          16
+        ]
+      },
+      "note": "Elongated potato belt rock variant B."
+    },
+    {
+      "id": "place_asteroid_rock_c",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_asteroid_rock_c.glb",
+      "tris": 584,
+      "bytes": 184628,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -7,
+          -6,
+          -6.33703
+        ],
+        "max": [
+          7,
+          6,
+          6.33703
+        ],
+        "dimensionsM": [
+          14,
+          12,
+          12.67406
+        ]
+      },
+      "note": "Small rubble-cluster belt rock variant C."
+    },
+    {
+      "id": "place_asteroid_graffiti",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_asteroid_graffiti.glb",
+      "tris": 952,
+      "bytes": 196976,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -12,
+          -9,
+          -9.84808
+        ],
+        "max": [
+          12,
+          9,
+          9.84808
+        ],
+        "dimensionsM": [
+          24,
+          18,
+          19.69616
+        ]
+      },
+      "note": "Fringe-tagged asteroid with pirate graffiti."
     }
-  ]
+  ],
+  "runtimeSlots": {
+    "hull": [
+      "hulls/hull_starter.glb",
+      "hulls/hull_fighter.glb",
+      "hulls/hull_miner.glb",
+      "hulls/hull_freighter.glb",
+      "hulls/hull_interceptor.glb",
+      "hulls/hull_corvette.glb",
+      "hulls/hull_gunship.glb",
+      "hulls/hull_frigate.glb",
+      "hulls/hull_capital.glb",
+      "hulls/hull_multirole.glb",
+      "wholeships/kestrel.glb",
+      "wholeships/pelican.glb",
+      "wholeships/wasp.glb"
+    ],
+    "cockpit": [
+      "cockpits/cockpit_dome.glb",
+      "cockpits/cockpit_slab.glb",
+      "cockpits/cockpit_recessed.glb"
+    ],
+    "engine": [
+      "engines/engine_ion_small.glb",
+      "engines/engine_ion_twin.glb",
+      "engines/engine_industrial.glb",
+      "engines/engine_resonator.glb",
+      "engines/engine_vector.glb",
+      "engines/engine_plasma_ring.glb"
+    ],
+    "fin": [
+      "fins/fin_wedge.glb",
+      "fins/fin_radiator_grid.glb",
+      "fins/fin_swept_smuggler.glb",
+      "fins/fin_crystalline.glb",
+      "fins/fin_delta.glb",
+      "fins/fin_stabilator.glb"
+    ],
+    "weapon": [
+      "weapons/weapon_pulse_cannon.glb",
+      "weapons/weapon_heavy_cannon.glb",
+      "weapons/weapon_turret_dual.glb",
+      "weapons/weapon_lance.glb",
+      "weapons/weapon_gatling.glb",
+      "weapons/weapon_railgun.glb"
+    ],
+    "greeble": [
+      "greebles/greeble_vents.glb",
+      "greebles/greeble_hatches.glb",
+      "greebles/greeble_pipes.glb",
+      "greebles/greeble_rcs.glb",
+      "greebles/greeble_antennas.glb",
+      "greebles/greeble_nav_lights.glb",
+      "greebles/greeble_armor_plates.glb"
+    ],
+    "gear": [
+      "gear/skid_trio.glb",
+      "gear/skid_quad.glb"
+    ],
+    "pod": [
+      "pods/pod_utility.glb",
+      "pods/pod_cargo_container.glb",
+      "pods/pod_repair_patch.glb"
+    ],
+    "place": [
+      "places/place_lane_beacon.glb",
+      "places/place_nav_buoy.glb",
+      "places/place_asteroid_seamed.glb",
+      "places/place_debris_chunk.glb",
+      "places/place_station_billboard.glb",
+      "places/place_dead_hulk.glb",
+      "places/place_conveyor_barge.glb",
+      "places/place_mining_drone.glb",
+      "places/place_asteroid_rock_a.glb",
+      "places/place_asteroid_rock_b.glb",
+      "places/place_asteroid_rock_c.glb",
+      "places/place_asteroid_graffiti.glb"
+    ]
+  }
 }

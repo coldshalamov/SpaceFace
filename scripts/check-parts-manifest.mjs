@@ -8,7 +8,6 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import * as THREE from 'three';
-import { PART_LIBRARY_CONTRACT } from '../src/render/partsLibrary.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_ROOT = resolve(ROOT, 'assets/ships/parts');
@@ -58,6 +57,13 @@ const extrasByFile = new Map();
 const triMin = manifest.budgets.trianglesPerPart[0];
 const triMax = manifest.budgets.trianglesPerPart[1];
 const maxBytes = manifest.budgets.maxBytesPerPart;
+const runtimeSlots = manifest.runtimeSlots || {};
+const requiredSlots = ['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod', 'place'];
+for (const slot of requiredSlots) {
+  check(`manifest runtimeSlots declares ${slot}`, Array.isArray(runtimeSlots[slot]) && runtimeSlots[slot].length > 0,
+    `count=${runtimeSlots[slot] && runtimeSlots[slot].length}`);
+}
+const runtimeFiles = new Set(Object.values(runtimeSlots).flat());
 
 for (const part of manifest.parts || []) {
   const label = `${part.id || '<missing-id>'}`;
@@ -76,6 +82,8 @@ for (const part of manifest.parts || []) {
   check(`${label}: triangle budget`, part.tris >= triMin && part.tris <= triMax, `tris=${part.tris}`);
   check(`${label}: byte budget`, part.bytes > 0 && part.bytes <= maxBytes, `bytes=${part.bytes}`);
   check(`${label}: bounds vectors declared`, vector3(part.bounds?.min) && vector3(part.bounds?.max) && vector3(part.bounds?.dimensionsM));
+
+  check(`${label}: wired to a runtime slot`, runtimeFiles.has(part.file), `file=${part.file}`);
 
   let parsed = null;
   const abs = resolve(PART_ROOT, part.file);
@@ -117,6 +125,10 @@ for (const part of manifest.parts || []) {
   check(`${label}: embedded PNG or KTX2 textures`, embeddedPng || embeddedKtx2);
 
   const materialNames = new Set((gltf.materials || []).map((material) => material.name).filter(Boolean));
+  const contractMaterials = new Set(Object.values(manifest.materialContract || {}));
+  const extraMaterials = [...materialNames].filter((name) => !contractMaterials.has(name));
+  check(`${label}: materials are contract-only (<=4)`, materialNames.size <= 4 && extraMaterials.length === 0,
+    `materials=${[...materialNames].join(',')} extra=${extraMaterials.join(',')}`);
   for (const [role, materialName] of Object.entries(part.tintable || {})) {
     check(`${label}: tint role ${role} is in manifest material contract`, Object.values(manifest.materialContract || {}).includes(materialName), `material=${materialName}`);
     check(`${label}: tint material ${materialName} exists in GLB`, materialNames.has(materialName), `materials=${[...materialNames].join(',')}`);
@@ -172,14 +184,12 @@ const diskGlbFiles = collectGlbFiles(PART_ROOT);
 // Whole-ship bodies (wholeships/*.glb) are authored single-mesh ships wired through the hull slot,
 // not catalog parts — they have no parts_manifest entry and use the lenient legacy loader path.
 const isWholeShipFile = (f) => String(f).startsWith('wholeships/');
-const runtimeFiles = new Set(Object.values(PART_LIBRARY_CONTRACT.slots).flat());
 for (const file of diskGlbFiles) {
   if (isWholeShipFile(file)) continue;
   check(`committed GLB ${file} is declared in manifest`, manifestFiles.has(file));
 }
 for (const file of manifestFiles) {
   check(`manifest GLB ${file} exists on disk`, diskGlbFiles.has(file));
-  check(`manifest GLB ${file} is wired to a runtime slot`, runtimeFiles.has(file));
 }
 for (const file of runtimeFiles) {
   check(`runtime slot GLB ${file} exists on disk`, diskGlbFiles.has(file));
@@ -189,7 +199,7 @@ for (const [category, count] of categoryCounts) {
   check(`category ${category} has at least one part`, count > 0);
 }
 
-for (const [slot, files] of Object.entries(PART_LIBRARY_CONTRACT.slots)) {
+for (const [slot, files] of Object.entries(runtimeSlots)) {
   for (const file of files) {
     if (isWholeShipFile(file)) continue; // authored whole-ship body, not a catalog part
     check(`runtime slot ${slot} file is declared in manifest`, manifestFiles.has(file), `file=${file}`);
@@ -381,6 +391,7 @@ function categoryForSlot(slot) {
   if (slot === 'greeble') return 'greebles';
   if (slot === 'gear') return 'gear';
   if (slot === 'pod') return 'pods';
+  if (slot === 'place') return 'places';
   return null;
 }
 

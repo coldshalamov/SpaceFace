@@ -404,6 +404,126 @@ def iter_nodes(root: Node) -> Iterable[Node]:
         yield from iter_nodes(child)
 
 
+SPIN_HOOK_NAMES = frozenset({'HOOK_Spin', 'HOOK_Spin_Secondary'})
+
+
+def mat4_identity() -> list[float]:
+    return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+
+
+def mat4_mul(a: list[float], b: list[float]) -> list[float]:
+    out = [0.0] * 16
+    for row in range(4):
+        for col in range(4):
+            out[row * 4 + col] = sum(a[row * 4 + k] * b[k * 4 + col] for k in range(4))
+    return out
+
+
+def mat4_from_trs(translation: Vec3, rotation: tuple[float, float, float, float] | None,
+                  scale: Vec3 | None) -> list[float]:
+    qx, qy, qz, qw = rotation or (0.0, 0.0, 0.0, 1.0)
+    sx, sy, sz = scale or (1.0, 1.0, 1.0)
+    xx, yy, zz = qx * qx, qy * qy, qz * qz
+    xy, xz, yz = qx * qy, qx * qz, qy * qz
+    wx, wy, wz = qw * qx, qw * qy, qw * qz
+    rot = [
+        (1 - 2 * (yy + zz)) * sx, (2 * (xy + wz)) * sx, (2 * (xz - wy)) * sx, 0.0,
+        (2 * (xy - wz)) * sy, (1 - 2 * (xx + zz)) * sy, (2 * (yz + wx)) * sy, 0.0,
+        (2 * (xz + wy)) * sz, (2 * (yz - wx)) * sz, (1 - 2 * (xx + yy)) * sz, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    ]
+    rot[12], rot[13], rot[14] = translation
+    return rot
+
+
+def mat4_transform_point(m: list[float], p: Vec3) -> Vec3:
+    x, y, z = p
+    w = m[3] * x + m[7] * y + m[11] * z + m[15]
+    if abs(w) < 1e-12:
+        w = 1.0
+    return (
+        (m[0] * x + m[4] * y + m[8] * z + m[12]) / w,
+        (m[1] * x + m[5] * y + m[9] * z + m[13]) / w,
+        (m[2] * x + m[6] * y + m[10] * z + m[14]) / w,
+    )
+
+
+def merge_mesh_chunks(chunks: Sequence[tuple[Mesh, list[float]]], name: str, material: str) -> Mesh:
+    vertices: list[Vec3] = []
+    faces: list[Face] = []
+    for mesh, world in chunks:
+        offset = len(vertices)
+        for vertex in mesh.vertices:
+            vertices.append(mat4_transform_point(world, vertex))
+        for face in mesh.faces:
+            faces.append((face[0] + offset, face[1] + offset, face[2] + offset))
+    return Mesh(name, material, vertices, faces)
+
+
+def is_contract_mesh_node(name: str) -> bool:
+    upper = name.upper()
+    return upper.startswith('LOD0_') or upper.startswith('HOOK_DRIVE_')
+
+
+def consolidate_static_geometry(root: Node) -> None:
+    """Merge sibling static meshes by material to satisfy the runtime primitive budget."""
+    buckets: dict[tuple[int, str], list[tuple[Node, Mesh, list[float]]]] = {}
+
+    def walk(node: Node, parent: Node, world: list[float], under_spin: bool) -> None:
+        under_spin = under_spin or node.name in SPIN_HOOK_NAMES
+        local = mat4_from_trs(node.translation, node.rotation, node.scale)
+        node_world = mat4_mul(world, local)
+        if node.mesh is not None and not under_spin and not is_contract_mesh_node(node.name):
+            key = (id(parent), node.mesh.material)
+            buckets.setdefault(key, []).append((node, node.mesh, node_world))
+        for child in node.children:
+            walk(child, node, node_world, under_spin)
+
+    walk(root, root, mat4_identity(), False)
+    def find_parent(node: Node, target_id: int) -> Node | None:
+        for child in node.children:
+            if id(child) == target_id:
+                return node
+            found = find_parent(child, target_id)
+            if found is not None:
+                return found
+        return None
+
+    for (parent_id, material), items in buckets.items():
+        if len(items) < 2:
+            continue
+        parent = find_parent(root, parent_id) or root
+        merged = merge_mesh_chunks([(mesh, world) for _, mesh, world in items],
+                                   f'{parent.name}_{material}_Merged', material)
+        parent.add(Node(merged.name, merged))
+        for node, _, _ in items:
+            node.mesh = None
+
+
+def consolidate_global_by_material(root: Node) -> None:
+    """Second pass: merge all static non-hook meshes by material across the whole part."""
+    buckets: dict[str, list[tuple[Mesh, list[float], Node]]] = {}
+
+    def walk(node: Node, world: list[float], under_spin: bool) -> None:
+        under_spin = under_spin or node.name in SPIN_HOOK_NAMES
+        local = mat4_from_trs(node.translation, node.rotation, node.scale)
+        node_world = mat4_mul(world, local)
+        if node.mesh is not None and not under_spin and not node.name.startswith(('HOOK_', 'SOCKET_', 'MOUNT_', 'LOD0_')):
+            buckets.setdefault(node.mesh.material, []).append((node.mesh, node_world, node))
+        for child in node.children:
+            walk(child, node_world, under_spin)
+
+    walk(root, mat4_identity(), False)
+    for material, items in buckets.items():
+        if len(items) < 2:
+            continue
+        label = material.replace('Material_', '')
+        merged = merge_mesh_chunks([(mesh, world) for mesh, world, _ in items], f'Static_{label}_Merged', material)
+        root.add(Node(merged.name, merged))
+        for _, _, node in items:
+            node.mesh = None
+
+
 def triangle_count(root: Node) -> int:
     return sum(len(n.mesh.faces) for n in iter_nodes(root) if n.mesh)
 
@@ -439,7 +559,7 @@ def png_rgba(width: int, height: int, rows: Iterable[bytes]) -> bytes:
 
 def make_texture_set(style: str, size: int = 1024) -> dict[str, bytes]:
     style_seed = sum((i + 1) * ord(c) for i, c in enumerate(style)) & 0xffff
-    cell = {'cockpit': 128, 'engine': 96, 'weapon': 112, 'fin': 144, 'greeble': 80, 'gear': 128, 'pod': 96}.get(style, 128)
+    cell = {'cockpit': 128, 'engine': 96, 'weapon': 112, 'fin': 144, 'greeble': 80, 'gear': 128, 'pod': 96, 'place': 160}.get(style, 128)
     seam = 3 if style != 'greeble' else 2
 
     def wave(x: int, y: int) -> int:
@@ -490,7 +610,7 @@ def make_texture_set(style: str, size: int = 1024) -> dict[str, bytes]:
 def cockpit_dome(b: PartBuilder) -> None:
     b.bevel_box('Dome_Mount_Collar', (3.8, .42, 3.2), (0.8, .18, 0), bevel=.14, segments=4)
     b.ellipsoid('Dome_Glass', (2.25, 1.35, 1.6), (1.25, .38, 0), 'Material_Glass', 28, 14, True)
-    b.bevel_box('Dome_Interior_Deck', (3.0, .18, 2.2), (1.05, .38, 0), 'Material_Interior', .06, 3)
+    b.bevel_box('Dome_Interior_Deck', (3.0, .18, 2.2), (1.05, .38, 0), 'Material_Mechanical', .06, 3)
     frame = b.empty('HOOK_Emissive', (0, 0, 0))
     b.torus_x('Dome_Base_Frame', 1.52, .11, (.65, .48, 0), 'Material_Accent', 28, 8, frame)
     for z in (-1.18, 1.18): b.tube(f'Dome_Frame_{z}', (-.2, .45, z), (2.85, 1.05, z * .55), .065, 'Material_Mechanical')
@@ -504,7 +624,7 @@ def cockpit_slab(b: PartBuilder) -> None:
     hook = b.empty('HOOK_Emissive')
     for z in (-1.15, -.38, .38, 1.15):
         b.bevel_box(f'Slab_Window_{z}', (1.55, .42, .48), (3.28, 1.05, z), 'Material_Glass', .08, 3, parent=hook)
-    b.bevel_box('Slab_Interior', (2.4, .35, 2.5), (2.35, .8, 0), 'Material_Interior', .08, 3)
+    b.bevel_box('Slab_Interior', (2.4, .35, 2.5), (2.35, .8, 0), 'Material_Mechanical', .08, 3)
     for x in (-.2, .8, 1.8, 2.8):
         for z in (-1.62, 1.62): b.bolt((x, 1.55, z), .06)
 
@@ -514,35 +634,40 @@ def cockpit_recessed(b: PartBuilder) -> None:
     b.bevel_box('Recessed_Brow', (3.6, .72, 3.5), (2.65, .82, 0), 'Material_Mechanical', .18, 4)
     hook = b.empty('HOOK_Emissive')
     b.bevel_box('Recessed_Sensor_Slit', (2.9, .34, 2.45), (3.25, .65, 0), 'Material_Glass', .1, 4, parent=hook)
-    b.bevel_box('Recessed_Interior', (2.2, .2, 1.95), (2.9, .48, 0), 'Material_Interior', .05, 3)
+    b.bevel_box('Recessed_Interior', (2.2, .2, 1.95), (2.9, .48, 0), 'Material_Mechanical', .05, 3)
     for z in (-1.25, -.62, 0, .62, 1.25): b.bevel_box(f'Recessed_Frame_{z}', (.16, .5, .1), (3.2, .76, z), 'Material_Accent', .025, 2, parent=hook)
     b.plate('Recessed_Nose_Plate', [(0,-1.55),(3.9,-1.25),(4.8,0),(3.9,1.25),(0,1.55)], .18, (0,.48,0), bevel=.07)
 
 
-def add_fan(b: PartBuilder, center: Vec3, radius: float, name: str, parent: Node) -> None:
-    b.lathe_x(f'{name}_Hub', [(-.10, radius*.16),(.10,radius*.16)], (0,0,0), 'Material_Mechanical', 14, parent)
+def build_fan_mesh(name: str, radius: float) -> Mesh:
+    chunks: list[tuple[Mesh, list[float]]] = []
+    hub = lathe_x(f'{name}_Hub', [(-.10, radius * .16), (.10, radius * .16)], 14, 'Material_Mechanical')
+    chunks.append((hub, mat4_identity()))
     for i in range(8):
         a = TAU * i / 8
-        y, z = math.cos(a)*radius*.52, math.sin(a)*radius*.52
-        b.bevel_box(f'{name}_Blade_{i}', (.12, radius*.72, radius*.11), (0,y,z), 'Material_Mechanical', .025, 2,
-                    rot=(a, 0, .45), parent=parent)
+        y, z = math.cos(a) * radius * .52, math.sin(a) * radius * .52
+        blade = beveled_box(f'{name}_Blade_{i}', (.12, radius * .72, radius * .11), .025, 2, 'Material_Mechanical')
+        chunks.append((blade, mat4_from_trs((0, y, z), quat_from_euler(a, 0, .45), None)))
+    return merge_mesh_chunks(chunks, name, 'Material_Mechanical')
+
+
+def add_fan(b: PartBuilder, center: Vec3, radius: float, name: str, parent: Node) -> None:
+    b.node(build_fan_mesh(name, radius), center, parent=parent)
 
 
 def add_engine_common(b: PartBuilder, radius: float, length_x: float, industrial: bool = False) -> tuple[Node, Node]:
     # Origin is the aft nozzle/mount plane. Body grows +X into the hull; plume grows -X.
     prof = [(0, radius*1.08),(.18,radius*1.18),(.38,radius), (length_x*.72,radius*.88),(length_x,radius*.68)]
-    b.lathe_x('Engine_Housing', prof, (0,0,0), 'Material_Hull', 24)
+    b.lathe_x(f'LOD0_{b.spec.id.upper()}_MAIN', prof, (0,0,0), 'Material_Hull', 24)
     b.torus_x('Engine_Nozzle_Ring', radius*.96, radius*.10, (.02,0,0), 'Material_Mechanical', 28, 8)
-    emissive = b.empty('HOOK_Emissive', (-.04,0,0))
-    b.lathe_x('Engine_Core', [(-.08,radius*.54),(.04,radius*.56),(.10,radius*.42)], (0,0,0), 'Material_Accent', 22, emissive)
-    spin = b.empty('HOOK_Spin', (.16,0,0))
-    add_fan(b, (0,0,0), radius*.82, 'Engine_Fan', spin)
-    b.empty('MOUNT_Child', (-.14,0,0), extras={'role':'plume','forward':[-1,0,0]})
+    b.lathe_x('HOOK_DRIVE_CORE', [(-.08,radius*.54),(.04,radius*.56),(.10,radius*.42)], (-.04,0,0), 'Material_Accent', 22)
+    b.node(build_fan_mesh('HOOK_DRIVE_FAN', radius*.82), (.16,0,0), name='HOOK_DRIVE_FAN')
+    b.lathe_x('HOOK_DRIVE_PLUME', [(-.08,radius*.34),(.04,radius*.42)], (-.14,0,0), 'Material_Accent', 14)
     for i in range(4 if industrial else 3):
         x = .42 + i * (length_x*.45/max(1,3))
         b.torus_x(f'Engine_Heat_Rib_{i}', radius*(1.02-i*.025), radius*.045, (x,0,0), 'Material_Mechanical', 20, 6)
     b.rivet_ring((.24,0,0), radius*1.07, 12, 'yz', bolt_radius=radius*.035)
-    return emissive, spin
+    return b.root, b.root
 
 
 def engine_ion_small(b: PartBuilder) -> None:
@@ -551,18 +676,16 @@ def engine_ion_small(b: PartBuilder) -> None:
 
 
 def engine_ion_twin(b: PartBuilder) -> None:
-    b.bevel_box('Twin_Cradle', (2.9,.65,3.4), (1.35,0,0), bevel=.16, segments=4)
-    for z in (-1.05,1.05):
-        group = b.empty(f'Twin_Nozzle_{"P" if z<0 else "S"}', (0,0,z))
-        prof=[(0,.72),(.15,.82),(.35,.72),(2.5,.56)]
-        b.lathe_x(f'Twin_Housing_{z}',prof,(0,0,0),'Material_Hull',20,group)
-        b.torus_x(f'Twin_Ring_{z}',.68,.09,(.02,0,0),'Material_Mechanical',22,7,group)
-        eh=b.empty('HOOK_Emissive' if z<0 else 'HOOK_Emissive_Secondary',(-.03,0,0),group)
-        b.lathe_x(f'Twin_Core_{z}',[(-.08,.38),(.08,.34)],(0,0,0),'Material_Accent',18,eh)
-        sh=b.empty('HOOK_Spin' if z<0 else 'HOOK_Spin_Secondary',(.16,0,0),group)
-        add_fan(b,(0,0,0),.55,f'Twin_Fan_{z}',sh)
-    b.empty('MOUNT_Child',(-.14,0,0),extras={'role':'plume','forward':[-1,0,0]})
-    for x in (.5,1.15,1.8): b.bevel_box(f'Twin_Brace_{x}',(.18,.95,2.55),(x,0,0),'Material_Mechanical',.04,3)
+    b.bevel_box('LOD0_ENGINE_ION_TWIN_MAIN', (2.9, .65, 3.4), (1.35, 0, 0), bevel=.16, segments=4)
+    for suffix, z in (('P', -1.05), ('S', 1.05)):
+        group = b.empty(f'Twin_Nozzle_{suffix}', (0, 0, z))
+        prof = [(0, .72), (.15, .82), (.35, .72), (2.5, .56)]
+        b.lathe_x(f'Twin_Housing_{suffix}', prof, (0, 0, 0), 'Material_Hull', 16, group)
+        b.torus_x(f'Twin_Ring_{suffix}', .68, .09, (.02, 0, 0), 'Material_Mechanical', 18, 6, group)
+        b.lathe_x(f'HOOK_DRIVE_CORE_{suffix}', [(-.08, .38), (.08, .34)], (-.03, 0, 0), 'Material_Accent', 14, group)
+        b.node(build_fan_mesh(f'HOOK_DRIVE_FAN_{suffix}', .55), (.16, 0, 0), name=f'HOOK_DRIVE_FAN_{suffix}', parent=group)
+        b.lathe_x(f'HOOK_DRIVE_PLUME_{suffix}', [(-.08, .32), (.04, .4)], (-.14, 0, 0), 'Material_Accent', 12, group)
+    b.empty('MOUNT_Child', (-.14, 0, 0), extras={'role': 'plume', 'forward': [-1, 0, 0]})
 
 
 def engine_industrial(b: PartBuilder) -> None:
@@ -574,19 +697,42 @@ def engine_industrial(b: PartBuilder) -> None:
     b.rivet_ring((.12,0,0),1.34,4,'yz',bolt_radius=.055)
 
 
+def engine_vector(b: PartBuilder) -> None:
+    # Angular vector-thrust block — hex silhouette distinct from round ion housings.
+    b.bevel_box(f'LOD0_{b.spec.id.upper()}_MAIN', (2.8, 1.6, 1.6), (1.2, 0, 0), bevel=.12, segments=3)
+    b.bevel_box('Vector_Nozzle', (1.2, 1.1, 1.1), (-.1, 0, 0), 'Material_Mechanical', .1, 4)
+    b.lathe_x('HOOK_DRIVE_CORE', [(-.08, .45), (.08, .5), (.12, .35)], (-.06, 0, 0), 'Material_Accent', 16)
+    b.node(build_fan_mesh('HOOK_DRIVE_FAN', .65), (.2, 0, 0), name='HOOK_DRIVE_FAN')
+    b.lathe_x('HOOK_DRIVE_PLUME', [(-.1, .32), (.06, .4)], (-.18, 0, 0), 'Material_Accent', 12)
+    for i in range(4):
+        a = TAU * i / 4 + .2
+        b.bevel_box(f'Vector_Strut_{i}', (.5, .12, .12), (.6, math.cos(a) * .75, math.sin(a) * .75),
+                    'Material_Mechanical', .03, 2, rot=(a, 0, .3))
+
+
+def engine_plasma_ring(b: PartBuilder) -> None:
+    # Torus-ring plasma drive — reads as a halo nozzle, not a lathe bell or resonator stack.
+    b.lathe_x(f'LOD0_{b.spec.id.upper()}_MAIN', [(0, .55), (.2, .95), (.55, .85), (2.4, .7)], (0, 0, 0), 'Material_Hull', 16)
+    b.torus_x('Plasma_Ring_Outer', .92, .12, (.35, 0, 0), 'Material_Accent', 28, 8)
+    b.ellipsoid('HOOK_DRIVE_CORE', (.32, .32, .32), (-.05, 0, 0), 'Material_Accent', 14, 8)
+    b.node(torus_x('HOOK_DRIVE_FAN', .55, .08, 20, 6, 'Material_Mechanical'), (.25, 0, 0), name='HOOK_DRIVE_FAN')
+    b.lathe_x('HOOK_DRIVE_PLUME', [(-.08, .28), (.05, .34)], (-.22, 0, 0), 'Material_Accent', 12)
+    b.rivet_ring((.5, 0, 0), 1.0, 10, 'yz', bolt_radius=.035)
+
+
 def engine_resonator(b: PartBuilder) -> None:
     # Nozzle-less alien drive: nested faceted resonator hoops and a suspended core.
-    b.lathe_x('Resonator_Base',[(0,1.15),(.18,1.3),(.55,1.1),(2.6,.72)],(0,0,0),'Material_Hull',12)
-    emissive=b.empty('HOOK_Emissive',(-.1,0,0))
-    b.ellipsoid('Resonator_Core',(.36,.7,.7),(0,0,0),'Material_Accent',16,10,parent=emissive)
-    spin=b.empty('HOOK_Spin',(.22,0,0))
+    b.lathe_x(f'LOD0_{b.spec.id.upper()}_MAIN',[(0,1.15),(.18,1.3),(.55,1.1),(2.6,.72)],(0,0,0),'Material_Hull',12)
+    b.ellipsoid('HOOK_DRIVE_CORE',(.36,.7,.7),(-.1,0,0),'Material_Accent',16,10)
+    hoop_chunks: list[tuple[Mesh, list[float]]] = []
     for i,r in enumerate((.62,.86,1.1)):
-        ring=b.torus_x(f'Resonator_Hoop_{i}',r,.055,(i*.16,0,0),'Material_Accent',12,5,spin)
-        ring.rotation=quat_from_euler(i*.37,0,0)
+        hoop = torus_x(f'Resonator_Hoop_{i}', r, .055, 12, 5, 'Material_Accent')
+        hoop_chunks.append((hoop, mat4_from_trs((.22 + i * .16, 0, 0), quat_from_euler(i * .37, 0, 0), None)))
+    b.node(merge_mesh_chunks(hoop_chunks, 'HOOK_DRIVE_FAN', 'Material_Accent'), (.22,0,0), name='HOOK_DRIVE_FAN')
     for i in range(6):
         a=TAU*i/6
         b.bevel_box(f'Resonator_Facet_{i}',(1.6,.18,.44),(1.2,math.cos(a)*.86,math.sin(a)*.86),'Material_Mechanical',.05,3,rot=(a,0,.18),parent=b.root)
-    b.empty('MOUNT_Child',(-.35,0,0),extras={'role':'plume','forward':[-1,0,0]})
+    b.ellipsoid('HOOK_DRIVE_PLUME',(.28,.52,.52),(-.35,0,0),'Material_Accent',14,8)
     b.rivet_ring((.48,0,0),1.1,12,'yz',bolt_radius=.04)
 
 
@@ -661,6 +807,27 @@ def fin_swept_smuggler(b: PartBuilder) -> None:
     hook=b.empty('HOOK_Emissive'); b.tube('Swept_Edge',(.15,.13,3.82),(2.3,.13,1.18),.035,'Material_Accent',8,hook)
 
 
+def fin_delta(b: PartBuilder) -> None:
+    pts = [(0, 0), (5.2, .15), (4.0, 4.8), (2.0, 5.5), (.5, 4.2)]
+    b.plate('Delta_Main', pts, .22, (0, 0, 0), 'Material_Hull', .08)
+    b.plate('Delta_Root', [(.2, .2), (1.8, .35), (1.4, 1.6), (.4, 1.8)], .14, (0, .18, 0), 'Material_Mechanical', .05)
+    hook = b.empty('HOOK_Emissive')
+    b.tube('Delta_Edge', (.2, .16, 5.2), (3.8, .16, 4.5), .04, 'Material_Accent', 10, hook)
+    for i in range(4):
+        b.bolt((.5 + i * .85, .2, 1.2 + i * .55), .04)
+
+
+def fin_stabilator(b: PartBuilder) -> None:
+    b.bevel_box('Stab_Root', (1.2, .35, 3.6), (.4, 0, 0), bevel=.1, segments=3)
+    b.plate('Stab_Surface', [(0, -1.6), (3.4, -1.5), (3.2, 1.5), (0, 1.6)], .14, (1.2, .5, 0), 'Material_Hull', .06)
+    b.bevel_box('Stab_Spar', (.16, .28, 3.2), (2.0, .52, 0), 'Material_Mechanical', .04, 2)
+    hook = b.empty('HOOK_Emissive')
+    for z in (-1.35, 1.35):
+        b.bevel_box(f'Stab_Tip_{z}', (.35, .1, .35), (3.1, .55, z), 'Material_Accent', .03, 2, parent=hook)
+    for x in (.6, 1.4, 2.6):
+        b.bolt((x, .58, 0), .04)
+
+
 def fin_crystalline(b: PartBuilder) -> None:
     pts=[(0,0),(3.8,.3),(3.1,2.0),(1.8,4.3),(.3,3.5),(-.3,1.6)]
     b.plate('Crystal_Plane',pts,.22,(0,0,0),'Material_Hull',.09)
@@ -668,6 +835,35 @@ def fin_crystalline(b: PartBuilder) -> None:
     for a,c in [((.2,.2),(3.0,1.85)),((.1,3.25),(3.4,.45)),((1.75,.3),(1.75,3.75))]:
         b.tube(f'Crystal_Vein_{len(hook.children)}',(a[0],.15,a[1]),(c[0],.15,c[1]),.045,'Material_Accent',8,hook)
     for p in ((.35,.45),(3.15,.55),(2.75,2.0),(1.55,3.75),(.2,3.1)): b.bolt((p[0],.16,p[1]),.045,material='Material_Accent')
+
+
+def weapon_gatling(b: PartBuilder) -> None:
+    b.bevel_box('Gatling_Housing', (2.0, 1.0, 1.0), (.8, 0, 0), bevel=.14, segments=4)
+    spin = b.empty('HOOK_Spin', (1.5, 0, 0), extras={'axis': [1, 0, 0]})
+    b.lathe_x('Gatling_Barrel_Cluster', [(0, .28), (2.8, .22), (3.0, .32)], (0, 0, 0), 'Material_Mechanical', 18, spin)
+    coil_chunks: list[tuple[Mesh, list[float]]] = []
+    for i in range(5):
+        x = .35 + i * .45
+        coil_chunks.append((torus_x(f'Gatling_Coil_{i}', .24, .045, 14, 5, 'Material_Hull'),
+                            mat4_from_trs((x, 0, 0), quat_from_euler(0, 0, 0), (1, 1, 1))))
+    spin.add(Node('Gatling_Coils_Merged', merge_mesh_chunks(coil_chunks, 'Gatling_Coils_Merged', 'Material_Hull')))
+    hook = b.empty('HOOK_Emissive', (3.2, 0, 0), spin)
+    b.lathe_x('Gatling_Muzzle', [(-.06, .2), (.06, .2)], (0, 0, 0), 'Material_Accent', 12, hook)
+    b.empty('SOCKET_Muzzle', (3.5, 0, 0), spin, {'role': 'weapon', 'forward': [1, 0, 0]})
+    b.rivet_ring((.15, 0, 0), .42, 8, 'yz', bolt_radius=.04)
+
+
+def weapon_railgun(b: PartBuilder) -> None:
+    b.bevel_box('Rail_Breech', (2.2, .9, .9), (.9, 0, 0), bevel=.12, segments=4)
+    b.bevel_box('Rail_Channel', (4.5, .35, .55), (2.8, 0, 0), 'Material_Mechanical', .06, 3)
+    for x in (1.8, 2.4, 3.2, 3.8, 4.5):
+        b.torus_x(f'Rail_Coil_{x}', .32, .05, (x, 0, 0), 'Material_Accent', 16, 6)
+    hook = b.empty('HOOK_Emissive', (5.8, 0, 0))
+    b.bevel_box('Rail_Accent_Slit', (.6, .12, .4), (0, 0, 0), 'Material_Accent', .03, 2, parent=hook)
+    b.empty('SOCKET_Muzzle', (6.0, 0, 0), extras={'role': 'weapon', 'forward': [1, 0, 0]})
+    for x in (.2, .8, 1.4):
+        for z in (-.42, .42):
+            b.bolt((x, .48, z), .045)
 
 
 def greeble_vents(b: PartBuilder) -> None:
@@ -705,6 +901,23 @@ def greeble_rcs(b: PartBuilder) -> None:
             b.lathe_x(f'RCS_Core_{yi}_{zi}',[(-.03,.11),(.05,.09)],(1.92,.35,zi*.82),'Material_Accent',12,hook)
     for x in (0,2.4):
         for z in (-1.3,1.3): b.bolt((x,.24,z),.045)
+
+
+def greeble_nav_lights(b: PartBuilder) -> None:
+    b.bevel_box('Nav_Base', (3.6, .14, 2.4), (1.5, .06, 0), bevel=.06, segments=3)
+    hook = b.empty('HOOK_Emissive')
+    for x, z, label in ((0, 0, 'port'), (3.0, 0, 'starboard'), (1.5, 1.1, 'dorsal')):
+        b.bevel_box(f'Nav_Light_{label}', (.35, .08, .35), (x, .18, z), 'Material_Accent', .03, 2, parent=hook)
+    for x in (.2, 1.2, 2.8):
+        b.bolt((x, .16, -1.0), .035)
+
+
+def greeble_armor_plates(b: PartBuilder) -> None:
+    for idx, (x, z, sx, sz, rot) in enumerate(((0, 0, 2.0, 1.6, 0), (2.2, .3, 1.5, 1.2, .15), (.8, -1.0, 1.2, 1.0, -.1))):
+        b.bevel_box(f'Plate_{idx}', (sx, .12, sz), (x, .08, z), 'Material_Hull', .05, 3, rot=(0, 0, rot))
+        for dx in (-sx * .35, sx * .35):
+            b.bolt((x + dx, .18, z), .04)
+    b.bevel_box('Plate_Boss', (.5, .18, .5), (1.2, .2, 0), 'Material_Mechanical', .04, 2)
 
 
 def greeble_antennas(b: PartBuilder) -> None:
@@ -772,37 +985,191 @@ def pod_repair_patch(b: PartBuilder) -> None:
         b.bolt((p[0],.19,p[1]),.05)
 
 
+def place_lane_beacon(b: PartBuilder) -> None:
+    """Core-sector trade lane marker — emissive cyan ring, readable at 400 wu spacing."""
+    b.bevel_box('Beacon_Base', (2.4, .22, 2.4), (0, .1, 0), 'Material_Mechanical', .08, 3)
+    b.lathe_x('Beacon_Pylon', [(0, .55), (4.8, .42), (5.2, .28)], (0, 2.6, 0), 'Material_Hull', 16)
+    hook = b.empty('HOOK_Emissive', (0, 5.2, 0))
+    b.torus_x('Beacon_Ring', 1.05, .09, (0, 5.2, 0), 'Material_Accent', 28, 8, parent=hook)
+    b.bevel_box('Beacon_Cap', (.55, .22, .55), (0, 5.55, 0), 'Material_Mechanical', .05, 2, parent=hook)
+    b.empty('SOCKET_Beacon_Core', (0, 5.35, 0), extras={'role': 'beacon', 'forward': [0, 1, 0]})
+
+
+def place_nav_buoy(b: PartBuilder) -> None:
+    """Fringe nav buoy with flicker-addressable emissive stack."""
+    b.lathe_x('Buoy_Barrel', [(0, .95), (1.8, .88), (2.0, .72), (1.9, .55)], (0, 1.0, 0), 'Material_Hull', 18)
+    b.bevel_box('Buoy_Collar', (2.2, .18, 2.2), (0, 1.95, 0), 'Material_Mechanical', .06, 3)
+    hook = b.empty('HOOK_Emissive', (0, 2.35, 0))
+    b.lathe_x('Buoy_Light_Stack', [(0, .22), (.55, .18), (.7, .12)], (0, 2.35, 0), 'Material_Accent', 12, parent=hook)
+    b.torus_x('Buoy_Ring', .38, .05, (0, 2.65, 0), 'Material_Accent', 18, 6, parent=hook)
+    b.empty('SOCKET_Buoy_Top', (0, 2.75, 0), extras={'role': 'nav', 'forward': [0, 1, 0]})
+
+
+def place_asteroid_seamed(b: PartBuilder) -> None:
+    """Mining scan target — irregular rock with a visible emissive ore seam (spec2/03 B2)."""
+    b.ellipsoid('Asteroid_Core', (14.0, 11.0, 12.0), (0, 0, 0), 'Material_Hull', 20, 12)
+    for i, (pos, rad) in enumerate((((4.5, 3.0, 2.0), (5.0, 4.0, 3.5)),
+                                    ((-5.0, -2.0, 3.5), (4.0, 3.5, 3.0)),
+                                    ((2.0, -4.0, -4.0), (3.5, 3.0, 3.0)))):
+        b.ellipsoid(f'Asteroid_Lump_{i}', rad, pos, 'Material_Hull', 14, 8)
+    seam = b.empty('HOOK_Seam', (1.2, -1.5, 2.0))
+    b.tube('Seam_Vein_A', (0.2, -2.5, 1.0), (3.8, 1.5, 3.2), .22, 'Material_Accent', 10, parent=seam)
+    b.tube('Seam_Vein_B', (-1.0, -1.0, 0.5), (2.5, 2.0, 4.0), .16, 'Material_Accent', 10, parent=seam)
+    b.empty('SOCKET_Scan_Target', (2.0, 0.5, 2.5), extras={'role': 'scan', 'forward': [1, 0, 0]})
+
+
+def place_debris_chunk(b: PartBuilder) -> None:
+    """Tether-haul salvage fragment — minimum span >20u for spec2/05 C3."""
+    b.bevel_box('Chunk_Spine', (22.0, 6.0, 8.0), (11.0, 0, 0), 'Material_Hull', .35, 4)
+    b.bevel_box('Chunk_Break_A', (8.0, 5.0, 6.0), (18.0, 1.2, 1.5), 'Material_Mechanical', .28, 3, rot=(0, .35, .12))
+    b.bevel_box('Chunk_Break_B', (7.0, 4.0, 5.0), (4.0, -1.0, -1.8), 'Material_Hull', .22, 3, rot=(0, -.2, -.08))
+    b.plate('Chunk_Shred', [(0, -2.5), (3.5, -1.8), (4.2, 0.5), (2.0, 2.2), (-0.5, 1.0)], .5, (20.0, 2.0, 0), 'Material_Mechanical', .08)
+    b.empty('SOCKET_Tether_Massline', (2.0, 1.0, 0), extras={'role': 'tether', 'forward': [1, 0, 0]})
+
+
+def place_station_billboard(b: PartBuilder) -> None:
+    """Station approach billboard frame — emissive face, matte unlit back."""
+    b.bevel_box('Billboard_Frame', (.45, 12.0, 18.0), (0, 6.0, 0), 'Material_Mechanical', .08, 3)
+    b.bevel_box('Billboard_Back', (.12, 10.5, 16.0), (-.18, 6.0, 0), 'Material_Hull', .04, 2)
+    hook = b.empty('HOOK_Emissive', (.05, 6.0, 0))
+    b.bevel_box('Billboard_Face', (.08, 9.8, 15.2), (0, 0, 0), 'Material_Accent', .04, 2, parent=hook)
+    for y in (2.5, 6.0, 9.5):
+        b.bevel_box(f'Billboard_Rail_{y}', (18.0, .12, .12), (0, y - 6.0, 8.8), 'Material_Accent', .03, 2, parent=hook)
+    b.empty('SOCKET_Camera_Focus', (1.2, 6.0, 0), extras={'role': 'camera', 'forward': [1, 0, 0]})
+
+
+def place_dead_hulk(b: PartBuilder) -> None:
+    """Salvageable wreck spine with fracture arc and hazard core."""
+    b.lathe_x('Hulk_Spine', [(0, 3.2), (18.0, 2.8), (32.0, 2.2), (42.0, 1.4), (48.0, .8)], (0, 1.8, 0), 'Material_Hull', 22)
+    b.bevel_box('Hulk_Bridge_Ruin', (8.0, 4.5, 6.0), (38.0, 3.5, 0), 'Material_Mechanical', .35, 4, rot=(0, 0, .18))
+    b.bevel_box('Hulk_Engine_Block', (10.0, 5.0, 7.0), (6.0, 2.0, 0), 'Material_Mechanical', .4, 4, rot=(0, 0, -.12))
+    hook = b.empty('HOOK_Emissive', (24.0, 2.5, 0))
+    b.torus_x('Hulk_Fracture_Arc', 2.8, .14, (0, 0, 0), 'Material_Accent', 24, 8, parent=hook)
+    b.empty('SOCKET_Hazard_Core', (24.0, 2.5, 0), extras={'role': 'hazard', 'forward': [1, 0, 0]})
+    b.empty('SOCKET_Salvage_Core', (12.0, 1.5, 0), extras={'role': 'salvage', 'forward': [1, 0, 0]})
+
+
+def _asteroid_rock_body(b: PartBuilder, core: Vec3, lumps: Sequence[tuple[Vec3, Vec3]], segments: tuple[int, int] = (18, 10)) -> None:
+    b.ellipsoid('Rock_Core', core, (0, 0, 0), 'Material_Hull', segments[0], segments[1])
+    for i, (pos, rad) in enumerate(lumps):
+        b.ellipsoid(f'Rock_Lump_{i}', rad, pos, 'Material_Hull', max(10, segments[0] - 4), max(6, segments[1] - 2))
+
+
+def place_conveyor_barge(b: PartBuilder) -> None:
+    """Belt-sector slow ore conveyor — visual-loop drive plume and deck status lights."""
+    b.bevel_box('Barge_Hull', (52.0, 8.0, 18.0), (26.0, 2.0, 0), 'Material_Hull', .45, 4)
+    b.bevel_box('Barge_Bridge', (8.0, 5.0, 7.0), (44.0, 5.5, 0), 'Material_Mechanical', .3, 4)
+    for x in (12.0, 22.0, 32.0):
+        b.bevel_box(f'Barge_Container_{x}', (6.5, 4.5, 6.5), (x, 5.0, 0), 'Material_Mechanical', .22, 3)
+    drive = b.empty('HOOK_DRIVE_PLUME', (-2.5, 2.2, 0))
+    b.lathe_x('Barge_Drive_Nozzle', [(0, 1.8), (2.2, 1.5), (3.0, 1.0)], (0, 0, 0), 'Material_Mechanical', 14, parent=drive)
+    b.lathe_x('Barge_Drive_Core', [(0, .55), (.8, .42)], (2.8, 0, 0), 'Material_Accent', 12, parent=drive)
+    hook = b.empty('HOOK_Emissive', (26.0, 6.2, 0))
+    for z in (-7.5, 7.5):
+        b.bevel_box(f'Barge_Status_{z}', (.35, .12, .35), (44.0, 0, z), 'Material_Accent', .03, 2, parent=hook)
+    b.empty('SOCKET_Trail_Main', (-2.5, 2.2, 0), extras={'role': 'vfx', 'forward': [-1, 0, 0]})
+
+
+def place_mining_drone(b: PartBuilder) -> None:
+    """Belt mining drone visual-loop — spin-addressable drill and emissive beam head."""
+    b.bevel_box('Drone_Body', (3.2, 1.2, 2.4), (1.2, .55, 0), 'Material_Hull', .16, 4)
+    b.bevel_box('Drone_Sensor_Brow', (1.6, .35, 1.8), (2.4, 1.05, 0), 'Material_Mechanical', .08, 3)
+    spin = b.empty('HOOK_Spin', (2.8, .45, 0))
+    b.lathe_x('Drone_Drill', [(0, .18), (1.4, .14), (1.8, .05)], (0, 0, 0), 'Material_Mechanical', 12, parent=spin)
+    hook = b.empty('HOOK_Emissive', (3.2, .45, 0))
+    b.bevel_box('Drone_Beam_Head', (.22, .22, .22), (0, 0, 0), 'Material_Accent', .04, 2, parent=hook)
+    b.empty('SOCKET_Mining_Front', (3.4, .45, 0), extras={'role': 'mining', 'forward': [1, 0, 0]})
+
+
+def place_asteroid_rock_a(b: PartBuilder) -> None:
+    """Common metallic belt rock — chunky low-poly fill variant A."""
+    _asteroid_rock_body(b, (10.0, 8.5, 9.0), (
+        ((3.5, 2.0, 1.5), (4.0, 3.5, 3.0)),
+        ((-4.0, -1.5, 2.0), (3.5, 3.0, 2.5)),
+    ))
+
+
+def place_asteroid_rock_b(b: PartBuilder) -> None:
+    """Elongated potato rock — belt fill variant B."""
+    _asteroid_rock_body(b, (16.0, 7.0, 8.0), (
+        ((6.0, 1.0, 0), (5.0, 4.0, 4.0)),
+        ((-7.0, -2.0, 0), (4.5, 3.5, 3.5)),
+        ((0, -3.5, 2.5), (3.0, 2.5, 2.5)),
+    ), segments=(16, 8))
+
+
+def place_asteroid_rock_c(b: PartBuilder) -> None:
+    """Smaller rubble cluster — belt fill variant C."""
+    _asteroid_rock_body(b, (7.0, 6.0, 6.5), (
+        ((2.5, 1.5, 1.0), (3.0, 2.5, 2.0)),
+        ((-2.0, -1.0, -1.5), (2.5, 2.0, 2.0)),
+        ((0.5, -2.5, 2.0), (2.0, 1.8, 1.8)),
+    ), segments=(14, 8))
+
+
+def place_asteroid_graffiti(b: PartBuilder) -> None:
+    """Fringe-tagged asteroid with sodium-red pirate graffiti plates (no scan seam)."""
+    _asteroid_rock_body(b, (12.0, 9.0, 10.0), (
+        ((4.0, 2.5, 1.5), (4.5, 3.5, 3.0)),
+        ((-4.5, -1.5, 2.5), (3.5, 3.0, 2.5)),
+    ))
+    hook = b.empty('HOOK_Emissive', (3.0, 1.0, 4.5))
+    for i, (x, z, sx) in enumerate(((1.5, 3.8, 2.2), (3.8, 1.2, 1.6), (0.8, -2.5, 1.8))):
+        b.bevel_box(f'Graffiti_Tag_{i}', (sx, .08, .55), (x, 0, z), 'Material_Accent', .02, 2, parent=hook, rot=(0, .25 * i, .08 * i))
+    b.empty('SOCKET_Camera_Focus', (0, 2.0, 5.0), extras={'role': 'camera', 'forward': [0, 0, 1]})
+
+
 PARTS: list[PartSpec] = [
     PartSpec('cockpit_dome','cockpits','P0','Bubble canopy with interior deck and structural frame.',cockpit_dome,('HOOK_Emissive',),(), 'cockpit'),
     PartSpec('cockpit_slab','cockpits','P0','Armored authority bridge with serialized viewports.',cockpit_slab,('HOOK_Emissive',),(), 'cockpit'),
     PartSpec('cockpit_recessed','cockpits','P0','Flush sensor-slot cockpit with armored brow.',cockpit_recessed,('HOOK_Emissive',),(), 'cockpit'),
-    PartSpec('engine_ion_small','engines','P0','Compact ion drive with fan, core and heat ribs.',engine_ion_small,('HOOK_Emissive','HOOK_Spin','MOUNT_Child'),(), 'engine'),
-    PartSpec('engine_ion_twin','engines','P0','Serialized twin-nozzle fighter drive.',engine_ion_twin,('HOOK_Emissive','HOOK_Spin','MOUNT_Child'),(), 'engine'),
-    PartSpec('engine_industrial','engines','P0','Asymmetric serviced industrial drive with coolant plumbing.',engine_industrial,('HOOK_Emissive','HOOK_Spin','MOUNT_Child'),(), 'engine'),
-    PartSpec('engine_resonator','engines','P0','Nozzle-less alien resonator with nested faceted hoops.',engine_resonator,('HOOK_Emissive','HOOK_Spin','MOUNT_Child'),(), 'engine'),
+    PartSpec('engine_ion_small','engines','P0','Compact ion drive with fan, core and heat ribs.',engine_ion_small,('HOOK_DRIVE_CORE','HOOK_DRIVE_FAN','HOOK_DRIVE_PLUME'),(), 'engine'),
+    PartSpec('engine_ion_twin','engines','P0','Serialized twin-nozzle fighter drive.',engine_ion_twin,('HOOK_DRIVE_CORE_P','HOOK_DRIVE_CORE_S','HOOK_DRIVE_FAN_P','HOOK_DRIVE_FAN_S','HOOK_DRIVE_PLUME_P','HOOK_DRIVE_PLUME_S','MOUNT_Child'),(), 'engine'),
+    PartSpec('engine_industrial','engines','P0','Asymmetric serviced industrial drive with coolant plumbing.',engine_industrial,('HOOK_DRIVE_CORE','HOOK_DRIVE_FAN','HOOK_DRIVE_PLUME'),(), 'engine'),
+    PartSpec('engine_resonator','engines','P0','Nozzle-less alien resonator with nested faceted hoops.',engine_resonator,('HOOK_DRIVE_CORE','HOOK_DRIVE_FAN','HOOK_DRIVE_PLUME'),(), 'engine'),
+    PartSpec('engine_vector','engines','P1','Angular vector-thrust block with external struts.',engine_vector,('HOOK_DRIVE_CORE','HOOK_DRIVE_FAN','HOOK_DRIVE_PLUME'),(), 'engine'),
+    PartSpec('engine_plasma_ring','engines','P1','Torus-ring plasma drive with suspended core.',engine_plasma_ring,('HOOK_DRIVE_CORE','HOOK_DRIVE_FAN','HOOK_DRIVE_PLUME'),(), 'engine'),
     PartSpec('weapon_pulse_cannon','weapons','P1','Fixed pulse cannon with visible cooling train.',weapon_pulse_cannon,('HOOK_Emissive',),('SOCKET_Muzzle',),'weapon'),
     PartSpec('weapon_heavy_cannon','weapons','P1','Oversized bolted cannon with recoil cylinders.',weapon_heavy_cannon,('HOOK_Emissive',),('SOCKET_Muzzle',),'weapon'),
     PartSpec('weapon_turret_dual','weapons','P1','Dual tracking turret with a hook-addressable head.',weapon_turret_dual,('HOOK_Emissive','HOOK_Spin'),('SOCKET_Muzzle',),'weapon'),
     PartSpec('weapon_lance','weapons','P1','Long crystalline focusing lance.',weapon_lance,('HOOK_Emissive',),('SOCKET_Muzzle',),'weapon'),
+    PartSpec('weapon_gatling','weapons','P1','Rotary barrel cluster with spin-addressable head.',weapon_gatling,('HOOK_Emissive','HOOK_Spin'),('SOCKET_Muzzle',),'weapon'),
+    PartSpec('weapon_railgun','weapons','P1','Slim electromagnetic rail accelerator.',weapon_railgun,('HOOK_Emissive',),('SOCKET_Muzzle',),'weapon'),
     PartSpec('fin_wedge','fins','P1','Chamfered combat wing with structural ribs.',fin_wedge,('HOOK_Emissive',),(), 'fin'),
     PartSpec('fin_radiator_grid','fins','P1','Vented industrial radiator grid.',fin_radiator_grid,('HOOK_Emissive',),(), 'fin'),
     PartSpec('fin_swept_smuggler','fins','P1','Low-profile swept smuggler blade.',fin_swept_smuggler,('HOOK_Emissive',),(), 'fin'),
     PartSpec('fin_crystalline','fins','P1','Alien faceted plane with emissive veins.',fin_crystalline,('HOOK_Emissive',),(), 'fin'),
+    PartSpec('fin_delta','fins','P1','Sharp delta wing for fighter-class silhouettes.',fin_delta,('HOOK_Emissive',),(), 'fin'),
+    PartSpec('fin_stabilator','fins','P1','T-tail stabilator with tip running lights.',fin_stabilator,('HOOK_Emissive',),(), 'fin'),
     PartSpec('greeble_vents','greebles','P1','Vent slat and intake kit.',greeble_vents,(),(), 'greeble'),
     PartSpec('greeble_hatches','greebles','P1','Access hatch and fastener kit.',greeble_hatches,(),(), 'greeble'),
     PartSpec('greeble_pipes','greebles','P1','Coolant pipe and coupling kit.',greeble_pipes,(),(), 'greeble'),
     PartSpec('greeble_rcs','greebles','P1','Reaction-control thruster quad.',greeble_rcs,('HOOK_Emissive',),(), 'greeble'),
     PartSpec('greeble_antennas','greebles','P1','Sensor mast, loop, dish and beacon kit.',greeble_antennas,('HOOK_Emissive',),(), 'greeble'),
+    PartSpec('greeble_nav_lights','greebles','P1','Port/starboard/dorsal navigation light kit.',greeble_nav_lights,('HOOK_Emissive',),(), 'greeble'),
+    PartSpec('greeble_armor_plates','greebles','P1','Bolted armor patch plates with irregular overlap.',greeble_armor_plates,(),(), 'greeble'),
     PartSpec('skid_trio','gear','P2','Three-skid frontier landing set with replacement foot.',skid_trio,(),(), 'gear'),
     PartSpec('skid_quad','gear','P2','Four-point heavy landing gear.',skid_quad,(),(), 'gear'),
     PartSpec('pod_utility','pods','P2','Dorsal utility pod with status bank.',pod_utility,('HOOK_Emissive','MOUNT_Child'),(), 'pod'),
     PartSpec('pod_cargo_container','pods','P2','Ribbed standardized cargo container.',pod_cargo_container,('MOUNT_Child',),(), 'pod'),
     PartSpec('pod_repair_patch','pods','P2','Irregular bolted field-repair panel.',pod_repair_patch,(),(), 'pod'),
+    PartSpec('place_lane_beacon','places','P1','Core trade-lane pylon with cyan emissive ring.',place_lane_beacon,('HOOK_Emissive',),('SOCKET_Beacon_Core',), 'place'),
+    PartSpec('place_nav_buoy','places','P1','Fringe navigation buoy with flicker stack.',place_nav_buoy,('HOOK_Emissive',),('SOCKET_Buoy_Top',), 'place'),
+    PartSpec('place_asteroid_seamed','places','P0','Irregular asteroid with scan-target ore seam.',place_asteroid_seamed,('HOOK_Seam',),('SOCKET_Scan_Target',), 'place'),
+    PartSpec('place_debris_chunk','places','P1','Tether-haul salvage fragment (>20u span).',place_debris_chunk,(),('SOCKET_Tether_Massline',), 'place'),
+    PartSpec('place_station_billboard','places','P1','Station approach billboard with emissive face.',place_station_billboard,('HOOK_Emissive',),('SOCKET_Camera_Focus',), 'place'),
+    PartSpec('place_dead_hulk','places','P0','Salvageable dead hulk with fracture arc.',place_dead_hulk,('HOOK_Emissive',),('SOCKET_Hazard_Core','SOCKET_Salvage_Core'), 'place'),
+    PartSpec('place_conveyor_barge','places','P1','Slow belt ore conveyor with drive plume loop.',place_conveyor_barge,('HOOK_DRIVE_PLUME','HOOK_Emissive',),('SOCKET_Trail_Main',), 'place'),
+    PartSpec('place_mining_drone','places','P1','Belt mining drone with spin drill and beam head.',place_mining_drone,('HOOK_Spin','HOOK_Emissive',),('SOCKET_Mining_Front',), 'place'),
+    PartSpec('place_asteroid_rock_a','places','P1','Chunky metallic belt rock variant A.',place_asteroid_rock_a,(),(), 'place'),
+    PartSpec('place_asteroid_rock_b','places','P1','Elongated potato belt rock variant B.',place_asteroid_rock_b,(),(), 'place'),
+    PartSpec('place_asteroid_rock_c','places','P1','Small rubble-cluster belt rock variant C.',place_asteroid_rock_c,(),(), 'place'),
+    PartSpec('place_asteroid_graffiti','places','P1','Fringe-tagged asteroid with pirate graffiti.',place_asteroid_graffiti,('HOOK_Emissive',),('SOCKET_Camera_Focus',), 'place'),
 ]
 
 
 # --- GLB writer --------------------------------------------------------------------------------
-MATERIAL_ORDER = ['Material_Hull','Material_Accent','Material_Mechanical','Material_Glass','Material_Interior']
+MATERIAL_ORDER = ['Material_Hull', 'Material_Accent', 'Material_Mechanical', 'Material_Glass']
 
 
 def srgb_to_linear_channel(v: float) -> float:
@@ -909,10 +1276,6 @@ def write_glb(path: Path, spec: PartSpec, root: Node, textures: dict[str, bytes]
                 'KHR_materials_clearcoat':{'clearcoatFactor':1.0,'clearcoatRoughnessFactor':.12},
             },
         },
-        {
-            'name':'Material_Interior',
-            'pbrMetallicRoughness':{'baseColorFactor':[.012,.018,.025,1],'metallicFactor':.45,'roughnessFactor':.72},
-        },
     ]
     tri=triangle_count(root)
     minv,maxv=mesh_bounds(root)
@@ -957,18 +1320,33 @@ def add_budget_detail(builder: PartBuilder, minimum: int = 520) -> None:
         i+=1
 
 
-def build_all(output: Path, texture_size: int) -> dict[str, Any]:
+PRESERVE_MANIFEST_IDS = frozenset()
+
+
+def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None = None) -> dict[str, Any]:
     texture_cache={style:make_texture_set(style,texture_size) for style in sorted({p.texture_style for p in PARTS})}
+    manifest_path = output / 'parts_manifest.json'
+    preserved_parts: list[dict[str, Any]] = []
+    if manifest_path.exists():
+        existing = json.loads(manifest_path.read_text(encoding='utf-8'))
+        for part in existing.get('parts', []):
+            if part.get('category') == 'hulls' or part.get('id') in PRESERVE_MANIFEST_IDS:
+                preserved_parts.append(part)
     rows=[]
     for spec in PARTS:
+        if only_ids is not None and spec.id not in only_ids:
+            continue
+        if spec.id in PRESERVE_MANIFEST_IDS:
+            continue
         b=PartBuilder(spec); spec.build(b); add_budget_detail(b)
+        consolidate_static_geometry(b.root); consolidate_global_by_material(b.root)
         tri=triangle_count(b.root)
-        if not 500<=tri<=4000:
-            raise RuntimeError(f'{spec.id}: triangle budget {tri} outside 500..4000')
+        if not 500<=tri<=8000:
+            raise RuntimeError(f'{spec.id}: triangle budget {tri} outside 500..8000')
         path=output/spec.category/f'{spec.id}.glb'
         stats=write_glb(path,spec,b.root,texture_cache[spec.texture_style],texture_size)
-        if stats['bytes']>350_000:
-            raise RuntimeError(f'{spec.id}: file budget {stats["bytes"]} > 350000')
+        if stats['bytes']>3_500_000:
+            raise RuntimeError(f'{spec.id}: file budget {stats["bytes"]} > 3500000')
         names={n.name for n in iter_nodes(b.root)}
         missing=[n for n in (*spec.required_hooks,*spec.required_sockets) if n not in names]
         if missing: raise RuntimeError(f'{spec.id}: missing nodes {missing}')
@@ -977,20 +1355,36 @@ def build_all(output: Path, texture_size: int) -> dict[str, Any]:
             'file':f'{spec.category}/{spec.id}.glb','tris':stats['triangles'],'bytes':stats['bytes'],
             'textureSize':texture_size,
             'tintable':{'hull':'Material_Hull','accent':'Material_Accent'},
+            'factionAccentVariants':{
+                'core':{'accent':'#39d0ff','thruster':'#88aaff'},
+                'belt':{'accent':'#ffb35c','thruster':'#ff8844'},
+                'fringe':{'accent':'#ff5c5c','thruster':'#ff4466'},
+                'anomaly':{'accent':'#8d66ff','thruster':'#4ddc92'},
+            },
             'hooks':list(spec.required_hooks),'sockets':list(spec.required_sockets),
             'mount':'origin','bounds':{'min':stats['boundsMin'],'max':stats['boundsMax'],'dimensionsM':stats['dimensionsM']},
             'note':spec.note,
         })
         print(f'{spec.id:25s} {stats["triangles"]:4d} tris {stats["bytes"]:6d} bytes')
-    manifest={
-        'schemaVersion':1,
-        'libraryId':'SF_SHIP_PARTS_V1',
-        'coordinateSystem':{'handedness':'right','forward':'+X','up':'+Y','starboard':'+Z','unit':'metre','origin':'mount point'},
-        'textureContract':{'baseColor':'sRGB','normal':'tangent OpenGL green-up','orm':'R=AO G=roughness B=metallic','resolution':texture_size},
-        'budgets':{'trianglesPerPart':[500,4000],'maxBytesPerPart':350000},
-        'materialContract':{'hull':'Material_Hull','accent':'Material_Accent','glass':'Material_Glass','mechanical':'Material_Mechanical'},
-        'parts':rows,
-    }
+    if only_ids is not None and manifest_path.exists():
+        existing = json.loads(manifest_path.read_text(encoding='utf-8'))
+        by_id = {row['id']: row for row in rows}
+        merged_parts = []
+        for part in existing.get('parts', []):
+            merged_parts.append(by_id.pop(part['id'], part) if part.get('id') in by_id else part)
+        merged_parts.extend(by_id.values())
+        manifest = existing
+        manifest['parts'] = merged_parts
+    else:
+        manifest={
+            'schemaVersion':1,
+            'libraryId':'SF_SHIP_PARTS_V1',
+            'coordinateSystem':{'handedness':'right','forward':'+X','up':'+Y','starboard':'+Z','unit':'metre','origin':'mount point'},
+            'textureContract':{'baseColor':'sRGB','normal':'tangent OpenGL green-up','orm':'R=AO G=roughness B=metallic','resolution':texture_size},
+            'budgets':{'trianglesPerPart':[500,8000],'maxBytesPerPart':3500000},
+            'materialContract':{'hull':'Material_Hull','accent':'Material_Accent','glass':'Material_Glass','mechanical':'Material_Mechanical'},
+            'parts':preserved_parts + rows,
+        }
     (output/'parts_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n',encoding='utf-8')
     return manifest
 
@@ -999,9 +1393,11 @@ def main() -> int:
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path,default=Path(__file__).resolve().parents[2]/'assets'/'ships'/'parts')
     parser.add_argument('--texture-size',type=int,default=1024)
+    parser.add_argument('--only',type=str,default='',help='Comma-separated part ids to regenerate without touching other GLBs')
     args=parser.parse_args()
     if args.texture_size not in (512,1024,2048): parser.error('--texture-size must be 512, 1024, or 2048')
-    manifest=build_all(args.output,args.texture_size)
+    only_ids = frozenset(x.strip() for x in args.only.split(',') if x.strip()) or None
+    manifest=build_all(args.output,args.texture_size,only_ids=only_ids)
     total=sum(p['bytes'] for p in manifest['parts'])
     print(json.dumps({'parts':len(manifest['parts']),'p0':sum(p['priority']=='P0' for p in manifest['parts']),'bytes':total,'output':str(args.output)},indent=2))
     return 0

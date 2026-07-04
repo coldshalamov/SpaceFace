@@ -39,7 +39,7 @@
     "geometry": {
       "ok": true,
       "errors": [],
-      "meshCount": 57,
+      "meshCount": 4,
       "sourceVertexCount": 1028,
       "triangleCount": 1844,
       "boundsMin": [
@@ -60,127 +60,86 @@
     },
     "glb": {
       "triangles": 1844,
-      "meshes": 57,
-      "nodes": 64,
-      "bytes": 199028
+      "meshes": 4,
+      "nodes": 11,
+      "bytes": 148372
     }
   },
   "materials": [
     {
-      "name": "Shell_Aged_Warm_Gray",
-      "color": "#817b70",
-      "metallic": 0.18,
-      "roughness": 0.58,
+      "name": "Material_Hull",
+      "color": "#808080",
+      "metallic": 0,
+      "roughness": 0.5,
       "emissive": null,
-      "alpha": 1.0,
-      "double_sided": false
-    },
-    {
-      "name": "Shell_Replacement_Dark",
-      "color": "#4e5050",
-      "metallic": 0.28,
-      "roughness": 0.62,
-      "emissive": null,
-      "alpha": 1.0,
-      "double_sided": false
-    },
-    {
-      "name": "Mechanical_Graphite",
-      "color": "#10161b",
-      "metallic": 0.78,
-      "roughness": 0.42,
-      "emissive": null,
-      "alpha": 1.0,
-      "double_sided": false
-    },
-    {
-      "name": "Load_Gunmetal",
-      "color": "#252b30",
-      "metallic": 0.88,
-      "roughness": 0.29,
-      "emissive": null,
-      "alpha": 1.0,
-      "double_sided": false
-    },
-    {
-      "name": "Frontier_Cyan",
-      "color": "#4ecbe0",
-      "metallic": 0.08,
-      "roughness": 0.52,
-      "emissive": null,
-      "alpha": 1.0,
-      "double_sided": false
-    },
-    {
-      "name": "Canopy_Smoked",
-      "color": "#061a22",
-      "metallic": 0.08,
-      "roughness": 0.14,
-      "emissive": "#0a3040",
-      "alpha": 0.92,
+      "alpha": 1,
       "double_sided": true
     },
     {
-      "name": "Sensor_Cyan",
-      "color": "#a0eef8",
-      "metallic": 0.05,
-      "roughness": 0.18,
-      "emissive": "#8adce8",
-      "alpha": 1.0,
-      "double_sided": false
-    },
-    {
-      "name": "Drive_Core",
-      "color": "#e6fdff",
-      "metallic": 0.02,
-      "roughness": 0.16,
-      "emissive": "#ffffff",
-      "alpha": 1.0,
-      "double_sided": false
-    },
-    {
-      "name": "Drive_Cyan",
-      "color": "#4ecbe0",
-      "metallic": 0.04,
-      "roughness": 0.2,
-      "emissive": "#4ecbe0",
-      "alpha": 1.0,
-      "double_sided": false
-    },
-    {
-      "name": "Practical_Amber",
-      "color": "#e9a34a",
-      "metallic": 0.04,
-      "roughness": 0.38,
-      "emissive": "#e9a34a",
-      "alpha": 1.0,
-      "double_sided": false
-    },
-    {
-      "name": "Warning_Mustard",
-      "color": "#c28b35",
-      "metallic": 0.06,
-      "roughness": 0.66,
+      "name": "Material_Glass",
+      "color": "#808080",
+      "metallic": 0,
+      "roughness": 0.5,
       "emissive": null,
-      "alpha": 1.0,
+      "alpha": 1,
+      "double_sided": true
+    },
+    {
+      "name": "Material_Mechanical",
+      "color": "#808080",
+      "metallic": 0,
+      "roughness": 0.5,
+      "emissive": null,
+      "alpha": 1,
+      "double_sided": true
+    },
+    {
+      "name": "Material_Accent",
+      "color": "#808080",
+      "metallic": 0,
+      "roughness": 0.5,
+      "emissive": [
+        0.10666666428248088,
+        0.8666666348775228,
+        1
+      ],
+      "alpha": 1,
+      "double_sided": true
+    },
+    {
+      "name": "Contract_Placeholder_4",
+      "color": "#808080",
+      "metallic": 0.2,
+      "roughness": 0.6,
+      "emissive": null,
+      "alpha": 1,
       "double_sided": false
     },
     {
-      "name": "Field_Repair_Sage",
-      "color": "#53665a",
-      "metallic": 0.22,
-      "roughness": 0.72,
+      "name": "Contract_Placeholder_5",
+      "color": "#808080",
+      "metallic": 0.2,
+      "roughness": 0.6,
       "emissive": null,
-      "alpha": 1.0,
+      "alpha": 1,
       "double_sided": false
     },
     {
-      "name": "Oxidized_Rust",
-      "color": "#6b3f2b",
-      "metallic": 0.02,
-      "roughness": 0.86,
+      "name": "Contract_Placeholder_6",
+      "color": "#808080",
+      "metallic": 0.2,
+      "roughness": 0.6,
       "emissive": null,
-      "alpha": 1.0,
+      "alpha": 1,
+      "double_sided": false
+    },
+    {
+      "name": "Contract_Placeholder_7",
+      "color": "#808080",
+      "metallic": 0.2,
+      "roughness": 0.6,
+      "emissive": null,
+      "alpha": 1,
       "double_sided": false
     }
   ],
@@ -188,7 +147,7 @@
     {
       "name": "SOCKET_Weapon_Front",
       "translation": [
-        12.0,
+        12,
         0.82,
         0
       ],
