@@ -68,6 +68,7 @@ export const weapons = {
       // Manual fire (LMB/Space) always wins; it aims at the mouse. Otherwise, if auto-fire is on,
       // find the nearest aggressive enemy and fire at it (so the player can fly while guns auto-engage).
       let firing = !!state.input.fire;
+      if (state.input.actions?.tetherFire) firing = false;
       let autoTgt = null;
       if (!firing && state.input.autoFire) {
         autoTgt = this._autoFireTarget(player, state);

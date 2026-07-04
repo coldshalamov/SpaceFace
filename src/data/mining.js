@@ -3,6 +3,54 @@
 //          RECIPES (4 refine/craft chains), FIELDS (4 tier params).
 // Ore IDs use cmdty_ prefix per ARCHITECTURE §0.4. Pure data, no imports.
 
+const TAU = Math.PI * 2;
+
+function fallbackHash32(...args) {
+  let h = 0x811c9dc5;
+  const str = args.join('|');
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+function fallbackMulberry32(seed) {
+  let a = seed >>> 0;
+  return function rng() {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function round6(n) {
+  return Math.round((Number(n) || 0) * 1e6) / 1e6;
+}
+
+export function deriveAsteroidSeams(seed, asteroidId, radius, opts = {}) {
+  const hash32 = opts.hash32 || fallbackHash32;
+  const mulberry32 = opts.mulberry32 || fallbackMulberry32;
+  const rng = mulberry32(hash32(seed, asteroidId));
+  const requested = Number.isInteger(opts.count) ? opts.count : 1 + Math.floor(rng() * 4);
+  const count = Math.max(0, Math.min(4, requested));
+  const r = Math.max(1, Number(radius) || 1);
+  const seams = [];
+  for (let i = 0; i < count; i++) {
+    const angle = rng() * TAU;
+    const radial = r * (0.35 + rng() * 0.55);
+    seams.push({
+      angle: round6(angle),
+      localOffset: {
+        x: round6(Math.cos(angle) * radial),
+        z: round6(Math.sin(angle) * radial),
+      },
+    });
+  }
+  return seams;
+}
+
 export const ORES = [
   // --- RAW extraction outputs ---
   { id: 'cmdty_silicate',            name: 'Silicate Rock',         category: 'raw',       mass: 0.6, vol: 1.0, baseValue: 4,   tier: 0, tags: ['common'] },

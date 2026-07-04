@@ -1,0 +1,8 @@
+---
+pid: 31732
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "& \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\" --background --online-mode --command blender_mcp"
+started_at: 2026-07-04T02:29:02.283Z
+running_for_ms: 294998   
+---
+MCP server started on localhost:9876, press Ctrl+C to exit.

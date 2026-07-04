@@ -397,7 +397,7 @@ export const starmapScreen = {
     rootEl.id = 'sf-starmap';
     rootEl.innerHTML = `
       <div class="sm-head">
-        <div class="sm-title">Star Map · Live Grid</div>
+        <div class="sm-title">NAV CHART</div>
         <div class="sm-head-actions">
           <div class="sm-stats">
             <div>FUEL <b data-fuel>--/--</b></div>
@@ -487,7 +487,7 @@ export const starmapScreen = {
   },
 
   onKey(event, ctx) {
-    if (event && (event.key === 'm' || event.key === 'M')) {
+    if (event && (event.key === BINDINGS.starmap.key || event.key === BINDINGS.starmap.label)) {
       closeScreen(ctx || this._ctx);
       return true;
     }

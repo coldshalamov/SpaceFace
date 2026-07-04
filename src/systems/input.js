@@ -1,12 +1,20 @@
 // Input system: samples keyboard + mouse, projects the cursor to the world plane, and writes
-// state.input each tick. Control scheme (Phase 1 flight rework — "arrows fly, mouse aims"):
-//   ↑/W  thrust forward along the nose   ↓/S  reverse thrust (weaker)
-//   ←→ / A D  YAW the ship's nose left/right (not strafe — the ship banks into the turn)
-//   Q/E  lateral thrusters left/right
-//   Mouse  independent aim for gimballed weapons + click to fire
-//   LMB / Space / RT  fire group 1 (manual)   RMB / LT  mining beam (group 2)   Shift / RB  boost
-//   X / R3  deploy countermeasure if equipped
-//   F  toggle auto-fire (handled in weapons; only the toggle edge lives here)
+// state.input each tick. TWO control schemes (GDD_2_0 §4.1), picked by
+// settings.gameplay.controlScheme ('helm-assist' default | 'classic'):
+//
+//   HELM ASSIST (default) — the ship's NOSE FOLLOWS THE MOUSE CURSOR (rate-limited by the ship's
+//   own turn stats, so mass still reads). W/S thrust fwd/rev, A/D lateral strafe, Space =
+//   brake-to-stop (computed counter-thrust through the normal thrust pipeline — heavy ships brake
+//   heavy). LMB fire. Arrows reel the tether in/out while latched.
+//
+//   CLASSIC — the 1.x scheme: ↑/W throttle, ←→/A D yaw the nose (bank into turns), Q/E strafe,
+//   mouse aims weapons independently, Space fires.
+//
+//   BOTH schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · F auto-fire
+//   G tether latch/cut · Q charge throw (helm) · R detonate charges · C scanner pulse · V cruise.
+//   New verbs land on state.input.actions.* as edge-triggered flags (the LOCKED input contract in
+//   BUILD_PLAN_2_0 §0) — consumer systems (tetherGameplay, impulseCharges, scanner, cruise) read
+//   them; input never calls those systems directly.
 // Flight/combat keys are owned here; UI-owned global keys are handled in src/ui/input.js.
 // NOTE: NPC ships NEVER read state.input — they write e.data.intent directly (ai.js), so this
 // control remap does not affect them.
@@ -22,8 +30,23 @@
 // for movement so arrow-key players aren't stranded.
 import { createGamepad } from './gamepad.js';
 import { createTouch } from './touch.js';
+import { wrapAngle } from '../core/rng.js';
 
-const DEFAULT_BINDINGS = {
+// Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
+// so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
+const HELM_SOFT_ANGLE = 0.55;
+const HELM_DEADBAND = 0.012;   // rad — below this the nose is "on" the cursor; stops micro-jitter
+const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this for a smooth settle
+
+// Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
+const VERB_BINDINGS = {
+  tether:         ['KeyG'],   // edge: latch when free, cut when attached
+  chargeDetonate: ['KeyR'],   // edge: detonate all armed impulse charges
+  scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
+  cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
+};
+
+const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   forward:  ['KeyW', 'ArrowUp'],
   reverse:  ['KeyS', 'ArrowDown'],
   yawRight: ['KeyD', 'ArrowRight'],
@@ -32,21 +55,53 @@ const DEFAULT_BINDINGS = {
   strafeRight: ['KeyE'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     ['Space'],          // mouse LMB also fires (see update)
+  brake:    [],                 // classic derives brake from reverse-held (legacy feel)
   autoFire: ['KeyF'],
   countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
+  chargeThrow: ['KeyY'],       // classic: Q/E are strafe and T is the tech-tree UI key, so throw lives on Y
+  reelIn:  [],                 // classic: arrows are movement; reel via helm scheme only
+  reelOut: [],
+  ...VERB_BINDINGS,
   // Mouse buttons (LMB=fire, RMB=group2/mine) are not remappable in this pass — they're ergonomic
   // constants. Keyboard equivalents (Space to fire) ARE remappable.
 };
 
-// Resolve the live binding for an action: prefer settings, fall back to defaults. Always returns an
-// array of codes (so a missing setting doesn't break input).
+const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
+  forward:  ['KeyW'],
+  reverse:  ['KeyS'],
+  yawRight: [],                // nose follows cursor — yaw keys retired in this scheme
+  yawLeft:  [],
+  strafeLeft:  ['KeyA'],
+  strafeRight: ['KeyD'],
+  boost:    ['ShiftLeft', 'ShiftRight'],
+  fire:     [],                // LMB only — Space becomes brake
+  brake:    ['Space'],
+  autoFire: ['KeyF'],
+  countermeasure: ['KeyX'],
+  chargeThrow: ['KeyQ'],
+  reelIn:  ['ArrowUp'],        // arrows are free in helm — they winch the tether
+  reelOut: ['ArrowDown'],
+  ...VERB_BINDINGS,
+};
+
+const SCHEME_BINDINGS = { classic: DEFAULT_BINDINGS, 'helm-assist': HELM_BINDINGS };
+
+// Active control scheme; helm-assist is the 2.0 default (GDD §4.1).
+function activeScheme(state) {
+  const s = state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
+  return SCHEME_BINDINGS[s] ? s : 'helm-assist';
+}
+
+// Resolve the live binding for an action: player rebinds (settings) win, then the active scheme's
+// table, then classic defaults. Always returns an array of codes.
 function binding(state, action) {
   const cfg = state.settings && state.settings.controls && state.settings.controls.bindings;
-  const list = (cfg && cfg[action]) || DEFAULT_BINDINGS[action];
+  const scheme = SCHEME_BINDINGS[activeScheme(state)];
+  const list = (cfg && cfg[action]) || scheme[action] || DEFAULT_BINDINGS[action];
   return Array.isArray(list) ? list : (list ? [list] : []);
 }
 
-export const DEFAULTS = { BINDINGS: DEFAULT_BINDINGS };
+export const DEFAULTS = { BINDINGS: DEFAULT_BINDINGS, SCHEMES: SCHEME_BINDINGS };
 
 const KEY_CODE_FALLBACKS = {
   w: 'KeyW',
@@ -58,6 +113,10 @@ const KEY_CODE_FALLBACKS = {
   f: 'KeyF',
   c: 'KeyC',
   x: 'KeyX',
+  g: 'KeyG',
+  r: 'KeyR',
+  v: 'KeyV',
+  t: 'KeyT',
   ' ': 'Space',
   space: 'Space',
   arrowup: 'ArrowUp',
@@ -190,11 +249,19 @@ export const input = {
     if (tp) tp.tick(dt);
 
     const inp = state.input;
+    // The LOCKED input contract (BUILD_PLAN_2_0 §0): consumer systems read these each tick.
+    const acts = inp.actions || (inp.actions = {
+      brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0,
+      chargeThrow: false, chargeDetonate: false, scanPulse: false,
+    });
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
       inp.moveX = 0; inp.moveZ = 0; inp.turnIntent = 0;
       inp.fire = false; inp.boost = false; inp.brake = false; inp.fireGroup = null;
+      acts.brake = false; acts.cruise = false; acts.tetherFire = false; acts.tetherCut = false;
+      acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false;
       this._m0 = false; this._m2 = false;
+      this._edgePrev = this._edgePrev || {};
       return;
     }
 
@@ -251,11 +318,14 @@ export const input = {
     // Keyboard/mouse is authoritative when both are active (whichever moved last wins for aim).
     const kbmRecent = this._lastKbmMs >= (gp ? gp.lastActiveMs : 0) && this._lastKbmMs >= (tp ? tp.lastActiveMs : 0);
 
+    const helm = activeScheme(state) === 'helm-assist';
     inp.turnIntent = kbdTurn || gpTurn || tpTurn;
     inp.moveX = kbdMoveX || tpMoveX;
     inp.moveZ = kbdMoveZ || (gpBrake ? -1 : gpMoveZ) || tpMoveZ;
     inp.boost = kbdBoost || gpBoost || tpBoost;
-    inp.brake = down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55;
+    inp.brake = helm
+      ? (this._held(state, 'brake') || gpBrake)
+      : (down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
     inp.fireGroup = (this._m2 || gpMine || tpMine) ? 2 : (inp.fire ? 1 : null);
 
@@ -299,6 +369,56 @@ export const input = {
       inp.aimWorld.x = w.x; inp.aimWorld.z = w.z;
       if (p) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);
       inp.mouseNdc.x = this._ndc.x; inp.mouseNdc.y = this._ndc.y;
+    }
+
+    // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
+    const edges = this._edgePrev || (this._edgePrev = {});
+    const edge = (action) => {
+      const held = this._held(state, action);
+      const was = !!edges[action];
+      edges[action] = held;
+      return held && !was;
+    };
+    const tetherEdge = edge('tether');
+    acts.tetherFire = tetherEdge;    // tetherGameplay disambiguates by attach state:
+    acts.tetherCut = tetherEdge;     // free → latch, attached → cut (single G toggle)
+    acts.chargeThrow = edge('chargeThrow');
+    acts.chargeDetonate = edge('chargeDetonate');
+    acts.scanPulse = edge('scanPulse');
+    acts.cruise = edge('cruise');
+    // reelIn (ArrowUp) SHORTENS the line (negative rest-length delta pulls you toward the anchor);
+    // reelOut (ArrowDown) pays out slack. Positive reelDelta = longer rest length in the tether system.
+    acts.reelDelta = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
+    acts.brake = inp.brake;
+
+    // --- Helm Assist steering (GDD §4.1): the nose chases the cursor ---
+    // Gamepad/touch players keep stick-yaw even in helm scheme (kbmRecent gates the override).
+    if (helm && p && kbmRecent) {
+      const err = wrapAngle(inp.aimAngle - p.rot);
+      inp.turnIntent = Math.abs(err) < HELM_DEADBAND
+        ? 0
+        : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+      // Tether trailing (GDD §4.3): while latched and coasting, hand most attitude authority to
+      // the line — the nose-anchored joint torques the hull, so the tail swings outboard and the
+      // ship orbits guns-in. Any thrust/brake/boost input restores full helm authority.
+      const tether = state.player && state.player.tether;
+      const coasting = !inp.moveZ && !inp.moveX && !inp.boost && !inp.brake;
+      if (tether && tether.active && coasting) inp.turnIntent *= 0.12;
+      if (inp.brake) {
+        // Brake-to-stop: decompose the counter-velocity direction into the SAME ship axes
+        // stepTranslation uses (forward = cos/sin rot, right = -sin/cos rot) and feed it through
+        // the normal thrust pipeline — so braking respects per-class accel and reads as mass.
+        const speed = Math.hypot(p.vel.x, p.vel.z);
+        if (speed > 0.5) {
+          const nx = -p.vel.x / speed, nz = -p.vel.z / speed;
+          const cf = Math.cos(p.rot), sf = Math.sin(p.rot);
+          const k = Math.min(1, Math.max(0.4, speed / BRAKE_SOFT_SPEED));
+          inp.moveZ = (nx * cf + nz * sf) * k;
+          inp.moveX = (nx * -sf + nz * cf) * k;
+        } else {
+          inp.moveZ = 0; inp.moveX = 0;
+        }
+      }
     }
   },
 };

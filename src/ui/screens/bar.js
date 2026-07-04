@@ -6,7 +6,7 @@
 import { FACTION_META } from '../../data/factions.js';
 import { escapeHtml } from '../comms.js';
 import { BINDINGS } from '../bindings.js';
-import { SECTORS }      from '../../data/sectors.js';
+import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
 import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
@@ -394,6 +394,34 @@ function currentSector(stationId) {
   return info ? info.sector : SECTORS[0];
 }
 
+function sectorDiscovered(state, sectorId) {
+  const disc = state && state.world && state.world.discovery && state.world.discovery[sectorId];
+  return !!(disc && disc.discovered);
+}
+
+function availableSurveyOffer(state, stationId) {
+  const sec = currentSector(stationId);
+  const candidates = [];
+  for (const nId of (sec.neighbors || [])) {
+    const ns = SECTOR_BY_ID.get(nId);
+    if (!ns || ns.charted !== false) continue;
+    if (sectorDiscovered(state, ns.id)) continue;
+    candidates.push(ns);
+  }
+  candidates.sort((a, b) => (a.tier - b.tier) || a.name.localeCompare(b.name));
+  const sector = candidates[0];
+  return sector ? {
+    sectorId: sector.id,
+    sectorName: sector.name,
+    price: surveyDataPrice(sector),
+    tier: sector.tier,
+  } : null;
+}
+
+function surveyOfferLabel(offer) {
+  return 'Survey Data: ' + (offer && offer.sectorName || 'Unknown Sector');
+}
+
 /** Find a dangerous neighbor sector */
 function dangerousSector(stationId) {
   const sec = currentSector(stationId);
@@ -538,6 +566,11 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
     else add('Lane', sec.name + ' / ' + securityLabel(sec), sec.security < 0.35 ? 'bad' : 'info');
   }
 
+  if (role === 'barkeep') {
+    const survey = availableSurveyOffer(state, stationId);
+    if (survey) add('Survey', survey.sectorName + ' ' + survey.price.toLocaleString('en-US') + ' cr', 'warn');
+  }
+
   if (!tags.length) add('Local', sec.name + ' / ' + securityLabel(sec), 'info');
   return tags.slice(0, 2);
 }
@@ -588,6 +621,13 @@ function buildReply(role, choiceId, ctx, stationId, contact = null) {
     /* ── BARKEEP ───────────────────────────────────────── */
     case 'barkeep': {
       if (choiceId === 'rumors') {
+        const survey = availableSurveyOffer(state, stationId);
+        if (survey) {
+          return {
+            text: 'A courier dropped partial nav data for ' + survey.sectorName + '. It is not free, but it will put the sector on your nav chart.',
+            surveyOffer: survey,
+          };
+        }
         const events = getEconEvents(state);
         if (events.length > 0) {
           const ev = events[0];
@@ -599,6 +639,13 @@ function buildReply(role, choiceId, ctx, stationId, contact = null) {
         return { text: 'Things have been quiet lately. Too quiet, if you ask me. Keep your eyes open out there.' };
       }
       if (choiceId === 'word') {
+        const survey = availableSurveyOffer(state, stationId);
+        if (survey) {
+          return {
+            text: survey.sectorName + ' is still off the public grid. Buy the survey packet and your nav chart will have enough of a fix to plot it.',
+            surveyOffer: survey,
+          };
+        }
         const danger = dangerousSector(stationId);
         if (danger) {
           return { text: 'Watch the lanes near ' + danger.name + ' — security is thin out there. Patrols don\'t reach that far.' };
@@ -924,6 +971,43 @@ export function createBarPanel(ctx) {
       return;
     }
 
+    const surveyBtn = ev.target.closest('[data-buy-survey]');
+    if (surveyBtn) {
+      const sectorId = surveyBtn.getAttribute('data-buy-survey');
+      const offer = availableSurveyOffer(ctx.state || {}, currentStationId);
+      const card = surveyBtn.closest('.st-bar-card');
+      const replyEl = card && card.querySelector('.st-bar-reply');
+      if (!offer || offer.sectorId !== sectorId) {
+        if (replyEl) {
+          replyEl.textContent = 'That survey packet is no longer available.';
+          replyEl.classList.add('show');
+        }
+        surveyBtn.disabled = true;
+        surveyBtn.textContent = 'No Longer Available';
+        return;
+      }
+      const credits = (ctx.state && ctx.state.player && ctx.state.player.credits) | 0;
+      if (credits < offer.price) {
+        if (replyEl) {
+          replyEl.textContent = 'You need ' + offer.price.toLocaleString('en-US') + ' cr for ' + surveyOfferLabel(offer) + '.';
+          replyEl.classList.add('show');
+        }
+        ctx.bus.emit('toast', { text: 'Insufficient credits for survey data', kind: 'warn', ttl: 3 });
+        return;
+      }
+      ctx.bus.emit('ui:purchaseSurveyData', { sectorId, stationId: currentStationId });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      if (sectorDiscovered(ctx.state || {}, sectorId)) {
+        if (replyEl) {
+          replyEl.textContent = surveyOfferLabel(offer) + ' added to your nav chart.';
+          replyEl.classList.add('show');
+        }
+        surveyBtn.disabled = true;
+        surveyBtn.textContent = 'Survey Added';
+      }
+      return;
+    }
+
     // Mission accept button
     const acceptBtn = ev.target.closest('[data-accept-mission]');
     if (acceptBtn) {
@@ -1030,6 +1114,25 @@ export function createBarPanel(ctx) {
       }
       acceptButton.setAttribute('aria-label', acceptButton.title);
       offerWrap.appendChild(acceptButton);
+      reply.after(offerWrap);
+    } else if (result.surveyOffer) {
+      const offer = result.surveyOffer;
+      const offerWrap = document.createElement('div');
+      offerWrap.className = 'st-bar-offer';
+      const chips = document.createElement('div');
+      chips.className = 'st-mission-preflight st-bar-offer-preflight';
+      chips.innerHTML =
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--warn">' + escapeHtml(surveyOfferLabel(offer)) + '</span>' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">Tier ' + escapeHtml(offer.tier) + ' frontier chart</span>' +
+        '<span class="st-mission-preflight-chip st-mission-preflight-chip--info">' + escapeHtml(offer.price.toLocaleString('en-US')) + ' cr</span>';
+      offerWrap.appendChild(chips);
+      const buyButton = document.createElement('button');
+      buyButton.className = 'st-bar-accept-btn';
+      buyButton.setAttribute('data-buy-survey', offer.sectorId);
+      buyButton.textContent = 'BUY ' + surveyOfferLabel(offer).toUpperCase() + ' - ' + offer.price.toLocaleString('en-US') + ' CR';
+      buyButton.title = 'Buy ' + surveyOfferLabel(offer) + ' and mark the sector discovered on the nav chart.';
+      buyButton.setAttribute('aria-label', buyButton.title);
+      offerWrap.appendChild(buyButton);
       reply.after(offerWrap);
     }
   });

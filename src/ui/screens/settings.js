@@ -98,16 +98,25 @@ let refs = null;
 const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // Flight actions the player may rebind. (Mouse buttons + Space-as-fire-alt are ergonomic constants
 // and stay out of the rebind grid to keep the model simple.)
-const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire'];
+const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
+  'brake', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut'];
 const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
-  yawLeft: 'Steer left',
-  yawRight: 'Steer right',
+  yawLeft: 'Steer left (Classic scheme)',
+  yawRight: 'Steer right (Classic scheme)',
   strafeLeft: 'Lateral thrust left',
   strafeRight: 'Lateral thrust right',
-  boost: 'Boost',
+  boost: 'Boost / dash',
   autoFire: 'Toggle auto-fire',
+  brake: 'Brake to stop (Helm Assist)',
+  tether: 'Tether: latch / release',
+  chargeThrow: 'Impulse charge: throw',
+  chargeDetonate: 'Impulse charge: detonate',
+  scanPulse: 'Scanner pulse',
+  cruise: 'Cruise drive (charge/drop)',
+  reelIn: 'Tether winch in',
+  reelOut: 'Tether winch out',
 };
 
 export const CONTROL_SHORTCUTS = Object.freeze([
@@ -250,6 +259,7 @@ export const settingsScreen = {
       // smoke) with the camera shake / FOV punch / hit-stop freeze suppressed. Live-applied: the
       // feel module reads settings.video.motionReduce every trigger, so toggling takes effect now.
       rowToggle('Reduce motion', () => !!vd.motionReduce, (v) => this._set(ctx, 'video', 'motionReduce', v));
+      rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v) => this._set(ctx, 'video', 'screenShake', v));
       rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v) => {
         this._set(ctx, null, 'uiScale', v);
         const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);
@@ -265,7 +275,7 @@ export const settingsScreen = {
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
-      rowToggle('Damage numbers', () => s.showDamageNumbers, (v) => this._set(ctx, null, 'showDamageNumbers', v));
+      rowToggle('Damage numbers', () => !!g.damageNumbers, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false });
       rowSelect('Colorblind palette', () => ac.colorblindMode || 'none',
@@ -278,6 +288,7 @@ export const settingsScreen = {
       rowToggle('Reduce motion', () => !!s.video.motionReduce, (v) => this._set(ctx, 'video', 'motionReduce', v));
       pane.appendChild(el('p', 'sf-muted', 'UI scale is on the Video tab. Colorblind mode also recolors radar blips and adds redundant shapes.'));
     } else if (refs.active === 'Controls') {
+      rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'helm-assist', [['helm-assist', 'Helm Assist (mouse steering)'], ['classic', 'Classic Throttle']], (v) => this._set(ctx, 'gameplay', 'controlScheme', v));
       pane.appendChild(el('p', 'sf-muted', 'Click a flight key to rebind it, then press a new key. Fixed ship/system shortcuts are listed below so you do not have to leave Settings to find them.'));
       this._renderControlsRebind(ctx, pane);
       this._renderFixedShortcuts(pane);

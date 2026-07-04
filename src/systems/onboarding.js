@@ -531,7 +531,7 @@ export const onboarding = {
       pointer-events:auto; font-family:var(--font, "Segoe UI", system-ui, sans-serif);
       background:linear-gradient(180deg, rgba(17,29,48,.96), rgba(8,13,24,.96)); border:1px solid var(--panel-edge-2,#2b4a72);
       border-radius:12px; padding:22px 26px; box-shadow:0 18px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(57,208,255,.1) inset;
-      backdrop-filter:blur(8px); animation:sf-ob-in .4s ease; }
+      animation:sf-ob-in .4s ease; }
     @keyframes sf-ob-in { from { opacity:0; } to { opacity:1; } }
     .sf-ob-intro h2 { margin:0 0 4px; font-family:var(--mono,monospace); letter-spacing:.3em; text-transform:uppercase;
       font-size:13px; color:var(--accent,#39d0ff); }

@@ -48,24 +48,34 @@ function makeNebulaCanvas(opts = {}) {
   const rawPalette = ['#5a3ec8', '#7a3aa0', '#2f6fe0', '#1f8f9a', '#c83a8a', '#3a8fc8', '#8a2fa0'];
   const palette = tint ? rawPalette.map((p) => blend(p, tint, 0.35)) : rawPalette;
 
-  // DEEP broad washes first (huge, low-alpha) to establish the moody color field
+  // SCALE DISCIPLINE: at the gameplay camera's 60° tilt the dome shows a small, heavily MAGNIFIED
+  // patch of this canvas — one big soft blob becomes a screen-filling "mystery sphere" behind the
+  // ship (the #1 'giant ambiguous blob' playtest complaint). So: structure comes from MANY SMALL
+  // clouds, not few large ones, and hot spots stay compact. Space between clouds stays DARK —
+  // contrast is what sells depth once the parallax layers move in front of this.
+  // DEEP broad washes first (huge, very low-alpha) to establish the moody color field
   ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 24; i++) {
     const x = rnd() * W, y = H * (0.05 + rnd() * 0.9), r = 600 + rnd() * 700;
     const col = palette[(rnd() * palette.length) | 0];
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.globalAlpha = 0.05 + rnd() * 0.06;
+    ctx.globalAlpha = 0.035 + rnd() * 0.045;
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   }
-  // mid-size cloud blobs — the main readable structure
-  for (let i = 0; i < 110; i++) {
-    const x = rnd() * W, y = H * (0.05 + rnd() * 0.9), r = 140 + rnd() * 460;
+  // cloud structure — many small blobs clustered into filaments (cheap: chained offsets), so the
+  // magnified view reads as wispy nebula rather than one giant lobe
+  let fx = rnd() * W, fy = H * (0.2 + rnd() * 0.6);
+  for (let i = 0; i < 150; i++) {
+    if (rnd() < 0.18) { fx = rnd() * W; fy = H * (0.1 + rnd() * 0.8); }   // start a new filament
+    fx = (fx + (rnd() - 0.5) * 260 + W) % W;
+    fy = Math.max(H * 0.05, Math.min(H * 0.95, fy + (rnd() - 0.5) * 130));
+    const r = 60 + rnd() * 170;
     const col = palette[(rnd() * palette.length) | 0];
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
     g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.globalAlpha = 0.085 + rnd() * 0.15;
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.05 + rnd() * 0.085;
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(fx, fy, r, 0, Math.PI * 2); ctx.fill();
   }
   // dust lanes — dark winding streaks (source-over) that break up the clouds and add structure
   ctx.globalCompositeOperation = 'source-over';
@@ -81,13 +91,13 @@ function makeNebulaCanvas(opts = {}) {
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
-  // bright cores for punch (back to additive)
+  // bright cores for punch — compact and rarer, so they read as distant hot gas, not looming orbs
   ctx.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < 22; i++) {
-    const x = rnd() * W, y = H * (0.15 + rnd() * 0.7), r = 40 + rnd() * 130;
+  for (let i = 0; i < 14; i++) {
+    const x = rnd() * W, y = H * (0.15 + rnd() * 0.7), r = 22 + rnd() * 64;
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, 'rgba(180,210,255,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.globalAlpha = 0.2 + rnd() * 0.25; ctx.fillStyle = g;
+    g.addColorStop(0, 'rgba(190,215,255,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.12 + rnd() * 0.16; ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalCompositeOperation = 'source-over';
@@ -96,10 +106,12 @@ function makeNebulaCanvas(opts = {}) {
   // PAINTED DISTANT PLANETS — 2-3 for real backdrop depth (the system's drawPlanet, previously dead
   // code, now wired in). They read as giant far-off worlds, reinforcing the sense of a lived-in galaxy.
   if (opts.planets !== false) {
+    // Sized for the tilted-camera magnification: past ~r90 a painted planet fills half the screen
+    // and reads as a foreground object instead of a distant world.
     const planetSpecs = [
-      { cx: W * 0.20, cy: H * 0.30, r: 90,  bands: [[60,40,80],[40,30,70],[80,50,110]], atm: [120,80,200] },
-      { cx: W * 0.82, cy: H * 0.66, r: 130, bands: [[30,50,70],[20,40,60],[50,90,110]], atm: [80,160,200] },
-      { cx: W * 0.55, cy: H * 0.16, r: 55,  bands: [[90,50,40],[120,70,40],[70,40,30]], atm: [220,140,80] },
+      { cx: W * 0.20, cy: H * 0.30, r: 58, bands: [[60,40,80],[40,30,70],[80,50,110]], atm: [120,80,200] },
+      { cx: W * 0.82, cy: H * 0.66, r: 78, bands: [[30,50,70],[20,40,60],[50,90,110]], atm: [80,160,200] },
+      { cx: W * 0.55, cy: H * 0.16, r: 38, bands: [[90,50,40],[120,70,40],[70,40,30]], atm: [220,140,80] },
     ];
     for (const p of planetSpecs) {
       // place each planet deterministically with a stable light direction (upper-left)
@@ -117,6 +129,14 @@ function makeNebulaCanvas(opts = {}) {
 }
 
 // --- small color helpers for sector tinting (no deps) ---
+function normalizeTint(tint) {
+  if (tint == null) return null;
+  if (typeof tint === 'number' && Number.isFinite(tint)) {
+    return '#' + ((tint >>> 0) & 0xffffff).toString(16).padStart(6, '0');
+  }
+  if (typeof tint === 'string') return tint.startsWith('#') ? tint : '#' + tint.replace(/^0x/i, '');
+  return null;
+}
 function hexToRgb(hex) {
   const h = hex.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
 }
@@ -180,7 +200,7 @@ export function createStarfield(scene, opts = {}) {
   const layers = [];
   const sprite = makeStarSprite();
   let bgTexture = null;
-  let currentTint = opts.tint || null;
+  let currentTint = normalizeTint(opts.tint);
 
   // star tints (mostly cool white/blue with a few warm + teal accents)
   const TINTS = [0xffffff, 0xcfe0ff, 0x9fb6e0, 0xfff0d8, 0x8af0d6, 0xbfd2ff];
@@ -300,8 +320,9 @@ export function createStarfield(scene, opts = {}) {
     // Swap the nebula mood on sector enter — each region of the galaxy reads with its own color
     // signature (core = clean blue, industrial = rust/amber, frontier = blood-red, alien = violet).
     setSectorTint(tint) {
-      if (tint === currentTint) return;
-      currentTint = tint || null;
+      const nextTint = normalizeTint(tint);
+      if (nextTint === currentTint) return;
+      currentTint = nextTint;
       applyBackground(currentTint);
     },
     setWarp() { /* extended by vfx during jump */ },

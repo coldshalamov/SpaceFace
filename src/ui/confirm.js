@@ -21,12 +21,12 @@ function injectStyle() {
   s.id = STYLE_ID;
   s.textContent = `
   #sf-confirm-root { position:fixed; inset:0; z-index:5000; display:flex; align-items:center;
-    justify-content:center; background:rgba(3,5,10,.78); backdrop-filter:blur(6px);
+    justify-content:center; background:rgba(3,5,10,.82);
     opacity:0; transition:opacity .16s var(--ease); pointer-events:auto; }
   #sf-confirm-root.sf-confirm--in { opacity:1; }
   .sf-confirm { width:min(440px, 92vw); background:linear-gradient(180deg,var(--panel-2),var(--panel));
     border:1px solid var(--panel-edge); border-radius:var(--r-lg); padding:var(--sp-5);
-    box-shadow:var(--sh-3), 0 0 0 1px rgba(57,208,255,.08) inset; backdrop-filter:blur(8px);
+    box-shadow:var(--sh-3), 0 0 0 1px rgba(57,208,255,.08) inset;
     animation:sf-fadein var(--dur) var(--ease) both; }
   .sf-confirm__title { font-family:var(--mono); font-size:var(--t-lg); letter-spacing:.12em;
     text-transform:uppercase; color:var(--accent); text-shadow:0 0 14px rgba(57,208,255,.4);

@@ -45,6 +45,23 @@ const TOUCH_PROMPTS = Object.freeze({
   firstGate: 'Jump gates connect star systems. Tap Star to open the Star Map and plot a jump route.',
 });
 
+// HELM ASSIST (GDD §4.1, the 2.0 default scheme) — kbm copy for "the nose follows the mouse".
+// Only keys whose copy mentions movement are overridden; everything else falls through to the
+// classic table. Keep verbs honest: don't promise mechanics that haven't shipped.
+const KBM_HELM_OVERRIDES = Object.freeze({
+  flight: `Mouse steer+aim  •  W thrust  •  S reverse  •  A D strafe  •  Space brake  •  LMB fire  •  RMB mine  •  Shift boost  •  G tether  •  X countermeasure  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} nav chart  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.cargo.label} cargo`,
+  combat: 'Steer with the mouse  •  LMB fire  •  Tab cycle targets  •  X countermeasure  •  F auto-fire  •  Shift boost  •  Space brake to break pursuit',
+  tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Your nose follows the mouse — W thrusts toward it, Space brakes.',
+  firstFlight: `Your nose follows the mouse. W thrusts, S reverses, A/D strafe, Space brakes to a full stop, Shift boosts. LMB fires the Pulse Laser S, RMB mines marked rocks. ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} the nav chart, ${BINDINGS.dock.label} docks.`,
+  firstCombat: 'Hostile detected! Steer with the mouse and fire with LMB. F toggles auto-fire. Space-brake hard to break their firing line.',
+});
+
+// Active kbm scheme — uiRoot keeps this current from settings (boot + settings:changed).
+let _kbmScheme = 'helm-assist';
+export function setPromptScheme(scheme) {
+  _kbmScheme = scheme === 'classic' ? 'classic' : 'helm-assist';
+}
+
 export const CONTROL_PROMPTS = Object.freeze({
   kbm: KBM_PROMPTS,
   gamepad: GAMEPAD_PROMPTS,
@@ -63,6 +80,9 @@ export function currentPromptModality(ctx = {}) {
 }
 
 export function controlPrompt(key, modality = 'kbm') {
+  if ((modality === 'kbm' || !CONTROL_PROMPTS[modality]) && _kbmScheme !== 'classic' && KBM_HELM_OVERRIDES[key]) {
+    return KBM_HELM_OVERRIDES[key];
+  }
   const prompts = CONTROL_PROMPTS[modality] || CONTROL_PROMPTS.kbm;
   return prompts[key] || CONTROL_PROMPTS.kbm[key] || '';
 }

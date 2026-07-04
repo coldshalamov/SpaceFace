@@ -66,4 +66,5 @@ export const COMMODITIES = [
   // --- MILITARY (restricted) ---
   { id: 'cmdty_weapons',            name: 'Weapon Systems',        category: 'military',  basePrice: 280, volatility: 0.40, elasticity: 0.48, legality: 'restricted', volPerU: 0.9, massPerU: 1.5, fineMult: 1.2, producedBy: ['military'],                       consumedBy: ['military','blackmarket'] },
   { id: 'cmdty_munitions',          name: 'Munitions',             category: 'military',  basePrice: 115, volatility: 0.32, elasticity: 0.48, legality: 'restricted', volPerU: 0.6, massPerU: 1.1, fineMult: 0.8, producedBy: ['military','fab'],                 consumedBy: ['military','blackmarket'] },
+  { id: 'cmdty_impulse_charge',     name: 'Impulse Charge',        category: 'military',  basePrice: 180, volatility: 0.25, elasticity: 0.50, legality: 'restricted', volPerU: 2.0, massPerU: 2.0, fineMult: 1.0, producedBy: ['military','fab'],                 consumedBy: ['military','blackmarket'] },
 ];

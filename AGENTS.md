@@ -1,5 +1,18 @@
 # SpaceFace Agent Policy
 
+## Read First — SPACEFACE 2.0
+- **Implementing a feature? `design/spec2/` is the current implementation spec suite** —
+  start at `design/spec2/INDEX.md` (dispatch map) and `design/spec2/00_MASTER_TASTE.md`
+  (the taste constitution every spec inherits; its Forbidden list is grounds for rejecting a diff).
+- `design/GDD_2_0.md` is the AUTHORITATIVE design document (vision, pillars, all system designs).
+  Where it conflicts with older design docs (V2_MASTER_PLAN, HUD_REVAMP_DESIGN, IMPROVEMENT_IDEAS),
+  the GDD wins. `ARCHITECTURE.md` remains the authoritative technical contract.
+- `design/BUILD_PLAN_2_0.md` is the live execution plan: workstream status, file-ownership map for
+  parallel agents, the LOCKED input contract (`state.input.actions.*`), and per-item acceptance
+  criteria + verification commands. Claim the next unclaimed item there; update its status when done.
+- HUD design rule (standing user preference): clean NON-diegetic HUD. No first-person/visor/cockpit
+  motifs — no screen-edge arcs, no helmet avatars.
+
 ## One Game Path
 - Browser play, Electron dev, Chrome probes, and packaged desktop builds must boot the same player-facing game route and entrypoint.
 - Launcher differences may cover only shell concerns: window chrome, fixed local port, packaging, GPU process hints, and production debug stripping.

@@ -361,25 +361,42 @@ export function createHud(ctx, alerts) {
   const mtObj = missionTracker.querySelector('.sf-mt-obj');
   const mtTime = missionTracker.querySelector('.sf-mt-time');
 
-  // ---- bottom-center: throttle / speed / cargo / credits / weapons ----
+  // ---- bottom-center (HUD 2.0, GDD §9.4): only SPD + WPN live here permanently. Cargo, credits,
+  // and ship class are CONTEXTUAL CHIPS — they appear when their value changes, then fade. The old
+  // seven-stat text strip whispered everything at once; now the HUD only speaks when something
+  // changed. THR/STOP retired to the SPD hover tip (already carries the braking solution).
   const center = document.createElement('div');
   center.className = 'sf-cluster';
   center.innerHTML = `
-    <div class="sf-stat sf-stat--info"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span><div class="sf-tip" data-tip="speed"></div></div>
-    <div class="sf-stat sf-stat--info"><span class="sf-stat__k">THR</span><span class="sf-stat__v mono" data-k="throttle">0%</span><div class="sf-tip" data-tip="throttle"></div></div>
-    <div class="sf-stat sf-stat--info"><span class="sf-stat__k">STOP</span><span class="sf-stat__v mono" data-k="stop">—</span><div class="sf-tip" data-tip="stop"></div></div>
-    <div class="sf-stat sf-stat--wide sf-stat--info"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span><div class="sf-tip" data-tip="cargo"></div></div>
-    <div class="sf-stat sf-stat--wide sf-stat--info"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span><div class="sf-tip" data-tip="credits"></div></div>
+    <div class="sf-stat sf-stat--info sf-stat--speed"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span><div class="sf-tip" data-tip="speed"></div></div>
     <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
-    <div class="sf-stat sf-stat--wide sf-stat--info" id="sf-rolestat"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span><div class="sf-tip" data-tip="class"></div></div>`;
+    <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">TETHER</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span></div>
+    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
+    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
+    <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
   root.appendChild(center);
   const elSpeed = center.querySelector('[data-k=speed]');
-  const elThrottle = center.querySelector('[data-k=throttle]');
-  const elStop = center.querySelector('[data-k=stop]');
   const elCargo = center.querySelector('[data-k=cargo]');
   const elCredits = center.querySelector('[data-k=credits]');
   const elWeapons = center.querySelector('[data-k=weapons]');
   const elRole = center.querySelector('[data-k=role]');
+  const elTetherStat = center.querySelector('#sf-tetherstat');
+  const elTether = center.querySelector('[data-k=tether]');
+  const chipEls = {
+    cargo: center.querySelector('[data-chip=cargo]'),
+    credits: center.querySelector('[data-chip=credits]'),
+    role: center.querySelector('[data-chip=role]'),
+  };
+  const _chipTimers = new Map();
+  // Show a chip for a beat, then let it fade. Repeat calls refresh the timer (a count-up animation
+  // keeps its chip alive until the number settles).
+  function chipShow(key, ms = 4000) {
+    const el = chipEls[key];
+    if (!el) return;
+    el.classList.add('sf-chip-show');
+    clearTimeout(_chipTimers.get(el));
+    _chipTimers.set(el, setTimeout(() => el.classList.remove('sf-chip-show'), ms));
+  }
 
   // ---- HUD stat tooltips: populate on hover to show detailed info ----
   const tipEls = {};
@@ -632,7 +649,7 @@ export function createHud(ctx, alerts) {
       background:rgba(6,10,20,.82); border:1px solid var(--panel-edge, rgba(120,160,200,.25));
       color:var(--ink, #d7e6ff); font-size:15px; line-height:1.35; text-align:center;
       pointer-events:none; opacity:0; transition:opacity .18s ease, transform .18s ease;
-      backdrop-filter:blur(3px); text-shadow:0 1px 6px rgba(0,0,0,.7); z-index:40;
+      text-shadow:0 1px 6px rgba(0,0,0,.7); z-index:40;
       letter-spacing:.01em; }
     .sf-caption.show { opacity:1; transform:translate(-50%, 0); }
     .sf-caption.assertive { border-color:var(--accent, #39d0ff); box-shadow:0 0 16px rgba(57,208,255,.35); }
@@ -943,6 +960,7 @@ export function createHud(ctx, alerts) {
     _credT = 0;
     creditsDirty = false;
     setText(elCredits, Math.round(_credFrom).toLocaleString());
+    if (_credTo !== _credFrom) chipShow('credits');   // money moved — surface the chip
   }
   // Advance the tween on the 10Hz slow tick while a tween is in flight. When at rest this is a no-op.
   function tickCreditsTween(dt) {
@@ -955,7 +973,9 @@ export function createHud(ctx, alerts) {
     const c = (state.player || {}).cargo || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
-    setText(elCargo, `${used} / ${cap} u`);
+    const label = `${used} / ${cap} u`;
+    if (elCargo && elCargo.textContent !== label) chipShow('cargo');   // hold changed — surface it
+    setText(elCargo, label);
     setClass(elCargo, 'sf-warn', cap > 0 && used >= cap);
   }
   let lastObjectivesSig = '';
@@ -1194,22 +1214,23 @@ export function createHud(ctx, alerts) {
       setClass(actionBoxes['dock'], 'sf-act-active', dockInRange);
     }
 
-    // --- speed / throttle (numerics @10Hz) ---
+    // --- speed (numerics @10Hz) — THR/STOP live in the SPD hover tip now (HUD 2.0) ---
     if (slow && p) {
       const sp = Math.hypot(p.vel.x, p.vel.z);
       setText(elSpeed, Math.round(sp) + '');
-      const maxSp = p.maxSpeed || 1;
-      setText(elThrottle, Math.round(clamp01(sp / maxSp) * 100) + '%');
-      // STOP readout (spec §15.2/§15.3): the shortest projected stop distance/time from the live
-      // braking solution. Hidden when effectively stopped so it never reads "0 wu" noise.
-      if (sp > 0.5) {
-        const brake = estimateBrakingSolution(p, resolvePropulsionProfile(p));
-        const bestDist = Math.min(brake.directDistance, brake.flipBurnDistance);
-        setText(elStop, Math.round(bestDist) + ' wu');
-        setClass(elStop, 'sf-warn', bestDist > 600);
-      } else {
-        setText(elStop, '—');
-        elStop.classList.remove('sf-warn');
+      // Tether readout: persistent while latched (GDD §4.3 discoverability — the line has a
+      // dedicated indicator naming its release key, so "how do I turn this off" never recurs).
+      const tether = state.player && state.player.tether;
+      if (elTetherStat) {
+        const active = !!(tether && tether.active);
+        elTetherStat.style.display = active ? '' : 'none';
+        if (active) {
+          const strain = tether.strain || 0;
+          const targetEnt = state.entities.get(tether.targetId);
+          const targetName = (targetEnt && (targetEnt.name || (targetEnt.data && targetEnt.data.name))) || (targetEnt ? targetEnt.type : '');
+          setText(elTether, `${strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' : 'LOCKED'}${targetName ? ' · ' + String(targetName).toUpperCase() : ''} · [G] RELEASE`);
+          setClass(elTether, 'sf-warn', strain > 0.6);
+        }
       }
       // Weapon status: count of guns + auto-fire state. Shows the strategic loadout at a glance
       // and whether the guns will auto-engage aggressive enemies while you fly.
@@ -1234,11 +1255,13 @@ export function createHud(ctx, alerts) {
       // archetype and propulsion switch when they buy a new hull. Updates cheaply each slow tick.
       const defId = p.data && p.data.defId;
       if (defId !== lastDefId) {
+        const isFirst = lastDefId === undefined;
         lastDefId = defId;
         const def = SHIP_BY_ID.get(defId);
         if (def) {
           const drive = driveFamilyFor(def);
           setText(elRole, def.name + ' · ' + (ROLE_LABEL[def.role] || def.role || 'Ship') + (drive ? ' · ' + drive : ''));
+          if (!isFirst) chipShow('role', 6000);   // new hull — worth a moment on screen
         } else {
           setText(elRole, '—');
         }

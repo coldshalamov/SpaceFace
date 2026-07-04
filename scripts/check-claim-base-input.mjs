@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { createUiInput } from '../src/ui/input.js';
+import { BINDINGS } from '../src/ui/bindings.js';
 
 function installDomHarness() {
   const documentListeners = new Map();
@@ -105,7 +106,7 @@ function assertNoComingSoon(events) {
 
 function checkAlreadyClaimedBodyOpensBase() {
   const h = makeHarness({ claimed: true });
-  const event = press(h.listeners, 'c');
+  const event = press(h.listeners, BINDINGS.claimBase.key);
   assert.equal(event.defaultPrevented, true, 'claim key should be UI-owned in flight');
   assert.equal(event.propagationStopped, true, 'claim key should not also reach gameplay input when it opens a base');
   assert.deepEqual(h.pushes, ['base'], 'pressing C near an already-claimed body should open the Base screen');
@@ -116,7 +117,7 @@ function checkAlreadyClaimedBodyOpensBase() {
 
 function checkNewClaimOpensBaseImmediately() {
   const h = makeHarness({ claimed: false });
-  const event = press(h.listeners, 'c');
+  const event = press(h.listeners, BINDINGS.claimBase.key);
   assert.equal(event.defaultPrevented, true, 'claim key should be UI-owned when a claimable body is in range');
   assert.equal(event.propagationStopped, true, 'claim key should not also reach gameplay input while claiming a body');
   assert.equal(h.events.some((event) => event.name === 'claim:call'), true, 'unclaimed body should call claims.claim');
@@ -129,7 +130,7 @@ function checkNewClaimOpensBaseImmediately() {
 
 function checkClaimKeyFallsThroughAwayFromBodies() {
   const h = makeHarness({ withClaimPoi: false });
-  const event = press(h.listeners, 'c');
+  const event = press(h.listeners, BINDINGS.claimBase.key);
   assert.equal(event.defaultPrevented, false, 'C away from claimable bodies should fall through to normal flight input');
   assert.equal(event.propagationStopped, false, 'C away from claimable bodies should not stop gameplay input');
   assert.deepEqual(h.pushes, [], 'C away from claimable bodies should not open the Base screen');
@@ -143,7 +144,7 @@ function checkClaimKeyFallsThroughAwayFromBodies() {
 
 function checkRegistrationRaceDoesNotLie() {
   const h = makeHarness({ claimed: true, baseRegistered: false });
-  const event = press(h.listeners, 'c');
+  const event = press(h.listeners, BINDINGS.claimBase.key);
   assert.equal(event.defaultPrevented, true, 'base registration race should still consume the claim key');
   assert.equal(event.propagationStopped, true, 'base registration race should not also reach gameplay input');
   assert.deepEqual(h.pushes, [], 'unregistered base screen should not be pushed');

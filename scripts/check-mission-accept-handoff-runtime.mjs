@@ -271,6 +271,8 @@ try {
       text: normalize(screen && screen.textContent),
       recText: normalize(screen && screen.querySelector('.sf-mlog-recommend') && screen.querySelector('.sf-mlog-recommend').textContent),
       trackedCard: normalize(screen && screen.querySelector('.sf-mlog-card.tracked') && screen.querySelector('.sf-mlog-card.tracked').textContent),
+      nextText: normalize(screen && screen.querySelector('.sf-mlog-card.tracked .sf-mlog-next') && screen.querySelector('.sf-mlog-card.tracked .sf-mlog-next').textContent),
+      destText: normalize(screen && screen.querySelector('.sf-mlog-card.tracked .sf-mlog-dest') && screen.querySelector('.sf-mlog-card.tracked .sf-mlog-dest').textContent),
     };
   });
   assert.equal(logReport.top, 'missionLog', 'J from station should push the Mission Log screen');
@@ -279,6 +281,16 @@ try {
     'Mission Log recommendation should name the tracked mission: ' + JSON.stringify(logReport));
   assert(logReport.trackedCard.includes('TRACKING'),
     'Mission Log active card should show TRACKING state: ' + JSON.stringify(logReport));
+  assert.match(logReport.nextText, /^Next:/i,
+    'Mission Log tracked route card should keep an explicit next-step line: ' + JSON.stringify(logReport));
+  assert.match(logReport.nextText, /buy or carry/i,
+    'Mission Log tracked bulk-trade route should tell the player how to source cargo: ' + JSON.stringify(logReport));
+  assert.match(logReport.nextText, /sell/i,
+    'Mission Log tracked bulk-trade route should carry the sell action through to the log: ' + JSON.stringify(logReport));
+  assert(logReport.destText && logReport.destText !== '-',
+    'Mission Log tracked route card should show a concrete destination label: ' + JSON.stringify(logReport));
+  assert.doesNotMatch([logReport.nextText, logReport.destText].join(' | '), /undefined|null|NaN/i,
+    'Mission Log route guidance should not leak placeholder values: ' + JSON.stringify(logReport));
 
   await page.keyboard.press('KeyJ');
   await page.waitForFunction(() => window.SF && window.SF.ctx && window.SF.ctx.screenManager.top() === 'station', null, {

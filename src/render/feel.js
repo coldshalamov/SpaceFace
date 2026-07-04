@@ -20,6 +20,7 @@
 //
 // This is a render-phase system (no sim update). Driven from registry.renderUpdate -> feel.frame().
 // All event subscriptions are registered in init; frame() integrates the timers.
+import * as THREE from 'three';
 import { damp } from '../core/math.js';
 import { WEAPONS } from '../data/weapons.js';
 
@@ -62,6 +63,9 @@ const FOV_DECAY = 6.5;         // exponential decay rate (higher = snappier retu
 // quick 0.5-1.5° kick that decays fast reads as "kickback" without going seasick on auto fire.
 const RECOIL_FOV_MAX = 1.5;    // deg additive per shot (scaled down by recoilWeight)
 const RECOIL_FOV_MIN = 0.4;    // floor so even the lightest weapon nudges the fov a touch
+
+const BOOST_FOV_PUNCH = 2.8;   // deg additive on boost ignition (top-down speed kick)
+const BOOST_TRAUMA = 0.18;     // camera shake on boost ignition
 
 const VIG_HEAVY = 0.18;   // peak vignette opacity for a heavy hit on the player
 const VIG_DEATH = 0.55;   // peak vignette opacity for player death
@@ -145,29 +149,53 @@ export const feel = {
     const ctx = this._slCtx;
     if (!cvs || !ctx) return;
 
-    // Resolve player entity
+    // Resolve player entity and camera
     const ents = this.state.entities;
     const pid = this.state.playerId;
     const player = ents && pid != null ? ents.get(pid) : null;
+    const cam = this.state.render && this.state.render.camera;
 
     let targetOpacity = 0;
     let boosting = false;
-    let intensity = 0;          // 0..1 drive for streak density/length/flow
+    let intensity = 0;          // 0..1 drive for streak density/length/speed
+    let dirX = 0, dirY = -1;    // default fall-back: drift downward like light rain
+    let speed = 0, maxSpd = 1;
 
-    if (player && player.vel) {
+    if (player && player.vel && cam && cam.isPerspectiveCamera) {
       const vel = player.vel;
-      const maxSpd = Math.max(1, player.maxSpeed || 1);
-      const speedRatio = Math.hypot(vel.x, vel.z) / maxSpd;
+      speed = Math.hypot(vel.x, vel.z);
+      maxSpd = Math.max(1, player.maxSpeed || 1);
+      const speedRatio = speed / maxSpd;
       boosting = !!(player.flags && player.flags.boosting);
 
       if (boosting) {
-        targetOpacity = 0.62;
+        targetOpacity = 0.55;
         intensity = 1;
-      } else if (speedRatio > 0.4) {
-        // Ramp in over the top 60% of the speed range.
-        intensity = (speedRatio - 0.4) / 0.6;
-        targetOpacity = intensity * 0.34;
+      } else if (speedRatio > 0.38) {
+        // Ramp in over the top 62% of the speed range.
+        intensity = (speedRatio - 0.38) / 0.62;
+        targetOpacity = intensity * 0.30;
       }
+
+      // Project world velocity onto screen space to get the direction the world appears to slip.
+      // The camera matrices must be current (renderer updates them before renderUpdate).
+      const p0 = new THREE.Vector3(player.pos.x, 0, player.pos.z).project(cam);
+      const p1 = new THREE.Vector3(player.pos.x + vel.x, 0, player.pos.z + vel.z).project(cam);
+      const dx = p1.x - p0.x;
+      const dy = p1.y - p0.y;
+      const dlen = Math.hypot(dx, dy);
+      if (dlen > 0.0001) {
+        // dir points toward where the ship is going on screen; streaks move opposite (world slides past).
+        dirX = dx / dlen;
+        dirY = dy / dlen;
+      }
+    }
+
+    // Motion-reduce: keep the information but halve the intensity/density.
+    const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+    if (mr) {
+      targetOpacity *= 0.45;
+      intensity *= 0.55;
     }
 
     // Smooth-damp toward target (rate 8 = responsive but not jarring)
@@ -188,39 +216,60 @@ export const feel = {
     cvs.style.opacity = '1';
     ctx.clearRect(0, 0, w, h);
 
-    // Animated warp streaks: thin tapered lines that FLOW outward from center (the world raking past
-    // as you accelerate). Each has a soft gradient tail toward center, a cool blue-white tint, varied
-    // length/width/brightness, and additive blending — so it reads as motion depth, not a flat
-    // hand-drawn starburst. Streaks recycle to the center when they pass the corner.
-    const cx = w * 0.5, cy = h * 0.5;
-    const maxR = Math.hypot(cx, cy);
+    // Directional lateral speed streaks.
+    // Instead of a radial starburst (which reads as forward-into-screen warp), streaks stream
+    // opposite to the ship's screen-space travel direction. This makes the top-down camera read
+    // "the world is sliding past the ship" rather than "the ship is tunneling into the monitor".
+    const flowX = -dirX;            // streaks move opposite to travel
+    const flowY = -dirY;
+
     if (!this._streaks) this._streaks = [];
-    const want = Math.round((boosting ? 58 : 32) * (0.45 + 0.55 * intensity));
+    const want = Math.round((boosting ? 46 : 28) * (0.50 + 0.50 * intensity));
     while (this._streaks.length < want) this._streaks.push(this._newStreak(false));
     if (this._streaks.length > want) this._streaks.length = want;
-    const flow = (boosting ? 1.85 : 1.05) * (0.55 + 0.7 * intensity);   // outward speed (maxR-fractions/s)
-    const lenScale = 0.4 + 0.6 * intensity;
-    const widthMul = boosting ? 1.5 : 1.0;
+
+    // Speed scales with how fast the world is moving past the ship. We express it in screen-pixels/s
+    // so the overlay looks consistent regardless of camera zoom. Base speed is a moderate drift;
+    // boost pushes it toward "fast fly-by".
+    const baseFlow = 220 + speed * 1.2;                 // screen-pixels/s, tuned by eye
+    const flowSpeed = baseFlow * (0.55 + 0.75 * intensity) * (boosting ? 1.55 : 1.0);
+    const lenScale = (0.35 + 0.75 * intensity) * (boosting ? 1.35 : 1.0);
+    const widthMul = boosting ? 1.4 : 1.0;
 
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'round';
     for (const s of this._streaks) {
-      s.r += flow * frameDt * s.v;
-      if (s.r > 1.12) Object.assign(s, this._newStreak(true));   // recycle near center
-      const cosA = Math.cos(s.a), sinA = Math.sin(s.a);
-      const lead = s.r * maxR;
-      const tail = Math.max(0, s.r - s.len * lenScale) * maxR;
-      // fade in just past the clear center hole, fade out as it reaches the corner
-      const edgeFade = s.r < 0.28 ? Math.max(0, (s.r - 0.1) / 0.18)
-        : (s.r > 0.9 ? Math.max(0, (1.12 - s.r) / 0.22) : 1);
-      const a = this._slOpacity * s.b * edgeFade;
+      // Advance the streak along the flow direction.
+      s.uv += flowSpeed * frameDt * s.v;
+
+      // Recycle when the streak has crossed the screen far enough behind the ship.
+      // We keep a generous margin so streaks can start well ahead of the player and finish well behind.
+      if (s.uv > h * 1.1 || s.uv < -h * 1.1 ||
+          s.p < -w * 1.1 || s.p > w * 1.1) {
+        Object.assign(s, this._newStreak(true));
+      }
+
+      // Streak endpoints in screen space: uv is along the flow axis, p is the perpendicular offset.
+      const uTail = s.uv - s.len * lenScale * h;
+      const x0 = s.p + flowX * uTail;
+      const y0 = s.uv + flowY * uTail;
+      const x1 = s.p + flowX * s.uv;
+      const y1 = s.uv + flowY * s.uv;
+
+      // Fade in near spawn, fade out near recycle, plus distance-from-center bias so the
+      // effect is strongest where the ship is.
+      const travelled = Math.abs(s.uv - s.spawnU);
+      const halfSpan = Math.max(h, w) * 0.55;
+      const edgeFade = Math.min(1, travelled / (halfSpan * 0.12)) *
+                       Math.max(0, 1 - Math.max(0, (travelled - halfSpan * 0.75) / (halfSpan * 0.35)));
+      const centerBias = 1.0 - Math.min(1, Math.hypot(s.p, s.uv - h * 0.5) / Math.max(h, w));
+      const a = this._slOpacity * s.b * edgeFade * (0.55 + 0.45 * centerBias);
       if (a <= 0.012) continue;
-      const x0 = cx + cosA * tail, y0 = cy + sinA * tail;
-      const x1 = cx + cosA * lead, y1 = cy + sinA * lead;
+
       const grad = ctx.createLinearGradient(x0, y0, x1, y1);
-      grad.addColorStop(0, 'rgba(150,200,255,0)');
-      grad.addColorStop(0.6, `rgba(190,225,255,${(a * 0.5).toFixed(3)})`);
-      grad.addColorStop(1, `rgba(228,243,255,${a.toFixed(3)})`);
+      grad.addColorStop(0, 'rgba(160,205,255,0)');
+      grad.addColorStop(0.55, `rgba(195,230,255,${(a * 0.45).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(232,248,255,${a.toFixed(3)})`);
       ctx.strokeStyle = grad;
       ctx.lineWidth = s.w * widthMul;
       ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
@@ -228,15 +277,34 @@ export const feel = {
     ctx.globalCompositeOperation = 'source-over';
   },
 
-  // One warp streak in normalized polar form. r is a fraction of the center→corner distance.
-  _newStreak(nearCenter) {
+  // One lateral streak in screen-space coordinates.
+  // uv  = position along the flow axis (origin is roughly screen center).
+  // p   = position along the perpendicular axis (lateral scatter).
+  // len = streak length as a fraction of screen height.
+  _newStreak(spawnCenter) {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (spawnCenter) {
+      // Spawn just ahead of center with a small random lateral offset.
+      return {
+        uv: -(0.05 + Math.random() * 0.18) * h,
+        spawnU: -(0.05 + Math.random() * 0.18) * h,
+        p: (Math.random() - 0.5) * w * 0.9,
+        v: 0.65 + Math.random() * 0.85,
+        len: 0.10 + Math.random() * 0.18,
+        b: 0.40 + Math.random() * 0.55,
+        w: 0.7 + Math.random() * 1.5,
+      };
+    }
+    // Distribute across the screen so the first frame isn't empty.
     return {
-      a: Math.random() * Math.PI * 2,                         // angle
-      r: nearCenter ? 0.06 + Math.random() * 0.14 : Math.random() * 1.1,
-      v: 0.6 + Math.random() * 1.0,                           // per-streak speed multiplier
-      len: 0.14 + Math.random() * 0.26,                       // length (maxR fraction)
-      b: 0.45 + Math.random() * 0.55,                         // brightness
-      w: 0.8 + Math.random() * 1.6,                           // line width
+      uv: (Math.random() - 0.5) * h * 1.6,
+      spawnU: (Math.random() - 0.5) * h * 1.6,
+      p: (Math.random() - 0.5) * w * 1.0,
+      v: 0.65 + Math.random() * 0.85,
+      len: 0.10 + Math.random() * 0.18,
+      b: 0.40 + Math.random() * 0.55,
+      w: 0.7 + Math.random() * 1.5,
     };
   },
 
@@ -326,11 +394,24 @@ export const feel = {
       if (!p || p.minerId !== state.playerId) return;
       if (!_warpGate()) return;
       const qty = Math.max(1, p.qty || 1);
-      // scale gently with qty: 1 unit → ~0.6°, big strike (8+) → capped ~1.4°
+      // scale gently with qty: 1 unit -> ~0.6, big strike (8+) -> capped ~1.4
       const fov = Math.min(1.4, 0.4 + Math.log2(qty) * 0.35);
       this._fovPunch = Math.min(this._fovPunch + fov, FOV_PUNCH_DEATH + 1);
       const ctrl = _warpCtrl();
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(Math.min(0.08, 0.03 + qty * 0.005));
+    });
+
+    // Boost ignition punch. The engine trail VFX already flares, but the camera is inert, so the
+    // moment of boost feels soft. A small FOV kick + trauma sells the afterburners lighting up.
+    // Gated the same way as other feel effects: flight, no modal, motion-reduce suppresses.
+    bus.on('ship:boostStart', (p) => {
+      if (!p || p.shipId !== state.playerId) return;
+      if (this.state.mode !== 'flight' || !this._modalClear()) return;
+      const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+      if (mr) return;
+      this._fovPunch = Math.min(this._fovPunch + BOOST_FOV_PUNCH, FOV_PUNCH_DEATH + 1);
+      const ctrl = _warpCtrl();
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(BOOST_TRAUMA);
     });
   },
 

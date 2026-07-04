@@ -14,7 +14,7 @@ import { createScreenManager } from './screenManager.js';
 import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
-import { controlPrompt } from './controlPrompts.js';
+import { controlPrompt, setPromptScheme } from './controlPrompts.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -42,6 +42,7 @@ const PILOT_AVATAR_SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000
   <path d="M14 40 h36" stroke="#39d0ff" stroke-width="1" opacity="0.4"/>
 </svg>`;
 import { createHud } from './hud.js';
+import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
@@ -165,6 +166,12 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
 
+    // Command Bar (UI full-pass Slice 3) — persistent top resource strip, RTS-style. Mounted as a
+    // #ui-root sibling (not inside #hud) so it survives createHud()'s innerHTML wipe and doesn't
+    // touch hud.js's body. Pins hull/shield/energy/heat/cargo/credits/role/sector so the player can
+    // always read their economic + vitals state (the strategy-game reframe). Event-driven, no rAF.
+    this.commandBar = createCommandBar(ctx);
+
     // === UI: aiming reticle ===
     // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
     // this third-person chase-cam game, and it sat on every screen as an unexplained symbol.)
@@ -177,12 +184,23 @@ export const ui = {
     // Always-visible (when in flight) control hints. The default text below is the open-flight set;
     // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
     // hints based on the player's current activity (mining, combat, near station, near gate).
-    const HINTS_KBM = controlPrompt('flight', 'kbm');
+    setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
+      && this.state.settings.gameplay.controlScheme);
+    let HINTS_KBM = controlPrompt('flight', 'kbm');
     const HINTS_PAD = controlPrompt('flight', 'gamepad');
     const hints = document.createElement('div');
     hints.id = 'control-hints';
     hints.textContent = HINTS_KBM;
     document.getElementById('ui-root').appendChild(hints);
+    // Control-scheme changes re-key every kbm prompt (helm-assist vs classic copy).
+    this.bus.on('settings:changed', () => {
+      setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
+        && this.state.settings.gameplay.controlScheme);
+      HINTS_KBM = controlPrompt('flight', 'kbm');
+      const gpConnected = this.ctx && this.ctx.gamepad && typeof this.ctx.gamepad.isConnected === 'function'
+        && this.ctx.gamepad.isConnected();
+      if (!gpConnected) hints.textContent = HINTS_KBM;
+    });
 
     // Hide hints/reticle when not in pure flight (improved from initial override for robustness)
     // showHints: briefly show the control bar then fade out.
@@ -669,6 +687,12 @@ function injectHudCss() {
   .sf-stat__v { font-size:14px; color:var(--text-primary); text-shadow:var(--text-shadow-hard); }
   .sf-credits { color:var(--visor-cyan); text-shadow:var(--text-shadow-hard), var(--visor-glow-cyan); }
   .sf-stat__v.sf-warn { color:var(--visor-amber); text-shadow:var(--text-shadow-hard), var(--visor-glow-amber); }
+  /* HUD 2.0 (GDD §9.4): SPD reads a size up — it's the one number flight always needs. */
+  .sf-stat--speed .sf-stat__v { font-size:17px; letter-spacing:.02em; }
+  /* Contextual chips: hidden at rest, surface on value change, fade out. Nothing glows at rest. */
+  .sf-stat--chip { opacity:0; transform:translateY(5px); pointer-events:none;
+    transition:opacity .28s var(--ease, ease), transform .28s var(--ease, ease); }
+  .sf-stat--chip.sf-chip-show { opacity:1; transform:translateY(0); }
   /* Hover-affordance: these are readouts; underline the key to hint at the tooltip. */
   .sf-stat--info { cursor:default; user-select:none; }
   .sf-stat--info .sf-stat__k { border-bottom:1px dotted rgba(255,255,255,.25); padding-bottom:1px; }
@@ -891,7 +915,7 @@ function injectHudCss() {
   .sf-cargo-panel { position:absolute; left:50%; bottom:120px; transform:translateX(-50%);
     width:380px; max-height:60vh; display:none; flex-direction:column;
     background:rgba(4,10,18,.94); border:1px solid var(--visor-cyan); border-radius:8px;
-    backdrop-filter:blur(8px); box-shadow:0 8px 32px rgba(0,0,0,.6), 0 0 12px rgba(0,240,255,.18);
+    box-shadow:0 8px 32px rgba(0,0,0,.6), 0 0 12px rgba(0,240,255,.18);
     z-index:200; pointer-events:auto; font-family:var(--mono, Consolas, monospace); overflow:hidden; }
   .sf-cargo-panel.open { display:flex; }
   .sf-cargo-panel__head { display:flex; align-items:center; justify-content:space-between;

@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { createChaseCamera } from './camera.js';
 import { createStarfield } from './starfield.js';
+import * as parallaxLayers from './parallaxLayers.js';
 import { createVisualFactory, setEnvMapForShips, invalidateVisualFactoryCaches } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
@@ -14,21 +15,11 @@ import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
 import { createPlanetFactory } from './planetFactory.js';
+import { precompilePipelines } from './precompile.js';
+import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 
-// Map a sector's danger/tier to a nebula backdrop tint so each region of the galaxy has its own
-// color signature. Core (safe, low tier) = clean blue; industrial mid-ring = rust/amber; lawless
-// frontier = blood-red; alien/endgame tier 4+ = violet. Returns a hex string or null (default).
-function sectorNebulaTint(sector) {
-  if (!sector) return null;
-  const tier = sector.tier || 0;
-  const sec = sector.security != null ? sector.security : 1;
-  const danger = (1 - sec) + tier * 0.15; // blended danger metric
-  if (tier >= 4) return '#5a1e8a';        // violet — alien / lawless endgame (Veil, Ashfall)
-  if (danger > 0.7) return '#8a1e1e';     // blood-red — dangerous frontier (Io Reach, Sker)
-  if (danger > 0.45) return '#8a4a1e';    // rust/amber — industrial mid-ring (Vesta, Pallas)
-  if (danger > 0.2) return '#1e4a8a';     // deep blue — settled belt (Ceres, Tethys)
-  return '#1e3a6a';                        // clean blue — safe core (Helios Prime)
-}
+const SECTOR_PALETTE_LERP_SECONDS = 1.5;
+const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
 
 // ---- contact shadow disc (module-level cache so one texture serves all entities) ----------------
 let _shadowTex = null;
@@ -43,7 +34,7 @@ const SOCKET_WORLD_POS = new THREE.Vector3();
 const SOCKET_WORLD_QUAT = new THREE.Quaternion();
 const SOCKET_WORLD_SCALE = new THREE.Vector3();
 const SOCKET_FORWARD = new THREE.Vector3();
-const RUNTIME_MESH_BUILD_BUDGET = 1;
+const RUNTIME_MESH_BUILD_BUDGET = 2;
 function getContactShadowTex() {
   if (_shadowTex) return _shadowTex;
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -178,13 +169,14 @@ export const render = {
     const drawSize = applyRendererSize(renderer, state);
 
     const scene = new THREE.Scene();
+    const corePalette = SECTOR_PALETTE_CLASSES.core;
     // Thin fog for gentle depth cueing only — the old 0.00085 erased the entire backdrop, leaving a
     // black void. This keeps the nebula + far stars visible while still fading the deep distance.
-    scene.fog = new THREE.FogExp2(0x0a1430, 0.00026);
-    scene.add(new THREE.AmbientLight(0x42506f, 0.85));
-    const key = new THREE.DirectionalLight(0xcfe2ff, 1.7); key.position.set(60, 140, 40); scene.add(key);
-    const rim = new THREE.DirectionalLight(0x6a5cff, 0.7); rim.position.set(-70, 50, -60); scene.add(rim);
-    const fill = new THREE.DirectionalLight(0x39d0ff, 0.35); fill.position.set(20, 30, 120); scene.add(fill);
+    scene.fog = new THREE.FogExp2(corePalette.fog, corePalette.fogDensity);
+    const ambient = new THREE.AmbientLight(corePalette.ambient, SECTOR_LIGHT_INTENSITIES.ambient); scene.add(ambient);
+    const key = new THREE.DirectionalLight(corePalette.key, SECTOR_LIGHT_INTENSITIES.key); key.position.set(60, 140, 40); scene.add(key);
+    const rim = new THREE.DirectionalLight(corePalette.rim, SECTOR_LIGHT_INTENSITIES.rim); rim.position.set(-70, 50, -60); scene.add(rim);
+    const fill = new THREE.DirectionalLight(corePalette.fill, SECTOR_LIGHT_INTENSITIES.fill); fill.position.set(20, 30, 120); scene.add(fill);
 
     // Real shadow maps (graphics spec Workstream G). Gated behind settings.video.shadows (default
     // true). The key light becomes a shadow caster with a tight frustum that follows the player so
@@ -209,7 +201,8 @@ export const render = {
     }
 
     const cam = createChaseCamera(state);
-    const starfield = createStarfield(scene);
+    const starfield = createStarfield(scene, { tint: corePalette.nebulaTint });
+    parallaxLayers.init(scene, state, bus, corePalette);
     const vf = createVisualFactory();
     // Hero-asset registry (spec §17.3): wraps the factory's build() so the bespoke player Kestrel is
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
@@ -288,6 +281,9 @@ export const render = {
       return null;
     });
     state.render.authoredPartLibraryReady = this.authoredPartLibraryReady;
+    this._sectorPaletteRig = createSectorPaletteRig(scene, ambient, key, rim, fill);
+    this._sectorPaletteTarget = corePalette;
+    state.render.sectorPalette = corePalette;
     this._keyLight = shadowsOn ? key : null; // referenced by _updateShadowFollow() each frame
     this._shadowSettingOn = shadowsOn;
     this._shadowReceiversDirty = true;
@@ -305,6 +301,8 @@ export const render = {
     try { this.collisionDebug = createCollisionDebug(this); }
     catch (err) { console.warn('[render] collision debug unavailable:', err); this.collisionDebug = null; }
     this._meshes = new Map(); // entityId -> Object3D
+    this._meshBuildQueue = [];
+    this._meshBuildQueuedIds = new Set();
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
     this._initialMeshReconcileComplete = false;
@@ -347,6 +345,7 @@ export const render = {
     state.render.camera = cam.obj;
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
+    state.render.warmPostProcess = () => (this.bloom && state.settings.video.bloom !== false ? this.bloom.render(scene, cam.obj) : renderer.render(scene, cam.obj));
     // Collision/socket/landing debug toggle (spec §12.5), bound to F7 in ui/input.js. Capture the
     // render-system `this` once so the handle closures resolve the live collisionDebug regardless of
     // how they're invoked (method `this` would otherwise bind to the debug handle object itself).
@@ -410,13 +409,13 @@ export const render = {
       this._meshReconcileDirty = true;
       if (cam.snapToPlayer) cam.snapToPlayer();
       this._updatePlanetBodies(sector);
-      // Tint the nebula backdrop to the sector's mood so each region of the galaxy reads with its
-      // own color signature: clean-blue core → rust/amber industrial → blood-red frontier → violet
-      // alien/endgame. Drives the whole-frame atmosphere, reinforcing the core-to-frontier gradient.
-      if (this.starfield && this.starfield.setSectorTint) {
-        this.starfield.setSectorTint(sectorNebulaTint(sector));
-      }
+      this._beginSectorPaletteTransition(sector);
       this._updateHazardVisuals(sector);
+      precompilePipelines(renderer, scene, cam.obj, { sector }).catch((error) => console.warn('[render] sector pipeline precompile failed', error));
+    });
+    bus.on('jump:arrive', ({ sectorId } = {}) => {
+      const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
+      this._beginSectorPaletteTransition(sector);
     });
     bus.on('save:loaded', () => { this._meshReconcileDirty = true; });
 
@@ -428,6 +427,8 @@ export const render = {
       if (keepPlayer && id === this.state.playerId) continue;
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
     }
+    this._meshBuildQueue.length = 0;
+    this._meshBuildQueuedIds.clear();
     // Also clear hazard zone visuals
     for (const obj of this._hazardVisuals) { this.scene.remove(obj); disposeObject(obj); }
     this._hazardVisuals = [];
@@ -462,20 +463,32 @@ export const render = {
   reconcileMeshes() {
     const state = this.state;
     const buildBudget = this._initialMeshReconcileComplete ? RUNTIME_MESH_BUILD_BUDGET : Infinity;
-    let built = 0;
-    let pendingBuilds = false;
     // remove meshes whose entity no longer exists or has died
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
       if (!e || e.alive === false) { this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true; }
     }
-    // build meshes for alive entities that lack one (fx are particle-managed by vfx -> mark + skip)
+    // Queue alive entities that lack meshes (fx are particle-managed by vfx -> mark + skip).
     for (const e of state.entityList) {
       if (e._noMesh || this._meshes.has(e.id)) continue;
-      if (built >= buildBudget) {
-        pendingBuilds = true;
-        continue;
+      if (!this._meshBuildQueuedIds.has(e.id)) {
+        this._meshBuildQueue.push(e.id);
+        this._meshBuildQueuedIds.add(e.id);
       }
+    }
+    const built = this._drainMeshBuildQueue(buildBudget);
+    this._meshReconcileDirty = this._meshBuildQueue.length > 0;
+    if (!this._meshReconcileDirty) this._initialMeshReconcileComplete = true;
+    return built;
+  },
+
+  _drainMeshBuildQueue(buildBudget) {
+    let built = 0;
+    while (this._meshBuildQueue.length && built < buildBudget) {
+      const id = this._meshBuildQueue.shift();
+      this._meshBuildQueuedIds.delete(id);
+      const e = this.state.entities.get(id);
+      if (!e || e.alive === false || e._noMesh || this._meshes.has(id)) continue;
       const m = this.vf.build(e);
       if (!m) { e._noMesh = true; continue; }
       m.position.set(e.pos.x, 0, e.pos.z);
@@ -488,8 +501,7 @@ export const render = {
       this._shadowReceiversDirty = true;
       built++;
     }
-    this._meshReconcileDirty = pendingBuilds;
-    if (!pendingBuilds) this._initialMeshReconcileComplete = true;
+    return built;
   },
 
   // Rebuild one ship's mesh after a hull swap or loadout change. Disposes the old Object3D, builds a
@@ -686,6 +698,38 @@ export const render = {
     }
   },
 
+  _beginSectorPaletteTransition(sector) {
+    const rig = this._sectorPaletteRig;
+    if (!rig) return;
+    const palette = sector && sector.palette ? sector.palette : SECTOR_PALETTE_CLASSES.core;
+    this.state.render.sectorPalette = palette;
+    if (palette === this._sectorPaletteTarget) return;
+
+    this._sectorPaletteTarget = palette;
+    writeRigToSectorPaletteFrame(rig.start, rig);
+    writePaletteToSectorPaletteFrame(rig.target, palette);
+    rig.elapsed = 0;
+    rig.active = true;
+
+    if (this.starfield && this.starfield.setSectorTint) {
+      this.starfield.setSectorTint(palette.nebulaTint);
+    }
+  },
+
+  _updateSectorPaletteTransition(frameDt) {
+    const rig = this._sectorPaletteRig;
+    if (!rig || !rig.active) return;
+    const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+    rig.elapsed = Math.min(SECTOR_PALETTE_LERP_SECONDS, rig.elapsed + dt);
+    const rawT = SECTOR_PALETTE_LERP_SECONDS > 0 ? rig.elapsed / SECTOR_PALETTE_LERP_SECONDS : 1;
+    const t = rawT * rawT * (3 - 2 * rawT);
+    lerpSectorPaletteFrame(rig, rig.start, rig.target, t);
+    if (rawT >= 1) {
+      rig.active = false;
+      applySectorPaletteFrame(rig, rig.target);
+    }
+  },
+
   prepareFrame(alpha, frameDt) {
     // While the GL context is lost, the renderer can't draw — skip all per-frame work until
     // webglcontextrestored rebuilds GPU resources. (cam.follow etc. would run against a dead
@@ -700,9 +744,11 @@ export const render = {
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
+    this._updateSectorPaletteTransition(frameDt);
     const ts = (this.state.timeScale != null) ? this.state.timeScale : 1;
     this._bgTime = (this._bgTime || 0) + frameDt * ts;
     if (this.starfield.update) this.starfield.update(frameDt, this._bgTime);
+    parallaxLayers.update(frameDt);
     this._updatePlanetParallax();
     this._syncShadowMapEnabled();
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
@@ -885,6 +931,90 @@ function finiteInRange(value, min, max, fallback) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.max(min, Math.min(max, n));
+}
+
+function createSectorPaletteRig(scene, ambientLight, keyLight, rimLight, fillLight) {
+  const rig = {
+    scene,
+    lights: { ambient: ambientLight, key: keyLight, rim: rimLight, fill: fillLight },
+    start: createSectorPaletteFrame(),
+    target: createSectorPaletteFrame(),
+    elapsed: 0,
+    active: false,
+  };
+  writeRigToSectorPaletteFrame(rig.start, rig);
+  writeRigToSectorPaletteFrame(rig.target, rig);
+  return rig;
+}
+
+function createSectorPaletteFrame() {
+  return {
+    colors: {
+      ambient: new THREE.Color(),
+      key: new THREE.Color(),
+      rim: new THREE.Color(),
+      fill: new THREE.Color(),
+      fog: new THREE.Color(),
+    },
+    intensities: { ambient: 0, key: 0, rim: 0, fill: 0 },
+    fogDensity: 0,
+  };
+}
+
+function writeRigToSectorPaletteFrame(frame, rig) {
+  frame.colors.ambient.copy(rig.lights.ambient.color);
+  frame.colors.key.copy(rig.lights.key.color);
+  frame.colors.rim.copy(rig.lights.rim.color);
+  frame.colors.fill.copy(rig.lights.fill.color);
+  frame.colors.fog.copy(rig.scene.fog.color);
+  frame.intensities.ambient = rig.lights.ambient.intensity;
+  frame.intensities.key = rig.lights.key.intensity;
+  frame.intensities.rim = rig.lights.rim.intensity;
+  frame.intensities.fill = rig.lights.fill.intensity;
+  frame.fogDensity = rig.scene.fog.density;
+}
+
+function writePaletteToSectorPaletteFrame(frame, palette) {
+  frame.colors.ambient.setHex(palette.ambient);
+  frame.colors.key.setHex(palette.key);
+  frame.colors.rim.setHex(palette.rim);
+  frame.colors.fill.setHex(palette.fill);
+  frame.colors.fog.setHex(palette.fog);
+  frame.intensities.ambient = SECTOR_LIGHT_INTENSITIES.ambient;
+  frame.intensities.key = SECTOR_LIGHT_INTENSITIES.key;
+  frame.intensities.rim = SECTOR_LIGHT_INTENSITIES.rim;
+  frame.intensities.fill = SECTOR_LIGHT_INTENSITIES.fill;
+  frame.fogDensity = palette.fogDensity;
+}
+
+function applySectorPaletteFrame(rig, frame) {
+  rig.lights.ambient.color.copy(frame.colors.ambient);
+  rig.lights.key.color.copy(frame.colors.key);
+  rig.lights.rim.color.copy(frame.colors.rim);
+  rig.lights.fill.color.copy(frame.colors.fill);
+  rig.scene.fog.color.copy(frame.colors.fog);
+  rig.lights.ambient.intensity = frame.intensities.ambient;
+  rig.lights.key.intensity = frame.intensities.key;
+  rig.lights.rim.intensity = frame.intensities.rim;
+  rig.lights.fill.intensity = frame.intensities.fill;
+  rig.scene.fog.density = frame.fogDensity;
+}
+
+function lerpSectorPaletteFrame(rig, start, target, t) {
+  rig.lights.ambient.color.lerpColors(start.colors.ambient, target.colors.ambient, t);
+  rig.lights.key.color.lerpColors(start.colors.key, target.colors.key, t);
+  rig.lights.rim.color.lerpColors(start.colors.rim, target.colors.rim, t);
+  rig.lights.fill.color.lerpColors(start.colors.fill, target.colors.fill, t);
+  rig.scene.fog.color.lerpColors(start.colors.fog, target.colors.fog, t);
+  rig.lights.ambient.intensity = lerp(start.intensities.ambient, target.intensities.ambient, t);
+  rig.lights.key.intensity = lerp(start.intensities.key, target.intensities.key, t);
+  rig.lights.rim.intensity = lerp(start.intensities.rim, target.intensities.rim, t);
+  rig.lights.fill.intensity = lerp(start.intensities.fill, target.intensities.fill, t);
+  rig.scene.fog.density = lerp(start.fogDensity, target.fogDensity, t);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
 function disposeObject(obj) {

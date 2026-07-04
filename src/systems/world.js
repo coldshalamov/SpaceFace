@@ -16,9 +16,9 @@
 // Single-writer (§0.6): world owns world.*/jump/fuel/nav; it emits economy:chargeCredits for
 //   gate tolls and never writes credits/cargo/rep directly. (Radiation hull drain is an
 //   environmental effect applied to the entity hull, which has no separate combat owner.)
-import { SECTORS, dangerIndex } from '../data/sectors.js';
+import { SECTORS, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
-import { ASTEROIDS, FIELDS } from '../data/mining.js';
+import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
 // ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
@@ -43,6 +43,10 @@ const DEFAULT_DRIVE = DRIVE_TIERS.jump_t1;
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
+const STATION_SECTOR_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) STATION_SECTOR_ID.set(station.id, sector.id);
+}
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -69,6 +73,8 @@ export const world = {
       for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
     }
     if (!state.world.discovery) state.world.discovery = {};
+    if (Object.keys(state.world.discovery).length === 0) this._seedChartedDiscovery();
+    if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
     if (!state.world.pendingSpawns || typeof state.world.pendingSpawns !== 'object') state.world.pendingSpawns = {};
 
     // Runtime-only flags (not serialized).
@@ -91,6 +97,7 @@ export const world = {
     bus.on('ship:statsChanged', () => this._resolveShipModules());
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
+    bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
     // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
     // re-entry or save reload. (The entity carries data.isBoss + data.bossSectorId/bossPoiId.)
     bus.on('entity:killed', (p) => this._onBossKilled(p || {}));
@@ -284,7 +291,7 @@ export const world = {
     const yieldU = Math.max(1, Math.round(yLo + (yHi - yLo) * t));
     const tierCap = Math.min(def.tierCap, params.tierCap != null ? params.tierCap : def.tierCap);
 
-    return this.helpers.spawnEntity({
+    const ent = this.helpers.spawnEntity({
       type: 'asteroid', pos,
       radius: size, mass: 200 + size * 40, angVel: (rng() - 0.5) * 0.35,
       hull: oreHP, hullMax: oreHP, collides: true,
@@ -295,6 +302,11 @@ export const world = {
         fieldId: fdef.id,
       },
     });
+    ent.data.seams = deriveAsteroidSeams(this.state.meta.seed, ent.id, ent.radius, {
+      hash32: this.helpers.hash32,
+      mulberry32: this.helpers.mulberry32,
+    });
+    return ent;
   },
 
   // Jump GATES: one per outbound edge, placed on the disc rim toward the neighbor's map position.
@@ -490,6 +502,45 @@ export const world = {
     if (!d[sectorId].pois) d[sectorId].pois = {};
     if (!d[sectorId].fieldsDepleted) d[sectorId].fieldsDepleted = {};
     return d[sectorId];
+  },
+
+  _seedChartedDiscovery() {
+    for (const sector of SECTORS) {
+      const rec = this._discoveryFor(sector.id);
+      if (sector.charted === true) {
+        rec.discovered = true;
+        if (!rec.source) rec.source = 'charted';
+      }
+    }
+  },
+
+  _onPurchaseSurveyData({ sectorId, stationId }) {
+    const sector = SECTOR_BY_ID.get(sectorId);
+    if (!sector || sector.charted === true) return false;
+    const stationSectorId = STATION_SECTOR_ID.get(stationId) || this.state.world.currentSectorId;
+    const stationSector = stationSectorId && (this.state.world.sectors[stationSectorId] || SECTOR_BY_ID.get(stationSectorId));
+    if (!stationSector || !(stationSector.neighbors || []).includes(sectorId)) return false;
+
+    const disc = this._discoveryFor(sectorId);
+    if (disc.discovered) {
+      this.bus.emit('toast', { text: `${sector.name} is already charted`, kind: 'info', ttl: 3 });
+      return true;
+    }
+
+    const price = surveyDataPrice(sector);
+    const credits = (this.state.player && this.state.player.credits) | 0;
+    if (credits < price) {
+      this.bus.emit('toast', { text: `Survey data costs ${price.toLocaleString('en-US')} CR`, kind: 'warn', ttl: 3 });
+      return false;
+    }
+
+    this.bus.emit('economy:chargeCredits', { amount: price, reason: `survey:${sectorId}` });
+    disc.discovered = true;
+    disc.source = 'survey';
+    disc.surveyedAt = this.state.simTime || 0;
+    this.bus.emit('map:sectorCharted', { sectorId, source: 'survey' });
+    this.bus.emit('toast', { text: `Survey data added: ${sector.name}`, kind: 'info', ttl: 3.5 });
+    return true;
   },
 
   // =========================================================================================
@@ -993,6 +1044,7 @@ export const world = {
     return {
       currentSectorId: state.world.currentSectorId,
       discovery: state.world.discovery,
+      scanPings: state.world.scanPings || {},
       pendingSpawns: state.world.pendingSpawns || {},
       sectorOwners: this._ownerOverlay(),
       jump: {
@@ -1016,6 +1068,7 @@ export const world = {
     if (!data) return;
     const state = this.state;
     if (data.discovery) state.world.discovery = data.discovery;
+    state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     if (data.jump) {
@@ -1040,7 +1093,9 @@ export const world = {
     const state = this.state;
     // reset overlay + jump/fuel to defaults; the home sector is entered by main.js post-boot.
     state.world.discovery = {};
+    state.world.scanPings = {};
     state.world.pendingSpawns = {};
+    this._seedChartedDiscovery();
     state.jump.state = 'IDLE'; state.jump.targetSectorId = null; state.jump.via = null;
     state.jump.chargeT = 0; state.jump.chargeNeeded = 0; state.jump.cooldownT = 0;
     state.fuel = { current: 100, max: 100 };

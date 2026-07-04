@@ -47,6 +47,21 @@ const THREAT_DECAY = 0.98;          // per-second multiplicative decay of threat
 const REPATH_LOSE_S = 3.0;          // target out of sensor for this long -> drop to patrol
 const RETARGET_INTERVAL = 0.4;      // seconds between (expensive) target re-selection
 const FIRE_CONE = 0.30;             // rad half-angle: only fire when aim is within this of target
+const ATTACK_TELEGRAPH_S = 0.5;
+const ALPHA_TELEGRAPH_S = 0.8;
+const HEAVY_WEAPON_DPS = 40;
+const AI_BARK_COOLDOWN_S = 4;
+const SCATTER_S = 8;
+const WEDGE_SLOT_ANGLE = 35 * Math.PI / 180;
+const WEDGE_SLOT_DIST = 60;
+const PIRATE_FLEE_JETTISON_CHANCE = 0.3;
+const PIRATE_FLEE_CARGO = Object.freeze(['cmdty_stolen_goods', 'cmdty_munitions', 'cmdty_consumer_goods']);
+const AI_BARKS = Object.freeze({
+  attackRun: Object.freeze(['Coming around.', 'Weapons lining up.', 'Run starts now.']),
+  alphaStrike: Object.freeze(['Charging heavy guns.', 'Hold for alpha.', 'Big guns hot.']),
+  flee: Object.freeze(['Breaking off.', 'Dump it and burn.', 'I am out.']),
+  formationBroken: Object.freeze(['Leader down.', 'Wing is scattered.', 'Break formation.']),
+});
 
 export const ai = {
   name: 'ai',
@@ -56,6 +71,7 @@ export const ai = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this._targetScratch = [];
+    this._formations = new Map();
     const state = ctx.state, bus = ctx.bus;
 
     // Threat tables live on state.combat (already allocated in gameState). Map<targetId, Map<attackerId, threat>>.
@@ -84,6 +100,7 @@ export const ai = {
     if (state.mode !== 'flight') return;
     const list = (state.entityIndex && state.entityIndex.aiShips) || state.entityList;
     const player = state.entities.get(state.playerId) || null;
+    this._updateFormationRuntime(state, list);
 
     // Decay threat once per tick (framerate-independent).
     const decay = Math.pow(THREAT_DECAY, dt);
@@ -132,6 +149,7 @@ export const ai = {
   _think(e, data, state, player, dt) {
     const ai = data.ai;
     const arch = ARCH[ai.archetype] || ARCH[data.archetype] || ARCH.default;
+    const now = simTime(state);
 
     // Per-NPC bookkeeping (lazily initialised; survives across ticks on data.ai).
     if (ai.fsm == null) ai.fsm = S.IDLE;
@@ -141,6 +159,25 @@ export const ai = {
     if (ai._wanderAng == null) ai._wanderAng = e.rot;
     if (ai.home == null) ai.home = { x: e.pos.x, z: e.pos.z };
     ai._t += dt;
+
+    if (data.morale === 'scattered') {
+      if (ai._moraleUntil != null && now < ai._moraleUntil) {
+        const intent = this._ensureIntent(data);
+        intent.boost = true;
+        intent.fire = false;
+        intent.fireGroup = null;
+        this._steerScatter(e, ai, intent);
+        return;
+      }
+      delete data.morale;
+      delete ai._moraleUntil;
+      delete ai._scatterFrom;
+      delete ai.formationSlot;
+      delete ai.formationRole;
+      delete ai.formationLeaderId;
+      delete ai.formationSlotIndex;
+      delete ai._attackTelegraph;
+    }
 
     // --- acquire / refresh target ---
     ai._retarget -= dt;
@@ -183,9 +220,16 @@ export const ai = {
       // within firing range: brawlers/swarmers/pirates circle-strafe; snipers hold/kite.
       next = arch.strafe > 0.45 ? S.STRAFE : S.ATTACK;
     }
+    next = this._resolveAttackTelegraph(e, data, ai, state, target, next);
     if (next !== ai.fsm) {
       const from = ai.fsm; ai.fsm = next;
       this.bus.emit('ai:stateChange', { npcId: e.id, from, to: next });
+      if (next === S.FLEE) {
+        delete ai._attackTelegraph;
+        this.bus.emit('ai:flee', { entityId: e.id });
+        this._emitAiBark(state, e, 'flee');
+        this._maybeJettisonFleeCargo(e, data, state);
+      }
     }
 
     // --- produce intent for this state ---
@@ -194,11 +238,13 @@ export const ai = {
     intent.fire = false;
     intent.fireGroup = null;
     intent.aimAngle = target ? predAng : e.rot;
+    const effectiveFsm = this._effectiveFsm(ai, state);
+    const telegraphHoldingFire = this._telegraphHoldingFire(ai, state);
 
-    switch (ai.fsm) {
+    switch (effectiveFsm) {
       case S.PATROL:
       case S.IDLE:
-        this._steerPatrol(e, ai, intent, state, dt);
+        if (!this._steerFormationSlot(e, ai, intent)) this._steerPatrol(e, ai, intent, state, dt);
         break;
       case S.PURSUE:
         this._steerToward(e, intent, toAng, 1, dist, e.pos, dx, dz);
@@ -206,11 +252,11 @@ export const ai = {
         break;
       case S.ATTACK:
         this._steerHold(e, intent, target, arch, dist, dx, dz, predAng);
-        this._maybeFire(e, data, intent, predAng, dist, arch);
+        if (!telegraphHoldingFire) this._maybeFire(e, data, intent, predAng, dist, arch);
         break;
       case S.STRAFE:
         this._steerStrafe(e, ai, intent, arch, dist, dx, dz, predAng, state);
-        this._maybeFire(e, data, intent, predAng, dist, arch);
+        if (!telegraphHoldingFire) this._maybeFire(e, data, intent, predAng, dist, arch);
         break;
       case S.FLEE:
         this._steerFlee(e, intent, dx, dz);
@@ -218,8 +264,222 @@ export const ai = {
         if (target) intent.aimAngle = Math.atan2(-dz, -dx);
         intent.boost = true;
         // Trader/PD types only shoot when truly cornered (very close).
-        if (!arch.defensiveOnly || dist < 160) this._maybeFire(e, data, intent, predAng, dist, arch);
+        if (!telegraphHoldingFire && (!arch.defensiveOnly || dist < 160)) this._maybeFire(e, data, intent, predAng, dist, arch);
         break;
+    }
+  },
+
+  // ---- readability runtime: telegraphs / formations / barks --------------
+
+  _resolveAttackTelegraph(e, data, ai, state, target, next) {
+    if (!isAttackState(next) || !target || !this._hasUsableWeapons(data)) {
+      delete ai._attackTelegraph;
+      return next;
+    }
+    if (isAttackState(ai.fsm)) {
+      delete ai._attackTelegraph;
+      return next;
+    }
+    const now = simTime(state);
+    const pending = ai._attackTelegraph;
+    if (!pending || pending.targetId !== target.id || pending.state !== next) {
+      const kind = this._telegraphKind(data);
+      const duration = kind === 'alphaStrike' ? ALPHA_TELEGRAPH_S : ATTACK_TELEGRAPH_S;
+      ai._attackTelegraph = {
+        state: next,
+        targetId: target.id,
+        kind,
+        until: now + duration,
+      };
+      this.bus.emit('ai:telegraph', { entityId: e.id, kind });
+      this._emitAiBark(state, e, kind);
+      return ai.fsm;
+    }
+    if (now < pending.until) return ai.fsm;
+    const resolved = pending.state;
+    delete ai._attackTelegraph;
+    return resolved;
+  },
+
+  _effectiveFsm(ai, state) {
+    const pending = ai._attackTelegraph;
+    if (pending && simTime(state) < pending.until) return pending.state;
+    return ai.fsm;
+  },
+
+  _telegraphHoldingFire(ai, state) {
+    const pending = ai._attackTelegraph;
+    return !!(pending && simTime(state) < pending.until);
+  },
+
+  _hasUsableWeapons(data) {
+    return !!(data && Array.isArray(data.weapons) && data.weapons.length > 0);
+  },
+
+  _telegraphKind(data) {
+    for (const w of (data && data.weapons) || []) {
+      const dps = weaponDps(w);
+      if (dps > HEAVY_WEAPON_DPS) return 'alphaStrike';
+    }
+    return 'attackRun';
+  },
+
+  _updateFormationRuntime(state, source) {
+    if (!this._formations) this._formations = new Map();
+    const now = simTime(state);
+    const groups = new Map();
+    for (const e of source || []) {
+      if (!e || e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
+      const data = e.data, ai = data && data.ai;
+      if (!ai || ai.passive || ai._formationBroken) continue;
+      const groupId = formationGroupId(ai);
+      if (!groupId) continue;
+      let list = groups.get(groupId);
+      if (!list) { list = []; groups.set(groupId, list); }
+      list.push(e);
+    }
+
+    for (const [groupId, rec] of this._formations) {
+      if (!rec || rec.disabled || !rec.leaderId) continue;
+      const leader = state.entities && state.entities.get ? state.entities.get(rec.leaderId) : null;
+      if (!leader || !leader.alive) {
+        const members = groups.get(groupId) || [];
+        this._breakFormation(groupId, rec, members, state, now);
+      } else {
+        rec.lastLeaderPos = { x: leader.pos.x, z: leader.pos.z };
+      }
+    }
+
+    for (const [groupId, members] of groups) {
+      if (members.length < 3) continue;
+      let rec = this._formations.get(groupId);
+      if (rec && rec.disabled) continue;
+      if (!rec) {
+        const leader = chooseFormationLeader(members);
+        rec = {
+          leaderId: leader.id,
+          leaderName: shipNameFor(leader),
+          lastLeaderPos: { x: leader.pos.x, z: leader.pos.z },
+          disabled: false,
+        };
+        this._formations.set(groupId, rec);
+      }
+      const leader = state.entities && state.entities.get ? state.entities.get(rec.leaderId) : null;
+      if (!leader || !leader.alive) continue;
+      rec.lastLeaderPos = { x: leader.pos.x, z: leader.pos.z };
+      this._assignFormationSlots(groupId, rec, leader, members);
+    }
+  },
+
+  _assignFormationSlots(groupId, rec, leader, members) {
+    const ordered = members.slice().sort((a, b) => {
+      if (a.id === rec.leaderId) return -1;
+      if (b.id === rec.leaderId) return 1;
+      return compareIds(a.id, b.id);
+    });
+    for (let i = 0; i < ordered.length; i++) {
+      const e = ordered[i];
+      const ai = e.data && e.data.ai;
+      if (!ai) continue;
+      ai.formationGroupId = groupId;
+      ai.formationLeaderId = rec.leaderId;
+      ai.formationRole = i === 0 ? 'leader' : 'wingman';
+      ai.formationSlotIndex = i;
+      if (i === 0) {
+        delete ai.formationSlot;
+        continue;
+      }
+      ai.formationSlot = wedgeSlotFor(leader, i);
+    }
+  },
+
+  _breakFormation(groupId, rec, members, state, now) {
+    rec.disabled = true;
+    this.bus.emit('ai:formationBroken', { groupId });
+    const scatterFrom = rec.lastLeaderPos || { x: 0, z: 0 };
+    const speaker = members.find((e) => e && e.id !== rec.leaderId) || { id: rec.leaderId, data: { name: rec.leaderName } };
+    this._emitAiBark(state, speaker, 'formationBroken');
+    for (const e of members) {
+      if (!e || e.id === rec.leaderId) continue;
+      const data = e.data || (e.data = {});
+      const ai = data.ai || (data.ai = {});
+      data.morale = 'scattered';
+      ai._moraleUntil = now + SCATTER_S;
+      ai._scatterFrom = { x: scatterFrom.x, z: scatterFrom.z };
+      ai._formationBroken = true;
+      delete ai._attackTelegraph;
+      delete ai.formationSlot;
+      delete ai.formationRole;
+      delete ai.formationLeaderId;
+      delete ai.formationSlotIndex;
+    }
+  },
+
+  _steerFormationSlot(e, ai, intent) {
+    if (!ai || ai.formationRole !== 'wingman' || !ai.formationSlot) return false;
+    const dx = ai.formationSlot.x - e.pos.x;
+    const dz = ai.formationSlot.z - e.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 14) {
+      intent.moveX = 0;
+      intent.moveZ = 0;
+      return true;
+    }
+    intent.aimAngle = Math.atan2(dz, dx);
+    this._drive(e, intent, dx, dz, clamp(dist / WEDGE_SLOT_DIST, 0.25, 1));
+    return true;
+  },
+
+  _steerScatter(e, ai, intent) {
+    const from = ai && ai._scatterFrom;
+    let dx = from ? e.pos.x - from.x : Math.cos(e.rot || 0);
+    let dz = from ? e.pos.z - from.z : Math.sin(e.rot || 0);
+    if (Math.hypot(dx, dz) < 0.001) {
+      dx = Math.cos((e.rot || 0) + Math.PI);
+      dz = Math.sin((e.rot || 0) + Math.PI);
+    }
+    intent.aimAngle = Math.atan2(dz, dx);
+    this._drive(e, intent, dx, dz, 1);
+  },
+
+  _emitAiBark(state, e, kind) {
+    if (!state.combat) state.combat = {};
+    const now = simTime(state);
+    const last = state.combat.lastAiBarkAt;
+    if (Number.isFinite(last) && now - last < AI_BARK_COOLDOWN_S) return false;
+    const variants = AI_BARKS[kind] || AI_BARKS.attackRun;
+    const idx = Math.min(variants.length - 1, Math.floor(rng(state) * variants.length));
+    state.combat.lastAiBarkAt = now;
+    this.bus.emit('comms:popup', {
+      id: `ai.${kind}.${e && e.id != null ? e.id : 'group'}.${Math.round(now * 1000)}`,
+      category: 'ambient',
+      sender: shipNameFor(e),
+      text: variants[idx],
+      ttl: 2.8,
+    });
+    return true;
+  },
+
+  _maybeJettisonFleeCargo(e, data, state) {
+    const ai = data && data.ai;
+    if (!ai || ai.archetype !== 'pirate') return;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    if (rng(state) >= PIRATE_FLEE_JETTISON_CHANCE) return;
+    const ids = cargoIdsForPanic(data);
+    const count = 1 + Math.floor(rng(state) * 2);
+    for (let i = 0; i < count; i++) {
+      const commodityId = ids[Math.floor(rng(state) * ids.length)] || PIRATE_FLEE_CARGO[0];
+      const amount = 1 + Math.floor(rng(state) * 3);
+      const ang = rng(state) * Math.PI * 2;
+      const r = 8 + rng(state) * 8;
+      const sp = 14 + rng(state) * 18;
+      this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: { x: e.pos.x + Math.cos(ang) * r, z: e.pos.z + Math.sin(ang) * r },
+        vel: { x: Math.cos(ang) * sp, z: Math.sin(ang) * sp },
+        radius: 2.0,
+        data: { kind: 'cargo', commodityId, amount, despawnAt: simTime(state) + 60 },
+      });
     }
   },
 
@@ -439,3 +699,80 @@ export const ai = {
 };
 
 function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+function simTime(state) {
+  return Number.isFinite(state && state.simTime) ? state.simTime : 0;
+}
+
+function rng(state) {
+  return state && typeof state.rng === 'function' ? state.rng() : 0;
+}
+
+function isAttackState(state) {
+  return state === S.ATTACK || state === S.STRAFE;
+}
+
+function weaponDps(w) {
+  if (!w) return 0;
+  if (Number.isFinite(w.dps)) return w.dps;
+  const dmg = Number.isFinite(w.dmg) ? w.dmg : 0;
+  const rof = Number.isFinite(w.rof) ? w.rof : 0;
+  return dmg * rof;
+}
+
+function formationGroupId(ai) {
+  if (!ai) return null;
+  return ai.squadId || ai.wingId || ai.groupId || ai.patrolGroupId || null;
+}
+
+function chooseFormationLeader(members) {
+  const sorted = members.slice().sort((a, b) => {
+    const ar = roleRank(a), br = roleRank(b);
+    if (ar !== br) return ar - br;
+    return compareIds(a.id, b.id);
+  });
+  return sorted[0];
+}
+
+function roleRank(e) {
+  const ai = e && e.data && e.data.ai;
+  const role = String((ai && (ai.preferredRole || ai.role)) || '').toLowerCase();
+  return role === 'leader' ? 0 : 1;
+}
+
+function wedgeSlotFor(leader, index) {
+  const pairIndex = index - 1;
+  const rank = Math.floor(pairIndex / 2) + 1;
+  const side = pairIndex % 2 === 0 ? -1 : 1;
+  const angle = (leader.rot || 0) + Math.PI + side * WEDGE_SLOT_ANGLE;
+  const dist = WEDGE_SLOT_DIST * rank;
+  return {
+    x: leader.pos.x + Math.cos(angle) * dist,
+    z: leader.pos.z + Math.sin(angle) * dist,
+  };
+}
+
+function compareIds(a, b) {
+  const an = Number(a), bn = Number(b);
+  if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
+  return String(a).localeCompare(String(b));
+}
+
+function shipNameFor(e) {
+  const data = e && e.data || {};
+  return e && (e.name || data.name || data.shipName || data.callsign || data.callSign || data.defId || data.shipClass) || 'Unknown Contact';
+}
+
+function cargoIdsForPanic(data) {
+  const out = [];
+  collectLootCargo(out, data && data.loot && data.loot.guaranteed);
+  collectLootCargo(out, data && data.loot && data.loot.drops);
+  return out.length ? out : PIRATE_FLEE_CARGO;
+}
+
+function collectLootCargo(out, entries) {
+  if (!Array.isArray(entries)) return;
+  for (const entry of entries) {
+    if (entry && typeof entry.id === 'string' && entry.id.startsWith('cmdty_')) out.push(entry.id);
+  }
+}

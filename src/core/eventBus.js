@@ -6,6 +6,7 @@ export function createBus() {
   const listeners = new Map(); // event -> Set<fn>
   let deferred = [];
   const dispatchPool = [];
+  const deferredPool = [];
 
   function on(event, fn) {
     let set = listeners.get(event);
@@ -29,7 +30,7 @@ export function createBus() {
     if (!set || set.size === 0) return;
     const snapshot = dispatchPool.pop() || [];
     snapshot.length = 0;
-    set.forEach((fn) => snapshot.push(fn));
+    for (const fn of set) snapshot.push(fn);
     for (let i = 0; i < snapshot.length; i++) {
       const fn = snapshot[i];
       try { fn(payload, event); }
@@ -40,16 +41,28 @@ export function createBus() {
   }
 
   /** Defer an event to the next flush() (end of sim step). */
-  function queue(event, payload) { deferred.push([event, payload]); }
+  function queue(event, payload) {
+    const item = deferredPool.pop() || { event: null, payload: null };
+    item.event = event;
+    item.payload = payload;
+    deferred.push(item);
+  }
 
   function flush() {
     if (!deferred.length) return;
     const batch = deferred;
     deferred = [];
-    for (const [event, payload] of batch) emit(event, payload);
+    for (let i = 0; i < batch.length; i++) {
+      const item = batch[i];
+      emit(item.event, item.payload);
+      item.event = null;
+      item.payload = null;
+      deferredPool.push(item);
+    }
+    batch.length = 0;
   }
 
-  function clear() { listeners.clear(); deferred = []; dispatchPool.length = 0; }
+  function clear() { listeners.clear(); deferred = []; dispatchPool.length = 0; deferredPool.length = 0; }
 
   return { on, off, once, emit, queue, flush, clear, _listeners: listeners };
 }

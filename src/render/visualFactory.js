@@ -2048,13 +2048,17 @@ function applyStructureProfile(g, pal, R, seed) {
   const rnd = mulberryLite(seed ^ 0x517);
   // --- CHROME: authority stations get a reflective foil shell (mirrors the nebula via env-map)
   if (profile.chrome > 0.3) {
+    // Sheen, not shell: at the old 0.4–0.7 opacity this sphere read as a giant fog bubble that
+    // swallowed the whole station silhouette (the #1 "what IS that blob" offender in playtests).
+    // A faint env-mapped skin hugging the hull keeps the authority-chrome identity while letting
+    // the actual structure geometry carry the composition.
     const foilMat = getMaterial(`chrome:struct:${q(profile.chrome)}`, () => new THREE.MeshStandardMaterial({
-      color: 0xffffff, metalness: 1.0, roughness: 0.14 - profile.chrome * 0.08,
-      envMap: SHIP_ENV_MAP, envMapIntensity: profile.chrome,
-      transparent: true, opacity: 0.4 + profile.chrome * 0.3, depthWrite: false,
+      color: 0xffffff, metalness: 1.0, roughness: 0.3,
+      envMap: SHIP_ENV_MAP, envMapIntensity: profile.chrome * 0.5,
+      transparent: true, opacity: 0.03 + profile.chrome * 0.04, depthWrite: false,
     }));
     const foil = new THREE.Mesh(getGeometry('stat:chromeshell', () => new THREE.SphereGeometry(1, 16, 12)), foilMat);
-    foil.scale.setScalar(R * 1.05); g.add(foil);
+    foil.scale.setScalar(R * 1.02); g.add(foil);
   }
   // --- GRIME: grimy outposts/stations get weathered overlays. A few large rust/soot blooms draped
   //     over the structure via a transparent sphere shell carrying the grime texture.
@@ -2084,9 +2088,11 @@ function applyStructureProfile(g, pal, R, seed) {
   // --- ATMOSPHERIC HAZE: a soft volumetric-feeling glow halo around the station, tinted to the
   //     faction emissive — sells "this place is alive / pressurized / lit from within". Pirate
   //     stations get a sickly red haze; core stations a clean blue.
-  const hazeMat = additiveGlowMaterial(pal.emissive, 0.12);
+  // Kept subtle and tight: the haze sells "lit from within" at the rim; oversized it just stacks
+  // with the chrome skin into soup.
+  const hazeMat = additiveGlowMaterial(pal.emissive, 0.07);
   const haze = new THREE.Mesh(getGeometry('stat:haze', () => new THREE.SphereGeometry(1, 14, 10)), hazeMat);
-  haze.scale.setScalar(R * (1.25 + (profile.grime || 0) * 0.2)); g.add(haze);
+  haze.scale.setScalar(R * (1.12 + (profile.grime || 0) * 0.12)); g.add(haze);
 }
 
 // ---------------------------------------------------------------------------------------------

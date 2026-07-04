@@ -10,10 +10,30 @@ export const STATION_TYPES = ['trade_hub', 'refinery', 'mining', 'fab', 'militar
 export const HAZARD_TYPES  = ['dense_asteroid', 'nebula', 'radiation', 'debris'];
 export const POI_TYPES     = ['beacon', 'derelict', 'cache', 'colony', 'anomaly', 'wormhole', 'wreck'];
 
+export const SECTOR_PALETTE_CLASSES = {
+  core: {
+    key: 0xcfe2ff, rim: 0x6a5cff, fill: 0x39d0ff, ambient: 0x42506f,
+    fog: 0x0a1430, fogDensity: 0.00026, nebulaTint: 0x1e3a6a, dust: 0x7ea7c7,
+  },
+  belt: {
+    key: 0xffd59a, rim: 0xb56d2f, fill: 0xffb13d, ambient: 0x594a42,
+    fog: 0x2a160c, fogDensity: 0.00034, nebulaTint: 0x8a4a1e, dust: 0xc0793d,
+  },
+  fringe: {
+    key: 0xffb07a, rim: 0xff3f2d, fill: 0xffaa66, ambient: 0x584343,
+    fog: 0x2a0d0a, fogDensity: 0.00042, nebulaTint: 0x8a1e1e, dust: 0xc15032,
+  },
+  anomaly: {
+    key: 0xc8b6ff, rim: 0x54ffb0, fill: 0x4ddc92, ambient: 0x494760,
+    fog: 0x160d2c, fogDensity: 0.00036, nebulaTint: 0x5a1e8a, dust: 0x79ffc8,
+  },
+};
+
 export const SECTORS = [
   {
-    id: 'sector_helios_prime', name: 'Helios Prime', tier: 0, security: 0.98,
+    id: 'sector_helios_prime', name: 'Helios Prime', tier: 0, security: 0.98, charted: true,
     factionId: 'faction_scn', position: { x: 0, y: 0 }, worldRadius: 3500,
+    palette: SECTOR_PALETTE_CLASSES.core,
     // Tutorial home sector: NO hostile spawns (enemyDensity 0). A brand-new pilot must not be
     // hunted before learning the ropes; danger ramps up only in neighbouring sectors.
     trafficPerMin: 18, enemyDensity: 0, enemyLevel: [1, 2],
@@ -35,8 +55,9 @@ export const SECTORS = [
     ],
   },
   {
-    id: 'sector_ceres_belt', name: 'Ceres Belt', tier: 1, security: 0.72,
+    id: 'sector_ceres_belt', name: 'Ceres Belt', tier: 1, security: 0.72, charted: true,
     factionId: 'faction_dmc', position: { x: -3, y: 2 }, worldRadius: 4200,
+    palette: SECTOR_PALETTE_CLASSES.belt,
     trafficPerMin: 10, enemyDensity: 0.18, enemyLevel: [2, 4],
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_pallas_drift'],
     stations: [
@@ -55,8 +76,9 @@ export const SECTORS = [
     ],
   },
   {
-    id: 'sector_tethys_junction', name: 'Tethys Junction', tier: 1, security: 0.65,
+    id: 'sector_tethys_junction', name: 'Tethys Junction', tier: 1, security: 0.65, charted: true,
     factionId: 'faction_mts', position: { x: 3, y: 2 }, worldRadius: 4000,
+    palette: SECTOR_PALETTE_CLASSES.core,
     trafficPerMin: 14, enemyDensity: 0.20, enemyLevel: [2, 4],
     neighbors: ['sector_helios_prime', 'sector_ceres_belt', 'sector_vesta_forge', 'sector_io_reach'],
     stations: [
@@ -70,8 +92,9 @@ export const SECTORS = [
     ],
   },
   {
-    id: 'sector_vesta_forge', name: 'Vesta Forge', tier: 1, security: 0.60,
+    id: 'sector_vesta_forge', name: 'Vesta Forge', tier: 1, security: 0.60, charted: true,
     factionId: 'faction_dmc', position: { x: 0, y: 4 }, worldRadius: 4300,
+    palette: SECTOR_PALETTE_CLASSES.belt,
     trafficPerMin: 9, enemyDensity: 0.25, enemyLevel: [3, 5],
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_charon_expanse'],
     stations: [
@@ -87,8 +110,9 @@ export const SECTORS = [
     pois: [ { id: 'poi_freighter', type: 'derelict', name: 'Derelict Freighter' } ],
   },
   {
-    id: 'sector_pallas_drift', name: 'Pallas Drift', tier: 2, security: 0.42,
+    id: 'sector_pallas_drift', name: 'Pallas Drift', tier: 2, security: 0.42, charted: true,
     factionId: 'faction_mts', position: { x: -5, y: 5 }, worldRadius: 4500,
+    palette: SECTOR_PALETTE_CLASSES.fringe,
     trafficPerMin: 7, enemyDensity: 0.40, enemyLevel: [4, 7],
     neighbors: ['sector_ceres_belt', 'sector_io_reach', 'sector_sker_haven'],
     stations: [
@@ -107,8 +131,9 @@ export const SECTORS = [
     ],
   },
   {
-    id: 'sector_io_reach', name: 'Io Reach', tier: 2, security: 0.35,
+    id: 'sector_io_reach', name: 'Io Reach', tier: 2, security: 0.35, charted: true,
     factionId: 'faction_free', position: { x: 5, y: 5 }, worldRadius: 4600,
+    palette: SECTOR_PALETTE_CLASSES.fringe,
     trafficPerMin: 5, enemyDensity: 0.50, enemyLevel: [5, 8],
     neighbors: ['sector_tethys_junction', 'sector_pallas_drift', 'sector_charon_expanse', 'sector_veil_nebula'],
     stations: [
@@ -130,8 +155,9 @@ export const SECTORS = [
     ],
   },
   {
-    id: 'sector_charon_expanse', name: 'Charon Expanse', tier: 2, security: 0.30,
+    id: 'sector_charon_expanse', name: 'Charon Expanse', tier: 2, security: 0.30, charted: true,
     factionId: 'faction_dmc', position: { x: 2, y: 7 }, worldRadius: 4800,
+    palette: SECTOR_PALETTE_CLASSES.belt,
     trafficPerMin: 4, enemyDensity: 0.50, enemyLevel: [5, 9],
     neighbors: ['sector_vesta_forge', 'sector_io_reach', 'sector_ashfall_reach'],
     stations: [
@@ -149,8 +175,9 @@ export const SECTORS = [
     pois: [ { id: 'poi_colony', type: 'colony', name: 'Abandoned Mining Colony', claimable: true, size: 'S' } ],
   },
   {
-    id: 'sector_sker_haven', name: 'Sker Haven', tier: 3, security: 0.08,
+    id: 'sector_sker_haven', name: 'Sker Haven', tier: 3, security: 0.08, charted: false,
     factionId: 'faction_reach', position: { x: -7, y: 8 }, worldRadius: 5000,
+    palette: SECTOR_PALETTE_CLASSES.fringe,
     trafficPerMin: 0, enemyDensity: 0.70, enemyLevel: [7, 11],
     neighbors: ['sector_pallas_drift', 'sector_veil_nebula'],
     stations: [
@@ -167,8 +194,9 @@ export const SECTORS = [
     ],
   },
   {
-    id: 'sector_veil_nebula', name: 'Veil Nebula', tier: 3, security: 0.12,
+    id: 'sector_veil_nebula', name: 'Veil Nebula', tier: 3, security: 0.12, charted: false,
     factionId: 'faction_free', position: { x: 7, y: 9 }, worldRadius: 5200,
+    palette: SECTOR_PALETTE_CLASSES.anomaly,
     trafficPerMin: 0, enemyDensity: 0.65, enemyLevel: [8, 12],
     neighbors: ['sector_io_reach', 'sector_sker_haven'],
     wormholeTo: { sectorId: 'sector_ashfall_reach', gatedBy: 'tech:tech_long_range_survey' },
@@ -186,8 +214,9 @@ export const SECTORS = [
     ],
   },
   {
-    id: 'sector_ashfall_reach', name: 'Ashfall Reach', tier: 4, security: 0.05,
+    id: 'sector_ashfall_reach', name: 'Ashfall Reach', tier: 4, security: 0.05, charted: false,
     factionId: 'faction_vael', position: { x: 4, y: 11 }, worldRadius: 5500,
+    palette: SECTOR_PALETTE_CLASSES.anomaly,
     trafficPerMin: 0, enemyDensity: 0.80, enemyLevel: [10, 15],
     neighbors: ['sector_charon_expanse'],
     stations: [
@@ -223,4 +252,9 @@ export function wealthIndex(sector) {
 export function dangerIndex(sector) {
   const tier = sector.tier;
   return clamp(0.05 + 0.22 * tier + 0.25 * (1 - sector.security), 0, 1.0);
+}
+
+export function surveyDataPrice(sector) {
+  const tier = Math.max(0, Number(sector && sector.tier) || 0);
+  return Math.round(750 + tier * 1250);
 }

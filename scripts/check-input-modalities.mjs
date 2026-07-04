@@ -67,6 +67,7 @@ const uiInputSrc = read('src/ui/input.js');
 const helpSrc = read('src/ui/screens/help.js');
 const promptSrc = read('src/ui/controlPrompts.js');
 const screenManagerSrc = read('src/ui/screenManager.js');
+const localmapSrc = read('src/ui/screens/localmap.js');
 assert.match(settingsSrc, /Gamepad enabled/, 'Settings must expose a Gamepad enabled toggle');
 assert.match(settingsSrc, /Touch controls/, 'Settings must expose a Touch controls toggle');
 assert.doesNotMatch(settingsSrc, /rowToggle\('Touch controls'/, 'Touch controls must use a tri-state Auto/On/Off control, not the boolean toggle helper');
@@ -114,6 +115,12 @@ assert.match(uiInputSrc, /touchActionPressed\('starmap'\)[\s\S]*openScreenFromTo
   'UI input must route the touch Star button to the shared Star Map screen');
 assert.match(uiInputSrc, /touchActionPressed\('pause'\)[\s\S]*openScreenFromTouch\('pause'\)/,
   'UI input must route the touch Pause button to the shared Pause screen');
+assert.match(localmapSrc, /<button class="lm-close" type="button" aria-label="Close Local Map">Close \(\$\{localMapKey\}\)<\/button>/,
+  'Local Map must keep a visible close button with a concrete assistive label for touch-opened map recovery');
+assert.match(localmapSrc, /press \$\{localMapKey\} or Esc to close/,
+  'Local Map header must keep teaching keyboard close recovery');
+assert.match(localmapSrc, /key === BINDINGS\.localmap\.key/,
+  'Local Map key close handler must keep reading the shared binding registry');
 assert.match(promptSrc, /Dock\/Map\/Log\/Star\/Pause buttons/, 'Touch flight hints must match the actual touch menu buttons');
 assert.match(promptSrc, /Tap Dock when the station prompt appears/, 'Touch tutorial docking copy must teach the touch Dock button');
 assert.match(promptSrc, /Log opens the Mission Log/, 'Touch first-flight hint must teach the objective-home button');

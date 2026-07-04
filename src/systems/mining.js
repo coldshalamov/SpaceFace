@@ -14,16 +14,28 @@
 // Determinism (§0.5): all weighted ore rolls use state.rng() — never Math.random().
 // Single-writer (§0.6): cargo is owned by the cargo module; we route ore through its addCargo
 // helper / pickup:collected event and only fall back to a direct write while cargo is a stub.
-import { ORES, ASTEROIDS, BEAMS } from '../data/mining.js';
+import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 
-const MAGNET_ACCEL = 280;       // wu/s² pull toward ship inside magnetRange (snappy vacuum so ore doesn't drift off)
+export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
+export const MAGNET_ACCEL = 520; // wu/s² pull toward ship inside magnetRange
 const MAGNET_MAX_SPEED = 210;   // wu/s cap on pulled pickups
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
 const EJECT_STEP = 0.25;        // ore ejects each time cumulative loss crosses 25%
 const SALVAGE_TIME_DEFAULT = 6; // s to fully drain a wreck if combat didn't set one
 const MINEABLE_QUERY_RADIUS_PAD = 64;
+const SEAM_HIT_RADIUS = 14;
+export const SEAM_YIELD_OFF = 0.35;
+const SEAM_HIT_EVENT_INTERVAL = 0.5;
+const VENT_HEAT_MIN = 70;
+const VENT_HEAT_MAX = 95;
+const VENT_BONUS_SECONDS = 2;
+const VENT_BONUS_MULT = 1.25;
+const BEAM_PICKUP_DIRECT_RADIUS = 60;
+const MINING_NOISE_GAIN_PER_S = 8;
+const MINING_NOISE_DECAY_PER_S = 3;
+const MINING_NOISE_DANGER = 70;
 
 const ORE_BY_ID = new Map(ORES.map((o) => [o.id, o]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
@@ -51,6 +63,7 @@ export const mining = {
 
     this._beaming = false;     // was the player beam active last tick (start/stop edges)
     this._lockTargetId = null; // currently soft-locked asteroid/wreck id
+    this._activeBeamLine = null;
 
     const bus = this.bus;
     // Combat spawns a wreck on ship death so the player can salvage it.
@@ -73,8 +86,13 @@ export const mining = {
     if (player) {
       const beam = this._beamRuntime(player);
       if (firing && beam) this._runPlayerBeam(player, beam, dt, state);
-      else { this._coolBeam(beam, dt); this._stopBeam(); }
+      else {
+        if (this._beaming) this._tryVentBonus(beam, state);
+        this._coolBeam(beam, dt);
+        this._stopBeam();
+      }
     }
+    this._updateMiningNoise(this._beaming, dt, state);
 
     this._updatePickups(dt, state);
   },
@@ -118,7 +136,9 @@ export const mining = {
       this.bus.emit('beam:overheated', {});
     }
 
-    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
+    this._activeBeamLine = beamLineFor(player, target);
+
+    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1) * this._ventBonusMultiplier(state);
     if (target.type === 'wreck') this._drainWreck(player, target, dps, dt);
     else this.applyMining(target.id, dps, dt, player.id);
   },
@@ -133,8 +153,12 @@ export const mining = {
   },
 
   _stopBeam() {
-    if (!this._beaming) return;
+    if (!this._beaming) {
+      this._activeBeamLine = null;
+      return;
+    }
     this._beaming = false;
+    this._activeBeamLine = null;
     this.bus.emit('mining:stop', { minerId: this.state.playerId, targetId: this._lockTargetId, position: null });
   },
 
@@ -170,6 +194,7 @@ export const mining = {
     const ast = state.entities.get(targetId);
     if (!ast || !ast.alive || ast.type !== 'asteroid') return 0;
     const d = ast.data || (ast.data = {});
+    this._ensureAsteroidSeams(ast);
 
     // Normalize ore-HP fields from whatever the spawner gave us (bootstrap uses oreHP/oreHPMax).
     const hpMax = d.oreHPMax || d.oreHP || ast.hullMax || 1;
@@ -182,15 +207,23 @@ export const mining = {
     if (d.pctEjected == null) d.pctEjected = 0;
     if (d._oreCarry == null) d._oreCarry = 0; // fractional ore awaiting a whole unit
 
+    const miner = state.entities.get(minerId);
+    const contact = this._beamContactPoint(ast, miner);
+    const seam = this._seamYield(ast, contact);
+    if (seam.onSeam) this._emitSeamHit(ast, d, state);
+
     const before = d.oreHP;
-    d.oreHP = Math.max(0, d.oreHP - dps * dt);
+    d.oreHP = Math.max(0, d.oreHP - dps * seam.mult * dt);
     ast.hull = d.oreHP; // keep the hull alias in sync
     const lost = before - d.oreHP;
     if (lost <= 0) return 0;
 
-    const miner = state.entities.get(minerId);
-    const contact = this._surfacePoint(ast, miner);
-    this.bus.emit('mining:tick', { contactPos: contact, oreType: this._dominantOre(def) });
+    this.bus.emit('mining:tick', {
+      contactPos: contact,
+      oreType: this._dominantOre(def),
+      seamHit: seam.onSeam,
+      yieldMult: seam.mult,
+    });
 
     // Convert cumulative ore-HP loss into ore units, gated to 25% ejection thresholds.
     const pctNow = 1 - d.oreHP / hpMax;
@@ -209,6 +242,7 @@ export const mining = {
     if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner);
 
     if (destroyed) {
+      if (!d.isChunk) this._fractureAsteroid(ast, def, miner);
       this.bus.emit('asteroid:destroyed', { id: ast.id, typeId: d.typeId || (def && def.id), pos: { x: ast.pos.x, z: ast.pos.z } });
       d.respawnAt = state.simTime + ((def && def.respawnSec) || 90); // world reads this to repopulate
       ast.alive = false;
@@ -270,7 +304,7 @@ export const mining = {
   _updatePickups(dt, state) {
     const player = state.entities.get(state.playerId);
     if (!player) return;
-    const magnet = state.player.magnetRange || 250;
+    const magnet = Math.max(MAGNET_RANGE, state.player.magnetRange || 0);
     const collectRadius = (player.radius || 6) + 4;
     const queryRadius = Math.max(magnet, collectRadius) + PICKUP_RADIUS;
     const pickups = pickupsNearPlayer(state, player, queryRadius, this._pickupScratch);
@@ -281,6 +315,10 @@ export const mining = {
     this._diag.pickupsCollected = 0;
     for (const e of pickups) {
       if (!e.alive || e.type !== 'pickup') continue;
+      if (this._collectPickupOnBeamLine(e, player)) {
+        this._diag.pickupsCollected++;
+        continue;
+      }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
       if (dist <= magnet) {
@@ -387,6 +425,81 @@ export const mining = {
     }
   },
 
+  _fractureAsteroid(ast, def, miner) {
+    if (!ast || !ast.data || ast.data.isChunk) return;
+    const rng = this.state.rng;
+    const parentRadius = Math.max(1, ast.radius || (ast.data && ast.data.size) || 6);
+    const parentHp = Math.max(1, ast.data.oreHPMax || ast.hullMax || ast.hull || 1);
+    const parentYield = Math.max(1, ast.data.yieldU || this._defaultYield(def, parentHp));
+    const count = 2 + Math.floor(rng() * 2);
+    const parentSeams = Array.isArray(ast.data.seams) ? ast.data.seams : [];
+    const seamCount = Math.max(1, parentSeams.length - 1);
+    for (let i = 0; i < count; i++) {
+      const ratio = 0.35 + rng() * 0.15;
+      const radius = parentRadius * ratio;
+      const ang = (Math.PI * 2 * i) / count + rng() * 0.6;
+      const dist = parentRadius * 0.45 + radius + 4;
+      const oreHP = Math.max(4, Math.round(parentHp * ratio / count));
+      const yieldU = Math.max(1, Math.round(parentYield * ratio / count));
+      const chunk = this.helpers.spawnEntity({
+        type: 'asteroid',
+        pos: {
+          x: ast.pos.x + Math.cos(ang) * dist,
+          z: ast.pos.z + Math.sin(ang) * dist,
+        },
+        radius,
+        mass: Math.max(40, (ast.mass || 200) * ratio / count),
+        angVel: (rng() - 0.5) * 0.45,
+        hull: oreHP,
+        hullMax: oreHP,
+        collides: true,
+        data: {
+          typeId: ast.data.typeId || (def && def.id) || 'ast_common_rock',
+          tier: ast.data.tier,
+          tierCap: ast.data.tierCap,
+          oreHP,
+          oreHPMax: oreHP,
+          yieldU,
+          size: radius,
+          pctEjected: 0,
+          respawnSec: ast.data.respawnSec,
+          fieldId: ast.data.fieldId,
+          isChunk: true,
+        },
+      });
+      chunk.data.seams = inheritChunkSeams(parentSeams, seamCount, radius, i);
+      if (ast.data.scanHighlightUntil != null && ast.data.scanHighlightUntil > this.state.simTime) {
+        chunk.data.scanHighlightUntil = ast.data.scanHighlightUntil;
+        chunk.data.scanOreGlyph = ast.data.scanOreGlyph;
+      }
+      this.bus.emit('asteroid:chunked', {
+        parentId: ast.id,
+        chunkId: chunk.id,
+        minerId: miner ? miner.id : null,
+      });
+    }
+  },
+
+  _collectPickupOnBeamLine(pickup, player) {
+    const line = this._activeBeamLine;
+    if (!line || !pickup || !pickup.data || !pickup.data.commodityId) return false;
+    if (pointSegmentDistanceSq(pickup.pos.x, pickup.pos.z, line.ax, line.az, line.bx, line.bz) >
+      BEAM_PICKUP_DIRECT_RADIUS * BEAM_PICKUP_DIRECT_RADIUS) return false;
+    const requested = Math.max(0, Math.floor(pickup.data.amount || 1));
+    if (requested <= 0) return false;
+    const accepted = this._giveCargo(pickup.data.commodityId, requested, player.id);
+    if (accepted >= requested) {
+      pickup.alive = false;
+      return true;
+    }
+    if (accepted > 0) {
+      pickup.data.amount = requested - accepted;
+      return true;
+    }
+    this.bus.emit('cargo:full', { commodityId: pickup.data.commodityId });
+    return false;
+  },
+
   // ---- cargo bridge (single-writer aware) -----------------------------------
   // Prefer the cargo module's writer; fall back to a direct, conservative write while cargo is a
   // stub so the early loop (mine → fill hold) is demonstrable. When cargo becomes real it wins.
@@ -420,6 +533,72 @@ export const mining = {
   },
 
   // ---- helpers --------------------------------------------------------------
+  _tryVentBonus(beam, state) {
+    if (!beam || beam.overheated) return false;
+    const heat = beam.heat || 0;
+    if (heat < VENT_HEAT_MIN || heat > VENT_HEAT_MAX) return false;
+    const runtime = state.player.mining || (state.player.mining = {});
+    runtime.ventBonusUntil = state.simTime + VENT_BONUS_SECONDS;
+    this.bus.emit('mining:ventBonus', {});
+    return true;
+  },
+
+  _ventBonusMultiplier(state) {
+    const runtime = state.player && state.player.mining;
+    return runtime && runtime.ventBonusUntil > state.simTime ? VENT_BONUS_MULT : 1;
+  },
+
+  _updateMiningNoise(beaming, dt, state) {
+    if (!state || !state.player) return;
+    const before = clamp(state.player.miningNoise || 0, 0, 100);
+    const delta = (beaming ? MINING_NOISE_GAIN_PER_S : -MINING_NOISE_DECAY_PER_S) * dt;
+    const after = clamp(before + delta, 0, 100);
+    state.player.miningNoise = after;
+    if (before <= MINING_NOISE_DANGER && after > MINING_NOISE_DANGER) {
+      this.bus.emit('danger:miningNoise', { level: after });
+    }
+  },
+
+  _ensureAsteroidSeams(ast) {
+    const d = ast && ast.data || null;
+    if (!d) return [];
+    if (Array.isArray(d.seams)) return d.seams;
+    d.seams = deriveAsteroidSeams(this.state.meta.seed, ast.id, ast.radius || d.size || 1, {
+      hash32: this.helpers && this.helpers.hash32,
+      mulberry32: this.helpers && this.helpers.mulberry32,
+    });
+    return d.seams;
+  },
+
+  _beamContactPoint(ast, miner) {
+    if (!miner) return { x: ast.pos.x, z: ast.pos.z };
+    const aim = this.state.input && Number.isFinite(this.state.input.aimAngle)
+      ? this.state.input.aimAngle
+      : Math.atan2(ast.pos.z - miner.pos.z, ast.pos.x - miner.pos.x);
+    const hit = rayCircleContact(miner.pos, aim, ast.pos, ast.radius || 6);
+    return hit || this._surfacePoint(ast, miner);
+  },
+
+  _seamYield(ast, contact) {
+    const seams = this._ensureAsteroidSeams(ast);
+    if (!seams.length || !contact) return { onSeam: false, mult: SEAM_YIELD_OFF };
+    const hitR2 = SEAM_HIT_RADIUS * SEAM_HIT_RADIUS;
+    for (const seam of seams) {
+      const p = seamWorldPoint(ast, seam);
+      const dx = contact.x - p.x;
+      const dz = contact.z - p.z;
+      if (dx * dx + dz * dz <= hitR2) return { onSeam: true, mult: 1 };
+    }
+    return { onSeam: false, mult: SEAM_YIELD_OFF };
+  },
+
+  _emitSeamHit(ast, data, state) {
+    const last = data._lastSeamHitEventAt;
+    if (last != null && state.simTime - last < SEAM_HIT_EVENT_INTERVAL) return;
+    data._lastSeamHitEventAt = state.simTime;
+    this.bus.emit('mining:seamHit', { asteroidId: ast.id });
+  },
+
   _defaultYield(def, hpMax) {
     if (!def || !def.yieldU) return Math.max(1, Math.round(hpMax / 20));
     const [yLo, yHi] = def.yieldU;
@@ -465,4 +644,85 @@ function resetMiningDiagnostics(diag) {
   diag.pickupsCollected = 0;
   diag.targetSpatialQueries = 0;
   diag.targetCandidates = 0;
+}
+
+function clamp(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, Number(n) || 0));
+}
+
+function beamLineFor(player, target) {
+  return {
+    ax: player.pos.x,
+    az: player.pos.z,
+    bx: target.pos.x,
+    bz: target.pos.z,
+  };
+}
+
+function rayCircleContact(origin, aim, center, radius) {
+  const dx = Math.cos(aim);
+  const dz = Math.sin(aim);
+  const ox = origin.x - center.x;
+  const oz = origin.z - center.z;
+  const b = 2 * (ox * dx + oz * dz);
+  const c = ox * ox + oz * oz - radius * radius;
+  const disc = b * b - 4 * c;
+  if (disc < 0) return null;
+  const root = Math.sqrt(disc);
+  const t0 = (-b - root) / 2;
+  const t1 = (-b + root) / 2;
+  const t = t0 >= 0 ? t0 : t1 >= 0 ? t1 : null;
+  if (t == null) return null;
+  return { x: origin.x + dx * t, z: origin.z + dz * t };
+}
+
+function seamWorldPoint(ast, seam) {
+  let local = seam && seam.localOffset || null;
+  if (!local && seam && Number.isFinite(seam.offset)) {
+    const angle = Number.isFinite(seam.angle) ? seam.angle : 0;
+    local = { x: Math.cos(angle) * seam.offset, z: Math.sin(angle) * seam.offset };
+  }
+  local = local || { x: 0, z: 0 };
+  const rot = ast.rot || 0;
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  return {
+    x: ast.pos.x + local.x * c - local.z * s,
+    z: ast.pos.z + local.x * s + local.z * c,
+  };
+}
+
+function pointSegmentDistanceSq(px, pz, ax, az, bx, bz) {
+  const vx = bx - ax;
+  const vz = bz - az;
+  const len2 = vx * vx + vz * vz;
+  if (len2 <= 1e-9) {
+    const dx = px - ax;
+    const dz = pz - az;
+    return dx * dx + dz * dz;
+  }
+  const t = clamp(((px - ax) * vx + (pz - az) * vz) / len2, 0, 1);
+  const cx = ax + vx * t;
+  const cz = az + vz * t;
+  const dx = px - cx;
+  const dz = pz - cz;
+  return dx * dx + dz * dz;
+}
+
+function inheritChunkSeams(parentSeams, count, radius, chunkIndex) {
+  if (!Array.isArray(parentSeams) || !parentSeams.length || count <= 0) return [];
+  const seams = [];
+  for (let i = 0; i < count; i++) {
+    const src = parentSeams[(chunkIndex + i) % parentSeams.length] || {};
+    const angle = Number.isFinite(src.angle) ? src.angle : 0;
+    const radial = radius * (0.45 + 0.1 * ((chunkIndex + i) % 3));
+    seams.push({
+      angle,
+      localOffset: {
+        x: Math.round(Math.cos(angle) * radial * 1e6) / 1e6,
+        z: Math.round(Math.sin(angle) * radial * 1e6) / 1e6,
+      },
+    });
+  }
+  return seams;
 }

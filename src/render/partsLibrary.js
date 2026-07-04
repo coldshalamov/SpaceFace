@@ -186,6 +186,22 @@ const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
 });
 const WHOLE_SHIP_URLS = Object.freeze(Object.values(WHOLE_SHIP_FILE_BY_DEF_ID));
 const isWholeShipUrl = (url) => WHOLE_SHIP_URLS.some((w) => String(url || '').endsWith(w));
+const PRECOMPILE_SHIP_ARCHETYPES = Object.freeze(Object.keys(HULL_FILE_BY_DEF_ID).map((defId) => Object.freeze({
+  defId,
+  hullFile: HULL_FILE_BY_DEF_ID[defId],
+  wholeShipFile: WHOLE_SHIP_FILE_BY_DEF_ID[defId] || null,
+})));
+
+export function shipArchetypeKeyForDefId(defId, silhouette = '') {
+  const id = defId || 'ship_kestrel';
+  const hull = HULL_FILE_BY_DEF_ID[id] || `def:${id}`;
+  const whole = WHOLE_SHIP_FILE_BY_DEF_ID[id] || '';
+  return [id, hull, whole, silhouette || 'base'].join('|');
+}
+
+export function shipArchetypesForPrecompile() {
+  return PRECOMPILE_SHIP_ARCHETYPES;
+}
 
 /**
  * Wrap one already-built ship in the authored-asset boundary. This call is synchronous and cannot

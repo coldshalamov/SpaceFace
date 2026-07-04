@@ -11,7 +11,12 @@ import { SIM_DT } from '../core/sim.js';
 // is the live contract, not an ad-hoc scripted tether.
 function masslineDefFor(def) {
   const brk = (def && def.break) || {};
+  const reelRate = Number.isFinite(def && def.reelRate) ? def.reelRate : null;
   return {
+    minLength: Number.isFinite(def && def.minLength) ? def.minLength : undefined,
+    maxLength: Number.isFinite(def && def.maxLength) ? def.maxLength : undefined,
+    reelInSpeed: reelRate == null ? undefined : reelRate,
+    reelOutSpeed: reelRate == null ? undefined : reelRate,
     maxTension: Number.isFinite(brk.maxTension) ? brk.maxTension : 140,
     maxImpulse: Number.isFinite(brk.maxImpulse) ? brk.maxImpulse : 90,
     overloadGraceS: 0.18,
@@ -116,6 +121,11 @@ export function createAttachmentService(context) {
     }
     const before = attachment.restLength;
     attachment.restLength = next;
+    if (attachment.masslineRuntime) {
+      attachment.masslineRuntime.restLength = next;
+      attachment.masslineRuntime.targetLength = next;
+      attachment.masslineRuntime.reelVelocity = 0;
+    }
     appendCombatTrace(state.combat, state.tick, 'attachment.reel', {
       actorId: attachment.ownerId,
       targetId: attachment.targetId,
@@ -153,7 +163,17 @@ export function createAttachmentService(context) {
           tick: state.tick,
         });
       } catch (error) {
-        return fail('physics_cut_failed', error);
+        // Do NOT leave the record 'active' when the physics cut throws (typically a stale body
+        // after the target despawned). An active record with an ungovernable joint is the
+        // immortal-ghost-tether bug: reconcilePhysics resurrects the joint every tick, the
+        // owner-limit then blocks all future latches, and no input can ever cut it. Mark broken,
+        // trace the failure, and let reconcile/liveness sweeps skip broken records.
+        appendCombatTrace(state.combat, state.tick, 'attachment.physicsCutFailed', {
+          actorId: actorId == null ? attachment.ownerId : actorId,
+          attachmentId: attachment.id,
+          reason,
+          error: error && error.message ? String(error.message) : 'unknown',
+        });
       }
     } else if (reason !== 'physics_break') {
       return fail('physics_port_unavailable');
@@ -197,11 +217,33 @@ export function createAttachmentService(context) {
     return broken;
   }
 
+  // Liveness sweep: an attachment whose owner or target no longer exists (despawned pickup,
+  // mined-out asteroid, killed ship) must break — never persist as an invisible anchor. Runs
+  // before physics reconcile so a dead-ended joint is cut instead of resurrected.
+  function breakOrphans() {
+    let broken = 0;
+    for (const attachment of Object.values(state.combat.attachments.byId).sort(byId)) {
+      if (!attachment || attachment.state !== 'active') continue;
+      const owner = entity(attachment.ownerId);
+      const target = entity(attachment.targetId);
+      // Orphaned = the entity is GONE (despawned) or explicitly dead (alive === false). An entity
+      // without an `alive` field (harness stubs, minimal records) is NOT an orphan — only a
+      // positive death signal or a missing record may break a line.
+      const ownerLost = !owner || owner.alive === false;
+      const targetLost = !target || target.alive === false;
+      if (!ownerLost && !targetLost) continue;
+      const result = breakAttachment(attachment, 'target_lost', attachment.ownerId);
+      if (result.ok) broken++;
+    }
+    return broken;
+  }
+
   function reconcilePhysics() {
     const physics = combatPhysics();
     if (!physics || typeof physics.createAttachment !== 'function' || typeof physics.getAttachmentTelemetry !== 'function') {
       return { recreated: 0, pending: 0 };
     }
+    breakOrphans();
     let recreated = 0;
     let pending = 0;
     for (const attachment of Object.values(state.combat.attachments.byId).sort(byId)) {
@@ -382,7 +424,7 @@ export function createAttachmentService(context) {
       .sort(byId);
   }
 
-  return Object.freeze({ get, create, reel, cut, breakAttachment, breakOwnedBy, reconcilePhysics, transfer, updateTelemetryAndBreak, onPhysicsBreak, listForEntity });
+  return Object.freeze({ get, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, updateTelemetryAndBreak, onPhysicsBreak, listForEntity });
 
   function combatPhysics() {
     return helpers && helpers.combatPhysics;

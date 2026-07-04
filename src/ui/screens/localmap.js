@@ -2,7 +2,7 @@
 //
 // The third navigation scale, distinct from:
 //   • tactical radar (radar.js) — near-field combat contacts in the HUD corner;
-//   • galaxy star map (starmap.js) — inter-system topology, the strategic M-key view.
+//   • nav chart (starmap.js) — inter-system topology.
 // This is the LOCAL/system view: the player's current playable system with stations, gates,
 // remembered contacts (with confidence + age decay), and mission landmarks. It is fed by the
 // generated LocalSpaceIntel model (localSpaceMapModel.js) — the same pure model used by the
@@ -120,14 +120,14 @@ export const localmapScreen = {
       '<div class="lm-head">' +
         '<div><div class="lm-title">Local System Map</div>' +
         `<div class="lm-scale">SYSTEM SCALE · remembered contacts age + fade · press ${localMapKey} or Esc to close</div></div>` +
-        `<button class="lm-close" type="button">Close (${localMapKey})</button>` +
+        `<button class="lm-close" type="button" aria-label="Close Local Map">Close (${localMapKey})</button>` +
       '</div>' +
       '<div class="lm-body"><canvas></canvas>' +
       '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
       '<div class="lm-legend">' +
-        '◆ station &nbsp; ◇ gate &nbsp; ▲ ship &nbsp; ● asteroid<br>' +
+        '◆ station &nbsp; ◇ gate &nbsp; ▲ ship &nbsp; ● asteroid &nbsp; ? scan ping<br>' +
         'bright = fresh &nbsp;·&nbsp; faint = stale/uncertain<br>' +
-        `tactical radar = near-field &nbsp;·&nbsp; ${localMapKey} map = this system &nbsp;·&nbsp; ${starMapKey} map = galaxy` +
+        `tactical radar = near-field &nbsp;·&nbsp; ${localMapKey} map = this system &nbsp;·&nbsp; ${starMapKey} nav chart = galaxy` +
       '</div>' +
       '<div class="lm-routes" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';
@@ -181,7 +181,7 @@ export const localmapScreen = {
 
   onKey(event, ctx) {
     const key = event && typeof event.key === 'string' ? event.key.toLowerCase() : '';
-    if (key === BINDINGS.localmap.key) {
+    if (key === BINDINGS.localmap.key || event.key === BINDINGS.localmap.label) {
       const sm = (ctx && ctx.screenManager) || (this._ctx && this._ctx.screenManager);
       if (sm && typeof sm.popScreen === 'function') sm.popScreen();
       else this._close();
@@ -425,6 +425,8 @@ export const localmapScreen = {
     }
     g.globalAlpha = 1;
 
+    this._drawScanOverlays(g, state, wx, wz);
+
     // Active waypoint / mission geometry. This uses the same state.nav.waypoint source as the HUD,
     // so the map remains a recovery surface when the tactical radar no longer has nearby dots.
     for (const item of map.missionGeometry || []) {
@@ -486,6 +488,53 @@ export const localmapScreen = {
     item.metadata.sectorId = wp.sectorId || null;
     item.metadata.sectorName = wp.sectorName || null;
     return this._missionGeometryScratch;
+  },
+
+  _drawScanOverlays(g, state, wx, wz) {
+    const now = state.simTime || 0;
+    for (const e of state.entityList || []) {
+      if (!e || !e.alive || e.type !== 'asteroid' || !e.pos) continue;
+      const data = e.data || {};
+      if (!(data.scanHighlightUntil > now)) continue;
+      const x = wx(e.pos.x), y = wz(e.pos.z);
+      const glyph = data.scanOreGlyph || asteroidOreGlyph(data.typeId);
+      g.save();
+      g.strokeStyle = '#ffd24a';
+      g.fillStyle = '#ffd24a';
+      g.shadowColor = '#ffd24a';
+      g.shadowBlur = 8;
+      g.lineWidth = 1.2;
+      g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.stroke();
+      g.shadowBlur = 0;
+      g.font = '700 8px monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'bottom';
+      g.fillText(glyph, x, y - 6);
+      g.restore();
+    }
+
+    const sectorId = state.world && state.world.currentSectorId;
+    const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
+    if (!Array.isArray(pings) || !pings.length) return;
+    for (const ping of pings) {
+      if (!ping || !ping.pos) continue;
+      const x = wx(ping.pos.x), y = wz(ping.pos.z);
+      g.save();
+      g.strokeStyle = '#ffd24a';
+      g.fillStyle = '#ffd24a';
+      g.shadowColor = '#ffd24a';
+      g.shadowBlur = 10;
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.moveTo(x, y - 7); g.lineTo(x + 7, y); g.lineTo(x, y + 7); g.lineTo(x - 7, y); g.closePath();
+      g.stroke();
+      g.shadowBlur = 0;
+      g.font = '700 12px monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('?', x, y + 0.5);
+      g.restore();
+    }
   },
 
   _renderObjectivePanel(state, player) {
@@ -597,6 +646,19 @@ function routeGuidance(state, wp) {
 
 function sectorName(id) {
   return SECTOR_NAME.get(id) || id || 'target sector';
+}
+
+function asteroidOreGlyph(typeId) {
+  switch (typeId) {
+    case 'ast_metallic': return 'Fe';
+    case 'ast_icy': return 'H2O';
+    case 'ast_crystalline': return 'Cr';
+    case 'ast_gas_cloud': return 'Gas';
+    case 'ast_rare_exotic': return 'Xe';
+    case 'ast_common_rock':
+    default:
+      return 'Si';
+  }
 }
 
 function stationPositionForRoute(state, stationId) {

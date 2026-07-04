@@ -471,6 +471,7 @@ world = {
   discovery: { [sectorId]: { discovered:bool, visitedCount:int,
                 pois:{[poiId]:{discovered,identified}},
                 fieldsDepleted:{[fieldId]:0..1} } },                 // SERIALIZED overlay
+  scanPings: { [sectorId]: [{ id, pos:{x,z}, kind:'unknown' }] },     // SERIALIZED overlay
   entryPoint:{x,z,heading},  ⊘
   rng, ⊘
 }
@@ -662,6 +663,7 @@ Legend: emitters/handlers are system `name`s. Payloads are the canonical shapes;
 | `sector:enter` | `{sectorId,sector,entryPoint,firstVisit}` | world | render, vfx(palette), economy, combat/spawn, audio, ui | `sector.enter`, `sector:changed`, `sector_entered`, `sector.loaded`, `sector:loaded` |
 | `sector:exit` | `{sectorId}` | world | all (despawn sector-scoped) | `sector.exit` |
 | `sector:discovered` | `{sectorId}` | world | ui(map), stats | `sector.discovered` |
+| `map:sectorCharted` | `{sectorId,source}` | world(survey) | ui(map), stats | `map.sector_charted` |
 | `poi:discovered`/`poi:identified` | `{poiId,type,reward?}` | world | missions, ui | `poi.discovered/identified` |
 | `field:depletedChanged` | `{fieldId,depleted}` | mining | world(persist) | `field.depleted.changed` |
 | `jump:chargeStart` | `{targetSectorId,via,chargeNeeded}` | world | ui, audio | `jump.charge.start` |
@@ -680,7 +682,8 @@ Legend: emitters/handlers are system `name`s. Payloads are the canonical shapes;
 | `ship:cargoCapChanged` | `{shipId,cargoCap}` | ships | cargo (veto handshake) | `ship:cargoCapChanged` |
 | `tech:researched` | `{nodeId,unlocks}` | ships | automation(droneTierCap), economy(tradeFeeMult), world(outpost), ui | `tech:researched` |
 | `research:pointsChanged` | `{researchPoints}` | missions/scan | ships(ui) | `research:pointsChanged` |
-| `scan:completed` | `{targetId}` | world(scan) | missions | `scan.completed` |
+| `scan:pulse` | `{pos}` | scanner | ui, vfx, audio | `scan.pulse` |
+| `scan:completed` | `{targetId,sectorId,found:{asteroids,wrecks,anomalies}}` | scanner/world(scan) | missions | `scan.completed` |
 | `player:scannedByPatrol` | `{hasContraband}` | economy/customs | missions | `player.scannedByPatrol` |
 | `player:death` | `{pos,killerId}` | combat | input(lock), ui(respawn), save(autosave), audio | `player:death` |
 | `player:respawn` | `{stationId,shipId,refundCr,cargoLost}` | combat | world(teleport), ui, economy | `player:respawn` |

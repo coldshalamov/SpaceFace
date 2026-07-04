@@ -14,6 +14,7 @@ import { createTelemetry } from './systems/telemetry.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { applyAccessibility } from './ui/accessibility.js';
 import { getAuthoredUpgradeQueueStats } from './render/partsLibrary.js';
+import { precompilePipelines } from './render/precompile.js';
 import {
   SCENARIO_47A_CONTRACT_PATH,
   mark47aPlayerActor,
@@ -109,6 +110,8 @@ async function boot() {
     });
 
     startLoop(state, registry);
+    if (SF_DEBUG) window.SF = { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace };
+    await precompilePipelines(state.render.renderer, state.render.scene, state.render.camera, { warmPostProcess: state.render.warmPostProcess }).catch((error) => console.warn('[SpaceFace] pipeline precompile failed', error));
     hideBootOverlay();
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)

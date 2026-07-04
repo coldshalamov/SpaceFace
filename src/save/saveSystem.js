@@ -938,6 +938,7 @@ function normalizeCargoSaveRecord(cargo) {
 function normalizeWorldSaveRecord(world) {
   const out = (world && typeof world === 'object' && !Array.isArray(world)) ? world : {};
   if (!out.currentSectorId) out.currentSectorId = DEFAULT_START_SECTOR;
+  if (!out.scanPings || typeof out.scanPings !== 'object' || Array.isArray(out.scanPings)) out.scanPings = {};
   const fuel = (out.fuel && typeof out.fuel === 'object' && !Array.isArray(out.fuel)) ? out.fuel : {};
   const hasValidMax = Number.isFinite(fuel.max) && fuel.max > 0;
   const max = hasValidMax ? fuel.max : 100;

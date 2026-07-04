@@ -12,7 +12,7 @@
 // LEFT. Mirroring both keeps the radar oriented exactly as the player sees the world — otherwise
 // contacts (and the heading marker) flip left/right or up/down relative to the viewport.
 
-import { semanticColor, semanticShape } from './accessibility.js';
+import { semanticColor, semanticShape, SEMANTIC_PALETTE } from './accessibility.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 
 // ── dimensions ──────────────────────────────────────────────────────────────────────────────
@@ -64,13 +64,7 @@ function blipColor(e, playerTeam, mode) {
     if (e.data && e.data.isGate) return COL.gate;
     return e.factionId && FACTION_COLOR[e.factionId] ? FACTION_COLOR[e.factionId] : COL.station;
   }
-  if (mode && mode !== 'none') return semanticColor(shipState(e, playerTeam), mode);
-  if (e.factionId && FACTION_COLOR[e.factionId]) {
-    if (e.team !== playerTeam && e.team !== 0) return COL.hostile;
-    return FACTION_COLOR[e.factionId];
-  }
-  if (e.team !== playerTeam && e.team !== 0) return COL.hostile;
-  return COL.neutral;
+  return semanticColor(shipState(e, playerTeam), mode);
 }
 
 // Redundant blip shape so hostility is readable without color (colorblind mode). Caller sets fillStyle.
@@ -485,16 +479,7 @@ export function createRadar(ctx) {
         const isHostile = e.team !== playerTeam && e.team !== 0;
         const glowBlur  = isHostile ? 7 + 3 * Math.sin(now * 0.004) : 5;
         glow(g, col, glowBlur);
-        if (cbMode !== 'none') {
-          drawShipShape(g, bx, by, semanticShape(shipState(e, playerTeam)));
-        } else {
-          const eRot = (e.vel && (e.vel.x !== 0 || e.vel.z !== 0))
-            ? Math.atan2(e.vel.z, e.vel.x) : (e.rot || 0);
-          g.save(); g.translate(bx, by); g.rotate(Math.PI + eRot);
-          // slightly larger than original 3/-2.5 triangle
-          g.beginPath(); g.moveTo(4.5, 0); g.lineTo(-3.5, -3); g.lineTo(-3.5, 3); g.closePath(); g.fill();
-          g.restore();
-        }
+        drawShipShape(g, bx, by, semanticShape(shipState(e, playerTeam)));
         noGlow(g);
       }
 

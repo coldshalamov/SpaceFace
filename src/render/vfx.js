@@ -92,6 +92,8 @@ export const vfx = {
     this._socketLocalForward = new THREE.Vector3();
     this._socketForwardQuat = new THREE.Quaternion();
     this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
+    this._driveScratch = { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
+    this._zeroPos = { x: 0, z: 0 };
     this._liveSpriteCount = 0;
     this._activeLightCount = 0;
     this._presentationCueCount = 0;
@@ -143,6 +145,8 @@ export const vfx = {
     this._initEventLights();
     this._initRibbonTrails();
     this._initMiningBeam();
+    this._initTetherCable();
+    this._initSeamMarkers();
     // ---- GPU point cloud ----
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(cap * 3);
@@ -240,6 +244,7 @@ export const vfx = {
     const bus = this.bus;
     const add = (name, fn) => this._subs.push(bus.on(name, fn));
 
+    add('tether:broke', (p) => this._onTetherSnap(p));
     add('combat:fire', (p) => this._onFire(p));
     add('projectile:hit', (p) => this._onProjectileHit(p));
     add('combat:damage', (p) => this._onDamage(p));
@@ -1070,6 +1075,247 @@ export const vfx = {
     }
   },
 
+  // -------------------------------------------------------------------------
+  // Tether cable (GDD §4.3): the player-facing read of the massline. A segmented additive ribbon
+  // between the ship's NOSE and the latched target: bows with slack, straightens and heats
+  // cyan→amber→red with strain (read from state.player.tether — sim writes, we read), and runs a
+  // decaying traveling wave for the first beat after latch (the "whip"). Cut = quick fade;
+  // break = spark burst at both ends (tether:broke). Pure cosmetics — never touches sim state.
+  // -------------------------------------------------------------------------
+  _initTetherCable() {
+    if (!this._scene) return;
+    const SEG = 24;
+    const verts = (SEG + 1) * 2;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(verts * 3);
+    const posAttr = new THREE.BufferAttribute(pos, 3);
+    posAttr.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', posAttr);
+    const idx = [];
+    for (let i = 0; i < SEG; i++) {
+      const a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
+      idx.push(a, b, c, b, d, c);
+    }
+    geo.setIndex(idx);
+
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#39d0ff'),
+      transparent: true, opacity: 0.85,
+      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 10;
+    mesh.visible = false;
+    this._scene.add(mesh);
+
+    const glowGeo = geo.clone();
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#39d0ff'),
+      transparent: true, opacity: 0.22,
+      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.frustumCulled = false;
+    glow.renderOrder = 9;
+    glow.visible = false;
+    this._scene.add(glow);
+
+    this._tetherCable = {
+      mesh, glow, SEG,
+      wasActive: false,
+      latchAge: 999,      // seconds since latch (drives the whip wave)
+      fade: 0,            // 0..1 visibility envelope (release = fade out, latch = snap in)
+      lastTargetId: null,
+      bowSide: 1,
+      strainSmooth: 0,
+    };
+    this._tetherColorCool = new THREE.Color('#39d0ff');
+    this._tetherColorWarm = new THREE.Color('#ffb35c');
+    this._tetherColorHot = new THREE.Color('#ff5c5c');
+  },
+
+  _updateTetherCable(dt) {
+    const cable = this._tetherCable;
+    if (!cable) return;
+    const tether = this.state.player && this.state.player.tether;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
+    const active = !!(tether && tether.active && player && player.alive);
+    const target = active ? this._ent(tether.targetId) : null;
+    const live = active && target && target.alive;
+
+    if (live && !cable.wasActive) { cable.latchAge = 0; cable.fade = 1; cable.lastTargetId = tether.targetId; }
+    cable.wasActive = live;
+    cable.latchAge += dt;
+    cable.fade = live ? 1 : Math.max(0, cable.fade - dt * 3.5);   // quick fade on release
+    if (cable.fade <= 0 || !player) {
+      if (cable.mesh.visible) { cable.mesh.visible = false; cable.glow.visible = false; }
+      return;
+    }
+    const anchorEnt = live ? target : this._ent(cable.lastTargetId);
+    if (!anchorEnt) { cable.mesh.visible = false; cable.glow.visible = false; return; }
+
+    // Endpoints: ship NOSE (matches socket_massline localPos [1,0]) → target surface point.
+    const cf = Math.cos(player.rot), sf = Math.sin(player.rot);
+    const noseR = (player.radius || 6);
+    const ax = player.pos.x + cf * noseR, az = player.pos.z + sf * noseR;
+    let dx = anchorEnt.pos.x - ax, dz = anchorEnt.pos.z - az;
+    const dist = Math.hypot(dx, dz) || 1;
+    const tr = anchorEnt.radius || 4;
+    const bx = anchorEnt.pos.x - (dx / dist) * tr * 0.6, bz = anchorEnt.pos.z - (dz / dist) * tr * 0.6;
+    dx = bx - ax; dz = bz - az;
+    const chord = Math.hypot(dx, dz) || 1;
+    const px = -dz / chord, pz = dx / chord;   // chord perpendicular
+
+    // Slack bow from REAL slack (restLength - distance): a line reeled longer than the gap hangs
+    // lazy; a stretched line snaps straight. The bow lags the swing — it flips away from the
+    // player's tangential velocity so the cable trails like a real line under centripetal motion.
+    const strain = Math.max(0, Math.min(1.5, (tether && tether.strain) || 0));
+    cable.strainSmooth += (strain - cable.strainSmooth) * Math.min(1, dt * 8);
+    const rest = (tether && tether.restLength) || 0;
+    const slack = Math.max(0, rest - chord);
+    const tangential = player.vel ? (player.vel.x * px + player.vel.z * pz) : 0;
+    if (Math.abs(tangential) > 4) cable.bowSide = tangential > 0 ? -1 : 1;
+    const slackBow = Math.min(slack * 0.42, 24) * Math.max(0.15, 1 - cable.strainSmooth) * cable.bowSide;
+
+    // Whip wave: decaying traveling sine for ~0.45 s after latch.
+    const whipT = cable.latchAge;
+    const whipEnv = Math.max(0, 1 - whipT / 0.45);
+    const whipAmp = whipEnv * whipEnv * Math.min(chord * 0.22, 18);
+
+    // Strain color: cool cyan → amber → hot red.
+    const s = Math.min(1, cable.strainSmooth);
+    if (s < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, s / 0.55);
+    else this._ctmp.lerpColors(this._tetherColorWarm, this._tetherColorHot, (s - 0.55) / 0.45);
+    cable.mesh.material.color.copy(this._ctmp);
+    cable.glow.material.color.copy(this._ctmp);
+    const taut = cable.strainSmooth > 0.7;
+    cable.mesh.material.opacity = (taut ? 0.95 : 0.8) * cable.fade;
+    cable.glow.material.opacity = (0.18 + 0.25 * s) * cable.fade;
+
+    const w = (taut ? 0.42 : 0.6);   // taut line reads thinner + hotter
+    const gw = 2.0 + 1.6 * s;
+    const SEG = cable.SEG;
+    const corePos = cable.mesh.geometry.attributes.position.array;
+    const glowPos = cable.glow.geometry.attributes.position.array;
+    for (let i = 0; i <= SEG; i++) {
+      const t = i / SEG;
+      const arc = Math.sin(Math.PI * t);
+      const wave = whipAmp * Math.sin(Math.PI * 3 * t - whipT * 26) * arc;
+      const off = slackBow * arc + wave;
+      const cx = ax + dx * t + px * off;
+      const cz = az + dz * t + pz * off;
+      const o = i * 6;
+      corePos[o] = cx + px * w; corePos[o + 1] = 1.5; corePos[o + 2] = cz + pz * w;
+      corePos[o + 3] = cx - px * w; corePos[o + 4] = 1.5; corePos[o + 5] = cz - pz * w;
+      glowPos[o] = cx + px * gw; glowPos[o + 1] = 1.4; glowPos[o + 2] = cz + pz * gw;
+      glowPos[o + 3] = cx - px * gw; glowPos[o + 4] = 1.4; glowPos[o + 5] = cz - pz * gw;
+    }
+    cable.mesh.geometry.attributes.position.needsUpdate = true;
+    cable.glow.geometry.attributes.position.needsUpdate = true;
+    cable.mesh.visible = true;
+    cable.glow.visible = true;
+
+    // Near-break shiver: sparks crawl the line when the strain is critical.
+    if (s > 0.85 && Math.random() < 0.5) {
+      const frac = Math.random();
+      this._c0.set('#ffffff'); this._c1.copy(this._tetherColorHot);
+      this._spawnParticle(ax + dx * frac, az + dz * frac,
+        px * (Math.random() - 0.5) * 14, pz * (Math.random() - 0.5) * 14,
+        0.12 + Math.random() * 0.1, 1.0, 0.0, this._c0, this._c1, 3.2, 0, 0);
+    }
+  },
+
+  // -------------------------------------------------------------------------
+  // Mining seam markers (GDD §5.1): asteroids carry 1-4 fracture seams (asteroid.data.seams,
+  // deterministic) where beam yield is 100% vs 35% off-seam — this layer makes them AIMABLE.
+  // Always faintly visible in close range (discoverable by flying near), blazing for the scanner
+  // highlight window after a C-pulse. One InstancedMesh, zero per-frame allocation.
+  // -------------------------------------------------------------------------
+  _initSeamMarkers() {
+    if (!this._scene) return;
+    const CAP = 96;
+    const geo = new THREE.CircleGeometry(1.5, 10);
+    geo.rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.9,
+      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.InstancedMesh(geo, mat, CAP);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAP * 3), 3);
+    mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 8;
+    mesh.count = 0;
+    this._scene.add(mesh);
+    this._seamMarkers = { mesh, CAP };
+    this._seamMat4 = new THREE.Matrix4();
+    this._seamDim = new THREE.Color('#c96a3a');     // ember — visible but quiet
+    this._seamHot = new THREE.Color('#ffd9a0');     // scanner-lit — aim here
+  },
+
+  _updateSeamMarkers(dt) {
+    const sm = this._seamMarkers;
+    if (!sm) return;
+    const state = this.state;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    if (!player) { if (sm.mesh.count) { sm.mesh.count = 0; } return; }
+    const simTime = state.simTime || 0;
+    const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
+    let n = 0;
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length && n < sm.CAP; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'asteroid') continue;
+      const seams = e.data && e.data.seams;
+      if (!seams || !seams.length) continue;
+      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+      if (dx * dx + dz * dz > 640 * 640) continue;      // draw range
+      const scanned = (e.data.scanHighlightUntil || 0) > simTime;
+      const cr = Math.cos(e.rot || 0), sr = Math.sin(e.rot || 0);
+      for (let s = 0; s < seams.length && n < sm.CAP; s++) {
+        const lo = seams[s].localOffset || { x: 0, z: 0 };
+        const wx = e.pos.x + lo.x * cr - lo.z * sr;
+        const wz = e.pos.z + lo.x * sr + lo.z * cr;
+        const scale = (scanned ? 1.5 : 0.9) * pulse * Math.min(2.2, 0.7 + (e.radius || 8) * 0.05);
+        this._seamMat4.makeScale(scale, 1, scale);
+        this._seamMat4.setPosition(wx, 1.8, wz);
+        sm.mesh.setMatrixAt(n, this._seamMat4);
+        this._ctmp.copy(scanned ? this._seamHot : this._seamDim);
+        if (scanned) this._ctmp.multiplyScalar(pulse * 1.15);
+        sm.mesh.setColorAt(n, this._ctmp);
+        n++;
+      }
+    }
+    if (sm.mesh.count !== n || n > 0) {
+      sm.mesh.count = n;
+      sm.mesh.instanceMatrix.needsUpdate = true;
+      if (sm.mesh.instanceColor) sm.mesh.instanceColor.needsUpdate = true;
+    }
+  },
+
+  // Snap burst at both cable ends when the line breaks under load (tether:broke).
+  _onTetherSnap(p) {
+    const cable = this._tetherCable;
+    if (!cable || !this._scene) return;
+    cable.fade = 0; cable.wasActive = false;
+    cable.mesh.visible = false; cable.glow.visible = false;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
+    const target = p && p.targetId != null ? this._ent(p.targetId) : null;
+    this._c0.set('#ffffff'); this._c1.set('#ff5c5c');
+    for (const ent of [player, target]) {
+      if (!ent || !ent.pos) continue;
+      const n = Math.max(6, Math.round(10 * (this._burst || 1)));
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const v = 20 + Math.random() * 45;
+        this._spawnParticle(ent.pos.x, ent.pos.z, Math.cos(a) * v, Math.sin(a) * v,
+          0.2 + Math.random() * 0.2, 1.0, 0.0, this._c0, this._c1, 3.5, 0, 0);
+      }
+    }
+  },
+
   _onMiningTick(p) {
     if (!this._scene) return;
     const pos = this._posFrom(p, null);
@@ -1343,6 +1589,8 @@ export const vfx = {
     this._emitTrails(dt);
     this._updateRibbonTrails(dt);
     this._updateMiningBeam(dt);
+    this._updateTetherCable(dt);
+    this._updateSeamMarkers(dt);
     this._updateEnergy(dt);
     this._integrateParticles(dt);
     this._integrateSprites(dt);
@@ -1507,7 +1755,12 @@ export const vfx = {
     const attachments = this.state.combat && this.state.combat.attachments && this.state.combat.attachments.byId;
     let att = null;
     if (attachments) {
-      for (const a of Object.values(attachments)) {
+      for (const key in attachments) {
+        const a = attachments[key];
+        // Player-OWNED tethers are drawn by the segmented tether cable (sag/whip/strain) — the
+        // straight HDR ribbon here would double-draw as a stiff stick on top of it. The ribbon
+        // still covers attachments where the player is the TARGET (something latched onto us).
+        if (a.state === 'active' && a.ownerId === player.id && this._tetherCable) continue;
         if (a.state === 'active' && (a.ownerId === player.id || a.targetId === player.id)) { att = a; break; }
       }
     }
@@ -1548,8 +1801,12 @@ export const vfx = {
     this._energy = null;
   },
 
-  _engineDriveFor(e) {
-    if (!e) return { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
+  _engineDriveFor(e, out = this._driveScratch) {
+    if (!out) out = this._driveScratch = { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 };
+    if (!e) {
+      out.drive = 0; out.throttle = 0; out.speed = 0; out.speedDrive = 0; out.boost = 0;
+      return out;
+    }
     const frame = e._flightFrame || {};
     const vx = e.vel && Number.isFinite(e.vel.x) ? e.vel.x : 0;
     const vz = e.vel && Number.isFinite(e.vel.z) ? e.vel.z : 0;
@@ -1571,7 +1828,12 @@ export const vfx = {
     const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
     const boost = e.flags && e.flags.boosting ? 1 : 0;
     const drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
-    return { drive, throttle, speed, speedDrive, boost };
+    out.drive = drive;
+    out.throttle = throttle;
+    out.speed = speed;
+    out.speedDrive = speedDrive;
+    out.boost = boost;
+    return out;
   },
 
   // Approximate commanded throttle for the plume: forward input, forward speed, or boost blend.
@@ -1665,7 +1927,7 @@ export const vfx = {
 
   _playerPos() {
     const e = this.state.entities.get(this.state.playerId);
-    return e ? e.pos : { x: 0, z: 0 };
+    return e ? e.pos : this._zeroPos;
   },
 
   // per-frame engine-trail emission for every thrusting ship/drone (steady-state, pooled)
@@ -1885,6 +2147,79 @@ export const vfx = {
     }
   },
 };
+
+export function createVfxPrecompileSalvo() {
+  const group = new THREE.Group();
+  group.name = 'SF_Precompile_VFX_Salvo';
+
+  const count = 12;
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const alphas = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    positions[i * 3] = Math.cos(a) * 4;
+    positions[i * 3 + 1] = (i % 3) * 0.5;
+    positions[i * 3 + 2] = Math.sin(a) * 4;
+    colors[i * 3] = i % 2 ? 1 : 0.35;
+    colors[i * 3 + 1] = 0.78;
+    colors[i * 3 + 2] = i % 2 ? 0.28 : 1;
+    sizes[i] = 3 + (i % 4);
+    alphas[i] = 0.85;
+  }
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+  geometry.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+  geometry.setDrawRange(0, count);
+  const material = new THREE.ShaderMaterial({
+    uniforms: { uScale: { value: 520 } },
+    vertexShader: PARTICLE_VERT,
+    fragmentShader: PARTICLE_FRAG,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: true,
+    transparent: true,
+  });
+  const points = new THREE.Points(geometry, material);
+  points.name = 'SF_Precompile_PooledParticleBurst';
+  points.frustumCulled = false;
+  group.add(points);
+
+  const glow = makeGlowTexture();
+  const ring = makeRingTexture();
+  const spriteKinds = [
+    { name: 'flash', map: glow, scale: 5, color: 0xffffff },
+    { name: 'ring', map: ring, scale: 8, color: 0x66ccff },
+    { name: 'puff', map: glow, scale: 7, color: 0xffcc88 },
+    { name: 'fresnel', map: ring, scale: 9, color: 0x88f5ff },
+  ];
+  for (let i = 0; i < spriteKinds.length; i++) {
+    const kind = spriteKinds[i];
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: kind.map,
+      color: kind.color,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      transparent: true,
+      opacity: 0.8,
+    }));
+    sprite.name = `SF_Precompile_Sprite_${kind.name}`;
+    sprite.position.set(i * 3 - 4.5, 1.5, -6);
+    sprite.scale.setScalar(kind.scale);
+    group.add(sprite);
+  }
+
+  const light = new THREE.PointLight(0x66ccff, 3.5, 180, 2.0);
+  light.name = 'SF_Precompile_DynamicLight';
+  light.position.set(0, 10, 0);
+  group.add(light);
+
+  return group;
+}
 
 // ---------------------------------------------------------------------------
 // ribbon trail factory (tapering triangle-strip mesh for large ships — cleaner than particle only)

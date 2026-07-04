@@ -16,6 +16,20 @@ const OMIT_KEYS = new Set([
   'save',
 ]);
 
+// state.input.actions holds EDGE-TRIGGERED verb flags (tetherFire, chargeDetonate, …) recomputed
+// from held keys every tick by systems/input.js. They are derived, one-tick state: snapshotting
+// them would (a) drift replay hashes on input-contract growth and (b) re-fire an action on
+// restore. Excluded by design (GDD 2.0 input contract).
+function snapshotInput(input) {
+  if (!input || typeof input !== 'object') return input;
+  const out = {};
+  for (const k of Object.keys(input)) {
+    if (k === 'actions') continue;
+    out[k] = input[k];
+  }
+  return out;
+}
+
 export function snapshotSimState(state) {
   const snapshot = {
     schema: 'spaceface.simSnapshot.v1',
@@ -25,7 +39,7 @@ export function snapshotSimState(state) {
     mode: state.mode,
     playerId: state.playerId | 0,
     player: sanitize(state.player),
-    input: sanitize(state.input),
+    input: sanitize(snapshotInput(state.input)),
     economy: sanitize(state.economy),
     missions: sanitize(state.missions),
     scenario: sanitize(state.scenario),

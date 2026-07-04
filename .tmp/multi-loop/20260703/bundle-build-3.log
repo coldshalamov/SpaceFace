@@ -1,0 +1,17 @@
+
+> spaceface@0.1.0 build:bundle
+> node scripts/build-bundle.mjs
+
+[bundle] entry points: 1 (main.js; 23 screens via dynamic imports)
+
+  build\web\rapier-5PYDGNN6.js        2.1mb
+  build\web\main.js                 918.6kb
+  build\web\chunk-IBIIKOPC.js       712.7kb
+  build\web\stationHub-EYPRU7GU.js  165.1kb
+  build\web\chunk-2BS2IHVE.js        63.8kb
+  ...and 56 more output files...
+
+Done in 859ms
+[bundle] raw JS (src + vendor/three+rapier): 8.64 MB
+[bundle] bundled JS (minified + tree-shaken): 5.42 MB (37% smaller)
+[bundle] OK → build/web/

@@ -1,6 +1,6 @@
 // UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
 //
-// UI owns: ESC (back/pause), N (local map), M (star-map), T (tech), mission log, K (codex), F1/H (help),
+// UI owns: ESC (back/pause), map bindings, T (tech), mission log, K (codex), F1/H (help),
 //          Tab (cycle target), P (pause), E (dock in range / undock station hub; Enter secondary dock),
 //          F5/F9 (quick save/load), cargo/comms overlays, mouse-wheel (camera zoom passthrough → camera:zoom).
 // Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
@@ -135,12 +135,12 @@ export function createUiInput(ctx, screenManager) {
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
       case BINDINGS.localmap.key:
-      case 'N':
-        // N = the local/system map (player position, objective, stations, gates) — the everyday
+      case BINDINGS.localmap.label:
+        // Local/system map (player position, objective, stations, gates) — the everyday
         // "where am I / where do I go" map.
         ev.preventDefault(); screenManager.pushScreen('localmap'); return;
       case BINDINGS.starmap.key:
-      case 'M':
+      case BINDINGS.starmap.label:
         ev.preventDefault(); screenManager.pushScreen('starmap'); return;
       case BINDINGS.techTree.key:
       case BINDINGS.techTree.label:
@@ -476,7 +476,7 @@ export function createUiInput(ctx, screenManager) {
         }
       }
 
-      // Keyboard M already toggles the Star Map through starmap.onKey(); mirror that with
+      // Keyboard nav-chart binding already toggles through starmap.onKey(); mirror that with
       // View/Select so controller players can open and close the strategic map with one control.
       if (top === 'starmap' && gp.actions.map && gp.actions.map.pressed) {
         screenManager.popScreen();

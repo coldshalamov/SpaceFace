@@ -200,6 +200,29 @@ export const ATTACHMENT_DEFS = Object.freeze([
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
+  {
+    id: 'tether_standard', version: 1,
+    sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: true },
+    maxLength: 260,
+    minLength: 18,
+    reelRate: 46,
+    // Break tune derives from src/data/ships.js via getDerivedStats: the scout-class Wasp is
+    // mass 16 with thrust ~=361 wu/s^2 and maxSpeed ~=218 wu/s; Flight V3 boost cap is 2x maxSpeed.
+    // SG-02 tension is stretch*stiffness + radialSpeed*damping, so damping 6 at boosted radial
+    // speed yields ~=2616 tension: enough to snap on a fixed station anchor, while a tangent
+    // mid-asteroid slingshot stays under this threshold.
+    // Tune holds for the forward spool mount ([0.6, 0]): a mid-asteroid tangent slingshot at
+    // boost HOLDS; hard overloads (short-reeled line + full boost, fixed station anchor at speed)
+    // SNAP. Verified by check-tether-gameplay + check:sg02:tether-break together — if you move
+    // the socket further forward, re-run both before touching these numbers.
+    breakTension: 2600,
+    snapImpulseNoise: 0,
+    break: { maxTension: 2600, maxImpulse: 90, graceTicks: 4, stiffness: 90, damping: 6 },
+    massline: { enabled: true },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([
@@ -209,7 +232,14 @@ export const COMBAT_PROFILES = Object.freeze([
     immunityTags: [],
     subsystemIds: ['subsystem_drive', 'subsystem_weapon', 'subsystem_sensor', 'subsystem_tether_spool', 'subsystem_power'],
     sockets: [
-      { id: 'socket_massline', tags: ['massline'], localPos: [-0.25, 0.42], maxAttachments: 1 },
+      // Forward spool mount (localPos is radius-normalized, +X = facing). Placement is a THREE-WAY
+      // tune verified by check-tether-gameplay + check:sg02:tether-break: more forward = more
+      // attitude torque (tail-out orbit read, GDD §4.3), but the lever lets bodies RELIEVE rope
+      // tension by rotating — at [1.0,0] the slingshot exit-velocity contract fails and at [0.6,0]
+      // the sustained-overload break contract fails. [0.3, 0.15] gives a readable lean while both
+      // physics contracts hold. The cable VISUAL anchors at the nose regardless (vfx.js), so the
+      // player-facing "beam from the nose" fantasy is untouched by this physics tradeoff.
+      { id: 'socket_massline', tags: ['massline'], localPos: [0.3, 0.15], maxAttachments: 1 },
       { id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 },
     ],
     capabilities: { drive: true, weapon: true, sensor: true, tether: true, power: true },
@@ -220,6 +250,14 @@ export const COMBAT_PROFILES = Object.freeze([
     immunityTags: [],
     subsystemIds: [],
     sockets: [{ id: 'socket_tether_payload', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 }],
+    capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
+  },
+  {
+    id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup'],
+    heat: { max: 0, dissipationPerTick: 0 },
+    immunityTags: [],
+    subsystemIds: [],
+    sockets: [{ id: 'socket_tether_anchor', tags: ['tether'], localPos: [0, 0], maxAttachments: 4 }],
     capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
   },
   {
@@ -236,5 +274,8 @@ export const DEFAULT_COMBAT_PROFILE_BY_TYPE = Object.freeze({
   ship: 'combat_profile_standard_ship',
   drone: 'combat_profile_standard_ship',
   payload: 'combat_profile_tether_payload',
+  asteroid: 'combat_profile_tether_anchor',
+  wreck: 'combat_profile_tether_anchor',
+  pickup: 'combat_profile_tether_anchor',
   station: 'combat_profile_standard_station',
 });

@@ -73,8 +73,37 @@ export function createComms(ctx) {
   const backlog = [];     // full history for the backlog view
   let nextSweepAt = Infinity;
 
-  function pushComms(p) {
+  // ── One-voice gate (GDD §8.1, minimal pass) ──────────────────────────────────────────────
+  // While an onboarding/intro modal is up, non-critical chatter queues instead of stacking a
+  // text wall behind the modal. Once clear, held lines drip out one every few seconds. Alert-ish
+  // categories bypass the gate; stale ambient lines (>60 s) drop silently — old small talk is
+  // noise, not information.
+  const held = [];
+  let nextDripAt = 0;
+  const GATE_BYPASS = /alert|danger|critical|warning/i;
+  function introGateActive() {
+    return !!document.querySelector('.sf-ob-intro');
+  }
+  function tickHeldComms() {
+    if (!held.length || introGateActive()) return;
+    const now = performance.now();
+    if (now < nextDripAt) return;
+    while (held.length) {
+      const q = held.shift();
+      if ((performance.now() - q._heldAt) > 60000 && (q.category || 'ambient') === 'ambient') continue;
+      nextDripAt = now + 3500;
+      pushComms(q, true);
+      break;
+    }
+  }
+
+  function pushComms(p, fromQueue = false) {
     if (!p || !p.text) return;
+    if (!fromQueue && introGateActive() && !GATE_BYPASS.test(p.category || '')) {
+      p._heldAt = performance.now();
+      held.push(p);
+      return;
+    }
     const cat = CATEGORY_STYLE[p.category] || CATEGORY_STYLE.ambient;
     const entry = document.createElement('div');
     entry.className = `sf-comm sf-comm--${p.category || 'ambient'}`;
@@ -375,6 +404,7 @@ export function createComms(ctx) {
 
   // ── tick: fade sweep (called by uiRoot.frame via the returned api) ────────────────────────
   function tick() {
+    tickHeldComms();
     sweep();
   }
 
@@ -453,7 +483,7 @@ function injectCommsCss() {
   .sf-comm-backlog { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.97);
     width:min(620px, 92vw); max-height:78vh; display:none; flex-direction:column; z-index:2400;
     background:rgba(4,9,18,.96); border:1px solid var(--accent); border-radius:9px; box-shadow:0 10px 50px rgba(0,0,0,.7);
-    backdrop-filter:blur(10px); pointer-events:auto; opacity:0; transition:opacity .18s ease, transform .18s ease; }
+    pointer-events:auto; opacity:0; transition:opacity .18s ease, transform .18s ease; }
   .sf-comm-backlog.open { display:flex; opacity:1; transform:translate(-50%,-50%) scale(1); }
   .sf-comm-backlog__head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px;
     border-bottom:1px solid var(--panel-edge); }
@@ -487,7 +517,7 @@ function injectCommsCss() {
 
   /* ===== endgame choice modal ===== */
   .sf-endgame { position:fixed; inset:0; z-index:2600; display:none; align-items:center; justify-content:center;
-    background:rgba(3,5,10,.94); backdrop-filter:blur(8px); opacity:0; transition:opacity .3s ease; }
+    background:rgba(3,5,10,.94); opacity:0; transition:opacity .3s ease; }
   .sf-endgame.open { display:flex; opacity:1; }
   .sf-endgame__panel { width:min(880px, 94vw); max-height:90vh; overflow-y:auto; padding:24px 28px;
     background:linear-gradient(180deg, var(--panel-2), var(--panel)); border:1px solid var(--accent); border-radius:10px;

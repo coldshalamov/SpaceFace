@@ -3,6 +3,7 @@
 import { core } from './coreSystem.js';
 import { physics } from './physics.js';
 import { input } from '../systems/input.js';
+import { scanner } from '../systems/scanner.js';
 import { aiPorts } from '../systems/aiPorts.js';
 import { ai } from '../systems/ai.js';
 import { createTacticalAISystem } from '../systems/tacticalAI.js';
@@ -13,6 +14,8 @@ import { flightV3 } from '../systems/flightV3.js';
 import { weapons } from '../systems/weapons.js';
 import { countermeasures } from '../systems/countermeasures.js';
 import { combat } from '../systems/combat.js';
+import { tetherGameplay } from '../systems/tetherGameplay.js';
+import { impulseCharges } from '../systems/impulseCharges.js';
 import { mining } from '../systems/mining.js';
 import { cargo } from '../systems/cargo.js';
 import { economy } from '../systems/economy.js';
@@ -49,7 +52,7 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, input, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, weapons, countermeasures, combat, mining, cargo, economy,
+    core, input, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, weapons, countermeasures, impulseCharges, combat, tetherGameplay, mining, cargo, economy,
     automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -70,7 +73,7 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, aiSlot, aiEncounter, actions, flightSlot, aiPorts, weapons, countermeasures, physics, combat, mining, cargo, automation, wingmen, crafting,
+    input, scanner, aiSlot, aiEncounter, actions, flightSlot, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, mining, cargo, automation, wingmen, crafting,
     economy, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));
