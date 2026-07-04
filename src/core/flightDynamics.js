@@ -81,7 +81,7 @@ export function resolveFlightProfile(e, stateOrMode = null) {
     DEFAULT_FLIGHT_TUNING.turnRateCap
   );
 
-  return {
+  const profile = {
     mode,
     model,
     flightClass: model.flightClass,
@@ -104,6 +104,22 @@ export function resolveFlightProfile(e, stateOrMode = null) {
     bankMax: finiteNonNegative(model.bankMax, DEFAULT_FLIGHT_TUNING.bankMax),
     bankFactor: finiteNonNegative(model.bankFactor, finiteNonNegative(e && e.bankFactor, 0.6)),
   };
+
+  // Cruise engagement multipliers (spec2/02 §1): only for the player entity while cruising.
+  if (stateOrMode && typeof stateOrMode === 'object' && e && e.id === stateOrMode.playerId) {
+    const c = stateOrMode.player && stateOrMode.player.cruise;
+    if (c && c.phase === 'cruising') {
+      return {
+        ...profile,
+        maxSpeed: profile.maxSpeed * 4.0,
+        mainAccel: profile.mainAccel * 2.5,
+        maxYawRate: profile.maxYawRate * 0.25,
+        angularAccel: profile.angularAccel * 0.25,
+        angularBrake: profile.angularBrake * 0.25,
+      };
+    }
+  }
+  return profile;
 }
 
 export function stepPlayerFlight(e, input, dt, profile = resolveFlightProfile(e), opts = {}) {

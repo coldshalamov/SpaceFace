@@ -54,25 +54,20 @@ assert.ok(!src.includes("document.querySelector('.sf-alert--info')"),
   'control bar must not query the gate alert DOM during flight updates');
 assert.match(src, /_storySig/, 'story objective refresh should cache its last rendered content signature');
 assert.match(src, /sig === this\._storySig/, 'story objective refresh should skip DOM rebuilds when the objective text is unchanged');
-assert.match(src, /className = 'sf-ob-intro'/, 'fresh-game intro card must remain the player-facing tutorial entry');
-assert.match(src, /setAttribute\('role', 'dialog'\)/,
-  'fresh-game intro must expose dialog semantics for assistive tech');
-assert.match(src, /setAttribute\('aria-modal', 'true'\)/,
-  'fresh-game intro must mark the rest of the game as modal while the card owns focus');
-assert.match(src, /setAttribute\('aria-labelledby', 'sf-ob-intro-title'\)/,
-  'fresh-game intro must label the dialog with its headline');
-assert.match(src, /setAttribute\('aria-describedby', 'sf-ob-intro-body'\)/,
-  'fresh-game intro must describe the dialog with the tutorial body copy');
-assert.match(src, /_closeIntro\(options = \{\}\)/,
-  'fresh-game intro must centralize teardown so listeners and focus restoration stay paired');
-assert.match(src, /ev\.key === 'Escape'/,
-  'fresh-game intro must let keyboard players dismiss it with Escape');
-assert.match(src, /ev\.key !== 'Tab'/,
-  'fresh-game intro must trap Tab focus between Skip tutorial and Begin');
-assert.match(src, /beginBtn\.focus\(\)/,
-  'fresh-game intro must move initial focus to the Begin action');
-assert.match(src, /button:focus-visible/,
-  'fresh-game intro must preserve a visible keyboard focus ring');
+
+// ── spec2/03 supersedes the intro modal: the first hour is PACED, not a modal ────────────────
+// The old fresh-game intro card (.sf-ob-intro, Begin/Skip, Pulse-Laser legend) is GONE by design
+// (spec2/03 B0: "no modal"). The 6-beat pacing engine replaces it. These assertions pin the new
+// contract; the deeper pacing audit lives in check-first-hour.mjs.
+assert.doesNotMatch(src, /className = 'sf-ob-intro'/, 'the fresh-game intro modal must be removed (spec2/03 B0: no modal)');
+assert.doesNotMatch(src, /setAttribute\('role', 'dialog'\)/, 'no intro dialog (the modal is gone)');
+assert.doesNotMatch(src, /_closeIntro/, 'the intro teardown (_closeIntro) must be removed with the modal');
+assert.doesNotMatch(src, /beginBtn/, 'the Begin button (intro modal) must be removed');
+assert.doesNotMatch(src, /Pulse Laser S and a mining beam/, 'the intro legend copy must be removed (taught one verb at a time now)');
+assert.match(src, /const BEATS = \[/, 'the 6-beat pacing table must replace the old STEPS chain (spec2/03 §2)');
+assert.match(src, /_sayTutorial\(text\)/, 'a single tutorial-voice chokepoint must exist (one-voice audit)');
+assert.match(src, /_tryAdvanceBeat/, 'the silence-gated beat-advance engine must exist');
+assert.doesNotMatch(src, /const STEPS = \[/, 'the old 5-step STEPS chain must be removed (replaced by BEATS)');
 
 // The default dock binding is E, with Enter accepted only as a secondary convenience in input.js.
 // New-player copy must use the live binding label so the first dock objective, first-station hint,
@@ -124,10 +119,6 @@ for (const staleControlCopy of [/RMB samples/, /RMB sample/, /RMB mass sample/, 
   assert.doesNotMatch(src, staleControlCopy,
     `onboarding.js must not use stale hard-coded control copy: ${staleControlCopy}`);
 }
-assert.doesNotMatch(src, /sampling beam/i,
-  'fresh-game intro must call the starter utility a mining beam, not stale sampling equipment');
-assert.match(src, /Pulse Laser S and a mining beam/,
-  'fresh-game intro should describe the starter weapon and mining beam with live control vocabulary');
 assert.match(promptSrc, /RMB mine/, 'controlPrompts.js must advertise RMB mining for keyboard/mouse');
 assert.match(promptSrc, /LT mine/, 'controlPrompts.js must advertise LT mining for gamepad');
 assert.match(promptSrc, /A dock/, 'controlPrompts.js must advertise gamepad docking');
@@ -135,4 +126,4 @@ assert.match(promptSrc, /Mine button/, 'controlPrompts.js must include touch min
 assert.match(readme, /\|\s*Dock\s*\|\s*\*\*E\*\*/, 'README controls must document E as the primary dock key');
 assert.match(readme, /\|\s*Codex\s*\|\s*\*\*K\*\*/, 'README controls must document K as the Codex key');
 
-console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft), with station hub control prompts guarded.`);
+console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft), with station hub control prompts guarded. First-hour pacing pinned (6-beat engine, no intro modal).`);

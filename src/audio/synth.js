@@ -147,7 +147,7 @@ function pickRate(recipe, opts) {
 }
 
 function buildRecipeVoice(ctx, recipe, dest, t0, rate, detune, peak, freqMult, caches) {
-  const isLoop = recipe.type === 'continuous_oscillator';
+  const isLoop = recipe.type === 'continuous_oscillator' || recipe.type === 'continuous_noise';
   const env = recipe.gainEnvelope || { attack: 0.005, sustain: 0, release: 0.08 };
   const vGain = ctx.createGain();
   vGain.gain.value = 0.0001;
@@ -206,8 +206,8 @@ function buildRecipeVoice(ctx, recipe, dest, t0, rate, detune, peak, freqMult, c
       lfo.start(t0); extra.push(lfo, lg);
       nodes.push(lfo, lg);
     }
-  } else if (t === 'noise_burst' || t === 'noise_filtered') {
-    const src = makeNoiseSource(ctx, caches, t === 'noise_filtered' && isLoop);
+  } else if (t === 'noise_burst' || t === 'noise_filtered' || t === 'continuous_noise') {
+    const src = makeNoiseSource(ctx, caches, (t === 'noise_filtered' || t === 'continuous_noise') && isLoop);
     src.playbackRate.value = rate;
     src.connect(chainIn);
     sources.push(src);
@@ -226,7 +226,7 @@ function buildRecipeVoice(ctx, recipe, dest, t0, rate, detune, peak, freqMult, c
   // start all sources
   for (const s of sources) { try { s.start(t0); } catch (_) {} }
 
-  return { nodes, sources, extra, gain: vGain, tail, loop: isLoop };
+  return { nodes, sources, extra, gain: vGain, tail, loop: isLoop, filter };
 }
 
 /**
@@ -239,11 +239,11 @@ export function playRecipe(ctx, recipe, dest, opts, caches) {
   opts = opts || {};
   caches = caches || {};
   ensureRecipeById(caches);
-  const t0 = ctx.currentTime;
+  const t0 = opts.startTime !== undefined ? opts.startTime : ctx.currentTime;
   const detune = opts.detune || 0;
   const basePeak = Math.max(0.0001, Math.min(1, opts.peakGain == null ? 1 : opts.peakGain));
   const peak = basePeak * (recipe.gainMult || 1);
-  const isLoop = recipe.type === 'continuous_oscillator';
+  const isLoop = recipe.type === 'continuous_oscillator' || recipe.type === 'continuous_noise';
 
   // Master voice gain. Sub-voices (layers / repeats) each have their own envelope
   // and connect through this master so release/dispose work on the whole group.
@@ -309,6 +309,7 @@ export function playRecipe(ctx, recipe, dest, opts, caches) {
     _stopped: false,
     trackId: opts.trackId || null,
     callGain: peak,
+    filter: subVoices[0] && subVoices[0].filter,
   };
 
   // For transient voices, schedule a hard stop a hair after the release tail.

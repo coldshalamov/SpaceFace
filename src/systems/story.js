@@ -65,6 +65,11 @@ export const story = {
     // ── Ambient + trap comms timer (driven from update()). ───────────────────────────────────
     bus.on('game:started', () => this._onNewGame());
     bus.on('save:loaded', () => this._onLoaded());
+    // When the first-hour tutorial finishes (spec2/03), release the cold-start voice it deferred.
+    bus.on('tutorial:finished', () => this._releaseDeferredColdStart());
+    // While the tutorial owns the one-voice channel, suppress its tutorial-line windows so ambient
+    // comms can't stomp a beat's verb. The tutorial system announces each line via tutorial:say.
+    bus.on('tutorial:say', () => { this._lastTutorialSayS = (this.state.simTime || 0); });
 
     // ── Graffiti at airlock/shipyard fires when the player docks (the station hub is open). ──
     bus.on('dock:docked', (p) => this._onDocked(p || {}));
@@ -178,6 +183,12 @@ export const story = {
   // COMMS — ambient, trap, personal, late, story.
   // =========================================================================================
   _fireAmbient() {
+    // One-voice (spec2/03): while the tutorial owns the channel, hold ambient chatter so it can't
+    // overlap a beat's verb. Re-queue the line for later instead of dropping it.
+    if (this._onboardingActive() && this._recentTutorialLine(8)) {
+      this._rescheduleAmbient();
+      return;
+    }
     const s = this.state.story;
     this._ensureState();
     if (!s.ambientQueue || !s.ambientQueue.length) this._rebuildAmbientQueue();
@@ -189,6 +200,13 @@ export const story = {
       id: `amb_${id}_${Math.floor(this.state.simTime)}`, sender: def.sender, text: def.text,
       category: 'ambient', ttl: 7, persist: false, note: def.note,
     });
+  },
+
+  // True if a tutorial line fired within `windowS` seconds (used to keep ambient comms off the verb).
+  _recentTutorialLine(windowS) {
+    const last = this._lastTutorialSayS;
+    if (last == null) return false;
+    return ((this.state.simTime || 0) - last) < windowS;
   },
 
   _fireEligibleTraps() {
@@ -482,8 +500,26 @@ export const story = {
   _onNewGame() {
     this._ensureState(true);
     this._rescheduleAmbient();
-    // Fire the cold start sequence: the friend's handoff, the registry ping, the dock recognition.
-    // Also set the initial bulkhead graffiti: the previous crew's last words, still on the wall.
+    // First-hour pacing (spec2/03): while the staged tutorial owns the one-voice channel, the cold-
+    // start comms + bulkhead graffiti are deferred so the open teaches ONE verb at a time. They are
+    // released when the tutorial finishes (tutorial:finished → _releaseDeferredColdStart). For a
+    // player who opted out of tutorial hints, onboarding is inactive and the cold start fires now.
+    if (this._onboardingActive()) {
+      this._coldStartDeferred = true;
+    } else {
+      this._fireColdStart();
+    }
+  },
+
+  _onboardingActive() {
+    const ob = this.state && this.state.onboarding;
+    return !!(ob && ob.active && !ob.finished);
+  },
+
+  // Released once the tutorial hands off to story mode (or immediately if there was no tutorial).
+  _releaseDeferredColdStart() {
+    if (!this._coldStartDeferred) return;
+    this._coldStartDeferred = false;
     this._fireColdStart();
   },
 

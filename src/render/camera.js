@@ -12,8 +12,8 @@ const TETHER_COMPOSE_MAX_BIAS = 130;
 const TETHER_COMPOSE_FRACTION = 0.24;
 const SAFE_VIEW_X = 0.52;
 const SAFE_VIEW_Z = 0.46;
-const CRUISE_LOOKAHEAD_MAX = 12;
-const CRUISE_LOOKAHEAD_SPEED_SCALE = 0.16;
+const LOOKAHEAD_MAX = 26;
+const LOOKAHEAD_SPEED_SCALE = 0.16;
 const AIM_BIAS = 0.02;
 const AIM_BIAS_MAX = 18;
 const SHAKE_POS_MAX = 1.55;
@@ -232,6 +232,11 @@ export function createChaseCamera(state) {
       // ease in over ~half the duration, out over the other half → symmetric decay rate
       _pushZoomDecay = 4.0 / d;
     },
+    killCam() {
+      // Kill-cam "kiss" (spec2/02 §2): widen +25% for ~0.9s while feel holds a 0.55s freeze +
+      // 0.35s slow-mo. The push-zoom works with the dynamic-zoom system so it eases in/out.
+      this.pushZoom(0.25, 0.9);
+    },
     follow(dt) {
       const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
       const p = state.entities.get(state.playerId);
@@ -253,7 +258,7 @@ export function createChaseCamera(state) {
           snapToEntity(p);
         }
         if (playerSpeed > 1) {
-          const la = Math.min(c.lookAhead, CRUISE_LOOKAHEAD_MAX, playerSpeed * CRUISE_LOOKAHEAD_SPEED_SCALE);
+          const la = Math.min(c.lookAhead, LOOKAHEAD_MAX, playerSpeed * LOOKAHEAD_SPEED_SCALE);
           fx += (vx / playerSpeed) * la; fz += (vz / playerSpeed) * la;
         }
         const aimLead = resolveAimLead(state.input, p);
@@ -287,27 +292,27 @@ export function createChaseCamera(state) {
         const composeDz = fz - finiteOr(p.pos.z, fz);
         const compositionLead = Math.hypot(composeDx, composeDz);
 
-        // combat: push in slightly and preserve threat readability. The old behavior zoomed out,
-        // making fights feel detached; 47-A needs pressure, line tension, and target geometry.
+        // combat: push in for pressure and preserve threat readability. Dynamic zoom band is
+        // 0.88–1.18 of the base chase distance (spec2/02 §2).
         if (nearbyEnemies > 0) {
-          zoomFactor = 0.90;
+          zoomFactor = 0.88;
           if (compositionLead > 55) {
-            zoomFactor = Math.min(0.98, zoomFactor + Math.min(0.08, (compositionLead - 55) / 900));
+            zoomFactor = Math.min(0.98, zoomFactor + Math.min(0.10, (compositionLead - 55) / 900));
           }
         } else if (hasTetherFocus) {
-          zoomFactor = 0.94;
+          zoomFactor = 0.92;
           if (compositionLead > 55) {
-            zoomFactor = Math.min(1.0, zoomFactor + Math.min(0.06, (compositionLead - 55) / 900));
+            zoomFactor = Math.min(1.0, zoomFactor + Math.min(0.08, (compositionLead - 55) / 900));
           }
         } else {
           // boost: modest zoom-out for speed feel without making ordinary flight breathe too much
-          if (p.flags && p.flags.boosting) zoomFactor = Math.max(zoomFactor, 1.06);
-          // dash: slightly wider at high speed (proxy: speed > 110% of maxSpeed)
-          if (p.maxSpeed && playerSpeed > p.maxSpeed * 1.1) zoomFactor = Math.max(zoomFactor, 1.10);
+          if (p.flags && p.flags.boosting) zoomFactor = Math.max(zoomFactor, 1.12);
+          // dash: wider at high speed (proxy: speed > 110% of maxSpeed)
+          if (p.maxSpeed && playerSpeed > p.maxSpeed * 1.1) zoomFactor = Math.max(zoomFactor, 1.18);
           // damage without a visible threat gets a small emergency reveal
           if (c.trauma > 0.1) zoomFactor = Math.max(zoomFactor, 1.03);
           // idle/cruising: small zoom-in when slow and peaceful
-          if (p.maxSpeed && playerSpeed < p.maxSpeed * 0.15 && c.trauma <= 0.1) zoomFactor = Math.min(zoomFactor, 0.96);
+          if (p.maxSpeed && playerSpeed < p.maxSpeed * 0.15 && c.trauma <= 0.1) zoomFactor = Math.min(zoomFactor, 0.94);
         }
 
         targetZoom = baseZoom * zoomFactor;

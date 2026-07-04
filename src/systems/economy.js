@@ -187,6 +187,21 @@ function spreadOf(entry, frontierPenalty) {
   return clamp(SPREAD_BASE * ev * (1 + (frontierPenalty || 0)), SPREAD_LO, SPREAD_HI);
 }
 
+function ensurePlayerMarketMemory(player) {
+  if (!player) return {};
+  if (!player.marketMemory || typeof player.marketMemory !== 'object' || Array.isArray(player.marketMemory)) {
+    player.marketMemory = {};
+  }
+  return player.marketMemory;
+}
+
+function ensurePlayerTradeState(player) {
+  if (!player) return { ledger: [], lots: {} };
+  if (!Array.isArray(player.tradeLedger)) player.tradeLedger = [];
+  if (!player.tradeLots || typeof player.tradeLots !== 'object' || Array.isArray(player.tradeLots)) player.tradeLots = {};
+  return { ledger: player.tradeLedger, lots: player.tradeLots };
+}
+
 // ---------------------------------------------------------------------------------------------
 
 export const economy = {
@@ -206,6 +221,8 @@ export const economy = {
     if (!state.economy.econEvents) state.economy.econEvents = [];
     if (!state.economy.econClock) state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     if (!state.economy.marketIntel) state.economy.marketIntel = {};
+    ensurePlayerMarketMemory(state.player);
+    ensurePlayerTradeState(state.player);
     if (!Number.isFinite(state.economy.rngSeed) || (state.economy.rngSeed >>> 0) === 0) state.economy.rngSeed = hash32(state.meta && state.meta.seed, 'economy');
     this._nextEventId = 1;
     this._eventAccumulator = 0;
@@ -220,6 +237,7 @@ export const economy = {
     // ---- trade intents from UI ------------------------------------------------------------
     bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty); });
     bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty); });
+    bus.on('economy:marketOpened', (p) => { if (p && p.stationId) this.recordMarketMemory(p.stationId); });
 
     // ---- NPC / passive-income trades route through the same execute path (self-balancing) --
     // NPC / drone trades move market stock (their activity shifts prices — the whole point of a
@@ -399,6 +417,30 @@ export const economy = {
       snapshot[cid] = { mid: e.lastMid, buy: e.lastBuy, sell: e.lastSell, stock: e.stock, role: e.role };
     }
     state.economy.marketIntel[stationId] = { snapshot, seenAtT: state.simTime };
+    this.recordMarketMemory(stationId, snapshot);
+  },
+
+  /** Player-facing price memory: visited stations only, stored under player so saves carry it. */
+  recordMarketMemory(stationId, snapshot = null) {
+    const state = this.state;
+    if (!stationId || !state || !state.player) return null;
+    const market = snapshot || (state.economy && state.economy.markets && state.economy.markets[stationId]);
+    if (!market) return null;
+    const memory = ensurePlayerMarketMemory(state.player);
+    const stationMemory = memory[stationId] || (memory[stationId] = {});
+    for (const cid in market) {
+      const e = market[cid];
+      if (!e) continue;
+      const buy = e.buy != null ? e.buy : e.lastBuy;
+      const sell = e.sell != null ? e.sell : e.lastSell;
+      if (!Number.isFinite(Number(buy)) && !Number.isFinite(Number(sell))) continue;
+      stationMemory[cid] = {
+        buy: Math.round(Number(buy) || 0),
+        sell: Math.round(Number(sell) || 0),
+        seenAt: Math.max(0, Number(state.simTime) || 0),
+      };
+    }
+    return stationMemory;
   },
 
   // -------------------------------------------------------------------------------------------
@@ -535,12 +577,70 @@ export const economy = {
       }
       if (def && def.legality !== 'legal') stats.smuggledValue = (stats.smuggledValue || 0) + Math.abs(total);
     }
+    this.recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def);
     this.snapshotIntel(stationId);
     this.bus.emit('economy:tradeCompleted', {
       stationId, commodityId, side, qty, unitAvg, total,
       priceImpactPct, profit: profit != null ? profit : undefined,
       factionId: info ? info.factionId : null,
     });
+  },
+
+  recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def) {
+    const player = state && state.player;
+    if (!player || !commodityId || qty <= 0) return null;
+    const { ledger, lots } = ensurePlayerTradeState(player);
+    const cleanQty = Math.max(0, Math.floor(Number(qty) || 0));
+    const cleanUnit = Number(unitAvg) || 0;
+    let basisUnit = cleanUnit;
+    let marginPerUnit = 0;
+    let profitCr = 0;
+    if (side === 'buy') {
+      const queue = lots[commodityId] || (lots[commodityId] = []);
+      queue.push({ qty: cleanQty, unit: cleanUnit });
+    } else if (side === 'sell') {
+      basisUnit = this.consumeTradeLots(lots, commodityId, cleanQty, def);
+      marginPerUnit = cleanUnit - basisUnit;
+      profitCr = Math.round(marginPerUnit * cleanQty);
+    }
+    const entry = {
+      stationId,
+      commodityId,
+      side,
+      qty: cleanQty,
+      unit: Math.round(cleanUnit),
+      buyUnit: Math.round(basisUnit),
+      marginPerUnit: Math.round(marginPerUnit),
+      profit: profitCr,
+      seenAt: Math.max(0, Number(state.simTime) || 0),
+      total: Math.round(Number(total) || 0),
+    };
+    ledger.unshift(entry);
+    if (ledger.length > 10) ledger.length = 10;
+    return entry;
+  },
+
+  consumeTradeLots(lots, commodityId, qty, def) {
+    const queue = lots[commodityId] || (lots[commodityId] = []);
+    let remaining = Math.max(0, Math.floor(Number(qty) || 0));
+    let cost = 0;
+    let covered = 0;
+    while (remaining > 0 && queue.length) {
+      const lot = queue[0];
+      const take = Math.min(remaining, Math.max(0, Math.floor(Number(lot.qty) || 0)));
+      if (take <= 0) { queue.shift(); continue; }
+      cost += take * (Number(lot.unit) || 0);
+      covered += take;
+      remaining -= take;
+      lot.qty -= take;
+      if (lot.qty <= 0) queue.shift();
+    }
+    if (remaining > 0) {
+      const fallback = def && Number(def.basePrice) || 0;
+      cost += remaining * fallback;
+      covered += remaining;
+    }
+    return covered > 0 ? cost / covered : (def && Number(def.basePrice) || 0);
   },
 
   /** UI/NPC entry: validate against the docked station context then execute. */
@@ -965,6 +1065,9 @@ export const economy = {
     state.economy.econEvents = [];
     state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     state.economy.marketIntel = {};
+    state.player.marketMemory = {};
+    state.player.tradeLedger = [];
+    state.player.tradeLots = {};
     this.resetRng();
     this._nextEventId = 1;
     this._eventAccumulator = 0;

@@ -1,4 +1,4 @@
-// src/data/modules.js – 23 canonical non-weapon modules.
+// src/data/modules.js – canonical non-weapon modules.
 // IDs use mod_ prefix per ARCHITECTURE §0.4. requiresTech refs use tech_ prefix.
 // Covers: shields, engines, cargo, mining lasers, utility. Pure data, no imports.
 
@@ -104,6 +104,31 @@ export const MODULES = [
   {
     id: 'mod_jump_drive_m', name: 'Jump Drive T2 M', slotType: 'utility', size: 'M', tier: 2, mass: 6, price: 26000, requiresTech: 'tech_drive_tuning',
     energyDraw: 2, mods: { jumpDriveTier: 2 },
+  },
+  // Role kits (SPEC2/05): data-only hooks for economy/mining/tether progression.
+  {
+    id: 'mod_ram_plate', name: 'Ram Plate', slotType: 'utility', size: 'S', tier: 1, mass: 4, price: 6000,
+    energyDraw: 0, mods: { ramSelfDamageMult: 0.40, ramDamageDealtMult: 1.80 },
+  },
+  {
+    id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
+    energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherBreakMult: 1.25 },
+  },
+  {
+    id: 'mod_charge_rack', name: 'Impulse Charge Rack', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 18000,
+    energyDraw: 1, mods: { impulseChargeCapacity: 8 },
+  },
+  {
+    id: 'mod_drill_amp', name: 'Drill Amp', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 24000,
+    energyDraw: 2, mods: { ventBonusWindowHeat: 6, richCoreRingPctBonus: 0.04 },
+  },
+  {
+    id: 'mod_survey_suite', name: 'Survey Suite', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 30000,
+    energyDraw: 3, mods: { scannerRadiusMult: 1.50, pingPersistMult: 2.00, radarRangePct: 0.35 },
+  },
+  {
+    id: 'mod_smuggler_hold', name: 'Smuggler Hold', slotType: 'cargo', size: 'S', tier: 2, mass: 4, price: 38000,
+    energyDraw: 0, legality: 'contraband', mods: { hiddenCargoPct: 0.20, cargoFlat: 8 },
   },
   // Countermeasures (P1-7): chaff breaks missile locks + diverts in-flight missiles to a decoy
   // cloud; ECM jams homing guidance (turnRate → 0) for a duration. Both use the utility slot, are

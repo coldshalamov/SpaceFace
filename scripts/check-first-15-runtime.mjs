@@ -60,7 +60,7 @@ try {
   assert.equal(routeReport.screenVisible, true, 'New Game panel should be visible');
   assert.equal(routeReport.routeVisible, true, 'first-15 route rail should be visible');
   assert.equal(routeReport.steps.length, 4, 'first-15 route rail should have four steps');
-  for (const phrase of ['Follow the anomaly', 'Mine the marked rock', 'Dock at Helios', 'Take one job']) {
+  for (const phrase of ['Wake at the beacon', 'Tether the derelict', 'Mine the first seam', 'Dock and pick work']) {
     assert(routeReport.steps.some((step) => step.includes(phrase)), 'route rail missing step: ' + phrase);
   }
   assert(routeReport.routeRect.top >= routeReport.screenRect.top && routeReport.routeRect.bottom <= routeReport.screenRect.bottom,
@@ -104,9 +104,9 @@ try {
   assert.equal(flightReport.beat, 0, 'first run should start on story beat 0');
   assert(flightReport.waypoint && (flightReport.waypoint.kind === 'story' || flightReport.waypoint.onboarding === true),
     'first run should seed a story or onboarding waypoint');
-  assert.match((flightReport.waypoint.reason || '') + ' ' + (flightReport.waypoint.label || ''), /47-A|mass signal|manifest/i,
-    'first waypoint should point at the opening anomaly');
-  assert.match(flightReport.trackerText, /Story|Tutorial|47-A|signal|anomaly|Mission Log/i,
+  assert.match((flightReport.waypoint.reason || '') + ' ' + (flightReport.waypoint.label || ''), /47-A|mass signal|manifest|beacon/i,
+    'first waypoint should point at the opening beacon/anomaly');
+  assert.match(flightReport.trackerText, /Story|Tutorial|47-A|signal|anomaly|Mission Log|Objective/i,
     'HUD tracker should expose first objective context');
   assert.equal(flightReport.topAfter, 'missionLog', 'mission log should open after launch');
   assert.match(flightReport.missionLogText, /RECOMMENDED NEXT/i, 'mission log should show recommended next rail');

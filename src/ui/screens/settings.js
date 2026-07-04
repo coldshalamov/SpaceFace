@@ -239,6 +239,11 @@ export const settingsScreen = {
       rowSlider('Master', () => a.master, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'master', v));
       rowSlider('SFX', () => a.sfx, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'sfx', v));
       rowSlider('Music', () => a.music, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'music', v));
+      rowSlider('Engine', () => a.engine == null ? 0.7 : a.engine, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'engine', v));
+      rowSlider('Ambient', () => a.ambient == null ? 0.7 : a.ambient, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'ambient', v));
+      rowSlider('Combat', () => a.combat == null ? 0.7 : a.combat, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'combat', v));
+      rowSlider('UI', () => a.ui == null ? 0.7 : a.ui, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'ui', v));
+      rowSlider('Comms', () => a.comms == null ? 0.7 : a.comms, 0, 1, 0.01, pct, (v) => this._set(ctx, 'audio', 'comms', v));
     } else if (refs.active === 'Video') {
       const vd = s.video;
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));

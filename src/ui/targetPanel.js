@@ -1,6 +1,6 @@
 // Target panel (ARCHITECTURE §5, spec "Target panel") — the selected-target readout above
 // the radar. Populated from state.player.targetId → entity lookup. Shows name, faction tag,
-// hull%/shield% mini-bars, distance (wu) and closing speed. Hidden when targetId is null/dead.
+// three segmented bars, distance (wu) and closing speed. Hidden when targetId is null/dead.
 //
 // Cheap per-frame path: bar widths via transform:scaleX, text via textContent. No DOM churn.
 
@@ -9,6 +9,30 @@ import { SHIPS } from '../data/ships.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+
+const ROLE_LABEL = {
+  starter: 'Starter', mining: 'Miner', fighter: 'Fighter', freighter: 'Freighter',
+  multirole: 'Multirole', interceptor: 'Interceptor', mining_barge: 'Mining Barge',
+  corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
+  gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship',
+};
+
+const GIMMICK_LABELS = {
+  'tether-cutter': 'MASSLINE CUTTER',
+  'tether_cutter': 'MASSLINE CUTTER',
+  'massline-cutter': 'MASSLINE CUTTER',
+  'massline_cutter': 'MASSLINE CUTTER',
+  'pd-screen': 'PD SCREEN',
+  'pd_screen': 'PD SCREEN',
+  'ram-plate': 'RAM-PLATE',
+  'ram_plate': 'RAM-PLATE'
+};
+
+function getGimmickLabel(gimmick) {
+  if (!gimmick) return '';
+  const normalized = String(gimmick).toLowerCase().replace(/_/g, '-');
+  return GIMMICK_LABELS[normalized] || String(gimmick).toUpperCase();
+}
 
 function entityName(e) {
   if (!e) return '—';
@@ -26,12 +50,24 @@ function entityName(e) {
   return e.type || 'Contact';
 }
 
+function entityClass(e) {
+  if (!e) return '';
+  if (e.type === 'ship') {
+    const def = e.data && e.data.defId ? SHIP_BY_ID.get(e.data.defId) : null;
+    const role = e.role || (def && def.role) || '';
+    return ROLE_LABEL[role] || role || 'Ship';
+  }
+  if (e.type === 'station') {
+    return e.data && e.data.isGate ? 'Gate' : 'Station';
+  }
+  if (e.type === 'wreck') return 'Wreck';
+  if (e.type === 'asteroid') return 'Asteroid';
+  return e.type || '';
+}
+
 export function createTargetPanel(ctx) {
   const { state } = ctx;
   const el = document.createElement('div');
-  // NOTE: deliberately NOT using the `.panel` class — that's the modal-screen surface (heavy
-  // 40px box-shadow + 10px radius). This is a small HUD sub-panel sitting above the radar; it
-  // gets the lighter `.sf-hudpanel` treatment instead.
   el.className = 'sf-target sf-hudpanel';
   el.style.display = 'none';
   el.setAttribute('role', 'status');
@@ -42,23 +78,32 @@ export function createTargetPanel(ctx) {
       <span class="sf-target__name">—</span>
       <span class="sf-target__faction"></span>
     </div>
-    <div class="sf-bar sf-bar--sm sf-bar--hull"><div class="sf-bar__fill"></div></div>
-    <div class="sf-bar sf-bar--sm sf-bar--shield"><div class="sf-bar__fill"></div></div>
+    <div class="sf-target__bars">
+      <div class="sf-bar sf-bar--segmented sf-bar--shield" title="Shield"><div class="sf-bar__fill"></div></div>
+      <div class="sf-bar sf-bar--segmented sf-bar--armor" title="Armor"><div class="sf-bar__fill"></div></div>
+      <div class="sf-bar sf-bar--segmented sf-bar--hull" title="Hull"><div class="sf-bar__fill"></div></div>
+    </div>
     <div class="sf-target__meta">
       <span class="sf-target__dist mono">0 wu</span>
       <span class="sf-target__closing mono"></span>
-    </div>`;
+    </div>
+    <div class="sf-target__gimmick mono" style="display:none"></div>`;
 
   const elName = el.querySelector('.sf-target__name');
   const elFac = el.querySelector('.sf-target__faction');
   const fillHull = el.querySelector('.sf-bar--hull .sf-bar__fill');
+  const fillArmor = el.querySelector('.sf-bar--armor .sf-bar__fill');
   const fillShield = el.querySelector('.sf-bar--shield .sf-bar__fill');
   const elDist = el.querySelector('.sf-target__dist');
   const elClose = el.querySelector('.sf-target__closing');
+  const elGimmick = el.querySelector('.sf-target__gimmick');
+
   let lastTargetId = null;
   let lastName = null;
+  let lastClass = null;
   let lastFactionId = null;
   let lastHullScale = '';
+  let lastArmorScale = '';
   let lastShieldScale = '';
   let lastDistText = '';
   let lastCloseText = '';
@@ -81,12 +126,15 @@ export function createTargetPanel(ctx) {
     if (el.style.display === 'none') el.style.display = 'block';
 
     const nextName = entityName(t);
-    const targetChanged = tid !== lastTargetId || nextName !== lastName || t.factionId !== lastFactionId;
+    const nextClass = entityClass(t);
+    const targetChanged = tid !== lastTargetId || nextName !== lastName || nextClass !== lastClass || t.factionId !== lastFactionId;
     if (targetChanged) {
       lastTargetId = tid;
       lastName = nextName;
+      lastClass = nextClass;
       lastFactionId = t.factionId || null;
-      setText(elName, nextName);
+      const classText = nextClass ? ` · ${nextClass}`.toUpperCase() : '';
+      setText(elName, `${nextName}${classText}`);
       const fac = t.factionId ? FACTION_BY_ID.get(t.factionId) : null;
       if (fac) {
         setText(elFac, fac.short || fac.name);
@@ -98,11 +146,26 @@ export function createTargetPanel(ctx) {
     }
 
     const hullFrac = t.hullMax ? Math.max(0, Math.min(1, t.hull / t.hullMax)) : 0;
+    const armorFrac = t.armorMax ? Math.max(0, Math.min(1, t.armorHp / t.armorMax)) : 0;
     const shieldFrac = t.shieldMax ? Math.max(0, Math.min(1, t.shield / t.shieldMax)) : 0;
+    
     const hullScale = `scaleX(${hullFrac})`;
+    const armorScale = `scaleX(${armorFrac})`;
     const shieldScale = `scaleX(${shieldFrac})`;
+    
     if (hullScale !== lastHullScale) { fillHull.style.transform = hullScale; lastHullScale = hullScale; }
+    if (armorScale !== lastArmorScale) { fillArmor.style.transform = armorScale; lastArmorScale = armorScale; }
     if (shieldScale !== lastShieldScale) { fillShield.style.transform = shieldScale; lastShieldScale = shieldScale; }
+
+    // Gimmick tag
+    const gimmick = t.data && (t.data.bountyGimmick || t.data.gimmick || t.data.bountyTag);
+    const gimmickLabel = getGimmickLabel(gimmick);
+    if (gimmickLabel) {
+      setText(elGimmick, gimmickLabel);
+      if (elGimmick.style.display !== 'inline-block') elGimmick.style.display = 'inline-block';
+    } else {
+      if (elGimmick.style.display !== 'none') elGimmick.style.display = 'none';
+    }
 
     const p = state.entities.get(state.playerId);
     if (p && (targetChanged || options.slow || (tickN % 6) === 0)) {

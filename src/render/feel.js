@@ -49,12 +49,15 @@ const STYLE_ID = 'sf-feel-style';
 
 // Tunables — kept conservative for a space game (not a brawler). Hit-stop is short so it reads as
 // "weight," not "lag." FOV punch is a few degrees. Vignette is brief.
-const HS_HEAVY = 0.055;   // s — timeScale dip duration for a heavy hit (big damage / shield break)
-const HS_KILL  = 0.090;   // s — dip duration for a kill
-const HS_DEATH = 0.160;   // s — dip duration for the player dying (the biggest beat)
-const HS_RAMP_TIME = 0.25; // s — cinematic ease-IN for the death dip (1 -> floor over this window)
-const HS_DEPTH = 0.12;    // timeScale floor during a dip (0.12 = near-frozen but not fully, so the
-                          // camera/particles still creep — feels heavier than a hard freeze)
+const HS_HEAVY = 0.055;       // s — timeScale dip duration for a heavy hit (big damage)
+const HS_SHIELD_BREAK = 0.22; // s — shield-break freeze (spec2/02 §2)
+const HS_ARMOR_HIT = 0.10;    // s — first armor/hull hit freeze (spec2/02 §2)
+const HS_KILL_FREEZE = 0.55;  // s — kill-cam freeze window
+const HS_KILL_SLOW = 0.35;    // s — kill-cam slow-mo tail
+const HS_KILL_SLOW_DEPTH = 0.35; // timeScale floor during slow-mo tail
+const HS_DEATH = 0.90;        // s — dip duration for the player dying (the biggest beat)
+const HS_RAMP_TIME = 0.25;    // s — cinematic ease-IN for the death dip (1 -> floor over this window)
+const HS_DEPTH = 0.12;        // timeScale floor during a normal dip
 const FOV_PUNCH_HEAVY = 2.2;   // deg additive on heavy hit
 const FOV_PUNCH_KILL  = 4.0;   // deg additive on kill
 const FOV_PUNCH_DEATH = 7.0;   // deg additive on player death
@@ -81,6 +84,7 @@ export const feel = {
     this._hsTimer = 0;        // remaining hit-stop seconds (0 = no active dip)
     this._hsReturn = 1;       // timeScale we ease back toward when the dip ends
     this._hsRampIn = 0;       // >0 = cinematic ease-in window (death); timeScale ramps 1 -> floor
+    this._hsFreezeTimer = 0;  // kill-cam hard-freeze window (timeScale = 0)
     this._fovPunch = 0;       // current additive fov offset (deg)
     this._vig = 0;            // current vignette opacity (0..1)
     // (FOV base is derived live from settings.video.fov each frame — no cached field, so the FOV
@@ -315,9 +319,22 @@ export const feel = {
     // (taking a big hit yourself should punch harder than watching two NPCs trade blows).
     bus.on('combat:damage', (p) => {
       if (!p) return;
-      const big = (p.amount >= 25) || p.brokeShield || p.killing;
-      if (!big) return;
       const isPlayer = p.isPlayer || (p.targetId === state.playerId);
+
+      // Shield break gets its own longer freeze; armor/hull first hit gets a micro-freeze.
+      if (p.brokeShield) {
+        const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
+        this._trigger(HS_SHIELD_BREAK, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
+        return;
+      }
+      if (p.armorHit || p.hullHit) {
+        const fov = isPlayer ? FOV_PUNCH_HEAVY * 0.7 : FOV_PUNCH_HEAVY * 0.3;
+        this._trigger(HS_ARMOR_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
+        return;
+      }
+
+      const big = (p.amount >= 25) || p.killing;
+      if (!big) return;
       const dur = isPlayer ? HS_HEAVY * 1.3 : HS_HEAVY * 0.6;
       const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
       this._trigger(dur, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
@@ -328,9 +345,13 @@ export const feel = {
     bus.on('entity:killed', (p) => {
       if (!p) return;
       const playerInvolved = (p.killerId === state.playerId) || (p.id === state.playerId);
-      const dur = playerInvolved ? HS_KILL : HS_KILL * 0.35;
-      const fov = playerInvolved ? FOV_PUNCH_KILL : FOV_PUNCH_KILL * 0.3;
-      this._trigger(dur, fov, 0, null);
+      if (!playerInvolved) {
+        // Distant NPC kill: tiny punch only.
+        this._trigger(HS_KILL_FREEZE * 0.35, FOV_PUNCH_KILL * 0.3, 0, null);
+        return;
+      }
+      // Kill-cam "kiss": 0.55s freeze + 0.35s slow-mo + camera dolly (spec2/02 §2).
+      this._triggerKillCam();
     });
 
     // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash.
@@ -429,6 +450,7 @@ export const feel = {
     // death punch with a late small hit). Floor the timeScale for the dip duration.
     if (hsDur > this._hsTimer) {
       this._hsTimer = hsDur;
+      this._hsFreezeTimer = 0;
       // Death gets a cinematic RAMP-IN (timeScale eases 1 -> floor over ~0.25s) instead of the
       // snappy snap-to-floor normal hits use. Reads as slow-motion rather than a stutter. Only set
       // when this is the death beat (vigCls === 'death').
@@ -446,6 +468,22 @@ export const feel = {
     }
   },
 
+  // Kill-cam "kiss": hard freeze then slow-mo tail (spec2/02 §2).
+  _triggerKillCam() {
+    if (this.state.mode !== 'flight') return;
+    if (!this._modalClear()) return;
+    if (this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce) return;
+
+    const total = HS_KILL_FREEZE + HS_KILL_SLOW;
+    if (total > this._hsTimer) {
+      this._hsTimer = total;
+      this._hsFreezeTimer = HS_KILL_FREEZE;
+      this._hsRampIn = 0;
+    }
+    this._fovPunch = Math.min(this._fovPunch + FOV_PUNCH_KILL, FOV_PUNCH_DEATH + 1);
+    this.bus.emit('camera:kill', {});
+  },
+
   // True when no modal screen is open (screenManager maintains state.ui.screenStack).
   // We treat "any open screen" as "do not steal the freeze" — pause/save/mainMenu all open one.
   _modalClear() {
@@ -461,16 +499,21 @@ export const feel = {
     // ---- hit-stop timer drives state.timeScale ----
     if (this._hsTimer > 0) {
       this._hsTimer -= frameDt;
+      if (this._hsFreezeTimer > 0) this._hsFreezeTimer -= frameDt;
       if (this._hsTimer <= 0) {
         this._hsTimer = 0;
         this._hsRampIn = 0;
+        this._hsFreezeTimer = 0;
         // Only restore to normal if we're still in flight with no modal. If a modal opened during
         // the dip, leave timeScale alone — the modal owns it now.
         if (this.state.mode === 'flight' && this._modalClear()) {
           this.state.timeScale = 1;
         }
       } else if (this.state.mode === 'flight' && this._modalClear()) {
-        if (this._hsRampIn > 0) {
+        if (this._hsFreezeTimer > 0) {
+          // Kill-cam hard freeze: the world stops completely.
+          this.state.timeScale = this._hsReturn = 0;
+        } else if (this._hsRampIn > 0) {
           // Cinematic death ease-in: ramp timeScale 1 -> HS_DEPTH over the ramp window. The ramp
           // amount is how far into the window we are (0 = just died, 1 = ramp done). Eased so the
           // slowdown accelerates — reads as the world bleeding off speed rather than a hard cut.
@@ -481,7 +524,9 @@ export const feel = {
           if (this._hsRampIn <= 0) this._hsRampIn = 0;
         } else {
           // Normal hit: snap to the floor (reads as "weight", not "lag").
-          this.state.timeScale = this._hsReturn = HS_DEPTH;
+          // During kill-cam slow tail, use a shallower floor for readable slow-mo.
+          const floor = (this._hsTimer <= HS_KILL_SLOW + 0.001) ? HS_KILL_SLOW_DEPTH : HS_DEPTH;
+          this.state.timeScale = this._hsReturn = floor;
         }
       }
     }

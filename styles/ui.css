@@ -46,11 +46,25 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: 
 #screens { inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
 #screens > * { pointer-events: auto; }
 
-/* --- Screen push/pop transitions (fade in/out) --- */
-.screen { transition: opacity 0.25s ease; }
-.screen.sf-screen--entering { opacity: 0; }
-.screen.sf-screen--visible { opacity: 1; }
-.screen.sf-screen--exiting { opacity: 0; transition-duration: 0.2s; pointer-events: none; }
+/* --- Screen push/pop transitions (fade in/out + slide) --- */
+.screen {
+  transition: opacity 150ms var(--ease, ease), transform 150ms var(--ease, ease);
+  transform: translateY(0);
+}
+.screen.sf-screen--entering {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.screen.sf-screen--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.screen.sf-screen--exiting {
+  opacity: 0;
+  transform: translateY(6px);
+  transition-duration: 150ms;
+  pointer-events: none;
+}
 
 /* --- Docking overlay (radial-gradient vignette fade for dock/undock transitions) --- */
 #sf-dock-overlay { position: fixed; inset: 0; z-index: 2500; pointer-events: none;
@@ -100,10 +114,10 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .panel {
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  background: rgba(8,13,24,.92);
   border: 1px solid var(--panel-edge);
-  border-radius: 10px;
-  box-shadow: 0 8px 40px rgba(0,0,0,.65), 0 0 0 1px rgba(57,208,255,0.08) inset;
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 40px rgba(0,0,0,.65);
 }
 button, .btn {
   font-family: inherit;
@@ -458,4 +472,164 @@ button:active { transform: translateY(1px); }
 .sf-console-stat__v {
   font-family: var(--mono); font-size: var(--t-md); color: var(--ink);
   font-variant-numeric: tabular-nums; text-align: right;
+}
+
+/* ===== DIALOGS, ACCESSIBILITY, TARGET & OVERVIEW STYLES (spec2/06) ===== */
+
+/* All modals & cards drop the inset cyan glow */
+.sf-card {
+  background: rgba(8,13,24,.92) !important;
+  border: 1px solid var(--panel-edge) !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: none !important;
+}
+
+/* a11y focus outlines */
+*:focus-visible {
+  outline: 2px solid #39d0ff !important;
+  outline-offset: 1px !important;
+}
+
+/* Destructive buttons - no red solid fills, #ff5c5c text only */
+.sf-btn--danger, .btn-danger, [data-destructive] {
+  color: #ff5c5c !important;
+  border-color: rgba(255, 92, 92, 0.4) !important;
+  background: rgba(8, 13, 24, 0.92) !important;
+}
+.sf-btn--danger:hover, .btn-danger:hover, [data-destructive]:hover {
+  border-color: #ff5c5c !important;
+  box-shadow: 0 0 12px rgba(255, 92, 92, 0.3) !important;
+  color: #fff !important;
+}
+
+/* Target Panel v2 Segmented Bars */
+.sf-target__bars {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0;
+  width: 220px;
+  justify-content: space-between;
+}
+.sf-bar--segmented {
+  width: 72px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  position: relative;
+  border-radius: 0;
+  mask-image: linear-gradient(to right, black 15px, transparent 15px, transparent 19px, black 19px, black 34px, transparent 34px, transparent 38px, black 38px, black 53px, transparent 53px, transparent 57px, black 57px, black 72px);
+  -webkit-mask-image: linear-gradient(to right, black 15px, transparent 15px, transparent 19px, black 19px, black 34px, transparent 34px, transparent 38px, black 38px, black 53px, transparent 53px, transparent 57px, black 57px, black 72px);
+}
+.sf-bar--segmented .sf-bar__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+}
+.sf-bar--segmented.sf-bar--shield .sf-bar__fill {
+  background: #39d0ff;
+  box-shadow: 0 0 4px #39d0ff;
+}
+.sf-bar--segmented.sf-bar--armor .sf-bar__fill {
+  background: #8fa3bd;
+  box-shadow: 0 0 4px #8fa3bd;
+}
+.sf-bar--segmented.sf-bar--hull .sf-bar__fill {
+  background: #ff7c5c;
+  box-shadow: 0 0 4px #ff7c5c;
+}
+.sf-target__gimmick {
+  font-size: 10px;
+  color: var(--warn);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 4px;
+  border: 1px solid rgba(255, 179, 71, 0.3);
+  background: rgba(255, 179, 71, 0.08);
+  padding: 2px 6px;
+  display: inline-block;
+}
+
+/* In-world target rings */
+.sf-target-arcs {
+  position: absolute;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.sf-target-arcs.visible {
+  opacity: 0.55;
+}
+.sf-target-arcs circle {
+  fill: none;
+  stroke-linecap: round;
+}
+.sf-arc-shield {
+  stroke: #39d0ff;
+  stroke-width: 1.5px;
+}
+.sf-arc-armor {
+  stroke: #8fa3bd;
+  stroke-width: 1.5px;
+}
+.sf-arc-hull {
+  stroke: #ff7c5c;
+  stroke-width: 1.5px;
+}
+
+/* Overview Strip */
+.sf-overview {
+  width: 188px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: auto;
+  margin: 4px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  user-select: none;
+}
+.sf-overview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: rgba(8, 13, 24, 0.65);
+  cursor: pointer;
+  transition: background var(--dur, 0.18s) var(--ease, ease), border-width 0.1s ease;
+  border-left: 1px solid var(--iff-color, var(--console-edge));
+}
+.sf-overview-row:hover {
+  background: rgba(57, 208, 255, 0.12);
+  border-left-width: 2px;
+}
+.sf-overview-row.selected {
+  background: rgba(57, 208, 255, 0.18);
+  border-left-width: 2px;
+}
+.sf-overview-row__left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.sf-overview-row__name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+  color: var(--ink);
+}
+.sf-overview-row__right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-dim);
+}
+.sf-overview-footer {
+  padding: 4px 8px;
+  background: rgba(8, 13, 24, 0.4);
+  color: var(--ink-mute);
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.05em;
 }

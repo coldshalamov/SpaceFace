@@ -374,6 +374,7 @@ export const render = {
     // build new, re-seat from the entity's live transform.
     bus.on('ship:appearanceChanged', ({ id }) => render.rebuildShipMesh(id));
     bus.on('camera:shake', ({ amount }) => cam.addTrauma(amount || 0.3));
+    bus.on('camera:kill', () => cam.killCam && cam.killCam());
     bus.on('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
     bus.on('game:started', () => cam.snapToPlayer && cam.snapToPlayer());
     bus.on('save:loaded', () => cam.snapToPlayer && cam.snapToPlayer());
@@ -521,6 +522,7 @@ export const render = {
     // carry the bank pose so the rebuilt hull doesn't momentarily sit level mid-turn
     const hull = m.userData && m.userData.hull;
     if (hull && e.bank != null) hull.rotation.x = e.bank;
+    if (hull && e.pitch != null) hull.rotation.z = e.pitch;
     if (e.type === 'ship' || e.type === 'station') { attachContactShadow(m, e); configureShadowCasters(m); }
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
@@ -539,6 +541,7 @@ export const render = {
       if (e.flags.noInterp) {
         m.position.set(e.pos.x, 0, e.pos.z); m.rotation.y = -e.rot;
         if (hull && e.bank != null) hull.rotation.x = e.bank; // roll around forward axis; +bank banks right
+        if (hull && e.pitch != null) hull.rotation.z = e.pitch; // pitch lean nose up/down
       } else {
         m.position.x = e.prevPos.x + (e.pos.x - e.prevPos.x) * alpha;
         m.position.z = e.prevPos.z + (e.pos.z - e.prevPos.z) * alpha;
@@ -550,6 +553,11 @@ export const render = {
         if (hull && e.bank != null) {
           const pb = e.prevBank || 0;
           hull.rotation.x = pb + (e.bank - pb) * alpha;
+        }
+        // Pitch lean: nose pitches up under acceleration (boost) and relaxes otherwise.
+        if (hull && e.pitch != null) {
+          const pp = e.prevPitch || 0;
+          hull.rotation.z = pp + (e.pitch - pp) * alpha;
         }
       }
       // Hero-asset damage states (spec §9.11): hero meshes carry an updateDamageState closure that
@@ -736,6 +744,7 @@ export const render = {
     // renderer; the context-restore handler re-applies everything that matters when it returns.)
     if (this._contextLost) return false;
     if (this._meshReconcileDirty) this.reconcileMeshes();
+    this._updateShipPitch(frameDt);
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
     syncContactShadowPool(this._contactShadowPool, this.state.entityList, this._meshes);
@@ -757,8 +766,50 @@ export const render = {
     this._updateShadowFollow();
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
-    if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
+      if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
     return true;
+  },
+
+  // Cosmetic pitch lean: the ship hull tilts nose-up when boosting / accelerating hard, and relaxes
+  // back to level when coasting. This is a render-only feel cue (does not affect physics/collision).
+  _updateShipPitch(frameDt) {
+    const dt = Math.min(0.05, Math.max(0, frameDt));
+    const rate = 6.0;   // rad/s — snappy but not jittery
+    for (const e of this.state.entityList) {
+      if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
+      if (e.flags && e.flags.docked) continue;
+      const boosting = !!(e.flags && e.flags.boosting);
+      const drive = this._engineDrive(e);
+      let target = 0;
+      if (boosting) target = -0.13;            // strong nose-up lean into afterburner
+      else if (drive > 0.75) target = -0.055;  // moderate lean under hard thrust
+      else if (drive > 0.35) target = -0.025;  // slight lean under cruise thrust
+      // reverse-thrust read: if drive is high but velocity opposes heading, pitch forward slightly
+      if (!boosting && drive > 0.3 && e.vel) {
+        const vx = e.vel.x, vz = e.vel.z;
+        const speed = Math.hypot(vx, vz);
+        if (speed > 8) {
+          const hx = Math.cos(e.rot), hz = Math.sin(e.rot);
+          const align = (vx * hx + vz * hz) / Math.max(1, speed);
+          if (align < -0.35) target = 0.07;    // braking/drifting backward
+        }
+      }
+      if (e.pitch == null) e.pitch = 0;
+      e.pitch += (target - e.pitch) * (1 - Math.exp(-rate * dt));
+      if (Math.abs(e.pitch) < 0.0005 && Math.abs(target) < 0.0005) e.pitch = 0;
+    }
+  },
+
+  // Approximate engine drive for a ship/drone for VFX/feel purposes. Mirrors the logic in vfx.js
+  // without importing it, to keep renderer decoupled from vfx internals.
+  _engineDrive(e) {
+    if (!e.vel) return 0;
+    const speed = Math.hypot(e.vel.x, e.vel.z);
+    const maxSpd = Math.max(1, e.maxSpeed || 1);
+    // A ship under thrust has speed near its heading; idle/drifting ships have low drive.
+    const hx = Math.cos(e.rot), hz = Math.sin(e.rot);
+    const align = speed > 1 ? (e.vel.x * hx + e.vel.z * hz) / speed : 0;
+    return Math.max(0, Math.min(1, (speed / maxSpd) * Math.max(0, align)));
   },
 
   drawPreparedFrame() {

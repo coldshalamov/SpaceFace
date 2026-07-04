@@ -23,25 +23,74 @@
 import { STORY_BEATS } from '../data/missions.js';
 import { BEAT_CONTENT } from '../data/narrative.js';
 import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
+import { makeEnemySpawnSpec } from './combat.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
 
-// Objective chain. This is a bridge until the SG-05 scenario DSL owns the full 47-A opening:
-// follow a suspicious mass signal, verify the Kestrel's tools, dock, and choose who gets the answer.
-// Steps may complete out of order; the panel always shows the first incomplete one.
-const STEPS = [
-  { key: 'claim', title: 'Reach the 47-A mass signal', target: 'asteroid', range: 420,
-    hint: controlPrompt('tutorialFlight') },
-  { key: 'mine', title: 'Verify the signal and live tools', target: 'asteroid', qty: 3,
-    hint: controlPrompt('tutorialMine') },
-  { key: 'dock', title: 'Dock at Helios Station', target: 'station',
-    hint: controlPrompt('tutorialDock') },
-  { key: 'sell', title: 'Push the sample through the market',
-    hint: 'In the Market tab, sell the recovered sample. Watch what the ledger calls ordinary cargo.' },
-  { key: 'next', title: 'Choose who gets the next answer',
-    hint: 'Use Missions for a contract, or browse Shipyard/Outfitting before leaving. The ship has a gun for a reason.' },
+// ── FIRST-HOUR PACING (spec2/03) ────────────────────────────────────────────────
+// The fix for "the open teaches five things at once" is PACING, not deletion: one beat → one verb
+// → ≥4 s of silence → next beat. This BEATS table is the single source of truth for the first 15
+// minutes. All tutorial lines are imperative, name ONE verb, and are ≤12 words (spec2/00 §5).
+// Each beat fires only when the previous beat's DONE fired AND ≥SILENCE_S of text silence passed.
+//
+// `line`  : the verb bark shown at beat entry (the single tutorial voice in its window).
+// `followups` : extra barks gated on in-beat events (latch/reel/cut, scan/seam/vent, sell/board).
+// `done`  : the kind of DONE condition this beat resolves on (handled in _resolveBeatDone).
+// Handoff: completing B5 (accepting any of three offers) calls _finish() → story-mode panel.
+const SILENCE_S = 4;          // ≥4 s of text silence between a beat's DONE and the next beat's text
+const BEACON_RANGE_WU = 420;  // B0 DONE: within this of the beacon
+const TETHER_REEL_MAX_WU = 60;// B1: reel target distance
+const SEAM_ORE_TARGET = 3;    // B2 DONE: ore collected
+const PIRATE_HULL_FLEE_FRAC = 0.30; // B3: pirate flees at ≤30% hull
+const B3_SPAWN_OFFSET_WU = 700;     // B3 pirate spawn distance from player
+const B1_DERELICT_OFFSET_WU = 80;   // B1 derelict spawn distance from beacon
+
+const BEATS = [
+  { // B0 WAKE (0:00)
+    key: 'wake',
+    line: 'Thrust to the beacon.',
+    done: 'beaconRange',
+  },
+  { // B1 THE DERELICT (~1:30) — tether trio
+    key: 'derelict',
+    line: 'Latch it. G.',
+    followups: [
+      { on: 'tether:latched', line: 'Winch in. Hold ArrowUp.' },
+      { on: 'tether:reelMax', line: 'Cut and coast. G.' },
+    ],
+    done: 'tether:released',
+  },
+  { // B2 FIRST SEAM (~3:00) — scan + mine + heat rhythm
+    key: 'seam',
+    line: 'Pulse. C.',
+    followups: [
+      { on: 'scan:hit', line: 'Beam the bright seams. RMB.' },
+      { on: 'mining:ventBonus', line: 'Release in the amber. Remember that.' },
+    ],
+    done: 'oreCollected',
+  },
+  { // B3 THE SNARE (~5:00) — weak pirate interdicts, flees at 30%, dumps cargo
+    key: 'snare',
+    line: 'Trouble. Guns follow your cursor.',
+    done: 'pirateGone',
+  },
+  { // B4 DOCK (~7:00) — sell flow + ONE recommended contract
+    key: 'dock',
+    line: 'Helios. E when close.',
+    followups: [
+      { on: 'sold', line: "Board's got one job for you." },
+    ],
+    done: 'recommendSurfaced',
+  },
+  { // B5 CHOICE (~12:00) — three side-by-side offers; accept any → ends tutorial
+    key: 'choice',
+    line: 'Pick the work that fits.',
+    done: 'mission:accepted',
+  },
 ];
+// Beat index for the choice beat (B5) — accepting its offer ends tutorial mode permanently.
+const CHOICE_BEAT_INDEX = BEATS.length - 1;
 
 const ORE_PREFIXES = [
   'cmdty_ore', 'cmdty_silicate', 'cmdty_ice', 'cmdty_volatiles',
@@ -57,14 +106,13 @@ export const onboarding = {
     this.gamepad = ctx.gamepad;
     this.touch = ctx.touch;
     this._panel = null;
-    this._intro = null;
-    this._introKeydown = null;
-    this._introOpener = null;
     this._accum = 0;
-    this._fadeT = 0;
+    this._lastTextAtS = -Infinity;
     this._controlHintsEl = null;
     this._dockControlInRange = false;
     this._gateControlInRange = false;
+    this._derelictId = null;
+    this._pirateId = null;
 
     const bus = this.bus;
     // Start only for a fresh game. Loaded saves emit save:loaded (no tutorial for a returning pilot).
@@ -81,17 +129,22 @@ export const onboarding = {
     });
 
     // Objective completion hooks (real events verified against the systems).
-    bus.on('dock:docked', () => { this._dockControlInRange = false; this._complete('dock'); });
+    bus.on('dock:docked', () => { this._dockControlInRange = false; this._onBeatEvent('dock:docked'); });
     bus.on('economy:tradeCompleted', (p) => {
-      if (p && p.side === 'sell' && this._isOre(p.commodityId)) {
-        this._complete('mine'); // selling ore also implies you mined
-        this._complete('sell');
-      }
+      if (p && p.side === 'sell') this._onBeatEvent('sold', p);
     });
-    bus.on('mining:start', () => this._complete('claim'));
+    bus.on('mining:start', () => this._onBeatEvent('mining:start'));
     bus.on('pickup:collected', (p) => this._recordOreCollected(p || {}));
-    bus.on('mission:accepted', () => this._complete('next'));
-    bus.on('ship:purchased', () => this._complete('next'));
+    bus.on('mission:accepted', () => this._onBeatEvent('mission:accepted'));
+    bus.on('ship:purchased', () => this._onBeatEvent('mission:accepted'));
+
+    // ── First-hour beat events (spec2/03) ─────────────────────────────────────────────────
+    bus.on('tether:latched', () => this._onBeatEvent('tether:latched'));
+    bus.on('tether:released', () => this._onBeatEvent('tether:released'));
+    bus.on('tether:broke', () => this._onBeatEvent('tether:released'));
+    bus.on('scan:pulse', () => this._onBeatEvent('scan:hit'));
+    bus.on('mining:ventBonus', () => this._onBeatEvent('mining:ventBonus'));
+    bus.on('entity:killed', (p) => this._onBeatKill(p || {}));
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
@@ -221,9 +274,20 @@ export const onboarding = {
     this._gateControlInRange = false;
     this._lastControlMode = null;
     const hintsOn = !st.settings || !st.settings.gameplay || st.settings.gameplay.tutorialHints !== false;
-    st.onboarding = { active: hintsOn, stepIndex: 0, done: {}, finished: false, minedUnits: 0 };
+    // First-hour pacing state (spec2/03). currentBeat is the beat the player is ON (its line has
+    // fired); pendingBeat is the next one waiting for the silence gate. beatDoneAtS timestamps each
+    // beat's DONE so the ≥SILENCE_S gate can enforce the one-verb cadence.
+    st.onboarding = {
+      active: hintsOn, finished: false,
+      currentBeat: -1,            // no beat's text has fired yet
+      beatDoneAt: {},             // { beatKey: simTimeS }
+      firedFollowups: {},         // { beatKey:eventName: true } — followup barks fire once
+      oreCollected: 0,            // B2 progress
+      pirateFled: false,          // B3: pirate fled (vs dead) — still counts as DONE
+    };
     // A fresh new game starts in tutorial mode (not story mode).
     this._storyMode = false;
+    this._lastTextAtS = -Infinity;
     if (!hintsOn) {
       // Player opted out of the tutorial entirely — still give them the story objective tracker so
       // they're never without a "what now" (P2-14).
@@ -232,9 +296,9 @@ export const onboarding = {
     }
     this._injectStyle();
     this._buildPanel();
-    this._showIntro();
-    this._refresh();
-    this._setObjectiveWaypoint(true);
+    // No intro modal (spec2/03 B0: "no modal"). The B0 line fires on the first update tick after the
+    // 4 s silence gate (no predecessor → fires immediately).
+    this._refreshBeatPanel();
   },
 
   // Enter story-mode (the persistent objective tracker) without the tutorial. Used by save:loaded
@@ -250,53 +314,146 @@ export const onboarding = {
   _teardown() {
     const ob = this.state.onboarding; if (ob) ob.active = false;
     if (this._panel) { this._panel.remove(); this._panel = null; }
-    this._closeIntro({ restoreFocus: false });
     this._clearObjectiveWaypoint();
     this._storyMode = false;
     this._storySig = '';
   },
 
-  _complete(key) {
+  // ── The single tutorial-voice chokepoint (spec2/03 §5.2 one-voice audit) ──────────────────
+  // EVERY first-hour tutorial line passes through here so the check can audit text overlap at one
+  // place. Emits on the 'tutorial' tier (toast kind 'info'). Updates the silence-gate clock.
+  _sayTutorial(text) {
+    if (!text) return;
+    this._lastTextAtS = this.state.simTime || 0;
+    // Record for the one-voice audit: { atS, text } appended to a session log on state.onboarding.
+    const ob = this.state.onboarding;
+    if (ob) {
+      if (!Array.isArray(ob.tutorialLog)) ob.tutorialLog = [];
+      ob.tutorialLog.push({ atS: this._lastTextAtS, text });
+    }
+    this.bus.emit('tutorial:say', { text, atS: this._lastTextAtS });
+    this.bus.emit('toast', { text, kind: 'info', ttl: 6 });
+  },
+
+  // Try to advance to the next beat if the silence gate has passed since the previous beat's DONE.
+  // Called from update(). Fires the new beat's entry line + spawns the beat's world content.
+  _tryAdvanceBeat() {
     const ob = this.state.onboarding;
     if (!ob || !ob.active || ob.finished) return;
-    if (ob.done[key]) return;
-    const shown = this._currentStep();
-    ob.done[key] = true;
-    // toast only when it was the objective currently being shown
-    if (shown && shown.key === key) {
-      this.bus.emit('toast', { text: '✓ Objective complete: ' + shown.title, kind: 'good', ttl: 3.5 });
+    const nextIndex = ob.currentBeat + 1;
+    if (nextIndex >= BEATS.length) return;
+    // Silence gate: the previous beat must have DONE'd AND ≥SILENCE_S passed since the last text.
+    if (nextIndex > 0) {
+      const prev = BEATS[nextIndex - 1];
+      const prevDoneAt = ob.beatDoneAt[prev.key];
+      if (prevDoneAt == null) return;                 // predecessor not DONE yet
+      const now = this.state.simTime || 0;
+      if (now - Math.max(prevDoneAt, this._lastTextAtS) < SILENCE_S) return;
     }
-    if (STEPS.every((s) => ob.done[s.key])) this._finish();
-    else {
-      this._refresh();
-      this._setObjectiveWaypoint(true);
+    ob.currentBeat = nextIndex;
+    const beat = BEATS[nextIndex];
+    this._sayTutorial(beat.line);
+    this._enterBeat(beat);
+    this._refreshBeatPanel();
+  },
+
+  // Spawn the world content for a beat on entry (derelict for B1, pirate for B3, etc).
+  _enterBeat(beat) {
+    if (!beat) return;
+    if (beat.key === 'derelict') this._spawnDerelict();
+    else if (beat.key === 'snare') this._spawnPirate();
+    else if (beat.key === 'dock') this._setObjectiveWaypoint(true);
+    else if (beat.key === 'choice') this._openChoice();
+  },
+
+  // Route a gameplay event to the current beat's followups + DONE resolution.
+  _onBeatEvent(eventName, payload) {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    const beat = BEATS[ob.currentBeat];
+    if (!beat) return;
+    // Followup barks (fire once per beat).
+    for (const fu of (beat.followups || [])) {
+      if (fu.on !== eventName) continue;
+      const fkey = beat.key + ':' + fu.on;
+      if (ob.firedFollowups[fkey]) continue;
+      ob.firedFollowups[fkey] = true;
+      this._sayTutorial(fu.line);
+    }
+    this._resolveBeatDone(beat, eventName, payload);
+    this._refreshBeatPanel();
+  },
+
+  // Resolve the current beat's DONE condition. Each beat maps to a done-kind (see BEATS table).
+  _resolveBeatDone(beat, eventName, payload) {
+    const ob = this.state.onboarding;
+    if (!ob || ob.beatDoneAt[beat.key] != null) return; // already DONE
+    const done = beat.done;
+    let resolved = false;
+    if (done === 'tether:released' && (eventName === 'tether:released')) {
+      resolved = true;
+      this._dropDerelictSalvage();
+    } else if (done === 'mission:accepted' && eventName === 'mission:accepted') {
+      resolved = true; // B5: accepting any offer ends the tutorial
+    } else if (done === 'recommendSurfaced' && eventName === 'dock:docked') {
+      // B4 DONE = the recommended contract surfaced at the dock. The recommendation engine already
+      // produces exactly one; reaching the dock (and the board) satisfies the beat.
+      resolved = true;
+    } else if (done === 'pirateGone') {
+      // handled in _onBeatKill (pirate dead) + _checkPirateFlee (pirate fled at ≤30%)
+      if (ob.pirateFled) resolved = true;
+    }
+    // beaconRange / oreCollected are resolved in update() (proximity) / _recordOreCollected.
+    if (resolved) this._beatDone(beat);
+  },
+
+  // Mark a beat DONE and, if it was the choice beat, finish the tutorial.
+  _beatDone(beat) {
+    const ob = this.state.onboarding;
+    if (!ob || ob.beatDoneAt[beat.key] != null) return;
+    ob.beatDoneAt[beat.key] = this.state.simTime || 0;
+    if (beat.key === 'choice' || BEATS.indexOf(beat) === CHOICE_BEAT_INDEX) {
+      this._finish();
     }
   },
 
   _recordOreCollected(p) {
     const ob = this.state.onboarding;
-    if (!ob || !ob.active || ob.finished || !this._isOre(p.commodityId)) return;
+    if (!ob || !ob.active || ob.finished) return;
+    // Count any ore the player collects while on/after the seam beat (B2). The pickup may also fire
+    // for the B1 salvage — that's fine, only the seam beat's DONE cares about the count.
     if (p.collectorId != null && p.collectorId !== this.state.playerId) return;
-    ob.minedUnits = (ob.minedUnits || 0) + Math.max(1, p.qty || p.amount || 1);
-    this._complete('claim');
-    const mineStep = STEPS.find((s) => s.key === 'mine');
-    if (ob.minedUnits >= ((mineStep && mineStep.qty) || 3)) this._complete('mine');
-    else this._refresh();
+    if (!this._isOre(p.commodityId)) return;
+    ob.oreCollected = (ob.oreCollected || 0) + Math.max(1, p.qty || p.amount || 1);
+    const beat = BEATS[ob.currentBeat];
+    if (beat && beat.done === 'oreCollected' && ob.oreCollected >= SEAM_ORE_TARGET) {
+      this._beatDone(beat);
+    }
+    this._refreshBeatPanel();
   },
 
-  _currentStep() {
-    const ob = this.state.onboarding; if (!ob) return null;
-    return STEPS.find((s) => !ob.done[s.key]) || null;
+  // B3: handle the pirate's death (player killed it) or the player's death (respawn — no spiral).
+  _onBeatKill(p) {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    const beat = BEATS[ob.currentBeat];
+    if (!beat || beat.key !== 'snare') return;
+    // Pirate dead → B3 DONE.
+    if (ob._pirateId != null && p.id === ob._pirateId) {
+      this._beatDone(beat);
+      return;
+    }
   },
 
   _finish() {
     const ob = this.state.onboarding; if (!ob) return;
     ob.finished = true;
-    this.bus.emit('toast', { text: 'Tutorial complete — the galaxy is yours, pilot.', kind: 'good', ttl: 5 });
+    ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
     this._clearObjectiveWaypoint();
-    // Instead of fading out, transition the panel into STORY MODE (P2-14): it now persistently
-    // shows the current story beat objective so the player always knows what to do next. The
-    // panel keeps its slot + styling; only the content source switches from STEPS to STORY_BEATS.
+    // Tell the story system the tutorial is over so it can release the deferred cold-start voice.
+    this.bus.emit('tutorial:finished', {});
+    // Transition the panel into STORY MODE (P2-14): it now persistently shows the current story beat
+    // objective so the player always knows what to do next.
     this._storyMode = true;
     this._refreshStory();
   },
@@ -371,20 +528,18 @@ export const onboarding = {
       if (this._storyAccum >= 0.5) { this._storyAccum = 0; this._refreshStory(); }
     }
 
-    // ── Tutorial chain (only while active) ───────────────────────────────────────────────
+    // ── First-hour pacing (only while active) ────────────────────────────────────────────
     const ob = state.onboarding;
     if (!ob || !ob.active) return;
     try {
-      if (this._fadeT > 0) {
-        this._fadeT -= dt;
-        if (this._fadeT <= 0 && this._panel) { this._panel.style.transition = 'opacity 1.2s ease'; this._panel.style.opacity = '0'; setTimeout(() => this._teardown(), 1300); }
-      }
-      this._accum += dt;
+      this._accum = (this._accum || 0) + dt;
       if (this._accum < 0.2) return;
       this._accum = 0;
+      // Advance through the beat gate (silence-gated) + resolve proximity DONE conditions.
+      this._tryAdvanceBeat();
+      this._resolveProximityDone();
+      this._checkPirateFlee();
       this._setObjectiveWaypoint(false);
-      const curr = this._currentStep();
-      if (curr && curr.key === 'claim' && !ob.done.claim) this._completeClaimIfNear(curr);
     } catch (_) { /* never let onboarding break the loop */ }
   },
 
@@ -439,32 +594,140 @@ export const onboarding = {
     return currentPromptModality({ gamepad: this.gamepad, touch: this.touch });
   },
 
-  _completeClaimIfNear(step) {
-    const p = this.state.entities.get(this.state.playerId);
-    const t = this._findObjectiveTarget(step);
-    if (!p || !t || !t.pos) return;
-    const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
-    const r = step.range || 420;
-    if (dx * dx + dz * dz <= r * r) this._complete('claim');
+  // Resolve DONE conditions that depend on proximity (B0 beacon range), polled each update tick.
+  _resolveProximityDone() {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    const beat = BEATS[ob.currentBeat];
+    if (!beat || ob.beatDoneAt[beat.key] != null) return;
+    if (beat.done === 'beaconRange') {
+      const t = this._findBeacon();
+      const p = this.state.entities.get(this.state.playerId);
+      if (t && p && t.pos) {
+        const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
+        if (dx * dx + dz * dz <= BEACON_RANGE_WU * BEACON_RANGE_WU) this._beatDone(beat);
+      }
+    }
+  },
+
+  // B1: spawn a derelict wreck near the beacon for the tether trio (latch/winch/cut).
+  _spawnDerelict() {
+    const st = this.state;
+    const beacon = this._findBeacon();
+    if (!beacon || !beacon.pos || !this.helpers || !this.helpers.spawnEntity) return;
+    // Offset from the beacon so the player learns to fly+latch, not spawn-dock.
+    const ang = (st.rng ? st.rng() : Math.random()) * Math.PI * 2;
+    const pos = {
+      x: beacon.pos.x + Math.cos(ang) * B1_DERELICT_OFFSET_WU,
+      z: beacon.pos.z + Math.sin(ang) * B1_DERELICT_OFFSET_WU,
+    };
+    const wreck = this.helpers.spawnEntity({
+      type: 'wreck', pos, vel: { x: 0, z: 0 }, radius: 14, mass: 900,
+      hull: 1, hullMax: 1, // derelict — already dead, tether-only
+      data: { parentType: 'ship', loot: [], salvagePool: {}, salvageTimeLeft: 0, onboarding: true, kind: 'derelict' },
+    });
+    if (wreck) this._derelictId = wreck.id;
+  },
+
+  // B1 DONE: the vacuum shows itself — drop 2 salvage pickups, no line.
+  _dropDerelictSalvage() {
+    const st = this.state;
+    if (this._derelictId == null || !this.helpers || !this.helpers.spawnEntity) return;
+    const wreck = st.entities && st.entities.get(this._derelictId);
+    if (!wreck || !wreck.pos) return;
+    for (let i = 0; i < 2; i++) {
+      const ang = (st.rng ? st.rng() : Math.random()) * Math.PI * 2;
+      const sp = 12;
+      this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: { x: wreck.pos.x + Math.cos(ang) * 10, z: wreck.pos.z + Math.sin(ang) * 10 },
+        vel: { x: Math.cos(ang) * sp, z: Math.sin(ang) * sp },
+        radius: 2.2,
+        data: { kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 1, despawnAt: (st.simTime || 0) + 60 },
+      });
+    }
+  },
+
+  // B3: spawn a weak pirate (~700 wu out) that interdicts, flees at ≤30% hull, dumps cargo.
+  _spawnPirate() {
+    const st = this.state;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    if (typeof makeEnemySpawnSpec !== 'function' || !this.helpers || !this.helpers.spawnEntity) return;
+    const ang = (st.rng ? st.rng() : Math.random()) * Math.PI * 2;
+    const pos = {
+      x: player.pos.x + Math.cos(ang) * B3_SPAWN_OFFSET_WU,
+      z: player.pos.z + Math.sin(ang) * B3_SPAWN_OFFSET_WU,
+    };
+    // Weak: level 1 reaver_pirate (pirate archetype). Reduced hull so it reads as a tutorial foe.
+    const spec = makeEnemySpawnSpec('reaver_pirate', 1, pos);
+    if (spec) {
+      spec.hull = spec.hullMax = Math.round((spec.hullMax || 80) * 0.6);
+      const pirate = this.helpers.spawnEntity(spec);
+      if (pirate) {
+        this._pirateId = pirate.id;
+        const ob = st.onboarding;
+        if (ob) ob._pirateId = pirate.id;
+      }
+    }
+  },
+
+  // B3: check if the pirate should flee at ≤30% hull (dumping cargo). Once flagged, it's DONE.
+  _checkPirateFlee() {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished || ob.pirateFled) return;
+    if (this._pirateId == null) return;
+    const beat = BEATS[ob.currentBeat];
+    if (!beat || beat.key !== 'snare') return;
+    const pirate = this.state.entities && this.state.entities.get(this._pirateId);
+    if (!pirate || !pirate.alive) return;
+    if ((pirate.hull / (pirate.hullMax || 1)) <= PIRATE_HULL_FLEE_FRAC) {
+      ob.pirateFled = true;
+      // Force the AI to flee + dump cargo (the interdiction ends; no death required).
+      if (pirate.data && pirate.data.ai) {
+        pirate.data.ai.forceFlee = true;
+      }
+      this.bus.emit('loot:drop', { pos: { x: pirate.pos.x, z: pirate.pos.z }, credits: 0, items: [{ id: 'cmdty_stolen_goods', qty: 2 }] });
+      const fresh = BEATS[ob.currentBeat];
+      if (fresh && fresh.done === 'pirateGone') this._beatDone(fresh);
+    }
+  },
+
+  // B5: surface three side-by-side offers (HAUL/BOUNTY/SURVEY). The mission board generates them;
+  // we just ensure the docked station's board exists and tag the three loop types for the UI.
+  _openChoice() {
+    const st = this.state;
+    const stationId = st.ui && st.ui.dockedStationId;
+    if (!stationId) return;
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    if (!missions || typeof missions.ensureBoard !== 'function') return;
+    const board = missions.ensureBoard(stationId);
+    if (!board || !Array.isArray(board.slots)) return;
+    // Tag one offer per loop type so the UI can present them side-by-side. The recommendation engine
+    // already surfaces exactly one; the choice beat shows the spread of all three loops instead.
+    const st_ob = st.onboarding;
+    if (st_ob) st_ob.choiceOfferTypes = ['bulk_trade', 'bounty_hunt', 'recon_scan'];
   },
 
   _setObjectiveWaypoint(force) {
     const st = this.state;
     const ob = st.onboarding;
     if (!ob || !ob.active || ob.finished || !st.nav) return;
-    const curr = this._currentStep();
+    const beat = BEATS[ob.currentBeat];
     const existing = st.nav.waypoint;
     if (existing && !existing.onboarding && !force) return;
-    if (!curr || !curr.target) {
+    // B0/B1 point at the beacon; B4 points at Helios station; others clear the onboarding waypoint.
+    let target = null;
+    if (beat && (beat.key === 'wake' || beat.key === 'derelict')) target = this._findBeacon();
+    else if (beat && beat.key === 'dock') target = this._findHelios();
+    if (!target || !target.pos) {
       if (existing && existing.onboarding) st.nav.waypoint = null;
       return;
     }
-    const t = this._findObjectiveTarget(curr);
-    if (!t || !t.pos) return;
     st.nav.waypoint = {
       onboarding: true,
-      pos: { x: t.pos.x, z: t.pos.z },
-      label: t.label || curr.title,
+      pos: { x: target.pos.x, z: target.pos.z },
+      label: target.label || (beat && beat.line) || 'Objective',
     };
   },
 
@@ -473,34 +736,49 @@ export const onboarding = {
     if (nav && nav.waypoint && nav.waypoint.onboarding) nav.waypoint = null;
   },
 
-  _findObjectiveTarget(step) {
-    const p = this.state.entities.get(this.state.playerId);
-    if (!step || !step.target || !p) return null;
-    let best = null, bestD = Infinity;
-    const index = this.state.entityIndex;
-    const list = step.target === 'asteroid'
-      ? ((index && index.asteroids) || this.state.entityList)
-      : ((index && index.dockStations) || this.state.entityList);
+  // Find the beacon entity (B0/B1 waypoint target). Falls back to the nearest asteroid if no beacon
+  // type exists in the live scene (the 47a opening spawns a kessler_handoff_beacon).
+  _findBeacon() {
+    const list = (this.state.entityList || []);
+    let beacon = null;
     for (const e of list) {
-      if (!e.alive) continue;
-      if (step.target === 'asteroid') {
-        if (e.type !== 'asteroid' || (e.data && e.data.respawnAt != null)) continue;
-      } else if (step.target === 'station') {
-        if (e.type !== 'station' || (e.data && e.data.isGate)) continue;
-      } else {
-        continue;
-      }
+      if (!e || !e.alive || !e.pos) continue;
+      if (e.type === 'beacon') { beacon = e; break; }
+    }
+    if (beacon) return { pos: beacon.pos, label: 'Beacon' };
+    // Fallback: nearest non-respawning asteroid (the "mass signal").
+    const p = this.state.entities.get(this.state.playerId);
+    if (!p) return null;
+    let best = null, bestD = Infinity;
+    for (const e of list) {
+      if (!e || !e.alive || e.type !== 'asteroid' || (e.data && e.data.respawnAt != null)) continue;
       const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
-      let d = dx * dx + dz * dz;
-      if (step.target === 'station' && e.data && e.data.stationId === 'station_helios') d -= 1000000;
+      const d = dx * dx + dz * dz;
       if (d < bestD) { bestD = d; best = e; }
     }
-    if (!best) return null;
-    if (step.target === 'station') {
-      const name = best.data && (best.data.name || best.data.stationName || best.data.stationId);
-      return { pos: best.pos, label: name || 'Station' };
+    return best ? { pos: best.pos, label: 'Beacon' } : null;
+  },
+
+  _findHelios() {
+    const list = (this.state.entityIndex && this.state.entityIndex.stations) || this.state.entityList || [];
+    for (const e of list) {
+      if (!e || !e.alive || e.type !== 'station' || (e.data && e.data.isGate)) continue;
+      if (e.data && e.data.stationId === 'station_helios') {
+        const name = e.data.name || e.data.stationName || 'HELIOS';
+        return { pos: e.pos, label: name };
+      }
     }
-    return { pos: best.pos, label: '47-A Mass Signal' };
+    // Fallback: nearest station.
+    const p = this.state.entities.get(this.state.playerId);
+    if (!p) return null;
+    let best = null, bestD = Infinity;
+    for (const e of list) {
+      if (!e || !e.alive || e.type !== 'station' || (e.data && e.data.isGate)) continue;
+      const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
+      const d = dx * dx + dz * dz;
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best ? { pos: best.pos, label: 'Station' } : null;
   },
 
   // ---- DOM ------------------------------------------------------------------------------------
@@ -511,11 +789,11 @@ export const onboarding = {
     s.textContent = `
     #${PANEL_ID} { position:absolute; left:16px; top:150px; width:306px; z-index:60; pointer-events:none;
       font-family:var(--font, "Segoe UI", system-ui, sans-serif); }
-    /* Tactical-Visor: chromeless objective card — glowing left-edge marker, hard text-shadow, no panel. */
+    /* Chromeless objective card — glowing left-edge marker, hard text-shadow, no panel. */
     #${PANEL_ID} .sf-ob-card { padding:6px 0 6px 12px;
-      border-left:2px solid var(--visor-cyan, #00F0FF); box-shadow:-1px 0 8px -2px var(--visor-cyan-dim, rgba(0,240,255,.4)); }
+      border-left:2px solid var(--accent, #39d0ff); box-shadow:-1px 0 8px -2px rgba(57,208,255,.4); }
     #${PANEL_ID} .sf-ob-kicker { font-family:var(--mono,monospace); font-size:10px; letter-spacing:.22em;
-      text-transform:uppercase; color:var(--visor-cyan,#00F0FF); margin-bottom:5px; display:flex; justify-content:space-between;
+      text-transform:uppercase; color:var(--accent,#39d0ff); margin-bottom:5px; display:flex; justify-content:space-between;
       text-shadow:var(--text-shadow-hard); }
     #${PANEL_ID} .sf-ob-title { font-size:14px; color:#fff; font-weight:600; margin-bottom:5px; text-shadow:var(--text-shadow-hard); }
     #${PANEL_ID} .sf-ob-hint { font-size:12px; line-height:1.45; color:var(--text-secondary,#84a0c8); text-shadow:var(--text-shadow-hard); }
@@ -526,25 +804,6 @@ export const onboarding = {
     #${PANEL_ID} .sf-ob-dot { flex:1; height:3px; border-radius:2px; background:rgba(132,160,200,.25); }
     #${PANEL_ID} .sf-ob-dot.done { background:var(--accent-2,#7af7d0); box-shadow:0 0 6px rgba(122,247,208,.5); }
     #${PANEL_ID} .sf-ob-dot.curr { background:var(--accent,#39d0ff); box-shadow:0 0 6px rgba(57,208,255,.6); }
-
-    .sf-ob-intro { position:absolute; left:50%; top:18%; transform:translateX(-50%); z-index:120; width:min(560px,86vw);
-      pointer-events:auto; font-family:var(--font, "Segoe UI", system-ui, sans-serif);
-      background:linear-gradient(180deg, rgba(17,29,48,.96), rgba(8,13,24,.96)); border:1px solid var(--panel-edge-2,#2b4a72);
-      border-radius:12px; padding:22px 26px; box-shadow:0 18px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(57,208,255,.1) inset;
-      animation:sf-ob-in .4s ease; }
-    @keyframes sf-ob-in { from { opacity:0; } to { opacity:1; } }
-    .sf-ob-intro h2 { margin:0 0 4px; font-family:var(--mono,monospace); letter-spacing:.3em; text-transform:uppercase;
-      font-size:13px; color:var(--accent,#39d0ff); }
-    .sf-ob-intro h1 { margin:0 0 12px; font-size:24px; color:#eaf4ff; letter-spacing:.02em; }
-    .sf-ob-intro p { margin:0 0 10px; font-size:14px; line-height:1.55; color:var(--ink,#d3e6ff); }
-    .sf-ob-intro .sf-ob-row { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
-    .sf-ob-intro button.sf-ob-go { background:linear-gradient(180deg,#1b66a8,#124a86); border:1px solid var(--accent,#39d0ff);
-      color:#fff; font-size:14px; letter-spacing:.06em; text-transform:uppercase; padding:9px 22px; border-radius:7px; cursor:pointer;
-      box-shadow:0 0 14px rgba(57,208,255,.35); }
-    .sf-ob-intro button.sf-ob-go:hover { background:linear-gradient(180deg,#2080cc,#155aa0); }
-    .sf-ob-intro button.sf-ob-skip { color:var(--ink-mute,#4d6a90); font-size:12px; cursor:pointer; text-decoration:underline; background:none; border:none; padding:0; }
-    .sf-ob-intro button.sf-ob-skip:hover { color:var(--ink-dim,#84a0c8); }
-    .sf-ob-intro button:focus-visible { outline:2px solid var(--accent,#39d0ff); outline-offset:3px; }
     `;
     document.head.appendChild(s);
   },
@@ -560,105 +819,38 @@ export const onboarding = {
     this._panel = el;
   },
 
-  _refresh() {
-    if (!this._panel) return;
+  // Render the current beat into the objective panel (the one-verb line + progress for B2).
+  _refreshBeatPanel() {
+    if (!this._panel || this._storyMode) return;
     const ob = this.state.onboarding; if (!ob) return;
-    const curr = this._currentStep();
-    const idx = curr ? STEPS.indexOf(curr) : STEPS.length;
+    const beat = BEATS[ob.currentBeat];
+    const idx = ob.currentBeat < 0 ? -1 : ob.currentBeat;
     const body = this._panel.querySelector('.sf-ob-body');
     const count = this._panel.querySelector('.sf-ob-count');
     const steps = this._panel.querySelector('.sf-ob-steps');
-    if (count) count.textContent = Math.min(idx + 1, STEPS.length) + ' / ' + STEPS.length;
-    if (body && curr) {
+    if (count) count.textContent = (idx >= 0 ? (idx + 1) : 0) + ' / ' + BEATS.length;
+    if (body && beat) {
       body.innerHTML = '';
       const titleEl = document.createElement('div');
       titleEl.className = 'sf-ob-title';
-      titleEl.textContent = curr.title || '';
-      const hintEl = document.createElement('div');
-      hintEl.className = 'sf-ob-hint';
-      hintEl.textContent = curr.hint || '';
-      body.append(titleEl, hintEl);
-      if (curr.key === 'mine') {
+      titleEl.textContent = beat.line || '';
+      body.appendChild(titleEl);
+      // B2 shows ore-collection progress.
+      if (beat.key === 'seam') {
         const progressEl = document.createElement('div');
         progressEl.className = 'sf-ob-progress';
-        progressEl.textContent = 'SAMPLE: ' + Math.min((ob.minedUnits || 0), curr.qty || 3) + ' / ' + (curr.qty || 3) + ' u';
+        progressEl.textContent = 'ORE: ' + Math.min(ob.oreCollected || 0, SEAM_ORE_TARGET) + ' / ' + SEAM_ORE_TARGET;
         body.appendChild(progressEl);
       }
     }
     if (steps) {
       steps.innerHTML = '';
-      STEPS.forEach((s, i) => {
+      BEATS.forEach((b, i) => {
         const d = document.createElement('div');
-        d.className = 'sf-ob-dot' + (ob.done[s.key] ? ' done' : (i === idx ? ' curr' : ''));
+        const isDone = ob.beatDoneAt[b.key] != null;
+        d.className = 'sf-ob-dot' + (isDone ? ' done' : (i === idx ? ' curr' : ''));
         steps.appendChild(d);
       });
     }
-  },
-
-  _closeIntro(options = {}) {
-    const intro = this._intro;
-    const opener = this._introOpener;
-    if (!intro) return;
-    if (this._introKeydown) intro.removeEventListener('keydown', this._introKeydown);
-    this._introKeydown = null;
-    this._intro = null;
-    this._introOpener = null;
-    if (intro.parentNode) intro.remove();
-    if (options.restoreFocus !== false && opener && opener.isConnected && typeof opener.focus === 'function') {
-      try { opener.focus(); } catch (e) {}
-    }
-  },
-
-  _showIntro() {
-    this._closeIntro({ restoreFocus: false });
-    const root = document.getElementById('ui-root') || document.body;
-    const el = document.createElement('div');
-    el.className = 'sf-ob-intro';
-    el.setAttribute('role', 'dialog');
-    el.setAttribute('aria-modal', 'true');
-    el.setAttribute('aria-labelledby', 'sf-ob-intro-title');
-    el.setAttribute('aria-describedby', 'sf-ob-intro-body');
-    el.innerHTML = ''
-      + '<h2>Helios System · Contract 47-A</h2>'
-      + '<h1 id="sf-ob-intro-title">The manifest says one mass. Your instruments say another.</h1>'
-      + '<div id="sf-ob-intro-body">'
-        + '<p>Follow the yellow signal, verify the discrepancy, and get back to Helios before the registry decides the shipment never existed.</p>'
-        + '<p>The Kestrel carries a Pulse Laser S and a mining beam. Gray dots are rocks, cyan/green squares are stations, purple rings are gates, red triangles are trouble, and yellow diamonds are cargo or objectives.</p>'
-      + '</div>'
-      + '<div class="sf-ob-row"><button class="sf-ob-skip" type="button">Skip tutorial</button><button class="sf-ob-go">Begin →</button></div>';
-    root.appendChild(el);
-    this._intro = el;
-    this._introOpener = document.activeElement;
-    const skipBtn = el.querySelector('.sf-ob-skip');
-    const beginBtn = el.querySelector('.sf-ob-go');
-    const close = () => this._closeIntro();
-    this._introKeydown = (ev) => {
-      if (!this._intro || !this._intro.isConnected) return;
-      if (ev.key === 'Escape') {
-        ev.preventDefault();
-        ev.stopPropagation();
-        close();
-        return;
-      }
-      if (ev.key !== 'Tab') return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      const active = document.activeElement;
-      if (active === beginBtn && !ev.shiftKey) skipBtn.focus();
-      else if (active === skipBtn && ev.shiftKey) beginBtn.focus();
-      else if (ev.shiftKey) skipBtn.focus();
-      else beginBtn.focus();
-    };
-    el.addEventListener('keydown', this._introKeydown);
-    beginBtn.addEventListener('click', close);
-    skipBtn.addEventListener('click', () => {
-      this._closeIntro();
-      const ob = this.state.onboarding; if (ob) { ob.active = false; }
-      if (this.state.settings && this.state.settings.gameplay) this.state.settings.gameplay.tutorialHints = false;
-      this._teardown();
-      this._beginStoryMode();
-      this.bus.emit('toast', { text: 'Tutorial hints off (re-enable in Settings).', kind: 'info', ttl: 3 });
-    });
-    setTimeout(() => { try { beginBtn.focus(); } catch (e) {} }, 30);
   },
 };

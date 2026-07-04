@@ -124,10 +124,8 @@ export const localmapScreen = {
       '</div>' +
       '<div class="lm-body"><canvas></canvas>' +
       '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
-      '<div class="lm-legend">' +
-        '◆ station &nbsp; ◇ gate &nbsp; ▲ ship &nbsp; ● asteroid &nbsp; ? scan ping<br>' +
-        'bright = fresh &nbsp;·&nbsp; faint = stale/uncertain<br>' +
-        `tactical radar = near-field &nbsp;·&nbsp; ${localMapKey} map = this system &nbsp;·&nbsp; ${starMapKey} nav chart = galaxy` +
+      '<div class="lm-legend" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; opacity: 0.85;">' +
+        `◆ STATION · ◇ GATE · ▲ HOSTILE · ▲ FRIENDLY · ● ASTEROID · ? SCAN PING · Zoom: [Scroll Wheel]` +
       '</div>' +
       '<div class="lm-routes" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';
@@ -152,24 +150,52 @@ export const localmapScreen = {
     this._ro = new ResizeObserver(() => this._resize());
     this._ro.observe(this._body);
     this._resize();
+
+    // Zoom listener
+    this._targetZoom = this._zoom;
+    this._body.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      const factor = ev.deltaY < 0 ? 0.8 : 1.25;
+      this._targetZoom = Math.max(0.2, Math.min(5, this._targetZoom * factor));
+    }, { passive: false });
+
     return this;
   },
 
   onShow() {
+    this._zoom = 1;
+    this._targetZoom = 1;
     this._visible = true;
     cancelAnimationFrame(this._animFrame);
     this._resize(); // size the canvas synchronously so the first draw isn't on a 0x0 surface
     const loop = () => {
       if (!this._visible) return;
       const now = performance.now();
-      if (now - this._lastFrameAt >= 100) {
+      
+      let zoomChanged = false;
+      if (this._targetZoom !== undefined && Math.abs(this._zoom - this._targetZoom) > 0.001) {
+        const dt = (now - this._lastTime) / 1000;
+        this._lastTime = now;
+        const alpha = 1 - Math.exp(-dt / 0.10); // 150ms ease
+        this._zoom += (this._targetZoom - this._zoom) * Math.min(1, alpha);
+        zoomChanged = true;
+      } else {
+        this._lastTime = now;
+      }
+
+      const refreshTick = now - this._lastFrameAt >= 100;
+      if (refreshTick) {
         this._lastFrameAt = now;
         this._resize(); // keep DPI/size fresh while open
         this._refreshIntel();
+      }
+
+      if (refreshTick || zoomChanged) {
         this._draw();
       }
       this._animFrame = requestAnimationFrame(loop);
     };
+    this._lastTime = performance.now();
     this._lastFrameAt = 0;
     loop();
   },
@@ -364,7 +390,7 @@ export const localmapScreen = {
     // convention (world +Z = screen up, world +X = screen left). Scale fits the contact spread.
     const bounds = map.bounds || {};
     const span = Math.max(400, Math.hypot((bounds.maxX || 600) - (bounds.minX || -600), (bounds.maxZ || 600) - (bounds.minZ || -600)));
-    const scale = (Math.min(w, h) * 0.42) / span;
+    const scale = ((Math.min(w, h) * 0.42) / span) / (this._zoom || 1);
     const wx = (x) => C.x - (x - player.pos.x) * scale;
     const wz = (z) => C.y - (z - player.pos.z) * scale;
 
@@ -416,6 +442,34 @@ export const localmapScreen = {
         const col = c.hostile ? '#ff5470' : (c.factionId ? '#4DA8FF' : '#9aa8bc');
         g.fillStyle = col; g.strokeStyle = col;
         g.shadowColor = col; g.shadowBlur = stale ? 0 : 6;
+
+        // Hostile motion vector ticks (velocity / 3, clamp max 24px)
+        if (c.hostile && c.velocity) {
+          const pvx = -(c.velocity.x / 3) * scale;
+          const pvz = -(c.velocity.z / 3) * scale;
+          const len = Math.hypot(pvx, pvz);
+          if (len > 0.1) {
+            const mult = len > 24 ? 24 / len : 1;
+            const targetX = x + pvx * mult;
+            const targetZ = y + pvz * mult;
+            
+            g.strokeStyle = '#ff5470';
+            g.lineWidth = 1.2;
+            g.beginPath();
+            g.moveTo(x, y);
+            g.lineTo(targetX, targetZ);
+            g.stroke();
+            
+            // Draw crossbar tick at the end
+            const angle = Math.atan2(pvz, pvx);
+            const crossLen = 3.5;
+            g.beginPath();
+            g.moveTo(targetX - Math.sin(angle) * crossLen, targetZ + Math.cos(angle) * crossLen);
+            g.lineTo(targetX + Math.sin(angle) * crossLen, targetZ - Math.cos(angle) * crossLen);
+            g.stroke();
+          }
+        }
+
         const ang = c.heading || 0;
         g.translate(x, y); g.rotate(Math.PI + ang);
         g.beginPath(); g.moveTo(4, 0); g.lineTo(-3, -2.6); g.lineTo(-3, 2.6); g.closePath(); g.fill();

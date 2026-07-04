@@ -15,6 +15,15 @@ export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
 export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 
+const CAPTURE_SLACK_S = 0.1;
+const MAX_STRETCH_RATIO = 0.45;
+const REEL_SAFE_STRETCH_RATIO = 0.43;
+const STRETCH_EPSILON = 1e-6;
+const SPRING_TUNES = Object.freeze({
+  tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35 }),
+  attachment_massline: Object.freeze({ K: 170, zeta: 0.90, captureS: 0.30 }),
+});
+
 const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initialization function';
 let rapierInitPromise = null;
 
@@ -211,8 +220,11 @@ export class Sg02DynamicBodyOwner {
       anchorB: localAnchorFromWorld(target, targetWorld),
       restLength,
       break: normalizeBreak(input.break),
+      spring: normalizeSpring(input.spring || (input.break && input.break.spring), input.defId, input.break),
+      springState: createSpringState(),
+      springScratch: createSpringScratch(),
       createdTick: Math.max(0, Math.trunc(finite(input.tick))),
-      ropeJoint: null,
+      contactJoint: null,
     };
     this._createAttachmentJoints(attachment);
     this.attachments.set(attachment.id, attachment);
@@ -222,15 +234,16 @@ export class Sg02DynamicBodyOwner {
   setAttachmentReel(input = {}) {
     const attachment = this._findAttachment(input);
     if (!attachment) return false;
-    attachment.restLength = positive(input.restLength, attachment.restLength);
-    this._removeAttachmentJoints(attachment);
-    this._createAttachmentJoints(attachment);
+    const requested = positive(input.restLength, attachment.restLength);
+    if (requested < attachment.restLength && attachment.springState) attachment.springState.reelSlip = true;
+    attachment.restLength = safeReelRestLength(attachment, requested, this.fixedDt);
     return true;
   }
 
   cutAttachment(input = {}) {
     const attachment = this._findAttachment(input);
     if (!attachment) return false;
+    this._releaseSpringOnCut(attachment, input.reason);
     this._removeAttachmentJoints(attachment);
     this.attachments.delete(attachment.id);
     return true;
@@ -250,8 +263,12 @@ export class Sg02DynamicBodyOwner {
     const targetVelocity = attachment.target.body.linvel();
     const relativeSpeed = (targetVelocity.x - ownerVelocity.x) * nx + (targetVelocity.z - ownerVelocity.z) * nz;
     const stretch = Math.max(0, distance - attachment.restLength);
-    const tension = Math.max(0, stretch * attachment.break.stiffness + relativeSpeed * attachment.break.damping);
-    const impulse = tension * this.fixedDt;
+    const springState = attachment.springState || createSpringState();
+    const spring = attachment.spring || normalizeSpring(null, attachment.defId, attachment.break);
+    const mu = reducedMass(attachment.owner, attachment.target);
+    const damping = dampingForSpring(spring, mu);
+    const telemetryTension = Math.max(0, springState.lastTension || (stretch * spring.K + damping * Math.max(0, relativeSpeed)));
+    const telemetryImpulse = Math.max(0, springState.lastImpulse || telemetryTension * this.fixedDt);
     return Object.freeze({
       schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
       attachmentId: attachment.id,
@@ -259,8 +276,13 @@ export class Sg02DynamicBodyOwner {
       distance,
       stretch,
       relativeSpeed,
-      tension,
-      impulse,
+      tension: telemetryTension,
+      impulse: telemetryImpulse,
+      phase: springState.phase || 'slack',
+      captureT: Math.max(0, finite(springState.captureT)),
+      springK: spring.K,
+      springDamping: damping,
+      breakRequested: !!springState.breakRequested,
       sourceWorld: Object.freeze(source),
       targetWorld: Object.freeze(target),
       tick: this.tick,
@@ -276,6 +298,8 @@ export class Sg02DynamicBodyOwner {
       const command = consumePhysicsCommand(rec.entity);
       if (command) this._applyCommand(rec, command);
     }
+
+    this._applyAttachmentSprings();
 
     this.world.timestep = this.fixedDt;
     this.world.step();
@@ -493,23 +517,164 @@ export class Sg02DynamicBodyOwner {
     return id ? this.attachments.get(id) || null : null;
   }
 
+  _applyAttachmentSprings() {
+    for (const attachment of this.attachments.values()) this._applyAttachmentSpring(attachment);
+  }
+
+  _applyAttachmentSpring(attachment) {
+    const state = attachment.springState || (attachment.springState = createSpringState());
+    const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
+    let restLength = positive(attachment.restLength, 0);
+    const source = worldAnchorInto(scratch.source, attachment.owner, attachment.anchorA);
+    const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
+    const dx = target.x - source.x;
+    const dz = target.z - source.z;
+    const distance = Math.hypot(dx, dz);
+    const nx = distance > 1e-9 ? dx / distance : 1;
+    const nz = distance > 1e-9 ? dz / distance : 0;
+    let stretch = Math.max(0, distance - restLength);
+
+    if (state.reelSlip && restLength > 0 && stretch > restLength * REEL_SAFE_STRETCH_RATIO) {
+      restLength = distance / (1 + REEL_SAFE_STRETCH_RATIO);
+      attachment.restLength = restLength;
+      stretch = Math.max(0, distance - restLength);
+    }
+
+    state.breakRequested = false;
+    state.lastStretch = stretch;
+    if (!(stretch > STRETCH_EPSILON)) {
+      state.slackS += this.fixedDt;
+      state.captureT = 0;
+      state.captureActive = false;
+      state.wasTaut = false;
+      state.phase = 'slack';
+      state.lastTension = 0;
+      state.lastImpulse = 0;
+      state.lastRelativeSpeed = 0;
+      return;
+    }
+
+    velocityAtPointInto(scratch.velocityA, attachment.owner, source);
+    velocityAtPointInto(scratch.velocityB, attachment.target, target);
+    const relativeSpeed = (scratch.velocityB.x - scratch.velocityA.x) * nx + (scratch.velocityB.z - scratch.velocityA.z) * nz;
+    const spring = attachment.spring || (attachment.spring = normalizeSpring(null, attachment.defId, attachment.break));
+    const mu = reducedMass(attachment.owner, attachment.target);
+    const damping = dampingForSpring(spring, mu);
+
+    if (!state.wasTaut && state.slackS >= CAPTURE_SLACK_S) {
+      state.captureActive = true;
+      state.captureT = 0;
+    }
+    state.wasTaut = true;
+    state.slackS = 0;
+
+    const captureS = positive(spring.captureS, 0);
+    const inCapture = state.captureActive && state.captureT < captureS;
+    const captureX = inCapture && captureS > 0 ? clamp(state.captureT / captureS, 0, 1) : 1;
+    const smooth = smoothstep(captureX);
+    const k = inCapture ? spring.K * smooth * smooth : spring.K;
+    const c = inCapture ? damping * (0.5 + 0.5 * smooth) : damping;
+    let force = Math.max(0, k * stretch + c * relativeSpeed);
+
+    const breakStretch = restLength * MAX_STRETCH_RATIO;
+    if (stretch > breakStretch) {
+      state.breakRequested = true;
+      state.phase = 'overload';
+      force = 0;
+      state.lastTension = Math.max(
+        spring.K * stretch + damping * Math.max(0, relativeSpeed),
+        finite(attachment.break.maxTension) + 1,
+      );
+      state.lastImpulse = Math.max(state.lastTension * this.fixedDt, finite(attachment.break.maxImpulse) + 1);
+      state.lastRelativeSpeed = relativeSpeed;
+      return;
+    }
+
+    const impulse = force * this.fixedDt;
+    if (impulse > 0) {
+      scratch.impulseA.x = nx * impulse;
+      scratch.impulseA.y = 0;
+      scratch.impulseA.z = nz * impulse;
+      scratch.impulseB.x = -scratch.impulseA.x;
+      scratch.impulseB.y = 0;
+      scratch.impulseB.z = -scratch.impulseA.z;
+      applyImpulseAtPoint(attachment.owner, scratch.impulseA, source);
+      applyImpulseAtPoint(attachment.target, scratch.impulseB, target);
+      accumulateForce(attachment.owner, scratch.impulseA, this.fixedDt);
+      accumulateForce(attachment.target, scratch.impulseB, this.fixedDt);
+    }
+
+    state.lastTension = force;
+    state.lastImpulse = impulse;
+    state.lastRelativeSpeed = relativeSpeed;
+    state.phase = inCapture ? 'capture'
+      : force >= finite(attachment.break.maxTension, Infinity) * 0.75 ? 'overload'
+      : 'loaded';
+    if (inCapture) {
+      state.captureT += this.fixedDt;
+      if (state.captureT >= captureS) state.captureActive = false;
+    }
+  }
+
   _createAttachmentJoints(attachment) {
-    attachment.ropeJoint = this.world.createImpulseJoint(
-      this.RAPIER.JointData.rope(attachment.restLength, attachment.anchorA, attachment.anchorB),
+    attachment.contactJoint = null;
+    if (!this.RAPIER.JointData.generic) return;
+    attachment.contactJoint = this.world.createImpulseJoint(
+      this.RAPIER.JointData.generic(attachment.anchorA, attachment.anchorB, { x: 1, y: 0, z: 0 }, 0),
       attachment.owner.body,
       attachment.target.body,
       true,
     );
-    if (attachment.ropeJoint && typeof attachment.ropeJoint.setContactsEnabled === 'function') {
-      attachment.ropeJoint.setContactsEnabled(false);
+    if (attachment.contactJoint && typeof attachment.contactJoint.setContactsEnabled === 'function') {
+      attachment.contactJoint.setContactsEnabled(false);
     }
   }
 
   _removeAttachmentJoints(attachment) {
-    if (attachment.ropeJoint && (!attachment.ropeJoint.isValid || attachment.ropeJoint.isValid())) {
-      this.world.removeImpulseJoint(attachment.ropeJoint, true);
+    if (attachment.contactJoint && (!attachment.contactJoint.isValid || attachment.contactJoint.isValid())) {
+      this.world.removeImpulseJoint(attachment.contactJoint, true);
     }
-    attachment.ropeJoint = null;
+    attachment.contactJoint = null;
+  }
+
+  _releaseSpringOnCut(attachment, reason) {
+    if (String(reason || '') !== 'tether_cut') return;
+    if (attachment.defId !== 'tether_standard') return;
+    const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
+    const source = worldAnchorInto(scratch.source, attachment.owner, attachment.anchorA);
+    const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
+    const dx = target.x - source.x;
+    const dz = target.z - source.z;
+    const distance = Math.hypot(dx, dz);
+    const stretch = Math.max(0, distance - positive(attachment.restLength, distance));
+    if (!(stretch > STRETCH_EPSILON)) return;
+    velocityAtPointInto(scratch.velocityA, attachment.owner, source);
+    const nx = distance > 1e-9 ? dx / distance : 1;
+    const nz = distance > 1e-9 ? dz / distance : 0;
+    const radialSpeed = scratch.velocityA.x * nx + scratch.velocityA.z * nz;
+    let tx = scratch.velocityA.x - nx * radialSpeed;
+    let tz = scratch.velocityA.z - nz * radialSpeed;
+    const tangentSpeed = Math.hypot(tx, tz);
+    if (!(tangentSpeed > 1e-6)) {
+      tx = -nz;
+      tz = nx;
+    } else {
+      tx /= tangentSpeed;
+      tz /= tangentSpeed;
+    }
+    const mass = effectiveMass(attachment.owner);
+    if (!Number.isFinite(mass) || !(mass > 0)) return;
+    const spring = attachment.spring || normalizeSpring(null, attachment.defId, attachment.break);
+    const releaseSpeed = Math.min(55, Math.sqrt(Math.max(0, spring.K * stretch * stretch / mass)) * 0.45);
+    if (!(releaseSpeed > 0)) return;
+    scratch.impulseA.x = tx * releaseSpeed * mass;
+    scratch.impulseA.y = 0;
+    scratch.impulseA.z = tz * releaseSpeed * mass;
+    applyImpulseAtPoint(attachment.owner, scratch.impulseA, source);
+    if (attachment.owner.entity && attachment.owner.entity.vel) {
+      attachment.owner.entity.vel.x += scratch.impulseA.x / mass;
+      attachment.owner.entity.vel.z += scratch.impulseA.z / mass;
+    }
   }
 }
 
@@ -586,8 +751,127 @@ function normalizeBreak(value = {}) {
   };
 }
 
+function normalizeSpring(value = {}, defId = '', breakValue = {}) {
+  const tune = SPRING_TUNES[String(defId || '')] || null;
+  return {
+    K: positive(value && value.K, positive(value && value.k, positive(tune && tune.K, positive(breakValue && breakValue.stiffness, 140)))),
+    zeta: positive(value && value.zeta, positive(tune && tune.zeta, 0.95)),
+    captureS: positive(value && value.captureS, positive(tune && tune.captureS, 0.35)),
+  };
+}
+
+function createSpringState() {
+  return {
+    slackS: CAPTURE_SLACK_S,
+    captureT: 0,
+    captureActive: false,
+    wasTaut: false,
+    reelSlip: false,
+    phase: 'slack',
+    breakRequested: false,
+    lastStretch: 0,
+    lastRelativeSpeed: 0,
+    lastTension: 0,
+    lastImpulse: 0,
+  };
+}
+
+function createSpringScratch() {
+  return {
+    source: zero3(),
+    target: zero3(),
+    velocityA: zero3(),
+    velocityB: zero3(),
+    impulseA: zero3(),
+    impulseB: zero3(),
+  };
+}
+
+function safeReelRestLength(attachment, requested, dt = SG02_DYNAMIC_BODY_OWNER_DT) {
+  const current = positive(attachment && attachment.restLength, requested);
+  if (!(requested < current)) return requested;
+  const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
+  const source = worldAnchorInto(scratch.source, attachment.owner, attachment.anchorA);
+  const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
+  const distance = distance2d(source, target);
+  const dx = target.x - source.x;
+  const dz = target.z - source.z;
+  const invD = distance > 1e-9 ? 1 / distance : 0;
+  velocityAtPointInto(scratch.velocityA, attachment.owner, source);
+  velocityAtPointInto(scratch.velocityB, attachment.target, target);
+  const openingSpeed = invD > 0
+    ? Math.max(0, (scratch.velocityB.x - scratch.velocityA.x) * dx * invD + (scratch.velocityB.z - scratch.velocityA.z) * dz * invD)
+    : 0;
+  const predictedDistance = distance + openingSpeed * Math.max(0, finite(dt));
+  const minByGuard = predictedDistance / (1 + REEL_SAFE_STRETCH_RATIO);
+  return Math.max(requested, minByGuard);
+}
+
+function reducedMass(a, b) {
+  const ma = effectiveMass(a);
+  const mb = effectiveMass(b);
+  if (!Number.isFinite(ma) && !Number.isFinite(mb)) return 0;
+  if (!Number.isFinite(ma)) return positive(mb, 0);
+  if (!Number.isFinite(mb)) return positive(ma, 0);
+  const sum = ma + mb;
+  return sum > 0 ? (ma * mb) / sum : 0;
+}
+
+function effectiveMass(rec) {
+  if (!rec || !rec.spec || !rec.spec.dynamic) return Infinity;
+  if (rec.body && typeof rec.body.mass === 'function') return positive(rec.body.mass(), positive(rec.spec.mass, 1));
+  return positive(rec.spec.mass, 1);
+}
+
+function dampingForSpring(spring, mu) {
+  return mu > 0 ? 2 * positive(spring && spring.zeta, 0.95) * Math.sqrt(positive(spring && spring.K, 1) * mu) : 0;
+}
+
 function distance2d(a, b) {
   return Math.hypot(finite(b.x) - finite(a.x), finite(b.z) - finite(a.z));
+}
+
+function worldAnchorInto(out, rec, local) {
+  const p = rec.body.translation();
+  const yaw = yawFromQuat(rec.body.rotation());
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  out.x = p.x + c * local.x - s * local.z;
+  out.y = 0;
+  out.z = p.z + s * local.x + c * local.z;
+  return out;
+}
+
+function velocityAtPointInto(out, rec, point) {
+  if (rec.body && typeof rec.body.velocityAtPoint === 'function') {
+    const v = rec.body.velocityAtPoint(point);
+    out.x = finite(v.x);
+    out.y = 0;
+    out.z = finite(v.z);
+    return out;
+  }
+  const v = rec.body.linvel();
+  out.x = finite(v.x);
+  out.y = 0;
+  out.z = finite(v.z);
+  return out;
+}
+
+function applyImpulseAtPoint(rec, impulse, point) {
+  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body) return;
+  if (typeof rec.body.applyImpulseAtPoint === 'function') {
+    rec.body.applyImpulseAtPoint(impulse, point, true);
+    return;
+  }
+  rec.body.applyImpulse(impulse, true);
+}
+
+function accumulateForce(rec, impulse, dt) {
+  if (!rec || !rec.spec || !rec.spec.dynamic || !(dt > 0)) return;
+  const invDt = 1 / dt;
+  rec.appliedForce.x += impulse.x * invDt;
+  rec.appliedForce.y += impulse.y * invDt;
+  rec.appliedForce.z += impulse.z * invDt;
 }
 
 function planeForce(value) {
@@ -662,6 +946,15 @@ function wrapAngle(value) {
 
 function positive(value, fallback) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function clamp(value, lo, hi) {
+  return Math.max(lo, Math.min(hi, value));
+}
+
+function smoothstep(value) {
+  const x = clamp(value, 0, 1);
+  return x * x * (3 - 2 * x);
 }
 
 function finite(value, fallback = 0) {

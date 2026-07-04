@@ -85,6 +85,7 @@ export const core = {
         e.prevPos.copy(e.pos);
         e.prevRot = e.rot;
         e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
+        e.prevPitch = e.pitch; // snapshot pitch lean for renderer interpolation
       }
     }
     index.ready = true;

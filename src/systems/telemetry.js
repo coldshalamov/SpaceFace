@@ -78,6 +78,9 @@ function emptyAggregates() {
     funnel: {
       firstDockAt: -1, firstTradeAt: -1, firstMineAt: -1, firstKillAt: -1,
       firstMissionAcceptAt: -1, firstMissionCompleteAt: -1, firstJumpAt: -1, firstTierUpAt: -1,
+      // First-hour difficulty-ramp milestones (spec2/03 §4): first time reaching 1000cr cumulative
+      // earnings, and first module acquired (equipped or bought). Additive — no existing key changed.
+      first1000crAt: -1, firstModuleAt: -1,
     },
 
     deathLog: [],   // [{ atMs, simTime, cause, killerId, killerType, killerFaction, pos:{x,z}, lifespanMs }]
@@ -241,9 +244,15 @@ export function createTelemetry(bus, state) {
     const r = session.credits.byReason[p.reason || 'unknown'] ||
       (session.credits.byReason[p.reason || 'unknown'] = { earned: 0, spent: 0 });
     if (delta > 0) r.earned += delta; else if (delta < 0) r.spent += -delta;
+    // First-hour ramp (spec2/03 §4): first time cumulative earnings cross 1000cr.
+    if (session.funnel.first1000crAt < 0 && session.credits.earned >= 1000) markFunnel('first1000crAt');
     // not ring-buffered: high-frequency and fully captured by aggregates
     scheduleSave();
   });
+
+  // First-hour ramp (spec2/03 §4): first module acquired (equipped or bought). ships.js emits these.
+  sub('module:equipped', () => markFunnel('firstModuleAt'));
+  sub('ui:buyModule', () => markFunnel('firstModuleAt'));
 
   // COMBAT — player kills only. combat.js:156
   sub('entity:killed', (p) => {
@@ -443,6 +452,9 @@ export function createTelemetry(bus, state) {
       ['firstMissionComplete', f.firstMissionCompleteAt],
       ['firstJump', f.firstJumpAt],
       ['firstTierUp', f.firstTierUpAt],
+      // First-hour ramp milestones (spec2/03 §4).
+      ['first1000cr', f.first1000crAt],
+      ['firstModule', f.firstModuleAt],
     ];
     return steps.map(([key, at]) => ({ step: key, reached: at >= 0, atMs: at >= 0 ? at : null }));
   }

@@ -576,7 +576,7 @@ export const SHIP_DERIVE = {
 
 ```js
 // src/data/modules.js
-// 35 modules: weapons, shields, engines, cargo expanders, mining lasers, utility.
+// 41 modules: weapons, shields, engines, cargo expanders, mining lasers, utility, role kits.
 // Merged from the Combat and Ships/Tech specs; where the two disagreed on a
 // weapon's dmg/rof, ONE reconciled value is used (noted inline). Combat fields
 // (damageType, heat, projSpeed, range, tracking) folded in. `requiresTech`
@@ -680,6 +680,20 @@ export const MODULES = [
     energyDraw: 4, mods: { droneBay: 1 } },
   { id: 'u_jump_drive_m', name: 'Jump Drive T2 M', slotType: 'utility', size: 'M', tier: 2, mass: 6, price: 26000, requiresTech: 'drive_tuning',
     energyDraw: 2, mods: { jumpDriveTier: 2 } },
+
+  // Role kits (SPEC2/05 economy progression): purchasable data-only modules, price ladder 6k -> 38k.
+  { id: 'mod_ram_plate', name: 'Ram Plate', slotType: 'utility', size: 'S', tier: 1, mass: 4, price: 6000,
+    energyDraw: 0, mods: { ramSelfDamageMult: 0.40, ramDamageDealtMult: 1.80 } },
+  { id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
+    energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherBreakMult: 1.25 } },
+  { id: 'mod_charge_rack', name: 'Impulse Charge Rack', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 18000,
+    energyDraw: 1, mods: { impulseChargeCapacity: 8 } },
+  { id: 'mod_drill_amp', name: 'Drill Amp', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 24000,
+    energyDraw: 2, mods: { ventBonusWindowHeat: 6, richCoreRingPctBonus: 0.04 } },
+  { id: 'mod_survey_suite', name: 'Survey Suite', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 30000,
+    energyDraw: 3, mods: { scannerRadiusMult: 1.50, pingPersistMult: 2.00, radarRangePct: 0.35 } },
+  { id: 'mod_smuggler_hold', name: 'Smuggler Hold', slotType: 'cargo', size: 'S', tier: 2, mass: 4, price: 38000,
+    energyDraw: 0, legality: 'contraband', mods: { hiddenCargoPct: 0.20, cargoFlat: 8 } },
 ];
 
 export const MODULE_BY_ID = Object.fromEntries(MODULES.map(m => [m.id, m]));
@@ -1108,12 +1122,12 @@ export const FLEET_ORDERS = ['mine', 'trade', 'escort', 'guard', 'idle'];
 
 The whole economy is anchored to **A(T) = sustained competent-active income**: T1 250, T2 600, T3 1400, T4 3200, T5 7000 cr/min (in `automation.js → BALANCE.activeRefByTier`). Every other number is back-solved against it, so passive income is hard-capped at 0.45×A(T) (always below active play) and ship/module prices land in deliberate "minutes-of-income" bands.
 
-**Stage 0 — First 15 min (raw survival → first weapon).** The starter Kestrel (40u hold, free `m_laser_s` mining beam @18 ore-HP/s) mines common rock at a measured **~95 cr/min** floor (rock is 70% silicate @4cr + 30% iron @12cr ≈ 6.4 cr/u — deliberately lean so it's a floor, not the main income). What actually carries the first 15 minutes is the **scripted story spine**: beats B0–B2 hand over 400 + 600 + 800 = **1,800 cr** plus free unlocks, and early generated missions add ~150–190 cr/min on top of mining. Net: the player clears the **first module (`w_pulse_s` @4,500cr = 18 min of pure A(1), but ~10–12 min with story+mission income)** inside the target window. Switching to a metallic field roughly doubles mining to ~15 cr/min → with the mk2 beam ~24 cr/min, so the income ramp is visible as you push outward.
+**Stage 0 — First 20 min (raw survival → first role kit).** The starter Kestrel (40u hold, free `m_laser_s` mining beam @18 ore-HP/s) mines common rock at a measured **~95 cr/min** floor (rock is 70% silicate @4cr + 30% iron @12cr ≈ 6.4 cr/u — deliberately lean so it's a floor, not the main income). What actually carries the first 20 minutes is the **scripted story spine**: beats B0–B2 hand over 400 + 600 + 800 = **1,800 cr** plus free unlocks, and early generated missions add ~150–190 cr/min on top of mining. Net: the player clears the **first role-kit module (`mod_ram_plate` @6,000cr = 24 min of pure A(1), but ~18–20 min with story+mission income)** inside the target window. Switching to a metallic field roughly doubles mining to ~15 cr/min, with rich-core and bulk-haul completions teaching the tether loop before the next hull purchase.
 
 **Stage 1 — ~1–2.5 hr (first real ship).** At A(1)=250 cr/min, the T1 hulls cost **88 min (Pelican 22k) / 112 min (Wasp 28k) / 140 min (Mule 35k)** of pure tier income — realistically ~2–2.5 hr blending mining, trade, and missions, since the player is climbing from the T0 floor toward A(1). Trade opens here: the worked `refined_metals` route (refinery→fab) yields ~35 cr/u margin, ~4,900 cr per 200u trip with price-impact, **~1,220 cr/min as a fresh burst** — above sustained A(2) by design, because stock-drift decays an over-farmed route within ~2 min and forces diversification. Each lane is a strong-but-temporary find, not a treadmill.
 
 **Stage 2 — a few hr (mid-tier ships + tech).** T2 hulls (Drifter 95k / Hornet 110k / Ironback 130k) = **2.6–3.6 hr** of A(2); T3 hulls (Bastion 320k / Atlas 380k / Ranger 290k) = **3.8–4.5 hr** of A(3). Tech nodes interleave cleanly: the cheap roots (tractor 10k, drive_tuning 15k, bulk_logistics 20k) are early QoL; mid nodes (60–140k) gate the T3 ships and 0.10–0.15 efficiency mults; expensive nodes (capital_weapons 600k, capital_hulls 900k) pace the endgame. Because each tier's hull costs ~1.5–4.5× its hourly income, every upgrade is felt as earned, never trivial and never a wall.
 
-**Stage 3 — long-term (passive empire → capital flagship).** B6 seeds passive income (drone 4k / trader hire 9k / outpost build 45–110k), capped at 0.45×A(T): T2 270, T3 630, T4 1,440, T5 3,150 cr/min — meaningful but always sub-active, so automation accelerates the grind without replacing play. The endgame north star is **100k net worth + a capital hull**: Warden 950k / Colossus 1.4M = ~5–7 hr of A(4), and the T5 Leviathan at 4.5M is **10.7 hr of pure A(5)** — in practice a **30+ hr** blended-income goal once passive stacks, fleet upkeep bites, and frontier risk taxes throughput. The exotic value ladder (xenium @260 cr/u, quantum cores @880, dreadnought boss dropping 4,000–9,000 cr + guaranteed rare module) gives the frontier the margin to fund that climb.
+**Stage 3 — long-term (passive empire → capital flagship).** B6 seeds passive income (drone 4k / trader hire 9k / outpost build 45–110k), capped at 0.45×A(T): T2 270, T3 630, T4 1,440, T5 3,150 cr/min — meaningful but always sub-active, so automation accelerates the grind without replacing play. Travel friction stays time/danger-based; no fuel mechanic is added to the progression ladder. The endgame north star is **100k net worth + a capital hull**: Warden 950k / Colossus 1.4M = ~5–7 hr of A(4), and the T5 Leviathan at 4.5M is **10.7 hr of pure A(5)** — in practice a **30+ hr** blended-income goal once passive stacks, fleet upkeep bites, and frontier risk taxes throughput. The exotic value ladder (xenium @260 cr/u, quantum cores @880, dreadnought boss dropping 4,000–9,000 cr + guaranteed rare module) gives the frontier the margin to fund that climb.
 
 **Files:** all 11 written and validated at `C:\Users\93rob\Documents\GitHub\SpaceFace\src\data\` — `ores.js`, `commodities.js`, `factions.js`, `sectors.js`, `ships.js`, `modules.js`, `asteroidTypes.js`, `enemies.js`, `techTree.js`, `missions.js`, `automation.js`. Cross-reference integrity (every faction/sector/ship/module/tech/ore/commodity id resolves), neighbor-graph symmetry, and the three mission worked-examples (385/3157/300) were all verified programmatically.

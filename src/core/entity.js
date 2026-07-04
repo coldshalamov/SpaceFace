@@ -132,6 +132,7 @@ export function makeEntity(spec = {}) {
     pos: v3(spec.pos), vel: v3(spec.vel), prevPos: new SimVector3(),
     rot: spec.rot || 0, prevRot: spec.rot || 0, angVel: 0,
     bank: 0, prevBank: 0, bankVel: 0,
+    pitch: 0, prevPitch: 0,
     radius: 1, mass: 1,
     hull: 1, hullMax: 1, armorHp: 0, armorMax: 0, armorFlat: 0,
     shield: 0, shieldMax: 0, shieldRegenRate: 0, shieldRegenDelay: 3, lastDamageT: -1e9,
@@ -151,6 +152,7 @@ export function makeEntity(spec = {}) {
   e.prevPos.copy(e.pos);
   e.prevRot = e.rot;
   e.prevBank = e.bank;
+  e.prevPitch = e.pitch;
   Object.defineProperty(e, 'hp', {
     get() { return this.hull; }, set(v) { this.hull = v; }, configurable: true, enumerable: false,
   });

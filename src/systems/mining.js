@@ -15,10 +15,19 @@
 // Single-writer (§0.6): cargo is owned by the cargo module; we route ore through its addCargo
 // helper / pickup:collected event and only fall back to a direct write while cargo is a stub.
 import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
 export const MAGNET_ACCEL = 520; // wu/s² pull toward ship inside magnetRange
+export const RICH_CORE_CHANCE = 0.15;
+export const RICH_CORE_DURATION_S = 3.5;
+export const RICH_CORE_WINDOW_LO = 0.12;
+export const RICH_CORE_WINDOW_HI = 0.22;
+export const BULK_HAUL_MIN_U = 20;
+export const BULK_HAUL_PAY_MULT = 0.8;
+export const BULK_HAUL_REFINERY_FEE = 0.06;
 const MAGNET_MAX_SPEED = 210;   // wu/s cap on pulled pickups
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
@@ -40,6 +49,8 @@ const MINING_NOISE_DANGER = 70;
 const ORE_BY_ID = new Map(ORES.map((o) => [o.id, o]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
 const BEAM_BY_ID = new Map(BEAMS.map((b) => [b.id, b]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 
 export const mining = {
   name: 'mining',
@@ -72,6 +83,7 @@ export const mining = {
     bus.on('loot:drop', (p) => this._onLootDrop(p));
     // Collect ore/cargo pickups into the hold (physics emits this on contact; we also self-emit).
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
+    bus.on('dock:docked', (p) => this._onDocked(p));
     // Fresh sector → drop the stale beam lock (world regenerates the field).
     bus.on('sector:enter', () => { this._lockTargetId = null; this._stopBeam(); });
   },
@@ -92,6 +104,7 @@ export const mining = {
         this._stopBeam();
       }
     }
+    this._updateRichCoreCharge(firing, dt, state);
     this._updateMiningNoise(this._beaming, dt, state);
 
     this._updatePickups(dt, state);
@@ -204,6 +217,14 @@ export const mining = {
     const def = AST_BY_ID.get(d.typeId) || AST_BY_ID.get('ast_common_rock');
     const yieldTotal = d.yieldU != null ? d.yieldU : this._defaultYield(def, hpMax);
     if (d.yieldU == null) d.yieldU = yieldTotal;
+    if (d.isChunk && bulkChunkMass(ast) > BULK_HAUL_MIN_U) {
+      this.bus.emit('mining:bulkRequiresTether', {
+        asteroidId: ast.id,
+        massU: bulkChunkMass(ast),
+        commodityId: d.commodityId || this._dominantOre(def),
+      });
+      return 0;
+    }
     if (d.pctEjected == null) d.pctEjected = 0;
     if (d._oreCarry == null) d._oreCarry = 0; // fractional ore awaiting a whole unit
 
@@ -242,7 +263,10 @@ export const mining = {
     if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner);
 
     if (destroyed) {
-      if (!d.isChunk) this._fractureAsteroid(ast, def, miner);
+      if (!d.isChunk) {
+        this._fractureAsteroid(ast, def, miner);
+        this._maybeExposeRichCore(ast, def, miner);
+      }
       this.bus.emit('asteroid:destroyed', { id: ast.id, typeId: d.typeId || (def && def.id), pos: { x: ast.pos.x, z: ast.pos.z } });
       d.respawnAt = state.simTime + ((def && def.respawnSec) || 90); // world reads this to repopulate
       ast.alive = false;
@@ -460,6 +484,9 @@ export const mining = {
           oreHP,
           oreHPMax: oreHP,
           yieldU,
+          bulkMassU: yieldU,
+          commodityId: this._dominantOre(def),
+          basePrice: commodityBasePrice(this._dominantOre(def)),
           size: radius,
           pctEjected: 0,
           respawnSec: ast.data.respawnSec,
@@ -478,6 +505,119 @@ export const mining = {
         minerId: miner ? miner.id : null,
       });
     }
+  },
+
+  _maybeExposeRichCore(ast, def, miner) {
+    const plan = richCorePlan(this.state && this.state.meta && this.state.meta.seed, ast, def);
+    if (!plan.hasCore) return null;
+    const runtime = this.state.player.mining || (this.state.player.mining = {});
+    const core = {
+      id: 'rich_core:' + ast.id,
+      asteroidId: ast.id,
+      commodityId: plan.commodityId,
+      multiplier: plan.multiplier,
+      windowPct: clamp(plan.windowPct + playerModSum(this.state, 'richCoreRingPctBonus'), RICH_CORE_WINDOW_LO, 0.5),
+      durationS: RICH_CORE_DURATION_S,
+      openedAt: this.state.simTime,
+      expiresAt: this.state.simTime + RICH_CORE_DURATION_S,
+      chargeStartedAt: null,
+      resolved: false,
+    };
+    runtime.richCore = core;
+    this.bus.emit('mining:richCoreExposed', {
+      asteroidId: ast.id,
+      commodityId: core.commodityId,
+      multiplier: core.multiplier,
+      windowPct: core.windowPct,
+      durationS: core.durationS,
+      minerId: miner ? miner.id : null,
+    });
+    return core;
+  },
+
+  _updateRichCoreCharge(firing, dt, state) {
+    const runtime = state && state.player && state.player.mining;
+    const core = runtime && runtime.richCore;
+    if (!core || core.resolved) return;
+    if (state.simTime > core.expiresAt) {
+      this._resolveRichCore(core, 1);
+      return;
+    }
+    if (firing) {
+      if (core.chargeStartedAt == null) {
+        core.chargeStartedAt = state.simTime;
+        this.bus.emit('mining:richCoreChargeStart', { asteroidId: core.asteroidId });
+      }
+      core.chargeT = clamp(state.simTime - core.chargeStartedAt, 0, core.durationS);
+      return;
+    }
+    if (core.chargeStartedAt != null) {
+      const progress = clamp((state.simTime - core.chargeStartedAt) / Math.max(0.001, core.durationS), 0, 1);
+      this._resolveRichCore(core, progress);
+    }
+  },
+
+  _resolveRichCore(core, progress) {
+    if (!core || core.resolved) return null;
+    const half = Math.max(0, Number(core.windowPct) || RICH_CORE_WINDOW_LO) * 0.5;
+    const hit = Math.abs((Number(progress) || 0) - 0.5) <= half;
+    core.resolved = true;
+    let qty = 0;
+    if (hit) {
+      qty = Math.max(3, Math.min(8, Math.round(core.multiplier || 3)));
+      this._giveCargo(core.commodityId, qty, this.state.playerId);
+      this.bus.emit('mining:yield', { commodityId: core.commodityId, qty, minerId: this.state.playerId, richCore: true });
+      this.bus.emit('mining:richCoreCompleted', { asteroidId: core.asteroidId, commodityId: core.commodityId, qty, multiplier: qty });
+    } else {
+      this.bus.emit('mining:richCoreFizzle', { asteroidId: core.asteroidId, commodityId: core.commodityId });
+      this.bus.emit('audio:cue', { id: 'mining_core_fizzle' });
+    }
+    if (this.state.player && this.state.player.mining && this.state.player.mining.richCore === core) {
+      delete this.state.player.mining.richCore;
+    }
+    return { hit, qty, commodityId: core.commodityId };
+  },
+
+  _onDocked(p) {
+    const stationId = p && p.stationId;
+    if (!stationId || !isRefineryStation(this.state, stationId)) return;
+    const chunk = this._activeBulkChunk();
+    if (!chunk) return;
+    const payout = bulkHaulPayoutForChunk(chunk);
+    if (!(payout.credits > 0)) return;
+    chunk.alive = false;
+    this.bus.emit('economy:grantCredits', { amount: payout.credits, reason: 'mining:bulk_haul' });
+    this.bus.emit('mining:bulkHaulDelivered', {
+      stationId,
+      chunkId: chunk.id,
+      massU: payout.massU,
+      commodityId: payout.commodityId,
+      basePrice: payout.basePrice,
+      gross: payout.gross,
+      fee: payout.fee,
+      credits: payout.credits,
+    });
+  },
+
+  _activeBulkChunk() {
+    const state = this.state;
+    const tether = state.player && state.player.tether;
+    const ids = [];
+    if (tether && tether.targetId != null) ids.push(tether.targetId);
+    if (tether && tether.attachedId != null) ids.push(tether.attachedId);
+    const attach = state.combat && state.combat.attachments;
+    const byId = attach && attach.byId || {};
+    for (const id in byId) {
+      const a = byId[id];
+      if (a && (a.ownerId === state.playerId || a.sourceId === state.playerId) && (a.targetId != null || a.bodyBId != null)) {
+        ids.push(a.targetId != null ? a.targetId : a.bodyBId);
+      }
+    }
+    for (const id of ids) {
+      const e = state.entities.get(id);
+      if (isBulkHaulChunk(e)) return e;
+    }
+    return null;
   },
 
   _collectPickupOnBeamLine(pickup, player) {
@@ -536,7 +676,8 @@ export const mining = {
   _tryVentBonus(beam, state) {
     if (!beam || beam.overheated) return false;
     const heat = beam.heat || 0;
-    if (heat < VENT_HEAT_MIN || heat > VENT_HEAT_MAX) return false;
+    const windowBonus = playerModSum(state, 'ventBonusWindowHeat');
+    if (heat < VENT_HEAT_MIN - windowBonus || heat > VENT_HEAT_MAX + windowBonus) return false;
     const runtime = state.player.mining || (state.player.mining = {});
     runtime.ventBonusUntil = state.simTime + VENT_BONUS_SECONDS;
     this.bus.emit('mining:ventBonus', {});
@@ -725,4 +866,110 @@ function inheritChunkSeams(parentSeams, count, radius, chunkIndex) {
     });
   }
   return seams;
+}
+
+function hash32Local(...args) {
+  let h = 0x811c9dc5;
+  const s = args.join('|');
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+function unitHash(...args) {
+  return hash32Local(...args) / 4294967296;
+}
+
+export function richCoreWindowPctForTier(tier) {
+  const t = clamp(tier, 0, 5) / 5;
+  return RICH_CORE_WINDOW_HI + (RICH_CORE_WINDOW_LO - RICH_CORE_WINDOW_HI) * t;
+}
+
+function richOreForTier(tier) {
+  const target = Math.max(1, Math.floor(Number(tier) || 0) + 1);
+  const sorted = ORES.slice().sort((a, b) => (a.tier - b.tier) || a.id.localeCompare(b.id));
+  const rare = sorted.find((ore) => ore.tier >= target && ore.tags && ore.tags.includes('rare'));
+  const tiered = sorted.find((ore) => ore.tier >= target);
+  return (rare || tiered || sorted[sorted.length - 1] || { id: 'cmdty_ore_iron' }).id;
+}
+
+export function richCorePlan(seed, asteroid, def = null) {
+  const id = asteroid && asteroid.id || 'asteroid';
+  const roll = unitHash(seed || 0, id, 'rich_core');
+  const tier = asteroid && asteroid.data && asteroid.data.tier != null
+    ? asteroid.data.tier
+    : def && def.tierCap || 0;
+  const mult = 3 + Math.floor(unitHash(seed || 0, id, 'rich_core_mult') * 6);
+  return {
+    hasCore: roll < RICH_CORE_CHANCE,
+    roll,
+    multiplier: Math.max(3, Math.min(8, mult)),
+    commodityId: richOreForTier(tier),
+    windowPct: richCoreWindowPctForTier(tier),
+  };
+}
+
+function commodityBasePrice(commodityId) {
+  const c = COMMODITY_BY_ID.get(commodityId);
+  const ore = ORE_BY_ID.get(commodityId);
+  return (c && Number(c.basePrice)) || (ore && Number(ore.baseValue)) || 1;
+}
+
+function bulkChunkMass(chunk) {
+  const d = chunk && chunk.data || {};
+  return Math.max(0, Number(d.bulkMassU != null ? d.bulkMassU : d.yieldU != null ? d.yieldU : chunk && chunk.mass) || 0);
+}
+
+function chunkCommodity(chunk) {
+  const d = chunk && chunk.data || {};
+  return d.commodityId || 'cmdty_ore_iron';
+}
+
+export function bulkHaulPayoutForChunk(chunk) {
+  const commodityId = chunkCommodity(chunk);
+  const massU = bulkChunkMass(chunk);
+  const basePrice = Math.max(0, Number(chunk && chunk.data && chunk.data.basePrice) || commodityBasePrice(commodityId));
+  const gross = massU * basePrice * BULK_HAUL_PAY_MULT;
+  const fee = gross * BULK_HAUL_REFINERY_FEE;
+  return {
+    massU,
+    commodityId,
+    basePrice,
+    gross,
+    fee,
+    credits: Math.round(gross - fee),
+  };
+}
+
+function isBulkHaulChunk(e) {
+  return !!(e && e.alive !== false && e.type === 'asteroid' && e.data && e.data.isChunk && bulkChunkMass(e) > BULK_HAUL_MIN_U);
+}
+
+function isRefineryStation(state, stationId) {
+  if (!state || !stationId) return false;
+  const entity = (state.entityIndex && state.entityIndex.byStationId && state.entityIndex.byStationId.get(stationId)) ||
+    (state.entityList || []).find((e) => e && e.type === 'station' && e.data && e.data.stationId === stationId);
+  const data = entity && entity.data;
+  if (data && (data.stationTypeId === 'refinery' || data.type === 'refinery' || data.kind === 'refinery')) return true;
+  for (const sector of Object.values(state.world && state.world.sectors || {})) {
+    for (const station of sector.stations || []) {
+      if (station && station.id === stationId) return station.type === 'refinery' || (station.services || []).includes('refine');
+    }
+  }
+  return false;
+}
+
+function playerModSum(state, key) {
+  if (!state || !key) return 0;
+  const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+  const fittings = player && player.data && Array.isArray(player.data.fittings) ? player.data.fittings : [];
+  let sum = 0;
+  for (const id of fittings) {
+    const mod = id && MODULE_BY_ID.get(id);
+    const value = mod && mod.mods && Number(mod.mods[key]);
+    if (Number.isFinite(value)) sum += value;
+  }
+  return sum;
 }

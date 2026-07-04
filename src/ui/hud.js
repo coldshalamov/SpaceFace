@@ -28,6 +28,7 @@ import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { BINDINGS } from './bindings.js';
+import { SEMANTIC_PALETTE } from './accessibility.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -275,11 +276,12 @@ export function createHud(ctx, alerts) {
   const schShield = schematic.querySelector('.sf-sch-shield');
   const schHull = schematic.querySelector('.sf-sch-hull');
 
-  // Thin micro-bars. Hull + shield are now in the schematic, so only energy/boost/heat remain here.
+  // Thin micro-bars. Hull + shield are now in the schematic, so only energy/boost/heat/fuel remain here.
   const barDefs = [
     ['energy', 'ENGY', 'energy'],
     ['boost', 'BOOST', 'boost'],   // Phase 3: boost/dash energy (hidden if the ship can't boost)
     ['heat', 'HEAT', 'heat'],
+    ['fuel', 'FUEL', 'fuel'],
   ];
   const fillEls = {}, numEls = {}, rowEls = {};
   for (const [key, label, mod] of barDefs) {
@@ -498,9 +500,28 @@ export function createHud(ctx, alerts) {
   const rightDock = document.createElement('div');
   rightDock.className = 'sf-rightdock';
   const targetPanel = createTargetPanel(ctx);
+  
+  // Overview Strip (§2)
+  const elOverview = document.createElement('div');
+  elOverview.className = 'sf-overview';
+  
   const radar = createRadar(ctx);
-  rightDock.append(targetPanel.el, radar.el);
+  rightDock.append(targetPanel.el, elOverview, radar.el);
   root.appendChild(rightDock);
+
+  // Target Arcs Overlay (§3)
+  const targetArcs = document.createElement('div');
+  targetArcs.id = 'sf-target-arcs';
+  targetArcs.className = 'sf-target-arcs';
+  targetArcs.style.display = 'none';
+  targetArcs.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:block; overflow:visible;">
+      <circle class="sf-arc-shield" />
+      <circle class="sf-arc-armor" />
+      <circle class="sf-arc-hull" />
+    </svg>
+  `;
+  root.appendChild(targetArcs);
 
   // floating combat text (damage numbers, ore yield, credits, kills)
   const floatingText = createFloatingText(ctx);
@@ -531,15 +552,6 @@ export function createHud(ctx, alerts) {
   const elNavDist = elNavReadout.querySelector('.sf-nav-dist');
   const elNavEta = elNavReadout.querySelector('.sf-nav-eta');
 
-  const elFuel = document.createElement('div');
-  elFuel.className = 'sf-fuel';
-  elFuel.innerHTML =
-    '<span class="sf-fuel-label mono">FUEL</span>' +
-    '<div class="sf-bar sf-bar--fuel"><div class="sf-bar__fill"></div></div>' +
-    '<span class="sf-fuel-num mono">0%</span>';
-  root.appendChild(elFuel);
-  const elFuelFill = elFuel.querySelector('.sf-bar__fill');
-  const elFuelNum = elFuel.querySelector('.sf-fuel-num');
 
   const arrow = document.createElement('div');
   arrow.className = 'sf-objarrow';
@@ -1139,6 +1151,286 @@ export function createHud(ctx, alerts) {
     lowHullActive = lowHull;
   }
 
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[ch]);
+  }
+
+  function getIffData(e, playerTeam) {
+    let iff = 'neutral';
+    if (e.team === playerTeam || e.team === 0) {
+      iff = e.id === state.playerId ? 'ally' : 'friendly';
+    } else if (e.team !== undefined && e.team !== playerTeam) {
+      iff = 'hostile';
+    }
+    const isGhost = e.data && (e.data.isGhost || e.data.ghost || e.data.kind === 'unknown');
+    const data = SEMANTIC_PALETTE[iff] || SEMANTIC_PALETTE.neutral;
+    let icon = data.icon;
+    if (isGhost) {
+      if (iff === 'hostile') icon = '△';
+      else if (iff === 'friendly') icon = '◇';
+      else if (iff === 'neutral') icon = '□';
+      else if (iff === 'ally') icon = '▽';
+    }
+    return {
+      iff,
+      color: `var(${data.cssVar})`,
+      icon,
+      isGhost
+    };
+  }
+
+  function getClassGlyph(e) {
+    if (!e) return '·';
+    if (e.type === 'station') return '◆';
+    if (e.type === 'wreck') return '⛶';
+    if (e.type === 'asteroid') return '●';
+    
+    const def = e.data && e.data.defId ? SHIP_BY_ID.get(e.data.defId) : null;
+    const family = (def && def.visuals && def.visuals.family) || '';
+    const role = (e.role || (def && def.role) || '').toLowerCase();
+    
+    if (family === 'scout' || role.includes('scout') || role.includes('starter')) return '⌃';
+    if (family === 'fighter' || role.includes('fighter')) return '⚔';
+    if (family === 'freighter' || role.includes('freighter') || role.includes('cargo')) return '⛃';
+    if (family === 'miner' || role.includes('miner')) return '⛏';
+    if (family === 'frigate' || role.includes('frigate')) return '▲';
+    if (family === 'capital' || role.includes('capital')) return '⚹';
+    if (role.includes('gunship')) return '⎔';
+    
+    const sClass = (e.shipClass || '').toLowerCase();
+    if (sClass === 'fighter') return '⚔';
+    if (sClass === 'gunship') return '⎔';
+    if (sClass === 'frigate') return '▲';
+    if (sClass === 'capital') return '⚹';
+    
+    return '⌃';
+  }
+
+  let overviewTick = 0;
+  let lastOverviewSignature = '';
+  
+  if (!state.settings) state.settings = {};
+  if (!state.settings.ui) state.settings.ui = {};
+  if (state.settings.ui.overviewOpen === undefined) {
+    state.settings.ui.overviewOpen = true;
+  }
+  
+  ctx.bus.on('ui:toggleOverview', () => {
+    state.settings.ui.overviewOpen = !state.settings.ui.overviewOpen;
+    updateOverview();
+    ctx.bus.emit('audio:cue', { id: state.settings.ui.overviewOpen ? 'ui_open' : 'ui_back' });
+  });
+
+  function updateOverview() {
+    if (!state.settings.ui.overviewOpen) {
+      if (elOverview.style.display !== 'none') elOverview.style.display = 'none';
+      return;
+    }
+    const player = state.entities.get(state.playerId);
+    if (!player) return;
+    const playerTeam = player.team;
+    
+    const contacts = [];
+    for (const e of state.entityList || []) {
+      if (!e.alive || e === player) continue;
+      if (e.type !== 'ship' && e.type !== 'drone') continue;
+      
+      const dx = e.pos.x - player.pos.x;
+      const dz = e.pos.z - player.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 5200) continue;
+      
+      contacts.push({ e, dist, dx, dz });
+    }
+    
+    contacts.sort((a, b) => {
+      const aHostile = a.e.team !== playerTeam && a.e.team !== 0;
+      const bHostile = b.e.team !== playerTeam && b.e.team !== 0;
+      if (aHostile && !bHostile) return -1;
+      if (!aHostile && bHostile) return 1;
+      
+      const aNeutral = a.e.team === 0;
+      const bNeutral = b.e.team === 0;
+      if (aNeutral && !bNeutral) return -1;
+      if (!aNeutral && bNeutral) return 1;
+      
+      return a.dist - b.dist;
+    });
+    
+    const signature = contacts.map(c => {
+      const isGhost = c.e.data && (c.e.data.isGhost || c.e.data.ghost || c.e.data.kind === 'unknown');
+      const rvx = c.e.vel.x - player.vel.x;
+      const rvz = c.e.vel.z - player.vel.z;
+      const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
+      return `${c.e.id}:${c.e.team}:${isGhost}:${Math.round(c.dist)}:${Math.round(closingSpeed)}:${c.e.id === state.player.targetId}`;
+    }).join('|');
+    
+    if (signature === lastOverviewSignature) {
+      if (elOverview.style.display === 'none') elOverview.style.display = 'flex';
+      return;
+    }
+    lastOverviewSignature = signature;
+    
+    elOverview.innerHTML = '';
+    if (elOverview.style.display === 'none') elOverview.style.display = 'flex';
+    
+    const visibleCount = Math.min(8, contacts.length);
+    for (let i = 0; i < visibleCount; i++) {
+      const c = contacts[i];
+      const e = c.e;
+      const iff = getIffData(e, playerTeam);
+      const glyph = getClassGlyph(e);
+      const name = e.data && e.data.name || e.role || 'Ship';
+      
+      const rvx = e.vel.x - player.vel.x;
+      const rvz = e.vel.z - player.vel.z;
+      const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
+      
+      const speedIcon = closingSpeed >= 0.5 ? '▸' : (closingSpeed <= -0.5 ? '▹' : '');
+      const speedText = Math.abs(closingSpeed) >= 0.5 ? `${speedIcon}${Math.round(Math.abs(closingSpeed))}` : '';
+      
+      const row = document.createElement('div');
+      row.className = 'sf-overview-row';
+      if (e.id === state.player.targetId) {
+        row.classList.add('selected');
+      }
+      row.style.setProperty('--iff-color', iff.color);
+      
+      row.innerHTML = `
+        <div class="sf-overview-row__left">
+          <span style="color:${iff.color}; font-weight:bold;">${iff.icon}</span>
+          <span style="color:var(--ink-dim); font-size:10px;">${glyph}</span>
+          <span class="sf-overview-row__name">${escapeHtml(name)}</span>
+        </div>
+        <div class="sf-overview-row__right">
+          <span>${Math.round(c.dist)}</span>
+          <span style="width: 24px; text-align: right;">${speedText}</span>
+        </div>
+      `;
+      
+      row.addEventListener('click', () => {
+        state.player.targetId = e.id;
+        ctx.bus.emit('toast', { text: `Selected target: ${name}`, kind: 'info', ttl: 2 });
+        updateOverview();
+      });
+      elOverview.appendChild(row);
+    }
+    
+    if (contacts.length > 8) {
+      const footer = document.createElement('div');
+      footer.className = 'sf-overview-footer';
+      footer.textContent = `+${contacts.length - 8} CONTACTS`;
+      elOverview.appendChild(footer);
+    }
+  }
+
+  let _fadeOutTimer = null;
+
+  function updateTargetArcs() {
+    const tid = state.player.targetId;
+    const tgt = tid != null ? state.entities.get(tid) : null;
+    
+    if (!tgt || !tgt.alive) {
+      targetArcs.classList.remove('visible');
+      if (!targetArcs.classList.contains('visible')) {
+        if (targetArcs.style.display !== 'none' && !_fadeOutTimer) {
+          _fadeOutTimer = setTimeout(() => {
+            if (!targetArcs.classList.contains('visible')) {
+              targetArcs.style.display = 'none';
+            }
+            _fadeOutTimer = null;
+          }, 260);
+        }
+      }
+      return;
+    }
+    
+    if (_fadeOutTimer) {
+      clearTimeout(_fadeOutTimer);
+      _fadeOutTimer = null;
+    }
+    
+    const p = state.entities.get(state.playerId);
+    if (!p || !helpers.worldToScreen) {
+      targetArcs.style.display = 'none';
+      targetArcs.classList.remove('visible');
+      return;
+    }
+    
+    const center = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
+    if (!center.onScreen) {
+      targetArcs.style.display = 'none';
+      targetArcs.classList.remove('visible');
+      return;
+    }
+    
+    function getPixelRadius(pos, worldRadius) {
+      const edge = helpers.worldToScreen({ x: pos.x + worldRadius, y: 0, z: pos.z });
+      if (!edge.onScreen) return worldRadius * 3;
+      return Math.max(1, Math.abs(edge.x - center.x));
+    }
+    
+    const rShield = getPixelRadius(tgt.pos, tgt.radius + 12);
+    const rArmor = getPixelRadius(tgt.pos, tgt.radius + 9);
+    const rHull = getPixelRadius(tgt.pos, tgt.radius + 6);
+    
+    if (rShield <= 0) {
+      targetArcs.style.display = 'none';
+      targetArcs.classList.remove('visible');
+      return;
+    }
+    
+    if (targetArcs.style.display === 'none') {
+      targetArcs.style.display = 'block';
+      targetArcs.getBoundingClientRect();
+    }
+    targetArcs.classList.add('visible');
+    
+    const size = rShield * 2 + 10;
+    targetArcs.style.width = `${size}px`;
+    targetArcs.style.height = `${size}px`;
+    targetArcs.style.left = `${center.x - size / 2}px`;
+    targetArcs.style.top = `${center.y - size / 2}px`;
+    
+    const svg = targetArcs.querySelector('svg');
+    svg.setAttribute('width', size);
+    svg.setAttribute('height', size);
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    
+    const cx = size / 2;
+    const cy = size / 2;
+    
+    const cShield = svg.querySelector('.sf-arc-shield');
+    const cArmor = svg.querySelector('.sf-arc-armor');
+    const cHull = svg.querySelector('.sf-arc-hull');
+    
+    cShield.setAttribute('cx', cx); cShield.setAttribute('cy', cy); cShield.setAttribute('r', rShield);
+    cArmor.setAttribute('cx', cx);  cArmor.setAttribute('cy', cy);  cArmor.setAttribute('r', rArmor);
+    cHull.setAttribute('cx', cx);   cHull.setAttribute('cy', cy);   cHull.setAttribute('r', rHull);
+    
+    const shieldFrac = tgt.shieldMax ? Math.max(0, Math.min(1, tgt.shield / tgt.shieldMax)) : 0;
+    const armorFrac = tgt.armorMax ? Math.max(0, Math.min(1, tgt.armorHp / tgt.armorMax)) : 0;
+    const hullFrac = tgt.hullMax ? Math.max(0, Math.min(1, tgt.hull / tgt.hullMax)) : 0;
+    
+    function setArc(el, radius, fraction) {
+      const c = 2 * Math.PI * radius;
+      const maxArc = c * (300 / 360);
+      const fill = fraction * maxArc;
+      el.setAttribute('stroke-dasharray', `${fill} ${c}`);
+      el.setAttribute('transform', `rotate(-150 ${cx} ${cy})`);
+    }
+    
+    setArc(cShield, rShield, shieldFrac);
+    setArc(cArmor, rArmor, armorFrac);
+    setArc(cHull, rHull, hullFrac);
+  }
+
   function frame(dt) {
     const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
     const numericDt = consumeHudClock(numericClock, frameDt);
@@ -1201,9 +1493,9 @@ export function createHud(ctx, alerts) {
         // Phase 4 fuel gauge: low fuel flashes a warning.
         const fuel = state.fuel || { current: 100, max: 100 };
         const fuelFrac = fuel.max > 0 ? clamp01(fuel.current / fuel.max) : 1;
-        setScaleX(elFuelFill, fuelFrac);
-        setText(elFuelNum, Math.round(fuelFrac * 100) + '%');
-        setClass(elFuel, 'sf-fuel--low', fuelFrac < 0.25);
+        if (fillEls.fuel) setScaleX(fillEls.fuel, fuelFrac);
+        if (numEls.fuel) setText(numEls.fuel, Math.round(fuelFrac * 100) + '%');
+        if (rowEls.fuel) setClass(rowEls.fuel, 'sf-fuel--low', fuelFrac < 0.25);
       }
 
       // Action-bar highlights: light a slot while its ability is active.
@@ -1328,6 +1620,15 @@ export function createHud(ctx, alerts) {
     if (alerts && alerts.tick) alerts.tick();
     // --- HUD meta-arc (STABLE LOAD line, tag flicker, manifest ghost) ---
     if (overlayTick && hudMeta && hudMeta.tick) hudMeta.tick(overlayDt || frameDt);
+
+    // --- Target Arcs: update every frame for smooth 3D tracking ---
+    updateTargetArcs();
+
+    // --- Overview Strip: update at 5Hz cadence ---
+    overviewTick++;
+    if (overviewTick % 12 === 0) {
+      updateOverview();
+    }
   }
 
   function tickHidden(dt) {

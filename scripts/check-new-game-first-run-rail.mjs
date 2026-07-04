@@ -16,17 +16,19 @@ const newGame = read('src/ui/screens/newGame.js');
 
 assert.match(newGame, /sf-ng-route/, 'New Game must render a first-15-minutes route rail');
 assert.match(newGame, /First 15 minutes/, 'route rail must be explicitly labeled for first-session clarity');
+// spec2/03 supersedes the prior first-15 route copy. The rail now teaches the 6-beat pacing:
+// wake/beacon → tether derelict → mine seam → dock + pick work.
 for (const phrase of [
-  'Follow the anomaly',
-  'Mine the marked rock',
-  'Dock at Helios',
-  'Take one job',
+  'Wake at the beacon',
+  'Tether the derelict',
+  'Mine the first seam',
+  'Dock and pick work',
 ]) {
   assert.match(newGame, new RegExp(phrase), `route rail must include: ${phrase}`);
 }
-assert.match(newGame, /47-A is already marked/, 'route rail must connect launch to the canonical 47-A opening');
-assert.match(newGame, /Mission Board and Bar contracts track into the log/,
-  'route rail must connect first launch to tracked mission/cargo work');
+assert.match(newGame, /One verb at a time/, 'route rail must convey the one-beat-one-verb pacing (spec2/03 §1)');
+assert.match(newGame, /choose haul, bounty, or survey/,
+  'route rail must connect the dock to the B5 three-offer choice (HAUL/BOUNTY/SURVEY)');
 assert.match(newGame, /mining:\s*'Mining'/,
   'starter loadout must label the mining slot as mining, not stale sampling language');
 assert.doesNotMatch(newGame, /mining:\s*'Sampler'/,

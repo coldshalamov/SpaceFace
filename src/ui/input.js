@@ -183,6 +183,10 @@ export function createUiInput(ctx, screenManager) {
         ev.preventDefault();
         bus.emit('ui:toggleCargo');
         return;
+      case 'o': case 'O':
+        ev.preventDefault();
+        bus.emit('ui:toggleOverview');
+        return;
       case BINDINGS.comms.key:
       case BINDINGS.comms.label:
         // Comms log (narrative overlay): open the channel backlog. The feed itself

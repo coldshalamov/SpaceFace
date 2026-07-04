@@ -651,14 +651,8 @@ function injectHudCss() {
   .sf-nav--lock .sf-nav-meta .sf-nav-dist::before { content:'[ '; color:var(--text-secondary); }
   .sf-nav--lock .sf-nav-meta .sf-nav-dist::after { content:' ]'; color:var(--text-secondary); }
 
-  /* ===== top-left: fuel gauge — thin glowing line (§3 thin-line) ===== */
-  .sf-fuel { position:absolute; top:18px; left:22px; display:flex; align-items:center; gap:8px; }
-  .sf-fuel-label { font-family:var(--mono); font-size:9px; letter-spacing:.16em; color:var(--text-secondary);
-    text-shadow:var(--text-shadow-hard); }
-  .sf-bar--fuel { width:90px; height:2px; }
+  /* ===== bottom-left: fuel gauge styling ===== */
   .sf-bar--fuel .sf-bar__fill { background:var(--visor-cyan); box-shadow:0 0 6px var(--visor-cyan); }
-  .sf-fuel-num { font-family:var(--mono); font-size:10px; color:var(--text-primary); width:34px;
-    text-align:right; text-shadow:var(--text-shadow-hard); }
   .sf-fuel--low .sf-bar--fuel .sf-bar__fill { animation:sf-barpulse 1s ease-in-out infinite alternate; }
 
   /* ===== bottom-center: action bar (key→ability map) + flight readouts (§3B) ===== */

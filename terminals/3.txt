@@ -1,0 +1,329 @@
+---
+pid: 37700
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && npm run build:sg04:release-assets 2>&1 | Tee-Object -FilePath \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-37de2abed066\\implementer\\build-sg04.log\""
+started_at: 2026-07-04T03:18:49.515Z
+running_for_ms: 1194995  
+---
+
+> spaceface@0.1.0 build:sg04:release-assets
+> node scripts/build-sg04-release-assets.mjs
+
+[sg04] acquired release build lock: assets/ships/release.__lock
+[sg04] 1/33 ship_kestrel_reference: build-start assets/ships/kestrel/kestrel_reference.glb -> assets/ships/release.__building/kestrel/kestrel_reference.glb
+prune: Removed types... Accessor (171)
+prune: Removed types... TextureInfo (5), Material (1), Accessor (57)
+[sg04] 1/33 ship_kestrel_reference: 199028 -> 76044 bytes
+[sg04] 2/33 hull_starter: build-start assets/ships/parts/hulls/hull_starter.glb -> assets/ships/release.__building/parts/hulls/hull_starter.glb
+prune: Removed types... Accessor (30)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (11)
+[sg04] 2/33 hull_starter: 1227212 -> 908528 bytes
+[sg04] 3/33 hull_fighter: build-start assets/ships/parts/hulls/hull_fighter.glb -> assets/ships/release.__building/parts/hulls/hull_fighter.glb
+prune: Removed types... Accessor (30)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (11)
+[sg04] 3/33 hull_fighter: 1341996 -> 888860 bytes
+[sg04] 4/33 hull_miner: build-start assets/ships/parts/hulls/hull_miner.glb -> assets/ships/release.__building/parts/hulls/hull_miner.glb
+prune: Removed types... Accessor (30)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (11)
+[sg04] 4/33 hull_miner: 1439604 -> 1003624 bytes
+[sg04] 5/33 hull_freighter: build-start assets/ships/parts/hulls/hull_freighter.glb -> assets/ships/release.__building/parts/hulls/hull_freighter.glb
+prune: Removed types... Accessor (30)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (11)
+[sg04] 5/33 hull_freighter: 1488596 -> 1050980 bytes
+[sg04] 6/33 hull_interceptor: build-start assets/ships/parts/hulls/hull_interceptor.glb -> assets/ships/release.__building/parts/hulls/hull_interceptor.glb
+prune: Removed types... Accessor (30)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (11)
+[sg04] 6/33 hull_interceptor: 1340068 -> 900268 bytes
+[sg04] 7/33 hull_corvette: build-start assets/ships/parts/hulls/hull_corvette.glb -> assets/ships/release.__building/parts/hulls/hull_corvette.glb
+prune: Removed types... Accessor (30)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (11)
+[sg04] 7/33 hull_corvette: 1479060 -> 1038916 bytes
+[sg04] 8/33 hull_gunship: build-start assets/ships/parts/hulls/hull_gunship.glb -> assets/ships/release.__building/parts/hulls/hull_gunship.glb
+prune: Removed types... Accessor (30)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (11)
+[sg04] 8/33 hull_gunship: 1464640 -> 1023120 bytes
+[sg04] 9/33 cockpit_dome: build-start assets/ships/parts/cockpits/cockpit_dome.glb -> assets/ships/release.__building/parts/cockpits/cockpit_dome.glb
+prune: Removed types... Accessor (73)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (33)
+[sg04] 9/33 cockpit_dome: 870500 -> 1273376 bytes
+[sg04] 10/33 cockpit_slab: build-start assets/ships/parts/cockpits/cockpit_slab.glb -> assets/ships/release.__building/parts/cockpits/cockpit_slab.glb
+prune: Removed types... Accessor (80)
+prune: Removed types... TextureInfo (5), Material (1), Accessor (45)
+[sg04] 10/33 cockpit_slab: 1388180 -> 1744236 bytes
+[sg04] 11/33 cockpit_recessed: build-start assets/ships/parts/cockpits/cockpit_recessed.glb -> assets/ships/release.__building/parts/cockpits/cockpit_recessed.glb
+prune: Removed types... Accessor (56)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (28)
+[sg04] 11/33 cockpit_recessed: 621576 -> 848628 bytes
+[sg04] 12/33 engine_ion_small: build-start assets/ships/parts/engines/engine_ion_small.glb -> assets/ships/release.__building/parts/engines/engine_ion_small.glb
+prune: Removed types... Accessor (153)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... TextureInfo (5), Material (1), Accessor (73)
+[sg04] 12/33 engine_ion_small: 1803700 -> 1785956 bytes
+[sg04] 13/33 engine_ion_twin: build-start assets/ships/parts/engines/engine_ion_twin.glb -> assets/ships/release.__building/parts/engines/engine_ion_twin.glb
+prune: Removed types... Accessor (38)
+prune: Removed types... Accessor (16)
+[sg04] 13/33 engine_ion_twin: 1942140 -> 1658316 bytes
+[sg04] 14/33 engine_industrial: build-start assets/ships/parts/engines/engine_industrial.glb -> assets/ships/release.__building/parts/engines/engine_industrial.glb
+prune: Removed types... Accessor (211)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... TextureInfo (5), Material (1), Accessor (100)
+[sg04] 14/33 engine_industrial: 2608580 -> 2772816 bytes
+[sg04] 15/33 engine_resonator: build-start assets/ships/parts/engines/engine_resonator.glb -> assets/ships/release.__building/parts/engines/engine_resonator.glb
+prune: Removed types... Accessor (120)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... TextureInfo (5), Material (1), Accessor (61)
+[sg04] 15/33 engine_resonator: 2067964 -> 2010848 bytes
+[sg04] 16/33 weapon_pulse_cannon: build-start assets/ships/parts/weapons/weapon_pulse_cannon.glb -> assets/ships/release.__building/parts/weapons/weapon_pulse_cannon.glb
+prune: Removed types... Accessor (15)
+prune: Removed types... Accessor (6)
+[sg04] 16/33 weapon_pulse_cannon: 1052372 -> 1098112 bytes
+[sg04] 17/33 weapon_heavy_cannon: build-start assets/ships/parts/weapons/weapon_heavy_cannon.glb -> assets/ships/release.__building/parts/weapons/weapon_heavy_cannon.glb
+prune: Removed types... Accessor (91)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... TextureInfo (5), Material (1), Accessor (37)
+[sg04] 17/33 weapon_heavy_cannon: 2425004 -> 2492432 bytes
+[sg04] 18/33 weapon_turret_dual: build-start assets/ships/parts/weapons/weapon_turret_dual.glb -> assets/ships/release.__building/parts/weapons/weapon_turret_dual.glb
+prune: Removed types... Accessor (101)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (53)
+[sg04] 18/33 weapon_turret_dual: 1822596 -> 1802376 bytes
+[sg04] 19/33 weapon_lance: build-start assets/ships/parts/weapons/weapon_lance.glb -> assets/ships/release.__building/parts/weapons/weapon_lance.glb
+prune: Removed types... Accessor (66)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (22)
+[sg04] 19/33 weapon_lance: 1485748 -> 1890348 bytes
+[sg04] 20/33 fin_wedge: build-start assets/ships/parts/fins/fin_wedge.glb -> assets/ships/release.__building/parts/fins/fin_wedge.glb
+prune: Removed types... Accessor (64)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... TextureInfo (5), Material (1), Accessor (17)
+[sg04] 20/33 fin_wedge: 710208 -> 949256 bytes
+[sg04] 21/33 fin_radiator_grid: build-start assets/ships/parts/fins/fin_radiator_grid.glb -> assets/ships/release.__building/parts/fins/fin_radiator_grid.glb
+prune: Removed types... Accessor (74)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (40)
+[sg04] 21/33 fin_radiator_grid: 2170400 -> 2323536 bytes
+[sg04] 22/33 fin_swept_smuggler: build-start assets/ships/parts/fins/fin_swept_smuggler.glb -> assets/ships/release.__building/parts/fins/fin_swept_smuggler.glb
+prune: Removed types... Accessor (49)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (23)
+[sg04] 22/33 fin_swept_smuggler: 562124 -> 800880 bytes
+[sg04] 23/33 fin_crystalline: build-start assets/ships/parts/fins/fin_crystalline.glb -> assets/ships/release.__building/parts/fins/fin_crystalline.glb
+prune: Removed types... Accessor (48)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (25)
+[sg04] 23/33 fin_crystalline: 732132 -> 1021160 bytes
+[sg04] 24/33 greeble_vents: build-start assets/ships/parts/greebles/greeble_vents.glb -> assets/ships/release.__building/parts/greebles/greeble_vents.glb
+prune: Removed types... Accessor (79)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... TextureInfo (5), Material (1), Accessor (43)
+[sg04] 24/33 greeble_vents: 2204032 -> 2148932 bytes
+[sg04] 25/33 greeble_hatches: build-start assets/ships/parts/greebles/greeble_hatches.glb -> assets/ships/release.__building/parts/greebles/greeble_hatches.glb
+prune: Removed types... Accessor (103)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (55)
+[sg04] 25/33 greeble_hatches: 2599948 -> 2738572 bytes
+[sg04] 26/33 greeble_pipes: build-start assets/ships/parts/greebles/greeble_pipes.glb -> assets/ships/release.__building/parts/greebles/greeble_pipes.glb
+prune: Removed types... Accessor (73)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (23)
+[sg04] 26/33 greeble_pipes: 562964 -> 890152 bytes
+[sg04] 27/33 greeble_rcs: build-start assets/ships/parts/greebles/greeble_rcs.glb -> assets/ships/release.__building/parts/greebles/greeble_rcs.glb
+prune: Removed types... Accessor (69)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... TextureInfo (5), Material (1), Accessor (23)
+[sg04] 27/33 greeble_rcs: 637664 -> 1083668 bytes
+[sg04] 28/33 greeble_antennas: build-start assets/ships/parts/greebles/greeble_antennas.glb -> assets/ships/release.__building/parts/greebles/greeble_antennas.glb
+prune: Removed types... Accessor (57)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (24)
+[sg04] 28/33 greeble_antennas: 2331340 -> 2569976 bytes
+[sg04] 29/33 skid_trio: build-start assets/ships/parts/gear/skid_trio.glb -> assets/ships/release.__building/parts/gear/skid_trio.glb
+prune: Removed types... Accessor (76)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (34)
+[sg04] 29/33 skid_trio: 1248344 -> 1683744 bytes
+[sg04] 30/33 skid_quad: build-start assets/ships/parts/gear/skid_quad.glb -> assets/ships/release.__building/parts/gear/skid_quad.glb
+prune: Removed types... Accessor (70)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (23)
+[sg04] 30/33 skid_quad: 2634560 -> 2756620 bytes
+[sg04] 31/33 pod_utility: build-start assets/ships/parts/pods/pod_utility.glb -> assets/ships/release.__building/parts/pods/pod_utility.glb
+prune: Removed types... Accessor (60)
+prune: Removed types... Accessor (33)
+[sg04] 31/33 pod_utility: 1314404 -> 1702392 bytes
+[sg04] 32/33 pod_cargo_container: build-start assets/ships/parts/pods/pod_cargo_container.glb -> assets/ships/release.__building/parts/pods/pod_cargo_container.glb
+prune: Removed types... Accessor (89)
+prune: Removed types... Accessor (51)
+[sg04] 32/33 pod_cargo_container: 1927908 -> 2171988 bytes
+[sg04] 33/33 pod_repair_patch: build-start assets/ships/parts/pods/pod_repair_patch.glb -> assets/ships/release.__building/parts/pods/pod_repair_patch.glb
+prune: Removed types... Accessor (113)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (62)
+[sg04] 33/33 pod_repair_patch: 659672 -> 836396 bytes
+[sg04] preserved whole-ship bodies into staged release
+[sg04] release manifest wrote assets/ships/release/release_manifest.json (33 assets)

@@ -11,7 +11,10 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'combat.action.cut.start', 'combat.action.cut.snap', 'combat.action.cut.end',
   'combat.action.burst.start', 'combat.action.burst.fire', 'combat.action.burst.end',
   'combat.action.cancel', 'combat.action.reject',
-  'combat.damage.shield', 'combat.damage.armor', 'combat.damage.hull',
+  'combat.damage.shield', 'combat.damage.armor', 'combat.damage.hull', 'combat.damage.kill',
+  'cruise.charging', 'cruise.engaged', 'cruise.dropped',
+  'ai.telegraph', 'ai.flee', 'ai.formation_broken',
+  'presentation.tether.attach', 'presentation.tether.break',
   'combat.subsystem.drive.disabled', 'combat.subsystem.weapon.disabled',
   'combat.subsystem.sensor.disabled', 'combat.subsystem.tether.disabled',
   'combat.subsystem.power.disabled', 'combat.subsystem.restored',
@@ -193,9 +196,10 @@ export const ATTACHMENT_DEFS = Object.freeze([
     sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: true },
     break: { maxTension: 140, maxImpulse: 90, graceTicks: 1 },
+    spring: { K: 170, zeta: 0.90, captureS: 0.30 },
     // Massline winch/heat/overload controller (spec §8). Opt-in: runs stepMassline per tick,
     // smoothing the joint rest length and breaking on sustained overload / integrity failure.
-    // Rapier still owns the momentum exchange; this owns the winch + break policy.
+    // SG-02 owns momentum exchange via radial spring capture; this owns winch + break policy.
     massline: { enabled: true },
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
@@ -209,16 +213,16 @@ export const ATTACHMENT_DEFS = Object.freeze([
     reelRate: 46,
     // Break tune derives from src/data/ships.js via getDerivedStats: the scout-class Wasp is
     // mass 16 with thrust ~=361 wu/s^2 and maxSpeed ~=218 wu/s; Flight V3 boost cap is 2x maxSpeed.
-    // SG-02 tension is stretch*stiffness + radialSpeed*damping, so damping 6 at boosted radial
-    // speed yields ~=2616 tension: enough to snap on a fixed station anchor, while a tangent
-    // mid-asteroid slingshot stays under this threshold.
+    // SG-02 tension is now the radial spring force. The spring block below owns feel; this break
+    // block owns only overload/cut thresholds and telemetry compatibility.
     // Tune holds for the forward spool mount ([0.6, 0]): a mid-asteroid tangent slingshot at
     // boost HOLDS; hard overloads (short-reeled line + full boost, fixed station anchor at speed)
     // SNAP. Verified by check-tether-gameplay + check:sg02:tether-break together — if you move
     // the socket further forward, re-run both before touching these numbers.
-    breakTension: 2600,
+    breakTension: 12000,
     snapImpulseNoise: 0,
-    break: { maxTension: 2600, maxImpulse: 90, graceTicks: 4, stiffness: 90, damping: 6 },
+    break: { maxTension: 12000, maxImpulse: 220, graceTicks: 4, stiffness: 90, damping: 6 },
+    spring: { K: 140, zeta: 0.95, captureS: 0.35 },
     massline: { enabled: true },
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
@@ -279,3 +283,27 @@ export const DEFAULT_COMBAT_PROFILE_BY_TYPE = Object.freeze({
   pickup: 'combat_profile_tether_anchor',
   station: 'combat_profile_standard_station',
 });
+
+// Spec2/02 §3 juice-stack: canonical cue ids per weapon family/size so VFX/audio can map
+// player/NPC fire events to the right muzzle, projectile, and impact vocabulary.
+export const WEAPON_CUE_TABLES = Object.freeze({
+  kinetic_s: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_s', projectile: 'vfx.proj.kinetic_s', impact: 'vfx.impact.kinetic_s', cueId: 'combat.damage.hull' }),
+  kinetic_m: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_m', projectile: 'vfx.proj.kinetic_m', impact: 'vfx.impact.kinetic_m', cueId: 'combat.damage.hull' }),
+  kinetic_l: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_l', projectile: 'vfx.proj.kinetic_l', impact: 'vfx.impact.kinetic_l', cueId: 'combat.damage.hull' }),
+  energy_s: Object.freeze({ muzzle: 'vfx.muzzle.energy_s', projectile: 'vfx.proj.energy_s', impact: 'vfx.impact.energy_s', cueId: 'combat.damage.shield' }),
+  energy_m: Object.freeze({ muzzle: 'vfx.muzzle.energy_m', projectile: 'vfx.proj.energy_m', impact: 'vfx.impact.energy_m', cueId: 'combat.damage.shield' }),
+  energy_l: Object.freeze({ muzzle: 'vfx.muzzle.energy_l', projectile: 'vfx.proj.energy_l', impact: 'vfx.impact.energy_l', cueId: 'combat.damage.shield' }),
+  explosive_m: Object.freeze({ muzzle: 'vfx.muzzle.explosive_m', projectile: 'vfx.proj.explosive_m', impact: 'vfx.impact.explosive_m', cueId: 'combat.damage.armor' }),
+  missile: Object.freeze({ muzzle: 'vfx.muzzle.missile', projectile: 'vfx.proj.missile', impact: 'vfx.impact.missile', cueId: 'combat.damage.armor' }),
+});
+
+export function resolveWeaponCueTable(weaponId, weaponsArray = []) {
+  const w = weaponsArray.find((x) => x.id === weaponId);
+  if (!w) return WEAPON_CUE_TABLES.kinetic_m;
+  const dt = (w.damageType || 'kinetic').toLowerCase();
+  const size = (w.size || 'M').toLowerCase();
+  if (dt === 'explosive' || dt === 'plasma') return WEAPON_CUE_TABLES.explosive_m;
+  if (dt === 'missile' || dt === 'rocket' || dt === 'torpedo') return WEAPON_CUE_TABLES.missile;
+  const key = `${dt}_${size}`;
+  return WEAPON_CUE_TABLES[key] || WEAPON_CUE_TABLES.kinetic_m;
+}

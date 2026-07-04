@@ -65,6 +65,10 @@ export const weapons = {
     // 2) fire — player first, then NPC ships.
     const player = this.helpers.getEntity(state.playerId);
     if (player && player.alive && !player.flags.docked) {
+      // Cruise charge/cruise blocks weapons (spec2/02 §1).
+      const cruise = state.player && state.player.cruise;
+      if (cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising')) return;
+
       // Manual fire (LMB/Space) always wins; it aims at the mouse. Otherwise, if auto-fire is on,
       // find the nearest aggressive enemy and fire at it (so the player can fly while guns auto-engage).
       let firing = !!state.input.fire;

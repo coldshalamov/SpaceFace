@@ -59,6 +59,7 @@ export function createHudMeta(ctx) {
   phaseReadout.id = 'sf-hudphase';
   phaseReadout.setAttribute('aria-hidden', 'true');
   phaseReadout.innerHTML = '<span class="sf-hudphase__k mono">SYS</span><span class="sf-hudphase__v mono">NOMINAL</span>';
+  phaseReadout.style.display = 'none';
   document.getElementById('hud').appendChild(phaseReadout);
   const phaseValue = phaseReadout.querySelector('.sf-hudphase__v');
 
@@ -104,6 +105,7 @@ export function createHudMeta(ctx) {
     phaseValue.textContent = phaseLabel;
     phaseReadout.classList.toggle('sf-hudphase--p2', phase === 2);
     phaseReadout.classList.toggle('sf-hudphase--p3', phase >= 3);
+    phaseReadout.style.display = phase > 1 ? '' : 'none';
 
     if (phase >= 1) {
       stableLoadArmed = true;
@@ -186,7 +188,8 @@ export function createHudMeta(ctx) {
   function setVisible(v) {
     stableLoad.style.display = v ? '' : 'none';
     tagFlicker.style.display = v ? '' : 'none';
-    phaseReadout.style.display = v ? '' : 'none';
+    const phase = (state.story && state.story.phase) || 1;
+    phaseReadout.style.display = (v && phase > 1) ? '' : 'none';
     manifestGhost.style.display = v ? '' : 'none';
   }
 

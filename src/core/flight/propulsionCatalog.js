@@ -282,7 +282,24 @@ export function resolvePropulsionProfile(entity, state = null) {
     return PROPULSION_PROFILES[labOverride];
   }
 
-  return inferProfile(entity);
+  const profile = inferProfile(entity);
+
+  // Cruise engagement multipliers (spec2/02 §1): player only.
+  if (state && entity && entity.id === state.playerId) {
+    const c = state.player && state.player.cruise;
+    if (c && c.phase === 'cruising') {
+      return {
+        ...profile,
+        maxSpeed: Number.isFinite(profile.maxSpeed) ? profile.maxSpeed * 4.0 : profile.maxSpeed,
+        mainAccel: Number.isFinite(profile.mainAccel) ? profile.mainAccel * 2.5 : profile.mainAccel,
+        maxAccel: Number.isFinite(profile.maxAccel) ? profile.maxAccel * 2.5 : profile.maxAccel,
+        maxYawRate: Number.isFinite(profile.maxYawRate) ? profile.maxYawRate * 0.25 : profile.maxYawRate,
+        yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * 0.25 : profile.yawAccel,
+        yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * 0.25 : profile.yawBrake,
+      };
+    }
+  }
+  return profile;
 }
 
 export function getPropulsionProfile(id) {

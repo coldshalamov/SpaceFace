@@ -131,13 +131,29 @@ for (const part of manifest.parts || []) {
   if (part.category === 'engines') {
     const engineSurface = collectEngineDriveSurface(gltf);
     const declaredHooks = new Set(part.hooks || []);
-    for (const role of ['core', 'fan', 'plume']) {
-      const hook = `HOOK_DRIVE_${role.toUpperCase()}`;
-      const declared = declaredHooks.has(hook);
-      const renderCount = engineSurface.driveRenderableCounts[role] || 0;
-      check(`${label}: declares standard ${hook}`, declared, `hooks=${[...declaredHooks].join(',')}`);
-      check(`${label}: exposes exactly one renderable ${hook}`, renderCount === 1,
-        `counts=${JSON.stringify(engineSurface.driveRenderableCounts)} nodes=${engineSurface.driveRenderableNodes.join(',')}`);
+    const twinLayout = ['core', 'fan', 'plume'].every((role) =>
+      declaredHooks.has(`HOOK_DRIVE_${role.toUpperCase()}_P`)
+      && declaredHooks.has(`HOOK_DRIVE_${role.toUpperCase()}_S`));
+    if (twinLayout) {
+      for (const role of ['core', 'fan', 'plume']) {
+        for (const suffix of ['P', 'S']) {
+          const hook = `HOOK_DRIVE_${role.toUpperCase()}_${suffix}`;
+          check(`${label}: declares twin ${hook}`, declaredHooks.has(hook), `hooks=${[...declaredHooks].join(',')}`);
+          check(`${label}: twin hook ${hook} exists`, metrics.nodeNames.has(hook));
+        }
+        const renderCount = engineSurface.driveRenderableCounts[role] || 0;
+        check(`${label}: exposes paired renderables for ${role}`, renderCount === 2,
+          `counts=${JSON.stringify(engineSurface.driveRenderableCounts)} nodes=${engineSurface.driveRenderableNodes.join(',')}`);
+      }
+    } else {
+      for (const role of ['core', 'fan', 'plume']) {
+        const hook = `HOOK_DRIVE_${role.toUpperCase()}`;
+        const declared = declaredHooks.has(hook);
+        const renderCount = engineSurface.driveRenderableCounts[role] || 0;
+        check(`${label}: declares standard ${hook}`, declared, `hooks=${[...declaredHooks].join(',')}`);
+        check(`${label}: exposes exactly one renderable ${hook}`, renderCount === 1,
+          `counts=${JSON.stringify(engineSurface.driveRenderableCounts)} nodes=${engineSurface.driveRenderableNodes.join(',')}`);
+      }
     }
     check(`${label}: exposes at least one LOD0/static engine render mesh`, engineSurface.staticRenderableCount > 0,
       `staticRenderableCount=${engineSurface.staticRenderableCount}`);

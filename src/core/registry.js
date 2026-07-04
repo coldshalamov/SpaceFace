@@ -11,6 +11,7 @@ import { aiEncounter } from '../systems/aiEncounter.js';
 import { actions } from '../systems/actions.js';
 import { flight } from '../systems/flight.js';
 import { flightV3 } from '../systems/flightV3.js';
+import { cruise } from '../systems/cruise.js';
 import { weapons } from '../systems/weapons.js';
 import { countermeasures } from '../systems/countermeasures.js';
 import { combat } from '../systems/combat.js';
@@ -52,7 +53,7 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, input, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, weapons, countermeasures, impulseCharges, combat, tetherGameplay, mining, cargo, economy,
+    core, input, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, mining, cargo, economy,
     automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -73,7 +74,7 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, scanner, aiSlot, aiEncounter, actions, flightSlot, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, mining, cargo, automation, wingmen, crafting,
+    input, scanner, aiSlot, aiEncounter, actions, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, mining, cargo, automation, wingmen, crafting,
     economy, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding,
   ];
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));

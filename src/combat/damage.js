@@ -149,6 +149,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     if (shieldBroke && bus) bus.emit('shieldDown', { combatantId: target.id, pos: packet.hit && packet.hit.pos || target.pos });
     if (bus) {
       const factionLawful = !!(target.data && target.data.ai && target.data.ai.lawful);
+      const isPlayer = target.id === state.playerId;
       bus.emit('combat:damage', {
         targetId: target.id,
         attackerId: result.attackerId,
@@ -159,7 +160,9 @@ export function createDamageRouter(context, statusService, options = {}) {
         channels: { ...packet.channels },
         brokeShield: shieldBroke,
         shieldAbsorbed: shieldDamage > 0,
-        isPlayer: target.id === state.playerId,
+        armorHit: armorDamage > 0 && isPlayer,
+        hullHit: hullDamage > 0 && isPlayer,
+        isPlayer,
         pos: packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z },
         factionId: target.factionId || null,
         factionLawful,

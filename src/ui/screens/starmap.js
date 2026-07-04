@@ -4,6 +4,7 @@
 // danger/economy/influence from private save fields, and it does not own simulation math. The same
 // transit forecast shown here is the function used by sectorSim on jump arrival.
 import { SECTORS, dangerTier } from '../../data/sectors.js';
+import { COMMODITIES } from '../../data/commodities.js';
 import { FACTION_META } from '../../data/factions.js';
 import {
   effectiveSectorFor,
@@ -15,6 +16,8 @@ import { BINDINGS } from '../bindings.js';
 const FACTION_COLOR = Object.create(null);
 const FACTION_NAME = Object.create(null);
 const SECTOR_NAME = new Map(SECTORS.map((s) => [s.id, s.name]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const DEFAULT_MEMORY_COMMODITY = 'cmdty_ore_iron';
 for (const f of FACTION_META) {
   FACTION_COLOR[f.id] = f.color || '#9aa8bc';
   FACTION_NAME[f.id] = f.short || f.name || f.id;
@@ -57,6 +60,11 @@ const CSS = `
 #sf-starmap .sm-title { font-size:1.2em; letter-spacing:.12em; text-transform:uppercase; color:var(--accent);
   text-shadow:0 0 12px rgba(57,208,255,.5); }
 #sf-starmap .sm-head-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; }
+#sf-starmap .sm-commodity { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:.68em;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim); }
+#sf-starmap .sm-commodity select { max-width:190px; background:rgba(6,11,21,.78); border:1px solid var(--panel-edge);
+  color:var(--ink); border-radius:5px; padding:5px 7px; font:inherit; text-transform:none; letter-spacing:0; }
+#sf-starmap .sm-commodity select:focus-visible { outline:0; border-color:var(--accent); box-shadow:0 0 0 1px rgba(57,208,255,.2); }
 #sf-starmap .sm-stats { font-family:var(--mono); font-size:.8em; color:var(--ink-dim); display:flex; gap:16px; flex-wrap:wrap; }
 #sf-starmap .sm-stats b { color:var(--ink); font-weight:600; }
 #sf-starmap .sm-close { background:transparent; border:1px solid var(--panel-edge); color:var(--ink);
@@ -108,6 +116,13 @@ const CSS = `
   background:rgba(4,9,18,.45); }
 #sf-starmap .sm-risk-head { display:flex; justify-content:space-between; font-family:var(--mono); font-size:.72em; }
 #sf-starmap .sm-risk-note { font-size:.68em; color:var(--ink-mute); line-height:1.35; margin-top:3px; }
+#sf-starmap .sm-market-memory { display:flex; flex-direction:column; gap:5px; }
+#sf-starmap .sm-market-row { display:flex; justify-content:space-between; gap:8px; font-family:var(--mono); font-size:.72em;
+  color:var(--ink-dim); }
+#sf-starmap .sm-market-row b { font-weight:700; color:inherit; }
+#sf-starmap .sm-market-row.fresh { color:#64ffda; }
+#sf-starmap .sm-market-row.mid { color:#ffffff; }
+#sf-starmap .sm-market-row.old { color:#8c99ad; font-style:italic; }
 #sf-starmap .sm-actions { margin-top:auto; display:flex; flex-direction:column; gap:8px; padding-top:10px; }
 #sf-starmap .sm-actions button { width:100%; padding:9px; }
 #sf-starmap .sm-course { background:rgba(57,208,255,.12); border-color:var(--accent); color:#fff;
@@ -169,6 +184,12 @@ function trendColor(v, goodWhenPositive = false) {
 }
 function driverLabel(id) { return DRIVER_LABEL[id] || String(id || '').replace(/_/g, ' '); }
 function securityLabel(sec) { return sec >= 0.7 ? 'High' : sec >= 0.4 ? 'Mid' : sec >= 0.15 ? 'Low' : 'Null'; }
+function securityPips(sec) {
+  if (sec >= 0.7) return '<span style="color:#62e08a; letter-spacing: 2px;">●●●</span> <span style="font-size:9px;color:var(--ink-dim);">HIGH</span>';
+  if (sec >= 0.4) return '<span style="color:#ffd84a; letter-spacing: 2px;">●●○</span> <span style="font-size:9px;color:var(--ink-dim);">MID</span>';
+  if (sec >= 0.15) return '<span style="color:#ffb347; letter-spacing: 2px;">●○○</span> <span style="font-size:9px;color:var(--ink-dim);">LOW</span>';
+  return '<span style="color:#ff5470; letter-spacing: 2px;">○○○</span> <span style="font-size:9px;color:var(--ink-dim);">NULL</span>';
+}
 function enemyDensityLabel(d) { return d <= 0.15 ? 'Low' : d <= 0.35 ? 'Medium' : d <= 0.55 ? 'High' : 'Extreme'; }
 function sectorName(id) { return SECTOR_NAME.get(id) || id || 'target sector'; }
 function appendSentence(base, sentence) {
@@ -182,6 +203,79 @@ function hashText(s) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
   return h >>> 0;
+}
+
+function commodityName(id) {
+  const c = COMMODITY_BY_ID.get(id);
+  return c ? c.name : id;
+}
+
+function stationSectorCatalog(state) {
+  const out = new Map();
+  const addSector = (sector) => {
+    if (!sector || !sector.id) return;
+    for (const st of sector.stations || []) {
+      if (!st || !st.id) continue;
+      out.set(st.id, {
+        stationId: st.id,
+        stationName: st.name || st.id,
+        sectorId: sector.id,
+        sectorName: sector.name || sector.id,
+      });
+    }
+  };
+  const worldSectors = state && state.world && state.world.sectors;
+  if (worldSectors) {
+    const list = Array.isArray(worldSectors) ? worldSectors : Object.values(worldSectors);
+    for (const sector of list) addSector(sector);
+  }
+  for (const sector of SECTORS) addSector(sector);
+  return out;
+}
+
+function memoryTint(ageS) {
+  if (ageS < 600) return { key: 'fresh', color: 'cyan', italic: false };
+  if (ageS < 3600) return { key: 'mid', color: 'white', italic: false };
+  return { key: 'old', color: 'gray', italic: true };
+}
+
+function ageText(ageS) {
+  if (ageS < 60) return 'fresh';
+  return Math.max(1, Math.round(ageS / 60)) + ' min';
+}
+
+export function marketMemoryStationOverlays(state, commodityId) {
+  const memory = state && state.player && state.player.marketMemory;
+  if (!memory || !commodityId) return [];
+  const stations = stationSectorCatalog(state);
+  const now = Math.max(0, Number(state && state.simTime) || 0);
+  const out = [];
+  for (const stationId in memory) {
+    const quote = memory[stationId] && memory[stationId][commodityId];
+    if (!quote || !Number.isFinite(Number(quote.sell))) continue;
+    const meta = stations.get(stationId);
+    if (!meta) continue;
+    const ageS = Math.max(0, now - Math.max(0, Number(quote.seenAt) || 0));
+    const tint = memoryTint(ageS);
+    out.push({
+      stationId,
+      stationName: meta.stationName,
+      sectorId: meta.sectorId,
+      sectorName: meta.sectorName,
+      commodityId,
+      sell: Math.round(Number(quote.sell) || 0),
+      buy: Math.round(Number(quote.buy) || 0),
+      seenAt: Number(quote.seenAt) || 0,
+      ageS,
+      ageLabel: ageText(ageS),
+      tint: tint.key,
+      tintColor: tint.color,
+      italic: tint.italic,
+    });
+  }
+  out.sort((a, b) => (a.sectorId || '').localeCompare(b.sectorId || '') ||
+    (b.sell - a.sell) || a.stationName.localeCompare(b.stationName));
+  return out;
 }
 
 function activeTrackedMission(state) {
@@ -199,6 +293,7 @@ function missionSummary(mission) {
   const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
   const target = Math.max(1, Number(mission.objectiveTarget) || 1);
   if (mission.type === 'mining_quota') return `Mine ${progress}/${target} units`;
+  if (mission.type === 'bulk_haul') return `Haul ${progress}/${target} bulk units`;
   if (mission.type === 'bulk_trade') return `Sell ${progress}/${target} units`;
   if (mission.type === 'patrol_clear') return `Clear ${progress}/${target} hostiles`;
   if (mission.type === 'recon_scan') return `Scan ${progress}/${target} sites`;
@@ -389,6 +484,7 @@ export const starmapScreen = {
   _drawSig: '',
   _sidebarSig: '',
   _layoutPad: 68,
+  _commodityId: DEFAULT_MEMORY_COMMODITY,
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -399,6 +495,7 @@ export const starmapScreen = {
       <div class="sm-head">
         <div class="sm-title">NAV CHART</div>
         <div class="sm-head-actions">
+          <label class="sm-commodity">Intel <select data-commodity></select></label>
           <div class="sm-stats">
             <div>FUEL <b data-fuel>--/--</b></div>
             <div>JUMP <b data-jstate>IDLE</b></div>
@@ -433,11 +530,26 @@ export const starmapScreen = {
       jumpState: rootEl.querySelector('[data-jstate]'),
       range: rootEl.querySelector('[data-range]'),
       epoch: rootEl.querySelector('[data-epoch]'),
+      commodity: rootEl.querySelector('[data-commodity]'),
       objective: rootEl.querySelector('[data-objective]'),
       selected: rootEl.querySelector('[data-sel]'),
       actions: rootEl.querySelector('[data-actions]'),
       close: rootEl.querySelector('.sm-close'),
     };
+
+    const commodityOptions = COMMODITIES
+      .filter((c) => c && c.legality === 'legal')
+      .map((c) => '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.name) + '</option>')
+      .join('');
+    this._els.commodity.innerHTML = commodityOptions;
+    if (!COMMODITY_BY_ID.has(this._commodityId)) this._commodityId = DEFAULT_MEMORY_COMMODITY;
+    this._els.commodity.value = this._commodityId;
+    this._els.commodity.addEventListener('change', () => {
+      this._commodityId = this._els.commodity.value || DEFAULT_MEMORY_COMMODITY;
+      this._sidebarSig = '';
+      this._drawSig = '';
+      this.refresh(this._ctx);
+    });
 
     this._els.close.addEventListener('click', () => closeScreen(this._ctx));
     this._canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
@@ -762,7 +874,12 @@ export const starmapScreen = {
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
     g.beginPath(); g.moveTo(points[0].x, points[0].y); for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
     g.lineWidth = 6 / z; g.strokeStyle = 'rgba(57,208,255,.14)'; g.stroke();
-    g.lineWidth = 2.5 / z; g.strokeStyle = 'rgba(57,208,255,.78)'; g.stroke(); g.restore();
+    g.lineWidth = 3 / z; g.strokeStyle = 'rgba(57,208,255,.88)';
+    g.setLineDash([8 / z, 6 / z]);
+    g.lineDashOffset = -(now * 0.04);
+    g.stroke();
+    g.setLineDash([]);
+    g.restore();
     const p = pointOnPolyline(points, (now % 3000) / 3000);
     g.beginPath(); g.arc(p.x, p.y, 4 / z, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
   },
@@ -824,6 +941,21 @@ export const starmapScreen = {
       g.fillStyle = selected ? '#fff' : 'rgba(211,230,255,.90)';
       g.font = `${current ? '700' : '500'} ${11 / z}px var(--font,sans-serif)`;
       g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(s.name, n.x, labelY);
+      
+      const memory = state.player && state.player.marketMemory;
+      const sectMemory = memory && memory[s.id];
+      const commQuote = sectMemory && sectMemory[this._commodityId];
+      if (commQuote) {
+        g.save();
+        g.fillStyle = '#ffe36b';
+        g.font = `${8 / z}px var(--mono,monospace)`;
+        g.textAlign = 'left';
+        g.textBaseline = 'middle';
+        const priceText = `${Math.round(commQuote.buy || 0)}/${Math.round(commQuote.sell || 0)}`;
+        g.fillText(priceText, n.x + n.r + 5 / z, n.y);
+        g.restore();
+      }
+      
       if (signal) {
         const glyph = trendGlyph(signal.trend.danger);
         g.fillStyle = trendColor(signal.trend.danger);
@@ -925,9 +1057,14 @@ export const starmapScreen = {
     const dangerTrend = signal.trend.danger * 100;
     const priceTrend = signal.trend.pricePressure * 100;
     const hazards = s.hazards && s.hazards.length ? s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ') : 'None';
+    const memoryHtml = this._marketMemoryHtml(s.id);
 
     selected.innerHTML = `
-      <div class="sm-sel-name">${escapeHtml(s.name)}</div>
+      <div style="height:4px; background:${factionColor(signal.ownerId) || '#9aa8bc'}; margin-bottom:10px; border-radius: 2px;"></div>
+      <div class="sm-sel-name" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px; margin-bottom:8px;">
+        <span>${escapeHtml(s.name)}</span>
+        <div style="font-family:var(--mono);">${securityPips(eff.security)}</div>
+      </div>
       <div class="sm-sel-fac" style="color:${factionColor(signal.dominantFactionId)}">
         ${escapeHtml(factionName(signal.dominantFactionId))} field · owner ${escapeHtml(factionName(signal.ownerId))}
       </div>
@@ -946,6 +1083,11 @@ export const starmapScreen = {
         <div class="sm-kv"><span>Pressure trend</span><b style="color:${pressureColor(signal.trend.pricePressure)}">${trendGlyph(signal.trend.pricePressure)} ${signed(priceTrend)}%/day</b></div>
         <div class="sm-kv"><span>Stock consequence</span><b>${escapeHtml(marketFlowText)}</b></div>
         <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.pricePressure))}. Moving edge beads show modeled commodity flow toward scarcity.</div>
+      </div>
+
+      <div class="sm-section">
+        <div class="sm-section-title">${escapeHtml(commodityName(this._commodityId))} memory</div>
+        ${memoryHtml}
       </div>
 
       <div class="sm-section">
@@ -1037,6 +1179,17 @@ export const starmapScreen = {
     return html;
   },
 
+  _marketMemoryHtml(sectorId) {
+    const overlays = marketMemoryStationOverlays(this._ctx.state, this._commodityId)
+      .filter((entry) => entry.sectorId === sectorId);
+    if (!overlays.length) return '<div class="sm-hint">No visited station price for this commodity.</div>';
+    return '<div class="sm-market-memory">' + overlays.map((entry) =>
+      '<div class="sm-market-row ' + escapeHtml(entry.tint) + '">' +
+        '<span>' + escapeHtml(entry.stationName) + '</span>' +
+        '<b>' + Math.round(entry.sell).toLocaleString('en-US') + ' cr · ' + escapeHtml(entry.ageLabel) + '</b>' +
+      '</div>').join('') + '</div>';
+  },
+
   _onAction(action) {
     if (action === 'objective-localmap') {
       pushScreen(this._ctx, 'localmap');
@@ -1083,7 +1236,7 @@ export const starmapScreen = {
   },
 
   _drawSignature() {
-    const parts = [this._currentId() || '', this._selectedId || '', this._hoverId || '', this._dpr];
+    const parts = [this._currentId() || '', this._selectedId || '', this._hoverId || '', this._dpr, this._commodityId || ''];
     const route = this._route();
     if (route) parts.push(route.legs.map((l) => `${l.from}>${l.to}`).join(','));
     for (const s of this._sectors()) {
@@ -1112,6 +1265,7 @@ export const starmapScreen = {
       this._route() && this._route().legs && this._route().legs.length || 0,
       objective && objective.kind || '', objective && objective.sectorId || '', objective && objective.title || '',
       guidance && guidance.state || '', guidance && guidance.summary || '',
+      this._commodityId || '', marketMemoryStationOverlays(this._ctx.state, this._commodityId).length,
     ].join('|');
   },
 

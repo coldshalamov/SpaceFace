@@ -11,10 +11,10 @@ const STARTER_SHIP = 'ship_kestrel';
 const FITTABLE_BY_ID = new Map();
 for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
 const DIFFICULTIES = [
-  ['casual', 'Casual', 'Damage x0.7, prices x0.9, no rep decay.'],
-  ['standard', 'Standard', 'The baseline experience.'],
-  ['veteran', 'Veteran', 'Damage x1.4, prices x1.15.'],
-  ['ironman', 'Ironman', 'x1.4, single save slot, permadeath.'],
+  ['casual', 'Casual', 'Softer damage. Friendlier prices.'],      // 4 words
+  ['standard', 'Standard', 'The baseline SpaceFace experience.'],   // 4 words
+  ['veteran', 'Veteran', 'Harder hits. Steeper prices.'],          // 4 words
+  ['ironman', 'Ironman', 'One save. Death ends the run.'],         // 6 words
 ];
 
 function getManager(ctx) {
@@ -89,6 +89,24 @@ function injectStyle() {
   .sf-ng-preview { position: relative; height: 150px; margin: 6px 0 10px; border: 1px solid var(--panel-edge);
     border-radius: var(--r-md); overflow: hidden; background: radial-gradient(ellipse at 50% 70%, #0a1426, #05070d 80%); }
   .sf-ng-preview__canvas { width: 100%; height: 100%; display: block; }
+  /* Warmup veil (spec2/03 §3): the Launch disabled-state never shows >300ms — async warmup
+     happens behind this veil, not a bare disabled button. */
+  .sf-ng-warmup { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px;
+    align-items:center; justify-content:center; background:rgba(5,9,18,.92); border-radius:8px;
+    opacity:0; pointer-events:none; transition:opacity .15s ease; z-index:5; }
+  .sf-ng-warmup.open { opacity:1; pointer-events:auto; }
+  .sf-ng-warmup__spin { width:22px; height:22px; border-radius:50%; border:2px solid var(--panel-edge);
+    border-top-color:var(--accent); animation:sf-ng-spin .8s linear infinite; }
+  @keyframes sf-ng-spin { to { transform:rotate(360deg); } }
+  .sf-ng-warmup__txt { font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+    color:var(--ink-dim); text-transform:uppercase; }
+  /* First-run splash (spec2/03 §3): full-screen black, 2.5s, single line. */
+  .sf-firstrun-splash { position:fixed; inset:0; z-index:3200; background:#000; display:flex;
+    align-items:center; justify-content:center; opacity:0; transition:opacity .5s ease;
+    pointer-events:auto; }
+  .sf-firstrun-splash.open { opacity:1; }
+  .sf-firstrun-splash__line { font-family:var(--mono); font-size:15px; letter-spacing:.16em;
+    color:#d7e6ff; text-align:center; max-width:80vw; line-height:1.6; text-transform:sentence; }
   `;
   document.head.appendChild(s);
 }
@@ -100,6 +118,31 @@ function shell(rootEl, title, extraClass) {
   return rootEl;
 }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+// First-run splash (spec2/03 §3): after START, a single full-screen line on black, 2.5s, then B0.
+// Fires only once per profile (localStorage flag), so returning players skip straight into flight.
+const FIRST_RUN_LINE = 'Helios System. Third shift. The manifest is wrong.';
+const FIRST_RUN_FLAG = 'sf.firstRunIntroSeen';
+function showFirstRunSplash() {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  if (localStorage.getItem(FIRST_RUN_FLAG)) return; // already seen — no splash
+  localStorage.setItem(FIRST_RUN_FLAG, '1');
+  const splash = document.createElement('div');
+  splash.className = 'sf-firstrun-splash';
+  const line = document.createElement('div');
+  line.className = 'sf-firstrun-splash__line';
+  line.textContent = FIRST_RUN_LINE;
+  splash.appendChild(line);
+  (document.getElementById('ui-root') || document.body).appendChild(splash);
+  // Fade in, hold ~2.5s, fade out, remove. The game boots underneath; B0 fires once the splash lifts.
+  requestAnimationFrame(() => {
+    splash.classList.add('open');
+    setTimeout(() => {
+      splash.classList.remove('open');
+      setTimeout(() => { if (splash.parentNode) splash.remove(); }, 600);
+    }, 2500);
+  });
+}
 
 function starterShip(ctx) {
   const ships = ctx.state.content && ctx.state.content.ships;
@@ -161,10 +204,10 @@ export const newGameScreen = {
     route.innerHTML =
       '<div class="sf-ng-route__title">First 15 minutes</div>' +
       '<div class="sf-ng-route__steps">' +
-        '<div class="sf-ng-route__step"><b>Follow the anomaly</b><span>47-A is already marked. Chase the signal before the manifest changes.</span></div>' +
-        '<div class="sf-ng-route__step"><b>Mine the marked rock</b><span>Bring back a sample and keep room in the hold for the strange ore.</span></div>' +
-        '<div class="sf-ng-route__step"><b>Dock at Helios</b><span>Sell the haul, repair the Tessera, and turn the first proof into credits.</span></div>' +
-        '<div class="sf-ng-route__step"><b>Take one job</b><span>Mission Board and Bar contracts track into the log so the next route is ready.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Wake at the beacon</b><span>Thrust to the beacon. One verb at a time.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Tether the derelict</b><span>Latch, winch, cut. The vacuum shows itself.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Mine the first seam</b><span>Pulse, beam the bright seams, ride the heat.</span></div>' +
+        '<div class="sf-ng-route__step"><b>Dock and pick work</b><span>Sell at Helios, then choose haul, bounty, or survey.</span></div>' +
       '</div>';
     rootEl.appendChild(route);
 
@@ -212,13 +255,37 @@ export const newGameScreen = {
     back.addEventListener('click', () => nav(ctx, 'popScreen'));
     const launch = el('button', 'sf-btn'); launch.textContent = 'Launch'; launch.style.width = 'auto';
     let launching = false;
+    let veilTimer = null;
+    // The disabled state must never be the visible resting state for >300ms (spec2/03 §3): async
+    // warmup happens behind a veil (spinner overlay), not a bare disabled button.
+    const showWarmupVeil = () => {
+      let veil = rootEl.querySelector('.sf-ng-warmup');
+      if (!veil) {
+        veil = el('div', 'sf-ng-warmup');
+        veil.innerHTML = '<span class="sf-ng-warmup__spin"></span><span class="sf-ng-warmup__txt">Launching</span>';
+        rootEl.appendChild(veil);
+      }
+      veil.classList.add('open');
+    };
+    const hideWarmupVeil = () => {
+      const veil = rootEl.querySelector('.sf-ng-warmup');
+      if (veil) veil.classList.remove('open');
+    };
     const setLaunching = (active) => {
       launching = !!active;
       launch.disabled = launching;
       back.disabled = launching;
       name.disabled = launching;
       diff.disabled = launching;
-      launch.textContent = launching ? 'Launching...' : 'Launch';
+      launch.textContent = launching ? 'Launching' : 'Launch';
+      if (launching) {
+        // Veil the warmup after 300ms so the disabled button itself is never the resting state.
+        if (veilTimer) clearTimeout(veilTimer);
+        veilTimer = setTimeout(showWarmupVeil, 300);
+      } else {
+        if (veilTimer) { clearTimeout(veilTimer); veilTimer = null; }
+        hideWarmupVeil();
+      }
     };
     const restoreLaunch = () => setLaunching(false);
     const unsubStartFailed = ctx.bus.on('game:startFailed', restoreLaunch);
@@ -226,6 +293,8 @@ export const newGameScreen = {
       if (launching) return;
       setLaunching(true);
       const pilot = (name.value || '').trim() || 'Pilot';
+      // First-run splash (spec2/03 §3): a single full-screen line on black, 2.5s, then B0.
+      try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
       ctx.bus.emit('game:new', { name: pilot, shipId: STARTER_SHIP, difficulty: diff.value });
     });
     foot.appendChild(back); foot.appendChild(launch);

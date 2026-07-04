@@ -407,6 +407,22 @@ export function createRadar(ctx) {
     noGlow(g);
     if (targetAsteroidBlip) drawTargetRing(g, targetAsteroidX, targetAsteroidY, C);
 
+    let nearestOffScreenHostile = null;
+    let minHostileDistSq = Infinity;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e.alive || e === p) continue;
+      const dx = e.pos.x - px, dz = e.pos.z - pz;
+      const distSq = dx * dx + dz * dz;
+      if (distSq > rangeSq) {
+        const isHostile = e.team !== playerTeam && e.team !== 0;
+        if (isHostile && distSq < minHostileDistSq) {
+          minHostileDistSq = distSq;
+          nearestOffScreenHostile = e;
+        }
+      }
+    }
+
     let trailUpdates = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -438,11 +454,16 @@ export function createRadar(ctx) {
       g.fillStyle = col; g.strokeStyle = col;
 
       if (off) {
-        // hollow chevron clamped to radar edge
-        g.save(); g.translate(bx, by); g.rotate(offAngle);
-        g.lineWidth = 1.5; g.beginPath();
-        g.moveTo(-3, -3); g.lineTo(2, 0); g.lineTo(-3, 3); g.stroke();
-        g.restore();
+        if (e === nearestOffScreenHostile) {
+          g.save(); g.translate(bx, by); g.rotate(offAngle);
+          g.fillStyle = col; g.strokeStyle = col;
+          g.lineWidth = 1.5;
+          g.beginPath();
+          g.moveTo(-4, -4); g.lineTo(3, 0); g.lineTo(-4, 4); g.closePath();
+          g.fill();
+          g.restore();
+        }
+        continue;
 
       } else if (type === 'pickup') {
         // spinning animated diamond with pulse glow
@@ -454,28 +475,26 @@ export function createRadar(ctx) {
         g.beginPath(); g.moveTo(0, -4); g.lineTo(3.5, 0); g.lineTo(0, 4); g.lineTo(-3.5, 0); g.closePath(); g.fill();
         noGlow(g); g.restore();
 
+      } else if (type === 'wreck') {
+        g.strokeStyle = col;
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(bx - 2.5, by - 2.5); g.lineTo(bx + 2.5, by + 2.5);
+        g.moveTo(bx - 2.5, by + 2.5); g.lineTo(bx + 2.5, by - 2.5);
+        g.stroke();
+
       } else if (type === 'station') {
         if (e.data && e.data.isGate) {
-          // gate: two counter-rotating glowing rings
-          const spin = (now * 0.0005) % (Math.PI * 2);
-          glow(g, col, 12);
-          g.lineWidth = 1.3;
-          g.save(); g.translate(bx, by);
-          g.rotate(spin);        g.beginPath(); g.arc(0, 0, 3.5, 0, Math.PI * 2); g.stroke();
-          g.rotate(-spin * 1.7); g.beginPath(); g.arc(0, 0, 6,   0, Math.PI * 2); g.stroke();
-          g.restore(); noGlow(g);
+          g.strokeStyle = col;
+          g.lineWidth = 1.5;
+          g.beginPath();
+          g.arc(bx, by, 2.5, 0, Math.PI * 2);
+          g.stroke();
         } else {
-          // station: filled square with glow + inner dot
-          glow(g, col, 14);
-          g.fillRect(bx - 3.5, by - 3.5, 7, 7);
-          noGlow(g);
-          g.fillStyle = 'rgba(0,0,0,0.55)';
-          g.beginPath(); g.arc(bx, by, 1.8, 0, Math.PI * 2); g.fill();
-          g.fillStyle = col;
+          g.fillRect(bx - 2.5, by - 2.5, 5, 5);
         }
 
       } else {
-        // ship / drone — directional triangle with glow; hostiles pulse their glow
         const isHostile = e.team !== playerTeam && e.team !== 0;
         const glowBlur  = isHostile ? 7 + 3 * Math.sin(now * 0.004) : 5;
         glow(g, col, glowBlur);
@@ -487,6 +506,45 @@ export function createRadar(ctx) {
       if (e.id === targetId) {
         drawTargetRing(g, bx, by, C);
       }
+    }
+
+    // ── scan pings ────────────────────────────────────────────────────────────────────────
+    const sectorId = state.world && state.world.currentSectorId;
+    const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
+    if (Array.isArray(pings) || list.some(e => e.alive && e.data && e.data.pingedUntil > state.simTime)) {
+      g.save();
+      g.font = 'bold 9px monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.strokeStyle = '#ffd24a';
+      g.lineWidth = 1;
+      const pulse = 0.5 + 0.5 * Math.sin(now * 0.015);
+      g.globalAlpha = 0.4 + 0.6 * pulse;
+      
+      if (Array.isArray(pings)) {
+        for (const ping of pings) {
+          if (!ping || !ping.pos) continue;
+          const dx = ping.pos.x - px, dz = ping.pos.z - pz;
+          const distSq = dx * dx + dz * dz;
+          if (distSq > rangeSq) continue;
+          const bx = C - dx * radarScale;
+          const by = C - dz * radarScale;
+          g.strokeText('?', bx, by);
+        }
+      }
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e.alive || e === p) continue;
+        if (e.data && e.data.pingedUntil > (state.simTime || 0)) {
+          const dx = e.pos.x - px, dz = e.pos.z - pz;
+          const distSq = dx * dx + dz * dz;
+          if (distSq > rangeSq) continue;
+          const bx = C - dx * radarScale;
+          const by = C - dz * radarScale;
+          g.strokeText('?', bx, by);
+        }
+      }
+      g.restore();
     }
 
     // ── intercept lead marker (spec §9.3) ────────────────────────────────────────────────
@@ -552,19 +610,36 @@ export function createRadar(ctx) {
       const dx = pos.x - px, dz = pos.z - pz;
       const distSq = dx * dx + dz * dz;
       let bx, by;
-      if (distSq > rangeSq) {
+      const off = distSq > rangeSq;
+      if (off) {
         const a = Math.atan2(-dz, -dx);
         bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
+        g.save();
+        g.translate(bx, by);
+        g.rotate(a);
+        g.fillStyle = COL.objective;
+        g.strokeStyle = COL.objective;
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(-5, -5); g.lineTo(4, 0); g.lineTo(-5, 5); g.closePath();
+        g.fill();
+        g.strokeStyle = '#ffffff';
+        g.lineWidth = 1.0;
+        g.stroke();
+        g.restore();
       } else {
         bx = C - dx * radarScale; by = C - dz * radarScale;
+        g.save();
+        glow(g, COL.objective, 12);
+        g.strokeStyle = COL.objective; g.fillStyle = COL.objective; g.lineWidth = 1.6;
+        g.beginPath(); g.moveTo(bx, by - 5.5); g.lineTo(bx + 5.5, by); g.lineTo(bx, by + 5.5); g.lineTo(bx - 5.5, by); g.closePath(); g.stroke();
+        g.strokeStyle = '#ffffff';
+        g.lineWidth = 1.0;
+        g.stroke();
+        noGlow(g);
+        g.globalAlpha = 0.2; g.beginPath(); g.arc(bx, by, 10, 0, Math.PI * 2); g.fill();
+        g.restore();
       }
-      g.save();
-      glow(g, COL.objective, 12);
-      g.strokeStyle = COL.objective; g.fillStyle = COL.objective; g.lineWidth = 1.6;
-      g.beginPath(); g.moveTo(bx, by - 5.5); g.lineTo(bx + 5.5, by); g.lineTo(bx, by + 5.5); g.lineTo(bx - 5.5, by); g.closePath(); g.stroke();
-      noGlow(g);
-      g.globalAlpha = 0.2; g.beginPath(); g.arc(bx, by, 10, 0, Math.PI * 2); g.fill();
-      g.restore();
     }
 
     // ── player marker ─────────────────────────────────────────────────────────────────────

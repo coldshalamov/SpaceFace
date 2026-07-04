@@ -1,12 +1,14 @@
 // Tether gameplay system (GDD 2.0 §4.3, BUILD_PLAN WS-D1).
 // Consumes the locked input action contract and wires the existing SG-03/SG-02 attachment
-// service into player flight. Rapier owns momentum exchange; this system only targets,
+// service into player flight. SG-02 owns momentum exchange; this system only targets,
 // reels, cuts, and emits player-facing gameplay events.
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 const STRAIN_EVENT_INTERVAL_S = 0.2;
 const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press ghost re-latches
+const CAPTURE_SLACK_S = 0.1;
+const STRETCH_EPSILON = 0.05;
 // Pickups are deliberately NOT attachable: the magnet system owns them, and a magnet-collected
 // (despawned) tether target is how the invisible-anchor bug was born. Tether targets are things
 // with presence: rocks, wrecks, ships, stations, mission payloads.
@@ -25,12 +27,13 @@ export const tetherGameplay = {
     this._active = null;
     this._lastStrainT = -Infinity;
     this._noRelatchUntil = -Infinity;
+    this._resetPhaseMirror();
   },
 
   update(dt, state) {
-    if (state.mode !== 'flight') { this._mirror(state, null, 0); return; }
+    if (state.mode !== 'flight') { this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-    if (!player || !player.alive || (player.flags && player.flags.docked)) { this._mirror(state, null, 0); return; }
+    if (!player || !player.alive || (player.flags && player.flags.docked)) { this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
 
     const kernel = combatKernel(this);
     const attachments = kernel && kernel.attachments;
@@ -49,6 +52,7 @@ export const tetherGameplay = {
       if (result && result.ok) this.bus.emit('tether:released', { targetId });
       this._active = null;
       this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+      this._resetPhaseMirror();
       this._mirror(state, null, 0);
       return;
     }
@@ -62,16 +66,19 @@ export const tetherGameplay = {
         this.bus.emit('tether:broke', { targetId: this._active.targetId });
         this._active = null;
         this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+        this._resetPhaseMirror();
         this._mirror(state, null, 0);
         return;
       }
       this._reelActive(attachments, actions?.reelDelta, dt);
       this._emitStrain(attachments, state);
       const att = attachments.get(this._active.attachmentId);
-      this._mirror(state, this._active.targetId, this._lastStrainRatio || 0, att ? att.restLength : 0);
+      const phase = this._phaseFor(state, att, dt, this._lastStrainRatio || 0);
+      this._mirror(state, this._active.targetId, this._lastStrainRatio || 0, att ? att.restLength : 0, phase);
       return;
     }
 
+    this._resetPhaseMirror();
     this._mirror(state, null, 0);
     if (!actions?.tetherFire) return;
     if (now < this._noRelatchUntil) return;
@@ -92,6 +99,7 @@ export const tetherGameplay = {
       targetId: target.id,
       type: TETHER_DEF_ID,
     };
+    this._resetPhaseMirror();
     this._lastStrainT = -Infinity;
     this.bus.emit('tether:latched', { targetId: target.id, type: TETHER_DEF_ID });
   },
@@ -145,6 +153,7 @@ export const tetherGameplay = {
         targetId: attachment.targetId,
         type: attachment.defId,
       };
+      this._resetPhaseMirror();
       this._lastStrainT = -Infinity;
       return;
     }
@@ -162,6 +171,7 @@ export const tetherGameplay = {
     if (reason === 'tether_cut') this.bus.emit('tether:released', { targetId });
     else this.bus.emit('tether:broke', { targetId });
     this._lastStrainT = -Infinity;
+    this._resetPhaseMirror();
   },
 
   _reelActive(attachments, reelDelta, dt) {
@@ -199,16 +209,59 @@ export const tetherGameplay = {
     this.bus.emit('tether:strain', { ratio });
   },
 
+  _phaseFor(state, attachment, dt, strain) {
+    if (!attachment || attachment.state !== 'active') return 'slack';
+    const telemetry = attachmentTelemetry(this.helpers, attachment, state);
+    if (telemetry && telemetry.phase) return normalizePhase(telemetry.phase);
+
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const target = state.entities && state.entities.get ? state.entities.get(attachment.targetId) : null;
+    if (!player || !target || !player.pos || !target.pos) return strain >= 0.75 ? 'overload' : 'loaded';
+
+    const restLength = positive(attachment.restLength, 0);
+    const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+    const stretch = Math.max(0, distance - restLength);
+    const phase = this._phaseMirror || (this._phaseMirror = createPhaseMirror());
+    const step = Math.max(0, Number(dt) || 0);
+    if (!(stretch > STRETCH_EPSILON)) {
+      phase.slackS += step;
+      phase.captureT = 0;
+      phase.captureActive = false;
+      phase.wasTaut = false;
+      return 'slack';
+    }
+
+    if (!phase.wasTaut && phase.slackS >= CAPTURE_SLACK_S) {
+      phase.captureActive = true;
+      phase.captureT = 0;
+    }
+    phase.wasTaut = true;
+    phase.slackS = 0;
+    const def = attachmentDef(combatKernel(this), attachment.defId);
+    const captureS = positive(def && def.spring && def.spring.captureS, 0.35);
+    if (phase.captureActive && phase.captureT < captureS) {
+      phase.captureT += step;
+      if (phase.captureT >= captureS) phase.captureActive = false;
+      return 'capture';
+    }
+    return strain >= 0.75 ? 'overload' : 'loaded';
+  },
+
+  _resetPhaseMirror() {
+    this._phaseMirror = createPhaseMirror();
+  },
+
   // Mirror the tether state onto state.player.tether for HUD/VFX consumers (single-owner rule:
   // they read, we write). null targetId = no tether. restLength lets the cable visual compute
   // real slack (restLength - distance) instead of guessing from strain.
-  _mirror(state, targetId, strain, restLength = 0) {
+  _mirror(state, targetId, strain, restLength = 0, phase = 'slack') {
     const player = state.player || (state.player = {});
-    const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, attachmentId: null, restLength: 0 });
+    const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, attachmentId: null, restLength: 0, phase: 'slack' });
     t.active = targetId != null;
     t.targetId = targetId;
     t.strain = strain || 0;
     t.restLength = restLength || 0;
+    t.phase = t.active ? normalizePhase(phase) : 'slack';
     t.attachmentId = this._active ? this._active.attachmentId : null;
   },
 };
@@ -222,6 +275,29 @@ function combatKernel(host) {
 
 function attachmentDef(kernel, id) {
   return kernel && kernel.catalog && kernel.catalog.attachments && kernel.catalog.attachments.get(id) || null;
+}
+
+function attachmentTelemetry(helpers, attachment, state) {
+  const physics = helpers && helpers.combatPhysics;
+  if (!physics || typeof physics.getAttachmentTelemetry !== 'function') return null;
+  try {
+    return physics.getAttachmentTelemetry({
+      attachmentId: attachment.id,
+      physicsHandle: attachment.physicsHandle,
+      tick: state && state.tick,
+    });
+  } catch (_) {
+    return null;
+  }
+}
+
+function normalizePhase(value) {
+  if (value === 'capture' || value === 'loaded' || value === 'overload') return value;
+  return 'slack';
+}
+
+function createPhaseMirror() {
+  return { slackS: CAPTURE_SLACK_S, captureT: 0, captureActive: false, wasTaut: false };
 }
 
 function aimWorldFor(player, state, range) {

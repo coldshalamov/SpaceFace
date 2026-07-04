@@ -83,7 +83,7 @@ export function createGameState(seed) {
     days: 0,
     rng: mulberry32(seed),
     input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 } },
-    camera: { obj: null, tilt: 60, zoom: 95, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 18 },
+    camera: { obj: null, tilt: 60, zoom: 88, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 26 },
     bounds: { radius: 2600, hardRadius: 3000, center: { x: 0, z: 0 } },
 
     // --- meta records ---

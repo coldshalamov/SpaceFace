@@ -265,6 +265,65 @@ function activeTradeRoute(state, stationId) {
   };
 }
 
+function ageLabel(state, seenAt) {
+  const now = Math.max(0, Number(state && state.simTime) || 0);
+  const ageS = Math.max(0, now - Math.max(0, Number(seenAt) || 0));
+  if (ageS < 60) return 'fresh';
+  return Math.max(1, Math.round(ageS / 60)) + ' min ago';
+}
+
+function stationHops(state, stationId) {
+  const sector = stationSectorInfo(state, stationId);
+  const target = sector && sector.id;
+  const start = state && state.world && state.world.currentSectorId;
+  if (!start || !target || start === target) return 0;
+  const sectors = state.world && state.world.sectors || {};
+  const queue = [{ id: start, d: 0 }];
+  const seen = new Set([start]);
+  while (queue.length) {
+    const cur = queue.shift();
+    const sec = sectors[cur.id] || {};
+    for (const next of sec.neighbors || []) {
+      if (seen.has(next)) continue;
+      if (next === target) return cur.d + 1;
+      seen.add(next);
+      queue.push({ id: next, d: cur.d + 1 });
+    }
+  }
+  return null;
+}
+
+export function bestKnownSellFor(state, commodityId, hereStationId = null) {
+  const memory = state && state.player && state.player.marketMemory;
+  if (!memory || !commodityId) return null;
+  let best = null;
+  for (const stationId in memory) {
+    const quote = memory[stationId] && memory[stationId][commodityId];
+    if (!quote || !Number.isFinite(Number(quote.sell))) continue;
+    const sell = Math.round(Number(quote.sell) || 0);
+    if (!best || sell > best.sell || (sell === best.sell && String(stationId) < String(best.stationId))) {
+      best = {
+        stationId,
+        sell,
+        buy: Math.round(Number(quote.buy) || 0),
+        seenAt: Number(quote.seenAt) || 0,
+        stationName: stationName(state, stationId),
+        jumps: stationHops(state, stationId),
+        isHere: hereStationId === stationId,
+      };
+    }
+  }
+  return best;
+}
+
+export function formatBestKnownSellLine(state, best) {
+  if (!best) return '';
+  const jumps = best.jumps == null ? '?' : best.jumps;
+  const jumpLabel = jumps === 1 ? '1 jump' : jumps + ' jumps';
+  return 'Best known sell: ' + fmtCr(best.sell) + ' cr - ' + best.stationName +
+    ' (' + ageLabel(state, best.seenAt) + ', ' + jumpLabel + ')';
+}
+
 function selectedQtyFor(qtySetting, maxValue) {
   if (qtySetting === 'max') return Math.max(0, Math.floor(maxValue || 0));
   return Math.max(0, Math.floor(Number(qtySetting) || 0));
@@ -376,6 +435,13 @@ export function createMarketPanel(ctx) {
     }
   });
 
+  const ledger = document.createElement('div');
+  ledger.className = 'st-market-ledger';
+  ledger.innerHTML = '<div class="st-sub-h">Trade Ledger <span class="st-planner-hint">(last 10)</span></div>' +
+    '<div class="st-ledger-list"></div>';
+  root.appendChild(ledger);
+  const ledgerList = ledger.querySelector('.st-ledger-list');
+
   // --- table head ---
   const tableHead = document.createElement('div');
   tableHead.className = 'st-row st-row-head';
@@ -449,6 +515,11 @@ export function createMarketPanel(ctx) {
     const state = ctx.state;
     const stationId = panel.stationId;
     const owned = (state.player.cargo.items[cmdtyId]) || 0;
+
+    if (act === 'best-known') {
+      applyTradeNavigation(ctx, btn.getAttribute('data-station'), cmdtyId);
+      return;
+    }
 
     if (act === 'buy' || act === 'sell') {
       let qty = qtyState[cmdtyId] || 1;
@@ -543,6 +614,7 @@ export function createMarketPanel(ctx) {
           '<canvas class="st-spark" width="56" height="14" title="Recent price trend"></canvas>' +
           '<span class="st-slotline st-cmdty-purpose">' + escapeHtml(commodityPurpose(c)) + '</span>' +
           '<span class="st-slotline st-market-mission-line"></span>' +
+          '<span class="st-slotline st-best-known-line"></span>' +
         '</span>' +
         '<span class="c-num st-owned mono">0</span>' +
         '<span class="c-num st-buy mono">—</span>' +
@@ -598,6 +670,7 @@ export function createMarketPanel(ctx) {
     renderMissionCallout(missionInfo);
     renderRouteCallout(activeTradeRoute(state, stationId));
     refreshPlanner(state, stationId);
+    renderTradeLedger(state);
     if (!panel._rowEls) return;
     for (const cmdtyId in panel._rowEls) {
       const row = panel._rowEls[cmdtyId];
@@ -608,6 +681,8 @@ export function createMarketPanel(ctx) {
         missionLine.textContent = missionMatch ? trackedMarketActionText(missionInfo) : '';
         missionLine.hidden = !missionMatch;
       }
+      const bestLine = row.querySelector('.st-best-known-line');
+      if (bestLine) renderBestKnownLine(bestLine, state, cmdtyId, stationId);
       const owned = (p.cargo.items[cmdtyId]) || 0;
       const buyP = unitPrice(ctx, stationId, cmdtyId, 'buy');
       const sellP = unitPrice(ctx, stationId, cmdtyId, 'sell');
@@ -738,6 +813,40 @@ export function createMarketPanel(ctx) {
     plannerList.appendChild(frag);
   }
 
+  function renderTradeLedger(state) {
+    if (!ledgerList) return;
+    const rows = state && state.player && Array.isArray(state.player.tradeLedger) ? state.player.tradeLedger : [];
+    if (!rows.length) {
+      ledgerList.innerHTML = '<div class="st-planner-empty">No trades logged yet.</div>';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const trade of rows.slice(0, 10)) {
+      const def = COMMODITY_BY_ID.get(trade.commodityId);
+      const profit = Math.round(Number(trade.profit) || 0);
+      const margin = Math.round(Number(trade.marginPerUnit) || 0);
+      const div = document.createElement('div');
+      div.className = 'st-ledger-row ' + (profit >= 0 ? 'st-ledger-up' : 'st-ledger-down');
+      div.innerHTML =
+        '<span>' + escapeHtml(trade.side === 'buy' ? 'BUY' : 'SELL') + ' ' +
+          formatCargoUnits(trade.qty) + 'u ' + escapeHtml(def ? def.name : trade.commodityId) + '</span>' +
+        '<b class="mono" style="color:' + (profit >= 0 ? '#7af7d0' : '#ff5c5c') + '">' +
+          (margin >= 0 ? '+' : '') + fmtCr(margin) + '/u</b>';
+      frag.appendChild(div);
+    }
+    ledgerList.textContent = '';
+    ledgerList.appendChild(frag);
+  }
+
+  function renderBestKnownLine(el, state, cmdtyId, stationId) {
+    const best = bestKnownSellFor(state, cmdtyId, stationId);
+    if (!best) { el.textContent = ''; el.hidden = true; return; }
+    const label = formatBestKnownSellLine(state, best);
+    el.hidden = false;
+    el.innerHTML = '<button type="button" data-act="best-known" data-station="' + escapeHtml(best.stationId) +
+      '" title="Set course to ' + escapeHtml(best.stationName) + '">' + escapeHtml(label) + '</button>';
+  }
+
   // Tint a price cell green (cheap) or red (dear) relative to the base price.
   function applyPriceHeat(el, heat) {
     if (!el) return;
@@ -752,6 +861,7 @@ export function createMarketPanel(ctx) {
     stationId: null,
     onShow(c) {
       panel.stationId = (c && c.stationId) || panel.stationId;
+      if (panel.stationId && ctx.bus) ctx.bus.emit('economy:marketOpened', { stationId: panel.stationId });
       rebuild();
     },
     refresh() { refreshValues(); },
@@ -861,12 +971,28 @@ function tradeRunCapacity(state, def, buyHere, margin) {
 function knownMarketSnapshots(state) {
   const econ = state && state.economy;
   const out = Object.create(null);
+  const memory = state && state.player && state.player.marketMemory;
+  const hasPlayerMemory = !!(memory && typeof memory === 'object' && !Array.isArray(memory));
+  if (hasPlayerMemory) {
+    for (const sid in memory) {
+      const station = memory[sid];
+      if (!station) continue;
+      const snapshot = {};
+      for (const cid in station) {
+        const q = station[cid];
+        if (!q) continue;
+        snapshot[cid] = { buy: q.buy || 0, sell: q.sell || 0 };
+      }
+      out[sid] = { snapshot, seenAtT: newestMemorySeenAt(station), intelSource: 'memory' };
+    }
+  }
   const intel = econ && econ.marketIntel;
   if (intel) {
     for (const sid in intel) {
       if (intel[sid] && intel[sid].snapshot) out[sid] = { ...intel[sid], intelSource: 'scanned' };
     }
   }
+  if (hasPlayerMemory) return out;
   const markets = econ && econ.markets;
   if (markets) {
     for (const sid in markets) {
@@ -884,9 +1010,19 @@ function knownMarketSnapshots(state) {
   return out;
 }
 
+function newestMemorySeenAt(stationMemory) {
+  let t = 0;
+  for (const cid in stationMemory || {}) {
+    const seenAt = Number(stationMemory[cid] && stationMemory[cid].seenAt) || 0;
+    if (seenAt > t) t = seenAt;
+  }
+  return t;
+}
+
 export function describeTradeIntel(state, trade) {
   if (!trade) return 'unknown intel';
   if (trade.intelSource === 'market') return 'market feed';
+  if (trade.intelSource === 'memory') return 'price memory';
   const now = Math.max(0, Number(state && state.simTime) || 0);
   const seen = Math.max(0, Number(trade.seenAtT != null ? trade.seenAtT : trade.age) || 0);
   const ageS = Math.max(0, now - seen);

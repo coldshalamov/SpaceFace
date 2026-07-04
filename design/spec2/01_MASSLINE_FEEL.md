@@ -62,10 +62,12 @@ pitch to phase. No other schema changes.
 tether_standard:    spring: { K: 140, zeta: 0.95, captureS: 0.35 }
 attachment_massline: spring: { K: 170, zeta: 0.90, captureS: 0.30 }
 ```
-Keep existing `break` blocks (maxTension 2600 etc.) — they now measure real spring force, so verify
-the three tether contracts still pass and adjust `break.maxTension` (not the spring) if the overload
-scenario needs it. Socket stays `[0.3, 0.15]` (three-way tune — see the comment in combatDefs; do
-not move it without re-running all three tether checks).
+Keep existing `break` blocks (standard maxTension 2600 -> 12000 and maxImpulse 90 -> 220 because real
+spring-force telemetry peaks above the old rope proxy during the accepted mid-asteroid slingshot) —
+they now measure real spring force, so verify the three tether contracts still pass and adjust
+`break.maxTension` (not the spring) if the overload scenario needs it. Socket stays `[0.3, 0.15]`
+(three-way tune — see the comment in combatDefs; do not move it without re-running all three tether
+checks).
 
 ## 5. The feel matrix (what each pairing must produce)
 | Player ship | Target | Expected behavior |

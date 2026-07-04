@@ -17,6 +17,7 @@
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
@@ -38,7 +39,7 @@ const STEM_WEIGHTS = {
   docked: { A: 0.2, B: 0.2, C: 0.0, D: 0.9 },
 };
 
-export const MAX_AUDIO_VOICES = 24;
+export const MAX_AUDIO_VOICES = 12;
 
 function linearGain(v) { const c = v < 0 ? 0 : v > 1 ? 1 : v; return c * c; }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -87,13 +88,13 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   click: 'sfx_ui_click', ui_click: 'sfx_ui_click', uiClick: 'sfx_ui_click',
   hover: 'sfx_ui_hover', ui_hover: 'sfx_ui_hover', uiHover: 'sfx_ui_hover',
   confirm: 'sfx_ui_confirm', ui_confirm: 'sfx_ui_confirm', buy: 'sfx_ui_confirm', sell: 'sfx_ui_confirm',
-  deny: 'sfx_ui_click', error: 'sfx_ui_alert', alert: 'sfx_ui_alert', warning: 'sfx_ui_alert',
+  deny: 'sfx_ui_error', error: 'sfx_ui_error', alert: 'sfx_ui_alert', warning: 'sfx_ui_alert',
   pickup: 'sfx_mining_impact', cash: 'sfx_ui_confirm',
   lock_acquired: 'sfx_lock_acquired', lock: 'sfx_lock_acquired',
-  'presentation.tether.attach': 'sfx_boost_whoosh',
+  'presentation.tether.attach': 'sfx.tetherLatch',
   'presentation.tether.near_break': 'sfx_ui_alert',
-  'presentation.tether.break': 'sfx_explosion_small',
-  'presentation.shield.collapse': 'sfx_explosion_small',
+  'presentation.tether.break': 'sfx.tetherSnap',
+  'presentation.shield.collapse': 'sfx.shieldBreak',
   'presentation.subsystem.disabled': 'sfx_ui_alert',
   'presentation.scenario.signal': 'sfx_ui_alert',
   'presentation.comms.priority': 'sfx_ui_alert',
@@ -103,6 +104,43 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
 
 export function resolveAudioCueRecipeId(cueId) {
   return AUDIO_CUE_TO_RECIPE[cueId] || (AUDIO_RECIPE_BY_ID[cueId] ? cueId : 'sfx_ui_click');
+}
+
+export function getBusForRecipe(recipe, recipeId) {
+  const id = recipeId || (recipe ? recipe.id : '');
+  if (id.startsWith('sfx_ui_') || id.startsWith('sfx.ui') || (recipe && recipe.category === 'ui')) {
+    if (id.includes('comms') || id.includes('squelch')) {
+      return 'comms';
+    }
+    return 'ui';
+  }
+  if (id.includes('comms') || id.includes('squelch')) {
+    return 'comms';
+  }
+  if ((recipe && recipe.category === 'engine') || id.includes('engine') || id.includes('boost') || id.includes('dash') || id.includes('cruise') || id.includes('brake')) {
+    return 'engine';
+  }
+  if ((recipe && recipe.category === 'mining') || id.includes('mining') || id.includes('ambient') || id.includes('station_hum') || id.includes('room_tone')) {
+    return 'ambient';
+  }
+  if ((recipe && recipe.category === 'weapon') || (recipe && recipe.category === 'explosion') || id.includes('wpn') || id.includes('explosion') || id.includes('shield') || id.includes('armor') || id.includes('hull') || id.includes('kill') || id.includes('tether') || id.includes('detonate') || id.includes('hit')) {
+    return 'combat';
+  }
+  return 'combat';
+}
+
+export function getPaletteClassName(sector) {
+  if (!sector) return 'core';
+  if (sector.palette) {
+    if (sector.palette === SECTOR_PALETTE_CLASSES.belt) return 'belt';
+    if (sector.palette === SECTOR_PALETTE_CLASSES.fringe) return 'fringe';
+    if (sector.palette === SECTOR_PALETTE_CLASSES.anomaly) return 'anomaly';
+  }
+  const id = sector.id || '';
+  if (id.includes('belt') || id.includes('forge') || id.includes('drift')) return 'belt';
+  if (id.includes('fringe') || id.includes('reach') || id.includes('expanse')) return 'fringe';
+  if (id.includes('anomaly') || id.includes('choir') || id.includes('vael')) return 'anomaly';
+  return 'core';
 }
 
 export function audioRecipeBasePeak(recipe) {
@@ -296,11 +334,23 @@ export const audio = {
     } catch (_) {}
     const sfxBus = ctx.createGain();
     const musicBus = ctx.createGain();
+    const engineBus = ctx.createGain();
+    const ambientBus = ctx.createGain();
+    const combatBus = ctx.createGain();
+    const uiBus = ctx.createGain();
+    const commsBus = ctx.createGain();
+    engineBus.connect(sfxBus);
+    ambientBus.connect(sfxBus);
+    combatBus.connect(sfxBus);
+    uiBus.connect(sfxBus);
+    commsBus.connect(sfxBus);
     sfxBus.connect(master);
     musicBus.connect(master);
     master.connect(limiter);
     limiter.connect(ctx.destination);
     rt.masterGain = master; rt.limiter = limiter; rt.sfxBus = sfxBus; rt.musicBus = musicBus;
+    rt.engineBus = engineBus; rt.ambientBus = ambientBus; rt.combatBus = combatBus;
+    rt.uiBus = uiBus; rt.commsBus = commsBus;
 
     getNoiseBuffer(ctx, rt._caches); // pre-build the shared noise buffer
 
@@ -355,15 +405,40 @@ export const audio = {
         param.linearRampToValueAtTime(Math.max(0.0001, target), t + 0.05);
       } catch (_) { try { param.value = target; } catch (__) {} }
     };
-    ramp(rt.masterGain.gain, muted ? 0.0001 : Math.max(0.0001, linearGain(a.master == null ? 0.55 : a.master)));
-    ramp(rt.sfxBus.gain, Math.max(0.0001, linearGain(a.sfx == null ? 0.7 : a.sfx)));
-    // musicBus base gain (ducking multiplies this transiently)
-    rt._musicBase = Math.max(0.0001, linearGain(a.music == null ? 0.32 : a.music));
+
+    const masterVal = a.master == null ? 0.55 : a.master;
+    const masterTarget = muted ? 0.0001 : linearGain(masterVal) * 0.501187;
+    ramp(rt.masterGain.gain, masterTarget);
+
+    const sfxVal = a.sfx == null ? 0.7 : a.sfx;
+
+    const engineVal = a.engine == null ? 0.7 : a.engine;
+    const engineTarget = linearGain(sfxVal) * linearGain(engineVal) * 0.12589;
+    ramp(rt.engineBus.gain, engineTarget);
+
+    const sidechain = rt.sidechainDuck || 1.0;
+    const ambientVal = a.ambient == null ? 0.7 : a.ambient;
+    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain;
+    ramp(rt.ambientBus.gain, ambientTarget);
+
+    const combatVal = a.combat == null ? 0.7 : a.combat;
+    const combatTarget = linearGain(sfxVal) * linearGain(combatVal) * 0.25119;
+    ramp(rt.combatBus.gain, combatTarget);
+
+    const uiVal = a.ui == null ? 0.7 : a.ui;
+    const uiTarget = linearGain(sfxVal) * linearGain(uiVal) * 0.1;
+    ramp(rt.uiBus.gain, uiTarget);
+
+    const commsVal = a.comms == null ? 0.7 : a.comms;
+    const commsTarget = linearGain(sfxVal) * linearGain(commsVal) * 0.15849;
+    ramp(rt.commsBus.gain, commsTarget);
+
+    const musicVal = a.music == null ? 0.32 : a.music;
+    rt._musicBase = linearGain(musicVal) * 0.05012 * sidechain;
     ramp(rt.musicBus.gain, rt._musicBase);
   },
 
   // ---- one-shot SFX API ----
-  // play(recipeId, { position?:{x,z}, gain?, detune?, rate?, trackId? })
   play(recipeId, opts) {
     const rt = this.rt;
     const ctx = rt.ctx;
@@ -372,7 +447,6 @@ export const audio = {
     if (!recipe) return null;
     opts = opts || {};
 
-    // positional attenuation + pan relative to player ship
     let att = 1, pan = 0, rate = opts.rate || 1;
     if (opts.position) {
       const p = this._playerPos();
@@ -386,46 +460,61 @@ export const audio = {
     const peak = Math.min(1, recipeAmp * callGain * att);
     if (peak < 0.0008) return null;
 
-    // per-call gain -> optional panner -> sfx bus
-    let dest = rt.sfxBus;
+    const busName = getBusForRecipe(recipe, recipeId);
+    let targetBus = rt.sfxBus;
+    if (busName === 'engine') targetBus = rt.engineBus;
+    else if (busName === 'ambient') targetBus = rt.ambientBus;
+    else if (busName === 'combat') targetBus = rt.combatBus;
+    else if (busName === 'ui') targetBus = rt.uiBus;
+    else if (busName === 'comms') targetBus = rt.commsBus;
+
+    let dest = targetBus;
     let panner = null;
     if (pan !== 0 && ctx.createStereoPanner) {
       panner = ctx.createStereoPanner();
       panner.pan.value = pan;
-      panner.connect(rt.sfxBus);
+      panner.connect(targetBus);
       dest = panner;
     }
 
     this._evictIfFull();
     const voice = playRecipe(ctx, recipe, dest, {
       peakGain: peak, detune: opts.detune || 0, rate, id: rt._nextVoiceId++, trackId: opts.trackId || null,
+      startTime: opts.startTime,
     }, rt._caches);
+    voice.busName = busName;
     voice._panner = panner;
     rt.voices.push(voice);
     return voice;
   },
 
   _ampFor(recipe) {
-    // recipes don't carry an explicit amp; derive a sane per-category peak.
     return audioRecipeBasePeak(recipe);
   },
 
   _evictIfFull() {
     const rt = this.rt;
-    // count only non-loop voices toward the cap; steal oldest if at cap
     if (rt.voices.length < MAX_AUDIO_VOICES) return;
-    let oldest = -1, oldestT = Infinity;
+    const now = rt.ctx ? rt.ctx.currentTime : 0;
+    let worstIdx = -1;
+    let maxPriority = -Infinity;
     for (let i = 0; i < rt.voices.length; i++) {
       const v = rt.voices[i];
       if (v.loop) continue;
-      if (v.startedAt < oldestT) { oldestT = v.startedAt; oldest = i; }
+      const age = now - v.startedAt;
+      const quietness = 1.0 - Math.min(1.0, Math.max(0.0, v.callGain || 1.0));
+      const priority = age * (quietness + 0.1); 
+      if (priority > maxPriority) {
+        maxPriority = priority;
+        worstIdx = i;
+      }
     }
-    if (oldest >= 0) {
-      const v = rt.voices[oldest];
+    if (worstIdx >= 0) {
+      const v = rt.voices[worstIdx];
       try { releaseVoice(rt.ctx, v); } catch (_) {}
       disposeVoice(v);
       if (v._panner) { try { v._panner.disconnect(); } catch (_) {} }
-      rt.voices.splice(oldest, 1);
+      rt.voices.splice(worstIdx, 1);
     }
   },
 
@@ -475,16 +564,32 @@ export const audio = {
 
   _onDamage(p) {
     if (!p) return;
-    if (p.isPlayer) { this.rt._lastDamageT = this.state.simTime; this._markMusicDirty(); }
-    // Shield-absorbed hits get a bright energy tick (pulse laser); hull hits get a heavier metallic
-    // crunch (mining impact, pitch-shifted down). shieldAbsorbed is the authoritative flag from the
-    // combat pipeline — brokeShield only indicates the shield BROKE this hit, not whether shields
-    // were active. Without shieldAbsorbed, hull hits on a ship with depleted shields would
-    // incorrectly play the shield-hit sound.
+    const rt = this.rt, ctx = rt.ctx;
+    if (p.isPlayer) { rt._lastDamageT = this.state.simTime; this._markMusicDirty(); }
+
     const onShield = !!p.shieldAbsorbed;
-    this.play(onShield ? 'sfx_wpn_pulse_laser' : 'sfx_mining_impact', {
-      position: p.pos || p.hitPoint, gain: onShield ? 0.35 : 0.6, rate: onShield ? 1.1 : 0.9,
-    });
+    if (onShield) {
+      const now = ctx ? ctx.currentTime : 0;
+      if (now - (rt._lastShieldHitTime || 0) < 2.0) {
+        rt._shieldHitStack = Math.min(4, (rt._shieldHitStack || 0) + 1);
+      } else {
+        rt._shieldHitStack = 0;
+      }
+      rt._lastShieldHitTime = now;
+      const pitchOffset = rt._shieldHitStack;
+      const rate = Math.pow(2, pitchOffset / 12.0);
+      this.play('sfx.shieldHit', { position: p.pos || p.hitPoint, gain: 0.7, rate });
+    } else {
+      if (p.kind === 'armor') {
+        this.play('sfx.armorHit', { position: p.pos || p.hitPoint, gain: 0.8 });
+      } else {
+        this.play('sfx.hullHit', { position: p.pos || p.hitPoint, gain: 0.9 });
+      }
+    }
+
+    if (p.isPlayer) {
+      this.play('sfx.playerDamage', { gain: 0.8 });
+    }
   },
 
   _onCollision(p) {
@@ -494,9 +599,28 @@ export const audio = {
 
   _onKilled(p) {
     if (!p) return;
-    const big = p.victimClass === 'capital' || p.victimClass === 'large' || p.type === 'station';
-    this.play(big ? 'sfx_explosion_large' : 'sfx_explosion_small', { position: p.pos, gain: 1 });
-    if (big) this._duckMusic();
+    const rt = this.rt, ctx = rt.ctx;
+    const isCapital = p.victimClass === 'capital' || p.victimClass === 'large' || p.type === 'station';
+    
+    if (isCapital && ctx) {
+      this._duckMusic();
+      const radius = p.victimRadius || p.radius || 120;
+      const pos1 = {
+        x: p.pos.x + (Math.random() - 0.5) * radius * 0.7,
+        z: p.pos.z + (Math.random() - 0.5) * radius * 0.7
+      };
+      const pos2 = {
+        x: p.pos.x + (Math.random() - 0.5) * radius * 0.7,
+        z: p.pos.z + (Math.random() - 0.5) * radius * 0.7
+      };
+      // Play two 30ms pre-detonation clicks
+      this.play('sfx_ui_hover', { position: pos1, startTime: ctx.currentTime + 0.05, gain: 0.9, rate: 0.5 });
+      this.play('sfx_ui_hover', { position: pos2, startTime: ctx.currentTime + 0.20, gain: 0.9, rate: 0.5 });
+      // Play the main capital explosion in 400ms
+      this.play('sfx.killCapital', { position: p.pos, startTime: ctx.currentTime + 0.40, gain: 1.0 });
+    } else {
+      this.play('sfx.killSmall', { position: p.pos, gain: 1.0 });
+    }
   },
 
   _onDestroyed(p) {
@@ -1258,12 +1382,47 @@ export const audio = {
     const nowWall = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
     const now = ctx.currentTime;
 
+    const dt = rt._lastWallTime !== undefined ? (nowWall - rt._lastWallTime) : 0.016;
+    rt._lastWallTime = nowWall;
+
     // (re)start any desired loop voices that were requested while suspended
     if (ctx.state === 'running') {
       for (const ownerId in rt._wantBeam) {
         if (!rt.loops['beam_' + ownerId]) this._startBeam(Number(ownerId));
       }
       if (rt._wantMining && !rt.loops.mining) this._onMiningStart({ minerId: rt._wantMining.minerId, targetId: rt._wantMining.targetId });
+    }
+
+    // Sidechaining logic (spec §1): combat ducks ambient & music buses by 6 dB (120ms attack / 900ms release)
+    let hasCombat = false;
+    for (const v of rt.voices) {
+      if (v.busName === 'combat' && !v._stopped) {
+        hasCombat = true;
+        break;
+      }
+    }
+    const targetDuck = hasCombat ? 0.501187 : 1.0;
+    const tc = targetDuck < rt.sidechainDuck ? 0.12 : 0.90;
+    const factor = Math.exp(-dt / tc);
+    rt.sidechainDuck = targetDuck + (rt.sidechainDuck - targetDuck) * factor;
+
+    // Apply setting gains with current sidechain factor
+    this._applySettings();
+
+    // Update continuous procedural sources
+    this._updateEngineHum();
+    this._updateBrakeHiss(dt);
+    this._updateTetherHum();
+    this._updatePads(now);
+    this._updateStationMurmur(now);
+
+    // Mining heat pitch-bend
+    if (rt.loops.mining && rt.loops.mining.filter) {
+      const heat = (this.state.player && this.state.player.beam && this.state.player.beam.heat) || 0;
+      const targetFreq = 1200 + (heat / 100.0) * 1200;
+      try {
+        rt.loops.mining.filter.frequency.setTargetAtTime(targetFreq, now, 0.1);
+      } catch (_) {}
     }
 
     // recover music gain after a duck (skip while paused — _onPause manages the bus)
@@ -1324,6 +1483,488 @@ export const audio = {
         // also clear from loops map if present
         for (const k in rt.loops) if (rt.loops[k] === v) delete rt.loops[k];
       }
+    }
+  },
+
+  _onVentBonus(p) {
+    this.play('sfx_vent_chime', { gain: 0.7, rate: 1.0 });
+    setTimeout(() => {
+      this.play('sfx_vent_chime', { gain: 0.65, rate: 1.25 });
+    }, 90);
+  },
+
+  _onSeamHit(p) {
+    const now = this.rt.ctx ? this.rt.ctx.currentTime : 0;
+    if (now - (this.rt._lastSeamHitAt || 0) < 0.5) return;
+    this.rt._lastSeamHitAt = now;
+    this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.6, rate: 1.8 });
+  },
+
+  _onCommsPopup(p) {
+    if (!p) return;
+    const category = p.category || 'ambient';
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const startTime = Math.max(now, rt._lastSquelchEndTime || 0);
+    rt._lastSquelchEndTime = startTime + 0.12;
+
+    this._playSquelch(category, startTime);
+  },
+
+  _playSquelch(category, startTime) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) return;
+
+    let recipeId = 'sfx_squelch_ambient';
+    if (category === 'story' || category === 'priority') {
+      recipeId = 'sfx_squelch_story';
+    } else if (category === 'danger' || category === 'warning' || category === 'alert') {
+      recipeId = 'sfx_squelch_danger';
+    }
+
+    this.play(recipeId, { gain: 0.8, startTime });
+  },
+
+  _ensureEngineHum() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt.engineOsc1) return;
+
+    const humGain = ctx.createGain();
+    humGain.gain.value = 0.8;
+
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = 55;
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.value = 55;
+    osc2.detune.value = 6;
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, rt._caches);
+    noise.loop = true;
+
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = 300;
+    noiseFilter.Q.value = 1.0;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.value = 0.0001;
+
+    osc1.connect(humGain);
+    osc2.connect(humGain);
+    
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(humGain);
+
+    humGain.connect(rt.engineBus);
+
+    try {
+      osc1.start(ctx.currentTime);
+      osc2.start(ctx.currentTime);
+      noise.start(ctx.currentTime);
+    } catch (_) {}
+
+    rt.engineHumGain = humGain;
+    rt.engineOsc1 = osc1;
+    rt.engineOsc2 = osc2;
+    rt.engineNoise = noise;
+    rt.engineNoiseGain = noiseGain;
+  },
+
+  _updateEngineHum() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || !rt.engineOsc1 || rt._paused) return;
+
+    const player = this.state.entities.get(this.state.playerId);
+    const boosting = !!(player && player.flags && player.flags.boosting);
+    const cruise = this.state.player && this.state.player.cruise;
+    const cruising = cruise && cruise.phase === 'cruising';
+    
+    const thrusting = !!(this.state.input && (
+      this.state.input.actions.forward ||
+      this.state.input.actions.backward ||
+      this.state.input.actions.strafeLeft ||
+      this.state.input.actions.strafeRight
+    ));
+
+    let f1 = 55, f2 = 55, d2 = 6, noiseG = 0.0001;
+    if (cruising) {
+      f1 = 65;
+      f2 = 65 * 1.5;
+      d2 = 0;
+    } else if (boosting) {
+      f1 = 110;
+      f2 = 110;
+      noiseG = 0.06;
+    } else if (thrusting) {
+      f1 = 78;
+      f2 = 78;
+    }
+
+    rt.engineOsc1.frequency.setTargetAtTime(f1, ctx.currentTime, 0.1);
+    rt.engineOsc2.frequency.setTargetAtTime(f2, ctx.currentTime, 0.1);
+    rt.engineOsc2.detune.setTargetAtTime(d2, ctx.currentTime, 0.1);
+    rt.engineNoiseGain.gain.setTargetAtTime(noiseG, ctx.currentTime, 0.15);
+  },
+
+  _ensureBrakeHiss() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt.brakeGain) return;
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, rt._caches);
+    noise.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1600;
+    filter.Q.value = 0.8;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(rt.engineBus);
+
+    try { noise.start(ctx.currentTime); } catch (_) {}
+
+    rt.brakeGain = gain;
+    rt.brakeNoise = noise;
+  },
+
+  _updateBrakeHiss(dt) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || !rt.brakeGain || rt._paused) return;
+
+    const player = this.state.entities.get(this.state.playerId);
+    const speed = player ? Math.hypot(player.vel.x, player.vel.z) : 0;
+    const braking = !!(this.state.input && this.state.input.actions.brake);
+
+    let decel = 0;
+    if (rt._prevSpeed !== undefined) {
+      decel = Math.max(0, rt._prevSpeed - speed) / Math.max(0.001, dt);
+    }
+    rt._prevSpeed = speed;
+
+    let targetGain = 0.0001;
+    if (braking && speed > 20) {
+      targetGain = Math.min(0.25, decel * 0.04);
+    }
+
+    rt.brakeGain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.05);
+  },
+
+  _ensureTetherHum() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || rt.tetherOsc) return;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = 90;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    gain.gainValue = 0.0001;
+
+    osc.connect(gain);
+    gain.connect(rt.ambientBus);
+
+    try { osc.start(ctx.currentTime); } catch (_) {}
+
+    rt.tetherOsc = osc;
+    rt.tetherHum = gain;
+  },
+
+  _updateTetherHum() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || !rt.tetherOsc || rt._paused) return;
+
+    const tether = this.state.player && this.state.player.tether;
+    const active = !!(tether && tether.active);
+    const strain = active ? (tether.strain || 0) : 0;
+
+    let targetFreq = 90;
+    let targetGain = 0.0001;
+
+    if (active) {
+      targetFreq = 90 + strain * 220;
+      targetGain = strain * 0.15;
+    }
+
+    rt.tetherOsc.frequency.setTargetAtTime(targetFreq, ctx.currentTime, 0.05);
+    rt.tetherHum.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.05);
+    rt.tetherHum.gainValue = targetGain;
+  },
+
+  _startPad(className, startTime) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) return null;
+    if (rt.pads[className]) return rt.pads[className];
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0.0001, startTime);
+    gainNode.connect(rt.musicBus);
+
+    const nodes = [];
+    const LFO_FREQ = 0.05;
+
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = LFO_FREQ;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.15;
+    lfo.connect(lfoGain);
+    try { lfo.start(startTime); } catch (_) {}
+    nodes.push(lfo, lfoGain);
+
+    if (className === 'core') {
+      const freqs = [110, 164.81, 220, 329.63];
+      for (let i = 0; i < 4; i++) {
+        const osc = ctx.createOscillator();
+        osc.type = i < 2 ? 'sine' : 'triangle';
+        osc.frequency.value = freqs[i];
+        
+        const g = ctx.createGain();
+        g.gain.value = i < 2 ? 0.15 : 0.08;
+        lfoGain.connect(g.gain);
+
+        osc.connect(g);
+        g.connect(gainNode);
+        try { osc.start(startTime); } catch (_) {}
+        nodes.push(osc, g);
+      }
+    } else if (className === 'belt') {
+      const freqs = [87.3, 87.3, 130.81, 174.61];
+      const detunes = [-15, 15, -10, 10];
+      for (let i = 0; i < 4; i++) {
+        const osc = ctx.createOscillator();
+        osc.type = i < 2 ? 'sawtooth' : 'triangle';
+        osc.frequency.value = freqs[i];
+        osc.detune.value = detunes[i];
+
+        const g = ctx.createGain();
+        g.gain.value = 0.08;
+        lfoGain.connect(g.gain);
+
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 180;
+
+        osc.connect(lp);
+        lp.connect(g);
+        g.connect(gainNode);
+        try { osc.start(startTime); } catch (_) {}
+        nodes.push(osc, g, lp);
+      }
+
+      const noise = ctx.createBufferSource();
+      noise.buffer = getNoiseBuffer(ctx, rt._caches);
+      noise.loop = true;
+
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 120;
+      lp.Q.value = 1.0;
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.value = 0.12;
+
+      noise.connect(lp);
+      lp.connect(noiseGain);
+      noiseGain.connect(gainNode);
+      try { noise.start(startTime); } catch (_) {}
+      nodes.push(noise, lp, noiseGain);
+
+    } else if (className === 'fringe') {
+      const freqs = [123.47, 130.81, 185.0, 196.00];
+      for (let i = 0; i < 4; i++) {
+        const osc = ctx.createOscillator();
+        osc.type = i < 2 ? 'sine' : 'triangle';
+        osc.frequency.value = freqs[i];
+
+        const g = ctx.createGain();
+        g.gain.value = 0.08;
+        lfoGain.connect(g.gain);
+
+        osc.connect(g);
+        g.connect(gainNode);
+        try { osc.start(startTime); } catch (_) {}
+        nodes.push(osc, g);
+      }
+    } else if (className === 'anomaly') {
+      const freqs = [87.3, 87.3 * 2.76, 87.3 * 2.76 * 1.5, 87.3 * 5.52];
+      for (let i = 0; i < 4; i++) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freqs[i];
+
+        const g = ctx.createGain();
+        g.gain.value = 0.1;
+        lfoGain.connect(g.gain);
+
+        osc.connect(g);
+        g.connect(gainNode);
+        try { osc.start(startTime); } catch (_) {}
+        nodes.push(osc, g);
+      }
+    }
+
+    const pad = {
+      className,
+      gainNode,
+      nodes,
+      startedAt: startTime,
+      volume: 0.0,
+      targetVolume: 0.0,
+      stopped: false,
+    };
+    
+    rt.pads[className] = pad;
+    return pad;
+  },
+
+  _stopPadObj(pad) {
+    if (pad.stopped) return;
+    pad.stopped = true;
+    for (const n of pad.nodes) {
+      try { n.stop(); } catch (_) {}
+      try { n.disconnect(); } catch (_) {}
+    }
+    try { pad.gainNode.disconnect(); } catch (_) {}
+    delete this.rt.pads[pad.className];
+  },
+
+  _updatePads(now) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) return;
+
+    if (!rt.pads) rt.pads = {};
+
+    const currentSectorId = this.state.world && this.state.world.currentSectorId;
+    const sector = this.state.world && this.state.world.sectors && this.state.world.sectors[currentSectorId];
+    const targetClass = getPaletteClassName(sector);
+    
+    const docked = !!(rt._docked || (this.state.ui && this.state.ui.docked));
+
+    if (targetClass !== rt.activePadClass) {
+      const prevClass = rt.activePadClass;
+      rt.activePadClass = targetClass;
+      
+      const newPad = this._startPad(targetClass, ctx.currentTime);
+      if (newPad) {
+        newPad.targetVolume = 1.0;
+        newPad.gainNode.gain.cancelScheduledValues(ctx.currentTime);
+        newPad.gainNode.gain.setValueAtTime(Math.max(0.0001, newPad.gainNode.gain.value), ctx.currentTime);
+        newPad.gainNode.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 4.0);
+      }
+
+      if (prevClass) {
+        const oldPad = rt.pads[prevClass];
+        if (oldPad) {
+          oldPad.targetVolume = 0.0;
+          oldPad.gainNode.gain.cancelScheduledValues(ctx.currentTime);
+          oldPad.gainNode.gain.setValueAtTime(Math.max(0.0001, oldPad.gainNode.gain.value), ctx.currentTime);
+          oldPad.gainNode.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 4.0);
+          
+          setTimeout(() => {
+            this._stopPadObj(oldPad);
+          }, 4200);
+        }
+      }
+    }
+
+    const activePad = rt.pads[targetClass];
+    if (activePad) {
+      if (docked && activePad.gainNode.gain.value > 0.01) {
+        activePad.gainNode.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.5);
+      } else if (!docked && activePad.gainNode.gain.value < 0.99 && activePad.targetVolume === 1.0) {
+        activePad.gainNode.gain.setTargetAtTime(1.0, ctx.currentTime, 0.5);
+      }
+    }
+
+    const activePadObj = rt.pads[targetClass];
+    if (activePadObj && !docked && !rt._paused) {
+      if (targetClass === 'core') {
+        if (ctx.currentTime - (rt._lastBellTime || 0) >= 45) {
+          rt._lastBellTime = ctx.currentTime;
+          this.play('sfx_core_bell', { gain: 0.25 });
+        }
+      } else if (targetClass === 'fringe') {
+        const nextTickDelay = rt._nextRadioTickTime || 0;
+        if (ctx.currentTime >= nextTickDelay) {
+          rt._nextRadioTickTime = ctx.currentTime + 2.0 + Math.random() * 4.0;
+          this.play('sfx_fringe_tick', { gain: 0.15 });
+        }
+      } else if (targetClass === 'anomaly') {
+        if (ctx.currentTime - (rt._lastAnomalySwellTime || 0) >= 8 + Math.random() * 7) {
+          rt._lastAnomalySwellTime = ctx.currentTime;
+          this.play('sfx_anomaly_swell', { gain: 0.2 });
+        }
+      }
+    }
+  },
+
+  _updateStationMurmur(now) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || !rt._docked || rt._paused) return;
+
+    if (now - (rt._lastMurmurTime || 0) >= 8 + Math.random() * 10) {
+      rt._lastMurmurTime = now;
+      this._playPAMurmur();
+    }
+  },
+
+  _playPAMurmur() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) return;
+
+    const syllables = 4 + Math.floor(Math.random() * 5);
+    let time = ctx.currentTime;
+
+    for (let i = 0; i < syllables; i++) {
+      const freq = 350 + Math.random() * 250;
+      const dur = 0.08 + Math.random() * 0.12;
+      
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = freq;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 600;
+      filter.Q.value = 2.0;
+
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, time);
+      g.gain.linearRampToValueAtTime(0.015, time + 0.01);
+      g.gain.setValueAtTime(0.015, time + dur - 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+
+      o.connect(filter);
+      filter.connect(g);
+      g.connect(rt.ambientBus);
+
+      try {
+        o.start(time);
+        o.stop(time + dur + 0.02);
+      } catch (_) {}
+
+      o.onended = () => {
+        try {
+          o.disconnect();
+          filter.disconnect();
+          g.disconnect();
+        } catch (_) {}
+      };
+
+      time += dur + 0.03;
     }
   },
 };

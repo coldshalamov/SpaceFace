@@ -82,6 +82,22 @@ function injectStyle() {
   .sf-title-logo { font-family:var(--mono); letter-spacing:.5em; font-size:46px; color:var(--accent);
     text-shadow:0 0 40px rgba(57,208,255,.5); text-align:center; margin:0; }
   .sf-title-tag { text-align:center; color:var(--ink-dim); letter-spacing:.28em; font-size:12px; margin-bottom:18px; }
+  /* First-show stagger-in (spec2/03 §3): menu items fade up 90ms apart, first show only. */
+  .sf-menu.sf-stagger .sf-col > button { opacity:0; transform:translateY(6px);
+    animation:sf-stagger-in .25s ease-out forwards; }
+  .sf-menu.sf-stagger .sf-col > button:nth-child(1) { animation-delay:0ms; }
+  .sf-menu.sf-stagger .sf-col > button:nth-child(2) { animation-delay:90ms; }
+  .sf-menu.sf-stagger .sf-col > button:nth-child(3) { animation-delay:180ms; }
+  .sf-menu.sf-stagger .sf-col > button:nth-child(4) { animation-delay:270ms; }
+  .sf-menu.sf-stagger .sf-col > button:nth-child(5) { animation-delay:360ms; }
+  @keyframes sf-stagger-in { to { opacity:1; transform:translateY(0); } }
+  /* CONTINUE fade-to-game + location label (spec2/03 §3). */
+  .sf-continue-fade { position:fixed; inset:0; z-index:3000; background:#000; opacity:0;
+    pointer-events:auto; transition:opacity 1s ease; display:flex; align-items:flex-end;
+    justify-content:flex-start; padding:0 0 36px 36px; }
+  .sf-continue-fade.open { opacity:1; }
+  .sf-continue-fade__loc { font-family:var(--mono); letter-spacing:.22em; font-size:13px;
+    color:var(--ink-dim); text-transform:uppercase; }
   `;
   document.head.appendChild(s);
 }
@@ -217,6 +233,14 @@ export const mainMenuScreen = {
     rootEl.innerHTML = '';
     rootEl.classList.add('panel', 'sf-menu', 'sf-menu-narrow');
 
+    // First-show stagger-in (spec2/03 §3): items fade up 90ms apart, first show only.
+    if (!mainMenuScreen._staggeredOnce) {
+      rootEl.classList.add('sf-stagger');
+      mainMenuScreen._staggeredOnce = true;
+      // Drop the stagger class after the animation so re-shows aren't re-animated.
+      setTimeout(() => rootEl.classList.remove('sf-stagger'), 900);
+    }
+
     rootEl.appendChild(el('h1', 'sf-title-logo', 'SPACEFACE'));
     rootEl.appendChild(el('div', 'sf-title-tag', 'A trade & combat sandbox'));
 
@@ -248,9 +272,10 @@ export const mainMenuScreen = {
         this._render(ctx);
         return;
       }
-      // Continue = load the exact slot described by the title summary. Avoid a second "latest"
-      // resolver pass so legacy or repaired indexes cannot make the button promise one save and
-      // load another.
+      // CONTINUE = 1s black-to-game fade with the location name bottom-left (spec2/03 §3). The load
+      // proceeds underneath the veil; the fade lifts when the sector is live.
+      const loc = (latest.meta && (latest.meta.sectorName || latest.meta.sectorSummary)) || 'HELIOS BELT';
+      this._showContinueFade(ctx, String(loc).toUpperCase());
       ctx.bus.emit('game:load', { slot: latest.slot });
     });
     bLoad.addEventListener('click', () => pushWhenReady(ctx, 'saveLoad', 'Load Game'));
@@ -283,7 +308,95 @@ export const mainMenuScreen = {
     ctx.state.timeScale = 0;
     this._render(ctx);
     if (refs && refs.bContinue && !refs.bContinue.disabled) try { refs.bContinue.focus(); } catch (e) {}
+    this._startIdleAttract(ctx);
   },
-  onHide() {},
+  onHide() {
+    this._stopIdleAttract();
+  },
   refresh(ctx) { this._render(ctx); },
+
+  // 12s idle attract (spec2/03 §3): after 12s of no input at the title, the camera drifts through a
+  // live background sector (render-only — the sim stays frozen, timeScale 0). Any input resets it.
+  _startIdleAttract(ctx) {
+    this._stopIdleAttract();
+    if (!ctx || !ctx.state) return;
+    const state = ctx.state;
+    let idleS = 0;
+    let drifting = false;
+    const reset = () => { idleS = 0; this._setAttractDrift(state, false); drifting = false; };
+    this._attractReset = reset;
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', reset);
+      window.addEventListener('pointerdown', reset);
+      window.addEventListener('mousemove', reset);
+    }
+    this._attractRaf = (typeof requestAnimationFrame === 'function')
+      ? requestAnimationFrame(function tick() {
+          idleS += 1 / 60;
+          if (idleS >= 12 && !drifting) { drifting = true; mainMenuScreen._setAttractDrift(state, true); }
+          mainMenuScreen._attractRaf = requestAnimationFrame(tick);
+        })
+      : null;
+  },
+  _stopIdleAttract() {
+    const reset = this._attractReset;
+    this._attractReset = null;
+    if (this._attractRaf && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this._attractRaf);
+      this._attractRaf = null;
+    }
+    if (reset && typeof window !== 'undefined') {
+      window.removeEventListener('keydown', reset);
+      window.removeEventListener('pointerdown', reset);
+      window.removeEventListener('mousemove', reset);
+    }
+    // Best-effort: clear the drift flag on whatever render/camera the app exposes.
+    try {
+      const sf = typeof window !== 'undefined' && window.SF;
+      const st = sf && sf.state;
+      if (st && st.render) this._setAttractDrift(st, false);
+    } catch (e) { /* non-critical */ }
+  },
+  // Nudge the camera controller into a slow render-only drift orbit. timeScale stays 0 (no sim).
+  _setAttractDrift(state, on) {
+    const cam = state.render && state.render.cameraCtrl;
+    if (!cam) return;
+    if (on) {
+      if (typeof cam.setAttract === 'function') cam.setAttract(true);
+      else if (cam.attract != null) cam.attract = true;
+    } else {
+      if (typeof cam.setAttract === 'function') cam.setAttract(false);
+      else if (cam.attract != null) cam.attract = false;
+    }
+  },
+
+  // CONTINUE: 1s black-to-game fade with the location name bottom-left (spec2/03 §3).
+  _showContinueFade(ctx, locationName) {
+    if (typeof document === 'undefined') return;
+    let fade = document.querySelector('.sf-continue-fade');
+    if (!fade) {
+      fade = document.createElement('div');
+      fade.className = 'sf-continue-fade';
+      const loc = document.createElement('div');
+      loc.className = 'sf-continue-fade__loc';
+      fade.appendChild(loc);
+      (document.getElementById('ui-root') || document.body).appendChild(fade);
+    }
+    fade.querySelector('.sf-continue-fade__loc').textContent = locationName || 'HELIOS BELT';
+    // Force reflow so the transition runs from 0 → 1.
+    void fade.offsetWidth;
+    fade.classList.add('open');
+    // Lift the veil once the sector is live (mode === flight) or after a hard 4s cap.
+    const start = Date.now();
+    const lift = () => {
+      const live = ctx && ctx.state && ctx.state.mode === 'flight';
+      if (live || Date.now() - start > 4000) {
+        fade.classList.remove('open');
+        setTimeout(() => { if (fade.parentNode) fade.remove(); }, 1100);
+        return;
+      }
+      setTimeout(lift, 120);
+    };
+    setTimeout(lift, 200);
+  },
 };

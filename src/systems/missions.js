@@ -74,6 +74,10 @@ const MINEABLE_CMDTYS = COMMODITIES.filter((c) => (c.producedBy || []).includes(
 const CONTRABAND_CMDTYS = COMMODITIES.filter((c) => c.legality === 'contraband' || c.legality === 'restricted').map((c) => c.id);
 const ONE_LOAD_CARGO_TYPES = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
 const MISSION_RECEIPT_LIMIT = 10;
+const BULK_HAUL_TYPE = 'bulk_haul';
+const BULK_HAUL_MIN_MASS_U = 25;
+const BULK_HAUL_PAY_MULT = 0.8;
+const BULK_HAUL_FEE = 0.06;
 
 // Station size → tier number used for slot count (S=0,M=1,L=2).
 const SIZE_TIER = { S: 0, M: 1, L: 2 };
@@ -153,6 +157,7 @@ function missionNavReason(m, station, sector) {
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
+    case BULK_HAUL_TYPE: return `Tether-haul ${remaining || p.massU || ''}u bulk ore to ${stationName}`.trim();
     case 'mining_quota': return `Mine ${remaining || p.qty || ''}u ${cargo}`.trim();
     case 'salvage_retrieval': return `Recover ${p.qty || ''}u ${cargo} for ${stationName}`.trim();
     case 'smuggling_run': return `Smuggle ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
@@ -210,6 +215,8 @@ export const missions = {
     bus.on('economy:tradeCompleted', (p) => this._onTrade(p));
     // mining_quota: aggregate mined units of the target commodity.
     bus.on('mining:yield', (p) => this._onMiningYield(p));
+    // bulk_haul: tethered bulk chunks delivered at refinery docks.
+    bus.on('mining:bulkHaulDelivered', (p) => this._onBulkHaulDelivered(p));
     // bounty_hunt / patrol_clear: a tagged hostile died to the player.
     bus.on('entity:killed', (p) => this._onKill(p));
     // escort fail: escortee destroyed.
@@ -325,6 +332,11 @@ export const missions = {
       const offer = this._rollOffer(typeId, info, rng, epoch, i);
       if (offer) offers.push(offer);
     }
+    const bulkHaul = this._rollBulkHaulOffer(info, rng, epoch, 'bulk');
+    if (bulkHaul) {
+      offers.unshift(bulkHaul);
+      if (offers.length > S) offers.length = S;
+    }
     const intro = this._rollStoryBranchIntroOffer(info, rng, epoch);
     if (intro) {
       offers.unshift(intro);
@@ -408,6 +420,40 @@ export const missions = {
     };
   },
 
+  _rollBulkHaulOffer(info, rng, epoch, idx) {
+    if (!info || info.type !== 'mining') return null;
+    const dest = this._pickBulkHaulDestination(info, rng);
+    if (!dest) return null;
+    const cmdtyId = 'cmdty_ore_iron';
+    const commodity = CMDTY_BY_ID.get(cmdtyId);
+    const basePrice = commodity && commodity.basePrice || 28;
+    const massU = BULK_HAUL_MIN_MASS_U + Math.floor(rng() * 16);
+    const expectedPayout = round((massU * basePrice * BULK_HAUL_PAY_MULT) * (1 - BULK_HAUL_FEE));
+    const distance = sectorDistanceWu(info.sectorId, dest.sectorId);
+    const sectorRisk = dangerTier(SECTOR_BY_ID.get(dest.sectorId) || SECTOR_BY_ID.get(info.sectorId) || {});
+    const riskTier = clamp(sectorRisk, 1, 3);
+    const taskTime = massU * 2.5;
+    const time_limit_s = round((distance / (MISSION_TUNING.cruiseSpeedRef || 140) + taskTime) * (MISSION_TUNING.slackDefault || 2.2));
+    return {
+      id: `mo_${info.id}_${epoch}_${idx}`,
+      type: BULK_HAUL_TYPE,
+      stationId: info.id,
+      factionId: info.factionId,
+      reward_cr: 0,
+      time_limit_s,
+      collateral_cr: 0,
+      riskTier,
+      destStationId: dest.id,
+      destSectorId: dest.sectorId,
+      distance,
+      params: { cmdtyId, massU, basePrice, expectedPayout, fValue: 1, taskTime },
+      title: `Tether-haul ${massU}u ${commodity ? commodity.name : 'Ore'} to ${dest.name}`,
+      expiresAtEpoch: epoch + 1,
+      storyTag: null,
+      hotTip: false,
+    };
+  },
+
   _rollStoryBranchIntroOffer(info, rng, epoch) {
     const story = this.state && this.state.story;
     if (!story || story.beatIndex !== 4 || story.branch) return null;
@@ -436,6 +482,17 @@ export const missions = {
     const near = candidates.filter((s) => s.sectorId === info.sectorId
       || (sec && (sec.neighbors || []).includes(s.sectorId)));
     const pool = near.length ? near : candidates;
+    return pool[Math.floor(rng() * pool.length)];
+  },
+
+  _pickBulkHaulDestination(info, rng) {
+    const refineries = ALL_STATIONS.filter((s) => s.type === 'refinery' || s.services && s.services.includes('refine'));
+    if (!refineries.length) return info;
+    const same = refineries.filter((s) => s.sectorId === info.sectorId);
+    if (same.length) return same[Math.floor(rng() * same.length)];
+    const sec = SECTOR_BY_ID.get(info.sectorId);
+    const near = refineries.filter((s) => sec && (sec.neighbors || []).includes(s.sectorId));
+    const pool = near.length ? near : refineries;
     return pool[Math.floor(rng() * pool.length)];
   },
 
@@ -643,6 +700,7 @@ export const missions = {
   _objectiveTarget(typeId, params) {
     switch (typeId) {
       case 'bulk_trade': return params.qty;
+      case BULK_HAUL_TYPE: return params.massU || 1;
       case 'mining_quota': return params.qty;
       case 'patrol_clear': return params.clearCount;
       case 'bounty_hunt': return 1;
@@ -797,6 +855,22 @@ export const missions = {
       return { ...base, stationId: null, sectorId: this.state.world && this.state.world.currentSectorId || m.destSectorId };
     }
 
+    if (m.type === BULK_HAUL_TYPE) {
+      const chunk = this._nearestBulkChunk();
+      if (chunk) {
+        return {
+          ...base,
+          stationId: null,
+          sectorId: this.state.world && this.state.world.currentSectorId || m.destSectorId,
+          pos: { x: chunk.pos.x, z: chunk.pos.z },
+          reason: 'Tether a bulk chunk, then dock at ' + (station && station.name || 'a refinery'),
+        };
+      }
+      const targetStation = this._liveStation(m.destStationId);
+      if (targetStation) return { ...base, pos: { x: targetStation.pos.x, z: targetStation.pos.z } };
+      return base;
+    }
+
     const targetStation = this._liveStation(m.destStationId);
     if (targetStation) return { ...base, pos: { x: targetStation.pos.x, z: targetStation.pos.z } };
     return base;
@@ -829,6 +903,22 @@ export const missions = {
     let bestD2 = Infinity;
     for (const e of missionIndexedEntities(this.state, 'mineables', 'asteroids')) {
       if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+      const dx = e.pos.x - (player && player.pos ? player.pos.x : 0);
+      const dz = e.pos.z - (player && player.pos ? player.pos.z : 0);
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { best = e; bestD2 = d2; }
+    }
+    return best;
+  },
+
+  _nearestBulkChunk() {
+    const player = this.state.entities.get(this.state.playerId);
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of missionIndexedEntities(this.state, 'mineables', 'asteroids')) {
+      if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos || !e.data || !e.data.isChunk) continue;
+      const massU = Number(e.data.bulkMassU != null ? e.data.bulkMassU : e.data.yieldU) || 0;
+      if (massU <= 20) continue;
       const dx = e.pos.x - (player && player.pos ? player.pos.x : 0);
       const dz = e.pos.z - (player && player.pos ? player.pos.z : 0);
       const d2 = dx * dx + dz * dz;
@@ -947,6 +1037,19 @@ export const missions = {
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
     this._storyTrigger('mine', p);
+  },
+
+  _onBulkHaulDelivered(p) {
+    if (!p || !p.stationId) return;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (m.status !== 'active' || m.type !== BULK_HAUL_TYPE) continue;
+      if (m.destStationId && m.destStationId !== p.stationId) continue;
+      const massU = Math.max(0, Number(p.massU) || 0);
+      m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + massU);
+      if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
+      else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
+    }
   },
 
   _onKill(p) {
@@ -1086,6 +1189,8 @@ export const missions = {
         return 'Manifest sealed at ' + dest + '. ' + cargo + ' cleared the dock and the client released payment.';
       case 'bulk_trade':
         return 'The shortage at ' + dest + ' is covered for now. Your sale moved the board and the client noticed.';
+      case BULK_HAUL_TYPE:
+        return 'Bulk ore received at ' + dest + '. The refinery logged the tether-haul and cleared the contract.';
       case 'mining_quota':
         return 'Quota received. The assay office logged ' + cargo + '; the rest of the rock can stay quiet.';
       case 'salvage_retrieval':
