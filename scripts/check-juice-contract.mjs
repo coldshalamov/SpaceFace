@@ -234,13 +234,16 @@ check('camera.js: killCam method and pushZoom', () => {
   assert(src.includes('pushZoom(0.25'), 'kill-cam dolly +25%');
 });
 
-// --- Summary ---
-const failed = checks.filter((c) => !c.ok);
-for (const c of checks) {
-  console.log(c.ok ? `✓ ${c.name}` : `✗ ${c.name}: ${c.error}`);
+async function run() {
+  // --- Summary ---
+  const failed = checks.filter((c) => !c.ok);
+  for (const c of checks) {
+    console.log(c.ok ? `✓ ${c.name}` : `✗ ${c.name}: ${c.error}`);
+  }
+  if (failed.length) {
+    console.log(`\n${failed.length}/${checks.length} checks failed.`);
+    process.exit(1);
+  }
+  console.log(`\nAll ${checks.length} juice-contract checks passed.`);
 }
-if (failed.length) {
-  console.log(`\n${failed.length}/${checks.length} checks failed.`);
-  process.exit(1);
-}
-console.log(`\nAll ${checks.length} juice-contract checks passed.`);
+run().catch((e) => { console.error(e); process.exit(1); });
