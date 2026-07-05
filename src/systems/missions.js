@@ -78,6 +78,10 @@ const BULK_HAUL_TYPE = 'bulk_haul';
 const BULK_HAUL_MIN_MASS_U = 25;
 const BULK_HAUL_PAY_MULT = 0.8;
 const BULK_HAUL_FEE = 0.06;
+const MISSION_HOSTILE_SPAWN_MIN_WU = 1700;
+const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
+const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
+const MISSION_PORT_SAFE_RADIUS_WU = 1200;
 
 // Station size → tier number used for slot count (S=0,M=1,L=2).
 const SIZE_TIER = { S: 0, M: 1, L: 2 };
@@ -1412,8 +1416,8 @@ export const missions = {
       for (let i = 0; i < n; i++) {
         const typeId = pool[Math.floor(rng() * pool.length)];
         const level = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
-        const ang = rng() * Math.PI * 2, r = 500 + rng() * 600;
-        const pos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+        const pos = missionHostileSpawnPos(this.state, { x: px, z: pz }, rng);
+        if (!pos) continue;
         const spec = makeEnemySpawnSpec(typeId, level, pos);
         spec.data = spec.data || {};
         spec.data.missionTag = m.id; // attribution helper (kill resolver matches by entity id below)
@@ -1820,6 +1824,37 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     repDelta,
     researchPoints,
   };
+}
+
+function missionHostileSpawnPos(state, origin, rng) {
+  const center = origin || { x: 0, z: 0 };
+  for (let attempt = 0; attempt < MISSION_HOSTILE_SPAWN_ATTEMPTS; attempt++) {
+    const ang = rng() * Math.PI * 2;
+    const r = MISSION_HOSTILE_SPAWN_MIN_WU + rng() * (MISSION_HOSTILE_SPAWN_MAX_WU - MISSION_HOSTILE_SPAWN_MIN_WU);
+    const pos = { x: center.x + Math.cos(ang) * r, z: center.z + Math.sin(ang) * r };
+    if (outsideMissionPortSafety(state, pos)) return pos;
+  }
+  return null;
+}
+
+function outsideMissionPortSafety(state, pos) {
+  const active = state && state.world && state.world.activeSector || {};
+  for (const station of active.stations || []) {
+    if (!station || !station.pos) continue;
+    const dockRadius = Number(station.data && station.data.dockRadius);
+    const radius = Math.max(MISSION_PORT_SAFE_RADIUS_WU, Number.isFinite(dockRadius) ? dockRadius + 900 : 0);
+    if (distSq(pos, station.pos) < radius * radius) return false;
+  }
+  for (const gate of active.gates || []) {
+    if (gate && gate.pos && distSq(pos, gate.pos) < 1000 * 1000) return false;
+  }
+  return true;
+}
+
+function distSq(a, b) {
+  const dx = (a && a.x || 0) - (b && b.x || 0);
+  const dz = (a && a.z || 0) - (b && b.z || 0);
+  return dx * dx + dz * dz;
 }
 
 // Story-beat trigger kind (first-X model). Gate-only beats (3/6/7) use discrete events / gates.

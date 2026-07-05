@@ -22,11 +22,13 @@
 
 import { STORY_BEATS } from '../data/missions.js';
 import { BEAT_CONTENT } from '../data/narrative.js';
+import { drawSeeded, hash32 } from '../core/rng.js';
 import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
+const TAU = Math.PI * 2;
 
 // ── FIRST-HOUR PACING (spec2/03) ────────────────────────────────────────────────
 // The fix for "the open teaches five things at once" is PACING, not deletion: one beat → one verb
@@ -43,13 +45,15 @@ const BEACON_RANGE_WU = 420;  // B0 DONE: within this of the beacon
 const TETHER_REEL_MAX_WU = 60;// B1: reel target distance
 const SEAM_ORE_TARGET = 3;    // B2 DONE: ore collected
 const PIRATE_HULL_FLEE_FRAC = 0.30; // B3: pirate flees at ≤30% hull
-const B3_SPAWN_OFFSET_WU = 700;     // B3 pirate spawn distance from player
+const B3_SPAWN_MIN_WU = 1700;       // B3 pirate must telegraph before it can threaten the player
+const B3_SPAWN_MAX_WU = 2300;
 const B1_DERELICT_OFFSET_WU = 80;   // B1 derelict spawn distance from beacon
+const PORT_SAFE_SPAWN_RADIUS_WU = 1200;
 
 const BEATS = [
   { // B0 WAKE (0:00)
     key: 'wake',
-    line: 'Thrust to the beacon.',
+    line: 'Contract 47-A: thrust to the beacon.',
     done: 'beaconRange',
   },
   { // B1 THE DERELICT (~1:30) — tether trio
@@ -61,18 +65,17 @@ const BEATS = [
     ],
     done: 'tether:released',
   },
-  { // B2 FIRST SEAM (~3:00) — scan + mine + heat rhythm
+  { // B2 FIRST SEAM (~3:00) — scan + mine
     key: 'seam',
     line: 'Pulse. C.',
     followups: [
       { on: 'scan:hit', line: 'Beam the bright seams. RMB.' },
-      { on: 'mining:ventBonus', line: 'Release in the amber. Remember that.' },
     ],
     done: 'oreCollected',
   },
   { // B3 THE SNARE (~5:00) — weak pirate interdicts, flees at 30%, dumps cargo
     key: 'snare',
-    line: 'Trouble. Guns follow your cursor.',
+    line: 'Trouble. Pulse Laser S follows your cursor.',
     done: 'pirateGone',
   },
   { // B4 DOCK (~7:00) — sell flow + ONE recommended contract
@@ -143,7 +146,6 @@ export const onboarding = {
     bus.on('tether:released', () => this._onBeatEvent('tether:released'));
     bus.on('tether:broke', () => this._onBeatEvent('tether:released'));
     bus.on('scan:pulse', () => this._onBeatEvent('scan:hit'));
-    bus.on('mining:ventBonus', () => this._onBeatEvent('mining:ventBonus'));
     bus.on('entity:killed', (p) => this._onBeatKill(p || {}));
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
@@ -395,9 +397,9 @@ export const onboarding = {
       this._dropDerelictSalvage();
     } else if (done === 'mission:accepted' && eventName === 'mission:accepted') {
       resolved = true; // B5: accepting any offer ends the tutorial
-    } else if (done === 'recommendSurfaced' && eventName === 'dock:docked') {
-      // B4 DONE = the recommended contract surfaced at the dock. The recommendation engine already
-      // produces exactly one; reaching the dock (and the board) satisfies the beat.
+    } else if (done === 'recommendSurfaced' && eventName === 'sold') {
+      // B4 DONE = the player sold the haul, which surfaces the board's one recommended contract.
+      // The "Board's got one job for you." followup bark fires on this same event (just above).
       resolved = true;
     } else if (done === 'pirateGone') {
       // handled in _onBeatKill (pirate dead) + _checkPirateFlee (pirate fled at ≤30%)
@@ -557,9 +559,7 @@ export const onboarding = {
 
     let mode = 'flight';
 
-    // Check for mining beam active.
-    const beam = state.player.miningBeam;
-    if (beam && beam.heat > 0) mode = 'mining';
+    if (state.input && state.input.fireGroup === 2) mode = 'mining';
 
     // Check for hostile target or incoming fire (combat takes priority over mining).
     const tid = state.player.targetId;
@@ -616,7 +616,7 @@ export const onboarding = {
     const beacon = this._findBeacon();
     if (!beacon || !beacon.pos || !this.helpers || !this.helpers.spawnEntity) return;
     // Offset from the beacon so the player learns to fly+latch, not spawn-dock.
-    const ang = (st.rng ? st.rng() : Math.random()) * Math.PI * 2;
+    const ang = onboardingRandom(st) * TAU;
     const pos = {
       x: beacon.pos.x + Math.cos(ang) * B1_DERELICT_OFFSET_WU,
       z: beacon.pos.z + Math.sin(ang) * B1_DERELICT_OFFSET_WU,
@@ -636,7 +636,7 @@ export const onboarding = {
     const wreck = st.entities && st.entities.get(this._derelictId);
     if (!wreck || !wreck.pos) return;
     for (let i = 0; i < 2; i++) {
-      const ang = (st.rng ? st.rng() : Math.random()) * Math.PI * 2;
+      const ang = onboardingRandom(st) * TAU;
       const sp = 12;
       this.helpers.spawnEntity({
         type: 'pickup',
@@ -648,20 +648,20 @@ export const onboarding = {
     }
   },
 
-  // B3: spawn a weak pirate (~700 wu out) that interdicts, flees at ≤30% hull, dumps cargo.
+  // B3: spawn a weak pirate at standoff range; it must telegraph before it can threaten the player.
   _spawnPirate() {
     const st = this.state;
     const player = st.entities && st.entities.get(st.playerId);
     if (!player || !player.pos) return;
     if (typeof makeEnemySpawnSpec !== 'function' || !this.helpers || !this.helpers.spawnEntity) return;
-    const ang = (st.rng ? st.rng() : Math.random()) * Math.PI * 2;
-    const pos = {
-      x: player.pos.x + Math.cos(ang) * B3_SPAWN_OFFSET_WU,
-      z: player.pos.z + Math.sin(ang) * B3_SPAWN_OFFSET_WU,
-    };
+    const pos = this._tutorialHostileSpawnPos(player);
+    if (!pos) return;
     // Weak: level 1 reaver_pirate (pirate archetype). Reduced hull so it reads as a tutorial foe.
     const spec = makeEnemySpawnSpec('reaver_pirate', 1, pos);
     if (spec) {
+      spec.data = spec.data || {};
+      spec.data.ai = spec.data.ai || {};
+      spec.data.ai.spawnContext = 'tutorial_pirate';
       spec.hull = spec.hullMax = Math.round((spec.hullMax || 80) * 0.6);
       const pirate = this.helpers.spawnEntity(spec);
       if (pirate) {
@@ -670,6 +670,38 @@ export const onboarding = {
         if (ob) ob._pirateId = pirate.id;
       }
     }
+  },
+
+  _tutorialHostileSpawnPos(player) {
+    for (let attempt = 0; attempt < 24; attempt++) {
+      const ang = onboardingRandom(this.state) * TAU;
+      const r = B3_SPAWN_MIN_WU + onboardingRandom(this.state) * (B3_SPAWN_MAX_WU - B3_SPAWN_MIN_WU);
+      const pos = {
+        x: player.pos.x + Math.cos(ang) * r,
+        z: player.pos.z + Math.sin(ang) * r,
+      };
+      if (this._outsidePortSafety(pos)) return pos;
+    }
+    return null;
+  },
+
+  _outsidePortSafety(pos) {
+    const active = this.state.world && this.state.world.activeSector || {};
+    const tooClose = (anchor, radius = PORT_SAFE_SPAWN_RADIUS_WU) => {
+      if (!anchor || !anchor.pos) return false;
+      const dx = pos.x - anchor.pos.x;
+      const dz = pos.z - anchor.pos.z;
+      return dx * dx + dz * dz < radius * radius;
+    };
+    for (const station of active.stations || []) {
+      const dataRadius = station && station.data && Number(station.data.dockRadius);
+      const radius = Math.max(PORT_SAFE_SPAWN_RADIUS_WU, Number.isFinite(dataRadius) ? dataRadius + 900 : 0);
+      if (tooClose(station, radius)) return false;
+    }
+    for (const gate of active.gates || []) {
+      if (tooClose(gate, 1000)) return false;
+    }
+    return true;
   },
 
   // B3: check if the pirate should flee at ≤30% hull (dumping cargo). Once flagged, it's DONE.
@@ -835,11 +867,11 @@ export const onboarding = {
       titleEl.className = 'sf-ob-title';
       titleEl.textContent = beat.line || '';
       body.appendChild(titleEl);
-      // B2 shows ore-collection progress.
+      // B2 shows 47-A sample collection progress.
       if (beat.key === 'seam') {
         const progressEl = document.createElement('div');
         progressEl.className = 'sf-ob-progress';
-        progressEl.textContent = 'ORE: ' + Math.min(ob.oreCollected || 0, SEAM_ORE_TARGET) + ' / ' + SEAM_ORE_TARGET;
+        progressEl.textContent = 'SAMPLE: ' + Math.min(ob.oreCollected || 0, SEAM_ORE_TARGET) + ' / ' + SEAM_ORE_TARGET;
         body.appendChild(progressEl);
       }
     }
@@ -854,3 +886,11 @@ export const onboarding = {
     }
   },
 };
+
+function onboardingRandom(state) {
+  if (state && typeof state.rng === 'function') return state.rng();
+  const onboardingState = state && state.onboarding && typeof state.onboarding === 'object'
+    ? state.onboarding
+    : {};
+  return drawSeeded(onboardingState, '_rngSeed', hash32(state && state.meta && state.meta.seed, 'onboarding'));
+}
