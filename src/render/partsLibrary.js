@@ -128,13 +128,9 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'hulls/hull_capital.glb',
       'hulls/hull_multirole.glb',
       'hulls/hull_gunship.glb',
-      // Authored whole-ship bodies (cockpit/fins/engine baked into one mesh, SOCKET_* only). Loaded
-      // under the hull slot so their declared slot:'hull' metadata matches the loader; selected per
-      // defId via WHOLE_SHIP_FILE_BY_DEF_ID, which also makes the composition skip cockpit/engine/fin.
-      // Excluded from the generic seed-pick pool so a normal ship never picks a whole body by accident.
-      'wholeships/kestrel.glb',
-      'wholeships/pelican.glb',
-      'wholeships/wasp.glb',
+      // Whole-ship GLBs stay out of the live runtime declaration until SPEC3-37 re-exports real hull
+      // bodies. The release copies currently contain accessory meshes only; modular authored hulls are
+      // the valid default-play path meanwhile, and check-exporter keeps the broken files visible.
     ]),
     cockpit: Object.freeze([
       'cockpits/cockpit_dome.glb',
@@ -219,15 +215,9 @@ const HULL_FILE_BY_DEF_ID = Object.freeze({
   ship_leviathan: 'hulls/hull_capital.glb',
 });
 
-// Ship defIds rendered as a single authored whole-ship body (cockpit/fins/engine baked in) instead
-// of the runtime parts-assembly. The body is loaded via the hull slot; when a defId maps here it is
-// used as the hull AND the structural slots (cockpit/engine/fin) are skipped so they don't stack on
-// the baked geometry. Weapon/pod still mount at the body's SOCKET_* points.
-const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
-  ship_kestrel: 'wholeships/kestrel.glb',
-  ship_pelican: 'wholeships/pelican.glb',
-  ship_wasp: 'wholeships/wasp.glb',
-});
+// Whole-ship files remain exporter/test artifacts until SPEC3-37 re-exports complete bodies.
+// Default play must use modular hulls so missing accessory-only GLBs cannot blank live ships.
+const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({});
 const WHOLE_SHIP_URLS = Object.freeze(Object.values(WHOLE_SHIP_FILE_BY_DEF_ID));
 const isWholeShipUrl = (url) => WHOLE_SHIP_URLS.some((w) => String(url || '').endsWith(w));
 const PRECOMPILE_SHIP_ARCHETYPES = Object.freeze(Object.keys(HULL_FILE_BY_DEF_ID).map((defId) => Object.freeze({
@@ -735,13 +725,25 @@ function commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, 
   if (oldHull && newHull) newHull.rotation.x = oldHull.rotation.x;
   primeAuthoredState(authored.root, fallbackRoot, entity);
 
-  // Commit the swap only after the complete authored payload and all bindings exist. Nothing before
-  // this point mutates the live ship, so any load/validation/composition error is automatically safe.
-  boundary.remove(fallbackRoot);
-  boundary.add(authored.root);
-  setActive(authored.root);
+  // Commit only after the complete authored payload and all bindings exist. The readable fallback
+  // stays mounted as the base silhouette until the authored ship contract grows a true five-second
+  // readability gate; a slot-valid GLTFKit composition can otherwise pass probes while looking like
+  // loose engines or tiny fragments in play.
+  const retainFallback = shouldRetainReadableFallback(fallbackRoot, entity, authored);
+  if (retainFallback) {
+    markReadableFallbackLayer(fallbackRoot);
+    suppressAuthoredReadableSilhouette(authored.root);
+    boundary.add(authored.root);
+  } else {
+    boundary.remove(fallbackRoot);
+    boundary.add(authored.root);
+  }
+  const activeRoot = retainFallback ? fallbackRoot : authored.root;
+  setActive(activeRoot);
 
   boundary.userData.authoredAssetState = 'authored';
+  boundary.userData.authoredReadableFallbackRetained = retainFallback;
+  boundary.userData.authoredVisualRoot = retainFallback ? 'readable-fallback' : 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
   boundary.userData.authoredSlots = authored.authoredSlots;
   boundary.userData.proceduralFallbackParts = authored.fallbackParts;
@@ -749,13 +751,46 @@ function commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, 
   boundary.userData.authoredRenderContract = authored.root.userData.renderContract;
   boundary.userData.__socketCache = new Map(); // invalidate renderer socket lookups across the swap
   if (typeof options.onSwap === 'function') {
-    try { options.onSwap({ boundary, root: authored.root, entity, authoredParts: authored.authoredParts }); }
+    try { options.onSwap({ boundary, root: activeRoot, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts }); }
     catch (error) { console.warn('[partsLibrary] authored swap callback failed', error); }
   }
 
-  try { disposeDetachedObject(fallbackRoot); }
-  catch (error) { console.warn('[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
+  if (!retainFallback) {
+    try { disposeDetachedObject(fallbackRoot); }
+    catch (error) { console.warn('[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
+  }
   return true;
+}
+
+function shouldRetainReadableFallback(fallbackRoot, entity, authored) {
+  return !!(fallbackRoot && fallbackRoot.isObject3D && entity && entity.type === 'ship' && authored && authored.root);
+}
+
+function markReadableFallbackLayer(fallbackRoot) {
+  fallbackRoot.userData = fallbackRoot.userData || {};
+  fallbackRoot.userData.authoredReadableFallbackLayer = true;
+  fallbackRoot.traverse((object) => {
+    if (!object) return;
+    object.userData = object.userData || {};
+    object.userData.authoredReadableFallbackLayer = true;
+  });
+}
+
+function suppressAuthoredReadableSilhouette(authoredRoot) {
+  if (!authoredRoot || typeof authoredRoot.traverse !== 'function') return;
+  authoredRoot.userData = authoredRoot.userData || {};
+  authoredRoot.userData.authoredReadableSilhouetteSuppressed = true;
+  authoredRoot.traverse((object) => {
+    if (!object || !object.userData) return;
+    const urls = Array.isArray(object.userData.spacefacePartUrls)
+      ? object.userData.spacefacePartUrls
+      : (object.userData.spacefacePartUrl ? [object.userData.spacefacePartUrl] : []);
+    const isHullSilhouette = object.userData.spacefaceReadabilityCore
+      || urls.some((url) => String(url || '').includes('/hulls/') || String(url || '').includes('readability/'));
+    if (!isHullSilhouette) return;
+    object.visible = false;
+    object.userData.authoredSuppressedByReadableFallback = true;
+  });
 }
 
 
@@ -843,12 +878,12 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
         selected.set(slot, wholeRec);
         wholeShip = true;
       } else {
-        if (releaseMode && wholeShipWanted) {
-          throw new Error(requiredWholeShipMessage(entity, wholeShipWanted, records, partRoot));
-        }
         const pool = records.filter((record) => !isWholeShipUrl(record.url));
         const wanted = HULL_FILE_BY_DEF_ID[entity.data && entity.data.defId];
         const exact = wanted && pool.find((record) => String(record.url || '').endsWith(wanted));
+        if (releaseMode && wholeShipWanted && !exact && !pool.length) {
+          throw new Error(requiredWholeShipMessage(entity, wholeShipWanted, records, partRoot));
+        }
         selected.set(slot, exact || (pool.length ? pool[((seed ^ hashString(slot)) >>> 0) % pool.length] : null));
       }
     } else {
@@ -883,9 +918,10 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     authoredSlots[slot].push(record.url);
   };
 
-  // A low-poly pressure shell is always retained as the LOD safety silhouette. It appears only at
-  // levels the authored hull does not supply, preventing both blank ships and double-rendered hulls.
-  const safetyCore = buildSafetyCore(hull, materials);
+  // A low-poly pressure shell is always retained as the close-range readability silhouette. The
+  // authored GLB parts remain the ship's detail layer, but this shell prevents a loaded ship from
+  // reading as a few dark fragments or only an aft rocket when the current authored hull is sparse.
+  const safetyCore = buildSafetyCore(hull, materials, palette);
   const hullRecord = selected.get('hull');
   if (hullRecord) {
     instantiatePart(hullRecord, hull, {
@@ -896,7 +932,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     fallbackParts.push('hull');
   }
   const authoredHullLevels = hullRecord ? authoredLevels(hullRecord) : new Set();
-  safetyCore.visible = !authoredHullLevels.has('lod0');
+  safetyCore.visible = true;
   // Snapshot only mounts supplied by the hull. Parts may themselves contain internal markers, but
   // assembly topology belongs to the hull grammar and must not change as later slots are mounted.
   const hullMounts = snapshotMounts(bindings.mounts);
@@ -2015,7 +2051,7 @@ function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels) {
       }
     }
     const visibleAuthoredHullLevel = closestAvailableLod(requested, authoredHullLevels);
-    safetyCore.visible = !authoredHullLevels.has(visibleAuthoredHullLevel);
+    safetyCore.visible = requested === 'lod0' || !authoredHullLevels.has(visibleAuthoredHullLevel);
     if (root.userData.damageState === 'critical') {
       for (const secondary of bindings.secondary) secondary.visible = false;
     }
@@ -2370,12 +2406,33 @@ function authoredMaterialFamily(base, tags = {}, role = 'hull') {
 function tintMaterial(material, hex, role) {
   if (role === 'none') return material;
   const tint = new THREE.Color(hex);
-  if (material.color) material.color.multiply(tint);
+  if (material.color) {
+    material.color.multiply(tint);
+    if (role === 'hull') {
+      material.color.lerp(tint, 0.58);
+      liftColorFloor(material.color, 0.34);
+    }
+  }
+  if (role === 'hull') {
+    if (Number.isFinite(material.metalness)) material.metalness = Math.min(material.metalness, 0.26);
+    if (Number.isFinite(material.roughness)) material.roughness = Math.max(material.roughness, 0.58);
+  }
   if (material.emissive && material.emissive.getHex() !== 0 && (role === 'accent' || role === 'thruster')) {
     material.emissive.multiply(tint);
   }
+  if (role === 'hull' && material.emissive && material.emissive.getHex() === 0) {
+    material.emissive.copy(tint).multiplyScalar(0.11);
+    material.emissiveIntensity = Math.max(Number(material.emissiveIntensity) || 0, 0.42);
+  }
   material.needsUpdate = true;
   return material;
+}
+
+function liftColorFloor(color, floor) {
+  const min = Number(floor) || 0;
+  color.r = Math.max(color.r, min);
+  color.g = Math.max(color.g, min);
+  color.b = Math.max(color.b, min);
 }
 
 function tintRole(tags) {
@@ -2421,14 +2478,49 @@ function fallbackMaterials(palette, seed) {
   return { hull, dark, accent, glass };
 }
 
-function buildSafetyCore(hull, materials) {
-  return kit.addMesh(hull, kit.loftXGeometry([
+function buildSafetyCore(hull, materials, palette) {
+  const mesh = kit.addMesh(hull, kit.loftXGeometry([
     { x: -0.78, halfY: 0.16, halfZ: 0.20 },
     { x: -0.42, halfY: 0.25, halfZ: 0.35 },
     { x: 0.18, halfY: 0.27, halfZ: 0.38 },
     { x: 0.62, halfY: 0.18, halfZ: 0.24 },
     { x: 0.86, halfY: 0.05, halfZ: 0.07 },
-  ], 8), materials.hull, 'GLTFKit_Safety_PressureShell');
+  ], 8), readabilityShellMaterial(materials.hull, palette), 'GLTFKit_Readability_PressureShell');
+  mesh.scale.set(1.08, 1.04, 1.08);
+  mesh.userData.spacefaceReadabilityCore = true;
+  mesh.userData.spacefaceStaticBatch = true;
+  mesh.userData.spacefacePartUrl = 'readability/pressure_shell';
+  return mesh;
+}
+
+function readabilityShellMaterial(base, palette = {}) {
+  const material = base && typeof base.clone === 'function'
+    ? base.clone()
+    : kit.pbrHullMaterial({
+      hull: palette.hull || '#8a94a8',
+      accent: palette.accent || '#7ee8ff',
+      seed: 0x51f,
+      panelCount: 8,
+      metalness: 0.12,
+      roughness: 0.66,
+    });
+  material.name = 'SF_Readability_PressureShell';
+  if (material.color) {
+    const hull = new THREE.Color(palette.hull || '#8a94a8');
+    material.color.lerp(hull, 0.58);
+    liftColorFloor(material.color, 0.66);
+  }
+  if ('metalness' in material) material.metalness = Math.min(Number(material.metalness) || 0, 0.16);
+  if ('roughness' in material) material.roughness = Math.max(Number(material.roughness) || 0, 0.62);
+  if (material.emissive) {
+    material.emissive.copy(new THREE.Color(palette.accent || '#7ee8ff')).multiplyScalar(0.075);
+    material.emissiveIntensity = Math.max(Number(material.emissiveIntensity) || 0, 0.32);
+  }
+  material.transparent = false;
+  material.opacity = 1;
+  material.depthWrite = true;
+  material.needsUpdate = true;
+  return material;
 }
 
 function buildFallbackCockpit(hull, materials, placement) {
