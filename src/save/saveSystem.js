@@ -28,7 +28,9 @@ const DEFAULT_FLIGHT_MODE = 'assisted';
 const DEFAULT_PHYSICS_BACKEND = 'rapier-dynamic';
 const DEFAULT_AI_BACKEND = 'sg06-tactical';
 const DEFAULT_FLIGHT_BACKEND = 'v3';
+const DEFAULT_CONTROL_SCHEME = 'pilot';
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
+const VALID_CONTROL_SCHEMES = new Set(['pilot', 'helm-assist', 'classic']);
 const DEFAULT_START_SECTOR = NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime';
 const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'mesh',
@@ -111,6 +113,7 @@ export const save = {
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
     data.sectorSim = this._callSerialize('sectorSim') || {};   // ADR-0002 / V2 §33 — offscreen sim state
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
+    data.flight = this._serializeFlight();
     data.nav = this._serializeNav();
     data.settings = this._serializeSettings();
     return data;
@@ -171,6 +174,17 @@ export const save = {
 
   _serializeNav() {
     return sanitizeNavState(this.state.nav);
+  },
+
+  _serializeFlight() {
+    const flight = this.state.flight || {};
+    const mode = flight.mode === 'cruise' || flight.mode === 'lane' ? flight.mode : 'manual';
+    return {
+      mode,
+      previousMode: 'manual',
+      modeReason: 'save',
+      modeChangedTick: Number.isFinite(flight.modeChangedTick) ? flight.modeChangedTick : 0,
+    };
   },
 
   _serializeSettings() {
@@ -549,6 +563,7 @@ export const save = {
       this.state.interventions = [];
       this.state.drill = null;
       this.state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
+      this._restoreFlight(data.flight);
       this._restoreNav(data.nav);
       this._restoreSettings(data.settings);
 
@@ -616,6 +631,16 @@ export const save = {
     cargo.items = c.items || {};
     if (typeof c.capVolume === 'number') cargo.capVolume = c.capVolume;
     if (typeof c.capMass === 'number') cargo.capMass = c.capMass;
+  },
+
+  _restoreFlight(flight) {
+    const mode = flight && (flight.mode === 'cruise' || flight.mode === 'lane') ? flight.mode : 'manual';
+    this.state.flight = {
+      mode,
+      previousMode: 'manual',
+      modeReason: 'load',
+      modeChangedTick: Number.isFinite(flight && flight.modeChangedTick) ? flight.modeChangedTick : 0,
+    };
   },
 
   _restoreMissions(d) {
@@ -1162,6 +1187,7 @@ function sanitizeNavState(nav) {
     route,
     autoTravel: !!route && source.autoTravel === true,
     waypoint: sanitizeNavWaypoint(source.waypoint),
+    autopilot: sanitizeNavAutopilot(source.autopilot),
   };
 }
 
@@ -1194,11 +1220,27 @@ function sanitizeNavWaypoint(waypoint) {
     const value = navString(waypoint[field]);
     if (value) out[field] = value;
   }
+  const targetEntityId = navEntityId(waypoint.targetEntityId);
+  if (targetEntityId) out.targetEntityId = targetEntityId;
   if (Number.isFinite(waypoint.storyBeat)) out.storyBeat = waypoint.storyBeat;
   if (waypoint.onboarding === true) out.onboarding = true;
   const pos = sanitizeNavPos(waypoint.pos);
   if (pos) out.pos = pos;
   return Object.keys(out).length ? out : null;
+}
+
+function sanitizeNavAutopilot(autopilot) {
+  const source = autopilot && typeof autopilot === 'object' && !Array.isArray(autopilot) ? autopilot : {};
+  const target = sanitizeNavPos(source.target);
+  const out = {
+    active: !!target && source.active === true,
+    target,
+    targetEntityId: navEntityId(source.targetEntityId),
+    label: navString(source.label) || '',
+    status: navString(source.status) || (target ? 'armed' : 'idle'),
+    arrivalRadius: Number.isFinite(source.arrivalRadius) ? Math.max(12, Math.min(500, source.arrivalRadius)) : 36,
+  };
+  return out;
 }
 
 function sanitizeNavPos(pos) {
@@ -1209,6 +1251,12 @@ function sanitizeNavPos(pos) {
 
 function navString(value) {
   return typeof value === 'string' && value ? value : null;
+}
+
+function navEntityId(value) {
+  if (typeof value === 'string' && value) return value;
+  if (Number.isFinite(value)) return String(value);
+  return null;
 }
 
 function navObjectiveSummary(nav) {
@@ -1365,6 +1413,16 @@ function sanitizeRestoredSettings(settings) {
   s.gameplay.physicsBackend = DEFAULT_PHYSICS_BACKEND;
   s.gameplay.aiBackend = DEFAULT_AI_BACKEND;
   s.gameplay.flightBackend = DEFAULT_FLIGHT_BACKEND;
+  // One-time scheme migration: 'helm-assist' was the ambient default before the pilot scheme
+  // shipped, so old saves carry it as a non-choice. Flip those to 'pilot' once; the flag makes
+  // any explicit re-pick of helm-assist in Settings stick from then on.
+  if (!s.gameplay.controlSchemeV2) {
+    if (s.gameplay.controlScheme === 'helm-assist') s.gameplay.controlScheme = DEFAULT_CONTROL_SCHEME;
+    s.gameplay.controlSchemeV2 = true;
+  }
+  if (!VALID_CONTROL_SCHEMES.has(s.gameplay.controlScheme)) {
+    s.gameplay.controlScheme = DEFAULT_CONTROL_SCHEME;
+  }
 
   if (!s.controls || typeof s.controls !== 'object' || Array.isArray(s.controls)) s.controls = {};
   if (!VALID_FLIGHT_MODES.has(s.controls.flightMode)) {
@@ -1399,6 +1457,8 @@ function profileSettingsSnapshot(settings) {
     gameplay: {
       autosaveIntervalS: s.gameplay && s.gameplay.autosaveIntervalS,
       tutorialHints: s.gameplay && s.gameplay.tutorialHints,
+      controlScheme: s.gameplay && s.gameplay.controlScheme,
+      controlSchemeV2: s.gameplay && s.gameplay.controlSchemeV2,
     },
   };
 }

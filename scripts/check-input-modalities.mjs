@@ -33,6 +33,8 @@ assert.doesNotMatch(gamepadSrc, /fire:\s*\[[^\]]*accept/, 'gamepad A/Cross shoul
 
 // 2. input.js imports + creates both.
 const inputSrc = read('src/systems/input.js');
+const stylesSrc = read('styles/ui.css');
+const gameStateSrc = read('src/core/gameState.js');
 assert.match(inputSrc, /import \{ createGamepad \} from '\.\/gamepad\.js'/, 'input.js must import createGamepad');
 assert.match(inputSrc, /import \{ createTouch \} from '\.\/touch\.js'/, 'input.js must import createTouch');
 assert.match(inputSrc, /this\.gamepad = createGamepad\(ctx\)/, 'input.js init must create the gamepad');
@@ -54,11 +56,39 @@ assert.match(inputSrc, /pointerSurface\.addEventListener\('mousedown'/, 'input.j
 assert.match(inputSrc, /isUiCommandTarget/, 'input.js must reject UI command targets before recording gameplay input');
 assert.match(inputSrc, /ui-modal-open/, 'input.js must suppress gameplay input while modal UI owns focus');
 assert.match(inputSrc, /inp\.brake/, 'input.js must publish deliberate brake intent for reverse/brake controls');
+assert.match(inputSrc, /const arrowYaw/, 'Input must explicitly route bare left/right arrows to yaw');
+assert.match(inputSrc, /const arrowStrafe/, 'Input must explicitly route W/forward + left/right arrows to strafe');
+assert.match(inputSrc, /arrowYaw\s*=\s*!up/, 'Arrow yaw must only apply when forward thrust is not held');
+assert.match(inputSrc, /arrowStrafe\s*=\s*up/, 'Arrow strafe must apply while forward thrust is held');
+assert.match(inputSrc, /this\._heldExcept\(state, 'yawRight', 'ArrowRight'\)/,
+  'Classic yaw bindings must exclude ArrowRight so W+ArrowRight can strafe instead');
+assert.match(inputSrc, /this\._heldExcept\(state, 'yawLeft', 'ArrowLeft'\)/,
+  'Classic yaw bindings must exclude ArrowLeft so W+ArrowLeft can strafe instead');
+assert.match(inputSrc, /syncPointerScreen\(this\.state, e\.clientX, e\.clientY\)/,
+  'pointer movement must update state.input.pointerScreen immediately so the software reticle tracks the OS cursor');
+assert.match(stylesSrc, /body\.sf-flight-cursor[\s\S]*cursor:\s*none/,
+  'flight cursor mode must hide the OS cursor so the software bullseye is the cursor');
+assert.match(inputSrc, /autopursuit:\s*\[\]/,
+  'F must remain auto-target/fire-only; autopursuit is held by MMB so arrow pilots keep flight control');
+assert.match(inputSrc, /ui:targetNearestHostileToCursor[\s\S]*aimWorld/,
+  'F auto-fire must request the hostile nearest the cursor/aim world point');
+assert.match(inputSrc, /_autoTargetRefreshT[\s\S]*quiet:\s*true/,
+  'F auto-fire must keep quietly refreshing cursor-nearest hostile targeting while active');
 
 // 4. saveSystem normalizes both settings.controls objects (so a legacy/partial save can't crash).
 const saveSrc = read('src/save/saveSystem.js');
 assert.match(saveSrc, /s\.controls\.gamepad/, 'saveSystem must normalize settings.controls.gamepad');
 assert.match(saveSrc, /s\.controls\.touch/, 'saveSystem must normalize settings.controls.touch');
+assert.match(gameStateSrc, /controlScheme:\s*'pilot'/,
+  'new game defaults must make the pilot keyboard-flight/mouse-target scheme explicit');
+assert.match(saveSrc, /const DEFAULT_CONTROL_SCHEME = 'pilot'/,
+  'saveSystem must normalize restored control schemes to the pilot default');
+assert.match(saveSrc, /VALID_CONTROL_SCHEMES = new Set\(\['pilot', 'helm-assist', 'classic'\]\)/,
+  'saveSystem must whitelist every shipped control scheme');
+assert.match(saveSrc, /controlSchemeV2[\s\S]*DEFAULT_CONTROL_SCHEME[\s\S]*VALID_CONTROL_SCHEMES\.has\(s\.gameplay\.controlScheme\)/,
+  'saveSystem must migrate old ambient helm-assist saves while preserving explicit v2 choices');
+assert.match(saveSrc, /controlScheme:\s*s\.gameplay && s\.gameplay\.controlScheme/,
+  'profile settings snapshots must persist explicit control-scheme choices');
 
 // 5. Settings UI exposes toggles for both (so the player can enable/disable each).
 const settingsSrc = read('src/ui/screens/settings.js');
@@ -68,8 +98,30 @@ const helpSrc = read('src/ui/screens/help.js');
 const promptSrc = read('src/ui/controlPrompts.js');
 const screenManagerSrc = read('src/ui/screenManager.js');
 const localmapSrc = read('src/ui/screens/localmap.js');
+assert.match(uiRootSrc, /function targetNearestHostileToCursor/,
+  'UI root must implement cursor-nearest hostile selection for F auto-target');
+assert.match(uiRootSrc, /ui:targetNearestHostileToCursor[\s\S]*quiet[\s\S]*targetNearestHostileToCursor/,
+  'UI root must route quiet cursor-target refreshes without toast spam');
+assert.match(uiRootSrc, /isHostileToPlayer[\s\S]*cursorD2[\s\S]*bestCursorD2/,
+  'F auto-target must filter hostiles and rank by distance to the cursor, not only by ship distance');
+assert.match(uiRootSrc, /bus && !quiet/,
+  'quiet cursor-target refreshes must not emit target toasts every tick');
 assert.match(settingsSrc, /Gamepad enabled/, 'Settings must expose a Gamepad enabled toggle');
 assert.match(settingsSrc, /Touch controls/, 'Settings must expose a Touch controls toggle');
+assert.match(settingsSrc, /s\.gameplay\.controlScheme \|\| 'pilot'/,
+  'Settings must display pilot as the default control scheme');
+assert.match(settingsSrc, /\['pilot', 'Pilot \(keyboard steers, mouse aims\)'\]/,
+  'Settings must expose the pilot keyboard-flight/mouse-target control scheme');
+assert.match(settingsSrc, /function controlSchemeFor\(settings\)[\s\S]*INPUT_DEFAULTS\.SCHEMES/,
+  'Settings rebind defaults must come from the active input control scheme');
+assert.match(settingsSrc, /const \{ base, live \} = mergedBindingsFor\(s\)/,
+  'Settings rebind grid must display scheme defaults overlaid with saved overrides');
+assert.match(settingsSrc, /const schemeBase = base \|\| schemeBindingsFor\(s\)/,
+  'Settings key capture must preserve the selected scheme secondary bindings');
+assert.match(settingsSrc, /controlSchemeV2[\s\S]*this\._render\(ctx\)/,
+  'Settings must redraw the rebind grid immediately when the control scheme changes');
+assert.doesNotMatch(settingsSrc, /for \(const a in DEFAULT_BINDINGS\) live\[a\]/,
+  'Settings must not seed the rebind grid only from the legacy/global binding table');
 assert.doesNotMatch(settingsSrc, /rowToggle\('Touch controls'/, 'Touch controls must use a tri-state Auto/On/Off control, not the boolean toggle helper');
 assert.match(settingsSrc, /touchModeLabel/, 'Touch controls must render Auto/On/Off labels');
 assert.match(settingsSrc, /aria-pressed', mode === 'auto' \? 'mixed'/, 'Touch Auto state must use valid aria-pressed=mixed');

@@ -1,17 +1,31 @@
 // Input system: samples keyboard + mouse, projects the cursor to the world plane, and writes
-// state.input each tick. TWO control schemes (GDD_2_0 §4.1), picked by
-// settings.gameplay.controlScheme ('helm-assist' default | 'classic'):
+// state.input each tick. THREE control schemes, picked by settings.gameplay.controlScheme
+// ('pilot' default | 'helm-assist' | 'classic'):
 //
-//   HELM ASSIST (default) — the ship's NOSE FOLLOWS THE MOUSE CURSOR (rate-limited by the ship's
+//   PILOT (default) — KEYBOARD FLIES, MOUSE FIGHTS. The mouse never steers the nose: it aims
+//   weapons, picks targets and throws the tether. W/↑ thrust, S/↓ retro, Space brake-to-stop.
+//   A/D and ←/→ are CONTEXTUAL — one rule: while coasting they YAW the nose (line up a retro
+//   burn, whip the nose around mid-drift); while forward thrust is held they STRAFE, with a
+//   gentle coordinated carve (PILOT_CARVE_TURN) so W+D still banks into a curve instead of
+//   crab-sliding. Q/E strafe explicitly in every state (orbit-adjust during pursuit). LMB fire.
+//
+//   HELM ASSIST — the ship's NOSE FOLLOWS THE MOUSE CURSOR (rate-limited by the ship's
 //   own turn stats, so mass still reads). W/S thrust fwd/rev, A/D lateral strafe, Space =
 //   brake-to-stop (computed counter-thrust through the normal thrust pipeline — heavy ships brake
-//   heavy). LMB fire. Arrows reel the tether in/out while latched.
+//   heavy). LMB fire. Arrows also fly: up/down thrust, left/right strafe while forward thrust is
+//   held; left/right arrows yaw the ship when forward thrust is not held so keyboard pilots still
+//   have direct nose control.
 //
-//   CLASSIC — the 1.x scheme: ↑/W throttle, ←→/A D yaw the nose (bank into turns), Q/E strafe,
-//   mouse aims weapons independently, Space fires.
+//   CLASSIC — the 1.x scheme: ↑/W throttle, A/D yaw the nose (bank into turns), Q/E strafe,
+//   mouse aims weapons independently, Space fires. The arrow cluster keeps the same flight split:
+//   bare ←/→ yaw, W/↑ + ←/→ strafe.
 //
-//   BOTH schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · F auto-fire
-//   G tether latch/cut · Q charge throw (helm) · R detonate charges · C scanner pulse · V cruise.
+//   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · F auto-fire
+//   + cursor-nearest hostile target · G tether latch/cut · Q charge throw (helm) · R detonate
+//   charges · C scanner pulse · V cruise.
+//   MMB TAP = pursuit/approach toggle: ship target → sustained autopursuit (tail + speed-match,
+//   fight with the mouse while the flight computer flies); station/other target → goto autopilot.
+//   Manual throttle/yaw/brake input breaks pursuit instantly — trick moves stay one key away.
 //   New verbs land on state.input.actions.* as edge-triggered flags (the LOCKED input contract in
 //   BUILD_PLAN_2_0 §0) — consumer systems (tetherGameplay, impulseCharges, scanner, cruise) read
 //   them; input never calls those systems directly.
@@ -37,6 +51,9 @@ import { wrapAngle } from '../core/rng.js';
 const HELM_SOFT_ANGLE = 0.55;
 const HELM_DEADBAND = 0.012;   // rad — below this the nose is "on" the cursor; stops micro-jitter
 const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this for a smooth settle
+const TETHER_ORBIT_SOFT_ANGLE = 0.46;  // latched/coasting: favor guns-in orbit over drift-facing
+const PILOT_CARVE_TURN = 0.35; // pilot scheme: fraction of yaw blended in while strafing under
+                               // forward thrust — the ship banks and carves instead of crab-sliding
 
 // Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
 const VERB_BINDINGS = {
@@ -44,6 +61,10 @@ const VERB_BINDINGS = {
   chargeDetonate: ['KeyR'],   // edge: detonate all armed impulse charges
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
   cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
+  autopursuit:    [],         // level: hold MMB to tail the locked target; F is auto-target/fire.
+  deployBeacon:   ['KeyU'],   // edge: drop a claim beacon in open space (beacons system owns cost/cap).
+                              //   The UI router owns U only when a claimable body is in range; in open
+                              //   space it falls through to this flight verb (see check-claim-base-input).
 };
 
 const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
@@ -67,29 +88,49 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
 };
 
 const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
-  forward:  ['KeyW'],
-  reverse:  ['KeyS'],
+  forward:  ['KeyW', 'ArrowUp'],
+  reverse:  ['KeyS', 'ArrowDown'],
   yawRight: [],                // nose follows cursor — yaw keys retired in this scheme
   yawLeft:  [],
-  strafeLeft:  ['KeyA'],
-  strafeRight: ['KeyD'],
+  strafeLeft:  ['KeyA', 'ArrowLeft'],
+  strafeRight: ['KeyD', 'ArrowRight'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                // LMB only — Space becomes brake
   brake:    ['Space'],
   autoFire: ['KeyF'],
   countermeasure: ['KeyX'],
   chargeThrow: ['KeyQ'],
-  reelIn:  ['ArrowUp'],        // arrows are free in helm — they winch the tether
-  reelOut: ['ArrowDown'],
+  reelIn:  [],
+  reelOut: [],
   ...VERB_BINDINGS,
 };
 
-const SCHEME_BINDINGS = { classic: DEFAULT_BINDINGS, 'helm-assist': HELM_BINDINGS };
+const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
+  forward:  ['KeyW', 'ArrowUp'],
+  reverse:  ['KeyS', 'ArrowDown'],
+  yawRight: ['KeyD', 'ArrowRight'],  // contextual: strafe (+carve) while forward thrust is held
+  yawLeft:  ['KeyA', 'ArrowLeft'],
+  strafeLeft:  ['KeyQ'],             // explicit strafe in every state (pursuit orbit-adjust)
+  strafeRight: ['KeyE'],
+  boost:    ['ShiftLeft', 'ShiftRight'],
+  fire:     [],                      // LMB fires — the mouse is a weapon, not a rudder
+  brake:    ['Space'],
+  autoFire: ['KeyF'],
+  countermeasure: ['KeyX'],
+  chargeThrow: ['KeyY'],             // Q/E are strafe here, so throw lives on Y (classic parity)
+  reelIn:  [],
+  reelOut: [],
+  ...VERB_BINDINGS,
+};
 
-// Active control scheme; helm-assist is the 2.0 default (GDD §4.1).
+const SCHEME_BINDINGS = { pilot: PILOT_BINDINGS, classic: DEFAULT_BINDINGS, 'helm-assist': HELM_BINDINGS };
+
+// Active control scheme; pilot is the default — flight physics is the game's toy, and the toy
+// is played with the keyboard while the mouse targets/fires/grapples. Helm-assist (mouse-nose)
+// remains selectable for players who prefer cursor steering.
 function activeScheme(state) {
   const s = state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
-  return SCHEME_BINDINGS[s] ? s : 'helm-assist';
+  return SCHEME_BINDINGS[s] ? s : 'pilot';
 }
 
 // Resolve the live binding for an action: player rebinds (settings) win, then the active scheme's
@@ -170,6 +211,14 @@ function modalInputActive() {
     && body.classList.contains('ui-modal-open'));
 }
 
+function syncPointerScreen(state, x, y) {
+  if (!state || !state.input || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  const pointerScreen = state.input.pointerScreen || (state.input.pointerScreen = { x: 0, y: 0, active: false });
+  pointerScreen.x = x;
+  pointerScreen.y = y;
+  pointerScreen.active = true;
+}
+
 export const input = {
   name: 'input',
   init(ctx) {
@@ -178,7 +227,10 @@ export const input = {
     this.helpers = ctx.helpers;
     const keys = (this._keys = Object.create(null));
     this._ndc = { x: 0, y: 0 };
-    this._m0 = false; this._m2 = false;
+    const viewportW = typeof innerWidth === 'number' ? innerWidth : 0;
+    const viewportH = typeof innerHeight === 'number' ? innerHeight : 0;
+    this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
+    this._m0 = false; this._m1 = false; this._m2 = false;
     this._lastKbmMs = performance.now();
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
 
@@ -210,28 +262,35 @@ export const input = {
       const code = eventCode(e);
       if (code) keys[code] = false;
     });
-    addEventListener('blur', () => { for (const k in keys) keys[k] = false; this._m0 = this._m2 = false; });
+    addEventListener('blur', () => { for (const k in keys) keys[k] = false; this._m0 = this._m1 = this._m2 = false; });
     const pointerSurface = this._canvas || window;
-    pointerSurface.addEventListener('mousemove', (e) => {
-      if (this._canvas && e.target !== this._canvas) return;
+    const handlePointerMove = (e) => {
+      if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
       this._ndc.x = (e.clientX / innerWidth) * 2 - 1;
       this._ndc.y = -(e.clientY / innerHeight) * 2 + 1;
+      this._screen.x = e.clientX;
+      this._screen.y = e.clientY;
+      this._screen.active = true;
+      syncPointerScreen(this.state, e.clientX, e.clientY);
       this._lastKbmMs = performance.now();
-    });
+    };
+    addEventListener('mousemove', handlePointerMove);
+    addEventListener('pointermove', handlePointerMove);
     pointerSurface.addEventListener('mousedown', (e) => {
       if (this._canvas && e.target !== this._canvas) {
-        this._m0 = false; this._m2 = false;
+        this._m0 = false; this._m1 = false; this._m2 = false;
         return;
       }
       if (!this._canvas && isUiCommandTarget(e.target)) {
-        this._m0 = false; this._m2 = false;
+        this._m0 = false; this._m1 = false; this._m2 = false;
         return;
       }
       if (e.button === 0) this._m0 = true;
+      if (e.button === 1) this._m1 = true;
       if (e.button === 2) this._m2 = true;
       this._lastKbmMs = performance.now();
     });
-    addEventListener('mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 2) this._m2 = false; });
+    addEventListener('mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) this._m2 = false; });
     pointerSurface.addEventListener('contextmenu', (e) => e.preventDefault());
   },
 
@@ -239,6 +298,12 @@ export const input = {
   _held(state, action) {
     const k = this._keys;
     for (const code of binding(state, action)) if (k[code]) return true;
+    return false;
+  },
+
+  _heldExcept(state, action, exceptCode) {
+    const k = this._keys;
+    for (const code of binding(state, action)) if (code !== exceptCode && k[code]) return true;
     return false;
   },
 
@@ -252,30 +317,68 @@ export const input = {
     // The LOCKED input contract (BUILD_PLAN_2_0 §0): consumer systems read these each tick.
     const acts = inp.actions || (inp.actions = {
       brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0,
-      chargeThrow: false, chargeDetonate: false, scanPulse: false,
+      chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
     });
     if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
       inp.moveX = 0; inp.moveZ = 0; inp.turnIntent = 0;
       inp.fire = false; inp.boost = false; inp.brake = false; inp.fireGroup = null;
       acts.brake = false; acts.cruise = false; acts.tetherFire = false; acts.tetherCut = false;
-      acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false;
-      this._m0 = false; this._m2 = false;
+      acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false; acts.autopursuit = false;
+      acts.deployBeacon = false;
+      inp.tetherMode = null;
+      this._m0 = false; this._m1 = false; this._m2 = false;
+      this._prevM1 = false;
+      this._pursuitToggle = false;   // docking/menus always drop back to manual flight
       this._edgePrev = this._edgePrev || {};
       return;
     }
 
     // --- direction: yaw the nose + throttle forward/reverse along the nose (rebindable) ---
+    const scheme = activeScheme(state);
+    const helm = scheme === 'helm-assist';
+    const pilot = scheme === 'pilot';
     const up = this._held(state, 'forward');
     const down = this._held(state, 'reverse');
-    const right = this._held(state, 'yawRight');
-    const left = this._held(state, 'yawLeft');
-    const strafeRight = this._held(state, 'strafeRight');
-    const strafeLeft = this._held(state, 'strafeLeft');
-
-    const kbdTurn = (right ? 1 : 0) - (left ? 1 : 0);
+    let kbdTurn = 0;
+    let kbdMoveX = 0;
+    if (pilot) {
+      // PILOT: one rule. Coasting → side keys YAW the nose (line up retro burns, spin
+      // mid-drift). Forward thrust held → side keys STRAFE, blended with a gentle carve yaw
+      // so W+D banks into a curve. Q/E strafe explicitly in every state.
+      const side = (this._held(state, 'yawRight') ? 1 : 0) - (this._held(state, 'yawLeft') ? 1 : 0);
+      const explicit = (this._held(state, 'strafeRight') ? 1 : 0) - (this._held(state, 'strafeLeft') ? 1 : 0);
+      if (up) {
+        kbdMoveX = Math.max(-1, Math.min(1, side + explicit));
+        kbdTurn = side * PILOT_CARVE_TURN;
+      } else {
+        kbdTurn = side;
+        kbdMoveX = explicit;
+      }
+    } else {
+      const arrowLeftHeld = !!this._keys.ArrowLeft;
+      const arrowRightHeld = !!this._keys.ArrowRight;
+      const arrowYaw = !up && (arrowLeftHeld || arrowRightHeld);
+      const arrowStrafe = up;
+      const right = helm
+        ? (arrowYaw && arrowRightHeld)
+        : (this._heldExcept(state, 'yawRight', 'ArrowRight') || (arrowYaw && arrowRightHeld));
+      const left = helm
+        ? (arrowYaw && arrowLeftHeld)
+        : (this._heldExcept(state, 'yawLeft', 'ArrowLeft') || (arrowYaw && arrowLeftHeld));
+      const strafeRight = helm
+        ? (this._heldExcept(state, 'strafeRight', 'ArrowRight') || (arrowStrafe && arrowRightHeld))
+        : (this._held(state, 'strafeRight') || (arrowStrafe && arrowRightHeld));
+      const strafeLeft = helm
+        ? (this._heldExcept(state, 'strafeLeft', 'ArrowLeft') || (arrowStrafe && arrowLeftHeld))
+        : (this._held(state, 'strafeLeft') || (arrowStrafe && arrowLeftHeld));
+      const arrowTurn = arrowYaw
+        ? ((arrowRightHeld ? 1 : 0) - (arrowLeftHeld ? 1 : 0))
+        : 0;
+      kbdTurn = arrowTurn || ((right ? 1 : 0) - (left ? 1 : 0));
+      kbdMoveX = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
+    }
     const kbdMoveZ = (up ? 1 : 0) - (down ? 1 : 0);
-    const kbdMoveX = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
     const kbdBoost = this._held(state, 'boost');
     const kbdFire = this._m0 || this._held(state, 'fire');
 
@@ -318,27 +421,15 @@ export const input = {
     // Keyboard/mouse is authoritative when both are active (whichever moved last wins for aim).
     const kbmRecent = this._lastKbmMs >= (gp ? gp.lastActiveMs : 0) && this._lastKbmMs >= (tp ? tp.lastActiveMs : 0);
 
-    const helm = activeScheme(state) === 'helm-assist';
     inp.turnIntent = kbdTurn || gpTurn || tpTurn;
     inp.moveX = kbdMoveX || tpMoveX;
     inp.moveZ = kbdMoveZ || (gpBrake ? -1 : gpMoveZ) || tpMoveZ;
     inp.boost = kbdBoost || gpBoost || tpBoost;
-    inp.brake = helm
-      ? (this._held(state, 'brake') || gpBrake)
+    inp.brake = (helm || pilot)
+      ? (down || this._held(state, 'brake') || gpBrake)
       : (down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
     inp.fireGroup = (this._m2 || gpMine || tpMine) ? 2 : (inp.fire ? 1 : null);
-
-    // Auto-fire toggle (edge-triggered): F flips state.input.autoFire.
-    if (this._held(state, 'autoFire')) {
-      if (!this._autoFireHeld) {
-        inp.autoFire = !inp.autoFire;
-        this._autoFireHeld = true;
-        this.bus.emit('toast', { text: 'Auto-fire ' + (inp.autoFire ? 'ON' : 'OFF'), kind: 'info', ttl: 2 });
-      }
-    } else {
-      this._autoFireHeld = false;
-    }
 
     // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
     // We set a flag (not deploy directly) so the countermeasures system owns the cooldown/equip
@@ -369,6 +460,93 @@ export const input = {
       inp.aimWorld.x = w.x; inp.aimWorld.z = w.z;
       if (p) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);
       inp.mouseNdc.x = this._ndc.x; inp.mouseNdc.y = this._ndc.y;
+      const pointerScreen = inp.pointerScreen || (inp.pointerScreen = { x: 0, y: 0, active: false });
+      pointerScreen.x = this._screen.x;
+      pointerScreen.y = this._screen.y;
+      pointerScreen.active = this._screen.active;
+    }
+
+    // --- Pursuit / approach toggle (MMB tap or bound key) -----------------------------------
+    // Ship target locked → sustained AUTOPURSUIT: flightV3 banks onto an intercept course and
+    // speed-matches a tailing slot; the pilot fights with the mouse while the flight computer
+    // flies. Station/wreck/asteroid target → GOTO autopilot via ui:setCourse (world.js owns nav
+    // state) — one verb: "take me to the thing I care about". Tap again to disengage.
+    // Manual throttle/yaw/brake breaks pursuit instantly (trick moves stay one key away).
+    // Q/E strafe deliberately does NOT break it — flightV3 blends it in as orbit adjustment.
+    const pursuitKeyHeld = this._held(state, 'autopursuit');
+    const autopursuitHeld = this._m1 || pursuitKeyHeld;   // F-key autofire guard below
+    const pursuitPressed = (this._m1 && !this._prevM1) || (pursuitKeyHeld && !this._prevPursuitKey);
+    this._prevM1 = this._m1;
+    this._prevPursuitKey = pursuitKeyHeld;
+
+    const lockId = state.player ? state.player.targetId : null;
+    const lockEnt = (lockId != null && state.entities && typeof state.entities.get === 'function')
+      ? state.entities.get(lockId) : null;
+    const lockAlive = !!(lockEnt && lockEnt.alive !== false && lockEnt.pos);
+    const lockIsShip = lockAlive && (lockEnt.type === 'ship' || lockEnt.type === 'drone');
+    const cruiseState = state.player && state.player.cruise;
+    const cruiseBusy = !!(cruiseState && (cruiseState.phase === 'charging' || cruiseState.phase === 'cruising'));
+    const tetherBusy = !!(state.player && state.player.tether && state.player.tether.active);
+
+    if (this._pursuitToggle) {
+      const manualBreak = Math.abs(inp.turnIntent) > 0.08 || Math.abs(inp.moveZ) > 0.08 || inp.brake;
+      if (manualBreak || !lockIsShip || cruiseBusy || tetherBusy) {
+        this._pursuitToggle = false;
+        this.bus.emit('toast', {
+          text: (!lockIsShip && !manualBreak) ? 'Pursuit target lost' : 'Pursuit disengaged',
+          kind: 'info',
+          ttl: 2,
+        });
+      }
+    }
+
+    if (pursuitPressed) {
+      if (this._pursuitToggle) {
+        this._pursuitToggle = false;
+        this.bus.emit('toast', { text: 'Pursuit disengaged', kind: 'info', ttl: 2 });
+      } else if (lockIsShip && !cruiseBusy && !tetherBusy) {
+        this._pursuitToggle = true;
+        this.bus.emit('toast', { text: 'Pursuit: ' + entityLabel(lockEnt), kind: 'good', ttl: 2 });
+      } else if (lockAlive) {
+        this.bus.emit('ui:setCourse', {
+          pos: { x: lockEnt.pos.x, z: lockEnt.pos.z },
+          targetEntityId: lockEnt.id,
+          label: entityLabel(lockEnt),
+          arrivalRadius: Math.max(36, (lockEnt.radius || 0) + 30),
+          autopilot: true,
+        });
+        this.bus.emit('toast', { text: 'Autopilot: ' + entityLabel(lockEnt), kind: 'info', ttl: 2 });
+      } else {
+        this.bus.emit('toast', { text: 'No target — select one to pursue', kind: 'info', ttl: 2 });
+      }
+    }
+
+    // Auto-target / auto-fire toggle (edge-triggered): F flips state.input.autoFire only when it is
+    // not being used as the hold-to-autopursuit key on an already-selected target.
+    if (this._held(state, 'autoFire')) {
+      if (!this._autoFireHeld) {
+        const hasLockedTarget = !!(state.player && state.player.targetId != null);
+        if (!autopursuitHeld || !hasLockedTarget) inp.autoFire = !inp.autoFire;
+        this._autoFireHeld = true;
+        if (inp.autoFire) {
+          this.bus.emit('ui:targetNearestHostileToCursor', { pos: { x: inp.aimWorld.x, z: inp.aimWorld.z } });
+          this._autoTargetRefreshT = 0.12;
+        }
+        if (!autopursuitHeld || !hasLockedTarget) {
+          this.bus.emit('toast', { text: 'Auto-fire ' + (inp.autoFire ? 'ON' : 'OFF'), kind: 'info', ttl: 2 });
+        }
+      }
+    } else {
+      this._autoFireHeld = false;
+    }
+    if (inp.autoFire) {
+      this._autoTargetRefreshT = Math.max(0, (this._autoTargetRefreshT || 0) - dt);
+      if (this._autoTargetRefreshT <= 0 && Number.isFinite(inp.aimWorld && inp.aimWorld.x) && Number.isFinite(inp.aimWorld && inp.aimWorld.z)) {
+        this._autoTargetRefreshT = 0.12;
+        this.bus.emit('ui:targetNearestHostileToCursor', { pos: { x: inp.aimWorld.x, z: inp.aimWorld.z }, quiet: true });
+      }
+    } else {
+      this._autoTargetRefreshT = 0;
     }
 
     // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
@@ -380,30 +558,42 @@ export const input = {
       return held && !was;
     };
     const tetherEdge = edge('tether');
+    const tetherHeld = this._held(state, 'tether');
+    const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
     acts.tetherFire = tetherEdge;    // tetherGameplay disambiguates by attach state:
-    acts.tetherCut = tetherEdge;     // free → latch, attached → cut (single G toggle)
+    acts.tetherCut = tetherEdge;     // free -> latch, attached -> cut (single G toggle)
+    inp.tetherMode = tetherEdge && nearestTetherMode ? 'nearest' : null;
     acts.chargeThrow = edge('chargeThrow');
     acts.chargeDetonate = edge('chargeDetonate');
     acts.scanPulse = edge('scanPulse');
     acts.cruise = edge('cruise');
-    // reelIn (ArrowUp) SHORTENS the line (negative rest-length delta pulls you toward the anchor);
-    // reelOut (ArrowDown) pays out slack. Positive reelDelta = longer rest length in the tether system.
-    acts.reelDelta = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
+    acts.autopursuit = !!this._pursuitToggle;
+    acts.deployBeacon = edge('deployBeacon');
+    // Holding G after latch SHORTENS the line. Positive reelDelta = longer rest length in the tether
+    // system. Arrow keys stay reserved for flight in Helm Assist.
+    const arrowReelDelta = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
+    const tetherActive = !!(state.player && state.player.tether && state.player.tether.active);
+    const holdReelDelta = tetherHeld && tetherActive ? -1 : 0;
+    acts.reelDelta = Math.max(-1, Math.min(1, arrowReelDelta + holdReelDelta));
     acts.brake = inp.brake;
 
-    // --- Helm Assist steering (GDD §4.1): the nose chases the cursor ---
+    // --- Helm Assist steering (GDD §4.1): the nose chases the cursor unless direct yaw is held.
     // Gamepad/touch players keep stick-yaw even in helm scheme (kbmRecent gates the override).
-    if (helm && p && kbmRecent) {
-      const err = wrapAngle(inp.aimAngle - p.rot);
-      inp.turnIntent = Math.abs(err) < HELM_DEADBAND
-        ? 0
-        : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
-      // Tether trailing (GDD §4.3): while latched and coasting, hand most attitude authority to
+    if (helm && p && kbmRecent && this._screen.active) {
+      const manualYaw = Math.abs(inp.turnIntent) > 0.001;
+      // Tether trailing (GDD §4.3): while latched and loaded, hand most attitude authority to
       // the line — the nose-anchored joint torques the hull, so the tail swings outboard and the
-      // ship orbits guns-in. Any thrust/brake/boost input restores full helm authority.
-      const tether = state.player && state.player.tether;
-      const coasting = !inp.moveZ && !inp.moveX && !inp.boost && !inp.brake;
-      if (tether && tether.active && coasting) inp.turnIntent *= 0.12;
+      // ship orbits guns-in. Direct yaw input still wins so keyboard pilots can deliberately spin.
+      const tetherAngle = manualYaw ? null : tetherFacingAngle(p, state, state.player && state.player.tether);
+      if (tetherAngle != null) {
+        const tetherErr = wrapAngle(tetherAngle - p.rot);
+        inp.turnIntent = Math.max(-1, Math.min(1, tetherErr / TETHER_ORBIT_SOFT_ANGLE));
+      } else if (!manualYaw) {
+        const err = wrapAngle(inp.aimAngle - p.rot);
+        inp.turnIntent = Math.abs(err) < HELM_DEADBAND
+          ? 0
+          : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+      }
       if (inp.brake) {
         // Brake-to-stop: decompose the counter-velocity direction into the SAME ship axes
         // stepTranslation uses (forward = cos/sin rot, right = -sin/cos rot) and feed it through
@@ -422,3 +612,16 @@ export const input = {
     }
   },
 };
+
+function entityLabel(e) {
+  return (e && (e.name || (e.data && e.data.name))) || (e && e.type) || 'target';
+}
+
+function tetherFacingAngle(player, state, tether) {
+  if (!player || !state || !tether || !tether.active || tether.targetId == null) return null;
+  const phase = String(tether.phase || 'slack');
+  if (phase === 'slack') return null;
+  const target = state.entities && state.entities.get && state.entities.get(tether.targetId);
+  if (!target || target.alive === false || !target.pos || !player.pos) return null;
+  return Math.atan2(target.pos.z - player.pos.z, target.pos.x - player.pos.x);
+}

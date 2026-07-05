@@ -141,6 +141,7 @@
     "build:world-stations": "python tools/art/generate_ship_parts_library.py --only place_station_trade_hub,place_station_refinery,place_station_military,place_station_blackmarket,place_gate_jump_ring,place_station_mining,place_station_fab,place_station_research",
     "check:sector-geography": "node scripts/check-sector-geography.mjs && node test/sector-geography.test.mjs",
     "check:station-archetype-wiring": "node scripts/check-station-archetype-wiring.mjs && node test/station-archetype-wiring.test.mjs",
+    "check:autopilot": "node scripts/check-autopilot-v3.mjs",
     "check:station-archetype-glb-load": "node scripts/check-station-archetype-glb-load.mjs",
     "probe:station-archetypes-live": "node scripts/probe-station-archetypes-live.mjs",
     "check:concept-index": "node scripts/check-concept-index.mjs",

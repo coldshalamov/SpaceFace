@@ -30,23 +30,26 @@ export const PROPULSION_PROFILES = Object.freeze({
     family: DRIVE_FAMILIES.REACTION,
     label: 'Vector Reaction Drive S',
     mainAccel: 48,
-    reverseAccel: 25,
-    strafeAccel: 19,
+    reverseAccel: 30,
+    strafeAccel: 24,
     yawAccel: 12,
     yawBrake: 18,
     maxYawRate: 3.1,
     boostAccelMult: 2.15,
+    boostSpeedMult: 1.6,
     solverSpeedLimit: INF,
     precisionSpeed: 125,
     combatSpeed: 210,
     assist: {
-      neutralBrakeFraction: 0.42,
-      lateralKillFraction: 0.30,
+      neutralBrakeFraction: 0.48,
+      lateralKillFraction: 0.36,
       commandedAxisDamping: 0.08,
-      stopHorizonS: 2.6,
+      stopHorizonS: 2.20,
       driftStopHorizonS: 7.5,
       deadSpeed: 0.18,
       deadInput: 0.025,
+      governorResponseS: 0.85,
+      overspeedBrakeFraction: 0.28,
     },
     resources: {
       energyPerAccel: 0.010,
@@ -61,23 +64,26 @@ export const PROPULSION_PROFILES = Object.freeze({
     family: DRIVE_FAMILIES.REACTION,
     label: 'Vector Reaction Drive M',
     mainAccel: 38,
-    reverseAccel: 22,
-    strafeAccel: 15,
+    reverseAccel: 26,
+    strafeAccel: 19,
     yawAccel: 8.8,
     yawBrake: 14,
     maxYawRate: 2.45,
     boostAccelMult: 2.05,
+    boostSpeedMult: 1.55,
     solverSpeedLimit: INF,
     precisionSpeed: 115,
     combatSpeed: 195,
     assist: {
-      neutralBrakeFraction: 0.40,
-      lateralKillFraction: 0.27,
+      neutralBrakeFraction: 0.44,
+      lateralKillFraction: 0.32,
       commandedAxisDamping: 0.07,
-      stopHorizonS: 3.0,
+      stopHorizonS: 2.35,
       driftStopHorizonS: 8.5,
       deadSpeed: 0.20,
       deadInput: 0.025,
+      governorResponseS: 0.95,
+      overspeedBrakeFraction: 0.24,
     },
     resources: {
       energyPerAccel: 0.009,
@@ -98,17 +104,20 @@ export const PROPULSION_PROFILES = Object.freeze({
     yawBrake: 7.0,
     maxYawRate: 1.38,
     boostAccelMult: 1.85,
+    boostSpeedMult: 1.45,
     solverSpeedLimit: INF,
     precisionSpeed: 92,
     combatSpeed: 170,
     assist: {
-      neutralBrakeFraction: 0.36,
-      lateralKillFraction: 0.22,
+      neutralBrakeFraction: 0.40,
+      lateralKillFraction: 0.27,
       commandedAxisDamping: 0.05,
-      stopHorizonS: 4.0,
+      stopHorizonS: 3.10,
       driftStopHorizonS: 10.0,
       deadSpeed: 0.24,
       deadInput: 0.025,
+      governorResponseS: 1.3,
+      overspeedBrakeFraction: 0.16,
     },
     resources: {
       energyPerAccel: 0.008,
@@ -203,6 +212,7 @@ export const PROPULSION_PROFILES = Object.freeze({
     spoolDownS: 1.6,
     ignitionFloor: 0.18,
     boostAccelMult: 1.55,
+    boostSpeedMult: 1.4,
     solverSpeedLimit: INF,
     precisionSpeed: 85,
     combatSpeed: 320,
@@ -273,16 +283,19 @@ export function resolvePropulsionProfile(entity, state = null) {
     (entity && entity.data && entity.data.driveId) ||
     null;
 
-  if (driveId && PROPULSION_PROFILES[driveId]) return PROPULSION_PROFILES[driveId];
+  let profile = null;
+  if (driveId && PROPULSION_PROFILES[driveId]) {
+    profile = PROPULSION_PROFILES[driveId];
+  }
 
   // A setting hook is useful for a controlled migration / flight laboratory, but
   // it must never silently rewrite NPCs or saves in production.
   const labOverride = state && state.settings && state.settings.gameplay && state.settings.gameplay.flightLabDrive;
-  if (labOverride && PROPULSION_PROFILES[labOverride] && entity && entity.id === state.playerId) {
-    return PROPULSION_PROFILES[labOverride];
+  if (!profile && labOverride && PROPULSION_PROFILES[labOverride] && entity && entity.id === state.playerId) {
+    profile = PROPULSION_PROFILES[labOverride];
   }
 
-  const profile = inferProfile(entity);
+  if (!profile) profile = inferProfile(entity);
 
   // Cruise engagement multipliers (spec2/02 §1): player only.
   if (state && entity && entity.id === state.playerId) {
@@ -296,6 +309,14 @@ export function resolvePropulsionProfile(entity, state = null) {
         maxYawRate: Number.isFinite(profile.maxYawRate) ? profile.maxYawRate * 0.25 : profile.maxYawRate,
         yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * 0.25 : profile.yawAccel,
         yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * 0.25 : profile.yawBrake,
+      };
+    }
+    if (c && Number.isFinite(c.stumbleT) && c.stumbleT > 0) {
+      return {
+        ...profile,
+        maxYawRate: Number.isFinite(profile.maxYawRate) ? profile.maxYawRate * 0.4 : profile.maxYawRate,
+        yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * 0.4 : profile.yawAccel,
+        yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * 0.4 : profile.yawBrake,
       };
     }
   }

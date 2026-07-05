@@ -11,7 +11,7 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'combat.action.cut.start', 'combat.action.cut.snap', 'combat.action.cut.end',
   'combat.action.burst.start', 'combat.action.burst.fire', 'combat.action.burst.end',
   'combat.action.cancel', 'combat.action.reject',
-  'combat.damage.shield', 'combat.damage.armor', 'combat.damage.hull', 'combat.damage.kill',
+  'combat.damage.shield', 'combat.damage.armor', 'combat.damage.hull', 'combat.damage.kill', 'combat.damage.charge',
   'cruise.charging', 'cruise.engaged', 'cruise.dropped',
   'ai.telegraph', 'ai.flee', 'ai.formation_broken',
   'presentation.tether.attach', 'presentation.tether.break',
@@ -195,8 +195,8 @@ export const ATTACHMENT_DEFS = Object.freeze([
     id: 'attachment_massline', version: 1,
     sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: true },
-    break: { maxTension: 140, maxImpulse: 90, graceTicks: 1 },
-    spring: { K: 170, zeta: 0.90, captureS: 0.30 },
+    break: { maxTension: 8200, maxImpulse: 165, graceTicks: 4 },
+    spring: { K: 170, zeta: 0.90, captureS: 0.30, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
     // Massline winch/heat/overload controller (spec §8). Opt-in: runs stepMassline per tick,
     // smoothing the joint rest length and breaking on sustained overload / integrity failure.
     // SG-02 owns momentum exchange via radial spring capture; this owns winch + break policy.
@@ -206,23 +206,23 @@ export const ATTACHMENT_DEFS = Object.freeze([
   },
   {
     id: 'tether_standard', version: 1,
-    sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
+    sourceSocketTags: ['tether_spool'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: true },
     maxLength: 260,
     minLength: 18,
-    reelRate: 46,
+    reelRate: 69,
     // Break tune derives from src/data/ships.js via getDerivedStats: the scout-class Wasp is
     // mass 16 with thrust ~=361 wu/s^2 and maxSpeed ~=218 wu/s; Flight V3 boost cap is 2x maxSpeed.
     // SG-02 tension is now the radial spring force. The spring block below owns feel; this break
     // block owns only overload/cut thresholds and telemetry compatibility.
-    // Tune holds for the forward spool mount ([0.6, 0]): a mid-asteroid tangent slingshot at
+    // Tune holds for the forward tether spool ([0.38, 0]): a mid-asteroid tangent slingshot at
     // boost HOLDS; hard overloads (short-reeled line + full boost, fixed station anchor at speed)
     // SNAP. Verified by check-tether-gameplay + check:sg02:tether-break together — if you move
     // the socket further forward, re-run both before touching these numbers.
-    breakTension: 12000,
+    breakTension: 420000,
     snapImpulseNoise: 0,
-    break: { maxTension: 12000, maxImpulse: 220, graceTicks: 4, stiffness: 90, damping: 6 },
-    spring: { K: 140, zeta: 0.95, captureS: 0.35 },
+    break: { maxTension: 420000, maxImpulse: 7600, graceTicks: 4, stiffness: 90, damping: 6 },
+    spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
     massline: { enabled: true },
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
@@ -236,14 +236,14 @@ export const COMBAT_PROFILES = Object.freeze([
     immunityTags: [],
     subsystemIds: ['subsystem_drive', 'subsystem_weapon', 'subsystem_sensor', 'subsystem_tether_spool', 'subsystem_power'],
     sockets: [
-      // Forward spool mount (localPos is radius-normalized, +X = facing). Placement is a THREE-WAY
-      // tune verified by check-tether-gameplay + check:sg02:tether-break: more forward = more
-      // attitude torque (tail-out orbit read, GDD §4.3), but the lever lets bodies RELIEVE rope
-      // tension by rotating — at [1.0,0] the slingshot exit-velocity contract fails and at [0.6,0]
-      // the sustained-overload break contract fails. [0.3, 0.15] gives a readable lean while both
-      // physics contracts hold. The cable VISUAL anchors at the nose regardless (vfx.js), so the
-      // player-facing "beam from the nose" fantasy is untouched by this physics tradeoff.
-      { id: 'socket_massline', tags: ['massline'], localPos: [0.3, 0.15], maxAttachments: 1 },
+      // Legacy SG-03 story Massline anchor. 47-A's golden action_attach tape uses
+      // attachment_massline and depends on this fixture-era lever arm; keep player tether tuning on
+      // socket_tether_spool so SPEC3-F3 can evolve without rewriting the 47-A expected envelope.
+      { id: 'socket_massline', tags: ['massline'], localPos: [-0.25, 0.42], maxAttachments: 1 },
+      // Forward spool mount (localPos is radius-normalized, +X = facing). It sits forward of center
+      // mass, not at the nose tip: enough lever to bias nose-in, not enough to turn line capture
+      // into a top-spin generator when the player slowly backs into the massline edge.
+      { id: 'socket_tether_spool', tags: ['tether_spool'], localPos: [0.38, 0], maxAttachments: 1 },
       { id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 },
     ],
     capabilities: { drive: true, weapon: true, sensor: true, tether: true, power: true },

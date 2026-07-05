@@ -13,7 +13,7 @@ function defaultSettings() {
     keybinds: {},
     audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
     video: { renderScale: 0.85, bloom: true, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'medium', pixelRatioCap: 2, motionReduce: false, shadows: false, energyMaterials: true, renderGraph: false },
-    gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3' },
+    gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3', controlScheme: 'pilot', controlSchemeV2: true },
     controls: {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
       flightMode: 'assisted',
@@ -82,7 +82,8 @@ export function createGameState(seed) {
     tick: 0,
     days: 0,
     rng: mulberry32(seed),
-    input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 } },
+    input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 }, pointerScreen: { x: 0, y: 0, active: false } },
+    flight: { mode: 'manual', previousMode: 'manual', modeReason: 'boot', modeChangedTick: 0 },
     camera: { obj: null, tilt: 60, zoom: 88, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 26 },
     bounds: { radius: 2600, hardRadius: 3000, center: { x: 0, z: 0 } },
 
@@ -114,7 +115,7 @@ export function createGameState(seed) {
     world: { sectors: {}, currentSectorId: null, activeSector: { stations: [], fields: [], hazards: [], pois: [], gates: [] }, discovery: {}, scanPings: {}, entryPoint: { x: 0, z: 0, heading: 0 } },
     jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
     fuel: { current: 100, max: 100 },
-    nav: { route: null, autoTravel: false, waypoint: null },   // waypoint = {stationId,pos:{x,z},label} set by the trade route planner
+    nav: { route: null, autoTravel: false, waypoint: null, autopilot: { active: false, target: null, targetEntityId: null, label: '', arrivalRadius: 36, status: 'idle' } },
     automation: defaultAutomation(),
     // Offscreen statistical simulation (ADR-0002 / V2 §33). Owned solely by systems/sectorSim.js.
     // `sectors[id] = { drift:{security,enemyDensity}|null, lastEnterSimT, lastDay }` is the per-sector

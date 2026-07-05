@@ -19,10 +19,53 @@ const CAPTURE_SLACK_S = 0.1;
 const MAX_STRETCH_RATIO = 0.45;
 const REEL_SAFE_STRETCH_RATIO = 0.43;
 const STRETCH_EPSILON = 1e-6;
+const MAX_TETHER_RELEASE_YAW_RATE = 3.4;
+const MAX_TETHER_LOADED_YAW_RATE = 5.2;
+const MAX_TETHER_OPENING_SPEED_PAD = 10;
+const MIN_TETHER_OPENING_SPEED_LIMIT = 160;
+const MAX_TETHER_OPENING_SPEED_LIMIT = 260;
+const MIN_TETHER_ABSOLUTE_SPEED_LIMIT = 260;
+const MAX_TETHER_ABSOLUTE_SPEED_LIMIT = 420;
+const TETHER_NOSE_BASE_RATE = 1.5;
+const TETHER_NOSE_SPEED_RATE = 4.8;
+const TETHER_NOSE_RATE_GAIN = 2.5;
+const TETHER_NOSE_SPEED_FOR_AUTHORITY = 120;
 const SPRING_TUNES = Object.freeze({
-  tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35 }),
+  tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 }),
   attachment_massline: Object.freeze({ K: 170, zeta: 0.90, captureS: 0.30 }),
 });
+
+// Contact-response materials, keyed by physicsBody.material (physicsAuthority.defaultMaterial).
+// friction is 0 EVERYWHERE: hulls in vacuum have no grip, and — mechanically — contact friction
+// on ball colliders is what converted every bump into huge yaw spin (tangential impulse × body
+// radius over the yaw inertia) and then converted that spin back into linear velocity. Zero
+// friction removes both failure modes at the source; hulls scrape and slide instead.
+// restitution stays low so plating crunches and sheds energy rather than bouncing like diamond;
+// rock keeps the hardest edge. angularDamping models RCS auto-stabilization on powered craft
+// (a bumped ship visibly steadies itself over ~2.5 s); debris and wrecks keep tumbling.
+// `ghost` colliders join no contact pairs at all: projectiles do their damage through the
+// swept-segment tests in physics.js — a solver contact on top of that double-hit every target
+// with real momentum (~20 wu/s per bullet), which is why combat shoved ships around at random.
+const CONTACT_MATERIALS = Object.freeze({
+  ship:       Object.freeze({ friction: 0, restitution: 0.12, angularDamping: 0.4, ghost: false }),
+  projectile: Object.freeze({ friction: 0, restitution: 0,    angularDamping: 0,    ghost: true }),
+  rock:       Object.freeze({ friction: 0, restitution: 0.22, angularDamping: 0.02, ghost: false }),
+  station:    Object.freeze({ friction: 0, restitution: 0.06, angularDamping: 0,    ghost: false }),
+  debris:     Object.freeze({ friction: 0, restitution: 0.16, angularDamping: 0.06, ghost: false }),
+  payload:    Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.15, ghost: false }),
+  sensor:     Object.freeze({ friction: 0, restitution: 0.10, angularDamping: 0.10, ghost: false }),
+  default:    Object.freeze({ friction: 0, restitution: 0.15, angularDamping: 0.05, ghost: false }),
+});
+
+// Structural give: contacts may not change a body's velocity by more than this per fixed tick
+// beyond what its own commanded forces/impulses produced. Real plating flexes and crumples; a
+// deep-penetration solver spike therefore lands as a firm shove, never a cannon launch. The
+// commanded contribution is predicted exactly (impulses mutate linvel immediately; only
+// continuous forces integrate inside world.step), so player/tether/AI physics pass through
+// untouched — the clamp bites solver contact response alone.
+const MAX_CONTACT_DV = 40;       // wu/s of contact-sourced linear delta-v per tick
+const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick
+const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit tether clamp
 
 const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initialization function';
 let rapierInitPromise = null;
@@ -221,7 +264,9 @@ export class Sg02DynamicBodyOwner {
       restLength,
       break: normalizeBreak(input.break),
       spring: normalizeSpring(input.spring || (input.break && input.break.spring), input.defId, input.break),
-      springState: createSpringState(),
+      forceScale: clamp(finite(input.forceScale, 1), 0, 4),
+      reelRevision: Math.max(0, Math.trunc(finite(input.reelRevision))),
+      springState: normalizeSpringState(input.springState),
       springScratch: createSpringScratch(),
       createdTick: Math.max(0, Math.trunc(finite(input.tick))),
       contactJoint: null,
@@ -235,9 +280,21 @@ export class Sg02DynamicBodyOwner {
     const attachment = this._findAttachment(input);
     if (!attachment) return false;
     const requested = positive(input.restLength, attachment.restLength);
+    if (usesLegacyRopeSpring(attachment.spring)) {
+      attachment.restLength = requested;
+      attachment.reelRevision = Math.max(
+        Math.max(0, Math.trunc(finite(attachment.reelRevision))) + 1,
+        Math.max(0, Math.trunc(finite(input.reelRevision))),
+      );
+      attachment.spring = normalizeSpring(null, attachment.defId, attachment.break);
+      attachment.springState = normalizeSpringState(input.springState);
+      this._removeAttachmentJoints(attachment);
+      this._createAttachmentJoints(attachment);
+      return { restLength: attachment.restLength };
+    }
     if (requested < attachment.restLength && attachment.springState) attachment.springState.reelSlip = true;
     attachment.restLength = safeReelRestLength(attachment, requested, this.fixedDt);
-    return true;
+    return { restLength: attachment.restLength };
   }
 
   cutAttachment(input = {}) {
@@ -264,10 +321,15 @@ export class Sg02DynamicBodyOwner {
     const relativeSpeed = (targetVelocity.x - ownerVelocity.x) * nx + (targetVelocity.z - ownerVelocity.z) * nz;
     const stretch = Math.max(0, distance - attachment.restLength);
     const springState = attachment.springState || createSpringState();
-    const spring = attachment.spring || normalizeSpring(null, attachment.defId, attachment.break);
-    const mu = reducedMass(attachment.owner, attachment.target);
-    const damping = dampingForSpring(spring, mu);
-    const telemetryTension = Math.max(0, springState.lastTension || (stretch * spring.K + damping * Math.max(0, relativeSpeed)));
+    const legacyRope = usesLegacyRopeSpring(attachment.spring);
+    const spring = legacyRope ? null : (attachment.spring || normalizeSpring(null, attachment.defId, attachment.break));
+    const damping = legacyRope
+      ? positive(attachment.break.damping, 0)
+      : dampingForSpring(spring, reducedMass(attachment.owner, attachment.target));
+    const fallbackTension = legacyRope
+      ? stretch * positive(attachment.break.stiffness, 10) + relativeSpeed * damping
+      : stretch * spring.K + damping * Math.max(0, relativeSpeed);
+    const telemetryTension = Math.max(0, springState.lastTension || fallbackTension);
     const telemetryImpulse = Math.max(0, springState.lastImpulse || telemetryTension * this.fixedDt);
     return Object.freeze({
       schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
@@ -278,11 +340,12 @@ export class Sg02DynamicBodyOwner {
       relativeSpeed,
       tension: telemetryTension,
       impulse: telemetryImpulse,
-      phase: springState.phase || 'slack',
+      phase: legacyRope ? (stretch > STRETCH_EPSILON ? 'loaded' : 'slack') : (springState.phase || 'slack'),
       captureT: Math.max(0, finite(springState.captureT)),
-      springK: spring.K,
+      springK: legacyRope ? positive(attachment.break.stiffness, 10) : spring.K,
       springDamping: damping,
-      breakRequested: !!springState.breakRequested,
+      breakRequested: legacyRope ? false : !!springState.breakRequested,
+      springState: legacyRope ? null : Object.freeze(cloneSpringState(springState)),
       sourceWorld: Object.freeze(source),
       targetWorld: Object.freeze(target),
       tick: this.tick,
@@ -293,6 +356,8 @@ export class Sg02DynamicBodyOwner {
     for (const rec of this.dynamicRecords) {
       setZero3(rec.appliedForce);
       setZero3(rec.appliedTorque);
+      setZero3(rec.controlForce);
+      setZero3(rec.controlTorque);
       rec.maxSpeed = Infinity;
       resetBodyForces(rec.body);
       const command = consumePhysicsCommand(rec.entity);
@@ -301,9 +366,18 @@ export class Sg02DynamicBodyOwner {
 
     this._applyAttachmentSprings();
 
+    // Structural-give baseline: at this point every impulse (dash, spring, combat) has already
+    // mutated linvel/angvel; only the continuous control force/torque still integrates inside
+    // world.step(). Predicting that lets the post-step pass isolate pure contact response.
+    for (const rec of this.dynamicRecords) this._captureExpectedKinematics(rec);
+
     this.world.timestep = this.fixedDt;
     this.world.step();
     this.tick++;
+    // Give first (bounds solver contact spikes), tether clamp second (its speed limits stay
+    // authoritative — the give must never re-inflate a velocity the tether clamp reduced).
+    for (const rec of this.dynamicRecords) this._applyStructuralGive(rec);
+    this._clampLoadedTetherBodies();
 
     for (const rec of this.dynamicRecords) {
       const kinematics = this._enforcePlane(rec);
@@ -313,10 +387,56 @@ export class Sg02DynamicBodyOwner {
     }
   }
 
+  _captureExpectedKinematics(rec) {
+    const v = rec.body.linvel();
+    const w = rec.body.angvel();
+    const e = rec.expected || (rec.expected = { vx: 0, vz: 0, wy: 0 });
+    e.vx = finite(v.x) + rec.controlForce.x / rec.spec.mass * this.fixedDt;
+    e.vz = finite(v.z) + rec.controlForce.z / rec.spec.mass * this.fixedDt;
+    e.wy = finite(w.y) + rec.controlTorque.y / rec.spec.inertiaY * this.fixedDt;
+  }
+
+  // Clamp the solver-contact contribution to this tick's velocity change (see MAX_CONTACT_DV).
+  // Angular damping also lands in the "excess" term but at ≤0.7% of the rate per tick it never
+  // approaches the clamp. The absolute yaw ceiling is the final sanity net: nothing in the game
+  // may leave a body spinning faster than SANE_MAX_YAW_RATE, contacts or otherwise.
+  _applyStructuralGive(rec) {
+    const e = rec.expected;
+    if (!e) return;
+    const v = rec.body.linvel();
+    const w = rec.body.angvel();
+    let vx = finite(v.x);
+    let vz = finite(v.z);
+    let wy = finite(w.y);
+    let touched = false;
+    const dvx = vx - e.vx;
+    const dvz = vz - e.vz;
+    const dv = Math.hypot(dvx, dvz);
+    if (dv > MAX_CONTACT_DV) {
+      const scale = MAX_CONTACT_DV / dv;
+      vx = e.vx + dvx * scale;
+      vz = e.vz + dvz * scale;
+      touched = true;
+    }
+    const dw = wy - e.wy;
+    if (Math.abs(dw) > MAX_CONTACT_DW) {
+      wy = e.wy + Math.sign(dw) * MAX_CONTACT_DW;
+      touched = true;
+    }
+    if (Math.abs(wy) > SANE_MAX_YAW_RATE) {
+      wy = clamp(wy, -SANE_MAX_YAW_RATE, SANE_MAX_YAW_RATE);
+      touched = true;
+    }
+    if (!touched) return;
+    rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
+    rec.body.setAngvel({ x: 0, y: wy, z: 0 }, true);
+  }
+
   _createRecord(entity, spec) {
     const R = this.RAPIER;
     const pos = vector3(entity.pos);
     const vel = vector3(entity.vel);
+    const material = CONTACT_MATERIALS[spec.material] || CONTACT_MATERIALS.default;
     const desc = (spec.dynamic ? R.RigidBodyDesc.dynamic() : R.RigidBodyDesc.fixed())
       .setTranslation(pos.x, 0, pos.z)
       .setRotation(quatFromYaw(finite(entity.rot)))
@@ -325,6 +445,14 @@ export class Sg02DynamicBodyOwner {
       .enabledTranslations(true, false, true)
       .enabledRotations(false, true, false)
       .setCcdEnabled(!!spec.ccd);
+    if (spec.dynamic && typeof desc.setCanSleep === 'function') {
+      // SG-02 save/reload rebuilds Rapier bodies from authoritative sim pose/velocity. Sleeping is
+      // hidden solver state, so dynamic bodies stay awake to keep taut attachments replay-stable.
+      desc.setCanSleep(false);
+    }
+    if (spec.dynamic && material.angularDamping > 0 && typeof desc.setAngularDamping === 'function') {
+      desc.setAngularDamping(material.angularDamping);
+    }
     if (spec.dynamic && typeof desc.setAdditionalMassProperties === 'function') {
       desc.setAdditionalMassProperties(
         spec.mass,
@@ -335,7 +463,13 @@ export class Sg02DynamicBodyOwner {
     }
 
     const body = this.world.createRigidBody(desc);
-    const colliderDesc = R.ColliderDesc.ball(spec.radius).setDensity(0);
+    const colliderDesc = R.ColliderDesc.ball(spec.radius)
+      .setDensity(0)
+      .setFriction(material.friction)
+      .setRestitution(material.restitution);
+    if (material.ghost && typeof colliderDesc.setCollisionGroups === 'function') {
+      colliderDesc.setCollisionGroups(0);   // member of nothing, filters nothing → zero contacts
+    }
     const collider = this.world.createCollider(colliderDesc, body);
     const ccdEnabled = typeof body.isCcdEnabled === 'function' ? body.isCcdEnabled() : !!spec.ccd;
     return {
@@ -347,6 +481,9 @@ export class Sg02DynamicBodyOwner {
       ccdEnabled,
       appliedForce: zero3(),
       appliedTorque: zero3(),
+      controlForce: zero3(),
+      controlTorque: zero3(),
+      expected: { vx: 0, vz: 0, wy: 0 },
       kinematics: {
         x: pos.x,
         z: pos.z,
@@ -409,6 +546,8 @@ export class Sg02DynamicBodyOwner {
       rec.body.addTorque(torque, true);
       add3Into(rec.appliedForce, force);
       add3Into(rec.appliedTorque, torque);
+      add3Into(rec.controlForce, force);     // continuous-only tracker for the structural-give
+      add3Into(rec.controlTorque, torque);   // baseline (impulses mutate velocity immediately)
       rec.maxSpeed = positive(command.control.maxSpeed, Infinity);
     }
     for (const impulse of command.impulses || []) {
@@ -518,7 +657,10 @@ export class Sg02DynamicBodyOwner {
   }
 
   _applyAttachmentSprings() {
-    for (const attachment of this.attachments.values()) this._applyAttachmentSpring(attachment);
+    for (const attachment of this.attachments.values()) {
+      if (usesLegacyRopeSpring(attachment.spring)) continue;
+      this._applyAttachmentSpring(attachment);
+    }
   }
 
   _applyAttachmentSpring(attachment) {
@@ -534,8 +676,12 @@ export class Sg02DynamicBodyOwner {
     const nz = distance > 1e-9 ? dz / distance : 0;
     let stretch = Math.max(0, distance - restLength);
 
-    if (state.reelSlip && restLength > 0 && stretch > restLength * REEL_SAFE_STRETCH_RATIO) {
-      restLength = distance / (1 + REEL_SAFE_STRETCH_RATIO);
+    const maxStretchRatio = positive(attachment.spring && attachment.spring.maxStretchRatio, MAX_STRETCH_RATIO);
+    const reelSafeStretchRatio = positive(attachment.spring && attachment.spring.reelSafeStretchRatio,
+      Math.min(REEL_SAFE_STRETCH_RATIO, Math.max(0.05, maxStretchRatio - 0.04)));
+
+    if (state.reelSlip && restLength > 0 && stretch > restLength * reelSafeStretchRatio) {
+      restLength = distance / (1 + reelSafeStretchRatio);
       attachment.restLength = restLength;
       stretch = Math.max(0, distance - restLength);
     }
@@ -576,7 +722,7 @@ export class Sg02DynamicBodyOwner {
     const c = inCapture ? damping * (0.5 + 0.5 * smooth) : damping;
     let force = Math.max(0, k * stretch + c * relativeSpeed);
 
-    const breakStretch = restLength * MAX_STRETCH_RATIO;
+    const breakStretch = restLength * maxStretchRatio;
     if (stretch > breakStretch) {
       state.breakRequested = true;
       state.phase = 'overload';
@@ -590,7 +736,8 @@ export class Sg02DynamicBodyOwner {
       return;
     }
 
-    const impulse = force * this.fixedDt;
+    const forceImpulse = force * this.fixedDt;
+    const impulse = forceImpulse * clamp(finite(attachment.forceScale, 1), 0, 4);
     if (impulse > 0) {
       scratch.impulseA.x = nx * impulse;
       scratch.impulseA.y = 0;
@@ -598,14 +745,13 @@ export class Sg02DynamicBodyOwner {
       scratch.impulseB.x = -scratch.impulseA.x;
       scratch.impulseB.y = 0;
       scratch.impulseB.z = -scratch.impulseA.z;
-      applyImpulseAtPoint(attachment.owner, scratch.impulseA, source);
-      applyImpulseAtPoint(attachment.target, scratch.impulseB, target);
+      applyAttachmentImpulse(attachment, scratch.impulseA, scratch.impulseB, source, target, relativeSpeed);
       accumulateForce(attachment.owner, scratch.impulseA, this.fixedDt);
       accumulateForce(attachment.target, scratch.impulseB, this.fixedDt);
     }
 
     state.lastTension = force;
-    state.lastImpulse = impulse;
+    state.lastImpulse = forceImpulse;
     state.lastRelativeSpeed = relativeSpeed;
     state.phase = inCapture ? 'capture'
       : force >= finite(attachment.break.maxTension, Infinity) * 0.75 ? 'overload'
@@ -618,16 +764,21 @@ export class Sg02DynamicBodyOwner {
 
   _createAttachmentJoints(attachment) {
     attachment.contactJoint = null;
-    if (!this.RAPIER.JointData.generic) return;
-    attachment.contactJoint = this.world.createImpulseJoint(
-      this.RAPIER.JointData.generic(attachment.anchorA, attachment.anchorB, { x: 1, y: 0, z: 0 }, 0),
-      attachment.owner.body,
-      attachment.target.body,
-      true,
-    );
-    if (attachment.contactJoint && typeof attachment.contactJoint.setContactsEnabled === 'function') {
-      attachment.contactJoint.setContactsEnabled(false);
+    if (usesLegacyRopeSpring(attachment.spring)) {
+      if (!this.RAPIER.JointData.rope) return;
+      attachment.contactJoint = this.world.createImpulseJoint(
+        this.RAPIER.JointData.rope(attachment.restLength, attachment.anchorA, attachment.anchorB),
+        attachment.owner.body,
+        attachment.target.body,
+        true,
+      );
+      if (attachment.contactJoint && typeof attachment.contactJoint.setContactsEnabled === 'function') {
+        attachment.contactJoint.setContactsEnabled(false);
+      }
+      return;
     }
+    // Spring-mode masslines are integrated manually above. Do not also create a hard Rapier
+    // impulse joint: that turns the soft line edge into a solver snap and can inject huge yaw.
   }
 
   _removeAttachmentJoints(attachment) {
@@ -637,44 +788,20 @@ export class Sg02DynamicBodyOwner {
     attachment.contactJoint = null;
   }
 
+  _clampLoadedTetherBodies() {
+    for (const attachment of this.attachments.values()) {
+      if (!isLoadedStandardTether(attachment)) continue;
+      clampTetherLoadedYaw(attachment.owner, MAX_TETHER_LOADED_YAW_RATE);
+      clampTetherLoadedSpeed(attachment.owner, tetherLoadedSpeedLimit(attachment, attachment.owner));
+      clampTetherLoadedSpeed(attachment.target, tetherLoadedSpeedLimit(attachment, attachment.target));
+    }
+  }
+
   _releaseSpringOnCut(attachment, reason) {
     if (String(reason || '') !== 'tether_cut') return;
     if (attachment.defId !== 'tether_standard') return;
-    const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
-    const source = worldAnchorInto(scratch.source, attachment.owner, attachment.anchorA);
-    const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
-    const dx = target.x - source.x;
-    const dz = target.z - source.z;
-    const distance = Math.hypot(dx, dz);
-    const stretch = Math.max(0, distance - positive(attachment.restLength, distance));
-    if (!(stretch > STRETCH_EPSILON)) return;
-    velocityAtPointInto(scratch.velocityA, attachment.owner, source);
-    const nx = distance > 1e-9 ? dx / distance : 1;
-    const nz = distance > 1e-9 ? dz / distance : 0;
-    const radialSpeed = scratch.velocityA.x * nx + scratch.velocityA.z * nz;
-    let tx = scratch.velocityA.x - nx * radialSpeed;
-    let tz = scratch.velocityA.z - nz * radialSpeed;
-    const tangentSpeed = Math.hypot(tx, tz);
-    if (!(tangentSpeed > 1e-6)) {
-      tx = -nz;
-      tz = nx;
-    } else {
-      tx /= tangentSpeed;
-      tz /= tangentSpeed;
-    }
-    const mass = effectiveMass(attachment.owner);
-    if (!Number.isFinite(mass) || !(mass > 0)) return;
-    const spring = attachment.spring || normalizeSpring(null, attachment.defId, attachment.break);
-    const releaseSpeed = Math.min(55, Math.sqrt(Math.max(0, spring.K * stretch * stretch / mass)) * 0.45);
-    if (!(releaseSpeed > 0)) return;
-    scratch.impulseA.x = tx * releaseSpeed * mass;
-    scratch.impulseA.y = 0;
-    scratch.impulseA.z = tz * releaseSpeed * mass;
-    applyImpulseAtPoint(attachment.owner, scratch.impulseA, source);
-    if (attachment.owner.entity && attachment.owner.entity.vel) {
-      attachment.owner.entity.vel.x += scratch.impulseA.x / mass;
-      attachment.owner.entity.vel.z += scratch.impulseA.z / mass;
-    }
+    applyTetherLinearReleaseKick(attachment);
+    clampTetherReleaseYaw(attachment.owner, MAX_TETHER_RELEASE_YAW_RATE);
   }
 }
 
@@ -753,11 +880,20 @@ function normalizeBreak(value = {}) {
 
 function normalizeSpring(value = {}, defId = '', breakValue = {}) {
   const tune = SPRING_TUNES[String(defId || '')] || null;
+  const maxStretchRatio = positive(value && value.maxStretchRatio, positive(tune && tune.maxStretchRatio, MAX_STRETCH_RATIO));
   return {
+    mode: value && value.mode === 'legacy_rope' ? 'legacy_rope' : 'spring',
     K: positive(value && value.K, positive(value && value.k, positive(tune && tune.K, positive(breakValue && breakValue.stiffness, 140)))),
     zeta: positive(value && value.zeta, positive(tune && tune.zeta, 0.95)),
     captureS: positive(value && value.captureS, positive(tune && tune.captureS, 0.35)),
+    maxStretchRatio,
+    reelSafeStretchRatio: positive(value && value.reelSafeStretchRatio,
+      positive(tune && tune.reelSafeStretchRatio, Math.min(REEL_SAFE_STRETCH_RATIO, Math.max(0.05, maxStretchRatio - 0.04)))),
   };
+}
+
+function usesLegacyRopeSpring(spring) {
+  return spring && spring.mode === 'legacy_rope';
 }
 
 function createSpringState() {
@@ -776,6 +912,40 @@ function createSpringState() {
   };
 }
 
+function normalizeSpringState(value = null) {
+  const state = createSpringState();
+  if (!value || typeof value !== 'object') return state;
+  state.slackS = Math.max(0, finite(value.slackS, state.slackS));
+  state.captureT = Math.max(0, finite(value.captureT, state.captureT));
+  state.captureActive = !!value.captureActive;
+  state.wasTaut = !!value.wasTaut;
+  state.reelSlip = !!value.reelSlip;
+  state.phase = typeof value.phase === 'string' && value.phase ? value.phase : state.phase;
+  state.breakRequested = !!value.breakRequested;
+  state.lastStretch = Math.max(0, finite(value.lastStretch));
+  state.lastRelativeSpeed = finite(value.lastRelativeSpeed);
+  state.lastTension = Math.max(0, finite(value.lastTension));
+  state.lastImpulse = Math.max(0, finite(value.lastImpulse));
+  return state;
+}
+
+function cloneSpringState(value = null) {
+  const state = normalizeSpringState(value);
+  return {
+    slackS: state.slackS,
+    captureT: state.captureT,
+    captureActive: state.captureActive,
+    wasTaut: state.wasTaut,
+    reelSlip: state.reelSlip,
+    phase: state.phase,
+    breakRequested: state.breakRequested,
+    lastStretch: state.lastStretch,
+    lastRelativeSpeed: state.lastRelativeSpeed,
+    lastTension: state.lastTension,
+    lastImpulse: state.lastImpulse,
+  };
+}
+
 function createSpringScratch() {
   return {
     source: zero3(),
@@ -790,6 +960,10 @@ function createSpringScratch() {
 function safeReelRestLength(attachment, requested, dt = SG02_DYNAMIC_BODY_OWNER_DT) {
   const current = positive(attachment && attachment.restLength, requested);
   if (!(requested < current)) return requested;
+  const spring = attachment.spring || normalizeSpring(null, attachment.defId, attachment.break);
+  const maxStretchRatio = positive(spring && spring.maxStretchRatio, MAX_STRETCH_RATIO);
+  const reelSafeStretchRatio = positive(spring && spring.reelSafeStretchRatio,
+    Math.min(REEL_SAFE_STRETCH_RATIO, Math.max(0.05, maxStretchRatio - 0.04)));
   const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
   const source = worldAnchorInto(scratch.source, attachment.owner, attachment.anchorA);
   const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
@@ -803,7 +977,7 @@ function safeReelRestLength(attachment, requested, dt = SG02_DYNAMIC_BODY_OWNER_
     ? Math.max(0, (scratch.velocityB.x - scratch.velocityA.x) * dx * invD + (scratch.velocityB.z - scratch.velocityA.z) * dz * invD)
     : 0;
   const predictedDistance = distance + openingSpeed * Math.max(0, finite(dt));
-  const minByGuard = predictedDistance / (1 + REEL_SAFE_STRETCH_RATIO);
+  const minByGuard = predictedDistance / (1 + reelSafeStretchRatio);
   return Math.max(requested, minByGuard);
 }
 
@@ -857,6 +1031,25 @@ function velocityAtPointInto(out, rec, point) {
   return out;
 }
 
+function applyAttachmentImpulse(attachment, impulseA, impulseB, source, target, relativeSpeed) {
+  if (attachment && attachment.defId === 'tether_standard') {
+    applyCenterImpulse(attachment.owner, impulseA);
+    applyCenterImpulse(attachment.target, impulseB);
+    applyTetherNoseTorqueImpulse(attachment, source, target, relativeSpeed);
+    clampTetherLoadedYaw(attachment.owner, MAX_TETHER_LOADED_YAW_RATE);
+    clampTetherLoadedSpeed(attachment.owner, tetherLoadedSpeedLimit(attachment, attachment.owner));
+    clampTetherLoadedSpeed(attachment.target, tetherLoadedSpeedLimit(attachment, attachment.target));
+    return;
+  }
+  applyImpulseAtPoint(attachment.owner, impulseA, source);
+  applyImpulseAtPoint(attachment.target, impulseB, target);
+}
+
+function applyCenterImpulse(rec, impulse) {
+  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body) return;
+  rec.body.applyImpulse(impulse, true);
+}
+
 function applyImpulseAtPoint(rec, impulse, point) {
   if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body) return;
   if (typeof rec.body.applyImpulseAtPoint === 'function') {
@@ -864,6 +1057,143 @@ function applyImpulseAtPoint(rec, impulse, point) {
     return;
   }
   rec.body.applyImpulse(impulse, true);
+}
+
+function applyTetherNoseTorqueImpulse(attachment, source, target, relativeSpeed) {
+  const rec = attachment && attachment.owner;
+  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body) return;
+  if (!source || !target) return;
+  const ownerPos = rec.body.translation();
+  const dx = finite(target.x) - finite(ownerPos.x);
+  const dz = finite(target.z) - finite(ownerPos.z);
+  const distance = Math.hypot(dx, dz);
+  if (!(distance > 1e-6)) return;
+
+  const desired = Math.atan2(dz, dx);
+  const yaw = yawFromQuat(rec.body.rotation());
+  const error = wrapAngle(desired - yaw);
+  if (Math.abs(error) <= 0.001) return;
+
+  const ownerV = rec.body.linvel();
+  const targetBody = attachment.target && attachment.target.body;
+  const targetV = targetBody && typeof targetBody.linvel === 'function'
+    ? targetBody.linvel()
+    : zero3();
+  const nx = dx / distance;
+  const nz = dz / distance;
+  const tangentSpeed = (finite(ownerV.x) - finite(targetV.x)) * -nz + (finite(ownerV.z) - finite(targetV.z)) * nx;
+  const authority = clamp(
+    (Math.abs(tangentSpeed) + Math.max(0, finite(relativeSpeed)) * 0.35) / TETHER_NOSE_SPEED_FOR_AUTHORITY,
+    0,
+    1,
+  );
+  const maxRate = TETHER_NOSE_BASE_RATE + TETHER_NOSE_SPEED_RATE * authority;
+  const targetRate = clamp(error * TETHER_NOSE_RATE_GAIN, -maxRate, maxRate);
+  const currentRate = yawRate(rec);
+  const maxDelta = 0.11 + authority * 0.30;
+  const deltaRate = clamp(targetRate - currentRate, -maxDelta, maxDelta);
+  if (Math.abs(deltaRate) <= 1e-5) return;
+  const inertia = positive(rec.spec && rec.spec.inertiaY, 1);
+  rec.body.applyTorqueImpulse({ x: 0, y: deltaRate * inertia, z: 0 }, true);
+}
+
+function clampTetherLoadedYaw(rec, limit) {
+  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || !(limit > 0)) return;
+  const current = yawRate(rec);
+  const next = clamp(current, -limit, limit);
+  if (Math.abs(next - current) > 1e-9 && typeof rec.body.setAngvel === 'function') {
+    rec.body.setAngvel({ x: 0, y: next, z: 0 }, true);
+  }
+  if (rec.entity) rec.entity.angVel = next;
+}
+
+function clampTetherLoadedSpeed(rec, limit) {
+  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || !(limit > 0)) return;
+  const v = rec.body.linvel();
+  const vx = finite(v && v.x);
+  const vz = finite(v && v.z);
+  const speed = Math.hypot(vx, vz);
+  if (!(speed > limit) || speed <= 1e-9) return;
+  const scale = limit / speed;
+  const next = { x: vx * scale, y: 0, z: vz * scale };
+  rec.body.setLinvel(next, true);
+  if (rec.entity && rec.entity.vel) {
+    rec.entity.vel.x = next.x;
+    rec.entity.vel.z = next.z;
+  }
+}
+
+function clampTetherReleaseYaw(rec, limit) {
+  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || !(limit > 0)) return;
+  const current = yawRate(rec);
+  const next = clamp(current, -limit, limit);
+  if (typeof rec.body.setAngvel === 'function' && Math.abs(next - current) > 1e-9) {
+    rec.body.setAngvel({ x: 0, y: next, z: 0 }, true);
+  }
+  if (rec.entity) rec.entity.angVel = next;
+}
+
+function isLoadedStandardTether(attachment) {
+  if (!attachment || attachment.defId !== 'tether_standard') return false;
+  const state = attachment.springState;
+  if (!state) return false;
+  if (state.lastStretch > STRETCH_EPSILON) return true;
+  const phase = String(state.phase || 'slack');
+  return phase !== 'slack';
+}
+
+function tetherLoadedSpeedLimit(attachment, rec) {
+  const base = positive(rec && rec.entity && rec.entity.maxSpeed, 170);
+  const opening = Math.max(0, finite(attachment && attachment.springState && attachment.springState.lastRelativeSpeed));
+  if (opening > 0.5) {
+    return clamp(base + MAX_TETHER_OPENING_SPEED_PAD, MIN_TETHER_OPENING_SPEED_LIMIT, MAX_TETHER_OPENING_SPEED_LIMIT);
+  }
+  return clamp(base * 1.75 + 40, MIN_TETHER_ABSOLUTE_SPEED_LIMIT, MAX_TETHER_ABSOLUTE_SPEED_LIMIT);
+}
+
+function yawRate(rec) {
+  const w = rec && rec.body && typeof rec.body.angvel === 'function' ? rec.body.angvel() : null;
+  return finite(w && w.y, finite(rec && rec.entity && rec.entity.angVel));
+}
+
+function applyTetherLinearReleaseKick(attachment) {
+  const rec = attachment && attachment.owner;
+  if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body) return;
+  const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
+  const source = worldAnchorInto(scratch.source, rec, attachment.anchorA);
+  const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
+  const dx = target.x - source.x;
+  const dz = target.z - source.z;
+  const distance = Math.hypot(dx, dz);
+  const stretch = Math.max(0, distance - positive(attachment.restLength, distance));
+  if (!(stretch > STRETCH_EPSILON)) return;
+  const nx = distance > 1e-9 ? dx / distance : 1;
+  const nz = distance > 1e-9 ? dz / distance : 0;
+  velocityAtPointInto(scratch.velocityA, rec, source);
+  const radialSpeed = scratch.velocityA.x * nx + scratch.velocityA.z * nz;
+  let tx = scratch.velocityA.x - nx * radialSpeed;
+  let tz = scratch.velocityA.z - nz * radialSpeed;
+  const tangentSpeed = Math.hypot(tx, tz);
+  if (!(tangentSpeed > 1e-6)) {
+    tx = -nz;
+    tz = nx;
+  } else {
+    tx /= tangentSpeed;
+    tz /= tangentSpeed;
+  }
+  const mass = effectiveMass(rec);
+  if (!Number.isFinite(mass) || !(mass > 0)) return;
+  const spring = attachment.spring || normalizeSpring(null, attachment.defId, attachment.break);
+  const releaseSpeed = Math.min(55, Math.sqrt(Math.max(0, spring.K * stretch * stretch / mass)) * 0.45);
+  if (!(releaseSpeed > 0)) return;
+  scratch.impulseA.x = tx * releaseSpeed * mass;
+  scratch.impulseA.y = 0;
+  scratch.impulseA.z = tz * releaseSpeed * mass;
+  rec.body.applyImpulse(scratch.impulseA, true);
+  if (rec.entity && rec.entity.vel) {
+    rec.entity.vel.x += scratch.impulseA.x / mass;
+    rec.entity.vel.z += scratch.impulseA.z / mass;
+  }
 }
 
 function accumulateForce(rec, impulse, dt) {
@@ -934,7 +1264,8 @@ function recordMatchesSpec(rec, spec) {
     rec.spec.ccd === spec.ccd &&
     rec.spec.radius === spec.radius &&
     rec.spec.mass === spec.mass &&
-    rec.spec.inertiaY === spec.inertiaY;
+    rec.spec.inertiaY === spec.inertiaY &&
+    rec.spec.material === spec.material;   // material drives collider friction/restitution/groups
 }
 
 function wrapAngle(value) {

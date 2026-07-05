@@ -94,7 +94,8 @@ const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
 let refs = null;
 
 // --- Key rebinding (V2 §12) ---
-// DEFAULT_BINDINGS is the source of truth in input.js; mirror it here so the UI never desyncs.
+// input.js owns the binding tables; the settings UI mirrors the active control scheme and overlays
+// saved custom keys so "reset to defaults" means the defaults for the selected scheme.
 const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // Flight actions the player may rebind. (Mouse buttons + Space-as-fire-alt are ergonomic constants
 // and stay out of the rebind grid to keep the model simple.)
@@ -110,7 +111,7 @@ const REBIND_LABELS = {
   boost: 'Boost / dash',
   autoFire: 'Toggle auto-fire',
   brake: 'Brake to stop (Helm Assist)',
-  tether: 'Tether: latch / release',
+  tether: 'Tether: latch / reel / release',
   chargeThrow: 'Impulse charge: throw',
   chargeDetonate: 'Impulse charge: detonate',
   scanPulse: 'Scanner pulse',
@@ -118,6 +119,27 @@ const REBIND_LABELS = {
   reelIn: 'Tether winch in',
   reelOut: 'Tether winch out',
 };
+
+function controlSchemeFor(settings) {
+  const scheme = settings && settings.gameplay && settings.gameplay.controlScheme || 'pilot';
+  const schemes = INPUT_DEFAULTS.SCHEMES || {};
+  return schemes[scheme] ? scheme : 'pilot';
+}
+
+function schemeBindingsFor(settings) {
+  const schemes = INPUT_DEFAULTS.SCHEMES || {};
+  return schemes[controlSchemeFor(settings)] || DEFAULT_BINDINGS;
+}
+
+function mergedBindingsFor(settings) {
+  const base = schemeBindingsFor(settings);
+  const live = {};
+  const keys = new Set([...Object.keys(DEFAULT_BINDINGS || {}), ...Object.keys(base || {})]);
+  for (const action of keys) live[action] = ((base && base[action]) || DEFAULT_BINDINGS[action] || []).slice();
+  const custom = settings && settings.controls && settings.controls.bindings;
+  if (custom) for (const action in custom) live[action] = (custom[action] || []).slice();
+  return { base, live };
+}
 
 export const CONTROL_SHORTCUTS = Object.freeze([
   { label: 'Dock / interact', key: BINDINGS.dock.label, note: 'when prompted' },
@@ -247,7 +269,7 @@ export const settingsScreen = {
     } else if (refs.active === 'Video') {
       const vd = s.video;
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
-      rowSlider('Bloom strength', () => vd.bloomStrength, 0, 2, 0.05, (x) => x.toFixed(2), (v) => this._set(ctx, 'video', 'bloomStrength', v));
+      rowSlider('Bloom strength', () => vd.bloomStrength != null ? vd.bloomStrength : 0.22, 0, 2, 0.05, (x) => Math.round(x / 2 * 100) + '%', (v) => this._set(ctx, 'video', 'bloomStrength', v));
       // HDR energy materials (spec §14.5): shader-driven thruster plume + Massline ribbon that write
       // HDR radiance into the bloom target. On by default for the beautiful flight look.
       if (vd.energyMaterials == null) vd.energyMaterials = true;
@@ -257,6 +279,9 @@ export const settingsScreen = {
       if (vd.renderGraph == null) vd.renderGraph = false;
       rowToggle('Render graph (GTAO + bloom)', () => !!vd.renderGraph, (v) => this._set(ctx, 'video', 'renderGraph', v));
       rowSlider('Render scale', () => vd.renderScale, 0.5, 2, 0.05, (x) => x.toFixed(2) + 'x', (v) => this._set(ctx, 'video', 'renderScale', v));
+      // Emergency-only: normal play keeps a stable render size. Structural fixes own performance.
+      if (vd.dynamicResolution == null) vd.dynamicResolution = false;
+      rowToggle('Emergency dynamic resolution', () => vd.dynamicResolution === true, (v) => this._set(ctx, 'video', 'dynamicResolution', v));
       rowSlider('FOV', () => vd.fov, 35, 90, 1, (x) => Math.round(x) + '°', (v) => this._set(ctx, 'video', 'fov', v));
       rowSelect('Particle quality', () => vd.particleQuality, [['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], (v) => this._set(ctx, 'video', 'particleQuality', v));
       rowToggle('VSync', () => vd.vsync, (v) => this._set(ctx, 'video', 'vsync', v));
@@ -293,7 +318,14 @@ export const settingsScreen = {
       rowToggle('Reduce motion', () => !!s.video.motionReduce, (v) => this._set(ctx, 'video', 'motionReduce', v));
       pane.appendChild(el('p', 'sf-muted', 'UI scale is on the Video tab. Colorblind mode also recolors radar blips and adds redundant shapes.'));
     } else if (refs.active === 'Controls') {
-      rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'helm-assist', [['helm-assist', 'Helm Assist (mouse steering)'], ['classic', 'Classic Throttle']], (v) => this._set(ctx, 'gameplay', 'controlScheme', v));
+      rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'pilot',
+        [['pilot', 'Pilot (keyboard steers, mouse aims)'], ['helm-assist', 'Helm Assist (mouse steering)'], ['classic', 'Classic Throttle']],
+        (v) => {
+          this._set(ctx, 'gameplay', 'controlScheme', v);
+          // Explicit choice: stop the one-time pilot migration (saveSystem) from overriding it.
+          this._set(ctx, 'gameplay', 'controlSchemeV2', true);
+          this._render(ctx);
+        });
       pane.appendChild(el('p', 'sf-muted', 'Click a flight key to rebind it, then press a new key. Fixed ship/system shortcuts are listed below so you do not have to leave Settings to find them.'));
       this._renderControlsRebind(ctx, pane);
       this._renderFixedShortcuts(pane);
@@ -404,10 +436,7 @@ export const settingsScreen = {
   _renderControlsRebind(ctx, pane) {
     const s = ctx.state.settings;
     if (!s.controls) s.controls = { bindings: null };
-    // Live bindings = defaults overlaid with saved overrides.
-    const live = {};
-    for (const a in DEFAULT_BINDINGS) live[a] = (DEFAULT_BINDINGS[a] || []).slice();
-    if (s.controls.bindings) for (const a in s.controls.bindings) live[a] = (s.controls.bindings[a] || []).slice();
+    const { base, live } = mergedBindingsFor(s);
 
     const grid = el('div', 'sf-grid2');
     grid.style.gridTemplateColumns = '1fr 140px';
@@ -417,7 +446,7 @@ export const settingsScreen = {
       btn.style.minWidth = '120px';
       const codes = live[action] || [];
       btn.textContent = codes.map(humanizeCode).join(' / ') || '—';
-      btn.addEventListener('click', () => this._capture(ctx, btn, action, live, grid));
+      btn.addEventListener('click', () => this._capture(ctx, btn, action, live, grid, base));
       grid.appendChild(label);
       grid.appendChild(btn);
     });
@@ -430,7 +459,7 @@ export const settingsScreen = {
     reset.textContent = 'Reset to defaults';
     reset.style.width = 'auto';
     reset.addEventListener('click', () => {
-      s.controls.bindings = null; // null => input.js falls back to DEFAULT_BINDINGS
+      s.controls.bindings = null;
       ctx.bus.emit('settings:changed', { section: 'controls', key: 'bindings', value: null });
       this._render(ctx);
     });
@@ -446,7 +475,7 @@ export const settingsScreen = {
   // Capture the next keydown as the new binding for `action`. Only ONE code per action in the UI
   // (we keep arrow-cluster compatibility by leaving movement's secondary arrow code alone if the
   // primary is being rebound — simplest mental model: "set the WASD key").
-  _capture(ctx, btn, action, live, grid) {
+  _capture(ctx, btn, action, live, grid, base) {
     if (this._capturing) return;
     this._capturing = true;
     const prev = btn.textContent;
@@ -466,7 +495,7 @@ export const settingsScreen = {
       // Escape cancels; Backspace resets this action to default.
       if (ev.code === 'Escape') { done(false); return; }
       if (ev.code === 'Backspace' || ev.code === 'Delete') {
-        this._commitBind(ctx, action, null, live, grid);
+        this._commitBind(ctx, action, null, live, grid, base);
         done(true);
         return;
       }
@@ -479,7 +508,7 @@ export const settingsScreen = {
           return;
         }
       }
-      this._commitBind(ctx, action, ev.code, live, grid);
+      this._commitBind(ctx, action, ev.code, live, grid, base);
       done(true);
     };
     const onClickAway = (ev) => { if (ev.target !== btn) done(false); };
@@ -490,11 +519,12 @@ export const settingsScreen = {
 
   // Persist a new primary binding for `action` into settings.controls.bindings. We preserve any
   // secondary code (e.g. ArrowUp alongside KeyW) so arrow players keep working after a rebind.
-  _commitBind(ctx, action, code, live, grid) {
+  _commitBind(ctx, action, code, live, grid, base) {
     const s = ctx.state.settings;
     if (!s.controls) s.controls = {};
     if (!s.controls.bindings) s.controls.bindings = {};
-    const def = DEFAULT_BINDINGS[action] || [];
+    const schemeBase = base || schemeBindingsFor(s);
+    const def = (schemeBase && schemeBase[action]) || DEFAULT_BINDINGS[action] || [];
     if (code == null) {
       delete s.controls.bindings[action]; // reset to default
       live[action] = def.slice();

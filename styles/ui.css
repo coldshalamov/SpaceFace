@@ -38,6 +38,10 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); }
 #gl-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
+body.sf-flight-cursor,
+body.sf-flight-cursor #gl-canvas,
+body.sf-flight-cursor #ui-root,
+body.sf-flight-cursor #hud { cursor: none; }
 #ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); contain: layout style paint; }
 #ui-root > div { position: absolute; }
 #hud { inset: 0; z-index: 10; transition: opacity .12s ease; contain: layout style paint; }
@@ -98,17 +102,17 @@ button:disabled { opacity: .4; cursor: default; }
    Clearer, more fun, less janky UI. Better feedback, modern space-industrial feel, strong readability from the 60° camera game. */
 
 #screens {
-  background-image: url('../assets/cinematics/menu_background.jpg');
+  /* Clean, label-free cinematic still (C-INTRO-01). Replaces menu_background.jpg, which carried
+     baked "MENU / INTRO BACKGROUND TREATMENT" reference captions that bled through behind menus. */
+  background-image: url('../assets/cinematics/C-INTRO-01.jpg');
   background-size: cover;
-  /* bias up so the cropped region favours the hero composition and pushes the asset's tiny corner
-     captions toward/under the bottom fade */
-  background-position: center 32%;
+  background-position: center 34%;
   background-repeat: no-repeat;
 }
 #screens::before {
   content: '';
   position: absolute; inset: 0;
-  /* opaque at the very top & bottom edges hides the menu_background.jpg corner reference labels */
+  /* Darkening vignette so menu panels stay readable over the cinematic backdrop. */
   background: linear-gradient(180deg, rgba(5,7,13,0.85) 0%, rgba(5,7,13,0.5) 14%, rgba(5,7,13,0.35) 55%, rgba(5,7,13,0.8) 90%, rgba(5,7,13,1) 100%);
   pointer-events: none;
 }
@@ -165,18 +169,19 @@ button:active { transform: translateY(1px); }
   image-rendering: crisp-edges;
 }
 
-/* Aiming reticle from generated asset — professional center aim aid for mouse flight/combat */
+/* Aiming reticle from generated asset — software cursor for mouse flight/combat */
 #aim-reticle {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: 50vw;
+  top: 50vh;
   width: 48px;
   height: 48px;
   transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 15;
   opacity: 0.85;
-  filter: drop-shadow(0 0 3px var(--glow-cyan));
+  filter: none;
+  will-change: left, top;
 }
 #aim-reticle img {
   width: 100%;
@@ -237,7 +242,7 @@ button:active { transform: translateY(1px); }
 
 /* Make the boot feel like part of the cinematic world */
 #boot-overlay {
-  background: radial-gradient(circle at 50% 38%, #0a1426, #03050a), url('../assets/cinematics/menu_background.jpg');
+  background: radial-gradient(circle at 50% 38%, #0a1426, #03050a), url('../assets/cinematics/C-INTRO-01.jpg');
   background-size: cover;
   background-blend-mode: multiply;
 }
@@ -509,15 +514,15 @@ button:active { transform: translateY(1px); }
   margin: 6px 0;
   width: 220px;
   justify-content: space-between;
+  contain: layout paint style;
 }
 .sf-bar--segmented {
   width: 72px;
   height: 5px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   position: relative;
   border-radius: 0;
-  mask-image: linear-gradient(to right, black 15px, transparent 15px, transparent 19px, black 19px, black 34px, transparent 34px, transparent 38px, black 38px, black 53px, transparent 53px, transparent 57px, black 57px, black 72px);
-  -webkit-mask-image: linear-gradient(to right, black 15px, transparent 15px, transparent 19px, black 19px, black 34px, transparent 34px, transparent 38px, black 38px, black 53px, transparent 53px, transparent 57px, black 57px, black 72px);
+  overflow: hidden;
 }
 .sf-bar--segmented .sf-bar__fill {
   position: absolute;
@@ -526,15 +531,15 @@ button:active { transform: translateY(1px); }
 }
 .sf-bar--segmented.sf-bar--shield .sf-bar__fill {
   background: #39d0ff;
-  box-shadow: 0 0 4px #39d0ff;
+  box-shadow: none;
 }
 .sf-bar--segmented.sf-bar--armor .sf-bar__fill {
   background: #8fa3bd;
-  box-shadow: 0 0 4px #8fa3bd;
+  box-shadow: none;
 }
 .sf-bar--segmented.sf-bar--hull .sf-bar__fill {
   background: #ff7c5c;
-  box-shadow: 0 0 4px #ff7c5c;
+  box-shadow: none;
 }
 .sf-target__gimmick {
   font-size: 10px;
@@ -587,6 +592,7 @@ button:active { transform: translateY(1px); }
   font-family: var(--mono);
   font-size: 11px;
   user-select: none;
+  contain: layout paint style;
 }
 .sf-overview-row {
   display: flex;
@@ -595,7 +601,6 @@ button:active { transform: translateY(1px); }
   padding: 4px 8px;
   background: rgba(8, 13, 24, 0.65);
   cursor: pointer;
-  transition: background var(--dur, 0.18s) var(--ease, ease), border-width 0.1s ease;
   border-left: 1px solid var(--iff-color, var(--console-edge));
 }
 .sf-overview-row:hover {

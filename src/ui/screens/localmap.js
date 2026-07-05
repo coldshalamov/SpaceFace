@@ -17,6 +17,7 @@ import { STORY_BEATS } from '../../data/missions.js';
 import { SECTORS } from '../../data/sectors.js';
 import { BINDINGS } from '../bindings.js';
 import { applyTradeNavigation } from './market.js';
+import { isHostileToPlayer } from '../../systems/scanner.js';
 
 // Friendly commodity/station names for the route panel (single source: the data catalogs).
 const COMM_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
@@ -101,6 +102,8 @@ export const localmapScreen = {
   _routesSig: '',
   _objectiveSig: '',
   _mapPlayer: { id: null, pos: null, vel: null, rot: 0 },
+  _mapTransform: null,
+  _lastClickTargets: [],
   _missionGeometryScratch: [{
     id: 'nav-waypoint',
     kind: 'waypoint',
@@ -158,6 +161,7 @@ export const localmapScreen = {
       const factor = ev.deltaY < 0 ? 0.8 : 1.25;
       this._targetZoom = Math.max(0.2, Math.min(5, this._targetZoom * factor));
     }, { passive: false });
+    this._canvas.addEventListener('click', (ev) => this._onCanvasClick(ev));
 
     return this;
   },
@@ -236,7 +240,7 @@ export const localmapScreen = {
       if (e.type === 'ship' || e.type === 'drone') {
         m.observeContact({
           id: e.id, type: 'ship', name: e.data && e.data.name || e.role || 'ship',
-          factionId: e.factionId, hostile: !!(e.team !== playerTeam && e.team !== 0),
+          factionId: e.factionId, hostile: isHostileToPlayer(e, playerTeam, ctx.state),
           pos: e.pos, vel: e.vel, rot: e.rot, radius: e.radius,
         }, { timeS: now, source: 'local-sensor' });
       } else if (e.type === 'station') {
@@ -393,6 +397,8 @@ export const localmapScreen = {
     const scale = ((Math.min(w, h) * 0.42) / span) / (this._zoom || 1);
     const wx = (x) => C.x - (x - player.pos.x) * scale;
     const wz = (z) => C.y - (z - player.pos.z) * scale;
+    this._mapTransform = { cx: C.x, cy: C.y, scale, playerX: player.pos.x, playerZ: player.pos.z };
+    this._lastClickTargets.length = 0;
 
     g.clearRect(0, 0, w, h);
     // Subtle grid backdrop so the map reads as a distinct navigation surface (and guarantees the
@@ -414,6 +420,14 @@ export const localmapScreen = {
     for (const lm of map.landmarks || []) {
       const x = wx(lm.position.x), y = wz(lm.position.z);
       const isGate = lm.kind === 'gate';
+      this._lastClickTargets.push({
+        sx: x, sy: y, radiusPx: 18,
+        targetEntityId: lm.id,
+        pos: { x: lm.position.x, z: lm.position.z },
+        label: lm.name || (isGate ? 'Gate' : 'Station'),
+        kind: isGate ? 'gate' : 'station',
+        arrivalRadius: isGate ? 72 : 90,
+      });
       g.save();
       g.fillStyle = isGate ? '#b99cff' : '#7af7d0';
       g.strokeStyle = isGate ? '#b99cff' : '#7af7d0';
@@ -432,6 +446,14 @@ export const localmapScreen = {
       const x = wx(c.position.x), y = wz(c.position.z);
       const conf = Math.max(0, Math.min(1, c.confidence || 0));
       if (conf < 0.05) continue;
+      this._lastClickTargets.push({
+        sx: x, sy: y, radiusPx: c.kind === 'asteroid' ? 12 : 16,
+        targetEntityId: c.id,
+        pos: { x: c.position.x, z: c.position.z },
+        label: c.name || (c.hostile ? 'Hostile contact' : c.kind || 'Contact'),
+        kind: c.kind || 'contact',
+        arrivalRadius: c.kind === 'asteroid' ? 64 : 48,
+      });
       const stale = c.lastSeenS != null && (m.timeS - c.lastSeenS) > 6;
       if (c.kind === 'asteroid') {
         g.globalAlpha = 0.3 + conf * 0.7;
@@ -487,6 +509,14 @@ export const localmapScreen = {
       const pnt = item.position;
       if (!pnt) continue;
       const x = wx(pnt.x), y = wz(pnt.z);
+      this._lastClickTargets.push({
+        sx: x, sy: y, radiusPx: 20,
+        targetEntityId: item.id,
+        pos: { x: pnt.x, z: pnt.z },
+        label: item.label || item.reason || 'Objective',
+        kind: item.kind || 'waypoint',
+        arrivalRadius: 44,
+      });
       g.save();
       g.strokeStyle = '#ffd24a';
       g.fillStyle = '#ffd24a';
@@ -542,6 +572,58 @@ export const localmapScreen = {
     item.metadata.sectorId = wp.sectorId || null;
     item.metadata.sectorName = wp.sectorName || null;
     return this._missionGeometryScratch;
+  },
+
+  _onCanvasClick(ev) {
+    if (!this._ctx || !this._ctx.bus || !this._mapTransform) return;
+    const rect = this._canvas.getBoundingClientRect();
+    const sx = ev.clientX - rect.left;
+    const sy = ev.clientY - rect.top;
+    const snapped = this._nearestClickTarget(sx, sy);
+    const fix = snapped || this._screenToWorldFix(sx, sy);
+    if (!fix || !fix.pos) return;
+    const label = fix.label || 'Map fix';
+    this._ctx.bus.emit('ui:setCourse', {
+      pos: fix.pos,
+      targetEntityId: fix.targetEntityId,
+      label,
+      reason: label,
+      waypointKind: fix.kind || 'local',
+      arrivalRadius: fix.arrivalRadius || 36,
+      autopilot: true,
+    });
+    this._ctx.bus.emit('toast', { text: 'Autopilot set: ' + label, kind: 'info', ttl: 3 });
+    this._close();
+  },
+
+  _nearestClickTarget(sx, sy) {
+    let best = null;
+    let bestD2 = Infinity;
+    for (const t of this._lastClickTargets || EMPTY_ROUTES) {
+      const dx = sx - t.sx;
+      const dy = sy - t.sy;
+      const d2 = dx * dx + dy * dy;
+      const radius = t.radiusPx || 14;
+      if (d2 <= radius * radius && d2 < bestD2) {
+        best = t;
+        bestD2 = d2;
+      }
+    }
+    return best;
+  },
+
+  _screenToWorldFix(sx, sy) {
+    const t = this._mapTransform;
+    if (!t || !(t.scale > 0)) return null;
+    return {
+      pos: {
+        x: t.playerX - (sx - t.cx) / t.scale,
+        z: t.playerZ - (sy - t.cy) / t.scale,
+      },
+      label: 'Map fix',
+      kind: 'local',
+      arrivalRadius: 36,
+    };
   },
 
   _drawScanOverlays(g, state, wx, wz) {

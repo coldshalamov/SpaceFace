@@ -13,11 +13,48 @@
 import { queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
-import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
+import { computeFlightTelemetry, solveIntercept } from '../core/flight/flightTelemetry.js';
 
-const BANK_RESPONSE = 8.5;
-const BANK_RETURN = 11.0;
+// Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
+// stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
+// at a standstill is an RCS rotation and barely rolls. Roll-in is slower than roll-out so the
+// hull reads as a mass being levered over, not a sprite flipping.
+const BANK_RESPONSE = 6.5;       // rad/s ease-in while rolling into a turn
+const BANK_RETURN = 9.0;         // rad/s ease-out back to wings-level
 const DEFAULT_BANK_MAX = 0.68;
+const BANK_SPEED_REF = 120;      // forward wu/s at which the carve gets full roll authority
+const BANK_RATE_GAIN = 0.31;     // rad of roll per rad/s of yaw at full authority
+const BANK_STANDSTILL = 0.22;    // fraction of roll authority left for standstill RCS pivots
+
+// NPC actuator lag: AI intents are desires, but throttle plates and fuel pumps take real time to
+// swing. Slewing the commanded translation inputs (~0.4 s for a full flip) is what turns the old
+// stop-zip-stop twitch into inertial, machine-like motion — without touching any AI logic.
+// Turn stays sharp: NPC yaw already goes through the torque-limited yaw controller.
+const NPC_INPUT_SLEW = 2.6;      // per second, throttle and strafe
+const AUTOPURSUIT_TURN_SOFT_ANGLE = 0.48;
+const AUTOPURSUIT_FOLLOW_MIN = 180;
+const AUTOPURSUIT_FOLLOW_MAX = 320;
+const AUTOPURSUIT_FOLLOW_DIST = 250;
+// Falling far behind the tail slot latches auto-boost (hysteresis so it never flickers);
+// the kernel's governor lifts the assisted speed cap by boostSpeedMult while boost is held,
+// which is what lets pursuit actually run down a fleeing, boosting target.
+const AUTOPURSUIT_BOOST_ENGAGE = 520;
+const AUTOPURSUIT_BOOST_RELEASE = 400;
+const AUTOPURSUIT_CLOSE_GAIN = 0.82;
+const AUTOPURSUIT_MATCH_GAIN = 0.90;
+const AUTOPURSUIT_PROJECTILE_HINT = 360;
+const AUTOPURSUIT_MANUAL_STRAFE_BLEND = 0.65;
+const AUTOPILOT_TURN_SOFT_ANGLE = 0.62;
+const AUTOPILOT_ARRIVAL_RADIUS = 38;
+const AUTOPILOT_MAX_LOOKAHEAD = 760;
+const AUTOPILOT_MIN_LOOKAHEAD = 180;
+const TETHER_HELM_MAX_YAW_RATE_MULT = 1.14;
+const TETHER_HELM_STRAIN_MULT = 1.75;
+const TETHER_HELM_PHASE_MULT = Object.freeze({
+  capture: 4.2,
+  loaded: 6.0,
+  overload: 7.4,
+});
 
 // Boost/dash tuning — mirrors src/systems/flight.js so player feel is identical under V3.
 const DASH_TAP_WINDOW = 0.18;  // Shift taps up to this duration become dash; longer holds boost.
@@ -31,6 +68,7 @@ const DEFAULT_BOOST_RESOURCE = Object.freeze({
   dashCdT: 0,
 });
 const NEUTRAL_INPUT = Object.freeze({ moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false });
+const SG02_INPUT_DT = 1 / 60;   // fixed-step fallback for normalizeCraftInput's slew
 
 export const flightV3 = {
   name: 'flight',
@@ -62,8 +100,9 @@ export const flightV3 = {
     };
 
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('save:loaded', () => { this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); });
-      this.bus.on('game:started', () => { this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); });
+      this.bus.on('save:loaded', () => { this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'load'); });
+      this.bus.on('game:started', () => { this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
     }
     if (typeof window !== 'undefined') {
       window.__SF_FLIGHT_V3__ = {
@@ -122,16 +161,37 @@ export const flightV3 = {
   },
 
   _stepCraft(entity, rawInput, dt, state, isPlayer) {
-    const profile = resolvePropulsionProfile(entity, state);
-    const runtime = propulsionRuntime(entity, profile);
-    let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer);
+    const baseProfile = resolvePropulsionProfile(entity, state);
+    const runtime = propulsionRuntime(entity, baseProfile);
+    let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt);
+    const helm = tetherHelmAuthority(state, isPlayer);
+    const profile = helm.mult > 1 ? applyTetherHelmProfile(baseProfile, helm) : baseProfile;
+    let pursuit = null;
+    let autopilot = null;
+    if (isPlayer) {
+      autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
+      if (autopilot && autopilot.input) {
+        input = autopilot.input;
+      } else {
+        pursuit = resolveAutopursuitInput(entity, input, dt, state, profile);
+        if (pursuit && pursuit.input) input = pursuit.input;
+      }
+      if (!(autopilot && autopilot.active) && !(pursuit && pursuit.active)) {
+        input = applyTetherNoseAssist(entity, input, state);
+        if (state.flight) state.flight.pursuitBoostLatch = false;   // latch dies with the pursuit
+      }
+      this._syncPlayerFlightMode(state, pursuit, autopilot);
+    }
 
     // Player boost/dash subsystem (port of src/systems/flight.js:118-188). Runs before
     // stepPropulsion so the resource-gated boost state feeds the propulsion kernel's thrust
     // scaling, and so the dash impulse is queued through physics authority this tick.
+    // While the flight computer owns the boost key (pursuit auto-boost / autopilot cruise),
+    // tap-dash detection is suppressed: a machine "tapping" Shift must never fire a dash.
     let boosting = input.boost;
     if (isPlayer) {
-      boosting = this._stepPlayerBoost(entity, input.boost, dt, state);
+      const autoBoost = !!((pursuit && pursuit.active) || (autopilot && autopilot.active));
+      boosting = this._stepPlayerBoost(entity, input.boost, dt, state, { suppressDash: autoBoost });
       input.boost = boosting;
     }
 
@@ -144,12 +204,16 @@ export const flightV3 = {
       runtime,
       environment: resolveFlightEnvironment(entity, state),
     });
+    const tetherAssistTorque = isPlayer ? tetherNoseAssistTorque(body, input, profile) : 0;
+    const torque = tetherAssistTorque
+      ? { ...result.torque, y: finite(result.torque && result.torque.y) + tetherAssistTorque }
+      : result.torque;
 
     writePhysicsControl(entity, {
       source: isPlayer ? 'player-flight-v3' : 'npc-flight-v3',
       mode: input.assistMode,
       force: result.force,
-      torque: result.torque,
+      torque,
       maxSpeed: result.maxSpeed,
     });
     if (result.impulse) queuePhysicsImpulse(entity, result.impulse);
@@ -163,14 +227,24 @@ export const flightV3 = {
     assignFlightFrame(entity, result, input.assistMode);
 
     applyResourceDelta(entity, result.resourceDelta);
-    updateBank(entity, input.turn, dt, profile);
+    updateBank(entity, dt, profile);
+    if (isPlayer) {
+      const frame = entity._flightFrame || (entity._flightFrame = {});
+      frame.tetherHelmAuthority = helm.mult;
+      frame.tetherHelmPhase = helm.phase;
+      frame.autopursuit = pursuit && pursuit.active ? pursuit.telemetry : null;
+      frame.autopilot = autopilot && autopilot.active ? autopilot.telemetry : null;
+      frame.tetherNoseAssist = !!input.tetherNoseAssist;
+      frame.tetherNoseAssistTorque = tetherAssistTorque;
+      emitThrustCue(this.bus, state, entity, input, result.telemetry);
+    }
     emitPropulsionEvents(this.bus, entity, result.events);
   },
 
   // Player boost/dash state machine. Returns the resource-gated boosting flag to feed back into
   // propulsion. Handles tap=dash / hold=boost, energy drain+regen, hysteresis arming, and the dash
   // impulse (queued via physics authority). Mirrors src/systems/flight.js:118-188 exactly.
-  _stepPlayerBoost(e, rawBoostHeld, dt, state) {
+  _stepPlayerBoost(e, rawBoostHeld, dt, state, opts = {}) {
     const boost = normalizeBoostResource(e);
     if (boost.dashCdT > 0) boost.dashCdT = Math.max(0, boost.dashCdT - dt);
 
@@ -178,13 +252,14 @@ export const flightV3 = {
     const suppressBoost = !!this._suppressBoostUntilRelease;
     const boostHeld = !!rawBoostHeld && !suppressBoost;
     const boostWasHeld = !!this._prevBoost;
-    if (boostHeld && !boostWasHeld) { boost._boostHoldT = 0; boost._dashCandidate = true; }
+    if (boostHeld && !boostWasHeld) { boost._boostHoldT = 0; boost._dashCandidate = !opts.suppressDash; }
     if (boostHeld) {
       boost._boostHoldT = (boost._boostHoldT || 0) + dt;
+      if (opts.suppressDash) boost._dashCandidate = false;
       if (boost._boostHoldT > DASH_TAP_WINDOW) boost._dashCandidate = false;   // held too long → boost, not dash
     } else if (boostWasHeld) {
       const heldT = boost._boostHoldT || 0;
-      if (boost._dashCandidate && heldT <= DASH_TAP_WINDOW) this._triggerDash(e, boost, state);
+      if (!opts.suppressDash && boost._dashCandidate && heldT <= DASH_TAP_WINDOW) this._triggerDash(e, boost, state);
       boost._boostHoldT = 0;
       boost._dashCandidate = false;
     }
@@ -295,6 +370,44 @@ export const flightV3 = {
       if (entity && (entity.type === 'ship' || entity.type === 'drone')) settleBank(entity, dt);
     }
   },
+
+  _syncPlayerFlightMode(state, pursuit, autopilot) {
+    const cruise = state && state.player && state.player.cruise;
+    if (cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising')) {
+      this._setFlightMode('cruise', cruise.phase);
+      return;
+    }
+    if (pursuit && pursuit.active) {
+      this._setFlightMode('autopursuit', 'held');
+      return;
+    }
+    if (autopilot && autopilot.active) {
+      this._setFlightMode('lane', autopilot.telemetry && autopilot.telemetry.status || 'autopilot');
+      return;
+    }
+    const current = state && state.flight && state.flight.mode;
+    this._setFlightMode('manual', current === 'autopursuit' || current === 'lane' ? 'released' : 'manual');
+  },
+
+  _setFlightMode(mode, reason = 'manual') {
+    const state = this.state;
+    if (!state) return;
+    const flight = state.flight || (state.flight = { mode: 'manual', previousMode: 'manual', modeReason: 'boot', modeChangedTick: 0 });
+    const next = normalizeFlightComputerMode(mode);
+    const prev = normalizeFlightComputerMode(flight.mode);
+    if (prev === next) {
+      flight.mode = next;
+      flight.modeReason = reason;
+      return;
+    }
+    flight.previousMode = prev;
+    flight.mode = next;
+    flight.modeReason = reason;
+    flight.modeChangedTick = Number.isFinite(state.tick) ? state.tick : 0;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('flight:modeChanged', { from: prev, to: next, reason });
+    }
+  },
 };
 
 // Alias permits existing `import { flight } ...` call sites after the file switch.
@@ -330,14 +443,25 @@ function finiteNonNeg(value, fallback) {
   return Number.isFinite(value) ? Math.max(0, value) : fallback;
 }
 
-function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer) {
+function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG02_INPUT_DT) {
   const boost = !!raw.boost;
   const previousBoost = !!runtime.previousBoost;
   let turn = finite(raw.turnIntent ?? raw.turn, 0);
-  const throttle = clamp(finite(raw.moveZ ?? raw.throttle, 0), -1, 1);
-  const strafe = clamp(finite(raw.moveX ?? raw.strafe, 0), -1, 1);
+  let throttle = clamp(finite(raw.moveZ ?? raw.throttle, 0), -1, 1);
+  let strafe = clamp(finite(raw.moveX ?? raw.strafe, 0), -1, 1);
   if (!isPlayer && Number.isFinite(raw.aimAngle)) {
     turn = clamp(wrapAngle(raw.aimAngle - finite(entity.rot)) / 0.62, -1, 1);
+  }
+  if (!isPlayer && entity.data) {
+    // Actuator lag (NPC_INPUT_SLEW): the brain may flip its desire instantly; the engines can't.
+    // Slew state rides on propulsionRuntime (save-additive; assignPropulsionRuntime preserves
+    // extra keys), so replays and save/reload stay deterministic.
+    const rt = entity.data.propulsionRuntime || (entity.data.propulsionRuntime = {});
+    const maxDelta = NPC_INPUT_SLEW * Math.max(0, finite(dt, SG02_INPUT_DT));
+    throttle = approachScalar(clamp(finite(rt.cmdThrottle, 0), -1, 1), throttle, maxDelta);
+    strafe = approachScalar(clamp(finite(rt.cmdStrafe, 0), -1, 1), strafe, maxDelta);
+    rt.cmdThrottle = throttle;
+    rt.cmdStrafe = strafe;
   }
   return {
     throttle,
@@ -348,6 +472,415 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer) {
     boostReleased: !boost && previousBoost,
     brake: !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && throttle < -0.55)),
     assistMode: resolveAssistMode(entity, state, raw),
+  };
+}
+
+function approachScalar(current, target, maxDelta) {
+  const delta = target - current;
+  if (Math.abs(delta) <= maxDelta) return target;
+  return current + Math.sign(delta) * maxDelta;
+}
+
+function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile) {
+  const nav = state && state.nav;
+  const autopilot = nav && nav.autopilot;
+  if (!autopilot || autopilot.active !== true) return null;
+  if (!playerFlightControlsActive(state, entity)) return null;
+  if (hasManualFlightInput(rawInput)) {
+    stopAutopilot(host, state, 'manual');
+    return null;
+  }
+
+  const target = resolveAutopilotTarget(state, autopilot);
+  if (!target) {
+    stopAutopilot(host, state, 'lost-target');
+    return null;
+  }
+
+  const pos = entity.pos || { x: 0, z: 0 };
+  const vel = entity.vel || { x: 0, z: 0 };
+  const dx = finite(target.x) - finite(pos.x);
+  const dz = finite(target.z) - finite(pos.z);
+  const dist = Math.hypot(dx, dz);
+  const arrivalRadius = Math.max(
+    AUTOPILOT_ARRIVAL_RADIUS,
+    finite(autopilot.arrivalRadius, 0),
+    positive(entity.radius, 0) + positive(target.radius, 0) + 18
+  );
+  const speed = Math.hypot(finite(vel.x), finite(vel.z));
+  if (dist <= arrivalRadius && speed < 11) {
+    stopAutopilot(host, state, 'arrived');
+    const arrivedInput = { ...input, throttle: 0, strafe: 0, turn: 0, boost: false, brake: false };
+    syncAutopilotInput(state, arrivedInput, { dist, arrivalRadius, braking: false, avoiding: false, target, status: 'arrived' });
+    return { active: true, input: arrivedInput, telemetry: { dist, arrivalRadius, status: 'arrived', target } };
+  }
+
+  if (!Number.isFinite(autopilot.initialDistance) || autopilot.initialDistance < dist) {
+    autopilot.initialDistance = Math.max(dist, arrivalRadius);
+  }
+
+  const guidance = computeAutopilotGuidance(state, entity, target, dist, arrivalRadius);
+  const desiredAngle = Math.atan2(guidance.z, guidance.x);
+  const turnError = wrapAngle(desiredAngle - finite(entity.rot));
+  const turn = clamp(turnError / AUTOPILOT_TURN_SOFT_ANGLE, -1, 1);
+  const targetX = dist > 0.0001 ? dx / dist : Math.cos(finite(entity.rot));
+  const targetZ = dist > 0.0001 ? dz / dist : Math.sin(finite(entity.rot));
+  const closingSpeed = finite(vel.x) * targetX + finite(vel.z) * targetZ;
+  const lateralSpeed = Math.abs(finite(vel.x) * -targetZ + finite(vel.z) * targetX);
+  const brakeAccel = Math.max(positive(profile.reverseAccel, 0), positive(profile.mainAccel, 0) * 0.72, 1);
+  const desiredSpeed = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, dist - arrivalRadius)));
+  const stoppingDistance = closingSpeed > 0 ? (closingSpeed * closingSpeed) / (2 * brakeAccel) : 0;
+  const halfway = Number.isFinite(autopilot.initialDistance) && dist <= autopilot.initialDistance * 0.52;
+  const shouldBrake = closingSpeed > 4 && (
+    dist <= stoppingDistance + arrivalRadius + 45 + lateralSpeed * 1.4 ||
+    (halfway && closingSpeed > desiredSpeed * 0.92)
+  );
+
+  let throttle = 0;
+  let strafe = 0;
+  let brake = false;
+  let boost = false;
+  if (shouldBrake) {
+    const counter = counterVelocityInput(entity);
+    throttle = counter.throttle;
+    strafe = counter.strafe;
+    brake = true;
+  } else {
+    const rot = finite(entity.rot);
+    const rightX = -Math.sin(rot);
+    const rightZ = Math.cos(rot);
+    const facingDot = Math.cos(turnError);
+    throttle = facingDot > -0.25 ? clamp(0.35 + facingDot * 0.78, -1, 1) : 0;
+    strafe = clamp((guidance.x * rightX + guidance.z * rightZ) * 0.72, -1, 1);
+    const cruiseClear = !guidance.avoiding && Math.abs(turnError) < 0.34;
+    boost = cruiseClear &&
+      dist > Math.max(arrivalRadius * 5, stoppingDistance * 1.25 + 220) &&
+      speed < positive(profile.maxSpeed, 120) * 1.85;
+  }
+
+  const nextInput = {
+    ...input,
+    throttle,
+    strafe,
+    turn,
+    boost,
+    brake,
+  };
+  const status = brake ? 'braking' : guidance.avoiding ? 'avoiding' : boost ? 'boosting' : 'cruising';
+  autopilot.status = status;
+  autopilot.distance = dist;
+  const telemetry = { dist, arrivalRadius, braking: brake, avoiding: guidance.avoiding, target, status, turnError };
+  syncAutopilotInput(state, nextInput, telemetry);
+  return { active: true, input: nextInput, telemetry };
+}
+
+function hasManualFlightInput(input) {
+  if (!input) return false;
+  return Math.abs(finite(input.moveX ?? input.strafe, 0)) > 0.08 ||
+    Math.abs(finite(input.moveZ ?? input.throttle, 0)) > 0.08 ||
+    Math.abs(finite(input.turnIntent ?? input.turn, 0)) > 0.08 ||
+    !!input.boost ||
+    !!input.brake;
+}
+
+function syncAutopilotInput(state, input, telemetry) {
+  const stateInput = state && state.input;
+  if (!stateInput || !input) return;
+  stateInput.moveX = finite(input.strafe, 0);
+  stateInput.moveZ = finite(input.throttle, 0);
+  stateInput.turnIntent = finite(input.turn, 0);
+  stateInput.boost = !!input.boost;
+  stateInput.brake = !!input.brake;
+  stateInput.autopilot = telemetry || true;
+  const actions = stateInput.actions || (stateInput.actions = {});
+  actions.brake = !!input.brake;
+}
+
+function stopAutopilot(host, state, reason) {
+  const nav = state && state.nav;
+  const autopilot = nav && nav.autopilot;
+  if (!autopilot || autopilot.active !== true) return;
+  autopilot.active = false;
+  autopilot.status = reason || 'idle';
+  if (state && state.input) {
+    state.input.autopilot = false;
+    if (state.input.actions) state.input.actions.brake = false;
+  }
+  const bus = host && host.bus;
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('nav:autopilot', autopilot);
+    bus.emit('toast', {
+      text: reason === 'arrived' ? 'Autopilot arrived' : 'Autopilot disengaged',
+      kind: reason === 'arrived' ? 'good' : 'info',
+      ttl: 2,
+    });
+  }
+}
+
+function resolveAutopilotTarget(state, autopilot) {
+  if (!state || !autopilot) return null;
+  const id = autopilot.targetEntityId;
+  let entity = null;
+  if (id != null && state.entities && typeof state.entities.get === 'function') {
+    entity = state.entities.get(id);
+    if (!entity && typeof id === 'string') {
+      const numeric = Number(id);
+      if (Number.isFinite(numeric)) entity = state.entities.get(numeric);
+    }
+  }
+  if (entity && entity.alive !== false && entity.pos) {
+    return {
+      x: entity.pos.x,
+      z: entity.pos.z,
+      radius: entity.radius || 0,
+      entity,
+      label: autopilot.label || entity.name || (entity.data && entity.data.name) || entity.type || 'Autopilot target',
+    };
+  }
+  const target = autopilot.target;
+  if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.z)) return null;
+  return { x: target.x, z: target.z, radius: 0, entity: null, label: autopilot.label || 'Autopilot target' };
+}
+
+function computeAutopilotGuidance(state, player, target, distance, arrivalRadius) {
+  const px = finite(player.pos && player.pos.x);
+  const pz = finite(player.pos && player.pos.z);
+  const baseX = distance > 0.0001 ? (target.x - px) / distance : Math.cos(finite(player.rot));
+  const baseZ = distance > 0.0001 ? (target.z - pz) / distance : Math.sin(finite(player.rot));
+  const perpX = -baseZ;
+  const perpZ = baseX;
+  const speed = Math.hypot(finite(player.vel && player.vel.x), finite(player.vel && player.vel.z));
+  const lookAhead = Math.max(AUTOPILOT_MIN_LOOKAHEAD, Math.min(AUTOPILOT_MAX_LOOKAHEAD, speed * 3.2 + distance * 0.24));
+  let steerX = baseX;
+  let steerZ = baseZ;
+  let avoiding = false;
+  const maxProjection = Math.max(0, Math.min(distance - arrivalRadius, lookAhead));
+  if (maxProjection > 0) {
+    for (const obstacle of autopilotObstacles(state, player, target)) {
+      const ox = finite(obstacle.pos && obstacle.pos.x) - px;
+      const oz = finite(obstacle.pos && obstacle.pos.z) - pz;
+      const projection = ox * baseX + oz * baseZ;
+      if (projection <= 0 || projection > maxProjection) continue;
+      const lateral = ox * perpX + oz * perpZ;
+      const clearance = positive(player.radius, 0) + positive(obstacle.radius, 0) + 58 + Math.min(70, speed * 0.22);
+      const absLateral = Math.abs(lateral);
+      if (absLateral >= clearance) continue;
+      const side = absLateral > 0.01 ? -Math.sign(lateral) : ((finite(state && state.tick, 0) % 2) ? 1 : -1);
+      const depth = 1 - projection / Math.max(1, maxProjection);
+      const strength = (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
+      steerX += perpX * side * strength * 1.65;
+      steerZ += perpZ * side * strength * 1.65;
+      avoiding = true;
+    }
+  }
+  const len = Math.hypot(steerX, steerZ) || 1;
+  return { x: steerX / len, z: steerZ / len, avoiding };
+}
+
+function autopilotObstacles(state, player, target) {
+  const out = [];
+  const list = state && state.entityList ? state.entityList : [];
+  for (const e of list) {
+    if (!e || e === player || e === target.entity || e.alive === false || !e.pos) continue;
+    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
+    const radius = Number.isFinite(e.radius) ? e.radius : 0;
+    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
+    out.push(e);
+  }
+  return out;
+}
+
+function counterVelocityInput(entity) {
+  const vx = finite(entity.vel && entity.vel.x);
+  const vz = finite(entity.vel && entity.vel.z);
+  const speed = Math.hypot(vx, vz);
+  if (!(speed > 0.001)) return { throttle: 0, strafe: 0 };
+  const nx = -vx / speed;
+  const nz = -vz / speed;
+  const rot = finite(entity.rot);
+  const cf = Math.cos(rot);
+  const sf = Math.sin(rot);
+  return {
+    throttle: clamp(nx * cf + nz * sf, -1, 1),
+    strafe: clamp(nx * -sf + nz * cf, -1, 1),
+  };
+}
+
+function resolveAutopursuitInput(entity, input, dt, state, profile) {
+  if (!entity || !state || !state.input || !state.input.actions) return null;
+  if (!state.input.actions.autopursuit) return null;
+  const cruise = state.player && state.player.cruise;
+  if (cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising')) return null;
+  const tether = state.player && state.player.tether;
+  if (tether && tether.active) return null;
+  const target = resolvePursuitTarget(state);
+  if (!target) return null;
+
+  const pos = entity.pos || { x: 0, z: 0 };
+  const vel = entity.vel || { x: 0, z: 0 };
+  const targetPos = target.pos || { x: 0, z: 0 };
+  const targetVel = target.vel || { x: 0, z: 0 };
+  const lead = solveIntercept(
+    pos,
+    vel,
+    targetPos,
+    targetVel,
+    positive(profile.projectileSpeedHint, AUTOPURSUIT_PROJECTILE_HINT),
+    8
+  );
+  const aim = lead && lead.aimPoint ? lead.aimPoint : targetPos;
+  const turnErr = wrapAngle(Math.atan2(finite(aim.z) - finite(pos.z), finite(aim.x) - finite(pos.x)) - finite(entity.rot));
+  const turn = clamp(turnErr / AUTOPURSUIT_TURN_SOFT_ANGLE, -1, 1);
+
+  const followPoint = pursuitFollowPoint(target);
+  const desiredVel = desiredPursuitVelocity(pos, vel, followPoint, targetVel, profile, dt);
+  const local = worldVelocityErrorToInput(entity, desiredVel, profile, input);
+
+  // Auto-boost latch: engage when the tail slot is running away, release once we are back in
+  // reach. The latch lives on state.flight (reset on pursuit end / load) and the distance
+  // hysteresis band guarantees multi-second hold periods, so it reads as a committed burn.
+  const followDistance = distance2(pos, targetPos);
+  const flight = state.flight || (state.flight = { mode: 'manual', previousMode: 'manual', modeReason: 'boot', modeChangedTick: 0 });
+  let boostLatch = !!flight.pursuitBoostLatch;
+  if (followDistance > AUTOPURSUIT_BOOST_ENGAGE) boostLatch = true;
+  else if (followDistance < AUTOPURSUIT_BOOST_RELEASE) boostLatch = false;
+  flight.pursuitBoostLatch = boostLatch;
+
+  return {
+    active: true,
+    input: {
+      ...input,
+      turn,
+      throttle: local.throttle,
+      strafe: clamp(local.strafe + finite(input.strafe) * AUTOPURSUIT_MANUAL_STRAFE_BLEND, -1, 1),
+      brake: local.brake,
+      boost: boostLatch,
+    },
+    telemetry: {
+      targetId: target.id,
+      followDistance,
+      turnError: turnErr,
+      desiredVelocity: desiredVel,
+      followPoint,
+      boosting: boostLatch,
+    },
+  };
+}
+
+function applyTetherNoseAssist(entity, input, state) {
+  const tether = state && state.player && state.player.tether;
+  if (!tether || !tether.active || tether.targetId == null) return input;
+  const phase = String(tether.phase || 'slack');
+  if (phase === 'slack') return input;
+  if (!input || (!input.brake && Math.abs(finite(input.throttle, 0)) < 0.05 && Math.abs(finite(input.strafe, 0)) < 0.05)) return input;
+  if (Math.abs(finite(input && input.turn, 0)) > 0.05) return input;
+  const target = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(tether.targetId)
+    : null;
+  if (!entity || !entity.pos || !target || target.alive === false || !target.pos) return input;
+  const desired = Math.atan2(finite(target.pos.z) - finite(entity.pos.z), finite(target.pos.x) - finite(entity.pos.x));
+  const turnErr = wrapAngle(desired - finite(entity.rot));
+  return {
+    ...input,
+    tetherNoseTurnError: turnErr,
+    tetherNoseAssist: true,
+  };
+}
+
+function tetherNoseAssistTorque(body, input, profile) {
+  // SG-02 owns loaded-line nose-in torque from the forward tether anchor. The flight layer only
+  // annotates telemetry; injecting a second yaw controller here makes reverse/thrust fight the line.
+  return 0;
+}
+
+function resolvePursuitTarget(state) {
+  const player = state && state.player;
+  const id = player && player.targetId;
+  if (id == null || !state.entities || typeof state.entities.get !== 'function') return null;
+  const target = state.entities.get(id);
+  if (!target || target.alive === false || !target.pos) return null;
+  return target;
+}
+
+function pursuitFollowPoint(target) {
+  const pos = target.pos || { x: 0, z: 0 };
+  const vel = target.vel || { x: 0, z: 0 };
+  const speed = Math.hypot(finite(vel.x), finite(vel.z));
+  const forward = speed > 1
+    ? { x: finite(vel.x) / speed, z: finite(vel.z) / speed }
+    : { x: Math.cos(finite(target.rot)), z: Math.sin(finite(target.rot)) };
+  return {
+    x: finite(pos.x) - forward.x * AUTOPURSUIT_FOLLOW_DIST,
+    z: finite(pos.z) - forward.z * AUTOPURSUIT_FOLLOW_DIST,
+  };
+}
+
+function desiredPursuitVelocity(pos, vel, followPoint, targetVel, profile, dt) {
+  const dx = finite(followPoint.x) - finite(pos.x);
+  const dz = finite(followPoint.z) - finite(pos.z);
+  const dist = Math.hypot(dx, dz);
+  const close = dist > 1 ? { x: dx / dist, z: dz / dist } : { x: 0, z: 0 };
+  const bandError = dist < AUTOPURSUIT_FOLLOW_MIN
+    ? dist - AUTOPURSUIT_FOLLOW_MIN
+    : dist > AUTOPURSUIT_FOLLOW_MAX
+      ? dist - AUTOPURSUIT_FOLLOW_MAX
+      : 0;
+  const combatSpeed = positive(profile.combatSpeed, positive(profile.maxSpeed, 210));
+  const closeSpeed = clamp(Math.abs(bandError) * AUTOPURSUIT_CLOSE_GAIN, 0, combatSpeed);
+  const sign = bandError >= 0 ? 1 : -1;
+  return {
+    x: finite(targetVel.x) + close.x * closeSpeed * sign + (finite(targetVel.x) - finite(vel.x)) * 0.08,
+    z: finite(targetVel.z) + close.z * closeSpeed * sign + (finite(targetVel.z) - finite(vel.z)) * 0.08,
+  };
+}
+
+function worldVelocityErrorToInput(entity, desiredVel, profile, input) {
+  const vel = entity.vel || { x: 0, z: 0 };
+  const err = {
+    x: (finite(desiredVel.x) - finite(vel.x)) * AUTOPURSUIT_MATCH_GAIN,
+    z: (finite(desiredVel.z) - finite(vel.z)) * AUTOPURSUIT_MATCH_GAIN,
+  };
+  const rot = finite(entity.rot);
+  const fx = Math.cos(rot), fz = Math.sin(rot);
+  const rx = -fz, rz = fx;
+  const localForward = err.x * fx + err.z * fz;
+  const localStrafe = err.x * rx + err.z * rz;
+  const forwardLimit = localForward >= 0
+    ? positive(profile.mainAccel, 40)
+    : positive(profile.reverseAccel, positive(profile.mainAccel, 40) * 0.5);
+  const strafeLimit = positive(profile.strafeAccel, positive(profile.mainAccel, 40) * 0.45);
+  const throttle = clamp(localForward / Math.max(1, forwardLimit), -1, 1);
+  const strafe = clamp(localStrafe / Math.max(1, strafeLimit), -1, 1);
+  const closingFast = Math.hypot(finite(vel.x), finite(vel.z)) > positive(profile.combatSpeed, 210) * 1.2
+    && Math.abs(throttle) < 0.2
+    && (input && input.brake);
+  return { throttle, strafe, brake: closingFast };
+}
+
+function distance2(a, b) {
+  return Math.hypot(finite(a && a.x) - finite(b && b.x), finite(a && a.z) - finite(b && b.z));
+}
+
+function tetherHelmAuthority(state, isPlayer) {
+  if (!isPlayer) return { mult: 1, phase: 'none' };
+  const tether = state && state.player && state.player.tether;
+  if (!tether || !tether.active) return { mult: 1, phase: 'none' };
+  const phase = String(tether.phase || 'slack');
+  const base = TETHER_HELM_PHASE_MULT[phase] || 1;
+  if (!(base > 1)) return { mult: 1, phase };
+  const strain = clamp(finite(tether.strain, 0), 0, 1.2);
+  return { mult: base + strain * TETHER_HELM_STRAIN_MULT, phase };
+}
+
+function applyTetherHelmProfile(profile, helm) {
+  const mult = positive(helm && helm.mult, 1);
+  return {
+    ...profile,
+    maxYawRate: Number.isFinite(profile.maxYawRate)
+      ? profile.maxYawRate * TETHER_HELM_MAX_YAW_RATE_MULT
+      : profile.maxYawRate,
+    yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * mult : profile.yawAccel,
+    yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * (mult + 0.65) : profile.yawBrake,
   };
 }
 
@@ -425,16 +958,25 @@ function emitPropulsionEvents(bus, entity, events) {
   for (const event of events || []) bus.emit(event.type, { ...event, shipId: entity.id });
 }
 
-function updateBank(entity, turn, dt, profile) {
+function updateBank(entity, dt, profile) {
   const bankMax = positive(profile.bankMax, DEFAULT_BANK_MAX);
-  const factor = finite(entity.bankFactor, 0.6);
-  const target = clamp(turn * factor * bankMax, -bankMax, bankMax);
-  const lambda = Math.abs(target) > 0.001 ? BANK_RESPONSE : BANK_RETURN;
-  entity.bank = damp(finite(entity.bank), target, lambda, dt);
+  const wy = finite(entity.angVel);
+  const rot = finite(entity.rot);
+  const forwardSpeed = finite(entity.vel && entity.vel.x) * Math.cos(rot)
+    + finite(entity.vel && entity.vel.z) * Math.sin(rot);
+  const authority = BANK_STANDSTILL
+    + (1 - BANK_STANDSTILL) * clamp(Math.abs(forwardSpeed) / BANK_SPEED_REF, 0, 1);
+  const style = finite(entity.bankFactor, 0.6) / 0.6;   // authored bankFactor keeps its meaning
+  const target = clamp(wy * BANK_RATE_GAIN * authority * style, -bankMax, bankMax);
+  const rollingIn = Math.abs(target) > Math.abs(finite(entity.bank));
+  entity.bank = damp(finite(entity.bank), target, rollingIn ? BANK_RESPONSE : BANK_RETURN, dt);
   if (Math.abs(entity.bank) < 0.0005 && Math.abs(target) < 0.0005) entity.bank = 0;
 }
 
-function settleBank(entity, dt) { updateBank(entity, 0, dt, {}); }
+function settleBank(entity, dt) {
+  entity.bank = damp(finite(entity.bank), 0, BANK_RETURN, dt);
+  if (Math.abs(entity.bank) < 0.0005) entity.bank = 0;
+}
 function neutralInput() { return NEUTRAL_INPUT; }
 function playerFlightSimActive(state, player) { return !!player && state.mode === 'flight' && !(player.flags && player.flags.docked); }
 function playerFlightControlsActive(state, player) { return playerFlightSimActive(state, player) && !(state.ui && state.ui.screenStack && state.ui.screenStack.length); }
@@ -443,12 +985,53 @@ function flightCraftCandidates(state) {
   if (index && index.__spacefaceEntityIndexV1 && index.shipLike) return index.shipLike;
   return (state && state.entityList) || [];
 }
+function normalizeFlightComputerMode(mode) {
+  return mode === 'autopursuit' || mode === 'cruise' || mode === 'lane' ? mode : 'manual';
+}
 function nowMs() { return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(); }
 function damp(cur, target, lambda, dt) { return cur + (target - cur) * (1 - Math.exp(-lambda * dt)); }
 function wrapAngle(v) { let x = finite(v) % (Math.PI * 2); if (x <= -Math.PI) x += Math.PI * 2; if (x > Math.PI) x -= Math.PI * 2; return x; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function finite(v, fallback = 0) { return Number.isFinite(v) ? v : fallback; }
 function positive(v, fallback) { return Number.isFinite(v) && v > 0 ? v : fallback; }
+
+function emitThrustCue(bus, state, entity, input, frame) {
+  if (!bus || typeof bus.emit !== 'function' || !state || !entity || entity.id !== state.playerId) return;
+  const throttle = clamp(finite(input && input.throttle, 0), -1, 1);
+  const strafe = clamp(finite(input && input.strafe, 0), -1, 1);
+  const manual = Math.abs(throttle) > 0.025 || Math.abs(strafe) > 0.025;
+  const speed = frame && Number.isFinite(frame.speed)
+    ? frame.speed
+    : Math.hypot(finite(entity.vel && entity.vel.x), finite(entity.vel && entity.vel.z));
+  const neutralAssistBrake = frame &&
+    frame.assistReason === 'neutral-counterthrust' &&
+    frame.assistMode === 'assisted' &&
+    !manual &&
+    speed > 1.2;
+  const brake = !!(input && input.brake) || throttle < -0.025 || neutralAssistBrake;
+  if (!manual && !brake && !(entity.flags && entity.flags.boosting)) return;
+  bus.emit('ship:thrust', {
+    id: entity.id,
+    shipId: entity.id,
+    throttle: Math.max(0, throttle),
+    reverse: brake ? Math.max(0.25, Math.min(1, speed / Math.max(30, positive(entity.maxSpeed, 120) * 0.5))) : 0,
+    strafe,
+    boost: !!(entity.flags && entity.flags.boosting),
+    nozzles: thrustNozzles(throttle, strafe, brake),
+  });
+}
+
+function thrustNozzles(throttle, strafe, brake) {
+  const nozzles = [];
+  if (throttle > 0.025) nozzles.push({ role: 'main', strength: Math.min(1, throttle), angle: 0 });
+  if (brake) {
+    nozzles.push({ role: 'reverse-left', strength: 1, angle: Math.PI * 0.75 });
+    nozzles.push({ role: 'reverse-right', strength: 1, angle: -Math.PI * 0.75 });
+  }
+  if (strafe > 0.025) nozzles.push({ role: 'strafe-right', strength: Math.min(1, strafe), angle: -Math.PI / 2 });
+  else if (strafe < -0.025) nozzles.push({ role: 'strafe-left', strength: Math.min(1, -strafe), angle: Math.PI / 2 });
+  return nozzles;
+}
 
 function flightAssistStrength(frame, mode) {
   if (mode === 'newtonian') return 0;

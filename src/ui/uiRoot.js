@@ -14,7 +14,9 @@ import { createScreenManager } from './screenManager.js';
 import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
-import { controlPrompt, setPromptScheme } from './controlPrompts.js';
+import { controlPrompt } from './controlPrompts.js';
+import { setPromptScheme } from './controlPrompts.js';
+import { isHostileToPlayer } from '../systems/scanner.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -26,21 +28,8 @@ const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/sv
   </g>
   <circle cx="50" cy="50" r="3" fill="#39d0ff" style="filter:drop-shadow(0 0 4px #39d0ff)"/>
 </svg>`;
-const PILOT_AVATAR_SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-  <defs>
-    <radialGradient id="sfvisor" cx="42%" cy="38%" r="70%">
-      <stop offset="0%" stop-color="#bff4ff"/><stop offset="45%" stop-color="#39d0ff"/><stop offset="100%" stop-color="#0a3a5c"/>
-    </radialGradient>
-    <linearGradient id="sfhelm" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#2a3a5a"/><stop offset="100%" stop-color="#101a2e"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" fill="#0b1220"/>
-  <path d="M10 38 a22 22 0 0 1 44 0 v10 a6 6 0 0 1 -6 6 H16 a6 6 0 0 1 -6 -6 z" fill="url(#sfhelm)" stroke="#39d0ff" stroke-width="1.5"/>
-  <path d="M17 34 a15 13 0 0 1 30 0 v5 a4 4 0 0 1 -4 4 H21 a4 4 0 0 1 -4 -4 z" fill="url(#sfvisor)"/>
-  <ellipse cx="26" cy="31" rx="3.5" ry="6" fill="#eafcff" opacity="0.5"/>
-  <path d="M14 40 h36" stroke="#39d0ff" stroke-width="1" opacity="0.4"/>
-</svg>`;
+// (Removed PILOT_AVATAR_SVG — the helmet/visor pilot circle violated the standing no-visor/no-
+//  cockpit HUD rule (00_MASTER_TASTE §3). The splash now uses a clean non-diegetic signal slate.)
 import { createHud } from './hud.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
@@ -179,11 +168,13 @@ export const ui = {
     // === UI: aiming reticle ===
     // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
     // this third-person chase-cam game, and it sat on every screen as an unexplained symbol.)
-    // Center aiming reticle (clean SVG crosshair).
+    // Software-cursor aiming reticle (clean SVG crosshair).
     const reticle = document.createElement('div');
     reticle.id = 'aim-reticle';
     reticle.innerHTML = RETICLE_SVG;
     document.getElementById('hud').appendChild(reticle);
+    let lastReticleX = NaN;
+    let lastReticleY = NaN;
 
     // Always-visible (when in flight) control hints. The default text below is the open-flight set;
     // the onboarding system's _updateControlBar() replaces it each frame with context-sensitive
@@ -223,6 +214,26 @@ export const ui = {
     this.bus.on('gamepad:connected', () => { hints.textContent = HINTS_PAD; showHints(5000); });
     this.bus.on('gamepad:disconnected', () => { hints.textContent = HINTS_KBM; showHints(3000); });
 
+    const syncFlightCursor = (visible) => {
+      const pointer = this.state && this.state.input && this.state.input.pointerScreen;
+      const active = !!(visible && pointer && pointer.active);
+      document.body.classList.toggle('sf-flight-cursor', active);
+      const reticleEl = document.getElementById('aim-reticle') || reticle;
+      if (!reticleEl || !visible) return;
+      const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
+      const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
+      const x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
+      const y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
+      if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1) {
+        reticleEl.style.left = x.toFixed(1) + 'px';
+        lastReticleX = x;
+      }
+      if (!Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
+        reticleEl.style.top = y.toFixed(1) + 'px';
+        lastReticleY = y;
+      }
+    };
+    this._syncFlightCursor = syncFlightCursor;
     const setFlightUI = (visible) => {
       if (hints) {
         // Keep hard-hidden (display:none) when outside flight so the modal override still works.
@@ -230,6 +241,7 @@ export const ui = {
         if (visible) showHints(8000); else { clearTimeout(_hintFadeTimer); hints.classList.remove('sf-hint-visible'); }
       }
       if (reticle) reticle.style.display = visible ? 'block' : 'none';
+      syncFlightCursor(visible);
     };
     const refreshFlightUI = () => {
       const modalOpen = this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen();
@@ -270,8 +282,8 @@ export const ui = {
       cinematic.id = 'cinematic-splash';
       cinematic.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#05070d;overflow:hidden;pointer-events:auto;';
       cinematic.innerHTML = `
-        <div style="position:absolute;inset:0;background-image:url('assets/cinematics/menu_background.jpg');background-size:cover;background-position:center 30%;opacity:0.7;filter:contrast(1.1);"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,13,.5),rgba(5,7,13,0) 30%,rgba(5,7,13,0) 75%,rgba(5,7,13,1));"></div>
+        <div style="position:absolute;inset:0;background-image:url('assets/cinematics/C-INTRO-01.jpg');background-size:cover;background-position:center 34%;opacity:0.72;filter:contrast(1.08);"></div>
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,13,.5),rgba(5,7,13,0) 30%,rgba(5,7,13,0) 72%,rgba(5,7,13,1));"></div>
         <div style="position:relative;text-align:center;color:#d3e6ff;font-family:var(--mono,monospace);z-index:1;text-shadow:0 0 30px #39d0ff;">
           <div style="font-size:13px;letter-spacing:8px;opacity:0.7;margin-bottom:10px;">A HARD SCI-FI SPACE ODYSSEY</div>
           <div style="font-size:clamp(48px,9vw,92px);line-height:1;letter-spacing:.12em;margin-bottom:14px;color:#39d0ff;font-weight:700;">SPACEFACE</div>
@@ -282,8 +294,10 @@ export const ui = {
           <div style="font-size:12px;opacity:0.6;margin-bottom:20px;letter-spacing:.08em;">↑↓ THROTTLE &nbsp;•&nbsp; ←→ STEER (BANKS) &nbsp;•&nbsp; MOUSE AIM &nbsp;•&nbsp; LMB FIRE &nbsp;•&nbsp; F AUTO-FIRE &nbsp;•&nbsp; SHIFT BOOST/DASH</div>
           <div style="font-size:11px;letter-spacing:4px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
         </div>
-        <div id="cinematic-pilot" style="position:absolute;bottom:24px;right:24px;width:92px;height:92px;border:3px solid #39d0ff;border-radius:50%;overflow:hidden;box-shadow:0 0 30px #39d0ff;opacity:0.95;background:#0b1220;">
-          ${PILOT_AVATAR_SVG}
+        <div id="cinematic-signal" style="position:absolute;bottom:26px;right:26px;padding:11px 16px;border:1px solid rgba(57,208,255,.45);border-left:3px solid #39d0ff;border-radius:6px;background:rgba(5,9,18,.72);box-shadow:0 0 22px rgba(57,208,255,.20);font-family:var(--mono,monospace);text-align:left;">
+          <div style="font-size:10px;letter-spacing:.24em;color:#8fa3c0;margin-bottom:4px;">INBOUND SIGNAL</div>
+          <div style="font-size:15px;letter-spacing:.16em;color:#39d0ff;">CONTRACT 47-A</div>
+          <div style="font-size:10px;letter-spacing:.14em;color:#6b7d99;margin-top:5px;">REACH CORRIDOR — CHANNEL OPEN</div>
         </div>
       `;
       document.getElementById('ui-root').appendChild(cinematic);
@@ -346,6 +360,7 @@ export const ui = {
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
     this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
     this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
+    this.bus.on('ui:targetNearestHostileToCursor', ({ pos, quiet } = {}) => targetNearestHostileToCursor(this.state, pos, this.bus, { quiet }));
 
     // Dock transition overlay
     const dockFade = document.createElement('div');
@@ -376,6 +391,10 @@ export const ui = {
     };
 
     this.bus.on('dock:docked', ({ stationId }) => {
+      this.state.ui.docked = true;
+      this.state.ui.dockedStationId = stationId || null;
+      this.screenManager.syncVisibility();
+
       // Phase 1: fade to dark
       showDockFade();
 
@@ -389,8 +408,6 @@ export const ui = {
 
       setTimeout(() => {
         // Phase 2: at peak darkness, do the screen swap
-        this.state.ui.docked = true;
-        this.state.ui.dockedStationId = stationId || null;
         if (this.screenManager.top() !== 'station') this.screenManager.pushScreen('station');
         else this.screenManager.syncVisibility();
 
@@ -416,6 +433,79 @@ export const ui = {
         this.screenManager.syncVisibility();
 
         // Phase 3: fade back in
+        setTimeout(() => {
+          hideDockFade();
+        }, 50);
+      }, 400);
+    });
+
+    this.bus.on('ui:drillFadeStart', ({ asteroidId, attachmentId }) => {
+      const player = this.state.entities.get(this.state.playerId);
+      const ast = this.state.entities.get(asteroidId);
+      if (!player || !ast) return;
+
+      // Phase 1: Block input, halt ship velocity, and fade to dark
+      this.state.input.blocked = true;
+      player.vel.x = 0;
+      player.vel.z = 0;
+      showDockFade();
+
+      // Scripted close zoom-in push
+      const camCtrl = this.state.render && this.state.render.cameraCtrl;
+      if (camCtrl && typeof camCtrl.pushZoom === 'function') {
+        camCtrl.pushZoom(-0.45, 1.2); // zoom in tight
+      }
+
+      this.bus.emit('audio:cue', { id: 'ui_confirm' });
+
+      // Smoothly pull ship closer to the asteroid surface
+      const startPos = { x: player.pos.x, z: player.pos.z };
+      const dx = player.pos.x - ast.pos.x;
+      const dz = player.pos.z - ast.pos.z;
+      const angle = Math.atan2(dz, dx);
+      const targetDist = ast.radius + (player.radius || 6) + 12;
+      const targetPos = {
+        x: ast.pos.x + Math.cos(angle) * targetDist,
+        z: ast.pos.z + Math.sin(angle) * targetDist
+      };
+
+      // Set the massline rest length and winching parameter to targetDist, so that
+      // the tether cable physically contracts as we slide and locks tightly in place.
+      if (attachmentId) {
+        const att = this.state.combat?.attachments?.byId?.[attachmentId];
+        if (att) {
+          att.restLength = targetDist;
+          if (att.masslineRuntime) {
+            att.masslineRuntime.restLength = targetDist;
+            att.masslineRuntime.targetLength = targetDist;
+            att.masslineRuntime.reelVelocity = 0;
+          }
+        }
+      }
+
+      const startTime = performance.now();
+      const duration = 400; // ms
+      const step = (now) => {
+        const elapsed = now - startTime;
+        const t = Math.min(1, elapsed / duration);
+        const ease = 1 - Math.pow(1 - t, 3);
+        player.pos.x = startPos.x + (targetPos.x - startPos.x) * ease;
+        player.pos.z = startPos.z + (targetPos.z - startPos.z) * ease;
+        player.rot = angle + Math.PI; // face the rock
+
+        if (t < 1) {
+          requestAnimationFrame(step);
+        }
+      };
+      requestAnimationFrame(step);
+
+      setTimeout(() => {
+        // Phase 2: Open drill minigame
+        this.state.input.blocked = false;
+        if (!this.state.ui) this.state.ui = {};
+        this.state.ui.pendingDrillAsteroidId = asteroidId;
+        this.screenManager.pushScreen('drill');
+
         setTimeout(() => {
           hideDockFade();
         }, 50);
@@ -504,6 +594,7 @@ export const ui = {
       const modalChromeOpen = syncModalChrome(modalOpen, externalModalOpen);
       const docked = !!(st && st.ui && st.ui.docked === true);
       const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
+      if (this._syncFlightCursor) this._syncFlightCursor(hudVisible);
       if (this.hud) {
         if (hudVisible) {
           if (!this._hudVisibleLast && this.hud.forceRefresh) this.hud.forceRefresh();
@@ -534,7 +625,7 @@ function cycleTarget(state, dir, bus) {
   if (!player) return;
   const contacts = [];
   for (const e of state.entityList) {
-    if (!e.alive || e === player) continue;
+    if (e.alive === false || e === player) continue;
     if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
     const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
     const d = Math.hypot(dx, dz);
@@ -553,6 +644,39 @@ function cycleTarget(state, dir, bus) {
   const target = contacts[nextIdx].e;
   state.player.targetId = target.id;
   if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
+}
+
+function targetNearestHostileToCursor(state, pos, bus, options = {}) {
+  const player = state.entities.get(state.playerId);
+  if (!player || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+  const quiet = !!options.quiet;
+  let best = null;
+  let bestCursorD2 = Infinity;
+  let bestPlayerD2 = Infinity;
+  for (const e of state.entityList) {
+    if (!e || e.alive === false || e === player || !e.pos) continue;
+    if (e.type !== 'ship' && e.type !== 'drone') continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    const cursorDx = e.pos.x - pos.x;
+    const cursorDz = e.pos.z - pos.z;
+    const cursorD2 = cursorDx * cursorDx + cursorDz * cursorDz;
+    const playerDx = e.pos.x - player.pos.x;
+    const playerDz = e.pos.z - player.pos.z;
+    const playerD2 = playerDx * playerDx + playerDz * playerDz;
+    if (playerD2 > 5200 * 5200) continue;
+    if (cursorD2 < bestCursorD2 || (cursorD2 === bestCursorD2 && playerD2 < bestPlayerD2)) {
+      best = e;
+      bestCursorD2 = cursorD2;
+      bestPlayerD2 = playerD2;
+    }
+  }
+  if (!best) {
+    state.player.targetId = null;
+    if (bus && !quiet) bus.emit('toast', { text: 'No hostile near cursor', kind: 'info', ttl: 2 });
+    return;
+  }
+  state.player.targetId = best.id;
+  if (bus && !quiet) bus.emit('toast', { text: 'Target: ' + targetLabel(best), kind: 'info', ttl: 2 });
 }
 
 function targetLabel(e) {
@@ -585,10 +709,12 @@ function injectHudCss() {
 
   /* Reticle reflects fire mode: amber tint + slight pulse when auto-fire is engaging hostiles,
      cyan when the pilot aims/fires manually (Phase 2). */
-  #aim-reticle { transition: filter .2s ease; }
+  #aim-reticle { transition: none; }
+  #aim-reticle svg * { filter:none !important; }
   #aim-reticle.autofire { filter: hue-rotate(150deg) saturate(1.3) brightness(1.05);
-    animation: sf-reticlepulse 1.4s ease-in-out infinite alternate; }
-  @keyframes sf-reticlepulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+  }
+  #aim-reticle.autofire > svg { animation: sf-reticlepulse 1.4s ease-in-out infinite alternate; }
+  @keyframes sf-reticlepulse { from { opacity:.88; } to { opacity:1; } }
 
   /* ===== bottom-left: ship schematic + thin micro-bars (Tactical Visor §3C) ===== */
   /* Container is now chromeless — no panel background, border, or blur. */
@@ -642,15 +768,16 @@ function injectHudCss() {
 
   /* ===== top-center: nav / target-lock readout — chromeless floating text (§3E) ===== */
   .sf-nav-readout { position:absolute; top:18px; left:50%; transform:translateX(-50%);
-    text-align:center; pointer-events:none; }
+    text-align:center; pointer-events:none; contain:layout paint style;
+    padding:2px 10px; background:rgba(4,10,18,.34); }
   .sf-nav-label { font-family:var(--mono); font-size:13px; letter-spacing:.16em; text-transform:uppercase;
-    color:var(--visor-cyan); text-shadow:var(--text-shadow-hard), var(--visor-glow-cyan); }
+    color:var(--visor-cyan); text-shadow:none; }
   /* The "[ TARGET LOCK: ... ]" / "[ NNN u ]" framing applies only to a live, in-range fix — the JS
      toggles .sf-nav--lock for that case; route/tutorial guidance renders plain (§3E). */
   .sf-nav--lock .sf-nav-label::before { content:'[ TARGET LOCK: '; color:var(--text-secondary); }
   .sf-nav--lock .sf-nav-label::after { content:' ]'; color:var(--text-secondary); }
   .sf-nav-meta { font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--text-secondary);
-    margin-top:3px; text-shadow:var(--text-shadow-hard); }
+    margin-top:3px; text-shadow:none; }
   .sf-nav-meta .sf-nav-dist { color:var(--text-primary); }
   .sf-nav--lock .sf-nav-meta .sf-nav-dist::before { content:'[ '; color:var(--text-secondary); }
   .sf-nav--lock .sf-nav-meta .sf-nav-dist::after { content:' ]'; color:var(--text-secondary); }
@@ -709,9 +836,11 @@ function injectHudCss() {
   /* ===== bottom-right: tactical node map (radar) + target readout (§3D) ===== */
   /* Borderless: the radar reads as a raw projection. The canvas uses compact size in normal
      flight and switches to the larger tactical surface only while expanded. */
-  .sf-rightdock { position:absolute; right:22px; bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
-  .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
-  .sf-radar { position:relative; width:180px; height:180px; border-radius:50%; overflow:hidden; cursor:pointer; }
+  .sf-rightdock { position:absolute; right:22px; bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;
+    contain:layout paint style; }
+  .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; contain:layout paint style; }
+  .sf-radar { position:relative; width:180px; height:180px; border-radius:50%; overflow:hidden; cursor:pointer;
+    contain:layout paint style; }
   .sf-radar--expanded { width:340px !important; height:340px !important; }
   /* Canvas is centered so compact/expanded size changes stay anchored on the player marker. */
   .sf-radar canvas { display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
@@ -727,29 +856,32 @@ function injectHudCss() {
   .sf-radar-legend .obj { transform:rotate(45deg); border:1px solid var(--visor-amber); }
   /* HUD sub-panel surface — now chromeless. Legibility comes from hard text-shadow on the content. */
   .sf-hudpanel { background:none; border:none; box-shadow:none; }
-  .sf-target { width:220px; display:flex; flex-direction:column; gap:5px; text-align:right; }
+  .sf-target { width:220px; display:flex; flex-direction:column; gap:5px; text-align:right; contain:layout paint style;
+    background:rgba(4,10,18,.20); padding:2px 0; }
   .sf-target__head { display:flex; align-items:baseline; justify-content:flex-end; gap:8px; }
   .sf-target__name { font-family:var(--mono); font-size:12px; color:var(--text-primary); letter-spacing:.06em;
     text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    text-shadow:var(--text-shadow-hard); }
-  .sf-target__faction { font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-shadow:var(--text-shadow-hard); }
+    text-shadow:none; }
+  .sf-target__faction { font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-shadow:none; }
   .sf-target__meta { display:flex; justify-content:flex-end; gap:14px; font-family:var(--mono); font-size:11px;
-    color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+    color:var(--text-secondary); text-shadow:none; }
+  .sf-target .sf-bar__fill { box-shadow:none; transition:none; }
   /* The target panel's mini hull/shield bars become thin lines flush right (3px for legibility). */
   .sf-target .sf-bar { width:100%; }
   .sf-target .sf-bar--sm { height:3px; }
 
   /* ===== top-right: objective tracker — chromeless glowing lines (§3) ===== */
-  .sf-objectives { position:absolute; right:22px; top:18px; display:flex; flex-direction:column; gap:6px; align-items:flex-end; max-width:300px; }
+  .sf-objectives { position:absolute; right:22px; top:18px; display:flex; flex-direction:column; gap:6px; align-items:flex-end; max-width:300px;
+    contain:layout paint style; }
   .sf-obj { display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:12px;
-    letter-spacing:.04em; color:var(--text-primary); text-shadow:var(--text-shadow-hard); }
+    letter-spacing:.04em; color:var(--text-primary); text-shadow:none; background:rgba(4,10,18,.24); padding:2px 6px; }
   .sf-obj__dot { width:6px; height:6px; transform:rotate(45deg); background:var(--visor-cyan);
-    box-shadow:var(--visor-glow-cyan); flex:0 0 auto; }
+    box-shadow:none; flex:0 0 auto; }
   .sf-obj__t { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* off-screen objective arrow */
   .sf-objarrow { position:absolute; left:0; top:0; width:0; height:0; border-style:solid; border-width:8px 0 8px 14px;
-    border-color:transparent transparent transparent var(--visor-cyan); filter:drop-shadow(var(--visor-glow-cyan)); z-index:11;
+    border-color:transparent transparent transparent var(--visor-cyan); filter:none; z-index:11;
     will-change:transform; }
 
   /* ===== toasts ===== */
@@ -954,15 +1086,15 @@ function injectHudCss() {
   /* ===== HUD mission tracker (top-left) — chromeless, with a glowing edge marker ===== */
   .sf-mission-tracker { position:absolute; top:96px; left:22px; max-width:280px;
     padding-left:10px; border-left:2px solid var(--visor-cyan-dim);
-    box-shadow:-1px 0 8px -2px var(--visor-cyan-dim); pointer-events:none; z-index:10; }
+    box-shadow:none; pointer-events:none; z-index:10; contain:layout paint style; }
   .sf-mt-title { font-family:var(--mono); font-size:12px; color:var(--text-primary); letter-spacing:.06em;
     margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    text-shadow:var(--text-shadow-hard); }
+    text-shadow:none; }
   .sf-mt-obj { font-family:var(--mono); font-size:11px; color:var(--text-secondary); margin-bottom:2px;
-    text-shadow:var(--text-shadow-hard); }
+    text-shadow:none; }
   .sf-mt-time { font-family:var(--mono); font-size:10px; color:var(--text-secondary); letter-spacing:.08em;
-    text-shadow:var(--text-shadow-hard); }
-  .sf-mt-time.sf-mt-urgent { color:var(--visor-amber); text-shadow:var(--text-shadow-hard), var(--visor-glow-amber); }
+    text-shadow:none; }
+  .sf-mt-time.sf-mt-urgent { color:var(--visor-amber); text-shadow:none; }
   @media (max-width: 760px) {
     /* Sit below the fuel line + comms (≡) button + top-center SYS line so nothing overlaps. */
     .sf-mission-tracker { top:92px; left:8px; max-width:calc(100vw - 16px); }
