@@ -1292,8 +1292,34 @@ export const vfx = {
     anchor.visible = false;
     this._scene.add(anchor);
 
+    const anchorCoreGeo = new THREE.CircleGeometry(0.42, 24);
+    anchorCoreGeo.rotateX(-Math.PI / 2);
+    const anchorCoreMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#a6f0ff'),
+      transparent: true, opacity: 0.74,
+      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const anchorCore = new THREE.Mesh(anchorCoreGeo, anchorCoreMat);
+    anchorCore.frustumCulled = false;
+    anchorCore.renderOrder = 13;
+    anchorCore.visible = false;
+    this._scene.add(anchorCore);
+
+    const targetHaloGeo = new THREE.RingGeometry(0.92, 1.0, 56);
+    targetHaloGeo.rotateX(-Math.PI / 2);
+    const targetHaloMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#39d0ff'),
+      transparent: true, opacity: 0.18,
+      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const targetHalo = new THREE.Mesh(targetHaloGeo, targetHaloMat);
+    targetHalo.frustumCulled = false;
+    targetHalo.renderOrder = 8;
+    targetHalo.visible = false;
+    this._scene.add(targetHalo);
+
     this._tetherCable = {
-      mesh, glow, band, anchor, SEG, BANDS,
+      mesh, glow, band, anchor, anchorCore, targetHalo, SEG, BANDS,
       wasActive: false,
       latchAge: 999,      // seconds since latch (drives the whip wave)
       fade: 0,            // 0..1 visibility envelope (release = fade out, latch = snap in)
@@ -1410,12 +1436,28 @@ export const vfx = {
       bandPos[o + 9] = cx + ux * bandHalfLen - px * bandHalfWidth; bandPos[o + 10] = 1.55; bandPos[o + 11] = cz + uz * bandHalfLen - pz * bandHalfWidth;
     }
     cable.band.geometry.attributes.position.needsUpdate = true;
+    const isLargeAnchor = tr >= 18 || anchorEnt.type === 'station';
     cable.anchor.position.set(bx, 1.62, bz);
-    const anchorScale = Math.max(3.8, Math.min(18, tr * 0.16));
+    const anchorScale = isLargeAnchor
+      ? Math.max(6.5, Math.min(28, tr * 0.24))
+      : Math.max(3.8, Math.min(18, tr * 0.16));
     cable.anchor.scale.setScalar(anchorScale);
     cable.anchor.rotation.y = visualTime * 1.8;
     cable.anchor.material.color.copy(this._ctmp);
-    cable.anchor.material.opacity = (0.28 + 0.22 * s + whipEnv * 0.18) * cable.fade;
+    cable.anchor.material.opacity = (0.36 + 0.24 * s + whipEnv * 0.2) * cable.fade;
+    cable.anchorCore.position.set(bx, 1.64, bz);
+    cable.anchorCore.scale.setScalar(Math.max(1.8, anchorScale * 0.42));
+    cable.anchorCore.rotation.y = -visualTime * 2.4;
+    cable.anchorCore.material.color.copy(this._ctmp);
+    cable.anchorCore.material.opacity = (0.48 + 0.28 * s + whipEnv * 0.2) * cable.fade;
+    cable.targetHaloActive = isLargeAnchor;
+    if (cable.targetHalo) {
+      cable.targetHalo.position.set(anchorEnt.pos.x, 1.58, anchorEnt.pos.z);
+      cable.targetHalo.scale.setScalar(Math.max(anchorScale * 1.6, tr * 1.08));
+      cable.targetHalo.rotation.y = visualTime * 0.65;
+      cable.targetHalo.material.color.copy(this._ctmp);
+      cable.targetHalo.material.opacity = isLargeAnchor ? (0.12 + 0.11 * s + whipEnv * 0.08) * cable.fade : 0;
+    }
     setTetherCableVisible(cable, true);
 
     // Near-break shiver: sparks crawl the line when the strain is critical.
@@ -1503,7 +1545,7 @@ export const vfx = {
     const cable = this._tetherCable;
     if (!cable || !this._scene) return;
     cable.fade = 0; cable.wasActive = false;
-    cable.mesh.visible = false; cable.glow.visible = false;
+    setTetherCableVisible(cable, false);
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     const target = p && p.targetId != null ? this._ent(p.targetId) : null;
     this._c0.set('#ffffff'); this._c1.set('#ff5c5c');
@@ -2752,6 +2794,8 @@ function setTetherCableVisible(cable, visible) {
   if (cable.glow) cable.glow.visible = visible;
   if (cable.band) cable.band.visible = visible;
   if (cable.anchor) cable.anchor.visible = visible;
+  if (cable.anchorCore) cable.anchorCore.visible = visible;
+  if (cable.targetHalo) cable.targetHalo.visible = visible && cable.targetHaloActive === true;
 }
 
 function tetherVisualRadius(entity) {
