@@ -16,7 +16,7 @@
 // Single-writer (§0.6): world owns world.*/jump/fuel/nav; it emits economy:chargeCredits for
 //   gate tolls and never writes credits/cargo/rep directly. (Radiation hull drain is an
 //   environmental effect applied to the entity hull, which has no separate combat owner.)
-import { SECTORS, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -54,6 +54,21 @@ const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const LAWFUL_ENEMIES = ['patrol_lawman', 'reaver_pirate'];
 const PIRATE_ENEMIES = ['reaver_pirate', 'wasp_swarmer', 'corsair_raider'];
 const FRONTIER_ENEMIES = ['corsair_raider', 'reaver_pirate', 'wasp_swarmer'];
+const PALETTE_CLASS_BY_REF = new Map(Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]));
+const DRESSING_RADIUS = Object.freeze({
+  place_lane_beacon: 18,
+  place_nav_buoy: 12,
+  place_mining_drone: 8,
+  place_station_billboard: 28,
+  place_conveyor_barge: 48,
+  place_dead_hulk: 42,
+  place_debris_chunk: 26,
+  place_asteroid_seamed: 18,
+  place_asteroid_rock_a: 15,
+  place_asteroid_rock_b: 18,
+  place_asteroid_rock_c: 10,
+  place_asteroid_graffiti: 16,
+});
 
 export const world = {
   name: 'world',
@@ -164,12 +179,13 @@ export const world = {
     state.world.entryPoint = entryPoint;
 
     // Build the live activeSector instance (entity-id handles for everything we spawn).
-    const active = { stations: [], fields: [], hazards: [], pois: [], gates: [], enemies: [] };
+    const active = { stations: [], fields: [], hazards: [], pois: [], gates: [], enemies: [], dressing: [] };
 
     this._spawnStations(sector, active, rng);
     this._spawnFields(sector, active, disc, rng);
     this._spawnGates(sector, active, rng);
     this._spawnPOIs(sector, active, disc, rng);
+    this._spawnDressing(sector, active, rng);
     this._spawnHazards(sector, active);
     this._spawnEnemies(sector, active, rng);
     this._spawnBossIfDue(sector, active, rng);
@@ -222,10 +238,12 @@ export const world = {
     const stations = sector.stations || [];
     const n = stations.length;
     stations.forEach((st, i) => {
-      // Spread stations on a ring inside the playfield; clear of the origin/entry point.
+      // Authored anchors win; procedural ring is fallback for dev sectors missing pos.
       const ang = (Math.PI * 2 * i) / Math.max(1, n) + rng() * 0.6;
       const ringR = wr * (0.28 + rng() * 0.22);
-      const pos = { x: Math.cos(ang) * ringR, z: Math.sin(ang) * ringR };
+      const pos = st.pos
+        ? { x: st.pos.x, z: st.pos.z }
+        : { x: Math.cos(ang) * ringR, z: Math.sin(ang) * ringR };
       const dockRadius = st.size === 'L' ? 90 : st.size === 'S' ? 60 : 72;
       const ent = this.helpers.spawnEntity({
         type: 'station', factionId: st.factionId || sector.factionId, pos,
@@ -235,6 +253,9 @@ export const world = {
           services: st.services || [], factionId: st.factionId || sector.factionId,
           name: st.name, size: st.size || 'M',
           contested: !!st.contested, repGated: !!st.repGated, sectorId: sector.id,
+          archetypeGlb: st.archetypeGlb || null,
+          landmark: !!st.landmark,
+          landmarkGlb: st.landmarkGlb || null,
         },
       });
       active.stations.push({ id: ent.id, stationId: st.id, pos });
@@ -312,36 +333,47 @@ export const world = {
   // Jump GATES: one per outbound edge, placed on the disc rim toward the neighbor's map position.
   _spawnGates(sector, active, rng) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const authored = Array.isArray(sector.gates) && sector.gates.length > 0 ? sector.gates : null;
+    const spawnGate = (nbId, pos, opts = {}) => {
+      const nb = safeSector(this.state, nbId);
+      const ent = this.helpers.spawnEntity({
+        type: 'station', factionId: sector.factionId, pos,
+        radius: opts.wormhole ? 80 : 70, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
+        data: {
+          stationId: null, isGate: true, gateTo: nbId, dockRadius: opts.wormhole ? 80 : 70,
+          services: [], factionId: sector.factionId,
+          name: opts.wormhole ? 'Wormhole' : `Gate → ${nb ? nb.name : nbId}`,
+          sectorId: sector.id,
+          isWormhole: !!opts.wormhole,
+          gatedBy: opts.gatedBy || null,
+          archetypeGlb: opts.archetypeGlb || 'place_gate_jump_ring',
+        },
+      });
+      active.gates.push({ id: ent.id, to: nbId, pos, wormhole: !!opts.wormhole });
+    };
+    if (authored) {
+      for (const g of authored) {
+        if (!g.to || !g.pos) continue;
+        const isWh = !!g.wormhole;
+        spawnGate(g.to, { x: g.pos.x, z: g.pos.z }, {
+          wormhole: isWh,
+          gatedBy: isWh && sector.wormholeTo ? sector.wormholeTo.gatedBy : null,
+          archetypeGlb: g.archetypeGlb,
+        });
+      }
+      return;
+    }
     for (const nbId of (sector.neighbors || [])) {
       const nb = safeSector(this.state, nbId);
       const ang = this._bearingTo(sector, nb, rng);
       const gateR = wr * 0.82;
-      const pos = { x: Math.cos(ang) * gateR, z: Math.sin(ang) * gateR };
-      const ent = this.helpers.spawnEntity({
-        type: 'station', factionId: sector.factionId, pos,
-        radius: 70, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
-        data: {
-          stationId: null, isGate: true, gateTo: nbId, dockRadius: 70,
-          services: [], factionId: sector.factionId, name: `Gate → ${nb ? nb.name : nbId}`,
-          sectorId: sector.id,
-        },
-      });
-      active.gates.push({ id: ent.id, to: nbId, pos });
+      spawnGate(nbId, { x: Math.cos(ang) * gateR, z: Math.sin(ang) * gateR });
     }
-    // Optional wormhole edge (gated) as a special gate.
     if (sector.wormholeTo) {
       const ang = rng() * Math.PI * 2;
-      const pos = { x: Math.cos(ang) * wr * 0.6, z: Math.sin(ang) * wr * 0.6 };
-      const ent = this.helpers.spawnEntity({
-        type: 'station', factionId: sector.factionId, pos,
-        radius: 80, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
-        data: {
-          stationId: null, isGate: true, isWormhole: true, gateTo: sector.wormholeTo.sectorId,
-          gatedBy: sector.wormholeTo.gatedBy, dockRadius: 80, services: [],
-          factionId: sector.factionId, name: 'Wormhole', sectorId: sector.id,
-        },
+      spawnGate(sector.wormholeTo.sectorId, { x: Math.cos(ang) * wr * 0.6, z: Math.sin(ang) * wr * 0.6 }, {
+        wormhole: true, gatedBy: sector.wormholeTo.gatedBy,
       });
-      active.gates.push({ id: ent.id, to: sector.wormholeTo.sectorId, pos, wormhole: true });
     }
   },
 
@@ -363,10 +395,175 @@ export const world = {
           scanRange: poi.scanRange || SCAN_RANGE, sectorId: sector.id,
           // V2 §6 / M3: claimable bodies carry their claim flag + size so the player can claim them.
           claimable: !!poi.claimable, size: poi.size || 'M',
+          landmark: !!poi.landmark,
+          landmarkGlb: poi.landmarkGlb || null,
+          placeId: poi.landmarkGlb
+            ? String(poi.landmarkGlb).replace(/^places\//, '').replace(/\.glb$/, '')
+            : null,
         },
       });
       active.pois.push({ id: ent.id, poiId: poi.id, type: poi.type, pos, hidden: !!poi.hidden, claimable: !!poi.claimable });
     }
+  },
+
+  _spawnDressing(sector, active, rng) {
+    const paletteClass = paletteClassForSector(sector);
+    if (paletteClass === 'core') {
+      this._spawnCoreDressing(sector, active, rng, paletteClass);
+    } else if (paletteClass === 'belt') {
+      this._spawnBeltDressing(sector, active, rng, paletteClass);
+    } else if (paletteClass === 'fringe') {
+      this._spawnFringeDressing(sector, active, rng, paletteClass);
+    } else if (paletteClass === 'anomaly') {
+      this._spawnAnomalyDressing(sector, active, rng, paletteClass);
+    }
+  },
+
+  _spawnCoreDressing(sector, active, rng, paletteClass) {
+    const gates = active.gates || [];
+    const stations = active.stations || [];
+    for (let i = 0; i < Math.min(4, gates.length * 2); i++) {
+      const gate = gates[i % Math.max(1, gates.length)];
+      if (!gate || !gate.pos) continue;
+      const t = i % 2 === 0 ? 0.46 : 0.62;
+      const side = i % 2 === 0 ? 1 : -1;
+      const pos = offsetAlongRadial(gate.pos, t, side * (95 + rng() * 35));
+      this._spawnPlaceProp(active, sector, 'place_lane_beacon', pos, {
+        paletteClass,
+        rot: bearingFromOrigin(pos),
+        name: 'Lane Beacon',
+        placeScale: 1,
+      });
+    }
+    for (let i = 0; i < Math.min(2, stations.length); i++) {
+      const station = stations[i];
+      if (!station || !station.pos) continue;
+      const pos = offsetAlongRadial(station.pos, 1.0, 150 + rng() * 70);
+      this._spawnPlaceProp(active, sector, 'place_station_billboard', pos, {
+        paletteClass,
+        rot: bearingToward(station.pos, pos),
+        name: `${station.stationId || 'Station'} Billboard`,
+        placeScale: 1,
+      });
+    }
+  },
+
+  _spawnBeltDressing(sector, active, rng, paletteClass) {
+    const fields = active.fields || [];
+    const stations = active.stations || [];
+    const rockIds = ['place_asteroid_rock_a', 'place_asteroid_rock_b', 'place_asteroid_rock_c'];
+    for (let i = 0; i < Math.min(3, fields.length); i++) {
+      const field = fields[i];
+      if (!field || !field.center) continue;
+      const ang = rng() * Math.PI * 2;
+      const dist = 210 + rng() * 170;
+      this._spawnPlaceProp(active, sector, rockIds[i % rockIds.length], polarOffset(field.center, ang, dist), {
+        paletteClass,
+        rot: ang + Math.PI * 0.5,
+        name: 'Belt Rock',
+        placeScale: 1,
+      });
+      this._spawnPlaceProp(active, sector, i === 0 ? 'place_asteroid_seamed' : 'place_mining_drone', polarOffset(field.center, ang + 1.9, 120 + rng() * 130), {
+        paletteClass,
+        rot: ang,
+        name: i === 0 ? 'Seamed Rock' : 'Mining Drone',
+        placeScale: 1,
+      });
+    }
+    if (stations[0] && fields[0] && fields[0].center) {
+      const pos = midpoint(stations[0].pos, fields[0].center, 0.58);
+      this._spawnPlaceProp(active, sector, 'place_conveyor_barge', pos, {
+        paletteClass,
+        rot: bearingToward(fields[0].center, stations[0].pos),
+        name: 'Ore Conveyor',
+        placeScale: 1,
+      });
+    }
+  },
+
+  _spawnFringeDressing(sector, active, rng, paletteClass) {
+    const fields = active.fields || [];
+    const gates = active.gates || [];
+    const pois = active.pois || [];
+    if (gates[0] && gates[0].pos) {
+      const pos = offsetAlongRadial(gates[0].pos, 0.76, 120 + rng() * 60);
+      this._spawnPlaceProp(active, sector, 'place_nav_buoy', pos, {
+        paletteClass,
+        rot: bearingFromOrigin(pos),
+        name: 'Flickering Nav Buoy',
+      });
+    }
+    const hulkAnchor = pois.find((poi) => poi.type === 'wreck' || poi.type === 'derelict') || fields[0] || null;
+    if (hulkAnchor) {
+      const anchor = hulkAnchor.pos || hulkAnchor.center;
+      const ang = rng() * Math.PI * 2;
+      this._spawnPlaceProp(active, sector, 'place_dead_hulk', polarOffset(anchor, ang, 140 + rng() * 120), {
+        paletteClass,
+        rot: ang,
+        name: 'Dead Hulk',
+      });
+      this._spawnPlaceProp(active, sector, 'place_debris_chunk', polarOffset(anchor, ang + 0.8, 220 + rng() * 90), {
+        paletteClass,
+        rot: ang + Math.PI * 0.35,
+        name: 'Debris Chunk',
+      });
+    }
+    if (fields[0] && fields[0].center) {
+      const ang = rng() * Math.PI * 2;
+      this._spawnPlaceProp(active, sector, 'place_asteroid_graffiti', polarOffset(fields[0].center, ang, 250 + rng() * 120), {
+        paletteClass,
+        rot: ang,
+        name: 'Tagged Asteroid',
+      });
+    }
+  },
+
+  _spawnAnomalyDressing(sector, active, rng, paletteClass) {
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const pois = active.pois || [];
+    const anchor = pois[0] && pois[0].pos ? pois[0].pos : { x: wr * 0.24, z: -wr * 0.18 };
+    const base = rng() * Math.PI * 2;
+    this._spawnPlaceProp(active, sector, 'place_nav_buoy', polarOffset(anchor, base, 180 + rng() * 80), {
+      paletteClass,
+      rot: base,
+      name: 'Quiet Nav Buoy',
+    });
+    this._spawnPlaceProp(active, sector, 'place_debris_chunk', polarOffset(anchor, base + 1.7, 260 + rng() * 110), {
+      paletteClass,
+      rot: base + 0.5,
+      name: 'Drifting Debris',
+    });
+    this._spawnPlaceProp(active, sector, 'place_asteroid_seamed', polarOffset(anchor, base + 3.0, 330 + rng() * 140), {
+      paletteClass,
+      rot: base + Math.PI,
+      name: 'Seam Signal',
+    });
+  },
+
+  _spawnPlaceProp(active, sector, placeId, pos, options = {}) {
+    if (!placeId || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const paletteClass = options.paletteClass || paletteClassForSector(sector);
+    const ent = this.helpers.spawnEntity({
+      type: 'fx',
+      factionId: sector.factionId || null,
+      pos,
+      rot: Number.isFinite(options.rot) ? options.rot : 0,
+      radius: DRESSING_RADIUS[placeId] || 12,
+      mass: 0,
+      collides: false,
+      ttl: Infinity,
+      flags: { noInterp: true },
+      data: {
+        placeId,
+        placeScale: finitePositive(options.placeScale) ? Number(options.placeScale) : 1,
+        worldDressing: true,
+        paletteClass,
+        sectorId: sector.id,
+        name: options.name || placeId,
+      },
+    });
+    active.dressing.push({ id: ent.id, placeId, pos: { x: pos.x, z: pos.z }, paletteClass });
+    return ent;
   },
 
   // Hazard zones: pure data tags on activeSector (flight/combat/ai read these); no entity needed.
@@ -779,10 +976,45 @@ export const world = {
     return route;
   },
 
-  _onSetCourse({ sectorId }) {
+  _onSetCourse(payload = {}) {
+    const pos = sanitizeCoursePos(payload.pos);
+    if (pos) {
+      const label = String(payload.label || payload.reason || 'Autopilot fix');
+      const targetEntityId = payload.targetEntityId != null ? payload.targetEntityId : null;
+      const arrivalRadius = Number.isFinite(payload.arrivalRadius)
+        ? Math.max(12, Math.min(500, payload.arrivalRadius))
+        : 36;
+      this.state.nav.route = null;
+      this.state.nav.autoTravel = false;
+      this.state.nav.waypoint = {
+        kind: payload.waypointKind || payload.kind || 'local',
+        label,
+        reason: payload.reason || label,
+        pos,
+      };
+      if (targetEntityId != null) this.state.nav.waypoint.targetEntityId = targetEntityId;
+      this.state.nav.autopilot = {
+        active: payload.autopilot !== false,
+        target: pos,
+        targetEntityId,
+        label,
+        arrivalRadius,
+        status: 'armed',
+      };
+      this.bus.emit('nav:waypoint', this.state.nav.waypoint);
+      this.bus.emit('nav:autopilot', this.state.nav.autopilot);
+      return this.state.nav.autopilot;
+    }
+
+    const sectorId = payload.sectorId;
     const route = this.computeRoute(sectorId, 'fuel');
     this.state.nav.route = route;
     this.state.nav.autoTravel = true;
+    if (this.state.nav.autopilot) {
+      this.state.nav.autopilot.active = false;
+      this.state.nav.autopilot.status = route ? 'route-plotted' : 'idle';
+    }
+    return route;
   },
 
   /** Dijkstra over discovered edges. Weight = per-leg fuelCost ('fuel') or 1 ('hops'). */
@@ -1099,11 +1331,66 @@ export const world = {
     state.jump.state = 'IDLE'; state.jump.targetSectorId = null; state.jump.via = null;
     state.jump.chargeT = 0; state.jump.chargeNeeded = 0; state.jump.cooldownT = 0;
     state.fuel = { current: 100, max: 100 };
-    state.nav.route = null; state.nav.autoTravel = false;
+    state.nav.route = null; state.nav.autoTravel = false; state.nav.waypoint = null;
+    state.nav.autopilot = { active: false, target: null, targetEntityId: null, label: '', arrivalRadius: 36, status: 'idle' };
   },
 };
 
 // Module-private helper (kept out of the singleton so `this` stays simple in callers).
 function safeSector(state, id) {
   return state.world.sectors[id] || SECTOR_BY_ID.get(id) || null;
+}
+
+function paletteClassForSector(sector) {
+  if (!sector) return 'core';
+  if (PALETTE_CLASS_BY_REF.has(sector.palette)) return PALETTE_CLASS_BY_REF.get(sector.palette);
+  const p = sector.palette || {};
+  for (const [key, value] of Object.entries(SECTOR_PALETTE_CLASSES)) {
+    if (p.nebulaTint === value.nebulaTint && p.fog === value.fog) return key;
+  }
+  return 'core';
+}
+
+function polarOffset(origin, angle, distance) {
+  return {
+    x: origin.x + Math.cos(angle) * distance,
+    z: origin.z + Math.sin(angle) * distance,
+  };
+}
+
+function offsetAlongRadial(pos, t, sideOffset) {
+  const angle = Math.atan2(pos.z, pos.x);
+  const base = { x: pos.x * t, z: pos.z * t };
+  return {
+    x: base.x + Math.cos(angle + Math.PI / 2) * sideOffset,
+    z: base.z + Math.sin(angle + Math.PI / 2) * sideOffset,
+  };
+}
+
+function midpoint(a, b, t) {
+  return {
+    x: a.x + (b.x - a.x) * t,
+    z: a.z + (b.z - a.z) * t,
+  };
+}
+
+function bearingFromOrigin(pos) {
+  return Math.atan2(pos.z, pos.x);
+}
+
+function bearingToward(from, to) {
+  return Math.atan2(to.z - from.z, to.x - from.x);
+}
+
+function sanitizeCoursePos(pos) {
+  if (!pos || typeof pos !== 'object' || Array.isArray(pos)) return null;
+  const x = Number(pos.x);
+  const z = Number(pos.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  return { x, z };
+}
+
+function finitePositive(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0;
 }

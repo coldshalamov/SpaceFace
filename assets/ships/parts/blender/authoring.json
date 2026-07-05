@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "vertical_slice": [
+    "place_station_trade_hub",
+    "place_station_refinery",
+    "place_station_military",
+    "place_station_blackmarket",
+    "place_gate_jump_ring"
+  ],
+  "min_tris_blender_mcp": 1500,
+  "procedural_tri_band_max": 1000,
+  "entries": {
+    "place_station_trade_hub": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_trade_hub",
+      "concept_path": "assets/concept/archetypes/concept_station_trade_hub.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_trade_hub.blend",
+      "min_tris": 1500
+    },
+    "place_station_refinery": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_refinery",
+      "concept_path": "assets/concept/archetypes/concept_station_refinery.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_refinery.blend",
+      "min_tris": 1500
+    },
+    "place_station_military": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_military",
+      "concept_path": "assets/concept/archetypes/concept_station_military.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_military.blend",
+      "min_tris": 1500
+    },
+    "place_station_blackmarket": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_blackmarket",
+      "concept_path": "assets/concept/archetypes/concept_station_blackmarket.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_blackmarket.blend",
+      "min_tris": 1500
+    },
+    "place_gate_jump_ring": {
+      "method": "blender_mcp",
+      "concept_id": "concept_gate_jump_ring",
+      "concept_path": "assets/concept/archetypes/concept_gate_jump_ring.jpg",
+      "blend_path": "assets/ships/parts/blender/place_gate_jump_ring.blend",
+      "min_tris": 1500
+    },
+    "place_station_mining": {
+      "method": "procedural_fallback",
+      "concept_id": "concept_station_mining",
+      "concept_path": "assets/concept/archetypes/concept_station_mining.jpg",
+      "blend_path": null,
+      "min_tris": 400
+    },
+    "place_station_fab": {
+      "method": "procedural_fallback",
+      "concept_id": "concept_station_fab",
+      "concept_path": "assets/concept/archetypes/concept_station_fab.jpg",
+      "blend_path": null,
+      "min_tris": 500
+    },
+    "place_station_research": {
+      "method": "procedural_fallback",
+      "concept_id": "concept_station_research",
+      "concept_path": "assets/concept/archetypes/concept_station_research.jpg",
+      "blend_path": null,
+      "min_tris": 500
+    }
+  }
+}

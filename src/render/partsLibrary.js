@@ -37,6 +37,37 @@ const CULL_CAMERA_POSITION = new THREE.Vector3();
 const CULL_SPHERE = new THREE.Sphere(new THREE.Vector3(), INSTANCE_FRUSTUM_PAD);
 let fallbackNavLightGeometry = null;
 const FALLBACK_NAV_LIGHT_MAT = new THREE.Matrix4();
+const SHIP_ASSEMBLY_SLOTS = Object.freeze(['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod']);
+const STATION_ARCHETYPE_FILES = Object.freeze([
+  'places/place_station_trade_hub.glb',
+  'places/place_station_refinery.glb',
+  'places/place_station_military.glb',
+  'places/place_station_blackmarket.glb',
+  'places/place_station_fab.glb',
+  'places/place_station_mining.glb',
+  'places/place_station_research.glb',
+  'places/place_gate_jump_ring.glb',
+]);
+const PLACE_FILES = Object.freeze([
+  'places/place_lane_beacon.glb',
+  'places/place_nav_buoy.glb',
+  'places/place_asteroid_seamed.glb',
+  'places/place_debris_chunk.glb',
+  'places/place_station_billboard.glb',
+  'places/place_dead_hulk.glb',
+  'places/place_conveyor_barge.glb',
+  'places/place_mining_drone.glb',
+  'places/place_asteroid_rock_a.glb',
+  'places/place_asteroid_rock_b.glb',
+  'places/place_asteroid_rock_c.glb',
+  'places/place_asteroid_graffiti.glb',
+  ...STATION_ARCHETYPE_FILES,
+]);
+const PLACE_FILE_BY_ID = Object.freeze(Object.fromEntries(PLACE_FILES.map((file) => [
+  file.replace(/^places\//, '').replace(/\.glb$/, ''),
+  file,
+])));
+let fallbackPlaceGeometry = null;
 
 // Runtime slots mirror assets/ships/parts/parts_manifest.json. Only list files that are actually
 // vendored; missing slots fall back procedurally instead of producing browser 404s.
@@ -93,6 +124,9 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'hulls/hull_freighter.glb',
       'hulls/hull_interceptor.glb',
       'hulls/hull_corvette.glb',
+      'hulls/hull_frigate.glb',
+      'hulls/hull_capital.glb',
+      'hulls/hull_multirole.glb',
       'hulls/hull_gunship.glb',
       // Authored whole-ship bodies (cockpit/fins/engine baked into one mesh, SOCKET_* only). Loaded
       // under the hull slot so their declared slot:'hull' metadata matches the loader; selected per
@@ -112,18 +146,24 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'engines/engine_ion_twin.glb',
       'engines/engine_industrial.glb',
       'engines/engine_resonator.glb',
+      'engines/engine_vector.glb',
+      'engines/engine_plasma_ring.glb',
     ]),
     fin: Object.freeze([
       'fins/fin_wedge.glb',
       'fins/fin_radiator_grid.glb',
       'fins/fin_swept_smuggler.glb',
       'fins/fin_crystalline.glb',
+      'fins/fin_delta.glb',
+      'fins/fin_stabilator.glb',
     ]),
     weapon: Object.freeze([
       'weapons/weapon_pulse_cannon.glb',
       'weapons/weapon_heavy_cannon.glb',
       'weapons/weapon_turret_dual.glb',
       'weapons/weapon_lance.glb',
+      'weapons/weapon_gatling.glb',
+      'weapons/weapon_railgun.glb',
     ]),
     greeble: Object.freeze([
       'greebles/greeble_vents.glb',
@@ -131,6 +171,8 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'greebles/greeble_pipes.glb',
       'greebles/greeble_rcs.glb',
       'greebles/greeble_antennas.glb',
+      'greebles/greeble_nav_lights.glb',
+      'greebles/greeble_armor_plates.glb',
     ]),
     gear: Object.freeze([
       'gear/skid_trio.glb',
@@ -141,13 +183,14 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'pods/pod_cargo_container.glb',
       'pods/pod_repair_patch.glb',
     ]),
+    place: PLACE_FILES,
   }),
   assembly: Object.freeze({
     coordinateSystem: '+X forward, +Y up, +Z starboard; metres',
     sharedOpaquePrimitives: 'ship-local merged static batches',
     mutableHooks: 'per-ship meshes sharing immutable geometry/textures',
     authoredMounts: 'MOUNT_COCKPIT / MOUNT_ENGINE_* / MOUNT_FIN_* on hull parts',
-    authoredSlots: 'hull / cockpit / engine / fin / weapon / greeble / gear / pod',
+    authoredSlots: 'hull / cockpit / engine / fin / weapon / greeble / gear / pod / place',
     missingPart: 'procedural slot fallback; never blank an entity',
   }),
 });
@@ -158,21 +201,22 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
 // outside this map fall back to the seed-based pick across all seven hulls. Roles follow the genius's
 // authoring pass: starter/multirole→starter, fighter→fighter, mining/mining_barge→miner,
 // freighter/heavy_hauler→freighter, interceptor/explorer→interceptor, corvette→corvette,
-// gunship/battlecruiser/flagship→gunship.
+// gunship/battlecruiser/flagship→gunship. New ladder hulls override the older broad buckets where
+// the authored library now has role-specific silhouettes.
 const HULL_FILE_BY_DEF_ID = Object.freeze({
   ship_kestrel: 'hulls/hull_starter.glb',
-  ship_drifter: 'hulls/hull_starter.glb',
+  ship_drifter: 'hulls/hull_multirole.glb',
   ship_wasp: 'hulls/hull_fighter.glb',
   ship_pelican: 'hulls/hull_miner.glb',
   ship_ironback: 'hulls/hull_miner.glb',
   ship_mule: 'hulls/hull_freighter.glb',
   ship_atlas: 'hulls/hull_freighter.glb',
   ship_hornet: 'hulls/hull_interceptor.glb',
-  ship_ranger: 'hulls/hull_interceptor.glb',
+  ship_ranger: 'hulls/hull_multirole.glb',
   ship_bastion: 'hulls/hull_corvette.glb',
-  ship_warden: 'hulls/hull_gunship.glb',
-  ship_colossus: 'hulls/hull_gunship.glb',
-  ship_leviathan: 'hulls/hull_gunship.glb',
+  ship_warden: 'hulls/hull_frigate.glb',
+  ship_colossus: 'hulls/hull_capital.glb',
+  ship_leviathan: 'hulls/hull_capital.glb',
 });
 
 // Ship defIds rendered as a single authored whole-ship body (cockpit/fins/engine baked in) instead
@@ -282,6 +326,312 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   return boundary;
 }
 
+export function buildAuthoredPlaceProp(entity, options = {}) {
+  const placeFile = placeFileForEntity(entity);
+  if (!placeFile) return null;
+  const fallbackRoot = buildFallbackPlaceProp(entity, placeFile);
+  return wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options);
+}
+
+export function buildAuthoredStationArchetype(entity, options = {}) {
+  const placeFile = placeFileForEntity(entity);
+  if (!placeFile || !entity || entity.type !== 'station') return null;
+  const placeId = placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
+  const loadEntity = {
+    ...entity,
+    data: {
+      ...(entity.data || {}),
+      placeId,
+      placeScale: stationArchetypePlaceScale(entity),
+    },
+  };
+  const fallbackRoot = buildFallbackStationArchetype(loadEntity, placeFile);
+  return wrapStationArchetypeWithAuthoredPart(loadEntity, fallbackRoot, placeFile, options);
+}
+
+export function resolvePlaceFileForEntity(entity) {
+  return placeFileForEntity(entity);
+}
+
+/** Test/probe hook: run the same async GLB swap used at runtime for place/station boundaries. */
+export async function upgradeAuthoredPlaceBoundaryForProbe(boundary, fallbackRoot, entity, placeFile, renderer, scene, options = {}) {
+  if (!boundary || !fallbackRoot || !entity || !placeFile || !renderer || !scene) return false;
+  let active = fallbackRoot;
+  return upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, options, (next) => {
+    active = next;
+    boundary.userData.hull = next;
+  });
+}
+
+export const STATION_ARCHETYPE_PLACE_IDS = Object.freeze(
+  STATION_ARCHETYPE_FILES.map((file) => file.replace(/^places\//, '').replace(/\.glb$/, '')),
+);
+
+function stationArchetypePlaceScale(entity) {
+  const data = entity && entity.data || {};
+  const raw = Number(data.placeScale);
+  if (Number.isFinite(raw) && raw > 0) return raw;
+  const radius = Math.max(40, Number(entity && entity.radius) || 72);
+  return radius / 14;
+}
+
+function buildFallbackStationArchetype(entity, placeFile) {
+  const data = entity && entity.data || {};
+  const placeId = data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
+  const radius = Math.max(40, Number(entity && entity.radius) || 72);
+  const group = new THREE.Group();
+  group.name = `SF_StationArchetypeFallback_${placeId}`;
+  group.userData.kind = 'station';
+  group.userData.placeId = placeId;
+  group.userData.archetypeGlb = data.archetypeGlb || placeId;
+  group.userData.renderContract = {
+    assetBoundary: 'GLTFKit v1 — station archetype procedural fallback',
+    gracefulFallback: true,
+  };
+  const color = fallbackPlaceColor(placeId, data.paletteClass);
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.68,
+    metalness: 0.35,
+    emissive: new THREE.Color(color).multiplyScalar(0.18),
+    emissiveIntensity: 0.2,
+  });
+  const mesh = new THREE.Mesh(getFallbackPlaceGeometry(), material);
+  mesh.name = `SF_StationArchetypeFallback_${placeId}_Hull`;
+  mesh.scale.set(radius * 0.55, radius * 0.42, radius * 0.55);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return group;
+}
+
+function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
+  if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || entity.type !== 'station' || !placeFile) return fallbackRoot;
+  const releaseMode = isReleaseAssetMode(options);
+  const placeId = placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
+
+  const boundary = new THREE.Group();
+  boundary.name = `${fallbackRoot.name || 'StationArchetype'}_AuthoredAssetBoundary`;
+  boundary.add(fallbackRoot);
+  Object.assign(boundary.userData, fallbackRoot.userData || {});
+  boundary.userData.kind = 'station';
+  boundary.userData.placeId = placeId;
+  boundary.userData.archetypeGlb = entity.data && entity.data.archetypeGlb || placeId;
+  boundary.userData.authoredAssetState = 'procedural-fallback';
+  boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
+  boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
+  boundary.userData.authoredSlots = {};
+  boundary.userData.renderContract = {
+    ...((fallbackRoot.userData && fallbackRoot.userData.renderContract) || {}),
+    assetBoundary: 'GLTFKit v1 — authored station archetype',
+    gracefulFallback: true,
+  };
+
+  boundary.userData.hull = fallbackRoot;
+  const trigger = firstRenderable(fallbackRoot);
+  const startAuthoredUpgrade = (renderer, scene) => {
+    if (!renderer || !scene || boundary.userData.authoredAssetState === 'loading' || boundary.userData.authoredAssetState === 'authored') return;
+    boundary.userData.authoredAssetState = 'loading';
+    upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, { releaseMode }, (next) => {
+      boundary.userData.hull = next;
+    }).catch((error) => {
+      boundary.userData.authoredAssetState = 'fallback-after-error';
+      console.warn('[partsLibrary] authored station archetype failed; retaining fallback', error);
+    });
+  };
+  boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
+
+  if (trigger) {
+    const previousBeforeRender = trigger.onBeforeRender;
+    trigger.onBeforeRender = function authoredStationTrigger(renderer, scene, ...rest) {
+      if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+      startAuthoredUpgrade(renderer, scene);
+    };
+  }
+
+  return boundary;
+}
+
+function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
+  if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || entity.type !== 'fx' || !placeFile) return fallbackRoot;
+  const releaseMode = isReleaseAssetMode(options);
+
+  const boundary = new THREE.Group();
+  boundary.name = `${fallbackRoot.name || 'PlaceProp'}_AuthoredAssetBoundary`;
+  boundary.add(fallbackRoot);
+  Object.assign(boundary.userData, fallbackRoot.userData || {});
+  boundary.userData.kind = 'place';
+  boundary.userData.placeId = entity.data && entity.data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
+  boundary.userData.authoredAssetState = 'procedural-fallback';
+  boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
+  boundary.userData.authoredAssetContractVersion = PART_LIBRARY_CONTRACT.version;
+  boundary.userData.authoredSlots = {};
+  boundary.userData.renderContract = {
+    ...((fallbackRoot.userData && fallbackRoot.userData.renderContract) || {}),
+    assetBoundary: 'GLTFKit v1 — authored world-place prop',
+    gracefulFallback: true,
+  };
+
+  boundary.userData.hull = fallbackRoot;
+  const trigger = firstRenderable(fallbackRoot);
+  const startAuthoredUpgrade = (renderer, scene) => {
+    if (!renderer || !scene || boundary.userData.authoredAssetState === 'loading' || boundary.userData.authoredAssetState === 'authored') return;
+    boundary.userData.authoredAssetState = 'loading';
+    upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, { releaseMode }, (next) => {
+      boundary.userData.hull = next;
+    }).catch((error) => {
+      boundary.userData.authoredAssetState = 'fallback-after-error';
+      console.warn('[partsLibrary] authored place prop failed; retaining fallback', error);
+    });
+  };
+  boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
+
+  if (trigger) {
+    const previousBeforeRender = trigger.onBeforeRender;
+    trigger.onBeforeRender = function authoredPlaceTrigger(renderer, scene, ...rest) {
+      if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+      startAuthoredUpgrade(renderer, scene);
+    };
+  }
+
+  return boundary;
+}
+
+async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, renderer, scene, options, setActive) {
+  const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
+  const record = await loadAuthoredPart(`${partRoot}${placeFile}`, {
+    renderer,
+    slot: 'place',
+    optional: true,
+  });
+  if (!record || !boundary.parent) {
+    boundary.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
+    return false;
+  }
+
+  const authored = buildPlacePropRoot(entity, record, scene, boundary);
+  if (!authored || !boundary.parent) return false;
+
+  boundary.remove(fallbackRoot);
+  boundary.add(authored.root);
+  setActive(authored.root);
+  boundary.userData.authoredAssetState = 'authored';
+  boundary.userData.authoredParts = authored.authoredParts;
+  boundary.userData.authoredSlots = authored.authoredSlots;
+  boundary.userData.authoredCompositionId = authored.root.userData.assetId;
+  boundary.userData.authoredRenderContract = authored.root.userData.renderContract;
+  boundary.userData.__socketCache = new Map();
+
+  try { disposeDetachedObject(fallbackRoot); }
+  catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
+  return true;
+}
+
+function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
+  const palette = paletteFor(entity || {});
+  const root = new THREE.Group();
+  const data = entity && entity.data || {};
+  const placeId = data.placeId || record.assetId || 'place_prop';
+  root.name = `GLTFKit_${placeId}`;
+  const isStation = entity && entity.type === 'station';
+  root.userData.kind = isStation ? 'station' : 'place';
+  root.userData.placeId = placeId;
+  root.userData.assetId = `GLTFKIT_${placeId}`;
+  if (isStation && data.archetypeGlb) root.userData.archetypeGlb = data.archetypeGlb;
+
+  const bindings = createBindings();
+  const mutableMaterials = new Map();
+  const staticBatches = createStaticBatchCollector(root, bindings);
+  const authoredLength = Math.max(record.bounds && record.bounds.size && record.bounds.size[0] || 1, 1e-6);
+  const rawScale = Number(data.placeScale);
+  const scale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1;
+  instantiatePart(record, root, {
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    targetLength: authoredLength * scale,
+    label: 'Place',
+  }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
+  staticBatches.flush();
+  normalizePlacePropBindings(bindings);
+
+  root.userData.renderContract = {
+    version: 1,
+    coordinateSystem: '+X forward, +Y up, +Z starboard; authored world scale',
+    authoredParts: [record.url],
+    authoredSlots: { place: [record.url] },
+    hookBinding: 'SOCKET_* markers remain available for debug/probes; world-place props are non-sim scenery',
+  };
+  return {
+    root,
+    authoredParts: [record.url],
+    authoredSlots: { place: [record.url] },
+  };
+}
+
+function normalizePlacePropBindings(bindings) {
+  for (const plume of bindings.drivePlumes) {
+    if (!plume || !plume.material) continue;
+    plume.material.transparent = true;
+    plume.material.depthWrite = false;
+    if (!Number.isFinite(plume.material.opacity)) plume.material.opacity = 0.55;
+    plume.castShadow = false;
+    plume.receiveShadow = false;
+  }
+}
+
+function buildFallbackPlaceProp(entity, placeFile) {
+  const data = entity && entity.data || {};
+  const placeId = data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
+  const radius = Math.max(3, Number(entity && entity.radius) || 8);
+  const group = new THREE.Group();
+  group.name = `SF_PlaceFallback_${placeId}`;
+  group.userData.kind = 'place';
+  group.userData.placeId = placeId;
+  group.userData.renderContract = {
+    assetBoundary: 'GLTFKit v1 — authored world-place prop fallback',
+    gracefulFallback: true,
+  };
+
+  const color = fallbackPlaceColor(placeId, data.paletteClass);
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.68,
+    metalness: 0.22,
+    emissive: new THREE.Color(color).multiplyScalar(0.28),
+    emissiveIntensity: 0.25,
+  });
+  const mesh = new THREE.Mesh(getFallbackPlaceGeometry(), material);
+  mesh.name = `SF_PlaceFallback_${placeId}_Hull`;
+  mesh.scale.set(radius * 0.28, radius * 0.20, radius * 0.28);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return group;
+}
+
+function getFallbackPlaceGeometry() {
+  if (!fallbackPlaceGeometry) fallbackPlaceGeometry = new THREE.BoxGeometry(1, 1, 1);
+  return fallbackPlaceGeometry;
+}
+
+function fallbackPlaceColor(placeId, paletteClass) {
+  const token = String(placeId || '');
+  if (String(paletteClass || '').toLowerCase() === 'anomaly') return 0x8d66ff;
+  if (String(paletteClass || '').toLowerCase() === 'fringe') return 0xff5c5c;
+  if (String(paletteClass || '').toLowerCase() === 'belt') return 0xffb35c;
+  if (token.includes('asteroid') || token.includes('debris') || token.includes('hulk')) return 0x7b8794;
+  return 0x39d0ff;
+}
+
+function placeFileForEntity(entity) {
+  const data = entity && entity.data || {};
+  const id = String(
+    data.archetypeGlb || data.landmarkGlb || data.placeId || data.assetId || '',
+  ).replace(/^places\//, '').replace(/\.glb$/, '');
+  if (!id) return null;
+  return PLACE_FILE_BY_ID[id] || (PLACE_FILES.includes(`places/${id}.glb`) ? `places/${id}.glb` : null);
+}
+
 function enqueueBoundaryUpgrade(scene, job) {
   const state = upgradeQueueState(scene);
   state.jobs.push(job);
@@ -370,7 +720,7 @@ function installResolvedBoundary(boundary, fallbackRoot, entity, renderer, scene
 function commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, options, setActive) {
   if (!boundary.parent) return false; // destroyed while assets were in flight
 
-  const authored = buildComposedShip(entity, library, scene, boundary);
+  const authored = buildComposedShip(entity, library, scene, boundary, options);
   if (!authored) {
     boundary.userData.authoredAssetState = 'unavailable';
     return false;
@@ -474,14 +824,16 @@ function resolvedCanonicalLibrary(renderer, options = {}) {
   return resolved ? resolved.get(partRoot) || null : null;
 }
 
-function buildComposedShip(entity, library, scene, ownerBoundary) {
+function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) {
+  const releaseMode = isReleaseAssetMode(options);
+  const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
   const seed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
   const selected = new Map();
   // Whole-ship bodies (cockpit/fins/engine baked in) bypass the parts-assembly: use the body as the
   // hull and skip the structural slots so they don't stack on the baked geometry.
   const wholeShipWanted = WHOLE_SHIP_FILE_BY_DEF_ID[entity.data && entity.data.defId];
   let wholeShip = false;
-  for (const slot of Object.keys(PART_LIBRARY_CONTRACT.slots)) {
+  for (const slot of SHIP_ASSEMBLY_SLOTS) {
     const records = library.get(slot) || [];
     if (slot === 'hull') {
       // Whole-ship override takes priority. Otherwise prefer the defId-mapped class, falling back to a
@@ -491,6 +843,9 @@ function buildComposedShip(entity, library, scene, ownerBoundary) {
         selected.set(slot, wholeRec);
         wholeShip = true;
       } else {
+        if (releaseMode && wholeShipWanted) {
+          throw new Error(requiredWholeShipMessage(entity, wholeShipWanted, records, partRoot));
+        }
         const pool = records.filter((record) => !isWholeShipUrl(record.url));
         const wanted = HULL_FILE_BY_DEF_ID[entity.data && entity.data.defId];
         const exact = wanted && pool.find((record) => String(record.url || '').endsWith(wanted));
@@ -730,6 +1085,17 @@ function buildComposedShip(entity, library, scene, ownerBoundary) {
   };
 }
 
+function requiredWholeShipMessage(entity, wholeShipFile, records, partRoot) {
+  const defId = entity && entity.data && entity.data.defId || 'unknown_ship';
+  const wantedUrl = `${partRoot || PART_RELEASE_ROOT}${wholeShipFile}`;
+  const loadedWholeShips = (records || [])
+    .map((record) => record && record.url)
+    .filter((url) => url && isWholeShipUrl(url));
+  return `[partsLibrary] release mode requires ${wantedUrl} for ${defId}; it did not pass the live authored-asset loader. ` +
+    `Loaded whole-ship hull records: ${loadedWholeShips.length ? loadedWholeShips.join(', ') : 'none'}. ` +
+    'Fix the GLB contract instead of falling back to modular hulls.';
+}
+
 function uniqueSlotMap(slots) {
   return Object.fromEntries(Object.entries(slots).map(([slot, urls]) => [slot, [...new Set(urls)]]));
 }
@@ -838,10 +1204,10 @@ function authoredGreebleMounts(entity, shipDef, records, seed) {
   const hints = (shipDef && shipDef.visuals && shipDef.visuals.tiers && shipDef.visuals.tiers[0] && shipDef.visuals.tiers[0].hints) || {};
   const density = Number.isFinite(hints.greeble) ? hints.greeble : 0.55;
   const files = role.includes('miner') || role.includes('freighter')
-    ? ['greebles/greeble_pipes.glb', 'greebles/greeble_vents.glb', 'greebles/greeble_hatches.glb']
+    ? ['greebles/greeble_pipes.glb', 'greebles/greeble_armor_plates.glb', 'greebles/greeble_vents.glb']
     : role.includes('fighter') || role.includes('interceptor')
-      ? ['greebles/greeble_rcs.glb', 'greebles/greeble_vents.glb']
-      : ['greebles/greeble_hatches.glb', 'greebles/greeble_antennas.glb'];
+      ? ['greebles/greeble_nav_lights.glb', 'greebles/greeble_rcs.glb', 'greebles/greeble_vents.glb']
+      : ['greebles/greeble_hatches.glb', 'greebles/greeble_antennas.glb', 'greebles/greeble_armor_plates.glb'];
   const max = density > 0.75 ? 3 : 2;
   const placements = [
     { position: [0.16, 0.30, 0.30], rotation: [0, 0, 0.02], targetLength: 0.16, label: 'Greeble_DorsalA' },
@@ -901,7 +1267,9 @@ function weaponRecordFor(records, wdef, facing, size, seed, index) {
   let file = 'weapons/weapon_pulse_cannon.glb';
   if (facing === 'turret' || tracking === 'auto_turret') file = 'weapons/weapon_turret_dual.glb';
   else if (size === 'L' || id.includes('lance') || id.includes('beam')) file = 'weapons/weapon_lance.glb';
-  else if (id.includes('autocannon') || id.includes('rail') || id.includes('torpedo') || id.includes('missile') || id.includes('plasma')) file = 'weapons/weapon_heavy_cannon.glb';
+  else if (id.includes('rail')) file = 'weapons/weapon_railgun.glb';
+  else if (id.includes('autocannon') || id.includes('gatling')) file = 'weapons/weapon_gatling.glb';
+  else if (id.includes('torpedo') || id.includes('missile') || id.includes('plasma')) file = 'weapons/weapon_heavy_cannon.glb';
   return recordForFile(records, file) || hashedRecord(records, seed, `weapon:${index}`);
 }
 

@@ -3088,6 +3088,454 @@
         ]
       },
       "note": "Fringe-tagged asteroid with pirate graffiti."
+    },
+    {
+      "id": "place_station_trade_hub",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_station_trade_hub.glb",
+      "tris": 2468,
+      "bytes": 1335952,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          0,
+          -14,
+          -18.05
+        ],
+        "max": [
+          28,
+          14,
+          5.05
+        ],
+        "dimensionsM": [
+          28,
+          28,
+          23.1
+        ]
+      },
+      "note": "Trade hub ring platform + tower (core/junction)."
+    },
+    {
+      "id": "place_station_refinery",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_station_refinery.glb",
+      "tris": 3008,
+      "bytes": 210032,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -6,
+          -11,
+          -24
+        ],
+        "max": [
+          34,
+          11,
+          0
+        ],
+        "dimensionsM": [
+          40,
+          22,
+          24
+        ]
+      },
+      "note": "Ore refinery stacks + slag base (belt/expanse)."
+    },
+    {
+      "id": "place_station_military",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_station_military.glb",
+      "tris": 3300,
+      "bytes": 231104,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1,
+          -10,
+          -14.88
+        ],
+        "max": [
+          17,
+          10,
+          0
+        ],
+        "dimensionsM": [
+          18,
+          20,
+          14.88
+        ]
+      },
+      "note": "Customs bastion + sensor dish."
+    },
+    {
+      "id": "place_station_blackmarket",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_station_blackmarket.glb",
+      "tris": 3948,
+      "bytes": 277124,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -3,
+          -8.8,
+          -7.3
+        ],
+        "max": [
+          22.5,
+          8.75,
+          0
+        ],
+        "dimensionsM": [
+          25.5,
+          17.55,
+          7.3
+        ]
+      },
+      "note": "Asymmetric scrap black-market cluster."
+    },
+    {
+      "id": "place_gate_jump_ring",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_gate_jump_ring.glb",
+      "tris": 4784,
+      "bytes": 340708,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -10.25,
+          -15.1,
+          -23.1
+        ],
+        "max": [
+          10.25,
+          15.1,
+          7.1
+        ],
+        "dimensionsM": [
+          20.5,
+          30.2,
+          30.2
+        ]
+      },
+      "note": "Jump gate torus with support pylons."
+    },
+    {
+      "id": "place_station_mining",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_station_mining.glb",
+      "tris": 588,
+      "bytes": 188628,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          0,
+          0,
+          -5
+        ],
+        "max": [
+          12,
+          9.5525,
+          5
+        ],
+        "dimensionsM": [
+          12,
+          9.5525,
+          10
+        ]
+      },
+      "note": "Small belt mining outpost rig."
+    },
+    {
+      "id": "place_station_fab",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_station_fab.glb",
+      "tris": 588,
+      "bytes": 188660,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          0,
+          0,
+          -7
+        ],
+        "max": [
+          22,
+          11.19213,
+          7
+        ],
+        "dimensionsM": [
+          22,
+          11.19213,
+          14
+        ]
+      },
+      "note": "Forge foundry fabrication hall."
+    },
+    {
+      "id": "place_station_research",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_station_research.glb",
+      "tris": 720,
+      "bytes": 190620,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          0,
+          -1,
+          -7
+        ],
+        "max": [
+          14,
+          11,
+          7
+        ],
+        "dimensionsM": [
+          14,
+          12,
+          14
+        ]
+      },
+      "note": "Veil glass-dome research station."
     }
   ],
   "runtimeSlots": {
@@ -3165,7 +3613,15 @@
       "places/place_asteroid_rock_a.glb",
       "places/place_asteroid_rock_b.glb",
       "places/place_asteroid_rock_c.glb",
-      "places/place_asteroid_graffiti.glb"
+      "places/place_asteroid_graffiti.glb",
+      "places/place_station_trade_hub.glb",
+      "places/place_station_refinery.glb",
+      "places/place_station_military.glb",
+      "places/place_station_blackmarket.glb",
+      "places/place_gate_jump_ring.glb",
+      "places/place_station_mining.glb",
+      "places/place_station_fab.glb",
+      "places/place_station_research.glb"
     ]
   }
 }

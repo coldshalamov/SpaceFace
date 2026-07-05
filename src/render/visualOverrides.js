@@ -11,13 +11,23 @@ import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
-import { wrapShipWithAuthoredParts } from './partsLibrary.js';
+import { buildAuthoredPlaceProp, buildAuthoredStationArchetype, wrapShipWithAuthoredParts } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
 function isPlayerKestrel(entity) {
   return !!entity && entity.type === 'ship' && entity.team === 0 && entity.data && entity.data.defId === 'ship_kestrel';
+}
+
+function isWorldPlaceProp(entity) {
+  if (!entity || entity.type !== 'fx' || !entity.data) return false;
+  return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
+}
+
+function hasStationArchetype(entity) {
+  return !!entity && entity.type === 'station' && entity.data
+    && typeof entity.data.archetypeGlb === 'string' && entity.data.archetypeGlb.length > 0;
 }
 
 export { isReleaseAssetMode };
@@ -73,8 +83,14 @@ export function installVisualOverrides(factory, options = {}) {
   const kestrelBuilder = typeof options.kestrelBuilder === 'function' ? options.kestrelBuilder : buildKestrelHero;
   factory.build = (entity) => {
     let visual = null;
-    const scenarioProp = build47aScenarioProp(entity);
-    if (scenarioProp) {
+    const scenarioProp = isWorldPlaceProp(entity) ? null : build47aScenarioProp(entity);
+    if (isWorldPlaceProp(entity)) {
+      try { visual = buildAuthoredPlaceProp(entity, { releaseMode }); }
+      catch (error) { reportVisualWarning(options, '[visualOverrides] authored place prop failed; using renderer fallback', error); }
+    } else if (hasStationArchetype(entity)) {
+      try { visual = buildAuthoredStationArchetype(entity, { releaseMode }); }
+      catch (error) { reportVisualWarning(options, '[visualOverrides] authored station archetype failed; using procedural fallback', error); }
+    } else if (scenarioProp) {
       visual = scenarioProp;
     } else if (isPlayerKestrel(entity)) {
       try { visual = kestrelBuilder(entity); }

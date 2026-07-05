@@ -13,7 +13,7 @@
 //   5. re-serialises with 4-byte-aligned chunks,
 //   6. writes the final GLB to its manifest path under assets/ships/parts/,
 //   7. patches the manifest entry (tris, bytes, bounds) and rewrites the manifest.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
@@ -21,6 +21,25 @@ import * as THREE from 'three';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PART_ROOT = resolve(ROOT, 'assets/ships/parts');
 const MANIFEST_PATH = resolve(PART_ROOT, 'parts_manifest.json');
+const AUTHORING_PATH = resolve(ROOT, 'assets/ships/parts/blender/authoring.json');
+
+function loadAuthoringEntry(partId) {
+  if (!existsSync(AUTHORING_PATH)) return null;
+  const authoring = JSON.parse(readFileSync(AUTHORING_PATH, 'utf8'));
+  return authoring?.entries?.[partId] ?? null;
+}
+
+function resolveAuthoringMethod(partId, methodArg) {
+  if (methodArg) return methodArg;
+  return loadAuthoringEntry(partId)?.method ?? null;
+}
+
+function generatorString(method) {
+  if (method === 'blender_mcp') {
+    return 'SpaceFace tools/art/blender/author_place_archetype.py - Blender-authored place archetype';
+  }
+  return 'SpaceFace tools/art/generate_ship_parts_library.py - procedural ship parts library v3';
+}
 
 const GLB_MAGIC = 0x46546c67;
 const CHUNK_JSON = 0x4e4f534a;
@@ -122,12 +141,28 @@ function serializeGlb(gltf, binary) {
 }
 
 function main() {
-  const [glbPath, partId] = process.argv.slice(2);
-  if (!glbPath || !partId) { console.error('usage: finalize_part.mjs <exported.glb> <partId>'); process.exit(2); }
+  const argv = process.argv.slice(2);
+  const methodArg = argv.find((a) => a.startsWith('--method='))?.split('=')[1] ?? null;
+  const positional = argv.filter((a) => !a.startsWith('--'));
+  const [glbPath, partId] = positional;
+  if (!glbPath || !partId) {
+    console.error('usage: finalize_part.mjs <exported.glb> <partId> [--method=blender_mcp|procedural_fallback]');
+    process.exit(2);
+  }
 
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
   const entry = manifest.parts.find((p) => p.id === partId);
   if (!entry) { console.error(`part '${partId}' not in manifest`); process.exit(2); }
+
+  const authoringMethod = resolveAuthoringMethod(partId, methodArg);
+  const authoringEntry = loadAuthoringEntry(partId);
+  if (authoringEntry?.blend_path && authoringMethod === 'blender_mcp') {
+    const blendAbs = resolve(ROOT, authoringEntry.blend_path);
+    if (!existsSync(blendAbs)) {
+      console.error(`Blender-authored part '${partId}' missing blend at ${blendAbs}`);
+      process.exit(2);
+    }
+  }
 
   const { gltf, binary } = parseGlb(readFileSync(glbPath));
   const tris = countTriangles(gltf);
@@ -147,7 +182,7 @@ function main() {
   };
   gltf.asset = gltf.asset || {};
   gltf.asset.version = '2.0';
-  gltf.asset.generator = 'SpaceFace tools/art/generate_ship_parts_library.py - Blender-authored part pack v3';
+  gltf.asset.generator = generatorString(authoringMethod);
   gltf.asset.extras = {
     spacefaceAsset: sfAsset, assetId, partId, category: entry.category, priority: entry.priority,
     unit: 'metre', upAxis: '+Y', forwardAxis: '+X', starboardAxis: '+Z',

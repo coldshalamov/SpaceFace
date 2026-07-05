@@ -1,0 +1,450 @@
+{
+  "schemaVersion": 1,
+  "pipeline": "design/world-identity/PIPELINE.md",
+  "entries": [
+    {
+      "concept_id": "concept_helios_overview",
+      "path": "sectors/sector_helios_prime/concept_helios_overview.jpg",
+      "target_asset_role": "sector_helios_prime/landmark",
+      "blender_part_id": null,
+      "sector_placement_id": "station_helios",
+      "story_citation": "SECTOR-GRADIENT S1"
+    },
+    {
+      "concept_id": "concept_ceres_overview",
+      "path": "sectors/sector_ceres_belt/concept_ceres_overview.jpg",
+      "target_asset_role": "sector_ceres_belt/landmark",
+      "blender_part_id": "place_station_refinery",
+      "sector_placement_id": "station_ceres",
+      "story_citation": "SECTOR-GRADIENT S2-S3"
+    },
+    {
+      "concept_id": "concept_tethys_overview",
+      "path": "sectors/sector_tethys_junction/concept_tethys_overview.jpg",
+      "target_asset_role": "sector_tethys_junction/landmark",
+      "blender_part_id": "place_station_trade_hub",
+      "sector_placement_id": "station_tethys",
+      "story_citation": "SECTOR-GRADIENT S2-S3 Tycho Relay"
+    },
+    {
+      "concept_id": "concept_station_trade_hub",
+      "path": "archetypes/concept_station_trade_hub.jpg",
+      "target_asset_role": "station_archetype/trade_hub",
+      "blender_part_id": "place_station_trade_hub",
+      "sector_placement_id": null,
+      "story_citation": "WORLD_NAVIGATION_SPEC §2"
+    },
+    {
+      "concept_id": "concept_station_refinery",
+      "path": "archetypes/concept_station_refinery.jpg",
+      "target_asset_role": "station_archetype/refinery",
+      "blender_part_id": "place_station_refinery",
+      "sector_placement_id": null,
+      "story_citation": "WORLD_NAVIGATION_SPEC §2"
+    },
+    {
+      "concept_id": "concept_station_military",
+      "path": "archetypes/concept_station_military.jpg",
+      "target_asset_role": "station_archetype/military",
+      "blender_part_id": "place_station_military",
+      "sector_placement_id": null,
+      "story_citation": "WORLD_NAVIGATION_SPEC §2"
+    },
+    {
+      "concept_id": "concept_station_blackmarket",
+      "path": "archetypes/concept_station_blackmarket.jpg",
+      "target_asset_role": "station_archetype/blackmarket",
+      "blender_part_id": "place_station_blackmarket",
+      "sector_placement_id": null,
+      "story_citation": "WORLD_NAVIGATION_SPEC §2"
+    },
+    {
+      "concept_id": "concept_gate_jump_ring",
+      "path": "archetypes/concept_gate_jump_ring.jpg",
+      "target_asset_role": "gate_archetype",
+      "blender_part_id": "place_gate_jump_ring",
+      "sector_placement_id": null,
+      "story_citation": "WORLD_NAVIGATION_SPEC §1"
+    },
+    {
+      "concept_id": "concept_universe_map",
+      "path": "map/concept_universe_map.jpg",
+      "target_asset_role": "map/universe_chart",
+      "blender_part_id": null,
+      "sector_placement_id": null,
+      "story_citation": "PIPELINE §3 map art"
+    },
+    {
+      "concept_id": "concept_faction_scn",
+      "path": "factions/concept_faction_scn.jpg",
+      "target_asset_role": "faction/faction_scn",
+      "blender_part_id": null,
+      "sector_placement_id": "station_coalition",
+      "story_citation": "factions-CANONICAL CONCORD"
+    },
+    {
+      "concept_id": "concept_faction_mts",
+      "path": "factions/concept_faction_mts.jpg",
+      "target_asset_role": "faction/faction_mts",
+      "blender_part_id": null,
+      "sector_placement_id": "station_tethys",
+      "story_citation": "factions-CANONICAL MTS"
+    },
+    {
+      "concept_id": "concept_faction_dmc",
+      "path": "factions/concept_faction_dmc.jpg",
+      "target_asset_role": "faction/faction_dmc",
+      "blender_part_id": null,
+      "sector_placement_id": "station_ceres",
+      "story_citation": "factions-CANONICAL DRIFT"
+    },
+    {
+      "concept_id": "concept_vesta_overview",
+      "path": "sectors/sector_vesta_forge/concept_vesta_overview.jpg",
+      "target_asset_role": "sector_vesta_forge/landmark",
+      "blender_part_id": "place_station_fab",
+      "sector_placement_id": "station_forge",
+      "story_citation": "SECTOR-GRADIENT S2-S3 Forge industrial ring"
+    },
+    {
+      "concept_id": "concept_pallas_overview",
+      "path": "sectors/sector_pallas_drift/concept_pallas_overview.jpg",
+      "target_asset_role": "sector_pallas_drift/landmark",
+      "blender_part_id": "place_station_blackmarket",
+      "sector_placement_id": "station_smuggler",
+      "story_citation": "SECTOR-GRADIENT S4-S5 Hollow Station"
+    },
+    {
+      "concept_id": "concept_io_overview",
+      "path": "sectors/sector_io_reach/concept_io_overview.jpg",
+      "target_asset_role": "sector_io_reach/landmark",
+      "blender_part_id": "place_station_trade_hub",
+      "sector_placement_id": "station_reach",
+      "story_citation": "SECTOR-GRADIENT S4-S5 Bourse contested lanes"
+    },
+    {
+      "concept_id": "concept_charon_overview",
+      "path": "sectors/sector_charon_expanse/concept_charon_overview.jpg",
+      "target_asset_role": "sector_charon_expanse/landmark",
+      "blender_part_id": "place_station_refinery",
+      "sector_placement_id": "station_expanse",
+      "story_citation": "SECTOR-GRADIENT S6-S7 Cinder"
+    },
+    {
+      "concept_id": "concept_sker_overview",
+      "path": "sectors/sector_sker_haven/concept_sker_overview.jpg",
+      "target_asset_role": "sector_sker_haven/landmark",
+      "blender_part_id": "place_station_blackmarket",
+      "sector_placement_id": "station_sker",
+      "story_citation": "SECTOR-GRADIENT S6-S7 Skerris Deep"
+    },
+    {
+      "concept_id": "concept_veil_overview",
+      "path": "sectors/sector_veil_nebula/concept_veil_overview.jpg",
+      "target_asset_role": "sector_veil_nebula/landmark",
+      "blender_part_id": "place_station_research",
+      "sector_placement_id": "station_veil",
+      "story_citation": "SECTOR-GRADIENT S8 Veil Expanse"
+    },
+    {
+      "concept_id": "concept_ashfall_overview",
+      "path": "sectors/sector_ashfall_reach/concept_ashfall_overview.jpg",
+      "target_asset_role": "sector_ashfall_reach/landmark",
+      "blender_part_id": "place_station_blackmarket",
+      "sector_placement_id": "station_ashcache",
+      "story_citation": "SECTOR-GRADIENT S9 Ashfall Reach"
+    },
+    {
+      "concept_id": "concept_ship_meridian_trader",
+      "path": "ships/concept_ship_meridian_trader.jpg",
+      "target_asset_role": "ship/meridian_trader",
+      "blender_part_id": null,
+      "sector_placement_id": null,
+      "story_citation": "factions-CANONICAL MTS corporate hauler"
+    },
+    {
+      "concept_id": "concept_ship_quiet_raider",
+      "path": "ships/concept_ship_quiet_raider.jpg",
+      "target_asset_role": "ship/quiet_raider",
+      "blender_part_id": null,
+      "sector_placement_id": null,
+      "story_citation": "factions-CANONICAL fringe smuggler"
+    },
+    {
+      "concept_id": "concept_planet_helios",
+      "path": "planets/concept_planet_helios.jpg",
+      "target_asset_role": "planet/helios_prime",
+      "blender_part_id": null,
+      "sector_placement_id": "sector_helios_prime",
+      "story_citation": "CURATED_SPACE_FEATURES F07"
+    },
+    {
+      "concept_id": "concept_landmark_memorial",
+      "path": "landmarks/concept_landmark_memorial.jpg",
+      "target_asset_role": "landmark/poi_memorial",
+      "blender_part_id": "place_station_billboard",
+      "sector_placement_id": "poi_memorial",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL S1"
+    },
+    {
+      "concept_id": "concept_landmark_driller",
+      "path": "landmarks/concept_landmark_driller.jpg",
+      "target_asset_role": "landmark/poi_driller",
+      "blender_part_id": "place_dead_hulk",
+      "sector_placement_id": "poi_driller",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL S2-S3"
+    },
+    {
+      "concept_id": "concept_station_mining",
+      "path": "archetypes/concept_station_mining.jpg",
+      "target_asset_role": "station_archetype/mining",
+      "blender_part_id": "place_station_mining",
+      "sector_placement_id": null,
+      "story_citation": "WORLD_NAVIGATION_SPEC §2"
+    },
+    {
+      "concept_id": "concept_station_fab",
+      "path": "archetypes/concept_station_fab.jpg",
+      "target_asset_role": "station_archetype/fab",
+      "blender_part_id": "place_station_fab",
+      "sector_placement_id": "station_forge",
+      "story_citation": "WORLD_NAVIGATION_SPEC §2"
+    },
+    {
+      "concept_id": "concept_station_research",
+      "path": "archetypes/concept_station_research.jpg",
+      "target_asset_role": "station_archetype/research",
+      "blender_part_id": "place_station_research",
+      "sector_placement_id": "station_veil",
+      "story_citation": "WORLD_NAVIGATION_SPEC §2"
+    },
+    {
+      "concept_id": "concept_helios_city",
+      "path": "cities/concept_helios_city.jpg",
+      "target_asset_role": "sector_helios_prime/city_hub",
+      "blender_part_id": "place_station_trade_hub",
+      "sector_placement_id": "station_helios",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_ceres_city",
+      "path": "cities/concept_ceres_city.jpg",
+      "target_asset_role": "sector_ceres_belt/city_hub",
+      "blender_part_id": "place_station_refinery",
+      "sector_placement_id": "station_ceres",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_tethys_city",
+      "path": "cities/concept_tethys_city.jpg",
+      "target_asset_role": "sector_tethys_junction/city_hub",
+      "blender_part_id": "place_station_trade_hub",
+      "sector_placement_id": "station_tethys",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_landmark_tethys",
+      "path": "landmarks/concept_landmark_tethys.jpg",
+      "target_asset_role": "sector_tethys_junction/landmark_poi",
+      "blender_part_id": "place_nav_buoy",
+      "sector_placement_id": "poi_blackmkt",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL tethys"
+    },
+    {
+      "concept_id": "concept_vesta_city",
+      "path": "cities/concept_vesta_city.jpg",
+      "target_asset_role": "sector_vesta_forge/city_hub",
+      "blender_part_id": "place_station_fab",
+      "sector_placement_id": "station_forge",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_landmark_vesta",
+      "path": "landmarks/concept_landmark_vesta.jpg",
+      "target_asset_role": "sector_vesta_forge/landmark_poi",
+      "blender_part_id": "place_dead_hulk",
+      "sector_placement_id": "poi_freighter",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL vesta"
+    },
+    {
+      "concept_id": "concept_pallas_city",
+      "path": "cities/concept_pallas_city.jpg",
+      "target_asset_role": "sector_pallas_drift/city_hub",
+      "blender_part_id": "place_station_blackmarket",
+      "sector_placement_id": "station_smuggler",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_landmark_pallas",
+      "path": "landmarks/concept_landmark_pallas.jpg",
+      "target_asset_role": "sector_pallas_drift/landmark_poi",
+      "blender_part_id": "place_dead_hulk",
+      "sector_placement_id": "poi_pwreck",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL pallas"
+    },
+    {
+      "concept_id": "concept_io_city",
+      "path": "cities/concept_io_city.jpg",
+      "target_asset_role": "sector_io_reach/city_hub",
+      "blender_part_id": "place_station_trade_hub",
+      "sector_placement_id": "station_reach",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_landmark_io",
+      "path": "landmarks/concept_landmark_io.jpg",
+      "target_asset_role": "sector_io_reach/landmark_poi",
+      "blender_part_id": "place_dead_hulk",
+      "sector_placement_id": "poi_cruiser",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL io"
+    },
+    {
+      "concept_id": "concept_charon_city",
+      "path": "cities/concept_charon_city.jpg",
+      "target_asset_role": "sector_charon_expanse/city_hub",
+      "blender_part_id": "place_station_refinery",
+      "sector_placement_id": "station_expanse",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_landmark_charon",
+      "path": "landmarks/concept_landmark_charon.jpg",
+      "target_asset_role": "sector_charon_expanse/landmark_poi",
+      "blender_part_id": "place_conveyor_barge",
+      "sector_placement_id": "poi_colony",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL charon"
+    },
+    {
+      "concept_id": "concept_sker_city",
+      "path": "cities/concept_sker_city.jpg",
+      "target_asset_role": "sector_sker_haven/city_hub",
+      "blender_part_id": "place_station_blackmarket",
+      "sector_placement_id": "station_sker",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_landmark_sker",
+      "path": "landmarks/concept_landmark_sker.jpg",
+      "target_asset_role": "sector_sker_haven/landmark_poi",
+      "blender_part_id": "place_dead_hulk",
+      "sector_placement_id": "poi_bounty",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL sker"
+    },
+    {
+      "concept_id": "concept_veil_city",
+      "path": "cities/concept_veil_city.jpg",
+      "target_asset_role": "sector_veil_nebula/city_hub",
+      "blender_part_id": "place_station_research",
+      "sector_placement_id": "station_veil",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_landmark_veil",
+      "path": "landmarks/concept_landmark_veil.jpg",
+      "target_asset_role": "sector_veil_nebula/landmark_poi",
+      "blender_part_id": "place_asteroid_seamed",
+      "sector_placement_id": "poi_anomaly",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL veil"
+    },
+    {
+      "concept_id": "concept_ashfall_city",
+      "path": "cities/concept_ashfall_city.jpg",
+      "target_asset_role": "sector_ashfall_reach/city_hub",
+      "blender_part_id": "place_station_blackmarket",
+      "sector_placement_id": "station_ashcache",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL city district",
+      "renderable_tier": "concept_only",
+      "renderable_proxy_note": "city silhouette refs proxy to station archetype GLB until dedicated city mesh ships"
+    },
+    {
+      "concept_id": "concept_landmark_ashfall",
+      "path": "landmarks/concept_landmark_ashfall.jpg",
+      "target_asset_role": "sector_ashfall_reach/landmark_poi",
+      "blender_part_id": "place_nav_buoy",
+      "sector_placement_id": "poi_boss",
+      "story_citation": "PLACE-IDENTITY-GAP-FILL ashfall"
+    },
+    {
+      "concept_id": "concept_npc_dock_worker",
+      "path": "people/concept_npc_dock_worker.jpg",
+      "target_asset_role": "npc/dock_worker",
+      "blender_part_id": null,
+      "sector_placement_id": "station_helios",
+      "story_citation": "NPC-ECOLOGY dress reference"
+    },
+    {
+      "concept_id": "concept_npc_belt_foreman",
+      "path": "people/concept_npc_belt_foreman.jpg",
+      "target_asset_role": "npc/belt_foreman",
+      "blender_part_id": null,
+      "sector_placement_id": "station_ceres",
+      "story_citation": "NPC-ECOLOGY dress reference"
+    },
+    {
+      "concept_id": "concept_npc_fringe_smuggler",
+      "path": "people/concept_npc_fringe_smuggler.jpg",
+      "target_asset_role": "npc/fringe_smuggler",
+      "blender_part_id": null,
+      "sector_placement_id": "station_smuggler",
+      "story_citation": "NPC-ECOLOGY dress reference"
+    },
+    {
+      "concept_id": "concept_style_bible",
+      "path": "styles/concept_style_bible.jpg",
+      "target_asset_role": "style/master_bible",
+      "blender_part_id": null,
+      "sector_placement_id": null,
+      "story_citation": "GRAPHICS_STYLE_GUIDE palette classes"
+    },
+    {
+      "concept_id": "concept_ship_concord_patrol",
+      "path": "ships/concept_ship_concord_patrol.jpg",
+      "target_asset_role": "ship/concord_patrol",
+      "blender_part_id": null,
+      "sector_placement_id": null,
+      "story_citation": "VISUAL_ASSET_PLAN hull reference"
+    },
+    {
+      "concept_id": "concept_ship_drift_hauler",
+      "path": "ships/concept_ship_drift_hauler.jpg",
+      "target_asset_role": "ship/drift_hauler",
+      "blender_part_id": null,
+      "sector_placement_id": null,
+      "story_citation": "VISUAL_ASSET_PLAN hull reference"
+    },
+    {
+      "concept_id": "concept_planet_ceres",
+      "path": "planets/concept_planet_ceres.jpg",
+      "target_asset_role": "planet/ceres",
+      "blender_part_id": null,
+      "sector_placement_id": null,
+      "story_citation": "CURATED_SPACE_FEATURES F07"
+    },
+    {
+      "concept_id": "concept_planet_veil",
+      "path": "planets/concept_planet_veil.jpg",
+      "target_asset_role": "planet/veil",
+      "blender_part_id": null,
+      "sector_placement_id": null,
+      "story_citation": "CURATED_SPACE_FEATURES F07"
+    }
+  ]
+}
