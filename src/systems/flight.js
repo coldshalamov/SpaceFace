@@ -327,7 +327,8 @@ function normalizeBoostResource(e) {
   boost.drainRate = finiteNonNegative(boost.drainRate, DEFAULT_BOOST_RESOURCE.drainRate);
   boost.regenRate = finiteNonNegative(boost.regenRate, DEFAULT_BOOST_RESOURCE.regenRate);
   boost.dashImpulse = finiteNonNegative(boost.dashImpulse, DEFAULT_BOOST_RESOURCE.dashImpulse);
-  boost.dashCost = finiteNonNegative(boost.dashCost, DEFAULT_BOOST_RESOURCE.dashCost);
+  const dashCostFallback = boost.dashImpulse > 0 ? max * 0.9 : DEFAULT_BOOST_RESOURCE.dashCost;
+  boost.dashCost = finiteNonNegative(boost.dashCost, dashCostFallback);
   boost.dashCd = finiteNonNegative(boost.dashCd, DEFAULT_BOOST_RESOURCE.dashCd);
   boost.dashCdT = Math.min(boost.dashCd, finiteNonNegative(boost.dashCdT, DEFAULT_BOOST_RESOURCE.dashCdT));
   if ('_boostHoldT' in boost && !Number.isFinite(boost._boostHoldT)) boost._boostHoldT = 0;
