@@ -1,12 +1,14 @@
 // Zero-dependency static file server for SpaceFace.
 // Dev + local play: `node server.js [port]` (default 8123), then open http://localhost:8123/
 import { createServer } from 'node:http';
-import { readFile, stat, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, readdir, stat, writeFile, mkdir } from 'node:fs/promises';
 import { extname, join, normalize, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.argv[2] || process.env.PORT || 8123);
+const DEV_FRESHNESS_ROOTS = ['index.html', 'src', 'styles'];
+let freshnessCache = { checkedAt: 0, version: '' };
 
 // Dev-only screenshot sink: the page POSTs a data: URL here and we save the bytes to
 // .devshots/<name>.jpg so the dev loop can Read the rendered frame (the headless preview
@@ -30,6 +32,35 @@ async function handleShot(req, res) {
   });
 }
 
+async function maxMtimeMs(file) {
+  const s = await stat(file);
+  if (!s.isDirectory()) return s.mtimeMs;
+  let max = s.mtimeMs;
+  const entries = await readdir(file, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === 'build' || entry.name === 'dist') continue;
+    const child = join(file, entry.name);
+    max = Math.max(max, await maxMtimeMs(child));
+  }
+  return max;
+}
+
+async function devFreshnessPayload() {
+  const now = Date.now();
+  if (freshnessCache.version && now - freshnessCache.checkedAt < 750) {
+    return { dev: true, version: freshnessCache.version };
+  }
+  let max = 0;
+  for (const rel of DEV_FRESHNESS_ROOTS) {
+    try {
+      max = Math.max(max, await maxMtimeMs(join(ROOT, rel)));
+    } catch {}
+  }
+  const version = String(Math.round(max));
+  freshnessCache = { checkedAt: now, version };
+  return { dev: true, version };
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -50,6 +81,11 @@ const MIME = {
 const server = createServer(async (req, res) => {
   try {
     if (req.method === 'POST' && (req.url || '').startsWith('/__shot')) { await handleShot(req, res); return; }
+    if (req.method === 'GET' && (req.url || '').startsWith('/__dev_freshness')) {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify(await devFreshnessPayload()));
+      return;
+    }
     let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
     if (urlPath === '/' || urlPath === '') urlPath = '/index.html';
     const safe = normalize(urlPath).replace(/^(\.\.[/\\])+/, '');

@@ -28,6 +28,11 @@ assert.match(
 );
 assert.match(
   electronMain,
+  /const ROOT = app\.isPackaged && fs\.existsSync\(path\.join\(BUNDLE_ROOT, 'index\.html'\)\) \? BUNDLE_ROOT : PROJECT_ROOT;/,
+  'Electron dev must serve PROJECT_ROOT so stale build/web output cannot diverge from browser play'
+);
+assert.match(
+  electronMain,
   /server\.listen\(PORT, '127\.0\.0\.1'/,
   'Electron must try the fixed port before any fallback port'
 );
@@ -45,6 +50,11 @@ assert.match(
   electronMain,
   /'\.ktx2': 'image\/ktx2'/,
   'Electron MIME table must serve KTX2 textures consistently with the dev server'
+);
+assert.doesNotMatch(
+  electronMain,
+  /location\.reload|webContents\.reload|__dev_auto_refresh/,
+  'Electron dev must not auto-reload the game while agents are editing files'
 );
 assert.match(
   electronMain,
@@ -89,6 +99,25 @@ assert.match(
   main,
   /async function finalizeLoadedGame[\s\S]*waitForAuthoredPartLibrary[\s\S]*waitForInitialAuthoredVisuals[\s\S]*enterFlightMode/,
   'Loaded games must wait for release-authored assets and live authored visuals before entering flight'
+);
+
+const indexHtml = read('index.html');
+assert.doesNotMatch(
+  indexHtml,
+  /setInterval\([\s\S]*location\.reload|\/__dev_freshness[\s\S]*location\.reload/,
+  'Browser dev page must not auto-reload the game while agents are editing files'
+);
+
+const devServer = read('server.js');
+assert.match(
+  devServer,
+  /__dev_freshness/,
+  'Browser dev server may expose source freshness for manual diagnostics'
+);
+assert.match(
+  devServer,
+  /const DEV_FRESHNESS_ROOTS = \['index\.html', 'src', 'styles'\];/,
+  'Dev freshness should watch source/UI roots without scanning large asset/build directories'
 );
 
 const bundle = read('scripts/build-bundle.mjs');

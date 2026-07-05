@@ -10,14 +10,14 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// WEB ROOT: the bundled release ships minified, tree-shaken output in build/web/ (produced by
-// `npm run build:bundle` / `npm run dist`). When that exists, serve IT (smaller, faster, no raw
-// source shipped). When it doesn't (dev: `npm run electron` without a build), fall back to the
-// project root so the raw ES modules + importmap load as in a browser — the zero-build dev path.
+// WEB ROOT: packaged desktop serves the bundled release output in build/web/. Electron dev serves
+// the project root so `npm run electron` and `node server.js 8123` run the same source route even
+// when a stale build/web directory exists from an earlier package build.
 const PROJECT_ROOT = path.join(__dirname, '..');
 const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
-const ROOT = fs.existsSync(path.join(BUNDLE_ROOT, 'index.html')) ? BUNDLE_ROOT : PROJECT_ROOT;
+const ROOT = app.isPackaged && fs.existsSync(path.join(BUNDLE_ROOT, 'index.html')) ? BUNDLE_ROOT : PROJECT_ROOT;
 const RESOLVED_ROOT = path.resolve(ROOT);
+const IS_DEV_ROOT = RESOLVED_ROOT === path.resolve(PROJECT_ROOT);
 // Dedicated fixed port for the packaged app (distinct from the dev server's 8123 so both can run).
 const PORT = 41788;
 const MIME = {
@@ -39,9 +39,40 @@ function isInsideRoot(file) {
   return resolved === RESOLVED_ROOT || resolved.startsWith(RESOLVED_ROOT + path.sep);
 }
 
+const DEV_FRESHNESS_ROOTS = ['index.html', 'src', 'styles'];
+let freshnessCache = { checkedAt: 0, version: '' };
+
+function maxMtimeMs(file) {
+  const s = fs.statSync(file);
+  if (!s.isDirectory()) return s.mtimeMs;
+  let max = s.mtimeMs;
+  for (const entry of fs.readdirSync(file, { withFileTypes: true })) {
+    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === 'build' || entry.name === 'dist') continue;
+    max = Math.max(max, maxMtimeMs(path.join(file, entry.name)));
+  }
+  return max;
+}
+
+function devFreshnessPayload() {
+  if (!IS_DEV_ROOT) return { dev: false, version: '' };
+  const now = Date.now();
+  if (freshnessCache.version && now - freshnessCache.checkedAt < 750) return { dev: true, version: freshnessCache.version };
+  let max = 0;
+  for (const rel of DEV_FRESHNESS_ROOTS) {
+    try { max = Math.max(max, maxMtimeMs(path.join(ROOT, rel))); } catch {}
+  }
+  freshnessCache = { checkedAt: now, version: String(Math.round(max)) };
+  return { dev: true, version: freshnessCache.version };
+}
+
 function startServer() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
+      if (req.method === 'GET' && (req.url || '').startsWith('/__dev_freshness')) {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify(devFreshnessPayload()));
+        return;
+      }
       let p = decodeURIComponent((req.url || '/').split('?')[0]);
       if (p === '/' || p === '') p = '/index.html';
       const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
