@@ -502,19 +502,35 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   const authored = buildPlacePropRoot(entity, record, scene, boundary);
   if (!authored || !boundary.parent) return false;
 
-  boundary.remove(fallbackRoot);
-  boundary.add(authored.root);
-  setActive(authored.root);
+  const retainFallback = shouldRetainReadableWorldFallback(fallbackRoot, entity, authored);
+  if (retainFallback) {
+    markReadableFallbackLayer(fallbackRoot);
+    boundary.add(authored.root);
+  } else {
+    boundary.remove(fallbackRoot);
+    boundary.add(authored.root);
+  }
+  const activeRoot = retainFallback ? fallbackRoot : authored.root;
+  setActive(activeRoot);
   boundary.userData.authoredAssetState = 'authored';
+  boundary.userData.authoredReadableFallbackRetained = retainFallback;
+  boundary.userData.authoredVisualRoot = retainFallback ? 'readable-fallback' : 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
   boundary.userData.authoredSlots = authored.authoredSlots;
   boundary.userData.authoredCompositionId = authored.root.userData.assetId;
   boundary.userData.authoredRenderContract = authored.root.userData.renderContract;
   boundary.userData.__socketCache = new Map();
 
-  try { disposeDetachedObject(fallbackRoot); }
-  catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
+  if (!retainFallback) {
+    try { disposeDetachedObject(fallbackRoot); }
+    catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
+  }
   return true;
+}
+
+function shouldRetainReadableWorldFallback(fallbackRoot, entity, authored) {
+  if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || !authored || !authored.root) return false;
+  return entity.type === 'station' || entity.type === 'fx';
 }
 
 function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
