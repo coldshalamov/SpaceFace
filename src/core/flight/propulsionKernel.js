@@ -7,6 +7,11 @@
 //
 // Design invariants:
 //   1. Reaction / torch / sail drives have no hidden vacuum drag or arcade terminal speed.
+//      In ASSISTED mode the flight computer additionally governs commanded forward speed toward
+//      the drive's combatSpeed (a speed COMMAND, not drag): thrust eases off as the ship reaches
+//      throttle × combatSpeed, and overspeed converges gently using real reverse-thruster
+//      authority. Drift and newtonian modes keep the raw ungoverned model — slingshots, massline
+//      tricks and expert flying accumulate speed without interference.
 //   2. Assisted flight brakes by spending real counter-thruster authority.
 //   3. Turning the nose does not rotate the velocity vector.
 //   4. Gravimetric drives are explicitly non-Newtonian and trade cumulative speed for control.
@@ -80,6 +85,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
   const localVelocity = worldToLocal(body.vel, axes);
 
   const manualLocal = manualThrustLocal(input, limits, localVelocity, profile);
+  const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, profile);
 
   const assist = reactionAssistAcceleration(body, axes, input, profile, false);
   const combined = clampLocalAcceleration({
@@ -114,8 +120,40 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
       targetYawRate: yaw.targetYawRate,
       desiredHeading: null,
       boostFraction: input.boost ? 1 : 0,
+      governor,
     },
   });
+}
+
+// Assisted-mode speed governor: forward throttle is a speed command toward
+// throttle × combatSpeed (boost raises the cap by boostSpeedMult). Below the cap the servo
+// saturates at full thruster authority, so acceleration feel is unchanged until the last
+// ~governorResponseS worth of closing speed. Above the cap — a slingshot, dash or boost
+// carry-over — convergence is deliberately gentle (overspeedBrakeFraction of reverse
+// authority) so momentum earned through play is spent, not confiscated. Drift/newtonian:
+// untouched — those modes ARE the ungoverned toy. Mutates manualLocal.forward in place and
+// returns telemetry (null when the governor has no opinion this tick).
+function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile) {
+  if (normalizeAssistMode(input.assistMode) !== 'assisted') return null;
+  const settings = profile.assist || {};
+  const deadInput = positive(settings.deadInput, 0.025);
+  if (!(input.throttle > deadInput)) return null;
+  const governedSpeed = positive(profile.combatSpeed, 0);
+  if (!(governedSpeed > 0)) return null;
+
+  const boostMult = input.boost ? positive(profile.boostSpeedMult, 1.55) : 1;
+  const cap = input.throttle * governedSpeed * boostMult;
+  const err = cap - localVelocity.forward;
+  const responseS = positive(settings.governorResponseS, 0.9);
+  const overspeedBrake = limits.reverse * clamp(finite(settings.overspeedBrakeFraction, 0.25), 0, 1);
+  const governed = clamp(err / responseS, -overspeedBrake, manualLocal.forward);
+  const engaged = governed < manualLocal.forward - EPS;
+  manualLocal.forward = governed;
+  return {
+    cap,
+    engaged,
+    overspeed: err < 0,
+  };
 }
 
 function stepGravimetric(body, input, profile, runtime, environment, dt) {
@@ -328,6 +366,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
   const localVelocity = worldToLocal(body.vel, axes);
   const assist = reactionAssistAcceleration(body, axes, input, effective, false);
   const manualLocal = manualThrustLocal(input, limits, localVelocity, effective);
+  const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, effective);
   const local = clampLocalAcceleration({
     forward: manualLocal.forward + assist.local.forward,
     lateral: manualLocal.lateral + assist.local.lateral,
@@ -353,6 +392,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
       assistLocal: assist.local,
       targetYawRate: yaw.targetYawRate,
       desiredHeading: null,
+      governor,
     },
   });
 }
@@ -487,7 +527,7 @@ function computeHeadingControl(body, desiredHeading, profile, dt) {
 function reactionLimits(profile, boostMult) {
   return {
     forward: positive(profile.mainAccel, 40) * positive(boostMult, 1),
-    reverse: positive(profile.reverseAccel, positive(profile.mainAccel, 40) * 0.55),
+    reverse: positive(profile.reverseAccel, positive(profile.mainAccel, 40) * 0.5),
     strafe: positive(profile.strafeAccel, positive(profile.mainAccel, 40) * 0.45),
   };
 }

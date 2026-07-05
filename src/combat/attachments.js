@@ -1,16 +1,18 @@
-import { socketWorldPosition } from './geometry.js';
+import { entityLocalPointToWorld, socketWorldPosition, worldPointToEntityLocal } from './geometry.js';
 import { ensureCombatant, entityKey } from './runtime.js';
 import { appendCombatTrace } from './trace.js';
 import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
 import { SIM_DT } from '../core/sim.js';
+
+const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 140, maxImpulse: 90, graceTicks: 1 });
 
 // Builds the winch/heat/overload policy def that masslineController.stepMassline consumes. The
 // physical break thresholds come from the attachment def's `break` block (authored in combatDefs);
 // the winch/heat/reel policy comes from the generated DEFAULT_MASSLINE_DEF so the controller's
 // mass-ratio-driven behavior (heavy target stalls the winch, sustained overload breaks the line)
 // is the live contract, not an ad-hoc scripted tether.
-function masslineDefFor(def) {
-  const brk = (def && def.break) || {};
+function masslineDefFor(def, breakPolicy = null) {
+  const brk = breakPolicy || (def && def.break) || {};
   const reelRate = Number.isFinite(def && def.reelRate) ? def.reelRate : null;
   return {
     minLength: Number.isFinite(def && def.minLength) ? def.minLength : undefined,
@@ -53,8 +55,10 @@ export function createAttachmentService(context) {
     if (def.limits && Number.isInteger(def.limits.maxPerOwner) && activeOwned >= def.limits.maxPerOwner) return fail('owner_attachment_limit');
 
     const id = `att_${String(state.combat.attachments.nextId++).padStart(6, '0')}`;
-    const sourceWorld = socketWorldPosition(owner, sourceSocket);
-    const targetWorld = socketWorldPosition(target, targetSocket);
+    const requestedSourceWorld = validWorldPoint(spec && spec.sourceWorld);
+    const requestedTargetWorld = validWorldPoint(spec && spec.targetWorld);
+    const sourceWorld = requestedSourceWorld || socketWorldPosition(owner, sourceSocket);
+    const targetWorld = requestedTargetWorld || socketWorldPosition(target, targetSocket);
     const restLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
     const attachment = {
       id,
@@ -63,6 +67,8 @@ export function createAttachmentService(context) {
       targetId: target.id,
       sourceSocketId: sourceSocket.id,
       targetSocketId: targetSocket.id,
+      sourceAnchorLocal: requestedSourceWorld ? worldPointToEntityLocal(owner, sourceWorld) : null,
+      targetAnchorLocal: requestedTargetWorld ? worldPointToEntityLocal(target, targetWorld) : null,
       physicsHandle: null,
       state: 'active',
       createdTick: state.tick,
@@ -107,40 +113,48 @@ export function createAttachmentService(context) {
     if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
     if (!physics || typeof physics.setAttachmentReel !== 'function') return fail('physics_port_unavailable');
     const next = Math.max(Math.max(0, Number(minRestLength) || 0), attachment.restLength + (Number(restLengthDelta) || 0));
+    const nextReelRevision = Math.max(0, Math.trunc(Number(attachment.reelRevision) || 0)) + 1;
     try {
       const accepted = physics.setAttachmentReel({
         attachmentId: attachment.id,
         physicsHandle: attachment.physicsHandle,
         restLength: next,
         previousRestLength: attachment.restLength,
+        reelRevision: nextReelRevision,
+        springState: attachment.physicsSpringState,
         tick: state.tick,
       });
       if (accepted === false) return fail('physics_reel_rejected');
+      const acceptedRestLength = accepted && typeof accepted === 'object' && Number.isFinite(accepted.restLength)
+        ? accepted.restLength
+        : next;
+      const before = attachment.restLength;
+      attachment.restLength = acceptedRestLength;
+      attachment.reelRevision = nextReelRevision;
+      attachment.lastReelTick = state.tick;
+      if (attachment.masslineRuntime) {
+        attachment.masslineRuntime.restLength = acceptedRestLength;
+        attachment.masslineRuntime.targetLength = acceptedRestLength;
+        attachment.masslineRuntime.reelVelocity = 0;
+      }
+      appendCombatTrace(state.combat, state.tick, 'attachment.reel', {
+        actorId: attachment.ownerId,
+        targetId: attachment.targetId,
+        attachmentId: attachment.id,
+        before,
+        after: acceptedRestLength,
+      });
+      if (bus) bus.emit('tether:reel', {
+        actorId: attachment.ownerId,
+        targetId: attachment.targetId,
+        attachmentId: attachment.id,
+        before,
+        after: acceptedRestLength,
+      });
+      return { ok: true, attachment };
     } catch (error) {
       return fail('physics_reel_failed', error);
     }
-    const before = attachment.restLength;
-    attachment.restLength = next;
-    if (attachment.masslineRuntime) {
-      attachment.masslineRuntime.restLength = next;
-      attachment.masslineRuntime.targetLength = next;
-      attachment.masslineRuntime.reelVelocity = 0;
-    }
-    appendCombatTrace(state.combat, state.tick, 'attachment.reel', {
-      actorId: attachment.ownerId,
-      targetId: attachment.targetId,
-      attachmentId: attachment.id,
-      before,
-      after: next,
-    });
-    if (bus) bus.emit('tether:reel', {
-      actorId: attachment.ownerId,
-      targetId: attachment.targetId,
-      attachmentId: attachment.id,
-      before,
-      after: next,
-    });
-    return { ok: true, attachment };
   }
 
   function cut(attachmentId, actorId, reason = 'cut') {
@@ -298,6 +312,9 @@ export function createAttachmentService(context) {
       if (attachment.state !== 'active') continue;
       const def = catalog.attachments.get(attachment.defId);
       if (!def) continue;
+      const owner = entity(attachment.ownerId);
+      const target = entity(attachment.targetId);
+      const breakPolicy = breakForAttachment(def, owner, target, attachment);
       let telemetry;
       try {
         telemetry = physics.getAttachmentTelemetry({ attachmentId: attachment.id, physicsHandle: attachment.physicsHandle, tick: state.tick });
@@ -307,7 +324,10 @@ export function createAttachmentService(context) {
       if (!telemetry) continue;
       attachment.lastTension = finiteOrZero(telemetry.tension);
       attachment.lastImpulse = finiteOrZero(telemetry.impulse);
-      const grace = Math.max(0, Number(def.break && def.break.graceTicks) || 0);
+      attachment.physicsSpringState = telemetry.springState && typeof telemetry.springState === 'object'
+        ? { ...telemetry.springState }
+        : null;
+      const grace = Math.max(0, Number(breakPolicy && breakPolicy.graceTicks) || 0);
 
       // Massline controller: run the winch/heat/overload policy (spec §8) one step per fixed tick
       // and apply its rest-length command to the Rapier joint. Rapier still owns momentum exchange
@@ -322,7 +342,7 @@ export function createAttachmentService(context) {
       // avoid destabilizing the solver with per-tick joint recreation.
       const masslinePolicy = def.massline && def.massline.enabled;
       if (masslinePolicy && state.tick - attachment.createdTick >= grace) {
-        const masslineDef = masslineDefFor(def);
+        const masslineDef = masslineDefFor(def, breakPolicy);
         if (!attachment.masslineRuntime) {
           // Seed the winch from the ACTUAL attachment rest length, not the def's defaultLength,
           // so a neutral (no-reel) command holds the engagement distance rather than drifting the
@@ -334,8 +354,6 @@ export function createAttachmentService(context) {
           runtime.targetLength = seed;
           attachment.masslineRuntime = runtime;
         }
-        const owner = entity(attachment.ownerId);
-        const target = entity(attachment.targetId);
         const ml = stepMassline({
           dt: SIM_DT,
           def: masslineDef,
@@ -361,24 +379,38 @@ export function createAttachmentService(context) {
         if (ml.action.restLength > 0 && Math.abs(ml.action.restLength - attachment.restLength) >= 2.0) {
           try {
             if (physics.setAttachmentReel) {
-              physics.setAttachmentReel({
+              const accepted = physics.setAttachmentReel({
                 attachmentId: attachment.id,
                 physicsHandle: attachment.physicsHandle,
                 restLength: ml.action.restLength,
                 previousRestLength: attachment.restLength,
                 tick: state.tick,
               });
-              attachment.restLength = ml.action.restLength;
+              attachment.restLength = accepted && typeof accepted === 'object' && Number.isFinite(accepted.restLength)
+                ? accepted.restLength
+                : ml.action.restLength;
             }
           } catch (_) { /* joint update is best-effort; the next tick retries */ }
         }
-        // The controller's break (sustained overload / integrity failure / catastrophic) is the
-        // primary, physics-derived break path — it supersedes the raw threshold check below. A
-        // catastrophic overload is a direct tension/impulse threshold exceedance, so it reports the
-        // authored 'threshold' reason (the legacy break contract); sustained-overload and
-        // integrity-failure keep the controller's distinct winch-policy reasons.
+        // The controller's overload cut is still the authored threshold break at the SG-03
+        // boundary: checks and AI consume the public 'threshold' reason while the controller keeps
+        // its internal cut reason for telemetry/debugging.
         if (ml.action.cut) {
-          const cutReason = ml.runtime.cutReason === 'catastrophic-overload' ? 'threshold' : (ml.runtime.cutReason || 'overload');
+          if (masslineAutoBreakSuppressed(attachment)) {
+            const graceWindow = Math.max(0, Number(masslineDef.overloadGraceS) || 0);
+            attachment.masslineRuntime = {
+              ...ml.runtime,
+              state: 'holding',
+              overloadS: Math.min(ml.runtime.overloadS || 0, Math.max(0, graceWindow - SIM_DT * 1.5)),
+              cutReason: null,
+            };
+            attachment.masslineTelemetry = { ...ml.telemetry, state: 'holding' };
+            continue;
+          }
+          const rawCutReason = ml.runtime.cutReason || 'overload';
+          const cutReason = rawCutReason === 'catastrophic-overload' || rawCutReason === 'sustained-overload'
+            ? 'threshold'
+            : rawCutReason;
           breakAttachment(attachment, cutReason, attachment.ownerId, {
             tension: ml.telemetry.tension,
             impulse: ml.telemetry.impulse,
@@ -389,9 +421,9 @@ export function createAttachmentService(context) {
 
       if (state.tick - attachment.createdTick < grace) continue;
       let nearBreak = false;
-      if (def.break) {
-        const tensionRatio = def.break.maxTension > 0 ? attachment.lastTension / def.break.maxTension : 0;
-        const impulseRatio = def.break.maxImpulse > 0 ? attachment.lastImpulse / def.break.maxImpulse : 0;
+      if (breakPolicy) {
+        const tensionRatio = breakPolicy.maxTension > 0 ? attachment.lastTension / breakPolicy.maxTension : 0;
+        const impulseRatio = breakPolicy.maxImpulse > 0 ? attachment.lastImpulse / breakPolicy.maxImpulse : 0;
         nearBreak = Math.max(tensionRatio, impulseRatio) > 0.75;
       }
       if (nearBreak && !attachment.nearBreakWarned) {
@@ -405,7 +437,7 @@ export function createAttachmentService(context) {
           impulse: attachment.lastImpulse,
         });
       }
-      if ((def.break && attachment.lastTension > def.break.maxTension) || (def.break && attachment.lastImpulse > def.break.maxImpulse)) {
+      if (!masslinePolicy && ((breakPolicy && attachment.lastTension > breakPolicy.maxTension) || (breakPolicy && attachment.lastImpulse > breakPolicy.maxImpulse))) {
         breakAttachment(attachment, 'threshold', attachment.ownerId, telemetry);
       }
     }
@@ -443,8 +475,12 @@ export function createAttachmentService(context) {
     const targetSocket = selectSocket(targetRuntime, def.targetSocketTags, attachment.targetSocketId, target.id, attachment.id);
     if (!sourceSocket) return { ok: false, reason: 'source_socket_unavailable' };
     if (!targetSocket) return { ok: false, reason: 'target_socket_unavailable' };
-    const sourceWorld = socketWorldPosition(owner, sourceSocket);
-    const targetWorld = socketWorldPosition(target, targetSocket);
+    const sourceWorld = attachment.sourceAnchorLocal
+      ? entityLocalPointToWorld(owner, attachment.sourceAnchorLocal)
+      : socketWorldPosition(owner, sourceSocket);
+    const targetWorld = attachment.targetAnchorLocal
+      ? entityLocalPointToWorld(target, attachment.targetAnchorLocal)
+      : socketWorldPosition(target, targetSocket);
     const fallbackRestLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
     const restLength = Number.isFinite(attachment.restLength) && attachment.restLength > 0
       ? attachment.restLength
@@ -460,7 +496,11 @@ export function createAttachmentService(context) {
         sourceWorld,
         targetWorld,
         restLength,
-        break: { ...(def.break || {}) },
+        break: breakForAttachment(def, owner, target, attachment) || {},
+        spring: springForAttachment(def, owner, target, attachment),
+        forceScale: masslineForceScale(attachment),
+        reelRevision: attachment.reelRevision,
+        springState: attachment.physicsSpringState,
         tick: state.tick,
       });
       if (physicsHandle === false || physicsHandle == null) return { ok: false, reason: 'physics_create_rejected' };
@@ -492,6 +532,33 @@ export function createAttachmentService(context) {
     return state.entities && state.entities.get ? state.entities.get(id) || null : null;
   }
 
+  function masslineAutoBreakSuppressed(attachment) {
+    return entitySuppressesMasslineAutoBreak(entity(attachment && attachment.ownerId)) ||
+      entitySuppressesMasslineAutoBreak(entity(attachment && attachment.targetId));
+  }
+
+  function masslineForceScale(attachment) {
+    const ownerScale = entityMasslineForceScale(entity(attachment && attachment.ownerId));
+    const targetScale = entityMasslineForceScale(entity(attachment && attachment.targetId));
+    return Math.min(ownerScale, targetScale);
+  }
+
+  function springForAttachment(def, owner, target, attachment = null) {
+    if (uses47aLegacyMassline(def, owner, target, state)) {
+      const reelRevision = Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0));
+      if (reelRevision <= 0) return { mode: 'legacy_rope' };
+    }
+    return { ...((def && def.spring) || {}) };
+  }
+
+  function breakForAttachment(def, owner, target, attachment = null) {
+    if (uses47aLegacyMassline(def, owner, target, state)) {
+      const reelRevision = Math.max(0, Math.trunc(Number(attachment && attachment.reelRevision) || 0));
+      if (reelRevision <= 0) return { ...LEGACY_47A_MASSLINE_BREAK };
+    }
+    return def && def.break ? { ...def.break } : null;
+  }
+
   function fail(reason, error = null) {
     appendCombatTrace(state.combat, state.tick, 'attachment.rejected', {
       reason,
@@ -521,6 +588,30 @@ function byId(a, b) {
 
 function finiteOrZero(value) {
   return Number.isFinite(value) ? value : 0;
+}
+
+function entitySuppressesMasslineAutoBreak(value) {
+  const data = value && value.data;
+  return !!data && (data.masslineAutoBreak === false || data.masslineBreakPolicy === 'manual_cut_only');
+}
+
+function entityMasslineForceScale(value) {
+  const data = value && value.data;
+  const scale = data && Number(data.masslineForceScale);
+  if (!Number.isFinite(scale)) return 1;
+  return scale < 0 ? 0 : scale > 4 ? 4 : scale;
+}
+
+function validWorldPoint(value) {
+  if (!value || !Number.isFinite(value.x) || !Number.isFinite(value.z)) return null;
+  return { x: value.x, y: Number.isFinite(value.y) ? value.y : 0, z: value.z };
+}
+
+function uses47aLegacyMassline(def, owner, target, state = null) {
+  if (!def || def.id !== 'attachment_massline') return false;
+  if (state && state.settings && state.settings.gameplay && state.settings.gameplay.flightBackend === 'v3') return false;
+  const targetData = target && target.data;
+  return !!targetData && targetData.scenarioActorId === 'evidence_spindle_47a';
 }
 
 function compareText(a, b) {

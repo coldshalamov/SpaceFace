@@ -12,12 +12,43 @@ const TETHER_COMPOSE_MAX_BIAS = 130;
 const TETHER_COMPOSE_FRACTION = 0.24;
 const SAFE_VIEW_X = 0.52;
 const SAFE_VIEW_Z = 0.46;
-const LOOKAHEAD_MAX = 26;
-const LOOKAHEAD_SPEED_SCALE = 0.16;
+const LOOKAHEAD_MAX = 18;           // wu — normal cap
+const LOOKAHEAD_MAX_CRUISE = 26;    // wu — cruise-only cap (spec2/02 §2)
+const LOOKAHEAD_SPEED_SCALE = 0.35; // velocity bias multiplier
 const AIM_BIAS = 0.02;
 const AIM_BIAS_MAX = 18;
 const SHAKE_POS_MAX = 1.55;
 const MOTION_REDUCE_SHAKE_SCALE = 0.25;
+const TRAUMA_DECAY_PER_S = 1.8;
+const MAX_MOMENTUM_TRAUMA = 0.5;
+const SPEED_ZOOM_MIN = 0.88;        // slowest / idle factor (spec2/02 §2)
+const SPEED_ZOOM_MAX = 1.18;        // cruise-speed factor
+const ZOOM_LERP = 1.4;              // /s — speed-zoom ease (spec2/02 §2)
+const DEFAULT_ZOOM = 88;            // wu — default chase distance (spec2/02 §2)
+
+export const CAMERA_TRAUMA_TUNING = Object.freeze({
+  decayPerSecond: TRAUMA_DECAY_PER_S,
+  maxMomentumTrauma: MAX_MOMENTUM_TRAUMA,
+  motionReduceShakeScale: MOTION_REDUCE_SHAKE_SCALE,
+  sources: Object.freeze({
+    shieldBreak: 0.3,
+    kill: 0.25,
+    cruiseDrop: 0.2,
+    slingshotRelease: 0.15,
+    playerDeath: 1.0,
+  }),
+});
+
+export function traumaFromMomentumExchange(dp) {
+  const value = Number.isFinite(dp) ? Math.max(0, dp) : 0;
+  return Math.min(MAX_MOMENTUM_TRAUMA, value / 8000);
+}
+
+export function decayCameraTrauma(trauma, dt) {
+  const value = Number.isFinite(trauma) ? Math.max(0, trauma) : 0;
+  const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  return Math.max(0, value - TRAUMA_DECAY_PER_S * step);
+}
 
 function finiteOr(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
@@ -25,6 +56,11 @@ function finiteOr(value, fallback) {
 
 function isMotionReduced(state) {
   return !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
+}
+
+function isCruising(state) {
+  const c = state && state.player && state.player.cruise;
+  return !!(c && c.phase === 'cruising');
 }
 
 function resolveAimLead(input, player) {
@@ -49,7 +85,7 @@ export function clampFocusToPlayerSafeRect(focus, player, options = {}) {
       clamped: false,
     };
   }
-  const zoom = Number.isFinite(options.zoom) ? options.zoom : 95;
+  const zoom = Number.isFinite(options.zoom) ? options.zoom : DEFAULT_ZOOM;
   const fov = Number.isFinite(options.fov) ? options.fov : 50;
   const aspect = Math.max(0.45, Number.isFinite(options.aspect) ? options.aspect : 16 / 9);
   const halfV = Math.tan((fov * Math.PI / 180) * 0.5) * zoom * 0.72;
@@ -159,7 +195,7 @@ export function createChaseCamera(state) {
   const tiltRad = (c.tilt || 60) * Math.PI / 180;
   const offset = new THREE.Vector3();
   const computeOffset = (D) => {
-    const distance = finiteOr(D, 95);
+    const distance = finiteOr(D, DEFAULT_ZOOM);
     return offset.set(0, distance * Math.sin(tiltRad), -distance * Math.cos(tiltRad));
   };
   computeOffset(c.zoom);
@@ -184,8 +220,7 @@ export function createChaseCamera(state) {
   const _camRight = new THREE.Vector3(1, 0, 0);
 
   // dynamic zoom — smoothly adapts camera distance to gameplay context
-  let _dynamicZoom = finiteOr(c.zoom, 95);
-  const ZOOM_LERP = 1.9;   // slower transitions reduce zoom pumping in normal flight
+  let _dynamicZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
 
   // Push-zoom: a transient multiplicative nudge to the camera distance for scripted moments (docking
   // fly-in, jump, cutscenes). set with pushZoom(factor, duration): the factor eases in then back out
@@ -194,6 +229,11 @@ export function createChaseCamera(state) {
   // of clobbering c.zoom the way the old uiRoot hard-set did.
   let _pushZoom = 0;          // current multiplicative offset added to the zoom factor (0 = none)
   let _pushZoomDecay = 0;     // per-second decay rate (derived from duration at push time)
+  // FR-5: transient recenter after boost-release / tether-slingshot. While active, the lookahead +
+  // aim + composition bias is scaled down so the frame glides to player-centered instead of the
+  // sudden velocity change snapping the lookahead. Decays over its window with an ease-out.
+  let _recenterT = 0;         // seconds remaining in the recenter window
+  let _recenterDur = 0;       // total window length (for the ease fraction)
   let _snappedPlayerId = null;
 
   function snapToEntity(p) {
@@ -201,7 +241,7 @@ export function createChaseCamera(state) {
     const px = finiteOr(p.pos.x, 0);
     const pz = finiteOr(p.pos.z, 0);
     c.focus.set(px, 0, pz);
-    _dynamicZoom = finiteOr(c.zoom, 95);
+    _dynamicZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
     computeOffset(_dynamicZoom);
     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
     cam.lookAt(c.focus.x, 0, c.focus.z);
@@ -217,25 +257,33 @@ export function createChaseCamera(state) {
       const scale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
       c.trauma = Math.min(1, Math.max(0, c.trauma || 0) + a * scale);
     },
-    setZoom(z) { c.zoom = Math.max(45, Math.min(220, finiteOr(z, c.zoom || 95))); },
+    setZoom(z) { c.zoom = Math.max(45, Math.min(220, finiteOr(z, c.zoom || DEFAULT_ZOOM))); },
     snapToPlayer() {
       const p = state.entities.get(state.playerId);
       return snapToEntity(p);
     },
-    // pushZoom(factor, durationS): factor>0 pushes the camera OUT (wider) for `durationS`, easing in
-    // and out. e.g. pushZoom(0.25, 0.8) widens the view 25% over 0.8s for a dock approach reveal.
-    // The effect is additive on top of the dynamic zoom and decays smoothly.
+    // pushZoom(factor, durationS): factor>0 pushes the camera OUT (wider), factor<0 pushes IN
+    // (tighter) for `durationS`, easing in and out. e.g. pushZoom(0.25, 0.8) widens 25% over 0.8s;
+    // pushZoom(-0.04, 0.25) tightens to 0.96x for 0.25s (kill-cam kiss). The effect is additive on
+    // top of the dynamic zoom and decays smoothly.
     pushZoom(factor, durationS) {
-      const f = Math.max(0, factor || 0);
-      const d = Math.max(0.1, durationS || 0.5);
+      const f = Number.isFinite(factor) ? factor : 0;
+      const d = Math.max(0.05, durationS || 0.5);
       _pushZoom = f;
       // ease in over ~half the duration, out over the other half → symmetric decay rate
       _pushZoomDecay = 4.0 / d;
     },
     killCam() {
-      // Kill-cam "kiss" (spec2/02 §2): widen +25% for ~0.9s while feel holds a 0.55s freeze +
-      // 0.35s slow-mo. The push-zoom works with the dynamic-zoom system so it eases in/out.
-      this.pushZoom(0.25, 0.9);
+      // Kill-cam "kiss" (spec2/02 §2): tighten to 0.96x for 250 ms on player kill only.
+      this.pushZoom(-0.04, 0.25);
+    },
+    // FR-5: ease the camera back to a player-centered pose over durS after a boost-release or a
+    // tether slingshot, instead of letting the sudden velocity change snap the lookahead. Respects
+    // motionReduce (shortened). Cruise-drop settle stays owned by its own spec2/02 §1 path.
+    easeRecenter(durS) {
+      const base = Math.max(0.05, Number.isFinite(durS) ? durS : 0.4);
+      _recenterDur = isMotionReduced(state) ? base * 0.25 : base;
+      _recenterT = _recenterDur;
     },
     follow(dt) {
       const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
@@ -243,8 +291,6 @@ export function createChaseCamera(state) {
       let fx = finiteOr(c.focus.x, 0), fz = finiteOr(c.focus.z, 0);
       let bankForLean = 0;
       let playerSpeed = 0;
-      let nearbyEnemies = 0;
-      let hasTetherFocus = false;
       if (p && p.pos) {
         if (_snappedPlayerId !== p.id || !Number.isFinite(c.focus.x) || !Number.isFinite(c.focus.z)) {
           snapToEntity(p);
@@ -258,7 +304,8 @@ export function createChaseCamera(state) {
           snapToEntity(p);
         }
         if (playerSpeed > 1) {
-          const la = Math.min(c.lookAhead, LOOKAHEAD_MAX, playerSpeed * LOOKAHEAD_SPEED_SCALE);
+          const laCap = isCruising(state) ? LOOKAHEAD_MAX_CRUISE : LOOKAHEAD_MAX;
+          const la = Math.min(c.lookAhead, laCap, playerSpeed * LOOKAHEAD_SPEED_SCALE);
           fx += (vx / playerSpeed) * la; fz += (vz / playerSpeed) * la;
         }
         const aimLead = resolveAimLead(state.input, p);
@@ -267,8 +314,6 @@ export function createChaseCamera(state) {
         const composition = resolveChaseComposition(state, p, { x: fx, z: fz });
         fx = composition.x;
         fz = composition.z;
-        nearbyEnemies = composition.nearbyEnemies;
-        hasTetherFocus = composition.hasTetherFocus;
         const desiredSafe = clampFocusToPlayerSafeRect({ x: fx, z: fz }, p, {
           zoom: _dynamicZoom,
           fov: cam.fov,
@@ -276,6 +321,15 @@ export function createChaseCamera(state) {
         });
         fx = desiredSafe.x;
         fz = desiredSafe.z;
+        // FR-5: during the recenter window, ease the accumulated lookahead/aim/composition bias
+        // toward the ship so a boost-release or slingshot glides to center rather than snapping.
+        if (_recenterT > 0) {
+          _recenterT = Math.max(0, _recenterT - frameDt);
+          const el = _recenterDur > 0 ? 1 - _recenterT / _recenterDur : 1;
+          const biasScale = 1 - Math.pow(1 - el, 3);   // ease-out-cubic 0→1 across the window
+          fx = p.pos.x + (fx - p.pos.x) * biasScale;
+          fz = p.pos.z + (fz - p.pos.z) * biasScale;
+        }
         // counter-lean uses the ship's bank (already smoothed); a fraction keeps it tasteful
         bankForLean = (Number.isFinite(p.bank) ? p.bank : 0) * 0.045;
       }
@@ -284,46 +338,24 @@ export function createChaseCamera(state) {
       c.focus.z = damp(c.focus.z, fz, followLerp, frameDt);
 
       // --- dynamic zoom ---
-      const baseZoom = finiteOr(c.zoom, 95);
+      const baseZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
       let targetZoom = baseZoom;
       if (p && p.pos) {
-        let zoomFactor = 1.0;
-        const composeDx = fx - finiteOr(p.pos.x, fx);
-        const composeDz = fz - finiteOr(p.pos.z, fz);
-        const compositionLead = Math.hypot(composeDx, composeDz);
-
-        // combat: push in for pressure and preserve threat readability. Dynamic zoom band is
-        // 0.88–1.18 of the base chase distance (spec2/02 §2).
-        if (nearbyEnemies > 0) {
-          zoomFactor = 0.88;
-          if (compositionLead > 55) {
-            zoomFactor = Math.min(0.98, zoomFactor + Math.min(0.10, (compositionLead - 55) / 900));
-          }
-        } else if (hasTetherFocus) {
-          zoomFactor = 0.92;
-          if (compositionLead > 55) {
-            zoomFactor = Math.min(1.0, zoomFactor + Math.min(0.08, (compositionLead - 55) / 900));
-          }
-        } else {
-          // boost: modest zoom-out for speed feel without making ordinary flight breathe too much
-          if (p.flags && p.flags.boosting) zoomFactor = Math.max(zoomFactor, 1.12);
-          // dash: wider at high speed (proxy: speed > 110% of maxSpeed)
-          if (p.maxSpeed && playerSpeed > p.maxSpeed * 1.1) zoomFactor = Math.max(zoomFactor, 1.18);
-          // damage without a visible threat gets a small emergency reveal
-          if (c.trauma > 0.1) zoomFactor = Math.max(zoomFactor, 1.03);
-          // idle/cruising: small zoom-in when slow and peaceful
-          if (p.maxSpeed && playerSpeed < p.maxSpeed * 0.15 && c.trauma <= 0.1) zoomFactor = Math.min(zoomFactor, 0.94);
-        }
-
+        // Speed zoom band: 0.88× at rest → 1.18× at cruise max speed (spec2/02 §2).
+        // Cruise ceiling = base maxSpeed × 4. Below cruise the factor stays near the tight end so
+        // combat reads big; at cruise it widens for speed feel.
+        const cruiseSpeed = Math.max(1, (p.maxSpeed || 120) * 4);
+        const speedRatio = Math.min(1, playerSpeed / cruiseSpeed);
+        const zoomFactor = SPEED_ZOOM_MIN + (SPEED_ZOOM_MAX - SPEED_ZOOM_MIN) * speedRatio;
         targetZoom = baseZoom * zoomFactor;
       }
-      // scripted push-zoom (dock fly-in / jump): widens the view multiplicatively while active, then
-      // decays. Applied to targetZoom so it eases through the same _dynamicZoom damping as everything
-      // else — no jarring snap, no fight with the dynamic-zoom logic.
-      if (_pushZoom > 0.0001) {
+      // scripted push-zoom (dock fly-in / jump / kill-cam): multiplies the view while active, then
+      // decays. Negative factors push IN (tighter). Applied to targetZoom so it eases through the
+      // same _dynamicZoom damping as everything else.
+      if (Math.abs(_pushZoom) > 0.0001) {
         targetZoom *= (1 + _pushZoom);
         _pushZoom += -_pushZoom * _pushZoomDecay * frameDt;
-        if (_pushZoom < 0.0001) _pushZoom = 0;
+        if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;
       }
       _dynamicZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
       if (p && p.pos) {
@@ -337,7 +369,7 @@ export function createChaseCamera(state) {
       let shakeRoll = 0;
       let shakePitch = 0;
       if (c.trauma > 0) {
-        c.trauma = Math.max(0, c.trauma - 1.6 * frameDt);
+        c.trauma = decayCameraTrauma(c.trauma, frameDt);
         const t2 = c.trauma * c.trauma;
         const shakeScale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
         c.shakeOffset.set(

@@ -435,7 +435,12 @@ export const physics = {
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);
-      const end = proj.pos;
+      const limit = projectileSweepLimit(proj, start, proj.pos);
+      if (!limit) {
+        proj.alive = false;
+        continue;
+      }
+      const end = limit.end;
       let candidates = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
       if (useHash) {
         const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
@@ -456,7 +461,14 @@ export const physics = {
           copySegmentHit(bestHit, hit);
         }
       }
-      if (!bestTarget) continue;
+      if (!bestTarget) {
+        if (limit.expired) {
+          proj.pos.x = end.x;
+          proj.pos.z = end.z;
+          proj.alive = false;
+        }
+        continue;
+      }
       proj.pos.x = bestHit.x;
       proj.pos.z = bestHit.z;
       this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget.id, { x: proj.pos.x, z: proj.pos.z }));
@@ -492,17 +504,20 @@ export const physics = {
       // soft bounce off station hull
       const material = pairMaterialInto(this._pairMaterialScratch, a, b);
       pushApart(a, b, dist, dx, dz, material.push);
-      impulse(a, b, dx / dist, dz / dist, material);
+      const impulseMag = impulse(a, b, dx / dist, dz / dist, material);
+      emitPhysicsImpact(bus, state, a, b, impulseMag, material, { x: a.pos.x, z: a.pos.z });
       return;
     }
     // ship/ship and ship/asteroid: separate + restitution impulse
     const material = pairMaterialInto(this._pairMaterialScratch, a, b);
     pushApart(a, b, dist, dx, dz, material.push);
     const impulseMag = impulse(a, b, dx / dist, dz / dist, material);
+    const impactDp = emitPhysicsImpact(bus, state, a, b, impulseMag, material, { x: a.pos.x, z: a.pos.z });
     bus.emit('collision', {
       aId: a.id,
       bId: b.id,
       impulse: Math.max(0.1, impulseMag * material.impactScale * 0.01),
+      dp: impactDp,
       pos: { x: a.pos.x, z: a.pos.z },
     });
   },
@@ -877,6 +892,35 @@ function impulse(a, b, nx, nz, material) {
   return Math.abs(j);
 }
 
+function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos) {
+  if (!bus || typeof bus.emit !== 'function') return 0;
+  const dp = Math.max(0, finiteOrZero(impulseMag) * Math.max(0, finiteOrZero(material && material.impactScale) || 1));
+  if (!(dp > 0)) return 0;
+  const trauma = Math.min(0.5, dp / 8000);
+  const playerId = state && state.playerId;
+  const playerInvolved = playerId != null && (a.id === playerId || b.id === playerId);
+  let playerDeltaV = 0;
+  if (playerInvolved) {
+    const player = a.id === playerId ? a : b;
+    playerDeltaV = dp / Math.max(0.1, finiteOrZero(player && player.mass) || 1);
+  }
+  bus.emit('physics:impact', {
+    aId: a.id,
+    bId: b.id,
+    dp,
+    trauma,
+    impulse: finiteOrZero(impulseMag),
+    playerInvolved,
+    playerDeltaV,
+    pos: { x: finiteOrZero(pos && pos.x), z: finiteOrZero(pos && pos.z) },
+  });
+  return dp;
+}
+
+function finiteOrZero(value) {
+  return Number.isFinite(value) ? value : 0;
+}
+
 function createSegmentHitRecord() {
   return { hit: false, t: 0, x: 0, z: 0, nx: 0, nz: 0 };
 }
@@ -896,6 +940,42 @@ function previousPosInto(out, e, dt) {
   out.x = e.pos.x - ((e.vel && e.vel.x) || 0) * dt;
   out.z = e.pos.z - ((e.vel && e.vel.z) || 0) * dt;
   return out;
+}
+
+function projectileSweepLimit(projectile, start, end) {
+  const data = projectile && projectile.data || {};
+  const origin = data.spawnPos || data.origin || null;
+  const maxDistance = Number(data.maxDistance);
+  if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z) || !(maxDistance > 0)) {
+    return { end, expired: false };
+  }
+  const sx = start.x - origin.x;
+  const sz = start.z - origin.z;
+  const ex = end.x - origin.x;
+  const ez = end.z - origin.z;
+  const max2 = maxDistance * maxDistance;
+  if (sx * sx + sz * sz >= max2) return null;
+  if (ex * ex + ez * ez <= max2) return { end, expired: false };
+
+  const dx = ex - sx;
+  const dz = ez - sz;
+  const a = dx * dx + dz * dz;
+  if (a <= 1e-9) return null;
+  const b = 2 * (sx * dx + sz * dz);
+  const c = sx * sx + sz * sz - max2;
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return null;
+  const root = Math.sqrt(disc);
+  const t0 = (-b - root) / (2 * a);
+  const t1 = (-b + root) / (2 * a);
+  const t = t0 >= 0 && t0 <= 1 ? t0 : (t1 >= 0 && t1 <= 1 ? t1 : 1);
+  return {
+    end: {
+      x: start.x + (end.x - start.x) * t,
+      z: start.z + (end.z - start.z) * t,
+    },
+    expired: true,
+  };
 }
 
 function segmentCircleHitInto(out, start, end, center, radius) {

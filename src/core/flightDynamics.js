@@ -5,6 +5,7 @@
 // response, and collision systems resolve contacts separately. Banking is visual pose only.
 import { writePhysicsControl } from './physicsAuthority.js';
 import { wrapAngle } from './rng.js';
+import { FLIGHT_TUNING } from '../data/flightTuning.js';
 
 export const FLIGHT_MODES = Object.freeze(['assisted', 'drift', 'newtonian']);
 
@@ -13,11 +14,11 @@ export const DEFAULT_FLIGHT_TUNING = Object.freeze({
   turnRateCap: 3.8,
   turnDeadband: 0.004,
 
-  reverseThrustScale: 0.55,
-  strafeThrustScale: 0.55,
-  boostThrustMult: 2.2,
-  normalMaxSpeedMult: 1.15,
-  boostMaxSpeedMult: 2.0,
+  reverseThrustScale: FLIGHT_TUNING.reverseThrustScale,
+  strafeThrustScale: FLIGHT_TUNING.strafeThrustScale,
+  boostThrustMult: FLIGHT_TUNING.boostThrustMult,
+  normalMaxSpeedMult: FLIGHT_TUNING.normalMaxSpeedMult,
+  boostMaxSpeedMult: FLIGHT_TUNING.boostMaxSpeedMult,
 
   bankMax: 0.68,
   bankResponse: 9.5,
@@ -60,6 +61,9 @@ const AUTHORED_MODEL_TUNING = Object.freeze({
   brake: 1,
   assist: 1,
 });
+
+const ASSISTED_NEUTRAL_COUNTERTHRUST = 0.36;
+const DRIFT_NEUTRAL_COUNTERTHRUST = 0.10;
 
 export function resolveFlightProfile(e, stateOrMode = null) {
   const mode = normalizeMode(
@@ -107,7 +111,8 @@ export function resolveFlightProfile(e, stateOrMode = null) {
 
   // Cruise engagement multipliers (spec2/02 §1): only for the player entity while cruising.
   if (stateOrMode && typeof stateOrMode === 'object' && e && e.id === stateOrMode.playerId) {
-    const c = stateOrMode.player && stateOrMode.player.cruise;
+    const playerState = safeStatePlayer(stateOrMode);
+    const c = playerState && playerState.cruise;
     if (c && c.phase === 'cruising') {
       return {
         ...profile,
@@ -120,6 +125,13 @@ export function resolveFlightProfile(e, stateOrMode = null) {
     }
   }
   return profile;
+}
+
+function safeStatePlayer(state) {
+  if (!state || typeof state !== 'object') return null;
+  const descriptor = Object.getOwnPropertyDescriptor(state, 'player');
+  if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+  return descriptor.value && typeof descriptor.value === 'object' ? descriptor.value : null;
 }
 
 export function stepPlayerFlight(e, input, dt, profile = resolveFlightProfile(e), opts = {}) {
@@ -299,12 +311,17 @@ function stepTranslation(e, input = {}, dt, profile, opts = {}) {
   const strafe = clampUnit(input.moveX || 0);
   const boosting = !!opts.boosting;
   const thrustMult = boosting ? profile.boostMult : 1;
-  const forwardAccel = throttle >= 0 ? profile.mainAccel : profile.reverseAccel;
 
-  e.vel.x += axes.fx * throttle * forwardAccel * thrustMult * dt;
-  e.vel.z += axes.fz * throttle * forwardAccel * thrustMult * dt;
-  e.vel.x += axes.rx * strafe * profile.strafeAccel * thrustMult * dt;
-  e.vel.z += axes.rz * strafe * profile.strafeAccel * thrustMult * dt;
+  applyLocalThrust(e, axes, throttle, strafe, profile, dt, thrustMult);
+
+  const manual = Math.abs(throttle) > 0.025 || Math.abs(strafe) > 0.025;
+  const brakeCommanded = !!input.brake;
+  const speedNow = Math.hypot(e.vel.x, e.vel.z);
+  const neutralCounterThrust = opts.neutralCounterThrust !== false && !opts.physicsAuthority;
+  if (brakeCommanded || (neutralCounterThrust && !manual && speedNow > 0.5 && profile.mode !== 'newtonian')) {
+    const neutralScale = profile.mode === 'drift' ? DRIFT_NEUTRAL_COUNTERTHRUST : ASSISTED_NEUTRAL_COUNTERTHRUST;
+    applyCounterThrust(e, axes, profile, dt, brakeCommanded ? 1 : neutralScale);
+  }
 
   const before = computeLocalVelocity(e, axes);
   let forwardSpeed = dampScalar(before.forward, profile.linearDrag, dt);
@@ -326,8 +343,27 @@ function stepTranslation(e, input = {}, dt, profile, opts = {}) {
     forwardSpeed,
     lateralSpeed,
     assistStrength: profile.assistStrength,
+    neutralCounterThrust,
     boosting,
   };
+}
+
+function applyLocalThrust(e, axes, throttle, strafe, profile, dt, thrustMult = 1) {
+  const forwardAccel = throttle >= 0 ? profile.mainAccel : profile.reverseAccel;
+  e.vel.x += axes.fx * throttle * forwardAccel * thrustMult * dt;
+  e.vel.z += axes.fz * throttle * forwardAccel * thrustMult * dt;
+  e.vel.x += axes.rx * strafe * profile.strafeAccel * thrustMult * dt;
+  e.vel.z += axes.rz * strafe * profile.strafeAccel * thrustMult * dt;
+}
+
+function applyCounterThrust(e, axes, profile, dt, scale) {
+  const speed = Math.hypot(e.vel.x, e.vel.z);
+  if (!(speed > 0.0001)) return;
+  const nx = -e.vel.x / speed;
+  const nz = -e.vel.z / speed;
+  const throttle = clampUnit((nx * axes.fx + nz * axes.fz) * scale);
+  const strafe = clampUnit((nx * axes.rx + nz * axes.rz) * scale);
+  applyLocalThrust(e, axes, throttle, strafe, profile, dt, 1);
 }
 
 function stepPhysicsAuthorityFlight(e, input = {}, dt, profile, opts = {}) {

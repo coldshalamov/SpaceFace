@@ -6,7 +6,8 @@
 const CHARGE_NEEDED = 3.0;          // s (spec §1)
 const MASS_LOCK_RADIUS = 180;       // wu
 const MASS_LOCK_ENTITY_RADIUS = 60; // wu
-const DROP_REASONS = Object.freeze({ DAMAGE: 'damage', MASSLOCK: 'masslock', MANUAL: 'manual' });
+const STUMBLE_S = 0.5;
+const DROP_REASONS = Object.freeze({ DAMAGE: 'damage', MASSLOCK: 'masslock', MANUAL: 'manual', SNARED: 'snared' });
 
 export const cruise = {
   name: 'cruise',
@@ -22,10 +23,10 @@ export const cruise = {
       this._drop(DROP_REASONS.DAMAGE);
     });
     this.bus.on('ship:boostStart', (p) => {
-      if (p && p.shipId === this.state.playerId) this._drop(DROP_REASONS.DAMAGE);
+      if (p && p.shipId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.DAMAGE);
     });
     this.bus.on('combat:fire', (p) => {
-      if (p && p.ownerId === this.state.playerId) this._drop(DROP_REASONS.DAMAGE);
+      if (p && p.ownerId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.DAMAGE);
     });
   },
 
@@ -35,6 +36,7 @@ export const cruise = {
     if (!player || !player.alive) return;
 
     const cruise = this._ensureCruise(state);
+    if (cruise.stumbleT > 0) cruise.stumbleT = Math.max(0, cruise.stumbleT - dt);
     const action = !!(state.input && state.input.actions && state.input.actions.cruise);
     const edge = action && !this._wasCruiseAction;
     this._wasCruiseAction = action;
@@ -68,8 +70,9 @@ export const cruise = {
   _ensureCruise(state) {
     const p = state.player || (state.player = {});
     if (!p.cruise || typeof p.cruise !== 'object') {
-      p.cruise = { phase: 'off', t: 0 };
+      p.cruise = { phase: 'off', t: 0, stumbleT: 0 };
     }
+    if (!Number.isFinite(p.cruise.stumbleT)) p.cruise.stumbleT = 0;
     return p.cruise;
   },
 
@@ -85,7 +88,14 @@ export const cruise = {
     const was = cruise.phase;
     cruise.phase = 'off';
     cruise.t = 0;
-    this.bus.emit('cruise:dropped', { reason, was, playerId: this.state.playerId });
+    cruise.stumbleT = STUMBLE_S;
+    if (reason === DROP_REASONS.SNARED) this.bus.emit('cruise:snared', { sourceId: null, playerId: this.state.playerId });
+    this.bus.emit('cruise:dropped', { reason, was, playerId: this.state.playerId, snare: reason === DROP_REASONS.SNARED });
+  },
+
+  _cancelIfCharging(reason) {
+    const cruise = this._ensureCruise(this.state);
+    if (cruise.phase === 'charging') this._drop(reason);
   },
 
   _massLocked(player, state) {

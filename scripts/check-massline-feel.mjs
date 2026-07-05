@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 
 import {
   createSg02CombatPhysicsPort,
@@ -15,8 +16,36 @@ const CAPTURE_PLUS_HALF_S = 0.5;
 
 await assertDampedSpringCapture();
 assertNodeCheck('scripts/check-tether-gameplay.mjs', 'slingshot contract');
+assertSpec3BoostAndReverseContracts();
 
 console.log('Massline feel checks OK');
+
+function assertSpec3BoostAndReverseContracts() {
+  const failures = [];
+  const flightTuningUrl = new URL('../src/data/flightTuning.js', import.meta.url);
+  if (!existsSync(flightTuningUrl)) {
+    failures.push('SPEC3-16 boost pool must be data-driven from src/data/flightTuning.js');
+  } else {
+    const tuningSrc = readFileSync(flightTuningUrl, 'utf8');
+    if (!/boost/i.test(tuningSrc) || !/pool|energy|max/i.test(tuningSrc)) {
+      failures.push('src/data/flightTuning.js must define boost pool tuning');
+    }
+  }
+
+  const flightDynamicsSrc = readFileSync(new URL('../src/core/flightDynamics.js', import.meta.url), 'utf8');
+  const propulsionKernelSrc = readFileSync(new URL('../src/core/flight/propulsionKernel.js', import.meta.url), 'utf8');
+  if (!/reverseThrustScale:\s*0\.5\b/.test(readFileSync(flightTuningUrl, 'utf8'))) {
+    failures.push('flightTuning reverseThrustScale must be exactly 0.5 per SPEC3-16');
+  }
+  if (!/FLIGHT_TUNING\.reverseThrustScale/.test(flightDynamicsSrc)) {
+    failures.push('flightDynamics reverseThrustScale must be sourced from src/data/flightTuning.js');
+  }
+  if (!/mainAccel[^;\n]*\*\s*0\.5\b|0\.5[^;\n]*\*\s*mainAccel/.test(propulsionKernelSrc)) {
+    failures.push('propulsionKernel reverse fallback must use exactly 0.5x forward thrust');
+  }
+
+  assert.equal(failures.length, 0, failures.join('\n'));
+}
 
 async function assertDampedSpringCapture() {
   const player = makeBody({

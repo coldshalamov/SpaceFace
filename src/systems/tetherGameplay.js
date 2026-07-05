@@ -7,12 +7,19 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 const TETHER_DEF_ID = 'tether_standard';
 const STRAIN_EVENT_INTERVAL_S = 0.2;
 const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press ghost re-latches
+const TAP_CUT_DELAY_S = 0.22;       // lets held G become reel-in instead of immediate release
 const CAPTURE_SLACK_S = 0.1;
 const STRETCH_EPSILON = 0.05;
-// Pickups are deliberately NOT attachable: the magnet system owns them, and a magnet-collected
-// (despawned) tether target is how the invisible-anchor bug was born. Tether targets are things
-// with presence: rocks, wrecks, ships, stations, mission payloads.
-const ATTACHABLE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone', 'station', 'payload']);
+const CURSOR_LATCH_GRACE = 18;
+const CURSOR_LATCH_GRACE_MAX = 42;
+const AIM_RAY_GRACE = 10;
+const AIM_RAY_GRACE_MAX = 28;
+const MIN_AIM_RAY_LENGTH = 18;
+const SLINGSHOT_STATE_S = 1.0;
+const SLINGSHOT_SPEED_MULT = 1.4;
+// Pickups are valid massline targets now; attachment liveness sweeps cut the line if a pickup is
+// collected/despawned, so the old invisible-anchor failure mode stays closed.
+const ATTACHABLE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone', 'station', 'payload', 'pickup']);
 
 export const tetherGameplay = {
   id: 'tetherGameplay',
@@ -27,10 +34,12 @@ export const tetherGameplay = {
     this._active = null;
     this._lastStrainT = -Infinity;
     this._noRelatchUntil = -Infinity;
+    this._pendingCut = null;
     this._resetPhaseMirror();
   },
 
   update(dt, state) {
+    this._tickSlingshotState(state, dt);
     if (state.mode !== 'flight') { this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     if (!player || !player.alive || (player.flags && player.flags.docked)) { this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
@@ -44,13 +53,32 @@ export const tetherGameplay = {
     const actions = state.input?.actions;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
 
-    if (this._active && actions?.tetherCut) {
+    if (this._active && actions?.tetherCut && !this._pendingCut) {
+      this._pendingCut = {
+        attachmentId: this._active.attachmentId,
+        targetId: this._active.targetId,
+        requestedAt: now,
+        firstTick: state.tick,
+      };
+    }
+
+    if (this._active && this._pendingCut && actions?.reelDelta < 0 && state.tick !== this._pendingCut.firstTick) {
+      this._pendingCut = null;
+    }
+
+    if (this._active && this._pendingCut && now - this._pendingCut.requestedAt >= TAP_CUT_DELAY_S) {
       const targetId = this._active.targetId;
+      const cutPayload = this._cutPayload(state, player, targetId);
       const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
       // attachment_missing = the orphan sweep already broke it (target died) and reconcile
       // emitted the event — only emit released on a cut WE performed.
-      if (result && result.ok) this.bus.emit('tether:released', { targetId });
+      if (result && result.ok) {
+        if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
+        this.bus.emit('tether:cut', cutPayload);
+        this.bus.emit('tether:released', { targetId });
+      }
       this._active = null;
+      this._pendingCut = null;
       this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
       this._resetPhaseMirror();
       this._mirror(state, null, 0);
@@ -65,6 +93,7 @@ export const tetherGameplay = {
         attachments.cut(this._active.attachmentId, player.id, 'target_lost');
         this.bus.emit('tether:broke', { targetId: this._active.targetId });
         this._active = null;
+        this._pendingCut = null;
         this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
         this._resetPhaseMirror();
         this._mirror(state, null, 0);
@@ -84,13 +113,15 @@ export const tetherGameplay = {
     if (now < this._noRelatchUntil) return;
     const def = attachmentDef(kernel, TETHER_DEF_ID);
     if (!def) return;
-    const target = this._acquireTarget(player, def, state);
+    const latch = this._acquireTarget(player, def, state, state.input?.tetherMode === 'nearest');
+    const target = latch && latch.entity;
     if (!target) return;
 
     const result = attachments.create({
       defId: TETHER_DEF_ID,
       ownerId: player.id,
       targetId: target.id,
+      targetWorld: latch.targetWorld,
     });
     if (!result || !result.ok || !result.attachment) return;
 
@@ -104,20 +135,28 @@ export const tetherGameplay = {
     this.bus.emit('tether:latched', { targetId: target.id, type: TETHER_DEF_ID });
   },
 
-  _acquireTarget(player, def, state) {
+  _acquireTarget(player, def, state, nearestMode = false) {
     const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 260));
     const aim = aimWorldFor(player, state, maxLength);
     const candidates = queryNearbyEntities(
       state,
-      aim,
+      player.pos,
       maxLength,
       this._targetScratch,
       state.entityList || [],
     );
 
     let best = null;
-    let bestAimD2 = Infinity;
+    let bestScore = Infinity;
     let bestId = Infinity;
+    let bestTargetWorld = null;
+    const aimDx = aim.x - player.pos.x;
+    const aimDz = aim.z - player.pos.z;
+    const aimLen = Math.hypot(aimDx, aimDz);
+    const ux = aimLen > 1e-6 ? aimDx / aimLen : Math.cos(state.input?.aimAngle || player.rot || 0);
+    const uz = aimLen > 1e-6 ? aimDz / aimLen : Math.sin(state.input?.aimAngle || player.rot || 0);
+    const rayLength = Math.max(MIN_AIM_RAY_LENGTH, Math.min(maxLength, aimLen || maxLength));
+
     for (const entity of candidates) {
       if (!isAttachable(entity, player.id)) continue;
       const dxPlayer = entity.pos.x - player.pos.x;
@@ -125,18 +164,26 @@ export const tetherGameplay = {
       const playerDistance = Math.hypot(dxPlayer, dzPlayer);
       if (playerDistance > maxLength + (entity.radius || 0)) continue;
 
-      const dxAim = entity.pos.x - aim.x;
-      const dzAim = entity.pos.z - aim.z;
-      const aimD2 = dxAim * dxAim + dzAim * dzAim;
-      if (aimD2 > maxLength * maxLength) continue;
+      let score = Infinity;
+      let targetWorld = null;
+      if (nearestMode) {
+        score = Math.max(0, playerDistance - (entity.radius || 0));
+        targetWorld = surfacePointToward(entity, player.pos);
+      } else {
+        const hit = cursorAimScore(entity, aim, player, ux, uz, rayLength);
+        score = hit.score;
+        targetWorld = hit.targetWorld;
+      }
+      if (!Number.isFinite(score)) continue;
       const id = sortableId(entity.id);
-      if (aimD2 < bestAimD2 || (aimD2 === bestAimD2 && id < bestId)) {
+      if (score < bestScore || (score === bestScore && id < bestId)) {
         best = entity;
-        bestAimD2 = aimD2;
+        bestScore = score;
         bestId = id;
+        bestTargetWorld = targetWorld;
       }
     }
-    return best;
+    return best ? { entity: best, targetWorld: bestTargetWorld || surfacePointToward(best, player.pos) } : null;
   },
 
   // Adopt a player-owned active tether we aren't tracking: after save-reload (this._active is
@@ -166,6 +213,7 @@ export const tetherGameplay = {
     const targetId = this._active.targetId;
     const reason = attachment && attachment.breakReason;
     this._active = null;
+    this._pendingCut = null;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
     if (reason === 'tether_cut') this.bus.emit('tether:released', { targetId });
@@ -251,6 +299,34 @@ export const tetherGameplay = {
     this._phaseMirror = createPhaseMirror();
   },
 
+  _tickSlingshotState(state, dt) {
+    const t = state && state.player && state.player.tether;
+    if (!t) return;
+    const next = Math.max(0, finite(t.slingshotT, 0) - Math.max(0, finite(dt, 0)));
+    t.slingshotT = next;
+    t.slingshot = next > 0;
+  },
+
+  _grantSlingshotState(state, seconds) {
+    const player = state.player || (state.player = {});
+    const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, attachmentId: null, restLength: 0, phase: 'slack' });
+    t.slingshotT = Math.max(finite(t.slingshotT, 0), positive(seconds, SLINGSHOT_STATE_S));
+    t.slingshot = t.slingshotT > 0;
+  },
+
+  _cutPayload(state, player, targetId) {
+    const vx = finite(player && player.vel && player.vel.x, 0);
+    const vz = finite(player && player.vel && player.vel.z, 0);
+    const speed = Math.hypot(vx, vz);
+    const maxSpeed = positive(player && player.maxSpeed, 120);
+    return {
+      targetId,
+      velocity: { x: vx, z: vz },
+      speed,
+      slingshot: speed >= maxSpeed * SLINGSHOT_SPEED_MULT,
+    };
+  },
+
   // Mirror the tether state onto state.player.tether for HUD/VFX consumers (single-owner rule:
   // they read, we write). null targetId = no tether. restLength lets the cable visual compute
   // real slack (restLength - distance) instead of guessing from strain.
@@ -263,6 +339,8 @@ export const tetherGameplay = {
     t.restLength = restLength || 0;
     t.phase = t.active ? normalizePhase(phase) : 'slack';
     t.attachmentId = this._active ? this._active.attachmentId : null;
+    t.slingshotT = Math.max(0, finite(t.slingshotT, 0));
+    t.slingshot = t.slingshotT > 0;
   },
 };
 
@@ -313,6 +391,52 @@ function aimWorldFor(player, state, range) {
 function isAttachable(entity, playerId) {
   if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
   return ATTACHABLE_TYPES.has(entity.type);
+}
+
+function cursorAimScore(entity, aim, player, ux, uz, rayLength) {
+  const radius = Math.max(0, finite(entity && entity.radius));
+  const dxAim = aim.x - entity.pos.x;
+  const dzAim = aim.z - entity.pos.z;
+  const aimDistance = Math.hypot(dxAim, dzAim);
+  const surfaceMiss = Math.max(0, aimDistance - radius);
+  const cursorGrace = Math.min(CURSOR_LATCH_GRACE_MAX, CURSOR_LATCH_GRACE + radius * 0.65);
+  if (surfaceMiss <= cursorGrace) {
+    return {
+      score: surfaceMiss * 2 + Math.max(0, Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z) - radius) * 0.015,
+      targetWorld: surfacePointToward(entity, aim),
+    };
+  }
+
+  const dx = entity.pos.x - player.pos.x;
+  const dz = entity.pos.z - player.pos.z;
+  const along = dx * ux + dz * uz;
+  if (along < -radius || along > rayLength + radius) return { score: Infinity, targetWorld: null };
+  const perp = Math.abs(dx * uz - dz * ux);
+  const rayGrace = Math.min(AIM_RAY_GRACE_MAX, AIM_RAY_GRACE + radius * 0.55);
+  if (Math.max(0, perp - radius) > rayGrace) return { score: Infinity, targetWorld: null };
+  const closest = {
+    x: player.pos.x + ux * clamp(along, 0, rayLength),
+    z: player.pos.z + uz * clamp(along, 0, rayLength),
+  };
+  return {
+    score: 1000 + Math.max(0, perp - radius) * 12 + along * 0.04,
+    targetWorld: surfacePointToward(entity, closest),
+  };
+}
+
+function surfacePointToward(entity, worldPoint) {
+  const radius = Math.max(0, finite(entity && entity.radius));
+  if (!(radius > 0) || !worldPoint) return { x: entity.pos.x, y: 0, z: entity.pos.z };
+  const dx = finite(worldPoint.x, entity.pos.x) - entity.pos.x;
+  const dz = finite(worldPoint.z, entity.pos.z) - entity.pos.z;
+  const d = Math.hypot(dx, dz);
+  if (!(d > 1e-6)) return { x: entity.pos.x, y: 0, z: entity.pos.z };
+  const contactRadius = radius * 0.72;
+  return {
+    x: entity.pos.x + dx / d * contactRadius,
+    y: 0,
+    z: entity.pos.z + dz / d * contactRadius,
+  };
 }
 
 function sortableId(id) {
