@@ -11,6 +11,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { isHostileToPlayer } from './scanner.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -92,7 +93,7 @@ export const weapons = {
         firing = !!state.input.fire;
         if (state.input.actions?.tetherFire) firing = false;
         if (!firing && state.input.autoFire) {
-          autoTgt = this._autoFireTarget(player, state);
+          autoTgt = this._selectedAutoFireTarget(player, state) || this._autoFireTarget(player, state);
           firing = !!autoTgt;
         }
       }
@@ -247,6 +248,7 @@ export const weapons = {
   _serviceShip(e, firing, isPlayer, dt, state, aimAngle, forceTarget) {
     const ws = e.data && e.data.weapons;
     if (!ws || !ws.length) return;
+    if (firing && !isPlayer && !npcFireTargetVisibleOnPlayerRadar(e, state)) firing = false;
     // Forced heat vent (player): while venting, all weapons are locked out — projectiles gate on
     // `firing`, and beams see canFire=false and cool. weaponVentUntil is only ever set for the player.
     if (firing && (state.simTime || 0) < (e.data.weaponVentUntil || 0)) firing = false;
@@ -385,16 +387,17 @@ export const weapons = {
     // launch speed: missiles start slow and accelerate to projSpeed; bullets launch at projSpeed
     const launchSpeed = isMissile && projSpeedMin != null ? projSpeedMin : projSpeed;
     const muzzle = this._muzzle(e, w, dir);
-    // inherit a portion of shooter velocity (momentum)
+    // Inertial launch: weapon speed is relative to the firing ship, so a fast ship cannot
+    // overtake its own bullets immediately after they leave the muzzle.
     const vel = {
-      x: cf * launchSpeed + e.vel.x * 0.5,
-      z: sf * launchSpeed + e.vel.z * 0.5,
+      x: cf * launchSpeed + e.vel.x,
+      z: sf * launchSpeed + e.vel.z,
     };
 
-    // time-to-live: bullets = range / speed; missiles use the slower launch speed so they live
-    // long enough to track (and at least a small floor).
-    const refSpeed = isMissile && projSpeedMin != null ? projSpeedMin : projSpeed;
-    const ttl = Math.max(0.25, range / Math.max(1, refSpeed));
+    // time-to-live is a backup cleanup only; physics enforces maxDistance spatially before hit
+    // resolution, so inherited ship speed cannot turn a stray shot into a far-off friendly-fire hit.
+    const worldSpeed = Math.hypot(vel.x, vel.z);
+    const ttl = Math.max(0.25, range / Math.max(1, worldSpeed));
 
     const damage = (w.dmg != null ? w.dmg : def.dmg) || 0;
     const damageType = w.damageType || def.damageType || 'kinetic';
@@ -405,6 +408,8 @@ export const weapons = {
       ownerId: e.id,
       weaponId: w.defId,
       kind: isMissile ? 'missile' : 'bullet',
+      spawnPos: { x: muzzle.x, z: muzzle.z },
+      maxDistance: range,
     };
     if (isMissile) {
       data.targetId = tgt ? tgt.id : null;
@@ -503,6 +508,20 @@ export const weapons = {
   // Auto-fire target: the nearest ship that is ACTIVELY hostile toward the player — either on a
   // hostile team and in an attack FSM state, or currently targeting/attacking the player. This
   // implements "fire only at aggressive enemies while I fly" (Phase 2). Returns null if none.
+  _selectedAutoFireTarget(player, state) {
+    const id = state && state.player && state.player.targetId;
+    if (id == null) return null;
+    const e = state.entities && state.entities.get ? state.entities.get(id) : null;
+    if (!e || !e.alive || (e.type !== 'ship' && e.type !== 'drone') || e.id === player.id) return null;
+    if (e.team === player.team) return null;
+    if (!this._isAggressive(e, player, state)) return null;
+    const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+    const maxRange = playerAutoFireRange(this, player);
+    const d2 = dx * dx + dz * dz;
+    if (maxRange > 0 && d2 > (maxRange + (e.radius || 0)) * (maxRange + (e.radius || 0))) return null;
+    return e;
+  },
+
   _autoFireTarget(player, state) {
     ensureWeaponRuntime(this);
     let best = null, bestD2 = Infinity;
@@ -527,6 +546,7 @@ export const weapons = {
   // An NPC counts as aggressive if it has AI in an attacking state, OR it is the player's current
   // selected/locked target, OR it recently damaged the player. Passive traders/patrols are skipped.
   _isAggressive(e, player, state) {
+    if (!isHostileToPlayer(e, player.team, state)) return false;
     const ai = e.data && e.data.ai;
     if (ai) {
       // Passive freighters (ambient traffic, V2 §28b) are NEVER auto-targeted — they're scenery +
@@ -535,8 +555,8 @@ export const weapons = {
       if (ai.passive) return false;
       const fsm = ai.fsm;
       if (fsm === 'attack' || fsm === 'strafe' || fsm === 'pursue') return true;
-      // lawful patrols only count if the player is wanted (they'd attack); otherwise leave them be
-      if (ai.lawful && !ai.playerWanted) return false;
+      // isHostileToPlayer already gates lawful patrols on canonical WANTED heat.
+      if (ai.lawful) return true;
       // a fleeing trader isn't a threat, but if it's shooting back (cornered) we may engage it
     }
     const combat = e.data && e.data.combat;
@@ -544,7 +564,7 @@ export const weapons = {
     // threat table: has this entity accrued threat from the player (i.e. it's been in a fight with us)?
     const tbl = state.combat && state.combat.threatTables && state.combat.threatTables.get(e.id);
     if (tbl && (tbl.get(player.id) || 0) > 0) return true;
-    return false;
+    return true;
   },
 
   // Representative projectile speed of the player's primary weapon, for auto-fire lead prediction.
@@ -580,6 +600,18 @@ function playerAutoFireRange(host, player) {
     if (Number.isFinite(r) && r > range) range = r;
   }
   return range;
+}
+
+function npcFireTargetVisibleOnPlayerRadar(e, state) {
+  const combat = e && e.data && e.data.combat;
+  if (!state || !combat || combat.targetId !== state.playerId) return true;
+  const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos || !e.pos) return true;
+  const range = (state.ui && Number.isFinite(state.ui.radarRange)) ? state.ui.radarRange : 4000;
+  const pad = (player.radius || 0) + (e.radius || 0);
+  const dx = e.pos.x - player.pos.x;
+  const dz = e.pos.z - player.pos.z;
+  return dx * dx + dz * dz <= (range + pad) * (range + pad);
 }
 
 function ensureWeaponRuntime(host) {

@@ -29,7 +29,7 @@ import { estimateBrakingSolution } from '../core/flight/flightTelemetry.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { BINDINGS } from './bindings.js';
 import { SEMANTIC_PALETTE } from './accessibility.js';
-import { contactThreatTier, contactStateWord, isWreckLike, wreckScanned } from '../systems/scanner.js';
+import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -314,12 +314,14 @@ export function createHud(ctx, alerts) {
     'mass-sample': '<svg viewBox="0 0 24 24"><path d="M12 3l5 6-5 12-5-12z"/><path d="M7 9h10"/></svg>',
     'boost': '<svg viewBox="0 0 24 24"><path d="M5 19l7-13 7 13"/><path d="M5 13l7-7 7 7"/></svg>',
     'dock': '<svg viewBox="0 0 24 24"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>',
+    'drill': '<svg viewBox="0 0 24 24"><path d="M12 2l4 6h-8z"/><path d="M12 8v10M9 14l3 3 3-3"/><path d="M5 21h14"/></svg>',
   };
   const ACTION_SLOTS = [
     ['LMB', 'pulse-laser'],
     ['RMB', 'mass-sample'],
     ['SHIFT', 'boost'],
     [BINDINGS.dock.label, 'dock'],
+    [BINDINGS.drill.label, 'drill'],
   ];
   const actionBar = document.createElement('div');
   actionBar.id = 'action-bar';
@@ -1166,7 +1168,7 @@ export function createHud(ctx, alerts) {
   const numericClock = createHudClock(10);
   const targetClock = createHudClock(20);
   const overlayClock = createHudClock(30);
-  const radarClock = createHudClock(15);
+  const radarClock = createHudClock(10);
 
   function syncSafetyAlerts(p, hullFrac, shieldFrac) {
     if (!alerts || !p) return;
@@ -1205,7 +1207,7 @@ export function createHud(ctx, alerts) {
     let iff = 'neutral';
     if (e.team === playerTeam || e.team === 0) {
       iff = e.id === state.playerId ? 'ally' : 'friendly';
-    } else if (e.team !== undefined && e.team !== playerTeam) {
+    } else if (isHostileToPlayer(e, playerTeam, state)) {
       iff = 'hostile';
     }
     const isGhost = e.data && (e.data.isGhost || e.data.ghost || e.data.kind === 'unknown');
@@ -1336,7 +1338,7 @@ export function createHud(ctx, alerts) {
     let nearbyHostile = false;
     for (const c of contacts) {
       curIds.add(c.e.id);
-      const hostile = c.e.team !== playerTeam && c.e.team !== 0;
+      const hostile = isHostileToPlayer(c.e, playerTeam, state);
       if (hostile && c.dist < OVERVIEW_HOSTILE_REVEAL_R) nearbyHostile = true;
       if (!_knownContactIds.has(c.e.id) && (hostile || c.isWreck)) revealOverview(OVERVIEW_CONTACT_REVEAL_MS);
     }
@@ -1358,8 +1360,8 @@ export function createHud(ctx, alerts) {
       if (aTgt && !bTgt) return -1;
       if (!aTgt && bTgt) return 1;
 
-      const aHostile = a.e.team !== playerTeam && a.e.team !== 0;
-      const bHostile = b.e.team !== playerTeam && b.e.team !== 0;
+      const aHostile = isHostileToPlayer(a.e, playerTeam, state);
+      const bHostile = isHostileToPlayer(b.e, playerTeam, state);
       if (aHostile && !bHostile) return -1;
       if (!aHostile && bHostile) return 1;
 
@@ -1396,7 +1398,7 @@ export function createHud(ctx, alerts) {
       const e = c.e;
       const iff = getIffData(e, playerTeam);
       const glyph = getClassGlyph(e);
-      const hostile = e.team !== playerTeam && e.team !== 0;
+      const hostile = isHostileToPlayer(e, playerTeam, state);
       const sword = contactStateWord(e, playerTeam, state);
       const stateCls = OVERVIEW_STATE_CLASS[sword] || 'neutral';
       const tier = contactThreatTier(e, hostile);
@@ -1457,6 +1459,10 @@ export function createHud(ctx, alerts) {
   }
 
   let _fadeOutTimer = null;
+
+  function resolveReticle() {
+    if (!elReticle) elReticle = document.getElementById('aim-reticle');
+  }
 
   function updateTargetArcs() {
     const tid = state.player.targetId;
@@ -1564,16 +1570,14 @@ export function createHud(ctx, alerts) {
     const radarTick = radarDt > 0;
 
     const p = state.entities.get(state.playerId);
+    resolveReticle();
 
     // --- schematic + arcs + micro-bars (every frame, transform/stroke only) ---
     if (p) {
       const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
       const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
       const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
-      // Mining beam heat is the primary heat source; fall back to entity.data.heat only if beam has none.
-      const player = state.player || {};
-      const beamHeat = (player.miningBeam && player.miningBeam.heat != null) ? player.miningBeam.heat : 0;
-      const heat = beamHeat > 0 ? beamHeat : ((p.data && p.data.heat != null) ? p.data.heat : 0);
+      const heat = (p.data && p.data.heat != null) ? p.data.heat : 0;
       const heatMax = (p.data && p.data.heatMax) || 100;
       const heatFrac = clamp01(heat / heatMax);
 
@@ -1625,6 +1629,32 @@ export function createHud(ctx, alerts) {
       setClass(actionBoxes['mass-sample'], 'sf-act-active', inp.fireGroup === 2);
       setClass(actionBoxes['boost'], 'sf-act-active', !!inp.boost);
       setClass(actionBoxes['dock'], 'sf-act-active', dockInRange);
+
+      // Check if a drillable asteroid is targeted and close (surface distance <= 165 wu)
+      let drillInRange = false;
+      const tid = state.player.targetId;
+      if (tid != null) {
+        const t = state.entities.get(tid);
+        if (t && t.type === 'asteroid' && t.alive) {
+          const dx = t.pos.x - p.pos.x;
+          const dz = t.pos.z - p.pos.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist - t.radius <= 165) drillInRange = true;
+        }
+      }
+      if (!drillInRange) {
+        const mining = ctx.registry && ctx.registry.get('mining');
+        if (mining && mining._lockTargetId) {
+          const t = state.entities.get(mining._lockTargetId);
+          if (t && t.type === 'asteroid' && t.alive) {
+            const dx = t.pos.x - p.pos.x;
+            const dz = t.pos.z - p.pos.z;
+            const dist = Math.hypot(dx, dz);
+            if (dist - t.radius <= 165) drillInRange = true;
+          }
+        }
+      }
+      setClass(actionBoxes['drill'], 'sf-act-active', drillInRange);
 
       // FR-1: prograde tick — where inertia is carrying us, projected each frame. Fades below
       // 2 wu/s so a stationary ship shows nothing (never animates at rest).
@@ -1685,7 +1715,6 @@ export function createHud(ctx, alerts) {
       setClass(elWeapons, 'sf-warn', auto);
       // Reticle reflects fire mode: amber ring when auto-fire is engaged (guns auto-target hostiles),
       // cyan when you're aiming/firing manually. Purely a visual cue.
-      if (!elReticle) elReticle = document.getElementById('aim-reticle');
       if (elReticle) setClass(elReticle, 'autofire', auto);
       // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
       // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.

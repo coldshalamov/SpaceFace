@@ -51,9 +51,18 @@ for (const sector of SECTORS) {
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
 // Per-sector enemy archetype pools (real ids from src/data/enemies.js), picked by lawfulness/tier.
-const LAWFUL_ENEMIES = ['patrol_lawman', 'reaver_pirate'];
+const LAWFUL_ENEMIES = ['patrol_lawman'];
 const PIRATE_ENEMIES = ['reaver_pirate', 'wasp_swarmer', 'corsair_raider'];
 const FRONTIER_ENEMIES = ['corsair_raider', 'reaver_pirate', 'wasp_swarmer'];
+const STARTER_SAFE_RADIUS = 1400;
+const STATION_SAFE_RADIUS = 1100;
+const GATE_SAFE_RADIUS = 900;
+const AMBIENT_SPAWN_ATTEMPTS = 24;
+const DIRECT_HOSTILE_SPAWN_ATTEMPTS = 36;
+const HUNTER_SPAWN_MIN_RADIUS = 1900;
+const HUNTER_SPAWN_MAX_RADIUS = 2700;
+const AMBUSH_SPAWN_MIN_RADIUS = 1500;
+const AMBUSH_SPAWN_MAX_RADIUS = 2300;
 const PALETTE_CLASS_BY_REF = new Map(Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]));
 const DRESSING_RADIUS = Object.freeze({
   place_lane_beacon: 18,
@@ -244,14 +253,18 @@ export const world = {
       const pos = st.pos
         ? { x: st.pos.x, z: st.pos.z }
         : { x: Math.cos(ang) * ringR, z: Math.sin(ang) * ringR };
-      const dockRadius = st.size === 'L' ? 90 : st.size === 'S' ? 60 : 72;
+      const size = st.size || 'M';
+      const dockRadius = size === 'L' ? 90 : size === 'S' ? 60 : 72;
+      const collisionRadius = size === 'L' ? 42 : size === 'S' ? 26 : 34;
       const ent = this.helpers.spawnEntity({
         type: 'station', factionId: st.factionId || sector.factionId, pos,
-        radius: dockRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
+        radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
         data: {
           stationId: st.id, stationTypeId: st.type, dockRadius,
+          placeScale: dockRadius / 14,
+          collisionRadius,
           services: st.services || [], factionId: st.factionId || sector.factionId,
-          name: st.name, size: st.size || 'M',
+          name: st.name, size,
           contested: !!st.contested, repGated: !!st.repGated, sectorId: sector.id,
           archetypeGlb: st.archetypeGlb || null,
           landmark: !!st.landmark,
@@ -336,11 +349,15 @@ export const world = {
     const authored = Array.isArray(sector.gates) && sector.gates.length > 0 ? sector.gates : null;
     const spawnGate = (nbId, pos, opts = {}) => {
       const nb = safeSector(this.state, nbId);
+      const dockRadius = opts.wormhole ? 80 : 70;
+      const collisionRadius = opts.wormhole ? 38 : 32;
       const ent = this.helpers.spawnEntity({
         type: 'station', factionId: sector.factionId, pos,
-        radius: opts.wormhole ? 80 : 70, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
+        radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
         data: {
-          stationId: null, isGate: true, gateTo: nbId, dockRadius: opts.wormhole ? 80 : 70,
+          stationId: null, isGate: true, gateTo: nbId, dockRadius,
+          placeScale: dockRadius / 14,
+          collisionRadius,
           services: [], factionId: sector.factionId,
           name: opts.wormhole ? 'Wormhole' : `Gate → ${nb ? nb.name : nbId}`,
           sectorId: sector.id,
@@ -592,10 +609,10 @@ export const world = {
     for (let i = 0; i < count; i++) {
       const typeId = pool[Math.floor(rng() * pool.length)];
       const level = Math.round(lvLo + (lvHi - lvLo) * (rng() * 0.6 + 0.4 * (1 - sec.security)));
-      const ang = rng() * Math.PI * 2;
-      const r = wr * (0.3 + rng() * 0.5);
-      const pos = { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
+      const pos = this._ambientEnemySpawnPos(sector, active, rng, wr);
+      if (!pos) continue;
       const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos);
+      tagAiSpawnContext(spec, sector, sec, 'ambient');
       const ent = this.helpers.spawnEntity(spec);
       active.enemies.push(ent.id);
     }
@@ -607,13 +624,14 @@ export const world = {
     if (typeof heatVal === 'number' && heatVal >= 0.15 && sector.security < 0.6) {
       const hunters = Math.min(4, Math.round(heatVal * 4 + 0.5));
       const player = this.state.entities.get(this.state.playerId);
+      if (this._playerInNoHostileSpawnZone(sector, active, player)) return;
       const px = player ? player.pos.x : 0, pz = player ? player.pos.z : 0;
       for (let i = 0; i < hunters; i++) {
-        const ang = rng() * Math.PI * 2;
-        const r = 180 + rng() * 220; // drop in a ring around the player — closing in
-        const pos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+        const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, HUNTER_SPAWN_MIN_RADIUS, HUNTER_SPAWN_MAX_RADIUS);
+        if (!pos) continue;
         const level = Math.round(lvHi + (lvHi - lvLo) * 0.5 * rng()); // tough: top of band or above
         const spec = makeEnemySpawnSpec('patrol_lawman', clamp(level, lvLo, lvHi + 2), pos);
+        tagAiSpawnContext(spec, sector, sec, 'bounty_hunter');
         const ent = this.helpers.spawnEntity(spec);
         active.enemies.push(ent.id);
       }
@@ -654,6 +672,78 @@ export const world = {
     if (sector.security >= 0.6) return LAWFUL_ENEMIES;
     if (sector.tier >= 3) return FRONTIER_ENEMIES;
     return PIRATE_ENEMIES;
+  },
+
+  _ambientEnemySpawnPos(sector, active, rng, wr) {
+    for (let attempt = 0; attempt < AMBIENT_SPAWN_ATTEMPTS; attempt++) {
+      const ang = rng() * Math.PI * 2;
+      const r = wr * (0.3 + rng() * 0.5);
+      const pos = { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
+      if (this._ambientSpawnIsSafe(pos, sector, active)) return pos;
+    }
+    return null;
+  },
+
+  _ambientSpawnIsSafe(pos, sector, active) {
+    const starterSafe = starterSafeRadius(sector);
+    if (starterSafe > 0 && dist2(pos, { x: 0, z: 0 }) < starterSafe * starterSafe) return false;
+    for (const st of (active && active.stations) || []) {
+      const radius = stationSafeRadius(st);
+      if (st && st.pos && dist2(pos, st.pos) < radius * radius) return false;
+    }
+    for (const gate of (active && active.gates) || []) {
+      if (gate && gate.pos && dist2(pos, gate.pos) < GATE_SAFE_RADIUS * GATE_SAFE_RADIUS) return false;
+    }
+    return true;
+  },
+
+  _directHostileSpawnPos(sector, active, rng, origin, minRadius, maxRadius) {
+    const o = origin || { x: 0, z: 0 };
+    const lo = Math.max(1, minRadius || AMBUSH_SPAWN_MIN_RADIUS);
+    const hi = Math.max(lo + 1, maxRadius || AMBUSH_SPAWN_MAX_RADIUS);
+    for (let attempt = 0; attempt < DIRECT_HOSTILE_SPAWN_ATTEMPTS; attempt++) {
+      const ang = rng() * Math.PI * 2;
+      const r = lo + rng() * (hi - lo);
+      const pos = { x: o.x + Math.cos(ang) * r, z: o.z + Math.sin(ang) * r };
+      if (this._directHostileSpawnIsSafe(pos, sector, active, lo)) return pos;
+    }
+    return null;
+  },
+
+  _directHostileSpawnIsSafe(pos, sector, active, minPlayerRadius) {
+    if (!this._ambientSpawnIsSafe(pos, sector, active)) return false;
+    const player = this.state.entities.get(this.state.playerId);
+    if (player && player.pos) {
+      const safe = Math.max(1, minPlayerRadius || AMBUSH_SPAWN_MIN_RADIUS);
+      if (dist2(pos, player.pos) < safe * safe) return false;
+    }
+    return true;
+  },
+
+  _playerInNoHostileSpawnZone(sector, active, player) {
+    if (!player || !player.pos) return false;
+    if (this._playerInPortNoHostileSpawnZone(active, player)) return true;
+    const starterSafe = starterSafeRadius(sector);
+    if (starterSafe > 0 && dist2(player.pos, { x: 0, z: 0 }) < starterSafe * starterSafe) return true;
+    return false;
+  },
+
+  _playerInPortNoHostileSpawnZone(active, player) {
+    if (!player || !player.pos) return false;
+    if (this._playerDockedNoHostileSpawnZone(player)) return true;
+    for (const st of (active && active.stations) || []) {
+      const radius = stationSafeRadius(st);
+      if (st && st.pos && dist2(player.pos, st.pos) < radius * radius) return true;
+    }
+    for (const gate of (active && active.gates) || []) {
+      if (gate && gate.pos && dist2(player.pos, gate.pos) < GATE_SAFE_RADIUS * GATE_SAFE_RADIUS) return true;
+    }
+    return false;
+  },
+
+  _playerDockedNoHostileSpawnZone(player) {
+    if (player && player.flags && player.flags.docked) return true;
+    return !!(this.state.ui && this.state.ui.docked === true);
   },
 
   // --- entry point + player placement -------------------------------------------------------
@@ -828,6 +918,8 @@ export const world = {
   _spawnAmbush(sector, count, origin = null) {
     if (!sector || count <= 0) return;
     const player = this.state.entities.get(this.state.playerId);
+    const active = this.state.world.activeSector || null;
+    if (this._playerDockedNoHostileSpawnZone(player)) return;
     const px = origin ? origin.x : (player ? player.pos.x : 0);
     const pz = origin ? origin.z : (player ? player.pos.z : 0);
     const pool = this._enemyPool(sector);
@@ -837,15 +929,16 @@ export const world = {
     for (let i = 0; i < count; i++) {
       const typeId = pool[Math.floor(rng() * pool.length)];
       const level = Math.round(lvLo + (lvHi - lvLo) * 0.6);
-      const ang = rng() * Math.PI * 2;
-      const r = 280 + rng() * 160; // short range "ambush pocket"
-      const pos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+      const pos = this._directHostileSpawnPos(sector, active, rng, { x: px, z: pz }, AMBUSH_SPAWN_MIN_RADIUS, AMBUSH_SPAWN_MAX_RADIUS);
+      if (!pos) continue;
       const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos);
+      tagAiSpawnContext(spec, sector, sector, origin ? 'spawn_request' : 'interdiction');
       const ent = this.helpers.spawnEntity(spec);
       placed.push(ent.id);
     }
+    if (!placed.length) return;
     if (this.state.world.activeSector) this.state.world.activeSector.enemies.push(...placed);
-    this.bus.emit('interdiction:triggered', { sectorId: sector.id, ambushCount: count, spawnPos: { x: px, z: pz } });
+    this.bus.emit('interdiction:triggered', { sectorId: sector.id, ambushCount: placed.length, spawnPos: { x: px, z: pz } });
   },
 
   _onSpawnRequest(p) {
@@ -1388,6 +1481,35 @@ function sanitizeCoursePos(pos) {
   const z = Number(pos.z);
   if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
   return { x, z };
+}
+
+function dist2(a, b) {
+  const dx = (a && a.x || 0) - (b && b.x || 0);
+  const dz = (a && a.z || 0) - (b && b.z || 0);
+  return dx * dx + dz * dz;
+}
+
+function starterSafeRadius(sector) {
+  if (!sector) return 0;
+  return sector.id === 'sector_helios_prime' || sector.tier === 0 ? STARTER_SAFE_RADIUS : 0;
+}
+
+function stationSafeRadius(station) {
+  const liveRadius = Number(station && station.radius);
+  return STATION_SAFE_RADIUS + (Number.isFinite(liveRadius) ? liveRadius : 0);
+}
+
+function tagAiSpawnContext(spec, sector, effectiveSector, context) {
+  spec.data = spec.data || {};
+  spec.data.ai = spec.data.ai || {};
+  spec.data.ai.spawnContext = context;
+  spec.data.ai.sectorId = sector && sector.id || null;
+  spec.data.ai.sectorSecurity = Number.isFinite(effectiveSector && effectiveSector.security)
+    ? effectiveSector.security
+    : (Number.isFinite(sector && sector.security) ? sector.security : 0);
+  spec.data.ai.sectorTier = Number.isFinite(effectiveSector && effectiveSector.tier)
+    ? effectiveSector.tier
+    : (Number.isFinite(sector && sector.tier) ? sector.tier : 0);
 }
 
 function finitePositive(value) {

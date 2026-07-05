@@ -14,6 +14,7 @@
 
 import { semanticColor, semanticShape, SEMANTIC_PALETTE } from './accessibility.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
+import { isHostileToPlayer } from '../systems/scanner.js';
 
 // ── dimensions ──────────────────────────────────────────────────────────────────────────────
 // Compact flight uses a true compact canvas. Expanded tactical mode switches to the larger canvas
@@ -51,20 +52,20 @@ function playerProjSpeed(p) {
   return 360;
 }
 
-function shipState(e, playerTeam) {
-  if (e.team !== playerTeam && e.team !== 0) return 'hostile';
+function shipState(e, playerTeam, state) {
+  if (isHostileToPlayer(e, playerTeam, state)) return 'hostile';
   if (e.factionId && FACTION_COLOR[e.factionId]) return 'friendly';
   return 'neutral';
 }
 
-function blipColor(e, playerTeam, mode) {
+function blipColor(e, playerTeam, mode, state) {
   if (e.type === 'asteroid') return COL.asteroid;
   if (e.type === 'pickup')   return COL.pickup;
   if (e.type === 'station') {
     if (e.data && e.data.isGate) return COL.gate;
     return e.factionId && FACTION_COLOR[e.factionId] ? FACTION_COLOR[e.factionId] : COL.station;
   }
-  return semanticColor(shipState(e, playerTeam), mode);
+  return semanticColor(shipState(e, playerTeam, state), mode);
 }
 
 // Redundant blip shape so hostility is readable without color (colorblind mode). Caller sets fillStyle.
@@ -79,7 +80,16 @@ function drawShipShape(g, x, y, shape) {
 }
 
 // ── glow helpers ────────────────────────────────────────────────────────────────────────────
-function glow(g, color, blur)  { g.shadowColor = color; g.shadowBlur = blur; }
+// Canvas shadowBlur is expensive on the always-mounted compact HUD. Keep the richer glow for the
+// opt-in expanded tactical radar, but draw compact blips with a capped halo so normal flight does
+// not repaint a costly blurred canvas every radar tick.
+let activeGlowScale = 0.35;
+function glow(g, color, blur)  {
+  const scaled = blur * activeGlowScale;
+  if (scaled <= 0.25) { noGlow(g); return; }
+  g.shadowColor = color;
+  g.shadowBlur = scaled;
+}
 function noGlow(g)             { g.shadowBlur = 0; g.shadowColor = 'transparent'; }
 
 // ── motion trails ───────────────────────────────────────────────────────────────────────────
@@ -111,7 +121,7 @@ function drawTrail(g, e, px, pz, scale, C, col) {
   g.save();
   g.lineWidth   = 1;
   g.shadowColor = col;
-  g.shadowBlur  = 2;
+  g.shadowBlur  = 2 * activeGlowScale;
   for (let i = 1; i < hist.length; i++) {
     g.globalAlpha = (i / hist.length) * 0.4;
     g.strokeStyle = col;
@@ -138,6 +148,41 @@ function drawTargetRing(g, bx, by, C) {
   g.strokeStyle = '#fff'; g.lineWidth = 1.3;
   g.beginPath(); g.arc(bx, by, 6.5, 0, Math.PI * 2); g.stroke();
   noGlow(g);
+}
+
+function drawHeatZone(g, zone, px, pz, scale, C, R) {
+  if (!zone || !zone.active || !(zone.radius > 0) || !(zone.level > 0)) return;
+  const cx = Number.isFinite(zone.center && zone.center.x) ? zone.center.x : 0;
+  const cz = Number.isFinite(zone.center && zone.center.z) ? zone.center.z : 0;
+  const dx = cx - px;
+  const dz = cz - pz;
+  const zx = C - dx * scale;
+  const zy = C - dz * scale;
+  const zr = Math.max(2, zone.radius * scale);
+  const outside = dx * dx + dz * dz > zone.radius * zone.radius;
+  const clearAfter = zone.clearAfterS || 0;
+  const remaining = outside && clearAfter > 0 ? Math.max(0, Math.ceil(clearAfter - (zone.outsideS || 0))) : 0;
+
+  g.save();
+  g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.clip();
+  g.globalAlpha = 1;
+  g.fillStyle = 'rgba(255,84,112,0.055)';
+  g.strokeStyle = outside ? 'rgba(255,205,95,0.9)' : 'rgba(255,84,112,0.82)';
+  g.lineWidth = outside ? 1.6 : 1.25;
+  g.setLineDash(outside ? [7, 4] : [4, 5]);
+  g.beginPath(); g.arc(zx, zy, zr, 0, Math.PI * 2); g.fill(); g.stroke();
+  g.setLineDash([]);
+  g.fillStyle = outside ? 'rgba(255,205,95,0.95)' : 'rgba(255,84,112,0.72)';
+  g.beginPath(); g.arc(zx, zy, 2.2, 0, Math.PI * 2); g.fill();
+  g.restore();
+
+  g.save();
+  g.font = 'bold 7px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'top';
+  g.fillStyle = outside ? 'rgba(255,205,95,0.95)' : 'rgba(255,84,112,0.82)';
+  g.fillText(remaining > 0 ? 'HEAT ' + zone.level + '  ' + remaining + 'S' : 'HEAT ' + zone.level, C, C + R - 15);
+  g.restore();
 }
 
 // ── factory ─────────────────────────────────────────────────────────────────────────────────
@@ -299,6 +344,7 @@ export function createRadar(ctx) {
     const p = state.entities.get(state.playerId);
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
+    activeGlowScale = expanded ? 1 : 0.35;
     const baseRange = state.ui.radarRange || 4000;
     const range     = expanded ? baseRange * 2 : baseRange;
     const rangeSq   = range * range;
@@ -359,6 +405,8 @@ export function createRadar(ctx) {
     const playerTeam = p.team;
     const cbMode     = (state.settings.accessibility && state.settings.accessibility.colorblindMode) || 'none';
 
+    drawHeatZone(g, state.player && state.player.heatZone, px, pz, radarScale, C, R);
+
     // ── weapon/mining range ring ──────────────────────────────────────────────────────────
     const weaponRange = state.player.weaponRange;
     const rngRatio    = weaponRange ? Math.min(weaponRange / range, 1) : 0.6;
@@ -415,7 +463,7 @@ export function createRadar(ctx) {
       const dx = e.pos.x - px, dz = e.pos.z - pz;
       const distSq = dx * dx + dz * dz;
       if (distSq > rangeSq) {
-        const isHostile = e.team !== playerTeam && e.team !== 0;
+        const isHostile = isHostileToPlayer(e, playerTeam, state);
         if (isHostile && distSq < minHostileDistSq) {
           minHostileDistSq = distSq;
           nearestOffScreenHostile = e;
@@ -430,7 +478,7 @@ export function createRadar(ctx) {
       const type = e.type;
       const dx = e.pos.x - px, dz = e.pos.z - pz;
       const distSq = dx * dx + dz * dz;
-      const col = blipColor(e, playerTeam, cbMode);
+      const col = blipColor(e, playerTeam, cbMode, state);
       let bx, by, off = false, offAngle = 0;
 
       if (distSq > rangeSq) {
@@ -495,10 +543,10 @@ export function createRadar(ctx) {
         }
 
       } else {
-        const isHostile = e.team !== playerTeam && e.team !== 0;
+        const isHostile = isHostileToPlayer(e, playerTeam, state);
         const glowBlur  = isHostile ? 7 + 3 * Math.sin(now * 0.004) : 5;
         glow(g, col, glowBlur);
-        drawShipShape(g, bx, by, semanticShape(shipState(e, playerTeam)));
+        drawShipShape(g, bx, by, semanticShape(shipState(e, playerTeam, state)));
         noGlow(g);
       }
 
