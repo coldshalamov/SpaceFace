@@ -32,8 +32,9 @@ const TRADE_INTERVAL_S = 8;    // min seconds between trades per freighter (stag
 // Causal traffic roles (spec §12.1). Each role is a distinct, READABLE behavior — not a combat-AI
 // skin. The hull + speed + archetype encode the role's identity; the update loop encodes its
 // behavior. Spawn weights form the causal model (spec §12.2): the role mix depends on sector
-// context — industrial sectors get more miners/haulers, hostile sectors get pirates, secure
-// faction sectors get patrols/escorts. team 2 = neutral civilian (gold); team 3 = hostile raider.
+// context — industrial sectors get more miners/haulers, hostile sectors get suspicious traffic,
+// secure faction sectors get patrols/escorts. team 2 = neutral/civilian traffic (gold); actual red
+// hostiles must come from combat/world/mission spawns, not passive scenery.
 const TRAFFIC_ROLES = {
   hauler:   { ship: 'ship_mule',     team: 2, speed: 26, archetype: 'fleeing_trader', weight: 30,
               label: 'Cargo Hauler', docks: true, trades: true },
@@ -47,7 +48,7 @@ const TRAFFIC_ROLES = {
               label: 'Convoy Escort', docks: false, escorts: true },
   smuggler: { ship: 'ship_drifter',  team: 2, speed: 46, archetype: 'fleeing_trader', weight: 6,
               label: 'Smuggler', docks: true, trades: true },
-  pirate:   { ship: 'ship_hornet',   team: 3, speed: 50, archetype: 'fleeing_trader', weight: 5,
+  pirate:   { ship: 'ship_hornet',   team: 2, speed: 50, archetype: 'fleeing_trader', weight: 5,
               label: 'Raider', docks: false, flees: true },
   rescue:   { ship: 'ship_drifter',  team: 2, speed: 48, archetype: 'passive', weight: 3,
               label: 'Rescue Craft', docks: true, trades: false },
@@ -59,13 +60,19 @@ function roleMixForSector(sector) {
   const sec = sector || {};
   const out = {};
   for (const [id, role] of Object.entries(TRAFFIC_ROLES)) out[id] = role.weight;
+  const numericSecurity = Number.isFinite(sec.security) ? sec.security : null;
+  const tier = Number.isFinite(sec.tier) ? sec.tier : 0;
   // Industrial (mining/refinery) sectors: more miners + haulers.
   if (sec.industries && (sec.industries.mining || sec.industries.refinery)) { out.miner *= 2.5; out.hauler *= 1.5; }
-  // Hostile/danger sectors: more pirates, fewer civilians.
+  // Hostile/danger sectors: more suspicious raiders, fewer civilians.
   const threat = sec.threat || sec.danger;
-  if (threat === 'high' || sec.security === 'lawless') { out.pirate *= 4; out.courier *= 0.4; out.escort *= 2; }
-  // Secure faction sectors: more patrols + escorts, fewer pirates.
-  if (sec.security === 'secure' || sec.factionControl === 'strong') { out.patrol *= 2.5; out.escort *= 1.8; out.pirate *= 0.2; }
+  if (threat === 'high' || sec.security === 'lawless' || (numericSecurity != null && numericSecurity <= 0.35) || tier >= 3) {
+    out.pirate *= 4; out.courier *= 0.4; out.escort *= 2;
+  }
+  // Secure faction sectors: more patrols + escorts, no suspicious raider traffic in the safe lanes.
+  if (sec.security === 'secure' || sec.factionControl === 'strong' || (numericSecurity != null && numericSecurity >= 0.6)) {
+    out.patrol *= 2.5; out.escort *= 1.8; out.pirate = 0;
+  }
   return out;
 }
 function pickRole(roleWeights, rng) {

@@ -55,6 +55,9 @@ try {
     const actors = (contract.actors || []).map((actor) => {
       const binding = state.scenario.actorBindings[actor.id] || null;
       const entity = binding && binding.entityId != null ? state.entities.get(binding.entityId) : null;
+      const player = state.entities.get(state.playerId);
+      const dx = entity && player ? entity.pos.x - player.pos.x : null;
+      const dz = entity && player ? entity.pos.z - player.pos.z : null;
       return {
         id: actor.id,
         role: actor.role,
@@ -64,14 +67,47 @@ try {
         entityExists: !!entity,
         entityType: entity && entity.type || null,
         entityActorId: entity && entity.data && entity.data.scenarioActorId || null,
+        team: entity && entity.team != null ? entity.team : null,
+        factionId: entity && entity.factionId || null,
+        aiPassive: !!(entity && entity.data && entity.data.ai && entity.data.ai.passive),
+        liveColdStartSafe: !!(entity && entity.data && entity.data.ai && entity.data.ai.liveColdStartSafe),
+        targetId: entity && entity.data && entity.data.combat ? entity.data.combat.targetId ?? null : null,
+        distanceToPlayer: dx == null || dz == null ? null : Math.hypot(dx, dz),
         sourceKind: binding && binding.source && binding.source.kind || null,
       };
     });
+    const player = state.entities.get(state.playerId);
+    const playerTeam = player && player.team != null ? player.team : 0;
+    const coldOpenShips = state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.id !== state.playerId)
+      .map((entity) => {
+        const dx = player ? entity.pos.x - player.pos.x : null;
+        const dz = player ? entity.pos.z - player.pos.z : null;
+        const ai = entity.data && entity.data.ai || {};
+        const combat = entity.data && entity.data.combat || {};
+        const intent = entity.data && entity.data.intent || {};
+        const weapons = entity.data && entity.data.weapons || [];
+        return {
+          id: entity.id,
+          actorId: entity.data && entity.data.scenarioActorId || null,
+          team: entity.team != null ? entity.team : null,
+          factionId: entity.factionId || null,
+          aiPassive: ai.passive === true,
+          hasCombatAi: !!entity.data && !!entity.data.ai,
+          hasWeapons: Array.isArray(weapons) && weapons.length > 0,
+          distanceToPlayer: dx == null || dz == null ? null : Math.hypot(dx, dz),
+          targetId: combat.targetId ?? null,
+          lockTarget: combat.lockTarget ?? null,
+          lockProgress: combat.lockProgress ?? 0,
+          firing: intent.fire === true,
+          fireGroup: intent.fireGroup ?? null,
+        };
+      });
     const byType = {};
     for (const record of trace) byType[record.type] = (byType[record.type] || 0) + 1;
     return {
       mode: state.mode,
       playerId: state.playerId,
+      playerTeam,
       helperContractId: contract && contract.id,
       helperContractPath: sf.helpers.scenarioContractPath,
       helperContractHash: sf.helpers.scenarioContractHash,
@@ -79,6 +115,7 @@ try {
       unresolvedActorIds: state.scenario.unresolvedActorIds.slice(),
       enteredBeatIds: state.scenario.enteredBeatIds.slice(),
       actors,
+      coldOpenShips,
       traceCount: trace.length,
       byType,
       hasKesslerDialogue: trace.some((record) =>
@@ -124,6 +161,29 @@ try {
   assert.deepEqual(missingEntities, [], 'all required physical scenario actors should have live entities');
   assert.equal(report.actors.find((actor) => actor.id === 'contact_kessler')?.sourceKind, 'narrativeFigure',
     'Kessler should bind through the narrative figure catalog');
+  for (const id of ['scavenger_harasser', 'scavenger_thief', 'official_recovery_tug']) {
+    const actor = report.actors.find((entry) => entry.id === id);
+    assert(actor, `${id} actor should exist in live cold-open report`);
+    assert.equal(actor.team, 0, `${id} should be neutral before its scenario beat`);
+    assert.equal(actor.factionId, 'faction_free', `${id} should not present as an immediate hostile faction`);
+    assert.equal(actor.aiPassive, true, `${id} should be passive before its scenario beat`);
+    assert.equal(actor.liveColdStartSafe, true, `${id} should be marked as live cold-start safe`);
+    assert.equal(actor.targetId, null, `${id} should not target the player in the cold open`);
+    assert(actor.distanceToPlayer >= 1500, `${id} should hold outside the spawn threat bubble`);
+  }
+  const hostileShips = report.coldOpenShips.filter((ship) => ship.team != null && ship.team !== report.playerTeam);
+  const activeAttackers = hostileShips.filter((ship) =>
+    (ship.hasCombatAi && !ship.aiPassive && ship.hasWeapons)
+    || ship.targetId === report.playerId
+    || ship.lockTarget === report.playerId
+    || ship.firing
+    || ship.fireGroup != null);
+  assert.deepEqual(activeAttackers.filter((ship) => ship.distanceToPlayer < 1500), [],
+    'live cold open should not contain a close hostile attacker near the player');
+  assert.deepEqual(hostileShips.filter((ship) => ship.targetId === report.playerId || ship.lockTarget === report.playerId), [],
+    'live cold open should not contain a hostile target lock on the player');
+  assert.deepEqual(hostileShips.filter((ship) => ship.firing || ship.fireGroup != null), [],
+    'live cold open should not contain a hostile firing intent during the first window');
   assert.deepEqual(issues.errorIssues(), [], 'browser cold-open check should not record page errors');
 
   console.log(`47-A live cold open OK (${report.actors.length} actors bound, ${report.traceCount} trace records)`);

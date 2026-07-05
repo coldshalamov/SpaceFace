@@ -40,6 +40,7 @@ export const scenarioRuntime = {
       activateScenario(this, this._contract);
     }
     updateActiveBeat(this, this._contract);
+    syncLiveColdStartCombatants(this);
     evaluateBranchPredicates(this, this._contract);
   },
 
@@ -153,6 +154,44 @@ function updateActiveBeat(runtime, contract) {
     presentationEventIds: (beat.presentationEventIds || []).slice(),
   });
   emitBeatDialogue(runtime, contract, beat);
+}
+
+function syncLiveColdStartCombatants(runtime) {
+  const state = runtime.state;
+  const scenario = ensureScenarioState(state);
+  const activeBeatId = scenario.active && scenario.active.activeBeatId || null;
+  const entered = Array.isArray(scenario.enteredBeatIds) ? scenario.enteredBeatIds : [];
+  const playerId = state.playerId;
+  for (const entity of state.entityList || []) {
+    if (!entity || entity.type !== 'ship' || !entity.data) continue;
+    const ai = entity.data.ai;
+    if (!ai || !ai.liveColdStartSafe) continue;
+    const activationBeat = ai.dormantUntilBeat || null;
+    const active = !activationBeat || activeBeatId === activationBeat || entered.includes(activationBeat);
+    if (active) {
+      if (!entity.data._liveColdStartActivated) {
+        entity.team = Number.isFinite(ai.activationTeam) ? ai.activationTeam : entity.team;
+        if (ai.activationFactionId) entity.factionId = ai.activationFactionId;
+        entity.data._liveColdStartActivated = true;
+      }
+      ai.passive = false;
+      if (!entity.data.combat) entity.data.combat = {};
+      if (playerId && entity.data.combat.targetId == null) entity.data.combat.targetId = playerId;
+    } else {
+      entity.team = 0;
+      entity.factionId = 'faction_free';
+      ai.passive = true;
+      if (entity.data.combat) {
+        entity.data.combat.targetId = null;
+        entity.data.combat.lockTarget = null;
+        entity.data.combat.lockProgress = 0;
+      }
+      if (entity.data.intent) {
+        entity.data.intent.fire = false;
+        entity.data.intent.fireGroup = null;
+      }
+    }
+  }
 }
 
 function recordScenarioEvidenceEvent(runtime, type, payload) {

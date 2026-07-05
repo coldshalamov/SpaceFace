@@ -62,7 +62,7 @@ export function makeEvidenceSpindleSpec({ pos, rot = 0 } = {}) {
   };
 }
 
-export function spawn47aOpeningScene({ state, helpers, spawn = null, includeTargetDummy = false } = {}) {
+export function spawn47aOpeningScene({ state, helpers, spawn = null, includeTargetDummy = false, liveColdStartSafe = false } = {}) {
   const spawnEntity = spawn || (helpers && helpers.spawnEntity);
   if (typeof spawnEntity !== 'function') {
     throw new Error('47-A opening scene requires a spawnEntity helper');
@@ -80,13 +80,14 @@ export function spawn47aOpeningScene({ state, helpers, spawn = null, includeTarg
     spawned.targetDummy.radius = Math.max(spawned.targetDummy.radius || 0, 44);
     spawned.targetDummy.flags = Object.assign({}, spawned.targetDummy.flags, { persistent: true });
   }
-  Object.assign(spawned, spawn47aScenarioCast({ state, spawn: spawnEntity }));
+  Object.assign(spawned, spawn47aScenarioCast({ state, spawn: spawnEntity, liveColdStartSafe }));
   return spawned;
 }
 
 export function spawn47aScenarioCast(simOrOptions) {
   const state = simOrOptions && simOrOptions.state;
   const spawnEntity = resolveSpawnEntity(simOrOptions);
+  const liveColdStartSafe = !!(simOrOptions && simOrOptions.liveColdStartSafe);
   if (typeof spawnEntity !== 'function') {
     throw new Error('47-A scenario cast requires a spawn function');
   }
@@ -131,9 +132,10 @@ export function spawn47aScenarioCast(simOrOptions) {
     preferredRole: 'support',
     capabilities: ['drive', 'sensor', 'weapon', 'ranged', 'screen', 'counter_tether_cut'],
   });
-  if (state && state.playerId) {
+  if (state && state.playerId && !liveColdStartSafe) {
     harasser.data.combat = Object.assign({}, harasser.data.combat, { targetId: state.playerId });
   }
+  if (liveColdStartSafe) markLiveColdStartDormant(harasser, { activationBeat: 'scavenger_arrival', holdingPos: { x: 1900, z: 760 } });
   result.harasser = harasser;
 
   const thief = spawnEntity(makeShipEntitySpec('ship_mule', {
@@ -156,6 +158,7 @@ export function spawn47aScenarioCast(simOrOptions) {
     preferredRole: 'tug',
     capabilities: ['drive', 'sensor', 'weapon', 'tether', 'tug', 'steal', 'screen', 'counter_tether_overload'],
   });
+  if (liveColdStartSafe) markLiveColdStartDormant(thief, { activationBeat: 'scavenger_arrival', holdingPos: { x: 2040, z: 520 } });
   result.thief = thief;
 
   const recoveryTug = spawnEntity(makeShipEntitySpec('ship_mule', {
@@ -178,6 +181,7 @@ export function spawn47aScenarioCast(simOrOptions) {
     preferredRole: 'tug',
     capabilities: ['drive', 'sensor', 'weapon', 'tether', 'tug', 'ranged', 'disable', 'counter_tether_cut'],
   });
+  if (liveColdStartSafe) markLiveColdStartDormant(recoveryTug, { activationBeat: 'recovery_tug', holdingPos: { x: 2140, z: -640 } });
   result.recoveryTug = recoveryTug;
 
   result.civilianPod = spawnEntity(makePassiveScenarioSpec({
@@ -266,6 +270,32 @@ function markScenarioActor(entity, { actorId, role, assetRef, extraData = {} }) 
     scenarioRole: role,
     assetRef,
   });
+}
+
+function markLiveColdStartDormant(entity, { activationBeat, holdingPos }) {
+  if (!entity) return entity;
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  ai.liveColdStartSafe = true;
+  ai.dormantUntilBeat = activationBeat || ai.dormantUntilBeat || null;
+  ai.activationTeam = entity.team;
+  ai.activationFactionId = entity.factionId || null;
+  ai.passive = true;
+  data.combat = Object.assign({}, data.combat, { targetId: null, lockTarget: null, lockProgress: 0 });
+  data.intent = null;
+  entity.team = 0;
+  entity.factionId = 'faction_free';
+  if (holdingPos && Number.isFinite(holdingPos.x) && Number.isFinite(holdingPos.z)) {
+    entity.pos.x = holdingPos.x;
+    entity.pos.z = holdingPos.z;
+    if (entity.prevPos && typeof entity.prevPos.copy === 'function') {
+      entity.prevPos.copy(entity.pos);
+    } else if (entity.prevPos) {
+      entity.prevPos.x = holdingPos.x;
+      entity.prevPos.z = holdingPos.z;
+    }
+  }
+  return entity;
 }
 
 function resolveSpawnEntity(source) {

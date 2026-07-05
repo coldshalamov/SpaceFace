@@ -56,6 +56,10 @@ const WEDGE_SLOT_ANGLE = 35 * Math.PI / 180;
 const WEDGE_SLOT_DIST = 60;
 const PIRATE_FLEE_JETTISON_CHANCE = 0.3;
 const PIRATE_FLEE_CARGO = Object.freeze(['cmdty_stolen_goods', 'cmdty_munitions', 'cmdty_consumer_goods']);
+const UNSAFE_PLAYER_SECURITY = 0.45;
+const LANE_CONTEXT_INNER_R = 900;
+const LANE_CONTEXT_OUTER_R = 2200;
+const PLAYER_DANGER_CONTEXTS = new Set(['interdiction', 'spawn_request', 'bounty_hunter', 'mission', 'encounter']);
 const AI_BARKS = Object.freeze({
   attackRun: Object.freeze(['Coming around.', 'Weapons lining up.', 'Run starts now.']),
   alphaStrike: Object.freeze(['Charging heavy guns.', 'Hold for alpha.', 'Big guns hot.']),
@@ -498,8 +502,10 @@ export const ai = {
       if (d2 > sensor2) return;
       const dist = Math.sqrt(d2);
       const threat = tbl ? (tbl.get(cand.id) || 0) : 0;
+      const isPlayer = cand.id === state.playerId;
+      if (isPlayer && !this._canAcquirePlayer(data, state, cand, threat)) return;
       let score = threat + 50 / (1 + dist / 100);
-      if (cand.id === state.playerId) score += 20;     // bias toward the player (§ AGGRO TARGET SELECT)
+      if (isPlayer && threat > 0) score += Math.min(40, threat);
       if (score > bestScore) { bestScore = score; best = cand; }
     };
 
@@ -510,6 +516,21 @@ export const ai = {
       for (const c of near) consider(c);
     }
     return best;
+  },
+
+  _canAcquirePlayer(data, state, player, threat) {
+    if (threat > 0) return true;
+    const ai = data && data.ai || {};
+    if (ai.lawful) return true;
+    if (ai.forcePlayerTarget || ai.huntPlayer) return true;
+    if (data && data.encounter) return true;
+    const context = String(ai.spawnContext || ai.context || '');
+    if (PLAYER_DANGER_CONTEXTS.has(context)) return true;
+    const security = finiteNumber(ai.sectorSecurity, currentSectorSecurity(state));
+    const tier = finiteNumber(ai.sectorTier, currentSectorTier(state));
+    // Low-sec/tiered sectors unlock ambient danger pockets; they do not make every spawned pirate
+    // immediately hunt a neutral player anywhere in the sector, especially near stations.
+    return (security <= UNSAFE_PLAYER_SECURITY || tier >= 2) && playerIsInLaneDanger(state, player);
   },
 
   // team 0 = player side, team 1 = hostile NPCs (default hostility). Also honour explicit
@@ -756,6 +777,50 @@ function compareIds(a, b) {
   const an = Number(a), bn = Number(b);
   if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
   return String(a).localeCompare(String(b));
+}
+
+function currentSector(state) {
+  const world = state && state.world;
+  const id = world && world.currentSectorId;
+  return id && world && world.sectors ? world.sectors[id] : null;
+}
+
+function currentSectorSecurity(state) {
+  const sector = currentSector(state);
+  return Number.isFinite(sector && sector.security) ? sector.security : 1;
+}
+
+function currentSectorTier(state) {
+  const sector = currentSector(state);
+  return Number.isFinite(sector && sector.tier) ? sector.tier : 0;
+}
+
+function finiteNumber(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function playerIsInLaneDanger(state, player) {
+  const active = state && state.world && state.world.activeSector;
+  const gates = active && Array.isArray(active.gates) ? active.gates : [];
+  const hazards = active && Array.isArray(active.hazards) ? active.hazards : [];
+  if (!player || !player.pos) return false;
+  const inner2 = LANE_CONTEXT_INNER_R * LANE_CONTEXT_INNER_R;
+  const outer2 = LANE_CONTEXT_OUTER_R * LANE_CONTEXT_OUTER_R;
+  for (const gate of gates) {
+    if (!gate || !gate.pos) continue;
+    const dx = player.pos.x - gate.pos.x;
+    const dz = player.pos.z - gate.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 >= inner2 && d2 <= outer2) return true;
+  }
+  for (const hazard of hazards) {
+    if (!hazard || !hazard.center || !Number.isFinite(hazard.radius)) continue;
+    const dx = player.pos.x - hazard.center.x;
+    const dz = player.pos.z - hazard.center.z;
+    const r = Math.max(0, hazard.radius);
+    if (dx * dx + dz * dz <= r * r) return true;
+  }
+  return false;
 }
 
 function shipNameFor(e) {
