@@ -1,6 +1,9 @@
 #!/usr/bin/env node
+// Launch policy: enforces ONE player-facing game route across browser + Electron + packaged builds,
+// and that the two HTTP launchers share a single source of truth (scripts/lib/gameServer.cjs)
+// so they cannot drift on MIME types, freshness, or static-serving semantics.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,68 +13,81 @@ function read(rel) {
   return readFileSync(join(ROOT, rel), 'utf8');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED SERVER MODULE — the single source of truth both launchers must use.
+// ─────────────────────────────────────────────────────────────────────────────
+const sharedPath = 'scripts/lib/gameServer.cjs';
+assert.ok(existsSync(join(ROOT, sharedPath)), `Shared server module ${sharedPath} must exist`);
+const shared = read(sharedPath);
+
+// Policy-relevant behavior MUST live in the shared module (not duplicated inline).
+assert.match(shared, /'\.glb':\s*'model\/gltf-binary'/, 'Shared MIME table must serve release-authored GLB ship assets as model/gltf-binary');
+assert.match(shared, /'\.gltf':\s*'model\/gltf\+json; charset=utf-8'/, 'Shared MIME table must serve GLTF JSON assets correctly');
+assert.match(shared, /'\.ktx2':\s*'image\/ktx2'/, 'Shared MIME table must serve KTX2 textures');
+assert.match(shared, /'Cache-Control':\s*'no-cache'/, 'Shared static server must keep no-cache semantics');
+assert.match(shared, /function isInsideRoot/, 'Shared static server must resolve filesystem containment before serving files');
+assert.match(shared, /isDirectory\(\)\) file = path\.join\(file, 'index\.html'\)/, 'Shared static server must support directory index fallback');
+assert.match(shared, /const DEV_FRESHNESS_ROOTS = Object\.freeze\(\['index\.html', 'src', 'styles'\]\)/, 'Dev freshness should watch source/UI roots without scanning large asset/build directories');
+assert.match(shared, /module\.exports\s*=\s*{[\s\S]*MIME[\s\S]*createGameServer/, 'Shared module must export MIME + createGameServer');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ELECTRON MAIN — must wire the shared module, keep the fixed port + save-origin rules.
+// ─────────────────────────────────────────────────────────────────────────────
 const electronMain = read('electron/main.cjs');
-const electronLoadUrlLine = electronMain.split(/\r?\n/).find((line) => line.includes('win.loadURL')) || '';
-assert.ok(
-  electronLoadUrlLine.includes('http://127.0.0.1:${port}/`'),
-  'Electron must load the canonical root game URL'
-);
-assert.doesNotMatch(
-  electronLoadUrlLine,
-  /\?|prod=1|release=1|debug=|dev=/,
-  'Electron must not inject mode/query flags into the normal game launch URL'
-);
 assert.match(
   electronMain,
-  /const PORT = 41788;/,
-  'Electron must use the fixed packaged-app port so localStorage saves survive relaunches'
+  /require\(['"]\.\.\/scripts\/lib\/gameServer\.cjs['"]\)/,
+  'Electron main must require the shared gameServer module (single source of truth for serving)'
 );
+assert.match(electronMain, /const \{ createGameServer \}/, 'Electron main must destructure createGameServer from the shared module');
+assert.match(
+  electronMain,
+  /createGameServer\(\s*\{\s*root:\s*ROOT,\s*async:\s*false\s*\}\s*\)/,
+  'Electron main must build its server via createGameServer (not inline its own HTTP server)'
+);
+assert.match(electronMain, /const PORT = 41788;/, 'Electron must use the fixed packaged-app port so localStorage saves survive relaunches');
 assert.match(
   electronMain,
   /const ROOT = app\.isPackaged && fs\.existsSync\(path\.join\(BUNDLE_ROOT, 'index\.html'\)\) \? BUNDLE_ROOT : PROJECT_ROOT;/,
   'Electron dev must serve PROJECT_ROOT so stale build/web output cannot diverge from browser play'
 );
-assert.match(
+assert.match(electronMain, /server\.listen\(PORT, '127\.0\.0\.1'/, 'Electron must try the fixed port before any fallback port');
+assert.match(electronMain, /EADDRINUSE/, 'Electron must fall back to an ephemeral port only if the fixed port is busy (not crash)');
+assert.doesNotMatch(
   electronMain,
-  /server\.listen\(PORT, '127\.0\.0\.1'/,
-  'Electron must try the fixed port before any fallback port'
-);
-assert.match(
-  electronMain,
-  /'\.glb': 'model\/gltf-binary'/,
-  'Electron MIME table must serve release-authored GLB ship assets as model/gltf-binary'
-);
-assert.match(
-  electronMain,
-  /'\.gltf': 'model\/gltf\+json; charset=utf-8'/,
-  'Electron MIME table must serve GLTF JSON assets consistently with the dev server'
-);
-assert.match(
-  electronMain,
-  /'\.ktx2': 'image\/ktx2'/,
-  'Electron MIME table must serve KTX2 textures consistently with the dev server'
+  /'\.glb'\s*:\s*'model|'\.ktx2'\s*:\s*'image|const MIME\s*=/,
+  'Electron main must NOT inline its own MIME table — it must come from the shared module'
 );
 assert.doesNotMatch(
   electronMain,
-  /location\.reload|webContents\.reload|__dev_auto_refresh/,
-  'Electron dev must not auto-reload the game while agents are editing files'
+  /function isInsideRoot|maxMtimeMsSync\(file\)\s*\{/,
+  'Electron main must NOT inline serving/freshness logic — it must come from the shared module'
 );
+assert.doesNotMatch(electronMain, /location\.reload|webContents\.reload|__dev_auto_refresh/, 'Electron dev must not auto-reload the game while agents are editing files');
+const electronLoadUrlLine = electronMain.split(/\r?\n/).find((line) => line.includes('win.loadURL')) || '';
+assert.ok(electronLoadUrlLine.includes('http://127.0.0.1:${port}/`'), 'Electron must load the canonical root game URL');
+assert.doesNotMatch(electronLoadUrlLine, /\?|prod=1|release=1|debug=|dev=/, 'Electron must not inject mode/query flags into the normal game launch URL');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BROWSER SERVER — must also wire the shared module (ESM via createRequire).
+// ─────────────────────────────────────────────────────────────────────────────
+const devServer = read('server.js');
 assert.match(
-  electronMain,
-  /'Cache-Control': 'no-cache'/,
-  'Electron static server must keep no-cache semantics like the browser dev server'
+  devServer,
+  /require\(['"]\.\/scripts\/lib\/gameServer\.cjs['"]\)/,
+  'Browser server must require the shared gameServer module via createRequire (single source of truth)'
 );
-assert.match(
-  electronMain,
-  /function isInsideRoot\(file\)[\s\S]*path\.resolve\(file\)[\s\S]*RESOLVED_ROOT/,
-  'Electron static server must resolve filesystem containment before serving files'
-);
-assert.match(
-  electronMain,
-  /stats\.isDirectory\(\).*index\.html/s,
-  'Electron static server must support directory index fallback like the browser dev server'
+assert.match(devServer, /createGameServer\(\s*\{\s*root:\s*ROOT,[\s\S]*async:\s*true/, 'Browser server must build its server via createGameServer (async mode)');
+assert.match(devServer, /__dev_freshness|extraRoutes/, 'Browser server may keep its /__dev_freshness + /__shot routes via extraRoutes');
+assert.doesNotMatch(
+  devServer,
+  /'\.glb'\s*:\s*'model|const MIME\s*=\s*\{|function maxMtimeMs/,
+  'Browser server must NOT inline its own MIME table or freshness logic — it must come from the shared module'
 );
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RUNTIME — backend defaults, asset mode, save canonicalization, no URL forks.
+// ─────────────────────────────────────────────────────────────────────────────
 const releaseMode = read('src/render/releaseMode.js');
 assert.doesNotMatch(
   releaseMode,
@@ -85,11 +101,7 @@ assert.match(
 );
 
 const main = read('src/main.js');
-assert.doesNotMatch(
-  main,
-  /prod=1|get\('prod'\)|\?prod/,
-  'Boot/debug policy must not use a prod query flag to fork the runtime'
-);
+assert.doesNotMatch(main, /prod=1|get\('prod'\)|\?prod/, 'Boot/debug policy must not use a prod query flag to fork the runtime');
 assert.match(
   main,
   /helpers\.finalizeLoadedGame\s*=\s*\(payload\)\s*=>\s*finalizeLoadedGame\(state,\s*bus,\s*payload\s*\|\|\s*\{\}\);/,
@@ -108,37 +120,14 @@ assert.doesNotMatch(
   'Browser dev page must not auto-reload the game while agents are editing files'
 );
 
-const devServer = read('server.js');
-assert.match(
-  devServer,
-  /__dev_freshness/,
-  'Browser dev server may expose source freshness for manual diagnostics'
-);
-assert.match(
-  devServer,
-  /const DEV_FRESHNESS_ROOTS = \['index\.html', 'src', 'styles'\];/,
-  'Dev freshness should watch source/UI roots without scanning large asset/build directories'
-);
-
 const bundle = read('scripts/build-bundle.mjs');
-assert.doesNotMatch(
-  bundle,
-  /\?prod=1/,
-  'Bundle policy must not refer to prod query flags'
-);
-assert.match(
-  bundle,
-  /assets', 'ui'[\s\S]*assets', 'ships'/,
-  'Production bundle must copy player-facing UI art beside ship/cinematic assets'
-);
+assert.doesNotMatch(bundle, /\?prod=1/, 'Bundle policy must not refer to prod query flags');
+assert.match(bundle, /assets', 'ui'[\s\S]*assets', 'ships'/, 'Production bundle must copy player-facing UI art beside ship/cinematic assets');
 
 const packageJson = JSON.parse(read('package.json'));
 const packageFiles = (((packageJson || {}).build || {}).files || []).map(normalizeRel);
 for (const assetRoot of ['assets/cinematics', 'assets/ui', 'assets/ships']) {
-  assert.ok(
-    isPackagedRoot(assetRoot, packageFiles),
-    `Electron package files must include ${assetRoot}/** for player-facing release assets`
-  );
+  assert.ok(isPackagedRoot(assetRoot, packageFiles), `Electron package files must include ${assetRoot}/** for player-facing release assets`);
 }
 
 const gameState = read('src/core/gameState.js');
@@ -150,18 +139,10 @@ assert.match(
 
 const settingsScreen = read('src/ui/screens/settings.js');
 for (const label of ['Physics backend', 'Flight controller', 'AI backend']) {
-  assert.doesNotMatch(
-    settingsScreen,
-    new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-    `Settings must not expose player-facing ${label} runtime forks`
-  );
+  assert.doesNotMatch(settingsScreen, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `Settings must not expose player-facing ${label} runtime forks`);
 }
 for (const option of ['Custom Controller (legacy)', 'Legacy FSM', 'Rapier Observer']) {
-  assert.doesNotMatch(
-    settingsScreen,
-    new RegExp(option.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-    `Settings must not expose ${option} as a normal play option`
-  );
+  assert.doesNotMatch(settingsScreen, new RegExp(option.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `Settings must not expose ${option} as a normal play option`);
 }
 
 const saveSystem = read('src/save/saveSystem.js');
@@ -181,7 +162,7 @@ assert.match(
   'save:loaded must expose whether playable flight is waiting on authored visual readiness'
 );
 
-console.log('Launch policy OK: one player URL, stable Electron save origin, release-authored default assets, packaged static-server parity, canonical runtime backends, no prod query fork.');
+console.log('Launch policy OK: one player URL, one shared server module (browser + Electron), stable Electron save origin, release-authored default assets, canonical runtime backends, no prod query fork.');
 
 function isPackagedRoot(root, patterns) {
   const relRoot = normalizeRel(root);

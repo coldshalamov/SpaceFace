@@ -2,13 +2,15 @@
 // Serves the app from a tiny in-process static server on a FIXED localhost port so ES modules +
 // the importmap load exactly as they do in a browser, then opens a frameless game window.
 //
-// SAVE PERSISTENCE: the port MUST be fixed. localStorage (where saveSystem.js persists) is keyed by
-// origin = scheme://host:port. A random port (listen(0)) changes the origin every launch, so every
-// prior save becomes invisible. A fixed port keeps the origin stable across relaunches → saves persist.
+// The HTTP core (MIME table, dev-freshness, static serving, containment check) lives in
+// scripts/lib/gameServer.cjs and is SHARED with server.js so the two launchers can never drift.
+// This file is the Electron-only shell: app lifecycle, single-instance lock, GPU switches,
+// window creation, fixed-port-for-saves, packaged→bundle root selection.
+// `npm run check:launch-policy` enforces that both launchers share that module.
 const { app, BrowserWindow } = require('electron');
-const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { createGameServer } = require('../scripts/lib/gameServer.cjs');
 
 // WEB ROOT: packaged desktop serves the bundled release output in build/web/. Electron dev serves
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
@@ -16,85 +18,23 @@ const path = require('path');
 const PROJECT_ROOT = path.join(__dirname, '..');
 const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
 const ROOT = app.isPackaged && fs.existsSync(path.join(BUNDLE_ROOT, 'index.html')) ? BUNDLE_ROOT : PROJECT_ROOT;
-const RESOLVED_ROOT = path.resolve(ROOT);
-const IS_DEV_ROOT = RESOLVED_ROOT === path.resolve(PROJECT_ROOT);
-// Dedicated fixed port for the packaged app (distinct from the dev server's 8123 so both can run).
-const PORT = 41788;
-const MIME = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
-  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
-  '.ktx2': 'image/ktx2', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json; charset=utf-8',
-  '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf',
-  '.ico': 'image/x-icon', '.map': 'application/json; charset=utf-8',
-};
 
+// SAVE PERSISTENCE: the port MUST be fixed. localStorage (where saveSystem.js persists) is keyed by
+// origin = scheme://host:port. A random port (listen(0)) changes the origin every launch, so every
+// prior save becomes invisible. A fixed port keeps the origin stable across relaunches → saves persist.
+const PORT = 41788;
+
+// GPU hints (shell-only — must not change gameplay/renderer features).
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 
-function isInsideRoot(file) {
-  const resolved = path.resolve(file);
-  return resolved === RESOLVED_ROOT || resolved.startsWith(RESOLVED_ROOT + path.sep);
-}
-
-const DEV_FRESHNESS_ROOTS = ['index.html', 'src', 'styles'];
-let freshnessCache = { checkedAt: 0, version: '' };
-
-function maxMtimeMs(file) {
-  const s = fs.statSync(file);
-  if (!s.isDirectory()) return s.mtimeMs;
-  let max = s.mtimeMs;
-  for (const entry of fs.readdirSync(file, { withFileTypes: true })) {
-    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === 'build' || entry.name === 'dist') continue;
-    max = Math.max(max, maxMtimeMs(path.join(file, entry.name)));
-  }
-  return max;
-}
-
-function devFreshnessPayload() {
-  if (!IS_DEV_ROOT) return { dev: false, version: '' };
-  const now = Date.now();
-  if (freshnessCache.version && now - freshnessCache.checkedAt < 750) return { dev: true, version: freshnessCache.version };
-  let max = 0;
-  for (const rel of DEV_FRESHNESS_ROOTS) {
-    try { max = Math.max(max, maxMtimeMs(path.join(ROOT, rel))); } catch {}
-  }
-  freshnessCache = { checkedAt: now, version: String(Math.round(max)) };
-  return { dev: true, version: freshnessCache.version };
-}
-
 function startServer() {
   return new Promise((resolve) => {
-    const server = http.createServer((req, res) => {
-      if (req.method === 'GET' && (req.url || '').startsWith('/__dev_freshness')) {
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-        res.end(JSON.stringify(devFreshnessPayload()));
-        return;
-      }
-      let p = decodeURIComponent((req.url || '/').split('?')[0]);
-      if (p === '/' || p === '') p = '/index.html';
-      const safe = path.normalize(p).replace(/^(\.\.[/\\])+/, '');
-      let file = path.join(ROOT, safe);
-      if (!isInsideRoot(file)) { res.writeHead(403); res.end('Forbidden'); return; }
-      fs.stat(file, (statErr, stats) => {
-        if (statErr) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 ' + safe); return; }
-        if (stats.isDirectory()) file = path.join(file, 'index.html');
-        if (!isInsideRoot(file)) { res.writeHead(403); res.end('Forbidden'); return; }
-        fs.readFile(file, (err, data) => {
-          if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 ' + safe); return; }
-          res.writeHead(200, {
-            'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-            'Cache-Control': 'no-cache',
-          });
-          res.end(data);
-        });
-      });
-    });
-    // Fixed port for a stable origin (save persistence). If it's busy (rare — another app, or a stale
-    // instance the single-instance lock didn't catch), fall back to an ephemeral port so the game still
-    // boots rather than crashing to a black window.
+    const server = createGameServer({ root: ROOT, async: false });
+    // Fixed port for a stable origin (save persistence). If it's busy (rare — another app, or a
+    // stale instance the single-instance lock didn't catch), fall back to an ephemeral port so the
+    // game still boots rather than crashing to a black window.
     server.on('error', (err) => {
       if (err && err.code === 'EADDRINUSE') {
         console.warn('[electron] port ' + PORT + ' busy; using an ephemeral port (saves may not persist this run)');
