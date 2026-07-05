@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -9,6 +10,10 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_FRAMES = 360;
 const DEFAULT_WARMUP_FRAMES = 45;
+const DEFAULT_MIN_INSPECTED_FRAMES = 300;
+const PLAYER_LOD_SETTLE_FRAMES = 30;
+const PLAYER_READABLE_SCREEN_RADIUS_PX = 80;
+const PLAYER_MIN_VISIBLE_AUTHORED_SURFACES = 8;
 const DEFAULT_FLIGHT_START_TIMEOUT_MS = 90000;
 const WIDTH = readIntArg('--width', 1440);
 const HEIGHT = readIntArg('--height', 900);
@@ -24,7 +29,7 @@ let browser = null;
 try {
   const requestedBaseUrl = process.env.SF_PROBE_URL || '';
   server = requestedBaseUrl ? { baseUrl: requestedBaseUrl } : await startFreshServer();
-  browser = await chromium.launch({ headless: true });
+  browser = await launchProbeBrowser();
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
   const pageIssues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
 
@@ -38,24 +43,17 @@ try {
     window.SF.bus.emit('ui:closeAll', {});
   });
 
-  try {
-    await page.waitForFunction(
-      () => window.SF
-        && window.SF.state
-        && window.SF.state.mode === 'flight'
-        && window.SF.state.playerId
-        && window.SF.state.entities.get(window.SF.state.playerId)
-        && window.SF.state.entities.get(window.SF.state.playerId).mesh,
-      null,
-      { timeout: FLIGHT_START_TIMEOUT_MS },
-    );
-  } catch (error) {
-    const snapshot = await collectStartupSnapshot(page);
-    throw new Error(`flight did not become playable before visual stability probe: ${JSON.stringify(snapshot)}`);
-  }
+  await waitForPlayableFlight(page, FLIGHT_START_TIMEOUT_MS);
 
   await page.waitForTimeout(750);
-  const stability = await sampleVisualStability(page, { frames: FRAME_COUNT, warmupFrames: WARMUP_FRAMES });
+  const stability = await sampleVisualStability(page, {
+    frames: FRAME_COUNT,
+    warmupFrames: WARMUP_FRAMES,
+    minInspectedFrames: DEFAULT_MIN_INSPECTED_FRAMES,
+    playerLodSettleFrames: PLAYER_LOD_SETTLE_FRAMES,
+    playerReadableScreenRadiusPx: PLAYER_READABLE_SCREEN_RADIUS_PX,
+    playerMinVisibleAuthoredSurfaces: PLAYER_MIN_VISIBLE_AUTHORED_SURFACES,
+  });
   const errorIssues = pageIssues.errorIssues();
   const ok = stability.failures.length === 0 && errorIssues.length === 0;
   console.log(JSON.stringify({
@@ -74,11 +72,28 @@ try {
 }
 
 async function sampleVisualStability(page, options) {
-  return page.evaluate(async ({ frames, warmupFrames }) => {
+  return page.evaluate(async ({
+    frames,
+    warmupFrames,
+    minInspectedFrames,
+    playerLodSettleFrames,
+    playerReadableScreenRadiusPx,
+    playerMinVisibleAuthoredSurfaces,
+  }) => {
     const failures = [];
     const tracks = new Map();
+    const inspectedFrameCount = Math.max(0, frames - warmupFrames);
     let maxShipCount = 0;
     let finalShips = [];
+
+    if (inspectedFrameCount < minInspectedFrames) {
+      failures.push({
+        frame: null,
+        reason: 'insufficient-inspected-frames',
+        detail: { inspectedFrameCount, minInspectedFrames },
+        ship: null,
+      });
+    }
 
     for (let frame = 0; frame < frames; frame++) {
       const ships = captureShips(frame);
@@ -87,14 +102,17 @@ async function sampleVisualStability(page, options) {
       if (frame >= warmupFrames) inspectFrame(frame, ships);
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
+    inspectFinalPlayer(finalShips, Math.max(0, frames - 1));
 
     return {
       ok: failures.length === 0,
       frameCount: frames,
       warmupFrames,
+      inspectedFrameCount,
       maxShipCount,
       failureCount: failures.length,
       failures: failures.slice(0, 80),
+      trackedShips: Array.from(tracks.values()).map((track) => summarizeTrack(track)),
       finalShips: finalShips.map((ship) => summarizeShip(ship)),
     };
 
@@ -107,23 +125,42 @@ async function sampleVisualStability(page, options) {
         const key = trackKey(ship);
         let track = tracks.get(key);
         if (!track) {
-          track = {
-            rootUuid: ship.rootUuid,
-            compositionId: ship.compositionId,
-            slotsKey: ship.slotsKey,
-            firstFrame: frame,
-          };
+          track = makeTrack(ship, frame);
           tracks.set(key, track);
         }
 
+        if (ship.inView && !ship.meshExists) {
+          fail(frame, ship, 'visible-ship-has-no-root-mesh', {});
+        }
+        if (ship.meshExists !== track.meshExists) {
+          fail(frame, ship, 'mesh-existence-changed-after-warmup', { was: track.meshExists, now: ship.meshExists });
+        }
         if (ship.rootUuid && track.rootUuid && ship.rootUuid !== track.rootUuid) {
           fail(frame, ship, 'mesh-root-changed', { was: track.rootUuid, now: ship.rootUuid });
+        }
+        if (ship.authoredState !== track.authoredState) {
+          fail(frame, ship, 'authored-state-changed-after-warmup', { was: track.authoredState, now: ship.authoredState });
         }
         if (ship.compositionId !== track.compositionId) {
           fail(frame, ship, 'composition-changed-after-warmup', { was: track.compositionId, now: ship.compositionId });
         }
+        if (ship.lodLevel !== track.lodLevel) {
+          fail(frame, ship, 'lod-level-changed-after-warmup', { was: track.lodLevel, now: ship.lodLevel });
+        }
         if (ship.slotsKey !== track.slotsKey) {
           fail(frame, ship, 'authored-slots-changed-after-warmup', { was: track.slotsKey, now: ship.slotsKey });
+        }
+        if (ship.meshCount !== track.meshCount) {
+          fail(frame, ship, 'child-mesh-count-changed-after-warmup', { was: track.meshCount, now: ship.meshCount });
+        }
+        if (ship.authoredSurfaceCount !== track.authoredSurfaceCount) {
+          fail(frame, ship, 'authored-surface-count-changed-after-warmup', { was: track.authoredSurfaceCount, now: ship.authoredSurfaceCount });
+        }
+        if (ship.staticBatchCount !== track.staticBatchCount) {
+          fail(frame, ship, 'static-batch-count-changed-after-warmup', { was: track.staticBatchCount, now: ship.staticBatchCount });
+        }
+        if (ship.instanceProxyCount !== track.instanceProxyCount) {
+          fail(frame, ship, 'instance-proxy-count-changed-after-warmup', { was: track.instanceProxyCount, now: ship.instanceProxyCount });
         }
         if (ship.authoredState !== 'authored') {
           fail(frame, ship, 'ship-not-authored-during-flight', { authoredState: ship.authoredState });
@@ -131,8 +168,30 @@ async function sampleVisualStability(page, options) {
         if (ship.inView && ship.visibleRenderableCount <= 0) {
           fail(frame, ship, 'visible-ship-has-no-renderable-meshes', {});
         }
+        if (ship.inView && ship.rootVisible === false) {
+          fail(frame, ship, 'visible-ship-root-hidden', {});
+        }
         if (ship.inView && ship.visibleAuthoredSurfaceCount <= 0) {
           fail(frame, ship, 'visible-authored-ship-has-no-authored-surfaces', {});
+        }
+        if (ship.inView && ship.visibleRenderableCount > 0 && !(ship.maxWorldPrimitiveRadius > 0)) {
+          fail(frame, ship, 'ship-bounds-disappeared', { maxWorldPrimitiveRadius: ship.maxWorldPrimitiveRadius });
+        }
+        if (ship.isPlayer && ship.inView && frame >= warmupFrames + playerLodSettleFrames
+          && ship.screenRadiusPx >= playerReadableScreenRadiusPx && ship.lodLevel !== 'lod0') {
+          fail(frame, ship, 'player-readable-ship-not-lod0', {
+            lodLevel: ship.lodLevel,
+            screenRadiusPx: ship.screenRadiusPx,
+            minScreenRadiusPx: playerReadableScreenRadiusPx,
+          });
+        }
+        if (ship.isPlayer && ship.inView && frame >= warmupFrames + playerLodSettleFrames
+          && ship.screenRadiusPx >= playerReadableScreenRadiusPx
+          && ship.visibleAuthoredSurfaceCount < playerMinVisibleAuthoredSurfaces) {
+          fail(frame, ship, 'player-readable-ship-too-few-visible-authored-surfaces', {
+            visibleAuthoredSurfaceCount: ship.visibleAuthoredSurfaceCount,
+            minimum: playerMinVisibleAuthoredSurfaces,
+          });
         }
         if (ship.inView && ship.boundsBad) {
           fail(frame, ship, 'ship-bounds-non-finite', {});
@@ -146,7 +205,70 @@ async function sampleVisualStability(page, options) {
         if (ship.inView && ship.screenRadiusPx > Math.max(window.innerWidth || 1, window.innerHeight || 1) * 2.2) {
           fail(frame, ship, 'ship-screen-bounds-exploded', { screenRadiusPx: ship.screenRadiusPx });
         }
+        noteTrack(track, ship);
       }
+    }
+
+    function inspectFinalPlayer(ships, frame) {
+      const player = (ships || []).find((ship) => ship && ship.isPlayer);
+      if (!player) {
+        fail(frame, null, 'player-ship-missing-from-final-visual-snapshot', {});
+        return;
+      }
+      if (!player.inView || player.screenRadiusPx < playerReadableScreenRadiusPx) return;
+      if (player.lodLevel !== 'lod0') {
+        fail(frame, player, 'final-player-readable-ship-not-lod0', {
+          lodLevel: player.lodLevel,
+          screenRadiusPx: player.screenRadiusPx,
+          minScreenRadiusPx: playerReadableScreenRadiusPx,
+        });
+      }
+      if (player.visibleAuthoredSurfaceCount < playerMinVisibleAuthoredSurfaces) {
+        fail(frame, player, 'final-player-readable-ship-too-few-visible-authored-surfaces', {
+          visibleAuthoredSurfaceCount: player.visibleAuthoredSurfaceCount,
+          minimum: playerMinVisibleAuthoredSurfaces,
+        });
+      }
+    }
+
+    function makeTrack(ship, frame) {
+      return {
+        id: ship.id,
+        defId: ship.defId,
+        firstFrame: frame,
+        rootUuid: ship.rootUuid,
+        meshExists: ship.meshExists,
+        authoredState: ship.authoredState,
+        authoredMode: ship.authoredMode,
+        compositionId: ship.compositionId,
+        slotsKey: ship.slotsKey,
+        lodLevel: ship.lodLevel,
+        meshCount: ship.meshCount,
+        authoredSurfaceCount: ship.authoredSurfaceCount,
+        staticBatchCount: ship.staticBatchCount,
+        instanceProxyCount: ship.instanceProxyCount,
+        framesSeen: 0,
+        inViewFrames: 0,
+        missingMeshFrames: 0,
+        rootUuids: new Set(),
+        authoredStates: new Set(),
+        compositionIds: new Set(),
+        lodLevels: new Set(),
+        meshCounts: new Set(),
+        staticBatchCounts: new Set(),
+      };
+    }
+
+    function noteTrack(track, ship) {
+      track.framesSeen++;
+      if (ship.inView) track.inViewFrames++;
+      if (!ship.meshExists) track.missingMeshFrames++;
+      track.rootUuids.add(ship.rootUuid || 'missing');
+      track.authoredStates.add(ship.authoredState || 'unknown');
+      track.compositionIds.add(ship.compositionId || 'missing');
+      track.lodLevels.add(ship.lodLevel == null ? 'none' : String(ship.lodLevel));
+      track.meshCounts.add(String(ship.meshCount));
+      track.staticBatchCounts.add(String(ship.staticBatchCount));
     }
 
     function fail(frame, ship, reason, detail) {
@@ -155,7 +277,7 @@ async function sampleVisualStability(page, options) {
         frame,
         reason,
         detail,
-        ship: summarizeShip(ship),
+        ship: ship ? summarizeShip(ship) : null,
       });
     }
 
@@ -172,15 +294,48 @@ async function sampleVisualStability(page, options) {
         }
         : { width: window.innerWidth || 1, height: window.innerHeight || 1 };
       const entities = state && Array.isArray(state.entityList) ? state.entityList : [];
+      const playerId = state && state.playerId;
       return entities
         .filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
-        .map((entity) => inspectShip(entity, frame, camera, viewport))
+        .map((entity) => inspectShip(entity, frame, camera, viewport, playerId))
         .filter(Boolean);
     }
 
-    function inspectShip(entity, frame, camera, viewport) {
+    function inspectShip(entity, frame, camera, viewport, playerId) {
       const root = entity.mesh || (entity.view && entity.view.root) || null;
-      if (!root || !root.userData) return null;
+      if (!root || !root.userData) {
+        const projectedFallback = projectEntityPosition(entity, camera);
+        return {
+          frame,
+          id: entity.id,
+          defId: entity.data && entity.data.defId || null,
+          isPlayer: entity.id === playerId,
+          team: entity.team,
+          factionId: entity.factionId || null,
+          entityRadius: Number(entity.radius) || 0,
+          meshExists: false,
+          rootUuid: null,
+          rootName: '',
+          rootVisible: false,
+          authoredState: 'missing',
+          authoredMode: null,
+          compositionId: null,
+          slotsKey: '{}',
+          lodLevel: null,
+          inView: projectedFallback.inView,
+          screenRadiusPx: 0,
+          meshCount: 0,
+          visibleRenderableCount: 0,
+          authoredSurfaceCount: 0,
+          visibleAuthoredSurfaceCount: 0,
+          staticBatchCount: 0,
+          visibleStaticBatchCount: 0,
+          instanceProxyCount: 0,
+          maxWorldPrimitiveRadius: 0,
+          boundsBad: false,
+          largePrimitives: [],
+        };
+      }
       const data = root.userData || {};
       const Vector3 = root.position && root.position.constructor;
       const center = Vector3 ? new Vector3() : null;
@@ -265,9 +420,11 @@ async function sampleVisualStability(page, options) {
         frame,
         id: entity.id,
         defId: entity.data && entity.data.defId || null,
+        isPlayer: entity.id === playerId,
         team: entity.team,
         factionId: entity.factionId || null,
         entityRadius: Number(entity.radius) || 0,
+        meshExists: true,
         rootUuid: root.uuid || null,
         rootName: root.name || '',
         rootVisible: visibleThroughRoot(root, root),
@@ -289,6 +446,27 @@ async function sampleVisualStability(page, options) {
         boundsBad,
         largePrimitives: largePrimitives.slice(0, 5),
       };
+    }
+
+    function projectEntityPosition(entity, camera) {
+      const Vector3 = camera && camera.position && camera.position.constructor;
+      if (!Vector3 || !camera) return { inView: false };
+      const pos = entity && entity.pos || {};
+      const projected = new Vector3(Number(pos.x) || 0, Number(pos.y) || 0, Number(pos.z) || 0);
+      try {
+        projected.project(camera);
+        return {
+          inView: Number.isFinite(projected.x)
+            && Number.isFinite(projected.y)
+            && Number.isFinite(projected.z)
+            && Math.abs(projected.x) <= 1.35
+            && Math.abs(projected.y) <= 1.35
+            && projected.z >= -1
+            && projected.z <= 1,
+        };
+      } catch (_) {
+        return { inView: false };
+      }
     }
 
     function worldPrimitiveRadius(object, scale) {
@@ -333,6 +511,8 @@ async function sampleVisualStability(page, options) {
       return {
         id: ship.id,
         defId: ship.defId,
+        isPlayer: ship.isPlayer,
+        meshExists: ship.meshExists,
         authoredState: ship.authoredState,
         authoredMode: ship.authoredMode,
         compositionId: ship.compositionId,
@@ -344,10 +524,31 @@ async function sampleVisualStability(page, options) {
         visibleAuthoredSurfaceCount: ship.visibleAuthoredSurfaceCount,
         staticBatchCount: ship.staticBatchCount,
         visibleStaticBatchCount: ship.visibleStaticBatchCount,
-        maxWorldPrimitiveRadius: Number(ship.maxWorldPrimitiveRadius.toFixed(3)),
-        screenRadiusPx: Number(ship.screenRadiusPx.toFixed(3)),
+        maxWorldPrimitiveRadius: roundFinite(ship.maxWorldPrimitiveRadius),
+        screenRadiusPx: roundFinite(ship.screenRadiusPx),
         largePrimitives: ship.largePrimitives,
       };
+    }
+
+    function summarizeTrack(track) {
+      return {
+        id: track.id,
+        defId: track.defId,
+        firstFrame: track.firstFrame,
+        framesSeen: track.framesSeen,
+        inViewFrames: track.inViewFrames,
+        missingMeshFrames: track.missingMeshFrames,
+        rootUuids: Array.from(track.rootUuids).sort(),
+        authoredStates: Array.from(track.authoredStates).sort(),
+        compositionIds: Array.from(track.compositionIds).sort(),
+        lodLevels: Array.from(track.lodLevels).sort(),
+        meshCounts: Array.from(track.meshCounts).sort(),
+        staticBatchCounts: Array.from(track.staticBatchCounts).sort(),
+      };
+    }
+
+    function roundFinite(value) {
+      return Number.isFinite(value) ? Number(value.toFixed(3)) : value;
     }
   }, options);
 }
@@ -406,6 +607,66 @@ async function collectStartupSnapshot(page) {
   } catch (error) {
     return { error: error && error.message ? error.message : String(error) };
   }
+}
+
+async function waitForPlayableFlight(page, timeoutMs) {
+  const started = Date.now();
+  let last = null;
+  while (Date.now() - started < timeoutMs) {
+    await forceStartupRender(page);
+    last = await collectStartupSnapshot(page);
+    const ships = Array.isArray(last && last.ships) ? last.ships : [];
+    if (last && last.mode === 'flight' && last.playerId && ships.some((ship) =>
+      ship.id === last.playerId && ship.alive !== false && ship.meshState === 'authored')) {
+      return last;
+    }
+    await page.waitForTimeout(150);
+  }
+  throw new Error(`flight did not become playable before visual stability probe: ${JSON.stringify(last)}`);
+}
+
+async function forceStartupRender(page) {
+  try {
+    await page.evaluate(async () => {
+      const sf = window.SF || null;
+      const state = sf && sf.state || null;
+      const render = state && state.render || null;
+      if (!state || !render || !render.scene || !render.renderer || !render.camera) return;
+      for (const entity of state.entityList || []) {
+        if (!entity || entity.type !== 'ship' || !entity.mesh) continue;
+        entity.mesh.traverse((object) => { if (object) object.frustumCulled = false; });
+      }
+      try {
+        const partsLibrary = await import('./src/render/partsLibrary.js');
+        if (partsLibrary && typeof partsLibrary.syncAuthoredInstancePools === 'function') {
+          partsLibrary.syncAuthoredInstancePools(render.scene);
+        }
+      } catch (_) {}
+      render.renderer.render(render.scene, render.camera);
+    });
+  } catch (_) {}
+}
+
+async function launchProbeBrowser() {
+  const executablePath = findSystemBrowser();
+  if (executablePath) {
+    try {
+      return await chromium.launch({ headless: true, executablePath });
+    } catch (error) {
+      console.warn(`[ship-stability] system browser launch failed; falling back to bundled Chromium: ${error && error.message ? error.message : error}`);
+    }
+  }
+  return chromium.launch({ headless: true });
+}
+
+function findSystemBrowser() {
+  const candidates = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) || null;
 }
 
 async function startFreshServer() {
