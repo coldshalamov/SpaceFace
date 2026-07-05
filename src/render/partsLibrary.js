@@ -2031,6 +2031,7 @@ function createBindings() {
     socketNames: new Set(),
     mounts: { cockpit: [], engine: [], fin: [] },
     lod: { lod0: [], lod1: [], lod2: [] },
+    lodDynamicDetails: [],
   };
 }
 
@@ -2046,6 +2047,11 @@ function registerBinding(object, tags, bindings) {
   if (tags.decal && object.isMesh) bindings.decals.push(object);
   if (tags.mount && bindings.mounts[tags.mount]) bindings.mounts[tags.mount].push(object);
   if (renderable && tags.lod && bindings.lod[tags.lod]) bindings.lod[tags.lod].push(object);
+  if (renderable && isLodDynamicDetail(tags)) bindings.lodDynamicDetails.push(object);
+}
+
+function isLodDynamicDetail(tags = {}) {
+  return tags.drive === 'fan';
 }
 
 function requiresPerShipMesh(primitive) {
@@ -2155,6 +2161,11 @@ function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels) {
       for (const object of objects) {
         object.visible = bucket === closestAvailableLod(requested, levelsByPart.get(lodPartKey(object)));
       }
+    }
+    for (const object of bindings.lodDynamicDetails) {
+      const tags = object && object.userData && object.userData.spacefaceTags || {};
+      const baseVisible = !tags.lod || tags.lod === closestAvailableLod(requested, levelsByPart.get(lodPartKey(object)));
+      object.visible = baseVisible && requested !== 'lod2';
     }
     const visibleAuthoredHullLevel = closestAvailableLod(requested, authoredHullLevels);
     safetyCore.visible = requested === 'lod0' || !authoredHullLevels.has(visibleAuthoredHullLevel);
