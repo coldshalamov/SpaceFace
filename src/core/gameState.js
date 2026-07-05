@@ -12,7 +12,7 @@ function defaultSettings() {
     showDamageNumbers: true,
     keybinds: {},
     audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
-    video: { renderScale: 0.85, bloom: true, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'medium', pixelRatioCap: 2, motionReduce: false, shadows: false, energyMaterials: true, renderGraph: false },
+    video: { renderScale: 0.85, bloom: true, bloomStrength: 0.9, bloomThreshold: 0.65, vsync: true, fov: 50, particleQuality: 'medium', pixelRatioCap: 2, motionReduce: false, shadows: false, energyMaterials: true, renderGraph: false, dynamicResolution: false },
     gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3', controlScheme: 'pilot', controlSchemeV2: true },
     controls: {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
@@ -33,6 +33,7 @@ function defaultPlayer() {
     // "playerWanted" AI flag so patrol_lawman enemies actually hunt a criminal player. Decoupled
     // from per-faction aggro so "the law is after me" is one legible number, not eight.
     heat: 0,
+    heatZone: { active: false, center: { x: 0, z: 0 }, radius: 0, level: 0, outsideS: 0, clearAfterS: 0 },
     ownedShips: [], activeShipIndex: 0,
     moduleInventory: [], researchedNodes: [],
     droneTierCap: 1,
@@ -44,7 +45,7 @@ function defaultPlayer() {
     boostActive: false,
     insurance: { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null },
     magnetRange: 250,
-    miningBeam: { tierId: 'beam_mk1', range: 220, dps: 18, heat: 0, heatRate: 0, coolRate: 0, overheated: false, directToCargo: true },
+    miningBeam: { tierId: 'beam_mk1', range: 220, dps: 18, directToCargo: true },
     stats: { lifetimeProfit: 0, tradesCount: 0, biggestSingleProfit: 0, smuggledValue: 0, kills: 0, missionsDone: 0, totalPassiveEarnedLifetime: 0 },
     // Contextual first-time hints (onboarding.js). Each flag starts false and flips to true once
     // the hint has been shown; persisted across saves so returning players aren't re-taught.
