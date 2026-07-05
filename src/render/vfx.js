@@ -2756,6 +2756,19 @@ function setTetherCableVisible(cable, visible) {
 
 function tetherVisualRadius(entity) {
   const data = entity && entity.data || {};
+  if (entity && entity.type === 'station') {
+    const explicit = Number(data.masslineRadius);
+    if (Number.isFinite(explicit) && explicit > 0) return Math.max(24, explicit);
+    for (const value of [data.visualRadius, data.stationRadius, data.placeRadius, data.dockRadius, entity && entity.radius]) {
+      const n = Number(value);
+      if (Number.isFinite(n) && n > 0) {
+        // dockRadius is the interact bubble; using it as a hull radius pushes station masslines
+        // past the authored model so the cable appears latched to empty space.
+        return Math.max(24, n * 0.62);
+      }
+    }
+    return 24;
+  }
   const candidates = [
     data.masslineRadius,
     data.visualRadius,

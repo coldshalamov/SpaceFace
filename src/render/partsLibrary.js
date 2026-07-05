@@ -835,7 +835,10 @@ function commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, 
 }
 
 function shouldRetainReadableFallback(fallbackRoot, entity, authored) {
-  return !!(fallbackRoot && fallbackRoot.isObject3D && entity && entity.type === 'ship' && authored && authored.root);
+  // Normal play uses the release-authored ship. The procedural fallback is only for load failure;
+  // keeping it after a successful authored swap creates the old rounded placeholder silhouette and
+  // keeps dozens of duplicate ship meshes alive.
+  return false;
 }
 
 function markReadableFallbackLayer(fallbackRoot) {
