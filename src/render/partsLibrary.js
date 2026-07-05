@@ -15,6 +15,7 @@ import * as kit from './ships/shipKit.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
+const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 const INSTANCE_CHUNK_SIZE = 64;
 const INSTANCE_FAR_CULL_RADIUS = 9000;
 const INSTANCE_FRUSTUM_PAD = 420;
@@ -600,6 +601,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
   staticBatches.flush();
   normalizePlacePropBindings(bindings);
+  centerAuthoredPlaceRoot(root, record, scale);
 
   root.userData.renderContract = {
     version: 1,
@@ -612,6 +614,29 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
     root,
     authoredParts: [record.url],
     authoredSlots: { place: [record.url] },
+  };
+}
+
+function centerAuthoredPlaceRoot(root, record, scale) {
+  if (!root || !record || !record.bounds) return;
+  const center = record.bounds.center || [0, 0, 0];
+  const sx = Number(center[0]) || 0;
+  const sy = Number(center[1]) || 0;
+  const sz = Number(center[2]) || 0;
+  const s = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  root.position.set(-sx * s, 0, -sz * s);
+  root.userData.visualCenterOffset = { x: -root.position.x, y: sy * s, z: -root.position.z };
+  root.userData.visualBounds = {
+    center: [
+      (Number(record.bounds.center && record.bounds.center[0]) || 0) * s,
+      (Number(record.bounds.center && record.bounds.center[1]) || 0) * s,
+      (Number(record.bounds.center && record.bounds.center[2]) || 0) * s,
+    ],
+    size: [
+      (Number(record.bounds.size && record.bounds.size[0]) || 0) * s,
+      (Number(record.bounds.size && record.bounds.size[1]) || 0) * s,
+      (Number(record.bounds.size && record.bounds.size[2]) || 0) * s,
+    ],
   };
 }
 
@@ -835,19 +860,25 @@ function commitAuthoredBoundary(boundary, fallbackRoot, entity, library, scene, 
 }
 
 function shouldRetainReadableFallback(fallbackRoot, entity, authored) {
-  // Normal play uses the release-authored ship. The procedural fallback is only for load failure;
-  // keeping it after a successful authored swap creates the old rounded placeholder silhouette and
-  // keeps dozens of duplicate ship meshes alive.
-  return false;
+  // The starter Kestrel has a bespoke hero body that is the intended readable player ship. The
+  // modular GLB layer may add hardware detail, but it must not replace that body with the older
+  // rounded modular silhouette during live play.
+  const assetId = fallbackRoot && fallbackRoot.userData && fallbackRoot.userData.assetId;
+  return assetId === KESTREL_HERO_ASSET_ID;
 }
 
 function markReadableFallbackLayer(fallbackRoot) {
   fallbackRoot.userData = fallbackRoot.userData || {};
   fallbackRoot.userData.authoredReadableFallbackLayer = true;
+  const heroBody = fallbackRoot.userData.assetId === KESTREL_HERO_ASSET_ID;
   fallbackRoot.traverse((object) => {
     if (!object) return;
     object.userData = object.userData || {};
     object.userData.authoredReadableFallbackLayer = true;
+    if (heroBody && object.isMesh) {
+      object.userData.spacefaceAuthoredHeroBody = true;
+      if (!object.userData.spacefacePartUrl) object.userData.spacefacePartUrl = 'hero/kestrel_borrowed_time';
+    }
   });
 }
 

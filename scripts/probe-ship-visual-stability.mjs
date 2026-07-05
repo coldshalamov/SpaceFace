@@ -14,6 +14,13 @@ const DEFAULT_MIN_INSPECTED_FRAMES = 300;
 const PLAYER_LOD_SETTLE_FRAMES = 30;
 const PLAYER_READABLE_SCREEN_RADIUS_PX = 80;
 const PLAYER_MIN_VISIBLE_AUTHORED_SURFACES = 8;
+const AUTHORED_BODY_PROOF = Object.freeze({
+  minSurfaceCount: 1,
+  minRadiusRatio: 0.20,
+  minDiagonalRatio: 0.50,
+  minBodyToReadabilityDiagonalRatio: 0.35,
+  minPlayerScreenRadiusPx: 18,
+});
 const DEFAULT_FLIGHT_START_TIMEOUT_MS = 90000;
 const WIDTH = readIntArg('--width', 1440);
 const HEIGHT = readIntArg('--height', 900);
@@ -53,6 +60,7 @@ try {
     playerLodSettleFrames: PLAYER_LOD_SETTLE_FRAMES,
     playerReadableScreenRadiusPx: PLAYER_READABLE_SCREEN_RADIUS_PX,
     playerMinVisibleAuthoredSurfaces: PLAYER_MIN_VISIBLE_AUTHORED_SURFACES,
+    authoredBodyProof: AUTHORED_BODY_PROOF,
   });
   const errorIssues = pageIssues.errorIssues();
   const ok = stability.failures.length === 0 && errorIssues.length === 0;
@@ -79,6 +87,7 @@ async function sampleVisualStability(page, options) {
     playerLodSettleFrames,
     playerReadableScreenRadiusPx,
     playerMinVisibleAuthoredSurfaces,
+    authoredBodyProof,
   }) => {
     const failures = [];
     const tracks = new Map();
@@ -156,6 +165,9 @@ async function sampleVisualStability(page, options) {
         if (ship.authoredSurfaceCount !== track.authoredSurfaceCount) {
           fail(frame, ship, 'authored-surface-count-changed-after-warmup', { was: track.authoredSurfaceCount, now: ship.authoredSurfaceCount });
         }
+        if (ship.authoredBodySurfaceCount !== track.authoredBodySurfaceCount) {
+          fail(frame, ship, 'authored-body-surface-count-changed-after-warmup', { was: track.authoredBodySurfaceCount, now: ship.authoredBodySurfaceCount });
+        }
         if (ship.staticBatchCount !== track.staticBatchCount) {
           fail(frame, ship, 'static-batch-count-changed-after-warmup', { was: track.staticBatchCount, now: ship.staticBatchCount });
         }
@@ -164,6 +176,37 @@ async function sampleVisualStability(page, options) {
         }
         if (ship.authoredState !== 'authored') {
           fail(frame, ship, 'ship-not-authored-during-flight', { authoredState: ship.authoredState });
+        }
+        if (ship.authoredBodySurfaceCount < authoredBodyProof.minSurfaceCount) {
+          fail(frame, ship, 'ship-missing-authored-body-surface', {
+            authoredBodySurfaceCount: ship.authoredBodySurfaceCount,
+            minimum: authoredBodyProof.minSurfaceCount,
+          });
+        }
+        if (ship.visibleAuthoredBodySurfaceCount < authoredBodyProof.minSurfaceCount) {
+          fail(frame, ship, 'ship-missing-visible-authored-body-surface', {
+            visibleAuthoredBodySurfaceCount: ship.visibleAuthoredBodySurfaceCount,
+            minimum: authoredBodyProof.minSurfaceCount,
+          });
+        }
+        if (ship.entityRadius > 0 && ship.authoredBodyRadiusRatio < authoredBodyProof.minRadiusRatio) {
+          fail(frame, ship, 'ship-authored-body-radius-too-small', {
+            authoredBodyRadiusRatio: ship.authoredBodyRadiusRatio,
+            minimum: authoredBodyProof.minRadiusRatio,
+          });
+        }
+        if (ship.entityRadius > 0 && ship.authoredBodyDiagonalRatio < authoredBodyProof.minDiagonalRatio) {
+          fail(frame, ship, 'ship-authored-body-bounds-too-small', {
+            authoredBodyDiagonalRatio: ship.authoredBodyDiagonalRatio,
+            minimum: authoredBodyProof.minDiagonalRatio,
+          });
+        }
+        if (ship.readabilityCoreSurfaceCount > 0
+          && ship.authoredBodyToReadabilityDiagonalRatio < authoredBodyProof.minBodyToReadabilityDiagonalRatio) {
+          fail(frame, ship, 'ship-readability-shell-carrying-silhouette', {
+            authoredBodyToReadabilityDiagonalRatio: ship.authoredBodyToReadabilityDiagonalRatio,
+            minimum: authoredBodyProof.minBodyToReadabilityDiagonalRatio,
+          });
         }
         if (ship.inView && ship.visibleRenderableCount <= 0) {
           fail(frame, ship, 'visible-ship-has-no-renderable-meshes', {});
@@ -191,6 +234,14 @@ async function sampleVisualStability(page, options) {
           fail(frame, ship, 'player-readable-ship-too-few-visible-authored-surfaces', {
             visibleAuthoredSurfaceCount: ship.visibleAuthoredSurfaceCount,
             minimum: playerMinVisibleAuthoredSurfaces,
+          });
+        }
+        if (ship.isPlayer && ship.inView && frame >= warmupFrames + playerLodSettleFrames
+          && ship.screenRadiusPx >= playerReadableScreenRadiusPx
+          && ship.authoredBodyScreenRadiusPx < authoredBodyProof.minPlayerScreenRadiusPx) {
+          fail(frame, ship, 'player-readable-authored-body-screen-occupancy-too-small', {
+            authoredBodyScreenRadiusPx: ship.authoredBodyScreenRadiusPx,
+            minimum: authoredBodyProof.minPlayerScreenRadiusPx,
           });
         }
         if (ship.inView && ship.boundsBad) {
@@ -229,6 +280,12 @@ async function sampleVisualStability(page, options) {
           minimum: playerMinVisibleAuthoredSurfaces,
         });
       }
+      if (player.authoredBodyScreenRadiusPx < authoredBodyProof.minPlayerScreenRadiusPx) {
+        fail(frame, player, 'final-player-readable-authored-body-screen-occupancy-too-small', {
+          authoredBodyScreenRadiusPx: player.authoredBodyScreenRadiusPx,
+          minimum: authoredBodyProof.minPlayerScreenRadiusPx,
+        });
+      }
     }
 
     function makeTrack(ship, frame) {
@@ -245,6 +302,7 @@ async function sampleVisualStability(page, options) {
         lodLevel: ship.lodLevel,
         meshCount: ship.meshCount,
         authoredSurfaceCount: ship.authoredSurfaceCount,
+        authoredBodySurfaceCount: ship.authoredBodySurfaceCount,
         staticBatchCount: ship.staticBatchCount,
         instanceProxyCount: ship.instanceProxyCount,
         framesSeen: 0,
@@ -255,6 +313,7 @@ async function sampleVisualStability(page, options) {
         compositionIds: new Set(),
         lodLevels: new Set(),
         meshCounts: new Set(),
+        authoredBodySurfaceCounts: new Set(),
         staticBatchCounts: new Set(),
       };
     }
@@ -268,6 +327,7 @@ async function sampleVisualStability(page, options) {
       track.compositionIds.add(ship.compositionId || 'missing');
       track.lodLevels.add(ship.lodLevel == null ? 'none' : String(ship.lodLevel));
       track.meshCounts.add(String(ship.meshCount));
+      track.authoredBodySurfaceCounts.add(String(ship.authoredBodySurfaceCount));
       track.staticBatchCounts.add(String(ship.staticBatchCount));
     }
 
@@ -328,6 +388,17 @@ async function sampleVisualStability(page, options) {
           visibleRenderableCount: 0,
           authoredSurfaceCount: 0,
           visibleAuthoredSurfaceCount: 0,
+          authoredBodySurfaceCount: 0,
+          visibleAuthoredBodySurfaceCount: 0,
+          authoredBodyTriangleCount: 0,
+          authoredBodyMaxWorldPrimitiveRadius: 0,
+          authoredBodyRadiusRatio: 0,
+          authoredBodyDiagonalRatio: 0,
+          authoredBodyScreenRadiusPx: 0,
+          readabilityCoreSurfaceCount: 0,
+          visibleReadabilityCoreSurfaceCount: 0,
+          readabilityCoreMaxWorldPrimitiveRadius: 0,
+          authoredBodyToReadabilityDiagonalRatio: 0,
           staticBatchCount: 0,
           visibleStaticBatchCount: 0,
           instanceProxyCount: 0,
@@ -344,6 +415,7 @@ async function sampleVisualStability(page, options) {
       const scale = Vector3 ? new Vector3() : null;
       let inView = false;
       let screenRadiusPx = 0;
+      let authoredBodyScreenRadiusPx = 0;
 
       try {
         root.updateWorldMatrix(true, true);
@@ -366,6 +438,13 @@ async function sampleVisualStability(page, options) {
       let visibleRenderableCount = 0;
       let authoredSurfaceCount = 0;
       let visibleAuthoredSurfaceCount = 0;
+      let authoredBodySurfaceCount = 0;
+      let visibleAuthoredBodySurfaceCount = 0;
+      let authoredBodyTriangleCount = 0;
+      let authoredBodyMaxWorldPrimitiveRadius = 0;
+      let readabilityCoreSurfaceCount = 0;
+      let visibleReadabilityCoreSurfaceCount = 0;
+      let readabilityCoreMaxWorldPrimitiveRadius = 0;
       let staticBatchCount = 0;
       let visibleStaticBatchCount = 0;
       let instanceProxyCount = 0;
@@ -387,18 +466,33 @@ async function sampleVisualStability(page, options) {
           || object.userData.spacefaceStaticBatch
           || object.userData.spacefacePartUrls
         ));
-        if (isAuthoredSurface) authoredSurfaceCount++;
-        if (isAuthoredSurface && worldVisible && materialVisible) visibleAuthoredSurfaceCount++;
-        if (object.userData && object.userData.spacefaceStaticBatch) {
-          staticBatchCount++;
-          if (worldVisible && materialVisible) visibleStaticBatchCount++;
-        }
-
+        const partUrls = partUrlsForObject(object);
+        const isReadabilityCore = !!(object.userData && object.userData.spacefaceReadabilityCore)
+          || partUrls.some((url) => String(url || '').includes('readability/'));
+        const isAuthoredBodySurface = partUrls.some(isAuthoredBodyUrl) && !isReadabilityCore;
         const radius = worldPrimitiveRadius(object, scale);
         if (!Number.isFinite(radius)) {
           boundsBad = true;
           return;
         }
+        if (isAuthoredSurface) authoredSurfaceCount++;
+        if (isAuthoredSurface && worldVisible && materialVisible) visibleAuthoredSurfaceCount++;
+        if (isAuthoredBodySurface) {
+          authoredBodySurfaceCount++;
+          authoredBodyTriangleCount += triangleCount(object.geometry);
+          if (radius > authoredBodyMaxWorldPrimitiveRadius) authoredBodyMaxWorldPrimitiveRadius = radius;
+          if (worldVisible && materialVisible) visibleAuthoredBodySurfaceCount++;
+        }
+        if (isReadabilityCore) {
+          readabilityCoreSurfaceCount++;
+          if (radius > readabilityCoreMaxWorldPrimitiveRadius) readabilityCoreMaxWorldPrimitiveRadius = radius;
+          if (worldVisible && materialVisible) visibleReadabilityCoreSurfaceCount++;
+        }
+        if (object.userData && object.userData.spacefaceStaticBatch) {
+          staticBatchCount++;
+          if (worldVisible && materialVisible) visibleStaticBatchCount++;
+        }
+
         if (radius > maxWorldPrimitiveRadius) maxWorldPrimitiveRadius = radius;
         if (radius > Math.max(1, entity.radius || 0) * 12) {
           largePrimitives.push({ name: object.name || '', radius });
@@ -410,6 +504,16 @@ async function sampleVisualStability(page, options) {
           offset.set(center.x + maxWorldPrimitiveRadius, center.y, center.z).project(camera);
           if (Number.isFinite(offset.x)) {
             screenRadiusPx = Math.abs(offset.x - projected.x) * viewport.width * 0.5;
+          }
+        } catch (_) {
+          boundsBad = true;
+        }
+      }
+      if (camera && center && projected && offset && authoredBodyMaxWorldPrimitiveRadius > 0) {
+        try {
+          offset.set(center.x + authoredBodyMaxWorldPrimitiveRadius, center.y, center.z).project(camera);
+          if (Number.isFinite(offset.x)) {
+            authoredBodyScreenRadiusPx = Math.abs(offset.x - projected.x) * viewport.width * 0.5;
           }
         } catch (_) {
           boundsBad = true;
@@ -439,6 +543,23 @@ async function sampleVisualStability(page, options) {
         visibleRenderableCount,
         authoredSurfaceCount,
         visibleAuthoredSurfaceCount,
+        authoredBodySurfaceCount,
+        visibleAuthoredBodySurfaceCount,
+        authoredBodyTriangleCount,
+        authoredBodyMaxWorldPrimitiveRadius,
+        authoredBodyRadiusRatio: roundFinite((Number(entity.radius) || 0) > 0
+          ? authoredBodyMaxWorldPrimitiveRadius / (Number(entity.radius) || 1)
+          : 0),
+        authoredBodyDiagonalRatio: roundFinite((Number(entity.radius) || 0) > 0
+          ? (authoredBodyMaxWorldPrimitiveRadius * 2) / (Number(entity.radius) || 1)
+          : 0),
+        authoredBodyScreenRadiusPx,
+        readabilityCoreSurfaceCount,
+        visibleReadabilityCoreSurfaceCount,
+        readabilityCoreMaxWorldPrimitiveRadius,
+        authoredBodyToReadabilityDiagonalRatio: roundFinite(readabilityCoreMaxWorldPrimitiveRadius > 0
+          ? authoredBodyMaxWorldPrimitiveRadius / readabilityCoreMaxWorldPrimitiveRadius
+          : (authoredBodyMaxWorldPrimitiveRadius > 0 ? Infinity : 0)),
         staticBatchCount,
         visibleStaticBatchCount,
         instanceProxyCount,
@@ -499,6 +620,25 @@ async function sampleVisualStability(page, options) {
       return !material || material.visible !== false;
     }
 
+    function partUrlsForObject(object) {
+      if (!object || !object.userData) return [];
+      if (Array.isArray(object.userData.spacefacePartUrls)) return object.userData.spacefacePartUrls.filter(Boolean);
+      return object.userData.spacefacePartUrl ? [object.userData.spacefacePartUrl] : [];
+    }
+
+    function isAuthoredBodyUrl(url) {
+      const text = String(url || '');
+      return text.includes('/hulls/') || text.includes('/wholeships/') || text.includes('hero/kestrel');
+    }
+
+    function triangleCount(geometry) {
+      if (!geometry) return 0;
+      const index = typeof geometry.getIndex === 'function' ? geometry.getIndex() : geometry.index;
+      if (index && Number.isFinite(index.count)) return Math.floor(index.count / 3);
+      const position = geometry.getAttribute && geometry.getAttribute('position');
+      return position && Number.isFinite(position.count) ? Math.floor(position.count / 3) : 0;
+    }
+
     function stableSlotKey(slots) {
       if (!slots || typeof slots !== 'object') return '{}';
       const pairs = Object.entries(slots)
@@ -522,6 +662,17 @@ async function sampleVisualStability(page, options) {
         visibleRenderableCount: ship.visibleRenderableCount,
         authoredSurfaceCount: ship.authoredSurfaceCount,
         visibleAuthoredSurfaceCount: ship.visibleAuthoredSurfaceCount,
+        authoredBodySurfaceCount: ship.authoredBodySurfaceCount,
+        visibleAuthoredBodySurfaceCount: ship.visibleAuthoredBodySurfaceCount,
+        authoredBodyTriangleCount: ship.authoredBodyTriangleCount,
+        authoredBodyMaxWorldPrimitiveRadius: roundFinite(ship.authoredBodyMaxWorldPrimitiveRadius),
+        authoredBodyRadiusRatio: roundFinite(ship.authoredBodyRadiusRatio),
+        authoredBodyDiagonalRatio: roundFinite(ship.authoredBodyDiagonalRatio),
+        authoredBodyScreenRadiusPx: roundFinite(ship.authoredBodyScreenRadiusPx),
+        readabilityCoreSurfaceCount: ship.readabilityCoreSurfaceCount,
+        visibleReadabilityCoreSurfaceCount: ship.visibleReadabilityCoreSurfaceCount,
+        readabilityCoreMaxWorldPrimitiveRadius: roundFinite(ship.readabilityCoreMaxWorldPrimitiveRadius),
+        authoredBodyToReadabilityDiagonalRatio: roundFinite(ship.authoredBodyToReadabilityDiagonalRatio),
         staticBatchCount: ship.staticBatchCount,
         visibleStaticBatchCount: ship.visibleStaticBatchCount,
         maxWorldPrimitiveRadius: roundFinite(ship.maxWorldPrimitiveRadius),
@@ -543,6 +694,7 @@ async function sampleVisualStability(page, options) {
         compositionIds: Array.from(track.compositionIds).sort(),
         lodLevels: Array.from(track.lodLevels).sort(),
         meshCounts: Array.from(track.meshCounts).sort(),
+        authoredBodySurfaceCounts: Array.from(track.authoredBodySurfaceCounts).sort(),
         staticBatchCounts: Array.from(track.staticBatchCounts).sort(),
       };
     }

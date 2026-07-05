@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SCRATCH = resolve('C:/Users/93rob/AppData/Local/Temp/grok-goal-8330956f5882/implementer');
+const SCRATCH = resolve(ROOT, '.devshots', 'station-archetypes');
 const LOG = resolve(SCRATCH, 'station-archetype-live-probe.log');
 const AUTHORING_PATH = resolve(ROOT, 'assets/ships/parts/blender/authoring.json');
 const PLAYABLE_TIMEOUT_MS = 90000;
@@ -53,6 +53,7 @@ try {
   await waitFor(cdp, isPlayable, PLAYABLE_TIMEOUT_MS, 'Pallas flight session');
   const pallas = await waitForStationArchetypes(cdp, 'sector_pallas_drift');
   const report = { helios, pallas };
+  mkdirSync(SCRATCH, { recursive: true });
   writeFileSync(LOG, JSON.stringify(report, null, 2));
 
   for (const [label, sectorReport] of Object.entries(report)) {
@@ -63,6 +64,8 @@ try {
       `${label}: every station/gate archetype must finish GLB upgrade`);
     assert.deepEqual(sectorReport.missingVisibleMesh, [],
       `${label}: every station/gate archetype must have a visible mesh`);
+    assert.deepEqual(sectorReport.miscenteredAuthored, [],
+      `${label}: authored station/gate meshes must be centered on the sim entity`);
   }
   assert.ok(helios.blenderMcpAuthored >= 1, 'Helios blender_mcp stations');
   const smuggler = pallas.stations.find((s) => s.archetypeGlb === 'place_station_blackmarket');
@@ -129,6 +132,8 @@ async function collectStationReport(cdp) {
       let meshCount = 0;
       let visibleMeshCount = 0;
       let partUrl = null;
+      let authoredCenterResidual = null;
+      let authoredCenterCorrection = null;
       if (root) root.traverse((o) => {
         if (o && o.isMesh) {
           meshCount++;
@@ -136,6 +141,11 @@ async function collectStationReport(cdp) {
         }
         const urls = o && o.userData && (o.userData.spacefacePartUrls || (o.userData.spacefacePartUrl ? [o.userData.spacefacePartUrl] : []));
         if (urls && urls.length) partUrl = urls[0];
+        const correction = o && o.userData && o.userData.visualCenterOffset;
+        if (correction && Number.isFinite(correction.x) && Number.isFinite(correction.z)) {
+          authoredCenterCorrection = { x: correction.x, z: correction.z };
+          authoredCenterResidual = Math.hypot((o.position && o.position.x || 0) + correction.x, (o.position && o.position.z || 0) + correction.z);
+        }
       });
       const archetypeGlb = entity.data && entity.data.archetypeGlb;
       return {
@@ -148,6 +158,8 @@ async function collectStationReport(cdp) {
         meshCount,
         visibleMeshCount,
         partUrl,
+        authoredCenterCorrection,
+        authoredCenterResidual,
         boundaryName: root && root.name,
       };
     });
@@ -155,6 +167,9 @@ async function collectStationReport(cdp) {
     const missingVisibleMesh = rows
       .filter((r) => r.archetypeGlb && (r.state !== 'authored' || r.visibleMeshCount < 1))
       .map((r) => ({ name: r.name, archetypeGlb: r.archetypeGlb, state: r.state, visibleMeshCount: r.visibleMeshCount }));
+    const miscenteredAuthored = rows
+      .filter((r) => r.archetypeGlb && (r.authoredCenterResidual == null || r.authoredCenterResidual > 1.0))
+      .map((r) => ({ name: r.name, archetypeGlb: r.archetypeGlb, residual: r.authoredCenterResidual, correction: r.authoredCenterCorrection }));
     return {
       mode: state && state.mode,
       sectorId: state && state.world && state.world.currentSectorId,
@@ -166,6 +181,7 @@ async function collectStationReport(cdp) {
       distinctArchetypes: archetypes.size,
       missingArchetype: rows.filter((r) => !r.archetypeGlb).map((r) => r.name),
       missingVisibleMesh,
+      miscenteredAuthored,
       stations: rows,
     };
   })()`);
