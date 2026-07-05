@@ -1236,7 +1236,7 @@ export const vfx = {
     const mat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#39d0ff'),
       transparent: true, opacity: 0.72,
-      depthWrite: false, blending: THREE.NormalBlending, side: THREE.DoubleSide,
+      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;
@@ -1248,7 +1248,7 @@ export const vfx = {
     const glowMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#39d0ff'),
       transparent: true, opacity: 0.08,
-      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     });
     const glow = new THREE.Mesh(glowGeo, glowMat);
     glow.frustumCulled = false;
@@ -1271,7 +1271,7 @@ export const vfx = {
     const bandMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#d7e6ff'),
       transparent: true, opacity: 0.16,
-      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     });
     const band = new THREE.Mesh(bandGeo, bandMat);
     band.frustumCulled = false;
@@ -1330,6 +1330,7 @@ export const vfx = {
     this._tetherColorCool = new THREE.Color('#39d0ff');
     this._tetherColorWarm = new THREE.Color('#ffb35c');
     this._tetherColorHot = new THREE.Color('#ff5c5c');
+    this._tetherColorWhite = new THREE.Color('#eaffff');
   },
 
   _updateTetherCable(dt) {
@@ -1389,11 +1390,11 @@ export const vfx = {
     const s = Math.min(1, cable.strainSmooth);
     if (s < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, s / 0.55);
     else this._ctmp.lerpColors(this._tetherColorWarm, this._tetherColorHot, (s - 0.55) / 0.45);
-    cable.mesh.material.color.copy(this._ctmp);
+    cable.mesh.material.color.lerpColors(this._ctmp, this._tetherColorWhite, 0.26);
     cable.glow.material.color.copy(this._ctmp);
     const taut = cable.strainSmooth > 0.7;
-    cable.mesh.material.opacity = (taut ? 0.78 : 0.64) * cable.fade;
-    cable.glow.material.opacity = (0.035 + 0.095 * s + whipEnv * 0.035) * cable.fade;
+    cable.mesh.material.opacity = (taut ? 0.66 : 0.54) * cable.fade;
+    cable.glow.material.opacity = (0.11 + 0.13 * s + whipEnv * 0.05) * cable.fade;
     cable.band.material.color.copy(this._ctmp);
     cable.band.material.opacity = (0.12 + 0.22 * s + (tether && tether.phase === 'capture' ? 0.08 : 0)) * cable.fade;
 
