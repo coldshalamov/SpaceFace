@@ -59,7 +59,10 @@ try {
     assert.equal(sectorReport.mode, 'flight', `${label} mode`);
     assert.ok(sectorReport.archetypedCount >= 1, `${label}: archetyped stations`);
     assert.deepEqual(sectorReport.missingArchetype, [], `${label}: all stations carry archetypeGlb`);
-    assert.ok(sectorReport.authoredCount >= 1, `${label}: GLB upgrade`);
+    assert.equal(sectorReport.authoredCount, sectorReport.archetypedCount,
+      `${label}: every station/gate archetype must finish GLB upgrade`);
+    assert.deepEqual(sectorReport.missingVisibleMesh, [],
+      `${label}: every station/gate archetype must have a visible mesh`);
   }
   assert.ok(helios.blenderMcpAuthored >= 1, 'Helios blender_mcp stations');
   const smuggler = pallas.stations.find((s) => s.archetypeGlb === 'place_station_blackmarket');
@@ -88,7 +91,10 @@ async function waitForStationArchetypes(cdp, expectedSectorId = null) {
     last = await collectStationReport(cdp);
     const sectorOk = !expectedSectorId || last.sectorId === expectedSectorId;
     const minStations = expectedSectorId === 'sector_pallas_drift' ? 1 : 2;
-    if (sectorOk && last.archetypedCount >= minStations && last.authoredCount >= 1) return last;
+    if (sectorOk
+      && last.archetypedCount >= minStations
+      && last.authoredCount === last.archetypedCount
+      && last.missingVisibleMesh.length === 0) return last;
     await sleep(300);
   }
   throw new Error(`timeout waiting for station archetype GLB upgrade (sector=${expectedSectorId}); last=${JSON.stringify(last, null, 2)}`);
@@ -99,6 +105,8 @@ async function forceStationRender(cdp) {
     const state = window.SF && window.SF.state;
     const render = state && state.render;
     if (!render || !render.scene || !render.renderer || !render.camera) return;
+    const renderSystem = window.SF && window.SF.registry && window.SF.registry.get && window.SF.registry.get('render');
+    if (renderSystem && typeof renderSystem.reconcileMeshes === 'function') renderSystem.reconcileMeshes();
     for (const entity of state.entityList || []) {
       if (!entity || entity.type !== 'station' || !entity.mesh) continue;
       entity.mesh.traverse((o) => { if (o) o.frustumCulled = false; });
@@ -119,9 +127,13 @@ async function collectStationReport(cdp) {
       const root = entity.mesh || (entity.view && entity.view.root);
       const ud = root && root.userData || {};
       let meshCount = 0;
+      let visibleMeshCount = 0;
       let partUrl = null;
       if (root) root.traverse((o) => {
-        if (o && o.isMesh) meshCount++;
+        if (o && o.isMesh) {
+          meshCount++;
+          if (o.visible !== false) visibleMeshCount++;
+        }
         const urls = o && o.userData && (o.userData.spacefacePartUrls || (o.userData.spacefacePartUrl ? [o.userData.spacefacePartUrl] : []));
         if (urls && urls.length) partUrl = urls[0];
       });
@@ -134,11 +146,15 @@ async function collectStationReport(cdp) {
         isGate: !!(entity.data && entity.data.isGate),
         state: ud.authoredAssetState || 'unknown',
         meshCount,
+        visibleMeshCount,
         partUrl,
         boundaryName: root && root.name,
       };
     });
     const archetypes = new Set(rows.map((r) => r.archetypeGlb).filter(Boolean));
+    const missingVisibleMesh = rows
+      .filter((r) => r.archetypeGlb && (r.state !== 'authored' || r.visibleMeshCount < 1))
+      .map((r) => ({ name: r.name, archetypeGlb: r.archetypeGlb, state: r.state, visibleMeshCount: r.visibleMeshCount }));
     return {
       mode: state && state.mode,
       sectorId: state && state.world && state.world.currentSectorId,
@@ -149,6 +165,7 @@ async function collectStationReport(cdp) {
       proceduralAuthored: rows.filter((r) => r.state === 'authored' && r.authoringMethod === 'procedural_fallback').length,
       distinctArchetypes: archetypes.size,
       missingArchetype: rows.filter((r) => !r.archetypeGlb).map((r) => r.name),
+      missingVisibleMesh,
       stations: rows,
     };
   })()`);

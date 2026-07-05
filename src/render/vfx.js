@@ -1279,8 +1279,21 @@ export const vfx = {
     band.visible = false;
     this._scene.add(band);
 
+    const anchorGeo = new THREE.RingGeometry(0.72, 1.0, 32);
+    anchorGeo.rotateX(-Math.PI / 2);
+    const anchorMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#39d0ff'),
+      transparent: true, opacity: 0.52,
+      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const anchor = new THREE.Mesh(anchorGeo, anchorMat);
+    anchor.frustumCulled = false;
+    anchor.renderOrder = 12;
+    anchor.visible = false;
+    this._scene.add(anchor);
+
     this._tetherCable = {
-      mesh, glow, band, SEG, BANDS,
+      mesh, glow, band, anchor, SEG, BANDS,
       wasActive: false,
       latchAge: 999,      // seconds since latch (drives the whip wave)
       fade: 0,            // 0..1 visibility envelope (release = fade out, latch = snap in)
@@ -1307,22 +1320,27 @@ export const vfx = {
     cable.latchAge += dt;
     cable.fade = live ? 1 : Math.max(0, cable.fade - dt * 3.5);   // quick fade on release
     if (cable.fade <= 0 || !player) {
-      if (cable.mesh.visible) { cable.mesh.visible = false; cable.glow.visible = false; cable.band.visible = false; }
+      if (cable.mesh.visible) setTetherCableVisible(cable, false);
       return;
     }
     const anchorEnt = live ? target : this._ent(cable.lastTargetId);
-    if (!anchorEnt) { cable.mesh.visible = false; cable.glow.visible = false; cable.band.visible = false; return; }
+    if (!anchorEnt) { setTetherCableVisible(cable, false); return; }
 
-    // Endpoints: ship nose → target surface point.
+    // Endpoints: ship nose -> target visual surface point. Stations use a small collision radius so
+    // docking feels sane, but their visible body/ring is much larger. Using the collision radius made
+    // masslines appear to attach to empty space in the center of a station.
     const cf = Math.cos(player.rot), sf = Math.sin(player.rot);
     const noseR = (player.radius || 6);
     const ax = player.pos.x + cf * noseR, az = player.pos.z + sf * noseR;
     let dx = anchorEnt.pos.x - ax, dz = anchorEnt.pos.z - az;
     const dist = Math.hypot(dx, dz) || 1;
-    const tr = anchorEnt.radius || 4;
-    const bx = anchorEnt.pos.x - (dx / dist) * tr * 0.6, bz = anchorEnt.pos.z - (dz / dist) * tr * 0.6;
+    const tr = tetherVisualRadius(anchorEnt);
+    const bx = anchorEnt.pos.x - (dx / dist) * tr * 0.88, bz = anchorEnt.pos.z - (dz / dist) * tr * 0.88;
     dx = bx - ax; dz = bz - az;
     const chord = Math.hypot(dx, dz) || 1;
+    const visualTime = Number.isFinite(this.state && this.state.simTime)
+      ? this.state.simTime
+      : (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000);
     const px = -dz / chord, pz = dx / chord;   // chord perpendicular
 
     // Slack bow from REAL slack (restLength - distance): a line reeled longer than the gap hangs
@@ -1392,9 +1410,13 @@ export const vfx = {
       bandPos[o + 9] = cx + ux * bandHalfLen - px * bandHalfWidth; bandPos[o + 10] = 1.55; bandPos[o + 11] = cz + uz * bandHalfLen - pz * bandHalfWidth;
     }
     cable.band.geometry.attributes.position.needsUpdate = true;
-    cable.mesh.visible = true;
-    cable.glow.visible = true;
-    cable.band.visible = true;
+    cable.anchor.position.set(bx, 1.62, bz);
+    const anchorScale = Math.max(3.8, Math.min(18, tr * 0.16));
+    cable.anchor.scale.setScalar(anchorScale);
+    cable.anchor.rotation.y = visualTime * 1.8;
+    cable.anchor.material.color.copy(this._ctmp);
+    cable.anchor.material.opacity = (0.28 + 0.22 * s + whipEnv * 0.18) * cable.fade;
+    setTetherCableVisible(cable, true);
 
     // Near-break shiver: sparks crawl the line when the strain is critical.
     if (s > 0.85 && Math.random() < 0.5) {
@@ -2722,6 +2744,34 @@ function presentationStyle(color0, color1, spriteKind, overrides = {}) {
     lightDecay: overrides.lightDecay || 9,
     lightDistance: overrides.lightDistance || 140,
   };
+}
+
+function setTetherCableVisible(cable, visible) {
+  if (!cable) return;
+  if (cable.mesh) cable.mesh.visible = visible;
+  if (cable.glow) cable.glow.visible = visible;
+  if (cable.band) cable.band.visible = visible;
+  if (cable.anchor) cable.anchor.visible = visible;
+}
+
+function tetherVisualRadius(entity) {
+  const data = entity && entity.data || {};
+  const candidates = [
+    data.masslineRadius,
+    data.visualRadius,
+    data.dockRadius,
+    data.stationRadius,
+    data.placeRadius,
+    entity && entity.radius,
+  ];
+  for (const value of candidates) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n > 0) {
+      const minimum = entity && entity.type === 'station' ? 24 : 3.5;
+      return Math.max(minimum, n);
+    }
+  }
+  return 4;
 }
 
 // ore/commodity -> tint (cosmetic; falls back to a warm amber)

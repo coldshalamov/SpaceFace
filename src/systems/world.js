@@ -403,9 +403,15 @@ export const world = {
       const r = wr * (0.2 + rng() * 0.6);
       const pos = poi.pos ? { x: poi.pos.x, z: poi.pos.z } : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
+      const placeId = poi.landmarkGlb
+        ? String(poi.landmarkGlb).replace(/^places\//, '').replace(/\.glb$/, '')
+        : null;
+      const visualRadius = finitePositive(poi.visualRadius)
+        ? Number(poi.visualRadius)
+        : (placeId && DRESSING_RADIUS[placeId]) || (poi.landmark ? 24 : 10);
       const ent = this.helpers.spawnEntity({
         type: 'fx', factionId: poi.factionId || null, pos,
-        radius: 6, mass: 0, collides: false, ttl: Infinity,
+        radius: visualRadius, mass: 0, collides: false, ttl: Infinity,
         data: {
           poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
           hidden: !!poi.hidden, gatedBy: poi.gatedBy || null,
@@ -414,9 +420,9 @@ export const world = {
           claimable: !!poi.claimable, size: poi.size || 'M',
           landmark: !!poi.landmark,
           landmarkGlb: poi.landmarkGlb || null,
-          placeId: poi.landmarkGlb
-            ? String(poi.landmarkGlb).replace(/^places\//, '').replace(/\.glb$/, '')
-            : null,
+          placeId,
+          visualRadius,
+          placeRadius: visualRadius,
         },
       });
       active.pois.push({ id: ent.id, poiId: poi.id, type: poi.type, pos, hidden: !!poi.hidden, claimable: !!poi.claimable });
@@ -560,12 +566,13 @@ export const world = {
   _spawnPlaceProp(active, sector, placeId, pos, options = {}) {
     if (!placeId || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
     const paletteClass = options.paletteClass || paletteClassForSector(sector);
+    const radius = DRESSING_RADIUS[placeId] || 12;
     const ent = this.helpers.spawnEntity({
       type: 'fx',
       factionId: sector.factionId || null,
       pos,
       rot: Number.isFinite(options.rot) ? options.rot : 0,
-      radius: DRESSING_RADIUS[placeId] || 12,
+      radius,
       mass: 0,
       collides: false,
       ttl: Infinity,
@@ -577,6 +584,8 @@ export const world = {
         paletteClass,
         sectorId: sector.id,
         name: options.name || placeId,
+        visualRadius: radius,
+        placeRadius: radius,
       },
     });
     active.dressing.push({ id: ent.id, placeId, pos: { x: pos.x, z: pos.z }, paletteClass });
