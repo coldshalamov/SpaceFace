@@ -135,7 +135,7 @@ async function runViewportProbe(browser, viewport, runIndex) {
 
   await resetPlayerForProbe(page, { mode: 'assisted', rot: 0, vel: { x: 0, z: 0 }, boostEnergy: 100 });
   await page.keyboard.down('ShiftLeft');
-  await page.waitForTimeout(80);
+  await waitForSimTicks(page, 2);
   await page.keyboard.up('ShiftLeft');
   await waitForSimTicks(page, 15);
   const tapDash = await sampleShip(page, null, { includeNearby: true });
@@ -186,7 +186,7 @@ async function runViewportProbe(browser, viewport, runIndex) {
     tapDashFires: (tapDash.speed > 55 || tapDash.distanceFromReset > 35)
       && tapDash.dashCdT > 1
       && tapDash.boosting === false
-      && tapDash.boostEnergy < tapDash.boostMax * 0.5,
+      && tapDash.boostEnergy < tapDash.boostMax - Math.max(10, (tapDash.dashCost || 28) * 0.35),
     runtimeModeSwitchAffectsAssist: !!modeDiagnostics
       && modeDiagnostics.mode === 'newtonian'
       && !!assistedModeDiagnostics
@@ -499,6 +499,7 @@ async function resetPlayerForProbe(page, { mode = 'assisted', rot = 0, vel = { x
       drainRate: 38,
       regenRate: 22,
       dashImpulse: 150,
+      dashCost: 28,
       dashCd: 2,
       dashCdT: 0,
       _boostArmed: true,
@@ -509,6 +510,13 @@ async function resetPlayerForProbe(page, { mode = 'assisted', rot = 0, vel = { x
     if (flight) {
       flight._prevBoost = false;
       flight._suppressBoostUntilRelease = false;
+    }
+    const input = sf.registry && typeof sf.registry.get === 'function' ? sf.registry.get('input') : null;
+    if (input && input._keys) {
+      for (const key of Object.keys(input._keys)) input._keys[key] = false;
+      input._m0 = false;
+      input._m1 = false;
+      input._m2 = false;
     }
   }, { mode, rot, vel, boostEnergy });
   await isolateFlightProbeScene(page);
@@ -659,6 +667,7 @@ async function sampleShip(page, releaseStartRot = null, options = {}) {
       boosting: !!(p.flags && p.flags.boosting),
       boostEnergy: p.boost && p.boost.energy,
       boostMax: p.boost && p.boost.max,
+      dashCost: p.boost && p.boost.dashCost,
       dashCdT: p.boost && p.boost.dashCdT,
       flightMode: window.SF.state.settings && window.SF.state.settings.controls && window.SF.state.settings.controls.flightMode,
       inputMoveZ: window.SF.state.input && window.SF.state.input.moveZ,

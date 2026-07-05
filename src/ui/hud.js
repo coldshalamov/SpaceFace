@@ -1596,7 +1596,8 @@ export function createHud(ctx, alerts) {
         setStyle(boostRow, 'display', '');
         const bf = clamp01(boost.energy / boost.max);
         setScaleX(fillEls.boost, bf);
-        const dashReady = boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= boost.dashImpulse * 0.6;
+        const dashCost = Number.isFinite(boost.dashCost) ? boost.dashCost : 28;
+        const dashReady = boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= dashCost;
         setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--ready', dashReady);
         if (slow) setText(numEls.boost, Math.round(bf * 100) + (dashReady ? ' ▸' : '%'));
       } else if (boostRow) {

@@ -22,13 +22,14 @@ import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { wrapAngle } from '../core/rng.js';
 
 const ANG_VEL_DRAG = 2.2;     // per-second decay of yaw rate for drifting (intent-less) ships
-const DASH_TAP_WINDOW = 0.18;  // Shift taps up to this duration become dash; longer holds boost.
+const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
 const DEFAULT_BOOST_RESOURCE = Object.freeze({
   energy: 0,
   max: 0,
   drainRate: 40,
   regenRate: 18,
   dashImpulse: 0,
+  dashCost: 28,
   dashCd: 3,
   dashCdT: 0,
 });
@@ -170,7 +171,7 @@ export const flight = {
   },
 
   _triggerDash(e, boost, opts = {}) {
-    if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashImpulse * 0.6) return false;
+    if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashCost) return false;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const imp = boost.dashImpulse;
     if (opts.physicsAuthority) {
@@ -181,7 +182,7 @@ export const flight = {
       e.vel.x += cf * imp;
       e.vel.z += sf * imp;
     }
-    boost.energy = Math.max(0, boost.energy - boost.dashImpulse * 0.6);
+    boost.energy = Math.max(0, boost.energy - boost.dashCost);
     boost.dashCdT = boost.dashCd;
     this.bus.emit('ship:dash', { shipId: e.id, impulse: imp });
     return true;
@@ -326,6 +327,7 @@ function normalizeBoostResource(e) {
   boost.drainRate = finiteNonNegative(boost.drainRate, DEFAULT_BOOST_RESOURCE.drainRate);
   boost.regenRate = finiteNonNegative(boost.regenRate, DEFAULT_BOOST_RESOURCE.regenRate);
   boost.dashImpulse = finiteNonNegative(boost.dashImpulse, DEFAULT_BOOST_RESOURCE.dashImpulse);
+  boost.dashCost = finiteNonNegative(boost.dashCost, DEFAULT_BOOST_RESOURCE.dashCost);
   boost.dashCd = finiteNonNegative(boost.dashCd, DEFAULT_BOOST_RESOURCE.dashCd);
   boost.dashCdT = Math.min(boost.dashCd, finiteNonNegative(boost.dashCdT, DEFAULT_BOOST_RESOURCE.dashCdT));
   if ('_boostHoldT' in boost && !Number.isFinite(boost._boostHoldT)) boost._boostHoldT = 0;

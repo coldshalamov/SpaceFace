@@ -57,13 +57,14 @@ const TETHER_HELM_PHASE_MULT = Object.freeze({
 });
 
 // Boost/dash tuning — mirrors src/systems/flight.js so player feel is identical under V3.
-const DASH_TAP_WINDOW = 0.18;  // Shift taps up to this duration become dash; longer holds boost.
+const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
 const DEFAULT_BOOST_RESOURCE = Object.freeze({
   energy: 0,
   max: 0,
   drainRate: 40,
   regenRate: 18,
   dashImpulse: 0,
+  dashCost: 28,
   dashCd: 3,
   dashCdT: 0,
 });
@@ -252,12 +253,16 @@ export const flightV3 = {
     const suppressBoost = !!this._suppressBoostUntilRelease;
     const boostHeld = !!rawBoostHeld && !suppressBoost;
     const boostWasHeld = !!this._prevBoost;
-    if (boostHeld && !boostWasHeld) { boost._boostHoldT = 0; boost._dashCandidate = !opts.suppressDash; }
+    const boostGestureActive = boostWasHeld || !!boost._dashCandidate || (boost._boostHoldT > 0);
+    if (boostHeld && (!boostWasHeld || !(boost._boostHoldT > 0))) {
+      boost._boostHoldT = 0;
+      boost._dashCandidate = !opts.suppressDash;
+    }
     if (boostHeld) {
       boost._boostHoldT = (boost._boostHoldT || 0) + dt;
       if (opts.suppressDash) boost._dashCandidate = false;
       if (boost._boostHoldT > DASH_TAP_WINDOW) boost._dashCandidate = false;   // held too long → boost, not dash
-    } else if (boostWasHeld) {
+    } else if (boostGestureActive) {
       const heldT = boost._boostHoldT || 0;
       if (!opts.suppressDash && boost._dashCandidate && heldT <= DASH_TAP_WINDOW) this._triggerDash(e, boost, state);
       boost._boostHoldT = 0;
@@ -283,14 +288,14 @@ export const flightV3 = {
   },
 
   _triggerDash(e, boost, state) {
-    if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashImpulse * 0.6) return false;
+    if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashCost) return false;
     const cf = Math.cos(finite(e.rot)), sf = Math.sin(finite(e.rot));
     const imp = boost.dashImpulse;
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
     // Rapier authority path: queue the impulse (mass-scaled so delta-v is `imp` units/s),
     // matching src/systems/flight.js:176-179. The physics owner applies it next solve.
     queuePhysicsImpulse(e, { x: cf * imp * mass, y: 0, z: sf * imp * mass });
-    boost.energy = Math.max(0, boost.energy - boost.dashImpulse * 0.6);
+    boost.energy = Math.max(0, boost.energy - boost.dashCost);
     boost.dashCdT = boost.dashCd;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('ship:dash', { shipId: e.id, impulse: imp });
@@ -431,6 +436,7 @@ function normalizeBoostResource(e) {
   boost.drainRate = finiteNonNeg(boost.drainRate, DEFAULT_BOOST_RESOURCE.drainRate);
   boost.regenRate = finiteNonNeg(boost.regenRate, DEFAULT_BOOST_RESOURCE.regenRate);
   boost.dashImpulse = finiteNonNeg(boost.dashImpulse, DEFAULT_BOOST_RESOURCE.dashImpulse);
+  boost.dashCost = finiteNonNeg(boost.dashCost, DEFAULT_BOOST_RESOURCE.dashCost);
   boost.dashCd = finiteNonNeg(boost.dashCd, DEFAULT_BOOST_RESOURCE.dashCd);
   boost.dashCdT = Math.min(boost.dashCd, finiteNonNeg(boost.dashCdT, DEFAULT_BOOST_RESOURCE.dashCdT));
   if ('_boostHoldT' in boost && !Number.isFinite(boost._boostHoldT)) boost._boostHoldT = 0;
