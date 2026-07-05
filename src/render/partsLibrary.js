@@ -68,6 +68,9 @@ const PLACE_FILE_BY_ID = Object.freeze(Object.fromEntries(PLACE_FILES.map((file)
   file,
 ])));
 let fallbackPlaceGeometry = null;
+let fallbackStationCoreGeometry = null;
+let fallbackStationRingGeometry = null;
+let fallbackStationSparGeometry = null;
 
 // Runtime slots mirror assets/ships/parts/parts_manifest.json. Only list files that are actually
 // vendored; missing slots fall back procedurally instead of producing browser 404s.
@@ -361,19 +364,29 @@ function stationArchetypePlaceScale(entity) {
   const data = entity && entity.data || {};
   const raw = Number(data.placeScale);
   if (Number.isFinite(raw) && raw > 0) return raw;
-  const radius = Math.max(40, Number(entity && entity.radius) || 72);
+  const radius = stationVisualRadius(entity);
   return radius / 14;
+}
+
+function stationVisualRadius(entity) {
+  const data = entity && entity.data || {};
+  for (const value of [data.visualRadius, data.dockRadius, data.stationRadius, entity && entity.radius]) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n > 0) return Math.max(40, n);
+  }
+  return 72;
 }
 
 function buildFallbackStationArchetype(entity, placeFile) {
   const data = entity && entity.data || {};
   const placeId = data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
-  const radius = Math.max(40, Number(entity && entity.radius) || 72);
+  const radius = stationVisualRadius(entity);
   const group = new THREE.Group();
   group.name = `SF_StationArchetypeFallback_${placeId}`;
   group.userData.kind = 'station';
   group.userData.placeId = placeId;
   group.userData.archetypeGlb = data.archetypeGlb || placeId;
+  group.userData.visualRadius = radius;
   group.userData.renderContract = {
     assetBoundary: 'GLTFKit v1 — station archetype procedural fallback',
     gracefulFallback: true,
@@ -386,12 +399,32 @@ function buildFallbackStationArchetype(entity, placeFile) {
     emissive: new THREE.Color(color).multiplyScalar(0.18),
     emissiveIntensity: 0.2,
   });
-  const mesh = new THREE.Mesh(getFallbackPlaceGeometry(), material);
-  mesh.name = `SF_StationArchetypeFallback_${placeId}_Hull`;
-  mesh.scale.set(radius * 0.55, radius * 0.42, radius * 0.55);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
+  const core = new THREE.Mesh(getFallbackStationCoreGeometry(), material);
+  core.name = `SF_StationArchetypeFallback_${placeId}_Core`;
+  core.scale.set(radius * 0.75, radius * 0.55, radius * 0.75);
+  core.castShadow = true;
+  core.receiveShadow = true;
+  group.add(core);
+
+  const ring = new THREE.Mesh(getFallbackStationRingGeometry(), material);
+  ring.name = `SF_StationArchetypeFallback_${placeId}_Ring`;
+  ring.rotation.x = Math.PI / 2;
+  ring.scale.setScalar(radius);
+  ring.castShadow = true;
+  ring.receiveShadow = true;
+  group.add(ring);
+
+  for (let i = 0; i < 4; i++) {
+    const spar = new THREE.Mesh(getFallbackStationSparGeometry(), material);
+    const a = i * Math.PI / 2;
+    spar.name = `SF_StationArchetypeFallback_${placeId}_DockSpar_${i}`;
+    spar.position.set(Math.cos(a) * radius * 0.45, 0, Math.sin(a) * radius * 0.45);
+    spar.rotation.y = -a;
+    spar.scale.set(radius, radius, radius);
+    spar.castShadow = true;
+    spar.receiveShadow = true;
+    group.add(spar);
+  }
   return group;
 }
 
@@ -432,9 +465,13 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
 
   if (trigger) {
+    let armed = true;
     const previousBeforeRender = trigger.onBeforeRender;
     trigger.onBeforeRender = function authoredStationTrigger(renderer, scene, ...rest) {
       if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+      if (!armed) return;
+      armed = false;
+      trigger.onBeforeRender = previousBeforeRender;
       startAuthoredUpgrade(renderer, scene);
     };
   }
@@ -477,9 +514,13 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
 
   if (trigger) {
+    let armed = true;
     const previousBeforeRender = trigger.onBeforeRender;
     trigger.onBeforeRender = function authoredPlaceTrigger(renderer, scene, ...rest) {
       if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+      if (!armed) return;
+      armed = false;
+      trigger.onBeforeRender = previousBeforeRender;
       startAuthoredUpgrade(renderer, scene);
     };
   }
@@ -618,6 +659,21 @@ function buildFallbackPlaceProp(entity, placeFile) {
 function getFallbackPlaceGeometry() {
   if (!fallbackPlaceGeometry) fallbackPlaceGeometry = new THREE.BoxGeometry(1, 1, 1);
   return fallbackPlaceGeometry;
+}
+
+function getFallbackStationCoreGeometry() {
+  if (!fallbackStationCoreGeometry) fallbackStationCoreGeometry = new THREE.CylinderGeometry(0.42, 0.5, 0.72, 10);
+  return fallbackStationCoreGeometry;
+}
+
+function getFallbackStationRingGeometry() {
+  if (!fallbackStationRingGeometry) fallbackStationRingGeometry = new THREE.TorusGeometry(0.82, 0.055, 10, 36);
+  return fallbackStationRingGeometry;
+}
+
+function getFallbackStationSparGeometry() {
+  if (!fallbackStationSparGeometry) fallbackStationSparGeometry = new THREE.BoxGeometry(0.16, 0.12, 0.72);
+  return fallbackStationSparGeometry;
 }
 
 function fallbackPlaceColor(placeId, paletteClass) {

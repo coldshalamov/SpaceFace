@@ -1821,6 +1821,15 @@ function animateStation(host, blinkers, ring1, portal) {
   };
 }
 
+function structureVisualRadius(e, fallback = 40) {
+  const data = e && e.data || {};
+  for (const value of [data.visualRadius, data.dockRadius, data.stationRadius, e && e.radius]) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n > 0) return Math.max(4, n);
+  }
+  return fallback;
+}
+
 // Vertical jump gate: a chunky portal you fly THROUGH. The ring plane contains the
 // world Y axis + the radial-in direction (toward sector center), so a ship approaching
 // from the sector center passes cleanly through the opening. Built from primitives +
@@ -1828,7 +1837,7 @@ function animateStation(host, blinkers, ring1, portal) {
 // pylons with greebled strut boxes, a hub behind the portal, and the swirling event
 // horizon. Wormholes reuse the same chassis with a hostile palette + unstable swirl.
 function buildGate(e, pal) {
-  const R = e.radius || 70;
+  const R = structureVisualRadius(e, 70);
   const isWormhole = !!(e.data && e.data.isWormhole);
   const g = new THREE.Group();
   const blinkers = [];
@@ -1973,7 +1982,7 @@ function animateGate(host, innerRing, portal, hubGlow, blinkers, R) {
 }
 
 function buildStation(e) {
-  const R = e.radius || 40;
+  const R = structureVisualRadius(e, 40);
   const pal = resolvePalette(e);
   const isGate = e.data && (e.data.isGate || e.data.isWormhole);
   if (isGate) return buildGate(e, pal);
@@ -2039,38 +2048,12 @@ function buildStation(e) {
 }
 
 // PAINT PROFILE for large structures (stations, gates). Same dirty-outlaw vs clean-authority lever
-// as applyPaintProfile for ships, but scaled for structure dimensions (a big grime/chrome shell
-// around the whole station + a large faction insignia banner). Independent of the ship helper so
-// station geometry/scale assumptions don't leak into ship code.
+// as applyPaintProfile for ships, but without global transparent shells: stations should read as
+// their actual structure, not a colored glass bubble. Independent of the ship helper so station
+// geometry/scale assumptions don't leak into ship code.
 function applyStructureProfile(g, pal, R, seed) {
   const profile = (pal && pal.profile) || null;
   if (!profile) return;
-  const rnd = mulberryLite(seed ^ 0x517);
-  // --- CHROME: authority stations get a reflective foil shell (mirrors the nebula via env-map)
-  if (profile.chrome > 0.3) {
-    // Sheen, not shell: at the old 0.4–0.7 opacity this sphere read as a giant fog bubble that
-    // swallowed the whole station silhouette (the #1 "what IS that blob" offender in playtests).
-    // A faint env-mapped skin hugging the hull keeps the authority-chrome identity while letting
-    // the actual structure geometry carry the composition.
-    const foilMat = getMaterial(`chrome:struct:${q(profile.chrome)}`, () => new THREE.MeshStandardMaterial({
-      color: 0xffffff, metalness: 1.0, roughness: 0.3,
-      envMap: SHIP_ENV_MAP, envMapIntensity: profile.chrome * 0.5,
-      transparent: true, opacity: 0.03 + profile.chrome * 0.04, depthWrite: false,
-    }));
-    const foil = new THREE.Mesh(getGeometry('stat:chromeshell', () => new THREE.SphereGeometry(1, 16, 12)), foilMat);
-    foil.scale.setScalar(R * 1.02); g.add(foil);
-  }
-  // --- GRIME: grimy outposts/stations get weathered overlays. A few large rust/soot blooms draped
-  //     over the structure via a transparent sphere shell carrying the grime texture.
-  if (profile.grime > 0.2) {
-    const grimeMat = getMaterial(`grime:struct:${q(profile.grime)}:${pal.hull}`, () => {
-      const tex = getTexture(`grime:struct:${pal.hull}:${q(profile.grime)}`, () =>
-        makeGrimeTexture({ size: 256, seed: (seed ^ 0x51) & 0xffff, intensity: profile.grime }));
-      return new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, color: 0xffffff, roughness: 0.9, metalness: 0.0 });
-    });
-    const grime = new THREE.Mesh(getGeometry('stat:grimeshell', () => new THREE.SphereGeometry(1, 16, 12)), grimeMat);
-    grime.scale.setScalar(R * 1.03); g.add(grime);
-  }
   // --- FACTION INSIGNIA: a large glowing faction banner panel on the station flank — reads the
   //     faction identity at a glance (authority crest, punk tag, or bomber insignia).
   if (profile.noseArt) {
@@ -2085,14 +2068,6 @@ function applyStructureProfile(g, pal, R, seed) {
     const banner = new THREE.Mesh(getGeometry('stat:banner', () => new THREE.PlaneGeometry(0.6, 0.4)), naMat);
     banner.position.set(0, R * 0.1, R * 0.92); banner.scale.setScalar(R); g.add(banner);
   }
-  // --- ATMOSPHERIC HAZE: a soft volumetric-feeling glow halo around the station, tinted to the
-  //     faction emissive — sells "this place is alive / pressurized / lit from within". Pirate
-  //     stations get a sickly red haze; core stations a clean blue.
-  // Kept subtle and tight: the haze sells "lit from within" at the rim; oversized it just stacks
-  // with the chrome skin into soup.
-  const hazeMat = additiveGlowMaterial(pal.emissive, 0.07);
-  const haze = new THREE.Mesh(getGeometry('stat:haze', () => new THREE.SphereGeometry(1, 14, 10)), hazeMat);
-  haze.scale.setScalar(R * (1.12 + (profile.grime || 0) * 0.12)); g.add(haze);
 }
 
 // ---------------------------------------------------------------------------------------------
