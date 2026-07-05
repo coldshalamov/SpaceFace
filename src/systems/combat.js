@@ -220,12 +220,19 @@ export const combat = {
       beamCandidates: 0,
     };
     ctx.bus.on('projectile:hit', (p) => this.onHit(p));
-    ctx.bus.on('dock:docked', (p) => this.rememberRespawnStation(p && p.stationId));
+    ctx.bus.on('dock:docked', (p) => {
+      this.rememberRespawnStation(p && p.stationId);
+      this.setPlayerDocked(true);
+    });
+    ctx.bus.on('dock:undocked', () => this.setPlayerDocked(false));
   },
 
   // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
   // producers still pass through the legacy bridge until their emitters migrate.
   onHit({ targetId, ownerId, damage, damageType, pos, penetration = 0, impulse = null, heat = 0, statuses = [], damagePacket = null, packet = null, weaponId = null, origin = null }) {
+    if (targetId === this.state.playerId && this.playerIsDockProtected()) {
+      return { ok: false, reason: 'target_docked', targetId, attackerId: ownerId == null ? null : ownerId };
+    }
     const authoredPacket = damagePacket || packet || null;
     const result = this.ensureKernel().routeDamage({
       attackerId: ownerId,
@@ -345,6 +352,30 @@ export const combat = {
     ins.lastStationId = stationId;
   },
 
+  setPlayerDocked(docked) {
+    const player = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    if (!player) return;
+    player.flags = player.flags || {};
+    player.flags.docked = !!docked;
+    if (docked) {
+      player.flags.invuln = true;
+      player._invulnUntil = Infinity;
+      setVecXZ(player.vel, 0, 0);
+    } else {
+      player.flags.invuln = true;
+      player._invulnUntil = (this.state.simTime || 0) + 4;
+    }
+  },
+
+  playerIsDockProtected() {
+    const player = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    return !!(player && player.flags && player.flags.docked) || !!(this.state && this.state.ui && this.state.ui.docked);
+  },
+
   respawnStationId() {
     const player = this.state && this.state.player;
     const ins = player && player.insurance;
@@ -440,6 +471,7 @@ export const combat = {
         if (!e.alive) continue;
         if (e.type !== 'ship' && e.type !== 'station' && e.type !== 'drone') continue;
         if (e.id === beam.ownerId) continue;
+        if (e.id === state.playerId && this.playerIsDockProtected()) continue;
         if (ownerTeam != null && e.team === ownerTeam) continue; // no friendly fire
         let t = ((e.pos.x - ax) * dx + (e.pos.z - az) * dz) / len2;
         if (t < 0) t = 0; else if (t > 1) t = 1;

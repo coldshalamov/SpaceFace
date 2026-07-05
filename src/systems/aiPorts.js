@@ -11,6 +11,8 @@ import {
 } from '../ai/contracts.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
+import { isPlayerWanted } from './heat.js';
+import { isHostileToPlayer } from './scanner.js';
 
 const DEFAULT_SENSOR_RANGE = 1600;
 const DEFAULT_FORMATION_SPACING = 72;
@@ -510,6 +512,7 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
     const tags = cacheOwner && typeof cacheOwner._tagsFor === 'function'
       ? cacheOwner._tagsFor(other, runtime)
       : tagsFor(other, runtime, freeze);
+    const hostile = isHostile(state, self, other);
     out.push({
       id: other.id,
       kind,
@@ -519,7 +522,8 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
       vel: vec2(other.vel, freeze),
       radius: positive(other.radius, 0),
       confidence: confidenceFor(distance, range, state, self),
-      threat: threatFor(self, other),
+      threat: threatFor(state, self, other),
+      hostile,
       targetId: other.data && other.data.combat ? other.data.combat.targetId : null,
       ownerId: other.ownerId == null ? null : other.ownerId,
       disabled: isDisabled(runtime, other),
@@ -548,7 +552,7 @@ function attachmentContacts(state, self, range, activeAttachments = null, freeze
     const distance = distance2(self.pos, pos);
     const endpointVisible = attachment.ownerId === self.id || attachment.targetId === self.id;
     if (!endpointVisible && distance > range) continue;
-    const hostile = isHostile(self, attachment.ownerId === self.id ? target : owner);
+    const hostile = isHostile(state, self, attachment.ownerId === self.id ? target : owner);
     const ownedBySelf = attachment.ownerId === self.id;
     out.push({
       id: attachment.id,
@@ -559,6 +563,7 @@ function attachmentContacts(state, self, range, activeAttachments = null, freeze
       vel: freeze(relativeVelocity(owner, target)),
       radius: 2,
       confidence: endpointVisible ? 1 : confidenceFor(distance, range, state, self),
+      hostile,
       threat: hostile ? 0.85 : 0.25,
       targetId: attachment.targetId,
       ownerId: attachment.ownerId,
@@ -771,14 +776,28 @@ function objectiveValueFor(entity) {
   return 0;
 }
 
-function threatFor(self, other) {
-  if (!isHostile(self, other)) return 0;
+function threatFor(state, self, other) {
+  if (!isHostile(state, self, other)) return 0;
   const armed = other.data && Array.isArray(other.data.weapons) && other.data.weapons.length ? 0.2 : 0;
   return clamp(0.45 + armed + positive(other.mass, 1) / 400, 0, 1);
 }
 
-function isHostile(self, other) {
+function isHostile(state, self, other) {
   if (!self || !other || self.team == null || other.team == null) return false;
+  if (self.id === other.id || self.team === other.team) return false;
+
+  const selfIsPlayer = !!(state && self.id === state.playerId);
+  const otherIsPlayer = !!(state && other.id === state.playerId);
+  if (selfIsPlayer) return isHostileToPlayer(other, self.team, state);
+  if (otherIsPlayer) return isHostileToPlayer(self, other.team, state);
+
+  const selfAi = self.data && self.data.ai || {};
+  const otherAi = other.data && other.data.ai || {};
+
+  if (selfAi.passive || otherAi.passive || self.team === 2 || other.team === 2) return false;
+  if (selfAi.lawful && otherIsPlayer) return isPlayerWanted(state);
+  if (otherAi.lawful && selfIsPlayer) return isPlayerWanted(state);
+
   return self.team !== other.team;
 }
 

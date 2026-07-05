@@ -266,6 +266,7 @@ function normalizeContact(value) {
     radius: Math.max(0, finite(value.radius, 0)),
     confidence: saturate(finite(value.confidence, 1)),
     threat: saturate(finite(value.threat, 0)),
+    hostile: value.hostile === true ? true : (value.hostile === false ? false : null),
     targetId: value.targetId == null ? null : value.targetId,
     ownerId: value.ownerId == null ? null : value.ownerId,
     attachmentId: value.attachmentId == null ? null : value.attachmentId,
