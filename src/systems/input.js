@@ -274,9 +274,12 @@ export const input = {
       syncPointerScreen(this.state, e.clientX, e.clientY);
       this._lastKbmMs = performance.now();
     };
-    addEventListener('mousemove', handlePointerMove);
-    addEventListener('pointermove', handlePointerMove);
+    // Capture pointer truth before overlays can consume the event. Electron focus/activation can
+    // otherwise leave the software cursor at its fallback center until a later unhandled move.
+    addEventListener('mousemove', handlePointerMove, { capture: true });
+    addEventListener('pointermove', handlePointerMove, { capture: true });
     pointerSurface.addEventListener('mousedown', (e) => {
+      handlePointerMove(e);
       if (this._canvas && e.target !== this._canvas) {
         this._m0 = false; this._m1 = false; this._m2 = false;
         return;
