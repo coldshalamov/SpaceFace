@@ -5,7 +5,10 @@
 //
 // Input contract (read-only): state.input.actions.chargeThrow / chargeDetonate (edge bools).
 // Cargo: one cmdty_impulse_charge consumed per throw via removeCargo (src/systems/cargo.js).
-// Impulse: direct Δv on entity.vel (vx/vz); damage via combat routeDamage / scalarHitToDamagePacket.
+// Impulse: routed through the physics authority's applyImpulse (helpers.combatPhysics, same port
+// as combat/actions.js + combat/damage.js) — never a direct entity.vel write (ARCHITECTURE §3:
+// under rapier-dynamic the backend owns body state; direct mutation desyncs the rigid body).
+// Damage via combat routeDamage / scalarHitToDamagePacket.
 import { IMPULSE_CHARGES } from '../data/impulseCharges.js';
 import { removeCargo } from './cargo.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -238,15 +241,16 @@ export const impulseCharges = {
       const falloff = linearFalloff(dist, def.radius);
       if (falloff <= 0) continue;
 
-      const mass = Math.max(0.1, ent.mass || 1);
-      const dv = def.impulse * falloff / mass;
       let dirX = 0, dirZ = 1;
       if (dist > 1e-4) {
         dirX = dx / dist;
         dirZ = dz / dist;
       }
-      ent.vel.x += dirX * dv;
-      ent.vel.z += dirZ * dv;
+      // Rung 15: the blast is an impulse REQUEST to the physics authority, applied at the center
+      // of mass. Magnitude def.impulse × falloff is the old per-entity Δv × mass — same physics,
+      // different owner of the mutation. A rejected request (no rigid body / no port) is skipped,
+      // never forced with a direct vel write.
+      this._applyBlastImpulse(ent, dirX * def.impulse * falloff, dirZ * def.impulse * falloff, state);
       hits.push(ent.id);
 
       if (BLAST_DAMAGE_TYPES.has(ent.type) && def.damage > 0) {
@@ -281,6 +285,22 @@ export const impulseCharges = {
       flashReduced: false,
     });
     this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: pos, gain: 0.65 });
+  },
+
+  // Physics-authority impulse (rung 15). Same port + call shape as combat/actions.js:185 and
+  // combat/damage.js:201: helpers.combatPhysics.applyImpulse({entityId, impulse, point, reason,
+  // tick}). Returns true only if the backend accepted the impulse.
+  _applyBlastImpulse(ent, impulseX, impulseZ, state) {
+    const physics = this.helpers && this.helpers.combatPhysics;
+    if (!physics || typeof physics.applyImpulse !== 'function') return false;
+    const accepted = physics.applyImpulse({
+      entityId: ent.id,
+      impulse: { x: impulseX, z: impulseZ },
+      point: null,
+      reason: 'impulse_charge',
+      tick: state.tick,
+    });
+    return accepted !== false;
   },
 
   _routeDamage(request) {
