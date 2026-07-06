@@ -66,7 +66,7 @@
 | T3-08 | 08 | auto-target wire | `combat/autoTargetMode.js` | DONE 2026-07-06 | — | `npm run check:massline:auto-target` PASS | T3-07 | T3-09 |
 | T3-09 | 09 | threat events | `masslineThreats.js` (new) | DONE 2026-07-06 | — | `npm run check:massline:threats` PASS | T3-08 | T3-10 |
 | T3-10 | 10 | threat feedback | presentation layer | DONE 2026-07-06 | — | `npm run check:massline:threat-feedback` PASS | T3-09 | T3-11 |
-| T3-11 | 11 | arc-preview data | `masslineTelemetry.js` | NEXT | — | `check:massline:arc-data` | T3-10 | T3-12 |
+| T3-11 | 11 | arc-preview data | `masslineTelemetry.js` | IN-FLIGHT | — | `check:massline:arc-data` | T3-10 | T3-12 |
 | T3-12 | 12 | arc-preview render | `vfx.js` | NEXT | — | `check:massline:arc-render` | T3-11 | T3-13 |
 | T3-13 | 13 | whip-impact detect | `masslineImpacts.js` (new) or `masslineTelemetry.js` | NEXT | — | `check:massline:whip-impact` | T3-12 | T3-14 |
 | T3-14 | 14 | whip feedback (+opt damage) | presentation + `combat.js` | NEXT | — | `check:massline:whip-feedback` | T3-13 | T3-15 |
