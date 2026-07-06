@@ -1961,7 +1961,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble RCS. Character: RCS thrusters, directional wear. 1040 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2, profile=0.5) + WN last + AO/rough nodes via MCP for greeble antennas. Character: lightweight comms/sensor antennas, delicate tech with industrial paint wear, bolt mounts, cavity dirt. 2734 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2001,8 +2001,7 @@
           0.67,
           3.2
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2, profile=0.5) + WN last + AO/rough nodes via MCP for greeble antennas. Character: lightweight comms/sensor antennas, delicate tech with industrial paint wear, bolt mounts, cavity dirt. 2734 tris."
+      }
     },
     {
       "id": "greeble_antennas",
@@ -2063,13 +2062,14 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_nav_lights.glb",
-      "tris": 572,
-      "bytes": 229512,
+      "tris": 1852,
+      "bytes": 255708,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN + AO via MCP for greeble nav lights. Character: port/starboard emitters with industrial mounts, emissive wear. 1852 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",

@@ -1,0 +1,25 @@
+---
+pid: 11216
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; $env:WAVE15_SCRATCH = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1e0adadd5119\\implementer\"; npm run check:wave15-flight-boot 2>&1 | Tee-Object -FilePath \"$env:WAVE15_SCRATCH\\wave15-flight-boot-run.log\""
+started_at: 2026-07-06T02:52:02.891Z
+running_for_ms: 94920    
+---
+
+> spaceface@0.1.0 check:wave15-flight-boot
+> node scripts/check-wave15-flight-boot.mjs
+
+server: http://127.0.0.1:8140/ (node server.js)
+mode: flight (verified via window.SF.state.mode)
+hostile targetId=33 team=1 playerTeam=0
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForFunction: Timeout 12000ms exceeded.
+    at C:\Users\93rob\Documents\GitHub\SpaceFace\scripts\check-wave15-flight-boot.mjs:115:32 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v24.15.0

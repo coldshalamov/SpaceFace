@@ -37,10 +37,10 @@
     "greeble_pipes",
     "place_nav_buoy",
     "greeble_rcs",
-    "greeble_antennas"
+    "greeble_antennas",
+    "greeble_nav_lights"
   ],
   "pending": [
-    "greeble_nav_lights",
     "greeble_armor_plates",
     "skid_trio",
     "skid_quad",

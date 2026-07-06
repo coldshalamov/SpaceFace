@@ -24,15 +24,15 @@ Follows GOAL_FULL_PROFESSIONAL_GRAPHICS_REVAMP.md strictly. One-ID-at-a-time, st
 - [ ] final verification steps + mark COMPLETE only when all criteria
 
 ## Deviations (terse, single section)
-- Post-purge + MCP + patches (38/63 dedicated, 132 unique PNGs). Table specific for 38 + honest representative for rest; log clean; verify strict; tris exact; authored 40. Visual expanded. Not 63; honest. Verif plan executed (scratch). Single gap: 38/63 + no COMPLETE (steps 1+3 of Verification plan). Added greeble_antennas + queue clean. Verif plan steps 1-6 run + saved to scratch.
+- Post-purge + MCP + patches (38/63 dedicated, 132 unique PNGs). Table specific for 38 + honest representative for rest; log clean; verify strict; tris exact; authored 40. Visual expanded. Not 63; honest. Verif plan executed (scratch). Single gap: 39/63 dedicated (authored+3 distinct PNGs+specific 20+ line defs per ID) + verif plan step2 (global 63) + step4 (authored 63) + full table/visual specificity not hold. 41 authored, 39 pass script. Verif plan 1-6 run (failure0, 39/135u, evidence), observations in scratch. No claim. Added nav_lights real MCP.
 
 ## Current Status (2026-07-05)
-Verified: 38 (dedicated full evidence, script strict)
-Global unique PNG: 132
+Verified: 39 (dedicated full evidence, script strict)
+Global unique PNG: 135
 checks PASS (assets:live 0 fail, reach OK)
-Authored blends: 40 (added antennas)
+Authored blends: 41 (added nav_lights)
 Verification plan steps executed + outputs + audits in SCRATCH.
-Gaps fixed per skeptic: ... (updated). Strict 38/63. Added greeble_antennas full MCP + queue clean.
+Gaps fixed per skeptic: ... (updated). Strict 39/63. Added greeble_nav_lights full MCP + queue clean + script strengthen + def patches.
 See GOAL, queue, scratch/ logs.
 
 Next: continue pending with full MCP 3-pass + evidence.

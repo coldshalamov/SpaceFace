@@ -440,7 +440,7 @@ function controlFromManeuver(entity, request, dt, state) {
   const axes = localAxes(entity.rot || 0);
   const boostMult = request.boost ? profile.boostMult : 1;
   const forwardInput = clamp(request.forceLocal.forward, -1, 1);
-  const rightInput = clamp(request.forceLocal.right, -1, 1);
+  const rightInput = clamp(request.forceLocal.right, -1, 1) * 0.75;  // damp strafe vs forward to make NPCs behave more like they must broadly face their velocity (more regular ship physics)
   const forwardAuthority = forwardInput >= 0 ? authority.forward : authority.reverse;
   const forwardAccel = forwardInput * (forwardInput >= 0 ? profile.mainAccel : profile.reverseAccel) * forwardAuthority * boostMult;
   const rightAccel = rightInput * profile.strafeAccel * authority.strafe * boostMult;
