@@ -1,1 +1,1 @@
-{"partId":"place_mining_drone","tris":1000,"bytes":100000,"images":3,"note":"PRO revamp 2026-07-05"}
+{"partId":"place_mining_drone","file":"places/place_mining_drone.glb","tris":580,"bytes":189216,"images":3,"note":"PRO revamp 2026-07-05 - bevel+WN+AO via MCP for mining drone. Character: small industrial mining drone with drill/beam. 580 tris."}

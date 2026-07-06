@@ -6,7 +6,7 @@
 
 ## Authority chain (when docs disagree)
 
-1. `ARCHITECTURE.md` (at repo root) — the technical contract. (NOT `design/ARCHITECTURE.md` — that's a different, older file.)
+1. `ARCHITECTURE.md` (at repo root) — the technical contract. (The old `design/ARCHITECTURE.md` handoff blurb that collided with it has been archived to `design/_ARCHIVE/handoff_architecture.md`.)
 2. `design/GDD_2_0.md` — the design authority (vision, pillars, all system designs).
 3. `design/spec2/00_MASTER_TASTE.md` — the taste constitution inherited by ALL work (including spec3). Its Forbidden list (§6) rejects diffs.
 4. The specific `design/spec2/` or `design/spec3/` spec you are implementing.

@@ -1,0 +1,36 @@
+---
+pid: 35764
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/check-hitch-budget.mjs --duration 20000 --warmup 5000 --headed 2>&1 | Tee-Object -FilePath \".devshots/perf/hitch-budget-triage-headed.log\""
+started_at: 2026-07-06T03:31:30.837Z
+running_for_ms: 27805000 
+---
+[hitch-budget] main-thread longtasks >=50ms: [{"start":24843,"ms":74},{"start":25024,"ms":72},{"start":26066,"ms":101},{"start":26193,"ms":96},{"start":26923,"ms":200},{"start":27125,"ms":83},{"start":27290,"ms":129},{"start":27665,"ms":62},{"start":27934,"ms":69},{"start":28003,"ms":106},{"start":28370,"ms":76},{"start":28490,"ms":97},{"start":28746,"ms":128},{"start":29252,"ms":56},{"start":29396,"ms":72},{"start":29507,"ms":104},{"start":29794,"ms":65},{"start":30175,"ms":58},{"start":30297,"ms":137},{"start":30585,"ms":106},{"start":30959,"ms":169},{"start":31260,"ms":112},{"start":31477,"ms":60},{"start":38728,"ms":558},{"start":39287,"ms":297}]
+[hitch-budget] recent asset fetches: []
+[hitch-budget] scenario=scenario.47a.mass-discrepancy enemies=6 asteroids=10
+[hitch-budget] frames=1828 avg=10.94ms p95=14.9ms p99=18.9ms worst=567.5ms
+[hitch-budget] >32ms=7 >40ms=4 >50ms=4
+[hitch-budget] histogram:
+  0-8      336
+  8-12     1058
+  12-16.7  392
+  16.7-24  29
+  24-32    6
+  32-40    3
+  40-50    0
+  50+      4
+[hitch-budget] failure evidence:
+  7 post-warmup frames exceeded 32 ms
+[hitch-budget] top over-budget frames:
+  +8172ms 567.5ms entities=48
+  +8471ms 299ms entities=48
+  +253.7ms 113.6ms entities=45
+  +417.3ms 59.2ms entities=45
+  +6860.5ms 33.9ms entities=45
+  +33.6ms 33.6ms entities=45
+  +10079.7ms 33ms entities=48
+[hitch-budget] top spike sources:
+  render             10.1ms
+  sim-frame          4.7ms
+  ui                 3.4ms
+[hitch-budget] report: .devshots/perf/hitch-budget.json

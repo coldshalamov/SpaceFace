@@ -1,0 +1,116 @@
+---
+pid: 34856
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run check:render-hotpath && npm run check:bundle && npm run check:perf:control"
+started_at: 2026-07-06T04:02:41.632Z
+running_for_ms: 25935000 
+---
+
+  build\web\rapier-5PYDGNN6.js        2.1mb
+  build\web\main.js                   1.1mb
+  build\web\chunk-HECDZRJE.js       712.7kb
+  build\web\stationHub-AJIWQMGG.js  176.9kb
+  build\web\chunk-K3IQZHGP.js        79.3kb
+  ...and 60 more output files...
+
+Done in 425ms
+
+> spaceface@0.1.0 check:render-hotpath
+> node scripts/check-render-hotpath-contract.mjs
+
+Render hot-path contract OK
+
+> spaceface@0.1.0 check:bundle
+> npm run check:render-hotpath && node scripts/check-bundle.mjs && node scripts/check-asset-reachability.mjs
+
+
+> spaceface@0.1.0 check:render-hotpath
+> node scripts/check-render-hotpath-contract.mjs
+
+Render hot-path contract OK
+[check-bundle] building...
+[bundle] entry points: 1 (main.js; 23 screens via dynamic imports)
+[bundle] raw JS (src + vendor/three+rapier): 9.52 MB
+[bundle] bundled JS (minified + tree-shaken): 5.80 MB (39% smaller)
+[bundle] OK → build/web/
+[check-bundle] raw JS: 9.52 MB, bundled JS: 5.80 MB (39% smaller)
+[check-bundle] OK — bundle builds clean, no importmap, 39% JS reduction (>= 20% required).
+asset reachability OK — 10 referenced runtime assets exist and are bundled (10 under bundled roots); 10 authoring-only reference sheets held out of the runtime.
+
+> spaceface@0.1.0 check:perf:control
+> node scripts/probe-raf-control.mjs --headed --strict --width 1830 --height 973 --warmup 1000 --duration 5000
+
+{
+  "schema": "spaceface.rafControl.v1",
+  "generatedAt": "2026-07-06T04:03:04.947Z",
+  "runner": {
+    "width": 1830,
+    "height": 973,
+    "warmupMs": 1000,
+    "durationMs": 5000,
+    "frameFloorMs": 34.3,
+    "strict": true,
+    "browser": "installed-chrome-edge",
+    "headless": false,
+    "angle": null,
+    "extraBrowserArgs": [],
+    "modes": [
+      "blank",
+      "webgl-clear"
+    ]
+  },
+  "pass": true,
+  "results": [
+    {
+      "mode": "blank",
+      "pass": true,
+      "frameMs": {
+        "samples": 301,
+        "avg": 16.67,
+        "min": 15.6,
+        "max": 17.8,
+        "p50": 16.7,
+        "p95": 16.8,
+        "p99": 17,
+        "over16_7": 88,
+        "over34_3": 0,
+        "over50": 0
+      },
+      "viewport": {
+        "width": 1830,
+        "height": 974,
+        "dpr": 1.0000000149011612,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+      },
+      "renderer": null
+    },
+    {
+      "mode": "webgl-clear",
+      "pass": true,
+      "frameMs": {
+        "samples": 287,
+        "avg": 17.48,
+        "min": 16.1,
+        "max": 50.1,
+        "p50": 16.7,
+        "p95": 17.3,
+        "p99": 33.4,
+        "over16_7": 97,
+        "over34_3": 2,
+        "over50": 1
+      },
+      "viewport": {
+        "width": 1830,
+        "height": 974,
+        "dpr": 1.0000000149011612,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+      },
+      "renderer": {
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      }
+    }
+  ]
+}
+[raf-control] report: .devshots/perf/raf-control.json
+[raf-control] summary: PASS

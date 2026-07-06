@@ -1,1 +1,1 @@
-{"partId":"place_dead_hulk","tris":1000,"bytes":100000,"images":3,"note":"PRO revamp 2026-07-05"}
+{"partId":"place_dead_hulk","file":"places/place_dead_hulk.glb","tris":1740,"bytes":261540,"images":3,"note":"PRO revamp 2026-07-05 - bevel (segs=2) + WN + AO/rough bakes via MCP for dead hulk. Character: derelict wrecked hulk, rusted fractured ruin. 1740 tris."}

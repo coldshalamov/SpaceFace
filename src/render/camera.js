@@ -245,6 +245,7 @@ export function createChaseCamera(state) {
     computeOffset(_dynamicZoom);
     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
     cam.lookAt(c.focus.x, 0, c.focus.z);
+    cam.updateMatrixWorld(true);
     _snappedPlayerId = p.id;
     return true;
   }

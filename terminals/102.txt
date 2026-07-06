@@ -3,7 +3,7 @@ pid: 33804
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "node scripts/check-wave15-flight-boot.mjs 2>&1"
 started_at: 2026-07-06T03:11:42.688Z
-running_for_ms: 130011   
+running_for_ms: 28995000 
 ---
 server: http://127.0.0.1:8140/ (node server.js)
 mode: flight (verified via window.SF.state.mode)

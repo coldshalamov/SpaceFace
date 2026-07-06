@@ -38,7 +38,7 @@ game route. Handheld-specific readiness is not a target and should not be used a
 
 | Area | Current state | Next action |
 |---|---|---|
-| Cruise tier | `src/systems/cruise.js` is wired and `check-juice-contract` verifies charge/drop behavior, but `npm run check:cruise` points to missing `scripts/check-cruise.mjs`. | Add the missing cruise check or remove the stale package script only if another check fully owns the contract. |
+| Cruise tier | `src/systems/cruise.js` is wired and `check-juice-contract` verifies charge/drop behavior. `scripts/check-cruise.mjs` **EXISTS** (11KB; verified 2026-07-06) — drives the real cruise system deterministically and asserts charge time, multipliers, damage/mass-lock/manual drops, weapons-block guard. | *(Corrected 2026-07-06: previously listed as "missing" — stale.)* Run `npm run check:cruise`; if it reds, the script exists, so debug the failure rather than looking for the file. |
 | First-15 runtime | Static first-hour/onboarding checks pass, but `npm run check:first-15-runtime` currently times out. | Repair the runtime probe or the route it waits for; do not call first-15 release-ready until this is green. |
 | Market first-loop runtime | `npm run check:market-nav` passes, but `npm run check:market-first-loop` currently times out. `npm run check:balance` exits 0 with warnings. | Repair the runtime market loop proof, then decide whether balance warnings are acceptable or need tuning before release. |
 | Claim/base input proof | Map/scanner checks pass (`check:controls-discoverability`, `check:starmap-objective`, `check:localmap-routes`), but `npm run check:claim-base` currently fails around C-key fallthrough. | Fix the claim-base input binding/probe so scanner and claim-base controls share the input contract cleanly. |
@@ -51,7 +51,7 @@ game route. Handheld-specific readiness is not a target and should not be used a
 
 | Spec/plan | Missing evidence |
 |---|---|
-| SPEC2/04 World Alive | `src/systems/encounterDirector.js` and `scripts/check-encounter-director.mjs` are missing. Existing interdiction/bulk-haul pieces are partial plumbing, not the encounter director spec. |
+| SPEC2/04 World Alive | `src/systems/encounterDirector.js` **EXISTS** (1033 lines; verified 2026-07-06) — the living-universe campaign director (combat + civilian decks, sector-zone anchors, pressure/pacing gate). `scripts/check-encounter-director.mjs` **also EXISTS** (13KB) — drives determinism + budget + one-voice assertions. *(Corrected 2026-07-06: previously listed both as "missing" — stale.)* Existing interdiction/bulk-haul pieces remain partial plumbing on top of the director. | Remaining SPEC2/04 work is coverage/completeness against the spec, not building the director from scratch. Run `npm run check:encounter-director`; gaps surface as failing assertions. The `voiceArbiter.js` one-voice gate (`src/systems/voiceArbiter.js`, 215 lines) is the related "attention arbiter." |
 | SPEC2/08 PC/browser release readiness | `scripts/check-release-soak.mjs`, `scripts/capture-capsule-shots.mjs`, the 60s gameplay capture, and `.devshots/spec2/perf-browser.json` are missing. Optional desktop-shell parity can additionally produce `.devshots/spec2/perf-electron.json`. `npm run check:ci` is not currently green because prerequisite gates are red/missing. |
 | Asset production longform lane | The Blender/asset-production plan in `design/spec2/AGENT_PROMPTS.md` is not a completed production run. Treat it as a future asset lane, coordinated by `assets/ships/release.__lock/` and `release.__building/`. |
 

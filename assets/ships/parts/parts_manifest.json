@@ -34,8 +34,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_starter.glb",
-      "tris": 20322,
-      "bytes": 1489256,
+      "tris": 1612,
+      "bytes": 664636,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -54,22 +54,22 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -13.3539,
-          -0.7243,
-          -11.0881
+          -5.9595,
+          -0.7224,
+          -4.54
         ],
         "max": [
           5.3457,
-          2.1638,
-          1.888
+          0.9018,
+          1.8643
         ],
         "dimensionsM": [
-          18.6996,
-          2.888,
-          12.9761
+          11.3052,
+          1.6242,
+          6.4043
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel4 + WN + GN + panel insets + node wear layers + bakes (full 3 passes, 5+ iters). Character: rugged industrial beginner (scuffs, stencils, honest wear). 20322 tris.",
+      "note": "PRO Full Finish 2026-07-06 — Bevel4+WN+meso insets+DET weld/reactor/DEBT/hatch/bolts/tag/soot. Surfacing: trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO bake+clearcoat+roughness_variation (textures/hull_starter/). Skin: Pit repossessed 3-owner wear, DEBT graffiti, port weld scar, reactor soot, inventory tag. 1612 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -94,8 +94,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_fighter.glb",
-      "tris": 4226,
-      "bytes": 1530128,
+      "tris": 3308,
+      "bytes": 1708364,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -115,7 +115,7 @@
       "bounds": {
         "min": [
           -5.15,
-          -0.32,
+          -0.525,
           -2.9423
         ],
         "max": [
@@ -125,11 +125,11 @@
         ],
         "dimensionsM": [
           10.449,
-          1.1919,
+          1.3969,
           5.8845
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel3 + WN + inset panels (modeling/surfacing, full 3 passes, 5+ iters). Character: sleek aggressive fighter with panel lines, combat wear. 4226 tris.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + trim sheet + combat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Core lawful patrol bounty hunter cyan-steel. 31 MCP renders. tris=3308.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -154,8 +154,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_miner.glb",
-      "tris": 4276,
-      "bytes": 1530452,
+      "tris": 21048,
+      "bytes": 3352340,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -175,21 +175,21 @@
       "bounds": {
         "min": [
           -5.15,
-          -1.225,
-          -2.7
+          -1.3752,
+          -2.702
         ],
         "max": [
           5.8,
-          2.385,
-          2.7
+          2.6816,
+          2.702
         ],
         "dimensionsM": [
           10.95,
-          3.61,
-          5.4
+          4.0567,
+          5.404
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN + inset panels (modeling/surfacing passes). 4276 tris.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + ore trim sheet + dust wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Belt ore hauler dust-caked rust-amber. 30 MCP renders. tris=21048.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -214,8 +214,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_freighter.glb",
-      "tris": 4291,
-      "bytes": 1531008,
+      "tris": 3248,
+      "bytes": 1781788,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -240,16 +240,16 @@
         ],
         "max": [
           5.8006,
-          2.275,
+          2.453,
           2.12
         ],
         "dimensionsM": [
           11.3506,
-          3.425,
+          3.603,
           4.24
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for hull_freighter. Character: bulky utilitarian freighter. tris=4291.",
+      "note": "PRO revamp 2026-07-06 — 8 DET layers + Full Finish surfacing: trim sheet + wear mask (image-gen), SF_EdgeWear/SF_CavityDirt node groups, AO bake, roughness variation, clearcoat, 3-role PBR (Hull/Mech/Accent). Belt cargo runner manifest-lies character. tris=3248.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -274,8 +274,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_interceptor.glb",
-      "tris": 4226,
-      "bytes": 1530808,
+      "tris": 3212,
+      "bytes": 1429832,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -296,20 +296,20 @@
         "min": [
           -5.45,
           -0.26,
-          -2.69607
+          -2.6961
         ],
         "max": [
-          5.69869,
-          0.6716,
-          2.69607
+          5.6987,
+          1.0908,
+          2.6961
         ],
         "dimensionsM": [
-          11.14869,
-          0.9316,
-          5.39215
+          11.1487,
+          1.3508,
+          5.3921
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 4226 tris.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + interceptor trim + heat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, 3-role EEVEE lit PBR. Fringe fast pursuit heat-scarred sodium-red. 24 MCP renders. tris=3212.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -334,8 +334,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_corvette.glb",
-      "tris": 4276,
-      "bytes": 1531576,
+      "tris": 3240,
+      "bytes": 1558760,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -360,16 +360,16 @@
         ],
         "max": [
           5.95,
-          2.2115,
+          2.3183,
           2.525
         ],
         "dimensionsM": [
           11.5,
-          3.3565,
+          3.4633,
           5.05
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 4276 tris.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + corporate trim + fade wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.22, 3-role EEVEE lit PBR. Core Bastion escort corporate-clean-fading. 24 MCP renders. tris=3240.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -394,8 +394,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_frigate.glb",
-      "tris": 4384,
-      "bytes": 1544548,
+      "tris": 3300,
+      "bytes": 841536,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -429,7 +429,7 @@
           5.323
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for frigate hull. Character: agile frigate with sleek lines, combat wear. 4384 tris.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + frigate trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.28, stencil emissive, 3-role EEVEE lit PBR. Core authority squadron stripe + disciplined wear skin pass. 29 MCP renders. tris=3300.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -454,8 +454,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_capital.glb",
-      "tris": 4406,
-      "bytes": 1540096,
+      "tris": 3468,
+      "bytes": 930292,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -489,7 +489,7 @@
           7.05
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN last via MCP on capital hull. Character: large multi-role capital with industrial plating, command presence. 4406 tris.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 9 DET + cathedral trim/ashfall wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, matte oxidized, anomaly emissive, 3-role EEVEE lit PBR. Ashfall cathedral ribs + oxidation + violet vein skin pass. 30 MCP renders. tris=3468.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -514,8 +514,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_multirole.glb",
-      "tris": 2917,
-      "bytes": 1405836,
+      "tris": 2566,
+      "bytes": 774824,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -549,7 +549,7 @@
           4.45
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for multirole hull. Character: versatile multirole with balanced industrial lines, flexible role wear. 2917 tris.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + patchwork trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, violet emissive stripe, 3-role EEVEE lit PBR. Free Frontier smuggler patchwork skin pass. 29 render_viewport_to_path MCP renders. tris=2566.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -574,8 +574,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_gunship.glb",
-      "tris": 4276,
-      "bytes": 1528348,
+      "tris": 3288,
+      "bytes": 914176,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -609,7 +609,7 @@
           5.5
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for hull_gunship. Character: gunship. tris=4276.",
+      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + gunship trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, stencil emissive, 3-role EEVEE lit PBR. Military/fringe battle-scar + soot + red stencil skin pass. 32 MCP renders. tris=3288.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -634,13 +634,14 @@
       "category": "cockpits",
       "priority": "P0",
       "file": "cockpits/cockpit_dome.glb",
-      "tris": 2120,
-      "bytes": 238756,
+      "tris": 3214,
+      "bytes": 288048,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — 31 MCP viewport renders; trim/wear sheets + AO bakes + SF node groups; DET frame ribs/core stencil/collar seam/glass scratch/mount bolts; interrogation-bright emissive glass + clearcoat collar. Character: Core corporate bubble (clean-fading). tris=3214.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -680,21 +681,21 @@
           3.26,
           3.26
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for cockpit_dome. Character: dome sleek. tris=2120."
+      }
     },
     {
       "id": "cockpit_slab",
       "category": "cockpits",
       "priority": "P0",
       "file": "cockpits/cockpit_slab.glb",
-      "tris": 1564,
-      "bytes": 229424,
+      "tris": 2644,
+      "bytes": 699892,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — trim/wear sheets + AO bakes (Hull/Mech/Glass) + rust-amber belt stencil + muted glass + dock scuff DET via blender_mcp. 31 MCP renders. tris=2644.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -734,21 +735,21 @@
           1.855,
           3.7
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + node layers via MCP for cockpit_slab. Character: role-specific. tris=1564."
+      }
     },
     {
       "id": "cockpit_recessed",
       "category": "cockpits",
       "priority": "P0",
       "file": "cockpits/cockpit_recessed.glb",
-      "tris": 960,
-      "bytes": 217584,
+      "tris": 1884,
+      "bytes": 1596312,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — trim+wear image-gen textures, SF_EdgeWear/SF_CavityDirt, AO bake Hull/Mech/Accent/Glass, clearcoat stealth hull, emissive sensor slits; DET canopy_wear_streak+mount_bolt; 31 MCP renders. Pit/Quiet paranoid stealth recessed canopy. tris=1884.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -775,34 +776,34 @@
       "bounds": {
         "min": [
           -0.9,
-          -0.05,
-          -1.75
+          -0.156,
+          -2.22
         ],
         "max": [
-          4.8,
+          4.8099,
           1.18,
           1.75
         ],
         "dimensionsM": [
-          5.7,
-          1.23,
-          3.5
+          5.7099,
+          1.336,
+          3.97
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for cockpit_recessed. Character: cockpit_recessed. tris=960."
+      }
     },
     {
       "id": "engine_ion_small",
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_ion_small.glb",
-      "tris": 3212,
-      "bytes": 287632,
+      "tris": 13564,
+      "bytes": 821340,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — trim/wear sheets + AO bakes (Hull/Mech/Accent) + Pit patch/stencil/soot/cable DET via blender_mcp. 32 MCP renders. tris=13564.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -830,7 +831,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.22,
+          -0.36,
           -1.062,
           -1.062
         ],
@@ -840,25 +841,25 @@
           1.062
         ],
         "dimensionsM": [
-          2.72,
+          2.86,
           2.124,
           2.124
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + node layers via MCP for engine_ion_small. Character: role-specific. tris=3212."
+      }
     },
     {
       "id": "engine_ion_twin",
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_ion_twin.glb",
-      "tris": 1968,
-      "bytes": 268976,
+      "tris": 5664,
+      "bytes": 459984,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — trim/wear sheets + AO bakes (Hull/Mech/Accent) + Core cyan stripe/stencil/sync bridge DET via blender_mcp. 30 MCP renders. tris=5664.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -891,34 +892,34 @@
       "bounds": {
         "min": [
           -0.22,
-          -0.82,
-          -1.87
+          -1.075,
+          -1.8676
         ],
         "max": [
           2.8,
-          0.82,
-          1.87
+          0.8176,
+          1.8676
         ],
         "dimensionsM": [
           3.02,
-          1.64,
-          3.74
+          1.8926,
+          3.7352
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN on meshes (modeling pass). 1968 tris."
+      }
     },
     {
       "id": "engine_industrial",
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_industrial.glb",
-      "tris": 4000,
-      "bytes": 311260,
+      "tris": 23308,
+      "bytes": 1009464,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — trim/wear sheets + AO bakes (Hull/Mech/Accent) + Belt soot/ore/hazard/stencil DET via blender_mcp. 30 MCP renders. tris=23308.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -946,35 +947,35 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.22,
-          -1.4396,
-          -1.4396
+          -0.222,
+          -1.4331,
+          -1.4331
         ],
         "max": [
-          3.3,
-          1.471,
-          1.4396
+          3.302,
+          1.469,
+          1.4331
         ],
         "dimensionsM": [
-          3.52,
-          2.9106,
-          2.8792
+          3.524,
+          2.9022,
+          2.8663
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN + inset (modeling/surfacing). 4000 tris."
+      }
     },
     {
       "id": "engine_resonator",
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_resonator.glb",
-      "tris": 2608,
-      "bytes": 274176,
+      "tris": 15474,
+      "bytes": 951260,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — trim/wear + AO bakes + Anomaly violet bleed/facet/stencil/port DET, 29 MCP renders. 15474 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1003,21 +1004,20 @@
       "bounds": {
         "min": [
           -0.63,
-          -1.3,
-          -1.3
+          -1.2967,
+          -1.2967
         ],
         "max": [
           2.6,
-          1.3,
-          1.3
+          1.2967,
+          1.2967
         ],
         "dimensionsM": [
           3.23,
-          2.6,
-          2.6
+          2.5935,
+          2.5935
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN + advanced techniques (full 3 passes pattern). 2608 tris."
+      }
     },
     {
       "id": "engine_vector",
@@ -1031,6 +1031,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3, profile=0.6, angle limit) + WeightedNormal (last) via MCP import + modeling pass. Character: precision vectoring drive, clean futuristic base + mechanical wear/heat on fan/nozzle. 1076 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1072,8 +1073,7 @@
           1.7184,
           1.6
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3, profile=0.6, angle limit) + WeightedNormal (last) via MCP import + modeling pass. Character: precision vectoring drive, clean futuristic base + mechanical wear/heat on fan/nozzle. 1076 tris."
+      }
     },
     {
       "id": "engine_plasma_ring",
@@ -1087,6 +1087,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + node layers via MCP for engine_plasma_ring. Character: role-specific. tris=1888.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1128,8 +1129,7 @@
           2.08,
           2.08
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + node layers via MCP for engine_plasma_ring. Character: role-specific. tris=1888."
+      }
     },
     {
       "id": "weapon_pulse_cannon",
@@ -1143,6 +1143,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN on meshes. Applied modeling pass. 1944 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1184,8 +1185,7 @@
           1.04,
           1
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN on meshes. Applied modeling pass. 1944 tris."
+      }
     },
     {
       "id": "weapon_heavy_cannon",
@@ -1199,6 +1199,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3, profile=0.55) + WN last via MCP on 3 meshes (muzzle/hull/mech). Character: oversized bolted heavy cannon, combat wear on cylinders. 2296 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1240,8 +1241,7 @@
           1.495,
           1.7
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3, profile=0.55) + WN last via MCP on 3 meshes (muzzle/hull/mech). Character: oversized bolted heavy cannon, combat wear on cylinders. 2296 tris."
+      }
     },
     {
       "id": "weapon_turret_dual",
@@ -1255,6 +1255,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for dual turret. Character: dual barrel turret with charge block, combat wear. 1808 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1297,8 +1298,7 @@
           2.1,
           2.25
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for dual turret. Character: dual barrel turret with charge block, combat wear. 1808 tris."
+      }
     },
     {
       "id": "weapon_lance",
@@ -1312,6 +1312,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for lance weapon. Character: long lance with rail, precision wear. 1112 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1353,21 +1354,21 @@
           1.07,
           1.7
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for lance weapon. Character: long lance with rail, precision wear. 1112 tris."
+      }
     },
     {
       "id": "weapon_gatling",
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_gatling.glb",
-      "tris": 6912,
-      "bytes": 362848,
+      "tris": 3680,
+      "bytes": 1466816,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — DET ammo/heat/rail/scuff + trim_sheet+wear_mask+SF_EdgeWear+AO bake+emissive heat+clearcoat (textures/weapon_gatling/). Skin: belt-fed Fringe rapid-fire, heat disc, cartridge scuff, BELT barrel marking. 3680 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1397,21 +1398,20 @@
       "bounds": {
         "min": [
           -0.2,
-          -0.5,
-          -0.5
+          -0.91,
+          -0.8
         ],
         "max": [
-          4.76,
+          8.9,
           0.5,
-          0.5
+          0.575
         ],
         "dimensionsM": [
-          4.96,
-          1,
-          1
+          9.1,
+          1.41,
+          1.375
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN on all parts (barrel, coils, housing, muzzle). Enhanced mechanical surfacing. 6912 tris."
+      }
     },
     {
       "id": "weapon_railgun",
@@ -1425,6 +1425,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for railgun. Character: linear rail accelerator with long barrel, high-energy wear. 1788 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1466,21 +1467,21 @@
           0.97,
           0.9256
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for railgun. Character: linear rail accelerator with long barrel, high-energy wear. 1788 tris."
+      }
     },
     {
       "id": "fin_wedge",
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_wedge.glb",
-      "tris": 584,
-      "bytes": 195556,
+      "tris": 1566,
+      "bytes": 1289392,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — DET radiator/mount/wear/soot + trim_sheet+wear_mask+SF_EdgeWear+AO bake+emissive sodium edge (textures/fin_wedge/). Skin: Pit starter stabilizer, radiator slits, field-repair wear. 1566 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1506,22 +1507,21 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.4,
-          -0.14,
-          0
+          -0.4108,
+          -0.214,
+          -0.0181
         ],
         "max": [
-          3.8,
+          3.8154,
           0.3325,
-          4.1
+          4.1108
         ],
         "dimensionsM": [
-          4.2,
-          0.4725,
-          4.1
+          4.2261,
+          0.5465,
+          4.1289
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for fin_wedge. Character: fin_wedge. tris=584."
+      }
     },
     {
       "id": "fin_radiator_grid",
@@ -1535,6 +1535,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN on meshes (modeling pass). 652 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1574,8 +1575,7 @@
           0.44,
           3.8
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN on meshes (modeling pass). 652 tris."
+      }
     },
     {
       "id": "fin_swept_smuggler",
@@ -1589,6 +1589,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for fin_swept_smuggler. Character: swept smuggler fin. tris=576.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1628,8 +1629,7 @@
           0.29,
           4
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for fin_swept_smuggler. Character: swept smuggler fin. tris=576."
+      }
     },
     {
       "id": "fin_crystalline",
@@ -1643,6 +1643,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for crystalline fin form. Character: elegant faceted fin with crystalline accents, light wear. 540 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1682,8 +1683,7 @@
           0.31,
           4.3
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for crystalline fin form. Character: elegant faceted fin with crystalline accents, light wear. 540 tris."
+      }
     },
     {
       "id": "fin_delta",
@@ -1697,6 +1697,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for delta fin. Character: sharp delta fin with edge highlights, light wear. 584 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1736,8 +1737,7 @@
           0.4125,
           5.5
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for delta fin. Character: sharp delta fin with edge highlights, light wear. 584 tris."
+      }
     },
     {
       "id": "fin_stabilator",
@@ -1751,6 +1751,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for stabilator fin. Character: swept stabilator with control surfaces, light wear. 520 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1790,8 +1791,7 @@
           0.835,
           3.6
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for stabilator fin. Character: swept stabilator with control surfaces, light wear. 520 tris."
+      }
     },
     {
       "id": "greeble_vents",
@@ -1805,6 +1805,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for greeble_vents. Character: greeble_vents. tris=968.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1842,8 +1843,7 @@
           1.36,
           2.6
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for greeble_vents. Character: greeble_vents. tris=968."
+      }
     },
     {
       "id": "greeble_hatches",
@@ -1857,6 +1857,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble hatches. Character: access hatches with seals, maintenance wear. 1620 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1894,8 +1895,7 @@
           0.595,
           2.625
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble hatches. Character: access hatches with seals, maintenance wear. 1620 tris."
+      }
     },
     {
       "id": "greeble_pipes",
@@ -1909,6 +1909,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble pipes. Character: piping greeble with bends, industrial wear. 1180 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1946,8 +1947,7 @@
           0.55,
           2.8
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble pipes. Character: piping greeble with bends, industrial wear. 1180 tris."
+      }
     },
     {
       "id": "greeble_rcs",
@@ -2015,6 +2015,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1214 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2054,8 +2055,7 @@
           3.35,
           2.6386
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1214 tris."
+      }
     },
     {
       "id": "greeble_nav_lights",
@@ -2279,7 +2279,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN + AO via MCP for pod utility. Character: modular utility pod with shell/band, industrial wear. 952 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 952 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2320,8 +2320,7 @@
           1.755,
           2.68
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 952 tris."
+      }
     },
     {
       "id": "pod_cargo_container",
@@ -2329,12 +2328,13 @@
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
       "tris": 1216,
-      "bytes": 237452,
+      "bytes": 237948,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1216 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2374,8 +2374,7 @@
           2.25,
           3
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1216 tris."
+      }
     },
     {
       "id": "pod_repair_patch",
@@ -2383,12 +2382,13 @@
       "priority": "P2",
       "file": "pods/pod_repair_patch.glb",
       "tris": 1688,
-      "bytes": 240644,
+      "bytes": 241076,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1688 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2414,7 +2414,7 @@
         "min": [
           -0.25,
           -0.06,
-          -1.56937
+          -1.5694
         ],
         "max": [
           4.6,
@@ -2424,10 +2424,9 @@
         "dimensionsM": [
           4.85,
           0.29,
-          3.11937
+          3.1194
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1688 tris."
+      }
     },
     {
       "id": "place_lane_beacon",
@@ -2441,6 +2440,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for place_lane_beacon. Character: place_lane_beacon. tris=700.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2482,8 +2482,7 @@
           11.55,
           2.4
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for place_lane_beacon. Character: place_lane_beacon. tris=700."
+      }
     },
     {
       "id": "place_nav_buoy",
@@ -2497,6 +2496,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for nav buoy. Character: navigation buoy with barrel/collar, marine wear. 540 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2538,8 +2538,7 @@
           5.38,
           2.2
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for nav buoy. Character: navigation buoy with barrel/collar, marine wear. 540 tris."
+      }
     },
     {
       "id": "place_asteroid_seamed",
@@ -2547,12 +2546,13 @@
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
       "tris": 1232,
-      "bytes": 201132,
+      "bytes": 201596,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1232 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2594,8 +2594,7 @@
           22,
           24
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1232 tris."
+      }
     },
     {
       "id": "place_debris_chunk",
@@ -2603,12 +2602,13 @@
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
       "tris": 524,
-      "bytes": 186732,
+      "bytes": 187196,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 524 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2635,34 +2635,34 @@
       "bounds": {
         "min": [
           0,
-          -3.21168,
-          -4.86956
+          -3.2117,
+          -4.8696
         ],
         "max": [
           24.2,
-          4.11933,
-          5.58455
+          4.1193,
+          5.5846
         ],
         "dimensionsM": [
           24.2,
-          7.33101,
-          10.45411
+          7.331,
+          10.4541
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 524 tris."
+      }
     },
     {
       "id": "place_station_billboard",
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_billboard.glb",
-      "tris": 588,
-      "bytes": 191068,
+      "tris": 948,
+      "bytes": 231964,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2704,21 +2704,21 @@
           12.0525,
           18
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris."
+      }
     },
     {
       "id": "place_dead_hulk",
       "category": "places",
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
-      "tris": 988,
-      "bytes": 196656,
+      "tris": 1740,
+      "bytes": 261540,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 988 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2748,34 +2748,34 @@
       "bounds": {
         "min": [
           0,
-          -1.4,
+          -1.3978,
           -3.5
         ],
         "max": [
           48,
-          6.31056,
+          6.3106,
           3.5
         ],
         "dimensionsM": [
           48,
-          7.71056,
+          7.7083,
           7
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 988 tris."
+      }
     },
     {
       "id": "place_conveyor_barge",
       "category": "places",
       "priority": "P1",
       "file": "places/place_conveyor_barge.glb",
-      "tris": 936,
-      "bytes": 203364,
+      "tris": 1144,
+      "bytes": 242592,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 936 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2818,8 +2818,7 @@
           10,
           18
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 936 tris."
+      }
     },
     {
       "id": "place_mining_drone",
@@ -2833,6 +2832,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 580 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2875,21 +2875,21 @@
           1.3275,
           2.4
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 580 tris."
+      }
     },
     {
       "id": "place_asteroid_rock_a",
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_a.glb",
-      "tris": 808,
-      "bytes": 190024,
+      "tris": 9403,
+      "bytes": 2316688,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — trim+wear image-gen textures, SF_EdgeWear, AO bake Hull/Mech/Accent, bump/clearcoat; DET dust_lee + mining seams/ore vein/drill/impact; 32 MCP renders. Belt hero irregular mined rock. tris=9403.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2913,22 +2913,21 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10,
-          -8.5,
-          -8.8633
+          -10.1595,
+          -8.486,
+          -9.2364
         ],
         "max": [
-          10,
-          8.5,
-          8.8633
+          9.9025,
+          8.6039,
+          8.6982
         ],
         "dimensionsM": [
-          20,
-          17,
-          17.7265
+          20.0619,
+          17.0899,
+          17.9346
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + GN variation. 808 tris."
+      }
     },
     {
       "id": "place_asteroid_rock_b",
@@ -2942,6 +2941,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 688 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2979,8 +2979,7 @@
           14,
           16
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 688 tris."
+      }
     },
     {
       "id": "place_asteroid_rock_c",
@@ -2994,6 +2993,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 584 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3031,8 +3031,7 @@
           12,
           12.67406
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 584 tris."
+      }
     },
     {
       "id": "place_asteroid_graffiti",
@@ -3046,6 +3045,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 952 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3087,21 +3087,21 @@
           18,
           19.69616
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 952 tris."
+      }
     },
     {
       "id": "place_station_trade_hub",
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_trade_hub.glb",
-      "tris": 2468,
-      "bytes": 1335952,
+      "tris": 6392,
+      "bytes": 2050056,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO Full Finish 2026-07-06 — 38 MCP viewport renders; trim/wear sheets + SF_EdgeWear/CavityDirt + per-role AO bakes; DET gold_trim/signage/lie_billboard/dock_collar/antenna/cargo_rib/deck_traffic_wear; bevel segs=2 + clearcoat hull + emissive windows. Character: Meridian gold trade hub (corporate polish over industrial grit). tris=6392.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3131,7 +3131,7 @@
         "min": [
           0,
           -14,
-          -18.05
+          -18.25
         ],
         "max": [
           28,
@@ -3141,10 +3141,9 @@
         "dimensionsM": [
           28,
           28,
-          23.1
+          23.3
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel segments=3 + weighted normal on all meshes (deck, greebles, ring etc). Multi-material (Hull/Accent/Mechanical/Glass). Full 3-pass pipeline start."
+      }
     },
     {
       "id": "place_station_refinery",
@@ -3158,6 +3157,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN on meshes (modeling pass). 3008 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3199,8 +3199,7 @@
           22,
           24
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN on meshes (modeling pass). 3008 tris."
+      }
     },
     {
       "id": "place_station_military",
@@ -3214,6 +3213,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 3300 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3255,8 +3255,7 @@
           20,
           14.88
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 3300 tris."
+      }
     },
     {
       "id": "place_station_blackmarket",
@@ -3270,6 +3269,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 3948 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3311,8 +3311,7 @@
           17.55,
           7.3
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 3948 tris."
+      }
     },
     {
       "id": "place_gate_jump_ring",
@@ -3326,6 +3325,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 4784 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3367,8 +3367,7 @@
           30.2,
           30.2
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 4784 tris."
+      }
     },
     {
       "id": "place_station_mining",
@@ -3382,6 +3381,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3423,8 +3423,7 @@
           9.5525,
           10
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris."
+      }
     },
     {
       "id": "place_station_fab",
@@ -3438,6 +3437,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3479,8 +3479,7 @@
           11.19213,
           14
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris."
+      }
     },
     {
       "id": "place_station_research",
@@ -3494,6 +3493,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 720 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3535,8 +3535,7 @@
           12,
           14
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 720 tris."
+      }
     }
   ],
   "runtimeSlots": {

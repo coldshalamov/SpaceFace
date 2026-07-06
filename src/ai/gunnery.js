@@ -12,6 +12,10 @@
 import { solveLeadAngle } from '../systems/weapons.js';
 import { WEAPONS } from '../data/weapons.js';
 import { combatFlag } from '../data/featureFlags.js';
+import { isHostileToPlayer as defaultIsHostileToPlayer } from '../systems/scanner.js';
+
+const LEAD_PIP_MIN_SEP_PX = 7;
+const LEAD_PIP_ON_SOLUTION_RAD = 0.05;
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const DEFAULT_PROJ_SPEED = 360; // fallback matching weapons._playerProjSpeed
@@ -74,4 +78,47 @@ export function leadSolution(shooter, target, projSpeed) {
 // flag is ever enabled the pip would need a matching model; expose the state so the HUD can decide.
 export function leadModelIsExact() {
   return !combatFlag('momentumInherit');
+}
+
+const HIDDEN_OVERLAY = Object.freeze({ visible: false, x: 0, y: 0, onSolution: false, sep: 0 });
+
+// Pure lead-pip visibility gate (BP-02). HUD applies the returned screen coords to the DOM; this
+// function never touches the document. Injectable deps keep the gate testable headlessly.
+export function computeLeadPipOverlay(player, target, state, opts = {}) {
+  const worldToScreen = opts.worldToScreen;
+  if (!player || !target || !target.alive || typeof worldToScreen !== 'function') return HIDDEN_OVERLAY;
+  if (target.type !== 'ship' && target.type !== 'drone') return HIDDEN_OVERLAY;
+
+  const hostileFn = opts.isHostileToPlayer || defaultIsHostileToPlayer;
+  const ballisticFn = opts.hasBallisticWeapon || hasBallisticWeapon;
+  const leadFn = opts.leadSolution || leadSolution;
+  const speedFn = opts.primaryProjSpeed || primaryProjSpeed;
+
+  if (!ballisticFn(player)) return HIDDEN_OVERLAY;
+  if (!hostileFn(target, player.team, state)) return HIDDEN_OVERLAY;
+
+  const sol = leadFn(player, target, speedFn(player));
+  if (!sol.valid) return HIDDEN_OVERLAY;
+
+  const pipProj = worldToScreen({ x: sol.x, y: 0, z: sol.z });
+  const tgtProj = worldToScreen({ x: target.pos.x, y: 0, z: target.pos.z });
+  const sep = (pipProj.onScreen && tgtProj.onScreen)
+    ? Math.hypot(pipProj.x - tgtProj.x, pipProj.y - tgtProj.y) : 0;
+
+  if (!pipProj.onScreen || sep <= LEAD_PIP_MIN_SEP_PX) {
+    return { visible: false, x: 0, y: 0, onSolution: false, sep };
+  }
+
+  const aim = (state && state.input && Number.isFinite(state.input.aimAngle))
+    ? state.input.aimAngle : player.rot;
+  let d = sol.angle - aim;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+
+  return {
+    visible: true,
+    x: pipProj.x,
+    y: pipProj.y,
+    onSolution: Math.abs(d) < LEAD_PIP_ON_SOLUTION_RAD,
+    sep,
+  };
 }

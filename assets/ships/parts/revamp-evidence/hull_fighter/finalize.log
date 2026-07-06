@@ -1,13 +1,14 @@
 {
   "partId": "hull_fighter",
   "file": "hulls/hull_fighter.glb",
-  "tris": 4226,
-  "bytes": 1530128,
-  "dims": [
-    10.449,
-    1.1919,
-    5.8845
-  ],
-  "images": 3,
-  "materials": "Material_Hull"
+  "tris": 3308,
+  "bytes": 1708364,
+  "dims": [10.449, 1.3969, 5.8845],
+  "images": 2,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+clearcoat",
+  "screenshots": 31,
+  "full_finish": true
 }

@@ -31,7 +31,7 @@ import { BINDINGS } from './bindings.js';
 import { SEMANTIC_PALETTE } from './accessibility.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { weaponHeatSummary } from './weaponHeat.js';
-import { leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
+import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -210,6 +210,20 @@ function setScaleX(el, value) {
 }
 function setStyle(el, prop, value) {
   if (el && el.style[prop] !== value) el.style[prop] = value;
+}
+// Screen-space HUD overlays: position with translate3d only (never per-frame left/top layout).
+function setHudScreenTransform(el, x, y, opts = {}) {
+  if (!el) return;
+  const nx = Number(x);
+  const ny = Number(y);
+  if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+  const center = opts.center !== false;
+  const rotate = Number.isFinite(opts.rotate) ? ` rotate(${opts.rotate.toFixed(1)}deg)` : '';
+  const offset = opts.offset || (center ? 'translate(-50%,-50%)' : '');
+  const next = `translate3d(${nx.toFixed(1)}px,${ny.toFixed(1)}px,0) ${offset}${rotate}`.trim();
+  if (el._sfHudTransform === next) return;
+  el._sfHudTransform = next;
+  el.style.transform = next;
 }
 function setClass(el, cls, active) {
   if (el && el.classList.contains(cls) !== !!active) el.classList.toggle(cls, !!active);
@@ -1165,8 +1179,7 @@ export function createHud(ctx, alerts) {
       const proj = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
       if (proj.onScreen) {
         lockDiamond.classList.add('visible');
-        setStyle(lockDiamond, 'left', proj.x.toFixed(1) + 'px');
-        setStyle(lockDiamond, 'top', proj.y.toFixed(1) + 'px');
+        setHudScreenTransform(lockDiamond, proj.x, proj.y);
         // Tint: red when missile-locked, cyan when just selected/tracking.
         const tgtLocked = isLocked && combat && combat.lockTarget === tid;
         setClass(lockDiamond, 'locked-tgt', tgtLocked);
@@ -1177,32 +1190,21 @@ export function createHud(ctx, alerts) {
       lockDiamond.classList.remove('visible');
     }
 
-    // ---- Lead pip (BP-02) — "aim here" marker at the ballistic lead solution ----
-    // Shown for a live HOSTILE ship/drone target when the player carries a projectile weapon and the
-    // target's motion produces a meaningful lead offset. Solved via gunnery (same model as the guns).
-    let pipShown = false;
-    if (tgt && tgt.alive && helpers.worldToScreen && (tgt.type === 'ship' || tgt.type === 'drone')
-        && hasBallisticWeapon(p) && isHostileToPlayer(tgt, p.team, state)) {
-      const sol = leadSolution(p, tgt, primaryProjSpeed(p));
-      if (sol.valid) {
-        const pipProj = helpers.worldToScreen({ x: sol.x, y: 0, z: sol.z });
-        const tgtProj = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
-        // Only surface the pip when it separates from the target on screen (target is actually leading).
-        const sep = (pipProj.onScreen && tgtProj.onScreen)
-          ? Math.hypot(pipProj.x - tgtProj.x, pipProj.y - tgtProj.y) : 0;
-        if (pipProj.onScreen && sep > 7) {
-          leadPip.classList.add('visible');
-          setStyle(leadPip, 'left', pipProj.x.toFixed(1) + 'px');
-          setStyle(leadPip, 'top', pipProj.y.toFixed(1) + 'px');
-          // Green when the player's aim is converging on the solution (crosshair near the pip).
-          const aim = (state.input && Number.isFinite(state.input.aimAngle)) ? state.input.aimAngle : p.rot;
-          let d = sol.angle - aim; d = Math.atan2(Math.sin(d), Math.cos(d));
-          setClass(leadPip, 'on-solution', Math.abs(d) < 0.05);
-          pipShown = true;
-        }
-      }
+    // ---- Lead pip (BP-02) — pure gate in gunnery; HUD only applies screen coords ----
+    const pipOverlay = computeLeadPipOverlay(p, tgt, state, {
+      worldToScreen: helpers.worldToScreen,
+      isHostileToPlayer,
+      leadSolution,
+      hasBallisticWeapon,
+      primaryProjSpeed,
+    });
+    if (pipOverlay.visible) {
+      leadPip.classList.add('visible');
+      setHudScreenTransform(leadPip, pipOverlay.x, pipOverlay.y);
+      setClass(leadPip, 'on-solution', pipOverlay.onSolution);
+    } else {
+      leadPip.classList.remove('visible');
     }
-    if (!pipShown) leadPip.classList.remove('visible');
   }
 
   // ---------------------------------------------------------------------------
@@ -1579,8 +1581,7 @@ export function createHud(ctx, alerts) {
     const size = rShield * 2 + 10;
     setStyle(targetArcs, 'width', `${size}px`);
     setStyle(targetArcs, 'height', `${size}px`);
-    setStyle(targetArcs, 'left', `${center.x - size / 2}px`);
-    setStyle(targetArcs, 'top', `${center.y - size / 2}px`);
+    setHudScreenTransform(targetArcs, center.x, center.y);
 
     if (!targetArcsSvg || !targetArcShield || !targetArcArmor || !targetArcHull) return;
     setSvgAttr(targetArcsSvg, 'width', size);
@@ -1731,9 +1732,10 @@ export function createHud(ctx, alerts) {
           if (A.onScreen && dl > 0.001) {
             dx /= dl; dy /= dl;
             const ang = Math.atan2(dy, dx) * 180 / Math.PI;
-            proTick.style.left = (A.x + dx * 40).toFixed(1) + 'px';
-            proTick.style.top = (A.y + dy * 40).toFixed(1) + 'px';
-            proTick.style.transform = `rotate(${ang.toFixed(1)}deg)`;
+            setHudScreenTransform(proTick, A.x + dx * 40, A.y + dy * 40, {
+              offset: 'translate(-4px,-1px)',
+              rotate: ang,
+            });
             proTick.style.opacity = _proAlpha.toFixed(3);
           } else if (proTick.style.opacity !== '0') {
             proTick.style.opacity = '0';

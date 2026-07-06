@@ -1,0 +1,16 @@
+---
+pid: 4056
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$scratch = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-17504a2e9a4f\\implementer\"; New-Item -ItemType Directory -Force -Path $scratch | Out-Null; node \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\scripts\\check-asset-reachability.mjs\" 2>&1 | Tee-Object \"$scratch\\check-asset-reachability-weapon_gatling.txt\"; node \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\scripts\\probe-authored-assets-live.mjs\" 2>&1 | Tee-Object \"$scratch\\probe-authored-assets-live.txt\" | Select-Object -Last 8"
+started_at: 2026-07-06T08:29:11.311Z
+running_for_ms: 9945003  
+---
+asset reachability OK — 10 referenced runtime assets exist and are bundled (10 under bundled roots); 10 authoring-only reference sheets held out of the runtime.
+      "states": {
+        "authored": 10
+      },
+      "nonAuthored": 0
+    }
+  ],
+  "screenshot": ".devshots/authored-assets-live.jpg"
+}

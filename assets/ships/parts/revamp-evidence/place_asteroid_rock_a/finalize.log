@@ -1,1 +1,13 @@
-{"partId":"place_asteroid_rock_a","tris":1000,"bytes":100000,"images":3,"note":"PRO revamp 2026-07-05"}
+{
+  "partId": "place_asteroid_rock_a",
+  "file": "places/place_asteroid_rock_a.glb",
+  "tris": 9403,
+  "bytes": 2316688,
+  "dims": [
+    20.0619,
+    17.0899,
+    17.9346
+  ],
+  "images": 3,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent"
+}

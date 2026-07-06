@@ -252,9 +252,62 @@ function blockFor(source, selector) {
   return match[1];
 }
 
+function extractFunctionBody(source, name) {
+  const patterns = [
+    new RegExp(`function\\s+${name}\\s*\\(`),
+    new RegExp(`const\\s+${name}\\s*=\\s*(?:async\\s*)?\\([^)]*\\)\\s*=>\\s*\\{`),
+    new RegExp(`const\\s+${name}\\s*=\\s*(?:async\\s*)?function\\s*\\(`),
+  ];
+  let start = -1;
+  for (const pattern of patterns) {
+    start = source.search(pattern);
+    if (start >= 0) break;
+  }
+  assert.ok(start >= 0, `${name}() should exist for HUD movement contract checks`);
+  const brace = source.indexOf('{', start);
+  assert.ok(brace >= 0, `${name}() body should be parseable`);
+  let depth = 0;
+  for (let i = brace; i < source.length; i++) {
+    const ch = source[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return source.slice(brace, i + 1);
+    }
+  }
+  assert.fail(`${name}() body should close`);
+}
+
+function checkHudMovementUsesTransformOnly() {
+  const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+  const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+  const hotPaths = [
+    ['syncFlightCursor', uiRoot],
+    ['updateCombatHud', hud],
+    ['updateTargetArcs', hud],
+    ['frame', hud],
+  ];
+
+  for (const [name, source] of hotPaths) {
+    const body = extractFunctionBody(source, name);
+    assert.doesNotMatch(body, /\.style\.left\s*=/, `${name}() must not write style.left during gameplay updates`);
+    assert.doesNotMatch(body, /\.style\.top\s*=/, `${name}() must not write style.top during gameplay updates`);
+    assert.doesNotMatch(body, /setStyle\([^,]+,\s*['"]left['"]/, `${name}() must not set left via setStyle during gameplay updates`);
+    assert.doesNotMatch(body, /setStyle\([^,]+,\s*['"]top['"]/, `${name}() must not set top via setStyle during gameplay updates`);
+  }
+
+  assert.match(uiRoot, /translate3d\(/, 'flight reticle should move via translate3d');
+  assert.match(hud, /setHudScreenTransform/, 'HUD overlays should use the shared transform helper');
+  assert.match(hud, /setHudScreenTransform\(lockDiamond/, 'lock diamond should use transform-only positioning');
+  assert.match(hud, /setHudScreenTransform\(leadPip/, 'lead pip should use transform-only positioning');
+  assert.match(hud, /setHudScreenTransform\(targetArcs/, 'target arcs should use transform-only positioning');
+  assert.match(hud, /setHudScreenTransform\(proTick/, 'prograde tick should use transform-only positioning');
+}
+
 checkFloatingTextSleepsWhenInactive();
 checkDamageIndicatorsSleepWhenInactive();
 checkHudMetaCargoIsEventDriven();
 checkModalChromeAvoidsFrameDomQueries();
 checkFullscreenCompositorShellsSleep();
+checkHudMovementUsesTransformOnly();
 console.log('UI frame sleep checks OK');

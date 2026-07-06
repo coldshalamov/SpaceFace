@@ -1,0 +1,270 @@
+// Engine-trail surface factory — ribbon, streak mesh, particle trail shader (single contract).
+import * as THREE from 'three';
+import {
+  TRAIL_GLSL_LIB,
+  buildParticleTrailFrag,
+  buildParticleTrailVert,
+} from './trailTexture.js';
+
+const PARTICLE_VERT_BASE = `
+  attribute float aSize;
+  attribute vec3 aColor;
+  attribute float aAlpha;
+  varying vec3 vColor;
+  varying float vAlpha;
+  uniform float uScale;
+  void main() {
+    vColor = aColor;
+    vAlpha = aAlpha;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mv;
+    gl_PointSize = clamp(aSize * (uScale / max(-mv.z, 1.0)), 1.0, 64.0);
+  }
+`;
+
+const PARTICLE_FRAG_BASE = `
+  precision mediump float;
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    vec2 d = gl_PointCoord - vec2(0.5);
+    float r = dot(d, d);
+    float fall = exp(-r * 14.0);
+    if (fall < 0.012) discard;
+    gl_FragColor = vec4(vColor * fall, vAlpha * fall);
+  }
+`;
+
+export const PARTICLE_TRAIL_VERT = buildParticleTrailVert(PARTICLE_VERT_BASE);
+export const PARTICLE_TRAIL_FRAG = buildParticleTrailFrag(PARTICLE_FRAG_BASE);
+
+export function buildParticleTrailMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uScale: { value: 520 },
+      uTrailScroll: { value: 0 },
+      uTrailTime: { value: 0 },
+    },
+    vertexShader: PARTICLE_TRAIL_VERT,
+    fragmentShader: PARTICLE_TRAIL_FRAG,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: true,
+    transparent: true,
+  });
+}
+
+const RIBBON_TRAIL_VERT = /* glsl */`
+  attribute vec2 aTrailUv;
+  varying vec2 vTrailUv;
+  void main() {
+    vTrailUv = aTrailUv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const RIBBON_TRAIL_FRAG = /* glsl */`
+  precision mediump float;
+  ${TRAIL_GLSL_LIB}
+  uniform float uTrailScroll;
+  uniform float uTrailTime;
+  uniform vec3 uColor;
+  uniform float uOpacity;
+  varying vec2 vTrailUv;
+  void main() {
+    float along = fract(vTrailUv.x + uTrailScroll);
+    float side = vTrailUv.y * 2.0 - 1.0;
+    float streak = trailSampleProcedural(along, side, uTrailTime);
+    if (streak < 0.008) discard;
+    gl_FragColor = vec4(uColor * (0.65 + streak * 0.55), uOpacity * streak);
+  }
+`;
+
+export function createRibbonTrailMaterial(color) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTrailScroll: { value: 0 },
+      uTrailTime: { value: 0 },
+      uColor: { value: new THREE.Color(color || '#7fe0ff') },
+      uOpacity: { value: 0.5 },
+    },
+    vertexShader: RIBBON_TRAIL_VERT,
+    fragmentShader: RIBBON_TRAIL_FRAG,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
+}
+
+const TRAIL_STREAK_VERT = /* glsl */`
+  varying vec2 vTrailUv;
+  void main() {
+    vTrailUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const TRAIL_STREAK_FRAG = /* glsl */`
+  precision mediump float;
+  ${TRAIL_GLSL_LIB}
+  uniform float uTrailScroll;
+  uniform float uTrailTime;
+  uniform vec3 uColor;
+  uniform float uOpacity;
+  varying vec2 vTrailUv;
+  void main() {
+    float along = fract(vTrailUv.y + uTrailScroll);
+    float side = vTrailUv.x * 2.0 - 1.0;
+    float streak = trailSampleProcedural(along, side, uTrailTime);
+    if (streak < 0.008) discard;
+    gl_FragColor = vec4(uColor * (0.65 + streak * 0.55), uOpacity * streak);
+  }
+`;
+
+export function createTrailStreakMaterial(color) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTrailScroll: { value: 0 },
+      uTrailTime: { value: 0 },
+      uColor: { value: new THREE.Color(color || '#ffffff') },
+      uOpacity: { value: 0.5 },
+    },
+    vertexShader: TRAIL_STREAK_VERT,
+    fragmentShader: TRAIL_STREAK_FRAG,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
+}
+
+let _sharedStreakGeo = null;
+
+export function createTrailStreakGeometry() {
+  if (!_sharedStreakGeo) {
+    _sharedStreakGeo = new THREE.PlaneGeometry(1, 1, 1, 4);
+    _sharedStreakGeo.rotateX(-Math.PI / 2);
+  }
+  return _sharedStreakGeo;
+}
+
+/** One streak-mesh slot (procedural ShaderMaterial) — not a sprite. */
+export function createTrailStreakSlot(scene) {
+  const mesh = new THREE.Mesh(createTrailStreakGeometry(), createTrailStreakMaterial('#ffffff'));
+  mesh.visible = false;
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 11;
+  scene.add(mesh);
+  return mesh;
+}
+
+export function initTrailStreakPool(scene, cap) {
+  const pool = [];
+  for (let i = 0; i < cap; i++) pool.push(createTrailStreakSlot(scene));
+  return pool;
+}
+
+export function updateTrailStreakMesh(mesh, {
+  x, y, z, vx, vz, width, length, opacity, scroll, time,
+}) {
+  mesh.visible = true;
+  mesh.position.set(x, y || 0.4, z);
+  mesh.rotation.y = Math.atan2(vz || 0, vx || 0) - Math.PI * 0.5;
+  mesh.scale.set(Math.max(0.01, width), 1, Math.max(0.01, length));
+  mesh.material.uniforms.uOpacity.value = Math.max(0, opacity);
+  mesh.material.uniforms.uTrailTime.value = time || 0;
+  mesh.material.uniforms.uTrailScroll.value = scroll || 0;
+}
+
+export function hideTrailStreakMesh(mesh) {
+  if (mesh) mesh.visible = false;
+}
+
+export function isProceduralTrailMaterial(mat) {
+  return !!(mat && mat.type === 'ShaderMaterial' && mat.fragmentShader
+    && mat.fragmentShader.includes('trailSampleProcedural'));
+}
+
+/** Tapering ribbon trail for medium/large ships. */
+export function createRibbonTrail(scene, color, nSeg, baseWidth) {
+  nSeg = nSeg || 30;
+  baseWidth = baseWidth || 5;
+  const verts = nSeg * 2;
+  const pos = new Float32Array(verts * 3);
+  const uvs = new Float32Array(verts * 2);
+  const geo = new THREE.BufferGeometry();
+  const posAttr = new THREE.BufferAttribute(pos, 3);
+  posAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('position', posAttr);
+  const uvAttr = new THREE.BufferAttribute(uvs, 2);
+  uvAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('aTrailUv', uvAttr);
+  const idx = [];
+  for (let i = 0; i < nSeg - 1; i++) {
+    const b = i * 2;
+    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+  }
+  geo.setIndex(idx);
+  const mat = createRibbonTrailMaterial(color);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 4;
+  scene.add(mesh);
+
+  const pts = new Float32Array(nSeg * 3);
+  let head = 0;
+  let count = 0;
+
+  return {
+    push(x, z, rot) {
+      pts[head * 3] = x;
+      pts[head * 3 + 1] = z;
+      pts[head * 3 + 2] = rot;
+      head = (head + 1) % nSeg;
+      if (count < nSeg) count++;
+    },
+    rebuild(opacity, scroll, time) {
+      if (opacity != null) mat.uniforms.uOpacity.value = opacity;
+      if (scroll != null) mat.uniforms.uTrailScroll.value = scroll;
+      if (time != null) mat.uniforms.uTrailTime.value = time;
+      for (let i = 0; i < nSeg; i++) {
+        const t = i / Math.max(1, count - 1);
+        const slot = ((head - 1 - i) % nSeg + nSeg) % nSeg;
+        const px = pts[slot * 3];
+        const pz = pts[slot * 3 + 1];
+        const rot = pts[slot * 3 + 2];
+        const w = baseWidth * Math.max(0, 1 - t * 0.97);
+        const ox = Math.sin(rot) * w;
+        const oz = -Math.cos(rot) * w;
+        const vi = i * 2;
+        pos[vi * 3] = px + ox;
+        pos[vi * 3 + 1] = 0.4;
+        pos[vi * 3 + 2] = pz + oz;
+        pos[(vi + 1) * 3] = px - ox;
+        pos[(vi + 1) * 3 + 1] = 0.4;
+        pos[(vi + 1) * 3 + 2] = pz - oz;
+        uvs[vi * 2] = t;
+        uvs[vi * 2 + 1] = 0.0;
+        uvs[(vi + 1) * 2] = t;
+        uvs[(vi + 1) * 2 + 1] = 1.0;
+      }
+      geo.attributes.position.needsUpdate = true;
+      geo.attributes.aTrailUv.needsUpdate = true;
+    },
+    getMaterial() { return mat; },
+    clear() { count = 0; },
+    dispose() { scene.remove(mesh); geo.dispose(); mat.dispose(); },
+  };
+}
+
+export function createPrecompileTrailSurfaces() {
+  const ribbon = new THREE.Mesh(
+    new THREE.PlaneGeometry(6, 2, 4, 2),
+    createRibbonTrailMaterial('#7fe0ff'),
+  );
+  ribbon.name = 'SF_Precompile_RibbonTrail';
+  const streak = new THREE.Mesh(createTrailStreakGeometry(), createTrailStreakMaterial('#88aaff'));
+  streak.name = 'SF_Precompile_TrailStreak';
+  return { ribbon, streak };
+}

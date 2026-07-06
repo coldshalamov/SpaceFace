@@ -242,12 +242,14 @@ export const ui = {
           y = locked.y;
         }
       }
-      if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1) {
-        reticleEl.style.left = x.toFixed(1) + 'px';
+      if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
+        || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
+        const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
+        if (reticleEl._sfHudTransform !== next) {
+          reticleEl._sfHudTransform = next;
+          reticleEl.style.transform = next;
+        }
         lastReticleX = x;
-      }
-      if (!Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
-        reticleEl.style.top = y.toFixed(1) + 'px';
         lastReticleY = y;
       }
     };
@@ -1018,8 +1020,8 @@ function injectHudCss() {
   /* Target lock diamond — world-space overlay on locked/selected enemy.
      Outer div is the invisible positioning anchor (translate -50% centers on target).
      Inner div is the visible rotated diamond with pulsing glow. */
-  .sf-lockdiamond { display:none; position:absolute; width:32px; height:32px; pointer-events:none; z-index:13;
-    transform:translate(-50%,-50%); opacity:0; transition:opacity .12s ease;
+  .sf-lockdiamond { display:none; position:absolute; left:0; top:0; width:32px; height:32px; pointer-events:none; z-index:13;
+    opacity:0; transition:opacity .12s ease; will-change:transform;
     --dia-glow:57,208,255; }
   .sf-lockdiamond.visible { display:block; opacity:1; }
   .sf-lockdiamond.locked-tgt { --dia-glow:255,84,112; }
@@ -1035,8 +1037,8 @@ function injectHudCss() {
   /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
      intercepts the moving target. A hollow reticle-ring the player walks their crosshair onto. Tints
      amber→green as the crosshair converges (solved via the SAME lead solver the guns use). */
-  .sf-leadpip { display:none; position:absolute; width:22px; height:22px; pointer-events:none; z-index:13;
-    transform:translate(-50%,-50%); opacity:0; transition:opacity .1s ease;
+  .sf-leadpip { display:none; position:absolute; left:0; top:0; width:22px; height:22px; pointer-events:none; z-index:13;
+    opacity:0; transition:opacity .1s ease; will-change:transform;
     --pip-glow:255,196,84; }
   .sf-leadpip.visible { display:block; opacity:.92; }
   .sf-leadpip.on-solution { --pip-glow:120,240,150; }

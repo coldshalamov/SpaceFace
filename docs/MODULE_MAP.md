@@ -259,5 +259,5 @@ These live in `src/systems/` but are imported by other code; they do NOT run eve
 - **`dangerModel.js` is NOT combat threat** — it's the offscreen sector difficulty kernel. Combat hostility is decided by `aiPorts.isHostile` (team + lawful + heat).
 - **`combatants` is not a separate store** (ARCHITECTURE §0.15) — derived per-tick index over `state.entities`.
 - **`backdrop-filter` is forbidden** in UI CSS (prior perf pass). Use opaque `rgba(5,9,18,.88)` panels.
-- **`design/ARCHITECTURE.md` is NOT the authoritative architecture doc.** The repo-root `ARCHITECTURE.md` is. The `design/ARCHITECTURE.md` is older/different.
+- **`design/ARCHITECTURE.md` no longer exists** — it was a stale handoff blurb that collided with the authoritative repo-root `ARCHITECTURE.md`. It has been archived to `design/_ARCHIVE/handoff_architecture.md`. The repo-root `ARCHITECTURE.md` is the only authoritative architecture doc.
 - **The working tree ≠ HEAD.** ~202 files / ~17k insertions uncommitted. Always `git diff` before diagnosing — your bug may already be fixed in the working tree, or your "fix" may already exist there. See `AGENTS.md` §3.

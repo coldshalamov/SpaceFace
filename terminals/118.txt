@@ -1,0 +1,34 @@
+---
+pid: 34036
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run check:wave15-flight-boot 2>&1"
+started_at: 2026-07-06T03:40:05.561Z
+running_for_ms: 27290008 
+---
+
+> spaceface@0.1.0 check:wave15-flight-boot
+> node scripts/check-wave15-flight-boot.mjs
+
+server: http://127.0.0.1:8140/ (node server.js)
+mode: flight (verified via window.SF.state.mode)
+hostile targetId=33 layout=2 overlay={"visible":true,"sep":227.3439912261728}
+leadPip.visible=true display=block pos=190.8px,49.8px
+weak line: "◈ WEAK: AMMO MAGAZINE · REAR"
+identity: "Concord · Gunship · HOSTILE · ▰▱▱"
+screenshot: C:\Users\93rob\AppData\Local\Temp\grok-goal-1e0adadd5119\implementer\wave15-flight-hud.png
+FAIL: lead pip element must exist with .visible for element screenshot
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: lead pip element must exist with .visible for element screenshot
+    at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/check-wave15-flight-boot.mjs:215:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.15.0

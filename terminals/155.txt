@@ -1,0 +1,41 @@
+---
+pid: 21272
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$out = 'C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-17504a2e9a4f\\implementer\\yt-analysis'
+$ids = @('XJBNQeSR8LQ','UtLAcWGo8Lc','4r9ez-rFyJU','XWv1Ajc3tfU','iiEjD1w1uc8','eEHVm0qUWEY','C7DP5xEYeCs','FumKeG-vY_o','ZBgTve5_tSs','DX36hit2g0s')
+foreach ($id in $ids) {
+  yt-dlp --skip-download --write-description --write-auto-sub --sub-lang en --sub-format vtt --convert-subs srt -o \"$out\\%(id)s\" \"https://www.youtube.com/watch?v=$id\" 2>&1 | Select-Object -Last 3
+}"
+started_at: 2026-07-06T06:04:52.046Z
+running_for_ms: 18605012 
+---
+[download] 100% of    7.92KiB in 00:00:00 at 56.21KiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\XJBNQeSR8LQ.en.vtt (pass -k to keep)
+[download] 100% of  748.64KiB in 00:00:00 at 1.77MiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\UtLAcWGo8Lc.en.vtt (pass -k to keep)
+[download] 100% of  377.08KiB in 00:00:00 at 792.33KiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\4r9ez-rFyJU.en.vtt (pass -k to keep)
+[download] 100% of  270.38KiB in 00:00:00 at 827.33KiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\XWv1Ajc3tfU.en.vtt (pass -k to keep)
+[download] 100% of  320.60KiB in 00:00:00 at 554.52KiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\iiEjD1w1uc8.en.vtt (pass -k to keep)
+[download] 100% of  264.97KiB in 00:00:00 at 792.59KiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\eEHVm0qUWEY.en.vtt (pass -k to keep)
+[download] 100% of  137.24KiB in 00:00:00 at 469.91KiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\C7DP5xEYeCs.en.vtt (pass -k to keep)
+[download] 100% of  503.52KiB in 00:00:00 at 855.13KiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\FumKeG-vY_o.en.vtt (pass -k to keep)
+[download] 100% of   54.84KiB in 00:00:00 at 256.77KiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\ZBgTve5_tSs.en.vtt (pass -k to keep)
+[download] 100% of   54.22KiB in 00:00:00 at 277.82KiB/s
+[SubtitlesConvertor] Converting subtitles
+Deleting original file C:\Users\93rob\AppData\Local\Temp\grok-goal-17504a2e9a4f\implementer\yt-analysis\DX36hit2g0s.en.vtt (pass -k to keep)

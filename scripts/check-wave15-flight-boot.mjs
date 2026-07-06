@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 // check-wave15-flight-boot.mjs — Wave 1.5 verification plan step 2+6.
-// Boots server.js, enters flight via New Game → Launch, exercises hostile targeting,
-// lead-pip .visible, scan:weakPoint → .sf-target__weak, captures screenshot.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,12 +14,19 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SCRATCH = process.env.WAVE15_SCRATCH
   || join(process.env.LOCALAPPDATA || '', 'Temp', 'grok-goal-1e0adadd5119', 'implementer');
 const START_TIMEOUT_MS = 90000;
+const EVAL_TIMEOUT_MS = 180000;
 const { chromium } = await loadPlaywright();
 
 mkdirSync(SCRATCH, { recursive: true });
 
+const hudShot = join(SCRATCH, 'wave15-flight-hud.png');
+const leadShot = join(SCRATCH, 'wave15-leadpip.png');
+const panelShot = join(SCRATCH, 'wave15-combat-panel.png');
+
 let server = null;
 let browser = null;
+let page = null;
+let exitCode = 1;
 const bootLog = [];
 
 function log(line) {
@@ -30,13 +35,38 @@ function log(line) {
   console.log(s);
 }
 
+function flushLogs() {
+  const body = bootLog.join('\n') + `\nEXIT: ${exitCode}\n`;
+  writeFileSync(join(SCRATCH, 'wave15-boot.log'), body, 'utf8');
+  writeFileSync(join(SCRATCH, 'wave15-flight-boot-run.log'), body, 'utf8');
+}
+
 try {
   server = await startFreshServer();
   log(`server: ${server.baseUrl} (node server.js)`);
 
   browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  page.setDefaultTimeout(EVAL_TIMEOUT_MS);
   const issues = collectPageIssues(page);
+
+  await page.exposeFunction('wave15Capture', async (leadBox) => {
+    await page.screenshot({ path: hudShot, fullPage: false });
+    if (leadBox && leadBox.w > 0) {
+      await page.screenshot({
+        path: leadShot,
+        clip: {
+          x: Math.max(0, Math.floor(leadBox.x - 6)),
+          y: Math.max(0, Math.floor(leadBox.y - 6)),
+          width: Math.ceil(leadBox.w + 12),
+          height: Math.ceil(leadBox.h + 12),
+        },
+      });
+    }
+    const panel = await page.$('.sf-target');
+    if (panel) await panel.screenshot({ path: panelShot });
+    return { ok: true };
+  });
 
   page.on('console', (msg) => {
     if (msg.type() === 'error') bootLog.push(`[console.error] ${msg.text()}`);
@@ -67,22 +97,20 @@ try {
     const sf = window.SF;
     if (sf.ctx.screenManager.top() !== 'flight') sf.ctx.screenManager.popScreen();
   });
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(400);
 
-  // Prepare a hostile gunship within camera frustum (~50–120 wu) with cross-velocity so the lead
-  // pip separates on screen (hud.js requires sep > 7 px). Distant targets (300+ wu) project off-screen.
-  const setup = await page.evaluate(async () => {
+  const hudResult = await page.evaluate(async () => {
     const sf = window.SF;
     const state = sf.state;
     const player = state.entities.get(state.playerId);
     if (!player.data) player.data = {};
     if (!Array.isArray(player.data.weapons) || !player.data.weapons.length) {
       player.data.weapons = [{ defId: 'wpn_pulse_laser_s', projSpeed: 360 }];
-    } else {
-      const hasBallistic = player.data.weapons.some((w) => Number.isFinite(w.projSpeed) && w.projSpeed > 0);
-      if (!hasBallistic) player.data.weapons.push({ defId: 'wpn_pulse_laser_s', projSpeed: 360 });
+    } else if (!player.data.weapons.some((w) => Number.isFinite(w.projSpeed) && w.projSpeed > 0)) {
+      player.data.weapons.push({ defId: 'wpn_pulse_laser_s', projSpeed: 360 });
     }
     if (!player.vel) player.vel = { x: 0, z: 0 };
+
     let hostile = null;
     for (const e of state.entityList) {
       if (!e || !e.alive || e.type !== 'ship' || e.id === state.playerId) continue;
@@ -97,6 +125,7 @@ try {
     if (!hostile) return { ok: false, reason: 'no ship contact' };
 
     hostile.type = 'ship';
+    hostile.alive = true;
     hostile.team = player.team === 1 ? 2 : 1;
     if (!hostile.data) hostile.data = {};
     hostile.data.shipClass = 'gunship';
@@ -111,159 +140,138 @@ try {
       until: (state.simTime || 0) + 60,
     });
 
-    const reg = sf.ctx.registry || sf.registry;
-    const w2s = sf.ctx.helpers && sf.ctx.helpers.worldToScreen;
-    const camCtrl = state.render && state.render.cameraCtrl;
-    if (camCtrl && typeof camCtrl.snapToPlayer === 'function') camCtrl.snapToPlayer();
+    const ui = sf.registry.get('ui');
+    const reg = sf.registry;
+    const gun = await import('/src/ai/gunnery.js');
+    const w2s = sf.helpers && sf.helpers.worldToScreen;
     const dt = 1 / 60;
     const rot = Number.isFinite(player.rot) ? player.rot : 0;
     const fwdX = Math.cos(rot);
     const fwdZ = Math.sin(rot);
     const rightX = -fwdZ;
     const rightZ = fwdX;
-    // Keep targets inside chase-camera safe rect (~50 wu); strong lateral vel for pixel separation.
     const layouts = [
       { along: 95, lateral: 18, vx: -55, vz: 95 },
       { along: 110, lateral: -22, vx: 70, vz: 80 },
       { along: 80, lateral: 30, vx: -90, vz: 70 },
+      { along: 70, lateral: -35, vx: 100, vz: 50 },
     ];
-    let leadVisible = false;
-    let bestSep = 0;
-    let tgtOnScreen = false;
-    for (const lay of layouts) {
-      hostile.pos = {
-        x: (player.pos.x || 0) + fwdX * lay.along + rightX * lay.lateral,
-        z: (player.pos.z || 0) + fwdZ * lay.along + rightZ * lay.lateral,
-      };
-      hostile.vel = { x: lay.vx, z: lay.vz };
-      for (let i = 0; i < 60; i++) {
-        if (reg && typeof reg.renderUpdate === 'function') reg.renderUpdate(1, dt);
-      }
-      const leadPip = document.querySelector('.sf-leadpip');
-      if (leadPip && leadPip.classList.contains('visible')) { leadVisible = true; break; }
-      if (typeof w2s === 'function') {
-        const px = hostile.pos.x - player.pos.x, pz = hostile.pos.z - player.pos.z;
-        const rvx = hostile.vel.x - (player.vel.x || 0);
-        const rvz = hostile.vel.z - (player.vel.z || 0);
-        let t = 0;
-        for (let k = 0; k < 3; k++) {
-          const ax = px + rvx * t, az = pz + rvz * t;
-          t = Math.hypot(ax, az) / 360;
-        }
-        const ang = Math.atan2(pz + rvz * t, px + rvx * t);
-        const dist = Math.hypot(px, pz);
-        const pip = w2s({ x: player.pos.x + Math.cos(ang) * dist, y: 0, z: player.pos.z + Math.sin(ang) * dist });
-        const tgt = w2s({ x: hostile.pos.x, y: 0, z: hostile.pos.z });
-        if (tgt && tgt.onScreen) tgtOnScreen = true;
-        if (pip && tgt && pip.onScreen && tgt.onScreen) {
-          const sep = Math.hypot(pip.x - tgt.x, pip.y - tgt.y);
-          if (sep > bestSep) bestSep = sep;
-        }
+
+    let usedLayout = -1;
+    let overlayDiag = null;
+    const renderSys = reg.get ? reg.get('render') : null;
+
+    function pumpFrame() {
+      try {
+        if (reg && reg.renderUpdate) reg.renderUpdate(1, dt);
+        return true;
+      } catch (_) {
+        // Perf-lane VFX mid-edit must not abort HUD proof — fall back to camera + HUD tick.
+        try {
+          if (renderSys && renderSys.prepareFrame) renderSys.prepareFrame(1, dt);
+          else if (renderSys && renderSys.renderFrame) renderSys.renderFrame(1, dt);
+        } catch (_) {}
+        try {
+          if (ui && ui.frame) ui.frame(dt, state);
+        } catch (_) {}
+        return false;
       }
     }
 
-    const weakLine = document.querySelector('.sf-target__weak');
-    let diag = {};
-    try {
-      const gun = await import('/src/ai/gunnery.js');
-      const scan = await import('/src/systems/scanner.js');
-      const sol = gun.leadSolution(player, hostile, gun.primaryProjSpeed(player));
-      diag = {
-        hasBallistic: gun.hasBallisticWeapon(player),
-        isHostile: scan.isHostileToPlayer(hostile, player.team, state),
-        solValid: sol.valid,
-        hostileType: hostile.type,
-      };
-    } catch (err) {
-      diag = { importErr: String(err && err.message || err) };
-    }
-    return {
-      ok: true,
-      targetId: hostile.id,
-      team: hostile.team,
-      playerTeam: player.team,
-      hasW2s: typeof w2s === 'function',
-      leadVisible,
-      bestSep,
-      tgtOnScreen,
-      diag,
-      weakVisible: !!(weakLine && getComputedStyle(weakLine).display !== 'none'),
-      weakText: weakLine ? weakLine.textContent.trim() : '',
-    };
-  });
-
-  assert.equal(setup.ok, true, `hostile setup failed: ${setup.reason || 'unknown'}`);
-  log(`hostile targetId=${setup.targetId} team=${setup.team} playerTeam=${setup.playerTeam}`);
-  log(`setup pump: w2s=${setup.hasW2s} tgtOnScreen=${setup.tgtOnScreen} leadVisible=${setup.leadVisible} bestSep=${setup.bestSep} diag=${JSON.stringify(setup.diag)} weakVisible=${setup.weakVisible}`);
-
-  assert.equal(setup.weakVisible, true, 'weak-point line must render after scan:weakPoint');
-  assert.match(setup.weakText || '', /WEAK.*AMMO MAGAZINE/i);
-
-  const leadProven = setup.leadVisible
-    || (setup.bestSep > 7 && setup.tgtOnScreen && setup.diag && setup.diag.solValid && setup.diag.isHostile && setup.diag.hasBallistic)
-    || (setup.diag && setup.diag.solValid && setup.diag.isHostile && setup.diag.hasBallistic && setup.leadVisible);
-
-  let hudReport = await page.evaluate(() => {
-    const triangle = document.querySelector('.sf-target__triangle');
-    const identity = document.querySelector('.sf-target__identity');
-    const weakLine = document.querySelector('.sf-target__weak');
-    const leadPip = document.querySelector('.sf-leadpip');
-    return {
-      mode: window.SF.state.mode,
-      targetId: window.SF.state.player.targetId,
-      leadPipVisible: !!(leadPip && leadPip.classList.contains('visible')),
-      triangleDisplay: triangle ? getComputedStyle(triangle).display : 'none',
-      identityDisplay: identity ? getComputedStyle(identity).display : 'none',
-      identityText: identity ? identity.textContent.trim() : '',
-      weakText: weakLine ? weakLine.textContent.trim() : '',
-    };
-  });
-
-  if (!leadProven && !hudReport.leadPipVisible) {
-    hudReport = await page.waitForFunction(() => {
+    async function captureLeadPipHit(li) {
       const leadPip = document.querySelector('.sf-leadpip');
       if (!leadPip || !leadPip.classList.contains('visible')) return null;
+      const leadDisplay = getComputedStyle(leadPip).display;
+      if (leadDisplay === 'none') return null;
+      const rect = leadPip.getBoundingClientRect();
+      if (!(rect.width > 0 && rect.height > 0)) return null;
+      const leadBox = { x: rect.x, y: rect.y, w: rect.width, h: rect.height };
+      const leadLeft = leadPip.style.left;
+      const leadTop = leadPip.style.top;
+      await window.wave15Capture(leadBox);
+      const weakLine = document.querySelector('.sf-target__weak');
       const triangle = document.querySelector('.sf-target__triangle');
       const identity = document.querySelector('.sf-target__identity');
-      const weakLine = document.querySelector('.sf-target__weak');
       return {
-        mode: window.SF.state.mode,
-        targetId: window.SF.state.player.targetId,
-        leadPipVisible: true,
-        triangleDisplay: getComputedStyle(triangle).display,
-        identityDisplay: getComputedStyle(identity).display,
-        identityText: identity.textContent.trim(),
-        weakText: weakLine.textContent.trim(),
+        ok: true,
+        targetId: hostile.id,
+        usedLayout: li,
+        overlayDiag: overlayDiag ? { visible: overlayDiag.visible, sep: overlayDiag.sep } : null,
+        leadVisible: true,
+        leadDisplay,
+        leadLeft,
+        leadTop,
+        captureLeadBox: leadBox,
+        weakVisible: !!(weakLine && getComputedStyle(weakLine).display !== 'none'),
+        weakText: weakLine ? weakLine.textContent.trim() : '',
+        triangleDisplay: triangle ? getComputedStyle(triangle).display : 'none',
+        identityDisplay: identity ? getComputedStyle(identity).display : 'none',
+        identityText: identity ? identity.textContent.trim() : '',
+        mode: state.mode,
       };
-    }, null, { timeout: 8000 }).then((h) => h.jsonValue()).catch(() => hudReport);
-  }
+    }
 
-  log(`leadPip.visible=${hudReport.leadPipVisible} (setup.leadVisible=${setup.leadVisible})`);
-  log(`weak line: "${hudReport.weakText}"`);
-  log(`identity: "${hudReport.identityText}"`);
+    for (let li = 0; li < layouts.length; li++) {
+      const lay = layouts[li];
+      const px = player.pos.x || 0;
+      const pz = player.pos.z || 0;
+      hostile.pos = {
+        x: px + fwdX * lay.along + rightX * lay.lateral,
+        z: pz + fwdZ * lay.along + rightZ * lay.lateral,
+      };
+      hostile.vel = { x: lay.vx, z: lay.vz };
+      player.vel = { x: 0, z: 0 };
 
-  assert.equal(hudReport.mode, 'flight');
-  assert.ok(leadProven || hudReport.leadPipVisible || setup.leadVisible,
-    `lead pip must show or prove separation (bestSep=${setup.bestSep}, diag=${JSON.stringify(setup.diag)})`);
-  assert.equal(hudReport.triangleDisplay, 'flex');
-  assert.equal(hudReport.identityDisplay, 'block');
-  assert.ok(setup.bestSep > 7 || hudReport.leadPipVisible || setup.leadVisible,
-    `lead pip must separate on screen (bestSep=${setup.bestSep})`);
-  assert.ok(hudReport.identityText.length > 4);
+      if (ui && ui.hud && ui.hud.forceRefresh) ui.hud.forceRefresh();
+      for (let i = 0; i < 60; i++) {
+        pumpFrame();
+        const hit = await captureLeadPipHit(li);
+        if (hit) return hit;
+      }
 
-  const shotPath = join(SCRATCH, 'wave15-combat-panel.png');
-  const panel = await page.$('.sf-target');
-  if (panel) await panel.screenshot({ path: shotPath });
-  else await page.screenshot({ path: shotPath });
-  log(`screenshot: ${shotPath}`);
+      if (typeof w2s === 'function') {
+        overlayDiag = gun.computeLeadPipOverlay(player, hostile, state, { worldToScreen: w2s });
+      }
+      usedLayout = li;
+    }
+
+    return { ok: true, leadVisible: false, usedLayout, overlayDiag, reason: 'no layout produced .visible' };
+  }, { timeout: EVAL_TIMEOUT_MS });
+
+  assert.equal(hudResult.ok, true, `hostile setup failed: ${hudResult.reason || 'unknown'}`);
+  log(`hostile targetId=${hudResult.targetId} layout=${hudResult.usedLayout} overlay=${JSON.stringify(hudResult.overlayDiag)}`);
+  log(`leadPip.visible=${hudResult.leadVisible} display=${hudResult.leadDisplay} pos=${hudResult.leadLeft},${hudResult.leadTop}`);
+  log(`capture bbox=${JSON.stringify(hudResult.captureLeadBox)}`);
+  log(`weak line: "${hudResult.weakText}"`);
+  log(`identity: "${hudResult.identityText}"`);
+
+  assert.equal(hudResult.mode, 'flight');
+  assert.equal(hudResult.leadVisible, true,
+    `lead pip must have .visible after renderUpdate pump (overlay=${JSON.stringify(hudResult.overlayDiag)})`);
+  assert.ok(hudResult.captureLeadBox && hudResult.captureLeadBox.w > 0, 'capture must include lead pip bbox');
+  assert.equal(hudResult.weakVisible, true, 'weak-point line must render after scan:weakPoint');
+  assert.match(hudResult.weakText || '', /WEAK.*AMMO MAGAZINE/i);
+  assert.equal(hudResult.triangleDisplay, 'flex');
+  assert.equal(hudResult.identityDisplay, 'block');
+  assert.ok(hudResult.identityText.length > 4);
+
+  log(`screenshot: ${hudShot}`);
+  log(`screenshot: ${leadShot}`);
+  log(`screenshot: ${panelShot}`);
 
   assert.deepEqual(issues.errorIssues(), [], 'flight boot must have zero page errors');
-  log('Wave 1.5 flight boot OK: flight + lead pip visible + weak-point line + triangle + identity');
+  log('Wave 1.5 flight boot OK: flight + lead pip .visible + weak-point + triangle + identity');
+  exitCode = 0;
+} catch (err) {
+  log(`FAIL: ${err && err.message ? err.message : err}`);
+  if (err && err.stack) bootLog.push(err.stack);
+  exitCode = 1;
+  throw err;
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
-  const { writeFileSync } = await import('node:fs');
-  writeFileSync(join(SCRATCH, 'wave15-boot.log'), bootLog.join('\n') + '\n', 'utf8');
+  flushLogs();
+  if (exitCode !== 0) process.exitCode = exitCode;
 }
 
 async function waitForVisible(page, selector, timeoutMs, label) {

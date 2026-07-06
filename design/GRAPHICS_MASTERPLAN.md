@@ -1,5 +1,11 @@
 # SpaceFace Graphics Master Plan + Plain-English Technique Guide
 
+> **⚠ LEGACY / SUPERSEDED 2026-07-06.** This is unmanaged drift per `AGENTS.md §4`. The live graphics
+> authority is `design/spec3/SPEC3-F9-asset-pipeline.md` + `design/spec2/07_GRAPHICS_AUDIO.md` (where it
+> exists), the taste constitution `design/spec2/00_MASTER_TASTE.md`, and the asset catalog
+> `assets/AGENTS.md`. The technique-guide vocabulary here may still be useful reference, but do **not**
+> implement new graphics work from this file — it predates the V3/rapier migration and the spec3 threads.
+
 Two jobs: (1) teach you the vocabulary so you can direct the look precisely, and (2) lay out an honest,
 prioritized plan to upgrade the whole graphics stack — tuned to a **no-dedicated-GPU laptop** and to
 the fact that a second agent is editing `src/render` for performance.

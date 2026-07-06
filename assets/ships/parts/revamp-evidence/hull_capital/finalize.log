@@ -1,1 +1,15 @@
-{"partId": "hull_capital", "file": "hulls/hull_capital.glb", "tris": 4406, "bytes": 1540096, "note": "PRO MCP bevel+WN 2026-07-05"}
+{
+  "partId": "hull_capital",
+  "file": "hulls/hull_capital.glb",
+  "tris": 3468,
+  "bytes": 930292,
+  "dims": [14.112, 6.61, 7.05],
+  "images": 5,
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+matte_oxidized+anomaly_emissive",
+  "skin_pass": "cathedral_ribs+ashfall_oxidation+anomaly_vein",
+  "screenshots": 30,
+  "full_finish": true
+}

@@ -14,6 +14,7 @@ import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
+import { getPostRenderTargetTelemetry, resetPostRenderTargetSampleCounter } from './postTelemetry.js';
 import { precompilePipelines } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
@@ -518,6 +519,7 @@ export const render = {
           this.clearAllMeshes(false);
           this._meshReconcileDirty = true;
           // Re-apply bloom + video settings (tone mapping / exposure live on settings:changed).
+          this._invalidatePostOptionsCache();
           bus.emit('settings:changed', { section: 'video' });
           bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
         } catch (err) {
@@ -550,6 +552,7 @@ export const render = {
     { const dpr = renderer.getPixelRatio() || 1; this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr }; }
     try { this.bloom = createBloom(renderer, drawSize.x, drawSize.y); }
     catch (err) { console.warn('[render] bloom unavailable, falling back:', err); this.bloom = null; }
+    this._postOptionsSig = null;
     // Collision/socket/landing-contact debug visualization (spec §12.5). OFF by default; toggled via
     // the render system handle (state.render.debug.toggle) — wired to F7 in ui/input.js.
     try { this.collisionDebug = createCollisionDebug(this); }
@@ -584,12 +587,11 @@ export const render = {
         perf: () => state.perfRuntime && state.perfRuntime.getReport ? state.perfRuntime.getReport() : {},
         settings: () => ({ video: { ...((state.settings && state.settings.video) || {}) } }),
         scenePools: () => getAuthoredInstancePoolDiagnostics(scene),
-        post: () => ({
-          activePath: this._lastRenderPath || null,
-          bloomSelected: !!(this.bloom && state.settings && state.settings.video && state.settings.video.bloom !== false),
-          bloom: this.bloom && typeof this.bloom.diagnostics === 'function' ? this.bloom.diagnostics() : null,
-          renderGraph: !!this._renderGraph,
-        }),
+        post: () => this._getPostDiagnostics(),
+        vfx: () => {
+          const sys = ctx.registry && ctx.registry.get('vfx');
+          return sys && typeof sys.inspect === 'function' ? sys.inspect() : {};
+        },
         // Extra overlay lines: GPU tier + live dynamic-resolution scale + effective draw-buffer size,
         // so the on-screen probe (?perf) shows WHY the frame rate is what it is (software vs hardware,
         // how far dynamic resolution has had to back off).
@@ -606,6 +608,7 @@ export const render = {
         },
       });
       state.render.diagnostics = this.diag;
+      state.render.resetPostTelemetrySample = resetPostRenderTargetSampleCounter;
     }
     catch (err) { console.warn('[render] diagnostics unavailable:', err); this.diag = null; }
 
@@ -770,24 +773,58 @@ export const render = {
     this._syncPostOptions();
   },
 
-  _syncPostOptions() {
-    const vd = (this.state && this.state.settings && this.state.settings.video) || {};
+  _normalizePostVideo(vd = {}) {
     // Slider is 0..1 (percent). Legacy profiles may still carry the old 0..2 scale — halve once.
     let bloomStrength = typeof vd.bloomStrength === 'number' ? vd.bloomStrength : 0.35;
     if (bloomStrength > 1) bloomStrength *= 0.5;
     bloomStrength = Math.max(0, Math.min(1, bloomStrength));
     const bloomThreshold = typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 0.72;
-    const postOpts = {
+    return {
       bloom: vd.bloom,
       bloomStrength,
-      strength: bloomStrength,
-      threshold: bloomThreshold,
       bloomThreshold,
       exposure: vd.exposure,
       acesToneMapping: vd.acesToneMapping !== false,
     };
+  },
+
+  _postOptionsSignature(norm) {
+    return [
+      norm.bloom === false ? 0 : 1,
+      norm.bloomStrength.toFixed(4),
+      norm.bloomThreshold.toFixed(4),
+      typeof norm.exposure === 'number' ? norm.exposure.toFixed(4) : '',
+      norm.acesToneMapping ? 1 : 0,
+    ].join('|');
+  },
+
+  _invalidatePostOptionsCache() {
+    this._postOptionsSig = null;
+  },
+
+  _syncPostOptions(force = false) {
+    const vd = (this.state && this.state.settings && this.state.settings.video) || {};
+    const norm = this._normalizePostVideo(vd);
+    const sig = this._postOptionsSignature(norm);
+    if (!force && this._postOptionsSig === sig) return;
+    this._postOptionsSig = sig;
+    const postOpts = {
+      bloom: norm.bloom,
+      bloomStrength: norm.bloomStrength,
+      strength: norm.bloomStrength,
+      threshold: norm.bloomThreshold,
+      bloomThreshold: norm.bloomThreshold,
+      exposure: norm.exposure,
+      acesToneMapping: norm.acesToneMapping,
+    };
     if (this.bloom) this.bloom.setOptions(postOpts);
-    if (this._renderGraph) this._renderGraph.setOptions({ bloom: vd.bloom !== false, bloomStrength, bloomThreshold });
+    if (this._renderGraph) {
+      this._renderGraph.setOptions({
+        bloom: norm.bloom !== false,
+        bloomStrength: norm.bloomStrength,
+        bloomThreshold: norm.bloomThreshold,
+      });
+    }
   },
 
   clearAllMeshes(keepPlayer) {
@@ -969,8 +1006,28 @@ export const render = {
         // too much silhouette detail, so keep player control on LOD0 and reserve reduction for NPCs.
         const level = e.id === this.state.playerId ? 'lod0' : m.userData.lod.resolve(px);
         m.userData.updateLod(level);
+        if (m.userData.hlod) configureShadowCasters(m);
       }
     }
+    this._publishHlodDiagnostics();
+  },
+
+  _publishHlodDiagnostics() {
+    let hlodDetailedVisible = 0;
+    let hlodProxyVisible = 0;
+    let hlodObjectsSwapped = 0;
+    for (const mesh of this._meshes.values()) {
+      const hlod = mesh.userData && mesh.userData.hlod;
+      if (!hlod) continue;
+      hlodDetailedVisible += Number(hlod.detailedVisible) || 0;
+      hlodProxyVisible += Number(hlod.proxyVisible) || 0;
+      if (hlod.swapped) hlodObjectsSwapped++;
+    }
+    this.state.render.hlod = {
+      hlodDetailedVisible,
+      hlodProxyVisible,
+      hlodObjectsSwapped,
+    };
   },
 
   // --------------- hazard zone visuals ------------------------------------------------
@@ -1165,7 +1222,8 @@ export const render = {
 
   drawPreparedFrame() {
     if (this._contextLost) return false;
-    this._syncPostOptions();
+    // Post options sync on settings:changed, init, context restore, and render-graph creation —
+    // not every draw (video settings are event-driven).
     // Render path selection (INTEGRATION_MAP §8.1). The SpaceRenderGraph is a capability-aware HDR
     // pipeline (GTAO-lite ambient occlusion + multiscale bloom + ACES/grade composite) that
     // supersedes the monolithic bloom wrapper. It is opt-in behind settings.video.renderGraph so the
@@ -1222,6 +1280,7 @@ export const render = {
   },
 
   worldToScreen(v) {
+    this.cam.obj.updateMatrixWorld();
     _pt.set(v.x, v.y || 0, v.z).project(this.cam.obj);
     return {
       x: (_pt.x * 0.5 + 0.5) * window.innerWidth,
@@ -1280,6 +1339,45 @@ export const render = {
     };
   },
 
+  _getPostDiagnostics() {
+    const activePath = this._lastRenderPath || 'straight';
+    const bloomSelected = !!(this.bloom && this.state.settings && this.state.settings.video && this.state.settings.video.bloom !== false);
+    const drawSize = this.renderer ? this.renderer.getDrawingBufferSize(_drawSize) : _drawSize;
+    const telemetry = getPostRenderTargetTelemetry();
+
+    let pathDetails = null;
+    if (activePath === 'renderGraph' && this._renderGraph && typeof this._renderGraph.diagnostics === 'function') {
+      pathDetails = this._renderGraph.diagnostics();
+    } else if (activePath === 'bloom' && this.bloom && typeof this.bloom.diagnostics === 'function') {
+      pathDetails = this.bloom.diagnostics();
+    }
+
+    const bloomDiag = this.bloom && typeof this.bloom.diagnostics === 'function' ? this.bloom.diagnostics() : null;
+    const renderGraphDiag = this._renderGraph && typeof this._renderGraph.diagnostics === 'function'
+      ? this._renderGraph.diagnostics()
+      : null;
+
+    return {
+      activePath,
+      bloomSelected,
+      renderGraph: !!this._renderGraph,
+      bufferWidth: drawSize.x | 0,
+      bufferHeight: drawSize.y | 0,
+      fullFramePasses: pathDetails && Number.isFinite(pathDetails.fullFramePasses) ? pathDetails.fullFramePasses : 1,
+      bloomPasses: pathDetails && Number.isFinite(pathDetails.bloomPasses) ? pathDetails.bloomPasses : 0,
+      renderTargetCount: pathDetails && Number.isFinite(pathDetails.renderTargetCount)
+        ? pathDetails.renderTargetCount
+        : (pathDetails && Number.isFinite(pathDetails.targets) ? pathDetails.targets : 0),
+      grainSource: pathDetails && pathDetails.grainSource ? pathDetails.grainSource : null,
+      grainFps: pathDetails && Number.isFinite(pathDetails.grainFps) ? pathDetails.grainFps : null,
+      renderTargetAllocationsTotal: telemetry.renderTargetAllocationsTotal,
+      renderTargetAllocationsDuringSample: telemetry.renderTargetAllocationsDuringSample,
+      lastAllocationReason: telemetry.lastAllocationReason,
+      bloom: bloomDiag,
+      renderGraphDetails: renderGraphDiag,
+    };
+  },
+
   // Re-apply the drawing-buffer size (renderer + bloom + render-graph + LOD viewport) from the current
   // window size, the base video settings, AND the live dynamic-resolution scale (state.render.dynResScale).
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
@@ -1320,6 +1418,7 @@ export const render = {
       this._renderGraph.setSize(drawSize.x, drawSize.y);
       // Expose for diagnostics + the energy-materials depth binding path.
       this.state.render.renderGraph = this._renderGraph;
+      this._syncPostOptions(true);
       return true;
     } catch (err) {
       console.warn('[render] SpaceRenderGraph unavailable, falling back to bloom:', err);

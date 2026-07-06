@@ -176,4 +176,83 @@ function makeHarness(overrides = {}) {
   assert.equal(inspect.activeLights, 0, 'motion-reduced renderer should keep light pool inactive');
 }
 
+{
+  const { state, system } = makeHarness();
+  state.player = { targetId: 2 };
+  state.ui = { radarRange: 4000 };
+  const player = state.entities.get(state.playerId);
+  player.team = 1;
+  player._flightFrame = { throttle: 1 };
+  const target = state.entities.get(2);
+  target.team = 3;
+  target._flightFrame = { throttle: 1 };
+  const farNpc = {
+    id: 99,
+    type: 'ship',
+    alive: true,
+    pos: { x: 9000, z: 9000 },
+    vel: { x: 50, z: 0 },
+    rot: 0,
+    radius: 12,
+    team: 3,
+    data: { ai: { archetype: 'pirate_raider', spawnContext: 'ambient' } },
+    _flightFrame: { throttle: 1 },
+  };
+  state.entities.set(farNpc.id, farNpc);
+  state.entityList.push(farNpc);
+  system._markEntityCacheDirty();
+  system.update(1 / 60);
+  const inspect = system.inspect();
+  assert.equal(inspect.trails.trailEmittersFull, 2, 'player and selected target should keep full trail quality');
+  assert(inspect.trails.trailEmittersSkipped >= 1, 'far off-radar NPC should skip trail emission');
+  assert(inspect.trails.trailParticlesSpawned > 0, 'near actors should still spawn trail particles');
+}
+
+{
+  const { state, system } = makeHarness();
+  const player = state.entities.get(state.playerId);
+  player._flightFrame = { throttle: 1 };
+  player.rot = 0;
+  player.radius = 28;
+  player.vel = { x: 50, z: 0 };
+  system._markEntityCacheDirty();
+  for (let f = 0; f < 6; f++) system.update(1 / 60);
+  assert.equal(system._particleMat.type, 'ShaderMaterial', 'trail particles must use ShaderMaterial');
+  assert(system._particleMat.fragmentShader.includes('trailSampleProcedural'),
+    'particle fragment must procedurally sample trail streaks');
+  assert(system._particleMat.uniforms.uTrailTime, 'particle shader must animate warp via uTrailTime');
+  assert(system._trailStreakPool && system._trailStreakPool.length > 0, 'trail streak pool must be initialized');
+  const streak = system._trailStreakPool.find((m) => m.visible);
+  assert(streak, 'thrusting ship should show procedural streak mesh');
+  assert.equal(streak.material.type, 'ShaderMaterial', 'streak must be ShaderMaterial not SpriteMaterial');
+  assert(streak.material.fragmentShader.includes('trailSampleProcedural'),
+    'streak fragment must use live procedural sampler');
+  assert(streak.material.uniforms.uTrailTime, 'streak must animate warp via uTrailTime');
+  const inspect = system.inspect();
+  assert(inspect.trails.trailStreaksSpawned >= 2, 'thrusting ship should spawn multiple procedural streak meshes per trail tick');
+  assert(system._liveTrailStreakCount > 0, 'dedicated streak pool should retain live meshes after thrust frames');
+  assert(inspect.trails.trailParticlesSpawned > 0, 'thrusting ship should spawn axis-aligned trail particles');
+  let ribbonProcedural = false;
+  for (const [, trail] of system._ribbonTrails || []) {
+    const mat = trail.getMaterial();
+    assert.equal(mat.type, 'ShaderMaterial', 'ribbon trail must use ShaderMaterial not MeshBasicMaterial');
+    assert(mat.fragmentShader.includes('trailSampleProcedural'), 'ribbon must procedurally sample trail');
+    ribbonProcedural = true;
+    break;
+  }
+  console.log('SG-08 trail texture binding OK', JSON.stringify({
+    particleShader: system._particleMat.type,
+    particleProcedural: system._particleMat.fragmentShader.includes('trailSampleProcedural'),
+    particleTrailTime: !!system._particleMat.uniforms.uTrailTime,
+    streakPoolCap: system._trailStreakPool.length,
+    liveTrailStreakMeshes: system._liveTrailStreakCount,
+    streakShader: streak.material.type,
+    streakProcedural: streak.material.fragmentShader.includes('trailSampleProcedural'),
+    streakTrailTime: !!streak.material.uniforms.uTrailTime,
+    ribbonProcedural,
+    trailStreaksSpawned: inspect.trails.trailStreaksSpawned,
+    trailParticlesSpawned: inspect.trails.trailParticlesSpawned,
+  }));
+}
+
 console.log('SG-08 renderer VFX consumer checks OK');

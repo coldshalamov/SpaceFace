@@ -243,7 +243,7 @@ export class SpaceRenderGraph {
     });
     this.compositeMaterial = shaderMaterial(COMPOSITE_FRAG, {
       tScene:null, tAo:null, tBloom0:null, tBloom1:null, tBloom2:null, tBloom3:null,
-      uBloomStrength:this.options.bloomStrength, uBloomNorm:0.34, uAoStrength:this.options.aoStrength,
+      uBloomStrength:this.options.bloomStrength, uBloomNorm:1.5, uAoStrength:this.options.aoStrength,
       uExposure:this.options.exposure, uGrade:this.options.grade,
       uVignette:this.options.vignette, uGrain:this.options.grain, uTime:0,
     });

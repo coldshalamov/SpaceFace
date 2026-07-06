@@ -1,5 +1,12 @@
 {
   "partId": "engine_ion_small",
-  "tris": 3212,
-  "bytes": 287632
+  "file": "engines/engine_ion_small.glb",
+  "tris": 13564,
+  "bytes": 821340,
+  "dims": [2.86, 2.124, 2.124],
+  "images": 2,
+  "materials": "Material_Mechanical,Material_Hull,Material_Accent",
+  "source": "blender_mcp",
+  "date": "2026-07-06",
+  "note": "PRO Full Finish — trim/wear + AO bakes + Pit patch/stencil/soot/cable DET, 32 MCP renders. HOOK drive advisory non-fatal."
 }

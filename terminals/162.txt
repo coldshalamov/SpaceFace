@@ -1,0 +1,7 @@
+---
+pid: 41836
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$scratch = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-17504a2e9a4f\\implementer\"; (Get-ChildItem \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\graphics-revamp\\2026-07-06_hull_multirole*\" | Measure-Object).Count | Set-Content \"$scratch\\screenshot-audit-hull_multirole.txt\"; Select-String -Path \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_multirole\\deficiency.md\" -Pattern \"Before iter\" | Set-Content \"$scratch\\deficiency-sample-hull_multirole.txt\"; node \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\scripts\\probe-authored-assets-live.mjs\" 2>&1 | Select-String \"failureCount\" | Set-Content \"$scratch\\probe-hull_multirole.log\""
+started_at: 2026-07-06T07:59:44.320Z
+running_for_ms: 11710007 
+---

@@ -1,1 +1,14 @@
-{"partId": "hull_miner", "file": "hulls/hull_miner.glb", "tris": 4276, "bytes": 1530452, "images": 3, "materials": "Material_Hull", "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN + inset panels (modeling/surfacing passes). 4276 tris."}
+{
+  "partId": "hull_miner",
+  "file": "hulls/hull_miner.glb",
+  "tris": 21048,
+  "bytes": 3352340,
+  "dims": [10.95, 4.0567, 5.404],
+  "images": 2,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+clearcoat",
+  "screenshots": 30,
+  "full_finish": true
+}

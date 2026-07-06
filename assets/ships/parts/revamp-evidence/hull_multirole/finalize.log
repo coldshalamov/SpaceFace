@@ -1,1 +1,16 @@
-{"partId":"hull_multirole","tris":2917,"bytes":1405836,"note":"PRO 2026-07-05"}
+{
+  "partId": "hull_multirole",
+  "file": "hulls/hull_multirole.glb",
+  "tris": 2566,
+  "bytes": 774824,
+  "dims": [12.182, 3.78, 4.45],
+  "images": 5,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+matte_smuggler+violet_emissive",
+  "skin_pass": "salvage_patchwork+jury_weld+violet_stripe",
+  "screenshots": 29,
+  "render_method": "render_viewport_to_path",
+  "full_finish": true
+}

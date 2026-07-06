@@ -84,7 +84,13 @@ design/               current GDD/build plan plus historical design material
 
 **Architecture in one breath:** a single flat `GameState`, an event bus, and ~20 self‑contained "systems" (each `init(ctx)` + `update(dt, state)`) wired in a fixed order and driven by a 60 Hz fixed‑timestep loop decoupled from rendering. Content is data‑driven. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full contract and [`design/`](design/) for subsystem specs.
 
-Current design authority lives in [`design/GDD_2_0.md`](design/GDD_2_0.md), [`design/BUILD_PLAN_2_0.md`](design/BUILD_PLAN_2_0.md), [`design/CURRENT_BUILD_STATUS.md`](design/CURRENT_BUILD_STATUS.md), and [`design/spec2/INDEX.md`](design/spec2/INDEX.md). The older `design/specs/` suite is retained as legacy reference material only unless a current 2.0 doc explicitly revives a section.
+Current design authority lives in [`design/GDD_2_0.md`](design/GDD_2_0.md), [`design/BUILD_PLAN_2_0.md`](design/BUILD_PLAN_2_0.md), [`design/CURRENT_BUILD_STATUS.md`](design/CURRENT_BUILD_STATUS.md), [`design/spec2/INDEX.md`](design/spec2/INDEX.md), and [`design/spec3/`](design/spec3/) (expansion threads SPEC3-F1..F10). The older `design/specs/` suite is retained as legacy reference material only unless a current 2.0/spec3 doc explicitly revives a section.
+
+> **Agents and contributors:** read [`AGENTS.md`](AGENTS.md) first — it is the front door to the whole repo
+> (where to start, the uncommitted-tree warning, which implementation is LIVE, common-bug routing,
+> verification gates). `ARCHITECTURE.md` (repo root) is the technical contract; `design/GDD_2_0.md` is
+> the design authority. The active build plan + task ledger lives in
+> [`design/revamp/`](design/revamp/) (`REVAMP_MASTER.md` + `PROGRESS.md`).
 
 ### Dev helpers
 - `node scripts/check-data.mjs` — verify every data module's exports.

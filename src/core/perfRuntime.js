@@ -122,6 +122,26 @@ export function ensurePerfRuntime(state) {
   };
   const counters = {
     spatialHash: { rebuilds: 0, dynamicRebuilds: 0, queries: 0, candidates: 0 },
+    vfxTrails: {
+      trailCandidates: 0,
+      trailEmittersFull: 0,
+      trailEmittersNormal: 0,
+      trailEmittersReduced: 0,
+      trailEmittersSkipped: 0,
+      trailParticlesSpawned: 0,
+      trailSpritesSpawned: 0,
+    },
+    vfxSubsystems: {
+      trails: 0,
+      ribbons: 0,
+      miningBeam: 0,
+      tetherCable: 0,
+      seamMarkers: 0,
+      energy: 0,
+      particles: 0,
+      sprites: 0,
+      eventLights: 0,
+    },
   };
 
   function statForSystem(name) {
@@ -169,6 +189,28 @@ export function ensurePerfRuntime(state) {
       counters.spatialHash.queries += queries | 0;
       counters.spatialHash.candidates += candidates | 0;
     },
+    recordVfxTrails(stats = {}) {
+      const dst = counters.vfxTrails;
+      dst.trailCandidates = Number(stats.trailCandidates) || 0;
+      dst.trailEmittersFull = Number(stats.trailEmittersFull) || 0;
+      dst.trailEmittersNormal = Number(stats.trailEmittersNormal) || 0;
+      dst.trailEmittersReduced = Number(stats.trailEmittersReduced) || 0;
+      dst.trailEmittersSkipped = Number(stats.trailEmittersSkipped) || 0;
+      dst.trailParticlesSpawned = Number(stats.trailParticlesSpawned) || 0;
+      dst.trailSpritesSpawned = Number(stats.trailSpritesSpawned) || 0;
+    },
+    recordVfxSubsystems(stats = {}) {
+      const dst = counters.vfxSubsystems;
+      dst.trails = Number(stats.trails) || 0;
+      dst.ribbons = Number(stats.ribbons) || 0;
+      dst.miningBeam = Number(stats.miningBeam) || 0;
+      dst.tetherCable = Number(stats.tetherCable) || 0;
+      dst.seamMarkers = Number(stats.seamMarkers) || 0;
+      dst.energy = Number(stats.energy) || 0;
+      dst.particles = Number(stats.particles) || 0;
+      dst.sprites = Number(stats.sprites) || 0;
+      dst.eventLights = Number(stats.eventLights) || 0;
+    },
     reset() {
       resetStat(frameStats);
       resetStat(frameCallbackStats);
@@ -185,6 +227,22 @@ export function ensurePerfRuntime(state) {
       counters.spatialHash.dynamicRebuilds = 0;
       counters.spatialHash.queries = 0;
       counters.spatialHash.candidates = 0;
+      counters.vfxTrails.trailCandidates = 0;
+      counters.vfxTrails.trailEmittersFull = 0;
+      counters.vfxTrails.trailEmittersNormal = 0;
+      counters.vfxTrails.trailEmittersReduced = 0;
+      counters.vfxTrails.trailEmittersSkipped = 0;
+      counters.vfxTrails.trailParticlesSpawned = 0;
+      counters.vfxTrails.trailSpritesSpawned = 0;
+      counters.vfxSubsystems.trails = 0;
+      counters.vfxSubsystems.ribbons = 0;
+      counters.vfxSubsystems.miningBeam = 0;
+      counters.vfxSubsystems.tetherCable = 0;
+      counters.vfxSubsystems.seamMarkers = 0;
+      counters.vfxSubsystems.energy = 0;
+      counters.vfxSubsystems.particles = 0;
+      counters.vfxSubsystems.sprites = 0;
+      counters.vfxSubsystems.eventLights = 0;
     },
     getReport() {
       const systems = {};
@@ -205,6 +263,8 @@ export function ensurePerfRuntime(state) {
         systems,
         counters: {
           spatialHash: { ...counters.spatialHash },
+          vfxTrails: { ...counters.vfxTrails },
+          vfxSubsystems: { ...counters.vfxSubsystems },
         },
         entities: entityCounts(state),
         settings: {

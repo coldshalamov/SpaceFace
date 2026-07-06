@@ -1,0 +1,12 @@
+---
+pid: 39176
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && node scripts/probe-authored-assets-live.mjs 2>&1 | Select-Object -Last 5"
+started_at: 2026-07-06T07:12:38.802Z
+running_for_ms: 14535004 
+---
+      "nonAuthored": 0
+    }
+  ],
+  "screenshot": ".devshots/authored-assets-live.jpg"
+}

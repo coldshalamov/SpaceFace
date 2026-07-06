@@ -1,0 +1,22 @@
+---
+pid: 37432
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "Get-ChildItem -Path \"$env:LOCALAPPDATA\\Temp\" -Recurse -Filter \"*hull_gunship*\" -ErrorAction SilentlyContinue | Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize"
+started_at: 2026-07-06T07:34:27.903Z
+running_for_ms: 13230002 
+---
+
+FullName                                                                                                            Len
+                                                                                                                    gth
+--------                                                                                                            ---
+C:\Users\93rob\AppData\Local\Temp\blender_a39212\blender_mcp\2026-07-05_hull_gunship_clay.png                       .40
+C:\Users\93rob\AppData\Local\Temp\blender_a39212\blender_mcp\2026-07-05_hull_gunship_close.png                      .12
+C:\Users\93rob\AppData\Local\Temp\blender_a39212\blender_mcp\2026-07-05_hull_gunship_front.png                      .12
+C:\Users\93rob\AppData\Local\Temp\blender_a39212\blender_mcp\2026-07-06_hull_gunship_iter0_clay_34.png              .15
+C:\Users\93rob\AppData\Local\Temp\blender_a39212\blender_mcp\2026-07-06_hull_gunship_iter0_clay_close_hardpoint.png .54
+C:\Users\93rob\AppData\Local\Temp\blender_a39212\blender_mcp\2026-07-06_hull_gunship_iter0_clay_front.png           .38
+C:\Users\93rob\AppData\Local\Temp\blender_a39212\blender_mcp\2026-07-06_hull_gunship_iter0_clay_rear.png            .09
+C:\Users\93rob\AppData\Local\Temp\blender_a39212\blender_mcp\2026-07-06_hull_gunship_iter0_clay_side.png            .79
+C:\Users\93rob\AppData\Local\Temp\blender_a39212\blender_mcp\2026-07-06_hull_gunship_iter0_clay_top.png             .63
+C:\Users\93rob\AppData\Local\Temp\grok-goal-93d8d4790125\implementer\revamp-evidence\hull_gunship                      
+

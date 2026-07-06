@@ -1,6 +1,10 @@
 # SpaceFace — Graphics, Look & Feel Overhaul (Ambitious, Skill-Driven)
 
-> **Status:** DRAFT — set this as the goal and I'll implement it.
+> **Status: LEGACY / SUPERSEDED 2026-07-06.** This is unmanaged drift per `AGENTS.md §4`. The live
+> graphics authority is `design/spec3/SPEC3-F9-asset-pipeline.md` + `design/spec2/07_GRAPHICS_AUDIO.md`
+> (where it exists), the taste constitution `design/spec2/00_MASTER_TASTE.md`, and the asset catalog
+> `assets/AGENTS.md`. Do **not** implement from this DRAFT — it predates the spec3 threads. *(Was "DRAFT —
+> set this as the goal"; superseded by the curated spec layer.)*
 > **Author:** ZCode
 > **Method:** Built on the repo's own game-design skills — `threejs-aaa-graphics-builder`
 > (visual scorecard, implementation blueprint, model/render recipes), `game-designer`

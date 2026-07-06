@@ -754,6 +754,17 @@ export class Sg02DynamicBodyOwner {
     // without becoming twitchy.
     const reelBoost = state.reelSlip && !inCapture ? REEL_BOOST_K_MULT : 1;
     let force = Math.max(0, k * reelBoost * stretch + c * relativeSpeed);
+    // Active winch haul: when the player is reeling (reelSlip) and the target is opening distance
+    // (positive relativeSpeed = target moving away), add an owner-biased pull beyond the spring so
+    // hold-to-reel actually closes gap against a thrusting ship. Without this, a fleeing target's
+    // thrust cancels the spring pull and the player never gains ground (the "won't reel in" bug).
+    // The haul is proportional to the opening relativeSpeed and bounded so it can never dominate
+    // the spring's elasticity model — it only offsets the target's escape velocity. Gated to the
+    // post-capture regime so the soft-catch envelope is preserved.
+    if (state.reelSlip && !inCapture && relativeSpeed > 0) {
+      const haul = clamp(c * 0.6 * relativeSpeed, 0, k * stretch * 1.2);
+      force += haul;
+    }
 
     const breakStretch = restLength * maxStretchRatio;
     if (stretch > breakStretch) {

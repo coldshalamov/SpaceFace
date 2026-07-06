@@ -1,1 +1,1 @@
-{"partId":"place_conveyor_barge","tris":1000,"bytes":100000,"images":3,"note":"PRO revamp 2026-07-05"}
+{"partId":"place_conveyor_barge","file":"places/place_conveyor_barge.glb","tris":1144,"bytes":242592,"images":3,"note":"PRO revamp 2026-07-05 - bevel (segs=2) + WN + AO/rough bakes via MCP for conveyor barge. Character: long industrial cargo hauler with drive wear. 1144 tris."}

@@ -79,7 +79,7 @@ If your brief points at spec3, **spec3 is current for that task** — do not re-
 
 **The earlier contradiction is resolved:** old policy said "spec2 only"; live briefs dispatched spec3. Both are now sanctioned (§4). `README.md` line 87 still mentions only spec2 — that's stale; this file supersedes it.
 
-**Loose `design/*.md` files** (`V2_MASTER_PLAN`, `IMPROVEMENT_IDEAS`, `HUD_REVAMP_DESIGN`, `GRAPHICS_*`, `FLIGHT_*`, `SKILLS_*`, `STATION_MARKET_UI_REVAMP`, etc.) are **unmanaged drift** unless explicitly revived by a current doc. `GDD_2_0.md` outranks all of them. Note: `design/ARCHITECTURE.md` is a *different, older* file than the repo-root `ARCHITECTURE.md` — the **repo-root** one is authoritative.
+**Loose `design/*.md` files** (`V2_MASTER_PLAN`, `IMPROVEMENT_IDEAS`, `HUD_REVAMP_DESIGN`, `GRAPHICS_*`, `FLIGHT_*`, `SKILLS_*`, `STATION_MARKET_UI_REVAMP`, etc.) are **unmanaged drift** unless explicitly revived by a current doc. `GDD_2_0.md` outranks all of them. (The stale `design/ARCHITECTURE.md` handoff blurb that used to collide with the repo-root `ARCHITECTURE.md` has been archived to `design/_ARCHIVE/handoff_architecture.md`; the **repo-root** `ARCHITECTURE.md` is the only authoritative one.)
 
 ---
 
@@ -89,16 +89,16 @@ This is the #2 reason fixes "don't get applied" (after the uncommitted-tree trap
 
 | System | 🟢 LIVE (default-on) | ⚪ LEGACY (fallback / test-fixture only — editing has no effect in normal play) | Selection site | Default flag |
 |---|---|---|---|---|
-| **Flight controller** | `src/systems/flightV3.js` | `src/systems/flight.js` (**zero importers anywhere** in `src/`, `scripts/`, `test/`) | `src/core/registry.js:180-186` `selectFlightSystem` | `flightBackend:'v3'` |
-| **Flight physics math** | `src/core/flight/` (`propulsionCatalog.js`, `propulsionKernel.js`, `flightTelemetry.js`) | `src/core/flightDynamics.js` (still imported by `aiPorts.js` for legacy compat + legacy `check:sim`) | follows the flight flag | — |
-| **AI** | `src/systems/tacticalAI.js` + `src/ai/*` library + `src/systems/aiPorts.js` (the "SG-06 tactical" stack) | `src/systems/ai.js` (**zero importers anywhere**) | `src/core/registry.js:170-176` `selectAISystem` | `aiBackend:'sg06-tactical'` |
+| **Flight controller** | `src/systems/flightV3.js` | `src/systems/flight.js` (**not dead** — statically imported by `registry.js:13`, `scripts/sf-sim.mjs`, and every legacy `check:sim` gate; CI-load-bearing but never the registered controller under default `flightBackend:'v3'`) | `src/core/registry.js:180-186` `selectFlightSystem` | `flightBackend:'v3'` |
+| **Flight physics math** | `src/core/flight/` (`propulsionCatalog.js`, `propulsionKernel.js`, `flightTelemetry.js`) | `src/core/flightDynamics.js` (still imported by `aiPorts.js:13` for legacy compat + legacy `check:sim`) | follows the flight flag | — |
+| **AI** | `src/systems/tacticalAI.js` + `src/ai/*` library + `src/systems/aiPorts.js` (the "SG-06 tactical" stack) | `src/systems/ai.js` (**not dead** — statically imported by `registry.js:9`, `scripts/sf-sim.mjs`, and several `check-ai-*.mjs` CI gates; CI-load-bearing but never the registered controller under default `aiBackend:'sg06-tactical'`) | `src/core/registry.js:170-176` `selectAISystem` | `aiBackend:'sg06-tactical'` |
 | **Physics backend** | `rapier-dynamic` (Rapier, dynamic bodies, single authority via `physicsAuthority.js`) | `custom` (legacy manual integrator in `physics.js`) | `src/core/registry.js` + `src/core/gameState.js:16` | `physicsBackend:'rapier-dynamic'` |
 | Combat | `src/systems/combat.js` (the registered system) calling into `src/combat/` shared library (`kernel.js`, `damage.js`, `attachments.js`, etc.) | — | `registry.js:17` | n/a — layered, not duplicate |
 | Presentation | `src/systems/presentationOrchestrator.js` + `presentationAdapters.js` (registered) consuming `src/presentation/` (data) | — | `registry.js:31-32` | n/a — layered |
 
 **Rules:**
-- **Editing the legacy file will appear to work but have no effect in normal play.** If your fix to `flight.js` or `ai.js` "didn't apply," this is why (or §3 — check if it's already fixed in the working tree). Always edit the LIVE column.
-- **Both flight systems export `name: 'flight'`** and both AI systems fill the `'ai'` slot — the registry addresses the slot by name (`registry.js:84-85`), so `registry.get('flight')` returns whichever won the flag, never both.
+- **Editing the legacy file will appear to work but have no effect in normal play.** If your fix to `flight.js` or `ai.js` "didn't apply," this is why (or §3 — check if it's already fixed in the working tree). Always edit the LIVE column. **They are not dead code** — they're statically imported by `registry.js` (lines 9, 13) and pinned by CI (`check:sim` legacy runs them; `check:sim:v3` runs V3). Treat them as frozen fixtures: do not edit for gameplay fixes, and do not delete without removing the legacy check scripts that import them.
+- **Both flight systems export `name: 'flight'`** and both AI systems fill the `'ai'` slot — the registry addresses the slot by name (`registry.js:84-85`), so `registry.get('flight')` returns whichever won the flag, never both. (Both are imported unconditionally at the top of `registry.js`; the `selectX` functions only decide which gets *registered*.)
 - **The legacy flight/AI files are retained because CI runs `check:sim` (legacy) AND `check:sim:v3`** — both controllers must keep passing their golden telemetry. Do not delete them without removing the legacy check scripts too.
 - **Even the GDD points at legacy files.** `design/GDD_2_0.md:25` cites `src/systems/flight.js:169` as the location of the "hard to fly" problem — true when written, but `flightV3.js` is the live controller now. Cross-check before assuming a cited file is live.
 - **ADR-0003** (`design/adr/0003-flight-physics-controller.md`) is **stale** — it documents "custom controller, Rapier optional." The V3 migration made `rapier-dynamic` + V3 mandatory and default.
@@ -225,7 +225,10 @@ When multiple agents run in parallel, do not cross these lanes. Full map in `des
 
 `design/CURRENT_BUILD_STATUS.md` and `design/BUILD_PLAN_2_0.md` are useful maps but **they drift** in both directions — some "missing" scripts now exist (e.g. `scripts/check-cruise.mjs` exists but CURRENT_BUILD_STATUS calls it missing), and some "built" items may have regressed in the uncommitted tree. Verified first-hand 2026-07-05:
 - `scripts/check-cruise.mjs` — **EXISTS** (status doc says missing — stale).
-- `scripts/check-encounter-director.mjs` + `src/systems/encounterDirector.js` — **genuinely MISSING** (SPEC2/04 not built).
+- `src/systems/encounterDirector.js` — **BUILT** (2026-07-06): full campaign director (two-deck
+  pressure model, phases/choices/receipts, named captains) + `src/systems/encounterScripts.js` +
+  expanded `src/data/encounters.js`. Checks: `check:encounter-director`, `check:living-universe`,
+  `check:encounter-voice` (SPEC2/04 + SPEC3-21/29 core).
 - `scripts/check-release-soak.mjs` — **genuinely MISSING** (SPEC2/08 not built).
 
 **Always trust the actual `check:*` output and `git status`/`git diff` over the status docs.** If a doc and a live check disagree, fix the doc in the same pass.

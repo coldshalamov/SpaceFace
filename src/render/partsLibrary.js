@@ -12,6 +12,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
+import { attachStationHlod } from './hlod.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -24,6 +25,7 @@ const sceneStates = new WeakMap();
 const libraryByRenderer = new WeakMap();
 const resolvedLibraryByRenderer = new WeakMap();
 const sharedMaterialVariants = new Map();
+const sharedReadabilityShellVariants = new Map();
 const ownerReleaseState = new WeakMap();
 const compositionPrimitiveCache = new WeakMap();
 const upgradeQueuesByScene = new WeakMap();
@@ -80,6 +82,7 @@ let fallbackStationSparGeometry = null;
 // ships reload authored parts and rebuild fresh materials.
 export function invalidatePartsLibraryCaches(renderer) {
   sharedMaterialVariants.clear();
+  sharedReadabilityShellVariants.clear();
   if (renderer) {
     const promises = libraryByRenderer.get(renderer);
     if (promises) promises.clear();
@@ -477,7 +480,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     };
   }
 
-  return boundary;
+  return attachStationHlod(boundary, entity);
 }
 
 function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
@@ -600,6 +603,8 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
     label: 'Place',
   }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
   staticBatches.flush();
+  reconcileMaplessHullMaterialAliases(palette);
+  canonicalizeMaplessHullMaterials(root, palette);
   normalizePlacePropBindings(bindings);
   centerAuthoredPlaceRoot(root, record, scale);
 
@@ -1162,6 +1167,8 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   if (!bindings.navLights.length) buildFallbackNavLights(hull, materials, bindings);
   ensureStandardSockets(hull);
   staticBatches.flush();
+  reconcileMaplessHullMaterialAliases(palette);
+  canonicalizeMaplessHullMaterials(root, palette);
 
   const primaryDrive = completeDriveBinding(bindings);
   const navLightBase = bindings.navLights.map((mesh) => (
@@ -1640,11 +1647,12 @@ function createStaticBatchCollector(parent, bindings) {
   const buckets = new Map();
   return {
     add({ record, primitive, partRoot, material }) {
-      const key = staticBatchKey(material, primitive);
+      const resolved = resolveCanonicalHullMaterial(material);
+      const key = staticBatchKey(resolved, primitive);
       let bucket = buckets.get(key);
       if (!bucket) {
         bucket = {
-          material,
+          material: resolved,
           tags: clonePrimitiveTags(primitive.tags),
           entries: [],
           urls: new Set(),
@@ -1688,17 +1696,18 @@ function staticBatchGroupKey(tags = {}) {
 }
 
 function flushStaticBatch(parent, bindings, bucket) {
+  const material = resolveCanonicalHullMaterial(bucket.material);
   const merged = buildStaticBatchGeometry(bucket);
   if (!merged) {
     for (const entry of bucket.entries) {
       const geometry = entry.primitive.geometry.clone();
       geometry.applyMatrix4(entry.primitive.matrix);
       geometry.applyMatrix4(entry.partMatrix);
-      addStaticBatchMesh(parent, bindings, geometry, bucket.material, bucket.tags, [entry.record && entry.record.url], entry.primitive.name);
+      addStaticBatchMesh(parent, bindings, geometry, material, bucket.tags, [entry.record && entry.record.url], entry.primitive.name);
     }
     return;
   }
-  addStaticBatchMesh(parent, bindings, merged, bucket.material, bucket.tags, [...bucket.urls], `StaticBatch_${bucket.entries.length}`);
+  addStaticBatchMesh(parent, bindings, merged, material, bucket.tags, [...bucket.urls], `StaticBatch_${bucket.entries.length}`);
 }
 
 function flushStaticBatchGroup(parent, bindings, buckets) {
@@ -1722,7 +1731,7 @@ function flushStaticBatchGroup(parent, bindings, buckets) {
       return;
     }
     geometries.push(geometry);
-    materials.push(bucket.material);
+    materials.push(resolveCanonicalHullMaterial(bucket.material));
     partCount += bucket.entries.length;
     for (const url of bucket.urls) urls.add(url);
   }
@@ -2460,16 +2469,21 @@ function releaseOwnerInstances(owner) {
 function sharedMaterialFor(base, tags, palette) {
   const role = tintRole(tags);
   const tint = tintHex(palette, role);
-  const key = `${materialBatchSignature(base)}|${role}|${tint}`;
+  const key = `${materialShareSignature(base, tags)}|${role}|${tint}`;
   let material = sharedMaterialVariants.get(key);
   if (!material) {
     material = tintMaterial(base.clone(), tint, role);
     material.name = authoredMaterialName(base, tags, role, tint, false);
+    const canonical = resolveCanonicalHullMaterial(material);
+    if (canonical !== material) {
+      sharedMaterialVariants.set(key, canonical);
+      return canonical;
+    }
     material.userData = { ...(material.userData || {}), spacefaceSharedAsset: true, spacefaceBatchKey: key };
     material.dispose = () => {};
     sharedMaterialVariants.set(key, material);
   }
-  return material;
+  return resolveCanonicalHullMaterial(material);
 }
 
 function dedicatedMaterialFor(base, tags, palette, cache, instanceKey) {
@@ -2560,12 +2574,130 @@ function tintRole(tags) {
   return 'hull';
 }
 
+function normalizeTintHex(value) {
+  if (value == null) return '#ffffff';
+  const raw = String(value).trim().toLowerCase();
+  if (!raw) return '#ffffff';
+  if (raw.startsWith('#')) {
+    const hex = raw.slice(1);
+    if (hex.length === 3) return `#${hex.split('').map((ch) => ch + ch).join('')}`;
+    if (hex.length === 6) return `#${hex}`;
+  }
+  if (/^[0-9a-f]{6}$/.test(raw)) return `#${raw}`;
+  return raw.startsWith('#') ? raw : `#${raw}`;
+}
+
 function tintHex(palette, role) {
   if (role === 'none') return '#ffffff';
-  if (role === 'accent') return palette.accent;
-  if (role === 'thruster') return palette.thruster;
-  if (role === 'dark') return palette.dark;
-  return palette.hull;
+  if (role === 'accent') return normalizeTintHex(palette.accent);
+  if (role === 'thruster') return normalizeTintHex(palette.thruster);
+  if (role === 'dark') return normalizeTintHex(palette.dark);
+  return normalizeTintHex(palette.hull);
+}
+
+function usesFineMaterialShareSignature(tags = {}, material) {
+  if (!material) return true;
+  if (material.transparent || material.transmission > 0 || material.depthWrite === false) return true;
+  if (tags.canopy || tags.drive === 'plume') return true;
+  if (tags.damageRole === 'navLight' || tags.damageRole === 'sensor') return true;
+  return false;
+}
+
+function hasAuthoredMaps(material) {
+  return !!(material && (
+    material.map || material.normalMap || material.roughnessMap || material.metalnessMap || material.aoMap || material.emissiveMap
+  ));
+}
+
+function hullMaterialSuffix(materialOrTint) {
+  if (materialOrTint && typeof materialOrTint === 'object') {
+    const name = String(materialOrTint.name || '');
+    const match = name.match(/^SF_Shared_hull_(?:textured_)?hull_([0-9a-f]+)/i);
+    if (match) return match[1].toLowerCase();
+  }
+  return String(materialOrTint || '').replace('#', '').toLowerCase() || 'native';
+}
+
+function findCanonicalTexturedHullMaterial(tint) {
+  const targetName = `SF_Shared_hull_textured_hull_${hullMaterialSuffix(tint)}`;
+  for (const material of sharedMaterialVariants.values()) {
+    if (material.name === targetName) return material;
+  }
+  return null;
+}
+
+function resolveCanonicalHullMaterial(material) {
+  if (!material) return material;
+  const name = String(material.name || '');
+  if (!name.startsWith('SF_Shared_hull_hull_')) return material;
+  return findCanonicalTexturedHullMaterial(hullMaterialSuffix(material)) || material;
+}
+
+function reconcileMaplessHullMaterialAliases(palette) {
+  const tint = tintHex(palette, 'hull');
+  const canonical = findCanonicalTexturedHullMaterial(tint);
+  if (!canonical) return;
+  for (const [key, material] of sharedMaterialVariants.entries()) {
+    if (material === canonical) continue;
+    const name = String(material.name || '');
+    if (!name.startsWith('SF_Shared_hull_hull_')) continue;
+    sharedMaterialVariants.set(key, canonical);
+  }
+}
+
+function canonicalizeMaplessHullMaterials(root, palette) {
+  const tint = tintHex(palette, 'hull');
+  const canonical = findCanonicalTexturedHullMaterial(tint);
+  if (!canonical || !root) return;
+  root.traverse((object) => {
+    if (!object || !object.isMesh) return;
+    const tags = object.userData && object.userData.spacefaceTags || {};
+    if (tags.drive || tags.canopy || tags.decal) return;
+    if (tags.damageRole) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    let changed = false;
+    for (let i = 0; i < materials.length; i++) {
+      const material = materials[i];
+      if (!material || material === canonical) continue;
+      const name = String(material.name || '');
+      if (!name.startsWith('SF_Shared_hull_hull_')) continue;
+      materials[i] = canonical;
+      changed = true;
+    }
+    if (!changed) return;
+    object.material = Array.isArray(object.material) ? materials : materials[0];
+  });
+}
+
+function materialShareSignature(material, tags = {}) {
+  if (!material || usesFineMaterialShareSignature(tags, material)) return materialBatchSignature(material);
+  const emissiveHex = colorSig(material.emissive);
+  return [
+    material.type || 'Material',
+    material.transparent ? 1 : 0,
+    material.depthWrite === false ? 0 : 1,
+    material.side == null ? THREE.FrontSide : material.side,
+    material.blending == null ? THREE.NormalBlending : material.blending,
+    material.vertexColors ? 1 : 0,
+    fixedSig(material.alphaTest, 2),
+    fixedSig(material.opacity, 2),
+    colorSig(material.color),
+    fixedSig(material.roughness, 2),
+    fixedSig(material.metalness, 2),
+    emissiveHex,
+    emissiveHex === '000000' ? 'emiInt:na' : fixedSig(material.emissiveIntensity, 2),
+    fixedSig(material.transmission, 2),
+    fixedSig(material.clearcoat, 2),
+    fixedSig(material.clearcoatRoughness, 2),
+    vector2Sig(material.normalScale),
+    textureBatchSignature(material.map),
+    textureBatchSignature(material.normalMap),
+    textureBatchSignature(material.aoMap),
+    textureBatchSignature(material.roughnessMap),
+    textureBatchSignature(material.metalnessMap),
+    textureBatchSignature(material.emissiveMap),
+    textureBatchSignature(material.alphaMap),
+  ].join('|');
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -2611,32 +2743,41 @@ function buildSafetyCore(hull, materials, palette) {
 }
 
 function readabilityShellMaterial(base, palette = {}) {
-  const material = base && typeof base.clone === 'function'
-    ? base.clone()
-    : kit.pbrHullMaterial({
-      hull: palette.hull || '#8a94a8',
-      accent: palette.accent || '#7ee8ff',
-      seed: 0x51f,
-      panelCount: 8,
-      metalness: 0.12,
-      roughness: 0.66,
-    });
-  material.name = 'SF_Readability_PressureShell';
-  if (material.color) {
-    const hull = new THREE.Color(palette.hull || '#8a94a8');
-    material.color.lerp(hull, 0.58);
-    liftColorFloor(material.color, 0.66);
+  const hullTint = normalizeTintHex(palette.hull || '#8a94a8');
+  const accentTint = normalizeTintHex(palette.accent || '#7ee8ff');
+  const key = `${hullTint}|${accentTint}`;
+  let material = sharedReadabilityShellVariants.get(key);
+  if (!material) {
+    material = base && typeof base.clone === 'function'
+      ? base.clone()
+      : kit.pbrHullMaterial({
+        hull: hullTint,
+        accent: accentTint,
+        seed: 0x51f,
+        panelCount: 8,
+        metalness: 0.12,
+        roughness: 0.66,
+      });
+    material.name = 'SF_Readability_PressureShell';
+    if (material.color) {
+      const hull = new THREE.Color(hullTint);
+      material.color.lerp(hull, 0.58);
+      liftColorFloor(material.color, 0.66);
+    }
+    if ('metalness' in material) material.metalness = Math.min(Number(material.metalness) || 0, 0.16);
+    if ('roughness' in material) material.roughness = Math.max(Number(material.roughness) || 0, 0.62);
+    if (material.emissive) {
+      material.emissive.copy(new THREE.Color(accentTint)).multiplyScalar(0.075);
+      material.emissiveIntensity = Math.max(Number(material.emissiveIntensity) || 0, 0.32);
+    }
+    material.transparent = false;
+    material.opacity = 1;
+    material.depthWrite = true;
+    material.needsUpdate = true;
+    material.userData = { ...(material.userData || {}), spacefaceSharedAsset: true, spacefaceBatchKey: key };
+    material.dispose = () => {};
+    sharedReadabilityShellVariants.set(key, material);
   }
-  if ('metalness' in material) material.metalness = Math.min(Number(material.metalness) || 0, 0.16);
-  if ('roughness' in material) material.roughness = Math.max(Number(material.roughness) || 0, 0.62);
-  if (material.emissive) {
-    material.emissive.copy(new THREE.Color(palette.accent || '#7ee8ff')).multiplyScalar(0.075);
-    material.emissiveIntensity = Math.max(Number(material.emissiveIntensity) || 0, 0.32);
-  }
-  material.transparent = false;
-  material.opacity = 1;
-  material.depthWrite = true;
-  material.needsUpdate = true;
   return material;
 }
 
@@ -2829,4 +2970,54 @@ function hashString(value) {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+}
+
+/** Contract/CI probe: immutable hull share keys must canonicalize negligible emissive deltas. */
+export function runMaterialSharingContractProbe(THREE_NS = THREE) {
+  sharedMaterialVariants.clear();
+  const matA = new THREE_NS.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0x000000,
+    emissiveIntensity: 0,
+    roughness: 0.581,
+    metalness: 0.182,
+  });
+  const matB = new THREE_NS.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0x000000,
+    emissiveIntensity: 0.004,
+    roughness: 0.579,
+    metalness: 0.181,
+  });
+  const palette = { hull: '#C8D8F0', accent: '#A0C4FF', thruster: '#88AAFF', dark: '#1A3A8F' };
+  const sharedA = sharedMaterialFor(matA, {}, palette);
+  const sharedB = sharedMaterialFor(matB, {}, palette);
+  const texturedHull = sharedMaterialFor(
+    new THREE_NS.MeshStandardMaterial({
+      color: 0xffffff,
+      map: { uuid: 'probe-hull-albedo', image: { width: 512, height: 512 } },
+      roughness: 0.58,
+      metalness: 0.18,
+    }),
+    {},
+    palette,
+  );
+  const maplessHull = sharedMaterialFor(matA, {}, palette);
+  const canopyA = sharedMaterialFor(
+    new THREE_NS.MeshPhysicalMaterial({ transmission: 0.6, transparent: true, depthWrite: false }),
+    { canopy: true },
+    palette,
+  );
+  const canopyB = sharedMaterialFor(
+    new THREE_NS.MeshPhysicalMaterial({ transmission: 0.6, transparent: true, depthWrite: false }),
+    { canopy: true },
+    palette,
+  );
+  return {
+    hullShareMerged: sharedA === sharedB,
+    maplessHullCanonicalized: maplessHull === texturedHull,
+    canopyShareMerged: canopyA === canopyB,
+    sharedVariantCount: sharedMaterialVariants.size,
+    readabilityShellMerged: readabilityShellMaterial(matA, palette) === readabilityShellMaterial(matB, palette),
+  };
 }

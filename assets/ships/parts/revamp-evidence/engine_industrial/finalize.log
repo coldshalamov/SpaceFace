@@ -1,8 +1,12 @@
 {
   "partId": "engine_industrial",
   "file": "engines/engine_industrial.glb",
-  "tris": 4000,
-  "bytes": 311260,
-  "images": 3,
-  "materials": "Material_Mechanical"
+  "tris": 23308,
+  "bytes": 1009464,
+  "dims": [3.524, 2.9022, 2.8663],
+  "images": 2,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "source": "blender_mcp",
+  "date": "2026-07-06",
+  "note": "PRO Full Finish — trim/wear + AO bakes + Belt soot/ore/hazard/stencil DET, 30 MCP renders. Mech tangent warn non-fatal."
 }

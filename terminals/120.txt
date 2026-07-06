@@ -1,0 +1,35 @@
+---
+pid: 37904
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run check:wave15-flight-boot 2>&1"
+started_at: 2026-07-06T03:45:56.260Z
+running_for_ms: 26939971 
+---
+
+> spaceface@0.1.0 check:wave15-flight-boot
+> node scripts/check-wave15-flight-boot.mjs
+
+server: http://127.0.0.1:8140/ (node server.js)
+mode: flight (verified via window.SF.state.mode)
+hostile targetId=33 layout=2 overlay={"visible":true,"sep":227.36906391666807}
+leadPip.visible=true display=block pos=190.7px,49.8px
+weak line: "◈ WEAK: AMMO MAGAZINE · REAR"
+identity: "Concord · Gunship · HOSTILE · ▰▱▱ · L2"
+FAIL: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('.sf-leadpip')
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('.sf-leadpip')
+
+    at C:\Users\93rob\Documents\GitHub\SpaceFace\scripts\check-wave15-flight-boot.mjs:233:17 {
+  log: [ "  - waiting for locator('.sf-leadpip')" ],
+  name: 'TimeoutError'
+}
+
+Node.js v24.15.0

@@ -29,6 +29,7 @@ import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
+import { attachStationHlod } from './hlod.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -2362,7 +2363,7 @@ export function createVisualFactory() {
         switch (e.type) {
           case 'ship': return optimizeStaticBatches(buildShipMesh(e, resolvePalette(e)));
           case 'asteroid': return buildAsteroid(e);
-          case 'station': return optimizeStaticBatches(buildStation(e));
+          case 'station': return attachStationHlod(optimizeStaticBatches(buildStation(e)), e);
           case 'pickup': return buildPickup(e);
           case 'projectile': return buildProjectile(e);
           case 'drone': return buildDrone(e);

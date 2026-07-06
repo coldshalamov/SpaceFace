@@ -35,13 +35,14 @@
 // blits are ~16px taps), so the wide halo costs little over the old single-blur. createBloom() is a
 // drop-in replacement for renderer.render — the render layer calls bloom.render(scene, camera) instead.
 import * as THREE from 'three';
+import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
 const FILM_GRAIN_FPS = 12;
 // Upsample chain is additive and runs hotter than a single separable blur; composite multiplies by
-// this before uStrength so the settings slider has usable range (0.02 ≈ subtle, 0.40 ≈ default).
-const BLOOM_PYRAMID_NORM = 0.34;
+// this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.40 ≈ default).
+const BLOOM_PYRAMID_NORM = 1.5;
 
 // --- GLSL (inlined as strings; no external shader files) -------------------------------------
 
@@ -271,8 +272,20 @@ export function createBloom(renderer, width, height) {
     return BALANCED_BLOOM_MAX_LEVELS;
   }
 
-  function createRenderTargets() {
-    const rtScene = new THREE.WebGLRenderTarget(W, H, { ...rtOpts(), depthBuffer: true, samples: sceneSamples });
+  function allocRenderTarget(w, h, opts, reason) {
+    recordPostRenderTargetAllocation(reason);
+    return new THREE.WebGLRenderTarget(w, h, opts);
+  }
+
+  function resizeRenderTarget(rt, w, h, reason) {
+    if (!rt) return;
+    if (rt.width === w && rt.height === h) return;
+    recordPostRenderTargetAllocation(reason);
+    rt.setSize(w, h);
+  }
+
+  function createRenderTargets(reason = 'init') {
+    const rtScene = allocRenderTarget(W, H, { ...rtOpts(), depthBuffer: true, samples: sceneSamples }, reason);
     const halfW = Math.max(1, W >> 1);
     const halfH = Math.max(1, H >> 1);
     const newLevels = levelCountForSize(W, H);
@@ -280,10 +293,11 @@ export function createBloom(renderer, width, height) {
     for (let i = 0; i < newLevels; i++) {
       const dw = Math.max(1, W >> (i + 1));
       const dh = Math.max(1, H >> (i + 1));
-      down.push(new THREE.WebGLRenderTarget(dw, dh, rtOpts()));
+      down.push(allocRenderTarget(dw, dh, rtOpts(), reason));
     }
-    const bloomPing = new THREE.WebGLRenderTarget(Math.max(1, W >> newLevels), Math.max(1, H >> newLevels), rtOpts());
-    const bloomPong = new THREE.WebGLRenderTarget(halfW, halfH, rtOpts());
+    // Upsample scratch targets stay at half-res (max upsample output) — never resize per frame.
+    const bloomPing = allocRenderTarget(halfW, halfH, rtOpts(), reason);
+    const bloomPong = allocRenderTarget(halfW, halfH, rtOpts(), reason);
     return { rtScene, halfW, halfH, levels: newLevels, down, bloomPing, bloomPong };
   }
 
@@ -326,97 +340,12 @@ export function createBloom(renderer, width, height) {
     uBloomNorm: { value: BLOOM_PYRAMID_NORM },
     uExposure:  { value: exposure },
     uAces:      { value: aces },
-    uGrain:     { value: 0.35 },   // film grain (cyberpunk-noir mood)
-    uVignette:  { value: 0.85 },   // atmospheric corner fall-off
-    uGrade:     { value: 0.55 },   // teal-shadow/amber-highlight color grade
-    uGrainFrame: { value: 0 },
-  });
-
-  // draw the shared quad with a given material into a given target (null = screen)
-  function blit(material, target) {
-    quadMesh.material = material;
-    renderer.setRenderTarget(target);
-    renderer.render(quadScene, quadCam);
-  }
-
-  function render(scene, camera) {
-    // Fast path / fallback: bloom off OR strength ~0 — render straight to screen, no extra cost,
-    // and (importantly) no risk of the post pipeline altering the image.
-    if (!enabled || strength <= 0.0001) {
-      renderer.setRenderTarget(null);
-      renderer.render(scene, camera);
-      return;
-    }
-
-    const prevAutoClear = renderer.autoClear;
-
-    // pass 0 — scene into HDR buffer (renderer applies its own tone-mapping here)
-    renderer.setRenderTarget(rtScene);
-    renderer.clear();
-    renderer.render(scene, camera);
-
-    // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
-    renderer.autoClear = false;
-
-    // ---- downsample chain: full -> ½ (bright-pass) -> ¼ -> ⅛ ----
-    // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
-    let src = rtScene.texture;
-    for (let i = 0; i < levels; i++) {
-      const sw = i === 0 ? W : Math.max(1, W >> i);
-      const sh = i === 0 ? H : Math.max(1, H >> i);
-      downsampleMat.uniforms.tDiffuse.value = src;
-      downsampleMat.uniforms.uTexel.value.set(1 / sw, 1 / sh);
-      downsampleMat.uniforms.uThreshold.value = threshold;
-      downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
-      blit(downsampleMat, down[i]);
-      src = down[i].texture;
-    }
-
-    // ---- upsample chain: deepest level -> ½, ADDITIVELY blending each coarse level over the next
-    // finer down level. The additive spread is what makes the halo wide. Two scratch RTs ping/pong;
-    // `outRT`/`readRT` are local per-frame aliases so we never mutate the module-level refs mid-loop.
-    // Step for i = levels-1 down to 1: upsample level i (coarse) + add level i-1 (fine) -> level i-1 size.
-    let readTex = down[levels - 1].texture;            // coarsest pyramid level
-    let outRT = bloomPing;
-    let scratchRT = bloomPong;
-    let finalTex = down[levels - 1].texture;            // result of the upsample chain (½-res if levels>1)
-    for (let i = levels - 1; i >= 1; i--) {
-      const targetW = Math.max(1, W >> i);              // output = finer level (down[i-1]) resolution
-      const targetH = Math.max(1, H >> i);
-      outRT.setSize(targetW, targetH);
-      upsampleMat.uniforms.tCoarse.value = readTex;     // level i (coarse, to be spread up)
-      upsampleMat.uniforms.tFine.value = down[i - 1].texture; // level i-1 (sharp brights to keep)
-      upsampleMat.uniforms.uTexel.value.set(1 / targetW, 1 / targetH);
-      upsampleMat.uniforms.uWeight.value = 0.36;
-      blit(upsampleMat, outRT);
-      finalTex = outRT.texture;
-      // the just-written RT becomes the coarse input next iteration; reuse the other scratch as output
-      readTex = finalTex;
-      const used = outRT; outRT = scratchRT; scratchRT = used;
-    }
-
-    // pass 6 — composite to screen (sRGB-encoded, with cinematic post grade applied)
-    compositeMat.uniforms.tScene.value = rtScene.texture;
-    compositeMat.uniforms.tBloom.value = finalTex;
-    compositeMat.uniforms.uStrength.value = strength;
-    compositeMat.uniforms.uExposure.value = exposure;
-    compositeMat.uniforms.uAces.value = aces;
-    const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
-    compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * FILM_GRAIN_FPS);
-    blit(compositeMat, null);
-
-    renderer.autoClear = prevAutoClear;
-    renderer.setRenderTarget(null);
-  }
-
-  function rebuild() {
-    // WebGL context restore: the old render-target GPU textures are invalid. Dispose them and
     // recreate the whole pyramid at the current size so the next frame can render cleanly.
     rtScene.dispose();
     for (const rt of down) rt.dispose();
     bloomPing.dispose();
     bloomPong.dispose();
-    const next = createRenderTargets();
+    const next = createRenderTargets('contextRestore');
     rtScene = next.rtScene;
     halfW = next.halfW;
     halfH = next.halfH;
@@ -433,17 +362,19 @@ export function createBloom(renderer, width, height) {
     halfW = Math.max(1, W >> 1);
     halfH = Math.max(1, H >> 1);
     const newLevels = levelCountForSize(W, H);
-    rtScene.setSize(W, H);
+    resizeRenderTarget(rtScene, W, H, 'resize');
     // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
     while (down.length < newLevels) {
       const i = down.length;
-      down.push(new THREE.WebGLRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), rtOpts()));
+      down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), rtOpts(), 'resize'));
     }
     while (down.length > newLevels) { const rt = down.pop(); rt.dispose(); }
     levels = newLevels;
-    for (let i = 0; i < levels; i++) down[i].setSize(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)));
-    bloomPing.setSize(halfW, halfH);
-    bloomPong.setSize(halfW, halfH);
+    for (let i = 0; i < levels; i++) {
+      resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
+    }
+    resizeRenderTarget(bloomPing, halfW, halfH, 'resize');
+    resizeRenderTarget(bloomPong, halfW, halfH, 'resize');
     // per-level texel sizes are derived in render(); default uniforms stay roughly correct.
     upsampleMat.uniforms.uTexel.value.set(1 / halfW, 1 / halfH);
   }
@@ -503,6 +434,7 @@ export function createBloom(renderer, width, height) {
       grainSource: 'quantized-interleaved-gradient',
       grainFps: FILM_GRAIN_FPS,
       targets: 1 + down.length + 2,
+      renderTargetCount: 1 + down.length + 2,
       fullFramePasses: enabled && strength > 0.0001 ? 2 : 1,
       bloomPasses: enabled && strength > 0.0001 ? down.length + Math.max(0, down.length - 1) : 0,
     };

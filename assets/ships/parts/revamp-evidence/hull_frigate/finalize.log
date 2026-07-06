@@ -1,1 +1,15 @@
-{"partId":"hull_frigate","tris":4384,"bytes":1544548,"note":"PRO 2026-07-05"}
+{
+  "partId": "hull_frigate",
+  "file": "hulls/hull_frigate.glb",
+  "tris": 3300,
+  "bytes": 841592,
+  "dims": [13.015, 5.323, 5.152],
+  "images": 5,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+clearcoat+stencil_emissive",
+  "skin_pass": "squadron_stripe+disciplined_wear+authority_stencil",
+  "screenshots": 29,
+  "full_finish": true
+}

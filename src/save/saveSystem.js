@@ -118,6 +118,9 @@ export const save = {
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
     data.sectorSim = this._callSerialize('sectorSim') || {};   // ADR-0002 / V2 §33 — offscreen sim state
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
+    // Campaign-director DURABLE subset only (named captains / receipts / cooldowns / stats).
+    // Live encounters, squads, and pressure are transient by contract — never persisted.
+    data.encounterDirector = this._serializeEncounterDirector();
     data.flight = this._serializeFlight();
     data.nav = this._serializeNav();
     data.settings = this._serializeSettings();
@@ -179,6 +182,18 @@ export const save = {
 
   _serializeNav() {
     return sanitizeNavState(this.state.nav);
+  },
+
+  /** Campaign-director durable subset. Never live encounters/squads/entity ids (§ownership). */
+  _serializeEncounterDirector() {
+    const d = this.state.encounterDirector;
+    if (!d || typeof d !== 'object') return {};
+    return clonePlain({
+      named: d.named || {},
+      receipts: Array.isArray(d.receipts) ? d.receipts.slice(-12) : [],
+      cooldowns: d.cooldowns || {},
+      stats: d.stats || {},
+    });
   },
 
   _serializeFlight() {
@@ -561,6 +576,12 @@ export const save = {
       this._callDeserialize('sectorSim', data.sectorSim);
       // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
       this._callDeserialize('claims', data.claims);
+      // Campaign-director durable state. Staged here so the director's save:loaded handler can
+      // durable-merge it (named captains persist; transients rebuild). Absent in old saves → null
+      // → the director starts fresh (migration-safe absence handling).
+      this.state.encounterDirector = (data.encounterDirector && typeof data.encounterDirector === 'object')
+        ? data.encounterDirector
+        : null;
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and

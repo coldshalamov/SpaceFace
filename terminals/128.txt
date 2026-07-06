@@ -1,0 +1,40 @@
+---
+pid: 4320
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run check:wave15-flight-boot"
+started_at: 2026-07-06T04:03:10.588Z
+running_for_ms: 25905005 
+---
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: lead pip must have .visible after renderUpdate pump (overlay={"visible":true,"sep":227.3439912261728})
+
+false !== true
+
+    at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/check-wave15-flight-boot.mjs:239:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+> spaceface@0.1.0 check:wave15-flight-boot
+> node scripts/check-wave15-flight-boot.mjs
+
+server: http://127.0.0.1:8140/ (node server.js)
+mode: flight (verified via window.SF.state.mode)
+hostile targetId=33 layout=2 overlay={"visible":true,"sep":227.3439912261728}
+leadPip.visible=false display=none pos=,
+capture bbox=null
+weak line: "◈ WEAK: AMMO MAGAZINE · REAR"
+identity: "Concord · Gunship · HOSTILE · ▰▱▱ · L2"
+FAIL: lead pip must have .visible after renderUpdate pump (overlay={"visible":true,"sep":227.3439912261728})
+
+false !== true
+
+
+Node.js v24.15.0

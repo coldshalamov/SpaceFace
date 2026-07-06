@@ -28,6 +28,12 @@ export const cruise = {
     this.bus.on('combat:fire', (p) => {
       if (p && p.ownerId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.DAMAGE);
     });
+    // Interdiction hook (encounter director ambush shape): an external snare drops cruise with
+    // the full SNARED stumble. Only meaningful while cruising — otherwise a strict no-op.
+    this.bus.on('cruise:snareRequest', () => {
+      const c = this._ensureCruise(this.state);
+      if (c.phase === 'cruising') this._drop(DROP_REASONS.SNARED);
+    });
   },
 
   update(dt, state) {

@@ -1,5 +1,10 @@
 # SpaceFace — Skills-Driven Improvement Spec
 
+> **Status: LEGACY 2026-07-06.** This is unmanaged drift per `AGENTS.md §4`. It predates the spec2/spec3
+> suites and the `design/revamp/` build plan. Its skill taxonomy may be useful reference, but the live
+> improvement/feature authority is `design/spec3/` (threads SPEC3-F1..F10) + `design/revamp/REVAMP_MASTER.md`
+> + `design/revamp/PROGRESS.md` (task ledger). Do **not** implement new features from this file.
+
 > **What this is.** A delta-focused improvement plan derived from analyzing the 19 game-dev skills
 > vendored into `skills/` against the *actual* SpaceFace codebase and its two existing planning docs
 > (`design/V2_MASTER_PLAN.md`, `design/IMPROVEMENT_IDEAS.md`). It is **additive**: it deliberately does

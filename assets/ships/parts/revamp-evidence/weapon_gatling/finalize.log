@@ -1,10 +1,15 @@
 {
   "partId": "weapon_gatling",
   "file": "weapons/weapon_gatling.glb",
-  "tris": 6912,
-  "bytes": 362848,
-  "dims": [4.96, 1, 1],
-  "images": 2,
-  "materials": "Material_Mechanical.001,Material_Mechanical,Material_Mechanical.002,Material_Hull,Material_Accent",
-  "note": "PRO via MCP renders + dedicated def 2026-07-05"
+  "tris": 3680,
+  "bytes": 1466816,
+  "dims": [9.1, 1.41, 1.375],
+  "images": 3,
+  "materials": "Material_Mechanical,Material_Mechanical.001,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+AO_bake+clearcoat+roughness_variation+emissive_heat",
+  "skin_pass": "heat_disc+muzzle_glow+cartridge_scuff+belt_feed+mount_rail",
+  "screenshots": 23,
+  "full_finish": true
 }

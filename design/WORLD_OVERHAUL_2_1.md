@@ -1,5 +1,12 @@
 # WORLD OVERHAUL 2.1 — "A Reason For Everything"
 
+> **Status: LEGACY 2026-07-06.** This is unmanaged drift per `AGENTS.md §4`. The live world/sectors
+> authority is `design/spec3/SPEC3-F7-living-universe.md` + `design/spec3/SPEC3-F8-world-threads.md`
+> (where they exist) + the economy/ecology threads `design/spec3/SPEC3-F1*`/`F2*` and the revamp BPs
+> BP-11 (sector atmosphere), BP-12 (causal economy), BP-13 (pirate ecology) in `design/revamp/`. The
+> "reason for everything" ethos is inherited by those threads. Do **not** implement from this file —
+> reconcile against the spec3 threads and the revamp ledger first.
+
 > **Goal:** turn SpaceFace's sectors from *a flat disc of unrelated dots that reads like a test room*
 > into *inhabited, territorial, historical, economically-motivated space* — EVE density, Freelancer
 > sector-clarity, Elite travel-fantasy, X4/Starsector faction identity, Everspace-2 encounter readability.

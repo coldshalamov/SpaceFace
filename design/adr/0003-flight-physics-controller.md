@@ -1,6 +1,16 @@
 # ADR-0003: Flight Physics Controller
 
-- **Status:** Accepted
+> **⚠ SUPERSEDED 2026-07-06.** This ADR documents the pre-V3 design ("custom controller, Rapier optional").
+> Reality has moved on: V3 + Rapier are now **mandatory defaults** —
+> `physicsBackend: 'rapier-dynamic'`, `aiBackend: 'sg06-tactical'`, `flightBackend: 'v3'`
+> (`src/core/gameState.js:16`, force-stamped onto every save by `src/save/saveSystem.js:1411-1413`).
+> The live controller is `src/systems/flightV3.js` + `src/core/flight/*`
+> (propulsionCatalog/propulsionKernel/flightTelemetry). `src/core/flightDynamics.js` survives only as a
+> legacy compat shim imported by `src/systems/aiPorts.js:13` and pinned by the `check:sim` goldens.
+> See `AGENTS.md §5` (two-implementation table) and `design/spec3/SPEC3-F3-flight-physics-feel.md`
+> for the current flight contract. Retained for decision history; do not implement from it.
+
+- **Status:** SUPERSEDED — retained for decision history
 - **Date:** 2026-06-18
 - **Deciders:** Codex, project owner
 - **Tags:** flight, physics, gameplay, engine

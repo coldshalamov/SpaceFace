@@ -1,0 +1,22 @@
+---
+pid: 19528
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && npm run check:wave15-flight-boot 2>&1"
+started_at: 2026-07-06T04:43:03.655Z
+running_for_ms: 23510011 
+---
+
+> spaceface@0.1.0 check:wave15-flight-boot
+> node scripts/check-wave15-flight-boot.mjs
+
+server: http://127.0.0.1:8140/ (node server.js)
+mode: flight (verified via window.SF.state.mode)
+hostile targetId=33 layout=2 overlay={"visible":false,"sep":0}
+leadPip.visible=true display=none pos=,
+capture bbox={"x":238,"y":-5.699999809265137,"w":22,"h":22}
+weak line: "◈ WEAK: AMMO MAGAZINE · REAR"
+identity: "Concord · Gunship · HOSTILE · ▰▱▱"
+screenshot: C:\Users\93rob\AppData\Local\Temp\grok-goal-1e0adadd5119\implementer\wave15-flight-hud.png
+screenshot: C:\Users\93rob\AppData\Local\Temp\grok-goal-1e0adadd5119\implementer\wave15-leadpip.png
+screenshot: C:\Users\93rob\AppData\Local\Temp\grok-goal-1e0adadd5119\implementer\wave15-combat-panel.png
+Wave 1.5 flight boot OK: flight + lead pip .visible + weak-point + triangle + identity

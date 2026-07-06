@@ -1,1 +1,12 @@
-{"partId":"place_station_trade_hub","tris":1000,"bytes":100000,"images":3,"note":"PRO revamp 2026-07-05"}
+{
+  "partId": "place_station_trade_hub",
+  "file": "places/place_station_trade_hub.glb",
+  "tris": 6392,
+  "bytes": 2050056,
+  "dims": [28, 28, 23.3],
+  "images": 3,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull",
+  "source": "blender_mcp",
+  "date": "2026-07-06",
+  "note": "PRO Full Finish — trim/wear sheets, SF_EdgeWear+SF_CavityDirt, per-role AO bakes, 38 MCP viewport renders"
+}

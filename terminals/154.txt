@@ -1,0 +1,33 @@
+---
+pid: 24332
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$urls = @(
+  'https://www.youtube.com/watch?v=XJBNQeSR8LQ',
+  'https://www.youtube.com/watch?v=UtLAcWGo8Lc',
+  'https://www.youtube.com/watch?v=4r9ez-rFyJU',
+  'https://www.youtube.com/watch?v=XWv1Ajc3tfU',
+  'https://www.youtube.com/watch?v=iiEjD1w1uc8',
+  'https://www.youtube.com/watch?v=eEHVm0qUWEY',
+  'https://www.youtube.com/watch?v=C7DP5xEYeCs',
+  'https://www.youtube.com/watch?v=FumKeG-vY_o',
+  'https://www.youtube.com/watch?v=ZBgTve5_tSs',
+  'https://www.youtube.com/watch?v=DX36hit2g0s'
+)
+$out = 'C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-17504a2e9a4f\\implementer\\yt-analysis'
+New-Item -ItemType Directory -Path $out -Force | Out-Null
+foreach ($u in $urls) {
+  yt-dlp --skip-download --print \"%(id)s|%(title)s|%(uploader)s|%(upload_date)s\" $u 2>&1
+}"
+started_at: 2026-07-06T06:03:58.991Z
+running_for_ms: 18655013 
+---
+XJBNQeSR8LQ|How to get that space look - 60 second Blender tutorial|linolafettatnet|20200209
+UtLAcWGo8Lc|Creating a Procedural Galaxy in Blender  (Tutorial)|Ryan King Art|20251205
+4r9ez-rFyJU|Futuristic Stylized Ringed Planet  (Blender Tutorial)|Ryan King Art|20250530
+XWv1Ajc3tfU|Create Realistic Black Holes in Blender | Full Tutorial|Alaskan FX|20230421
+iiEjD1w1uc8|The EASY Way to Make Sci Fi Spaceships (EASY 3D Modeling Tutorial)|Ryuu - Blender Bros|20240729
+eEHVm0qUWEY|How I Made This Spaceship in Blender  (Creation Process)|Ryan King Art|20240701
+C7DP5xEYeCs|Rocket Carrier ( Retro-Futuristic Concept) | Blender Time-Lapse|Kim Sergei_3D|20260408
+FumKeG-vY_o|This Blender File Has 50 Star Citizen Ships AND a Space Station|Ryuu - Blender Bros|20250828
+ZBgTve5_tSs|Creating a Spaceship in Blender|MLT Studios|20230726
+DX36hit2g0s|Quick & Easy Megastructures in Blender|Nico Linde|20250723

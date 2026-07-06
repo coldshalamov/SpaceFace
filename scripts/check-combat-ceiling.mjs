@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { solveLeadAngle } from '../src/systems/weapons.js';
-import { leadSolution, hasBallisticWeapon } from '../src/ai/gunnery.js';
+import { computeLeadPipOverlay, leadSolution, hasBallisticWeapon } from '../src/ai/gunnery.js';
 import { weakPointForEntity, isHitInWeakArc, WEAK_POINTS_BY_CLASS } from '../src/data/weakPoints.js';
 import { COMBAT_FLAGS, combatFlag } from '../src/data/featureFlags.js';
 import { isHostileToPlayer } from '../src/systems/scanner.js';
@@ -70,10 +70,53 @@ const hudSrc = readFileSync(join(ROOT, 'src/ui/hud.js'), 'utf8');
 const panelSrc = readFileSync(join(ROOT, 'src/ui/targetPanel.js'), 'utf8');
 const uiRootSrc = readFileSync(join(ROOT, 'src/ui/uiRoot.js'), 'utf8');
 
-run('HUD lead pip wired', () => {
+run('HUD lead pip wired via computeLeadPipOverlay', () => {
   assert.match(hudSrc, /sf-leadpip/);
-  assert.match(hudSrc, /leadSolution/);
+  assert.match(hudSrc, /computeLeadPipOverlay/);
   assert.match(uiRootSrc, /\.sf-leadpip/);
+});
+
+run('computeLeadPipOverlay visible when hostile separates >7px on screen', () => {
+  const player = {
+    team: 0, rot: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    data: { weapons: [{ defId: 'wpn_pulse_laser_s', projSpeed: 360 }] },
+  };
+  const hostile = {
+    id: 2, type: 'ship', team: 1, alive: true, pos: { x: 90, z: 25 }, vel: { x: -60, z: 80 },
+    data: { encounter: true, ai: { hostileTeams: [0] } },
+  };
+  const state = { playerId: 1, input: { aimAngle: 0 } };
+  const worldToScreen = (v) => ({ x: 500 + v.x * 3, y: 400 + v.z * 3, onScreen: true });
+  const overlay = computeLeadPipOverlay(player, hostile, state, { worldToScreen });
+  assert.equal(overlay.visible, true, 'pip must show when lead offset projects apart');
+  assert.ok(overlay.sep > 7, `sep must exceed gate (got ${overlay.sep})`);
+  assert.ok(Number.isFinite(overlay.x) && Number.isFinite(overlay.y));
+});
+
+run('computeLeadPipOverlay hidden when pip co-locates with target on screen', () => {
+  const player = {
+    team: 0, rot: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    data: { weapons: [{ defId: 'wpn_pulse_laser_s', projSpeed: 360 }] },
+  };
+  const hostile = {
+    id: 2, type: 'ship', team: 1, alive: true, pos: { x: 80, z: 0 }, vel: { x: 0, z: 0 },
+    data: { encounter: true, ai: { hostileTeams: [0] } },
+  };
+  const state = { playerId: 1 };
+  const worldToScreen = () => ({ x: 640, y: 400, onScreen: true });
+  const overlay = computeLeadPipOverlay(player, hostile, state, { worldToScreen });
+  assert.equal(overlay.visible, false);
+  assert.equal(overlay.sep, 0);
+});
+
+run('computeLeadPipOverlay hidden without ballistic weapon', () => {
+  const player = { team: 0, rot: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: { weapons: [] } };
+  const hostile = {
+    id: 2, type: 'ship', team: 1, alive: true, pos: { x: 90, z: 0 }, vel: { x: 50, z: 0 },
+    data: { encounter: true },
+  };
+  const worldToScreen = (v) => ({ x: 500 + v.x, y: 400, onScreen: true });
+  assert.equal(computeLeadPipOverlay(player, hostile, {}, { worldToScreen }).visible, false);
 });
 
 run('target panel damage triangle wired', () => {

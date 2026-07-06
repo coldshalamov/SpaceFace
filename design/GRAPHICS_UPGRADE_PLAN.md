@@ -1,5 +1,11 @@
 # SpaceFace Graphics Upgrade Plan
 
+> **⚠ LEGACY / SUPERSEDED 2026-07-06.** This is unmanaged drift per `AGENTS.md §4`. The live asset
+> pipeline is `design/spec3/SPEC3-F9-asset-pipeline.md` + `assets/AGENTS.md`; the graphics authority is
+> `design/spec3/SPEC3-F9` + `design/spec2/00_MASTER_TASTE.md`. The "zero engine refactor" framing here
+> predates the V3/rapier migration and the release-authored runtime assets under
+> `assets/ships/release/parts/`. Do **not** implement from this file.
+
 Upgrade in-game visuals with Blender-authored low-poly GLB assets (drop-in, **zero engine refactor**)
 plus selective open-source tooling, on a no-GPU laptop. Pipeline is proven and reusable.
 

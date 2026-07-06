@@ -39,8 +39,17 @@ plus existing `aimWorld`, `moveX/moveZ`, `boost`, `fire`, `fireGroup`. Test via 
 the sim harness (`scripts/sf-sim.mjs --inputs`), not via keyboard.
 
 ### File ownership map (wave 1 — do not cross)
-- **Claude:** `src/systems/input.js`, `src/systems/flight.js`, `src/core/flightDynamics.js` (tuning
-  constants only), `src/ui/hud.js`, `src/ui/uiRoot.js`, `styles/ui.css`, `src/ui/comms.js`, `src/ui/alerts.js`
+> **⚠ UPDATED 2026-07-06 (V3 migration).** The line below originally named `src/systems/flight.js` +
+> `src/core/flightDynamics.js` as Claude-owned flight files. Those are now **legacy** (V3 is the live
+> controller; see `AGENTS.md §5`). The live V3 flight lane is `src/systems/flightV3.js` +
+> `src/core/flight/*` (`propulsionCatalog.js`, `propulsionKernel.js`, `flightTelemetry.js`, tuning constants).
+> The legacy files are retained because CI runs `check:sim` against them — do not delete without also
+> removing the legacy check scripts.
+
+- **Claude:** `src/systems/input.js`, `src/systems/flightV3.js`, `src/core/flight/*` (propulsion catalog,
+  kernel, telemetry — tuning constants only), `src/ui/hud.js`, `src/ui/uiRoot.js`, `styles/ui.css`,
+  `src/ui/comms.js`, `src/ui/alerts.js`. *(Legacy `src/systems/flight.js` + `src/core/flightDynamics.js`
+  are CI-pinned, not actively edited.)*
 - **CODEX-1 (tether):** `src/combat/attachments.js`, `src/combat/combatDefs.js`, `src/systems/weapons.js`,
   new `src/systems/tetherGameplay.js`
 - **CODEX-2 (perf):** `src/render/renderer.js`, `src/render/vfx.js`, `src/core/loop.js`, new

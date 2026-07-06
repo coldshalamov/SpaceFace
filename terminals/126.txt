@@ -1,0 +1,188 @@
+---
+pid: 33140
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run check:ui:perf && npm run check:radar:perf && npm run check:perf:control"
+started_at: 2026-07-06T04:00:58.282Z
+running_for_ms: 26035009 
+---
+
+> spaceface@0.1.0 check:ui:perf
+> npm run check:perf-budget && node scripts/check-ui-frame-sleep.mjs && npm run check:radar:perf && npm run check:ui-identity
+
+
+> spaceface@0.1.0 check:perf-budget
+> node scripts/check-perf-budget-contract.mjs
+
+ok    MAX_CATCHUP_STEPS = 4 (current loop catch-up cap)
+ok    quality-preserving optimization doctrine
+ok    p95 or p99 frame-time measurement bar
+ok    transform-only moving DOM/HUD overlays
+ok    forbidden default quality reduction (renderScale/bloom/etc.)
+ok    layered spatial hash (not legacy string-key design)
+ok    active-list VFX integration (not full-cap particle scan)
+ok    check:perf-budget script reference
+ok    no stale MAX_STEPS = 8 claim
+ok    no legacy spatial hash string-key claim
+ok    no legacy per-query Set dedupe claim
+ok    no full pool cap scan every frame (particles)
+
+PERF_BUDGET contract OK (8 required, 4 forbidden checks)
+UI frame sleep checks OK
+
+> spaceface@0.1.0 check:radar:perf
+> node scripts/check-radar-perf.mjs
+
+{
+  "pass": true,
+  "entities": 3680,
+  "asteroids": 3600,
+  "activeBuckets": 9587,
+  "inRangeAsteroids": 21,
+  "spatialCandidates": 29,
+  "candidateReductionPct": 99.21,
+  "sparseLargeRadius": {
+    "entities": 384,
+    "activeBuckets": 864,
+    "rectangularVisits": 37636,
+    "candidates": 121,
+    "inRangeAsteroids": 89
+  },
+  "denseAdaptivePath": {
+    "path": "full-scan",
+    "estimatedVisits": 2116,
+    "asteroidCount": 3600,
+    "visitRatio": 0.588,
+    "visitRatioLimit": 0.4
+  },
+  "fullScanMs": 12.394,
+  "spatialScanMs": 7.531,
+  "qualityFeatureChecks": 17,
+  "qualityShortcutChecks": 4
+}
+
+> spaceface@0.1.0 check:ui-identity
+> node scripts/check-ui-identity.mjs
+
+ok   src/ui/hud.js — HUD three-anchor layout — schematic + rightdock + status cluster
+ok   src/ui/hud.js — Overview strip — 5 Hz cadence (every 12 frames at 60 Hz), hostiles-first sort, 8-row cap, click-to-target, memoised signature
+ok   src/ui/targetPanel.js — Target panel v2 — segmented bars (shield/armor/hull), distance, closing speed, gimmick tag
+ok   src/ui/targetPanel.js — Target panel contact identity — faction, role, threat tier, level row
+ok   src/ui/targetPanel.js — Target panel damage triangle (BP-02 E/K/X)
+ok   src/ui/hud.js — Target arcs — three SVG circles, radius offsets +6/+9/+12, 300° arc, 250 ms fade on death
+ok   src/ui/radar.js — Radar honesty — station square, gate ring, wreck cross, objective white outline, scan ping "?", nearest-hostile bezel arrow
+ok   src/ui/screens/localmap.js — Local map — single-row legend, wheel-zoom 150 ms ease, hostile velocity ticks
+ok   src/ui/screens/starmap.js — Star map — security pips helper, 3-px marching dash route, price-memory per-node
+ok   styles/ui.css — Dialog chrome — 150 ms screen transitions, focus ring 2 px #39d0ff, destructive #ff5c5c text
+ok   src/ui/hud.js — Target arc hp-fraction accuracy — correct division formula for each layer
+ok   src/ui/hud.js — IFF colours imported from accessibility.js SEMANTIC_PALETTE
+
+12 checks: 12 ok, 0 fail
+
+> spaceface@0.1.0 check:radar:perf
+> node scripts/check-radar-perf.mjs
+
+{
+  "pass": true,
+  "entities": 3680,
+  "asteroids": 3600,
+  "activeBuckets": 9587,
+  "inRangeAsteroids": 21,
+  "spatialCandidates": 29,
+  "candidateReductionPct": 99.21,
+  "sparseLargeRadius": {
+    "entities": 384,
+    "activeBuckets": 864,
+    "rectangularVisits": 37636,
+    "candidates": 121,
+    "inRangeAsteroids": 89
+  },
+  "denseAdaptivePath": {
+    "path": "full-scan",
+    "estimatedVisits": 2116,
+    "asteroidCount": 3600,
+    "visitRatio": 0.588,
+    "visitRatioLimit": 0.4
+  },
+  "fullScanMs": 8.71,
+  "spatialScanMs": 5.136,
+  "qualityFeatureChecks": 17,
+  "qualityShortcutChecks": 4
+}
+
+> spaceface@0.1.0 check:perf:control
+> node scripts/probe-raf-control.mjs --headed --strict --width 1830 --height 973 --warmup 1000 --duration 5000
+
+{
+  "schema": "spaceface.rafControl.v1",
+  "generatedAt": "2026-07-06T04:01:16.536Z",
+  "runner": {
+    "width": 1830,
+    "height": 973,
+    "warmupMs": 1000,
+    "durationMs": 5000,
+    "frameFloorMs": 34.3,
+    "strict": true,
+    "browser": "installed-chrome-edge",
+    "headless": false,
+    "angle": null,
+    "extraBrowserArgs": [],
+    "modes": [
+      "blank",
+      "webgl-clear"
+    ]
+  },
+  "pass": true,
+  "results": [
+    {
+      "mode": "blank",
+      "pass": true,
+      "frameMs": {
+        "samples": 301,
+        "avg": 16.67,
+        "min": 7.6,
+        "max": 25.9,
+        "p50": 16.7,
+        "p95": 17,
+        "p99": 24,
+        "over16_7": 112,
+        "over34_3": 0,
+        "over50": 0
+      },
+      "viewport": {
+        "width": 1830,
+        "height": 974,
+        "dpr": 1.0000000149011612,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+      },
+      "renderer": null
+    },
+    {
+      "mode": "webgl-clear",
+      "pass": true,
+      "frameMs": {
+        "samples": 292,
+        "avg": 17.18,
+        "min": 9.1,
+        "max": 133.3,
+        "p50": 16.7,
+        "p95": 16.8,
+        "p99": 24.3,
+        "over16_7": 99,
+        "over34_3": 1,
+        "over50": 1
+      },
+      "viewport": {
+        "width": 1830,
+        "height": 974,
+        "dpr": 1.0000000149011612,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+      },
+      "renderer": {
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      }
+    }
+  ]
+}
+[raf-control] report: .devshots/perf/raf-control.json
+[raf-control] summary: PASS

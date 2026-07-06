@@ -1,0 +1,7 @@
+---
+pid: 5464
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$scratch = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-17504a2e9a4f\\implementer\"; (Get-ChildItem \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\graphics-revamp\\2026-07-06_hull_capital*\" | Measure-Object).Count | Out-File \"$scratch\\screenshot-audit-hull_capital.txt\"; node \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\scripts\\probe-authored-assets-live.mjs\" 2>&1 | Select-String \"failureCount\" | Out-File \"$scratch\\probe-hull_capital.log\""
+started_at: 2026-07-06T07:53:22.468Z
+running_for_ms: 12094999 
+---

@@ -37,6 +37,7 @@ const RING_N = 180; // ~3s of history at 60fps; sized for a stable p95 without p
  * @param {() => object} [opts.settings]   - getter for settings metadata     (optional)
  * @param {() => object} [opts.scenePools] - getter for authored pool stats   (optional)
  * @param {() => object} [opts.post]       - getter for post-processing stats (optional)
+ * @param {() => object} [opts.vfx]        - getter for VFX inspect snapshot (optional)
  * @param {boolean} [opts.overlay] - create+show the on-screen overlay immediately (default false).
  * @returns {{ update(dt:number):void, getReport():object, setOverlay(on:boolean):void,
  *            toggleOverlay():boolean, get overlay():boolean, dispose():void }}
@@ -204,6 +205,7 @@ export function installDiagnostics(renderer, opts = {}) {
     if (typeof opts.settings === 'function') out.settings = safeObject(opts.settings());
     if (typeof opts.scenePools === 'function') out.scenePools = safeObject(opts.scenePools());
     if (typeof opts.post === 'function') out.post = safeObject(opts.post());
+    if (typeof opts.vfx === 'function') out.vfx = safeObject(opts.vfx());
     return out;
   }
 

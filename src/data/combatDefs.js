@@ -221,7 +221,14 @@ export const ATTACHMENT_DEFS = Object.freeze([
     // the socket further forward, re-run both before touching these numbers.
     breakTension: 420000,
     snapImpulseNoise: 0,
-    break: { maxTension: 420000, maxImpulse: 7600, maxYank: 380, graceTicks: 4, stiffness: 90, damping: 6 },
+    // maxYank: the line snaps on a SHARP jerk (rate-of-change of radial relative speed), never on
+    // steady pull. Calibrated against measured flight yanks: a plain reel-in to min length produces
+    // yank ~2400, and a max-speed (218 wu/s) orbit at minLength(18) produces centripetal yank
+    // ~2600. So normal-acrobatics yank tops out ~3000; 6000 sits comfortably above all normal
+    // flight (reel-in, slingshot, dogfight, orbit, throttle bumps) and only yields to genuine
+    // violence — boost-into-line, hard ramming, dash impulse. The masslineController harden term
+    // raises this budget further under sustained load (pull-behind-fleeing-target protection).
+    break: { maxTension: 420000, maxImpulse: 7600, maxYank: 6000, graceTicks: 4, stiffness: 90, damping: 6 },
     spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
     massline: { enabled: true },
     limits: { maxPerOwner: 1 },

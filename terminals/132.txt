@@ -1,0 +1,28 @@
+---
+pid: 3264
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && npm run check:wave15-regression 2>&1 | tee \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1e0adadd5119\\implementer\\wave15-regression.log\""
+started_at: 2026-07-06T04:12:54.898Z
+running_for_ms: 25320006 
+---
+
+> spaceface@0.1.0 check:wave15-regression
+> node scripts/capture-wave15-regression-floor.mjs
+
+node:fs:2414
+    return binding.writeFileUtf8(
+                   ^
+
+Error: EBUSY: resource busy or locked, open 'C:\Users\93rob\AppData\Local\Temp\grok-goal-1e0adadd5119\implementer\wave15-regression.log'
+    at writeFileSync (node:fs:2414:20)
+    at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/capture-wave15-regression-floor.mjs:39:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -4082,
+  code: 'EBUSY',
+  syscall: 'open',
+  path: 'C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1e0adadd5119\\implementer\\wave15-regression.log'
+}
+
+Node.js v24.15.0

@@ -1,0 +1,11 @@
+---
+pid: 24096
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && node scripts/probe-authored-assets-live.mjs 2>&1 | Select-String \"failureCount\" | Out-File \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-17504a2e9a4f\\implementer\\asset-checks-snippet.txt\"; Get-Content \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-17504a2e9a4f\\implementer\\asset-checks-snippet.txt\""
+started_at: 2026-07-06T07:28:43.091Z
+running_for_ms: 13570006 
+---
+
+    "failureCount": 0,
+    "wholeShipFailureCount": 0
+

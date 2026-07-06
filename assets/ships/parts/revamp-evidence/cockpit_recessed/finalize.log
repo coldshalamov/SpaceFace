@@ -1,5 +1,13 @@
 {
   "partId": "cockpit_recessed",
-  "tris": 960,
-  "bytes": 217584
+  "file": "cockpits/cockpit_recessed.glb",
+  "tris": 1884,
+  "bytes": 1596312,
+  "dims": [
+    5.7099,
+    1.336,
+    3.97
+  ],
+  "images": 4,
+  "materials": "Material_Accent,Material_Hull.002,Material_Mechanical,Material_Glass,Material_Hull"
 }

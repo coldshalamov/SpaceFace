@@ -1,8 +1,14 @@
 {
   "partId": "hull_interceptor",
   "file": "hulls/hull_interceptor.glb",
-  "tris": 4226,
-  "bytes": 1530808,
-  "images": 5,
-  "materials": "Material_Hull"
+  "tris": 3212,
+  "bytes": 1429832,
+  "dims": [11.1487, 1.3508, 5.3921],
+  "images": 2,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+clearcoat",
+  "screenshots": 24,
+  "full_finish": true
 }

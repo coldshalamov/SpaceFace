@@ -1,5 +1,15 @@
 {
   "partId": "fin_wedge",
-  "tris": 584,
-  "bytes": 195556
+  "file": "fins/fin_wedge.glb",
+  "tris": 1566,
+  "bytes": 1289392,
+  "dims": [4.2261, 0.5465, 4.1289],
+  "images": 3,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+AO_bake+clearcoat+emissive_edge",
+  "skin_pass": "sodium_edge_light+radiator_slit_gold+wear_patch+root_soot",
+  "screenshots": 24,
+  "full_finish": true
 }

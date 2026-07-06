@@ -1,8 +1,16 @@
 // Pure auto-target combat mode helpers — single owner of aim/refresh/reticle semantics.
+// Rung 08 (massline auto-target wire): when the player is in MASSLINE MODE (tether out), the
+// auto-target picker prefers swing potential over the weapon "hostiles-first/distance" sort.
+// pickMasslineAutoTarget() below consumes the pure scorer from masslineTargetScoring.js.
 import { wrapAngle } from '../core/rng.js';
 import { solveLeadAngle } from '../systems/weapons.js';
+import { isHostileToPlayer } from '../systems/scanner.js';
+import { rankMasslineTargets } from './masslineTargetScoring.js';
 
 export const AUTO_TARGET_REFRESH_S = 0.12;
+// Massline candidates include asteroids (mining/slingshot anchors), not just ships/drones — the
+// tether latches onto anything physical. Weapons-only targeting stays hostiles-only elsewhere.
+const MASSLINE_CANDIDATE_TYPES = new Set(['ship', 'drone', 'asteroid']);
 const HELM_SOFT_ANGLE = 0.55;
 const HELM_DEADBAND = 0.012;
 const RETICLE_EDGE_MARGIN = 28;
@@ -143,4 +151,65 @@ export function projectLockedReticle(state, w2s, viewport = {}) {
   }
   const len = Math.hypot(dx, dy) || 1;
   return { x: cx + (dx / len) * (width * 0.5 - margin), y: cy + (dy / len) * (height * 0.5 - margin) };
+}
+
+/**
+ * Massline auto-target picker (rung 08). When the player is in MASSLINE MODE (tether is out, i.e.
+ * state.player.tether.active), pick the best slingshot/swing anchor via rankMasslineTargets instead
+ * of the weapon "hostiles-first/distance" sort. Returns the picked record or null when not in
+ * massline mode / no candidates.
+ *
+ * Hostility is resolved here via scanner.isHostileToPlayer (per AGENTS §6 — never couple to
+ * factionId) and passed into the pure scorer as opts.isHostile, keeping the scorer pure.
+ *
+ * @param {object} state
+ * @param {object} [opts]
+ * @param {boolean} [opts.masslineMode]    - force massline mode on/off (default: tether.active).
+ * @param {number}  [opts.maxRange=390]    - latch range; defaults to the stock tether maxLength.
+ * @param {boolean} [opts.applyLock=true]  - write the pick to state.player.targetId.
+ * @returns {{targetId, score, rating}|null}  - null when not in massline mode or no candidate.
+ */
+export function pickMasslineAutoTarget(state, opts = {}) {
+  if (!state || !state.entities || !state.player) return null;
+
+  const tether = state.player.tether;
+  const masslineMode = opts.masslineMode != null ? !!opts.masslineMode : !!(tether && tether.active);
+  if (!masslineMode) return null;
+
+  const maxRange = positiveFinite(opts.maxRange, 390);
+  const player = state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos) return null;
+
+  // Gather candidate anchors in range. Massline candidates include asteroids (slingshot/mining
+  // anchors), unlike weapon targeting. Dead entities and the player are excluded.
+  const candidates = [];
+  const list = state.entityList || (state.entities ? Array.from(state.entities.values()) : []);
+  for (const e of list) {
+    if (!e || e.alive === false || e === player || !e.pos) continue;
+    if (!MASSLINE_CANDIDATE_TYPES.has(e.type)) continue;
+    const dx = e.pos.x - player.pos.x;
+    const dz = e.pos.z - player.pos.z;
+    if (dx * dx + dz * dz > maxRange * maxRange) continue;
+    candidates.push(e);
+  }
+  if (!candidates.length) return null;
+
+  const ranked = rankMasslineTargets(player, candidates, {
+    maxRange,
+    isHostile: (t) => isHostileToPlayer(t, player.team, state),
+    isLatched: tether && tether.targetId != null
+      ? (t) => t.id === tether.targetId
+      : null,
+  });
+  if (!ranked.length || ranked[0].score <= 0) return null;
+
+  const best = ranked[0];
+  if (opts.applyLock !== false) {
+    state.player.targetId = best.id;
+  }
+  return { targetId: best.id, score: best.score, rating: best.rating };
+}
+
+function positiveFinite(v, fb) {
+  return Number.isFinite(v) && v > 0 ? v : fb;
 }

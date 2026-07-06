@@ -1,8 +1,12 @@
 {
   "partId": "engine_resonator",
   "file": "engines/engine_resonator.glb",
-  "tris": 2608,
-  "bytes": 274176,
-  "images": 4,
-  "materials": "Material_Mechanical"
+  "tris": 15474,
+  "bytes": 951260,
+  "dims": [3.23, 2.5935, 2.5935],
+  "images": 2,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "source": "blender_mcp",
+  "date": "2026-07-06",
+  "note": "PRO Full Finish — trim/wear + AO bakes + Anomaly violet bleed/facet/stencil/port DET, 29 MCP EEVEE renders. HOOK tangent warn non-fatal."
 }

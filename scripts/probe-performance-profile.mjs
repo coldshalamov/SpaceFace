@@ -13,6 +13,10 @@ import { createServer as createNetServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import {
+  formatPerformanceProfileMarkdown,
+  performanceProfileMarkdownPath,
+} from './lib/perf-summary.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const argv = parseArgs(process.argv.slice(2));
@@ -137,9 +141,12 @@ try {
   report.summary = summarizeReport(report.scenarios);
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(report, null, 2));
+  const summaryPath = performanceProfileMarkdownPath(OUT);
+  writeFileSync(summaryPath, formatPerformanceProfileMarkdown(report));
 
   console.log(JSON.stringify(report, null, 2));
   console.log(`[perf-profile] report: ${OUT}`);
+  console.log(`[perf-profile] summary: ${summaryPath}`);
   console.log(`[perf-profile] screenshot: ${SHOT} ${(statSync(SHOT).size / 1024).toFixed(1)} KB`);
   console.log(`[perf-profile] budget summary: ${report.summary.pass ? 'PASS' : 'FAIL'} (${report.summary.failedBudgets.length} failed)`);
 
@@ -574,6 +581,10 @@ async function sampleRuntime(cdp, durationMs) {
       }
       stats.authoredPools.chunkCounts.sort((a, b) => a - b);
       stats.visibleMaterialKeyCount = materialKeys.size;
+      const hlod = renderSys && renderSys.hlod || {};
+      stats.hlodDetailedVisible = Number(hlod.hlodDetailedVisible) || 0;
+      stats.hlodProxyVisible = Number(hlod.hlodProxyVisible) || 0;
+      stats.hlodObjectsSwapped = Number(hlod.hlodObjectsSwapped) || 0;
       return stats;
     };
 
@@ -1106,15 +1117,20 @@ async function resetRuntimeDiagnostics(cdp) {
   const reset = await evalJson(cdp, `new Promise((resolve) => requestAnimationFrame(() => {
     const diag = window.__THREE_GAME_DIAGNOSTICS__;
     const perf = window.__SPACEFACE_PERF__;
+    const sf = window.SF || null;
+    const render = sf && sf.state && sf.state.render || null;
     if (diag && typeof diag.reset === 'function') diag.reset();
     if (perf && typeof perf.reset === 'function') perf.reset();
+    if (render && typeof render.resetPostTelemetrySample === 'function') render.resetPostTelemetrySample();
     resolve({
       diagnostics: !!(diag && typeof diag.reset === 'function'),
       perfRuntime: !!(perf && typeof perf.reset === 'function'),
+      postTelemetry: !!(render && typeof render.resetPostTelemetrySample === 'function'),
     });
   }))`);
   assert.ok(reset.diagnostics, 'renderer diagnostics reset must be available');
   assert.ok(reset.perfRuntime, 'perf runtime reset must be available');
+  assert.ok(reset.postTelemetry, 'post render-target sample counter reset must be available');
   await sleep(300);
 }
 
@@ -1342,6 +1358,11 @@ function evaluateBudgets({ rafFrameP95, rafHitchCount, diagnosticFrameP95, rende
       'film grain should use the optimized quantized composite path, not the old per-refresh analytic grain hash'),
     budget('post.grainFps.max', postDiagnostic(finalSample, 'grainFps'), '<=', 15,
       'film grain should animate at a film-like cadence instead of changing every rendered frame'),
+    budget('post.renderTargetAllocationsDuringSample.max',
+      postDiagnostic(finalSample, 'renderTargetAllocationsDuringSample'), '<=', 0,
+      'post-process render targets should not allocate or resize during a stable gameplay sample'),
+    budget('post.renderTargetCount.min', postDiagnostic(finalSample, 'renderTargetCount'), '>=', 1,
+      'active post path should report its live render-target count'),
     budget('ui.hiddenBackdropActive.max', compositorDiagnostic(finalSample, 'hiddenBackdropActive'), '<=', 0,
       'closed modal backdrop should not remain as an active fullscreen blur/compositor layer during flight'),
     budget('ui.inactiveDockFadeDisplayed.max', compositorDiagnostic(finalSample, 'inactiveDockFadeDisplayed'), '<=', 0,
@@ -1429,14 +1450,18 @@ function shipRoleCount(sceneStats, predicate) {
 
 function postDiagnostic(finalSample, key) {
   if (!finalSample || !finalSample.post) return NaN;
-  const bloom = finalSample.post.bloom;
+  const post = finalSample.post;
+  if (post[key] != null && Number.isFinite(Number(post[key]))) return Number(post[key]);
+  const bloom = post.bloom;
   if (!bloom) return 0;
   return Number(bloom[key]);
 }
 
 function legacyAnalyticGrainDiagnostic(finalSample) {
-  if (!finalSample || !finalSample.post || !finalSample.post.bloom) return NaN;
-  return finalSample.post.bloom.grainSource === 'analytic' ? 1 : 0;
+  if (!finalSample || !finalSample.post) return NaN;
+  const source = finalSample.post.grainSource
+    || (finalSample.post.bloom && finalSample.post.bloom.grainSource);
+  return source === 'analytic' ? 1 : 0;
 }
 
 function compositorDiagnostic(finalSample, key) {
@@ -1520,6 +1545,10 @@ function summarizeReport(scenarios) {
         topShipMaterialKeys: scenario.sceneStats && scenario.sceneStats.visibleShipMaterialKeys
           ? scenario.sceneStats.visibleShipMaterialKeys.slice(0, 16)
           : [],
+        stationVisibleMeshes: visibleCategoryCount(scenario.sceneStats, 'station'),
+        hlodDetailedVisible: scenario.sceneStats && scenario.sceneStats.hlodDetailedVisible,
+        hlodProxyVisible: scenario.sceneStats && scenario.sceneStats.hlodProxyVisible,
+        hlodObjectsSwapped: scenario.sceneStats && scenario.sceneStats.hlodObjectsSwapped,
       },
       bottleneck: scenario.bottleneck || null,
     })),

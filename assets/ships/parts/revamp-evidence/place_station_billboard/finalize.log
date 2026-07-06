@@ -1,1 +1,1 @@
-{"partId":"place_station_billboard","tris":1000,"bytes":100000,"images":3,"note":"PRO revamp 2026-07-05"}
+{"partId":"place_station_billboard","file":"places/place_station_billboard.glb","tris":948,"bytes":231964,"images":3,"materials":"Material_Hull.001,Material_Accent,Material_Mechanical.001,Material_Hull","note":"PRO revamp 2026-07-05 — bevel (segs=2) + WN + AO/rough bakes via MCP for billboard. Character: commercial signage weathered frontier station ad panel. 948 tris."}

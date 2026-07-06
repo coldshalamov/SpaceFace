@@ -1,5 +1,14 @@
 # Flight Physics V2
 
+> **⚠ LEGACY 2026-07-06.** This spec documents the V2-era custom controller. The live flight layer is now
+> **V3**: controller `src/systems/flightV3.js`, physics math `src/core/flight/*`
+> (propulsionCatalog/propulsionKernel/flightTelemetry), backend `rapier-dynamic` (mandatory default —
+> `src/core/gameState.js:16`). The current authoritative flight contract is
+> [`design/spec3/SPEC3-F3-flight-physics-feel.md`](spec3/SPEC3-F3-flight-physics-feel.md) (flight feel + juice)
+> plus `AGENTS.md §5` (two-implementation table). The "Collision And Backend Policy" section below
+> (default `custom`, Rapier "optional") is **wrong as of V3** — treat it as historical. Retained for the
+> field-schema and diagnostics reference; do not implement new flight behavior from this file alone.
+
 ## Summary
 SpaceFace uses an authored deterministic starship controller, not raw rigid-body steering. The ship has inertia and drift, but the default `assisted` mode converges smoothly to the pilot's intent, brakes yaw quickly on release, and never steers itself toward hidden diagonal attractors. Banking is visual-only roll: positive turn input banks right, negative turn input banks left, and bank never feeds yaw or velocity.
 

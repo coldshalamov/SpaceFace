@@ -1,5 +1,12 @@
 # Station Market & Hub Screen Revamp — Design Spec
 
+> **Status: LEGACY 2026-07-06.** This is unmanaged drift per `AGENTS.md §4`. The live UI authority is
+> `design/spec2/06_UI_IDENTITY.md` + the taste constitution `design/spec2/00_MASTER_TASTE.md` (esp. §3:
+> clean non-diegetic HUD — no cockpit/visor motifs) + the economy threads `design/spec3/SPEC3-F1*` /
+> `SPEC3-F2*`. The chart/market-viz goal here is partially captured by `design/revamp/` T8h
+> (`check:market-chart`). Do **not** implement this revamp wholesale from this file — reconcile against
+> spec2/06 and the revamp ledger first.
+
 **Goal:** Replace the cramped, text-heavy station Market tab (and the hub shell that contains it) with a spacious, distinctive trade-control-panel interface that uses charts, visual hierarchy, and industrial sci-fi styling. The economy behind the charts must feel alive: hidden regional events push prices along partially-predictable curves, so reading the chart is a real skill.
 
 **Scope:**
