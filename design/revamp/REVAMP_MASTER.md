@@ -153,3 +153,27 @@ traveling to the truth of the world you started in. Factions differ by voice and
 MTS mercantile, Drift blue-collar, Crimson Reach predatory-but-poor, The Quiet terse, Choir zealot, Free
 independent, Vael alien-formal). Deliver all of it **through systems, one voice at a time** — dock-deny text,
 faction barks, market headlines, manifest phases — never a wall of lore. Full canon in `docs/worldbuilding/`.
+
+---
+
+## 8. THE DETAIL DOCTRINE (governs Wave 3+ and the "attention to detail" layer)
+
+The flat/empty/cheap feeling is not missing features — it's features the player can't **see**, **predict**, or
+**change**. The governing filter, applied to every detail: **"A detail earns its place only if the player can
+see it, predict it, or change it. If none of the three, it's not detail — it's cost."** Full constitution:
+[`DETAIL_DOCTRINE.md`](DETAIL_DOCTRINE.md) (load-bearing rules, pillar filter, gold-packet schema, four-way triage,
+hard-freeze concurrency rule). Source quarry: [`DETAIL_BRAINSTORM_R2.md`](DETAIL_BRAINSTORM_R2.md) (500 items).
+Curated, wave-mapped packets (91 gold packets · 56 already-shipped-validated · 58 cut/deferred):
+[`DETAIL_PACKETS.md`](DETAIL_PACKETS.md), authored into three new BPs — [BP-11 Sector Atmosphere &
+Station Life](BP-11_SECTOR_ATMOSPHERE.md), [BP-12 Causal Economy Missions & Contracts](BP-12_CAUSAL_ECONOMY.md),
+[BP-13 Pirate Ecology & Named Characters](BP-13_PIRATE_ECOLOGY.md) — plus `BP-0X.1` addenda folded onto existing
+lanes (applied AFTER their wave merges, never inline). Full per-packet detail in `detail/A..G_*.md`.
+
+### The first-15-minutes proof surface (named)
+The revamp is judged on two surfaces: this ritual and the 47-A slice. The **first-15 proof ritual** (a proof, not
+a tutorial): minute-1 one objective + one beacon, no chatter → **first derelict teaches the tether by *saving*
+something**, not by explaining a control → **first mining**: scanner pulse reveals seams, beam pulse teaches the
+heat rhythm → **first combat**: a weak pirate demands a toll then flees at low hull (teaches combat *and* mercy)
+→ **first station**: sell ore, buy one useful module, accept one recommended job → **first choice**: haul / bounty
+/ survey. Tutorial-memory (skip learned verbs); mentor-silence (never talk over success). All verbs it needs —
+tether, mining rhythm, `barks`, `encounterDirector` — already shipped; the ritual assembles them.

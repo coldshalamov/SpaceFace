@@ -1,5 +1,6 @@
 // Pure auto-target combat mode helpers — single owner of aim/refresh/reticle semantics.
 import { wrapAngle } from '../core/rng.js';
+import { solveLeadAngle } from '../systems/weapons.js';
 
 export const AUTO_TARGET_REFRESH_S = 0.12;
 const HELM_SOFT_ANGLE = 0.55;
@@ -39,6 +40,36 @@ export function lockedHostileEntity(state) {
   return e;
 }
 
+function playerLeadSpeed(state) {
+  const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!player) return 360;
+  const ws = player.data && player.data.weapons;
+  if (ws && ws.length) {
+    for (const w of ws) {
+      const sp = w.projSpeed != null ? w.projSpeed : 0;
+      if (sp > 0) return sp;
+    }
+  }
+  return 360;
+}
+
+export function computeLockedLeadPoint(state) {
+  const lockEnt = lockedHostileEntity(state);
+  if (!lockEnt) return null;
+  const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos || !lockEnt.pos) return lockEnt.pos || null;
+  const speed = playerLeadSpeed(state);
+  // Ensure vel fields exist for the pure solver (some test fixtures / edge entities may omit).
+  const sForLead = { pos: player.pos, vel: player.vel || { x: 0, z: 0 } };
+  const tForLead = { pos: lockEnt.pos, vel: lockEnt.vel || { x: 0, z: 0 } };
+  const ang = solveLeadAngle(sForLead, tForLead, speed);
+  const dist = Math.hypot(lockEnt.pos.x - player.pos.x, lockEnt.pos.z - player.pos.z) || 180;
+  return {
+    x: player.pos.x + Math.cos(ang) * dist,
+    z: player.pos.z + Math.sin(ang) * dist,
+  };
+}
+
 export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime()) {
   const inp = state && state.input;
   if (!inp || !inp.autoFire) {
@@ -54,9 +85,10 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
 
   const lockEnt = lockedHostileEntity(state);
   if (lockEnt) {
-    inp.aimAngle = Math.atan2(lockEnt.pos.z - player.pos.z, lockEnt.pos.x - player.pos.x);
-    inp.aimWorld.x = lockEnt.pos.x;
-    inp.aimWorld.z = lockEnt.pos.z;
+    const leadPt = computeLockedLeadPoint(state) || lockEnt.pos;
+    inp.aimAngle = Math.atan2(leadPt.z - player.pos.z, leadPt.x - player.pos.x);
+    inp.aimWorld.x = leadPt.x;
+    inp.aimWorld.z = leadPt.z;
   }
 
   const pointer = inp.pointerScreen;
@@ -76,15 +108,17 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
 
 export function projectLockedReticle(state, w2s, viewport = {}) {
   if (!state || !state.input || !state.input.autoFire) return null;
+  const leadPt = computeLockedLeadPoint(state);
   const lockEnt = lockedHostileEntity(state);
-  if (!lockEnt || !w2s) return null;
+  const use = leadPt || (lockEnt && lockEnt.pos) || null;
+  if (!use || !w2s) return null;
 
   const width = Number.isFinite(viewport.width) ? viewport.width : 0;
   const height = Number.isFinite(viewport.height) ? viewport.height : 0;
   const cx = width * 0.5;
   const cy = height * 0.5;
 
-  const proj = w2s({ x: lockEnt.pos.x, y: 0, z: lockEnt.pos.z });
+  const proj = w2s({ x: use.x, y: 0, z: use.z });
   if (!proj || !Number.isFinite(proj.x) || !Number.isFinite(proj.y)) return null;
   if (proj.onScreen) return { x: proj.x, y: proj.y };
 

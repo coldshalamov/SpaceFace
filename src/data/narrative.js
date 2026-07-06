@@ -183,6 +183,10 @@ export const COMMS = {
     { id: 'story_vale_goodwork', sender: '[NO SENDER · NO CHANNEL ID]', text: 'Good work. Keep it clean.',
       note: "Vale's only direct line. Fires the moment the jump drive begins charging from Ashfall Reach.",
       beat: 7, once: true, persist: true },
+    // B8 — Wren artifact thread opener (salvage:communicatorFound trigger in story.js).
+    { id: 'story_b8_helix_audit', sender: 'HELIX DIRECTORATE', text: 'VESSEL VHL-4471-T — VARIANCE FILE OPEN. COORDINATES ON ATTACHED MANIFEST DO NOT RESOLVE. NO ACTION REQUIRED.',
+      note: 'Paper-faction audit ping. The coordinate file on the salvaged communicator never decodes — the system files it anyway.',
+      beat: 8, once: true },
   ],
 };
 
@@ -233,7 +237,7 @@ export const GRAFFITI = {
 // `hint` is the new "Captain's Log north star" — in-world voice, not tutorial.
 // `phase` sets the HUD meta-arc phase (1 Protective / 2 Complicit / 3 Absent).
 //
-// Beat indices match src/data/missions.js STORY_BEATS[] (0..7).
+// Beat indices match src/data/missions.js STORY_BEATS[] (0..7) plus B8+ narrative extensions (8+).
 export const BEAT_CONTENT = [
   { // B0 — COLD START
     beat: 0, phase: 1,
@@ -304,6 +308,13 @@ export const BEAT_CONTENT = [
     graffiti: [{ line: GRAFFITI.THEY_ALWAYS_KNEW, where: 'bulkhead' }],
     comms: ['late_atmo_debt'],
     hudLie: 'phase3_freeze', // final contract entry PENDING; cannot be closed
+  },
+  { // B8 — WREN THREAD (post-spine salvage hook; fires on salvage:communicatorFound)
+    beat: 8, phase: 3,
+    hint: 'The communicator still carries a coordinate file. The registry cross-check returns NO MATCH. That is also normal.',
+    graffiti: [{ line: GRAFFITI.COORDINATES_DONT_MATCH, where: 'bulkhead' }],
+    comms: ['story_b8_helix_audit'],
+    hudLie: null,
   },
 ];
 

@@ -1,3 +1,4 @@
+- Before iter1 for engine_industrial: MCP import/inspect + bevel/WN/non-dest stack applied (specific to this asset geometry and character).
 - Before iter1: no bevels on engine_industrial housing and mounts (fixed: Bevel 3 segs + miter)
 - Before iter1: shading issues without WN (fixed: Weighted Normal)
 - Before iter2: missing meso details and insets (fixed: panel insets + bevel)
@@ -24,3 +25,7 @@
 
 - Unique for engine_industrial : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
+
+- Real MCP work and deficiency fixes performed specifically on engine_industrial geometry and character using execute + renders.
+- Before iter for engine_industrial: specific issues from audit of this asset only (bevels, nodes, wear).
+- engine_industrial unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

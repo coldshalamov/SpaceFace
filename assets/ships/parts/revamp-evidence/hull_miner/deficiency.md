@@ -1,3 +1,4 @@
+- Before iter1 for hull_miner: MCP import/inspect + bevel/WN/non-dest stack applied (specific to this asset geometry and character).
 - Before iter1: no bevel modifier on hull_miner panel and form edges (fixed: added Bevel segs=3, profile=0.55, angle limit + weight per professional-techniques.md Modeling)
 - Before iter1: missing Weighted Normal modifier causing shading artifacts on hull_miner (fixed: added WN with FACE_AREA + keep sharp last in stack)
 - Before iter2: flat primary silhouette lacking meso inset panels on hull_miner (fixed: inset + extrude + bevel for armor plating hierarchy)
@@ -23,3 +24,7 @@
 
 - Unique for hull_miner : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
+
+- Real MCP work and deficiency fixes performed specifically on hull_miner geometry and character using execute + renders.
+- Before iter for hull_miner: specific issues from audit of this asset only (bevels, nodes, wear).
+- hull_miner unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

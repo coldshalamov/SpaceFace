@@ -40,7 +40,7 @@ const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'bank',
   'bankVel',
 ]);
-const TRANSIENT_ENTITY_FLAGS = new Set(['boosting', 'noInterp']);
+const TRANSIENT_ENTITY_FLAGS = new Set(['boosting', 'noInterp', 'docked', 'invuln']);
 
 // Save-key → serialize/deserialize plan (§4.5 map). Order is the load/restore order (deps first).
 // `get(state, system)` reads the key's payload; `set(state, system, data)` restores it. Systems that
@@ -73,13 +73,18 @@ export const save = {
     bus.on('player:death', () => { this._playerDead = true; });
     bus.on('player:respawn', () => { this._playerDead = false; });
 
-    // Autosave triggers (§4.5): dock, sector entry, mission settlement. Debounced ≤1/10s.
+    // Autosave triggers (§4.5): major progression milestones. Debounced ≤1/10s unless forced.
     bus.on('dock:docked', () => this.requestAutosave('dock'));
     bus.on('dock:undocked', () => this.requestAutosave('undock', { force: true }));
     bus.on('sector:enter', () => this.requestAutosave('sector'));
+    bus.on('jump:arrive', () => this.requestAutosave('jump', { force: true }));
+    bus.on('mission:accepted', () => this.requestAutosave('mission_accept'));
     bus.on('mission:completed', () => this.requestAutosave('mission'));
     bus.on('mission:failed', () => this.requestAutosave('mission'));
     bus.on('mission:expired', () => this.requestAutosave('mission'));
+    bus.on('economy:tradeCompleted', () => this.requestAutosave('trade'));
+    bus.on('story:beatAdvanced', () => this.requestAutosave('story'));
+    bus.on('player:respawn', () => this.requestAutosave('respawn', { force: true }));
   },
 
   // Interval autosave is the only periodic job; playtime accrual is core's (§ core.preStep).
@@ -566,6 +571,7 @@ export const save = {
       this._restoreFlight(data.flight);
       this._restoreNav(data.nav);
       this._restoreSettings(data.settings);
+      this._reconcileFlightReadyAfterLoad();
 
       // 14. restore sim clock + rebuild the master RNG from the (unchanged) seed.
       if (data.entities) {
@@ -811,6 +817,38 @@ export const save = {
     if (typeof saved.rot === 'number') { e.rot = saved.rot; e.prevRot = saved.rot; }
     if (typeof saved.angVel === 'number') e.angVel = saved.angVel;
     e.flags.noInterp = true; // skip interpolation this frame (teleport)
+  },
+
+  // Dock/UI session state must not survive a load — autosaves taken while docked used to persist
+  // player.flags.docked and freeze flight/weapons/mining on Continue.
+  _reconcileFlightReadyAfterLoad() {
+    const state = this.state;
+    const player = this.helpers.getEntity(state.playerId);
+    if (player && player.flags) {
+      player.flags.docked = false;
+      player.flags.invuln = false;
+    }
+    if (player) delete player._invulnUntil;
+
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (combat && typeof combat.setPlayerDocked === 'function') {
+      combat.setPlayerDocked(false);
+    } else if (player && player.flags) {
+      player.flags.invuln = true;
+      player._invulnUntil = (state.simTime || 0) + 4;
+    }
+
+    if (state.ui) {
+      state.ui.docked = false;
+      state.ui.dockedStationId = null;
+    }
+    if (state.jump && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING')) {
+      state.jump.state = 'IDLE';
+      state.jump.chargeT = 0;
+      state.jump.cooldownT = 0;
+      state.jump.targetSectorId = null;
+      state.jump.via = null;
+    }
   },
 
   // Saved target ids point at NPCs that get fresh ids when the sector regenerates → null them.

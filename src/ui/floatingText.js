@@ -82,6 +82,12 @@ export function createFloatingText(ctx) {
   });
   bus.on('combat:damage', (p) => { if (p && p.brokeShield) { const e = state.entities.get(p.targetId); if (e) spawn('SHIELD DOWN', 'sf-ft--shielddown', e.pos.x, e.pos.z, null, { life: 1.0, vy: 30 }); } });
   bus.on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); });
+  // Weak-point hit (BP-02): a player shot landed in the target's exposed subsystem arc. Callout at the
+  // hit so the bonus reads as skill, not noise. targetId lets it ride the target's screen motion.
+  bus.on('combat:weakPointHit', (p) => {
+    if (!p || !p.pos) return;
+    spawn('◈ ' + (p.label || 'WEAK POINT'), 'sf-ft--weak', p.pos.x, p.pos.z, p.targetId, { life: 1.0, vy: 40 });
+  });
   bus.on('mining:yield', (p) => { if (p && p.pos && p.qty) spawn('+' + p.qty, 'sf-ft--ore', p.pos.x, p.pos.z, null, { life: 1.0, vy: 40 }); });
   bus.on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
   // Phase 3/6: confirm a dash fired (violet, matches the boost bar) — only the player's, so a fleet
@@ -201,6 +207,7 @@ function injectStyle() {
   .sf-ft--big { font-size:24px; }
   .sf-ft--shielddown { color:#9fe8ff; font-size:12px; letter-spacing:.18em; }
   .sf-ft--kill { color:#ff8a4a; font-size:15px; letter-spacing:.16em; text-shadow:0 0 10px rgba(255,120,40,.7),0 0 4px #000; }
+  .sf-ft--weak { color:#ffd24a; font-size:13px; font-weight:800; letter-spacing:.1em; text-shadow:0 0 9px rgba(255,200,60,.8),0 0 4px #000; }
   .sf-ft--ore { color:#7af7d0; }
   .sf-ft--credits { color:#ffd84a; font-size:15px; }
   .sf-ft--dash { color:#c98cff; font-size:14px; letter-spacing:.18em; text-shadow:0 0 10px rgba(170,90,255,.8),0 0 4px #000; }

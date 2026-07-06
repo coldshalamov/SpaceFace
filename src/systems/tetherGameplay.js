@@ -36,6 +36,7 @@ export const tetherGameplay = {
     this._noRelatchUntil = -Infinity;
     this._pendingCut = null;
     this._ignoreReleaseCutUntilReelIdle = false;
+    this._reelStrength = 0;
     this._resetPhaseMirror();
   },
 
@@ -89,7 +90,9 @@ export const tetherGameplay = {
         this._mirror(state, null, 0);
         return;
       }
-      if (heldLongEnough && reelHeld) {
+      // Holding G is reel intent — cancel the pending cut once the tap window expires so release
+      // does not cut. Reeling itself is never blocked by pendingCut (see _reelActive below).
+      if (reelHeld && heldLongEnough) {
         this._pendingCut = null;
       }
     }
@@ -109,14 +112,16 @@ export const tetherGameplay = {
         this._mirror(state, null, 0);
         return;
       }
-      this._reelActive(attachments, this._pendingCut ? 0 : actions?.reelDelta, dt);
+      const reeled = this._reelActive(attachments, actions?.reelDelta, dt);
+      this._updateReelStrength(reelHeld, reeled, dt);
       this._emitStrain(attachments, state);
       const att = attachments.get(this._active.attachmentId);
       const phase = this._phaseFor(state, att, dt, this._lastStrainRatio || 0);
-      this._mirror(state, this._active.targetId, this._lastStrainRatio || 0, att ? att.restLength : 0, phase);
+      this._mirror(state, this._active.targetId, this._lastStrainRatio || 0, att ? att.restLength : 0, phase, reelHeld);
       return;
     }
 
+    this._reelStrength = 0;
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
     if (!actions?.tetherFire) return;
@@ -234,22 +239,34 @@ export const tetherGameplay = {
   },
 
   _reelActive(attachments, reelDelta, dt) {
-    if (!this._active || !Number.isFinite(reelDelta) || reelDelta === 0) return;
+    if (!this._active || !Number.isFinite(reelDelta) || reelDelta === 0) return false;
     const attachment = attachments.get(this._active.attachmentId);
-    if (!attachment || attachment.state !== 'active') return;
+    if (!attachment || attachment.state !== 'active') return false;
     const kernel = combatKernel(this);
     const def = attachmentDef(kernel, attachment.defId);
-    if (!def) return;
+    if (!def) return false;
 
     const maxStep = positive(def.reelRate, 0) * Math.max(0, Number(dt) || 0);
-    if (!(maxStep > 0)) return;
+    if (!(maxStep > 0)) return false;
     const requested = clamp(reelDelta, -maxStep, maxStep);
     const minLength = positive(def.minLength, 0);
     const maxLength = positive(def.maxLength, Infinity);
-    const next = clamp((attachment.restLength || 0) + requested, minLength, maxLength);
-    const delta = next - (attachment.restLength || 0);
-    if (Math.abs(delta) <= 1e-6) return;
-    attachments.reel(attachment.id, delta, minLength);
+    const before = attachment.restLength || 0;
+    const next = clamp(before + requested, minLength, maxLength);
+    const delta = next - before;
+    if (Math.abs(delta) <= 1e-6) return false;
+    const result = attachments.reel(attachment.id, delta, minLength);
+    if (!result || !result.ok) return false;
+    const after = result.attachment && result.attachment.restLength;
+    return Number.isFinite(after) && after < before - 1e-6;
+  },
+
+  _updateReelStrength(reelHeld, reeled, dt) {
+    const step = Math.max(0, Number(dt) || 0);
+    const target = reelHeld ? (reeled ? 1 : 0.42) : 0;
+    const rate = target > this._reelStrength ? 9 : 5;
+    this._reelStrength += (target - this._reelStrength) * (1 - Math.exp(-rate * step));
+    if (!reelHeld && this._reelStrength < 0.01) this._reelStrength = 0;
   },
 
   _emitStrain(attachments, state) {
@@ -346,7 +363,7 @@ export const tetherGameplay = {
   // Mirror the tether state onto state.player.tether for HUD/VFX consumers (single-owner rule:
   // they read, we write). null targetId = no tether. restLength lets the cable visual compute
   // real slack (restLength - distance) instead of guessing from strain.
-  _mirror(state, targetId, strain, restLength = 0, phase = 'slack') {
+  _mirror(state, targetId, strain, restLength = 0, phase = 'slack', reelHeld = false) {
     const player = state.player || (state.player = {});
     const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, attachmentId: null, restLength: 0, phase: 'slack' });
     t.active = targetId != null;
@@ -355,6 +372,8 @@ export const tetherGameplay = {
     t.restLength = restLength || 0;
     t.phase = t.active ? normalizePhase(phase) : 'slack';
     t.attachmentId = this._active ? this._active.attachmentId : null;
+    t.reeling = !!(t.active && reelHeld);
+    t.reelStrength = t.active ? finite(this._reelStrength, 0) : 0;
     t.slingshotT = Math.max(0, finite(t.slingshotT, 0));
     t.slingshot = t.slingshotT > 0;
   },

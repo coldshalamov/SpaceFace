@@ -104,7 +104,7 @@ export class ManeuverPlanner {
       : EMPTY_TRAJECTORY;
     const request = makeThrusterRequest(entityId, tick, {
       kind,
-      forceLocal: { forward: forward * throttle, right: right * throttle },
+      forceLocal: { forward: forward * throttle, right: right * throttle * 0.42 },
       torqueYaw: clamp(angleError / 0.65, -1, 1),
       boost,
       brake,

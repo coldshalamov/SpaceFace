@@ -21,7 +21,8 @@ function masslineDefFor(def, breakPolicy = null) {
     reelOutSpeed: reelRate == null ? undefined : reelRate,
     maxTension: Number.isFinite(brk.maxTension) ? brk.maxTension : 140,
     maxImpulse: Number.isFinite(brk.maxImpulse) ? brk.maxImpulse : 90,
-    overloadGraceS: 0.18,
+    maxYank: Number.isFinite(brk.maxYank) ? brk.maxYank : 420,
+    overloadGraceS: 0.22,
     catastrophicRatio: 1.75,
   };
 }
@@ -364,6 +365,7 @@ export function createAttachmentService(context) {
             distance: telemetry.distance,
             stretch: telemetry.stretch,
             relativeSpeed: telemetry.relativeSpeed,
+            yank: telemetry.yank,
             tension: telemetry.tension,
             impulse: telemetry.impulse,
           },
@@ -408,7 +410,7 @@ export function createAttachmentService(context) {
             continue;
           }
           const rawCutReason = ml.runtime.cutReason || 'overload';
-          const cutReason = rawCutReason === 'catastrophic-overload' || rawCutReason === 'sustained-overload'
+          const cutReason = rawCutReason === 'catastrophic-overload' || rawCutReason === 'sustained-overload' || rawCutReason === 'snap'
             ? 'threshold'
             : rawCutReason;
           breakAttachment(attachment, cutReason, attachment.ownerId, {

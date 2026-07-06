@@ -195,7 +195,7 @@ export const ATTACHMENT_DEFS = Object.freeze([
     id: 'attachment_massline', version: 1,
     sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: true },
-    break: { maxTension: 8200, maxImpulse: 165, graceTicks: 4 },
+    break: { maxTension: 8200, maxImpulse: 165, maxYank: 420, graceTicks: 4 },
     spring: { K: 170, zeta: 0.90, captureS: 0.30, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
     // Massline winch/heat/overload controller (spec §8). Opt-in: runs stepMassline per tick,
     // smoothing the joint rest length and breaking on sustained overload / integrity failure.
@@ -221,7 +221,7 @@ export const ATTACHMENT_DEFS = Object.freeze([
     // the socket further forward, re-run both before touching these numbers.
     breakTension: 420000,
     snapImpulseNoise: 0,
-    break: { maxTension: 420000, maxImpulse: 7600, graceTicks: 4, stiffness: 90, damping: 6 },
+    break: { maxTension: 420000, maxImpulse: 7600, maxYank: 380, graceTicks: 4, stiffness: 90, damping: 6 },
     spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
     massline: { enabled: true },
     limits: { maxPerOwner: 1 },

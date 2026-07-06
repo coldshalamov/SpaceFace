@@ -395,7 +395,7 @@
       "priority": "P0",
       "file": "hulls/hull_frigate.glb",
       "tris": 4384,
-      "bytes": 1543904,
+      "bytes": 1544548,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -420,16 +420,16 @@
         ],
         "max": [
           7.021,
-          2.62682,
-          2.69803
+          2.6268,
+          2.698
         ],
         "dimensionsM": [
           13.015,
-          5.15182,
-          5.32303
+          5.1518,
+          5.323
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 4384 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for frigate hull. Character: agile frigate with sleek lines, combat wear. 4384 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -455,7 +455,7 @@
       "priority": "P0",
       "file": "hulls/hull_capital.glb",
       "tris": 4406,
-      "bytes": 1539448,
+      "bytes": 1540096,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -489,7 +489,7 @@
           7.05
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 4406 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN last via MCP on capital hull. Character: large multi-role capital with industrial plating, command presence. 4406 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -515,7 +515,7 @@
       "priority": "P0",
       "file": "hulls/hull_multirole.glb",
       "tris": 2917,
-      "bytes": 1405188,
+      "bytes": 1405836,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -539,17 +539,17 @@
           -2.225
         ],
         "max": [
-          6.51698,
+          6.517,
           1.92,
           2.225
         ],
         "dimensionsM": [
-          12.18198,
+          12.182,
           3.78,
           4.45
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 2917 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for multirole hull. Character: versatile multirole with balanced industrial lines, flexible role wear. 2917 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1249,7 +1249,7 @@
       "priority": "P1",
       "file": "weapons/weapon_turret_dual.glb",
       "tris": 1808,
-      "bytes": 240720,
+      "bytes": 241160,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1298,7 +1298,7 @@
           2.25
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1808 tris."
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for dual turret. Character: dual barrel turret with charge block, combat wear. 1808 tris."
     },
     {
       "id": "weapon_lance",
@@ -1306,7 +1306,7 @@
       "priority": "P1",
       "file": "weapons/weapon_lance.glb",
       "tris": 1112,
-      "bytes": 219672,
+      "bytes": 220168,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1354,7 +1354,7 @@
           1.7
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1112 tris."
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for lance weapon. Character: long lance with rail, precision wear. 1112 tris."
     },
     {
       "id": "weapon_gatling",
@@ -1419,7 +1419,7 @@
       "priority": "P1",
       "file": "weapons/weapon_railgun.glb",
       "tris": 1788,
-      "bytes": 237172,
+      "bytes": 237656,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1467,7 +1467,7 @@
           0.9256
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1788 tris."
+      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for railgun. Character: linear rail accelerator with long barrel, high-energy wear. 1788 tris."
     },
     {
       "id": "fin_wedge",
@@ -1691,7 +1691,7 @@
       "priority": "P1",
       "file": "fins/fin_delta.glb",
       "tris": 584,
-      "bytes": 194940,
+      "bytes": 195408,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1737,7 +1737,7 @@
           5.5
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 584 tris."
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for delta fin. Character: sharp delta fin with edge highlights, light wear. 584 tris."
     },
     {
       "id": "fin_stabilator",
@@ -1745,7 +1745,7 @@
       "priority": "P1",
       "file": "fins/fin_stabilator.glb",
       "tris": 520,
-      "bytes": 197448,
+      "bytes": 197944,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1791,7 +1791,7 @@
           3.6
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 520 tris."
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for stabilator fin. Character: swept stabilator with control surfaces, light wear. 520 tris."
     },
     {
       "id": "greeble_vents",
@@ -1851,7 +1851,7 @@
       "priority": "P1",
       "file": "greebles/greeble_hatches.glb",
       "tris": 1620,
-      "bytes": 256716,
+      "bytes": 257188,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1895,7 +1895,7 @@
           2.625
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1620 tris."
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble hatches. Character: access hatches with seals, maintenance wear. 1620 tris."
     },
     {
       "id": "greeble_pipes",
@@ -1903,7 +1903,7 @@
       "priority": "P1",
       "file": "greebles/greeble_pipes.glb",
       "tris": 1180,
-      "bytes": 240400,
+      "bytes": 240896,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1947,7 +1947,7 @@
           2.8
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1180 tris."
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble pipes. Character: piping greeble with bends, industrial wear. 1180 tris."
     },
     {
       "id": "greeble_rcs",
@@ -1955,12 +1955,13 @@
       "priority": "P1",
       "file": "greebles/greeble_rcs.glb",
       "tris": 1040,
-      "bytes": 238024,
+      "bytes": 238516,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble RCS. Character: RCS thrusters, directional wear. 1040 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2001,15 +2002,15 @@
           3.2
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1040 tris."
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2, profile=0.5) + WN last + AO/rough nodes via MCP for greeble antennas. Character: lightweight comms/sensor antennas, delicate tech with industrial paint wear, bolt mounts, cavity dirt. 2734 tris."
     },
     {
       "id": "greeble_antennas",
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_antennas.glb",
-      "tris": 1214,
-      "bytes": 243016,
+      "tris": 2734,
+      "bytes": 284752,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2042,7 +2043,7 @@
         "min": [
           -0.4,
           -0.04,
-          -1.43861
+          -1.4386
         ],
         "max": [
           2.4,
@@ -2052,7 +2053,7 @@
         "dimensionsM": [
           2.8,
           3.35,
-          2.63861
+          2.6386
         ]
       },
       "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1214 tris."
@@ -2490,7 +2491,7 @@
       "priority": "P1",
       "file": "places/place_nav_buoy.glb",
       "tris": 540,
-      "bytes": 184488,
+      "bytes": 184964,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2538,7 +2539,7 @@
           2.2
         ]
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 540 tris."
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for nav buoy. Character: navigation buoy with barrel/collar, marine wear. 540 tris."
     },
     {
       "id": "place_asteroid_seamed",

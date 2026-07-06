@@ -39,6 +39,9 @@ import * as THREE from 'three';
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
 const FILM_GRAIN_FPS = 12;
+// Upsample chain is additive and runs hotter than a single separable blur; composite multiplies by
+// this before uStrength so the settings slider has usable range (0.02 ≈ subtle, 0.40 ≈ default).
+const BLOOM_PYRAMID_NORM = 0.34;
 
 // --- GLSL (inlined as strings; no external shader files) -------------------------------------
 
@@ -125,7 +128,9 @@ const UPSAMPLE_FRAG = /* glsl */`
   }
 `;
 
-// Composite: scene + strength*bloom, ACES filmic, then the CINEMATIC POST GRADE
+// Composite: tonemap the scene first, THEN add strength-scaled bloom on top. Adding bloom before
+// ACES saturated highlights and made the strength slider appear dead (1% looked like 100%). Pyramid
+// upsample runs hot, so uBloomNorm reins it in before uStrength scales the halo perceptually.
 // (color grade → atmospheric vignette → animated film grain) and sRGB encode. ACES lives here (not
 // on renderer.toneMapping) so the bloom-on/off paths stay in sync — see COLOR-MANAGEMENT INVARIANT.
 // The post grade is the single highest-value graphics lever: it touches EVERY asset at once, giving
@@ -137,6 +142,7 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform sampler2D tScene;
   uniform sampler2D tBloom;
   uniform float uStrength;
+  uniform float uBloomNorm;   // pyramid upsample runs hot; normalize before perceptual strength
   uniform float uExposure;
   uniform float uAces;
   uniform float uGrain;     // film grain amount 0..1 (cinematic; animated via uGrainFrame)
@@ -164,12 +170,14 @@ const COMPOSITE_FRAG = /* glsl */`
   void main() {
     vec3 scene = texture2D(tScene, vUv).rgb;
     vec3 bloom = texture2D(tBloom, vUv).rgb;
-    vec3 c = (scene + bloom * uStrength) * uExposure;
+    vec3 hdr = max(scene, vec3(0.0)) * uExposure;
+    // Tone-map the base scene first. Bloom is added AFTER so uStrength stays perceptually linear —
+    // adding bloom before ACES saturated every highlight and hid slider movement.
+    vec3 cClamped = clamp(hdr, 0.0, 1.0);
+    vec3 cAces    = acesFilmic(hdr);
+    vec3 c = mix(cClamped, cAces, uAces);
+    c += bloom * uStrength * uBloomNorm;
     c = max(c, vec3(0.0));
-    // tone mapping: blend between simple clamp (uAces=0) and ACES filmic (uAces=1)
-    vec3 cClamped = clamp(c, 0.0, 1.0);
-    vec3 cAces    = acesFilmic(c);
-    c = mix(cClamped, cAces, uAces);
 
     // ---- CINEMATIC COLOR GRADE (cyberpunk-noir): teal pushed shadows + warm amber highlights +
     //      a slight magenta lift in the mids, blended by uGrade. This is the "soul" pass — it
@@ -227,7 +235,7 @@ export function createBloom(renderer, width, height) {
 
   // tunables (overridable via setOptions; defaults match settings.video.*)
   let enabled = true;
-  let strength = 0.40;
+  let strength = 0.35;
   let threshold = 0.72;
   const knee = 0.12;
   let exposure = 1.0;
@@ -309,12 +317,13 @@ export function createBloom(renderer, width, height) {
     tCoarse: { value: null },
     tFine: { value: null },
     uTexel: { value: new THREE.Vector2(1 / halfW, 1 / halfH) },
-    uWeight: { value: 0.45 },                               // coarse-glow contribution per upsample step
+    uWeight: { value: 0.36 },                               // coarse-glow contribution per upsample step
   });
   const compositeMat = mkMat(COMPOSITE_FRAG, {
     tScene:     { value: null },
     tBloom:     { value: null },
     uStrength:  { value: strength },
+    uBloomNorm: { value: BLOOM_PYRAMID_NORM },
     uExposure:  { value: exposure },
     uAces:      { value: aces },
     uGrain:     { value: 0.35 },   // film grain (cyberpunk-noir mood)
@@ -378,7 +387,7 @@ export function createBloom(renderer, width, height) {
       upsampleMat.uniforms.tCoarse.value = readTex;     // level i (coarse, to be spread up)
       upsampleMat.uniforms.tFine.value = down[i - 1].texture; // level i-1 (sharp brights to keep)
       upsampleMat.uniforms.uTexel.value.set(1 / targetW, 1 / targetH);
-      upsampleMat.uniforms.uWeight.value = 0.45;
+      upsampleMat.uniforms.uWeight.value = 0.36;
       blit(upsampleMat, outRT);
       finalTex = outRT.texture;
       // the just-written RT becomes the coarse input next iteration; reuse the other scratch as output

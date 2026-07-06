@@ -67,6 +67,28 @@ const checks = [
     ],
   },
 
+  // ---- Wave 2: contact identity + damage triangle on target panel ----------
+  {
+    path: 'src/ui/targetPanel.js',
+    label: 'Target panel contact identity — faction, role, threat tier, level row',
+    needs: [
+      'sf-target__identity',
+      'contactThreatTier',
+      'contactStateWord',
+      'isHostileToPlayer',
+      'tierPips',
+    ],
+  },
+  {
+    path: 'src/ui/targetPanel.js',
+    label: 'Target panel damage triangle (BP-02 E/K/X)',
+    needs: [
+      'sf-target__triangle',
+      'familyEffectiveness',
+      'FAMILY_CHANNELS',
+    ],
+  },
+
   // ---- §3: Target Arcs (in hud.js) ----------------------------------------
   {
     path: 'src/ui/hud.js',

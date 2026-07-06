@@ -175,7 +175,7 @@ export function createMarketNews(ctx) {
 
     if (!quiet && bus) {
       const said = helpers.voice && typeof helpers.voice.say === 'function'
-        ? helpers.voice.say('news', headline, { kind: rec.kind })
+        ? helpers.voice.say({ channel: 'news', text: headline, kind: rec.kind })
         : false;
       if (!said) bus.emit('toast', { text: headline, kind: toastKind(rec.kind), ttl: 4 });
     }

@@ -20,7 +20,8 @@ export const DEFAULT_MASSLINE_DEF = Object.freeze({
   damping: 18,
   maxTension: 8200,
   maxImpulse: 165,
-  overloadGraceS: 0.18,
+  maxYank: 420,
+  overloadGraceS: 0.22,
   catastrophicRatio: 1.75,
   heatPerWork: 0.00012,
   idleHeatPerS: 0.08,
@@ -55,6 +56,7 @@ export function createMasslineRuntime(defLike = DEFAULT_MASSLINE_DEF) {
     workJ: 0,
     lastTension: 0,
     lastImpulse: 0,
+    recentLoad: 0,
     cutReason: null,
   };
 }
@@ -116,7 +118,18 @@ export function stepMassline(args = {}) {
 
   let overloadS = prev.overloadS;
   const impulseRatio = t.impulse / Math.max(def.maxImpulse, 1e-6);
-  const overloadRatio = Math.max(tensionRatio, impulseRatio);
+  const yank = Math.max(0, finite(t.yank));
+  const yankRatio = yank / Math.max(def.maxYank || 420, 1);
+
+  // Recent sustained load (IIR ~1s) makes the line more vulnerable to a sharp yank ("fatigue + snap").
+  // This implements the requested tradeoff: steady pressure lowers the yank threshold needed to snap.
+  let recentLoad = finite(prev.recentLoad);
+  const tau = 0.9;
+  recentLoad = recentLoad * Math.exp(-dt / tau) + t.tension * dt;
+  const fatigue = clamp(recentLoad / Math.max(def.maxTension, 1), 0, 0.7);
+  const effectiveYankRatio = yankRatio * (1 + 1.3 * fatigue);
+
+  const overloadRatio = Math.max(tensionRatio, impulseRatio, effectiveYankRatio);
   if (overloadRatio > 1) {
     overloadS += dt;
     integrity -= Math.max(0, overloadRatio - 1) * def.integrityDamagePerOverloadS * dt;
@@ -132,7 +145,11 @@ export function stepMassline(args = {}) {
   let cutReason = null;
   if (shouldCut) {
     state = 'broken';
-    cutReason = catastrophic ? 'catastrophic-overload' : integrity <= 0 ? 'integrity-failure' : 'sustained-overload';
+    if (effectiveYankRatio > 1.0 && yank > 20) {
+      cutReason = 'snap';
+    } else {
+      cutReason = catastrophic ? 'catastrophic-overload' : integrity <= 0 ? 'integrity-failure' : 'sustained-overload';
+    }
     events.push({
       type: 'attachment:broken',
       attachmentId: t.attachmentId,
@@ -140,6 +157,7 @@ export function stepMassline(args = {}) {
       tension: t.tension,
       impulse: t.impulse,
       overloadRatio,
+      yank,
     });
   } else if (overheatLatched) {
     state = 'overheated';
@@ -167,6 +185,7 @@ export function stepMassline(args = {}) {
     workJ: prev.workJ + mechanicalEnergy,
     lastTension: t.tension,
     lastImpulse: t.impulse,
+    recentLoad,
     cutReason,
   };
   return buildResult(next, def, t, command, events, shouldCut, energyCost, overloadRatio, args.ownerBody, args.targetBody);
@@ -214,6 +233,7 @@ function buildResult(runtime, def, telemetry, command, events, cut, energyCost =
       slack,
       tension: telemetry.tension,
       impulse: telemetry.impulse,
+      yank: finite(telemetry.yank),
       tensionFraction,
       overloadRatio,
       heatFraction: clamp(runtime.heat / def.maxHeat, 0, 1.5),
@@ -256,6 +276,7 @@ function normalizeRuntime(runtime, def) {
     workJ: Math.max(0, finite(r.workJ)),
     lastTension: Math.max(0, finite(r.lastTension)),
     lastImpulse: Math.max(0, finite(r.lastImpulse)),
+    recentLoad: Math.max(0, finite(r.recentLoad)),
     cutReason: r.cutReason == null ? null : String(r.cutReason),
   };
 }
@@ -267,6 +288,7 @@ function normalizeTelemetry(t = {}, fallbackLength) {
     distance: Math.max(0, finite(t.distance, fallbackLength)),
     stretch: Math.max(0, finite(t.stretch)),
     relativeSpeed: finite(t.relativeSpeed),
+    yank: finite(t.yank),
     tension: Math.max(0, finite(t.tension)),
     impulse: Math.max(0, finite(t.impulse)),
   };

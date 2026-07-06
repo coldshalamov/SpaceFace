@@ -149,6 +149,7 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform sampler2D tBloom2;
   uniform sampler2D tBloom3;
   uniform float uBloomStrength;
+  uniform float uBloomNorm;
   uniform float uAoStrength;
   uniform float uExposure;
   uniform float uGrade;
@@ -175,9 +176,9 @@ const COMPOSITE_FRAG = /* glsl */`
                  texture2D(tBloom1,vUv).rgb * 0.28 +
                  texture2D(tBloom2,vUv).rgb * 0.15 +
                  texture2D(tBloom3,vUv).rgb * 0.07;
-    vec3 c = scene * mix(1.0, ao, uAoStrength) + bloom * uBloomStrength;
-    c *= uExposure;
-    c = aces(max(c, vec3(0.0)));
+    vec3 hdr = max(scene * mix(1.0, ao, uAoStrength), vec3(0.0)) * uExposure;
+    vec3 c = aces(hdr);
+    c += bloom * uBloomStrength * uBloomNorm;
 
     float l = dot(c, vec3(0.2126,0.7152,0.0722));
     vec3 graded = c;
@@ -205,7 +206,7 @@ export class SpaceRenderGraph {
       bloom: options.bloom !== false,
       renderScale: clamp(finite(options.renderScale, 1), 0.5, 1),
       aoScale: clamp(finite(options.aoScale, 0.5), 0.25, 1),
-      bloomStrength: finite(options.bloomStrength, 0.40),
+      bloomStrength: finite(options.bloomStrength, 0.35),
       bloomThreshold: finite(options.bloomThreshold, 0.72),
       bloomKnee: finite(options.bloomKnee, 0.18),
       aoStrength: finite(options.aoStrength, 0.72),
@@ -242,7 +243,7 @@ export class SpaceRenderGraph {
     });
     this.compositeMaterial = shaderMaterial(COMPOSITE_FRAG, {
       tScene:null, tAo:null, tBloom0:null, tBloom1:null, tBloom2:null, tBloom3:null,
-      uBloomStrength:this.options.bloomStrength, uAoStrength:this.options.aoStrength,
+      uBloomStrength:this.options.bloomStrength, uBloomNorm:0.34, uAoStrength:this.options.aoStrength,
       uExposure:this.options.exposure, uGrade:this.options.grade,
       uVignette:this.options.vignette, uGrain:this.options.grain, uTime:0,
     });
@@ -263,7 +264,7 @@ export class SpaceRenderGraph {
     this.options.renderScale = clamp(finite(this.options.renderScale, 1), 0.5, 1);
     this.options.aoScale = clamp(finite(this.options.aoScale, 0.5), 0.25, 1);
     const u = this.compositeMaterial.uniforms;
-    u.uBloomStrength.value = finite(this.options.bloomStrength, 0.40);
+    u.uBloomStrength.value = finite(this.options.bloomStrength, 0.35);
     u.uAoStrength.value = finite(this.options.aoStrength, 0.72);
     u.uExposure.value = finite(this.options.exposure, 1);
     u.uGrade.value = finite(this.options.grade, 0.62);

@@ -772,7 +772,10 @@ export const render = {
 
   _syncPostOptions() {
     const vd = (this.state && this.state.settings && this.state.settings.video) || {};
-    const bloomStrength = typeof vd.bloomStrength === 'number' ? vd.bloomStrength : 0.40;
+    // Slider is 0..1 (percent). Legacy profiles may still carry the old 0..2 scale — halve once.
+    let bloomStrength = typeof vd.bloomStrength === 'number' ? vd.bloomStrength : 0.35;
+    if (bloomStrength > 1) bloomStrength *= 0.5;
+    bloomStrength = Math.max(0, Math.min(1, bloomStrength));
     const bloomThreshold = typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 0.72;
     const postOpts = {
       bloom: vd.bloom,
@@ -1311,7 +1314,7 @@ export const render = {
         ao: v.ao !== false,
         bloom: true,
         renderScale: Math.min(1, Math.max(0.5, v.renderScale || 0.7)),
-        bloomStrength: v.bloomStrength != null ? v.bloomStrength : 0.40,
+        bloomStrength: v.bloomStrength != null ? v.bloomStrength : 0.35,
         bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 0.72,
       });
       this._renderGraph.setSize(drawSize.x, drawSize.y);

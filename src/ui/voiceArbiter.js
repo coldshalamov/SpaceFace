@@ -161,9 +161,13 @@ export const voiceArbiter = {
     this.queue = new VoiceQueue();
     this._passThrough = false;                        // guards against re-arbitrating our own toasts
 
-    const say = (msg) => {
-      if (!msg || !msg.text) return;
+    const say = (msgOrChannel, text, opts) => {
+      const msg = typeof msgOrChannel === 'string'
+        ? { channel: msgOrChannel, text, ...(opts || {}) }
+        : msgOrChannel;
+      if (!msg || !msg.text) return false;
       this.queue.enqueue(msg, this._now());
+      return true;
     };
     if (ctx.helpers) {
       ctx.helpers.voice = { say };

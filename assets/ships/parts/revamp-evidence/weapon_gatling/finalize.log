@@ -1,1 +1,10 @@
-{"partId":"weapon_gatling","tris":1000,"bytes":100000,"images":3,"note":"PRO revamp 2026-07-05"}
+{
+  "partId": "weapon_gatling",
+  "file": "weapons/weapon_gatling.glb",
+  "tris": 6912,
+  "bytes": 362848,
+  "dims": [4.96, 1, 1],
+  "images": 2,
+  "materials": "Material_Mechanical.001,Material_Mechanical,Material_Mechanical.002,Material_Hull,Material_Accent",
+  "note": "PRO via MCP renders + dedicated def 2026-07-05"
+}

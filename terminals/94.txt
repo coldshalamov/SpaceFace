@@ -3,7 +3,7 @@ pid: 41220
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && node server.js"
 started_at: 2026-07-05T20:02:03.313Z
-running_for_ms: 20940008 
+running_for_ms: 24570000 
 ---
 node:events:487
       throw er; // Unhandled 'error' event

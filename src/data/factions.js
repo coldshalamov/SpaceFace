@@ -68,4 +68,14 @@ export const FACTION_META = [
     fleetClass: 'mercenary',
     relations: { faction_scn: 0.3, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: -0.35, faction_quiet: 0.0, faction_vael: -0.6, faction_free: -0.2 },
   },
+  // Reconciliation 1 — paper faction (BP-05): appears in dock-deny/contracts/news/barks only.
+  // Zero ships; hostility is never inferred from factionId alone (scanner.isHostileToPlayer owns that).
+  {
+    id: 'faction_helix', name: 'Helix Directorate', short: 'Helix', color: '#8B9CB8',
+    personality: 'paper', startingRep: 0,
+    homeSectors: [],
+    controls: ['contract allocation', 'variance audits', 'dock-deny paperwork'],
+    fleetClass: 'none',
+    relations: { faction_scn: 0.0, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: 0.0, faction_quiet: 0.0, faction_vael: 0.0, faction_free: 0.0, faction_choir: 0.0 },
+  },
 ];

@@ -11,6 +11,8 @@ import { mulberry32, hash32 } from '../core/rng.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { legacyHitToDamagePacket } from '../combat/damage.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { combatFlag } from '../data/featureFlags.js';
+import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -242,12 +244,16 @@ export const combat = {
       return { ok: false, reason: 'target_docked', targetId, attackerId: ownerId == null ? null : ownerId };
     }
     const authoredPacket = damagePacket || packet || null;
+    // Weak-point bonus (BP-02): a PLAYER shot landing in a large hull's exposed subsystem arc does
+    // bonus damage. Player-only + flag-gated (`combat.weakPoints`, OFF in the golden) + geometric, so
+    // NPC combat and the deterministic 47-A sim are untouched. Scales the outgoing packet.
+    const weakMult = this._weakPointMult(targetId, ownerId, pos);
     const result = this.ensureKernel().routeDamage({
       attackerId: ownerId,
       targetId,
       packet: authoredPacket
-        ? damagePacketWithHit(authoredPacket, pos)
-        : legacyHitToDamagePacket({ damage, damageType, pos, penetration, impulse, heat, statuses }),
+        ? scaleDamagePacket(damagePacketWithHit(authoredPacket, pos), weakMult)
+        : legacyHitToDamagePacket({ damage: damage * weakMult, damageType, pos, penetration, impulse, heat, statuses }),
       origin: origin || (authoredPacket
         ? { kind: 'weapon', id: weaponId || (authoredPacket.source && authoredPacket.source.weaponId) || 'projectile:hit' }
         : { kind: 'legacy', id: 'projectile:hit' }),
@@ -268,6 +274,19 @@ export const combat = {
       registry: this.registry || null,
     }, { onKill: (target, killerId) => this.kill(target, killerId) });
     return this.kernel;
+  },
+
+  // Weak-point damage multiplier for a hit (BP-02). Returns >1 only when: the feature flag is on, the
+  // attacker is the local player, and the shot landed in the target's exposed subsystem arc. Emits a
+  // combat:weakPointHit cue for the HUD callout. Never draws RNG; never mutates the target.
+  _weakPointMult(targetId, ownerId, pos) {
+    if (!pos || ownerId !== this.state.playerId || !combatFlag('weakPoints')) return 1;
+    const target = this.state.entities && this.state.entities.get ? this.state.entities.get(targetId) : null;
+    if (!target || target.alive === false) return 1;
+    const wp = weakPointForEntity(target);
+    if (!wp || !isHitInWeakArc(target, pos, wp)) return 1;
+    this.bus.emit('combat:weakPointHit', { targetId, ownerId, label: wp.label, mult: wp.bonusMult, pos: { x: pos.x, z: pos.z } });
+    return wp.bonusMult;
   },
 
   kill(t, killerId) {
@@ -535,6 +554,16 @@ function resetCombatDiagnostics(diag) {
 
 function lootPickupKind(id) {
   return (typeof id === 'string' && id.startsWith('cmdty_')) ? 'cargo' : 'module';
+}
+
+// Scale every damage channel of a packet by `mult` (BP-02 weak-point bonus). Returns the packet
+// unchanged when mult is 1 (the overwhelming common case), so there is zero allocation off the hot
+// path. Clones defensively so the source packet (often a shared authored def) is never mutated.
+function scaleDamagePacket(packet, mult) {
+  if (!packet || !(mult > 1)) return packet;
+  const channels = { ...(packet.channels || {}) };
+  for (const k in channels) channels[k] = channels[k] * mult;
+  return { ...packet, channels };
 }
 
 function damagePacketWithHit(packet, pos) {

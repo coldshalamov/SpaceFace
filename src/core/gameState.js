@@ -12,7 +12,7 @@ function defaultSettings() {
     showDamageNumbers: true,
     keybinds: {},
     audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
-    video: { renderScale: 0.85, bloom: true, bloomStrength: 0.40, bloomThreshold: 0.72, vsync: true, fov: 50, particleQuality: 'medium', pixelRatioCap: 2, motionReduce: false, shadows: false, energyMaterials: true, renderGraph: false, dynamicResolution: false },
+    video: { renderScale: 0.85, bloom: true, bloomStrength: 0.35, bloomThreshold: 0.72, vsync: true, fov: 50, particleQuality: 'medium', pixelRatioCap: 2, motionReduce: false, shadows: false, energyMaterials: true, renderGraph: false, dynamicResolution: false },
     gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3', controlScheme: 'pilot', controlSchemeV2: true },
     controls: {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind

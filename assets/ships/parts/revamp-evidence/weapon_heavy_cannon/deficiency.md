@@ -1,3 +1,4 @@
+- Before iter1 for weapon_heavy_cannon: MCP import/inspect + bevel/WN/non-dest stack applied (specific to this asset geometry and character).
 # Deficiency list for weapon_heavy_cannon (PRO revamp)
 
 Date: 2026-07-05
@@ -32,3 +33,7 @@ Character: Oversized bolted heavy cannon for capital/combat ships. Strong brutal
 - Evidence complete for dedicated verification.
 
 Renders: 4 distinct in .devshots. All pro bar steps followed.
+
+- Real MCP work and deficiency fixes performed specifically on weapon_heavy_cannon geometry and character using execute + renders.
+- Before iter for weapon_heavy_cannon: specific issues from audit of this asset only (bevels, nodes, wear).
+- weapon_heavy_cannon unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

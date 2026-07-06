@@ -153,18 +153,21 @@ const RIBBON_FRAGMENT = /* glsl */`
   uniform float uPulseSpeed;
   uniform float uTension;
   uniform float uOverload;
+  uniform float uReel;
 
   float hash(float n) { return fract(sin(n) * 43758.5453123); }
 
   void main() {
     float center = pow(max(0.0, 1.0 - abs(vSide)), mix(2.2, 5.5, clamp(uTension, 0.0, 1.0)));
     float pulse = smoothstep(0.15, 0.0, abs(fract(vAlong * 6.0 - uTime * uPulseSpeed) - 0.5));
+    float winchPulse = smoothstep(0.12, 0.0, abs(fract(vAlong * 10.0 - uTime * (uPulseSpeed * 1.35 + uReel * 4.0)) - 0.5));
     float chatter = hash(floor(vAlong * 80.0 + uTime * 20.0)) * uOverload;
     vec3 hot = mix(uColor, vec3(1.0, 0.34, 0.12), uOverload);
-    float radiance = uIntensity * (0.45 + center * 1.4 + pulse * 1.8 + chatter * 1.2);
-    float alpha = uOpacity * center * (0.5 + 0.5 * pulse);
+    vec3 reelHot = mix(hot, vec3(0.82, 0.98, 1.0), uReel * 0.55);
+    float radiance = uIntensity * (0.45 + center * 1.4 + pulse * 1.8 + winchPulse * uReel * 2.6 + chatter * 1.2);
+    float alpha = uOpacity * center * (0.5 + 0.5 * pulse + uReel * 0.22);
     if (alpha < 0.002) discard;
-    gl_FragColor = vec4(hot * radiance, alpha);
+    gl_FragColor = vec4(reelHot * radiance, alpha);
   }
 `;
 
@@ -248,6 +251,7 @@ export function createMasslineRibbonMaterial(options = {}) {
       uPulseSpeed: { value: finite(options.pulseSpeed, 2.8) },
       uTension: { value: 0 },
       uOverload: { value: 0 },
+      uReel: { value: 0 },
     },
     vertexShader: RIBBON_VERTEX,
     fragmentShader: RIBBON_FRAGMENT,
@@ -280,7 +284,9 @@ export function updateEnergyMaterial(material, frame = {}) {
   if (u.uCameraFar && Number.isFinite(frame.cameraFar)) u.uCameraFar.value = frame.cameraFar;
   if (u.uTension && Number.isFinite(frame.tension)) u.uTension.value = THREE.MathUtils.clamp(frame.tension, 0, 1.5);
   if (u.uOverload) u.uOverload.value = frame.overload ? 1 : 0;
+  if (u.uReel && Number.isFinite(frame.reel)) u.uReel.value = THREE.MathUtils.clamp(frame.reel, 0, 1);
   if (u.uPulseSpeed && Number.isFinite(frame.pulseSpeed)) u.uPulseSpeed.value = frame.pulseSpeed;
+  if (u.uColor && frame.color != null) u.uColor.value.set(frame.color);
 }
 
 export function bindEnergyDepth(material, renderTarget, camera, width, height) {

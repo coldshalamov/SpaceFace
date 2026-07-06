@@ -12,10 +12,20 @@ import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from './scanner.js';
+import { combatFlag } from '../data/featureFlags.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
 const AUTO_FIRE_QUERY_RADIUS_PAD = 128;
+
+// MissileV2 (BP-02, flag `combat.missileV2` — OFF in the golden): a missile burns fuel for a fixed
+// window, then the motor dies and it coasts ballistically ("break-and-coast"). While the motor burns,
+// its seeker only tracks a target that stays within its forward cone/range — juke behind the missile
+// and it loses the solution (real counterplay). All geometric/kinematic; draws no RNG.
+const MISSILE_FUEL_S = 6.0;              // motor burn window
+const MISSILE_SEEKER_CONE = 100 * RAD;   // seeker half-cone off the missile's heading
+const MISSILE_SEEKER_RANGE = 2000;       // wu — beyond this the seeker can't hold the solution
+const MISSILE_COAST_DRAG = 16;           // wu/s^2 gentle speed bleed after burnout
 
 // Forced heat vent (Micro-Loops — "a red-bar gauge that forces a 2-second vent when it pegs").
 // When the player's guns peg heatMax they lock out for WEAPON_VENT_S seconds while heat is dumped,
@@ -55,6 +65,7 @@ export const weapons = {
     this._beamFiring = new Set();
     this._beamFiringPrev = new Set();
     this._autoFireScratch = [];
+    this._autoLeadVel = new Map();
     this._diag = {
       autoFireSpatialQueries: 0,
       autoFireCandidates: 0,
@@ -99,8 +110,23 @@ export const weapons = {
       if (state.input.autoFire) {
         autoTgt = this._selectedAutoFireTarget(player, state) ?? this._autoFireTarget(player, state);
       }
-      const aimAngle = autoTgt
-        ? this._leadAngle(player, autoTgt, this._playerProjSpeed(player))
+      let aimTgt = autoTgt;
+      if (autoTgt) {
+        // Velocity smoothing for lead: raw per-tick vel from oscillating/tethered targets makes the
+        // 2-iter lead solver spray shots L/R. Blend gives "average flight direction" so bullets
+        // cluster where a human would hold lead. Purely for prediction; does not affect sim state.
+        const id = String(autoTgt.id);
+        const raw = autoTgt.vel || { x: 0, z: 0 };
+        if (!this._autoLeadVel) this._autoLeadVel = new Map();
+        let sv = this._autoLeadVel.get(id);
+        const a = 0.28;
+        if (!sv) sv = { x: raw.x, z: raw.z };
+        else sv = { x: sv.x * (1 - a) + raw.x * a, z: sv.z * (1 - a) + raw.z * a };
+        this._autoLeadVel.set(id, sv);
+        aimTgt = { pos: autoTgt.pos, vel: sv, radius: autoTgt.radius };
+      }
+      const aimAngle = aimTgt
+        ? this._leadAngle(player, aimTgt, this._playerProjSpeed(player))
         : (state.input.aimAngle || player.rot);
       this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, autoTgt);
     }
@@ -216,6 +242,7 @@ export const weapons = {
 
   // --- homing projectile steering (physics.integrate only does pos += vel*dt) ---
   _steerHoming(dt, state) {
+    const missileV2 = combatFlag('missileV2');
     const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
     for (const p of projectiles) {
       if (p.type !== 'projectile' || !p.alive) continue;
@@ -226,17 +253,43 @@ export const weapons = {
       const turnRate = d.turnRate || 0;
       const speedMax = d.projSpeed || Math.hypot(p.vel.x, p.vel.z) || 1;
       let cur = Math.atan2(p.vel.z, p.vel.x);
-      if (tgt && tgt.alive && turnRate > 0) {
+
+      // Base guidance condition (legacy behavior when the flag is off — byte-identical to before).
+      let guiding = !!(tgt && tgt.alive && turnRate > 0);
+      let motorOn = true;
+      if (missileV2) {
+        // Fuel: burn for MISSILE_FUEL_S, then the motor dies and the missile coasts (no guidance).
+        d.fuelS = (d.fuelS || 0) + dt;
+        motorOn = d.fuelS < MISSILE_FUEL_S;
+        if (!motorOn) {
+          guiding = false;
+        } else if (guiding) {
+          // Seeker line-of-sight: hold the solution only while the target stays in the forward cone
+          // and within seeker range. Break line of sight (juke behind it) and it flies straight.
+          const toT = Math.atan2(tgt.pos.z - p.pos.z, tgt.pos.x - p.pos.x);
+          const off = Math.abs(wrapAngle(toT - cur));
+          const dx = tgt.pos.x - p.pos.x, dz = tgt.pos.z - p.pos.z;
+          const inRange = (dx * dx + dz * dz) <= MISSILE_SEEKER_RANGE * MISSILE_SEEKER_RANGE;
+          if (off > MISSILE_SEEKER_CONE || !inRange) guiding = false;
+        }
+      }
+
+      if (guiding) {
         const desired = Math.atan2(tgt.pos.z - p.pos.z, tgt.pos.x - p.pos.x);
         const diff = wrapAngle(desired - cur);
         const step = Math.max(-turnRate * dt, Math.min(turnRate * dt, diff));
         cur = wrapAngle(cur + step);
       }
-      // ramp speed up to the weapon's max projectile speed
+      // ramp speed up to the weapon's max projectile speed while the motor burns; after burnout
+      // (missileV2 only) bleed speed gently so the coast reads as a spent, ballistic round.
       let sp = Math.hypot(p.vel.x, p.vel.z);
-      const accel = d.projAccel || 0;
-      if (accel > 0) sp = Math.min(speedMax, sp + accel * dt);
-      else sp = speedMax;
+      if (missileV2 && !motorOn) {
+        sp = Math.max(0, sp - MISSILE_COAST_DRAG * dt);
+      } else {
+        const accel = d.projAccel || 0;
+        if (accel > 0) sp = Math.min(speedMax, sp + accel * dt);
+        else sp = speedMax;
+      }
       p.vel.x = Math.cos(cur) * sp;
       p.vel.z = Math.sin(cur) * sp;
       p.rot = cur;
@@ -348,7 +401,12 @@ export const weapons = {
       dir = Math.atan2(tgt.pos.z - e.pos.z, tgt.pos.x - e.pos.x);
     } else if (isTurret) {
       if (!tgt) return capLeft;
-      const aim = this._leadAngle(e, tgt, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
+      let tForLead = tgt;
+      if (forceTarget && forceTarget.id != null && String(forceTarget.id) === String(tgt.id) && this._autoLeadVel) {
+        const sv = this._autoLeadVel.get(String(tgt.id));
+        if (sv) tForLead = { pos: tgt.pos, vel: sv, radius: tgt.radius };
+      }
+      const aim = this._leadAngle(e, tForLead, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
       const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
       // turret arc is measured about the hull centre; outside it the mount can't bear.
       if (Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
@@ -390,7 +448,11 @@ export const weapons = {
     const muzzle = this._muzzle(e, w, dir);
     // Bullets compensate lateral shooter velocity so the aimed line remains the collision line.
     // Missiles keep full inertial launch; their guidance owns the post-launch correction.
-    const vel = isMissile
+    // BP-02 momentum inheritance (flag `combat.momentumInherit`, OFF everywhere this wave): when on,
+    // bullets INHERIT the shooter's full velocity too — weighty strafing runs at the cost of aim-true
+    // fire. A deliberate feel inversion kept behind a default-off flag so the golden (and normal play)
+    // are unchanged; enable it only for playtesting.
+    const vel = (isMissile || combatFlag('momentumInherit'))
       ? { x: cf * launchSpeed + e.vel.x, z: sf * launchSpeed + e.vel.z }
       : projectileVelocityForAimedBullet(cf, sf, launchSpeed, e.vel);
 
@@ -580,13 +642,18 @@ void TWO_PI;
 // and the player HUD lead pip (src/ai/gunnery.js) share ONE ballistic model. Pure; no RNG, no state.
 // Returns the world-space angle to aim so a shot at `projSpeed` intercepts `tgt` given both velocities.
 export function solveLeadAngle(shooter, tgt, projSpeed) {
-  const px = tgt.pos.x - shooter.pos.x, pz = tgt.pos.z - shooter.pos.z;
-  const rvx = tgt.vel.x - shooter.vel.x, rvz = tgt.vel.z - shooter.vel.z;
+  const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
+  const sv = (shooter && shooter.vel) || { x: 0, z: 0 };
+  const tp = (tgt && tgt.pos) || { x: 0, z: 0 };
+  const tv = (tgt && tgt.vel) || { x: 0, z: 0 };
+  const px = tp.x - sp.x, pz = tp.z - sp.z;
+  const rvx = tv.x - sv.x, rvz = tv.z - sv.z;
   let t = 0;
+  const ps = Math.max(1, Number.isFinite(projSpeed) ? projSpeed : 1);
   for (let i = 0; i < 2; i++) {
     const aimx = px + rvx * t, aimz = pz + rvz * t;
     const dist = Math.hypot(aimx, aimz);
-    t = dist / Math.max(1, projSpeed);
+    t = dist / ps;
   }
   const aimx = px + rvx * t, aimz = pz + rvz * t;
   return Math.atan2(aimz, aimx);

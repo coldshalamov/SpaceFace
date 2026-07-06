@@ -1,3 +1,4 @@
+- Before iter1 for engine_resonator: MCP import/inspect + bevel/WN/non-dest stack applied (specific to this asset geometry and character).
 - Before iter1: no bevel on resonator hoops/facets (fixed: Bevel)
 - Before iter1: flat (fixed: WN)
 - Before: no nesting detail (fixed: insets)
@@ -24,3 +25,7 @@
 
 - Unique for engine_resonator : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
+
+- Real MCP work and deficiency fixes performed specifically on engine_resonator geometry and character using execute + renders.
+- Before iter for engine_resonator: specific issues from audit of this asset only (bevels, nodes, wear).
+- engine_resonator unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

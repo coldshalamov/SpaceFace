@@ -5,6 +5,8 @@
 import { ASTEROIDS } from '../data/mining.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isPlayerWanted } from './heat.js';
+import { combatFlag } from '../data/featureFlags.js';
+import { weakPointForEntity } from '../data/weakPoints.js';
 
 export const SCANNER_CONTACT_RANGE = 5200;
 
@@ -200,6 +202,21 @@ export const scanner = {
       } else if (isAnomalyLike(entity)) {
         data.pingedUntil = now + PINGED_S;
         found.anomalies++;
+      }
+    }
+
+    // Weak-point reveal (BP-02): a pulse exposes the soft spot on nearby LARGE hostiles so the HUD can
+    // guide the player to flank it. Flag-gated (`combat.weakPoints`, OFF in the golden) and reveal-only
+    // — the arc itself is deterministic data (weakPoints.js); nothing is written onto the sim entity.
+    if (combatFlag('weakPoints')) {
+      const playerTeam = player.team;
+      for (const entity of candidates) {
+        if (!entity || !entity.alive || entity.id === player.id || !entity.pos) continue;
+        if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+        if (dist(origin, entity.pos) > NEAR_SCAN_RADIUS) continue;
+        if (!isHostileToPlayer(entity, playerTeam, state)) continue;
+        const wp = weakPointForEntity(entity);
+        if (wp) this.bus.emit('scan:weakPoint', { entityId: entity.id, label: wp.label, hint: wp.hint, until: now + PINGED_S });
       }
     }
 

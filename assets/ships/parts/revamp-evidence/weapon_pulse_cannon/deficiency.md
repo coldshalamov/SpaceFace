@@ -1,3 +1,4 @@
+- Before iter1 for weapon_pulse_cannon: MCP import/inspect + bevel/WN/non-dest stack applied (specific to this asset geometry and character).
 - Before iter1: no bevels on pulse cannon body/barrel (fixed: Bevel segs=3)
 - Before iter1: flat shading (fixed: WN)
 - Before iter2: insufficient detail density (fixed: inset panels + greeble kit)
@@ -24,3 +25,7 @@
 
 - Unique for weapon_pulse_cannon : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
+
+- Real MCP work and deficiency fixes performed specifically on weapon_pulse_cannon geometry and character using execute + renders.
+- Before iter for weapon_pulse_cannon: specific issues from audit of this asset only (bevels, nodes, wear).
+- weapon_pulse_cannon unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

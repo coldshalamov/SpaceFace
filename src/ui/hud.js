@@ -31,6 +31,7 @@ import { BINDINGS } from './bindings.js';
 import { SEMANTIC_PALETTE } from './accessibility.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { weaponHeatSummary } from './weaponHeat.js';
+import { leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -345,6 +346,15 @@ export function createHud(ctx, alerts) {
   let dockInRange = false;
   ctx.bus.on('dock:range', (p) => { dockInRange = !!(p && p.inRange); });
 
+  // Weak-point reveals (BP-02): a scan pulse exposes a large hostile's soft spot. We keep this UI-side
+  // (keyed by entity id, expiring) rather than on the sim entity — the target panel reads it to show
+  // "where to hit" for the selected target. Populated by the scanner's flag-gated scan:weakPoint cue.
+  const revealedWeakPoints = new Map();
+  ctx.bus.on('scan:weakPoint', (p) => {
+    if (!p || p.entityId == null) return;
+    revealedWeakPoints.set(p.entityId, { label: p.label, hint: p.hint, until: p.until || 0 });
+  });
+
   // Hit-flash helper: briefly pulse the ship schematic when the player takes damage.
   // Re-triggering a CSS animation needs remove + reflow + re-add; we do it once per damage event.
   let _schFlashTimer = 0;
@@ -639,6 +649,13 @@ export function createHud(ctx, alerts) {
   lockDiamond.className = 'sf-lockdiamond';
   lockDiamond.innerHTML = '<div class="sf-lockdiamond__inner"></div>';
   root.appendChild(lockDiamond);
+
+  // Lead pip (BP-02) — world-space "aim here" marker at the ballistic lead solution for the current
+  // target. Player-only HUD; solved via the same lead model the guns use (src/ai/gunnery.js).
+  const leadPip = document.createElement('div');
+  leadPip.className = 'sf-leadpip';
+  leadPip.innerHTML = '<div class="sf-leadpip__ring"></div>';
+  root.appendChild(leadPip);
 
   // ---- death / respawn feedback banner ----
   injectDeathStyle();
@@ -1082,6 +1099,7 @@ export function createHud(ctx, alerts) {
     if (!p) {
       lockRing.classList.remove('active', 'locked');
       lockDiamond.classList.remove('visible');
+      leadPip.classList.remove('visible');
       wpnHeatsWrap.style.display = 'none';
       return;
     }
@@ -1158,6 +1176,33 @@ export function createHud(ctx, alerts) {
     } else {
       lockDiamond.classList.remove('visible');
     }
+
+    // ---- Lead pip (BP-02) — "aim here" marker at the ballistic lead solution ----
+    // Shown for a live HOSTILE ship/drone target when the player carries a projectile weapon and the
+    // target's motion produces a meaningful lead offset. Solved via gunnery (same model as the guns).
+    let pipShown = false;
+    if (tgt && tgt.alive && helpers.worldToScreen && (tgt.type === 'ship' || tgt.type === 'drone')
+        && hasBallisticWeapon(p) && isHostileToPlayer(tgt, p.team, state)) {
+      const sol = leadSolution(p, tgt, primaryProjSpeed(p));
+      if (sol.valid) {
+        const pipProj = helpers.worldToScreen({ x: sol.x, y: 0, z: sol.z });
+        const tgtProj = helpers.worldToScreen({ x: tgt.pos.x, y: 0, z: tgt.pos.z });
+        // Only surface the pip when it separates from the target on screen (target is actually leading).
+        const sep = (pipProj.onScreen && tgtProj.onScreen)
+          ? Math.hypot(pipProj.x - tgtProj.x, pipProj.y - tgtProj.y) : 0;
+        if (pipProj.onScreen && sep > 7) {
+          leadPip.classList.add('visible');
+          setStyle(leadPip, 'left', pipProj.x.toFixed(1) + 'px');
+          setStyle(leadPip, 'top', pipProj.y.toFixed(1) + 'px');
+          // Green when the player's aim is converging on the solution (crosshair near the pip).
+          const aim = (state.input && Number.isFinite(state.input.aimAngle)) ? state.input.aimAngle : p.rot;
+          let d = sol.angle - aim; d = Math.atan2(Math.sin(d), Math.cos(d));
+          setClass(leadPip, 'on-solution', Math.abs(d) < 0.05);
+          pipShown = true;
+        }
+      }
+    }
+    if (!pipShown) leadPip.classList.remove('visible');
   }
 
   // ---------------------------------------------------------------------------
@@ -1796,7 +1841,16 @@ export function createHud(ctx, alerts) {
     if (slow) tickCreditsTween(numericDt || frameDt);
 
     // --- target panel: DOM/compositor surface; update on a fixed HUD cadence ---
-    if (targetTick) targetPanel.update({ slow });
+    if (targetTick) {
+      const tgtId = (state.player || {}).targetId;
+      let weakPoint = null;
+      if (tgtId != null && revealedWeakPoints.size) {
+        const wp = revealedWeakPoints.get(tgtId);
+        if (wp && (!wp.until || (state.simTime || 0) < wp.until)) weakPoint = wp;
+        else if (wp) revealedWeakPoints.delete(tgtId);
+      }
+      targetPanel.update({ slow, weakPoint });
+    }
 
     // --- combat HUD: lock ring, weapon heat bars, target diamond (every frame for heat reactivity) ---
     updateCombatHud(p, slow);

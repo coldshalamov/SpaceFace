@@ -85,6 +85,9 @@ export const story = {
     bus.on('ui:endgameChoose', (p) => this._onEndgameChoose(p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
+
+    // ── B8 — Wren artifact thread: salvaged communicator carries a coordinate file that never resolves.
+    bus.on('salvage:communicatorFound', () => this._onB8SalvageTrigger());
   },
 
   // ── Per-tick: ambient + trap comms scheduling (skips while docked/paused/menu). ─────────────
@@ -244,7 +247,46 @@ export const story = {
 
   _fireComms(p) {
     if (!p || !p.text) return;
+    // Route surfaced player notifications through the one-voice arbiter (BP-05). The comms log feed
+    // still receives comms:popup for the left-edge migraine; the arbiter serializes what the player
+    // actually hears as a toast so story/ambient/trap lines never talk over each other.
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      const cat = p.category || 'ambient';
+      const channel = (cat === 'story' || cat === 'personal' || cat === 'late') ? 'story'
+        : (cat === 'trap' ? 'alert' : 'info');
+      voice.say({
+        channel,
+        text: p.sender ? `${p.sender}: ${p.text}` : p.text,
+        kind: cat,
+        ttl: p.ttl,
+        id: p.id,
+      });
+    }
     this.bus.emit('comms:popup', p);
+  },
+
+  // B8 — salvage communicator hook (Wren artifact thread opener). Fires once per save after B2+.
+  _onB8SalvageTrigger() {
+    const s = this.state.story;
+    if (!s) return;
+    this._ensureState();
+    if (s.flags && s.flags.b8_fired) return;
+    if ((s.beatIndex || 0) < 2) return;
+    if (!s.flags) s.flags = {};
+    s.flags.b8_fired = true;
+    const content = BEAT_CONTENT[8];
+    if (!content) return;
+    this._fireComms({
+      id: 'beat_hint_8', sender: 'CAPTAIN\u2019S LOG', text: content.hint,
+      category: 'story', ttl: 9, persist: false,
+    });
+    for (const g of (content.graffiti || [])) {
+      this._showGraffiti(g.line, g.where, 8, g.author);
+    }
+    for (const commsId of (content.comms || [])) {
+      this._fireCommsById(commsId);
+    }
   },
 
   _rescheduleAmbient() {

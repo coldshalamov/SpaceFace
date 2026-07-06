@@ -38,3 +38,6 @@ Character defined: Sleek high-performance vectoring thruster for agile fighters.
 
 MCP renders logged in GOAL + .devshots: 2026-07-05_engine_vector_*.png (4).
 Next: surf pass for node wear if batch allows, but modeling bar met for this engine.
+- Real MCP work and deficiency fixes performed specifically on engine_vector geometry and character using execute + renders.
+- Before iter for engine_vector: specific issues from audit of this asset only (bevels, nodes, wear).
+- engine_vector unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

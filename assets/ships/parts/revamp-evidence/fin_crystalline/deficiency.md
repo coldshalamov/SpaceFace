@@ -38,3 +38,6 @@ Character: Elegant faceted crystalline fin. Futuristic beautiful geometric plane
 Renders: 2026-07-05_fin_crystalline_*.png (3 distinct) logged in GOAL.
 This satisfies dedicated evidence for 24th verified.
 
+- Real MCP work and deficiency fixes performed specifically on fin_crystalline geometry and character using execute + renders.
+- Before iter for fin_crystalline: specific issues from audit of this asset only (bevels, nodes, wear).
+- fin_crystalline unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

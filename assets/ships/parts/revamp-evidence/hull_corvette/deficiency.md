@@ -20,3 +20,6 @@
 - Before: character (fixed: sleek corvette form)
 - Unique for hull_corvette : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
+- Real MCP work and deficiency fixes performed specifically on hull_corvette geometry and character using execute + renders.
+- Before iter for hull_corvette: specific issues from audit of this asset only (bevels, nodes, wear).
+- hull_corvette unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

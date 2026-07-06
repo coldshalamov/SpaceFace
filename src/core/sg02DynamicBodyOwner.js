@@ -333,6 +333,7 @@ export class Sg02DynamicBodyOwner {
     const relativeSpeed = (targetVelocity.x - ownerVelocity.x) * nx + (targetVelocity.z - ownerVelocity.z) * nz;
     const stretch = Math.max(0, distance - attachment.restLength);
     const springState = attachment.springState || createSpringState();
+    const yank = finite(springState.lastYank || 0, 0);
     const legacyRope = usesLegacyRopeSpring(attachment.spring);
     const spring = legacyRope ? null : (attachment.spring || normalizeSpring(null, attachment.defId, attachment.break));
     const damping = legacyRope
@@ -350,6 +351,7 @@ export class Sg02DynamicBodyOwner {
       distance,
       stretch,
       relativeSpeed,
+      yank,
       tension: telemetryTension,
       impulse: telemetryImpulse,
       phase: legacyRope ? (stretch > STRETCH_EPSILON ? 'loaded' : 'slack') : (springState.phase || 'slack'),
@@ -719,12 +721,15 @@ export class Sg02DynamicBodyOwner {
       state.lastTension = 0;
       state.lastImpulse = 0;
       state.lastRelativeSpeed = 0;
+      state.lastYank = 0;
       return;
     }
 
     velocityAtPointInto(scratch.velocityA, attachment.owner, source);
     velocityAtPointInto(scratch.velocityB, attachment.target, target);
     const relativeSpeed = (scratch.velocityB.x - scratch.velocityA.x) * nx + (scratch.velocityB.z - scratch.velocityA.z) * nz;
+    const prevRel = finite(state.lastRelativeSpeed, 0);
+    const yank = (relativeSpeed - prevRel) / this.fixedDt;
     const spring = attachment.spring || (attachment.spring = normalizeSpring(null, attachment.defId, attachment.break));
     const mu = reducedMass(attachment.owner, attachment.target);
     const damping = dampingForSpring(spring, mu);
@@ -761,6 +766,7 @@ export class Sg02DynamicBodyOwner {
       );
       state.lastImpulse = Math.max(state.lastTension * this.fixedDt, finite(attachment.break.maxImpulse) + 1);
       state.lastRelativeSpeed = relativeSpeed;
+      state.lastYank = yank;
       return;
     }
 
@@ -781,6 +787,7 @@ export class Sg02DynamicBodyOwner {
     state.lastTension = force;
     state.lastImpulse = forceImpulse;
     state.lastRelativeSpeed = relativeSpeed;
+    state.lastYank = yank;
     state.phase = inCapture ? 'capture'
       : force >= finite(attachment.break.maxTension, Infinity) * 0.75 ? 'overload'
       : 'loaded';
@@ -935,6 +942,7 @@ function createSpringState() {
     breakRequested: false,
     lastStretch: 0,
     lastRelativeSpeed: 0,
+    lastYank: 0,
     lastTension: 0,
     lastImpulse: 0,
   };
@@ -952,6 +960,7 @@ function normalizeSpringState(value = null) {
   state.breakRequested = !!value.breakRequested;
   state.lastStretch = Math.max(0, finite(value.lastStretch));
   state.lastRelativeSpeed = finite(value.lastRelativeSpeed);
+  state.lastYank = finite(value.lastYank);
   state.lastTension = Math.max(0, finite(value.lastTension));
   state.lastImpulse = Math.max(0, finite(value.lastImpulse));
   return state;
@@ -969,6 +978,7 @@ function cloneSpringState(value = null) {
     breakRequested: state.breakRequested,
     lastStretch: state.lastStretch,
     lastRelativeSpeed: state.lastRelativeSpeed,
+    lastYank: state.lastYank,
     lastTension: state.lastTension,
     lastImpulse: state.lastImpulse,
   };
@@ -1006,16 +1016,15 @@ function safeReelRestLength(attachment, requested, dt = SG02_DYNAMIC_BODY_OWNER_
   const openingSpeed = invD > 0
     ? Math.max(0, (scratch.velocityB.x - scratch.velocityA.x) * dx * invD + (scratch.velocityB.z - scratch.velocityA.z) * dz * invD)
     : 0;
-  // The guard's job is to keep the line from snapping on a yank: don't reel shorter than the
-  // distance the line will actually span. The ORIGINAL formula predicted that distance forward by
-  // openingSpeed*dt — which, against a thrusting target, made reel-in impossible (openingSpeed
-  // pushed the floor above `requested` every tick, so the winch refused to shorten and the player
-  // "never got closer" — the reported bug). During ACTIVE reel we drop the opening-speed term and
-  // clamp against the current distance only: a stationary target's clamp is unchanged (preserves
-  // the sg02 dynamic-body-owner + tether-break goldens, whose targets have zero opening speed),
-  // while a fleeing target no longer locks the winch open. The +15% reel boost plus the break-edge
-  // reelSlip cap (in _applyAttachmentSpring) keep a violently fleeing capital able to snap the line.
-  const spanForGuard = activeReel ? distance : distance + openingSpeed * Math.max(0, finite(dt));
+  // Active winch: shorten steadily against tension. Only the snap-break edge may veto a shorten —
+  // the softer reelSafeStretch guard made haul-in impossible whenever the line was loaded and the
+  // target was opening distance (the player "never got closer"). Passive / non-reel paths keep the
+  // opening-speed guard so yanks still cannot snap the line through an accidental shorten.
+  if (activeReel) {
+    const minByBreakEdge = distance / (1 + maxStretchRatio);
+    return Math.max(requested, minByBreakEdge);
+  }
+  const spanForGuard = distance + openingSpeed * Math.max(0, finite(dt));
   const minByGuard = spanForGuard / (1 + reelSafeStretchRatio);
   return Math.max(requested, minByGuard);
 }

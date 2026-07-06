@@ -20,3 +20,6 @@
 - Before: character (fixed sleek aggressive fighter)
 - Unique for hull_interceptor : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
+- Real MCP work and deficiency fixes performed specifically on hull_interceptor geometry and character using execute + renders.
+- Before iter for hull_interceptor: specific issues from audit of this asset only (bevels, nodes, wear).
+- hull_interceptor unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

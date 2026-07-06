@@ -69,6 +69,22 @@ assert.doesNotMatch(save, /Start or load a game before saving/,
   'save system should leave no-player save feedback to uiRoot save-event listeners');
 assert.match(save, /bus\.on\('dock:undocked',\s*\(\)\s*=>\s*this\.requestAutosave\('undock',\s*\{\s*force:\s*true\s*\}\)\)/,
   'station departure must force an autosave so cargo and nav intent are durable before the debounce window');
+assert.match(save, /TRANSIENT_ENTITY_FLAGS = new Set\(\[[^\]]*'docked'/,
+  'docked must be a transient entity flag so dock autosaves do not freeze Continue');
+assert.match(save, /_reconcileFlightReadyAfterLoad\(\)/,
+  'load restore must clear stale dock state before save:loaded');
+for (const eventName of [
+  'dock:docked',
+  'sector:enter',
+  'jump:arrive',
+  'mission:accepted',
+  'economy:tradeCompleted',
+  'story:beatAdvanced',
+  'player:respawn',
+]) {
+  assert.match(save, new RegExp(`bus\\.on\\('${eventName}'[\\s\\S]*requestAutosave`),
+    `save system must autosave on ${eventName}`);
+}
 assert.match(save, /if \(!options\.force && now - this\._lastAutosaveAt < AUTOSAVE_DEBOUNCE_MS\) return false;/,
   'forced autosaves should bypass only the debounce gate');
 assert.match(save, /_slotIndexWithFallback\(\)/,

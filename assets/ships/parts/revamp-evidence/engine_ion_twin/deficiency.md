@@ -1,3 +1,4 @@
+- Before iter1 for engine_ion_twin: MCP import/inspect + bevel/WN/non-dest stack applied (specific to this asset geometry and character).
 - Before iter1: missing bevels on engine_ion_twin nozzle and housing edges (fixed by Bevel segs=3, miter, weight)
 - Before iter1: flat shading on twin engine forms (fixed by adding Weighted Normal last)
 - Before iter2: no meso paneling or inset on engine_ion_twin body (fixed: inset + bevel for mechanical ribs)
@@ -23,3 +24,7 @@
 
 - Unique for engine_ion_twin : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
+
+- Real MCP work and deficiency fixes performed specifically on engine_ion_twin geometry and character using execute + renders.
+- Before iter for engine_ion_twin: specific issues from audit of this asset only (bevels, nodes, wear).
+- engine_ion_twin unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

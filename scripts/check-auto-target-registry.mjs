@@ -29,6 +29,7 @@ try {
   const hostile = makeMovableShip({
     id: 2, team: 1, x: 220, z: 0,
     data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
+    vel: { x: 0, z: 0 },
   });
   state.playerId = 1;
   state.player.targetId = 2;
@@ -102,8 +103,9 @@ function assertMainLifecycleWiring() {
   console.log('[PASS] main-lifecycle beforeunload destroy + resetCombatInputMode wired');
 }
 
-function makeMovableShip({ id, team, x, z, data = {} }) {
+function makeMovableShip({ id, team, x, z, data = {}, vel = null }) {
   const pos = vec3(x, z);
+  const v = vel || { x: 0, z: 0 };
   return {
     id,
     type: 'ship',
@@ -119,7 +121,7 @@ function makeMovableShip({ id, team, x, z, data = {} }) {
     prevBank: 0,
     pitch: 0,
     prevPitch: 0,
-    vel: { x: 0, z: 0 },
+    vel: { x: v.x || 0, z: v.z || 0 },
     cap: 100,
     data,
   };

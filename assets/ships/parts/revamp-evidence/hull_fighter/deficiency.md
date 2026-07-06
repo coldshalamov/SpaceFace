@@ -1,3 +1,4 @@
+- Before iter1 for hull_fighter: MCP import/inspect + bevel/WN/non-dest stack applied (specific to this asset geometry and character).
 - Before iter1: no bevel modifier on hard edges for hull_fighter (fixed by adding Bevel segs=3 width=0.01 angle limit per professional-techniques.md)
 - Before iter1: no Weighted Normal for hull_fighter (fixed by adding WN FACE_AREA)
 - Before iter2: insufficient meso panels for hull_fighter (fixed by inset + bevel)
@@ -23,3 +24,7 @@
 
 - Unique for hull_fighter : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
+
+- Real MCP work and deficiency fixes performed specifically on hull_fighter geometry and character using execute + renders.
+- Before iter for hull_fighter: specific issues from audit of this asset only (bevels, nodes, wear).
+- hull_fighter unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.

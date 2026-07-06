@@ -907,6 +907,24 @@ function injectHudCss() {
   .sf-target .sf-bar { width:100%; }
   .sf-target .sf-bar--sm { height:3px; }
 
+  /* Damage triangle (BP-02): E/K/X effectiveness vs the target's current outer layer. Three tiny
+     labeled bars; the best family highlights so "what should I be shooting" reads instantly. */
+  .sf-target__triangle { display:flex; align-items:center; gap:7px; margin-top:5px; font-family:var(--mono); }
+  .sf-target__tri-label { font-size:9px; letter-spacing:.08em; color:var(--text-secondary); opacity:.7; }
+  .sf-target__tri-layer { font-size:9px; letter-spacing:.06em; color:var(--text-secondary); opacity:.6; margin-left:auto; }
+  .sf-tri { display:flex; align-items:center; gap:3px; }
+  .sf-tri__k { font-size:9px; color:var(--text-secondary); opacity:.75; width:8px; text-align:center; }
+  .sf-tri__bar { display:inline-block; width:26px; height:3px; background:rgba(255,255,255,.12); overflow:hidden; }
+  .sf-tri__fill { display:block; width:100%; height:100%; transform-origin:left center; transform:scaleX(0);
+    background:var(--text-secondary); }
+  .sf-tri.best .sf-tri__k { color:var(--good,#78f096); opacity:1; }
+  .sf-tri.best .sf-tri__fill { background:var(--good,#78f096); box-shadow:0 0 4px rgba(120,240,150,.6); }
+  /* Weak-point reveal line (BP-02) — appears after a scan pulse resolves the target's soft spot. */
+  .sf-target__identity { margin-top:3px; font-size:10px; letter-spacing:.05em; color:var(--text-secondary);
+    opacity:.88; text-transform:uppercase; }
+  .sf-target__weak { margin-top:4px; font-size:10px; letter-spacing:.06em; color:#ffd24a;
+    text-shadow:0 0 6px rgba(255,200,60,.5); }
+
   /* ===== top-right: objective tracker — chromeless glowing lines (§3) ===== */
   .sf-objectives { position:absolute; right:22px; top:18px; display:flex; flex-direction:column; gap:6px; align-items:flex-end; max-width:300px;
     contain:layout paint style; }
@@ -1013,6 +1031,22 @@ function injectHudCss() {
   @keyframes sf-diamondpulse {
     from { box-shadow:0 0 6px rgba(var(--dia-glow),.3), inset 0 0 4px rgba(var(--dia-glow),.1); transform:rotate(45deg) scale(.92); }
     to { box-shadow:0 0 16px rgba(var(--dia-glow),.7), inset 0 0 10px rgba(var(--dia-glow),.2); transform:rotate(45deg) scale(1.04); } }
+
+  /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
+     intercepts the moving target. A hollow reticle-ring the player walks their crosshair onto. Tints
+     amber→green as the crosshair converges (solved via the SAME lead solver the guns use). */
+  .sf-leadpip { display:none; position:absolute; width:22px; height:22px; pointer-events:none; z-index:13;
+    transform:translate(-50%,-50%); opacity:0; transition:opacity .1s ease;
+    --pip-glow:255,196,84; }
+  .sf-leadpip.visible { display:block; opacity:.92; }
+  .sf-leadpip.on-solution { --pip-glow:120,240,150; }
+  .sf-leadpip__ring { position:absolute; inset:0; border-radius:50%;
+    border:1.5px solid rgba(var(--pip-glow),.95);
+    box-shadow:0 0 7px rgba(var(--pip-glow),.5), inset 0 0 5px rgba(var(--pip-glow),.25); }
+  .sf-leadpip__ring::before, .sf-leadpip__ring::after {
+    content:''; position:absolute; background:rgba(var(--pip-glow),.9); }
+  .sf-leadpip__ring::before { left:50%; top:-4px; width:1.5px; height:4px; transform:translateX(-50%); }
+  .sf-leadpip__ring::after { top:50%; left:-4px; height:1.5px; width:4px; transform:translateY(-50%); }
 
   /* Capacitor readout near weapon area */
   .sf-cap-readout { position:absolute; left:18px; bottom:18px; pointer-events:none;

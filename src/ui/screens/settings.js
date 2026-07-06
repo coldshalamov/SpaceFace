@@ -269,7 +269,11 @@ export const settingsScreen = {
     } else if (refs.active === 'Video') {
       const vd = s.video;
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
-      rowSlider('Bloom strength', () => vd.bloomStrength != null ? vd.bloomStrength : 0.40, 0, 2, 0.05, (x) => Math.round(x / 2 * 100) + '%', (v) => this._set(ctx, 'video', 'bloomStrength', v));
+      rowSlider('Bloom strength', () => {
+        let v = vd.bloomStrength != null ? vd.bloomStrength : 0.35;
+        if (v > 1) v *= 0.5;
+        return Math.max(0, Math.min(1, v));
+      }, 0, 1, 0.02, pct, (v) => this._set(ctx, 'video', 'bloomStrength', v));
       // HDR energy materials (spec §14.5): shader-driven thruster plume + Massline ribbon that write
       // HDR radiance into the bloom target. On by default for the beautiful flight look.
       if (vd.energyMaterials == null) vd.energyMaterials = true;

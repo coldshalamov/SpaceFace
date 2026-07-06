@@ -94,8 +94,10 @@ const PARTICLE_FRAG = `
   void main() {
     vec2 d = gl_PointCoord - vec2(0.5);
     float r = dot(d, d);
-    if (r > 0.25) discard;
-    float fall = 1.0 - smoothstep(0.0, 0.25, r); // soft round dot
+    // Softer gaseous falloff: wider soft halo that blends when dense instead of hard little balls.
+    // Exponential gives a feathery plasma/gas look with good overlap.
+    float fall = exp(-r * 14.0);
+    if (fall < 0.012) discard;
     gl_FragColor = vec4(vColor * fall, vAlpha * fall);
   }
 `;
@@ -244,8 +246,9 @@ export const vfx = {
     this._glowTex = tex;
     this._ringTex = ringTex;
 
-    // NOTE: the generated assets/fx/*.jpg are LABELLED contact-sheet references, not usable sprite
-    // strips, so VFX is driven entirely by the clean procedural glow/ring textures above.
+    // Thruster flame sprites use the procedural glow texture (makeGlowTexture above). The
+    // assets/fx/*.jpg contact sheets are authoring-only and must not be live-referenced —
+    // check:asset-reachability rejects them outside bundled roots.
     this._spritePool = [];
     this._spr = []; // parallel CPU state
     for (let i = 0; i < SPRITE_CAP; i++) {
@@ -269,6 +272,10 @@ export const vfx = {
     for (let i = 0; i < SPRITE_CAP; i++) this._freeSprites[i] = SPRITE_CAP - 1 - i;
     this._freeSpriteCount = SPRITE_CAP;
     this._liveSpriteCount = 0;
+
+    // Dedicated soft flame material slot for gaseous thrust (fx_thruster_main.jpg prepared for future use / richer shapes).
+    // Currently the overlapping soft-glow puffs + softened point cloud provide the blend; swapping maps here is a one-line follow-up.
+    this._flameMaterial = null;
   },
 
   _subscribe() {
@@ -1232,11 +1239,21 @@ export const vfx = {
       idx.push(a, b, c, b, d, c);
     }
     geo.setIndex(idx);
+    const along = new Float32Array((SEG + 1) * 2);
+    const side = new Float32Array((SEG + 1) * 2);
+    const alongAttr = new THREE.BufferAttribute(along, 1);
+    const sideAttr = new THREE.BufferAttribute(side, 1);
+    alongAttr.usage = THREE.DynamicDrawUsage;
+    sideAttr.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('aAlong', alongAttr);
+    geo.setAttribute('aSide', sideAttr);
 
-    const mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#39d0ff'),
-      transparent: true, opacity: 0.72,
-      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    const mat = createMasslineRibbonMaterial({
+      name: 'sf-tether-core',
+      color: 0x39d0ff,
+      intensity: 6.2,
+      opacity: 0.78,
+      pulseSpeed: 3.1,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;
@@ -1245,10 +1262,16 @@ export const vfx = {
     this._scene.add(mesh);
 
     const glowGeo = geo.clone();
-    const glowMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#39d0ff'),
-      transparent: true, opacity: 0.08,
-      depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    const glowAlong = new Float32Array((SEG + 1) * 2);
+    const glowSide = new Float32Array((SEG + 1) * 2);
+    glowGeo.setAttribute('aAlong', new THREE.BufferAttribute(glowAlong, 1));
+    glowGeo.setAttribute('aSide', new THREE.BufferAttribute(glowSide, 1));
+    const glowMat = createMasslineRibbonMaterial({
+      name: 'sf-tether-halo',
+      color: 0x39d0ff,
+      intensity: 2.8,
+      opacity: 0.2,
+      pulseSpeed: 2.4,
     });
     const glow = new THREE.Mesh(glowGeo, glowMat);
     glow.frustumCulled = false;
@@ -1320,12 +1343,14 @@ export const vfx = {
 
     this._tetherCable = {
       mesh, glow, band, anchor, anchorCore, targetHalo, SEG, BANDS,
+      along, side, glowAlong, glowSide,
       wasActive: false,
       latchAge: 999,      // seconds since latch (drives the whip wave)
       fade: 0,            // 0..1 visibility envelope (release = fade out, latch = snap in)
       lastTargetId: null,
       bowSide: 1,
       strainSmooth: 0,
+      reelGlow: 0,
     };
     this._tetherColorCool = new THREE.Color('#39d0ff');
     this._tetherColorWarm = new THREE.Color('#ffb35c');
@@ -1386,23 +1411,43 @@ export const vfx = {
     const whipEnv = Math.max(0, 1 - whipT / 0.45);
     const whipAmp = whipEnv * whipEnv * Math.min(chord * 0.22, 18);
 
-    // Strain color: cool cyan → amber → hot red.
+    // Strain color: cool cyan → amber → hot red. Winch-active reel ramps a separate HDR glow read.
     const s = Math.min(1, cable.strainSmooth);
+    const reelTarget = tether && tether.reeling ? Math.max(0, Math.min(1, tether.reelStrength || 0)) : 0;
+    cable.reelGlow += (reelTarget - cable.reelGlow) * (1 - Math.exp(-(reelTarget > cable.reelGlow ? 11 : 6) * Math.max(0, dt || 0)));
     if (s < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, s / 0.55);
     else this._ctmp.lerpColors(this._tetherColorWarm, this._tetherColorHot, (s - 0.55) / 0.45);
-    cable.mesh.material.color.lerpColors(this._ctmp, this._tetherColorWhite, 0.26);
-    cable.glow.material.color.copy(this._ctmp);
+    if (cable.reelGlow > 0.01) this._ctmp.lerp(this._tetherColorWhite, cable.reelGlow * 0.42);
     const taut = cable.strainSmooth > 0.7;
-    cable.mesh.material.opacity = (taut ? 0.66 : 0.54) * cable.fade;
-    cable.glow.material.opacity = (0.11 + 0.13 * s + whipEnv * 0.05) * cable.fade;
+    const overload = s > 0.95;
+    const ribbonFrame = {
+      time: visualTime,
+      color: this._ctmp,
+      tension: s,
+      overload,
+      reel: cable.reelGlow,
+      pulseSpeed: 2.8 + s * 1.4 + cable.reelGlow * 4.8,
+      intensity: 4.8 + s * 2.6 + cable.reelGlow * 4.2 + whipEnv * 0.8,
+      opacity: (taut ? 0.68 : 0.58) * cable.fade,
+    };
+    updateEnergyMaterial(cable.mesh.material, ribbonFrame);
+    updateEnergyMaterial(cable.glow.material, {
+      ...ribbonFrame,
+      intensity: ribbonFrame.intensity * 0.42,
+      opacity: (0.14 + 0.12 * s + cable.reelGlow * 0.28 + whipEnv * 0.05) * cable.fade,
+    });
     cable.band.material.color.copy(this._ctmp);
-    cable.band.material.opacity = (0.12 + 0.22 * s + (tether && tether.phase === 'capture' ? 0.08 : 0)) * cable.fade;
+    cable.band.material.opacity = (0.12 + 0.22 * s + cable.reelGlow * 0.18 + (tether && tether.phase === 'capture' ? 0.08 : 0)) * cable.fade;
 
     const w = (taut ? 0.24 : 0.34);   // taut line reads thinner + hotter
-    const gw = 0.75 + 0.65 * s + whipEnv * 0.25;
+    const gw = 0.75 + 0.65 * s + whipEnv * 0.25 + cable.reelGlow * 0.42;
     const SEG = cable.SEG;
     const corePos = cable.mesh.geometry.attributes.position.array;
     const glowPos = cable.glow.geometry.attributes.position.array;
+    const along = cable.along;
+    const side = cable.side;
+    const glowAlong = cable.glowAlong;
+    const glowSide = cable.glowSide;
     for (let i = 0; i <= SEG; i++) {
       const t = i / SEG;
       const arc = Math.sin(Math.PI * t);
@@ -1411,13 +1456,22 @@ export const vfx = {
       const cx = ax + dx * t + px * off;
       const cz = az + dz * t + pz * off;
       const o = i * 6;
+      const ai = i * 2;
       corePos[o] = cx + px * w; corePos[o + 1] = 1.5; corePos[o + 2] = cz + pz * w;
       corePos[o + 3] = cx - px * w; corePos[o + 4] = 1.5; corePos[o + 5] = cz - pz * w;
       glowPos[o] = cx + px * gw; glowPos[o + 1] = 1.4; glowPos[o + 2] = cz + pz * gw;
       glowPos[o + 3] = cx - px * gw; glowPos[o + 4] = 1.4; glowPos[o + 5] = cz - pz * gw;
+      along[ai] = t; along[ai + 1] = t;
+      side[ai] = -1; side[ai + 1] = 1;
+      glowAlong[ai] = t; glowAlong[ai + 1] = t;
+      glowSide[ai] = -1; glowSide[ai + 1] = 1;
     }
     cable.mesh.geometry.attributes.position.needsUpdate = true;
     cable.glow.geometry.attributes.position.needsUpdate = true;
+    cable.mesh.geometry.attributes.aAlong.needsUpdate = true;
+    cable.mesh.geometry.attributes.aSide.needsUpdate = true;
+    cable.glow.geometry.attributes.aAlong.needsUpdate = true;
+    cable.glow.geometry.attributes.aSide.needsUpdate = true;
     const bandPos = cable.band.geometry.attributes.position.array;
     const ux = dx / chord;
     const uz = dz / chord;
@@ -1445,12 +1499,12 @@ export const vfx = {
     cable.anchor.scale.setScalar(anchorScale);
     cable.anchor.rotation.y = visualTime * 1.8;
     cable.anchor.material.color.copy(this._ctmp);
-    cable.anchor.material.opacity = (0.36 + 0.24 * s + whipEnv * 0.2) * cable.fade;
+    cable.anchor.material.opacity = (0.36 + 0.24 * s + whipEnv * 0.2 + cable.reelGlow * 0.34) * cable.fade;
     cable.anchorCore.position.set(bx, 1.64, bz);
     cable.anchorCore.scale.setScalar(Math.max(1.8, anchorScale * 0.42));
     cable.anchorCore.rotation.y = -visualTime * 2.4;
     cable.anchorCore.material.color.copy(this._ctmp);
-    cable.anchorCore.material.opacity = (0.48 + 0.28 * s + whipEnv * 0.2) * cable.fade;
+    cable.anchorCore.material.opacity = (0.48 + 0.28 * s + whipEnv * 0.2 + cable.reelGlow * 0.42) * cable.fade;
     cable.targetHaloActive = isLargeAnchor;
     if (cable.targetHalo) {
       cable.targetHalo.position.set(anchorEnt.pos.x, 1.58, anchorEnt.pos.z);
@@ -1784,6 +1838,8 @@ export const vfx = {
     const dir = Math.atan2(dirZ, dirX);
     const col = this._engineColor(e);
     const burst = this._burst || 1;
+    const svx = (e.vel && e.vel.x) || 0;
+    const svz = (e.vel && e.vel.z) || 0;
     this._spawnSprite(SPR_FLASH, px, 0, pz, 0.08, 1.8, 3.8 + strength * 2.0, 0.74, 0.0, '#ffffff', dirX * 2, dirZ * 2);
     this._spawnSprite(SPR_FLASH, px, 0, pz, 0.14, 2.6, 5.8 + strength * 2.8, 0.42, 0.0, col, dirX * 2, dirZ * 2);
     this._c0.set('#ffffff');
@@ -1795,14 +1851,14 @@ export const vfx = {
       this._spawnParticle(
         px + (Math.random() - 0.5) * 0.9,
         pz + (Math.random() - 0.5) * 0.9,
-        Math.cos(a) * sp,
-        Math.sin(a) * sp,
+        svx + Math.cos(a) * sp,
+        svz + Math.sin(a) * sp,
         0.16 + strength * 0.10,
         1.2 + strength * 1.1,
         0.0,
         this._c0,
         this._c1,
-        2.1,
+        1.6,
         0,
         0
       );
@@ -1823,6 +1879,8 @@ export const vfx = {
       const rawBz = sock ? sock.z : e.pos.z - sf * (e.radius + 2);
       const bx = rawBx + exhaustX * BOOST_BURST_NOZZLE_CLEARANCE;
       const bz = rawBz + exhaustZ * BOOST_BURST_NOZZLE_CLEARANCE;
+      const svx = (e.vel && e.vel.x) || 0;
+      const svz = (e.vel && e.vel.z) || 0;
       this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.14, 3.5, 7.5, 0.78, 0.0, '#ffffff', 0, 0);
       this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.22, 4.5, 10, 0.46, 0.0, col, 0, 0);
       this._spawnSprite(SPR_RING, bx, 0, bz, 0.18, 2, 8, 0.45, 0.0, col, exhaustX * 5, exhaustZ * 5);
@@ -1833,7 +1891,7 @@ export const vfx = {
       for (let k = 0; k < n; k++) {
         const a = baseA + (Math.random() - 0.5) * 0.42;
         const sp = 90 + Math.random() * 80;
-        this._spawnParticle(bx, bz, Math.cos(a) * sp, Math.sin(a) * sp, 0.34, 2.5, 0.0, this._c0, this._c1, 1.8, 0, 0);
+        this._spawnParticle(bx, bz, svx + Math.cos(a) * sp, svz + Math.sin(a) * sp, 0.34, 2.5, 0.0, this._c0, this._c1, 1.4, 0, 0);
       }
     }
   },
@@ -1851,6 +1909,8 @@ export const vfx = {
     const bx = sock ? sock.x : e.pos.x - cf * (e.radius + 2);   // rear
     const bz = sock ? sock.z : e.pos.z - sf * (e.radius + 2);
     const VIOLET = '#c98cff', VIOLET2 = '#7a3df0';
+    const svx = (e.vel && e.vel.x) || 0;
+    const svz = (e.vel && e.vel.z) || 0;
     // expanding shock ring at the nose
     this._spawnSprite(SPR_RING, nx, 0, nz, 0.32, 3.0, 11.0, 0.85, 0.0, VIOLET, cf * 6, sf * 6);
     this._spawnSprite(SPR_FLASH, nx, 0, nz, 0.16, 5, 9, 0.9, 0.0, VIOLET, 0, 0);
@@ -1861,7 +1921,7 @@ export const vfx = {
     for (let k = 0; k < n; k++) {
       const a = baseA + (Math.random() - 0.5) * 0.45;
       const sp = 90 + Math.random() * 90;
-      this._spawnParticle(bx, bz, Math.cos(a) * sp, Math.sin(a) * sp, 0.45, 3.0, 0.0, this._c0, this._c1, 1.6, 0, 0);
+      this._spawnParticle(bx, bz, svx + Math.cos(a) * sp, svz + Math.sin(a) * sp, 0.45, 3.0, 0.0, this._c0, this._c1, 1.2, 0, 0);
     }
     if (e.id === this.state.playerId) this.helpers.camera && this.helpers.camera.addTrauma(0.28);  // punch
   },
@@ -1962,8 +2022,16 @@ export const vfx = {
     bx += Math.cos(baseA) * nozzleClearance;
     bz += Math.sin(baseA) * nozzleClearance;
 
-    const pCount = Math.max(1, Math.min(8, Math.floor(1 + drive * 2.2 + boostBlend * 2.4 + cruiseBlend * 3.0 + Math.random() * 0.85)));
-    const spread = 0.24 + drive * 0.22 + boostBlend * 0.28 + cruiseBlend * 0.18;
+    // Ship velocity must be added to exhaust so particles are "born" with the nozzle's world motion.
+    // This makes the jet shoot *out of the nozzle* (correct local direction) and then trail behind
+    // when the ship is moving (inertia). Without this, plumes always shoot heading-relative only and
+    // look detached or sideways when sliding.
+    const svx = (e.vel && e.vel.x) || 0;
+    const svz = (e.vel && e.vel.z) || 0;
+
+    // Higher count, much smaller sizes, lower drag for streaming gaseous trail instead of blobby balls.
+    const pCount = Math.max(2, Math.min(14, Math.floor(2 + drive * 4.0 + boostBlend * 3.5 + cruiseBlend * 4.5 + Math.random() * 1.2)));
+    const spread = 0.18 + drive * 0.18 + boostBlend * 0.22 + cruiseBlend * 0.14;
 
     for (let pi = 0; pi < pCount; pi++) {
       // outer plume: faction-hot -> dark blue, wider with throttle, jittered backward.
@@ -1972,14 +2040,16 @@ export const vfx = {
       this._c0.set(col0); if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT); this._c1.set('#10204a');
       if (boostBlend > 0) this._c0.lerp(this._ctmp.set('#d8f0ff'), 0.45);
       if (cruiseBlend > 0) { this._c0.lerp(this._ctmp.set('#a6e8ff'), 0.55); this._c1.set('#0a2840'); }
-      const sp = (18 + drive * 34) * (1 + boostBlend * 0.65 + cruiseBlend * 0.80);
+      const sp = (22 + drive * 38) * (1 + boostBlend * 0.55 + cruiseBlend * 0.70);
       const a = baseA + (Math.random() - 0.5) * spread;
-      const jitter = 1.0 + drive * 1.4 + boostBlend * 1.6 + cruiseBlend * 0.8;
-      const life = 0.24 + drive * 0.15 + boostBlend * 0.22 + cruiseBlend * 0.35;
-      const sz = 1.1 + drive * 1.25 + boostBlend * 1.05 + cruiseBlend * 0.60;
+      const jitter = 0.7 + drive * 1.1 + boostBlend * 1.2 + cruiseBlend * 0.6;
+      const life = 0.32 + drive * 0.18 + boostBlend * 0.22 + cruiseBlend * 0.32;
+      const sz = 0.55 + drive * 0.65 + boostBlend * 0.55 + cruiseBlend * 0.35;
+      const pvx = svx + Math.cos(a) * sp;
+      const pvz = svz + Math.sin(a) * sp;
       this._spawnParticle(
         bx + (Math.random() - 0.5) * jitter, bz + (Math.random() - 0.5) * jitter,
-        Math.cos(a) * sp, Math.sin(a) * sp, life, sz, 0.0, this._c0, this._c1, 1.8, 0, 0);
+        pvx, pvz, life, sz, 0.0, this._c0, this._c1, 0.38, 0, 0);
     }
 
     // white-hot inner core right at the nozzle — bigger, brighter, gives the trail a visible spine.
@@ -1987,21 +2057,39 @@ export const vfx = {
     this._c0.set('#ffffff'); this._c1.set(col0); if (glowT > 0) this._c1.lerp(this._ctmp.set('#ffffff'), glowT);
     if (boostBlend > 0) this._c1.lerp(this._ctmp.set('#a6d8ff'), 0.65);
     if (cruiseBlend > 0) this._c1.lerp(this._ctmp.set('#39d0ff'), 0.55);
-    const a2 = baseA + (Math.random() - 0.5) * (0.20 + boostBlend * 0.18 + cruiseBlend * 0.12);
-    const sp2 = (24 + drive * 34) * (1 + boostBlend * 0.55 + cruiseBlend * 0.70);
-    const coreSize = 0.9 + drive * 0.85 + boostBlend * 0.75 + cruiseBlend * 0.45;
-    this._spawnParticle(bx, bz, Math.cos(a2) * sp2, Math.sin(a2) * sp2, 0.16 + drive * 0.08 + boostBlend * 0.12 + cruiseBlend * 0.18, coreSize, 0.0, this._c0, this._c1, 2.2, 0, 0);
+    const a2 = baseA + (Math.random() - 0.5) * (0.16 + boostBlend * 0.14 + cruiseBlend * 0.10);
+    const sp2 = (26 + drive * 36) * (1 + boostBlend * 0.45 + cruiseBlend * 0.60);
+    const coreSize = 0.5 + drive * 0.55 + boostBlend * 0.48 + cruiseBlend * 0.30;
+    const pvx2 = svx + Math.cos(a2) * sp2;
+    const pvz2 = svz + Math.sin(a2) * sp2;
+    this._spawnParticle(bx, bz, pvx2, pvz2, 0.22 + drive * 0.10 + boostBlend * 0.14 + cruiseBlend * 0.18, coreSize, 0.0, this._c0, this._c1, 0.55, 0, 0);
 
     // AFTERBURNER / CRUISE: when boosting or cruising, add extra bright wide particles.
     if (boostBlend > 0 || cruiseBlend > 0 || drive > 1.05) {
       // Extra wide bright outer particles — faction colored, bigger, slightly random y offset
       this._c0.set(col0); if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT); this._c1.set('#ffffff');
       if (cruiseBlend > 0) { this._c0.lerp(this._ctmp.set('#a6e8ff'), 0.6); this._c1.set('#d8f8ff'); }
-      const ab = baseA + (Math.random() - 0.5) * (0.7 + boostBlend * 0.35 + cruiseBlend * 0.25);
-      const absp = (30 + drive * 18 + Math.random() * 30) * (1 + boostBlend * 0.45 + cruiseBlend * 0.55);
+      const ab = baseA + (Math.random() - 0.5) * (0.6 + boostBlend * 0.28 + cruiseBlend * 0.20);
+      const absp = (28 + drive * 16 + Math.random() * 26) * (1 + boostBlend * 0.38 + cruiseBlend * 0.48);
+      const pvxAb = svx + Math.cos(ab) * absp;
+      const pvzAb = svz + Math.sin(ab) * absp;
       this._spawnParticle(
-        bx + (Math.random() - 0.5) * (2.2 + boostBlend * 1.8 + cruiseBlend * 1.0), bz + (Math.random() - 0.5) * (2.2 + boostBlend * 1.8 + cruiseBlend * 1.0),
-        Math.cos(ab) * absp, Math.sin(ab) * absp, 0.32 + boostBlend * 0.18 + cruiseBlend * 0.28, 2.4 + drive * 0.8 + boostBlend * 1.2 + cruiseBlend * 0.9, 0.0, this._c0, this._c1, 1.5, 0, 0);
+        bx + (Math.random() - 0.5) * (1.8 + boostBlend * 1.4 + cruiseBlend * 0.8), bz + (Math.random() - 0.5) * (1.8 + boostBlend * 1.4 + cruiseBlend * 0.8),
+        pvxAb, pvzAb, 0.38 + boostBlend * 0.16 + cruiseBlend * 0.24, 1.6 + drive * 0.55 + boostBlend * 0.8 + cruiseBlend * 0.6, 0.0, this._c0, this._c1, 0.32, 0, 0);
+    }
+
+    // Soft sprite "gas envelope" layer using the soft glow texture. These larger, low-opacity,
+    // drifting puffs overlap the small point particles (and the HDR energy plume for the player)
+    // producing a continuous, liquidy/gaseous form instead of discrete glowing balls.
+    // Exhaust vel + ship vel means the gas shoots from the nozzle then trails on fast motion.
+    const puffCount = Math.max(1, Math.min(3, Math.floor(1 + drive * 1.6 + (boostBlend + cruiseBlend) * 1.0)));
+    for (let k = 0; k < puffCount; k++) {
+      const pa = baseA + (Math.random() - 0.5) * (0.55 + boostBlend * 0.2);
+      const psp = (10 + drive * 16) * (0.85 + boostBlend * 0.4 + cruiseBlend * 0.5);
+      const pvxP = svx + Math.cos(pa) * psp;
+      const pvzP = svz + Math.sin(pa) * psp;
+      const plife = 0.28 + drive * 0.12 + boostBlend * 0.14;
+      this._spawnSprite(SPR_PUFF, bx, 0, bz, plife, 1.15, 2.9, 0.30, 0.0, col0, pvxP * 0.82, pvzP * 0.82);
     }
   },
 
@@ -2103,8 +2191,10 @@ export const vfx = {
     const boostBlend = energy.boostBlend;
     const fade = Math.max(0, Math.min(1, (drive - 0.012) / 0.10 + boostBlend * 0.4));
     if (fade <= 0.01) { this._hideEnergyPlumes(0); return; }
-    const width = 0.24 + drive * 0.30 + boostBlend * 0.22;
-    const length = 0.24 + drive * 1.30 + boostBlend * 1.55;
+    // Slightly longer/wider gaseous volume + stronger intensity so the volumetric plume reads as the
+    // primary "engine flame" that the point+ sprite particles augment rather than dominate.
+    const width = 0.28 + drive * 0.36 + boostBlend * 0.26;
+    const length = 0.28 + drive * 1.55 + boostBlend * 1.85;
     const coreColor = this._c0.set('#36c8ff').lerp(this._c1.set('#fff4dd'), boostBlend);
     const haloColor = this._ctmp.set('#6a4cff').lerp(this._c1.set('#c98cff'), boostBlend);
     const sockets = this._trailSocketObjects(player);
@@ -2117,8 +2207,8 @@ export const vfx = {
       plume.visible = true;
       const core = plume.userData.energyCore;
       const halo = plume.userData.energyHalo;
-      if (core) updateEnergyMaterial(core.material, { time: this._t, colorA: coreColor, colorB: haloColor, intensity: 3.8 + drive * 3.2 + boostBlend * 2.4, opacity: (0.18 + drive * 0.28 + boostBlend * 0.14) * fade });
-      if (halo) updateEnergyMaterial(halo.material, { time: this._t, colorA: haloColor, colorB: coreColor, intensity: 1.0 + drive * 1.1 + boostBlend * 1.2, opacity: (0.04 + drive * 0.09 + boostBlend * 0.06) * fade });
+      if (core) updateEnergyMaterial(core.material, { time: this._t, colorA: coreColor, colorB: haloColor, intensity: 4.4 + drive * 3.6 + boostBlend * 2.8, opacity: (0.22 + drive * 0.30 + boostBlend * 0.16) * fade });
+      if (halo) updateEnergyMaterial(halo.material, { time: this._t, colorA: haloColor, colorB: coreColor, intensity: 1.2 + drive * 1.3 + boostBlend * 1.4, opacity: (0.05 + drive * 0.10 + boostBlend * 0.07) * fade });
     }
     this._hideEnergyPlumes(count);
   },
