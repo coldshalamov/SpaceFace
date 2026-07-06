@@ -70,7 +70,7 @@
 | T3-12 | 12 | arc-preview render | `vfx.js` | DONE 2026-07-06 | — | `npm run check:massline:arc-render` PASS | T3-11 | T3-13 |
 | T3-13 | 13 | whip-impact detect | `masslineImpacts.js` (new), `registry.js` | DONE 2026-07-06 | — | `npm run check:massline:whip-impact` PASS | T3-12 | T3-14 |
 | T3-14 | 14 | whip feedback (+opt damage) | presentation + `combat.js` | DONE 2026-07-06 | — | `npm run check:massline:whip-feedback` PASS | T3-13 | T3-15 |
-| T3-15 | 15 | impulse authority helper | `impulseCharges.js` | NEXT | — | `check:impulse:authority` | T3-14 | T3-16 |
+| T3-15 | 15 | impulse authority helper | `impulseCharges.js` | IN-FLIGHT | — | `check:impulse:authority` | T3-14 | T3-16 |
 | T3-16 | 16 | impulse+massline combos | `impulseCharges.js` | NEXT | — | `check:impulse:massline-combos` | T3-15 | T3-17 |
 | T3-17 | 17 | mining bulk-haul guidance | `mining.js`, HUD | NEXT | — | `check:mining:bulk-guidance` | T3-16 | T3-18 |
 | T3-18 | 18 | 47-A spindle stabilization | `47aLiveScene.js` | NEXT | — | `check:47a:spindle` | T3-17 | T3-19 |
