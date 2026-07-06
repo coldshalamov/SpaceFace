@@ -37,3 +37,7 @@ This completes dedicated evidence for weapon_gatling.
 - Real MCP work and deficiency fixes performed specifically on weapon_gatling geometry and character using execute + renders.
 - Before iter for weapon_gatling: specific issues from audit of this asset only (bevels, nodes, wear).
 - weapon_gatling unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for weapon_gatling: primary forms and bevel needs identified in MCP import audit for weapon_gatling.
+- Before iter1 for weapon_gatling: shading and support issues fixed with WN and loops specific to weapon_gatling geometry.

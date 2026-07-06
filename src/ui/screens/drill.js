@@ -1,7 +1,7 @@
 // Drill lens screen (V2 §7 / cut-list #27). The 2D ant-farm mining view. Renders the vein cross-
 // section to a canvas, handles WASD / Arrow key movement and directional drilling input locally,
 // and shows yield, drill warnings, and elegant item acquisition toasts.
-import { DRILL_CONST } from '../../systems/drill.js';
+import { DRILL_CONST, drillTierReqForOre } from '../../systems/drill.js';
 import { COMMODITIES } from '../../data/commodities.js';
 
 const { COLS, ROWS, TILE } = DRILL_CONST;
@@ -18,15 +18,117 @@ function commodityName(id) {
   return (commodity && commodity.name) || titleCaseWords(id || 'ore');
 }
 
+function legendIconImg(iconKey, size = 22) {
+  const img = document.createElement('img');
+  img.width = size;
+  img.height = size;
+  img.className = 'drill-legend-icon';
+  img.alt = '';
+  const tpl = SVG_TEMPLATES[iconKey];
+  if (tpl) img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(tpl);
+  return img;
+}
+
+function makeLegendItem(label, iconKey, opts = {}) {
+  const item = document.createElement('span');
+  item.className = 'drill-legend-item'
+    + (opts.warn ? ' warn' : '')
+    + (opts.locked ? ' locked' : '');
+
+  if (opts.icons) {
+    opts.icons.forEach((key, i) => {
+      item.appendChild(legendIconImg(key));
+      if (i < opts.icons.length - 1) {
+        const arrow = document.createElement('span');
+        arrow.className = 'drill-legend-arrow';
+        arrow.textContent = '→';
+        item.appendChild(arrow);
+      }
+    });
+  } else if (iconKey) {
+    item.appendChild(legendIconImg(iconKey));
+  }
+
+  const text = document.createElement('span');
+  text.className = 'drill-legend-label';
+  text.textContent = label;
+  item.appendChild(text);
+
+  if (opts.badge) {
+    const badge = document.createElement('span');
+    badge.className = 'drill-legend-badge' + (opts.warn ? ' bad' : '');
+    badge.textContent = opts.badge;
+    item.appendChild(badge);
+  }
+
+  return item;
+}
+
+function collectFieldLegendData(field) {
+  const ores = new Set();
+  let hasGas = false;
+  if (!field) return { ores: [], hasGas: false };
+  for (let c = 0; c < field.length; c++) {
+    for (let r = 0; r < field[c].length; r++) {
+      const tile = field[c][r];
+      if (!tile) continue;
+      if (tile.type === 'vein' && tile.ore) ores.add(tile.ore);
+      if (tile.type === 'gas') hasGas = true;
+    }
+  }
+  return {
+    ores: [...ores].sort((a, b) => {
+      const pa = COMMODITY_BY_ID.get(a)?.basePrice || 0;
+      const pb = COMMODITY_BY_ID.get(b)?.basePrice || 0;
+      return pa - pb;
+    }),
+    hasGas,
+  };
+}
+
+function renderDrillLegend(gridEl, field, drillTier = 1) {
+  if (!gridEl) return;
+  gridEl.replaceChildren();
+
+  gridEl.appendChild(makeLegendItem('Regolith', 'dirt'));
+  gridEl.appendChild(makeLegendItem('Basalt', 'rock'));
+
+  const { ores, hasGas } = collectFieldLegendData(field);
+
+  if (hasGas) {
+    gridEl.appendChild(makeLegendItem('Gas (disguised as dirt)', null, {
+      icons: ['dirt', 'gasRevealed'],
+      warn: true,
+      badge: 'AVOID',
+    }));
+  }
+
+  for (const oreId of ores) {
+    const req = drillTierReqForOre(oreId);
+    const locked = drillTier < req;
+    gridEl.appendChild(makeLegendItem(commodityName(oreId), oreId, {
+      locked,
+      badge: locked ? `MK${req}` : null,
+    }));
+  }
+
+  if (ores.length === 0) {
+    const note = document.createElement('span');
+    note.className = 'drill-legend-note';
+    note.textContent = 'No ore veins on initial scan — dig deeper to expose deposits.';
+    gridEl.appendChild(note);
+  }
+}
+
 // Spark/glow colors for minerals
 const ORE_SPARK_COLOR = {
   cmdty_ore_iron: '#c8a878',
-  cmdty_ore_copper: '#d8703a',
+  cmdty_ore_copper: '#14b8a6',
   cmdty_silicate: '#b8b8d0',
   cmdty_ore_titanium: '#d0d8e8',
   cmdty_ore_platinoid: '#e8d850',
   cmdty_ice_water: '#9ad8ff',
-  cmdty_ore_bronzium: '#f28d4f',
+  cmdty_ore_bronzium: '#94a3b8',
   cmdty_ore_silverium: '#d0d8e8',
   cmdty_ore_goldium: '#fff275',
   cmdty_ore_platinium: '#d7e6ff',
@@ -195,18 +297,38 @@ const SVG_TEMPLATES = {
     <circle cx="26" cy="22" r="1.8" fill="#c8a878" />
   </svg>`,
 
+  cmdty_ore_copper: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+    <rect width="40" height="40" fill="#2a2418" />
+    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#1a140c" stroke-width="4" />
+    <!-- Malachite / verdigris copper — round botryoidal nodules, green-teal palette -->
+    <circle cx="14" cy="16" r="7" fill="#0f766e" stroke="#134e4a" stroke-width="1.5" />
+    <circle cx="14" cy="16" r="4.5" fill="#2dd4bf" opacity="0.85" />
+    <circle cx="12" cy="14" r="1.8" fill="#99f6e4" />
+    <circle cx="28" cy="24" r="8" fill="#115e59" stroke="#0f766e" stroke-width="1.5" />
+    <circle cx="28" cy="24" r="5" fill="#14b8a6" opacity="0.9" />
+    <circle cx="26" cy="22" r="2" fill="#5eead4" />
+    <path d="M 8 30 Q 20 26 32 32" fill="none" stroke="#0d9488" stroke-width="2" opacity="0.6" />
+  </svg>`,
+
   cmdty_ore_bronzium: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#3a2e22" />
-    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#251b12" stroke-width="4" />
-    <!-- Faceted Bronzium chunks -->
-    <path d="M 10 12 L 22 8 L 30 18 L 22 28 L 10 24 Z" fill="url(#bronzeDetailedGrad)" stroke="#7c2d12" stroke-width="1.5" />
-    <polygon points="10,12 22,8 20,20 10,24" fill="#fb923c" opacity="0.6" />
-    <polygon points="22,8 30,18 20,20" fill="#ea580c" opacity="0.5" />
+    <rect width="40" height="40" fill="#2d3238" />
+    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#1a1f24" stroke-width="4" />
+    <!-- Nickel ore — cool gray industrial ingot plates, angular not round -->
+    <rect x="7" y="9" width="14" height="10" rx="1" fill="url(#nickelPlateGrad)" stroke="#475569" stroke-width="1.5" transform="rotate(-8 14 14)" />
+    <rect x="9" y="11" width="6" height="6" fill="#e2e8f0" opacity="0.45" transform="rotate(-8 14 14)" />
+    <polygon points="22,18 34,14 32,28 20,30" fill="url(#nickelShardGrad)" stroke="#64748b" stroke-width="1.5" />
+    <polygon points="22,18 28,14 26,28 20,30" fill="#cbd5e1" opacity="0.55" />
+    <line x1="24" y1="16" x2="30" y2="26" stroke="#f8fafc" stroke-width="1" opacity="0.5" />
     <defs>
-      <linearGradient id="bronzeDetailedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#fdba74" />
-        <stop offset="50%" stop-color="#c2410c" />
-        <stop offset="100%" stop-color="#431407" />
+      <linearGradient id="nickelPlateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f1f5f9" />
+        <stop offset="45%" stop-color="#94a3b8" />
+        <stop offset="100%" stop-color="#475569" />
+      </linearGradient>
+      <linearGradient id="nickelShardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#cbd5e1" />
+        <stop offset="50%" stop-color="#64748b" />
+        <stop offset="100%" stop-color="#334155" />
       </linearGradient>
     </defs>
   </svg>`,
@@ -214,7 +336,7 @@ const SVG_TEMPLATES = {
   cmdty_ore_silverium: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
     <rect width="40" height="40" fill="#3a2e22" />
     <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#251b12" stroke-width="4" />
-    <!-- Faceted Silverium shards -->
+    <!-- Silver ore shards -->
     <polygon points="18,6 30,16 20,30 8,20" fill="url(#silverDetailedGrad)" stroke="#475569" stroke-width="1.5" />
     <polygon points="18,6 24,16 20,30 14,20" fill="#ffffff" opacity="0.65" />
     <polygon points="24,16 30,16 20,30" fill="#94a3b8" opacity="0.5" />
@@ -414,9 +536,41 @@ function injectStyle() {
   letter-spacing:.06em; align-items:center; flex-wrap:wrap; justify-content:center; }
 .drill-hud .v { color:var(--accent); }
 .drill-hud .warn { color:#ff8a4a; }
-.drill-legend { display:flex; gap:14px; font-size:11px; color:var(--ink-mute); flex-wrap:wrap; justify-content:center; }
-.drill-legend span { display:inline-flex; align-items:center; gap:5px; }
-.drill-legend i { width:12px; height:12px; border-radius:2px; display:inline-block; }
+.drill-legend {
+  display:flex; flex-direction:column; gap:8px; width:100%; max-width:900px;
+  font-family:var(--mono); color:var(--ink-mute);
+}
+.drill-legend-title {
+  font-size:10px; color:var(--accent); letter-spacing:0.14em; text-transform:uppercase;
+  text-align:center; text-shadow:0 0 8px rgba(57,208,255,0.2);
+}
+.drill-legend-grid {
+  display:flex; flex-wrap:wrap; gap:10px 14px; justify-content:center; align-items:center;
+  padding:10px 12px; border:1px solid rgba(57,208,255,0.12); border-radius:6px;
+  background:rgba(6,10,18,0.55);
+}
+.drill-legend-item {
+  display:inline-flex; align-items:center; gap:6px; font-size:10px; color:var(--ink-dim);
+  padding:3px 6px; border-radius:4px; background:rgba(255,255,255,0.02);
+}
+.drill-legend-item.warn { color:#ffb35c; }
+.drill-legend-item.locked { color:#ff8a4a; }
+.drill-legend-icon {
+  width:22px; height:22px; border-radius:2px; border:1px solid rgba(57,208,255,0.18);
+  image-rendering:pixelated; flex-shrink:0; background:#0a0d14;
+}
+.drill-legend-arrow { font-size:9px; color:var(--ink-mute); opacity:0.7; }
+.drill-legend-label { letter-spacing:0.04em; white-space:nowrap; }
+.drill-legend-badge {
+  font-size:8px; font-weight:bold; letter-spacing:0.08em; padding:1px 4px; border-radius:3px;
+  background:rgba(57,208,255,0.12); color:var(--accent); border:1px solid rgba(57,208,255,0.22);
+}
+.drill-legend-badge.bad {
+  background:rgba(255,92,92,0.14); color:#ff8a4a; border-color:rgba(255,92,92,0.35);
+}
+.drill-legend-note {
+  font-size:10px; color:var(--ink-mute); font-style:italic; letter-spacing:0.03em;
+}
 .drill-foot { display:flex; gap:10px; justify-content:center; margin-top:4px; }
 .drill-foot button.sf-btn { width:auto; padding:9px 22px; }
 
@@ -595,14 +749,17 @@ export const drillScreen = {
       '<span>TEMP: <span class="v" data-temp>0%</span></span>';
     centerPanel.appendChild(hud);
 
-    // Legend
+    // Legend — uses the same SVG tile icons as the field, scoped to this deposit.
     const legend = document.createElement('div');
     legend.className = 'drill-legend';
-    legend.innerHTML =
-      '<span><i style="background:#3a2e22; border: 1px solid #5a4a2a"></i>dirt</span>' +
-      '<span><i style="background:#2a2a32; border: 1px solid #4a4a52"></i>rock</span>' +
-      '<span><i style="background:#8c4015; border: 1px solid #d8703a"></i>vein</span>' +
-      '<span><i style="background:rgba(180,60,200,0.6); border: 1px solid rgba(180,60,200,1)"></i>gas</span>';
+    const legendTitle = document.createElement('div');
+    legendTitle.className = 'drill-legend-title';
+    legendTitle.textContent = '◆ DEPOSIT TILE KEY ◆';
+    legend.appendChild(legendTitle);
+    const legendGrid = document.createElement('div');
+    legendGrid.className = 'drill-legend-grid';
+    legendGrid.setAttribute('data-drill-legend-grid', '');
+    legend.appendChild(legendGrid);
     centerPanel.appendChild(legend);
     
     // Exit button
@@ -1088,6 +1245,36 @@ export const drillScreen = {
 
           if (img) {
             ctx2d.drawImage(img, x, y, TILE, TILE);
+          } else if (t.type === 'vein' && t.ore) {
+            // Missing tile art — draw a loud placeholder so ores never silently share another icon.
+            ctx2d.fillStyle = 'rgba(255, 92, 92, 0.25)';
+            ctx2d.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+            ctx2d.strokeStyle = '#ff5c5c';
+            ctx2d.lineWidth = 1.5;
+            ctx2d.strokeRect(x + 4, y + 4, TILE - 8, TILE - 8);
+            ctx2d.fillStyle = '#ffb35c';
+            ctx2d.font = 'bold 8px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+            ctx2d.textAlign = 'center';
+            ctx2d.fillText('?', x + TILE / 2, y + TILE / 2 + 3);
+          }
+
+          // Locked vein overlay — tier gate is per ore, not depth.
+          if (t.type === 'vein' && t.ore) {
+            const req = t.tierReq || drillTierReqForOre(t.ore);
+            const tier = drillScreen._drillTier || 1;
+            if (tier < req) {
+              ctx2d.save();
+              ctx2d.fillStyle = 'rgba(8, 12, 20, 0.55)';
+              ctx2d.fillRect(x, y, TILE, TILE);
+              ctx2d.strokeStyle = 'rgba(255, 92, 92, 0.85)';
+              ctx2d.lineWidth = 1.5;
+              ctx2d.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
+              ctx2d.fillStyle = '#ff8a4a';
+              ctx2d.font = 'bold 9px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+              ctx2d.textAlign = 'center';
+              ctx2d.fillText(`MK${req}`, x + TILE / 2, y + TILE / 2 + 3);
+              ctx2d.restore();
+            }
           }
 
           // Damage cracks overlay
@@ -1487,7 +1674,11 @@ export const drillScreen = {
       }
 
       // --- Update Cockpit Right Panel Readouts ---
-      // 1. Drill Head & DPS engine specs
+      // 1. Drill Head & DPS engine specs (refresh live — outfitting can change mid-session)
+      if (drillSys) {
+        drillScreen._drillTier = drillSys.getDrillTier();
+        drillScreen._drillDps = drillSys.getDrillDPS();
+      }
       const tierEl = rightPanel.querySelector('[data-drill-tier]');
       if (tierEl) {
         const names = { 1: 'BASIC MK1', 2: 'CARBON MK2', 3: 'DIAMOND MK3', 4: 'IND. HEAVY MK4' };
@@ -1524,7 +1715,13 @@ export const drillScreen = {
           } else if (t.type === 'vein' && t.ore) {
             const name = commodityName(t.ore);
             const basePrice = COMMODITY_BY_ID.get(t.ore)?.basePrice || 0;
-            scanEl.innerHTML = `<span style="color:${ORE_SPARK_COLOR[t.ore] || '#ffd700'}; font-weight:bold;">${name.toUpperCase()} VEIN</span><br>EST VALUE: ${basePrice} Cr/u<br>MIN TIER: MK${t.tierReq || 1}`;
+            const req = t.tierReq || drillTierReqForOre(t.ore);
+            const tier = drillScreen._drillTier || 1;
+            const blocked = tier < req;
+            const tierLine = blocked
+              ? `<span style="color:#ff5c5c; font-weight:bold;">⚠ NEEDS MK${req} DRILL</span>`
+              : `MIN TIER: MK${req}`;
+            scanEl.innerHTML = `<span style="color:${ORE_SPARK_COLOR[t.ore] || '#ffd700'}; font-weight:bold;">${name.toUpperCase()} VEIN</span><br>EST VALUE: ${basePrice} Cr/u<br>${tierLine}`;
           }
         } else {
           scanEl.innerHTML = '<span style="color:var(--ink-mute);">TARGETING:</span> ASTEROID BOUNDARY';
@@ -1565,6 +1762,7 @@ export const drillScreen = {
       if (!asteroidId || !drillSys) return;
       
       drillSys.begin(asteroidId);
+      renderDrillLegend(legendGrid, state.drill?.field, drillSys.getDrillTier());
       held.left = held.right = held.up = held.down = false;
       drillTheta = 0;
       viewY = undefined;

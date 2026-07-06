@@ -37,3 +37,7 @@ Dedicated.
 - This is dedicated for greeble_hatches.- Real MCP work and deficiency fixes performed specifically on greeble_hatches geometry and character using execute + renders.
 - Before iter for greeble_hatches: specific issues from audit of this asset only (bevels, nodes, wear).
 - greeble_hatches unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for greeble_hatches: primary forms and bevel needs identified in MCP import audit for greeble_hatches.
+- Before iter1 for greeble_hatches: shading and support issues fixed with WN and loops specific to greeble_hatches geometry.

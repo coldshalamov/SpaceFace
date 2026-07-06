@@ -36,3 +36,9 @@ Evidence: dedicated authored, specific def 20+ lines with Before for greeble_nav
 - Character applied: clean emitter mounts with wear.
 - Techniques: bevel, WN last, AO procedural, EEVEE/WORKBENCH multi cam.
 - Final: export py ok, finalize 1852/255708, verify pass after patch.
+
+
+- Before iter1 for greeble_nav_lights: primary forms and bevel needs identified in MCP import audit for greeble_nav_lights.
+- Before iter1 for greeble_nav_lights: shading and support issues fixed with WN and loops specific to greeble_nav_lights geometry.
+- Before iter3 for greeble_nav_lights: specific emitter detail and wear for this nav greeble (fixed by node layers and curvature).
+- Unique for greeble_nav_lights: 3 distinct MCP renders (clay/lit/close), authored, finalize match, PRO in manifest.

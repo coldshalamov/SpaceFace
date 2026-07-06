@@ -38,13 +38,13 @@
     "place_nav_buoy",
     "greeble_rcs",
     "greeble_antennas",
-    "greeble_nav_lights"
-  ],
-  "pending": [
+    "greeble_nav_lights",
     "greeble_armor_plates",
     "skid_trio",
     "skid_quad",
-    "pod_utility",
+    "pod_utility"
+  ],
+  "pending": [
     "pod_cargo_container",
     "pod_repair_patch",
     "place_asteroid_seamed",

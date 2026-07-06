@@ -86,10 +86,12 @@ assert.match(inputSrc, /syncPointerScreen\(this\.state, e\.clientX, e\.clientY\)
   'pointer movement must update state.input.pointerScreen immediately so the software reticle tracks the OS cursor');
 assert.match(stylesSrc, /body\.sf-flight-cursor[\s\S]*cursor:\s*none/,
   'flight cursor mode must hide the OS cursor so the software bullseye is the cursor');
-assert.match(inputSrc, /F auto-target/,
-  'input.js header must describe F as auto-target, not legacy auto-fire');
+assert.match(inputSrc, /G auto-target/,
+  'input.js header must describe G as auto-target, not legacy auto-fire');
+assert.match(inputSrc, /F tether/,
+  'input.js header must describe F as tether latch/cut');
 assert.match(inputSrc, /autopursuit:\s*\[\]/,
-  'F must remain auto-target-only; autopursuit is held by MMB so arrow pilots keep flight control');
+  'G must remain auto-target-only; autopursuit is held by MMB so arrow pilots keep flight control');
 const autoTargetAssistSrc = read('src/systems/autoTargetAssist.js');
 const autoTargetModeSrc = read('src/combat/autoTargetMode.js');
 const registrySrc = read('src/core/registry.js');
@@ -103,21 +105,21 @@ assert.match(autoTargetModeSrc, /quiet:\s*true/,
 assert.match(autoTargetModeSrc, /inp\.autoFire[\s\S]*cursorAngle[\s\S]*inp\.turnIntent/,
   'auto-target must steer the ship toward the cursor while weapons aim at the locked hostile');
 assert.match(autoTargetModeSrc, /inp\.autoFire = !inp\.autoFire/,
-  'F toggle must always flip auto-target without autopursuit guards');
+  'auto-target toggle must always flip auto-target without autopursuit guards');
 assert.match(autoTargetAssistSrc, /toggleAutoTarget/,
-  'autoTargetAssist shell must delegate F toggle to autoTargetMode');
+  'autoTargetAssist shell must delegate auto-target toggle to autoTargetMode');
 assert.doesNotMatch(autoTargetAssistSrc, /autopursuitHeld/,
-  'autoTargetAssist F toggle must not be gated on MMB/autopursuit state');
+  'autoTargetAssist auto-target toggle must not be gated on MMB/autopursuit state');
 assert.match(registrySrc, /input,\s*autoTargetAssist,\s*scanner/,
   'registry UPDATE_ORDER must run autoTargetAssist immediately after input');
-assert.match(registrySrc, /core, input, autoTargetAssist/,
-  'registry SYSTEMS init must call autoTargetAssist.init for F-key capture listeners');
+assert.match(registrySrc, /input, autoTargetAssist/,
+  'registry SYSTEMS init must call autoTargetAssist.init for auto-target capture listeners');
 assert.match(registrySrc, /destroy\(\)/,
   'registry must expose destroy() so capture-phase listeners do not stack on re-init');
 assert.match(autoTargetAssistSrc, /if \(this\._onKeyDown\) this\.destroy\(\)/,
   'autoTargetAssist.init must tear down prior listeners before re-attaching');
 assert.match(mainSrc, /registry\.destroy\(\)/,
-  'main.js must call registry.destroy on teardown so capture-phase F listeners do not leak');
+  'main.js must call registry.destroy on teardown so capture-phase auto-target listeners do not leak');
 assert.match(mainSrc, /resetCombatInputMode/,
   'main.js must reset auto-target state on new game / loaded game entry');
 
@@ -146,11 +148,11 @@ const promptSrc = read('src/ui/controlPrompts.js');
 const screenManagerSrc = read('src/ui/screenManager.js');
 const localmapSrc = read('src/ui/screens/localmap.js');
 assert.match(uiRootSrc, /function targetNearestHostileToPlayer/,
-  'UI root must implement player-nearest hostile selection for F auto-target');
+  'UI root must implement player-nearest hostile selection for auto-target');
 assert.match(uiRootSrc, /ui:targetNearestHostileToPlayer[\s\S]*quiet[\s\S]*targetNearestHostileToPlayer/,
   'UI root must route quiet player-target refreshes without toast spam');
 assert.match(uiRootSrc, /isHostileToPlayer[\s\S]*bestD2/,
-  'F auto-target must filter hostiles and rank by distance to the player');
+  'auto-target must filter hostiles and rank by distance to the player');
 assert.match(uiRootSrc, /cycleTarget[\s\S]*isHostileToPlayer/,
   'Tab target cycle must advance only among nearby hostile contacts');
 assert.match(uiRootSrc, /isScannerHostileLock[\s\S]*quiet\) return/,

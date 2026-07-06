@@ -35,3 +35,7 @@ Dedicated.
 - Dedicated evidence for fin_stabilator.- Real MCP work and deficiency fixes performed specifically on fin_stabilator geometry and character using execute + renders.
 - Before iter for fin_stabilator: specific issues from audit of this asset only (bevels, nodes, wear).
 - fin_stabilator unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for fin_stabilator: primary forms and bevel needs identified in MCP import audit for fin_stabilator.
+- Before iter1 for fin_stabilator: shading and support issues fixed with WN and loops specific to fin_stabilator geometry.

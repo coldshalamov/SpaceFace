@@ -309,7 +309,7 @@ export const ui = {
             Follow the mass discrepancy. Outrun the auditors. Decide who owns the evidence.<br>
             Contract 47-A is open.
           </div>
-          <div style="font-size:12px;opacity:0.6;margin-bottom:20px;letter-spacing:.08em;">↑↓ THROTTLE &nbsp;•&nbsp; ←→ STEER (BANKS) &nbsp;•&nbsp; MOUSE AIM &nbsp;•&nbsp; LMB FIRE &nbsp;•&nbsp; F AUTO-FIRE &nbsp;•&nbsp; SHIFT BOOST/DASH</div>
+          <div style="font-size:12px;opacity:0.6;margin-bottom:20px;letter-spacing:.08em;">↑↓ THROTTLE &nbsp;•&nbsp; ←→ STEER (BANKS) &nbsp;•&nbsp; MOUSE AIM &nbsp;•&nbsp; LMB FIRE &nbsp;•&nbsp; G AUTO-TARGET &nbsp;•&nbsp; F TETHER &nbsp;•&nbsp; SHIFT BOOST/DASH</div>
           <div style="font-size:11px;letter-spacing:4px;opacity:0.5;">CLICK OR PRESS ANY KEY TO BEGIN</div>
         </div>
         <div id="cinematic-signal" style="position:absolute;bottom:26px;right:26px;padding:11px 16px;border:1px solid rgba(57,208,255,.45);border-left:3px solid #39d0ff;border-radius:6px;background:rgba(5,9,18,.72);box-shadow:0 0 22px rgba(57,208,255,.20);font-family:var(--mono,monospace);text-align:left;">

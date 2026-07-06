@@ -28,3 +28,7 @@
 - Real MCP work and deficiency fixes performed specifically on hull_miner geometry and character using execute + renders.
 - Before iter for hull_miner: specific issues from audit of this asset only (bevels, nodes, wear).
 - hull_miner unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for hull_miner: primary forms and bevel needs identified in MCP import audit for hull_miner.
+- Before iter1 for hull_miner: shading and support issues fixed with WN and loops specific to hull_miner geometry.

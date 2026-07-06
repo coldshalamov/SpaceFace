@@ -57,6 +57,7 @@ export function createMasslineRuntime(defLike = DEFAULT_MASSLINE_DEF) {
     lastTension: 0,
     lastImpulse: 0,
     recentLoad: 0,
+    smoothedYank: 0,
     cutReason: null,
   };
 }
@@ -119,17 +120,22 @@ export function stepMassline(args = {}) {
   let overloadS = prev.overloadS;
   const impulseRatio = t.impulse / Math.max(def.maxImpulse, 1e-6);
   const yank = Math.max(0, finite(t.yank));
-  const yankRatio = yank / Math.max(def.maxYank || 420, 1);
 
-  // Recent sustained load (IIR ~1s) makes the line more vulnerable to a sharp yank ("fatigue + snap").
-  // This implements the requested tradeoff: steady pressure lowers the yank threshold needed to snap.
+  // Battle hardening: a line already under sustained pull tempers against maneuver yank.
+  // Steady combat load raises the snap budget instead of fatiguing the tether.
   let recentLoad = finite(prev.recentLoad);
-  const tau = 0.9;
+  const tau = 1.1;
   recentLoad = recentLoad * Math.exp(-dt / tau) + t.tension * dt;
-  const fatigue = clamp(recentLoad / Math.max(def.maxTension, 1), 0, 0.7);
-  const effectiveYankRatio = yankRatio * (1 + 1.3 * fatigue);
+  const sustainedTension = clamp(t.tension / Math.max(def.maxTension, 1), 0, 1);
+  const sustainedHistory = clamp(recentLoad / (Math.max(def.maxTension, 1) * tau), 0, 1);
+  const harden = clamp(sustainedTension * 0.55 + sustainedHistory * 0.35, 0, 0.78);
 
-  const overloadRatio = Math.max(tensionRatio, impulseRatio, effectiveYankRatio);
+  let smoothedYank = finite(prev.smoothedYank) * 0.84 + yank * 0.16;
+  const spikeYank = Math.max(0, yank - smoothedYank * 0.72);
+  const yankBudget = Math.max(def.maxYank || 420, 1) * (1 + 1.55 * harden);
+  const yankRatio = spikeYank / yankBudget;
+
+  const overloadRatio = Math.max(tensionRatio, impulseRatio, yankRatio);
   if (overloadRatio > 1) {
     overloadS += dt;
     integrity -= Math.max(0, overloadRatio - 1) * def.integrityDamagePerOverloadS * dt;
@@ -139,13 +145,15 @@ export function stepMassline(args = {}) {
   integrity = clamp(integrity, 0, 1);
 
   const catastrophic = overloadRatio >= def.catastrophicRatio;
-  const fatiguedBreak = overloadS >= def.overloadGraceS || integrity <= 0;
+  const yankDominant = yankRatio >= tensionRatio && yankRatio >= impulseRatio;
+  const graceS = def.overloadGraceS * (yankDominant ? (1 + 2.8 * harden) : 1);
+  const fatiguedBreak = overloadS >= graceS || integrity <= 0;
   const shouldCut = catastrophic || fatiguedBreak;
   let state = 'holding';
   let cutReason = null;
   if (shouldCut) {
     state = 'broken';
-    if (effectiveYankRatio > 1.0 && yank > 20) {
+    if (yankRatio > 1.0 && spikeYank > 20) {
       cutReason = 'snap';
     } else {
       cutReason = catastrophic ? 'catastrophic-overload' : integrity <= 0 ? 'integrity-failure' : 'sustained-overload';
@@ -186,6 +194,7 @@ export function stepMassline(args = {}) {
     lastTension: t.tension,
     lastImpulse: t.impulse,
     recentLoad,
+    smoothedYank,
     cutReason,
   };
   return buildResult(next, def, t, command, events, shouldCut, energyCost, overloadRatio, args.ownerBody, args.targetBody);
@@ -277,6 +286,7 @@ function normalizeRuntime(runtime, def) {
     lastTension: Math.max(0, finite(r.lastTension)),
     lastImpulse: Math.max(0, finite(r.lastImpulse)),
     recentLoad: Math.max(0, finite(r.recentLoad)),
+    smoothedYank: Math.max(0, finite(r.smoothedYank)),
     cutReason: r.cutReason == null ? null : String(r.cutReason),
   };
 }

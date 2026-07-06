@@ -72,7 +72,9 @@ function hasDeficiency(id) {
   const hasBeforeId = content.includes('Before iter1 for ' + id) || content.includes('Before iter1:') || content.includes('for ' + id + ':') || content.includes('for ' + id + ' ');
   // Strict but realistic: >=15 lines, id >=3 mentions, iter/MCP/character, ID-specific before phrase to reject pure templates
   const specific = idMentions >= 3 && hasIter && hasMCP && hasCharacter && hasBeforeId;
-  return {ok: lines.length >= 20 && hasId && specific, sha, lines: lines.length, hasId, specific};
+  const beforeForIdCount = (content.match(new RegExp('Before iter\\d+ for ' + id, 'g')) || []).length;
+  const strong = lines.length >= 25 && beforeForIdCount >= 2;
+  return {ok: hasId && specific && strong, sha, lines: lines.length, hasId, specific: strong};
 }
 
 function hasFinalizeLog(id, manifestData) {
@@ -124,7 +126,7 @@ if (doGlobal) {
   });
   const dedicatedAuthored = INVENTORY.filter(id => hasAuthoredBlend(id)).length;
   // Strict gate: must have 63 dedicated full evidence + high unique PNGs (no loose pass for bulk)
-  const allOk = verifiedCount === INVENTORY.length && uniquePngGlobal.size >= 100 && dedicatedAuthored === INVENTORY.length;
+  const allOk = verifiedCount === INVENTORY.length && uniquePngGlobal.size >= 120 && dedicatedAuthored === INVENTORY.length;
   console.log(`VERIFIED: ${verifiedCount}/${INVENTORY.length}`);
   console.log(`Unique PNG hashes global: ${uniquePngGlobal.size}`);
   console.log(`Dedicated authored: ${dedicatedAuthored}/${INVENTORY.length}`);

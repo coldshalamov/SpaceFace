@@ -7,6 +7,18 @@
 // through cargo.addCargo. Determinism: the field is seeded by the asteroid's id (V2 §32 seed model)
 // so the same asteroid drills the same way every visit.
 import { addCargo } from './cargo.js';
+import { ORES } from '../data/mining.js';
+
+const ORE_TIER_BY_ID = new Map(ORES.map((o) => [o.id, o.tier]));
+
+// Map authored ore tier (0-4) to drill-head requirement (1-4).
+// Must stay stable per ore id — depth must never change whether a vein is mineable.
+export function drillTierReqForOre(oreId) {
+  const oreTier = ORE_TIER_BY_ID.get(oreId);
+  if (oreTier == null || oreTier <= 0) return 1;
+  if (oreTier === 1) return 2;
+  return oreTier;
+}
 
 function updateCableTrail(d, col, row) {
   if (!d.cableTrail) d.cableTrail = [];
@@ -45,45 +57,34 @@ function tileFor(col, row, rng) {
   // Vein chance
   if (rng() < 0.10 + depth * 0.15) {
     let ore = 'cmdty_silicate';
-    let tierReq = 1;
-    
-    // Motherload mineral bands by depth
+
+    // Motherload mineral bands by depth (rarity), but tier gate follows ore id only.
     if (depth < 0.2) {
       const roll = rng();
       if (roll < 0.4) ore = 'cmdty_silicate';
       else if (roll < 0.8) ore = 'cmdty_ore_iron';
       else ore = 'cmdty_ore_bronzium';
-      tierReq = 1;
     } else if (depth < 0.45) {
       const roll = rng();
       if (roll < 0.3) ore = 'cmdty_ore_bronzium';
       else if (roll < 0.6) ore = 'cmdty_ore_copper';
       else ore = 'cmdty_ore_silverium';
-      tierReq = 2; // Copper / Silverium requires MK2
     } else if (depth < 0.7) {
       const roll = rng();
       if (roll < 0.3) ore = 'cmdty_ore_silverium';
       else if (roll < 0.6) ore = 'cmdty_ore_goldium';
       else if (roll < 0.8) ore = 'cmdty_ore_platinium';
       else ore = 'cmdty_ore_einsteinium';
-      
-      // Goldium/Silverium is Tier 2, Platinium/Einsteinium is Tier 3
-      tierReq = (ore === 'cmdty_ore_platinium' || ore === 'cmdty_ore_einsteinium') ? 3 : 2;
     } else {
       const roll = rng();
-      if (roll < 0.3) ore = 'cmdty_ore_einsteinium'; // Tier 3
-      else if (roll < 0.6) ore = 'cmdty_gem_emerald'; // Tier 3
-      else if (roll < 0.8) ore = 'cmdty_gem_ruby'; // Tier 4
-      else if (roll < 0.95) ore = 'cmdty_gem_diamond'; // Tier 4
-      else ore = 'cmdty_exotic_amazonite'; // Tier 4
-      
-      if (ore === 'cmdty_ore_einsteinium' || ore === 'cmdty_gem_emerald') {
-        tierReq = 3;
-      } else {
-        tierReq = 4;
-      }
+      if (roll < 0.3) ore = 'cmdty_ore_einsteinium';
+      else if (roll < 0.6) ore = 'cmdty_gem_emerald';
+      else if (roll < 0.8) ore = 'cmdty_gem_ruby';
+      else if (roll < 0.95) ore = 'cmdty_gem_diamond';
+      else ore = 'cmdty_exotic_amazonite';
     }
 
+    const tierReq = drillTierReqForOre(ore);
     const yieldU = 1 + Math.floor(rng() * (2 + depth * 5));
     const hp = 5 + Math.floor(depth * 15);
     return { type: 'vein', hp, maxHp: hp, ore, yieldU, hazard: false, tierReq };

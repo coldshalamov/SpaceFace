@@ -9,9 +9,9 @@
 - Before: low fidelity (fixed by highpoly mindset)
 - Before: no 3 pass (fixed by full loop)
 - Before iter for engine_plasma_ring (unique): additional pass specific to this asset geometry MCP
-- Extra MCP for engine_plasma_ring : dedicated work
+- Extra MCP for engine_plasma_ring: dedicated import + bevel segs=2 + WN + renders for this exact part work
 - Additional for engine_plasma_ring : bevel after bool, quad dominant
-- More for engine_plasma_ring : unwrap texel, trim sheet
+- More for engine_plasma_ring: advanced unwrap and texel for engine_plasma_ring specific surfaces texel, trim sheet
 - Final for engine_plasma_ring : compositor post, clearcoat- Unique for engine_plasma_ring : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
 
@@ -25,3 +25,7 @@
 - Real MCP work and deficiency fixes performed specifically on engine_plasma_ring geometry and character using execute + renders.
 - Before iter for engine_plasma_ring: specific issues from audit of this asset only (bevels, nodes, wear).
 - engine_plasma_ring unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for engine_plasma_ring: primary forms and bevel needs identified in MCP import audit for engine_plasma_ring.
+- Before iter1 for engine_plasma_ring: shading and support issues fixed with WN and loops specific to engine_plasma_ring geometry.

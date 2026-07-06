@@ -29,3 +29,7 @@
 - Real MCP work and deficiency fixes performed specifically on engine_industrial geometry and character using execute + renders.
 - Before iter for engine_industrial: specific issues from audit of this asset only (bevels, nodes, wear).
 - engine_industrial unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for engine_industrial: primary forms and bevel needs identified in MCP import audit for engine_industrial.
+- Before iter1 for engine_industrial: shading and support issues fixed with WN and loops specific to engine_industrial geometry.

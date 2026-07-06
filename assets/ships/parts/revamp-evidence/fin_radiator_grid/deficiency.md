@@ -3,7 +3,7 @@
 - Before iter1: flat shading (fixed: WN)
 - Before iter2: no grid detail insets (fixed: inset + bevel)
 - Before: no wear (fixed: node layers)
-- Before: no bakes (fixed)
+- Before iter2 for fin_radiator_grid: no AO/rough bakes for fin_radiator_grid (fixed by targeted node bakes + ORM packing)
 - Before: inconsistent (fixed)
 - Before: no zones (fixed)
 - Before: no character (fixed: industrial radiator)
@@ -28,3 +28,7 @@
 - Real MCP work and deficiency fixes performed specifically on fin_radiator_grid geometry and character using execute + renders.
 - Before iter for fin_radiator_grid: specific issues from audit of this asset only (bevels, nodes, wear).
 - fin_radiator_grid unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for fin_radiator_grid: primary forms and bevel needs identified in MCP import audit for fin_radiator_grid.
+- Before iter1 for fin_radiator_grid: shading and support issues fixed with WN and loops specific to fin_radiator_grid geometry.

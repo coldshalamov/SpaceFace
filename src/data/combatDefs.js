@@ -208,7 +208,7 @@ export const ATTACHMENT_DEFS = Object.freeze([
     id: 'tether_standard', version: 1,
     sourceSocketTags: ['tether_spool'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: true },
-    maxLength: 260,
+    maxLength: 390,
     minLength: 18,
     reelRate: 69,
     // Break tune derives from src/data/ships.js via getDerivedStats: the scout-class Wasp is

@@ -1756,7 +1756,7 @@ export function createHud(ctx, alerts) {
           const strain = tether.strain || 0;
           const targetEnt = state.entities.get(tether.targetId);
           const targetName = (targetEnt && (targetEnt.name || (targetEnt.data && targetEnt.data.name))) || (targetEnt ? targetEnt.type : '');
-          setText(elTether, `${strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' : 'LOCKED'}${targetName ? ' · ' + String(targetName).toUpperCase() : ''} · [G] RELEASE`);
+          setText(elTether, `${strain > 0.85 ? 'CRITICAL' : strain > 0.6 ? 'STRAINED' : 'LOCKED'}${targetName ? ' · ' + String(targetName).toUpperCase() : ''} · [F] RELEASE`);
           setClass(elTether, 'sf-warn', strain > 0.6);
         }
       }

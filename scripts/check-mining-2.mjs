@@ -235,6 +235,31 @@ function checkFractureAndVacuumCargo() {
   assert.equal(afterChunkTotal, beforeChunkTotal, 'chunks should not fracture recursively');
 }
 
+function checkBeamTargetSticksUntilRelease() {
+  const { sim, state, player, miningSys } = boot(7711);
+  const first = spawnAsteroid(sim, { radius: 20, hp: 100, yieldU: 10, pos: { x: 160, z: 0 } });
+  const second = spawnAsteroid(sim, { radius: 20, hp: 100, yieldU: 10, pos: { x: 0, z: 110 } });
+  setPlayerForContact(state, player, first, Math.PI);
+  state.input.fireGroup = 2;
+  sim.step(SIM_DT);
+  assert(first.data.oreHP < first.data.oreHPMax, 'beam should damage the initially aimed asteroid');
+  assert.equal(second.data.oreHP, second.data.oreHPMax, 'second asteroid should stay pristine on first tick');
+
+  state.input.aimAngle = Math.atan2(second.pos.z - player.pos.z, second.pos.x - player.pos.x);
+  state.input.aimWorld = { x: second.pos.x, z: second.pos.z };
+  const hpFirst = first.data.oreHP;
+  const hpSecond = second.data.oreHP;
+  for (let i = 0; i < 30; i++) sim.step(SIM_DT);
+  assert(first.data.oreHP < hpFirst, 'beam should keep mining the locked asteroid after aim moves');
+  assert.equal(second.data.oreHP, hpSecond, 'beam should not retarget mid-hold when aim moves');
+
+  state.input.fireGroup = null;
+  sim.step(SIM_DT);
+  state.input.fireGroup = 2;
+  sim.step(SIM_DT);
+  assert(second.data.oreHP < second.data.oreHPMax, 'releasing and refiring should acquire the newly aimed asteroid');
+}
+
 function checkMiningNoiseCrossing() {
   const { sim, state } = boot(5505);
   const dangerEvents = [];
@@ -250,6 +275,7 @@ checkWorldSpawnSeams();
 checkSeamYield();
 checkMiningHasNoHeatLockout();
 checkMasslineTargetOwnsMiningBeam();
+checkBeamTargetSticksUntilRelease();
 checkFractureAndVacuumCargo();
 checkMiningNoiseCrossing();
 

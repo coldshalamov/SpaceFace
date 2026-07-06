@@ -272,7 +272,7 @@ export function createUiInput(ctx, screenManager) {
       (att) => att.state === 'active' && att.ownerId === state.playerId && att.targetId === astId && DRILL_MASSLINE_DEF_IDS.has(att.defId)
     );
     if (!activeTether) {
-      bus.emit('toast', { text: `No massline link! Launch a tether (Key G) to lock onto the asteroid first.`, kind: 'warn', ttl: 3.5 });
+      bus.emit('toast', { text: `No massline link! Launch a tether (Key F) to lock onto the asteroid first.`, kind: 'warn', ttl: 3.5 });
       return;
     }
 

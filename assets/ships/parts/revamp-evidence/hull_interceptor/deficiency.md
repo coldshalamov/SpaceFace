@@ -2,24 +2,28 @@
 - Before iter1: flat shading (fixed)
 - Before iter2 for hull_interceptor: meso panels (fixed)
 - Before iter3 for hull_interceptor: wear layers (fixed)
-- Before: character (fixed sleek aggressive fighter)
+- Before iter3 for hull_interceptor: no character (fixed: hull_interceptor role specific from concept/bible)
 - Before iter1 for hull_interceptor: no bevel (fixed Bevel segs=3 + WN via MCP)
 - Before iter1: flat shading (fixed)
 - Before iter2 for hull_interceptor: meso panels (fixed)
 - Before iter3 for hull_interceptor: wear layers (fixed)
-- Before: character (fixed sleek aggressive fighter)
+- Before iter3 for hull_interceptor: no character (fixed: hull_interceptor role specific from concept/bible)
 - Before iter1 for hull_interceptor: no bevel (fixed Bevel segs=3 + WN via MCP)
 - Before iter1: flat shading (fixed)
 - Before iter2 for hull_interceptor: meso panels (fixed)
 - Before iter3 for hull_interceptor: wear layers (fixed)
-- Before: character (fixed sleek aggressive fighter)
+- Before iter3 for hull_interceptor: no character (fixed: hull_interceptor role specific from concept/bible)
 - Before iter1 for hull_interceptor: no bevel (fixed Bevel segs=3 + WN via MCP)
 - Before iter1: flat shading (fixed)
 - Before iter2 for hull_interceptor: meso panels (fixed)
 - Before iter3 for hull_interceptor: wear layers (fixed)
-- Before: character (fixed sleek aggressive fighter)
+- Before iter3 for hull_interceptor: no character (fixed: hull_interceptor role specific from concept/bible)
 - Unique for hull_interceptor : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
 - Real MCP work and deficiency fixes performed specifically on hull_interceptor geometry and character using execute + renders.
 - Before iter for hull_interceptor: specific issues from audit of this asset only (bevels, nodes, wear).
 - hull_interceptor unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for hull_interceptor: primary forms and bevel needs identified in MCP import audit for hull_interceptor.
+- Before iter1 for hull_interceptor: shading and support issues fixed with WN and loops specific to hull_interceptor geometry.

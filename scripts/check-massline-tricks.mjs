@@ -10,6 +10,7 @@ import { combat } from '../src/systems/combat.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
+import { createMasslineRuntime, stepMassline } from '../src/core/constraints/masslineController.js';
 import { masslineTricks, compareClassification } from '../src/systems/masslineTricks.js';
 
 const DT = SIM_DT;
@@ -20,6 +21,7 @@ const REEL_IN_PER_TICK = -46 * DT;
 
 await assertGoodSlingshotReleaseRated();
 await assertPoorRadialCutRatesWorse();
+await assertBattleHardeningResistsManeuverYank();
 await assertNoPhysicsMutation();
 await assertIdleWithoutTether();
 
@@ -159,6 +161,61 @@ async function assertPoorRadialCutRatesWorse() {
     `deliberate radial cut should classify worse than good; got ${rated.classification} (${rated.releaseScore})`);
   assert(Math.abs(rated.radialSpeed) > rated.tangentialSpeed * 0.55,
     `poor cut should be radial-dominant; tangential=${rated.tangentialSpeed.toFixed(2)} radial=${rated.radialSpeed.toFixed(2)}`);
+}
+
+function assertBattleHardeningResistsManeuverYank() {
+  const def = {
+    maxTension: 420000,
+    maxImpulse: 7600,
+    maxYank: 380,
+    overloadGraceS: 0.22,
+    catastrophicRatio: 1.75,
+  };
+  let runtime = createMasslineRuntime(def);
+
+  for (let i = 0; i < 90; i++) {
+    const result = stepMassline({
+      dt: DT,
+      def,
+      runtime,
+      telemetry: {
+        attachmentId: 'battle_tether',
+        restLength: 80,
+        distance: 96,
+        tension: 92000,
+        impulse: 1500,
+        yank: 290,
+      },
+      command: { reel: 0, hold: true },
+    });
+    runtime = result.runtime;
+    assert.equal(result.action.cut, false,
+      `loaded battle tether should not snap on maneuver yank; tick=${i} overload=${result.telemetry.overloadRatio.toFixed(3)}`);
+  }
+
+  let snapped = false;
+  for (let i = 0; i < 24; i++) {
+    const result = stepMassline({
+      dt: DT,
+      def,
+      runtime,
+      telemetry: {
+        attachmentId: 'battle_tether',
+        restLength: 80,
+        distance: 96,
+        tension: 430000,
+        impulse: 9200,
+        yank: 1400,
+      },
+      command: {},
+    });
+    runtime = result.runtime;
+    if (result.action.cut) {
+      snapped = true;
+      break;
+    }
+  }
+  assert(snapped, 'catastrophic authored overload should still break a hardened tether');
 }
 
 async function assertNoPhysicsMutation() {

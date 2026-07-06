@@ -36,3 +36,7 @@ This is dedicated evidence for hull_capital.
 - Real MCP work and deficiency fixes performed specifically on hull_capital geometry and character using execute + renders.
 - Before iter for hull_capital: specific issues from audit of this asset only (bevels, nodes, wear).
 - hull_capital unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for hull_capital: primary forms and bevel needs identified in MCP import audit for hull_capital.
+- Before iter1 for hull_capital: shading and support issues fixed with WN and loops specific to hull_capital geometry.

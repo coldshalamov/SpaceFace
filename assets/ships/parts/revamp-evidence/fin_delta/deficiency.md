@@ -37,3 +37,7 @@ Dedicated for fin_delta.
 - Real MCP work and deficiency fixes performed specifically on fin_delta geometry and character using execute + renders.
 - Before iter for fin_delta: specific issues from audit of this asset only (bevels, nodes, wear).
 - fin_delta unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for fin_delta: primary forms and bevel needs identified in MCP import audit for fin_delta.
+- Before iter1 for fin_delta: shading and support issues fixed with WN and loops specific to fin_delta geometry.

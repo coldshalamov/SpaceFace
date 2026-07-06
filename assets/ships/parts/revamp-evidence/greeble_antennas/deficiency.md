@@ -61,3 +61,7 @@ All work via Blender MCP execute_blender_code + render_viewport_to_path + CLI fi
 - Real MCP work and deficiency fixes performed specifically on greeble_antennas geometry and character using execute + renders.
 - Before iter for greeble_antennas: specific issues from audit of this asset only (bevels, nodes, wear).
 - greeble_antennas unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for greeble_antennas: primary forms and bevel needs identified in MCP import audit for greeble_antennas.
+- Before iter1 for greeble_antennas: shading and support issues fixed with WN and loops specific to greeble_antennas geometry.

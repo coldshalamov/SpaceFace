@@ -11,8 +11,8 @@ const checks = [];
 check('SPEC3-16 autopursuit input is a held action, not auto-fire toggle', () => {
   assertSource(/autopursuit|autoPursuit|auto-pursuit/i, inputSrc,
     'input.js must expose a held autopursuit action (MMB or F per spec)');
-  assertSource(/MouseButton1|middle|auxiliary|MMB|KeyF/i, inputSrc,
-    'autopursuit input must be bound to MMB or F');
+  assertSource(/MouseButton1|middle|auxiliary|MMB/i, inputSrc,
+    'autopursuit input must be bound to MMB');
 });
 
 check('SPEC3-16 autopursuit owns flight mode and modeChanged events', () => {

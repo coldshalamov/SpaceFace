@@ -41,3 +41,7 @@ Next: surf pass for node wear if batch allows, but modeling bar met for this eng
 - Real MCP work and deficiency fixes performed specifically on engine_vector geometry and character using execute + renders.
 - Before iter for engine_vector: specific issues from audit of this asset only (bevels, nodes, wear).
 - engine_vector unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for engine_vector: primary forms and bevel needs identified in MCP import audit for engine_vector.
+- Before iter1 for engine_vector: shading and support issues fixed with WN and loops specific to engine_vector geometry.

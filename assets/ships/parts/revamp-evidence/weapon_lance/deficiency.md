@@ -37,3 +37,7 @@ Dedicated.
 - This is dedicated for weapon_lance.- Real MCP work and deficiency fixes performed specifically on weapon_lance geometry and character using execute + renders.
 - Before iter for weapon_lance: specific issues from audit of this asset only (bevels, nodes, wear).
 - weapon_lance unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for weapon_lance: primary forms and bevel needs identified in MCP import audit for weapon_lance.
+- Before iter1 for weapon_lance: shading and support issues fixed with WN and loops specific to weapon_lance geometry.

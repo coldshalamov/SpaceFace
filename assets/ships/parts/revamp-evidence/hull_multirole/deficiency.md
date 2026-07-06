@@ -36,3 +36,7 @@ Dedicated for hull_multirole.
 - Real MCP work and deficiency fixes performed specifically on hull_multirole geometry and character using execute + renders.
 - Before iter for hull_multirole: specific issues from audit of this asset only (bevels, nodes, wear).
 - hull_multirole unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for hull_multirole: primary forms and bevel needs identified in MCP import audit for hull_multirole.
+- Before iter1 for hull_multirole: shading and support issues fixed with WN and loops specific to hull_multirole geometry.

@@ -20,6 +20,7 @@ const REEL_IN_PER_TICK = -46 * DT;
 
 await assertGameplaySlingshot();
 await assertCursorTetherTargeting();
+await assertLockedHostileTetherTargeting();
 await assertNearestTetherMode();
 await assertPickupMasslinePull();
 await assertInitialLatchReleaseDoesNotCut();
@@ -170,6 +171,46 @@ async function assertCursorTetherTargeting() {
   assert.equal(events.latched.length, 1, 'cursor-targeted tether should latch exactly once');
   assert.equal(events.latched[0].targetId, aimedShip.id,
     `cursor-targeted tether should choose the reticle ship, not the nearer rock ${nearbyRock.id}`);
+}
+
+async function assertLockedHostileTetherTargeting() {
+  const harness = createHarness();
+  const { state, helpers, runtime, events } = harness;
+
+  const player = helpers.spawnEntity(makeShipEntitySpec('ship_wasp', {
+    isPlayer: true,
+    pos: { x: 0, z: 0 },
+    rot: 0,
+  }));
+  state.playerId = player.id;
+  const nearbyRock = helpers.spawnEntity({
+    type: 'asteroid',
+    pos: { x: 42, z: 0 },
+    radius: 9,
+    mass: 260,
+    hull: 180,
+    hullMax: 180,
+    collides: true,
+    data: { typeId: 'ast_common_rock' },
+  });
+  const lockedHostile = helpers.spawnEntity(makeShipEntitySpec('ship_wasp', {
+    team: 1,
+    pos: { x: 145, z: 46 },
+    rot: Math.PI,
+    ai: { fsm: 'attack' },
+  }));
+  lockedHostile.data.combat.targetId = player.id;
+
+  initializeSystems(harness);
+  await ensureSg02Ready(runtime, state);
+  state.player.targetId = lockedHostile.id;
+  state.input.aimWorld = { x: nearbyRock.pos.x, z: nearbyRock.pos.z };
+  state.input.aimAngle = Math.atan2(nearbyRock.pos.z - player.pos.z, nearbyRock.pos.x - player.pos.x);
+  fireTetherOnce(harness);
+
+  assert.equal(events.latched.length, 1, 'locked-hostile tether should latch exactly once');
+  assert.equal(events.latched[0].targetId, lockedHostile.id,
+    `locked-hostile tether should choose the selected enemy, not the nearer rock ${nearbyRock.id}`);
 }
 
 async function assertNearestTetherMode() {

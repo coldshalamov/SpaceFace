@@ -1,18 +1,18 @@
 - Before iter1 for hull_freighter : no bevel on freighter forms (fixed by Bevel segs=3 via MCP)
-- Before iter1: flat (fixed WN)
+- Before iter1 for hull_freighter: flat shading on hull_freighter primary forms (fixed by Weighted Normal last via MCP)
 - Before iter2 for hull_freighter : cargo panels (fixed inset)
 - Before iter2: support (fixed)
 - Before iter3 for hull_freighter : surfacing (fixed nodes)
-- Before: bakes (fixed)
-- Before: wear (fixed)
-- Before: character (fixed bulky freighter)
-- Before: fid (fixed)
-- Before: 3pass (fixed)
+- Before iter2 for hull_freighter: no bakes for hull_freighter (fixed by targeted AO/rough/normal for this part)
+- Before for hull_freighter: no wear (fixed by geometry driven for hull_freighter)
+- Before iter3 for hull_freighter: no character (fixed: hull_freighter role specific from concept/bible)
+- Before for hull_freighter: low fid (fixed by pro techniques for hull_freighter)
+- Before for hull_freighter: no 3pass (fixed by full loop on hull_freighter)
 - Before iter for hull_freighter (unique): freighter specific MCP
-- Extra MCP for hull_freighter : dedicated
-- More for hull_freighter : unwrap
+- Extra MCP for hull_freighter: dedicated import + bevel segs=2 + WN + renders for this exact part
+- More for hull_freighter: advanced unwrap and texel for hull_freighter specific surfaces
 - Add for hull_freighter : post
-- Final for hull_freighter : PBR
+- Final for hull_freighter: PBR material zones and clearcoat specific to hull_freighter
 - Before iter1 for hull_freighter: specific MCP work on this asset geometry and character.
 - Fix: bevel + WN + renders via execute and render_viewport.
 - Character: hull_freighter role specific weathering.
@@ -23,3 +23,7 @@
 - Real MCP work and deficiency fixes performed specifically on hull_freighter geometry and character using execute + renders.
 - Before iter for hull_freighter: specific issues from audit of this asset only (bevels, nodes, wear).
 - hull_freighter unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for hull_freighter: primary forms and bevel needs identified in MCP import audit for hull_freighter.
+- Before iter1 for hull_freighter: shading and support issues fixed with WN and loops specific to hull_freighter geometry.

@@ -37,3 +37,7 @@ Dedicated.
 - This is dedicated for greeble_pipes.- Real MCP work and deficiency fixes performed specifically on greeble_pipes geometry and character using execute + renders.
 - Before iter for greeble_pipes: specific issues from audit of this asset only (bevels, nodes, wear).
 - greeble_pipes unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for greeble_pipes: primary forms and bevel needs identified in MCP import audit for greeble_pipes.
+- Before iter1 for greeble_pipes: shading and support issues fixed with WN and loops specific to greeble_pipes geometry.

@@ -7,7 +7,8 @@
 //   A/D and ←/→ are CONTEXTUAL — one rule: while coasting they YAW the nose (line up a retro
 //   burn, whip the nose around mid-drift); while forward thrust is held they STRAFE, with a
 //   gentle coordinated carve (PILOT_CARVE_TURN) so W+D still banks into a curve instead of
-//   crab-sliding. Q/E strafe explicitly in every state (orbit-adjust during pursuit). LMB fire.
+//   crab-sliding. Space brake restores full yaw authority so you can spin hard without releasing
+//   thrust. Q/E strafe explicitly in every state (orbit-adjust during pursuit). LMB fire.
 //
 //   HELM ASSIST — the ship's NOSE FOLLOWS THE MOUSE CURSOR (rate-limited by the ship's
 //   own turn stats, so mass still reads). W/S thrust fwd/rev, A/D lateral strafe, Space =
@@ -20,8 +21,8 @@
 //   mouse aims weapons independently, Space fires. The arrow cluster keeps the same flight split:
 //   bare ←/→ yaw, W/↑ + ←/→ strafe.
 //
-//   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · F auto-target
-//   toggle (owned by autoTargetAssist — guns track lock, mouse steers ship) · G tether latch/cut · Q charge throw (helm) · R detonate
+//   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · G auto-target
+//   toggle (owned by autoTargetAssist — guns track lock, mouse steers ship) · F tether latch/cut · Q charge throw (helm) · R detonate
 //   charges · C scanner pulse · V cruise.
 //   MMB TAP = pursuit/approach toggle: ship target → sustained autopursuit (tail + speed-match,
 //   fight with the mouse while the flight computer flies); station/other target → goto autopilot.
@@ -57,11 +58,11 @@ const PILOT_CARVE_TURN = 0.35; // pilot scheme: fraction of yaw blended in while
 
 // Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
 const VERB_BINDINGS = {
-  tether:         ['KeyG'],   // edge: latch when free, cut when attached
+  tether:         ['KeyF'],   // edge: latch when free, cut when attached (WASD-adjacent)
   chargeDetonate: ['KeyR'],   // edge: detonate all armed impulse charges
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
   cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
-  autopursuit:    [],         // level: hold MMB to tail the locked target; F is auto-target/fire.
+  autopursuit:    [],         // level: hold MMB to tail the locked target; G is auto-target toggle.
   deployBeacon:   ['KeyU'],   // edge: drop a claim beacon in open space (beacons system owns cost/cap).
                               //   The UI router owns U only when a claimable body is in range; in open
                               //   space it falls through to this flight verb (see check-claim-base-input).
@@ -77,7 +78,7 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     ['Space'],          // mouse LMB also fires (see update)
   brake:    [],                 // classic derives brake from reverse-held (legacy feel)
-  autoFire: ['KeyF'],
+  autoFire: ['KeyG'],
   countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
   chargeThrow: ['KeyY'],       // classic: Q/E are strafe and T is the tech-tree UI key, so throw lives on Y
   reelIn:  [],                 // classic: arrows are movement; reel via helm scheme only
@@ -97,7 +98,7 @@ const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                // LMB only — Space becomes brake
   brake:    ['Space'],
-  autoFire: ['KeyF'],
+  autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   chargeThrow: ['KeyQ'],
   reelIn:  [],
@@ -115,7 +116,7 @@ const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                      // LMB fires — the mouse is a weapon, not a rudder
   brake:    ['Space'],
-  autoFire: ['KeyF'],
+  autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   chargeThrow: ['KeyY'],             // Q/E are strafe here, so throw lives on Y (classic parity)
   reelIn:  [],
@@ -343,15 +344,17 @@ export const input = {
     const pilot = scheme === 'pilot';
     const up = this._held(state, 'forward');
     const down = this._held(state, 'reverse');
+    const kbdBrakeHeld = this._held(state, 'brake');
     let kbdTurn = 0;
     let kbdMoveX = 0;
     if (pilot) {
       // PILOT: one rule. Coasting → side keys YAW the nose (line up retro burns, spin
       // mid-drift). Forward thrust held → side keys STRAFE, blended with a gentle carve yaw
-      // so W+D banks into a curve. Q/E strafe explicitly in every state.
+      // so W+D banks into a curve. Brake restores coasting yaw so W+Space+A/D spins fast.
+      // Q/E strafe explicitly in every state.
       const side = (this._held(state, 'yawRight') ? 1 : 0) - (this._held(state, 'yawLeft') ? 1 : 0);
       const explicit = (this._held(state, 'strafeRight') ? 1 : 0) - (this._held(state, 'strafeLeft') ? 1 : 0);
-      if (up) {
+      if (up && !kbdBrakeHeld) {
         kbdMoveX = Math.max(-1, Math.min(1, side + explicit));
         kbdTurn = side * PILOT_CARVE_TURN;
       } else {
@@ -523,7 +526,7 @@ export const input = {
       }
     }
 
-    // Auto-target (F) is owned by autoTargetAssist — registry runs it immediately after input.
+    // Auto-target (G) is owned by autoTargetAssist — registry runs it immediately after input.
 
     // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
     const edges = this._edgePrev || (this._edgePrev = {});
@@ -537,7 +540,7 @@ export const input = {
     const tetherHeld = this._held(state, 'tether');
     const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
     acts.tetherFire = tetherEdge;    // tetherGameplay disambiguates by attach state:
-    acts.tetherCut = tetherEdge;     // free -> latch, attached -> cut (single G toggle)
+    acts.tetherCut = tetherEdge;     // free -> latch, attached -> cut (single F toggle)
     inp.tetherMode = tetherEdge && nearestTetherMode ? 'nearest' : null;
     acts.chargeThrow = edge('chargeThrow');
     acts.chargeDetonate = edge('chargeDetonate');
@@ -545,7 +548,7 @@ export const input = {
     acts.cruise = edge('cruise');
     acts.autopursuit = !!this._pursuitToggle;
     acts.deployBeacon = edge('deployBeacon');
-    // Holding G after latch SHORTENS the line. Positive reelDelta = longer rest length in the tether
+    // Holding F after latch SHORTENS the line. Positive reelDelta = longer rest length in the tether
     // system. Arrow keys stay reserved for flight in Helm Assist.
     const arrowReelDelta = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
     const tetherActive = !!(state.player && state.player.tether && state.player.tether.active);

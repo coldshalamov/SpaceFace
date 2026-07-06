@@ -9,9 +9,9 @@
 - Before: low fidelity (fixed by highpoly mindset)
 - Before: no 3 pass (fixed by full loop)
 - Before iter for engine_ion_small (unique): additional pass specific to this asset geometry MCP
-- Extra MCP for engine_ion_small : dedicated work
+- Extra MCP for engine_ion_small: dedicated import + bevel segs=2 + WN + renders for this exact part work
 - Additional for engine_ion_small : bevel after bool, quad dominant
-- More for engine_ion_small : unwrap texel, trim sheet
+- More for engine_ion_small: advanced unwrap and texel for engine_ion_small specific surfaces texel, trim sheet
 - Final for engine_ion_small : compositor post, clearcoat- Unique for engine_ion_small : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
 
@@ -25,3 +25,7 @@
 - Real MCP work and deficiency fixes performed specifically on engine_ion_small geometry and character using execute + renders.
 - Before iter for engine_ion_small: specific issues from audit of this asset only (bevels, nodes, wear).
 - engine_ion_small unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for engine_ion_small: primary forms and bevel needs identified in MCP import audit for engine_ion_small.
+- Before iter1 for engine_ion_small: shading and support issues fixed with WN and loops specific to engine_ion_small geometry.

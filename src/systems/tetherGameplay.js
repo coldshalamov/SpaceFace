@@ -2,7 +2,9 @@
 // Consumes the locked input action contract and wires the existing SG-03/SG-02 attachment
 // service into player flight. SG-02 owns momentum exchange; this system only targets,
 // reels, cuts, and emits player-facing gameplay events.
+import { lockedHostileEntity } from '../combat/autoTargetMode.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { isHostileToPlayer } from './scanner.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 const STRAIN_EVENT_INTERVAL_S = 0.2;
@@ -152,7 +154,16 @@ export const tetherGameplay = {
   },
 
   _acquireTarget(player, def, state, nearestMode = false) {
-    const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 260));
+    const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+    const locked = lockedHostileEntity(state);
+    if (locked && isAttachable(locked, player.id) && isHostileToPlayer(locked, player.team, state)) {
+      const lockDx = locked.pos.x - player.pos.x;
+      const lockDz = locked.pos.z - player.pos.z;
+      const lockDistance = Math.hypot(lockDx, lockDz);
+      if (lockDistance <= maxLength + (locked.radius || 0)) {
+        return { entity: locked, targetWorld: surfacePointToward(locked, player.pos) };
+      }
+    }
     const aim = aimWorldFor(player, state, maxLength);
     const candidates = queryNearbyEntities(
       state,

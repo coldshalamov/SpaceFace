@@ -32,7 +32,7 @@ import { aiPorts } from '../src/systems/aiPorts.js';
 import { aiEncounter } from '../src/systems/aiEncounter.js';
 import { intervention } from '../src/systems/intervention.js';
 import { sectorSim } from '../src/systems/sectorSim.js';
-import { drill } from '../src/systems/drill.js';
+import { drill, drillTierReqForOre } from '../src/systems/drill.js';
 import { claims } from '../src/systems/claims.js';
 import { traffic } from '../src/systems/traffic.js';
 import * as FlightDynamics from '../src/core/flightDynamics.js';
@@ -2213,6 +2213,36 @@ function checkDrillRewardsUseCanonicalCommodities() {
     drill.drillVertical(1, 1);
     assert.equal(state.player.cargo.items[ore], before + 2, `drill should award ${ore}`);
     assert.equal(state.drill.yieldLog[ore], 2, `drill yield log should record ${ore}`);
+  }
+}
+
+function checkDrillOreTierReqIsStablePerOre() {
+  const state = createGameState(77);
+  const bus = createBus();
+  const ctx = { state, bus, helpers: {}, registry: { get() { return null; } } };
+  drill.init(ctx);
+
+  assert.equal(drillTierReqForOre('cmdty_ore_iron'), 1, 'tier-0 ore should need MK1');
+  assert.equal(drillTierReqForOre('cmdty_ore_bronzium'), 2, 'nickel ore should always need MK2');
+  assert.equal(drillTierReqForOre('cmdty_ore_copper'), 2, 'copper should always need MK2');
+  assert.equal(drillTierReqForOre('cmdty_gem_ruby'), 4, 'tier-4 gems should need MK4');
+
+  for (const asteroidId of ['shallow_vein_test', 'deep_vein_test', 'mixed_depth_rock']) {
+    drill.begin(asteroidId);
+    const field = state.drill?.field;
+    assert.ok(field, `drill field should generate for ${asteroidId}`);
+    for (let c = 0; c < field.length; c++) {
+      for (let r = 0; r < field[c].length; r++) {
+        const tile = field[c][r];
+        if (!tile || tile.type !== 'vein' || !tile.ore) continue;
+        assert.equal(
+          tile.tierReq,
+          drillTierReqForOre(tile.ore),
+          `${tile.ore} at col ${c} row ${r} in ${asteroidId} should use ore-based tier gate`,
+        );
+      }
+    }
+    drill.end();
   }
 }
 
@@ -5699,6 +5729,7 @@ checkSaveDelegatesCraftingHooks();
 checkClaimsSerializeAndReload();
 checkNewGameHooksClearTransientRuntimeState();
 checkDrillRewardsUseCanonicalCommodities();
+checkDrillOreTierReqIsStablePerOre();
 checkClaimRefineryOutputsCanonicalCommodities();
 checkSaveScrubsTransientFlightState();
 checkMissionCompletionAutosaveSeesSettledState();

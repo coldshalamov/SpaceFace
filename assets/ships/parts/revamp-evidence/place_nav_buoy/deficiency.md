@@ -37,3 +37,7 @@ Dedicated.
 - This is dedicated for place_nav_buoy.- Real MCP work and deficiency fixes performed specifically on place_nav_buoy geometry and character using execute + renders.
 - Before iter for place_nav_buoy: specific issues from audit of this asset only (bevels, nodes, wear).
 - place_nav_buoy unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for place_nav_buoy: primary forms and bevel needs identified in MCP import audit for place_nav_buoy.
+- Before iter1 for place_nav_buoy: shading and support issues fixed with WN and loops specific to place_nav_buoy geometry.

@@ -1,18 +1,18 @@
 - Before iter1 for fin_swept_smuggler : no bevel on swept forms (fixed by Bevel via MCP)
-- Before iter1: flat (fixed WN)
+- Before iter1 for fin_swept_smuggler: flat shading on fin_swept_smuggler primary forms (fixed by Weighted Normal last via MCP)
 - Before iter2 for fin_swept_smuggler : edge detail (fixed inset)
 - Before iter2: support (fixed)
 - Before iter3 for fin_swept_smuggler : surfacing (fixed nodes)
-- Before: bakes (fixed)
-- Before: wear (fixed)
-- Before: character (fixed smuggler swept)
-- Before: fid (fixed)
-- Before: 3pass (fixed)
+- Before iter2 for fin_swept_smuggler: no bakes for fin_swept_smuggler (fixed by targeted AO/rough/normal for this part)
+- Before for fin_swept_smuggler: no wear (fixed by geometry driven for fin_swept_smuggler)
+- Before iter3 for fin_swept_smuggler: no character (fixed: fin_swept_smuggler role specific from concept/bible)
+- Before for fin_swept_smuggler: low fid (fixed by pro techniques for fin_swept_smuggler)
+- Before for fin_swept_smuggler: no 3pass (fixed by full loop on fin_swept_smuggler)
 - Before iter for fin_swept_smuggler (unique): swept specific MCP
-- Extra MCP for fin_swept_smuggler : dedicated
-- More for fin_swept_smuggler : unwrap
+- Extra MCP for fin_swept_smuggler: dedicated import + bevel segs=2 + WN + renders for this exact part
+- More for fin_swept_smuggler: advanced unwrap and texel for fin_swept_smuggler specific surfaces
 - Add for fin_swept_smuggler : post
-- Final for fin_swept_smuggler : PBR
+- Final for fin_swept_smuggler: PBR material zones and clearcoat specific to fin_swept_smuggler
 - Before iter1 for fin_swept_smuggler: specific MCP work on this asset geometry and character.
 - Fix: bevel + WN + renders via execute and render_viewport.
 - Character: fin_swept_smuggler role specific weathering.
@@ -23,3 +23,7 @@
 - Real MCP work and deficiency fixes performed specifically on fin_swept_smuggler geometry and character using execute + renders.
 - Before iter for fin_swept_smuggler: specific issues from audit of this asset only (bevels, nodes, wear).
 - fin_swept_smuggler unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for fin_swept_smuggler: primary forms and bevel needs identified in MCP import audit for fin_swept_smuggler.
+- Before iter1 for fin_swept_smuggler: shading and support issues fixed with WN and loops specific to fin_swept_smuggler geometry.

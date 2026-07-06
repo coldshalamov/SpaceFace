@@ -149,12 +149,29 @@ export const mining = {
     this._beaming = false;
     this._activeBeamLine = null;
     this.bus.emit('mining:stop', { minerId: this.state.playerId, targetId: this._lockTargetId, position: null });
+    this._lockTargetId = null;
+  },
+
+  _isValidMineableTarget(entity, ship, range) {
+    if (!entity || !entity.alive) return false;
+    if (entity.type !== 'asteroid' && entity.type !== 'wreck') return false;
+    if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
+    const dx = entity.pos.x - ship.pos.x, dz = entity.pos.z - ship.pos.z;
+    const dist = Math.hypot(dx, dz);
+    return dist <= range + (entity.radius || 0);
   },
 
   // Nearest mineable target (asteroid or salvageable wreck) within range, biased toward aim.
+  // While the beam is held, the first-acquired target stays locked until fire is released.
   _acquireTarget(ship, range, state) {
     const tetherTarget = activeMineableTetherTarget(state, ship, range);
     if (tetherTarget !== undefined) return tetherTarget;
+
+    if (this._beaming && this._lockTargetId != null) {
+      const locked = state.entities.get(this._lockTargetId);
+      if (locked && this._isValidMineableTarget(locked, ship, range)) return locked;
+      return null;
+    }
 
     const aim = state.input.aimAngle || 0;
     const ax = Math.cos(aim), az = Math.sin(aim);

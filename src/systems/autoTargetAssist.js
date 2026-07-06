@@ -23,7 +23,7 @@ function binding(state, action) {
 function eventCode(e) {
   if (e && e.code) return e.code;
   const key = e && typeof e.key === 'string' ? e.key.toLowerCase() : '';
-  return key === 'f' ? 'KeyF' : '';
+  return key === 'g' ? 'KeyG' : '';
 }
 
 function isTextEntryTarget(target) {

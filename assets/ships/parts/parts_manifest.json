@@ -2069,7 +2069,7 @@
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN + AO via MCP for greeble nav lights. Character: port/starboard emitters with industrial mounts, emissive wear. 1852 tris.",
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 572 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2109,21 +2109,21 @@
           0.2825,
           2.475
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 572 tris."
+      }
     },
     {
       "id": "greeble_armor_plates",
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_armor_plates.glb",
-      "tris": 852,
-      "bytes": 236036,
+      "tris": 3492,
+      "bytes": 337068,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 852 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2152,17 +2152,16 @@
           -1.5
         ],
         "max": [
-          2.94457,
+          2.9446,
           0.29,
           0.9
         ],
         "dimensionsM": [
-          3.94457,
+          3.9446,
           0.3718,
           2.4
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 852 tris."
+      }
     },
     {
       "id": "skid_trio",
@@ -2170,12 +2169,13 @@
       "priority": "P2",
       "file": "gear/skid_trio.glb",
       "tris": 1040,
-      "bytes": 214084,
+      "bytes": 214564,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1040 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2213,8 +2213,7 @@
           1.2928,
           2.8
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1040 tris."
+      }
     },
     {
       "id": "skid_quad",
@@ -2222,12 +2221,13 @@
       "priority": "P2",
       "file": "gear/skid_quad.glb",
       "tris": 1532,
-      "bytes": 225708,
+      "bytes": 226208,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1532 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2265,8 +2265,7 @@
           1.86,
           3.6
         ]
-      },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1532 tris."
+      }
     },
     {
       "id": "pod_utility",
@@ -2274,12 +2273,13 @@
       "priority": "P2",
       "file": "pods/pod_utility.glb",
       "tris": 952,
-      "bytes": 230044,
+      "bytes": 230524,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
+      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN + AO via MCP for pod utility. Character: modular utility pod with shell/band, industrial wear. 952 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",

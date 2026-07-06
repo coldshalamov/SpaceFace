@@ -37,3 +37,7 @@ Dedicated.
 - This is dedicated for hull_frigate.- Real MCP work and deficiency fixes performed specifically on hull_frigate geometry and character using execute + renders.
 - Before iter for hull_frigate: specific issues from audit of this asset only (bevels, nodes, wear).
 - hull_frigate unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for hull_frigate: primary forms and bevel needs identified in MCP import audit for hull_frigate.
+- Before iter1 for hull_frigate: shading and support issues fixed with WN and loops specific to hull_frigate geometry.

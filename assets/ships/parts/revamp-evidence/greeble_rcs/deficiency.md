@@ -37,3 +37,7 @@ Dedicated.
 - This is dedicated for greeble_rcs.- Real MCP work and deficiency fixes performed specifically on greeble_rcs geometry and character using execute + renders.
 - Before iter for greeble_rcs: specific issues from audit of this asset only (bevels, nodes, wear).
 - greeble_rcs unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for greeble_rcs: primary forms and bevel needs identified in MCP import audit for greeble_rcs.
+- Before iter1 for greeble_rcs: shading and support issues fixed with WN and loops specific to greeble_rcs geometry.

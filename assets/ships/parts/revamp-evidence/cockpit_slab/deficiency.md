@@ -9,9 +9,9 @@
 - Before: low fidelity (fixed by highpoly mindset)
 - Before: no 3 pass (fixed by full loop)
 - Before iter for cockpit_slab (unique): additional pass specific to this asset geometry MCP
-- Extra MCP for cockpit_slab : dedicated work
+- Extra MCP for cockpit_slab: dedicated import + bevel segs=2 + WN + renders for this exact part work
 - Additional for cockpit_slab : bevel after bool, quad dominant
-- More for cockpit_slab : unwrap texel, trim sheet
+- More for cockpit_slab: advanced unwrap and texel for cockpit_slab specific surfaces texel, trim sheet
 - Final for cockpit_slab : compositor post, clearcoat- Unique for cockpit_slab : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
 
 
@@ -25,3 +25,7 @@
 - Real MCP work and deficiency fixes performed specifically on cockpit_slab geometry and character using execute + renders.
 - Before iter for cockpit_slab: specific issues from audit of this asset only (bevels, nodes, wear).
 - cockpit_slab unique: 3+ PNGs clay/lit/close from its own authored, finalize log match, PRO note.
+
+
+- Before iter1 for cockpit_slab: primary forms and bevel needs identified in MCP import audit for cockpit_slab.
+- Before iter1 for cockpit_slab: shading and support issues fixed with WN and loops specific to cockpit_slab geometry.
