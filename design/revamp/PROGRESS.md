@@ -41,13 +41,13 @@
 | id | task | files | status | branch | depends-on | next |
 |---|---|---|---|---|---|---|
 | T2a | Move stale `design/ARCHITECTURE.md` (3.5KB handoff) → `design/_ARCHIVE/` (collides with root `ARCHITECTURE.md`) | `design/ARCHITECTURE.md` → `design/_ARCHIVE/handoff_architecture.md` | DONE 2026-07-06 | — | file moved via `git mv`; refs updated in `AGENTS.md:82`, `design/AGENTS.md:9`, `docs/MODULE_MAP.md:262`; root `ARCHITECTURE.md` (920 lines) intact | — |
-| T2b | Mark `design/adr/0003-flight-physics-controller.md` SUPERSEDED (V3+rapier mandatory; it says "optional") | `design/adr/0003-flight-physics-controller.md` | IN-FLIGHT | — | T2a | — |
-| T2c | Mark `design/FLIGHT_PHYSICS_SPEC.md` legacy (point to SPEC3-F3) | `design/FLIGHT_PHYSICS_SPEC.md` | IN-FLIGHT | — | — | — |
-| T2d | Fix `design/BUILD_PLAN_2_0.md §42` ownership line → `flightV3.js` + `src/core/flight/*` | `design/BUILD_PLAN_2_0.md` | IN-FLIGHT | — | — | — |
-| T2e | Fix `README.md §87` → add spec3 + AGENTS.md front-door pointer | `README.md` | IN-FLIGHT | — | — | — |
-| T2f | Fix `design/CURRENT_BUILD_STATUS.md` line 54 (encounterDirector NOT missing) + line 41 (check-cruise EXISTS) | `design/CURRENT_BUILD_STATUS.md` | IN-FLIGHT | — | — | — |
-| T2g | Fix `AGENTS.md §5` "zero importers" wording for flight.js/ai.js (CI-live/runtime-fallback, load-bearing) | `AGENTS.md` | IN-FLIGHT | — | — | — |
-| T2h | Add `Status: LEGACY` headers to loose drift docs (SKILLS/STATION_MARKET/WORLD_OVERHAUL/GRAPHICS_*) | various `design/*.md` | IN-FLIGHT | — | — | — |
+| T2b | Mark `design/adr/0003-flight-physics-controller.md` SUPERSEDED (V3+rapier mandatory; it says "optional") | `design/adr/0003-flight-physics-controller.md` | DONE 2026-07-06 | — | SUPERSEDED banner added; cites `gameState.js:16` (`physicsBackend:'rapier-dynamic'`, `flightBackend:'v3'`) + `flightV3.js`/`src/core/flight/*` as live; original "Accepted" status preserved as historical | T2a | — |
+| T2c | Mark `design/FLIGHT_PHYSICS_SPEC.md` legacy (point to SPEC3-F3) | `design/FLIGHT_PHYSICS_SPEC.md` | DONE 2026-07-06 | — | LEGACY banner added; points to `design/spec3/SPEC3-F3-flight-physics-feel.md` (verified EXISTS 19KB); flags "Collision And Backend Policy" section (default `custom`, Rapier "optional") as wrong-as-of-V3 | — | — |
+| T2d | Fix `design/BUILD_PLAN_2_0.md §42` ownership line → `flightV3.js` + `src/core/flight/*` | `design/BUILD_PLAN_2_0.md` | DONE 2026-07-06 | — | §42 ownership row now names `flightV3.js` + `src/core/flight/*`; legacy `flight.js`/`flightDynamics.js` noted as CI-pinned, not actively edited; original line preserved as strikethrough context | — | — |
+| T2e | Fix `README.md §87` → add spec3 + AGENTS.md front-door pointer | `README.md` | DONE 2026-07-06 | — | §87 now lists `design/spec3/` alongside spec2; added pointer block to `AGENTS.md` (front door) + `design/revamp/` (build plan + ledger) + root `ARCHITECTURE.md` (contract) | — | — |
+| T2f | Fix `design/CURRENT_BUILD_STATUS.md` line 54 (encounterDirector NOT missing) + line 41 (check-cruise EXISTS) | `design/CURRENT_BUILD_STATUS.md` | DONE 2026-07-06 | — | Line 54: `encounterDirector.js` EXISTS (1033 lines) + `check-encounter-director.mjs` EXISTS (13KB) — both corrected from "missing". Line 41: `check-cruise.mjs` EXISTS (11KB) — corrected from "missing". **⚠ Side-finding: T1a lists `check-encounter-director.mjs` as a new file to create — it already exists; T1a scope is now "verify/augment", not "create".** | — | — |
+| T2g | Fix `AGENTS.md §5` "zero importers" wording for flight.js/ai.js (CI-live/runtime-fallback, load-bearing) | `AGENTS.md` | DONE 2026-07-06 | — | Both legacy rows now say "not dead — statically imported by `registry.js:9,13`, `sf-sim.mjs`, `check-*` CI gates; CI-load-bearing". Verified via grep: flight.js imported by registry.js + 9 scripts; ai.js by registry.js + 6 scripts. Rules section updated to match (frozen fixtures, not dead code). | — | — |
+| T2h | Add `Status: LEGACY` headers to loose drift docs (SKILLS/STATION_MARKET/WORLD_OVERHAUL/GRAPHICS_*) | various `design/*.md` | DONE 2026-07-06 | — | 6 docs tagged: `GRAPHICS_MASTERPLAN`, `GRAPHICS_SPEC`, `GRAPHICS_UPGRADE_PLAN`, `SKILLS_IMPROVEMENT_SPEC`, `STATION_MARKET_UI_REVAMP`, `WORLD_OVERHAUL_2_1`. Each banner cites `AGENTS.md §4` + points to the live spec2/spec3/revamp authority that supersedes it. | — | — |
 
 ## T3 — FINISH MASSLINE LADDER (Wave 2's unfinished rungs; `STATUS.md` confirms lane is free)
 
@@ -60,11 +60,11 @@
 | T3-02 | 02 | release-rated event | `tetherGameplay.js` | DONE-VALIDATED | — | `check:massline:release` | — | — |
 | T3-03 | 03 | release feedback | presentation layer | DONE-VALIDATED | — | `check:massline:release-feedback` | — | — |
 | T3-04 | 04 | `tether.load` field | `tetherGameplay.js`, `masslineTelemetry.js`, `vfx.js` | DONE 2026-07-06 | — | `npm run check:massline:load` PASS | T3-03 | T3-05 |
-| T3-05 | 05 | snap-catch | `masslineTelemetry.js` | IN-FLIGHT | — | `check:massline:snapcatch` | T3-04 | T3-06 |
-| T3-06 | 06 | reel-pump | `masslineTelemetry.js` | NEXT | — | `check:massline:reelpump` | T3-05 | T3-07 |
-| T3-07 | 07 | target-scoring (pure) | `combat/masslineTargetScoring.js` (new) | NEXT | — | `check:massline:target-scoring` | T3-06 | T3-08 |
-| T3-08 | 08 | auto-target wire | `combat/autoTargetMode.js` | NEXT | — | `check:massline:auto-target` | T3-07 | T3-09 |
-| T3-09 | 09 | threat events | `masslineThreats.js` (new) | NEXT | — | `check:massline:threats` | T3-08 | T3-10 |
+| T3-05 | 05 | snap-catch | `masslineTelemetry.js` | DONE 2026-07-06 | — | `npm run check:massline:snapcatch` PASS | T3-04 | T3-06 |
+| T3-06 | 06 | reel-pump | `masslineTelemetry.js` | DONE 2026-07-06 | — | `npm run check:massline:reelpump` PASS | T3-05 | T3-07 |
+| T3-07 | 07 | target-scoring (pure) | `combat/masslineTargetScoring.js` (new) | DONE 2026-07-06 | — | `npm run check:massline:target-scoring` PASS | T3-06 | T3-08 |
+| T3-08 | 08 | auto-target wire | `combat/autoTargetMode.js` | DONE 2026-07-06 | — | `npm run check:massline:auto-target` PASS | T3-07 | T3-09 |
+| T3-09 | 09 | threat events | `masslineThreats.js` (new) | IN-FLIGHT | — | `check:massline:threats` | T3-08 | T3-10 |
 | T3-10 | 10 | threat feedback | presentation layer | NEXT | — | `check:massline:threat-feedback` | T3-09 | T3-11 |
 | T3-11 | 11 | arc-preview data | `masslineTelemetry.js` | NEXT | — | `check:massline:arc-data` | T3-10 | T3-12 |
 | T3-12 | 12 | arc-preview render | `vfx.js` | NEXT | — | `check:massline:arc-render` | T3-11 | T3-13 |
