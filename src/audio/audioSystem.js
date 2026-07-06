@@ -101,6 +101,7 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.tether.attach': 'sfx.tetherLatch',
   'presentation.tether.near_break': 'sfx_ui_alert',
   'presentation.tether.break': 'sfx.tetherSnap',
+  'presentation.tether.whip_impact': 'sfx.tetherSnap',
   'presentation.shield.collapse': 'sfx.shieldBreak',
   'presentation.subsystem.disabled': 'sfx_ui_alert',
   'presentation.scenario.signal': 'sfx_ui_alert',

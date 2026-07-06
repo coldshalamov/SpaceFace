@@ -9,7 +9,7 @@ import { makeShipEntitySpec, fittingsFromWeapons } from './ships.js';
 import { removeCargo } from './cargo.js';
 import { mulberry32, hash32 } from '../core/rng.js';
 import { getCombatKernel } from '../combat/kernel.js';
-import { legacyHitToDamagePacket } from '../combat/damage.js';
+import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
@@ -19,6 +19,12 @@ const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
 const SHIP = new Map(SHIPS.map((s) => [s.id, s]));
 const MOD = new Map(MODULES.map((m) => [m.id, m]));
 const CARGO_LOSS_RATE = 0.5;
+// Massline whip damage (rung 14, flag combat.whipDamage): a solid/crushing whip-impact routes
+// momentum-scaled kinetic damage to the struck body. Tuning knobs, not physics — the momentum
+// number comes from masslineImpacts' record (mass × relSpeed).
+const WHIP_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
+const WHIP_DAMAGE_MOMENTUM_SCALE = 1 / 1600; // 640-mass rock at 60 wu/s (solid) -> 24 damage
+const WHIP_DAMAGE_MAX = 45;                  // ceiling for the heaviest slings
 const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
 const BEAM_QUERY_RADIUS_PAD = 256;
 const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
@@ -230,6 +236,7 @@ export const combat = {
       beamCandidates: 0,
     };
     ctx.bus.on('projectile:hit', (p) => this.onHit(p));
+    ctx.bus.on('tether:whipImpact', (p) => this.onWhipImpact(p || {}));
     ctx.bus.on('dock:docked', (p) => {
       this.rememberRespawnStation(p && p.stationId);
       this.setPlayerDocked(true);
@@ -262,6 +269,34 @@ export const combat = {
       this.bus.emit('camera:shake', { amount: result.shieldBroke ? 0.4 : 0.2 });
     }
     return result;
+  },
+
+  // Rung 14 (the damage half): a whip-impact from masslineImpacts becomes hull damage on the
+  // struck body — through the kernel (single-writer), never direct hp. Flag-gated: combat.whipDamage
+  // is OFF in the deterministic node golden and ON in the browser (featureFlags.js Tier-B model).
+  // Only energetic hits (rating solid/crushing, relSpeed >= 55) hurt; glances are feedback-only.
+  // Friendly fire is on, matching impulse-charge blasts — physics doesn't check IFF.
+  onWhipImpact(payload) {
+    if (!combatFlag('whipDamage')) return null;
+    if (payload.rating !== 'solid' && payload.rating !== 'crushing') return null;
+    const victim = this.state.entities.get(payload.victimId);
+    if (!victim || victim.alive === false || !WHIP_DAMAGE_TYPES.has(victim.type)) return null;
+    const momentum = Number.isFinite(payload.momentum) ? Math.max(0, payload.momentum) : 0;
+    const damage = Math.min(WHIP_DAMAGE_MAX, momentum * WHIP_DAMAGE_MOMENTUM_SCALE);
+    if (damage <= 0) return null;
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'kinetic',
+      pos: { x: victim.pos.x, z: victim.pos.z },
+      source: { kind: 'massline_whip', massId: payload.targetId ?? null },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    return this.ensureKernel().routeDamage({
+      attackerId: this.state.playerId,
+      targetId: victim.id,
+      packet,
+      origin: { kind: 'massline_whip', id: payload.targetId ?? null },
+    });
   },
 
   ensureKernel() {

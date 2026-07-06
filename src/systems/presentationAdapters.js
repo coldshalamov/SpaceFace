@@ -8,6 +8,7 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.attach': 'presentation.tether.attach',
   'tether.near_break': 'presentation.tether.near_break',
   'tether.break': 'presentation.tether.break',
+  'tether.whip_impact': 'presentation.tether.whip_impact',
   'massline.threat': 'presentation.massline.threat',
   'tether.release.good': 'presentation.tether.release',
   'tether.release.clean': 'presentation.tether.release',
@@ -25,6 +26,8 @@ const UI_CUES = Object.freeze({
   'tether.attach': uiCue('presentation:tether:attach', 'info', 'MASSLINE ATTACHED', 1.4),
   'tether.near_break': uiCue('presentation:tether:near-break', 'warn', 'MASSLINE STRAIN', 1.2),
   'tether.break': uiCue('presentation:tether:break', 'danger', 'MASSLINE BROKEN', 1.8),
+  // Rung 14 — the whip payoff readout (the crack landed). Info tier: it's a reward, not a warning.
+  'tether.whip_impact': uiCue('presentation:tether:whip-impact', 'info', 'MASSLINE IMPACT', 1.4),
   // Rung 10 — swing-danger warn (line-near-break / hostile-on-arc / collision-course).
   'massline.threat': uiCue('presentation:massline:threat', 'warn', 'SWING THREAT', 1.4),
   // Prompt 03 — release-rated toasts. Severity/ttl escalate good -> clean -> razor so the razor
@@ -45,6 +48,7 @@ const CAPTIONS = Object.freeze({
   'tether.attach': 'Massline attached.',
   'tether.near_break': 'Massline strain rising.',
   'tether.break': 'Massline broken.',
+  'tether.whip_impact': 'Massline impact landed.',
   'massline.threat': 'Swing threat detected.',
   'tether.release.good': 'Clean release.',
   'tether.release.clean': 'Clean cut.',

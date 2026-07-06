@@ -27,6 +27,11 @@ export const COMBAT_FLAGS = {
   // model, so it stays OFF everywhere this wave (a feel gamble that can't be tuned/verified in one
   // session). Kept as a flag so it can be enabled and playtested later without touching the fire path.
   momentumInherit: false,
+  // Massline whip damage (T3-14): a solid/crushing whip-impact (masslineImpacts' tether:whipImpact)
+  // routes momentum-scaled kinetic damage to the struck body through the combat kernel. Sim-affecting
+  // (new hull damage), so OFF in the node golden and ON in the browser. The whip FEEDBACK (cue) is
+  // unconditional; only the damage half sits behind this flag — it's a tuning knob, not the feature.
+  whipDamage: IS_BROWSER,
 };
 
 /** Read a combat flag by name; unknown names read false. Pure. */

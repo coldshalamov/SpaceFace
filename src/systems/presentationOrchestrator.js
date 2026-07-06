@@ -63,6 +63,18 @@ export const presentationOrchestrator = {
         magnitude: Math.max(1, finiteScore(payload && payload.severity) * 100),
         tags: ['threat', payload && payload.kind].filter(Boolean),
       })),
+      // Rung 14 — whip-impact feedback, the consume half of masslineImpacts' rung-13 emit. The
+      // struck body is the cue target (that's where the crack lands); the whipped mass rides as
+      // sourceId. Severity (0..1) drives magnitude so adapters scale the sting, and the rating +
+      // latched/slung ride the tags for downstream flavor. Sibling of massline.threat above.
+      this.bus.on('tether:whipImpact', (payload) => this._emitCue('tether.whip_impact', payload || {}, {
+        sourceEvent: 'tether:whipImpact',
+        sourceId: payload && payload.targetId,
+        targetId: payload && payload.victimId,
+        material: 'massline',
+        magnitude: Math.max(1, finiteScore(payload && payload.severity) * 100),
+        tags: ['whip', payload && payload.rating, payload && payload.slung ? 'slung' : 'latched'].filter(Boolean),
+      })),
       // Prompt 03 — release-rated feedback. Classification tiers map to escalating cues; "messy"
       // intentionally has no recipe, so _emitCue suppresses it (missing_recipe) and no
       // presentation:cue is emitted. The releaseScore drives magnitude so adapters can scale.

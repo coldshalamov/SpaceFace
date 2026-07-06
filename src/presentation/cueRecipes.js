@@ -72,6 +72,24 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { cameraTrauma: 0.22, particles: 96, voices: 3, uiPulses: 1 },
     tags: ['critical', 'tether', 'break'],
   }),
+  // Rung 14 — whip-impact feedback (consumes masslineImpacts' rung-13 tether:whipImpact emit).
+  // The payoff crack: the whipped mass slamming a body. Severity rides the cue magnitude so the
+  // flash/sting scale with the hit; rating + latched/slung ride the tags. Feedback is the point —
+  // the optional damage half lives in combat.js behind the whipDamage combat flag.
+  'tether.whip_impact': recipe({
+    importance: 0.8,
+    dedupeWindowTicks: 10,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.whip_impact',
+      vfx: 'vfx.whip_impact',
+      audio: 'audio.whip_impact',
+      ui: 'ui.whip_impact',
+      accessibility: 'accessibility.impact_caption',
+    },
+    budgets: { cameraTrauma: 0.14, particles: 64, lights: 1, voices: 2, uiPulses: 1 },
+    tags: ['critical', 'tether', 'impact'],
+  }),
   // Prompt 03 — release-rated feedback. Classification tiers map to escalating cues; "messy"
   // has no recipe on purpose so the orchestrator suppresses it (missing_recipe) and emits no
   // presentation:cue, leaving messy releases with no premium feedback. Camera trauma lives on the
