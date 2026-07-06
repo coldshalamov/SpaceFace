@@ -12,7 +12,7 @@
 //   Combat effects:  _onFire/muzzle flash (L590) · _onProjectileHit (L635) · _onDamage/shield ripple (L676) · _impactSparks (L746)
 //   Explosions:      _onKilled (L896) · _onDestroyed (L909) · _explode (L920) · _explodeSmall (L1008) · _explodeCapital (L1042)
 //   Mining:          _initMiningBeam (L1072) · _onMiningStart/Stop (L1112/1128) · _updateMiningBeam (L1136) · _onMiningTick (L1607) · _onMiningYield (L1649) · _initSeamMarkers (L1397)
-//   Tether:          _initTetherCable (L1202) · _updateTetherCable (L1278) · _onTetherSnap (L1461) · _onTetherLatch (L1483)
+//   Tether:          _initTetherCable (L1202) · _updateTetherCable (L1278) · _onTetherSnap (L1461) · _onTetherLatch (L1483) · _initArcPreview/_updateArcPreview (rung 12, after _updateTetherCable)
 //   Cruise/jump:     _onCruiseCharging/Engaged/Dropped (L1504/1520/1537) · _onJumpStart/Arrive (L1786/1793) · _warpStreak (L1799)
 //   Engine trails:   _onThrust (L1670) · _emitEngineTrail (L1849) · _emitReverseNozzleTrail (L1691) · _onBoost (L1729) · _onDash (L1761)
 //   AI cues:         _onAiTelegraph (L1575) · _onAiFlee (L1583) · _onAiFormationBroken (L1598)
@@ -221,6 +221,7 @@ export const vfx = {
     this._initRibbonTrails();
     this._initMiningBeam();
     this._initTetherCable();
+    this._initArcPreview();
     this._initSeamMarkers();
     // ---- GPU point cloud ----
     const geo = new THREE.BufferGeometry();
@@ -1478,6 +1479,98 @@ export const vfx = {
     this._tetherColorWhite = new THREE.Color('#eaffff');
   },
 
+  // -------------------------------------------------------------------------
+  // Arc preview (massline rung 12): a faint dashed ribbon ahead of the ship showing the PREDICTED
+  // sling exit — direction from telemetry.arcPreview.exitAngle, length scaled to peakSpeed,
+  // shown only while tethered + the preview reads viable (masslineTelemetry rung 11 owns the
+  // data; we only read it). Pure cosmetics — never touches sim state; Math.random shimmer is
+  // fine here (VFX is exempt from the determinism rule).
+  // -------------------------------------------------------------------------
+  _arcPreview: null,
+  _initArcPreview() {
+    if (!this._scene) return;
+    const DASHES = 9;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(DASHES * 4 * 3);
+    const posAttr = new THREE.BufferAttribute(pos, 3);
+    posAttr.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', posAttr);
+    const idx = [];
+    for (let i = 0; i < DASHES; i++) {
+      const a = i * 4;
+      idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+    geo.setIndex(idx);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#7ce4ff'),
+      transparent: true, opacity: 0.22,
+      depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 8;   // under the cable/bands so the live line stays the hero read
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._arcPreview = { mesh, DASHES, fade: 0, t: 0 };
+  },
+
+  _updateArcPreview(dt) {
+    const arc = this._arcPreview;
+    if (!arc) return;
+    arc.t += dt;
+    const tether = this.state.player && this.state.player.tether;
+    const telemetry = this.state.player && this.state.player.masslineTelemetry;
+    const preview = telemetry && telemetry.arcPreview;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
+    const show = !!(tether && tether.active && preview && preview.viable && player && player.alive);
+
+    // Opacity envelope tied to viability: snap in while the sling would convert, quick fade when
+    // it stops reading viable (or the line drops).
+    arc.fade = show ? Math.min(1, arc.fade + dt * 6) : Math.max(0, arc.fade - dt * 6);
+    if (arc.fade <= 0.01 || !player || !preview) {
+      if (arc.mesh.visible) arc.mesh.visible = false;
+      return;
+    }
+
+    // Ray from just off the hull along the predicted exit vector; length scales with the
+    // convertible speed so a hotter swing draws a longer throw.
+    const ux = Math.cos(preview.exitAngle), uz = Math.sin(preview.exitAngle);
+    const px = -uz, pz = ux;   // ray perpendicular
+    const startR = (player.radius || 6) + 2;
+    const sx = player.pos.x + ux * startR, sz = player.pos.z + uz * startR;
+    const len = Math.max(24, Math.min(130, (preview.peakSpeed || 0) * 0.8));
+
+    const DASHES = arc.DASHES;
+    const dashLen = (len / DASHES) * 0.55;      // 55% dash, 45% gap
+    const posArr = arc.mesh.geometry.attributes.position.array;
+    for (let i = 0; i < DASHES; i++) {
+      const t0 = (i / DASHES) * len;
+      const tip = 1 - (i / DASHES) * 0.55;      // taper toward the far end
+      const w = 0.55 * tip;
+      const x0 = sx + ux * t0, z0 = sz + uz * t0;
+      const x1 = sx + ux * (t0 + dashLen), z1 = sz + uz * (t0 + dashLen);
+      const o = i * 12;
+      posArr[o] = x0 + px * w; posArr[o + 1] = 1.45; posArr[o + 2] = z0 + pz * w;
+      posArr[o + 3] = x0 - px * w; posArr[o + 4] = 1.45; posArr[o + 5] = z0 - pz * w;
+      posArr[o + 6] = x1 + px * w; posArr[o + 7] = 1.45; posArr[o + 8] = z1 + pz * w;
+      posArr[o + 9] = x1 - px * w; posArr[o + 10] = 1.45; posArr[o + 11] = z1 - pz * w;
+    }
+    arc.mesh.geometry.attributes.position.needsUpdate = true;
+    // Faint by design (a hint, not a HUD element): gentle pulse + a whisper of dash shimmer.
+    arc.mesh.material.opacity = (0.16 + 0.08 * Math.sin(arc.t * 7) + Math.random() * 0.03) * arc.fade;
+    arc.mesh.visible = true;
+  },
+
+  _arcPreviewActive() {
+    const arc = this._arcPreview;
+    if (!arc) return false;
+    if (arc.fade > 0.001) return true;
+    const tether = this.state.player && this.state.player.tether;
+    const preview = this.state.player && this.state.player.masslineTelemetry
+      && this.state.player.masslineTelemetry.arcPreview;
+    return !!(tether && tether.active && preview && preview.viable);
+  },
+
   _updateTetherCable(dt) {
     const cable = this._tetherCable;
     if (!cable) return;
@@ -2262,6 +2355,12 @@ export const vfx = {
       sub.tetherCable = 1;
     } else {
       sub.tetherCable = 0;
+    }
+    if (this._arcPreviewActive()) {
+      this._updateArcPreview(dt);
+      sub.arcPreview = 1;
+    } else {
+      sub.arcPreview = 0;
     }
     if (this._seamMarkersRelevant()) {
       const seamWake = !this._seamMarkersWereRelevant;

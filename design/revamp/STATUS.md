@@ -140,3 +140,31 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   lastTension/breakTension). Adjacent green: `check:massline:{telemetry,release,release-feedback}`,
   `check:sg02:{tether,tether-break}`. `check:sim:compare` failure identical to `_BASELINE.md`
   (47-A projectile-collision precondition only).
+### T3-09..12 "make the swing readable" loop (rungs 09-12) — DONE (2026-07-06)
+- **09 threat events**: NEW observer `src/systems/masslineThreats.js`, registered immediately after
+  `masslineTelemetry` (registry SYSTEMS + UPDATE_ORDER + rationale comment). Reads settled tether
+  mirror + telemetry + entities; writes ONLY `state.player.masslineThreats`; single documented emit
+  `massline:threat` {kind, targetId, severity, tick, time}. Kinds: `line-near-break` (strain ≥ 0.75
+  overload floor, once/latch), `hostile-on-arc` (scanner.isHostileToPlayer + closing ≥ 12.5 wu/s +
+  genuine swing ≥ 25 wu/s, once/hostile/latch), `collision-course` (ballistic first-contact ≤ 1.5 s,
+  once/obstacle/latch). `check:massline:threats` PASS (9 cases); 4 break-controls each failed red.
+- **10 threat feedback**: `presentationOrchestrator` consumes `massline:threat` → `massline.threat`
+  cue (severity→magnitude, kind in tags; sibling of tether.near_break); recipe in `cueRecipes.js`;
+  adapters fan-out audio sting + ONE non-diegetic HUD warn ('SWING THREAT') + caption.
+  `check:massline:threat-feedback` PASS (5 cases incl. end-to-end from the real rung-09 observer +
+  dedupe suppression); 3 break-controls red.
+- **11 arc-preview data**: `telemetry.arcPreview` {peakSpeed = targetSpeed+|relVel| (≥ current speed),
+  exitAngle, exitSpeed, timeToWhip (taut-solve, null > 8 s), viable (loaded phase + tangentQuality
+  ≥ 0.5 + exit ≥ 25 wu/s + anchor-clearance ray test)} recomputed per active tick, cleared inactive;
+  in FALLBACK/freshRuntime/writeInactive. `check:massline:arc-data` PASS (7 cases incl. isolated
+  anchor-clearance A/B); 4 break-controls red.
+- **12 arc-preview render**: `vfx.js` `_initArcPreview`/`_updateArcPreview` (tether-cable siblings,
+  gated by `_arcPreviewActive` in update()): faint dashed additive ribbon along the exit vector,
+  length ∝ peakSpeed (24-130 wu), visible only tethered+viable, fade envelope, cosmetic-only
+  (Math.random shimmer — VFX exempt). `check:massline:arc-render` PASS (5 cases); vfx
+  trail-bind/frame-sleep/sg08 green; 3 break-controls red.
+- No-regression: all 12 `check:massline:*` green after each rung; `check-tether-gameplay` green;
+  `check:sim:compare` fails ONLY on the documented 47-A projectile-collision precondition —
+  A/B-verified byte-identical with masslineThreats unregistered. Pre-existing (not ours):
+  `check-phase0-slice-contract` red on `stationHub.js:1226` Math.random site (committed 7/5 state,
+  zero working diff). Next: **T3-13 (whip-impact detect) — Chunk B, whip+impulse**.
