@@ -71,7 +71,7 @@
 | T3-13 | 13 | whip-impact detect | `masslineImpacts.js` (new), `registry.js` | DONE 2026-07-06 | — | `npm run check:massline:whip-impact` PASS | T3-12 | T3-14 |
 | T3-14 | 14 | whip feedback (+opt damage) | presentation + `combat.js` | DONE 2026-07-06 | — | `npm run check:massline:whip-feedback` PASS | T3-13 | T3-15 |
 | T3-15 | 15 | impulse authority helper | `impulseCharges.js` | DONE 2026-07-06 | — | `npm run check:impulse:authority` PASS | T3-14 | T3-16 |
-| T3-16 | 16 | impulse+massline combos | `impulseCharges.js` | IN-FLIGHT | — | `check:impulse:massline-combos` | T3-15 | T3-17 |
+| T3-16 | 16 | impulse+massline combos | `impulseCharges.js` | DONE 2026-07-06 | — | `npm run check:impulse:massline-combos` PASS | T3-15 | T3-17 |
 | T3-17 | 17 | mining bulk-haul guidance | `mining.js`, HUD | NEXT | — | `check:mining:bulk-guidance` | T3-16 | T3-18 |
 | T3-18 | 18 | 47-A spindle stabilization | `47aLiveScene.js` | NEXT | — | `check:47a:spindle` | T3-17 | T3-19 |
 | T3-19 | 19 | 47-A scavenger line-threat | `47aLiveScene.js`, `enemies.js` | NEXT | — | `check:47a:scavenger-threat` | T3-18 | T3-20 |

@@ -9,7 +9,7 @@
 // as combat/actions.js + combat/damage.js) — never a direct entity.vel write (ARCHITECTURE §3:
 // under rapier-dynamic the backend owns body state; direct mutation desyncs the rigid body).
 // Damage via combat routeDamage / scalarHitToDamagePacket.
-import { IMPULSE_CHARGES } from '../data/impulseCharges.js';
+import { IMPULSE_CHARGES, MASSLINE_COMBOS } from '../data/impulseCharges.js';
 import { removeCargo } from './cargo.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
@@ -218,18 +218,75 @@ export const impulseCharges = {
     if (!actions?.chargeDetonate) return;
     actions.chargeDetonate = false;
 
+    let detonated = 0;
     for (const charge of state.entityList) {
       if (!charge.alive || charge.type !== 'charge') continue;
       const d = charge.data;
       if (!d || !d.armed) continue;
       this._detonateOne(charge, d, player.id, state);
+      detonated += 1;
     }
+
+    // Rung 16 — tailPop: cut + detonate on the same tick while tethered is the escape move. We
+    // only READ actions.tetherCut (tetherGameplay runs after us in UPDATE_ORDER and performs the
+    // actual cut from the same press); the burst is a backward player impulse along the line,
+    // away from the anchor, through the physics authority like every other impulse here.
+    if (detonated > 0 && actions.tetherCut) {
+      const tether = state.player && state.player.tether;
+      if (tether && tether.active && tether.targetId != null) {
+        const anchor = state.entities.get(tether.targetId);
+        let dirX, dirZ;
+        if (anchor && anchor.pos) {
+          const dx = player.pos.x - anchor.pos.x, dz = player.pos.z - anchor.pos.z;
+          const len = Math.hypot(dx, dz);
+          if (len > 1e-4) { dirX = dx / len; dirZ = dz / len; }
+        }
+        if (dirX == null) { // anchor gone this tick: burst straight astern instead
+          dirX = -Math.cos(player.rot || 0);
+          dirZ = -Math.sin(player.rot || 0);
+        }
+        const magnitude = MASSLINE_COMBOS.tailPop.impulse;
+        this._applyBlastImpulse(player, dirX * magnitude, dirZ * magnitude, state);
+        this.bus.emit('charge:combo', {
+          combo: 'tailPop',
+          ownerId: player.id,
+          targetId: tether.targetId,
+          impulse: magnitude,
+        });
+      }
+    }
+  },
+
+  // Rung 16 — per-charge combo detection at detonation time. Reads the massline mirrors
+  // observer-style (state.player.tether from tetherGameplay, state.player.masslineTelemetry from
+  // masslineTelemetry) — never mutates them. Player charges only: the massline is the player's.
+  // anchorKick outranks slingBomb for the same charge (the channeled kick IS the amplified form).
+  _detectCombo(d, ownerId, state) {
+    if (ownerId !== state.playerId) return null;
+    const playerState = state.player;
+    const tether = playerState && playerState.tether;
+    if (tether && tether.active && tether.targetId != null && d.hostId === tether.targetId) {
+      return { combo: 'anchorKick', anchorId: tether.targetId, def: MASSLINE_COMBOS.anchorKick };
+    }
+    const telemetry = playerState && playerState.masslineTelemetry;
+    if (telemetry && telemetry.active
+      && Math.abs(telemetry.tangentialSpeed) >= MASSLINE_COMBOS.slingBomb.minTangentialSpeed) {
+      return { combo: 'slingBomb', anchorId: null, def: MASSLINE_COMBOS.slingBomb };
+    }
+    return null;
   },
 
   _detonateOne(charge, d, ownerId, state) {
     const def = chargeDef(d.chargeId);
     const pos = { x: charge.pos.x, z: charge.pos.z };
     const hits = [];
+
+    // Rung 16 — massline combo for THIS charge. slingBomb amplifies the whole blast; anchorKick
+    // channels the anchor's share of it along the tether line instead of the radial direction.
+    const combo = this._detectCombo(d, ownerId, state);
+    const impulseMult = combo && combo.combo === 'slingBomb' ? combo.def.impulseMult : 1;
+    const damageMult = combo && combo.combo === 'slingBomb' ? combo.def.damageMult : 1;
+    const player = state.entities.get(state.playerId);
 
     const candidates = stickCandidatesNear(state, pos, def.radius, this._blastScratch);
     for (const ent of candidates) {
@@ -246,16 +303,28 @@ export const impulseCharges = {
         dirX = dx / dist;
         dirZ = dz / dist;
       }
+      let magnitude = def.impulse * falloff * impulseMult;
+      // anchorKick: the line channels the anchor's blast share — direction becomes the tether
+      // line (player → anchor), amplified. Everything else in the radius still gets the radial.
+      if (combo && combo.combo === 'anchorKick' && ent.id === combo.anchorId && player && player.pos) {
+        const lx = ent.pos.x - player.pos.x, lz = ent.pos.z - player.pos.z;
+        const len = Math.hypot(lx, lz);
+        if (len > 1e-4) {
+          dirX = lx / len;
+          dirZ = lz / len;
+          magnitude = def.impulse * falloff * combo.def.impulseMult;
+        }
+      }
       // Rung 15: the blast is an impulse REQUEST to the physics authority, applied at the center
       // of mass. Magnitude def.impulse × falloff is the old per-entity Δv × mass — same physics,
       // different owner of the mutation. A rejected request (no rigid body / no port) is skipped,
       // never forced with a direct vel write.
-      this._applyBlastImpulse(ent, dirX * def.impulse * falloff, dirZ * def.impulse * falloff, state);
+      this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state);
       hits.push(ent.id);
 
       if (BLAST_DAMAGE_TYPES.has(ent.type) && def.damage > 0) {
         const packet = scalarHitToDamagePacket({
-          damage: def.damage * falloff,
+          damage: def.damage * falloff * damageMult,
           damageType: 'explosive',
           pos,
           source: { kind: 'impulse_charge', chargeId: d.chargeId },
@@ -271,6 +340,15 @@ export const impulseCharges = {
     }
 
     charge.alive = false;
+    if (combo) {
+      this.bus.emit('charge:combo', {
+        combo: combo.combo,
+        chargeId: charge.id,
+        ownerId,
+        anchorId: combo.anchorId,
+        pos,
+      });
+    }
     this.bus.emit('charge:detonated', { pos, hits });
     this.bus.emit('presentation:vfxCue', {
       id: 'combat.explosion.small',
