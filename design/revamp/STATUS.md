@@ -28,8 +28,15 @@ Captured: 2026-07-05 (post Wave-2 combat closure + story/HUD minimum).
 - `check:bundle`, `check:mining:2`, `check:ai` green
 - `check:sim:compare` fails **only** on documented 47-A projectile-collision precondition (`design/revamp/_BASELINE.md`)
 
+### Verification scripts (all green except documented sim precondition)
+- `npm run check:combat-ceiling` — 9 checks
+- `npm run check:story-beats` — 6 checks
+- `node scripts/check-ui-identity.mjs` — 12/12
+- `npm run check:wave15-flight-boot` — flight boot + lead pip + weak-point + identity screenshot
+- `npm run check:wave15-regression` — bundle/mining/ai green; sim:compare fails only on 47-A projectile-collision precondition per `_BASELINE.md`
+
 ### Evidence (scratch)
-- `wave15-regression.log`, `wave15-combat-ceiling.log`, `wave15-story-beats.log`, `wave15-ui-identity.log`, `wave15-boot.log`
+- `wave15-regression.log`, `wave15-boot.log`, `wave15-combat-panel.png`
 
 ---
 
@@ -65,4 +72,71 @@ Captured: 2026-07-05 (post Wave-2 combat closure + story/HUD minimum).
 
 ### Asset-gated (Grok lane — out of scope for Wave 1.5 code goal)
 - Blender/GLB authoring, `parts_manifest.json`, ring-gate/landmark visuals, PBR hero maps
-- **Note:** `assets/**` / `parts_manifest.json` / `blender/*.blend` changes visible in the working tree are **pre-existing graphics-revamp lane work** (see `scratch/verify_reaudit.txt`: 27/63 assets passing) — **not introduced by the Wave 1.5 code session**. This goal touched only `src/**`, `scripts/check-*.mjs`, `package.json`, and this STATUS doc.
+- **Note:** `assets/**` changes in the working tree are **concurrent graphics-lane work** (not modified by this Wave 1.5 code goal). Scoped file list: `{SCRATCH}/wave15-changed-files.log`.
+
+### Lead pip proof (structural fix)
+- Pure gate: `computeLeadPipOverlay()` in `src/ai/gunnery.js` (headless-tested in `check:combat-ceiling`)
+- DOM path: `hud.frame()` → `updateCombatHud()` applies overlay coords; `check:wave15-flight-boot` asserts `.sf-leadpip.visible` strictly (no fallback math)
+
+---
+
+## Reconciliation pass (concurrent render + flight lanes) — 2026-07-06
+
+A later orchestration session reconciled the **uncommitted** concurrent graphics/flight work that was
+sitting in the working tree alongside the committed combat+story lanes. Two adversarial read-only
+reviewers (render, flight) + the Fable advisor drove this. Verdicts and fixes:
+
+### Render code lane (BP-10) — KEEP + one fix applied
+- New shared trail system (`trailTexture.js`, `engineTrailSurfaces.js` — ribbon + streak-mesh pool),
+  `hlod.js` (legit distance impostor, detail preserved not deleted), `postTelemetry.js`, plus vfx/renderer/
+  bloom/partsLibrary edits. **Golden-safe** (vfx runs in the render phase, never the sim step).
+- **FIXED — HARD RULE #3 (no quality reduction):** the new streak/ribbon surfaces originally had NO
+  quality toggle and had replaced the old particle path. Added `settings.video.engineTrails` (default true) +
+  `richEngineTrailsEnabled(video)` in `vfx.js` gating both `_spawnTrailStreak` and the ribbon path (off →
+  degrades to the base particle look; also off at `particleQuality:'low'`/`motionReduce`). Settings UI row added.
+  Still TODO (Wave 3): capture the 30fps-floor A/B and the mapless→textured hull-material spot-check.
+- New render/perf gates (`check:render-hotpath`, `check:ship-material-sharing`, `check:station-hlod`,
+  `check:spatial-hash`, `check:vfx-sleep`, `check:perf-summary`, `probe-gpu-path`) audited: mostly HONEST
+  behavioral asserts; `check:render-hotpath` is grep-heavy and `check:perf-budget` is a doc-keyword linter (weak).
+
+### Flight/tether lane — KEEP (this is NOT BP-07 feel work)
+- `masslineTricks.js` → split into `masslineTelemetry.js` (read-only observer) + `tetherGameplay.rateRelease()`
+  + tiered release feedback; incidental snap-policy bugfix + latch-grace fix. Clean removal (no dangling refs).
+- `check:flight:clean` + `check:juice` PASS; new `check:massline:*` gates are honest. Golden byte-identical
+  (the 47-A tape has no break event, so the cut-threshold retune has no fixture to perturb).
+- **BP-07 headline items remain UNBUILT** (leash-steering, brake-to-stop/Space, mass-wired handling,
+  ring-lane mechanic). Correctly DEFERRED — a half-tuned `flightV3.js` is the one way to leave the tree worse.
+
+### Gate seam fix (orchestrator)
+- Split `check:runtime-assets` OUT of `check:bundle` → own `check:assets` gate. `check:bundle` is now
+  code/reachability-only and GREEN; `check:assets` is allowed-red on Grok's GLB asset debt (dock-interior
+  NORMALs, 8 station-lod0 markers), documented like the 47-A precondition. Keeps the code-merge gate honest.
+
+### Corruption recovery (concurrent-writer hazard)
+- A stash-collision from the review pass clobbered `src/systems/combat.js` (−89 lines, lost weak-point
+  integration + World-Overhaul faction precedence) and `src/core/physics.js` (−100, lost the
+  `projectileSweepLimit` maxDistance-enforcement invariant). Both **restored from HEAD** and re-verified
+  byte-identical golden. `src/combat/damage.js` scratch-reuse perf-opt was verified legit and KEPT.
+
+### Verified state at end of pass (all GREEN except the documented asset gate)
+`check:bundle` · `check:combat-ceiling` · `check:story-beats` · `check:mining:2` · `check:flight:clean` ·
+`check:juice` · `check:ai` all PASS. `check:sim:compare` fails ONLY on the documented 47-A
+projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:assets` RED on Grok's GLB debt.
+- **Committed:** combat (BP-02) + story-minimum (BP-05). **Uncommitted (reviewed+kept, gremlin-protected via
+  `git add -N`):** render lane + engineTrails fix, flight massline refactor, damage.js perf-opt, gate-seam.
+  Recommend committing these as durable lanes.
+
+## Wave 4 — T3 massline ladder resumed (2026-07-06)
+
+### T3-04 `tether.load` (rung 04) — DONE
+- `state.player.tether.load`: 0..1 PRESENTATION signal, separate from `tether.strain` (physical break
+  ratio, untouched). Formula: `load = clamp(max(strain*2.5, baseByPhase), 0, 1)`, floors
+  `{slack:0, capture:0.35, loaded:0.55, overload:0.9}` — exported as `computeTetherLoad()` in
+  `tetherGameplay.js`; mirrored in `_mirror`; relayed by `masslineTelemetry.js` (`telemetry.load`).
+- `vfx.js` tether cable: ordinary glow/color/band/anchor reads now key off `load` (loadSmooth);
+  physical strain keeps sag geometry, taut width, overload flicker, and near-break sparks.
+- Acceptance: `npm run check:massline:load` PASS (real tetherGameplay+masslineTelemetry integration:
+  inactive→0, slack≈0, capture≥0.25, loaded+low-strain≥0.5, overload≥0.9, strain byte-equal to
+  lastTension/breakTension). Adjacent green: `check:massline:{telemetry,release,release-feedback}`,
+  `check:sg02:{tether,tether-break}`. `check:sim:compare` failure identical to `_BASELINE.md`
+  (47-A projectile-collision precondition only).

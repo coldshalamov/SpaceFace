@@ -19,6 +19,12 @@ const AIM_RAY_GRACE_MAX = 28;
 const MIN_AIM_RAY_LENGTH = 18;
 const SLINGSHOT_STATE_S = 1.0;
 const SLINGSHOT_SPEED_MULT = 1.4;
+// Presentation load (massline rung 04): phase floors so the cable reads "working" the moment the
+// phase says so, even while the physical break ratio (strain) is still low. strain*2.5 lets real
+// tension overtake the floor well before break. tether.load is presentation-only — tether.strain
+// stays the untouched physical break ratio (near-break sparks, break threshold).
+const LOAD_STRAIN_GAIN = 2.5;
+const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55, overload: 0.9 });
 // Pickups are valid massline targets now; attachment liveness sweeps cut the line if a pickup is
 // collected/despawned, so the old invisible-anchor failure mode stays closed.
 const ATTACHABLE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone', 'station', 'payload', 'pickup']);
@@ -38,6 +44,7 @@ export const tetherGameplay = {
     this._noRelatchUntil = -Infinity;
     this._pendingCut = null;
     this._ignoreReleaseCutUntilReelIdle = false;
+    this._latchGraceUntil = 0;
     this._reelStrength = 0;
     this._resetPhaseMirror();
   },
@@ -58,8 +65,11 @@ export const tetherGameplay = {
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
     const reelHeld = !!(actions?.reelDelta < 0);
 
-    if (this._ignoreReleaseCutUntilReelIdle && !reelHeld) {
-      this._ignoreReleaseCutUntilReelIdle = false;
+    // After latch, ignore tap-to-cut until the player has held to reel or a short grace expires —
+    // otherwise latch → release → press-again to winch reads as a cut on release.
+    if (this._ignoreReleaseCutUntilReelIdle) {
+      if (reelHeld) this._ignoreReleaseCutUntilReelIdle = false;
+      else if (this._latchGraceUntil > 0 && now >= this._latchGraceUntil) this._ignoreReleaseCutUntilReelIdle = false;
     }
 
     if (this._active && !this._pendingCut && !this._ignoreReleaseCutUntilReelIdle && actions?.tetherCut) {
@@ -84,6 +94,7 @@ export const tetherGameplay = {
           if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
           this.bus.emit('tether:cut', cutPayload);
           this.bus.emit('tether:released', { targetId });
+          this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
         }
         this._active = null;
         this._pendingCut = null;
@@ -92,7 +103,7 @@ export const tetherGameplay = {
         this._mirror(state, null, 0);
         return;
       }
-      // Holding G is reel intent — cancel the pending cut once the tap window expires so release
+      // Holding F is reel intent — cancel the pending cut once the tap window expires so release
       // does not cut. Reeling itself is never blocked by pendingCut (see _reelActive below).
       if (reelHeld && heldLongEnough) {
         this._pendingCut = null;
@@ -106,6 +117,7 @@ export const tetherGameplay = {
       if (!target || target.alive === false) {
         attachments.cut(this._active.attachmentId, player.id, 'target_lost');
         this.bus.emit('tether:broke', { targetId: this._active.targetId });
+        this.bus.emit('tether:releaseRated', rateRelease(state, this._active.targetId));
         this._active = null;
         this._pendingCut = null;
         this._ignoreReleaseCutUntilReelIdle = false;
@@ -150,6 +162,7 @@ export const tetherGameplay = {
     this._resetPhaseMirror();
     this._lastStrainT = -Infinity;
     this._ignoreReleaseCutUntilReelIdle = true;
+    this._latchGraceUntil = now + 0.55;
     this.bus.emit('tether:latched', { targetId: target.id, type: TETHER_DEF_ID });
   },
 
@@ -243,8 +256,13 @@ export const tetherGameplay = {
     this._pendingCut = null;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
-    if (reason === 'tether_cut') this.bus.emit('tether:released', { targetId });
-    else this.bus.emit('tether:broke', { targetId });
+    if (reason === 'tether_cut') {
+      this.bus.emit('tether:released', { targetId });
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+    } else {
+      this.bus.emit('tether:broke', { targetId });
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+    }
     this._lastStrainT = -Infinity;
     this._resetPhaseMirror();
   },
@@ -341,6 +359,7 @@ export const tetherGameplay = {
   _resetGestureState() {
     this._pendingCut = null;
     this._ignoreReleaseCutUntilReelIdle = false;
+    this._latchGraceUntil = 0;
   },
 
   _tickSlingshotState(state, dt) {
@@ -353,7 +372,7 @@ export const tetherGameplay = {
 
   _grantSlingshotState(state, seconds) {
     const player = state.player || (state.player = {});
-    const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, attachmentId: null, restLength: 0, phase: 'slack' });
+    const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, load: 0, attachmentId: null, restLength: 0, phase: 'slack' });
     t.slingshotT = Math.max(finite(t.slingshotT, 0), positive(seconds, SLINGSHOT_STATE_S));
     t.slingshot = t.slingshotT > 0;
   },
@@ -376,12 +395,13 @@ export const tetherGameplay = {
   // real slack (restLength - distance) instead of guessing from strain.
   _mirror(state, targetId, strain, restLength = 0, phase = 'slack', reelHeld = false) {
     const player = state.player || (state.player = {});
-    const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, attachmentId: null, restLength: 0, phase: 'slack' });
+    const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, load: 0, attachmentId: null, restLength: 0, phase: 'slack' });
     t.active = targetId != null;
     t.targetId = targetId;
     t.strain = strain || 0;
     t.restLength = restLength || 0;
     t.phase = t.active ? normalizePhase(phase) : 'slack';
+    t.load = t.active ? computeTetherLoad(t.phase, t.strain) : 0;
     t.attachmentId = this._active ? this._active.attachmentId : null;
     t.reeling = !!(t.active && reelHeld);
     t.reelStrength = t.active ? finite(this._reelStrength, 0) : 0;
@@ -418,6 +438,78 @@ function attachmentTelemetry(helpers, attachment, state) {
 function normalizePhase(value) {
   if (value === 'capture' || value === 'loaded' || value === 'overload') return value;
   return 'slack';
+}
+
+// Presentation load (rung 04): 0..1 "how worked is the line" for HUD/VFX ordinary glow.
+// load = clamp(max(strain * LOAD_STRAIN_GAIN, LOAD_BASE_BY_PHASE[phase]), 0, 1)
+// Guarantees: inactive/slack ≈ 0 (no floor, strain ~0), capture ≥ 0.35 the moment the line goes
+// taut, loaded ≥ 0.55 even at low strain, overload ≥ 0.9. Never mutates strain.
+export function computeTetherLoad(phase, strain) {
+  const base = LOAD_BASE_BY_PHASE[normalizePhase(phase)] || 0;
+  const s = Number.isFinite(strain) && strain > 0 ? strain : 0;
+  return clamp(Math.max(s * LOAD_STRAIN_GAIN, base), 0, 1);
+}
+
+// Release rating (Prompt 02). Reads state.player.masslineTelemetry, which masslineTelemetry.js
+// writes immediately after tetherGameplay in UPDATE_ORDER. Because telemetry runs after this
+// system, at cut time the subtree reflects the most recent observed tick — exactly what the spec
+// means by "use the current state.player.masslineTelemetry if available." If telemetry is absent
+// (no system ran, fresh state, etc.) we still emit a release rating with classification "messy"
+// and zeroed numeric fields, per spec.
+export function rateRelease(state, targetId) {
+  const telemetry = state && state.player && state.player.masslineTelemetry;
+  if (!telemetry) {
+    return {
+      targetId,
+      classification: 'messy',
+      releaseScore: 0,
+      radialSpeed: 0,
+      tangentialSpeed: 0,
+      angularSpeed: 0,
+      strain: 0,
+      distance: 0,
+      restLength: 0,
+      playerSpeed: 0,
+      maxStrainSinceLatch: 0,
+      maxTangentialSpeedSinceLatch: 0,
+      maxAngularSpeedSinceLatch: 0,
+    };
+  }
+
+  const strain = finite(telemetry.strain, 0);
+  const absTangential = Math.abs(finite(telemetry.tangentialSpeed, 0));
+  const absRadial = Math.abs(finite(telemetry.radialSpeed, 0));
+  const tangentQuality = absTangential / Math.max(absTangential + absRadial, 1e-6);
+  const usefulLoad = clamp01(strain / 0.65);
+  const overloadPenalty = clamp01((strain - 0.85) / 0.35);
+  const releaseScore = clamp01(tangentQuality * usefulLoad * (1 - overloadPenalty));
+
+  let classification;
+  if (releaseScore >= 0.85) classification = 'razor';
+  else if (releaseScore >= 0.65) classification = 'clean';
+  else if (releaseScore >= 0.35) classification = 'good';
+  else classification = 'messy';
+
+  return {
+    targetId,
+    classification,
+    releaseScore,
+    radialSpeed: finite(telemetry.radialSpeed, 0),
+    tangentialSpeed: finite(telemetry.tangentialSpeed, 0),
+    angularSpeed: finite(telemetry.angularSpeed, 0),
+    strain,
+    distance: finite(telemetry.distance, 0),
+    restLength: finite(telemetry.restLength, 0),
+    playerSpeed: finite(telemetry.playerSpeed, 0),
+    maxStrainSinceLatch: finite(telemetry.maxStrainSinceLatch, 0),
+    maxTangentialSpeedSinceLatch: finite(telemetry.maxTangentialSpeedSinceLatch, 0),
+    maxAngularSpeedSinceLatch: finite(telemetry.maxAngularSpeedSinceLatch, 0),
+  };
+}
+
+function clamp01(value) {
+  if (!Number.isFinite(value)) return 0;
+  return value < 0 ? 0 : value > 1 ? 1 : value;
 }
 
 function createPhaseMirror() {

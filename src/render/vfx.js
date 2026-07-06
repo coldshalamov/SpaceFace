@@ -24,6 +24,15 @@
 // ── end index ──
 import * as THREE from 'three';
 import { createEnergyVolume, createMasslineRibbonMaterial, updateEnergyMaterial } from './energy/energyMaterials.js';
+import {
+  buildParticleTrailMaterial,
+  createPrecompileTrailSurfaces,
+  createRibbonTrail,
+  hideTrailStreakMesh,
+  initTrailStreakPool,
+  updateTrailStreakMesh,
+} from './engineTrailSurfaces.js';
+import { isHostileToPlayer } from '../systems/scanner.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 
@@ -34,6 +43,12 @@ export const EVENT_LIGHT_POOL_SIZE = 6;
 export function eventLightPoolSizeFor(video) {
   if (video && (video.motionReduce || video.particleQuality === 'low')) return 0;
   return EVENT_LIGHT_POOL_SIZE;
+}
+
+export function richEngineTrailsEnabled(video) {
+  if (!video || video.engineTrails === false) return false;
+  if (video.particleQuality === 'low' || video.motionReduce) return false;
+  return true;
 }
 
 // Duplicate lightweight external texture loader (same as visualFactory) so VFX can use our generated fx_* and ore assets without extra modules.
@@ -56,6 +71,8 @@ function getExternalTexture(path) {
 // ---- pool caps by particle-quality setting (spec: low/med/high -> 1500/3000/4000) ----
 const PARTICLE_CAP = { low: 1500, med: 3000, medium: 3000, high: 4000 };
 const SPRITE_CAP = 256;
+// Dedicated procedural streak-mesh pool (ShaderMaterial planes) — not the additive sprite pool.
+const TRAIL_STREAK_CAP = 96;
 
 // Sprite "kinds" — drive how a pooled sprite ages (scale/opacity curve).
 const SPR_FLASH = 0;   // punch-out flash (muzzle, impact, explosion core): scale grows, opacity fades
@@ -71,36 +88,48 @@ const TRAIL_NOZZLE_CLEARANCE = 0.35;
 const ENERGY_PLUME_NOZZLE_CLEARANCE = 1.15;
 const ENERGY_PLUME_WIDTH_CLEARANCE = 1.05;
 
-// Additive blend point-shader: size attenuates with distance, color/size lerp by age, fade out.
-const PARTICLE_VERT = `
-  attribute float aSize;
-  attribute vec3 aColor;
-  attribute float aAlpha;
-  varying vec3 vColor;
-  varying float vAlpha;
-  uniform float uScale;
-  void main() {
-    vColor = aColor;
-    vAlpha = aAlpha;
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * mv;
-    gl_PointSize = clamp(aSize * (uScale / max(-mv.z, 1.0)), 1.0, 64.0);
-  }
-`;
-const PARTICLE_FRAG = `
-  precision mediump float;
-  varying vec3 vColor;
-  varying float vAlpha;
-  void main() {
-    vec2 d = gl_PointCoord - vec2(0.5);
-    float r = dot(d, d);
-    // Softer gaseous falloff: wider soft halo that blends when dense instead of hard little balls.
-    // Exponential gives a feathery plasma/gas look with good overlap.
-    float fall = exp(-r * 14.0);
-    if (fall < 0.012) discard;
-    gl_FragColor = vec4(vColor * fall, vAlpha * fall);
-  }
-`;
+// Engine-trail relevance gating (quality-preserving: far/offscreen NPCs emit less; player/target stay full).
+const TRAIL_TIER = Object.freeze({ FULL: 'full', NORMAL: 'normal', REDUCED: 'reduced', SKIP: 'skip' });
+const TRAIL_NORMAL_PLAYER_DIST = 2200;
+const TRAIL_CAMERA_NORMAL_DIST = 1300;
+const TRAIL_SKIP_PLAYER_DIST = 3600;
+const TRAIL_CAMERA_SKIP_DIST = 2800;
+const TRAIL_SCREEN_CHECK_MAX = 8;
+const TRAIL_REDUCED_CADENCE = 3;
+const TRAIL_REDUCED_EMIT_CAP = 18;
+
+// Optional subsystem cadence (Hz) — full-rate when active, slept when inactive.
+const VFX_SEAM_MARKERS_HZ = 20;
+const VFX_RIBBON_TRAILS_HZ = 30;
+const VFX_ENERGY_PLUME_HZ = 30;
+const VFX_SEAM_DRAW_RANGE = 640;
+
+function emptyTrailBudgetDiag() {
+  return {
+    trailCandidates: 0,
+    trailEmittersFull: 0,
+    trailEmittersNormal: 0,
+    trailEmittersReduced: 0,
+    trailEmittersSkipped: 0,
+    trailParticlesSpawned: 0,
+    trailStreaksSpawned: 0,
+    trailSpritesSpawned: 0, // legacy alias mirrored from trailStreaksSpawned for perfRuntime
+  };
+}
+
+function emptyVfxSubsystemDiag() {
+  return {
+    trails: 0,
+    ribbons: 0,
+    miningBeam: 0,
+    tetherCable: 0,
+    seamMarkers: 0,
+    energy: 0,
+    particles: 0,
+    sprites: 0,
+    eventLights: 0,
+  };
+}
 
 export const vfx = {
   name: 'vfx',
@@ -133,6 +162,15 @@ export const vfx = {
     this._presentationParticleCount = 0;
     this._presentationLightCount = 0;
     this._lastPresentationCue = null;
+    this._trailFrameIndex = 0;
+    this._trailBudgetDiag = emptyTrailBudgetDiag();
+    this._trailScreenScratch = new THREE.Vector3();
+    this._vfxSubsystemLast = emptyVfxSubsystemDiag();
+    this._cadenceSeam = 0;
+    this._cadenceRibbon = 0;
+    this._cadenceEnergyPlume = 0;
+    this._seamMarkersWereRelevant = false;
+    this._energyPlumeWasRelevant = false;
 
     // colour scratch objects (reused; no per-event allocation)
     this._c0 = new THREE.Color();
@@ -157,6 +195,10 @@ export const vfx = {
         particlesSpawned: this._presentationParticleCount || 0,
         lightsActivated: this._presentationLightCount || 0,
         last,
+      },
+      trails: this._trailBudgetDiag ? { ...this._trailBudgetDiag } : emptyTrailBudgetDiag(),
+      subsystems: {
+        lastFrame: this._vfxSubsystemLast ? { ...this._vfxSubsystemLast } : emptyVfxSubsystemDiag(),
       },
     };
   },
@@ -190,17 +232,14 @@ export const vfx = {
     geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
     geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
     geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+    const trailAxes = new Float32Array(cap);
+    const trailStretch = new Float32Array(cap);
+    geo.setAttribute('aTrailAxis', new THREE.BufferAttribute(trailAxes, 1));
+    geo.setAttribute('aTrailStretch', new THREE.BufferAttribute(trailStretch, 1));
     geo.setDrawRange(0, 0);
 
-    const mat = new THREE.ShaderMaterial({
-      uniforms: { uScale: { value: 520 } },
-      vertexShader: PARTICLE_VERT,
-      fragmentShader: PARTICLE_FRAG,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      depthTest: true,
-      transparent: true,
-    });
+    const mat = buildParticleTrailMaterial();
+    this._particleMat = mat;
 
     const points = new THREE.Points(geo, mat);
     points.frustumCulled = false; // particles are world-scattered; never cull the whole cloud
@@ -213,6 +252,8 @@ export const vfx = {
     this._pCol = colors;
     this._pSize = sizes;
     this._pAlpha = alphas;
+    this._pTrailAxis = trailAxes;
+    this._pTrailStretch = trailStretch;
 
     // per-particle CPU state (Structure-of-Arrays; index == particle slot)
     this._px = new Float32Array(cap);
@@ -245,6 +286,22 @@ export const vfx = {
     const ringTex = makeRingTexture();
     this._glowTex = tex;
     this._ringTex = ringTex;
+    this._trailStreakPool = initTrailStreakPool(scene, TRAIL_STREAK_CAP);
+    this._ts = [];
+    for (let i = 0; i < TRAIL_STREAK_CAP; i++) {
+      this._ts.push({
+        alive: false, age: 0, life: 1, size0: 1, size1: 1, op0: 1,
+        x: 0, y: 0, z: 0, vx: 0, vz: 0, stretch: 3.2,
+      });
+    }
+    this._tsHead = 0;
+    this._liveTrailStreakCount = 0;
+    this._activeTrailStreaks = new Int32Array(TRAIL_STREAK_CAP);
+    this._activeTrailStreakPos = new Int32Array(TRAIL_STREAK_CAP);
+    this._activeTrailStreakPos.fill(-1);
+    this._freeTrailStreaks = new Int32Array(TRAIL_STREAK_CAP);
+    for (let i = 0; i < TRAIL_STREAK_CAP; i++) this._freeTrailStreaks[i] = TRAIL_STREAK_CAP - 1 - i;
+    this._freeTrailStreakCount = TRAIL_STREAK_CAP;
 
     // Thruster flame sprites use the procedural glow texture (makeGlowTexture above). The
     // assets/fx/*.jpg contact sheets are authoring-only and must not be live-referenced —
@@ -340,7 +397,7 @@ export const vfx = {
   // -------------------------------------------------------------------------
   // Particle / sprite allocation
   // -------------------------------------------------------------------------
-  _spawnParticle(x, z, vx, vz, life, size0, size1, c0, c1, drag, y, vy) {
+  _spawnParticle(x, z, vx, vz, life, size0, size1, c0, c1, drag, y, vy, trailAxis, trailStretch) {
     if (!this._scene) return;
     const cap = this._cap;
     // Prefer an O(1) free stack. Only when every slot is live do we recycle at the cursor.
@@ -356,6 +413,8 @@ export const vfx = {
     this._size0[i] = size0; this._size1[i] = size1;
     this._cr0[i] = c0.r; this._cg0[i] = c0.g; this._cb0[i] = c0.b;
     this._cr1[i] = c1.r; this._cg1[i] = c1.g; this._cb1[i] = c1.b;
+    this._pTrailAxis[i] = Number.isFinite(trailAxis) ? trailAxis : 0;
+    this._pTrailStretch[i] = Number.isFinite(trailStretch) ? trailStretch : 0;
     this._alive[i] = 1;
   },
 
@@ -375,12 +434,7 @@ export const vfx = {
     st.roll = Math.random() * Math.PI * 2;
 
     const spr = this._spritePool[i];
-    // Ring/fresnel kinds use the hollow ring texture; flash/puff use the filled glow. Each slot owns
-    // both stable material variants, so kind changes do not mutate maps or force material updates.
     const wantRing = (kind === SPR_RING || kind === SPR_FRESNEL);
-    // Always use the clean procedural textures. (The generated fx_explosion_small_elements.jpg is a
-    // LABELLED contact-sheet reference, not a usable sprite — using it rendered "CORE FLASH / HIGH /
-    // SMOKE AND SPARKS" text in every explosion. The procedural radial glow reads far better anyway.)
     const wantMaterial = wantRing ? spr.userData.ringMaterial : spr.userData.glowMaterial;
     if (spr.material !== wantMaterial) spr.material = wantMaterial;
     if (!wasAlive) this._activateSprite(i);
@@ -391,6 +445,66 @@ export const vfx = {
     spr.position.set(x, y || 0, z);
     spr.scale.setScalar(size0);
     return st;
+  },
+
+  _spawnTrailStreak(x, y, z, life, size0, size1, op0, color, vx, vz) {
+    if (!richEngineTrailsEnabled(this.state && this.state.settings && this.state.settings.video)) return null;
+    if (!this._scene || !this._trailStreakPool) return null;
+    const n = TRAIL_STREAK_CAP;
+    let i;
+    if (this._freeTrailStreakCount > 0) i = this._freeTrailStreaks[--this._freeTrailStreakCount];
+    else i = this._tsHead;
+    this._tsHead = (i + 1) % n;
+    const st = this._ts[i];
+    const wasAlive = st.alive;
+    st.alive = true;
+    st.age = 0;
+    st.life = life;
+    st.size0 = size0;
+    st.size1 = size1;
+    st.op0 = op0;
+    st.x = x;
+    st.y = y || 0;
+    st.z = z;
+    st.vx = vx || 0;
+    st.vz = vz || 0;
+    st.stretch = 3.2;
+    if (!wasAlive) this._activateTrailStreak(i);
+    const mesh = this._trailStreakPool[i];
+    mesh.material.uniforms.uColor.value.set(color);
+    const scroll = ((this._t || 0) * 0.35) % 1;
+    updateTrailStreakMesh(mesh, {
+      x, y, z, vx: st.vx, vz: st.vz,
+      width: size0 * 0.42,
+      length: size0 * st.stretch,
+      opacity: op0,
+      scroll,
+      time: this._t || 0,
+    });
+    return st;
+  },
+
+  _activateTrailStreak(i) {
+    this._activeTrailStreakPos[i] = this._liveTrailStreakCount;
+    this._activeTrailStreaks[this._liveTrailStreakCount++] = i;
+  },
+
+  _retireTrailStreak(i) {
+    const st = this._ts[i];
+    if (!st || !st.alive) return;
+    st.alive = false;
+    hideTrailStreakMesh(this._trailStreakPool[i]);
+    const pos = this._activeTrailStreakPos[i];
+    if (pos >= 0) {
+      const lastPos = --this._liveTrailStreakCount;
+      const moved = this._activeTrailStreaks[lastPos];
+      if (pos !== lastPos) {
+        this._activeTrailStreaks[pos] = moved;
+        this._activeTrailStreakPos[moved] = pos;
+      }
+      this._activeTrailStreakPos[i] = -1;
+    }
+    this._freeTrailStreaks[this._freeTrailStreakCount++] = i;
   },
 
   _activateParticle(i) {
@@ -1135,6 +1249,10 @@ export const vfx = {
   },
 
   _onMiningStart(p) {
+    if (!this._miningBeam) {
+      if (!this._scene) return;
+      this._initMiningBeam();
+    }
     if (!this._miningBeam) return;
     this._miningBeam.active = true;
     this._miningBeam.t = 0;
@@ -1220,8 +1338,9 @@ export const vfx = {
   // -------------------------------------------------------------------------
   // Tether cable (GDD §4.3): the player-facing read of the massline. A segmented additive ribbon
   // between the ship's NOSE and the latched target: bows with slack, straightens and heats
-  // cyan→amber→red with strain (read from state.player.tether — sim writes, we read), and runs a
-  // decaying traveling wave for the first beat after latch (the "whip"). Cut = quick fade;
+  // cyan→amber→red with tether.load (the presentation signal — sim writes, we read); physical
+  // tether.strain keeps the near-break reads (sag, overload flicker, sparks). Runs a decaying
+  // traveling wave for the first beat after latch (the "whip"). Cut = quick fade;
   // break = spark burst at both ends (tether:broke). Pure cosmetics — never touches sim state.
   // -------------------------------------------------------------------------
   _initTetherCable() {
@@ -1350,6 +1469,7 @@ export const vfx = {
       lastTargetId: null,
       bowSide: 1,
       strainSmooth: 0,
+      loadSmooth: 0,
       reelGlow: 0,
     };
     this._tetherColorCool = new THREE.Color('#39d0ff');
@@ -1400,6 +1520,13 @@ export const vfx = {
     // player's tangential velocity so the cable trails like a real line under centripetal motion.
     const strain = Math.max(0, Math.min(1.5, (tether && tether.strain) || 0));
     cable.strainSmooth += (strain - cable.strainSmooth) * Math.min(1, dt * 8);
+    // Presentation load (rung 04): ordinary glow/color/band reads key off tether.load so a loaded
+    // line glows even at low physical strain. strainSmooth stays the physical read — sag geometry,
+    // overload flicker, and near-break sparks below.
+    const loadRaw = tether && Number.isFinite(tether.load)
+      ? Math.max(0, Math.min(1, tether.load))
+      : Math.min(1, strain);   // saves from before tether.load existed: degrade to the strain read
+    cable.loadSmooth += (loadRaw - cable.loadSmooth) * Math.min(1, dt * 8);
     const rest = (tether && tether.restLength) || 0;
     const slack = Math.max(0, rest - chord);
     const tangential = player.vel ? (player.vel.x * px + player.vel.z * pz) : 0;
@@ -1411,36 +1538,39 @@ export const vfx = {
     const whipEnv = Math.max(0, 1 - whipT / 0.45);
     const whipAmp = whipEnv * whipEnv * Math.min(chord * 0.22, 18);
 
-    // Strain color: cool cyan → amber → hot red. Winch-active reel ramps a separate HDR glow read.
+    // Load color: cool cyan → amber → hot red with presentation load (rung 04) — a loaded line
+    // reads loaded even at low strain. Winch-active reel ramps a separate HDR glow read; the
+    // overload flicker + near-break sparks still key off physical strain.
     const s = Math.min(1, cable.strainSmooth);
+    const l = Math.min(1, cable.loadSmooth);
     const reelTarget = tether && tether.reeling ? Math.max(0, Math.min(1, tether.reelStrength || 0)) : 0;
     cable.reelGlow += (reelTarget - cable.reelGlow) * (1 - Math.exp(-(reelTarget > cable.reelGlow ? 11 : 6) * Math.max(0, dt || 0)));
-    if (s < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, s / 0.55);
-    else this._ctmp.lerpColors(this._tetherColorWarm, this._tetherColorHot, (s - 0.55) / 0.45);
+    if (l < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, l / 0.55);
+    else this._ctmp.lerpColors(this._tetherColorWarm, this._tetherColorHot, (l - 0.55) / 0.45);
     if (cable.reelGlow > 0.01) this._ctmp.lerp(this._tetherColorWhite, cable.reelGlow * 0.42);
     const taut = cable.strainSmooth > 0.7;
     const overload = s > 0.95;
     const ribbonFrame = {
       time: visualTime,
       color: this._ctmp,
-      tension: s,
+      tension: l,
       overload,
       reel: cable.reelGlow,
-      pulseSpeed: 2.8 + s * 1.4 + cable.reelGlow * 4.8,
-      intensity: 4.8 + s * 2.6 + cable.reelGlow * 4.2 + whipEnv * 0.8,
+      pulseSpeed: 2.8 + l * 1.4 + cable.reelGlow * 4.8,
+      intensity: 4.8 + l * 2.6 + cable.reelGlow * 4.2 + whipEnv * 0.8,
       opacity: (taut ? 0.68 : 0.58) * cable.fade,
     };
     updateEnergyMaterial(cable.mesh.material, ribbonFrame);
     updateEnergyMaterial(cable.glow.material, {
       ...ribbonFrame,
       intensity: ribbonFrame.intensity * 0.42,
-      opacity: (0.14 + 0.12 * s + cable.reelGlow * 0.28 + whipEnv * 0.05) * cable.fade,
+      opacity: (0.14 + 0.12 * l + cable.reelGlow * 0.28 + whipEnv * 0.05) * cable.fade,
     });
     cable.band.material.color.copy(this._ctmp);
-    cable.band.material.opacity = (0.12 + 0.22 * s + cable.reelGlow * 0.18 + (tether && tether.phase === 'capture' ? 0.08 : 0)) * cable.fade;
+    cable.band.material.opacity = (0.12 + 0.22 * l + cable.reelGlow * 0.18 + (tether && tether.phase === 'capture' ? 0.08 : 0)) * cable.fade;
 
     const w = (taut ? 0.24 : 0.34);   // taut line reads thinner + hotter
-    const gw = 0.75 + 0.65 * s + whipEnv * 0.25 + cable.reelGlow * 0.42;
+    const gw = 0.75 + 0.65 * l + whipEnv * 0.25 + cable.reelGlow * 0.42;
     const SEG = cable.SEG;
     const corePos = cable.mesh.geometry.attributes.position.array;
     const glowPos = cable.glow.geometry.attributes.position.array;
@@ -1476,7 +1606,7 @@ export const vfx = {
     const ux = dx / chord;
     const uz = dz / chord;
     const bandHalfLen = Math.min(1.25, Math.max(0.45, chord / (SEG * 3.2)));
-    const bandHalfWidth = w * 1.9 + 0.18 + s * 0.18;
+    const bandHalfWidth = w * 1.9 + 0.18 + l * 0.18;
     for (let i = 0; i < cable.BANDS; i++) {
       const t = (i + 1) / (cable.BANDS + 1);
       const arc = Math.sin(Math.PI * t);
@@ -1499,19 +1629,19 @@ export const vfx = {
     cable.anchor.scale.setScalar(anchorScale);
     cable.anchor.rotation.y = visualTime * 1.8;
     cable.anchor.material.color.copy(this._ctmp);
-    cable.anchor.material.opacity = (0.36 + 0.24 * s + whipEnv * 0.2 + cable.reelGlow * 0.34) * cable.fade;
+    cable.anchor.material.opacity = (0.36 + 0.24 * l + whipEnv * 0.2 + cable.reelGlow * 0.34) * cable.fade;
     cable.anchorCore.position.set(bx, 1.64, bz);
     cable.anchorCore.scale.setScalar(Math.max(1.8, anchorScale * 0.42));
     cable.anchorCore.rotation.y = -visualTime * 2.4;
     cable.anchorCore.material.color.copy(this._ctmp);
-    cable.anchorCore.material.opacity = (0.48 + 0.28 * s + whipEnv * 0.2 + cable.reelGlow * 0.42) * cable.fade;
+    cable.anchorCore.material.opacity = (0.48 + 0.28 * l + whipEnv * 0.2 + cable.reelGlow * 0.42) * cable.fade;
     cable.targetHaloActive = isLargeAnchor;
     if (cable.targetHalo) {
       cable.targetHalo.position.set(anchorEnt.pos.x, 1.58, anchorEnt.pos.z);
       cable.targetHalo.scale.setScalar(Math.max(anchorScale * 1.6, tr * 1.08));
       cable.targetHalo.rotation.y = visualTime * 0.65;
       cable.targetHalo.material.color.copy(this._ctmp);
-      cable.targetHalo.material.opacity = isLargeAnchor ? (0.12 + 0.11 * s + whipEnv * 0.08) * cable.fade : 0;
+      cable.targetHalo.material.opacity = isLargeAnchor ? (0.12 + 0.11 * l + whipEnv * 0.08) * cable.fade : 0;
     }
     setTetherCableVisible(cable, true);
 
@@ -1990,9 +2120,11 @@ export const vfx = {
 
   // engine trail emitter — called per ship per frame from update(), throttled by accumulator
   _emitEngineTrail(e, throttle, dt) {
-    if (!this._scene) return;
+    if (!this._scene) return { particles: 0, streaks: 0 };
     const drive = Math.max(0, Math.min(1.35, Number.isFinite(throttle) ? throttle : 0));
-    if (drive <= 0.03) return;
+    if (drive <= 0.03) return { particles: 0, streaks: 0 };
+    let particlesSpawned = 0;
+    let streaksSpawned = 0;
     const col0 = this._engineColor(e);
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const boostBlend = e.flags && e.flags.boosting ? 1 : 0;
@@ -2029,10 +2161,9 @@ export const vfx = {
     const svx = (e.vel && e.vel.x) || 0;
     const svz = (e.vel && e.vel.z) || 0;
 
-    // Higher count, much smaller sizes, lower drag for streaming gaseous trail instead of blobby balls.
-    const pCount = Math.max(2, Math.min(14, Math.floor(2 + drive * 4.0 + boostBlend * 3.5 + cruiseBlend * 4.5 + Math.random() * 1.2)));
+    // Lean point count — procedural streak meshes + axis-aligned trail particles carry the warp-line look.
+    const pCount = Math.max(1, Math.min(5, Math.floor(1 + drive * 2.0 + boostBlend * 1.5 + cruiseBlend * 2.0)));
     const spread = 0.18 + drive * 0.18 + boostBlend * 0.22 + cruiseBlend * 0.14;
-
     for (let pi = 0; pi < pCount; pi++) {
       // outer plume: faction-hot -> dark blue, wider with throttle, jittered backward.
       // Under boost it shifts toward a hot blue-white so the trail reads as the same energy system.
@@ -2049,7 +2180,8 @@ export const vfx = {
       const pvz = svz + Math.sin(a) * sp;
       this._spawnParticle(
         bx + (Math.random() - 0.5) * jitter, bz + (Math.random() - 0.5) * jitter,
-        pvx, pvz, life, sz, 0.0, this._c0, this._c1, 0.38, 0, 0);
+        pvx, pvz, life, sz, 0.0, this._c0, this._c1, 0.38, 0, 0, Math.atan2(pvz, pvx), 1);
+      particlesSpawned++;
     }
 
     // white-hot inner core right at the nozzle — bigger, brighter, gives the trail a visible spine.
@@ -2062,7 +2194,8 @@ export const vfx = {
     const coreSize = 0.5 + drive * 0.55 + boostBlend * 0.48 + cruiseBlend * 0.30;
     const pvx2 = svx + Math.cos(a2) * sp2;
     const pvz2 = svz + Math.sin(a2) * sp2;
-    this._spawnParticle(bx, bz, pvx2, pvz2, 0.22 + drive * 0.10 + boostBlend * 0.14 + cruiseBlend * 0.18, coreSize, 0.0, this._c0, this._c1, 0.55, 0, 0);
+    this._spawnParticle(bx, bz, pvx2, pvz2, 0.22 + drive * 0.10 + boostBlend * 0.14 + cruiseBlend * 0.18, coreSize, 0.0, this._c0, this._c1, 0.55, 0, 0, Math.atan2(pvz2, pvx2), 1);
+    particlesSpawned++;
 
     // AFTERBURNER / CRUISE: when boosting or cruising, add extra bright wide particles.
     if (boostBlend > 0 || cruiseBlend > 0 || drive > 1.05) {
@@ -2075,22 +2208,25 @@ export const vfx = {
       const pvzAb = svz + Math.sin(ab) * absp;
       this._spawnParticle(
         bx + (Math.random() - 0.5) * (1.8 + boostBlend * 1.4 + cruiseBlend * 0.8), bz + (Math.random() - 0.5) * (1.8 + boostBlend * 1.4 + cruiseBlend * 0.8),
-        pvxAb, pvzAb, 0.38 + boostBlend * 0.16 + cruiseBlend * 0.24, 1.6 + drive * 0.55 + boostBlend * 0.8 + cruiseBlend * 0.6, 0.0, this._c0, this._c1, 0.32, 0, 0);
+        pvxAb, pvzAb, 0.38 + boostBlend * 0.16 + cruiseBlend * 0.24, 1.6 + drive * 0.55 + boostBlend * 0.8 + cruiseBlend * 0.6, 0.0, this._c0, this._c1, 0.32, 0, 0, Math.atan2(pvzAb, pvxAb), 1);
+      particlesSpawned++;
     }
 
-    // Soft sprite "gas envelope" layer using the soft glow texture. These larger, low-opacity,
-    // drifting puffs overlap the small point particles (and the HDR energy plume for the player)
-    // producing a continuous, liquidy/gaseous form instead of discrete glowing balls.
-    // Exhaust vel + ship vel means the gas shoots from the nozzle then trails on fast motion.
-    const puffCount = Math.max(1, Math.min(3, Math.floor(1 + drive * 1.6 + (boostBlend + cruiseBlend) * 1.0)));
+    // Procedural streak meshes carry the bulk of the Saeki warp-line trail (shader planes along exhaust axis).
+    // Low-opacity streaks overlap axis-modulated point particles (and the HDR energy plume for the player)
+    // so exhaust reads as a continuous wavy jet instead of discrete glowing balls.
+    const puffCount = Math.max(2, Math.min(7, Math.floor(2 + drive * 3.0 + (boostBlend + cruiseBlend) * 2.2)));
     for (let k = 0; k < puffCount; k++) {
       const pa = baseA + (Math.random() - 0.5) * (0.55 + boostBlend * 0.2);
       const psp = (10 + drive * 16) * (0.85 + boostBlend * 0.4 + cruiseBlend * 0.5);
       const pvxP = svx + Math.cos(pa) * psp;
       const pvzP = svz + Math.sin(pa) * psp;
-      const plife = 0.28 + drive * 0.12 + boostBlend * 0.14;
-      this._spawnSprite(SPR_PUFF, bx, 0, bz, plife, 1.15, 2.9, 0.30, 0.0, col0, pvxP * 0.82, pvzP * 0.82);
+      const plife = 0.32 + drive * 0.16 + boostBlend * 0.18;
+      const streakLen = 2.8 + drive * 2.4 + boostBlend * 1.6;
+      this._spawnTrailStreak(bx, 0, bz, plife, 0.65, streakLen, 0.48, col0, pvxP * 0.82, pvzP * 0.82);
+      streaksSpawned++;
     }
+    return { particles: particlesSpawned, streaks: streaksSpawned };
   },
 
   // -------------------------------------------------------------------------
@@ -2106,16 +2242,158 @@ export const vfx = {
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
+    const trailScroll = (this._t * 0.35) % 1;
+    if (this._particleMat) {
+      if (this._particleMat.uniforms.uTrailScroll) this._particleMat.uniforms.uTrailScroll.value = trailScroll;
+      if (this._particleMat.uniforms.uTrailTime) this._particleMat.uniforms.uTrailTime.value = this._t;
+    }
 
-    this._emitTrails(dt);
-    this._updateRibbonTrails(dt);
-    this._updateMiningBeam(dt);
-    this._updateTetherCable(dt);
-    this._updateSeamMarkers(dt);
-    this._updateEnergy(dt);
-    this._integrateParticles(dt);
-    this._integrateSprites(dt);
-    this._decayEventLights(dt);
+    const sub = this._vfxSubsystemLast;
+    sub.trails = this._emitTrails(dt) ? 1 : 0;
+    sub.ribbons = this._updateRibbonTrails(dt) ? 1 : 0;
+    if (this._miningBeamActive()) {
+      this._updateMiningBeam(dt);
+      sub.miningBeam = 1;
+    } else {
+      sub.miningBeam = 0;
+    }
+    if (this._tetherCableActive()) {
+      this._updateTetherCable(dt);
+      sub.tetherCable = 1;
+    } else {
+      sub.tetherCable = 0;
+    }
+    if (this._seamMarkersRelevant()) {
+      const seamWake = !this._seamMarkersWereRelevant;
+      this._seamMarkersWereRelevant = true;
+      let seamStep = this._consumeCadence('_cadenceSeam', dt, VFX_SEAM_MARKERS_HZ);
+      if (seamWake) {
+        this._cadenceSeam = 0;
+        seamStep = Math.max(seamStep, dt);
+      }
+      if (seamStep > 0) {
+        this._updateSeamMarkers(seamStep);
+        sub.seamMarkers = 1;
+      } else {
+        sub.seamMarkers = 0;
+      }
+    } else {
+      this._seamMarkersWereRelevant = false;
+      this._sleepSeamMarkers();
+      sub.seamMarkers = 0;
+    }
+    sub.energy = this._updateEnergy(dt) ? 1 : 0;
+    if (this._liveCount > 0) {
+      this._integrateParticles(dt);
+      sub.particles = 1;
+    } else {
+      this._integrateParticles(dt);
+      sub.particles = 0;
+    }
+    if (this._liveSpriteCount > 0) {
+      this._integrateSprites(dt);
+      sub.sprites = 1;
+    } else {
+      sub.sprites = 0;
+    }
+    if (this._liveTrailStreakCount > 0) {
+      this._integrateTrailStreaks(dt);
+      sub.trails = 1;
+    }
+    sub.eventLights = this._decayEventLights(dt) ? 1 : 0;
+    this._publishVfxSubsystemDiag();
+  },
+
+  _consumeCadence(field, dt, hz) {
+    const stepTarget = 1 / Math.max(1, hz);
+    let acc = this[field] || 0;
+    acc += dt;
+    if (acc < stepTarget) {
+      this[field] = acc;
+      return 0;
+    }
+    const steps = Math.floor(acc / stepTarget);
+    this[field] = acc - steps * stepTarget;
+    return steps * stepTarget;
+  },
+
+  _miningBeamActive() {
+    return !!(this._miningBeam && this._miningBeam.active);
+  },
+
+  _tetherCableActive() {
+    const cable = this._tetherCable;
+    if (!cable) return false;
+    if (cable.fade > 0.001) return true;
+    const tether = this.state.player && this.state.player.tether;
+    return !!(tether && tether.active);
+  },
+
+  _seamMarkersRelevant() {
+    const state = this.state;
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player()
+      : this._ent(state.playerId);
+    if (!player || !player.pos) return false;
+    const px = player.pos.x || 0;
+    const pz = player.pos.z || 0;
+    const range2 = VFX_SEAM_DRAW_RANGE * VFX_SEAM_DRAW_RANGE;
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'asteroid') continue;
+      const seams = e.data && e.data.seams;
+      if (!seams || !seams.length) continue;
+      const dx = e.pos.x - px;
+      const dz = e.pos.z - pz;
+      if (dx * dx + dz * dz <= range2) return true;
+    }
+    return false;
+  },
+
+  _sleepSeamMarkers() {
+    const sm = this._seamMarkers;
+    if (sm && sm.mesh && sm.mesh.count) sm.mesh.count = 0;
+  },
+
+  _energyMaterialsEnabled() {
+    const video = this.state.settings && this.state.settings.video;
+    return !!(video && video.energyMaterials && video.bloom !== false);
+  },
+
+  _energyPlumeRelevant() {
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.alive) return false;
+    const energy = this._energy;
+    if (energy && (energy.plumeDrive > 0.02 || energy.boostBlend > 0.02)) return true;
+    const driveInfo = this._engineDriveFor(player);
+    return driveInfo.drive > 0.03 || driveInfo.boost > 0;
+  },
+
+  _energyMasslineRelevant() {
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.alive) return false;
+    const attachments = this.state.combat
+      && this.state.combat.attachments
+      && this.state.combat.attachments.byId;
+    if (!attachments) return false;
+    for (const key in attachments) {
+      const a = attachments[key];
+      if (!a || a.state !== 'active') continue;
+      if (a.ownerId === player.id && this._tetherCable) continue;
+      if (a.ownerId !== player.id && a.targetId !== player.id) continue;
+      const otherId = a.ownerId === player.id ? a.targetId : a.ownerId;
+      const other = this.state.entities.get(otherId);
+      if (other && other.alive) return true;
+    }
+    return false;
+  },
+
+  _publishVfxSubsystemDiag() {
+    const perf = this.state.perfRuntime;
+    if (perf && typeof perf.recordVfxSubsystems === 'function') {
+      perf.recordVfxSubsystems(this._vfxSubsystemLast);
+    }
   },
 
   // (defensive) only used if pools attached lazily; avoids double-subscription
@@ -2130,13 +2408,46 @@ export const vfx = {
   // only reads correctly when the bloom composite tone-maps it). Purely cosmetic — never sim state.
   // -------------------------------------------------------------------------
   _updateEnergy(dt) {
-    const video = this.state.settings && this.state.settings.video;
-    const enabled = !!(video && video.energyMaterials && video.bloom !== false);
-    if (!enabled) { this._disposeEnergy(); return; }
+    if (!this._energyMaterialsEnabled()) {
+      this._disposeEnergy();
+      return false;
+    }
+    const plumeRelevant = this._energyPlumeRelevant();
+    const masslineRelevant = this._energyMasslineRelevant();
+    if (!plumeRelevant && !masslineRelevant) {
+      if (this._energy) {
+        this._hideEnergyPlumes(0);
+        if (this._energy.ribbon) this._energy.ribbon.visible = false;
+      }
+      return false;
+    }
     if (!this._energy) this._initEnergy();
-    if (!this._energy) return;
-    this._updateEnergyPlume(dt);
-    this._updateEnergyMassline(dt);
+    if (!this._energy) return false;
+    let active = false;
+    if (plumeRelevant) {
+      const plumeWake = !this._energyPlumeWasRelevant;
+      this._energyPlumeWasRelevant = true;
+      let plumeStep = this._consumeCadence('_cadenceEnergyPlume', dt, VFX_ENERGY_PLUME_HZ);
+      if (plumeWake) {
+        this._cadenceEnergyPlume = 0;
+        plumeStep = Math.max(plumeStep, dt);
+      }
+      if (plumeStep > 0) {
+        this._updateEnergyPlume(plumeStep);
+        active = true;
+      }
+    } else {
+      this._energyPlumeWasRelevant = false;
+      this._cadenceEnergyPlume = 0;
+      this._hideEnergyPlumes(0);
+    }
+    if (masslineRelevant) {
+      this._updateEnergyMassline(dt);
+      active = true;
+    } else if (this._energy.ribbon) {
+      this._energy.ribbon.visible = false;
+    }
+    return active;
   },
 
   _initEnergy() {
@@ -2433,7 +2744,7 @@ export const vfx = {
 
   _decayEventLights(dt) {
     const pool = this._lights;
-    if (!pool) return;
+    if (!pool || this._activeLightCount <= 0) return false;
     const ATTACK = 0.05; // seconds to reach peak after the initial partial ramp
     for (const slot of pool) {
       if (slot.peak <= 0) continue;
@@ -2455,6 +2766,7 @@ export const vfx = {
       }
       slot.obj.intensity = slot.intensity;
     }
+    return this._activeLightCount > 0;
   },
 
   _playerPos() {
@@ -2462,30 +2774,163 @@ export const vfx = {
     return e ? e.pos : this._zeroPos;
   },
 
+  _trailContext() {
+    const state = this.state;
+    const player = state.entities.get(state.playerId);
+    const playerPos = player && player.pos ? player.pos : this._zeroPos;
+    const camera = state.render && state.render.camera;
+    const camPos = camera && camera.position;
+    const playerTeam = player && player.team;
+    const targetId = state.player && state.player.targetId;
+    return {
+      playerId: state.playerId,
+      playerX: playerPos.x || 0,
+      playerZ: playerPos.z || 0,
+      playerTeam,
+      targetId,
+      radarRange: (state.ui && Number.isFinite(state.ui.radarRange)) ? state.ui.radarRange : 4000,
+      cameraX: camPos && Number.isFinite(camPos.x) ? camPos.x : playerPos.x || 0,
+      cameraZ: camPos && Number.isFinite(camPos.z) ? camPos.z : playerPos.z || 0,
+      camera,
+      state,
+    };
+  },
+
+  _trailTierFor(e, ctx) {
+    if (!e || !e.alive) return TRAIL_TIER.SKIP;
+    if (e.id === ctx.playerId) return TRAIL_TIER.FULL;
+    if (ctx.targetId != null && e.id === ctx.targetId) return TRAIL_TIER.FULL;
+
+    const px = e.pos && Number.isFinite(e.pos.x) ? e.pos.x : 0;
+    const pz = e.pos && Number.isFinite(e.pos.z) ? e.pos.z : 0;
+    const distPlayer = Math.hypot(px - ctx.playerX, pz - ctx.playerZ);
+    const distCamera = Math.hypot(px - ctx.cameraX, pz - ctx.cameraZ);
+    const data = e.data || {};
+
+    if (data.wingmanOf || data.isWingman) return TRAIL_TIER.NORMAL;
+    if (ctx.playerTeam != null && e.team === ctx.playerTeam) return TRAIL_TIER.NORMAL;
+    if (isHostileToPlayer(e, ctx.playerTeam, ctx.state) && distPlayer <= TRAIL_NORMAL_PLAYER_DIST) {
+      return TRAIL_TIER.NORMAL;
+    }
+    if (distPlayer <= TRAIL_NORMAL_PLAYER_DIST && distCamera <= TRAIL_CAMERA_NORMAL_DIST) {
+      return TRAIL_TIER.NORMAL;
+    }
+    if (
+      isHostileToPlayer(e, ctx.playerTeam, ctx.state)
+      && distPlayer <= ctx.radarRange
+      && distCamera <= TRAIL_CAMERA_NORMAL_DIST * 1.35
+    ) {
+      return TRAIL_TIER.NORMAL;
+    }
+    if (distPlayer > ctx.radarRange) return TRAIL_TIER.SKIP;
+    if (distCamera > TRAIL_CAMERA_SKIP_DIST && distPlayer > TRAIL_SKIP_PLAYER_DIST) return TRAIL_TIER.SKIP;
+    if (
+      distCamera > TRAIL_CAMERA_NORMAL_DIST * 1.15
+      && distPlayer > TRAIL_NORMAL_PLAYER_DIST
+      && ctx.camera
+    ) {
+      return 'screen-check';
+    }
+    return TRAIL_TIER.REDUCED;
+  },
+
+  _trailOnScreen(e, ctx) {
+    const camera = ctx.camera;
+    if (!camera || typeof camera.project !== 'function') return true;
+    const scratch = this._trailScreenScratch;
+    scratch.set(
+      e.pos && Number.isFinite(e.pos.x) ? e.pos.x : 0,
+      0,
+      e.pos && Number.isFinite(e.pos.z) ? e.pos.z : 0,
+    );
+    scratch.project(camera);
+    const pad = 0.18;
+    return scratch.x >= -1 - pad && scratch.x <= 1 + pad
+      && scratch.y >= -1 - pad && scratch.y <= 1 + pad
+      && scratch.z >= -1 && scratch.z <= 1;
+  },
+
+  _resolveTrailTier(e, ctx, screenChecks) {
+    let tier = this._trailTierFor(e, ctx);
+    if (tier !== 'screen-check') return tier;
+    if (screenChecks.remaining <= 0) return TRAIL_TIER.REDUCED;
+    screenChecks.remaining--;
+    return this._trailOnScreen(e, ctx) ? TRAIL_TIER.REDUCED : TRAIL_TIER.SKIP;
+  },
+
+  _trailCadenceAllows(e, tier) {
+    if (tier === TRAIL_TIER.FULL || tier === TRAIL_TIER.NORMAL) return true;
+    if (tier !== TRAIL_TIER.REDUCED) return false;
+    const id = (e && e.id) | 0;
+    return ((this._trailFrameIndex + id) % TRAIL_REDUCED_CADENCE) === 0;
+  },
+
+  _recordTrailBudget(tier, spawned) {
+    const diag = this._trailBudgetDiag;
+    if (tier === TRAIL_TIER.FULL) diag.trailEmittersFull++;
+    else if (tier === TRAIL_TIER.NORMAL) diag.trailEmittersNormal++;
+    else if (tier === TRAIL_TIER.REDUCED) diag.trailEmittersReduced++;
+    if (spawned) {
+      diag.trailParticlesSpawned += spawned.particles || 0;
+      diag.trailStreaksSpawned += spawned.streaks || 0;
+      diag.trailSpritesSpawned = diag.trailStreaksSpawned;
+    }
+  },
+
+  _publishTrailBudgetDiag() {
+    const perf = this.state.perfRuntime;
+    if (perf && typeof perf.recordVfxTrails === 'function') perf.recordVfxTrails(this._trailBudgetDiag);
+  },
+
   // per-frame engine-trail emission for every thrusting ship/drone (steady-state, pooled)
   _emitTrails(dt) {
     this._trailAcc = (this._trailAcc || 0) + dt;
     // emit at ~60 Hz cadence (one trail particle per ship per ~16ms)
-    if (this._trailAcc < 0.016) return;
+    if (this._trailAcc < 0.016) return false;
     const step = this._trailAcc; this._trailAcc = 0;
+    this._trailFrameIndex++;
+    this._trailBudgetDiag = emptyTrailBudgetDiag();
     this._refreshTrailCandidates();
     const list = this._trailCandidates;
+    const ctx = this._trailContext();
+    const screenChecks = { remaining: TRAIL_SCREEN_CHECK_MAX };
+    let reducedEmitted = 0;
+    this._trailBudgetDiag.trailCandidates = list.length;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
       if (e.flags && e.flags.docked) continue;
       const driveInfo = this._engineDriveFor(e);
       if (driveInfo.drive < 0.055) continue; // idle ships emit nothing
-      this._emitEngineTrail(e, driveInfo.drive, step);
+      const tier = this._resolveTrailTier(e, ctx, screenChecks);
+      if (tier === TRAIL_TIER.SKIP) {
+        this._trailBudgetDiag.trailEmittersSkipped++;
+        continue;
+      }
+      if (tier === TRAIL_TIER.REDUCED) {
+        if (!this._trailCadenceAllows(e, tier)) {
+          this._trailBudgetDiag.trailEmittersSkipped++;
+          continue;
+        }
+        if (reducedEmitted >= TRAIL_REDUCED_EMIT_CAP) {
+          this._trailBudgetDiag.trailEmittersSkipped++;
+          continue;
+        }
+        reducedEmitted++;
+      }
+      const spawned = this._emitEngineTrail(e, driveInfo.drive, step);
+      this._recordTrailBudget(tier, spawned);
       // Damage smoke: a wounded ship trails smoke so its state is readable at a glance (V2 §9:
       // particles are information). Two tiers — wounded (<40% hull) gets wispy grey smoke,
       // critical (<18%) adds orange embers + denser smoke. Even a stationary/idle damaged ship
       // smokes, so you can spot a limping enemy without HUD readouts.
-      if (e.hullMax && e.hull < e.hullMax) {
+      if (tier !== TRAIL_TIER.SKIP && e.hullMax && e.hull < e.hullMax) {
         const frac = e.hull / e.hullMax;
         if (frac < 0.40) this._emitDamageSmoke(e, frac, step);
       }
     }
+    this._publishTrailBudgetDiag();
+    return true;
   },
 
   // Persistent damage smoke/ember trail for wounded ships. Severe wounds smoke harder and add hot
@@ -2500,19 +2945,28 @@ export const vfx = {
   _initRibbonTrails() { this._ribbonTrails = new Map(); },
 
   _updateRibbonTrails(dt) {
-    if (!this._ribbonTrails || !this._scene) return;
-    const state = this.state;
+    if (!this._ribbonTrails || !this._scene) return false;
+    if (!richEngineTrailsEnabled(this.state && this.state.settings && this.state.settings.video)) return false;
     this._refreshTrailCandidates();
+    if (!this._ribbonCandidates.length) return false;
+    const ribbonStep = this._consumeCadence('_cadenceRibbon', dt, VFX_RIBBON_TRAILS_HZ);
+    if (ribbonStep <= 0) return false;
+    const state = this.state;
+    const ctx = this._trailContext();
+    const screenChecks = { remaining: TRAIL_SCREEN_CHECK_MAX };
+    let active = false;
     for (const e of this._ribbonCandidates) {
       if (!e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
       if (e.flags && e.flags.docked) { const rt = this._ribbonTrails.get(e.id); if (rt) rt.clear(); continue; }
+      const tier = this._resolveTrailTier(e, ctx, screenChecks);
+      if (tier === TRAIL_TIER.SKIP || !this._trailCadenceAllows(e, tier)) continue;
       const driveInfo = this._engineDriveFor(e);
       const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
       if (speed < 4 && driveInfo.drive < 0.04) continue;
       let trail = this._ribbonTrails.get(e.id);
       if (!trail) {
         const w = Math.max(2.5, (e.radius || 14) * 0.16);
-        trail = makeRibbonTrail(this._scene, this._engineColor(e), 30, w);
+        trail = createRibbonTrail(this._scene, this._engineColor(e), 30, w);
         this._ribbonTrails.set(e.id, trail);
       }
       // sample from engine nozzle (rear of ship)
@@ -2522,13 +2976,15 @@ export const vfx = {
       const tx = sock ? sock.x : e.pos.x - cf * back;
       const tz = sock ? sock.z : e.pos.z - sf * back;
       trail.push(tx, tz, sock ? sock.angle + Math.PI : e.rot);
-      trail.rebuild(0.16 + Math.min(1, driveInfo.drive) * 0.38 + driveInfo.boost * 0.12);
+      trail.rebuild(0.16 + Math.min(1, driveInfo.drive) * 0.38 + driveInfo.boost * 0.12, (this._t * 0.35) % 1, this._t);
+      active = true;
     }
     // dispose dead entities
     for (const [id, trail] of this._ribbonTrails) {
       const e = state.entities.get(id);
       if (!e || !e.alive) { trail.dispose(); this._ribbonTrails.delete(id); }
     }
+    return active;
   },
 
   _emitDamageSmoke(e, frac, dt) {
@@ -2636,6 +3092,37 @@ export const vfx = {
       this._pGeo.attributes.aColor.needsUpdate = true;
       this._pGeo.attributes.aSize.needsUpdate = true;
       this._pGeo.attributes.aAlpha.needsUpdate = true;
+      this._pGeo.attributes.aTrailAxis.needsUpdate = true;
+      this._pGeo.attributes.aTrailStretch.needsUpdate = true;
+    }
+  },
+
+  _integrateTrailStreaks(dt) {
+    if (this._liveTrailStreakCount <= 0) return;
+    const pool = this._trailStreakPool;
+    const st = this._ts;
+    const active = this._activeTrailStreaks;
+    const scroll = ((this._t || 0) * 0.35) % 1;
+    let cursor = 0;
+    while (cursor < this._liveTrailStreakCount) {
+      const i = active[cursor];
+      const s = st[i];
+      s.age += dt;
+      const t = s.age / s.life;
+      if (t >= 1) { this._retireTrailStreak(i); continue; }
+      s.x += s.vx * dt;
+      s.z += s.vz * dt;
+      const scale = s.size0 + (s.size1 - s.size0) * t;
+      const op = s.op0 * (1 - t * 0.85);
+      updateTrailStreakMesh(pool[i], {
+        x: s.x, y: s.y, z: s.z, vx: s.vx, vz: s.vz,
+        width: scale * 0.42,
+        length: scale * (s.stretch || 3.2),
+        opacity: op,
+        scroll,
+        time: this._t || 0,
+      });
+      cursor++;
     }
   },
 
@@ -2706,15 +3193,7 @@ export function createVfxPrecompileSalvo() {
   geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
   geometry.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
   geometry.setDrawRange(0, count);
-  const material = new THREE.ShaderMaterial({
-    uniforms: { uScale: { value: 520 } },
-    vertexShader: PARTICLE_VERT,
-    fragmentShader: PARTICLE_FRAG,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    depthTest: true,
-    transparent: true,
-  });
+  const material = buildParticleTrailMaterial();
   const points = new THREE.Points(geometry, material);
   points.name = 'SF_Precompile_PooledParticleBurst';
   points.frustumCulled = false;
@@ -2722,6 +3201,13 @@ export function createVfxPrecompileSalvo() {
 
   const glow = makeGlowTexture();
   const ring = makeRingTexture();
+  const precompileTrail = createPrecompileTrailSurfaces();
+  precompileTrail.ribbon.position.set(-8, 1, -4);
+  precompileTrail.streak.position.set(10, 1, -6);
+  precompileTrail.streak.scale.set(0.8, 1, 4);
+  group.add(precompileTrail.ribbon);
+  group.add(precompileTrail.streak);
+
   const spriteKinds = [
     { name: 'flash', map: glow, scale: 5, color: 0xffffff },
     { name: 'ring', map: ring, scale: 8, color: 0x66ccff },
@@ -2749,60 +3235,6 @@ export function createVfxPrecompileSalvo() {
   // pool count. An extra salvo light would warm shaders against count+1 — every warmed program
   // would then miss the cache in real gameplay and recompile mid-combat.
   return group;
-}
-
-// ---------------------------------------------------------------------------
-// ribbon trail factory (tapering triangle-strip mesh for large ships — cleaner than particle only)
-// ---------------------------------------------------------------------------
-function makeRibbonTrail(scene, color, nSeg, baseWidth) {
-  nSeg = nSeg || 30; baseWidth = baseWidth || 5;
-  const verts = nSeg * 2;
-  const pos = new Float32Array(verts * 3);
-  const geo = new THREE.BufferGeometry();
-  const posAttr = new THREE.BufferAttribute(pos, 3);
-  posAttr.usage = THREE.DynamicDrawUsage;
-  geo.setAttribute('position', posAttr);
-  const idx = [];
-  for (let i = 0; i < nSeg - 1; i++) {
-    const b = i * 2;
-    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
-  }
-  geo.setIndex(idx);
-  const mat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(color || '#7fe0ff'),
-    transparent: true, opacity: 0.5,
-    depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.frustumCulled = false; mesh.renderOrder = 4;
-  scene.add(mesh);
-
-  const pts = new Float32Array(nSeg * 3); // x, z, rot per ring slot
-  let head = 0, count = 0;
-
-  return {
-    push(x, z, rot) {
-      pts[head * 3] = x; pts[head * 3 + 1] = z; pts[head * 3 + 2] = rot;
-      head = (head + 1) % nSeg;
-      if (count < nSeg) count++;
-    },
-    rebuild(opacity) {
-      if (opacity != null) mat.opacity = opacity;
-      for (let i = 0; i < nSeg; i++) {
-        const t = i / Math.max(1, count - 1);
-        const slot = ((head - 1 - i) % nSeg + nSeg) % nSeg;
-        const x = pts[slot * 3], z = pts[slot * 3 + 1], rot = pts[slot * 3 + 2];
-        const w = baseWidth * Math.max(0, 1 - t * 0.97);
-        const px = Math.sin(rot) * w, pz = -Math.cos(rot) * w;
-        const vi = i * 2;
-        pos[vi * 3] = x + px; pos[vi * 3 + 1] = 0.4; pos[vi * 3 + 2] = z + pz;
-        pos[(vi + 1) * 3] = x - px; pos[(vi + 1) * 3 + 1] = 0.4; pos[(vi + 1) * 3 + 2] = z - pz;
-      }
-      geo.attributes.position.needsUpdate = true;
-    },
-    clear() { count = 0; },
-    dispose() { scene.remove(mesh); geo.dispose(); mat.dispose(); },
-  };
 }
 
 // ---------------------------------------------------------------------------
