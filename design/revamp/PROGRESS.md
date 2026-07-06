@@ -64,7 +64,7 @@
 | T3-06 | 06 | reel-pump | `masslineTelemetry.js` | DONE 2026-07-06 | — | `npm run check:massline:reelpump` PASS | T3-05 | T3-07 |
 | T3-07 | 07 | target-scoring (pure) | `combat/masslineTargetScoring.js` (new) | DONE 2026-07-06 | — | `npm run check:massline:target-scoring` PASS | T3-06 | T3-08 |
 | T3-08 | 08 | auto-target wire | `combat/autoTargetMode.js` | DONE 2026-07-06 | — | `npm run check:massline:auto-target` PASS | T3-07 | T3-09 |
-| T3-09 | 09 | threat events | `masslineThreats.js` (new) | IN-FLIGHT | — | `check:massline:threats` | T3-08 | T3-10 |
+| T3-09 | 09 | threat events | `masslineThreats.js` (new) | DONE 2026-07-06 | — | `npm run check:massline:threats` PASS | T3-08 | T3-10 |
 | T3-10 | 10 | threat feedback | presentation layer | NEXT | — | `check:massline:threat-feedback` | T3-09 | T3-11 |
 | T3-11 | 11 | arc-preview data | `masslineTelemetry.js` | NEXT | — | `check:massline:arc-data` | T3-10 | T3-12 |
 | T3-12 | 12 | arc-preview render | `vfx.js` | NEXT | — | `check:massline:arc-render` | T3-11 | T3-13 |

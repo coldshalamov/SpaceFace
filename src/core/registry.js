@@ -17,7 +17,8 @@ import { weapons } from '../systems/weapons.js';
 import { countermeasures } from '../systems/countermeasures.js';
 import { combat } from '../systems/combat.js';
 import { tetherGameplay } from '../systems/tetherGameplay.js';
-import { masslineTricks } from '../systems/masslineTricks.js';
+import { masslineTelemetry } from '../systems/masslineTelemetry.js';
+import { masslineThreats } from '../systems/masslineThreats.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
 import { mining } from '../systems/mining.js';
 import { cargo } from '../systems/cargo.js';
@@ -61,7 +62,7 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, masslineTricks, mining, cargo, economy,
+    core, voiceArbiter, input, autoTargetAssist, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, masslineTelemetry, masslineThreats, mining, cargo, economy,
     automation, wingmen, intervention, spawnBudget, world, encounterDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -82,13 +83,16 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, autoTargetAssist, scanner, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, masslineTricks, mining, cargo, automation, wingmen, crafting,
+    input, autoTargetAssist, scanner, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, masslineTelemetry, masslineThreats, mining, cargo, automation, wingmen, crafting,
     economy, intervention, world, encounterDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
   ];
-  // masslineTricks runs immediately after tetherGameplay: it reads the mirrored state.player.tether
-  // subtree and entity kinematics after physics/combat/tetherGameplay have settled. It is read-only
-  // telemetry — never mutates entities or SG-02 attachments. Release ratings hook tether bus events
-  // emitted during tetherGameplay.update() using cut-time kinematics plus per-latch accumulators.
+  // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
+  // after combat/physics have settled. It is read-only telemetry — it writes only its own
+  // state.player.masslineTelemetry subtree, never entities or SG-02 attachments, and emits only the
+  // documented trick-read events (tether:snapCatch rung 05, tether:reelPump rung 06).
+  // masslineThreats runs immediately after masslineTelemetry (rung 09): it reads the mirrored
+  // tether + telemetry subtrees after they've settled this tick, writes only its own
+  // state.player.masslineThreats subtree, and emits exactly one documented event (massline:threat).
   // beacons runs after AI/actions and before flight so its lure can override a hostile's intent for
   // this tick (drift toward the beacon) without touching AI internals; it is a no-op when none exist.
   const byName = new Map(SYSTEMS.map((s) => [s.name, s]));

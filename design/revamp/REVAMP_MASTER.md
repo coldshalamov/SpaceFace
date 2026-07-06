@@ -43,6 +43,8 @@ when the player arrives.
 | Doc | Purpose | Owner lane |
 |---|---|---|
 | **REVAMP_MASTER.md** (this) | Vision, contracts, wave sequencing, reconciliation ledger | orchestrator |
+| **PROGRESS.md** | **The single source of truth for task state** (DONE/IN-FLIGHT/NEXT/BLOCKED per task). Every session reads this first; every task updates it first+last. Supersedes `STATUS.md` + memory for task state. | orchestrator |
+| **WAVE4_PROMPT.md** | The dispatch prompt for the unified execution track (T1–T9). Paste into a fresh session to run a task; it self-continues via the ledger. | orchestrator |
 | **BP-01_WORLD_ALIVE.md** | Deepen the encounter director: named bosses, NPC miners contending belts, patrol respond-to-distress, faction-war pulses, POI behaviors | extends SPEC2/04, SPEC3-F7 |
 | **BP-02_COMBAT_CEILING.md** | Damage-triangle surfacing, scanning weak-point loop, wingman tactics, boss mechanics, remaining feel | extends SPEC3-F4 |
 | **BP-03_ONE_MAP.md** | Galaxy-map parity checklist, territory/fog rules, old-map retirement criteria | extends WORLD_NAVIGATION_SPEC |
@@ -177,3 +179,320 @@ heat rhythm → **first combat**: a weak pirate demands a toll then flees at low
 → **first station**: sell ore, buy one useful module, accept one recommended job → **first choice**: haul / bounty
 / survey. Tutorial-memory (skip learned verbs); mentor-silence (never talk over success). All verbs it needs —
 tether, mining rhythm, `barks`, `encounterDirector` — already shipped; the ritual assembles them.
+
+---
+
+## 9. RECONCILIATION LEDGER — quarries ↔ curated layer ↔ working tree
+
+> *Appended 2026-07-06. §9–§15 are new; §1–§8 are unchanged. These sections reconcile the floating source
+> quarries with the curated detail layer (§8) AND with the live working tree, then add the cleanup, story/asset
+> build-out, verification, and release-readiness tracks the doctrine does not cover. They obey the hard-freeze rule
+> (§7 of `DETAIL_DOCTRINE`): the *only* edits below to a lane doc are corrections of factually-wrong claims, which
+> are stop-the-line-equivalent (a doc that lies about what's built is worse than a missing one).*
+
+### 9.1 The four source quarries — where each lives
+
+The lead was given four planning passes. Two are already absorbed into the curated layer; two are **floating**
+(referenced nowhere in `design/revamp/`). This ledger binds all four to a home so nothing stays a parallel schedule.
+
+| Quarry | Exists in repo? | Canonical home | Notes |
+|---|---|---|---|
+| **AI research spec** (21-game study, SG-06 spine, spawn director, doctrines, maneuver library, 8-phase roadmap) | No file | **→ BP-13** (pirate doctrines, named aces) + `BP-02.1` (maneuver library) + §11 (corrections) | Its "spawn director" is the shipped `encounterDirector` + `spawnBudget`, not a new system (§9.2). |
+| **Design audit R2** (25-game benchmark, 660 ideas, Waves 0–6) | **Yes** = `DETAIL_BRAINSTORM_R2.md` (already curated into 91 gold packets) | Already home | Its Waves 0–6 map onto our Wave 0–3 + the new tracks in §12–§14. |
+| **Performance queue** (13 quality-preserving perf prompts) | No file; ~half its scripts now exist | **→ §14** (verification track) + `design/PERF_BUDGET.md` | The "quality-preserving" doctrine is already repo policy (`AGENTS.md §6`); §14 *enforces* it with checks. |
+| **Massline ladder** (24 atomic prompts: telemetry → release → load → snap → reel → arc → whip → 47-A beats) | No file; its rungs ARE the Wave-2 massline lane | **→ Wave 2** (status in §10.1) | Formerly in-flight; now folded into the unified track (T3/T4, §11) per lead direction 2026-07-06. |
+
+### 9.2 Hallucination corrections — systems the quarries/docs call "missing" that EXIST
+
+Three systems the quarries/docs say are "missing" or "need building" **already exist** in the working tree
+(verified 2026-07-06, file:line evidence below). An agent acting on the original text would rebuild them. Treat
+these as **DONE-validated**, same status as the convergent-validation items in `DETAIL_PACKETS §3`. The doc claims
+that say otherwise are corrected in §12.1.
+
+| Claimed missing / needs-building | Working-tree reality | Evidence | Action |
+|---|---|---|---|
+| `encounterDirector.js` (design-audit R2 Wave 2; `CURRENT_BUILD_STATUS` line 54) | **DONE — COMPLETE, not a stub** | `src/systems/encounterDirector.js:1-370`; registered `registry.js:46,65,86`; `planEncounters()` at `:200`; emits `encounter:spawned` (`:142`); consumed by `world.js:622,672`. Header: *"THE KEYSTONE that makes the world feel alive."* | Mark validated. Only its *check script* is missing → §13.1. |
+| `attentionArbiter.js` (design-audit R2 Wave 3, packet #401) | **DONE as `voiceArbiter.js`** — different name | `src/ui/voiceArbiter.js:1-215`; registered `registry.js:48,64,86` as `ctx.helpers.voice`; `VoiceQueue` priority queue (`:54`). Routed by `story.js:253`, `marketNews.js:177`, `encounterDirector.js:171`. | Mark validated. ≡ the quarry's `attentionArbiter`. One nuance: legacy-toast interceptor is **off by default** (`:182-184`); §13.1 `check:one-voice` covers migrating stragglers. |
+| `state.world.facts` (design-audit R2 packet #21) | **DONE** | `gameState.js:103`; `scenarioRuntime.js:68-70` builds the map; `scenarioSchemas.js:147,420,440` validates beats reference facts + branches carry `worldFactEffects`. 47-A defines 5 facts. | Mark validated. BP-12 cause-ledger *surfaces* this; it does not build it. |
+
+### 9.3 Inverse correction — legacy files wrongly called "dead"
+
+`AGENTS.md §5` says `flight.js` and `ai.js` have "zero importers anywhere" and are safe to ignore. That is
+**factually wrong**, and the reality is more nuanced than "fallback." Verified 2026-07-06:
+
+| File | True status | Evidence |
+|---|---|---|
+| `flight.js` | **CI-live / runtime-fallback** | Imported `registry.js:13`; `selectFlightSystem` (`:198-204`) returns it unless `flightBackend==='v3' && physicsBackend==='rapier-dynamic'`. **Runs by default in every `check:sim*` gate** (`sf-sim.mjs:79` `--flight-system` defaults `'legacy'`; `package.json:15` `check:sim` passes no override) — it pins the canonical golden hash. At player runtime, V3 is the default (`gameState.js:16`). |
+| `ai.js` | **CI-live / runtime-fallback — and the most CI-critical** | Imported `registry.js:9`; `selectAISystem` (`:188-194`) returns it unless `aiBackend==='sg06-tactical' && physicsBackend==='rapier-dynamic'`. **Runs in *every* `check:sim*` gate including `check:sim:v3`** — `sf-sim.mjs:74` `tacticalAI` defaults `false`, and **no** `check:sim*` script passes `--tactical-ai` (so even the "v3" sim is V3-flight + *legacy* AI). |
+| `flightDynamics.js` | **LIVE in all paths** | Imported by **both** `aiPorts.js:13` (`resolveFlightProfile`, used `:438`) **and** `flight.js:20`. `aiPorts.js` is unconditionally in the update loop (`registry.js:8,64,85`). |
+
+**Action:** §12.1 corrects the "zero importers" wording in `AGENTS.md §5`. These files are **not deletion
+candidates** — they pin CI determinism and feed the live tactical AI stack. Editing them for a "player-facing fix"
+still has no effect at runtime (V3+tactical is the shipped default), which is the real trap `AGENTS.md` warns about;
+but they are load-bearing infrastructure, not dead code.
+
+---
+
+## 10. WORKING-TREE TRUTH — the state this plan executes against
+
+> *Captured 2026-07-06 against the working tree (~17k lines ahead of HEAD — trust it over HEAD and over any status
+> doc, per `AGENTS.md §3`). This is the **ground truth** the execution tracks sequence against. "A status doc says
+> X" is not evidence; the live file + `check:*` output is. Re-snapshot before each wave.*
+
+### 10.1 Wave 2 massline lane — current state (NOW folded into the unified track per §11)
+
+| Ladder rung (#) | Status | Evidence |
+|---|---|---|
+| 01 telemetry | **DONE** | `masslineTelemetry.js` (186 lines) |
+| 02 release-rated event | **DONE** | `tetherGameplay.js:91,114,255,258` emits `tether:releaseRated` |
+| 03 release feedback | **DONE** | `presentationOrchestrator.js:59` consumes; `check:massline:release-feedback` green |
+| 04 tether.load field | **DONE** | `tetherGameplay.js` `computeTetherLoad` + `_mirror` writes `tether.load`; telemetry relays; `vfx.js` cable color/glow keys off it; `check:massline:load` green |
+| 05 snap-catch | **DONE** | `masslineTelemetry.js` `_stepSnapCatch` + `freshSnap` + `tether:snapCatch` emit (once/latch); `check:massline:snapcatch` green (clean/static/window/stalled/once-per-latch/observer-only); control-verified non-vacuous |
+| 06 reel-pump | **DONE** | `masslineTelemetry.js` `_stepReelPump` + `freshPump` + `tether:reelPump` emit (once/stroke, debounced); `telemetry.reelPump` mirror with `risk` tier (low/med/high by strain); `check:massline:reelpump` green (loaded/slack/sub-threshold/debounce/re-arm/latch-reset/observer-only/risk-tiers); control-verified non-vacuous |
+| 07 target-scoring (pure) | **DONE** | `src/combat/masslineTargetScoring.js` (198 lines): `scoreMasslineTarget` + `rankMasslineTargets`, pure (no state/bus), factors = swing geometry (tangential ÷ relative) + mass band + range comfort + caller-resolved hostility; `check:massline:target-scoring` green (11 cases incl. out-of-range gate, swing-vs-radial, static-zero-swing, mass/range bands, hostility bonus, rating bands, ranking + tiebreak, purity/no-mutation, determinism); control-verified non-vacuous |
+| 08 auto-target wire | **DONE** | `combat/autoTargetMode.js` imports `rankMasslineTargets` + `isHostileToPlayer`; new `pickMasslineAutoTarget(state,opts)` picks the best massline anchor when `state.player.tether.active` (massline mode), resolves hostility via scanner (not factionId), includes asteroids as candidates, applies lock; `check:massline:auto-target` green (8 cases incl. massline/non-massline gate, asteroids, range gate, no-candidates, hostility resolved from scanner, applyLock:false, score-zero guard); control-verified non-vacuous (3 controls). `rankMasslineTargets` gained `opts.isLatched` predicate (backward-compatible). |
+| 09 threat events | **DONE** | `src/systems/masslineThreats.js` (new observer, registered after `masslineTelemetry` in `registry.js`): detects `line-near-break` (strain ≥ 0.75 overload floor, once/latch), `hostile-on-arc` (scanner.isHostileToPlayer + closing + genuine swing ≥ 25 wu/s, once/hostile/latch), `collision-course` (ballistic impact ≤ 1.5 s, once/obstacle/latch); own subtree `state.player.masslineThreats`; single emit `massline:threat`; `check:massline:threats` green (9 cases); control-verified non-vacuous (4 controls); sim:compare failure A/B-proven pre-existing |
+| 10 threat feedback | **MISSING** | no `massline.threat` cue recipe / orchestrator handler yet |
+| 11–12 arc preview data/render | **MISSING** | no `arcPreview` field |
+| 13–14 whip-impact detect/feedback | **MISSING** | zero `tether:whipImpact` refs |
+| 15 impulse authority helper | **PARTIAL** | `impulseCharges.js:248-249` still does direct `ent.vel` mutation (no `applyBlastImpulse`) — a physics-authority violation per contract §3 |
+| 16 impulse+massline combos | **MISSING** | zero `charge:anchorKick`/`slingBomb`/`tailPop` refs |
+| 17 mining bulk-haul guidance | **MISSING** | — |
+| 18–22 47-A physical beats (spindle/scavenger/debris/contested/priority) | **PARTIAL** | scenario JSON + spawner complete; physical-beat *mechanics* are JSON contract only, not live-scene-implemented |
+| 23 47-A physical branch resolution | **PARTIAL** | 4 branches authored in JSON; live predicate exists (`check:47a:live-branch`) but physical-state-driven resolution is the unfinished piece |
+| 24 consolidated massline check | **MISSING** | no `check:massline` aggregate |
+
+**Net:** ~3 of 24 rungs done. This is now T3 in §11.
+
+### 10.2 Core systems maturity — build on these, don't rebuild
+
+| System | Status | Evidence |
+|---|---|---|
+| Encounter director | **DONE** | `encounterDirector.js:1-370` |
+| One-voice arbiter | **DONE** (legacy-toast interceptor off by default — see §13.1) | `voiceArbiter.js:1-215` |
+| Fact ledger | **DONE** | `gameState.js:103` + `scenarioRuntime.js` + `scenarioSchemas.js` |
+| Story 47-A (data + spawner) | **DONE** | `47a.scenario.json` (528 lines, 8 beats, 4 branches) + `47aLiveScene.js` (309 lines, wired at boot `main.js:158,172`) |
+| 10 sectors | **DONE** (all authored, fixed geography) | `sectors.js` + `sectorAnchors.js` (228 lines) |
+| 9 factions | **DONE** (8 canonical + Helix paper) | `factions.js` |
+| Story canon (dual-thread written) | **DONE** | `docs/worldbuilding/` + `narrative.js` (449 lines) |
+| Mission infrastructure | **DONE** | `missions.js` system (1948 lines) + `wreckMissions.js` |
+| 63 release GLBs (live) | **DONE** | `assets/ships/release/parts/` 10 categories |
+| 10 code-native ship builders | **DONE** | `src/render/ships/` |
+| `spawnBudget` cap arbiter | **DONE** | contract §3.3 |
+| WANTED heat | **DONE** | `heat.js:275` (`isPlayerWanted`); threshold `:31` — *line refs shifted from AGENTS.md's :147/:33* |
+| `sectorZones` placement substrate | **DONE** | contract §3.5 |
+| `dangerModel` + `sectorSim` (the "gold ore" for BP-12) | **DONE** | offscreen losses, danger/price field |
+
+### 10.3 Genuinely missing — the build targets
+
+| System | Quarry source | Home | Notes |
+|---|---|---|---|
+| Enemy doctrines (`enemyDoctrines.js` behavior contracts: range/morale/tells/counters) | AI research §4 | **BP-13** | Converts scattered AI conditionals into data. |
+| Spawn-graph enrichment (legal zones, ingress, fairness penalties, exit plans) | AI research §2 | **BP-13 addendum** | Enriches the shipped `encounterDirector`/`sectorZones`; NOT a new `spawnDirector.js` (that role is filled). |
+| Maneuver library extension (kite/boom-zoom/bracket/retreat-to-X) | AI research §6 | **BP-02.1 addendum** | Extends SG-06 `ManeuverPlanner`. |
+| `state.player.careerProfile` | design-audit R2 §A | **BP-12 addendum** | Career = economy recognition layer. |
+| Suspicion layer (separate from heat; controls scan depth, not hostility) | design-audit R2 §E | **BP-12** (customs/contraband) | `heat` stays the hostility authority; suspicion is the "they want a look in your hold" axis. |
+| Salvage wreck-module anatomy (black box/reactor/pod as discrete typed modules) | design-audit R2 §D | **BP-01.1** (salvage depth) | `salvage.js` exists (275 lines); this adds module-typed anatomy. |
+| Faction adaptation / rival memory counters | AI research §12; design-audit R2 §K | **BP-13** (named aces cover the rival-memory half) | Light Nemesis/MGSV borrow — don't overbuild. |
+
+---
+
+## 11. UNIFIED EXECUTION SEQUENCE (replaces ad-hoc wave handoffs)
+
+`DETAIL_DOCTRINE §7` froze lane docs while a wave ran. Wave 2 has landed (per lead direction 2026-07-06), so the
+freeze lifts and the massline rungs fold in here. This is the **single sequence** — no parallel wave docs, no
+competing schedules.
+
+### 11.1 File-ownership map (who may touch what, when) — prevents cross-lane collisions
+
+| Track | Files owned | Sequencing |
+|---|---|---|
+| **T1 — Verification scaffolding** | NEW `scripts/check-encounter-director.mjs`, `check-one-voice.mjs`, `check-release-soak.mjs` only | Now. No code/assets touched. |
+| **T2 — Doc cleanup** | The stale docs in §12.1 + `AGENTS.md §5` wording | Now. Zero code/assets. |
+| **T3 — Finish Wave 2 massline** | `masslineTelemetry.js`, `tetherGameplay.js`, `impulseCharges.js`, `masslineThreats.js` (new), `masslineTargetScoring.js` (new), `autoTargetMode.js`, `47aLiveScene.js`, + rung check scripts | Now (Wave 2 lane is free). Each rung lands with its check (ladder discipline). |
+| **T4 — Wave 3 new BPs** | BP-11/12/13 code (new files per merge protocol §3.8) | After T3 massline lands. BP-11 → BP-12 → BP-01.1 → **BP-13 LAST** (every packet is a `spawnBudget` client; `DETAIL_PACKETS §5`). |
+| **T5 — BP-0X.1 addenda code** | Per owning lane | After each owning wave merges (hard-freeze rule). |
+| **T6 — Asset manifest sync + queued asset authoring** | `parts_manifest.json`, queued GLBs | Coordinate with graphics lane (§12.3). |
+| **T7 — Perf gate hardening** | `scripts/probe-*.mjs`, `PERF_BUDGET.md`, `package.json` `check` chain | After BP-10 render lane stable. |
+| **T8 — Story-narrative check family** | NEW `check-*` scripts for BP-11/12/13 acceptance | Alongside T4 (each BP's check is its acceptance). |
+| **T9 — Release-readiness gate** | The 8-point bar in §15 | Last. |
+
+### 11.2 Dependency spine (the order inside T3→T4)
+
+```
+finish massline rungs 04–24 (T3) — each lands with its check
+    ↓ (frees tether/scenario files)
+BP-11 atmosphere (T4) — widest-felt, lowest-risk, mostly surfacing shipped data
+    ↓
+BP-12 causal economy (T4) — needs the cause-ledger seam over dangerModel/sectorSim
+    ↓
+BP-01.1 wreck provenance (T4) — needs sectorSim loss hooks ("who died here")
+    ↓
+BP-13 pirate ecology (T4, LAST) — every packet a spawnBudget client; depends on
+    BP-01.1 (ambushes-leave-wrecks) + BP-12 (danger→bounty clusters)
+```
+
+---
+
+## 12. THE CLEANUP TRACK — kill stale artifacts (evidence-based)
+
+> *The doctrine (§8) governs NEW detail; it doesn't cover accumulated drift. This track does, sequenced for zero
+> collision. Every item is evidence-backed (recon 2026-07-06); nothing is deleted on assumption.*
+
+### 12.1 Doc corrections (zero-risk — do first, in T2)
+
+| Doc | Problem (verified) | Fix |
+|---|---|---|
+| `design/ARCHITECTURE.md` (3.5KB) | Name-collides with the authoritative 68KB root `ARCHITECTURE.md`; it's a stale agent self-report | Move → `design/_ARCHIVE/handoff_architecture.md` (or delete) |
+| `design/adr/0003-flight-physics-controller.md` | Says "custom controller, Rapier optional" — reality is rapier-dynamic + V3 mandatory (§9.3) | Add `Status: SUPERSEDED by V3 migration` header |
+| `design/FLIGHT_PHYSICS_SPEC.md` | Same stale "not raw rigid-body" framing | Mark legacy; point to `design/spec3/SPEC3-F3-flight-physics-feel.md` |
+| `design/BUILD_PLAN_2_0.md §42` | Ownership line names `flight.js` + `flightDynamics.js` (pre-V3) | Revise → `flightV3.js` + `src/core/flight/*` |
+| `README.md §87` | Mentions only spec2; both spec2+spec3 live (AGENTS.md §4) | Add spec3 + point to `AGENTS.md` as front door |
+| `design/CURRENT_BUILD_STATUS.md` line 54 | Says `encounterDirector.js` missing — WRONG (DONE, §9.2) | Revise: source exists, only check-script pending |
+| `design/CURRENT_BUILD_STATUS.md` line 41 | Says `check-cruise.mjs` missing — WRONG (exists, 11KB) | Revise |
+| `AGENTS.md §5` | "zero importers anywhere" for `flight.js`/`ai.js` — WRONG (§9.3) | Replace with: "CI-live / runtime-fallback — they pin `check:sim` goldens and feed `aiPorts.js`; not deletion candidates. Editing them for a runtime fix still has no effect (V3+tactical is the shipped default)." |
+| Loose drift docs (`SKILLS_IMPROVEMENT_SPEC`, `STATION_MARKET_UI_REVAMP`, `WORLD_OVERHAUL_2_1`, `GRAPHICS_*`) | No superseded header → risk of implementation from stale plans | Add `Status: LEGACY — do not implement from` header (or fold into the BP that supersedes them) |
+
+### 12.2 Code cleanup (LOW priority — verify each before acting)
+
+| Candidate | Verdict (verified) | Action |
+|---|---|---|
+| `flight.js`, `ai.js`, `flightDynamics.js` | **Load-bearing** — CI-live/runtime-fallback (§9.3); `flightDynamics.js` live in all paths | **KEEP.** Not deletion candidates. |
+| ~60 scratch scripts (`*-temp.mjs`, one-off `gen-*`/`purge-graphics-revamp-*`, `probe-dod-*`, `inspect-*`) | Tooling, not shipped; several may be re-run | **Verify-then-retire** each with lead sign-off; the 3 `-temp` files are the only clear deletes |
+| `design/specs/` legacy suite (12 files) | Correctly marked legacy reference (AGENTS.md §4) | **KEEP** (already correctly demoted) |
+| Shipped systems | **Zero dead** — all 47 systems have importers; smallest (`actions.js`, 13 lines) is a real delegating system | None |
+
+### 12.3 Asset manifest sync (T6 — coordinate with graphics lane)
+
+| Issue | Reality (verified) | Fix |
+|---|---|---|
+| 3 blocked wholeships (`kestrel`/`pelican`/`wasp`) | `QUEUE.md` says blocked; `parts_manifest.json` has **no `status:"blocked"` entries** and lists them in `runtimeSlots.hull` → ambiguous per `check-asset-status.mjs` | Add `parts[]` entries with `status:"blocked"` + `statusNote`, OR drop from `runtimeSlots` |
+| `WHOLE_SHIP_FILE_BY_DEF_ID` | Correctly empty (`partsLibrary.js:227`) until SPEC3-37 re-exports real hull bodies | **No action** (correct as-is; do not populate) |
+| Queued-but-unbuilt assets (per `assets/QUEUE.md`) | 7 claim props, 12 hunter-sig rails, 5 landmarks+vault/tower, 8 module-visual variants | The build queue — authored as BP-11/12/13 packets demand them, not as a wishlist |
+
+---
+
+## 13. THE STORY & ASSET BUILD-OUT — wire the canon, build around the inspiration
+
+> *The canon is written (`docs/worldbuilding/`); the inspiration art exists (`assets/concept/`, 49 paintings);
+> 63 release GLBs are live. The job is to **wire more of the canon into runtime** and **build assets that clarify
+> gameplay** — not to add sprawl. Every asset must obey `assets/AGENTS.md`: role + silhouette + palette + budget +
+> validation + runtime reachability.*
+
+### 13.1 Story wiring (extends BP-05; reuses shipped `narrative.js`, `story.js`, `scenarioRuntime.js`)
+
+Thread A (the System: Contract 47-A, REF 44-C, Director Vale, weight discrepancies, the recycler theft, Silt/ATMO
+economy, 5 endgame choices) is **runtime-wired** (47-A Phase 0 live at boot). Thread B (the Search: the 3.1kg
+artifact, Callum Oakes, Vethari, Lida) is **written but background**. The 8-chapter spine (B0–B7) has narrative
+content authored; mission-by-mission runtime wiring varies by beat. Build-out priorities:
+
+- **BP-05 corpus** (the unfinished half of Wave 2 §6): B8+ beat registry (only B8 minimum shipped), Wren artifact
+  quest chain (cargo item + anomaly/salvage depth + quest markers), manifest phases 2–3 *content*, NPC-ecology
+  graffiti web (Kessler↔Drift↔Voss↔… full wiring), Callum encounter, VALE registry sightings, faction bark corpus
+  on all SG-06 transitions. Endgame A–E already built.
+- **47-A physical beats** (ladder rungs 18–23, §10.1): the JSON contract is complete; the *mechanics* need
+  live-scene implementation (spindle stabilization, scavenger line-threat, debris sling, recovery contested,
+  civilian priority, physical branch resolution).
+- **Story-narrative surfacing** (BP-12 owns this half): dock-deny reasons, manifest phases, "why X?" tooltips —
+  theme delivery through paperwork, never lore dumps.
+
+### 13.2 Asset build-out (extends BP-08; the gameplay-readability backlog)
+
+Per the design-audit R2 §O priority order — assets that **clarify gameplay** first, vanity last:
+
+1. **Station archetype silhouettes** (BP-08 P0 — the 8 faction-distinct station cores; blocks BP-11's visual half).
+2. **Lane/gate/ring infrastructure** (ring-lane highways for BP-07 traversal; gate visuals are Grok lane).
+3. **Claim module GLBs** (visible props for BP-06; blocks "see logistics move").
+4. **Hunter signature parts** (BP-13 named aces; identifiable in target panel).
+5. **Salvage/wreck anatomy parts** (BP-01.1; black box/reactor/pod as readable modules).
+6. **Module visual variants** (BP-09 build identities; ram-plate/cargo-pod/tether-spool visible on hull).
+7. **Decorative sector props / landmarks** (BP-11 sector postcards; lowest priority).
+
+**Forbidden** (per `assets/AGENTS.md`): wiring reference concept art into runtime; wiring blocked wholeships;
+weakening the boot gate; accepting "detailed" GLBs with no hull body. Every asset needs role + silhouette + palette
++ budget + validation + runtime reachability.
+
+### 13.3 Concept art as inspiration, not runtime (per `assets/concept/AGENTS.md`)
+
+The 49 concept paintings (`assets/concept/`, indexed by `index.json` → `blender_part_id`/sector placement) are
+**reference-only** — never wired into gameplay. They are the **targets** for Blender authoring: station/gate
+archetype mood boards, sector overview paintings, faction silhouettes. Build assets *toward* them; do not load them.
+
+---
+
+## 14. THE VERIFICATION TRACK — close every proof gap to professionalism
+
+> *The repo has 139 check scripts + master `check`/`check:ci` chains. The gaps cluster in four places. This track
+> closes them. New scripts only — no collision with other lanes.*
+
+### 14.1 Checks for already-existing systems (T1 — highest priority, verifies shipped work)
+
+| Missing check | Verifies | Why it matters |
+|---|---|---|
+| `check:encounter-director` (`scripts/check-encounter-director.mjs`) | `encounterDirector.js` determinism, budget compliance, one-voice | The keystone "world feels alive" system (§9.2) has **no proof gate** |
+| `check:one-voice` (`scripts/check-one-voice.mjs`) | `voiceArbiter.js` — no overlapping text in a 10-min run; no direct DOM writes outside arbiter; **+ migrate legacy-toast stragglers to `voice.say`** (interceptor is off by default, §9.2) | Pillar 3 is *enforced* by voiceArbiter but never *verified* |
+| `check:release-soak` (`scripts/check-release-soak.mjs`) | 30-min soak within encounter budget, no drift, no leaks, no untelegraphed spawns | No long-haul gate exists at all (AGENTS.md §11 confirms missing) |
+
+### 14.2 The massline check family (lands with T3 rungs)
+
+15 of 24 ladder rungs have no check (§10.1). These land **with their rungs** in T3 — not before. Ladder discipline:
+each rung's prompt already specifies its check. List: `massline:load/snapcatch/reelpump/target-scoring/auto-target/
+threats/arc-data/arc-render/whip-impact/whip-feedback` + `impulse:authority/massline-combos` + `47a:spindle/
+scavenger-threat/debris-sling/recovery-contested/civilian-priority/physical-branches` + the `check:massline`
+aggregate (ladder rung 24).
+
+### 14.3 The story-narrative check family (lands with T4 BPs — each BP's acceptance)
+
+All MISSING. Each verifies a BP-11/12/13 packet's acceptance gate:
+`check:sector-atmosphere` (BP-11) · `check:causal-economy` (BP-12) · `check:pirate-ecology` (BP-13) ·
+`check:career-profile` · `check:fact-ledger` (surfaces the existing `state.world.facts`) · `check:salvage-anatomy`
+· `check:smuggling-card` · `check:station-mood` · `check:claim-ledger` · `check:war-overlay` · `check:market-chart`.
+
+### 14.4 Perf gate hardening (T7 — the perf quarry, enforced)
+
+The perf quarry's doctrine ("measure the bottleneck, never hide it by making the game uglier") is already
+`AGENTS.md §6` policy. What's missing is **enforcement**: `check:perf`, `check:hitch-budget`, `check:gpu-path`
+exist but are **not in the default `check`/`check:ci` chain** (only `check:perf-budget`, a doc-keyword linter,
+enters via `check:ui:perf`). Fold the headed deep-perf probes + the soak gate (§14.1) into the default chain so
+quality regressions can't slip. **Quality-preserving:** structural fixes (batching, instancing, cadence, cache
+reuse) only — never asset disables, never browser/desktop divergence.
+
+### 14.5 The missing-check themes (summary — drives T1/T3/T7/T8)
+
+- **Encounter/AI:** `check:encounter-director`, `check:one-voice`, `check:release-soak` (T1); `check:pirate-ecology` (T4).
+- **Massline:** 15 rung checks (T3).
+- **Perf/soak:** soak gate + folding headed-perf into `check` (T7).
+- **Story/narrative:** 8 checks entirely absent — career/fact/salvage/smuggling/station-mood/claim-ledger/war-overlay/market-chart (T8).
+
+---
+
+## 15. THE PROFESSIONALISM BAR — definition of "finished"
+
+> *The revamp is **done** when a new player can play 20 minutes and the experience matches the design-audit R2 bar:
+> "I am a pilot in a real economy / ships around me have jobs / danger has causes / my ship has mass and
+> personality / my choices change the world / every object on screen has a reason / the world is not waiting for me,
+> but it notices me." Concretely:*
+
+The release gate (all eight must be green):
+
+1. **First-15 proof ritual green** (§8) — `check:first-15-runtime` + screenshot pair into `.devshots/`.
+2. **47-A slice green** — `check:47a:*` family + `check:sim:compare` (the documented projectile-collision precondition resolved or explicitly accepted per `_BASELINE.md`).
+3. **World-alive green** — `check:encounter-director` + `check:one-voice` + `check:release-soak` (all from §14.1).
+4. **Cause is visible everywhere** — `check:causal-economy` + the "why X?" tooltips (BP-12) pass; no surfaced change lacks a machine-traceable cause.
+5. **Pirates have motive** — `check:pirate-ecology`: scan-before-fire, break-on-patrol, flee-and-return, budget-respected.
+6. **Performance floor held** — `check:perf` p95 within budget, **quality-preserving** (no asset disables, no browser/desktop divergence).
+7. **No stale artifacts** — §12 cleanup complete; `AGENTS.md`, `CURRENT_BUILD_STATUS`, `BUILD_PLAN_2_0` reconciled with the working tree.
+8. **Full `check`/`check:ci` chain green** with the new gates (§14) folded in.
+
+Anything not on a path to one of these eight is either **CUT** (per `DETAIL_DOCTRINE §8`) or **deferred to backlog**
+with a named reason. *More content is not the goal; causality, ritual, and proof are.* The professional niche
+(design-audit R2 §12): a top-down, physics-first space trader where the world is small enough to be authored, deep
+enough to be causal, and readable enough that every object on screen tells you what it is, what it wants, and why
+it matters.
+
+---
+
+*§9–§15 appended 2026-07-06 by the unified-planning pass. They sit on top of §1–§8 (unchanged) and obey the
+authority chain in the header. The quarries (AI research, design-audit R2, perf queue, massline ladder) are now
+bound to homes in §9.1; the working-tree truth is snapshot in §10; the single execution sequence is §11; cleanup is
+§12; story/asset build-out is §13; verification is §14; the release bar is §15. Re-snapshot §10 before each wave.*
