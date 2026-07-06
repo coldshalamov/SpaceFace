@@ -48,6 +48,18 @@ import { spawnBudget } from '../systems/spawnBudget.js';            // single sh
 import { encounterDirector } from '../systems/encounterDirector.js'; // zone-anchored living-universe encounters
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
+// BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
+// surfacing modules (event-driven; no update; DOM fully guarded; voice via ctx.helpers.voice).
+import { sectorPostcard } from '../ui/sectorPostcard.js';             // A1: arrival identity card + one 'news' rumor line
+import { dockDenyBanner } from '../ui/dockDenyBanner.js';             // A3: dockDeny.js surfaced — scan line + one 'comms' denial
+import { stationBroadcast } from '../systems/stationBroadcast.js';    // A5: ambient station flavor (window-timer only; lowest voice priority)
+import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type 'warn' counterplay hint + state.ui.hazardRead
+import { dangerGradient } from '../ui/dangerGradient.js';              // A9: dangerTier tint+badge overlay on existing starmap nodes (guarded applier)
+// BP-12 Causal Economy (Wave 3, design/revamp/detail/E_salvage_economy_contracts.md) — SYSTEMS-only
+// read layers over the shipped dangerModel/sectorSim field ("no economy change without cause").
+import { causeLedger } from '../ui/causeLedger.js';                    // E: "why prices changed" tooltip over the live driver tags (voice:none)
+import { stationSideEventDirector } from '../systems/stationSideEventDirector.js'; // A6: seeded station side-events director (spawnBudget client)
+import { gateControlDirector } from '../systems/gateControlDirector.js';          // A8: seeded gate traffic-control director (toll via economy:chargeCredits)
 import { render } from '../render/renderer.js';
 import { vfx } from '../render/vfx.js';
 import { feel } from '../render/feel.js';
@@ -64,7 +76,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, voiceArbiter, input, autoTargetAssist, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, economy,
-    automation, wingmen, intervention, spawnBudget, world, encounterDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, render, vfx, feel, audio, ui, save,
+    automation, wingmen, intervention, spawnBudget, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, dangerGradient, causeLedger, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -85,7 +97,7 @@ export function createRegistry(ctx) {
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
     input, autoTargetAssist, scanner, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, automation, wingmen, crafting,
-    economy, intervention, world, encounterDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
+    economy, intervention, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own
