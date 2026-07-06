@@ -49,19 +49,19 @@ export const MODULES = [
   // dps = ore-HP/s (asteroid damage). beam_mk1 is the starter laser (price 0).
   {
     id: 'mod_mining_laser_s', name: 'Mining Laser S', slotType: 'mining', size: 'S', tier: 1, mass: 3, price: 0,
-    energyDraw: 4, dps: 18, range: 240, heatRate: 12, coolRate: 20, directToCargo: false,
+    energyDraw: 4, dps: 18, range: 240, directToCargo: false,
   },
   {
     id: 'mod_mining_beam_m', name: 'Mining Beam M', slotType: 'mining', size: 'M', tier: 2, mass: 6, price: 22000, requiresTech: 'tech_focused_extraction',
-    energyDraw: 8, dps: 30, range: 300, heatRate: 10, coolRate: 24, directToCargo: false,
+    energyDraw: 8, dps: 30, range: 300, directToCargo: false,
   },
   {
     id: 'mod_mining_pulverizer_l', name: 'Mining Pulverizer L', slotType: 'mining', size: 'L', tier: 3, mass: 13, price: 64000, requiresTech: 'tech_deep_core_mining',
-    energyDraw: 16, dps: 48, range: 360, heatRate: 8, coolRate: 30, directToCargo: false, rareOreChance: 0.10,
+    energyDraw: 16, dps: 48, range: 360, directToCargo: false, rareOreChance: 0.10,
   },
   {
     id: 'mod_mining_industrial_l', name: 'Industrial Extractor L', slotType: 'mining', size: 'L', tier: 4, mass: 16, price: 90000, requiresTech: 'tech_deep_core_mining',
-    energyDraw: 20, dps: 70, range: 420, heatRate: 6, coolRate: 40, directToCargo: true,
+    energyDraw: 20, dps: 70, range: 420, directToCargo: true,
   },
 
   // ===================== UTILITY =====================
@@ -120,7 +120,7 @@ export const MODULES = [
   },
   {
     id: 'mod_drill_amp', name: 'Drill Amp', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 24000,
-    energyDraw: 2, mods: { ventBonusWindowHeat: 6, richCoreRingPctBonus: 0.04 },
+    energyDraw: 2, mods: { richCoreRingPctBonus: 0.04 },
   },
   {
     id: 'mod_survey_suite', name: 'Survey Suite', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 30000,

@@ -1,5 +1,11 @@
 # SpaceFace — V2 Master Plan (living design doc)
 
+> **Superseded status (2026-07-04):** Reference-only. `design/GDD_2_0.md`,
+> `design/BUILD_PLAN_2_0.md`, `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*` are now the
+> current 2.0 design/execution surfaces. Use this file as an idea archive only; do not treat its
+> status labels or scope claims as active build orders unless a current 2.0 doc explicitly revives
+> them.
+
 > **Status:** DRAFT — active collaboration between the designer and the engineer. This doc
 > sits *above* the 12 per-subsystem specs (`design/specs/00–11`) and `ARCHITECTURE.md`. It
 > does **not** replace them; it unifies them around a single arc and adds the missing
@@ -367,7 +373,7 @@ alphabet). M4 needs M2+M3. M5 needs M4.
 
 # PART II — Anti-patterns & Depth (iteration 2)
 
-> The framing for this pass: **what would a professional Steam release refuse to ship with,
+> The framing for this pass: **what would a professional premium PC/browser release refuse to ship with,
 > and how do we *deepen* the systems we already have rather than just add more?** "Depth" here
 > means a system has a *mastery curve* — a beginner gets a result, an expert gets a better
 > result from the same system because they understand it deeper. Shallow systems have one

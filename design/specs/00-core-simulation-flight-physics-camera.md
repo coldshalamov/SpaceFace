@@ -1,5 +1,9 @@
 # Core simulation, flight physics & camera
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 Foundational tick layer all other systems compose on. Defines the canonical Entity shape (a single flat struct used for ships/asteroids/stations/projectiles/pickups/drones/wrecks), a fixed-timestep 60 Hz simulation with an accumulator and render interpolation, semi-Newtonian flight physics (thrust accel + linear drag giving a soft max speed, turn-toward-mouse-aim rotation, boost/afterburner, strafe), keyboard-move + mouse-aim control, a spatial-hash broad phase with circle/circle response, and a tilted top-down chase camera with follow lerp, look-ahead and screen-shake. Gameplay is on the world XZ plane (Y = up, world is flat); facing is a yaw angle around +Y. Everything is data-driven and decoupled via GameState + event bus.
 
@@ -13,7 +17,7 @@ Foundational tick layer all other systems compose on. Defines the canonical Enti
 - Rotation: ship turns toward target heading (mouse-aim world angle) at turnRate rad/s, clamped to not overshoot in one tick: d=wrapAngle(tRot-rot); step=clamp(d,-turnRate*DT,+turnRate*DT); rot+=step; angVel=step/DT.
 - Thrust modes from input in SHIP-LOCAL frame: W = +forward thrust; S = reverse/brake at 0.5x; A/D = side strafe at 0.6x. Net vector summed then magnitude-clamped to thrust (boost raises the cap). No input => only drag acts (coast and slow).
 - Boost/afterburner (Shift): thrust x2.2, speed clamp raised to 2.0x; drains boostEnergy at 28/s, regen 16/s when not boosting. Emits 'ship.boost.start/stop'.
-- Control scheme = keyboard move + mouse-aim (chosen over twin-stick). WASD moves in ship-local frame; the mouse cursor projected onto the XZ plane sets desired heading AND is the convergence aim point for weapons; Shift=boost, Space=fire (weapons system reads state.input). Decouples movement from aim, gives precise weapon convergence, ideal for desktop/Steam and the Freelancer/Rebel-Galaxy feel.
+- Control scheme = keyboard move + mouse-aim (chosen over twin-stick). WASD moves in ship-local frame; the mouse cursor projected onto the XZ plane sets desired heading AND is the convergence aim point for weapons; Shift=boost, Space=fire (weapons system reads state.input). Decouples movement from aim, gives precise weapon convergence, ideal for PC/browser play and the Freelancer/Rebel-Galaxy feel.
 - Mouse->world each frame: raycast camera through cursor onto plane y=0 (THREE.Plane(0,1,0,0)); store state.input.aimWorld. Desired heading = atan2(aim.z-ship.z, aim.x-ship.x).
 - Camera: PerspectiveCamera fov 50, tilt 60deg from horizontal (0=flat,90=top-down), zoom distance D default 70 wu. Offset is WORLD-axis fixed: (0, D*sin tilt =60.6 wu high, -D*cos tilt =35 wu back). Camera follows position but NOT ship yaw, so the world never spins under the player (anti-nausea).
 - Camera follow: focus = player.pos + lookAhead; camPosTarget = focus + camOffset; camera.position.lerp(camPosTarget, 1-exp(-CAM_LERP*frameDt)) (frame-rate-independent). camera.lookAt(focus + shakeOffset).

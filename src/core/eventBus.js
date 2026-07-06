@@ -30,7 +30,7 @@ export function createBus() {
     if (!set || set.size === 0) return;
     const snapshot = dispatchPool.pop() || [];
     snapshot.length = 0;
-    for (const fn of set) snapshot.push(fn);
+    set.forEach((fn) => snapshot.push(fn));
     for (let i = 0; i < snapshot.length; i++) {
       const fn = snapshot[i];
       try { fn(payload, event); }

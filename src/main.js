@@ -82,11 +82,16 @@ async function boot() {
       scenarioContractHash: contract.sha256,
     };
     const ctx = { state, bus, three: THREE, registry: null, helpers };
-    helpers.finalizeLoadedGame = (payload) => finalizeLoadedGame(state, bus, payload || {});
 
     const registry = createRegistry(ctx);
     ctx.registry = registry;
     registry.init();
+    helpers.finalizeLoadedGame = (payload) => finalizeLoadedGame(state, bus, registry, payload || {});
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () => {
+        try { registry.destroy(); } catch (_) { /* teardown must not throw during navigation */ }
+      });
+    }
 
     // Local telemetry sink (privacy-safe, no network): onboarding funnel, balance/career stats,
     // death heatmap. Subscribes to the live bus; mirrored to window.__SF_TELEMETRY__ for dev.
@@ -110,13 +115,13 @@ async function boot() {
     });
 
     startLoop(state, registry);
-    if (SF_DEBUG) window.SF = { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace };
-    await precompilePipelines(state.render.renderer, state.render.scene, state.render.camera, { warmPostProcess: state.render.warmPostProcess }).catch((error) => console.warn('[SpaceFace] pipeline precompile failed', error));
+    if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace });
+    await precompilePipelines(state.render.renderer, state.render.scene, state.render.camera, { warmPostProcess: state.render.warmPostProcess, video: state.settings && state.settings.video }).catch((error) => console.warn('[SpaceFace] pipeline precompile failed', error));
     hideBootOverlay();
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     if (SF_DEBUG) {
-      window.SF = { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace };
+      window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace });
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
     }
 
@@ -164,7 +169,7 @@ function bootstrapScene(state, helpers, bus, registry) {
     helpers.spawnEntity({ type: 'station', factionId: 'faction_scn', pos: { x: 280, z: -140 }, radius: 42, mass: 1e6, hull: 1e6, hullMax: 1e6, data: { stationId: 'station_helios', dockRadius: 72, services: ['market', 'shipyard', 'missions'] } });
     for (let i = 0; i < 12; i++) { const a = (Math.PI * 2 * i) / 12; const r = 360 + state.rng() * 200; helpers.spawnEntity({ type: 'asteroid', pos: { x: Math.cos(a) * r, z: Math.sin(a) * r }, radius: 12, mass: 500, hull: 240, hullMax: 240, data: { typeId: 'ast_rock', oreHP: 240, oreHPMax: 240 } }); }
   }
-  spawn47aOpeningScene({ state, helpers });
+  spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
 }
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
@@ -175,6 +180,7 @@ async function startNewGame(state, helpers, bus, registry, opts) {
   state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
   resetRunState(state, opts || {});
+  resetCombatInputMode(state, registry);
   enterLoadingMode(state, bus);
 
   for (const name of ['world', 'factions', 'economy', 'automation', 'intervention', 'sectorSim', 'missions', 'aiEncounter', 'crafting', 'traffic', 'drill', 'claims', 'beacons']) {
@@ -204,12 +210,14 @@ async function startNewGame(state, helpers, bus, registry, opts) {
   if (!visualsReady) {
     throw new Error('Initial authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
   }
+  await waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
   enterFlightMode(state, bus);
   bus.emit('game:started', {});
   if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
 }
 
-async function finalizeLoadedGame(state, bus, payload = {}) {
+async function finalizeLoadedGame(state, bus, registry, payload = {}) {
+  resetCombatInputMode(state, registry);
   enterLoadingMode(state, bus);
   try {
     const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
@@ -220,6 +228,7 @@ async function finalizeLoadedGame(state, bus, payload = {}) {
     if (!visualsReady) {
       throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
     }
+    await waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
     enterFlightMode(state, bus);
     bus.emit('ui:closeAll', {});
     if (SF_DEBUG) console.log('[SpaceFace] loaded game entered flight. slot=%s', payload.slot || 'unknown');
@@ -227,6 +236,13 @@ async function finalizeLoadedGame(state, bus, payload = {}) {
     console.error('[SpaceFace] loaded game startup failed', error);
     failGameStart(state, bus, error, 'Loaded game assets failed to load. See console.');
   }
+}
+
+function resetCombatInputMode(state, registry) {
+  if (!state || !state.input) return;
+  state.input.autoFire = false;
+  const assist = registry && typeof registry.get === 'function' ? registry.get('autoTargetAssist') : null;
+  if (assist && assist._runtime) assist._runtime.refreshT = 0;
 }
 
 function enterLoadingMode(state, bus) {
@@ -273,6 +289,17 @@ async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000) {
   const last = authoredVisualReadiness(state);
   console.warn('[SpaceFace] initial authored visuals were not ready before flight start', last);
   return false;
+}
+
+async function waitForRenderPipelineWarmup(state, timeoutMs = 20000) {
+  const ready = state && state.render && state.render.pipelinePrecompileReady;
+  if (!ready || typeof ready.then !== 'function') return true;
+  const result = await Promise.race([
+    ready.then(() => true, () => false),
+    delay(timeoutMs).then(() => false),
+  ]);
+  if (!result) console.warn('[SpaceFace] render pipeline warm-up did not finish before flight start');
+  return result;
 }
 
 function authoredVisualReadiness(state) {

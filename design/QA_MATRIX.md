@@ -1,27 +1,27 @@
-# SpaceFace — Release QA Matrix (Steam-bound Electron build)
+# SpaceFace — PC/Browser Release QA Matrix
 
-> **Purpose.** A per-flow release checklist that is run **twice** — once against the dev node
-> server (`node server.js 8123`, the `.claude/launch.json` "spaceface" config) and once against the
-> **actual packaged Electron binary** (`npm run dist` → `dist/SpaceFace-Setup-<ver>.exe`, install,
-> launch). A flow is only "green for release" when **both** columns pass.
+> **Purpose.** A per-flow release checklist for the primary PC browser route
+> (`node server.js` → `http://localhost:8123/`). When an optional packaged desktop shell is part of
+> the deliverable, run the same flows again against the actual packaged binary (`npm run dist` →
+> `dist/SpaceFace-Setup-<ver>.exe`, install, launch). The desktop shell is parity proof, not a
+> separate gameplay target.
 >
-> **Why two columns is not paranoia — the build paths genuinely diverge.** The dev server
-> (`server.js`) and the Electron in-process server (`electron/main.cjs`) are *two different static
-> servers with two different MIME/route tables*, and they run the page at *two different origins*.
-> A flow can pass in the browser tab and fail in the shipped binary (or vice-versa). The
-> divergences below are real, read off the two source files, not hypothetical:
+> **Why the optional second column exists.** The dev server (`server.js`) and the Electron in-process
+> server (`electron/main.cjs`) are still two different static servers and origins. They are now
+> intentionally closer than older docs claimed, but parity must be tested when packaging:
 >
 > | Concern | `server.js` (dev) | `electron/main.cjs` (packaged) | Consequence |
 > |---|---|---|---|
-> | Listen port | **fixed 8123** (launch.json) | **`server.listen(0)`** → random ephemeral port *every launch* | localStorage origin (`http://127.0.0.1:<port>`) changes each Electron launch → **saves may not carry over** (see SAVE-1) |
-> | MIME `.jpeg`/`.gif`/`.woff`/`.map` | present | **absent** → served as `application/octet-stream` | a `.jpeg`/`.gif`/`.woff` asset can fail to load in Electron only |
-> | Directory index fallback | yes (`isDirectory → index.html`) | **no** | a bare-dir URL 404s in Electron only |
-> | `Cache-Control: no-cache` | set | **not set** | stale-asset risk after a patch in Electron only |
+> | Listen port | fixed **8123** | fixed **41788** in normal use, with ephemeral fallback only if busy | localStorage should persist across normal relaunches; still test the fallback warning path does not become the normal path |
+> | MIME table | broad static MIME table | broad static MIME table including `.jpeg`, `.gif`, `.woff`, `.map`, `.glb`, `.ktx2` | parity should hold for current asset types; add a QA row when introducing a new extension |
+> | Directory index fallback | yes (`isDirectory → index.html`) | yes (`isDirectory → index.html`) | no known divergence; keep a smoke test for bare-dir URLs if tooling adds any |
+> | `Cache-Control: no-cache` | set | set | no known stale-asset divergence |
 > | `/__shot` dev screenshot sink | yes | **no** | dev-only; not shipped (correct) |
-> | Files shipped | whole repo ROOT | **`package.json build.files` allowlist** (index.html, styles, vendor, src, electron, package.json) | anything outside the allowlist 404s in Electron only (see ASSET-1) |
+> | Files shipped | whole repo ROOT | `package.json build.files` allowlist (`build/web/**`, `electron/**`, `package.json`, selected `assets/**`) | any newly player-facing runtime asset must be added to `build.files`; browser success alone does not prove packaged availability |
 >
-> **The standing rule: QA must run the real binary.** The dev server is a convenience; it is *not*
-> the ship vehicle. No flow ships green on the strength of the dev column alone.
+> **Standing rule.** Browser release claims require the browser column. Desktop-shell release claims
+> require both columns. Do not make desktop packaging change gameplay, assets, settings defaults, or
+> feature reachability.
 
 Legend: **PASS** / **FAIL** / **BLOCKED** / **N/T** (not yet tested) / **N/A**. Fill the two test
 columns at each QA pass; keep the Notes column for the build-path caveat and the canonical event(s)
@@ -35,7 +35,7 @@ the flow depends on (grepped from `src/`, not spec aliases).
 |---|---|---|---|---|
 | F-01 | **Boot → boot-overlay clears → Main Menu** (`state.mode='menu'`, no sim) | N/T | N/T | `index.html` `#boot-overlay`; importmap resolves `three`→`vendor/three.module.js`. Electron: confirm importmap + ESM load over `http://127.0.0.1:<port>/` exactly as the browser. |
 | F-02 | **New Game** → `SaveSystem.newGame(seed)` path → `game:started` → home sector → `mode='flight'` | N/T | N/T | emits `game:started` (`src/main.js:98`); `world` emits `sector:enter`. Starter = `ship_kestrel`, cargo 40u (ARCH §0.10). |
-| F-03 | **Continue / Load latest** from Main Menu | N/T | N/T | `game:load {slot:'latest'}`. **Electron-specific risk: SAVE-1** (origin port change → "no_save"). |
+| F-03 | **Continue / Load latest** from Main Menu | N/T | N/T | `game:load {slot:'latest'}`. Desktop shell should keep saves across normal relaunches via fixed port 41788; verify SAVE-1. |
 | F-04 | **Fly: thrust + rotate + drag**, mouse-aim heading | N/T | N/T | XZ plane, yaw around +Y (ARCH §0.1). Pointer-lock / mouse-ray identical under Electron? Verify. |
 | F-05 | **Boost** (hold) → speed up, `ship:boostStart/Stop` | N/T | N/T | flight emits boost events; audio+vfx consume. Cosmetic but audible — check audio gesture-unlock (F-22). |
 | F-06 | **Combat kill** an NPC → loot/bounty/credit grant | N/T | N/T | fires **`entity:killed`** (NOT the dead alias `combat:kill`, ARCH §4.4). missions/factions/economy react. |
@@ -63,15 +63,16 @@ the flow depends on (grepped from `src/`, not spec aliases).
 
 ## B. Build-path / packaging risk rows (the "run the binary" rows)
 
-These are not player flows — they are the **divergence checks** that the two-column discipline
-exists to catch. Each MUST be exercised against the installed binary, not just the dev tab.
+These are not player flows — they are the **parity checks** that keep the optional desktop shell from
+silently diverging from the primary browser route. Exercise them against the installed binary when
+desktop packaging is in scope.
 
 | # | Risk | Dev | Electron | Detail & required test |
 |---|---|---|---|---|
-| SAVE-1 | **Save persistence across Electron relaunch — UNVERIFIED, suspected total loss** | PASS (fixed port 8123 → stable origin) | **N/T — HIGH RISK** | `electron/main.cjs:32` `server.listen(0)` picks a *random* port each launch; Chromium keys `localStorage` by origin `scheme://host:port`. New port ⇒ new origin ⇒ prior `sf.save.*` keys invisible. **Test:** New Game → dock (autosave) → fully quit Electron → relaunch → is "Continue" present and loadable? If not, this blocks release until the Electron server uses a **fixed port** (or saves move to a file under `app.getPath('userData')`). |
-| ASSET-1 | **`assets/` not in `electron-builder` `files` allowlist** | PASS (server serves ROOT) | **N/T — likely FAIL** | `styles/ui.css` loads `../assets/cinematics/menu_background.jpg` (L54, L203) and `../assets/ui/icons_atlas.jpg` (L178). `package.json build.files` ships index.html/styles/vendor/src/electron/package.json — **no `assets/**`**. **Test:** in the installed build, does the Main Menu show its background + are HUD icons present? If broken, add `"assets/**"` to `build.files`. |
-| MIME-1 | **MIME table mismatch** (`.jpeg`/`.gif`/`.woff`/`.map`) | PASS | N/T | Electron MIME lacks these → `application/octet-stream`. Most repo art is `.jpg` (served) but any `.jpeg`/`.gif`/`.woff` would mis-serve. **Test:** network panel for octet-stream on a known asset; or just confirm all referenced art renders. |
-| ROUTE-1 | **No directory-index fallback in Electron** | PASS | N/T | dev maps `/dir/` → `/dir/index.html`; Electron 404s. **Test:** confirm no runtime code fetches a bare directory path. |
+| SAVE-1 | **Save persistence across desktop-shell relaunch** | PASS (fixed port 8123 → stable origin) | N/T | `electron/main.cjs` normally binds fixed port 41788, so saves should persist across relaunch. **Test:** New Game → dock (autosave) → fully quit Electron → relaunch → is "Continue" present and loadable? Also confirm the console did not warn that 41788 was busy and an ephemeral fallback was used. |
+| ASSET-1 | **Packaged asset allowlist covers player-facing runtime media** | PASS (server serves ROOT) | N/T | `package.json build.files` currently includes `build/web/**`, `electron/**`, `package.json`, `assets/cinematics/**`, `assets/ui/**`, and `assets/ships/**`. **Test:** in the installed build, the Main Menu background, HUD icons, release ship assets, and any newly wired runtime media render. If assets under other folders become player-facing, add those folders to `build.files`. |
+| MIME-1 | **MIME table parity for current asset types** | PASS | N/T | Electron MIME currently covers `.jpeg`, `.gif`, `.woff`, `.map`, `.glb`, `.gltf`, `.ktx2`, etc. **Test:** network panel shows no player-facing asset served as unexpected `application/octet-stream`; add the extension to both servers if a new runtime asset type appears. |
+| ROUTE-1 | **Directory-index fallback parity** | PASS | N/T | Both servers map directories to `index.html`. **Test:** confirm no runtime or tool route depends on behavior that differs between servers. |
 | BOOT-1 | **ESM + importmap load under `http://127.0.0.1:<port>/`** | PASS | N/T | `contextIsolation:true, nodeIntegration:false` (good). Confirm `vendor/three.module.js` + `vendor/addons/` resolve and no CSP/file:// surprises. |
 | DL-1 | **File download + file-open dialogs in frameless window** | PASS (browser) | N/T | Export (F-20) uses `<a download>`; Import (F-21) uses an `<input type=file>`. Both depend on Chromium dialogs that a frameless, menu-removed `BrowserWindow` still honors — verify, don't assume. |
 
@@ -101,6 +102,7 @@ exists to catch. Each MUST be exercised against the installed binary, not just t
 | 1 | | | | | |
 | 2 | | | | | |
 
-**Release gate:** every F-row and every Section-B risk row PASS in **both** columns (or N/A with a
-written reason), SAVE-1 and ASSET-1 explicitly cleared against the installed binary, and Section-C
-corruption tests green.
+**Release gate:** every F-row and Section-B row PASS in the browser column. If a desktop shell is
+shipped, the same rows must PASS in the desktop-shell column (or be N/A with a written reason),
+SAVE-1 and ASSET-1 must be explicitly cleared against the installed binary, and Section-C corruption
+tests must be green.

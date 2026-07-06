@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SpaceFace Graphics Lab</title>
+  <link rel="stylesheet" href="./styles/graphics-lab.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js",
+      "three/addons/": "./vendor/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="lab-header">
+    <div class="lab-title">
+      <h1>SpaceFace Graphics Lab</h1>
+      <p class="lab-sub">Honest gap-map: what pro 3D forums teach vs what this engine actually supports — plus live demos using the real render stack.</p>
+    </div>
+    <div class="lab-header-actions">
+      <label class="lab-select">
+        Faction palette
+        <select id="palette-select"></select>
+      </label>
+      <a class="lab-link" href="./index.html">← Back to game</a>
+    </div>
+  </header>
+
+  <div class="lab-layout">
+    <nav class="lab-nav" id="section-nav" aria-label="Lab sections"></nav>
+
+    <main class="lab-main">
+      <div class="lab-viewport-wrap" id="viewport-wrap">
+        <canvas id="lab-canvas"></canvas>
+        <div class="lab-viewport-badge" id="viewport-badge">Compare</div>
+        <pre class="lab-diagnostics" id="bloom-diagnostics" aria-live="polite"></pre>
+      </div>
+      <div class="lab-catalog-wrap hidden" id="catalog-wrap">
+        <div class="lab-catalog" id="technique-catalog"></div>
+      </div>
+
+      <aside class="lab-panel">
+        <section class="lab-card">
+          <h2 id="section-title">Bad vs Good</h2>
+          <p id="section-desc" class="lab-desc"></p>
+        </section>
+
+        <section class="lab-card" id="controls-card">
+          <h3>Live controls</h3>
+          <div id="section-controls" class="lab-controls"></div>
+          <div class="lab-controls lab-controls--global">
+            <label class="lab-toggle">
+              <input type="checkbox" id="bloom-enabled" checked />
+              Bloom (glow on bright surfaces)
+            </label>
+            <label class="lab-range">
+              Bloom strength
+              <input type="range" id="bloom-strength" min="0" max="1.2" step="0.02" value="0.35" />
+              <span id="bloom-strength-val">0.35</span>
+            </label>
+            <label class="lab-range">
+              Bloom threshold
+              <input type="range" id="bloom-threshold" min="0.3" max="1" step="0.02" value="0.72" />
+              <span id="bloom-threshold-val">0.72</span>
+            </label>
+            <label class="lab-range">
+              Exposure
+              <input type="range" id="exposure" min="0.6" max="1.6" step="0.02" value="1" />
+              <span id="exposure-val">1.00</span>
+            </label>
+            <label class="lab-range">
+              ACES tone-map (crushes bloom — turn down to see strength work)
+              <input type="range" id="aces-amount" min="0" max="1" step="0.05" value="0" />
+              <span id="aces-amount-val">0.00</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="lab-card lab-card--prompt">
+          <h3>What to ask an agent</h3>
+          <p class="lab-prompt-hint">Copy this when briefing graphics work. Replace bracketed parts.</p>
+          <pre id="agent-prompt" class="lab-prompt"></pre>
+          <button type="button" id="copy-prompt" class="lab-btn">Copy prompt</button>
+        </section>
+
+        <section class="lab-card lab-card--glossary">
+          <h3>Quick glossary</h3>
+          <dl id="glossary" class="lab-glossary"></dl>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module">
+    import { bootGraphicsLab } from './src/render/graphicsLab.js';
+    bootGraphicsLab().catch((err) => {
+      console.error('[graphicsLab]', err);
+      document.body.insertAdjacentHTML('beforeend',
+        `<div style="position:fixed;inset:0;background:#0a0c12;color:#f66;padding:2rem;font:14px/1.5 monospace;z-index:9999">
+          Graphics Lab failed to boot.<br><br>${String(err && err.message || err)}
+        </div>`);
+    });
+  </script>
+</body>
+</html>

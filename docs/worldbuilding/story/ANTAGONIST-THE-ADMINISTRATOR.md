@@ -12,7 +12,7 @@ The division is Atmospheric Logistics Allocation. It determines which stations r
 
 Vale is the person who posts Contract 47-A. Not personally — they don't post contracts. But the chain from Vale's signature to the job that withheld the player's payment in the opening run is exactly three links long, and any player who runs enough contracts and pays attention to the paperwork will eventually be able to count them.
 
-Vale is not a villain. This is important. Vale is a practical person who understands what the system is and has concluded that understanding what the system is requires participating in it, which requires not thinking too hard about what participation means. This is Le Carré's gray man: not evil, not corrupt in any theatrical sense. Just the person who signs the order that gets your friends spaced, and who then goes home to a warm room and eats food that doesn't taste like an apology.
+Vale is a practical person who understands what the system is and has concluded that understanding what the system is requires participating in it, which requires not thinking too hard about what participation means. The gray man at the desk: the person who signs the order that gets your friends spaced, and who then goes home to a warm room and eats food that doesn't taste like an apology.
 
 ---
 
@@ -40,13 +40,13 @@ The line is exactly what the wardens used to say at The Pit when you'd completed
 
 ---
 
-**Why Vale is not a villain:**
+**What there is to expose:**
 
-Villains are satisfying. They can be confronted, exposed, destroyed. A villain's defeat means the system had a bad actor and removing the bad actor fixes the system.
+Villains are satisfying because they can be confronted, exposed, destroyed — and a villain's defeat means the system had a bad actor, and removing the bad actor fixes the system.
 
-Vale is not a bad actor. Vale is a good administrator. The contracts are filed correctly. The authorizations are legal. The payments, when they arrive, are accurate. The fact that the system produces outcomes like Contract 47-A is not Vale's fault. Vale didn't design the system. Vale just administers it.
+Vale is a good administrator. The contracts are filed correctly. The authorizations are legal. The payments, when they arrive, are accurate. The fact that the system produces outcomes like Contract 47-A is not Vale's fault. Vale didn't design the system. Vale just administers it.
 
-This is the Le Carré insight: the horror is not that bad people run the system. The horror is that the system runs fine with good people running it, and it still produces the same outcomes.
+Vale does not choose which sector's air gets cut. The allocation algorithm flags underutilized assets and *recommends* reallocation; the recommendation crosses Vale's desk, and Vale initials it, because refusing would cost effort Vale has no reason to spend. The algorithm chose the Pit. The algorithm chooses every cycle. The signature makes it legal. The signature does not make it a choice. There is a difference, and the difference is where the horror lives: the system runs on signatures, and every signature is correct, and the signatures add up to a planet suffocating, and no single signature is the one that did it.
 
 The player cannot expose Vale. There's nothing to expose. The paperwork is clean. The only record that connects Vale to anything the player would recognize as wrong is the Kurtz figure's handwritten ledger, which is not admissible anywhere because nothing about the Ashfall Reach encounter was admissible anywhere.
 

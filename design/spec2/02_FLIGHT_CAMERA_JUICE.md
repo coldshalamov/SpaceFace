@@ -17,6 +17,15 @@ Implement exactly per the staged brief: V toggles; 3.0 s charge (cancel on damag
   boost stretch, fov/zoom settles at +14%, hum drops to a low even drone.
 - Dropped by mass-lock: 'SNARED' one-voice banner (danger tier), 0.35 trauma, hum cuts with a
   descending pitch bend, zoom snaps back over 400 ms. Dropped manually: no drama, 200 ms ease.
+- Engine-hue speed read (FR-4/FR-6): OUTSIDE cruise, the engine plume lerps its FACTION color
+  toward white-hot by speed (÷ 4× maxSpeed) — a quiet analog throttle read that preserves faction
+  identity and never borrows the locked strain-amber. WHILE cruising, cyan (#39d0ff, the locked
+  interactive/engaged hue) overrides the plume, so speed-white and cruise-cyan are mutually
+  exclusive in time — one cue per state.
+- Prograde tick (FR-1): an always-on, unlabeled 2×8 px white (#d7e6ff) velocity-vector tick ~40 px
+  ahead of the ship's projected screen point (via worldToScreen), fading out below 2 wu/s. It is a
+  gauge — constant size, never animates. Its divergence from the centered aim reticle is the
+  "facing vs travel" instrument.
 
 ## 2. Camera composition (small numbers, big feel — edit `camera.js` constants only)
 - Default zoom 95 → **88** (tighter, ships read bigger); map-peek unchanged.

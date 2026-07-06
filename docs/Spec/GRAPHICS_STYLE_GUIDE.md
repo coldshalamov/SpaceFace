@@ -6,6 +6,11 @@
 **Live implementation:** `src/render/ships/kestrelHero.js`  
 **Art thesis:** **Warm, haunted machinery against an indifferent universe.**
 
+**Current authority note (2026-07-04):** This guide is a visual reference and review standard. Use
+`design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`, `design/CURRENT_BUILD_STATUS.md`, and
+`design/spec2/00_MASTER_TASTE.md` for current implementation authority. Older V2/Improvement-plan
+references below are historical inputs.
+
 ---
 
 ## 1. Executive conclusion
@@ -28,7 +33,7 @@ The SF-K0 Kestrel, **BORROWED TIME**, is the first reference implementation of t
 - deterministic reference generation and automated validation;
 - a concrete bar against which every later ship, station, prop, effect, and interface element can be reviewed.
 
-A USD 30 Steam position cannot be guaranteed by graphics. Price tolerance emerges from the agreement between art, writing, systems, performance, audio, content breadth, and presentation. Graphics can, however, remove the “prototype tax”: the silent impression that every system is temporary because the visible world lacks specificity. This guide is designed to remove that tax.
+A USD 30 premium PC position cannot be guaranteed by graphics. Price tolerance emerges from the agreement between art, writing, systems, performance, audio, content breadth, and presentation. Graphics can, however, remove the “prototype tax”: the silent impression that every system is temporary because the visible world lacks specificity. This guide is designed to remove that tax.
 
 ## 2. Evidence and audit boundary
 
@@ -1126,7 +1131,7 @@ A beautiful render with broken sockets is not a 90. A clean model with no identi
 - store-quality screenshot scenes;
 - trailer shot list grounded in real gameplay;
 - accessibility and color-vision review;
-- Steam Deck/floor-profile capture;
+- low-end PC/browser floor-profile capture;
 - release visual regression set.
 
 ## 21. Known limitations of the Kestrel pass
@@ -1165,7 +1170,6 @@ The Kestrel is ready for a first-playable visual sign-off when:
 
 - Khronos glTF 2.0 specification: <https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html>
 - Three.js WebGLRenderer documentation: <https://threejs.org/docs/pages/WebGLRenderer.html>
-- Steam Deck technical specifications: <https://www.steamdeck.com/en-us/tech>
 - Project performance contract: `design/PERF_BUDGET.md`
 - Project visual master plan: `design/V2_MASTER_PLAN.md`
 - Kestrel reference package: `assets/ships/kestrel/`

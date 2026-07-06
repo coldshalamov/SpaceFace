@@ -8,21 +8,19 @@
 //   - Getting busted smuggling contraband — medium spike per bust
 //   - A faction going aggro on you — strong signal the law noticed
 // What lowers heat:
-//   - Clean time. Heat decays slowly while you behave, faster in high-sec (patrols "process" you),
-//     frozen while docked (laying low). Roughly: full heat -> clean in ~5-8 min of clean flight.
+//   - Escaping the active search zone. Once outside the visible heat radius, WANTED drops one
+//     level every few seconds until clean; returning inside the zone resets the escape timer.
 //
 // Outputs:
 //   - player.heat (0..1) — the canonical scalar
-//   - heat:changed { value } event — HUD/alerts listen to show the WANTED indicator
+//   - player.heatZone — visible search zone state for the radar/HUD
+//   - heat:changed { value, level, zone } event — HUD/alerts listen to show WANTED state
 //   - The lawful "playerWanted" flag on enemies is derived downstream by combat.js at spawn time
 //     from this scalar, not written here (heat owns heat; combat owns enemy specs).
 //
 // Tunables kept conservative so a casual smuggler isn't perma-hunted, but a murderous pirate feels
 // real consequences. All clamp at 1.
 const HEAT_MAX = 1;
-const DECAY_PER_S = 0.0022;        // ~7.5 min to fully cool from full heat, clean flight
-const DECAY_HIGHSEC_MULT = 2.4;    // high-sec patrols process you faster
-const DECAY_DOCKED = 0;            // frozen while docked (laying low)
 const KILL_NONHOSTILE = 0.28;      // piracy kill of a clean ship
 const KILL_CLASS_MULT = { station: 1.0, capital: 0.6, large: 0.4, fighter: 0.25, default: 0.15 };
 const HIT_NONHOSTILE = 0.012;      // chip per unprovoked hit (capped per second below)
@@ -31,8 +29,70 @@ const BUST_CONTRABAND = 0.16;      // smuggling scan bust
 const FactionsAggroAdd = 0.20;     // a faction flipping hostile (the law noticed)
 
 const WANTED_THRESHOLD = 0.15;     // above this, lawful patrols hunt you (playerWanted=true)
+const HEAT_LEVEL_COUNT = 5;
+const HEAT_RADIUS_BY_LEVEL = [0, 1200, 1700, 2300, 3000, 3700];
+const HEAT_CLEAR_SECONDS_BY_LEVEL = [0, 5, 6, 7, 8, 10];
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+function defaultHeatZone() {
+  return {
+    active: false,
+    center: { x: 0, z: 0 },
+    radius: 0,
+    level: 0,
+    outsideS: 0,
+    clearAfterS: 0,
+  };
+}
+
+function heatZoneSnapshot(zone) {
+  return zone ? {
+    active: !!zone.active,
+    center: { x: zone.center.x || 0, z: zone.center.z || 0 },
+    radius: zone.radius || 0,
+    level: zone.level || 0,
+    outsideS: zone.outsideS || 0,
+    clearAfterS: zone.clearAfterS || 0,
+  } : defaultHeatZone();
+}
+
+function ensureHeatZone(player) {
+  if (!player) return defaultHeatZone();
+  const zone = player.heatZone && typeof player.heatZone === 'object' ? player.heatZone : defaultHeatZone();
+  if (!zone.center || typeof zone.center !== 'object') zone.center = { x: 0, z: 0 };
+  if (typeof zone.active !== 'boolean') zone.active = false;
+  if (!Number.isFinite(zone.center.x)) zone.center.x = 0;
+  if (!Number.isFinite(zone.center.z)) zone.center.z = 0;
+  if (!Number.isFinite(zone.radius)) zone.radius = 0;
+  if (!Number.isFinite(zone.level)) zone.level = 0;
+  if (!Number.isFinite(zone.outsideS)) zone.outsideS = 0;
+  if (!Number.isFinite(zone.clearAfterS)) zone.clearAfterS = 0;
+  player.heatZone = zone;
+  return zone;
+}
+
+function playerEntity(state) {
+  return state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+}
+
+function setZoneCenter(zone, entity) {
+  if (!zone || !entity || !entity.pos) return;
+  zone.center.x = entity.pos.x || 0;
+  zone.center.z = entity.pos.z || 0;
+}
+
+function outsideHeatZone(entity, zone) {
+  if (!entity || !entity.pos || !zone || !zone.active) return false;
+  const dx = entity.pos.x - zone.center.x;
+  const dz = entity.pos.z - zone.center.z;
+  return dx * dx + dz * dz > zone.radius * zone.radius;
+}
+
+function heatValueForLevel(level) {
+  if (level <= 0) return 0;
+  return Math.max(WANTED_THRESHOLD, Math.min(HEAT_MAX, level / HEAT_LEVEL_COUNT));
+}
 
 export const heat = {
   name: 'heat',
@@ -42,6 +102,7 @@ export const heat = {
     this.bus = ctx.bus;
     const player = this.state.player;
     if (player && typeof player.heat !== 'number') player.heat = 0;
+    if (player) ensureHeatZone(player);
     this._lastHitT = -1e9;
     this._lastEmit = -1;
     this._burstAccrued = 0;
@@ -107,39 +168,106 @@ export const heat = {
     const player = this.state.player;
     if (!player) return;
     const before = player.heat || 0;
-    player.heat = clamp01(before + delta);
+    const after = clamp01(before + delta);
+    player.heat = after;
+    if (after >= WANTED_THRESHOLD) this._refreshZone(true);
     if (player.heat !== before) {
       // emit immediately on threshold crossings (WANTED appearing/disappearing) so the HUD reacts
       // crisply, otherwise throttle to once per ~0.4s.
       const crossed = (before < WANTED_THRESHOLD) !== (player.heat < WANTED_THRESHOLD);
-      const now = this.state.simTime;
+      const now = this.state.simTime || 0;
       if (crossed || now - this._lastEmit > 0.4) {
-        this._lastEmit = now;
-        this.bus.emit('heat:changed', { value: player.heat, reason });
+        this._emitChanged(reason, crossed);
       }
     }
   },
 
   update(dt, state) {
     const player = state.player;
-    if (!player || !player.heat) return; // 0 heat = nothing to decay
-    if (state.mode !== 'flight') return; // frozen in menus
-    // Docked = laying low (frozen). High-sec decays faster.
-    const docked = !!(player.flags && player.flags.docked);
-    if (docked) return;
-    let rate = DECAY_PER_S;
-    const sector = state.world && state.world.currentSectorDef;
-    if (sector && typeof sector.security === 'number' && sector.security >= 0.6) rate *= DECAY_HIGHSEC_MULT;
-    const before = player.heat;
-    player.heat = clamp01(before - rate * dt);
-    if (player.heat !== before) {
-      const now = state.simTime;
-      const crossed = (before < WANTED_THRESHOLD) !== (player.heat < WANTED_THRESHOLD);
-      if (crossed || now - this._lastEmit > 0.4) {
-        this._lastEmit = now;
-        this.bus.emit('heat:changed', { value: player.heat });
-      }
+    if (!player) return;
+    const zone = ensureHeatZone(player);
+    if (!player.heat) { this._clearZone(); return; }
+    const level = heatLevelFor(player.heat);
+    if (level <= 0) {
+      this._setHeat(0, 'heat cleared');
+      return;
     }
+    if (state.mode !== 'flight') return; // frozen in menus
+    // Docked/menu time is frozen; escaping only advances in live flight.
+    const entity = playerEntity(state);
+    const docked = !!((player.flags && player.flags.docked) || (entity && entity.flags && entity.flags.docked));
+    if (docked) return;
+    this._refreshZone(false);
+    if (!outsideHeatZone(entity, zone)) {
+      zone.outsideS = 0;
+      return;
+    }
+    zone.outsideS += Math.max(0, dt || 0);
+    while (zone.active && zone.outsideS >= zone.clearAfterS && heatLevelFor(player.heat) > 0) {
+      zone.outsideS -= zone.clearAfterS;
+      this._dropOneLevel();
+    }
+  },
+
+  _refreshZone(recenter) {
+    const player = this.state.player;
+    if (!player) return;
+    const level = heatLevelFor(player.heat || 0);
+    const zone = ensureHeatZone(player);
+    if (level <= 0) {
+      this._clearZone();
+      return;
+    }
+    const entity = playerEntity(this.state);
+    if (!zone.active || recenter) setZoneCenter(zone, entity);
+    zone.active = true;
+    zone.level = level;
+    zone.radius = heatRadiusForLevel(level);
+    zone.clearAfterS = heatClearSecondsForLevel(level);
+    if (!Number.isFinite(zone.outsideS) || recenter) zone.outsideS = 0;
+  },
+
+  _dropOneLevel() {
+    const player = this.state.player;
+    if (!player) return;
+    const before = player.heat || 0;
+    const beforeLevel = heatLevelFor(before);
+    const after = beforeLevel <= 1 ? 0 : heatValueForLevel(beforeLevel - 1);
+    this._setHeat(after, 'escaped heat radius');
+  },
+
+  _setHeat(value, reason) {
+    const player = this.state.player;
+    if (!player) return;
+    const before = player.heat || 0;
+    player.heat = clamp01(value);
+    if (player.heat > 0) this._refreshZone(false);
+    else this._clearZone();
+    if (player.heat !== before) this._emitChanged(reason, true);
+  },
+
+  _clearZone() {
+    const player = this.state.player;
+    if (!player) return;
+    const zone = ensureHeatZone(player);
+    zone.active = false;
+    zone.radius = 0;
+    zone.level = 0;
+    zone.outsideS = 0;
+    zone.clearAfterS = 0;
+  },
+
+  _emitChanged(reason, force = false) {
+    const now = this.state.simTime || 0;
+    if (!force && now - this._lastEmit <= 0.4) return;
+    this._lastEmit = now;
+    const player = this.state.player || {};
+    this.bus.emit('heat:changed', {
+      value: player.heat || 0,
+      level: heatLevelFor(player.heat || 0),
+      zone: heatZoneSnapshot(ensureHeatZone(player)),
+      reason,
+    });
   },
 };
 
@@ -147,5 +275,17 @@ export const heat = {
 export function isPlayerWanted(state) {
   const h = state.player && state.player.heat;
   return typeof h === 'number' ? h >= WANTED_THRESHOLD : false;
+}
+export function heatLevelFor(value) {
+  if (!Number.isFinite(value) || value < WANTED_THRESHOLD) return 0;
+  return Math.max(1, Math.min(HEAT_LEVEL_COUNT, Math.ceil(value * HEAT_LEVEL_COUNT)));
+}
+export function heatRadiusForLevel(level) {
+  const i = Math.max(0, Math.min(HEAT_LEVEL_COUNT, Math.round(level || 0)));
+  return HEAT_RADIUS_BY_LEVEL[i] || 0;
+}
+export function heatClearSecondsForLevel(level) {
+  const i = Math.max(0, Math.min(HEAT_LEVEL_COUNT, Math.round(level || 0)));
+  return HEAT_CLEAR_SECONDS_BY_LEVEL[i] || 0;
 }
 export const THRESHOLD = WANTED_THRESHOLD;

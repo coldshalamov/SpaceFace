@@ -227,8 +227,8 @@ export function createBloom(renderer, width, height) {
 
   // tunables (overridable via setOptions; defaults match settings.video.*)
   let enabled = true;
-  let strength = 0.9;
-  let threshold = 0.65;
+  let strength = 0.40;
+  let threshold = 0.72;
   const knee = 0.12;
   let exposure = 1.0;
   let aces = 1.0; // 1 = ACES filmic by default
@@ -309,7 +309,7 @@ export function createBloom(renderer, width, height) {
     tCoarse: { value: null },
     tFine: { value: null },
     uTexel: { value: new THREE.Vector2(1 / halfW, 1 / halfH) },
-    uWeight: { value: 0.65 },                               // coarse-glow contribution per upsample step
+    uWeight: { value: 0.45 },                               // coarse-glow contribution per upsample step
   });
   const compositeMat = mkMat(COMPOSITE_FRAG, {
     tScene:     { value: null },
@@ -378,7 +378,7 @@ export function createBloom(renderer, width, height) {
       upsampleMat.uniforms.tCoarse.value = readTex;     // level i (coarse, to be spread up)
       upsampleMat.uniforms.tFine.value = down[i - 1].texture; // level i-1 (sharp brights to keep)
       upsampleMat.uniforms.uTexel.value.set(1 / targetW, 1 / targetH);
-      upsampleMat.uniforms.uWeight.value = 0.65;
+      upsampleMat.uniforms.uWeight.value = 0.45;
       blit(upsampleMat, outRT);
       finalTex = outRT.texture;
       // the just-written RT becomes the coarse input next iteration; reuse the other scratch as output
@@ -444,12 +444,34 @@ export function createBloom(renderer, width, height) {
     if (!o) return;
     if (typeof o.enabled === 'boolean') enabled = o.enabled;
     if (typeof o.bloom === 'boolean') enabled = o.bloom; // settings.video.bloom alias
-    if (typeof o.strength === 'number') strength = Math.max(0, o.strength);
-    if (typeof o.bloomStrength === 'number') strength = Math.max(0, o.bloomStrength);
-    if (typeof o.threshold === 'number') threshold = o.threshold;
-    if (typeof o.bloomThreshold === 'number') threshold = o.bloomThreshold;
-    if (typeof o.exposure === 'number') exposure = Math.max(0.1, o.exposure);
-    if (typeof o.acesToneMapping === 'boolean') aces = o.acesToneMapping ? 1.0 : 0.0;
+    if (typeof o.strength === 'number') {
+      strength = Math.max(0, o.strength);
+      compositeMat.uniforms.uStrength.value = strength;
+    }
+    if (typeof o.bloomStrength === 'number') {
+      strength = Math.max(0, o.bloomStrength);
+      compositeMat.uniforms.uStrength.value = strength;
+    }
+    if (typeof o.threshold === 'number') {
+      threshold = o.threshold;
+      downsampleMat.uniforms.uThreshold.value = threshold;
+    }
+    if (typeof o.bloomThreshold === 'number') {
+      threshold = o.bloomThreshold;
+      downsampleMat.uniforms.uThreshold.value = threshold;
+    }
+    if (typeof o.exposure === 'number') {
+      exposure = Math.max(0.1, o.exposure);
+      compositeMat.uniforms.uExposure.value = exposure;
+    }
+    if (typeof o.acesToneMapping === 'boolean') {
+      aces = o.acesToneMapping ? 1.0 : 0.0;
+      compositeMat.uniforms.uAces.value = aces;
+    }
+    if (typeof o.aces === 'number') {
+      aces = Math.max(0, Math.min(1, o.aces));
+      compositeMat.uniforms.uAces.value = aces;
+    }
     // cinematic post grade (cyberpunk-noir) — adjustable via settings.video.*
     if (typeof o.grain === 'number') compositeMat.uniforms.uGrain.value = Math.max(0, Math.min(1, o.grain));
     if (typeof o.vignette === 'number') compositeMat.uniforms.uVignette.value = Math.max(0, Math.min(1, o.vignette));

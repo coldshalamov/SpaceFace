@@ -1,18 +1,13 @@
-// Price history recorder (UX-4). Maintains a per-station, per-commodity ring buffer of mid-price
-// snapshots so the market screen can draw real sparklines instead of misleading base-price "heat".
+// Price history recorder (UX-4). Maintains a per-station, per-commodity ring buffer of price
+// snapshots so the market screen can draw real sparklines and expanded charts. Upgraded to capture
+// longer horizons, event markers, and separate buy/sell/mid values.
 //
-// This is deliberately a STANDALONE module that only SUBSCRIBES to economy events — it never touches
-// economy.js or sim state. The history lives in module scope (ephemeral, not saved) and accumulates
-// from the moment the game boots. That's a real, honest trend: you see where the price has actually
-// been this session, not a static basePrice comparison.
-//
-// Storage: history[stationId][commodityId] = number[] (mid prices, newest last, capped at MAX_POINTS).
-// We sample on economy:tick (cadence ~ every few sim seconds) rather than every frame.
+// Storage: history[stationId][cmdtyId] = { mid, buy, sell, t, events }[] (newest last).
+// Samples on every economy:tick so the buffer spans many minutes of sim time.
 
-const MAX_POINTS = 32;          // ring buffer depth — enough for a readable sparkline, cheap to hold
-const SAMPLE_EVERY_TICKS = 3;   // sample every Nth economy tick so the buffer spans more wall-time
+const MAX_POINTS = 256;
 
-const _history = Object.create(null);   // stationId -> { cmdtyId -> number[] }
+const _history = Object.create(null);   // stationId -> { cmdtyId -> PricePoint[] }
 let _tickCount = 0;
 
 function _buf(stationId, cmdtyId) {
@@ -23,12 +18,23 @@ function _buf(stationId, cmdtyId) {
   return arr;
 }
 
-/** Wire the recorder to a bus. Call once at boot (from the UI system or main.js). */
+function activeEventIds(state, stationId, cmdtyId) {
+  const events = state && state.economy && state.economy.econEvents;
+  if (!events) return [];
+  const out = [];
+  for (const ev of events) {
+    if (ev.stationId !== stationId) continue;
+    if (ev.commodityId !== '*' && ev.commodityId !== cmdtyId) continue;
+    out.push(ev.id);
+  }
+  return out;
+}
+
+/** Wire the recorder to a bus. Call once at boot. */
 export function initPriceHistory(bus, state) {
   if (!bus) return;
   bus.on('economy:tick', () => {
     _tickCount++;
-    if ((_tickCount % SAMPLE_EVERY_TICKS) !== 0) return;
     const markets = state && state.economy && state.economy.markets;
     if (!markets) return;
     for (const stationId in markets) {
@@ -38,23 +44,51 @@ export function initPriceHistory(bus, state) {
         const mid = e && (e.lastMid != null ? e.lastMid : (e.lastBuy != null && e.lastSell != null ? (e.lastBuy + e.lastSell) / 2 : null));
         if (mid == null || !isFinite(mid)) continue;
         const arr = _buf(stationId, cid);
-        arr.push(mid);
+        arr.push({
+          mid: Math.round(mid),
+          buy: Math.round(e.lastBuy != null ? e.lastBuy : mid),
+          sell: Math.round(e.lastSell != null ? e.lastSell : mid),
+          t: Math.max(0, state.simTime || 0),
+          events: activeEventIds(state, stationId, cid),
+        });
         if (arr.length > MAX_POINTS) arr.shift();
       }
     }
   });
-  // clear on new game / load so stale history from a previous session doesn't bleed in
-  bus.on('game:new', () => { for (const k in _history) delete _history[k]; });
-  bus.on('save:loaded', () => { for (const k in _history) delete _history[k]; });
+  bus.on('game:new', () => { for (const k in _history) delete _history[k]; _tickCount = 0; });
+  bus.on('save:loaded', () => { for (const k in _history) delete _history[k]; _tickCount = 0; });
 }
 
-/**
- * Get the price series for a station+commodity (newest last). Returns [] if none recorded yet.
- * @returns {number[]}
- */
-export function getPriceHistory(stationId, cmdtyId) {
+/** Get the price series for a station+commodity (newest last). Returns [] if none. */
+export function getPriceHistory(stationId, cmdtyId, maxAgeS = Infinity) {
   const byStation = _history[stationId];
   if (!byStation) return [];
   const arr = byStation[cmdtyId];
-  return arr ? arr.slice() : [];
+  if (!arr) return [];
+  if (!Number.isFinite(maxAgeS) || maxAgeS <= 0) return arr.slice();
+  const now = arr.length ? arr[arr.length - 1].t : 0;
+  return arr.filter((p) => (now - p.t) <= maxAgeS);
+}
+
+/** Export history so UI can persist/inspect it. */
+export function snapshotHistory() {
+  const out = {};
+  for (const sid in _history) {
+    out[sid] = {};
+    for (const cid in _history[sid]) {
+      out[sid][cid] = _history[sid][cid].slice();
+    }
+  }
+  return out;
+}
+
+/** Import history (e.g., after save load if we later persist it). */
+export function loadHistory(data) {
+  for (const k in _history) delete _history[k];
+  for (const sid in data || {}) {
+    _history[sid] = {};
+    for (const cid in data[sid]) {
+      _history[sid][cid] = data[sid][cid].slice();
+    }
+  }
 }

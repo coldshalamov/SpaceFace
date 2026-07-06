@@ -1,5 +1,11 @@
 # SpaceFace — Visual Asset Generation Plan (Pure Image & Video)
 
+**Current status (2026-07-04):** Asset/reference ledger only. Use
+`design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`, `design/CURRENT_BUILD_STATUS.md`, and
+`design/spec2/*` for current implementation authority. Helmet, visor, cockpit, and pilot-face
+material here is off-HUD cinematic/reference material only; do not wire it into the default
+player-facing HUD or cockpit framing.
+
 **Purpose**: Exhaustive, structured list of everything that can be created with Grok's image_gen, image_edit, image_to_video, and reference_to_video tools.  
 **Scope**: Visuals only (textures, sprites, illustrations, UI elements, concepts, cutscene stills, short videos, atlas sheets, PBR decompositions, and more). No code, no Three.js integration details.  
 **Current State**: Game is in early implementation (specs + some data like ores). Perfect time for a deliberate visual plan.  
@@ -555,7 +561,7 @@ These are often done via image_edit on top of earlier work.
 - MKT-004 — Social / trailer stills pulled from cinematic frames (with safe text space).
 - MKT-005 — "SpaceFace" logo lockups in multiple treatments (with and without tagline).
 - **Doubled Marketing**:
-- MKT-006 to MKT-020 — Additional key arts (action combat, peaceful automation empire, lone explorer, dramatic Xenium find, fleet vs pirates), multiple Steam capsule variants (with/without logo, different focal ships), square social media versions, banner ad crops, Twitch overlay panels, "making of" style behind-the-scenes stills, press kit hero images.
+- MKT-006 to MKT-020 — Additional key arts (action combat, peaceful automation empire, lone explorer, dramatic Xenium find, fleet vs pirates), multiple store/capsule variants (with/without logo, different focal ships), square social media versions, banner ad crops, Twitch overlay panels, "making of" style behind-the-scenes stills, press kit hero images.
 
 **User Additions**:
 - [Anything else — soundless animated loops for menus, more variations, alternate art styles for a "classic mode", etc.]
@@ -630,7 +636,7 @@ For major hero assets, generate decomposed maps or combined sheets that can guid
 ## Phase 13: Expanded Marketing, Trailer & Ecosystem Assets (NEW EXPANDED PHASE)
 
 - MKT-021 — Multiple distinct key art directions (combat-focused, automation peaceful, exploration wonder, "lone wolf miner vs the void", "empire builder").
-- MKT-022 — Steam / itch capsule variants (logo only, no logo, different ships in foreground, vertical phone-friendly).
+- MKT-022 — Store / itch capsule variants (logo only, no logo, different ships in foreground, vertical phone-friendly).
 - MKT-023 — Social media package (Twitter/X headers, Instagram posts, TikTok/YouTube thumbnail styles, Discord icon and banner).
 - MKT-024 — Animated trailer source stills and short clips (6s hero moments ready for editing into a full trailer).
 - MKT-025 — "Making of" or art dump stills (style bible pages, process shots, in-engine comparison mockups).

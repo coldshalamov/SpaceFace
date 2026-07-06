@@ -65,6 +65,24 @@
       "concept_path": "assets/concept/archetypes/concept_station_research.jpg",
       "blend_path": null,
       "min_tris": 500
+    },
+    "place_dock_interior": {
+      "method": "procedural_fallback",
+      "concept_path": "assets/cinematics/C-INTRO-04.jpg",
+      "blend_path": null,
+      "min_tris": 500
+    },
+    "place_dock_interior_military": {
+      "method": "procedural_fallback",
+      "concept_path": "assets/concept/archetypes/concept_station_military.jpg",
+      "blend_path": null,
+      "min_tris": 500
+    },
+    "place_dock_interior_grit": {
+      "method": "procedural_fallback",
+      "concept_path": "assets/concept/archetypes/concept_station_blackmarket.jpg",
+      "blend_path": null,
+      "min_tris": 500
     }
   }
 }

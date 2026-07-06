@@ -7,6 +7,13 @@
       "runtimeArgs": ["server.js", "8123"],
       "port": 8123,
       "autoPort": false
+    },
+    {
+      "name": "sf-verify",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js", "8161"],
+      "port": 8161,
+      "autoPort": true
     }
   ]
 }

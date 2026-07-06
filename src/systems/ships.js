@@ -7,6 +7,7 @@
 // getDerivedStats() and makeShipEntitySpec() are exported as pure-ish builders so other systems
 // (save/newGame, render previews, UI stat readouts) can call them without going through the bus.
 import { SHIPS } from '../data/ships.js';
+import { FLIGHT_TUNING } from '../data/flightTuning.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
@@ -45,6 +46,7 @@ const DEFAULT_MINING_BEAM_TIER = 'beam_mk1'; // §0.10 Kestrel mines at 18 ore-H
 // fires along (nose + facingAngle) and gimbal-assists toward the aim direction within GIMBAL_ARC.
 export const FACING_ANGLE = { front: 0, right: Math.PI / 2, rear: Math.PI, left: -Math.PI / 2, turret: 0 };
 export const GIMBAL_ARC_DEFAULT = 22 * Math.PI / 180;   // ~22° half-angle gimbal cone for fixed guns
+export const PLAYER_GIMBAL_ARC = Math.PI;               // player fixed mounts bear full 360° around the hull
 // Muzzle offset per facing (in ship-radius fractions) so shots visibly leave the hull at the mount.
 export const FACING_OFFSET = { front: [0.8, 0], right: [0.1, 0.6], rear: [-0.8, 0], left: [0.1, -0.6], turret: [0.5, 0] };
 
@@ -170,7 +172,7 @@ function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling
     mass: totalMass,
     inertia,
     mainAccel: thrust * t.accel,
-    reverseAccel: thrust * 0.55 * t.accel,
+    reverseAccel: thrust * FLIGHT_TUNING.reverseThrustScale * t.accel,
     strafeAccel: thrust * t.strafe,
     angularAccel: Math.max(5, turnRate * 8.5 * t.turn / Math.sqrt(Math.max(0.4, massRatio))),
     angularBrake: Math.max(12, turnRate * 15 * t.brake / Math.pow(Math.max(0.4, massRatio), 0.25)),
@@ -304,7 +306,7 @@ function buildWeaponList(shipDef, fittings, isPlayer) {
   for (let i = 0; i < equipped.length; i++) {
     const d = equipped[i];
     if (!d || d.slotType !== 'weapon') continue;
-    weapons.push(makeWeaponRuntime(d, slots[i], i));
+    weapons.push(makeWeaponRuntime(d, slots[i], i, isPlayer));
   }
   // Legacy player saves before the explicit NEW_GAME weapon may still have no weapon fitted. Prefer
   // a front-facing slot so the fallback starter gun never fires backward or as an unturreted mount.
@@ -312,12 +314,12 @@ function buildWeaponList(shipDef, fittings, isPlayer) {
     const wslot = slots.find((s) => s.type === 'weapon' && (s.facing === 'front' || !s.facing))
                || slots.find((s) => s.type === 'weapon');
     const w = WEAPON_BY_ID.get(STARTER_WEAPON_ID);
-    if (wslot && w) weapons.push(makeWeaponRuntime(w, wslot, wslot.index));
+    if (wslot && w) weapons.push(makeWeaponRuntime(w, wslot, wslot.index, isPlayer));
   }
   return weapons;
 }
 
-function makeWeaponRuntime(def, slot, slotIndex) {
+function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false) {
   // Hardpoint facing (Phase 2): turret/gimbal tracking determines how a gun acquires its aim.
   const tracking = def.tracking || 'fixed';
   const facing = (slot && slot.facing) || 'front';
@@ -327,7 +329,8 @@ function makeWeaponRuntime(def, slot, slotIndex) {
   // homing weapons lock a target and steer in flight (no gimbal — they fire toward the target).
   const isTurret = facing === 'turret' || tracking === 'auto_turret';
   const isHoming = tracking === 'homing';
-  const gimbalArc = isTurret ? (turretArc || Math.PI) : (isHoming ? Math.PI : GIMBAL_ARC_DEFAULT);
+  const gimbalArc = isTurret ? (turretArc || Math.PI)
+    : (isHoming ? Math.PI : (isPlayer ? PLAYER_GIMBAL_ARC : GIMBAL_ARC_DEFAULT));
   const muzzleOffset = FACING_OFFSET[facing] || FACING_OFFSET.front;
   return {
     slotIndex, defId: def.id, name: def.name, facing, facingAngle, gimbalArc, muzzleOffset,
@@ -365,16 +368,14 @@ function buildMiningBeam(shipDef, fittings, isPlayer) {
     beam = BEAMS.find((b) => b.dps === mod.dps) || null;
     return {
       tierId: beam ? beam.id : DEFAULT_MINING_BEAM_TIER,
-      dps: mod.dps, range: mod.range, _heat: 0, heatMax: 100, overheated: false,
-      heatRate: mod.heatRate, coolRate: mod.coolRate, directToCargo: !!mod.directToCargo,
+      dps: mod.dps, range: mod.range, directToCargo: !!mod.directToCargo,
     };
   }
   if (isPlayer) {
     const b = BEAM_BY_ID.get(DEFAULT_MINING_BEAM_TIER);
     return {
       tierId: DEFAULT_MINING_BEAM_TIER,
-      dps: b.dps, range: b.range, _heat: 0, heatMax: 100, overheated: false,
-      heatRate: b.heatRate, coolRate: b.coolRate, directToCargo: false,
+      dps: b.dps, range: b.range, directToCargo: false,
     };
   }
   return null;

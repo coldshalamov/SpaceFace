@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createBus } from '../src/core/eventBus.js';
 import { Masks } from '../src/core/entity.js';
@@ -8,7 +9,7 @@ import { physics } from '../src/core/physics.js';
 import { queryNearbyEntities } from '../src/core/spatialQuery.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { AI_CONTRACT_VERSION } from '../src/ai/contracts.js';
-import { hash32, mulberry32 } from '../src/core/rng.js';
+import { hash32, mulberry32, wrapAngle } from '../src/core/rng.js';
 import { audioNearbyHostileCount } from '../src/audio/audioSystem.js';
 import { save } from '../src/save/saveSystem.js';
 import { cargo, addCargo } from '../src/systems/cargo.js';
@@ -24,8 +25,10 @@ import { tickProgram } from '../src/systems/alphabet.js';
 import { flight } from '../src/systems/flight.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { resolveHudNavStation } from '../src/ui/hud.js';
+import { createUiInput } from '../src/ui/input.js';
 import { automation } from '../src/systems/automation.js';
 import { ai } from '../src/systems/ai.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
 import { aiEncounter } from '../src/systems/aiEncounter.js';
 import { intervention } from '../src/systems/intervention.js';
 import { sectorSim } from '../src/systems/sectorSim.js';
@@ -35,12 +38,22 @@ import { traffic } from '../src/systems/traffic.js';
 import * as FlightDynamics from '../src/core/flightDynamics.js';
 import { heat } from '../src/systems/heat.js';
 import { missions } from '../src/systems/missions.js';
-import { DEFAULTS as INPUT_DEFAULTS } from '../src/systems/input.js';
-import { ships, buildSlotList, fittingsFromDefaultModules, getDerivedStats, makeShipEntitySpec } from '../src/systems/ships.js';
+import { DEFAULTS as INPUT_DEFAULTS, input as inputSystem } from '../src/systems/input.js';
+import { autoTargetAssist } from '../src/systems/autoTargetAssist.js';
+import {
+  toggleAutoTarget,
+  projectLockedReticle,
+  createAutoTargetRuntime,
+} from '../src/combat/autoTargetMode.js';
+import { ships, buildSlotList, fittingsFromDefaultModules, getDerivedStats, makeShipEntitySpec, PLAYER_GIMBAL_ARC } from '../src/systems/ships.js';
+import { cycleTarget, targetNearestHostileToPlayer } from '../src/ui/uiRoot.js';
+import { weaponHeatSummary } from '../src/ui/weaponHeat.js';
 import { world } from '../src/systems/world.js';
+import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../src/systems/scanner.js';
 import { SHIPS } from '../src/data/ships.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
+import { spawn47aOpeningScene } from '../src/data/scenarios/47aLiveScene.js';
 
 function makeCargoState() {
   return {
@@ -311,6 +324,125 @@ function checkCoreEntityIndexIsLifecycleDriven() {
 }
 checkCoreEntityIndexIsLifecycleDriven();
 
+function checkProjectileLaunchFullyInheritsShooterVelocity() {
+  const state = createGameState(101);
+  state.mode = 'flight';
+  const spawned = [];
+  weapons.init({
+    state,
+    bus: createBus(),
+    helpers: {
+      mulberry32,
+      hash32,
+      spawnEntity(spec) {
+        spawned.push(spec);
+        return spec;
+      },
+    },
+  });
+
+  const shooter = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    team: 0,
+    factionId: 'faction_free',
+    radius: 10,
+    pos: { x: 0, z: 0 },
+    vel: { x: 1158, z: 0 },
+    rot: 0,
+    data: {},
+  };
+  const weapon = { defId: 'wpn_pulse_laser_s' };
+  const def = { projSpeed: 320, range: 600, dmg: 8, damageType: 'energy' };
+
+  weapons._spawnProjectile(shooter, weapon, def, 0, null, false, state);
+
+  assert.equal(spawned.length, 1, 'pulse laser fire should spawn one projectile');
+  const projectile = spawned[0];
+  const relativeForwardSpeed = projectile.vel.x - shooter.vel.x;
+  assert(Math.abs(relativeForwardSpeed - def.projSpeed) < 1e-9,
+    'projectile should leave the muzzle at weapon speed relative to the firing ship');
+  assert(relativeForwardSpeed > 0,
+    'fast ships must not overtake their own newly fired bullets');
+  assert.equal(projectile.data.maxDistance, def.range,
+    'projectile should carry a spatial max distance equal to authored weapon range');
+  assert(projectile.ttl <= def.range / Math.hypot(projectile.vel.x, projectile.vel.z) + 1e-9,
+    'projectile TTL should account for inherited ship velocity');
+}
+checkProjectileLaunchFullyInheritsShooterVelocity();
+
+function checkDrillInputAcceptsLiveTetherStandard() {
+  const state = {
+    mode: 'flight',
+    ui: {},
+    playerId: 1,
+    player: { targetId: 2 },
+    entities: new Map([
+      [1, { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } }],
+      [2, { id: 2, type: 'asteroid', alive: true, radius: 40, pos: { x: 120, z: 0 } }],
+    ]),
+    combat: {
+      attachments: {
+        byId: {
+          att_live_tether: {
+            id: 'att_live_tether',
+            state: 'active',
+            ownerId: 1,
+            targetId: 2,
+            defId: 'tether_standard',
+          },
+        },
+      },
+    },
+  };
+  const bus = createBus();
+  const events = [];
+  bus.on('ui:drillFadeStart', (payload) => events.push({ type: 'drill', payload }));
+  bus.on('toast', (payload) => events.push({ type: 'toast', payload }));
+  const screenManager = {
+    isOpen: () => false,
+    getActiveScreenDef: () => null,
+    pushScreen() {},
+    popScreen() {},
+  };
+
+  const originalDocument = globalThis.document;
+  const originalWindow = globalThis.window;
+  let keydown = null;
+  globalThis.document = {
+    addEventListener(type, fn) { if (type === 'keydown') keydown = fn; },
+    removeEventListener() {},
+  };
+  globalThis.window = {
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  try {
+    const router = createUiInput({ state, bus, registry: { get: () => null } }, screenManager);
+    assert.equal(typeof keydown, 'function', 'UI input router should register a keydown handler');
+    keydown({
+      key: 'b',
+      code: 'KeyB',
+      target: null,
+      preventDefault() {},
+      stopPropagation() {},
+    });
+    router.dispose();
+  } finally {
+    if (originalDocument === undefined) delete globalThis.document;
+    else globalThis.document = originalDocument;
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+  }
+
+  assert(events.some((event) => event.type === 'drill' && event.payload.attachmentId === 'att_live_tether'),
+    'B drill input should accept the live tether_standard attachment id');
+  assert(!events.some((event) => event.type === 'toast' && /No massline link/.test(event.payload && event.payload.text)),
+    'B drill input must not reject a visible live tether_standard massline');
+}
+checkDrillInputAcceptsLiveTetherStandard();
+
 function checkMiningPickupMagnetUsesSpatialHashForCrowdedScenes() {
   const state = createGameState(90);
   state.entities.clear();
@@ -516,6 +648,631 @@ function checkWeaponAutoFireUsesSpatialShipCandidates() {
   assert.equal(weapons._diag.autoFireSpatialQueries, 1, 'crowded auto-fire targeting should query nearby ships through the spatial hash');
   assert(weapons._diag.autoFireCandidates < shipsInIndex.length,
     'crowded auto-fire targeting should avoid scanning every ship in the sector');
+}
+
+function checkSelectedAutoFireRequiresHostileTarget() {
+  const state = createGameState(96);
+  state.mode = 'flight';
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  state.player.heat = 0;
+  state.player.targetId = 2;
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 0,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    flags: {},
+    data: { weapons: [{ defId: 'wpn_pulse_laser_s' }], combat: {} },
+  };
+  const lawfulPatrol = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 1,
+    pos: { x: 220, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: { ai: { lawful: true }, combat: {} },
+  };
+  state.entities.set(player.id, player);
+  state.entities.set(lawfulPatrol.id, lawfulPatrol);
+  state.entityList.push(player, lawfulPatrol);
+
+  weapons.init({
+    state,
+    bus: createBus(),
+    helpers: {
+      getEntity: (id) => state.entities.get(id) || null,
+      spawnEntity() { throw new Error('selected auto-fire target check should not spawn projectiles'); },
+      hash32,
+      mulberry32,
+    },
+  });
+
+  assert.equal(weapons._selectedAutoFireTarget(player, state), null,
+    'selected auto-fire must not shoot a clean lawful patrol just because teams differ');
+  state.player.heat = 0.2;
+  assert.equal(weapons._selectedAutoFireTarget(player, state), lawfulPatrol,
+    'selected auto-fire may engage the same patrol after canonical WANTED heat makes it hostile');
+}
+
+function checkPlayerGimbalBears360Degrees() {
+  const state = createGameState(198);
+  state.mode = 'flight';
+  state.playerId = 1;
+  const rearAim = Math.PI;
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 0,
+    rot: 0,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    cap: 100,
+    flags: {},
+    data: {
+      weapons: [{
+        defId: 'wpn_pulse_laser_s',
+        facing: 'front',
+        facingAngle: 0,
+        gimbalArc: PLAYER_GIMBAL_ARC,
+        muzzleOffset: [0.8, 0],
+        _cooldown: 0,
+        _heat: 0,
+        projSpeed: 360,
+        range: 600,
+        rof: 4,
+        energyCost: 1,
+        dmg: 8,
+      }],
+      combat: {},
+      derived: { cap: 100 },
+    },
+  };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.input.fire = true;
+  state.input.aimAngle = rearAim;
+
+  const spawned = [];
+  weapons.init({
+    state,
+    bus: createBus(),
+    helpers: {
+      getEntity: (id) => state.entities.get(id) || null,
+      spawnEntity(spec) { spawned.push(spec); return { id: 99, ...spec }; },
+      hash32,
+      mulberry32,
+    },
+  });
+
+  const mount = player.data.weapons[0];
+  const hardpointDir = weapons._hardpointDir(player, mount, rearAim, 0);
+  assert(Math.abs(wrapAngle(hardpointDir - rearAim)) < 0.05,
+    'player fixed mount should fire toward a rear/side aim direction, not clamp to nose-forward');
+  assert.equal(PLAYER_GIMBAL_ARC, Math.PI, 'player gimbal arc must allow full hull rotation');
+
+  weapons.update(1 / 60, state);
+  assert.equal(spawned.length, 1, '_serviceShip tick must spawn when firing with rear aim');
+  const shotDir = Math.atan2(spawned[0].vel.z, spawned[0].vel.x);
+  assert(Math.abs(wrapAngle(shotDir - rearAim)) < 0.15,
+    'projectile spawn direction from _serviceShip must match rear aim, not nose-forward');
+  console.log(`[PASS] 360-gimbal hardpointDir=${hardpointDir.toFixed(3)} shotDir=${shotDir.toFixed(3)} rearAim=${rearAim.toFixed(3)}`);
+}
+
+function checkAutoTargetAimsWithoutAutoFire() {
+  const state = createGameState(199);
+  state.mode = 'flight';
+  state.playerId = 1;
+  state.player.targetId = 2;
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 0,
+    rot: 0,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    cap: 100,
+    flags: {},
+    data: {
+      weapons: [{
+        defId: 'wpn_pulse_laser_s',
+        facing: 'front',
+        facingAngle: 0,
+        gimbalArc: PLAYER_GIMBAL_ARC,
+        muzzleOffset: [0.8, 0],
+        _cooldown: 0,
+        _heat: 0,
+        projSpeed: 360,
+        range: 600,
+        rof: 4,
+        energyCost: 1,
+        dmg: 8,
+      }],
+      combat: {},
+      derived: { cap: 100 },
+    },
+  };
+  const hostile = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 8,
+    team: 1,
+    pos: { x: 0, z: -220 },
+    vel: { x: 0, z: 0 },
+    data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
+  };
+  state.entities.set(player.id, player);
+  state.entities.set(hostile.id, hostile);
+  state.entityList.push(player, hostile);
+  state.input.autoFire = true;
+  state.input.fire = false;
+  state.input.aimAngle = 0;
+
+  const spawned = [];
+  weapons.init({
+    state,
+    bus: createBus(),
+    helpers: {
+      getEntity: (id) => state.entities.get(id) || null,
+      spawnEntity(spec) { spawned.push(spec); return { id: 99, ...spec }; },
+      hash32,
+      mulberry32,
+    },
+  });
+  weapons.update(1 / 60, state);
+  assert.equal(spawned.length, 0, 'auto-target must not spawn projectiles without manual fire');
+
+  state.input.fire = true;
+  weapons.update(1 / 60, state);
+  assert.equal(spawned.length, 1, 'manual fire with auto-target should spawn a projectile');
+  const shotDir = Math.atan2(spawned[0].vel.z, spawned[0].vel.x);
+  const towardHostile = Math.atan2(hostile.pos.z - player.pos.z, hostile.pos.x - player.pos.x);
+  assert(Math.abs(wrapAngle(shotDir - towardHostile)) < 0.2,
+    'auto-target shot should head toward the locked hostile, not nose-only');
+  console.log(`[PASS] autoTarget-no-autofire spawned=${spawned.length} shotDir=${shotDir.toFixed(3)} towardHostile=${towardHostile.toFixed(3)}`);
+}
+
+function installBrowserStubs() {
+  const saved = {
+    document: globalThis.document,
+    window: globalThis.window,
+    addEventListener: globalThis.addEventListener,
+    removeEventListener: globalThis.removeEventListener,
+    innerWidth: globalThis.innerWidth,
+    innerHeight: globalThis.innerHeight,
+    performance: globalThis.performance,
+  };
+  globalThis.document = {
+    getElementById: () => null,
+    addEventListener() {},
+    removeEventListener() {},
+    body: { classList: { contains: () => false } },
+  };
+  globalThis.window = { addEventListener() {}, removeEventListener() {} };
+  globalThis.addEventListener = () => {};
+  globalThis.removeEventListener = () => {};
+  globalThis.innerWidth = 800;
+  globalThis.innerHeight = 600;
+  globalThis.performance = { now: () => 1000 };
+  return saved;
+}
+
+function restoreBrowserStubs(saved) {
+  globalThis.document = saved.document;
+  globalThis.window = saved.window;
+  globalThis.addEventListener = saved.addEventListener;
+  globalThis.removeEventListener = saved.removeEventListener;
+  globalThis.innerWidth = saved.innerWidth;
+  globalThis.innerHeight = saved.innerHeight;
+  globalThis.performance = saved.performance;
+}
+
+function initShippedAutoTargetSystems(state, bus, cursorWorld = { x: 0, z: 300 }) {
+  const inputSys = Object.create(inputSystem);
+  inputSystem.init.call(inputSys, {
+    state,
+    bus,
+    helpers: { raycastToPlane: () => ({ x: cursorWorld.x, z: cursorWorld.z }) },
+  });
+  inputSys._screen = { x: 400, y: 300, active: true };
+  inputSys._lastKbmMs = performance.now();
+  inputSys._keys = Object.create(null);
+  const assistSys = Object.create(autoTargetAssist);
+  autoTargetAssist.init.call(assistSys, { state, bus, helpers: {} });
+  return { inputSys, assistSys };
+}
+
+function runShippedAutoTargetTick(state, dt, ctx) {
+  ctx.inputSys.update(dt, state);
+  ctx.assistSys.update(dt, state);
+}
+
+function makeAutoTargetReticleState(seed, hostilePos = { x: 220, z: 0 }) {
+  const state = createGameState(seed);
+  state.playerId = 1;
+  state.player.targetId = 2;
+  state.input.autoFire = true;
+  const player = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, rot: 0 };
+  const hostile = {
+    id: 2, type: 'ship', alive: true, team: 1, pos: hostilePos,
+    data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
+  };
+  state.entities.set(1, player);
+  state.entities.set(2, hostile);
+  return state;
+}
+
+function checkProjectLockedReticleOffScreen() {
+  const viewport = { width: 800, height: 600 };
+
+  const centerBehind = makeAutoTargetReticleState(204);
+  const fallback = projectLockedReticle(centerBehind, () => ({
+    x: 400,
+    y: 300,
+    onScreen: false,
+  }), viewport);
+  assert(fallback && Number.isFinite(fallback.x) && Number.isFinite(fallback.y),
+    'projectLockedReticle must return coords when lock projects to viewport center but off-screen');
+  assert.equal(fallback.x, 400, 'off-screen center lock must use radial fallback (no positive edge hits)');
+  assert.equal(fallback.y, 300, 'off-screen center lock radial fallback must stay at viewport center');
+
+  const farCorner = makeAutoTargetReticleState(205, { x: 5000, z: 5000 });
+  const edgeClamp = projectLockedReticle(farCorner, () => ({
+    x: 2000,
+    y: 2000,
+    onScreen: false,
+  }), viewport);
+  assert(edgeClamp && Number.isFinite(edgeClamp.x) && Number.isFinite(edgeClamp.y),
+    'projectLockedReticle must edge-clamp far off-screen locks');
+  assert(edgeClamp.x >= 28 && edgeClamp.x <= 772 && edgeClamp.y >= 28 && edgeClamp.y <= 572,
+    'edge-clamped reticle must stay inside viewport margin');
+  assert(edgeClamp.x < 800 && edgeClamp.y < 600,
+    'edge-clamped reticle must not equal raw off-screen projection');
+  console.log(`[PASS] reticle-offscreen fallback=(${fallback.x},${fallback.y}) edge=(${edgeClamp.x.toFixed(1)},${edgeClamp.y.toFixed(1)})`);
+}
+
+function checkAutoTargetAssistReinitNoListenerLeak() {
+  const saved = installBrowserStubs();
+  const listeners = [];
+  const origAdd = globalThis.addEventListener;
+  const origRemove = globalThis.removeEventListener;
+  globalThis.addEventListener = (type, fn, opts) => {
+    if (type === 'keydown' || type === 'keyup') listeners.push({ type, fn, opts });
+    return origAdd(type, fn, opts);
+  };
+  globalThis.removeEventListener = (type, fn, opts) => {
+    const idx = listeners.findIndex((l) => l.type === type && l.fn === fn);
+    if (idx >= 0) listeners.splice(idx, 1);
+    return origRemove(type, fn, opts);
+  };
+  try {
+    const state = createGameState(206);
+    const bus = createBus();
+    const sys = Object.create(autoTargetAssist);
+    autoTargetAssist.init.call(sys, { state, bus, helpers: {} });
+    assert.equal(listeners.length, 2, 'first init must register keydown+keyup listeners');
+    autoTargetAssist.init.call(sys, { state, bus, helpers: {} });
+    assert.equal(listeners.length, 2, 're-init must destroy old listeners before attaching new ones');
+    autoTargetAssist.destroy.call(sys);
+    assert.equal(listeners.length, 0, 'destroy must remove capture-phase listeners');
+    console.log('[PASS] autoTargetAssist-reinit listener count stable after destroy');
+  } finally {
+    globalThis.addEventListener = origAdd;
+    globalThis.removeEventListener = origRemove;
+    restoreBrowserStubs(saved);
+  }
+}
+
+function checkAutoTargetInputSteersShipAndAimsHostile() {
+  const saved = installBrowserStubs();
+  try {
+    const state = createGameState(200);
+    state.mode = 'flight';
+    state.settings = { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {} } };
+    state.playerId = 1;
+    state.player.targetId = 2;
+    state.input.autoFire = true;
+    state.input.turnIntent = 0.8;
+    state.input.pointerScreen = { x: 400, y: 300, active: true };
+    const player = {
+      id: 1, type: 'ship', alive: true, team: 0,
+      pos: { x: 0, z: 0 }, rot: 0, vel: { x: 0, z: 0 },
+    };
+    const hostile = {
+      id: 2, type: 'ship', alive: true, team: 1,
+      pos: { x: 220, z: 0 }, vel: { x: 0, z: 0 },
+      data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
+    };
+    state.entities.set(1, player);
+    state.entities.set(2, hostile);
+    state.entityList.push(player, hostile);
+
+    const bus = createBus();
+    const emits = [];
+    bus.on('*', () => {});
+    const origEmit = bus.emit.bind(bus);
+    bus.emit = (event, payload) => { emits.push({ event, payload }); return origEmit(event, payload); };
+    bus.on('ui:targetNearestHostileToPlayer', () => {});
+
+    const ctx = initShippedAutoTargetSystems(state, bus, { x: 0, z: 300 });
+    runShippedAutoTargetTick(state, 1 / 60, ctx);
+
+    const hostileAim = Math.atan2(hostile.pos.z - player.pos.z, hostile.pos.x - player.pos.x);
+    const cursorAngle = Math.atan2(300, 0);
+    assert.equal(state.input.aimWorld.x, hostile.pos.x, 'shipped tick must set aimWorld.x to lock');
+    assert.equal(state.input.aimWorld.z, hostile.pos.z, 'shipped tick must set aimWorld.z to lock');
+    assert(Math.abs(wrapAngle(state.input.aimAngle - hostileAim)) < 0.02,
+      'auto-target aimAngle should track the locked hostile, not the cursor');
+    assert(Math.abs(wrapAngle(state.input.aimAngle - cursorAngle)) > 0.5,
+      'auto-target aimAngle must diverge from cursor bearing when hostile is elsewhere');
+    assert(Math.abs(state.input.turnIntent) > 0.01,
+      'auto-target should publish non-zero turnIntent toward the cursor bearing');
+    assert.equal(emits.filter((e) => e.event === 'ui:targetNearestHostileToCursor').length, 0,
+      'shipped auto-target tick must never emit cursor-nearest refresh');
+
+    state.input.turnIntent = 0.8;
+    runShippedAutoTargetTick(state, 1 / 60, ctx);
+    const expectedTurn = Math.max(-1, Math.min(1, wrapAngle(cursorAngle - player.rot) / 0.55));
+    assert(Math.abs(state.input.turnIntent - expectedTurn) < 0.05,
+      'auto-target cursor steering must override keyboard yaw in pilot scheme');
+
+    const reticle = projectLockedReticle(state, (v) => ({
+      x: 2000,
+      y: 2000,
+      onScreen: false,
+    }), { width: 800, height: 600 });
+    assert(reticle && reticle.x < 800 && reticle.y < 600,
+      'shipped auto-target path must feed uiRoot reticle helper with edge-clamped off-screen coords');
+
+    console.log(`[PASS] shipped-auto-target-input aimAngle=${state.input.aimAngle.toFixed(3)} turnIntent=${state.input.turnIntent.toFixed(3)} hostileAim=${hostileAim.toFixed(3)} reticle=(${reticle.x.toFixed(1)},${reticle.y.toFixed(1)})`);
+  } finally {
+    restoreBrowserStubs(saved);
+  }
+}
+
+function checkTargetCycleHostilesOnly() {
+  const state = createGameState(201);
+  state.playerId = 1;
+  const player = {
+    id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 },
+  };
+  const nearHostile = {
+    id: 2, type: 'ship', alive: true, team: 1, pos: { x: 120, z: 0 },
+    data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
+  };
+  const farHostile = {
+    id: 3, type: 'ship', alive: true, team: 1, pos: { x: 280, z: 0 },
+    data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
+  };
+  const trader = {
+    id: 4, type: 'ship', alive: true, team: 2, pos: { x: 60, z: 0 },
+    data: { ai: { passive: true } },
+  };
+  state.entities.set(1, player);
+  state.entities.set(2, nearHostile);
+  state.entities.set(3, farHostile);
+  state.entities.set(4, trader);
+  state.entityList.push(player, nearHostile, farHostile, trader);
+
+  targetNearestHostileToPlayer(state, null, { quiet: true });
+  assert.equal(state.player.targetId, nearHostile.id,
+    'nearest-hostile selection should pick the closest hostile to the player');
+
+  weapons.init({
+    state,
+    bus: createBus(),
+    helpers: { getEntity: (id) => state.entities.get(id) || null, spawnEntity: () => ({}), hash32, mulberry32 },
+  });
+  assert.equal(weapons._selectedAutoFireTarget(player, state), nearHostile,
+    'auto-target aim should follow the Tab-selected nearest hostile');
+
+  cycleTarget(state, 1, null);
+  assert.equal(state.player.targetId, farHostile.id,
+    'Tab cycle should advance only among nearby hostiles');
+  assert.equal(weapons._selectedAutoFireTarget(player, state), farHostile,
+    'auto-target aim should follow the newly cycled hostile');
+  assert.notEqual(state.player.targetId, trader.id,
+    'Tab cycle must skip non-hostile contacts');
+
+  const beyondWeaponHostile = {
+    id: 5, type: 'ship', alive: true, team: 1, pos: { x: 1500, z: 0 },
+    data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
+  };
+  state.entities.set(5, beyondWeaponHostile);
+  state.entityList.push(beyondWeaponHostile);
+  state.player.targetId = beyondWeaponHostile.id;
+  assert.equal(weapons._selectedAutoFireTarget(player, state), beyondWeaponHostile,
+    'Tab-selected hostile within scanner range must aim even beyond weapon range');
+
+  targetNearestHostileToPlayer(state, null, { quiet: true });
+  assert.equal(state.player.targetId, beyondWeaponHostile.id,
+    'quiet refresh must preserve Tab-selected lock while it stays alive');
+  targetNearestHostileToPlayer(state, null, { quiet: true });
+  assert.equal(state.player.targetId, beyondWeaponHostile.id,
+    'repeated quiet refresh must not clobber Tab selection');
+
+  beyondWeaponHostile.alive = false;
+  targetNearestHostileToPlayer(state, null, { quiet: true });
+  assert.equal(state.player.targetId, nearHostile.id,
+    'quiet refresh must re-acquire nearest hostile when the Tab lock dies');
+  console.log(`[PASS] target-cycle scannerRange=${SCANNER_CONTACT_RANGE} preservedTab=5 then refresh->${state.player.targetId}`);
+}
+
+function checkAutoTargetFToggleAlwaysFlips() {
+  const state = createGameState(203);
+  state.playerId = 1;
+  state.input.autoFire = false;
+  const bus = createBus();
+  const toasts = [];
+  bus.on('toast', (t) => toasts.push(t));
+  bus.on('ui:targetNearestHostileToPlayer', () => {});
+
+  toggleAutoTarget(state, bus, createAutoTargetRuntime());
+  assert.equal(state.input.autoFire, true, 'toggleAutoTarget must enable auto-target');
+  assert(toasts.some((t) => t.text === 'Auto-target ON'), 'toggle must toast ON without autopursuit guard');
+  toggleAutoTarget(state, bus, createAutoTargetRuntime());
+  assert.equal(state.input.autoFire, false, 'second toggle must disable auto-target');
+  console.log('[PASS] f-toggle-always-flips without autopursuit guard');
+}
+
+function checkAutoTargetRefreshPreservesTabLockViaInput() {
+  const saved = installBrowserStubs();
+  try {
+    const state = createGameState(202);
+    state.mode = 'flight';
+    state.settings = { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {} } };
+    state.playerId = 1;
+    state.input.autoFire = true;
+    state.input.pointerScreen = { x: 400, y: 300, active: true };
+    const player = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, rot: 0, vel: { x: 0, z: 0 } };
+    const nearHostile = {
+      id: 2, type: 'ship', alive: true, team: 1, pos: { x: 100, z: 0 },
+      data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
+    };
+    const farHostile = {
+      id: 3, type: 'ship', alive: true, team: 1, pos: { x: 400, z: 0 },
+      data: { ai: { fsm: 'attack' }, combat: { targetId: 1 } },
+    };
+    state.entities.set(1, player);
+    state.entities.set(2, nearHostile);
+    state.entities.set(3, farHostile);
+    state.entityList.push(player, nearHostile, farHostile);
+
+    const bus = createBus();
+    const refreshCalls = [];
+    const allEmits = [];
+    const origEmit = bus.emit.bind(bus);
+    bus.emit = (event, payload) => {
+      allEmits.push({ event, payload });
+      return origEmit(event, payload);
+    };
+    bus.on('ui:targetNearestHostileToPlayer', (payload = {}) => {
+      refreshCalls.push(payload);
+      targetNearestHostileToPlayer(state, bus, { quiet: !!payload.quiet });
+    });
+
+    state.player.targetId = nearHostile.id;
+    cycleTarget(state, 1, null);
+    assert.equal(state.player.targetId, farHostile.id, 'Tab should advance from nearest to farther hostile');
+
+    const ctx = initShippedAutoTargetSystems(state, bus, { x: 0, z: 300 });
+    ctx.assistSys._runtime.refreshT = 0;
+    for (let i = 0; i < 5; i++) runShippedAutoTargetTick(state, 0.13, ctx);
+    assert.equal(state.player.targetId, farHostile.id,
+      'shipped input+assist refresh ticks must not clobber Tab-selected targetId');
+    assert.equal(state.input.aimWorld.x, farHostile.pos.x, 'shipped refresh ticks must keep aimWorld on Tab lock');
+    assert.equal(emitsCount(allEmits, 'ui:targetNearestHostileToCursor'), 0,
+      'shipped refresh must never emit cursor-nearest hostile acquisition');
+    assert(refreshCalls.length >= 1, 'auto-target refresh timer should emit quiet hostile refresh events');
+    assert(refreshCalls.every((p) => p && p.quiet === true), 'refresh emissions must be quiet');
+    console.log(`[PASS] refresh-persists-tab targetId=${state.player.targetId} refreshCalls=${refreshCalls.length}`);
+  } finally {
+    restoreBrowserStubs(saved);
+  }
+}
+
+function emitsCount(emits, event) {
+  return emits.filter((e) => e.event === event).length;
+}
+
+function checkWeaponHeatHudSummary() {
+  assert.deepEqual(weaponHeatSummary(null), { frac: 0, pct: 0, overheated: false, armed: false },
+    'empty loadout should report unarmed weapon heat');
+  const warm = weaponHeatSummary([
+    { _heat: 36, heatMax: 100 },
+    { _heat: 72, heatMax: 100 },
+  ]);
+  assert.equal(warm.pct, 72, 'HUD heat should track the hottest weapon mount');
+  assert.equal(warm.overheated, false, 'sub-max heat must not flag overheated');
+  const pegged = weaponHeatSummary([{ _heat: 100, heatMax: 100 }]);
+  assert.equal(pegged.pct, 100, 'pegged weapon heat should read 100%');
+  assert.equal(pegged.overheated, true, 'pegged weapon heat must flag overheated');
+
+  const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+  assert.match(hudSrc, /weaponHeatSummary\(p\.data && p\.data\.weapons\)/,
+    'flight HUD bottom-left HEAT bar must aggregate weapon-instance heat');
+  assert.doesNotMatch(hudSrc, /p\.data\.heat/,
+    'flight HUD must not read the dead p.data.heat field for the weapon heat bar');
+  console.log(`[PASS] weapon-heat-hud warm=${warm.pct}% pegged=${pegged.pct}% overheated=${pegged.overheated}`);
+}
+
+function checkNpcFireAtPlayerRequiresRadarVisibility() {
+  const run = (x) => {
+    const state = createGameState(97);
+    state.mode = 'flight';
+    state.entities.clear();
+    state.entityList.length = 0;
+    state.playerId = 1;
+    state.ui.radarRange = 4000;
+    const player = {
+      id: 1,
+      type: 'ship',
+      alive: true,
+      collides: true,
+      radius: 8,
+      team: 0,
+      pos: { x: 0, z: 0 },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      flags: {},
+      data: { weapons: [], combat: {} },
+    };
+    const attacker = {
+      id: 2,
+      type: 'ship',
+      alive: true,
+      collides: true,
+      radius: 8,
+      team: 1,
+      pos: { x, z: 0 },
+      vel: { x: 0, z: 0 },
+      rot: Math.PI,
+      cap: 100,
+      flags: {},
+      data: {
+        weapons: [{ defId: 'wpn_pulse_laser_s' }],
+        combat: { targetId: player.id },
+        intent: { fire: true, aimAngle: Math.PI },
+        ai: { fsm: 'attack' },
+      },
+    };
+    state.entities.set(player.id, player);
+    state.entities.set(attacker.id, attacker);
+    state.entityList.push(player, attacker);
+    state.entityIndex = { __spacefaceEntityIndexV1: true, ships: [player, attacker] };
+    const spawned = [];
+    weapons.init({
+      state,
+      bus: createBus(),
+      helpers: {
+        getEntity: (id) => state.entities.get(id) || null,
+        spawnEntity(spec) { spawned.push(spec); return spec; },
+        hash32,
+        mulberry32,
+      },
+    });
+    weapons.update(1 / 60, state);
+    return spawned.length;
+  };
+
+  assert.equal(run(4500), 0, 'NPCs targeting the player should not fire from outside compact radar range');
+  assert.equal(run(1200), 1, 'NPCs targeting the player should still fire once they are visible on radar');
 }
 
 function checkSharedSpatialQueryUsesActiveHashAndFallback() {
@@ -1092,11 +1849,27 @@ function checkAiTargetSelectionReusesSpatialScratch() {
   ai.init({ state, bus: createBus(), helpers });
 
   const arch = { sensor: 500, attackR: 300, pref: 180 };
+  state.world.currentSectorId = 'sector_pallas_drift';
+  state.world.sectors.sector_pallas_drift = { security: 0.35, tier: 2 };
+  npc.data.ai.sectorSecurity = 0.35;
+  npc.data.ai.sectorTier = 2;
+  state.world.activeSector = { gates: [], hazards: [] };
+  assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), null,
+    'ambient pirates in unsafe sectors should not acquire a neutral player outside lane danger');
+  state.world.activeSector = { gates: [{ pos: { x: -1000, z: 0 } }], hazards: [] };
   assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), player,
-    'AI target selection should still pick the nearby hostile player');
+    'ambient pirates may acquire the player inside an unsafe lane danger pocket');
+  npc.data.ai.sectorSecurity = 0.72;
+  npc.data.ai.sectorTier = 1;
+  state.world.currentSectorId = 'sector_ceres_belt';
+  state.world.sectors.sector_ceres_belt = { security: 0.72, tier: 1 };
+  state.world.activeSector = { gates: [{ pos: { x: -1000, z: 0 } }], hazards: [] };
+  assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), null,
+    'ambient pirates in lawful station space should not acquire the player from sensor range alone');
+  ai._addThreat(npc.id, player.id, 10);
   assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), player,
-    'AI target selection should still work after reusing the same scratch array');
-  assert.equal(calls, 2, 'AI target selection should query spatial candidates on each retarget');
+    'AI target selection should still acquire the player after real threat is established');
+  assert.equal(calls, 4, 'AI target selection should query spatial candidates on each retarget');
 }
 
 function checkTrafficUsesEntityIndexesForStationsAndAsteroids() {
@@ -2615,6 +3388,57 @@ function checkHeatUsesTargetFactionContext() {
   assert(lawState.player.heat > 0, 'killing a lawful patrol should raise heat even if its faction is already hostile');
 }
 
+function checkWantedHeatUsesVisibleSearchZoneDecay() {
+  const state = createGameState(98);
+  state.mode = 'flight';
+  state.simTime = 0;
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 1;
+  state.player.heat = 0;
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    flags: {},
+    radius: 8,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: {},
+  };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  const events = [];
+  const bus = createBus();
+  bus.on('heat:changed', (payload) => events.push(payload));
+  heat.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+
+  heat._raise(0.48, 'test heat');
+  const zone = state.player.heatZone;
+  const startLevel = zone.level;
+  assert(zone.active, 'wanted heat should create a visible heat search zone');
+  assert(startLevel > 1, 'test heat should start above level one');
+  assert(zone.radius > 0 && zone.radius <= state.ui.radarRange,
+    'heat search radius should fit inside the compact radar scale');
+
+  player.pos.x = zone.center.x + zone.radius + 80;
+  heat.update(zone.clearAfterS - 0.1, state);
+  assert.equal(state.player.heatZone.level, startLevel,
+    'heat should not drop before the outside-zone timer completes');
+  heat.update(0.2, state);
+  assert.equal(state.player.heatZone.level, startLevel - 1,
+    'heat should drop one level after escaping the visible heat radius');
+
+  for (let i = 0; i < 40 && state.player.heat > 0; i++) {
+    state.simTime += 1;
+    heat.update(1, state);
+  }
+  assert.equal(state.player.heat, 0, 'remaining heat should clear after staying outside the heat radius');
+  assert.equal(state.player.heatZone.active, false, 'heat zone should disappear once WANTED heat is gone');
+  assert(events.some((e) => e.level === 0 && e.value === 0),
+    'clearing the final heat level should emit a clean heat:changed event');
+}
+
 function checkInsuredRespawnUsesStationRefundAndCargoLoss() {
   const makeVec = (x, z) => ({
     x,
@@ -3088,6 +3912,7 @@ function makeFlightHarness(overrides = {}) {
     mode: 'flight',
     settings: { controls: { flightMode: 'assisted' }, gameplay: { physicsBackend: 'custom' } },
     ui: { screenStack: [] },
+    nav: { route: null, autoTravel: false, waypoint: null, autopilot: { active: false, target: null, targetEntityId: null, label: '', arrivalRadius: 36, status: 'idle' } },
     input: {
       turnIntent: 0,
       moveX: 0,
@@ -3108,6 +3933,7 @@ function makeFlightHarness(overrides = {}) {
     type: 'ship',
     alive: true,
     rot: 0,
+    pos: { x: 0, z: 0 },
     angVel: 0,
     bank: 0,
     bankVel: 0,
@@ -3271,6 +4097,129 @@ function checkReverseInputActsAsBrake() {
 
   assert(h.ship.vel.x < 0, 'holding reverse should brake through forward speed into controlled reverse thrust');
   assert(Math.abs(h.ship.vel.z) < 0.001, 'reverse braking should not introduce lateral drift');
+}
+
+function checkReverseThrustCueHasAngledNozzles() {
+  const h = makeFlightHarness({ rot: 0, vel: { x: 80, z: 0 } });
+  h.state.input.moveZ = -1;
+  tickPlayerFlight(h, 1);
+
+  const cue = h.events.find((entry) => entry.event === 'ship:thrust');
+  assert(cue, 'reverse input should emit a ship:thrust cue for VFX');
+  assert(cue.payload.reverse > 0, 'reverse thrust cue should expose reverse strength');
+  const nozzles = cue.payload.nozzles || [];
+  const left = nozzles.find((n) => n.role === 'reverse-left');
+  const right = nozzles.find((n) => n.role === 'reverse-right');
+  assert(left && right, 'reverse thrust cue should include two angled forward nozzles');
+  assert(Math.abs(left.angle - Math.PI * 0.75) < 0.001, 'left reverse nozzle should use the 45-degree forward-left primitive angle');
+  assert(Math.abs(right.angle + Math.PI * 0.75) < 0.001, 'right reverse nozzle should use the 45-degree forward-right primitive angle');
+}
+
+function checkAutopilotBoostsTowardClearCourse() {
+  const h = makeFlightHarness({
+    boost: { energy: 100, max: 100, drainRate: 20, regenRate: 18, dashImpulse: 0, dashCd: 3, dashCdT: 0 },
+  });
+  h.state.nav.autopilot = {
+    active: true,
+    target: { x: 1200, z: 0 },
+    targetEntityId: null,
+    label: 'Test fix',
+    arrivalRadius: 36,
+    status: 'armed',
+  };
+
+  tickFlightSystem(h, 1);
+
+  assert.equal(h.state.input.boost, true, 'autopilot should boost on a clear aligned long course');
+  assert(h.ship.vel.x > 0, 'autopilot should accelerate toward the selected local fix');
+  assert.equal(h.ship.flags.boosting, true, 'autopilot boost should flow through the normal boost resource path');
+}
+
+function checkAutopilotCounterThrustsBeforeArrival() {
+  const h = makeFlightHarness({ pos: { x: 455, z: 0 }, vel: { x: 125, z: 0 } });
+  h.state.nav.autopilot = {
+    active: true,
+    target: { x: 520, z: 0 },
+    targetEntityId: null,
+    label: 'Close fix',
+    arrivalRadius: 36,
+    status: 'armed',
+  };
+
+  tickFlightSystem(h, 1);
+
+  assert.equal(h.state.input.brake, true, 'autopilot should enter brake mode inside the stopping envelope');
+  assert(h.state.input.moveZ < 0, 'autopilot brake should use reverse thrust against forward velocity');
+  assert(h.ship.vel.x < 125, 'autopilot counter-thrust should reduce closing speed instead of flying through the fix');
+}
+
+function checkAutopilotAvoidsBlockingObstacle() {
+  const h = makeFlightHarness();
+  h.state.nav.autopilot = {
+    active: true,
+    target: { x: 1000, z: 0 },
+    targetEntityId: null,
+    label: 'Far fix',
+    arrivalRadius: 36,
+    status: 'armed',
+  };
+  const rock = {
+    id: 2,
+    type: 'asteroid',
+    alive: true,
+    pos: { x: 220, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 90,
+  };
+  h.state.entities.set(rock.id, rock);
+  h.state.entityList.push(rock);
+
+  tickFlightSystem(h, 1);
+
+  assert(Math.abs(h.state.input.turnIntent) > 0.05 || Math.abs(h.state.input.moveX) > 0.05,
+    'autopilot should steer around a blocking obstacle on the course line');
+  assert.notEqual(h.state.nav.autopilot.status, 'cruising', 'autopilot status should expose active obstacle avoidance');
+}
+
+function checkAutopilotWorksAcrossFlightModes() {
+  for (const mode of ['assisted', 'drift', 'newtonian']) {
+    const cruise = makeFlightHarness({
+      boost: { energy: 100, max: 100, drainRate: 20, regenRate: 18, dashImpulse: 0, dashCd: 3, dashCdT: 0 },
+    });
+    cruise.state.settings.controls.flightMode = mode;
+    cruise.state.nav.autopilot = {
+      active: true,
+      target: { x: 900, z: 0 },
+      targetEntityId: null,
+      label: `${mode} fix`,
+      arrivalRadius: 36,
+      status: 'armed',
+    };
+
+    tickFlightSystem(cruise, 1);
+
+    assert.equal(cruise.ship._flightFrame.mode, mode, `autopilot should resolve the ${mode} flight profile`);
+    assert(cruise.state.input.moveZ > 0, `autopilot should apply forward thrust in ${mode}`);
+    assert(cruise.ship.vel.x > 0, `autopilot should accelerate toward the target in ${mode}`);
+
+    const brake = makeFlightHarness({ pos: { x: 455, z: 0 }, vel: { x: 125, z: 0 } });
+    brake.state.settings.controls.flightMode = mode;
+    brake.state.nav.autopilot = {
+      active: true,
+      target: { x: 520, z: 0 },
+      targetEntityId: null,
+      label: `${mode} close fix`,
+      arrivalRadius: 36,
+      status: 'armed',
+    };
+
+    tickFlightSystem(brake, 1);
+
+    assert.equal(brake.ship._flightFrame.mode, mode, `autopilot brake should resolve the ${mode} flight profile`);
+    assert.equal(brake.state.input.brake, true, `autopilot should brake near arrival in ${mode}`);
+    assert(brake.state.input.moveZ < 0, `autopilot brake should use reverse thrust in ${mode}`);
+    assert(brake.ship.vel.x < 125, `autopilot should reduce closing speed in ${mode}`);
+  }
 }
 
 function checkDiagonalVelocityIsNotAHeadingAttractor() {
@@ -3482,6 +4431,10 @@ function checkDefaultProfessionalFlightSettings() {
   assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical', 'SG-06 tactical AI should be the default backend');
   assert.deepEqual(INPUT_DEFAULTS.BINDINGS.strafeLeft, ['KeyQ'], 'Q should default to left lateral thruster');
   assert.deepEqual(INPUT_DEFAULTS.BINDINGS.strafeRight, ['KeyE'], 'E should default to right lateral thruster');
+  assert.deepEqual(INPUT_DEFAULTS.SCHEMES['helm-assist'].forward, ['KeyW', 'ArrowUp'], 'Helm Assist ArrowUp should fly forward');
+  assert.deepEqual(INPUT_DEFAULTS.SCHEMES['helm-assist'].reverse, ['KeyS', 'ArrowDown'], 'Helm Assist ArrowDown should fly reverse');
+  assert.deepEqual(INPUT_DEFAULTS.SCHEMES['helm-assist'].strafeLeft, ['KeyA', 'ArrowLeft'], 'Helm Assist ArrowLeft should strafe left by default');
+  assert.deepEqual(INPUT_DEFAULTS.SCHEMES['helm-assist'].strafeRight, ['KeyD', 'ArrowRight'], 'Helm Assist ArrowRight should strafe right by default');
 }
 
 function checkLegacySettingsRestoreKeepsFlightDefaults() {
@@ -4158,6 +5111,50 @@ function checkSweptProjectileCollisionHitsAlongSegment() {
   assert.equal(physics._diag.sweptProjectileHits, 1, 'swept projectile should report the hit for diagnostics');
 }
 
+function checkSweptProjectileCannotHitPastMaxDistance() {
+  const events = [];
+  const state = { entityList: [] };
+  const projectile = {
+    id: 1,
+    type: 'projectile',
+    alive: true,
+    collides: true,
+    radius: 1,
+    ownerId: 99,
+    pos: { x: 640, z: 0 },
+    prevPos: { x: 590, z: 0 },
+    vel: { x: 1500, z: 0 },
+    collisionMask: Masks.SHIP,
+    data: {
+      damage: 7,
+      damageType: 'energy',
+      weaponId: 'wpn_range_fixture',
+      spawnPos: { x: 0, z: 0 },
+      maxDistance: 600,
+    },
+  };
+  const target = {
+    id: 2,
+    type: 'ship',
+    alive: true,
+    collides: true,
+    radius: 7,
+    pos: { x: 620, z: 0 },
+    vel: { x: 0, z: 0 },
+    collisionMask: Masks.PROJECTILE,
+  };
+  state.entityList.push(projectile, target);
+
+  physics.init({ state, bus: { emit(event, payload) { events.push({ event, payload }); } } });
+  physics.sweepProjectiles(1 / 30, state);
+
+  assert.equal(projectile.alive, false, 'projectile should expire when its swept path reaches maxDistance');
+  assert.equal(events.some((e) => e.event === 'projectile:hit'), false,
+    'projectile should not hit a target beyond its authored maxDistance');
+  assert(projectile.pos.x <= 600 + 1e-9,
+    'expired projectile should clamp to its maxDistance boundary');
+}
+
 function checkBroadPhasePairKeysDoNotCollideForHighEntityIds() {
   const events = [];
   const state = createGameState(77);
@@ -4436,6 +5433,138 @@ function checkSpawnRequestAmbushContract() {
   assert.equal(state.world.activeSector.enemies.length, 1, 'queued pirate request should materialize when the sector loads');
 }
 
+function distance2(a, b) {
+  const dx = (a && a.x || 0) - (b && b.x || 0);
+  const dz = (a && a.z || 0) - (b && b.z || 0);
+  return dx * dx + dz * dz;
+}
+
+function checkAmbientHostileSpawnSafetyContract() {
+  const state = {
+    mode: 'flight',
+    meta: { seed: 321, playtimeS: 0 },
+    playerId: 1,
+    player: { ownedShips: [], activeShipIndex: 0, researchedNodes: [] },
+    entities: new Map([[1, {
+      id: 1,
+      type: 'ship',
+      alive: true,
+      team: 0,
+      pos: { x: 0, y: 0, z: 0 },
+      prevPos: { x: 0, y: 0, z: 0, copy(pos) { this.x = pos.x; this.y = pos.y || 0; this.z = pos.z; return this; } },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      prevRot: 0,
+      flags: {},
+      data: {},
+    }]]),
+    entityList: [],
+    freeIds: [],
+    rng: () => 0.5,
+    world: { sectors: {}, currentSectorId: null, activeSector: null, discovery: {}, pendingSpawns: {}, rng: () => 0.5 },
+    bounds: {},
+    jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
+    fuel: { current: 100, max: 100 },
+  };
+  for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
+  const spawned = [];
+  const bus = createBus();
+  const helpers = {
+    spawnEntity(spec) {
+      const ent = { id: 2000 + spawned.length, alive: true, pos: spec.pos || { x: 0, z: 0 }, data: spec.data || {}, ...spec };
+      state.entities.set(ent.id, ent);
+      state.entityList.push(ent);
+      spawned.push(ent);
+      return ent;
+    },
+    hash32,
+    mulberry32(seed) {
+      let a = (seed >>> 0) || 1;
+      return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    },
+  };
+  world.init({ state, bus, helpers, registry: { get() { return null; } } });
+  traffic.init({ state, bus, helpers, registry: { get() { return null; } } });
+
+  world.enterSector('sector_helios_prime');
+  assert.equal(spawned.filter((e) => e.data && e.data.ai && e.data.ai.spawnContext === 'ambient').length, 0,
+    'starter sector should not spawn ambient hostiles');
+  const heliosTraffic = spawned.filter((e) => e.data && e.data.trafficRole);
+  assert(heliosTraffic.length > 0, 'starter sector may spawn neutral traffic without painting it as enemy pressure');
+  assert.deepEqual(heliosTraffic.filter((e) => e.data.trafficRole === 'pirate').map((e) => e.id), [],
+    'starter sector traffic must not include passive red-raider roles');
+  assert.deepEqual(heliosTraffic.filter((e) => isHostileToPlayer(e, 0, state)).map((e) => e.id), [],
+    'starter sector traffic must not read as player-hostile on radar or overview');
+
+  spawned.length = 0;
+  world.enterSector('sector_ceres_belt');
+  const ambient = spawned.filter((e) => e.data && e.data.ai && e.data.ai.spawnContext === 'ambient');
+  assert(ambient.length > 0, 'lawful station sectors may still spawn non-player-hunting patrol ambience');
+  assert(ambient.every((e) => e.data.ai.lawful === true), 'lawful station-sector ambience should be patrols, not random pirates');
+  const stations = state.world.activeSector.stations || [];
+  const gates = state.world.activeSector.gates || [];
+  for (const enemy of ambient) {
+    for (const station of stations) {
+      assert(distance2(enemy.pos, station.pos) >= 1000 * 1000,
+        'ambient hostiles must not spawn inside station safe space');
+    }
+    for (const gate of gates) {
+      assert(distance2(enemy.pos, gate.pos) >= 800 * 800,
+        'ambient hostiles must not spawn on the arrival/gate safe bubble');
+    }
+  }
+}
+
+function check47aLiveColdStartCombatantsAreDormant() {
+  const state = createGameState(47);
+  state.mode = 'flight';
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.playerId = 0;
+  let nextId = 1;
+  const helpers = {
+    spawnEntity(spec) {
+      const ent = {
+        id: nextId++,
+        alive: spec.alive !== false,
+        type: spec.type,
+        team: spec.team,
+        factionId: spec.factionId,
+        pos: { x: spec.pos && spec.pos.x || 0, y: 0, z: spec.pos && spec.pos.z || 0 },
+        prevPos: { x: spec.pos && spec.pos.x || 0, y: 0, z: spec.pos && spec.pos.z || 0, copy(pos) { this.x = pos.x; this.y = pos.y || 0; this.z = pos.z; return this; } },
+        vel: { x: spec.vel && spec.vel.x || 0, z: spec.vel && spec.vel.z || 0 },
+        rot: spec.rot || 0,
+        radius: spec.radius || 1,
+        data: spec.data || {},
+        flags: spec.flags || {},
+      };
+      state.entities.set(ent.id, ent);
+      state.entityList.push(ent);
+      return ent;
+    },
+  };
+  const player = helpers.spawnEntity(makeShipEntitySpec('ship_kestrel', {
+    team: 0,
+    factionId: 'faction_free',
+    isPlayer: true,
+    player: state.player,
+    pos: { x: 0, z: 0 },
+  }));
+  state.playerId = player.id;
+
+  const scene = spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
+  for (const key of ['harasser', 'thief', 'recoveryTug']) {
+    const entity = scene[key];
+    assert(entity, `47-A live cold start should spawn ${key} actor`);
+    assert.equal(entity.team, 0, `${key} should start neutral/friendly in the live cold open`);
+    assert.equal(entity.factionId, 'faction_free', `${key} should not read as an immediate hostile faction`);
+    assert.equal(entity.data.ai.liveColdStartSafe, true, `${key} should be marked for live cold-start activation`);
+    assert.equal(entity.data.ai.passive, true, `${key} should be passive before its scenario beat`);
+    assert.equal(entity.data.combat.targetId, null, `${key} should not target the player before its scenario beat`);
+    assert(distance2(entity.pos, player.pos) >= 1500 * 1500, `${key} should hold outside the spawn threat bubble`);
+  }
+}
+
 function checkWorldHazardsReuseScratchSets() {
   const player = {
     id: 1,
@@ -4553,6 +5682,8 @@ checkCoreSnapshotsOnlyMovableEntities();
 checkMiningPickupMagnetUsesSpatialHashForCrowdedScenes();
 checkMiningBeamTargetUsesSpatialHashForCrowdedFields();
 checkWeaponAutoFireUsesSpatialShipCandidates();
+checkSelectedAutoFireRequiresHostileTarget();
+checkNpcFireAtPlayerRequiresRadarVisibility();
 checkSharedSpatialQueryUsesActiveHashAndFallback();
 checkSpatialHashCachesStaticLayer();
 checkCoreBuildsPhysicsBodyIndexForSg02Layers();
@@ -4581,6 +5712,7 @@ checkCombatRewardsAndLootKinds();
 checkCombatPrefersAuthoredProjectilePacket();
 checkBeamDamageUsesSpatialCandidatesForCrowdedScenes();
 checkHeatUsesTargetFactionContext();
+checkWantedHeatUsesVisibleSearchZoneDecay();
 checkInsuredRespawnUsesStationRefundAndCargoLoss();
 checkRespawnUsesReachableSectorStationWhenLastDockIsElsewhere();
 checkFailedCargoFitDoesNotDuplicateModules();
@@ -4600,6 +5732,11 @@ checkPlayerBankSignFollowsTurnDirection();
 checkPlayerTurnRateIsCappedForReadableControl();
 checkFlightAssistDampsLateralSlip();
 checkReverseInputActsAsBrake();
+checkReverseThrustCueHasAngledNozzles();
+checkAutopilotBoostsTowardClearCourse();
+checkAutopilotCounterThrustsBeforeArrival();
+checkAutopilotAvoidsBlockingObstacle();
+checkAutopilotWorksAcrossFlightModes();
 checkDiagonalVelocityIsNotAHeadingAttractor();
 checkHoldBoostDoesNotSpendDashEnergy();
 checkTapBoostStillDashes();
@@ -4630,10 +5767,13 @@ checkSweptShipStaticCollisionUsesEntryPointForGlancingHit();
 checkSweptShipStaticCollisionUsesEarliestObstacle();
 checkCollisionMaterialsProduceDistinctSweptResponses();
 checkSweptProjectileCollisionHitsAlongSegment();
+checkSweptProjectileCannotHitPastMaxDistance();
 checkBroadPhasePairKeysDoNotCollideForHighEntityIds();
 checkBroadPhaseProjectileIsConsumedOnlyOnce();
 checkPickupCollectionUsesSpatialHashForCrowdedScenes();
 checkSpawnRequestAmbushContract();
+checkAmbientHostileSpawnSafetyContract();
+check47aLiveColdStartCombatantsAreDormant();
 checkWorldHazardsReuseScratchSets();
 checkFactionPowerUsesEntityIndexes();
 
@@ -5016,5 +6156,115 @@ function checkIronmanDeathEndsTheRun() {
   }
 }
 checkIronmanDeathEndsTheRun();
+
+function checkCleanSpawnAndDockedSafety() {
+  const vec = (x, z) => ({
+    x, y: 0, z,
+    set(nx, ny, nz) { this.x = nx; this.y = ny || 0; this.z = nz; return this; },
+    copy(p) { this.x = p.x; this.y = p.y || 0; this.z = p.z; return this; },
+  });
+  const makeShip = (id, team, x, z, data = {}) => ({
+    id,
+    type: 'ship',
+    alive: true,
+    team,
+    pos: vec(x, z),
+    vel: vec(0, 0),
+    rot: 0,
+    radius: 14,
+    mass: 120,
+    hull: 120,
+    hullMax: 120,
+    shield: 80,
+    shieldMax: 80,
+    cap: 100,
+    capMax: 100,
+    flags: {},
+    data,
+  });
+
+  const player = makeShip(1, 0, 0, 0, { defId: 'ship_kestrel' });
+  const patrol = makeShip(2, 1, 120, 0, { ai: { lawful: true }, weapons: ['wpn_pulse_laser_s'] });
+  const trader = makeShip(3, 2, 160, 0, { ai: { passive: true, archetype: 'trader' } });
+  const pirate = makeShip(4, 1, 240, 0, { ai: { archetype: 'pirate' }, weapons: ['wpn_pulse_laser_s'] });
+  const state = {
+    mode: 'flight',
+    tick: 10,
+    simTime: 20,
+    meta: { seed: 777 },
+    playerId: player.id,
+    player: { heat: 0 },
+    ui: { docked: false },
+    settings: { gameplay: {} },
+    entities: new Map(),
+    entityList: [],
+    entityIndex: { __spacefaceEntityIndexV1: true, ready: true, collidables: [], aiShips: [] },
+    combat: { entities: {}, attachments: { byId: {} }, trace: { events: [] } },
+    ai: {},
+  };
+  for (const e of [player, patrol, trader, pirate]) {
+    state.entities.set(e.id, e);
+    state.entityList.push(e);
+    state.entityIndex.collidables.push(e);
+    if (e !== player) state.entityIndex.aiShips.push(e);
+  }
+
+  const helpers = {};
+  aiPorts.init({ state, bus: createBus(), helpers });
+  const frame = helpers.aiSensors.liveFrameFor(player.id, state.tick);
+  const contacts = new Map(frame.contacts.map((contact) => [contact.id, contact]));
+  assert.equal(contacts.get(patrol.id).hostile, false, 'clean player should not see lawful patrols as hostile');
+  assert.equal(contacts.get(patrol.id).threat, 0, 'clean lawful patrols should not contribute hostile threat');
+  assert.equal(contacts.get(trader.id).hostile, false, 'traders near spawn should not be hostile contacts');
+  assert.equal(contacts.get(trader.id).threat, 0, 'traders near spawn should not contribute hostile threat');
+  assert.equal(contacts.get(pirate.id).hostile, true, 'explicit pirate contacts remain hostile');
+  assert.equal(isHostileToPlayer(patrol, player.team, state), false, 'HUD/radar should not paint clean lawful patrols red');
+  assert.equal(isHostileToPlayer(trader, player.team, state), false, 'HUD/radar should not paint traders red');
+  assert.equal(isHostileToPlayer(pirate, player.team, state), true, 'HUD/radar should still paint pirates red');
+
+  const combatBus = createBus();
+  const emitted = [];
+  const originalEmit = combatBus.emit.bind(combatBus);
+  combatBus.emit = (event, payload) => {
+    emitted.push({ event, payload });
+    return originalEmit(event, payload);
+  };
+  combat.init({ state, bus: combatBus, helpers: {}, registry: null });
+  combatBus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.equal(player.flags.docked, true, 'dock:docked should mark the player dock-protected');
+  assert.equal(player.flags.invuln, true, 'docked player should be invulnerable');
+  assert.equal(player._invulnUntil, Infinity, 'docked player protection should not expire while still docked');
+  const beforeHull = player.hull;
+  const hit = combat.onHit({ targetId: player.id, ownerId: pirate.id, damage: 999, damageType: 'kinetic', pos: { x: 0, z: 0 } });
+  assert.equal(hit.reason, 'target_docked', 'incoming damage against a docked player should be rejected');
+  assert.equal(player.hull, beforeHull, 'docked player hull should not change when hit');
+  assert.equal(emitted.some((item) => item.event === 'camera:shake'), false, 'rejected docked hits should not shake the camera');
+  player.flags.docked = false;
+  player.flags.invuln = false;
+  state.ui.docked = true;
+  const routed = combat.ensureKernel().routeDamage({
+    attackerId: pirate.id,
+    targetId: player.id,
+    packet: scalarHitToDamagePacket({ damage: 999, damageType: 'kinetic', pos: { x: 0, z: 0 } }),
+    origin: { kind: 'test', id: 'ui-docked-route-damage' },
+  });
+  assert.equal(routed.reason, 'target_docked', 'direct routed damage must also respect UI docked state');
+  assert.equal(player.hull, beforeHull, 'direct routed damage must not change docked player hull');
+  state.ui.docked = false;
+  combatBus.emit('dock:undocked', {});
+  assert.equal(player.flags.docked, false, 'dock:undocked should clear docked protection');
+  assert.equal(player.flags.invuln, true, 'undocking should grant a short launch grace window');
+  assert.equal(player._invulnUntil, state.simTime + 4, 'undock grace should expire after four seconds');
+}
+checkCleanSpawnAndDockedSafety();
+checkPlayerGimbalBears360Degrees();
+checkAutoTargetAimsWithoutAutoFire();
+checkProjectLockedReticleOffScreen();
+checkAutoTargetAssistReinitNoListenerLeak();
+checkAutoTargetInputSteersShipAndAimsHostile();
+checkTargetCycleHostilesOnly();
+checkAutoTargetFToggleAlwaysFlips();
+checkAutoTargetRefreshPreservesTabLockViaInput();
+checkWeaponHeatHudSummary();
 
 console.log('Core gameplay checks OK');

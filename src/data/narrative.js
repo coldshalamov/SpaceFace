@@ -126,6 +126,8 @@ export const COMMS = {
       note: 'The appeal window has been open and unfilled for 14 years. The Pit does not know it has one.' },
     { id: 'amb_sec6_air',       sender: 'SECTOR 6 TRADING POST', text: 'BREATHABLE AIR: PRESSURIZED CANISTERS, 150KG, ORIGIN UNSPECIFIED. PRICE ON REQUEST.',
       note: "The Quiet's booth. 'Origin unspecified' is the tell. The buyer pays for anonymity, not the air." },
+    { id: 'amb_helios_vent',    sender: 'HELIOS PRIME — MAINTENANCE', text: 'VENTILATION REVIEW CLOSED: BAY 7 ODOR CONSISTENT WITH TRANSIT. NO ACTION. TICKET Y3-C2.',
+      note: "A fourteen-year-old ticket about a smell in a Core warehouse. The player will not understand this popup the first time they see it. The grid that left the Pit in year 3 arrived at Helios, was shelved because Helios already had a better one, and has sat in bay 7 ever since. The smell complaint is the only record at the destination that the grid exists. Seeds the wrong-grid reveal the player uncovers at Ashfall Reach." },
   ],
 
   // TRAPS — mid-game, during jump charging or transit. Conditions gate them.
@@ -210,6 +212,7 @@ export const GRAFFITI = {
   VARIANCE_ADJUSTMENT:       'VARIANCE ADJUSTMENT',                    // B3 ship name on a hull (Kessler's terminology — the tell)
   EVERY_MAN_PAYS_TWICE:      'EVERY MAN PAYS TWICE. FIRST IN FLESH. THEN IN COIN.', // B4 clearing (MTS)
   WALLS_NEVER_PRISON:        'THE WALLS WERE NEVER THE REAL PRISON.',  // B5 chain dest (Quiet)
+  HELIOS_NOT_NEEDED:         "HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.", // B0 foreshadow — the wrong-grid reveal (paid off at Ashfall Reach)
 
   // Endgame graffiti (from ENDGAME-B7-REDESIGN).
   CLEAN_UNIFORM_AIRLOCK:     'The signature is always the same. Only the paper changes.',
@@ -238,7 +241,12 @@ export const BEAT_CONTENT = [
     // Bulkhead: the previous crew's last words. Set by _fireColdStart() on game:started so it's there
     // from the first frame. This beat's graffiti only adds the airlock line (seen on first dock).
     // The gang line stays on the bulkhead through B2; at B3 the story takes it over.
-    graffiti: [{ line: GRAFFITI.THEY_KNEW_THE_MASS, where: 'airlock' }],
+    graffiti: [
+      { line: GRAFFITI.THEY_KNEW_THE_MASS, where: 'airlock' },
+      // Foreshadow the wrong-grid reveal: a line the player cannot parse on first read.
+      // Paid off at Ashfall Reach when the Kurtz figure's ledger shows the grid was shelved uninstalled.
+      { line: GRAFFITI.HELIOS_NOT_NEEDED, where: 'airlock', delayS: 4 },
+    ],
     comms: [], // 47-A authorisation line is ambient (Tycho relay) — player "almost certainly doesn't read it"
     hudLie: 'stable_load', // CARGO shows STABLE LOAD after the cargo is gone
   },

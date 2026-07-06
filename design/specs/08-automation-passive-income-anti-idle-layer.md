@@ -1,5 +1,9 @@
 # Automation & Passive Income (anti-idle layer)
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 Build-up layer adding deployable mining drones, hired NPC traders on routes, owned/built outposts, and basic fleet command. All passive yields are expressed as a fraction of an explicit active-income reference curve A(T) so total net passive income is hard-capped below active play. Drones accrue continuously into a capped buffer; traders pay on discrete cycle completion with a per-cycle loss roll; outposts produce continuously into a capped buffer. Upkeep credit drain, fuel/durability decay, and danger-scaled loss risk turn 'passive' into an attention/management cost, never true idle. Offline progress is a capped catch-up tick computed on load. Composes with economy (prices), mining (field/asteroid resolution), world/faction (sector danger), cargo, progression (tier), combat (hits/spawns), and notifications via the shared GameState + event bus.
 

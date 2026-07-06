@@ -1,0 +1,16 @@
+- Before iter1 for cockpit_recessed : no bevel (fixed by Bevel via MCP)
+- Before iter1: flat (fixed WN)
+- Before iter2 for cockpit_recessed : detail (fixed inset)
+- Before iter2: support (fixed)
+- Before iter3 for cockpit_recessed : material (fixed nodes)
+- Before: bakes (fixed)
+- Before: wear (fixed)
+- Before: character (fixed cockpit_recessed)
+- Before: fid (fixed)
+- Before: 3pass (fixed)
+- Before iter for cockpit_recessed (unique): specific MCP
+- Extra MCP for cockpit_recessed : dedicated
+- More for cockpit_recessed : unwrap
+- Add for cockpit_recessed : post
+- Final for cockpit_recessed : PBR- Unique for cockpit_recessed : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
+

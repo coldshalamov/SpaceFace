@@ -13,7 +13,9 @@ Borderlands edge sharpened on a whetstone of actual corpses. Dark, fast, zero se
 Mr Robot paranoia rendered in three dimensions. Static on every long-range scan. Flickering HUD tags that sometimes read "FRIENDLY" and sometimes read "WAS FRIENDLY." Graffiti that moves when you're not looking. Ship interiors that look like someone started redecorating with a flamethrower and lost interest halfway through. Lighting is always either too bright (interrogation) or too dark (ambush). No clean hero shots. Every frame should feel like it was pulled from a body-cam that survived the operator.
 
 **Emotional Register**
-le Carré moral rot + Shalamov frozen indifference + Fight Club "you are not your khakis" contempt. Trust is a currency that only depreciates. Every faction is simultaneously right and monstrous. The player is never allowed to feel noble; at best they feel competent. Loneliness is the default state. The rare moments of warmth (a good haul, a quiet bar, a ship that doesn't hate you today) are deliberately brief and immediately undercut by the next contract. Hope is a debuff.
+Moral rot at the top, frozen indifference at the bottom, contempt for the idea that any of it is special. Trust is a currency that only depreciates. Every faction is simultaneously right and monstrous. The player is never allowed to feel noble; at best they feel competent. Loneliness is the default state. The rare moments of warmth (a good haul, a quiet bar, a ship that doesn't hate you today) are deliberately brief and immediately undercut by the next contract. Hope is a debuff.
+
+> *Craft sources (scaffolding, not voice): the registers fused here are drawn from the moral-rot espionage tradition, the forced-lamp testimony tradition, and the late-capital contempt tradition. The prose enacts them; it does not name them.*
 
 **Non-Negotiables**
 - Never let the player feel like the good guy.

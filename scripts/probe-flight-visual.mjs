@@ -1,7 +1,8 @@
 import { writeFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { PNG } from 'pngjs';
 
@@ -15,7 +16,7 @@ const { chromium } = await loadPlaywright();
 const requestedBaseUrl = process.env.SF_PROBE_URL || '';
 let server = requestedBaseUrl ? await ensureServer(requestedBaseUrl) : await startFreshServer();
 const baseUrl = requestedBaseUrl || server.baseUrl;
-const browser = await chromium.launch({ headless: true });
+let browser = await launchProbeBrowser();
 const viewports = [
   { name: 'desktop', width: 1280, height: 720, deviceScaleFactor: 1 },
   { name: 'mobile', width: 390, height: 844, deviceScaleFactor: 2, isMobile: true },
@@ -31,14 +32,15 @@ const compactOutput = process.argv.includes('--compact-output') || cleanRuns > 1
 
 try {
   for (let runIndex = 1; runIndex <= cleanRuns; runIndex++) {
-    for (const viewport of viewports) {
+    const runResults = await Promise.all(viewports.map((viewport) => {
       logProgress(`run ${runIndex}/${cleanRuns} ${viewport.name}`);
-      results.push(await runViewportProbeWithRetry(browser, viewport, runIndex));
-    }
+      return runViewportProbeWithRetry(browser, viewport, runIndex);
+    }));
+    results.push(...runResults);
   }
 } finally {
-  await browser.close();
-  if (server && server.kill) server.kill();
+  await closeProbeBrowser(browser);
+  await stopProbeServer(server);
 }
 
 const ok = results.every((r) => r.ok);
@@ -71,6 +73,8 @@ async function runViewportProbeWithRetry(browser, viewport, runIndex) {
 }
 
 async function runViewportProbe(browser, viewport, runIndex) {
+  const step = createProbeStepLogger(viewport, runIndex);
+  step('new-page');
   const page = await browser.newPage({ viewport, deviceScaleFactor: viewport.deviceScaleFactor, isMobile: !!viewport.isMobile });
   const pageIssues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
 
@@ -79,9 +83,12 @@ async function runViewportProbe(browser, viewport, runIndex) {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
   const url = withDebugFlight(baseUrl);
+  step('goto');
   await gotoWithRetry(page, url, { waitUntil: 'domcontentloaded' });
+  step('boot-ready');
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 15000 });
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Flight Probe' }));
+  step('flight-ready');
   await page.waitForFunction(
     () => window.SF.state.mode === 'flight'
       && window.SF.state.playerId
@@ -93,9 +100,11 @@ async function runViewportProbe(browser, viewport, runIndex) {
   await page.waitForTimeout(500);
   await dismissTutorial(page);
   await page.waitForTimeout(250);
+  step('isolate');
   await isolateFlightProbeScene(page);
   await waitForSimTicks(page, 5);
 
+  step('controls');
   const initial = await sampleShip(page);
   await page.keyboard.down('ArrowRight');
   await waitForSimTicks(page, 30);
@@ -151,8 +160,10 @@ async function runViewportProbe(browser, viewport, runIndex) {
   await resetPlayerForProbe(page, { mode: 'assisted', rot: 0, vel: { x: 0, z: 0 }, boostEnergy: 100 });
   await waitForSimTicks(page, 9);
 
+  step('diagnostics');
   const diagnostics = await getFlightDiagnostics(page);
   const sg02Diagnostics = await enableSg02DynamicBackend(page);
+  step('canvas');
   const canvasShot = await screenshotCanvas(page);
   const pixels = await sampleCanvas(page, canvasShot);
   const suffix = cleanRuns > 1 ? `-run${runIndex}` : '';
@@ -163,10 +174,11 @@ async function runViewportProbe(browser, viewport, runIndex) {
     await writeFile(screenshot, canvasShot);
   }
 
-  const issues = pageIssues.issues;
-  const ignoredIssues = pageIssues.ignoredIssues;
-  const errorIssues = pageIssues.errorIssues();
-  const warningIssues = pageIssues.warningIssues();
+  const ignoredPlatformWarnings = pageIssues.issues.filter(isIgnorablePlatformShaderCompilerWarning);
+  const issues = pageIssues.issues.filter((issue) => !isIgnorablePlatformShaderCompilerWarning(issue));
+  const ignoredIssues = pageIssues.ignoredIssues.concat(ignoredPlatformWarnings);
+  const errorIssues = issues.filter((issue) => issue.type === 'error' || issue.type === 'pageerror');
+  const warningIssues = issues.filter((issue) => issue.type === 'warning');
   const warningSummary = {
     strict: strictWarnings,
     count: warningIssues.length,
@@ -247,6 +259,14 @@ async function runViewportProbe(browser, viewport, runIndex) {
 function logProgress(message) {
   if (process.env.SF_PROBE_QUIET === '1') return;
   process.stderr.write(`[flight-probe] ${message}\n`);
+}
+
+function createProbeStepLogger(viewport, runIndex) {
+  const started = Date.now();
+  return (step) => {
+    const elapsed = Date.now() - started;
+    logProgress(`run ${runIndex}/${cleanRuns} ${viewport.name} ${step} +${elapsed}ms`);
+  };
 }
 
 function compactProbeResult(result) {
@@ -412,6 +432,14 @@ function isRetriableWebglContextLossWarning(issue) {
   if (!issue || issue.type !== 'warning') return false;
   const text = String(issue.text || '');
   return /CONTEXT_LOST_WEBGL|WebGL context lost|WebGL context restored|useProgram: program not valid|delete: object does not belong to this context/i.test(text);
+}
+
+function isIgnorablePlatformShaderCompilerWarning(issue) {
+  if (!issue || issue.type !== 'warning') return false;
+  const text = String(issue.text || '');
+  return /^THREE\.WebGLProgram: Program Info Log:/i.test(text)
+    && /warning X(?:4000|4122):/i.test(text)
+    && !/\b(?:ERROR|VALIDATE_STATUS false|LINK_STATUS false)\b/i.test(text);
 }
 
 function isRetriableLocalAssetLoadIssue(issue) {
@@ -814,7 +842,11 @@ async function startFreshServer() {
   const url = `http://127.0.0.1:${port}/`;
   const child = spawnProbeServer(String(port));
   await waitForReachable(url, child);
-  return { baseUrl: url, kill: () => child.kill() };
+  return {
+    baseUrl: url,
+    child,
+    kill: () => child.kill(),
+  };
 }
 
 function spawnProbeServer(port) {
@@ -875,6 +907,101 @@ function withDebugFlight(url) {
   return String(u);
 }
 
+async function launchProbeBrowser() {
+  const executablePath = findSystemBrowser();
+  const args = [
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+    '--disable-features=CalculateNativeWinOcclusion',
+    '--ignore-gpu-blocklist',
+    '--enable-webgl',
+  ];
+  if (executablePath) {
+    try {
+      logProgress(`browser ${executablePath}`);
+      const launched = await chromium.launch({ headless: true, executablePath, args });
+      attachProbeProcess(launched);
+      return launched;
+    } catch (error) {
+      console.warn(`[flight-probe] system browser launch failed; falling back to bundled Chromium: ${error && error.message ? error.message : error}`);
+    }
+  }
+  logProgress('browser bundled chromium');
+  const launched = await chromium.launch({ headless: true, args });
+  attachProbeProcess(launched);
+  return launched;
+}
+
+function attachProbeProcess(launched) {
+  try {
+    if (launched && typeof launched.process === 'function') {
+      launched._probeProcess = launched.process();
+    }
+  } catch (_) {}
+}
+
+function findSystemBrowser() {
+  const candidates = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) || null;
+}
+
+async function closeProbeBrowser(target) {
+  if (!target) return;
+  const proc = target._probeProcess || null;
+  try {
+    await Promise.race([
+      target.close(),
+      sleep(5000),
+    ]);
+  } catch (_) {}
+  if (proc && proc.exitCode == null && proc.signalCode == null) {
+    await terminateChild(proc);
+  }
+}
+
+async function stopProbeServer(target) {
+  if (!target) return;
+  if (target.child) {
+    await terminateChild(target.child);
+    return;
+  }
+  if (typeof target.kill === 'function') {
+    try { target.kill(); } catch (_) {}
+  }
+}
+
+async function terminateChild(child) {
+  if (!child || child.exitCode != null || child.signalCode != null) return;
+  if (process.platform === 'win32' && child.pid) {
+    try { spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch (_) {}
+    await waitForChildExit(child, 2500);
+    return;
+  }
+  try { child.kill(); } catch (_) {}
+  await waitForChildExit(child, 2500);
+  if (child.exitCode != null || child.signalCode != null) return;
+  try { child.kill('SIGKILL'); } catch (_) {}
+  await waitForChildExit(child, 1000);
+}
+
+async function waitForChildExit(child, timeoutMs) {
+  if (!child || child.exitCode != null || child.signalCode != null) return;
+  await Promise.race([
+    new Promise((resolve) => child.once('exit', resolve)),
+    sleep(timeoutMs),
+  ]);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function readPositiveIntArg(names, fallback) {
   for (const name of names) {
     const ix = process.argv.indexOf(name);
@@ -913,5 +1040,5 @@ async function recoverProbeServer(url) {
   if (server && server.kill) server.kill();
   const child = spawnProbeServer(port);
   await waitForReachable(`${u.protocol}//${u.hostname}:${port}/`, child);
-  server = requestedBaseUrl ? child : { baseUrl, kill: () => child.kill() };
+  server = requestedBaseUrl ? child : { baseUrl, child, kill: () => child.kill() };
 }

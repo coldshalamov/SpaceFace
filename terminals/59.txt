@@ -1,0 +1,13 @@
+---
+pid: 34004
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/build-sg04-release-assets.mjs --resume-valid 2>&1 | Select-String -Pattern \"blackmarket|release manifest|failed\""
+started_at: 2026-07-04T23:35:29.203Z
+running_for_ms: 11640013 
+---
+
+[sg04] 60/67 place_station_blackmarket: build-start assets/ships/parts/places/place_station_blackmarket.glb -> 
+assets/ships/release.__building/parts/places/place_station_blackmarket.glb
+[sg04] 60/67 place_station_blackmarket: 277124 -> 80728 bytes
+[sg04] release manifest wrote assets/ships/release/release_manifest.json (67 assets)
+

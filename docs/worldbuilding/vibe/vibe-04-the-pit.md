@@ -20,27 +20,25 @@ The graffiti on the commissary wall when the colony was first settled said: BETT
 
 Not criminals. Not workers. Not survivors, exactly. The Pit built people who know what a system looks like when it decides not to care about you, and who learned to stop expecting it to. They don't hate the system. Hate is expensive and the Pit didn't give them margin. They just learned to work with what the system actually is rather than what it says it is.
 
-That's the export. Every faction, every NPC, every piece of graffiti on every station bulkhead in the solar system: someone who spent time in the Pit learned something there, and they took it with them, and they applied it to every system they ever touched after that.
+That's the export. Every faction, every NPC, every piece of graffiti on every station bulkhead in the settled reaches: someone who spent time in the Pit learned something there, and they took it with them, and they applied it to every system they ever touched after that.
 
 The release changed the temperature. It didn't change the lesson.
 
 ---
 
-**Bacigalupi specifics — the air economy:**
+**Specifics — the air economy:**
 
 The Pit's recyclers fail first on the lowest residential decks. This is not an accident of engineering; it is an accident of maintenance budget allocation, which is itself not an accident. The people on the lowest decks breathe air that has been through three more cycles than the air on the upper decks.
 
 The recycler grids run on Catalytic Silt — a dense, dark-gray silicate slurry that lines the recycler channels and splits CO2 back into breathable oxygen when electrically stimulated. Silt degrades over time. Human breath poisons it with trace organics and moisture. Industrial work adds hydraulic fumes, micro-plastics, thruster exhaust. Degraded Silt turns inert and pale — "Chalk." When Silt goes to Chalk, scrubbers saturate. CO2 rises. Residents don't suffocate; they enter the "Slow Gray" — permanent metabolic lethargy, persistent headaches, cognitive decline. The lower decks of the Pit have been in the Slow Gray for fourteen years. The residents call it being tired. The work is hard. The work is also not why.
 
-Upper decks have better Silt because upper decks house administrative staff. The administrative staff are healthier because they breathe better-scrubbed air. They attribute their health to discipline and diet. Nobody lies about this. Nobody tells the truth either. The gap is simply there, like the temperature and the lighting, and everyone has learned to live inside it.
+Upper decks have better filters because the upper decks house the administrative staff. The administrative staff are healthier because they breathe better air. They attribute their health to discipline, diet, and the right attitude. Nobody lies about this. Nobody tells the truth either. The gap is simply there, like the temperature and the lighting, and everyone has learned to live inside it.
 
-The upper decks have better filters because the upper decks house the administrative staff. The administrative staff are healthier because they breathe better air. They attribute their health to discipline, diet, and the right attitude. Nobody lies about this. Nobody tells the truth either. The gap is simply there, like the temperature and the lighting, and everyone has learned to live inside it.
-
-When you make enough money to buy a ship and leave, the first thing you notice in open space is how deep you can breathe. The second thing you notice is that you've been compensating for years and didn't know it. The third thing — if you're paying attention — is that every station you dock at has the same gradient. Better air on the management floors. Recycled air at the service docks. The Pit is everywhere. It just has different paint.
+When you make enough money to buy a ship and leave, the first thing you notice in open space is how deep you can breathe. The second thing you notice is that you've been compensating for years and didn't know it. The third thing — if you're paying attention — is that every station you dock at has the same gradient. Better air on the management floors. Recycled air at the service docks. The Pit isn't a place you left. It's the unit the rest of the system is measured in.
 
 ---
 
-**The Bacigalupi resource — what everything is actually about:**
+**The resource — what everything is actually about:**
 
 The economy of SpaceFace runs on ore and credits and faction rep. That is the surface economy. Beneath it is the resource everything is actually organized around: atmospheric processing capacity.
 
@@ -54,7 +52,7 @@ The graffiti that knows this: none, explicitly. But every graffiti piece that to
 
 The player doesn't know this until they're at Ashfall Reach, where the recyclers are fully offline and they're running on reserve atmosphere and the Kurtz figure's desk has a hand-labeled chart on the wall: 20 years of atmospheric maintenance budget allocations, sector by sector, cross-referenced with faction holdings. The column marked "THE PIT" has no entries after year 3.
 
-Year 3 is when the primary recycler catalyst grid was decommissioned — not due to failure, not due to budget, but because it was physically removed from Shaft 7 and exported to Helios Prime as "INDUSTRIAL COMPONENTS (12.4t)" under manifest code VALE-ALA-47A. The eight NPCs the player has been working with across the sector map (Kessler, Drift, Voss, Slate, Mira, Hale, Quinn, Rook) each ran one piece of this transaction without knowing the whole. The transaction was Contract 47-A in its original form. The player's opening run in B0 was the latest iteration of the same contract. The 12.4 tons that disappeared from the player's first manifest was the recycler catalyst grid's weight. The Pit has been breathing year-3 air ever since.
+Year 3 is when the primary recycler catalyst grid was decommissioned — not due to failure, not due to budget, but because the allocation algorithm flagged it as underutilized relative to the Core's maintenance queue and *recommended* reallocation, and the recommendation crossed Director Vale's desk, and Vale initialed it the way Vale initials every recommendation, and the grid left Shaft 7 for Helios Prime as "INDUSTRIAL COMPONENTS (12.4t)" under manifest code VALE-ALA-47A. The eight NPCs the player has been working with across the sector map (Kessler, Drift, Voss, Slate, Mira, Hale, Quinn, Rook) each ran one piece of the *follow-on* — the ongoing skim that rode the legal transfer's paperwork — without knowing the whole. The transfer itself was lawful. The player's opening run in B0 was the latest iteration of the contract the transfer established. The 12.4 tons that disappeared from the player's first manifest was the recycler catalyst grid's weight. The Pit has been breathing year-3 air ever since.
 
 ---
 
@@ -62,7 +60,7 @@ Year 3 is when the primary recycler catalyst grid was decommissioned — not due
 
 Vale's division doesn't allocate recycler maintenance based on need. It allocates based on viability scores. Viability scores are calculated from ore throughput, freight taxes, and direct atmospheric payment contributions. Sectors that contribute more to the network atmosphere receive more maintenance. Sectors that consume more than they contribute accumulate ATMO DEBT — a balance tracked in Vale's division ledger.
 
-The cycle: ATMO DEBT rises → allocation cut → recycler quality drops → productivity falls → ore throughput drops → ATMO DEBT rises faster. This is the trap. The Pit crossed the threshold in year 3 and entered it. The recycler theft in year 3 was not the consequence of the debt. It was the cause. The recycler was taken first. Then the Pit couldn't produce enough ore. Then the ATMO DEBT spiral took over. The trap was manufactured.
+The cycle: ATMO DEBT rises → allocation cut → recycler quality drops → productivity falls → ore throughput drops → ATMO DEBT rises faster. This is the trap. The Pit crossed the threshold in year 3 and entered it. The recycler transfer in year 3 was not the consequence of the debt. It was the cause. The recycler was reallocated first — legally, on a clean manifest, on a recommendation nobody had reason to refuse. Then the Pit couldn't produce enough ore. Then the ATMO DEBT spiral took over. The trap was manufactured, and the manufacturing was a filing.
 
 Sectors deep in ATMO DEBT can purchase ATMO TOKENS from sectors with surplus. ATMO TOKENS are credits that reduce a sector's ATMO DEBT balance, preventing maintenance cuts. The secondary market in ATMO TOKENS is run by The Quiet, operating out of Sectors 6 and 7. The Quiet sells breathable air in pressurized canisters. The canisters are physical representations of ATMO TOKENS. Buying them proves to Vale's allocation system that the sector is solvent — that it has the resources to maintain atmospheric viability. The Quiet is not a smuggling operation that also sells air. They are an ATMO TOKEN broker that also smuggles.
 

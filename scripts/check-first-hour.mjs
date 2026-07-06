@@ -144,10 +144,9 @@ function simulateFirstHour(beats) {
     { t: 110, followup: { beat: 'derelict', event: 'tether:latched' } },
     { t: 130, followup: { beat: 'derelict', event: 'tether:reelMax' } },
     { t: 150, done: 'derelict' },
-    // B2: advance ~154, followups on scan/vent, DONE at 3 ore ~210s.
+    // B2: advance ~154, followup on scan, DONE at 3 ore ~210s.
     { t: 154, advance: true },
     { t: 170, followup: { beat: 'seam', event: 'scan:hit' } },
-    { t: 190, followup: { beat: 'seam', event: 'mining:ventBonus' } },
     { t: 210, done: 'seam' },
     // B3: advance ~214, DONE on pirate gone ~300s.
     { t: 214, advance: true },
@@ -231,6 +230,14 @@ assert.match(storySrc, /_recentTutorialLine/, 'story.js must suppress ambient co
 
 // ── Assertion 4: B3 pirate flees ≤30% hull, drops ≥1 pickup; death respawns ≤3s ───────────────
 assert.match(onboardingSrc, /PIRATE_HULL_FLEE_FRAC = 0\.30/, 'B3 pirate must flee at ≤30% hull (spec2/03 §2/B3)');
+const b3MinMatch = onboardingSrc.match(/B3_SPAWN_MIN_WU = (\d+)/);
+const b3MaxMatch = onboardingSrc.match(/B3_SPAWN_MAX_WU = (\d+)/);
+assert.ok(b3MinMatch && b3MaxMatch, 'B3 spawn distance constants must be authored');
+const b3SpawnMin = Number(b3MinMatch[1]);
+const b3SpawnMax = Number(b3MaxMatch[1]);
+assert.ok(b3SpawnMax <= 800, `B3 pirate spawn max must be within weapon range (got ${b3SpawnMax}, spec ~700 wu)`);
+assert.ok(b3SpawnMin >= 400 && b3SpawnMin <= b3SpawnMax, `B3 spawn min must be sensible (got ${b3SpawnMin})`);
+assert.match(onboardingSrc, /shieldRegenRate = 0/, 'B3 tutorial pirate must not regen shields (no infinite brick)');
 assert.match(onboardingSrc, /'reaver_pirate'/, 'B3 must spawn a pirate-archetype foe (reaver_pirate)');
 assert.match(onboardingSrc, /makeEnemySpawnSpec/, 'B3 must use the canonical enemy spawn builder');
 assert.match(onboardingSrc, /pirateFled/, 'B3 must track the pirate-fled state (flee counts as DONE)');

@@ -1,0 +1,34 @@
+---
+pid: 19388
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/probe-station-archetypes-live.mjs"
+started_at: 2026-07-05T04:46:30.175Z
+running_for_ms: 149989   
+---
+(node:40368) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Station archetype live probe PASS
+{
+  "helios": {
+    "stationCount": 5,
+    "blenderMcpAuthored": 5,
+    "distinctArchetypes": 3
+  },
+  "pallas": {
+    "stationCount": 5,
+    "blackmarket": {
+      "id": 3,
+      "name": "Smuggler Den",
+      "archetypeGlb": "place_station_blackmarket",
+      "authoringMethod": "blender_mcp",
+      "isGate": false,
+      "state": "authored",
+      "meshCount": 1,
+      "partUrl": "assets/ships/release/parts/places/place_station_blackmarket.glb",
+      "boundaryName": "SF_StationArchetypeFallback_place_station_blackmarket_AuthoredAssetBoundary"
+    },
+    "blenderMcpAuthored": 2,
+    "proceduralAuthored": 0
+  },
+  "log": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-8330956f5882\\implementer\\station-archetype-live-probe.log"
+}

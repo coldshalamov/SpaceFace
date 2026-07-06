@@ -1,0 +1,16 @@
+- Before iter1 for engine_ion_small : no bevel on main forms (fixed by Bevel segs=3 profile 0.5 via MCP per professional-techniques.md Modeling Pass)
+- Before iter1: flat shading artifacts (fixed by adding Weighted Normal last)
+- Before iter2 for engine_ion_small : missing meso detail (fixed by inset + bevel for panels)
+- Before iter2: no support loops (fixed)
+- Before iter3 for engine_ion_small : uniform material (fixed by node layers EdgeWear + CavityDirt + Pointiness)
+- Before: no AO/rough bakes (fixed by targeted bakes + ORM)
+- Before: no wear (fixed by curvature noise)
+- Before: no character (fixed: specific for engine_ion_small role)
+- Before: low fidelity (fixed by highpoly mindset)
+- Before: no 3 pass (fixed by full loop)
+- Before iter for engine_ion_small (unique): additional pass specific to this asset geometry MCP
+- Extra MCP for engine_ion_small : dedicated work
+- Additional for engine_ion_small : bevel after bool, quad dominant
+- More for engine_ion_small : unwrap texel, trim sheet
+- Final for engine_ion_small : compositor post, clearcoat- Unique for engine_ion_small : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
+

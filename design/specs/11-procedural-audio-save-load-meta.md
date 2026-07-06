@@ -1,5 +1,9 @@
 # Procedural Audio + Save/Load & Meta
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 Two service-layer ES modules wired into the fixed update order and the event bus. AudioSystem builds a Web Audio graph (master->limiter->buses) and renders all SFX/music procedurally from oscillators, noise buffers, ADSR envelopes and biquad filters; it listens to gameplay events, plays positional one-shots with distance attenuation relative to the player ship, and runs a 4-layer adaptive music bed (calm/tense/combat/docked) crossfaded from a derived threat level. SaveSystem owns serialization: it walks a fixed registry of systems that each expose serialize()/deserialize(data), assembles a versioned save envelope, writes autosave + manual slots to localStorage and to an exportable/importable JSON file, runs ordered migrations on load, and provides new-game initialization. Both compose only through GameState + emit/on; neither hardcodes content (synth recipes and slot config are data).
 

@@ -1,5 +1,9 @@
 # Missions, contracts & story spine
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 A listener-and-granter subsystem: it never owns the wallet or faction reputation, it detects progress from events other systems emit (mining.yield, trade.sold, enemy.killed, cargo.delivered, scan.completed, player.scannedByPatrol, dock.entered, sector.entered) and pays out by emitting deltas (economy.grantCredits, faction.repDelta, spawn.request, ui.notify, story.beatAdvanced). It owns three things: per-station mission boards (deterministically generated from a seeded hash of worldSeed+stationId+refreshEpoch so save/load reproduces exactly), active mission instances (a lifecycle FSM offered->accepted->active->completed/failed/expired->settled), and a hand-authored 8-beat main-storyline FSM that introduces systems in order (mining -> trade -> combat -> ship upgrade -> faction choice/branch -> mission chains/passive-income preview -> first passive asset -> endgame north star of 100k net worth + capital ship or defended outpost). Ten procedurally generated mission types share ONE multiplicative reward family reward_cr = round(BASE[type] * f_dist * f_risk * f_value * f_faction * f_time) with all four required scalers, time limits derived from travel+task time with slack, collateral deposits on bulk_trade/smuggling to kill the accept-then-dump exploit, optional deterministic chaining, and event-keyed (not entity-pinned) objectives plus stale-target GC to prevent soft-locks. All cross-system references are by string ID for save/load safety; all credit constants are flagged tunable for cross-calibration against the economy and mining yields.
 

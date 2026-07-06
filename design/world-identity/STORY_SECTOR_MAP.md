@@ -17,6 +17,17 @@ Maps narrative sector bands (`SECTOR-GRADIENT.md`) to simulation IDs (`src/data/
 | S8 | Veil Expanse (Vael space) | `sector_veil_nebula` | Veil Nebula | `faction_free` / Vael | Best air in outer sectors; anomaly nebula |
 | S9 | Ashfall Reach (endgame) | `sector_ashfall_reach` | Ashfall Reach | `faction_vael` | Pit-smell air; Kurtz ledger; boss arena |
 
+> **S9 reconciliation (story ↔ mechanics).** The live boss content and the B7 narrative are both
+> retained and staged sequentially: the **Iron Maw dreadnought** (`poi_boss`, spawns via
+> `world.js:_spawnBossIfDue`, CI-gated) guards the sector's approach as the system's last
+> enforcement; **past the dreadnought**, the player reaches the Kurtz figure's derelict
+> administrative station and the wormhole threshold (Choice C). The existing `poi_vault`
+> ("Ancient Vault") is re-skinned in the narrative as the Kurtz figure's sealed records cache —
+> the takeable cargo is the ledger ("PERSONAL EFFECTS — 1 UNIT / 0.4t"), not legendary loot.
+> `faction_vael` is retained in data as cosmetic-only (no Vael spawn logic keys off it for this
+> sector's derelict). See `docs/worldbuilding/story/ENDGAME-B7-REDESIGN.md` §"Cross-reference notes"
+> for the full staged-content breakdown.
+
 ## Name mismatches (intentional)
 
 | Story name | Why data name differs |

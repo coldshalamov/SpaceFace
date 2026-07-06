@@ -22,6 +22,7 @@
 
 import { SHIPS } from '../data/ships.js';
 import { SECTORS } from '../data/sectors.js';
+import { weaponHeatSummary } from './weaponHeat.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const ROLE_LABEL = {
@@ -295,11 +296,8 @@ export function createCommandBar(ctx) {
     const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
     const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
     const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
-    const player = state.player || {};
-    const beamHeat = (player.miningBeam && player.miningBeam.heat != null) ? player.miningBeam.heat : 0;
-    const heat = beamHeat > 0 ? beamHeat : ((p.data && p.data.heat != null) ? p.data.heat : 0);
-    const heatMax = (p.data && p.data.heatMax) || 100;
-    const heatFrac = clamp01(heat / heatMax);
+    const wpnHeat = weaponHeatSummary(p.data && p.data.weapons);
+    const heatFrac = wpnHeat.frac;
 
     setFill(el.hullFill, hullFrac);
     setFill(el.shieldFill, shieldFrac);
@@ -308,12 +306,12 @@ export function createCommandBar(ctx) {
     setText(el.hullNum, Math.max(0, Math.round(p.hull)) + '');
     setText(el.shieldNum, Math.max(0, Math.round(p.shield)) + '');
     setText(el.energyNum, Math.max(0, Math.round(p.cap)) + '');
-    setText(el.heatNum, Math.round(heatFrac * 100) + '%');
+    setText(el.heatNum, wpnHeat.pct + '%');
 
     // brightness-encodes-state flags (the load-bearing rule from Slice 1)
     bar.classList.toggle('sf-cb--hull-crit', hullFrac < 0.25);
     bar.classList.toggle('sf-cb--energy-low', capFrac < 0.2 && capFrac > 0);
-    bar.classList.toggle('sf-cb--heat-high', heatFrac > 0.66);
+    bar.classList.toggle('sf-cb--heat-high', heatFrac > 0.66 || wpnHeat.overheated);
   }
 
   function reconcileCargo() {

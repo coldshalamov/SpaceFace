@@ -3,23 +3,29 @@
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
 import { createChaseCamera } from './camera.js';
-import { createStarfield } from './starfield.js';
-import * as parallaxLayers from './parallaxLayers.js';
+import { createSpaceBackground } from './spaceBackground.js';
 import { createVisualFactory, setEnvMapForShips, invalidateVisualFactoryCaches } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import { createBloom } from './bloom.js';
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import { invalidateAuthoredAsset } from './assetLoader.js';
 import { getAuthoredInstancePoolDiagnostics, invalidatePartsLibraryCaches, preloadAuthoredPartLibrary, syncAuthoredInstancePools } from './partsLibrary.js';
+import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
-import { createPlanetFactory } from './planetFactory.js';
 import { precompilePipelines } from './precompile.js';
+import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
 const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
+
+function isDebugRuntime() {
+  if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
+  return true;
+}
+const SF_DEBUG = isDebugRuntime();
 
 // ---- contact shadow disc (module-level cache so one texture serves all entities) ----------------
 let _shadowTex = null;
@@ -30,6 +36,13 @@ const CONTACT_SHADOW_POS = new THREE.Vector3();
 const CONTACT_SHADOW_SCALE = new THREE.Vector3();
 const CONTACT_SHADOW_MATRIX = new THREE.Matrix4();
 const CONTACT_SHADOW_QUAT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+const SHIP_AUX_SHIELD_INITIAL_CAPACITY = 32;
+const SHIP_AUX_NAV_INITIAL_CAPACITY = 64;
+const SHIP_AUX_NAV_GEOMETRY = new THREE.SphereGeometry(0.025, 8, 6);
+SHIP_AUX_NAV_GEOMETRY.dispose = () => {};
+const SHIP_AUX_LOCAL_MATRIX = new THREE.Matrix4();
+const SHIP_AUX_WORLD_MATRIX = new THREE.Matrix4();
+const SHIP_AUX_COLOR = new THREE.Color();
 const SOCKET_WORLD_POS = new THREE.Vector3();
 const SOCKET_WORLD_QUAT = new THREE.Quaternion();
 const SOCKET_WORLD_SCALE = new THREE.Vector3();
@@ -72,7 +85,7 @@ function attachContactShadow(mesh, entity) {
 }
 
 function createContactShadowPool(scene) {
-  const pool = { scene, capacity: 0, mesh: null };
+  const pool = { scene, capacity: 0, mesh: null, records: new Map(), seen: new Set() };
   ensureContactShadowCapacity(pool, CONTACT_SHADOW_INITIAL_CAPACITY);
   return pool;
 }
@@ -93,6 +106,7 @@ function ensureContactShadowCapacity(pool, desired) {
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   pool.mesh = mesh;
   pool.capacity = nextCapacity;
+  if (pool.records) pool.records.clear();
   if (previous && pool.scene) {
     pool.scene.remove(previous);
     if (typeof previous.dispose === 'function') previous.dispose();
@@ -102,7 +116,19 @@ function ensureContactShadowCapacity(pool, desired) {
 
 function syncContactShadowPool(pool, entities, meshes) {
   if (!pool || !pool.mesh || !Array.isArray(entities)) return;
+  let desired = 0;
+  for (const entity of entities) {
+    if (!entity || entity.alive === false || entity._noShadow) continue;
+    if (entity.type !== 'ship' && entity.type !== 'station') continue;
+    const mesh = meshes && meshes.get(entity.id);
+    if (mesh && mesh.userData && mesh.userData.hasContactShadow) desired++;
+  }
+  ensureContactShadowCapacity(pool, desired);
   let count = 0;
+  let dirty = false;
+  const records = pool.records || (pool.records = new Map());
+  const seen = pool.seen || (pool.seen = new Set());
+  seen.clear();
   for (const entity of entities) {
     if (!entity || entity.alive === false || entity._noShadow) continue;
     if (entity.type !== 'ship' && entity.type !== 'station') continue;
@@ -110,16 +136,245 @@ function syncContactShadowPool(pool, entities, meshes) {
     if (!mesh || !(mesh.userData && mesh.userData.hasContactShadow)) continue;
     ensureContactShadowCapacity(pool, count + 1);
     const radius = Number(mesh.userData.contactShadowRadius) || Math.max(16, (entity.radius || 28) * 1.4);
-    CONTACT_SHADOW_POS.set(entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : mesh.position.x, -0.5,
-      entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : mesh.position.z);
-    CONTACT_SHADOW_SCALE.set(radius, radius, radius);
-    CONTACT_SHADOW_MATRIX.compose(CONTACT_SHADOW_POS, CONTACT_SHADOW_QUAT, CONTACT_SHADOW_SCALE);
-    pool.mesh.setMatrixAt(count, CONTACT_SHADOW_MATRIX);
+    const x = entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : mesh.position.x;
+    const z = entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : mesh.position.z;
+    seen.add(entity.id);
+    const prev = records.get(entity.id);
+    if (!prev || prev.index !== count ||
+        Math.abs(prev.x - x) > 0.01 || Math.abs(prev.z - z) > 0.01 || Math.abs(prev.radius - radius) > 0.01) {
+      CONTACT_SHADOW_POS.set(x, -0.5, z);
+      CONTACT_SHADOW_SCALE.set(radius, radius, radius);
+      CONTACT_SHADOW_MATRIX.compose(CONTACT_SHADOW_POS, CONTACT_SHADOW_QUAT, CONTACT_SHADOW_SCALE);
+      pool.mesh.setMatrixAt(count, CONTACT_SHADOW_MATRIX);
+      records.set(entity.id, { index: count, x, z, radius });
+      dirty = true;
+    }
     count++;
   }
-  pool.mesh.count = count;
+  for (const id of records.keys()) {
+    if (!seen.has(id)) records.delete(id);
+  }
+  if (pool.mesh.count !== count) {
+    pool.mesh.count = count;
+    dirty = true;
+  }
   pool.mesh.visible = count > 0;
-  pool.mesh.instanceMatrix.needsUpdate = true;
+  if (dirty) pool.mesh.instanceMatrix.needsUpdate = true;
+}
+
+const SHIELD_POOL_VERT = /* glsl */`
+  attribute float instanceFlash;
+  attribute float instanceBase;
+  varying vec3 vNormal;
+  varying vec3 vWorldPos;
+  varying vec3 vInstanceColor;
+  varying float vFlash;
+  varying float vBase;
+  void main() {
+    mat4 instanceModel = modelMatrix * instanceMatrix;
+    vec4 wp = instanceModel * vec4(position, 1.0);
+    vWorldPos = wp.xyz;
+    vNormal = normalize(mat3(instanceModel) * normal);
+    vInstanceColor = instanceColor;
+    vFlash = instanceFlash;
+    vBase = instanceBase;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+const SHIELD_POOL_FRAG = /* glsl */`
+  precision highp float;
+  varying vec3 vNormal;
+  varying vec3 vWorldPos;
+  varying vec3 vInstanceColor;
+  varying float vFlash;
+  varying float vBase;
+  void main() {
+    vec3 N = normalize(vNormal);
+    vec3 V = normalize(cameraPosition - vWorldPos);
+    float fres = pow(1.0 - max(0.0, dot(N, V)), 2.5);
+    float alpha = clamp(vBase * fres + vFlash, 0.0, 1.0);
+    vec3 col = mix(vInstanceColor, vec3(1.0), vFlash * 0.7);
+    gl_FragColor = vec4(col, alpha * (0.45 + 0.55 * fres));
+  }
+`;
+
+function createShipAuxPool(scene) {
+  const pool = {
+    scene,
+    shield: { capacity: 0, mesh: null, material: createShieldAuxMaterial() },
+    nav: { capacity: 0, mesh: null, material: createNavLightAuxMaterial() },
+  };
+  ensureShieldAuxCapacity(pool.shield, SHIP_AUX_SHIELD_INITIAL_CAPACITY, scene);
+  ensureNavLightAuxCapacity(pool.nav, SHIP_AUX_NAV_INITIAL_CAPACITY, scene);
+  return pool;
+}
+
+function createShieldAuxMaterial() {
+  return new THREE.ShaderMaterial({
+    vertexShader: SHIELD_POOL_VERT,
+    fragmentShader: SHIELD_POOL_FRAG,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.FrontSide,
+    fog: false,
+  });
+}
+
+function createNavLightAuxMaterial() {
+  return new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    toneMapped: false,
+    fog: false,
+  });
+}
+
+function ensureShieldAuxCapacity(pool, desired, scene) {
+  if (!pool || desired <= pool.capacity) return;
+  const nextCapacity = Math.max(desired, pool.capacity ? pool.capacity * 2 : SHIP_AUX_SHIELD_INITIAL_CAPACITY);
+  const previous = pool.mesh;
+  const geometry = shieldBubbleGeometry().clone();
+  geometry.setAttribute('instanceFlash', new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity), 1).setUsage(THREE.DynamicDrawUsage));
+  geometry.setAttribute('instanceBase', new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity), 1).setUsage(THREE.DynamicDrawUsage));
+  const mesh = new THREE.InstancedMesh(geometry, pool.material, nextCapacity);
+  mesh.name = 'ShipShieldBubble_Pool';
+  mesh.count = 0;
+  mesh.visible = false;
+  mesh.renderOrder = 2;
+  mesh.frustumCulled = false;
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.userData.spacefaceTags = { vfxRole: 'shieldBubblePool' };
+  mesh.userData.shipAuxPool = 'shieldBubble';
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity * 3), 3).setUsage(THREE.DynamicDrawUsage);
+  pool.mesh = mesh;
+  pool.capacity = nextCapacity;
+  if (previous && scene) {
+    scene.remove(previous);
+    if (previous.geometry && typeof previous.geometry.dispose === 'function') previous.geometry.dispose();
+  }
+  if (scene) scene.add(mesh);
+}
+
+function ensureNavLightAuxCapacity(pool, desired, scene) {
+  if (!pool || desired <= pool.capacity) return;
+  const nextCapacity = Math.max(desired, pool.capacity ? pool.capacity * 2 : SHIP_AUX_NAV_INITIAL_CAPACITY);
+  const previous = pool.mesh;
+  const mesh = new THREE.InstancedMesh(SHIP_AUX_NAV_GEOMETRY, pool.material, nextCapacity);
+  mesh.name = 'ShipNavLight_Pool';
+  mesh.count = 0;
+  mesh.visible = false;
+  mesh.renderOrder = 3;
+  mesh.frustumCulled = false;
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.userData.spacefaceTags = { damageRole: 'navLightPool' };
+  mesh.userData.shipAuxPool = 'navLight';
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity * 3), 3).setUsage(THREE.DynamicDrawUsage);
+  pool.mesh = mesh;
+  pool.capacity = nextCapacity;
+  if (previous && scene) {
+    scene.remove(previous);
+    if (previous.geometry && previous.geometry !== SHIP_AUX_NAV_GEOMETRY && typeof previous.geometry.dispose === 'function') previous.geometry.dispose();
+  }
+  if (scene) scene.add(mesh);
+}
+
+function syncShipAuxPools(pool, entities, meshes) {
+  if (!pool || !Array.isArray(entities)) return;
+  let desiredShield = 0;
+  let desiredNav = 0;
+  for (const entity of entities) {
+    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+    const root = meshes && meshes.get(entity.id);
+    if (!root || !root.userData) continue;
+    if (root.userData.shieldBubble && entity.shield > 0) desiredShield++;
+    const navSources = getPooledNavLightSources(root);
+    for (const source of navSources) desiredNav += Math.max(0, source.count || 0);
+  }
+  ensureShieldAuxCapacity(pool.shield, desiredShield, pool.scene);
+  ensureNavLightAuxCapacity(pool.nav, desiredNav, pool.scene);
+  syncShieldAuxPool(pool.shield, entities, meshes);
+  syncNavLightAuxPool(pool.nav, entities, meshes);
+}
+
+function syncShieldAuxPool(pool, entities, meshes) {
+  if (!pool || !pool.mesh) return;
+  const mesh = pool.mesh;
+  const flashAttr = mesh.geometry.getAttribute('instanceFlash');
+  const baseAttr = mesh.geometry.getAttribute('instanceBase');
+  let count = 0;
+  for (const entity of entities) {
+    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+    const root = meshes && meshes.get(entity.id);
+    const bubble = root && root.userData && root.userData.shieldBubble;
+    if (!bubble) continue;
+    bubble.visible = false;
+    if (!(entity.shield > 0)) continue;
+    bubble.updateWorldMatrix(true, false);
+    mesh.setMatrixAt(count, bubble.matrixWorld);
+    const uniforms = bubble.material && bubble.material.uniforms;
+    const color = uniforms && uniforms.uColor && uniforms.uColor.value;
+    mesh.setColorAt(count, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff));
+    flashAttr.setX(count, uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0);
+    baseAttr.setX(count, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22);
+    count++;
+  }
+  if (mesh.count !== count) mesh.count = count;
+  mesh.visible = count > 0;
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  flashAttr.needsUpdate = true;
+  baseAttr.needsUpdate = true;
+}
+
+function syncNavLightAuxPool(pool, entities, meshes) {
+  if (!pool || !pool.mesh) return;
+  const mesh = pool.mesh;
+  let count = 0;
+  for (const entity of entities) {
+    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+    const root = meshes && meshes.get(entity.id);
+    if (!root) continue;
+    const sources = getPooledNavLightSources(root);
+    for (const source of sources) {
+      source.visible = false;
+      source.updateWorldMatrix(true, false);
+      const sourceCount = Math.max(0, source.count || 0);
+      const mat = Array.isArray(source.material) ? source.material[0] : source.material;
+      const base = mat && mat.emissive && mat.emissive.isColor ? mat.emissive : (mat && mat.color && mat.color.isColor ? mat.color : SHIP_AUX_COLOR.set(0x88eeff));
+      const intensity = mat && Number.isFinite(mat.emissiveIntensity) ? mat.emissiveIntensity : 1;
+      SHIP_AUX_COLOR.copy(base).multiplyScalar(Math.max(0, intensity));
+      if (mat && Number.isFinite(mat.opacity)) SHIP_AUX_COLOR.multiplyScalar(Math.max(0, mat.opacity));
+      for (let i = 0; i < sourceCount; i++) {
+        source.getMatrixAt(i, SHIP_AUX_LOCAL_MATRIX);
+        SHIP_AUX_WORLD_MATRIX.multiplyMatrices(source.matrixWorld, SHIP_AUX_LOCAL_MATRIX);
+        mesh.setMatrixAt(count, SHIP_AUX_WORLD_MATRIX);
+        mesh.setColorAt(count, SHIP_AUX_COLOR);
+        count++;
+      }
+    }
+  }
+  if (mesh.count !== count) mesh.count = count;
+  mesh.visible = count > 0;
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+}
+
+function getPooledNavLightSources(root) {
+  if (!root || !root.userData) return [];
+  let sources = root.userData.__pooledNavLightSources;
+  if (sources) return sources;
+  sources = [];
+  root.traverse((object) => {
+    if (!object || !object.isInstancedMesh || object.name !== 'GLTFKit_Nav_Lights') return;
+    if (!object.userData || object.userData.damageRole !== 'navLight') return;
+    sources.push(object);
+  });
+  root.userData.__pooledNavLightSources = sources;
+  return sources;
 }
 
 function requestAuthoredUpgrade(mesh, renderer, scene) {
@@ -201,8 +456,8 @@ export const render = {
     }
 
     const cam = createChaseCamera(state);
-    const starfield = createStarfield(scene, { tint: corePalette.nebulaTint });
-    parallaxLayers.init(scene, state, bus, corePalette);
+    const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
+    state.render.spaceBg = spaceBg;
     const vf = createVisualFactory();
     // Hero-asset registry (spec §17.3): wraps the factory's build() so the bespoke player Kestrel is
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
@@ -271,11 +526,11 @@ export const render = {
       }, false);
     }
 
-    // Preload the menu background (the only generated .jpg we use — the rest are captioned
-    // contact-sheet references and are replaced by procedural materials / inline SVG).
-    { const i = new Image(); i.src = 'assets/cinematics/menu_background.jpg'; }
+    // Preload the menu/boot cinematic backdrop (C-INTRO-01, a clean label-free still). The captioned
+    // contact-sheet .jpgs are authoring references only — replaced by procedural materials / inline SVG.
+    { const i = new Image(); i.src = 'assets/cinematics/C-INTRO-01.jpg'; }
 
-    this.renderer = renderer; this.scene = scene; this.cam = cam; this.starfield = starfield; this.vf = vf;
+    this.renderer = renderer; this.scene = scene; this.cam = cam; this.spaceBg = spaceBg; this.vf = vf;
     this.authoredPartLibraryReady = preloadAuthoredPartLibrary(renderer).catch((error) => {
       console.warn('[render] authored part library preload failed', error);
       return null;
@@ -289,8 +544,7 @@ export const render = {
     this._shadowReceiversDirty = true;
     this._shadowReceiverCount = 0;
     this._contactShadowPool = createContactShadowPool(scene);
-    this.planetFactory = createPlanetFactory();
-    this._planetBodies = [];
+    this._shipAuxPool = createShipAuxPool(scene);
     // LOD projector viewport (CSS px); onResize refreshes it. Initialize from drawSize so the first
     // frame before onResize has sane values.
     { const dpr = renderer.getPixelRatio() || 1; this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr }; }
@@ -302,6 +556,7 @@ export const render = {
     catch (err) { console.warn('[render] collision debug unavailable:', err); this.collisionDebug = null; }
     this._meshes = new Map(); // entityId -> Object3D
     this._meshBuildQueue = [];
+    this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds = new Set();
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
@@ -335,10 +590,79 @@ export const render = {
           bloom: this.bloom && typeof this.bloom.diagnostics === 'function' ? this.bloom.diagnostics() : null,
           renderGraph: !!this._renderGraph,
         }),
+        // Extra overlay lines: GPU tier + live dynamic-resolution scale + effective draw-buffer size,
+        // so the on-screen probe (?perf) shows WHY the frame rate is what it is (software vs hardware,
+        // how far dynamic resolution has had to back off).
+        extraLines: () => {
+          const g = state.render.gpu;
+          const dyn = Number(state.render.dynResScale);
+          const pr = this.renderer ? (this.renderer.getPixelRatio() || 1) : 1;
+          const bw = this.renderer ? (this.renderer.domElement.width | 0) : 0;
+          const bh = this.renderer ? (this.renderer.domElement.height | 0) : 0;
+          const tier = g ? g.tier : '?';
+          const scaleTxt = Number.isFinite(dyn) ? dyn.toFixed(2) : '1.00';
+          return 'gpu ' + tier + (g && g.software ? ' (SOFTWARE!)' : '') +
+            '  dynScale ' + scaleTxt + '  buf ' + bw + 'x' + bh + ' @' + pr.toFixed(2);
+        },
       });
       state.render.diagnostics = this.diag;
     }
     catch (err) { console.warn('[render] diagnostics unavailable:', err); this.diag = null; }
+
+    // --- GPU capability detection + dynamic resolution (adaptiveQuality.js) --------------------
+    // Profiling proved SpaceFace is GPU present-bound: the JS/sim side fits the frame budget, but a
+    // weak/integrated GPU can't shade the full-res HDR scene + bloom composite in time, and a browser
+    // that has fallen back to SOFTWARE rendering (hardware acceleration off/blocklisted) drops to a
+    // few fps regardless of content. Detect the real renderer so we can warn + pick a floor, then run
+    // a dynamic-resolution controller (renderFrame -> prepareFrame each frame) that trades internal
+    // resolution for a smooth framerate. It never mutates settings.video, so it fully recovers.
+    state.render.dynResScale = 1;
+    const gpu = detectGpu(renderer);
+    state.render.gpu = gpu;
+    // The background was constructed before GPU detection ran; re-tier it now (no-op unless
+    // the tier actually changed — e.g. software rendering drops it to the cheap path).
+    if (spaceBg && typeof spaceBg.applyGpuTier === 'function') spaceBg.applyGpuTier(gpu);
+    try {
+      const pr = renderer.getPixelRatio() || 1;
+      console.log('[render] GPU: %s | tier: %s | pixelRatio: %s | buffer: %dx%d',
+        gpu.renderer, gpu.tier, pr.toFixed(2), drawSize.x | 0, drawSize.y | 0);
+    } catch (_) { /* logging is best-effort */ }
+
+    // Per-tier floor for how far dynamic resolution may back off. Software rendering will never be
+    // fast, so let it drop much lower (and drop bloom); the real fix is a hardware context, surfaced
+    // to the player below.
+    const dynFloor = gpu.tier === 'software' ? 0.34 : gpu.tier === 'integrated' ? 0.5 : 0.6;
+    this._adaptive = createAdaptiveResolution({
+      floor: dynFloor,
+      apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
+    });
+    // Dynamic resolution is reserved for the SOFTWARE-rendering emergency. Every scale change
+    // reallocates the whole render-target chain (canvas + HDR + bloom pyramid), which measured as
+    // 0.5-1.3s render stalls on this class of hardware (.devshots/perf/hitch-budget-after-lightfix*
+    // vs *-nodynres) — on hardware tiers the controller caused more visible hitching than it
+    // prevented, while steady-state already holds the frame budget at full quality.
+    this._dynResAllowed = gpu.tier === 'software';
+    this._adaptive.setEnabled(this._dynResAllowed && !(state.settings && state.settings.video && state.settings.video.dynamicResolution === false));
+
+    if (gpu.software) {
+      // Hardware acceleration is OFF: the browser is rendering WebGL on the CPU (SwiftShader). No
+      // in-game setting makes this fast — auto-drop to the cheapest path and tell the player exactly
+      // how to fix it. Runtime-only (NOT persisted into settings.video) so it recovers on a hardware
+      // context after relaunch.
+      state.render.softwareRenderer = true;
+      try { if (this.bloom) this.bloom.setOptions({ bloom: false }); } catch (_) {}
+      setTimeout(() => {
+        try {
+          bus.emit('toast', {
+            text: 'Graphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.',
+            kind: 'warn', ttl: 14,
+          });
+        } catch (_) { /* toast is best-effort; the console log above still records it */ }
+      }, 1200);
+    }
+
+    // ?perf — auto-enable the on-screen FPS/GPU/scale overlay for quick self-diagnosis.
+    try { if (query && query.get('perf') != null && this.diag) this.diag.setOverlay(true); } catch (_) {}
 
     state.render.scene = scene;
     state.render.renderer = renderer;
@@ -375,6 +699,11 @@ export const render = {
     bus.on('ship:appearanceChanged', ({ id }) => render.rebuildShipMesh(id));
     bus.on('camera:shake', ({ amount }) => cam.addTrauma(amount || 0.3));
     bus.on('camera:kill', () => cam.killCam && cam.killCam());
+    // FR-5: ease the frame back to center after a boost-release or a tether slingshot exit/overload
+    // (cruise-drop settle stays owned by spec2/02 §1). Boost-release also gets a gentle zoom tighten.
+    bus.on('ship:boostStop', () => { if (cam.easeRecenter) cam.easeRecenter(0.4); if (cam.pushZoom) cam.pushZoom(-0.03, 0.4); });
+    bus.on('tether:released', () => cam.easeRecenter && cam.easeRecenter(0.4));
+    bus.on('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
     bus.on('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
     bus.on('game:started', () => cam.snapToPlayer && cam.snapToPlayer());
     bus.on('save:loaded', () => cam.snapToPlayer && cam.snapToPlayer());
@@ -385,12 +714,15 @@ export const render = {
     bus.on('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       const vd = state.settings.video;
-      if (this.bloom) this.bloom.setOptions({ bloom: vd.bloom, strength: vd.bloomStrength, threshold: vd.bloomThreshold, exposure: vd.exposure, acesToneMapping: vd.acesToneMapping !== false });
+      this._syncPostOptions();
       if (p.key === 'shadows' || p.key == null) {
         this._shadowSettingOn = vd.shadows !== false;
         this._shadowReceiversDirty = true;
       }
       if (p.key === 'renderScale' || p.key === 'pixelRatioCap' || p.key == null) this.onResize();
+      if ((p.key === 'dynamicResolution' || p.key == null) && this._adaptive) {
+        this._adaptive.setEnabled(this._dynResAllowed === true && vd.dynamicResolution !== false);
+      }
       // FOV: the feel system (feel.js) adds a transient punch on top of this base. We update the
       // camera's base fov here; feel.frame() re-derives its cached base from settings when no punch
       // is active, so the slider and the punch never fight.
@@ -408,19 +740,51 @@ export const render = {
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
     bus.on('sector:enter', ({ sector } = {}) => {
       this._meshReconcileDirty = true;
+      // Kick any station/place boundaries that spawned before the GLB cache was warm.
+      for (const mesh of this._meshes.values()) requestAuthoredUpgrade(mesh, renderer, scene);
       if (cam.snapToPlayer) cam.snapToPlayer();
-      this._updatePlanetBodies(sector);
       this._beginSectorPaletteTransition(sector);
+      // Per-sector sky: rebake the deep-field background with this sector's seed +
+      // palette class (no-op when re-entering the same sector).
+      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector);
       this._updateHazardVisuals(sector);
-      precompilePipelines(renderer, scene, cam.obj, { sector }).catch((error) => console.warn('[render] sector pipeline precompile failed', error));
+      const warmup = precompilePipelines(renderer, scene, cam.obj, {
+        sector,
+        warmPostProcess: state.render.warmPostProcess,
+        video: state.settings && state.settings.video,
+      }).catch((error) => {
+        console.warn('[render] sector pipeline precompile failed', error);
+        return null;
+      });
+      state.render.pipelinePrecompileReady = warmup;
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
       this._beginSectorPaletteTransition(sector);
+      if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector);
     });
     bus.on('save:loaded', () => { this._meshReconcileDirty = true; });
 
     window.addEventListener('resize', () => this.onResize());
+    // Apply persisted video/post settings once bloom exists (createBloom defaults otherwise win).
+    this._syncPostOptions();
+  },
+
+  _syncPostOptions() {
+    const vd = (this.state && this.state.settings && this.state.settings.video) || {};
+    const bloomStrength = typeof vd.bloomStrength === 'number' ? vd.bloomStrength : 0.40;
+    const bloomThreshold = typeof vd.bloomThreshold === 'number' ? vd.bloomThreshold : 0.72;
+    const postOpts = {
+      bloom: vd.bloom,
+      bloomStrength,
+      strength: bloomStrength,
+      threshold: bloomThreshold,
+      bloomThreshold,
+      exposure: vd.exposure,
+      acesToneMapping: vd.acesToneMapping !== false,
+    };
+    if (this.bloom) this.bloom.setOptions(postOpts);
+    if (this._renderGraph) this._renderGraph.setOptions({ bloom: vd.bloom !== false, bloomStrength, bloomThreshold });
   },
 
   clearAllMeshes(keepPlayer) {
@@ -429,6 +793,7 @@ export const render = {
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
     }
     this._meshBuildQueue.length = 0;
+    this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds.clear();
     // Also clear hazard zone visuals
     for (const obj of this._hazardVisuals) { this.scene.remove(obj); disposeObject(obj); }
@@ -478,15 +843,15 @@ export const render = {
       }
     }
     const built = this._drainMeshBuildQueue(buildBudget);
-    this._meshReconcileDirty = this._meshBuildQueue.length > 0;
+    this._meshReconcileDirty = this._meshBuildQueueHead < this._meshBuildQueue.length;
     if (!this._meshReconcileDirty) this._initialMeshReconcileComplete = true;
     return built;
   },
 
   _drainMeshBuildQueue(buildBudget) {
     let built = 0;
-    while (this._meshBuildQueue.length && built < buildBudget) {
-      const id = this._meshBuildQueue.shift();
+    while (this._meshBuildQueueHead < this._meshBuildQueue.length && built < buildBudget) {
+      const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       this._meshBuildQueuedIds.delete(id);
       const e = this.state.entities.get(id);
       if (!e || e.alive === false || e._noMesh || this._meshes.has(id)) continue;
@@ -501,6 +866,13 @@ export const render = {
       requestAuthoredUpgrade(m, this.renderer, this.scene);
       this._shadowReceiversDirty = true;
       built++;
+    }
+    if (this._meshBuildQueueHead >= this._meshBuildQueue.length) {
+      this._meshBuildQueue.length = 0;
+      this._meshBuildQueueHead = 0;
+    } else if (this._meshBuildQueueHead > 64) {
+      this._meshBuildQueue = this._meshBuildQueue.slice(this._meshBuildQueueHead);
+      this._meshBuildQueueHead = 0;
     }
     return built;
   },
@@ -564,6 +936,7 @@ export const render = {
       // modulates light groups / armor / drive from the live hull fraction so damage reads without the
       // HUD bar. Cheap no-op for non-hero meshes (no closure). Called once per frame per entity.
       if (m.userData.updateDamageState) m.userData.updateDamageState(e, now);
+      if (m.userData.updateDriveState) m.userData.updateDriveState(e, now);
 
       // GR-5: persistent 3D shield bubble visibility + impact flash. Shown while shields hold; the
       // flash decays each frame and is punched up whenever the entity's shield value drops (impact).
@@ -589,34 +962,11 @@ export const render = {
       // without a lod state (no closure attached).
       if (m.userData.lod && m.userData.updateLod) {
         const px = projectedWidthPx(e.pos, e.radius, this.cam.obj, this.viewport);
-        const level = m.userData.lod.resolve(px);
+        // The player ship is a focal, readable object at normal flight scale. Authored LOD1 can hide
+        // too much silhouette detail, so keep player control on LOD0 and reserve reduction for NPCs.
+        const level = e.id === this.state.playerId ? 'lod0' : m.userData.lod.resolve(px);
         m.userData.updateLod(level);
       }
-    }
-  },
-
-  _updatePlanetBodies(sector) {
-    for (const b of this._planetBodies) { this.scene.remove(b.mesh); }
-    this.planetFactory.disposeBodies(this._planetBodies);
-    this._planetBodies = this.planetFactory.buildSectorBodies(sector);
-    for (const b of this._planetBodies) {
-      b.mesh.position.copy(b.basePos);
-      this.scene.add(b.mesh);
-    }
-    this._shadowReceiversDirty = true;
-  },
-
-  _updatePlanetParallax() {
-    const cam = this.cam.obj.position;
-    // GR-4: advance the planet cloud-drift uniform from the background clock (sim-scaled, not wall
-    // clock) so hit-stop/pause also stills the clouds. Sun bodies have no uTime uniform; planet
-    // surface materials do — the lazy read avoids a per-body branch on suns.
-    const t = this._bgTime || 0;
-    for (const b of this._planetBodies) {
-      b.mesh.position.x = b.basePos.x + cam.x * (1 - b.parallax);
-      b.mesh.position.z = b.basePos.z + cam.z * (1 - b.parallax);
-      const u = b.mesh.material && b.mesh.material.uniforms && b.mesh.material.uniforms.uTime;
-      if (u) u.value = t;
     }
   },
 
@@ -719,9 +1069,6 @@ export const render = {
     rig.elapsed = 0;
     rig.active = true;
 
-    if (this.starfield && this.starfield.setSectorTint) {
-      this.starfield.setSectorTint(palette.nebulaTint);
-    }
   },
 
   _updateSectorPaletteTransition(frameDt) {
@@ -743,22 +1090,23 @@ export const render = {
     // webglcontextrestored rebuilds GPU resources. (cam.follow etc. would run against a dead
     // renderer; the context-restore handler re-applies everything that matters when it returns.)
     if (this._contextLost) return false;
+    // Dynamic resolution: measure real frame time and nudge the internal render scale to hold a smooth
+    // framerate on weak/software GPUs (adaptiveQuality.js). Cheap; only resizes targets on a change.
+    if (this._adaptive) this._adaptive.update(frameDt);
     if (this._meshReconcileDirty) this.reconcileMeshes();
     this._updateShipPitch(frameDt);
     this.syncEntityViews(alpha);
     this.cam.follow(frameDt);
     syncContactShadowPool(this._contactShadowPool, this.state.entityList, this._meshes);
+    syncShipAuxPools(this._shipAuxPool, this.state.entityList, this._meshes);
     syncAuthoredInstancePools(this.scene, { camera: this.cam.obj });
-    this.starfield.recenter(this.cam.obj.position);
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
     this._updateSectorPaletteTransition(frameDt);
     const ts = (this.state.timeScale != null) ? this.state.timeScale : 1;
     this._bgTime = (this._bgTime || 0) + frameDt * ts;
-    if (this.starfield.update) this.starfield.update(frameDt, this._bgTime);
-    parallaxLayers.update(frameDt);
-    this._updatePlanetParallax();
+    if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
     this._syncShadowMapEnabled();
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
@@ -814,6 +1162,7 @@ export const render = {
 
   drawPreparedFrame() {
     if (this._contextLost) return false;
+    this._syncPostOptions();
     // Render path selection (INTEGRATION_MAP §8.1). The SpaceRenderGraph is a capability-aware HDR
     // pipeline (GTAO-lite ambient occlusion + multiscale bloom + ACES/grade composite) that
     // supersedes the monolithic bloom wrapper. It is opt-in behind settings.video.renderGraph so the
@@ -928,15 +1277,24 @@ export const render = {
     };
   },
 
-  onResize() {
+  // Re-apply the drawing-buffer size (renderer + bloom + render-graph + LOD viewport) from the current
+  // window size, the base video settings, AND the live dynamic-resolution scale (state.render.dynResScale).
+  // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
+  _applySize() {
     const drawSize = applyRendererSize(this.renderer, this.state);
     if (this.bloom) this.bloom.setSize(drawSize.x, drawSize.y);
-    if (this._renderGraph) this._renderGraph.setSize(drawSize.x, drawSize.y, this.renderer.getPixelRatio() || 1);
-    this.cam.onResize();
+    if (this._renderGraph) this._renderGraph.setSize(drawSize.x, drawSize.y);
     // Cache the CSS-pixel viewport for the LOD projector (projectedWidthPx expects CSS px, matching
     // the projected-width thresholds in spec §12.4). Drawing-buffer size carries devicePixelRatio.
     const dpr = this.renderer.getPixelRatio() || 1;
     this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr };
+    return drawSize;
+  },
+
+  onResize() {
+    this._applySize();
+    this.cam.onResize();
+    if (this.spaceBg && this.spaceBg.onResize) this.spaceBg.onResize();
   },
 
   // Lazily construct the SpaceRenderGraph only when its setting is on (it allocates GPU render
@@ -953,10 +1311,10 @@ export const render = {
         ao: v.ao !== false,
         bloom: true,
         renderScale: Math.min(1, Math.max(0.5, v.renderScale || 0.7)),
-        bloomStrength: v.bloomStrength != null ? v.bloomStrength : 0.9,
-        bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 0.65,
+        bloomStrength: v.bloomStrength != null ? v.bloomStrength : 0.40,
+        bloomThreshold: v.bloomThreshold != null ? v.bloomThreshold : 0.72,
       });
-      this._renderGraph.setSize(drawSize.x, drawSize.y, this.renderer.getPixelRatio() || 1);
+      this._renderGraph.setSize(drawSize.x, drawSize.y);
       // Expose for diagnostics + the energy-materials depth binding path.
       this.state.render.renderGraph = this._renderGraph;
       return true;
@@ -972,8 +1330,11 @@ function applyRendererSize(renderer, state) {
   const vd = (state.settings && state.settings.video) || {};
   const cap = finiteInRange(vd.pixelRatioCap, 0.25, 4, 2);
   const scale = finiteInRange(vd.renderScale, 0.5, 2, 1);
+  // Live dynamic-resolution multiplier (adaptiveQuality.js). Defaults to 1 (no effect) until the
+  // controller lowers it under GPU load; kept separate from the persisted renderScale so it recovers.
+  const dyn = finiteInRange(state.render && state.render.dynResScale, 0.2, 1, 1);
   const base = Math.min(window.devicePixelRatio || 1, cap);
-  renderer.setPixelRatio(Math.max(0.25, base * scale));
+  renderer.setPixelRatio(Math.max(0.2, base * scale * dyn));
   renderer.setSize(window.innerWidth, window.innerHeight);
   return renderer.getDrawingBufferSize(_drawSize);
 }

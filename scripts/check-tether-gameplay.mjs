@@ -22,6 +22,8 @@ await assertGameplaySlingshot();
 await assertCursorTetherTargeting();
 await assertNearestTetherMode();
 await assertPickupMasslinePull();
+await assertInitialLatchReleaseDoesNotCut();
+await assertShortTapCutsAfterDelay();
 await assertHeldGReelsInsteadOfCutting();
 await assertTetherHelmAuthority();
 await assertLoadedTetherFacesNoseInwardWhileThrusting();
@@ -302,6 +304,7 @@ async function assertHeldGReelsInsteadOfCutting() {
   state.input.aimWorld = { x: asteroid.pos.x, z: asteroid.pos.z };
   state.input.aimAngle = 0;
   fireTetherOnce(harness);
+  releaseTetherKey(harness);
   assert.equal(events.latched.length, 1, 'held-G fixture should latch the aimed asteroid');
 
   const attachment = Object.values(state.combat.attachments.byId).find((a) => a.state === 'active');
@@ -317,12 +320,109 @@ async function assertHeldGReelsInsteadOfCutting() {
     stepHarness(harness);
   }
   state.input.actions.reelDelta = 0;
+  stepHarness(harness);
 
   const after = state.combat.attachments.byId[attachment.id];
-  assert(after && after.state === 'active', 'holding G while tethered should keep the massline attached');
+  assert(after && after.state === 'active', 'releasing G after a connected hold should keep the massline attached');
   assert.equal(events.released.length, 0, 'holding G while tethered should not emit a release');
   assert(after.restLength < before,
     `holding G should reel inward instead of cutting; restLength ${before.toFixed(2)} -> ${after.restLength.toFixed(2)}`);
+}
+
+async function assertInitialLatchReleaseDoesNotCut() {
+  const harness = createHarness();
+  const { state, helpers, runtime, events } = harness;
+
+  const player = helpers.spawnEntity(makeShipEntitySpec('ship_wasp', {
+    isPlayer: true,
+    pos: { x: 0, z: 0 },
+    rot: 0,
+  }));
+  state.playerId = player.id;
+  const asteroid = helpers.spawnEntity({
+    type: 'asteroid',
+    pos: { x: 120, z: 0 },
+    radius: 12,
+    mass: 640,
+    hull: 360,
+    hullMax: 360,
+    collides: true,
+    data: { typeId: 'ast_common_rock' },
+  });
+
+  initializeSystems(harness);
+  await ensureSg02Ready(runtime, state);
+  state.input.aimWorld = { x: asteroid.pos.x, z: asteroid.pos.z };
+  state.input.aimAngle = 0;
+  state.input.actions = {
+    ...(state.input.actions || {}),
+    tetherFire: true,
+    tetherCut: false,
+    reelDelta: 0,
+  };
+  stepHarness(harness);
+  state.input.actions.tetherFire = false;
+  for (let i = 0; i < 5; i++) {
+    state.input.actions.reelDelta = -1;
+    stepHarness(harness);
+  }
+  state.input.actions.reelDelta = 0;
+  stepHarness(harness);
+
+  assert.equal(events.latched.length, 1, 'initial latch-release fixture should latch the aimed asteroid');
+  assert.equal(events.released.length, 0, 'releasing the original latch press should not cut the new tether');
+  assert(state.player.tether && state.player.tether.active, 'initial latch-release fixture should remain tethered after key release');
+}
+
+async function assertShortTapCutsAfterDelay() {
+  const harness = createHarness();
+  const { state, helpers, runtime, events } = harness;
+
+  const player = helpers.spawnEntity(makeShipEntitySpec('ship_wasp', {
+    isPlayer: true,
+    pos: { x: 0, z: 0 },
+    rot: 0,
+  }));
+  state.playerId = player.id;
+  const asteroid = helpers.spawnEntity({
+    type: 'asteroid',
+    pos: { x: 120, z: 0 },
+    radius: 12,
+    mass: 640,
+    hull: 360,
+    hullMax: 360,
+    collides: true,
+    data: { typeId: 'ast_common_rock' },
+  });
+
+  initializeSystems(harness);
+  await ensureSg02Ready(runtime, state);
+  state.input.aimWorld = { x: asteroid.pos.x, z: asteroid.pos.z };
+  state.input.aimAngle = 0;
+  fireTetherOnce(harness);
+  releaseTetherKey(harness);
+  assert.equal(events.latched.length, 1, 'short-tap fixture should latch the aimed asteroid');
+
+  const attachment = Object.values(state.combat.attachments.byId).find((a) => a.state === 'active');
+  assert(attachment, 'short-tap fixture should have an active attachment before cutting');
+
+  state.input.actions.tetherCut = true;
+  state.input.actions.reelDelta = -1;
+  stepHarness(harness);
+  state.input.actions.tetherCut = false;
+  for (let i = 0; i < 5; i++) {
+    state.input.actions.reelDelta = -1;
+    stepHarness(harness);
+  }
+  for (let i = 0; i < 14; i++) {
+    state.input.actions.reelDelta = 0;
+    stepHarness(harness);
+  }
+
+  const after = state.combat.attachments.byId[attachment.id];
+  assert(after && after.state === 'broken', 'a short G tap while tethered should cut after the tap/hold grace window');
+  assert.equal(events.released.length, 1, 'short G tap should emit a release exactly once');
+  assert.equal(events.released[0].targetId, asteroid.id, 'short G tap release should identify the tether target');
 }
 
 async function assertTetherHelmAuthority() {
@@ -722,6 +822,14 @@ function fireTetherOnce(harness) {
   stepHarness(harness);
   state.input.actions.tetherFire = false;
   state.input.tetherMode = null;
+}
+
+function releaseTetherKey(harness) {
+  const { state } = harness;
+  state.input.actions.tetherFire = false;
+  state.input.actions.tetherCut = false;
+  state.input.actions.reelDelta = 0;
+  stepHarness(harness);
 }
 
 function tapCutAndWait(harness) {

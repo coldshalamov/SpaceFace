@@ -1,27 +1,28 @@
 // Drill lens system (V2 §7 / cut-list #27). The ant-farm mining verb. When active, this owns a 2D
-// vein cross-section the player drills into with L/R + up/down controls. Yields real ore into cargo
+// vein cross-section the player drills into with WASD / Arrow keys. Yields real ore into cargo
 // via the canonical addCargo writer. Hazards (gas pockets) have tells so they can be learned and
 // avoided — the foundation of the hazard-taxonomy that automation will later program around.
-//
-// SCOPE (per IMPROVEMENT_IDEAS #27 refinement): a self-contained 2D overlay screen, NOT the full
-// continuous-zoom 3D descent. That's a later milestone. This delivers the *verb*: mining is a real
-// tactile action, not a button. Automation (#28) builds on it.
-//
-// Field model: a 2D grid [cols x rows] of tiles. Each tile is {type, hp, maxHp, ore, hazard}.
-//   type: 'empty' (already drilled), 'dirt' (drillable, low hp), 'rock' (harder), 'vein' (ore!),
-//         'gas' (hazard — explodes if drilled, with a tell: a faint discoloration revealed when an
-//         adjacent tile is cleared, so an alert player sees it before drilling into it).
-//   The player avatar sits on a tile; L/R moves it, up/down attempts to drill the tile in that
-//   direction (clearing it if the drill dps overcomes its hp over time).
 //
 // Single-writer: drill owns only state.drill (the field + avatar + accumulator). Ore grants route
 // through cargo.addCargo. Determinism: the field is seeded by the asteroid's id (V2 §32 seed model)
 // so the same asteroid drills the same way every visit.
 import { addCargo } from './cargo.js';
 
+function updateCableTrail(d, col, row) {
+  if (!d.cableTrail) d.cableTrail = [];
+  const idx = d.cableTrail.findIndex(p => p.col === col && p.row === row);
+  if (idx !== -1) {
+    // Backtracked! Crop the cable trail to this taut point to avoid loops
+    d.cableTrail = d.cableTrail.slice(0, idx + 1);
+  } else {
+    // Extended the cable
+    d.cableTrail.push({ col, row });
+  }
+}
+
 const COLS = 28;        // width of the cross-section (tiles)
-const ROWS = 18;        // depth (surface at row 0, deeper = rarer/harder)
-const TILE = 22;        // px per tile (render hint; the screen may scale)
+const ROWS = 45;        // depth (surface at row 0, deeper = rarer/harder)
+const TILE = 40;        // px per tile (render hint; the screen may scale)
 const DRILL_DPS = 8;    // ore-units/sec the player's drill clears (tier 0 baseline)
 const GAS_DAMAGE = 18;  // hull % lost if you drill into a gas pocket (the lesson)
 const GAS_TELL_RADIUS = 2; // tiles — gas is hinted (discolored) within this radius of a cleared tile
@@ -29,29 +30,76 @@ const GAS_TELL_RADIUS = 2; // tiles — gas is hinted (discolored) within this r
 // Tile archetypes by depth band. Deeper = harder rock + rarer ore + more gas. Surface is soft dirt.
 function tileFor(col, row, rng) {
   const depth = row / ROWS; // 0 at surface, 1 at bottom
-  // Gas pockets: clustered, rarer near the surface, more common (and more dangerous) deeper.
-  // We place gas with a per-tile probability that scales with depth.
-  if (rng() < 0.04 + depth * 0.10) return { type: 'gas', hp: 1, maxHp: 1, ore: null, hazard: true };
 
-  // Veins: ore-bearing tiles. Probability + richness scale with depth (the Motherload risk/reward).
-  if (rng() < 0.12 + depth * 0.18) {
-    const oreRoll = rng();
-    let ore;
-    if (depth < 0.33) ore = 'cmdty_ore_iron';              // surface: common iron
-    else if (depth < 0.66) ore = oreRoll < 0.6 ? 'cmdty_ore_copper' : 'cmdty_silicate';
-    else ore = oreRoll < 0.4 ? 'cmdty_ore_titanium' : (oreRoll < 0.75 ? 'cmdty_ore_platinoid' : 'cmdty_ice_water');
-    const yieldU = 1 + Math.floor(rng() * (2 + depth * 4)); // deeper veins are richer
-    const hp = 6 + Math.floor(depth * 10);                 // deeper veins are harder
-    return { type: 'vein', hp, maxHp: hp, ore, yieldU, hazard: false };
+  // Surface rows (0 to 2) are always soft dirt, no gas, no rare veins
+  if (row <= 2) {
+    return { type: 'dirt', hp: 3, maxHp: 3, ore: null, hazard: false, tierReq: 1 };
   }
 
-  // Rock vs dirt: dirt near surface (fast), rock deeper (slow).
-  if (depth > 0.3 && rng() < 0.3 + depth * 0.4) {
-    const hp = 10 + Math.floor(depth * 18);
-    return { type: 'rock', hp, maxHp: hp, ore: null, hazard: false };
+  // Gas pocket probability scales with depth
+  // Disguised as dirt, warns player if adjacent
+  if (rng() < 0.03 + depth * 0.08) {
+    return { type: 'gas', hp: 1, maxHp: 1, ore: null, hazard: true, tierReq: 1 };
   }
-  const hp = 3 + Math.floor(depth * 6);
-  return { type: 'dirt', hp, maxHp: hp, ore: null, hazard: false };
+
+  // Vein chance
+  if (rng() < 0.10 + depth * 0.15) {
+    let ore = 'cmdty_silicate';
+    let tierReq = 1;
+    
+    // Motherload mineral bands by depth
+    if (depth < 0.2) {
+      const roll = rng();
+      if (roll < 0.4) ore = 'cmdty_silicate';
+      else if (roll < 0.8) ore = 'cmdty_ore_iron';
+      else ore = 'cmdty_ore_bronzium';
+      tierReq = 1;
+    } else if (depth < 0.45) {
+      const roll = rng();
+      if (roll < 0.3) ore = 'cmdty_ore_bronzium';
+      else if (roll < 0.6) ore = 'cmdty_ore_copper';
+      else ore = 'cmdty_ore_silverium';
+      tierReq = 2; // Copper / Silverium requires MK2
+    } else if (depth < 0.7) {
+      const roll = rng();
+      if (roll < 0.3) ore = 'cmdty_ore_silverium';
+      else if (roll < 0.6) ore = 'cmdty_ore_goldium';
+      else if (roll < 0.8) ore = 'cmdty_ore_platinium';
+      else ore = 'cmdty_ore_einsteinium';
+      
+      // Goldium/Silverium is Tier 2, Platinium/Einsteinium is Tier 3
+      tierReq = (ore === 'cmdty_ore_platinium' || ore === 'cmdty_ore_einsteinium') ? 3 : 2;
+    } else {
+      const roll = rng();
+      if (roll < 0.3) ore = 'cmdty_ore_einsteinium'; // Tier 3
+      else if (roll < 0.6) ore = 'cmdty_gem_emerald'; // Tier 3
+      else if (roll < 0.8) ore = 'cmdty_gem_ruby'; // Tier 4
+      else if (roll < 0.95) ore = 'cmdty_gem_diamond'; // Tier 4
+      else ore = 'cmdty_exotic_amazonite'; // Tier 4
+      
+      if (ore === 'cmdty_ore_einsteinium' || ore === 'cmdty_gem_emerald') {
+        tierReq = 3;
+      } else {
+        tierReq = 4;
+      }
+    }
+
+    const yieldU = 1 + Math.floor(rng() * (2 + depth * 5));
+    const hp = 5 + Math.floor(depth * 15);
+    return { type: 'vein', hp, maxHp: hp, ore, yieldU, hazard: false, tierReq };
+  }
+
+  // Rock vs Dirt
+  // Rock is grey/solid stone, gets more common and harder deeper
+  if (depth > 0.25 && rng() < 0.2 + depth * 0.5) {
+    const hp = 8 + Math.floor(depth * 25);
+    // Harder rocks require better drills to clear in reasonable time, but still drillable at Tier 1
+    return { type: 'rock', hp, maxHp: hp, ore: null, hazard: false, tierReq: 1 };
+  }
+
+  // Dirt
+  const hp = 3 + Math.floor(depth * 10);
+  return { type: 'dirt', hp, maxHp: hp, ore: null, hazard: false, tierReq: 1 };
 }
 
 export const drill = {
@@ -77,14 +125,18 @@ export const drill = {
     }
     // Carve an entry shaft at the surface center so the avatar starts in a cleared tile.
     const startCol = Math.floor(COLS / 2);
-    field[startCol][0] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false };
+    field[startCol][0] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1 };
     this.state.drill = {
       asteroidId,
       field,
-      avatar: { col: startCol, row: 0 },
-      drillDir: null,         // null | 'up' | 'down' (the direction we're currently drilling)
+      avatar: { col: startCol, row: 0, faceDir: 'down', isDrilling: false, drillTarget: null },
+      drillDir: null,         // kept for compatibility
+      moveCooldown: 0,
+      drillTemp: 0,           // drill head temperature (0 to 100)
+      overheated: false,      // is drill overheated?
+      cableTrail: [{ col: startCol, row: 0 }], // active massline cable path trail
       accumulator: 0,         // fractional ore carry + drill damage carry
-      gasHits: 0,             // how many gas pockets the player has triggered (a "lessons learned" tally)
+      gasHits: 0,             // how many gas pockets the player has triggered
       yieldLog: {},           // commodityId -> total units extracted this session (for the HUD + log)
       active: true,
     };
@@ -106,78 +158,202 @@ export const drill = {
     this.state.drill = null;
   },
 
-  // Move the avatar left/right by dc columns (clamped; can't move into uncleared tiles horizontally
-  // — you must drill down/around to open a path. This is the Motherload constraint that makes
-  // routing matter).
+  // Legacy API wrapper for horizontal moves (if needed by external systems)
   move(dc) {
     const d = this.state.drill;
     if (!d || !d.active) return;
     const nc = d.avatar.col + dc;
     if (nc < 0 || nc >= COLS) return;
     const target = d.field[nc][d.avatar.row];
-    if (target.type !== 'empty') return; // solid wall — must drill, not push through
+    if (target.type !== 'empty') return;
     d.avatar.col = nc;
-    d.drillDir = null;
   },
 
-  // Drill in a vertical direction (-1 up, +1 down). If the adjacent tile is solid, accumulate dps
-  // against it; when its hp hits 0, clear it (move the avatar there, grant ore if it was a vein,
-  // trigger gas if it was a gas pocket). `dt` is seconds.
+  // Legacy API wrapper for vertical moves
   drillVertical(dir, dt) {
     const d = this.state.drill;
     if (!d || !d.active) return;
     if (dir !== -1 && dir !== 1) return;
-    const nr = d.avatar.row + dir;
-    if (nr < 0 || nr >= ROWS) return;
-    const target = d.field[d.avatar.col][nr];
-    if (target.type === 'empty') {
-      // already clear — just move into it
-      d.avatar.row = nr;
-      d.drillDir = null;
+    if (!d.avatar || !Number.isFinite(d.avatar.col) || !Number.isFinite(d.avatar.row)) return;
+    if (!Number.isFinite(d.moveCooldown)) d.moveCooldown = 0;
+    if (!Number.isFinite(d.drillTemp)) d.drillTemp = 0;
+    if (typeof d.overheated !== 'boolean') d.overheated = false;
+    if (typeof d.avatar.isDrilling !== 'boolean') d.avatar.isDrilling = false;
+    if (!d.avatar.drillTarget) d.avatar.drillTarget = null;
+    if (!d.avatar.faceDir) d.avatar.faceDir = dir === 1 ? 'down' : 'up';
+    if (!Array.isArray(d.cableTrail)) d.cableTrail = [{ col: d.avatar.col, row: d.avatar.row }];
+    this.tickInput({ left: false, right: false, up: dir === -1, down: dir === 1 }, dt);
+  },
+
+  getDrillTier() {
+    const player = this.state.entities.get(this.state.playerId);
+    const beam = player ? (player.data?.miningBeam || this.state.player.miningBeam) : null;
+    if (!beam) return 1;
+    if (beam.tierId === 'beam_industrial') return 4;
+    if (beam.tierId === 'beam_mk3') return 3;
+    if (beam.tierId === 'beam_mk2') return 2;
+    return 1; // beam_mk1
+  },
+
+  getDrillDPS() {
+    const player = this.state.entities.get(this.state.playerId);
+    const beam = player ? (player.data?.miningBeam || this.state.player.miningBeam) : null;
+    // Scale minigame dps with player's beam dps
+    return beam ? (beam.dps || 18) : 18;
+  },
+
+  // Unified tick input processor (WASD/Arrow control).
+  // Processes motion, direction checks, and drilling action.
+  tickInput(held, dt) {
+    const d = this.state.drill;
+    if (!d || !d.active) return;
+
+    if (d.moveCooldown > 0) {
+      d.moveCooldown -= dt;
+    }
+
+    // --- 1. Drill heat tracking ---
+    if (d.avatar.isDrilling && d.avatar.drillTarget) {
+      // If currently drilling, heat up!
+      d.drillTemp = Math.min(100, d.drillTemp + 26 * dt); // heats up in ~3.8 seconds
+      if (d.drillTemp >= 100 && !d.overheated) {
+        d.overheated = true;
+        d.avatar.isDrilling = false;
+        d.avatar.drillTarget = null;
+        this.bus.emit('drill:warn', { text: 'DRILL OVERHEATED! Cool down active.' });
+      }
+    } else {
+      // If idle/cooling, reduce heat!
+      d.drillTemp = Math.max(0, d.drillTemp - 36 * dt); // cools down in ~2.8 seconds
+      if (d.overheated && d.drillTemp <= 10) {
+        d.overheated = false;
+        this.bus.emit('drill:warn', { text: 'Drill system cooled. Ready to dig.' });
+      }
+    }
+
+    let dx = 0;
+    let dy = 0;
+    if (held.left) { dx = -1; d.avatar.faceDir = 'left'; }
+    else if (held.right) { dx = 1; d.avatar.faceDir = 'right'; }
+    else if (held.down) { dy = 1; d.avatar.faceDir = 'down'; }
+    else if (held.up) { dy = -1; d.avatar.faceDir = 'up'; }
+
+    if (dx === 0 && dy === 0) {
+      d.avatar.isDrilling = false;
+      d.avatar.drillTarget = null;
+      d.avatar.drillBlocked = false;
       return;
     }
-    d.drillDir = dir > 0 ? 'down' : 'up';
-    target.hp -= DRILL_DPS * dt;
-    if (target.hp <= 0) {
-      // cleared!
-      const wasVein = target.type === 'vein';
-      const wasGas = target.type === 'gas';
-      const ore = target.ore;
-      const yieldU = target.yieldU || 0;
-      // mark empty
-      d.field[d.avatar.col][nr] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false };
-      d.avatar.row = nr;
-      d.drillDir = null;
-      if (wasVein && ore) {
-        // grant real ore into cargo via the canonical writer
-        const added = addCargo(this.state, ore, yieldU);
-        if (added > 0) {
-          d.accumulator += 0; // carry already cleared
-          d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
-          this.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col: d.avatar.col, row: nr } });
-        }
+
+    const nc = d.avatar.col + dx;
+    const nr = d.avatar.row + dy;
+
+    if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) {
+      d.avatar.isDrilling = false;
+      d.avatar.drillTarget = null;
+      return;
+    }
+
+    // --- 2. Calculate cargo-load movement speed (inertia) ---
+    const cargo = this.state.player.cargo;
+    const loadFactor = cargo && cargo.capVolume > 0 ? (cargo.usedVolume / cargo.capVolume) : 0;
+    // Base move cooldown is 0.12s. Moves up to 0.22s when completely full.
+    const cooldownVal = 0.12 + Math.max(0, Math.min(0.10, loadFactor * 0.10));
+
+    const target = d.field[nc][nr];
+    if (target.type === 'empty') {
+      d.avatar.isDrilling = false;
+      d.avatar.drillTarget = null;
+      if (d.moveCooldown <= 0) {
+        d.avatar.col = nc;
+        d.avatar.row = nr;
+        d.moveCooldown = cooldownVal; // apply cargo-weighted cooldown
+        updateCableTrail(d, nc, nr);
       }
-      if (wasGas) {
-        // the lesson: drilling a gas pocket hurts. Damage the player ship (read live) + record the
-        // hit so the player learns the tell. This is the "pain that teaches the automation shape."
-        d.gasHits++;
-        const player = this.state.entities.get(this.state.playerId);
-        if (player && player.hullMax > 0) {
-          const dmg = Math.ceil(player.hullMax * (GAS_DAMAGE / 100));
-          player.hull = Math.max(1, player.hull - dmg);
-          this.bus.emit('drill:gasHit', { dmg, pos: { col: d.avatar.col, row: nr } });
-          this.bus.emit('camera:shake', { amount: 0.5 });
+    } else {
+      // Solid tile! Cannot drill UP or if overheated
+      if (dy === -1) {
+        d.avatar.isDrilling = false;
+        d.avatar.drillTarget = null;
+        return;
+      }
+
+      if (d.overheated) {
+        d.avatar.isDrilling = false;
+        d.avatar.drillTarget = null;
+        if (d.moveCooldown <= 0) {
+          this.bus.emit('drill:warn', { text: 'Drill cooling down... Wait for system ready.' });
+          d.moveCooldown = 1.0;
+        }
+        return;
+      }
+
+      // Check drill tier requirement
+      const tier = this.getDrillTier();
+      const req = target.tierReq || 1;
+      if (tier < req) {
+        d.avatar.isDrilling = false;
+        d.avatar.drillTarget = { col: nc, row: nr };
+        d.avatar.drillBlocked = true;
+        if (d.moveCooldown <= 0) {
+          const names = { 2: 'Drill MK2', 3: 'Drill MK3', 4: 'Industrial Drill' };
+          this.bus.emit('drill:warn', { text: `Upgrade required! Need ${names[req] || 'a better drill'}.` });
+          d.moveCooldown = 1.2; // throttle warnings
+        }
+        return;
+      }
+
+      // Active drilling
+      d.avatar.isDrilling = true;
+      d.avatar.drillTarget = { col: nc, row: nr };
+
+      const dps = this.getDrillDPS();
+      target.hp -= dps * dt;
+
+      // Emit spark particles request
+      this.bus.emit('drill:spark', { col: nc, row: nr, type: target.type, ore: target.ore });
+
+      if (target.hp <= 0) {
+        // Cleared!
+        const wasVein = target.type === 'vein';
+        const wasGas = target.type === 'gas';
+        const ore = target.ore;
+        const yieldU = target.yieldU || 0;
+
+        d.field[nc][nr] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false };
+        d.avatar.col = nc;
+        d.avatar.row = nr;
+        d.avatar.isDrilling = false;
+        d.avatar.drillTarget = null;
+        d.moveCooldown = cooldownVal;
+        updateCableTrail(d, nc, nr);
+
+        if (wasVein && ore) {
+          const added = addCargo(this.state, ore, yieldU);
+          if (added > 0) {
+            d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
+            this.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col: nc, row: nr } });
+          } else {
+            this.bus.emit('drill:warn', { text: 'Cargo holds are full!' });
+          }
+        }
+
+        if (wasGas) {
+          d.gasHits++;
+          const player = this.state.entities.get(this.state.playerId);
+          if (player && player.hullMax > 0) {
+            const dmg = Math.ceil(player.hullMax * (GAS_DAMAGE / 100));
+            player.hull = Math.max(1, player.hull - dmg);
+            this.bus.emit('drill:gasHit', { dmg, pos: { col: nc, row: nr } });
+            this.bus.emit('camera:shake', { amount: 0.5 });
+          }
         }
       }
     }
   },
 
-  // Per-tick update: the screen calls this with the held drill direction while open. Drilling only
-  // progresses while the player holds a direction; otherwise the avatar is idle.
   update(dt, state) {
-    // The screen forwards input via drillVertical directly (it knows the held direction); this
-    // update() is a no-op kept for registry contract symmetry. Hazard decay / animation lives in the
-    // screen's own rAF, not the sim loop (the screen pauses the sim — V2 §34 view-gated sim).
+    // Kept for registry interface compatibility
   },
 
   // Is a tile's hazard "revealed" (its tell visible) given the current cleared tiles? Gas tiles

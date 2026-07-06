@@ -1,0 +1,21 @@
+---
+pid: 35980
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && python tools/art/generate_ship_parts_library.py --only place_station_trade_hub,place_station_refinery,place_station_military,place_station_blackmarket,place_gate_jump_ring,place_station_mining,place_station_fab,place_station_research"
+started_at: 2026-07-04T20:55:35.330Z
+running_for_ms: 21229999 
+---
+place_station_trade_hub   1040 tris 200316 bytes
+place_station_refinery     672 tris 194240 bytes
+place_station_military     896 tris 196184 bytes
+place_station_blackmarket  540 tris 189052 bytes
+place_gate_jump_ring      1652 tris 211676 bytes
+place_station_mining       588 tris 188628 bytes
+place_station_fab          588 tris 188660 bytes
+place_station_research     720 tris 190620 bytes
+{
+  "parts": 63,
+  "p0": 24,
+  "bytes": 26679416,
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts"
+}

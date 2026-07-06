@@ -4,6 +4,8 @@
 // committing to a load.
 // Browser, Electron dev, and packaged desktop all arrive here through the same player route.
 
+import { requestCodexTab } from './codex.js';
+
 const STYLE_ID = 'sf-main-menu-style';
 const LS_PREFIX = 'sf.save.';
 
@@ -256,14 +258,11 @@ export const mainMenuScreen = {
     const bSettings = button('Settings');
     col.appendChild(bNew); col.appendChild(bContinue); col.appendChild(bLoad); col.appendChild(bSettings);
 
-    // "Watch Intro Cinematic" — directly plays one of our generated 6s C-INTRO videos (pro touch, uses the cinematic assets we created for the plan).
-    const bCine = button('Watch Intro Cinematic');
-    col.appendChild(bCine);
-    bCine.addEventListener('click', () => {
-      const ui = ctx.registry && ctx.registry.get && ctx.registry.get('ui');
-      if (ui && ui.playCinematic) ui.playCinematic('assets/cinematics/C-INTRO-02_6s.mp4', 'Fighter Close-up — 60° Chase');
-      else if (window.playSpaceFaceCinematic) window.playSpaceFaceCinematic('assets/cinematics/C-INTRO-02_6s.mp4', 'Fighter Close-up — 60° Chase');
-    });
+    // "Signal Archive" — opens the Codex on its Archive tab, where all four authored intro cinematics
+    // replay from poster cards. (Replaces the old single-clip "Watch Intro Cinematic".)
+    const bArchive = button('Signal Archive');
+    col.appendChild(bArchive);
+    bArchive.addEventListener('click', () => { requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); });
 
     bNew.addEventListener('click', () => pushWhenReady(ctx, 'newGame', 'New Game'));
     bContinue.addEventListener('click', () => {

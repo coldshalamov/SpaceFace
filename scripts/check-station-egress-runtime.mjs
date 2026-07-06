@@ -94,11 +94,13 @@ try {
       departureChips,
       activeTab: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.activeStationTab,
       docked: window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.docked,
+      timeScale: window.SF && window.SF.state && window.SF.state.timeScale,
     };
   });
 
   assert.equal(stationReport.visible, true, 'station hub should be visible after docking');
   assert.equal(stationReport.docked, true, 'state.ui.docked should be true while station hub is open');
+  assert.equal(stationReport.timeScale, 0, 'sim should be paused while docked at the station hub');
   assert.equal(stationReport.hasUndock, true, 'station hub should expose a visible Undock button');
   for (const tab of ['Market', 'Missions', 'Services', 'Bar']) {
     assert(stationReport.tabs.some((label) => label.includes(tab)), 'station hub missing rail tab: ' + tab);
@@ -135,12 +137,14 @@ try {
       topScreen: sf.ctx.screenManager.top(),
       screenStack: state.ui.screenStack.slice(),
       playerAlive: !!(player && player.alive && player.hull > 0),
+      timeScale: state.timeScale,
       overlayHidden: !dockOverlay || dockOverlay.hidden || dockOverlay.getAttribute('aria-hidden') === 'true',
     };
   });
 
   assert.equal(egressReport.mode, 'flight', 'undock should return to flight mode');
   assert.equal(egressReport.docked, false, 'undock should clear state.ui.docked');
+  assert.equal(egressReport.timeScale, 1, 'sim should resume after station undock');
   assert.equal(egressReport.dockedStationId, null, 'undock should clear dockedStationId');
   assert.notEqual(egressReport.topScreen, 'station', 'station screen should be closed after undock');
   assert.equal(egressReport.screenStack.includes('station'), false, 'screen stack should not retain station after undock');

@@ -65,6 +65,15 @@ export const ORES = [
   { id: 'cmdty_crystal_lumin',       name: 'Luminite Crystal',      category: 'raw',       mass: 1.0, vol: 1.0, baseValue: 70,  tier: 2, tags: ['crystal','glow'] },
   { id: 'cmdty_ore_platinoid',       name: 'Platinoid Ore',         category: 'raw',       mass: 1.4, vol: 1.0, baseValue: 110, tier: 3, tags: ['metal','rare'] },
   { id: 'cmdty_exotic_xenium',       name: 'Xenium',                category: 'raw',       mass: 1.2, vol: 1.0, baseValue: 260, tier: 4, tags: ['exotic','rare'] },
+  { id: 'cmdty_ore_bronzium',        name: 'Bronzium Ore',          category: 'raw',       mass: 0.9, vol: 1.0, baseValue: 60,  tier: 1, tags: ['metal'] },
+  { id: 'cmdty_ore_silverium',       name: 'Silverium Ore',         category: 'raw',       mass: 0.7, vol: 1.0, baseValue: 100, tier: 2, tags: ['metal'] },
+  { id: 'cmdty_ore_goldium',         name: 'Goldium Ore',           category: 'raw',       mass: 1.1, vol: 1.0, baseValue: 250, tier: 2, tags: ['metal'] },
+  { id: 'cmdty_ore_platinium',       name: 'Platinium Ore',         category: 'raw',       mass: 1.4, vol: 1.0, baseValue: 750, tier: 3, tags: ['metal','rare'] },
+  { id: 'cmdty_ore_einsteinium',     name: 'Einsteinium Ore',       category: 'raw',       mass: 1.5, vol: 1.0, baseValue: 2000, tier: 3, tags: ['metal','rare'] },
+  { id: 'cmdty_gem_emerald',         name: 'Raw Emerald',           category: 'raw',       mass: 0.8, vol: 0.8, baseValue: 5000, tier: 3, tags: ['crystal','rare'] },
+  { id: 'cmdty_gem_ruby',            name: 'Raw Ruby',              category: 'raw',       mass: 0.8, vol: 0.8, baseValue: 20000, tier: 4, tags: ['crystal','rare'] },
+  { id: 'cmdty_gem_diamond',         name: 'Raw Diamond',           category: 'raw',       mass: 0.8, vol: 0.8, baseValue: 100000, tier: 4, tags: ['crystal','rare'] },
+  { id: 'cmdty_exotic_amazonite',    name: 'Amazonite Crystal',     category: 'raw',       mass: 0.8, vol: 0.8, baseValue: 500000, tier: 4, tags: ['exotic','rare'] },
 
   // --- Refined outputs (volume-compressed) ---
   { id: 'cmdty_refined_metals',      name: 'Iron Ingot',            category: 'refined',   mass: 0.7, vol: 0.5, baseValue: 40,  tier: 1, tags: ['metal','refined'] },
@@ -116,10 +125,10 @@ export const ASTEROIDS = [
 
 // 4 mining beam tiers. dps = ore-HP/s per ARCHITECTURE §0.10 (beam_mk1 = 18).
 export const BEAMS = [
-  { id: 'beam_mk1',        dps: 18, range: 240, energyDraw: 4,  heatRate: 12, coolRate: 20, tier: 1 },
-  { id: 'beam_mk2',        dps: 30, range: 300, energyDraw: 8,  heatRate: 10, coolRate: 24, tier: 2 },
-  { id: 'beam_mk3',        dps: 48, range: 360, energyDraw: 16, heatRate: 8,  coolRate: 30, tier: 3 },
-  { id: 'beam_industrial', dps: 70, range: 420, energyDraw: 20, heatRate: 6,  coolRate: 40, tier: 4 },
+  { id: 'beam_mk1',        dps: 18, range: 240, energyDraw: 4,  tier: 1 },
+  { id: 'beam_mk2',        dps: 30, range: 300, energyDraw: 8,  tier: 2 },
+  { id: 'beam_mk3',        dps: 48, range: 360, energyDraw: 16, tier: 3 },
+  { id: 'beam_industrial', dps: 70, range: 420, energyDraw: 20, tier: 4 },
 ];
 
 // Refining and crafting chains (run at stations with matching service tier).

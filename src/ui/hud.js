@@ -30,6 +30,7 @@ import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { BINDINGS } from './bindings.js';
 import { SEMANTIC_PALETTE } from './accessibility.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
+import { weaponHeatSummary } from './weaponHeat.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -270,18 +271,24 @@ export function createHud(ctx, alerts) {
   schematic.innerHTML =
     '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
       '<circle class="sf-sch-shield" cx="50" cy="50" r="44" transform="rotate(-90 50 50)"/>' +
-      '<path class="sf-sch-ship" d="M50 14 L68 62 L56 58 L57 80 L50 73 L43 80 L44 58 L32 62 Z"/>' +
+      '<g class="sf-sch-ship">' +
+        '<path d="M50 20 L53 32 L62 50 L75 66 L58 63 L56 75 L50 71 L44 75 L42 63 L25 66 L38 50 L47 32 Z" stroke-linejoin="round"/>' +
+        '<path d="M50 28 L53 38 L50 45 L47 38 Z" stroke-width="1.2"/>' +
+        '<line x1="50" y1="45" x2="50" y2="71" stroke-width="1.2" stroke-dasharray="1.5,1.5"/>' +
+        '<path d="M38 50 L31 60 L41 58 M62 50 L69 60 L59 58" stroke-width="1.2"/>' +
+        '<path d="M43 64 L43 75 L48 75 M57 64 L57 75 L52 75" stroke-width="1.2"/>' +
+      '</g>' +
     '</svg>' +
     '<div class="sf-sch-hull">0</div>';
   bars.appendChild(schematic);
   const schShield = schematic.querySelector('.sf-sch-shield');
   const schHull = schematic.querySelector('.sf-sch-hull');
 
-  // Thin micro-bars. Hull + shield are now in the schematic, so only energy/boost/heat/fuel remain here.
+  // Thin micro-bars. Hull + shield are on the schematic; energy/boost/weapon-heat/fuel live here.
   const barDefs = [
     ['energy', 'ENGY', 'energy'],
     ['boost', 'BOOST', 'boost'],   // Phase 3: boost/dash energy (hidden if the ship can't boost)
-    ['heat', 'HEAT', 'heat'],
+    ['heat', 'HEAT', 'heat'],      // weapon-instance heat (max across p.data.weapons), not WANTED heat
     ['fuel', 'FUEL', 'fuel'],
   ];
   const fillEls = {}, numEls = {}, rowEls = {};
@@ -977,6 +984,7 @@ export function createHud(ctx, alerts) {
     if (!p || p.ownerId !== state.playerId) return;
     const venting = p.phase === 'start';
     wpnHeatsWrap.classList.toggle('venting', venting);
+    if (rowEls.heat) rowEls.heat.classList.toggle('sf-bar--venting', venting);
     if (alerts) {
       if (venting) alerts.raise({ key: 'wpn-vent', sev: 'warn', text: 'WEAPONS VENTING', ttl: 2.3 });
       else alerts.clear('wpn-vent');
@@ -1577,9 +1585,8 @@ export function createHud(ctx, alerts) {
       const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
       const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
       const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
-      const heat = (p.data && p.data.heat != null) ? p.data.heat : 0;
-      const heatMax = (p.data && p.data.heatMax) || 100;
-      const heatFrac = clamp01(heat / heatMax);
+      const wpnHeat = weaponHeatSummary(p.data && p.data.weapons);
+      const heatFrac = wpnHeat.frac;
 
       // Ship schematic (hull tint + centered numeric; shield ring via stroke-dashoffset).
       setStyle(schShield, 'strokeDashoffset', (SHIELD_RING_LEN * (1 - shieldFrac)).toFixed(1));
@@ -1604,9 +1611,11 @@ export function createHud(ctx, alerts) {
         setStyle(boostRow, 'display', 'none');   // no boost capacity (e.g. a stripped hull) — hide the row
       }
 
-      // Heat micro-bar only matters while it's actually hot (mostly mining) — hide it when cold.
       const heatRow = rowEls.heat;
-      if (heatRow) setStyle(heatRow, 'display', heatFrac > 0.01 ? '' : 'none');
+      if (heatRow) {
+        setStyle(heatRow, 'display', wpnHeat.armed ? '' : 'none');
+        setClass(heatRow.querySelector('.sf-bar'), 'sf-bar--overheated', wpnHeat.overheated);
+      }
       setClass(fillEls.energy && fillEls.energy.parentElement, 'sf-bar--low', capFrac < 0.2 && capFrac > 0);
 
       // contextual low alerts via alerts module
@@ -1615,7 +1624,7 @@ export function createHud(ctx, alerts) {
       if (slow) {
         setText(schHull, Math.max(0, Math.round(p.hull)) + '');
         setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
-        setText(numEls.heat, Math.round(heatFrac * 100) + '%');
+        setText(numEls.heat, wpnHeat.pct + '%');
         // Phase 4 fuel gauge: low fuel flashes a warning.
         const fuel = state.fuel || { current: 100, max: 100 };
         const fuelFrac = fuel.max > 0 ? clamp01(fuel.current / fuel.max) : 1;
@@ -1706,15 +1715,15 @@ export function createHud(ctx, alerts) {
           setClass(elTether, 'sf-warn', strain > 0.6);
         }
       }
-      // Weapon status: count of guns + auto-fire state. Shows the strategic loadout at a glance
-      // and whether the guns will auto-engage aggressive enemies while you fly.
+      // Weapon status: count of guns + auto-target state. Shows the strategic loadout at a glance
+      // and whether guns are tracking locked hostiles while the player steers.
       const ws = p.data && p.data.weapons;
       const nGuns = ws ? ws.length : 0;
       const auto = !!(state.input && state.input.autoFire);
       const primary = nGuns === 1 ? (ws[0].name || ws[0].defId || '1 gun') : (nGuns + ' guns');
-      setText(elWeapons, primary + (auto ? ' · AUTO' : ''));
+      setText(elWeapons, primary + (auto ? ' · AUTO-TGT' : ''));
       setClass(elWeapons, 'sf-warn', auto);
-      // Reticle reflects fire mode: amber ring when auto-fire is engaged (guns auto-target hostiles),
+      // Reticle reflects aim mode: amber ring when auto-target is engaged (guns track locked hostiles),
       // cyan when you're aiming/firing manually. Purely a visual cue.
       if (elReticle) setClass(elReticle, 'autofire', auto);
       // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
@@ -1747,11 +1756,16 @@ export function createHud(ctx, alerts) {
       const active = (state.missions && state.missions.active) || [];
       const tracked = trackedId ? active.find((m) => m.id === trackedId && m.status === 'active') : null;
       if (tracked) {
-        const remaining = Math.max(0, (tracked.deadline_s || 0) - (state.simTime || 0));
         setText(mtTitle, tracked.title || 'Mission');
         setText(mtObj, mtObjectiveText(tracked));
-        setText(mtTime, mtFmtTime(remaining));
-        mtTime.classList.toggle('sf-mt-urgent', remaining < 120);
+        if (tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
+          const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
+          setText(mtTime, mtFmtTime(remaining));
+          mtTime.classList.toggle('sf-mt-urgent', remaining < 120);
+          setDisplay(mtTime, true);
+        } else {
+          setDisplay(mtTime, false);
+        }
         setDisplay(missionTracker, true);
       } else if (state.nav && state.nav.waypoint && state.nav.waypoint.onboarding) {
         const wp = state.nav.waypoint;
@@ -1759,6 +1773,7 @@ export function createHud(ctx, alerts) {
         setText(mtObj, wp.reason || wp.label || 'Follow the yellow signal');
         setText(mtTime, `${BINDINGS.localmap.label} Local Map`);
         mtTime.classList.remove('sf-mt-urgent');
+        setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else if (state.story && STORY_BEATS[state.story.beatIndex]) {
         const beat = STORY_BEATS[state.story.beatIndex];
@@ -1766,6 +1781,7 @@ export function createHud(ctx, alerts) {
         setText(mtObj, beat.objective || 'Open the mission log for your next objective');
         setText(mtTime, `${BINDINGS.missionLog.label} Mission Log · ${BINDINGS.localmap.label} Local Map`);
         mtTime.classList.remove('sf-mt-urgent');
+        setDisplay(mtTime, true);
         setDisplay(missionTracker, true);
       } else {
         setDisplay(missionTracker, false);
@@ -1782,8 +1798,8 @@ export function createHud(ctx, alerts) {
     // --- target panel: DOM/compositor surface; update on a fixed HUD cadence ---
     if (targetTick) targetPanel.update({ slow });
 
-    // --- combat HUD: lock ring, weapon heat bars, target diamond ---
-    if (targetTick) updateCombatHud(p, slow);
+    // --- combat HUD: lock ring, weapon heat bars, target diamond (every frame for heat reactivity) ---
+    updateCombatHud(p, slow);
 
     // --- world-space DOM overlays: batch transform/opacity writes ---
     if (overlayTick) floatingText.update(overlayDt || frameDt);
@@ -1854,7 +1870,7 @@ export function createHud(ctx, alerts) {
         if (station) livePos = station.pos;
       }
       const pos = livePos || nw.pos;
-      wpLabel = nw.reason || nw.label || nw.sectorName || 'Waypoint';
+      wpLabel = nw.label || nw.reason || nw.sectorName || 'Waypoint';
       navMeta = nw;
       if (pos) wp = pos;
     }

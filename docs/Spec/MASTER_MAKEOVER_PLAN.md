@@ -1,9 +1,13 @@
 # SpaceFace Master Makeover Build Plan
 
+> **Current status (2026-07-04):** Historical foundation/commissioning plan. Do not treat this as
+> the live build order or merge gate. Current implementation authority is `design/GDD_2_0.md`,
+> `design/BUILD_PLAN_2_0.md`, `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`.
+>
 > **Source:** Produced by the supergenius (commissioned master-plan prompt, 2026-06-21). Preserved
-> verbatim as the canonical north-star document for the project. All agents working on SpaceFace
-> should treat this as the authoritative plan; the vertical slice ("47-A: The Mass Discrepancy") is
-> the convergence target, and the Definition-of-Done checklists (§E) are the merge gate.
+> as the original north-star document for the project. Agents may mine it for rationale and historical
+> context, but must follow the current 2.0 docs above for build order, convergence targets, and merge
+> gates.
 >
 > **Status notes (added by resident on integration):**
 > - Several Phase 0 foundations are **already integrated on master** as of this writing:

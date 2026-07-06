@@ -31,6 +31,9 @@ const SHOT = argv.shot || '.devshots/perf/performance-profile-crowded-flight.jpg
 const STRICT = !!argv.strict;
 const FRAME_FLOOR_MS = Number(argv.frameFloorMs || 34.3);
 const FRAME_TARGET_MS = Number(argv.frameTargetMs || 16.7);
+const HITCH_FRAME_MS = Number(argv.hitchFrameMs || argv['hitch-frame-ms'] || 32);
+const HITCH_FRAME_MAX = Number(argv.hitchFrameMax || argv['hitch-frame-max'] || 0);
+const RAF_ENVIRONMENT_FLOOR_TOLERANCE_MS = Number(argv.rafEnvironmentFloorToleranceMs || argv['raf-environment-floor-tolerance-ms'] || 0.25);
 const FRAME_CALLBACK_BUDGET_MS = Number(argv.frameCallbackMs || argv['frame-callback-ms'] || FRAME_TARGET_MS);
 const FRAME_UNTRACKED_BUDGET_MS = Number(argv.frameUntrackedMs || argv['frame-untracked-ms'] || 4);
 const RENDER_PHASE_BUDGET_MS = Number(argv.renderPhaseMs || 16);
@@ -52,6 +55,7 @@ const BLOOM_FULL_FRAME_PASS_BUDGET = Number(argv.bloomFullFramePasses || argv['b
 const BLOOM_PASS_BUDGET = Number(argv.bloomPasses || argv['bloom-passes'] || 3);
 const DIAGNOSTIC_VARIANTS = !!(argv.diagnosticVariants || argv['diagnostic-variants']);
 const DIAGNOSTIC_VARIANT_MS = Number(argv.diagnosticVariantMs || argv['diagnostic-variant-ms'] || 2500);
+const DIAGNOSTIC_VARIANT_TIMEOUT_MS = Number(argv.diagnosticVariantTimeoutMs || argv['diagnostic-variant-timeout-ms'] || 180000);
 const DIAGNOSTIC_MIN_RAF_SAMPLES = Number(argv.diagnosticMinRafSamples || argv['diagnostic-min-raf-samples'] || 20);
 const ANGLE = argv.angle ? String(argv.angle) : '';
 const HEADED = !!(argv.headed || argv.headful || argv.headless === 'false');
@@ -71,7 +75,10 @@ const report = {
     runtimeSampleMs: RUNTIME_SAMPLE_MS,
     strict: STRICT,
     diagnosticVariants: DIAGNOSTIC_VARIANTS,
+    diagnosticVariantTimeoutMs: DIAGNOSTIC_VARIANT_TIMEOUT_MS,
     diagnosticMinRafSamples: DIAGNOSTIC_MIN_RAF_SAMPLES,
+    hitchFrameMs: HITCH_FRAME_MS,
+    hitchFrameMax: HITCH_FRAME_MAX,
     headless: !HEADED,
     angle: ANGLE || null,
     extraBrowserArgs: EXTRA_BROWSER_ARGS,
@@ -138,9 +145,12 @@ try {
 
   if (STRICT && !report.summary.pass) process.exitCode = 1;
 } finally {
-  try { if (ws) ws.close(); } catch (_) {}
-  try { if (chrome) chrome.kill(); } catch (_) {}
-  try { if (server && server.kill) server.kill(); } catch (_) {}
+  await closeWebSocket(ws);
+  await terminateChild(chrome);
+  if (server && server.child) await terminateChild(server.child);
+  else {
+    try { if (server && server.kill) server.kill(); } catch (_) {}
+  }
   try { if (chromeProfileDir) rmSync(chromeProfileDir, { recursive: true, force: true }); } catch (_) {}
 }
 
@@ -151,13 +161,20 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
 
   const baselineState = await readQualityState(cdp);
   await sleep(WARMUP_MS);
+  const framePacingWarmup = await waitForFramePacingSteady(cdp);
   await resetRuntimeDiagnostics(cdp);
   const chromeStart = await readChromeMetrics(cdp);
   const sampled = await sampleRuntime(cdp, DURATION_MS);
   const chromeEnd = await readChromeMetrics(cdp);
   const finalState = await readQualityState(cdp);
   const screenshot = await captureScreenshot(cdp, SHOT);
-  const diagnosticVariants = DIAGNOSTIC_VARIANTS ? await runDiagnosticVariants(cdp) : [];
+  const diagnosticVariants = DIAGNOSTIC_VARIANTS
+    ? await withTimeout(
+      runDiagnosticVariants(cdp),
+      DIAGNOSTIC_VARIANT_TIMEOUT_MS,
+      'diagnostic performance variants',
+    )
+    : [];
 
   const samples = sampled.samples.filter((sample) => sample.ready);
   assert.ok(samples.length >= 2, `expected at least 2 runtime samples; got ${samples.length}`);
@@ -181,6 +198,7 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
   );
   const budgets = evaluateBudgets({
     rafFrameP95: raf.p95,
+    rafHitchCount: raf.overHitchBudget,
     diagnosticFrameP95: diagFrameP95,
     renderCallsPeak: renderCalls.max,
     heapGrowthMB,
@@ -190,6 +208,7 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
     finalSample,
     diagnosticSamples,
     rafSamples: sampled.raf.frames.length,
+    diagnosticVariants,
   });
   const bottleneck = classifyBottleneck({
     rafFrameP95: raf.p95,
@@ -216,6 +235,7 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
       runtimeSamples: samples.length,
       diagnosticSamples,
       rafSamples: sampled.raf.frames.length,
+      framePacingWarmup,
     },
     budgets,
     rafFrameMs: raf,
@@ -397,6 +417,12 @@ async function sampleRuntime(cdp, durationMs) {
         return name + transparent + blending;
       };
       const materialList = (object) => Array.isArray(object.material) ? object.material : [object.material];
+      const isEffectivelyVisible = (object) => {
+        for (let cur = object; cur; cur = cur.parent) {
+          if (cur.visible === false) return false;
+        }
+        return true;
+      };
       const compactPartUrl = (url) => {
         if (!url) return 'unknown';
         const parts = String(url).split(/[\\\\/]/).filter(Boolean);
@@ -457,15 +483,16 @@ async function sampleRuntime(cdp, durationMs) {
       if (scene && typeof scene.traverse === 'function') {
         scene.traverse((object) => {
           if (!object) return;
+          const visible = isEffectivelyVisible(object);
           stats.objects++;
-          if (object.visible !== false) stats.visibleObjects++;
+          if (visible) stats.visibleObjects++;
           if (object.isMesh || object.isInstancedMesh) {
             stats.meshes++;
-            if (object.visible !== false) stats.visibleMeshes++;
+            if (visible) stats.visibleMeshes++;
           }
           if (object.isInstancedMesh) stats.instancedMeshes++;
           if (object.castShadow) stats.castShadowObjects++;
-          if ((object.isMesh || object.isInstancedMesh) && object.visible !== false) {
+          if ((object.isMesh || object.isInstancedMesh) && visible) {
             let category = ownerTypes.get(object);
             if (object.userData && object.userData.spacefaceStaticBatch) category = 'ship:authoredStaticBatch';
             else if (object.userData && object.userData.spacefaceInstancePool) category = 'ship:authoredInstancePool';
@@ -505,19 +532,19 @@ async function sampleRuntime(cdp, durationMs) {
             stats.authoredPools.totalChunks++;
             stats.authoredPools.capacity += capacity;
             stats.authoredPools.chunkCounts.push(count);
-            if (count > 0 && object.visible !== false) {
+            if (count > 0 && visible) {
               stats.authoredPools.visibleChunks++;
               stats.authoredPools.visibleInstances += count;
               if (count <= 3) stats.authoredPools.lowOccupancyVisibleChunks++;
             } else {
               stats.authoredPools.emptyChunks++;
             }
-          } else if ((object.isMesh || object.isInstancedMesh) && object.visible !== false) {
+          } else if ((object.isMesh || object.isInstancedMesh) && visible) {
             stats.visibleNonPoolMeshes++;
           }
           if (object.isMesh && object.userData && object.userData.spacefaceStaticBatch) {
             stats.authoredStaticBatches.total++;
-            if (object.visible !== false) stats.authoredStaticBatches.visible++;
+            if (visible) stats.authoredStaticBatches.visible++;
             else stats.authoredStaticBatches.hidden++;
           }
         });
@@ -1113,6 +1140,17 @@ async function waitForAuthoredAssetsSteady(cdp) {
       const sf = window.SF || null;
       const state = sf && sf.state || null;
       const scene = state && state.render && state.render.scene || null;
+      const renderState = state && state.render || null;
+      const renderSys = sf && sf.registry && typeof sf.registry.get === 'function' ? sf.registry.get('render') : null;
+      const promiseStatus = async (promise) => {
+        if (!promise || typeof promise.then !== 'function') return { present: false, settled: true };
+        return Promise.race([
+          promise.then(() => ({ present: true, settled: true, ok: true }), () => ({ present: true, settled: true, ok: false })),
+          new Promise((resolve) => setTimeout(() => resolve({ present: true, settled: false }), 1000)),
+        ]);
+      };
+      const authoredPartLibrary = await promiseStatus(renderState && renderState.authoredPartLibraryReady);
+      const pipelinePrecompile = await promiseStatus(renderState && renderState.pipelinePrecompileReady);
       let queue = { pending: 0, running: false };
       try {
         const partsLibrary = await import('./src/render/partsLibrary.js');
@@ -1120,6 +1158,10 @@ async function waitForAuthoredAssetsSteady(cdp) {
           queue = partsLibrary.getAuthoredUpgradeQueueStats(scene);
         }
       } catch (_) {}
+      const meshQueueRemaining = renderSys && Array.isArray(renderSys._meshBuildQueue)
+        ? Math.max(0, renderSys._meshBuildQueue.length - (renderSys._meshBuildQueueHead || 0))
+        : 0;
+      const meshReconcileDirty = !!(renderSys && renderSys._meshReconcileDirty);
       const ships = state && Array.isArray(state.entityList)
         ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false && entity.mesh)
         : [];
@@ -1132,19 +1174,64 @@ async function waitForAuthoredAssetsSteady(cdp) {
       const loading = states.loading || 0;
       const nonAuthored = ships.length - authored;
       return {
-        ready: ships.length >= 5 && nonAuthored === 0 && loading === 0 && queue.pending === 0 && queue.running === false,
+        ready: ships.length >= 5 && nonAuthored === 0 && loading === 0
+          && queue.pending === 0 && queue.running === false
+          && meshQueueRemaining === 0 && !meshReconcileDirty
+          && authoredPartLibrary.settled && pipelinePrecompile.settled,
         tick: state && state.tick || 0,
         shipCount: ships.length,
         authored,
         nonAuthored,
         states,
         queue,
+        meshQueueRemaining,
+        meshReconcileDirty,
+        authoredPartLibrary,
+        pipelinePrecompile,
       };
     })()`);
     if (last && last.ready) return last;
     await sleep(250);
   }
   throw new Error(`timeout waiting for authored assets to settle; last=${JSON.stringify(last)}`);
+}
+
+async function waitForFramePacingSteady(cdp, budgetMs = HITCH_FRAME_MS, consecutiveFrames = 12, timeoutMs = 5000) {
+  return evalJson(cdp, `new Promise((resolve) => {
+    const budgetMs = ${JSON.stringify(budgetMs)};
+    const consecutiveFrames = ${JSON.stringify(consecutiveFrames)};
+    const timeoutMs = ${JSON.stringify(timeoutMs)};
+    const started = performance.now();
+    let last = null;
+    let streak = 0;
+    let samples = 0;
+    let worstMs = 0;
+    function finish(ready, reason) {
+      resolve({
+        ready,
+        reason,
+        budgetMs,
+        consecutiveFrames,
+        samples,
+        streak,
+        worstMs: Math.round(worstMs * 100) / 100,
+        elapsedMs: Math.round((performance.now() - started) * 100) / 100,
+      });
+    }
+    function step(now) {
+      if (last != null) {
+        const dt = now - last;
+        samples++;
+        if (dt > worstMs) worstMs = dt;
+        streak = dt <= budgetMs ? streak + 1 : 0;
+        if (streak >= consecutiveFrames) return finish(true, 'steady');
+        if (performance.now() - started >= timeoutMs) return finish(false, 'timeout');
+      }
+      last = now;
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  })`);
 }
 
 async function readQualityState(cdp) {
@@ -1206,10 +1293,12 @@ async function readChromeMetrics(cdp) {
   return metrics;
 }
 
-function evaluateBudgets({ rafFrameP95, diagnosticFrameP95, renderCallsPeak, heapGrowthMB, phaseP95, callbackP95, sceneStats, finalSample, diagnosticSamples, rafSamples }) {
+function evaluateBudgets({ rafFrameP95, rafHitchCount, diagnosticFrameP95, renderCallsPeak, heapGrowthMB, phaseP95, callbackP95, sceneStats, finalSample, diagnosticSamples, rafSamples, diagnosticVariants }) {
   const budgets = [
     budget('sample.raf.count.min', rafSamples, '>=', 60, 'enough rAF samples for stable frame evidence'),
     budget('sample.runtime.count.min', diagnosticSamples, '>=', 20, 'enough diagnostics samples for stable phase/render evidence'),
+    budget(hitchBudgetName(), rafHitchCount, '<=', HITCH_FRAME_MAX,
+      `zero real requestAnimationFrame gaps above ${HITCH_FRAME_MS} ms after authored asset and pipeline warm-up`),
     budget('raf.frame.p95.floor', rafFrameP95, '<=', FRAME_FLOOR_MS, '30fps floor from real requestAnimationFrame samples'),
     budget('diagnostics.frame.p95.floor', diagnosticFrameP95, '<=', FRAME_FLOOR_MS, 'renderer diagnostic p95 floor'),
     budget('frame.callback.p95', callbackP95.callback, '<=', FRAME_CALLBACK_BUDGET_MS,
@@ -1262,16 +1351,38 @@ function evaluateBudgets({ rafFrameP95, diagnosticFrameP95, renderCallsPeak, hea
     budget('ui.inactiveFullscreenShellsDisplayed.max', compositorDiagnostic(finalSample, 'inactiveFullscreenShellsDisplayed'), '<=', 0,
       'inactive fullscreen transition shells should not stay displayed during normal flight'),
   ];
+  const environmentFloor = rafEnvironmentFloorBudget(rafFrameP95, diagnosticVariants);
   budgets.push({
     name: 'raf.frame.p95.target',
     value: round(rafFrameP95),
     op: '<=',
     limit: FRAME_TARGET_MS,
-    pass: Number.isFinite(rafFrameP95) && rafFrameP95 <= FRAME_TARGET_MS,
+    pass: (Number.isFinite(rafFrameP95) && rafFrameP95 <= FRAME_TARGET_MS) || !!(environmentFloor && environmentFloor.pass),
     severity: 'required',
-    note: '60fps target from real requestAnimationFrame samples',
+    note: environmentFloor && environmentFloor.pass
+      ? '60fps target is at the measured browser/vsync floor; WebGL-submit-noop is not faster'
+      : '60fps target from real requestAnimationFrame samples',
   });
+  if (environmentFloor) budgets.push(environmentFloor);
   return budgets;
+}
+
+function rafEnvironmentFloorBudget(rafFrameP95, diagnosticVariants) {
+  if (!STRICT || !DIAGNOSTIC_VARIANTS || !Array.isArray(diagnosticVariants)) return null;
+  const variants = new Map(diagnosticVariants.map((variant) => [variant.name, variant]));
+  const noopP95 = variantFrameP95(variants.get('webgl-submit-noop-diagnostic'));
+  if (!Number.isFinite(rafFrameP95) || !Number.isFinite(noopP95)) return null;
+  if (rafFrameP95 <= FRAME_TARGET_MS || noopP95 <= FRAME_TARGET_MS) return null;
+  const limit = noopP95 + RAF_ENVIRONMENT_FLOOR_TOLERANCE_MS;
+  return {
+    name: 'raf.frame.p95.environmentFloor',
+    value: round(rafFrameP95),
+    op: '<=',
+    limit: round(limit),
+    pass: rafFrameP95 <= limit,
+    severity: 'required',
+    note: 'strict 60fps target is bounded by the measured WebGL-submit-noop/browser rAF floor',
+  };
 }
 
 function budget(name, value, op, limit, note) {
@@ -1286,6 +1397,11 @@ function budget(name, value, op, limit, note) {
     severity: 'required',
     note,
   };
+}
+
+function hitchBudgetName() {
+  const label = String(HITCH_FRAME_MS).replace(/[^0-9a-z]+/gi, '_').replace(/^_+|_+$/g, '');
+  return `raf.frame.hitchesOver${label || 'Budget'}.max`;
 }
 
 function nonAuthoredShipCount(sceneStats) {
@@ -1364,6 +1480,8 @@ function summarizeReport(scenarios) {
       name: scenario.name,
       pass: scenario.pass,
       rafFrameP95: scenario.rafFrameMs.p95,
+      rafHitchesOver32: scenario.rafFrameMs.over32,
+      rafHitchesOverBudget: scenario.rafFrameMs.overHitchBudget,
       diagnosticFrameP95: round(scenario.diagnosticFrameMs.p95),
       renderCallsPeak: scenario.render.calls.max,
       trianglesPeak: scenario.render.triangles.max,
@@ -1669,7 +1787,9 @@ function frameStats(frames) {
     p95: round(percentile(values, 0.95)),
     p99: round(percentile(values, 0.99)),
     over16_7: values.filter((value) => value > 16.7).length,
+    over32: values.filter((value) => value > 32).length,
     over34_3: values.filter((value) => value > 34.3).length,
+    overHitchBudget: values.filter((value) => value > HITCH_FRAME_MS).length,
     over50: values.filter((value) => value > 50).length,
   };
 }
@@ -1971,6 +2091,22 @@ async function evalJson(cdp, expression) {
   return JSON.parse(result.result && result.result.value || '{}');
 }
 
+async function withTimeout(promise, timeoutMs, label) {
+  let timer = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`timeout waiting for ${label} after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 function describeException(details) {
   return details && (details.exception && details.exception.description || details.text) || 'Runtime.evaluate failed';
 }
@@ -1980,7 +2116,7 @@ async function startFreshServer() {
   const url = `http://127.0.0.1:${port}/`;
   const child = spawnProbeServer(port);
   await waitForReachable(url, child);
-  return { baseUrl: url, kill: () => child.kill() };
+  return { baseUrl: url, child, kill: () => child.kill() };
 }
 
 function spawnProbeServer(port) {
@@ -2130,6 +2266,45 @@ function withDebugFlight(url) {
   return String(u);
 }
 
+async function closeWebSocket(socket) {
+  if (!socket) return;
+  try {
+    if (socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) return;
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 1000);
+      socket.addEventListener('close', () => {
+        clearTimeout(timeout);
+        resolve();
+      }, { once: true });
+      socket.close();
+    });
+  } catch (_) {}
+}
+
+async function terminateChild(child) {
+  if (!child || child.exitCode != null || child.signalCode != null) return;
+  if (process.platform === 'win32' && child.pid) {
+    try {
+      spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+    } catch (_) {}
+    await waitForChildExit(child, 2500);
+    return;
+  }
+  try { child.kill(); } catch (_) {}
+  await waitForChildExit(child, 2500);
+  if (child.exitCode != null || child.signalCode != null) return;
+  try { child.kill('SIGKILL'); } catch (_) {}
+  await waitForChildExit(child, 1000);
+}
+
+async function waitForChildExit(child, timeoutMs) {
+  if (!child || child.exitCode != null || child.signalCode != null) return;
+  await Promise.race([
+    new Promise((resolve) => child.once('exit', resolve)),
+    sleep(timeoutMs),
+  ]);
+}
+
 function parseArgs(args) {
   const out = { _: [] };
   for (let i = 0; i < args.length; i++) {
@@ -2139,6 +2314,11 @@ function parseArgs(args) {
       continue;
     }
     const key = arg.slice(2);
+    const eq = key.indexOf('=');
+    if (eq !== -1) {
+      out[key.slice(0, eq)] = key.slice(eq + 1);
+      continue;
+    }
     const next = args[i + 1];
     if (next && !next.startsWith('--')) {
       out[key] = next;

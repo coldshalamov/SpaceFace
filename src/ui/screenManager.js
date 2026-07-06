@@ -10,7 +10,7 @@
 // Screens that "pause the sim" (pause / menus) emit sim:pause while at least one such screen
 // is open and sim:resume once none remain. Screen modules implement {id,mount,onShow,onHide,refresh}.
 
-const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base']);
+const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base', 'station']);
 
 export function createScreenManager(ctx) {
   const { state, bus } = ctx;
@@ -164,7 +164,7 @@ export function createScreenManager(ctx) {
   // entry path. Both write the same derived value (0 then 1), so the duplicate is harmless. We
   // never freeze while mode==='menu' boot (timeScale already 0/handled by the menu screen).
   function syncPause() {
-    const wantPause = stack.some((id) => PAUSING_SCREENS.has(id));
+    const wantPause = state.ui.docked === true || stack.some((id) => PAUSING_SCREENS.has(id));
     if (wantPause && !pauseEmitted) {
       pauseEmitted = true;
       if (state.mode === 'flight') state.timeScale = 0;

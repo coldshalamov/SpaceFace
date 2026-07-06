@@ -16,7 +16,8 @@ import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
 import { controlPrompt } from './controlPrompts.js';
 import { setPromptScheme } from './controlPrompts.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { projectLockedReticle } from '../combat/autoTargetMode.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -33,6 +34,7 @@ const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/sv
 import { createHud } from './hud.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
+import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
 import { createWingmanRadial } from './wingmanRadial.js';
@@ -43,6 +45,8 @@ import { createWingmanRadial } from './wingmanRadial.js';
 // build/web, which strands packaged players in an empty HUD before the menu registers.
 const SCREEN_MODULES = [
   { path: './screens/stationHub.js', load: () => import('./screens/stationHub.js'), name: 'stationHub' },
+  // REVAMP 2.1 — one zoomable galaxy map (supersedes starmap+localmap once BP-03 parity passes). Lives in src/ui/, not screens/.
+  { path: './galaxyMap.js', load: () => import('./galaxyMap.js'), name: 'galaxyMapScreen' },
   { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },
   { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
   { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
@@ -140,6 +144,7 @@ export const ui = {
 
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
+    this.marketNews = createMarketNews(ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
     this.alerts = createAlerts(ctx);
     wireSaveFeedback(this.bus);
 
@@ -215,15 +220,28 @@ export const ui = {
     this.bus.on('gamepad:disconnected', () => { hints.textContent = HINTS_KBM; showHints(3000); });
 
     const syncFlightCursor = (visible) => {
-      const pointer = this.state && this.state.input && this.state.input.pointerScreen;
+      const st = this.state;
+      const pointer = st && st.input && st.input.pointerScreen;
+      const autoTarget = !!(st && st.input && st.input.autoFire);
       const active = !!(visible && pointer && pointer.active);
       document.body.classList.toggle('sf-flight-cursor', active);
       const reticleEl = document.getElementById('aim-reticle') || reticle;
       if (!reticleEl || !visible) return;
       const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
       const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
-      const x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
-      const y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
+      let x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
+      let y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
+      if (autoTarget) {
+        const w2s = this.ctx && this.ctx.helpers && this.ctx.helpers.worldToScreen;
+        const locked = projectLockedReticle(st, w2s, {
+          width: typeof innerWidth === 'number' ? innerWidth : 0,
+          height: typeof innerHeight === 'number' ? innerHeight : 0,
+        });
+        if (locked) {
+          x = locked.x;
+          y = locked.y;
+        }
+      }
       if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1) {
         reticleEl.style.left = x.toFixed(1) + 'px';
         lastReticleX = x;
@@ -360,7 +378,7 @@ export const ui = {
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
     this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
     this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
-    this.bus.on('ui:targetNearestHostileToCursor', ({ pos, quiet } = {}) => targetNearestHostileToCursor(this.state, pos, this.bus, { quiet }));
+    this.bus.on('ui:targetNearestHostileToPlayer', ({ quiet } = {}) => targetNearestHostileToPlayer(this.state, this.bus, { quiet }));
 
     // Dock transition overlay
     const dockFade = document.createElement('div');
@@ -626,10 +644,11 @@ function cycleTarget(state, dir, bus) {
   const contacts = [];
   for (const e of state.entityList) {
     if (e.alive === false || e === player) continue;
-    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
+    if (e.type !== 'ship' && e.type !== 'drone') continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
     const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
     const d = Math.hypot(dx, dz);
-    if (d > 5200) continue;
+    if (d > SCANNER_CONTACT_RANGE) continue;
     contacts.push({ e, d });
   }
   contacts.sort((a, b) => a.d - b.d);
@@ -646,38 +665,53 @@ function cycleTarget(state, dir, bus) {
   if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
 }
 
-function targetNearestHostileToCursor(state, pos, bus, options = {}) {
+function isScannerHostileLock(player, state, entity) {
+  if (!player || !entity || entity.alive === false || !entity.pos) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (!isHostileToPlayer(entity, player.team, state)) return false;
+  const dx = entity.pos.x - player.pos.x;
+  const dz = entity.pos.z - player.pos.z;
+  return (dx * dx + dz * dz) <= SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
+}
+
+function targetNearestHostileToPlayer(state, bus, options = {}) {
   const player = state.entities.get(state.playerId);
-  if (!player || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+  if (!player) return;
   const quiet = !!options.quiet;
+  const curId = state.player && state.player.targetId;
+  if (curId != null) {
+    const cur = state.entities.get(curId);
+    if (isScannerHostileLock(player, state, cur)) {
+      if (quiet) return;
+    }
+  } else if (quiet) {
+    // No lock yet — quiet refresh may acquire the nearest hostile.
+  }
   let best = null;
-  let bestCursorD2 = Infinity;
-  let bestPlayerD2 = Infinity;
+  let bestD2 = Infinity;
   for (const e of state.entityList) {
     if (!e || e.alive === false || e === player || !e.pos) continue;
     if (e.type !== 'ship' && e.type !== 'drone') continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;
-    const cursorDx = e.pos.x - pos.x;
-    const cursorDz = e.pos.z - pos.z;
-    const cursorD2 = cursorDx * cursorDx + cursorDz * cursorDz;
-    const playerDx = e.pos.x - player.pos.x;
-    const playerDz = e.pos.z - player.pos.z;
-    const playerD2 = playerDx * playerDx + playerDz * playerDz;
-    if (playerD2 > 5200 * 5200) continue;
-    if (cursorD2 < bestCursorD2 || (cursorD2 === bestCursorD2 && playerD2 < bestPlayerD2)) {
+    const dx = e.pos.x - player.pos.x;
+    const dz = e.pos.z - player.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE) continue;
+    if (d2 < bestD2) {
       best = e;
-      bestCursorD2 = cursorD2;
-      bestPlayerD2 = playerD2;
+      bestD2 = d2;
     }
   }
   if (!best) {
     state.player.targetId = null;
-    if (bus && !quiet) bus.emit('toast', { text: 'No hostile near cursor', kind: 'info', ttl: 2 });
+    if (bus && !quiet) bus.emit('toast', { text: 'No hostile in range', kind: 'info', ttl: 2 });
     return;
   }
   state.player.targetId = best.id;
   if (bus && !quiet) bus.emit('toast', { text: 'Target: ' + targetLabel(best), kind: 'info', ttl: 2 });
 }
+
+export { cycleTarget, targetNearestHostileToPlayer };
 
 function targetLabel(e) {
   if (!e) return 'Contact';
@@ -707,7 +741,7 @@ function injectHudCss() {
   body.ui-modal-open #alerts,
   body.ui-modal-open #toasts { opacity: 0 !important; pointer-events: none !important; }
 
-  /* Reticle reflects fire mode: amber tint + slight pulse when auto-fire is engaging hostiles,
+  /* Reticle reflects aim mode: amber tint + slight pulse when auto-target is tracking hostiles,
      cyan when the pilot aims/fires manually (Phase 2). */
   #aim-reticle { transition: none; }
   #aim-reticle svg * { filter:none !important; }
@@ -760,6 +794,9 @@ function injectHudCss() {
   .sf-bar--shield .sf-bar__fill { background:var(--visor-cyan); box-shadow:0 0 6px var(--visor-cyan); }
   .sf-bar--energy .sf-bar__fill { background:var(--visor-amber); box-shadow:0 0 6px var(--visor-amber); }
   .sf-bar--heat .sf-bar__fill { background:#ff8a3d; box-shadow:0 0 6px #ff8a3d; }
+  .sf-bar--heat.sf-bar--overheated .sf-bar__fill { background:var(--visor-red); box-shadow:0 0 10px var(--visor-red); }
+  .sf-barrow.sf-bar--venting .sf-bar--heat .sf-bar__fill,
+  .sf-bar--heat.sf-bar--venting .sf-bar__fill { background:var(--visor-red); box-shadow:0 0 10px var(--visor-red); animation:sf-barpulse .4s ease-in-out infinite alternate; }
   .sf-bar--boost .sf-bar__fill { background:#c98cff; box-shadow:0 0 6px #c98cff; }
   .sf-bar--low .sf-bar__fill { animation:sf-barpulse 1s ease-in-out infinite alternate; }
   .sf-bar--ready .sf-bar__fill { animation:sf-barready 1.1s ease-in-out infinite alternate; }
@@ -767,7 +804,7 @@ function injectHudCss() {
   @keyframes sf-barready { from { box-shadow:0 0 4px rgba(201,140,255,.4); } to { box-shadow:0 0 10px 1px rgba(201,140,255,.9); } }
 
   /* ===== top-center: nav / target-lock readout — chromeless floating text (§3E) ===== */
-  .sf-nav-readout { position:absolute; top:18px; left:50%; transform:translateX(-50%);
+   .sf-nav-readout { position:absolute; top:60px; left:50%; transform:translateX(-50%);
     text-align:center; pointer-events:none; contain:layout paint style;
     padding:2px 10px; background:rgba(4,10,18,.34); }
   .sf-nav-label { font-family:var(--mono); font-size:13px; letter-spacing:.16em; text-transform:uppercase;

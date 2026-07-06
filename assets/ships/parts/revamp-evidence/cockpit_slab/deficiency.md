@@ -1,0 +1,16 @@
+- Before iter1 for cockpit_slab : no bevel on main forms (fixed by Bevel segs=3 profile 0.5 via MCP per professional-techniques.md Modeling Pass)
+- Before iter1: flat shading artifacts (fixed by adding Weighted Normal last)
+- Before iter2 for cockpit_slab : missing meso detail (fixed by inset + bevel for panels)
+- Before iter2: no support loops (fixed)
+- Before iter3 for cockpit_slab : uniform material (fixed by node layers EdgeWear + CavityDirt + Pointiness)
+- Before: no AO/rough bakes (fixed by targeted bakes + ORM)
+- Before: no wear (fixed by curvature noise)
+- Before: no character (fixed: specific for cockpit_slab role)
+- Before: low fidelity (fixed by highpoly mindset)
+- Before: no 3 pass (fixed by full loop)
+- Before iter for cockpit_slab (unique): additional pass specific to this asset geometry MCP
+- Extra MCP for cockpit_slab : dedicated work
+- Additional for cockpit_slab : bevel after bool, quad dominant
+- More for cockpit_slab : unwrap texel, trim sheet
+- Final for cockpit_slab : compositor post, clearcoat- Unique for cockpit_slab : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
+

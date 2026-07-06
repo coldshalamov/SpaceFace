@@ -1,5 +1,11 @@
 # SpaceFace HUD Revamp Design: "Tactical Visor"
 
+> **Superseded warning (2026-07-04):** This document is retained as historical design exploration
+> only. Do not implement its visor/cockpit/helmet framing, center-screen arcs, or "pilot helmet"
+> language. `design/GDD_2_0.md`, `design/spec2/00_MASTER_TASTE.md`,
+> `design/spec2/06_UI_IDENTITY.md`, and `AGENTS.md` now govern HUD work: clean non-diegetic HUD,
+> three-anchor layout, no cockpit/visor/helmet-avatar motifs, and no screen-edge arcs.
+
 ## 1. Goal and Philosophy
 The current HUD relies heavily on a "Web Page UI" paradigm—thick backgrounds, glassmorphic panels, and bulky margins. To match premium, high-fidelity space simulators, we must completely pivot to a **"Tactical Visor" / "Diegetic Projection"** design system.
 

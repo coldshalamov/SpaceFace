@@ -46,7 +46,9 @@ try {
   state.simTime = 4 * DT;
   const reelResult = actions.kernel.attachments.reel(attachmentId, -999, 8);
   assert.equal(reelResult.ok, true, 'SG-03 attachment service should be able to shorten the Massline for overload');
-  assert.equal(state.combat.attachments.byId[attachmentId].restLength, 8, 'overload fixture should force the Massline to minimum rest length');
+  const acceptedRestLength = state.combat.attachments.byId[attachmentId].restLength;
+  assert(acceptedRestLength > 8, 'overload fixture should respect SG-02 safe reel clamping');
+  assert(acceptedRestLength < 120, 'overload fixture should still shorten the Massline enough to load it');
 
   for (let tick = 4; tick <= 30 && state.combat.attachments.byId[attachmentId].state === 'active'; tick++) {
     applyOutwardLoad(tick);

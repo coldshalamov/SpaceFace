@@ -1,0 +1,16 @@
+- Before iter1 for greeble_vents : no bevel (fixed by Bevel via MCP)
+- Before iter1: flat (fixed WN)
+- Before iter2 for greeble_vents : detail (fixed inset)
+- Before iter2: support (fixed)
+- Before iter3 for greeble_vents : material (fixed nodes)
+- Before: bakes (fixed)
+- Before: wear (fixed)
+- Before: character (fixed greeble_vents)
+- Before: fid (fixed)
+- Before: 3pass (fixed)
+- Before iter for greeble_vents (unique): specific MCP
+- Extra MCP for greeble_vents : dedicated
+- More for greeble_vents : unwrap
+- Add for greeble_vents : post
+- Final for greeble_vents : PBR- Unique for greeble_vents : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
+

@@ -1,6 +1,6 @@
 # SpaceFace Story Development: The Atmospheric Economy (The "Silt" Layer)
 
-This document establishes the central scarce resource for *SpaceFace*’s world design, inspired by the environmental-economic systems of Paolo Bacigalupi (*The Windup Girl*, *The Water Knife*).
+This document establishes the central scarce resource for *SpaceFace*'s world design — the environmental-economic system on which every station, faction, and contract ultimately runs.
 
 ---
 
@@ -57,7 +57,8 @@ graph TD
 
 ### Meridian Trade Syndicate (MTS)
 *   **The Pretense:** Maintaining open, competitive commodity markets.
-*   **The Reality:** Manipulating the Silt futures market. MTS monitors the "Clear Air Index." When a mining outpost’s ore output dips, MTS artificially raises the cost of Silt refills or levies retroactive "Atmo processing adjustments" to bankrupt the colony. They then buy the mining claims for pennies, seal the old shafts, and move the salvaged recycler grids to Helios Prime.
+*   **The Reality:** Manipulating the Silt futures market — and holding a **short position on failing sectors' air.** MTS monitors the "Clear Air Index." When a mining outpost's ore output dips, MTS artificially raises the cost of Silt refills or levies retroactive "Atmo processing adjustments" to bankrupt the colony. They then buy the mining claims for pennies, seal the old shafts, and move the salvaged recycler grids to Helios Prime.
+*   **The Recurring Booking:** The short position is the part the prospectus never names. MTS desks hold ATMO TOKENS whose value *rises* as a sector suffocates — a derivative that pays out when the Clear Air Index falls. The Pit's decline has printed for MTS every cycle for fourteen years. The neglect is not passive; a desk is defending it, because a declining sector is an appreciating asset on someone's books. The man who profits when the Pit can't breathe is the same broker who sells the Pit its emergency Silt at markup when the Chalk sets in. Every quarter, the short pays. Every quarter, someone at MTS has a quarterly incentive to make sure the Pit's recyclers are never fixed. The claim-buying is the cleanup crew that arrives after the short has finished maturing.
 
 ### Crimson Reach (REACH)
 *   **The Pretense:** Rebel independence from Concord tyranny.
@@ -96,17 +97,17 @@ NPCs do not discuss "environmental collapse" or "oxygen levels." They talk about
     > "I did the welds on the recycler intake. Double-pass. It’ll hold the pressure, but it won't help the head. The grid is packed with chalk. You can taste the grease in your spit. Don't look at me, Captain. I weld steel. I don't grow air."
 
 *   **Drift (Ore Ledgers, Meridian Exchange):**
-    > "Vale's ledger showed a 0.4t discrepancy in the Silt allocation for Sector 4. I wrote it down as shipping loss. The exchange doesn't audit losses under a ton. But the air in Sector 4 is heavy this week. You can feel it in the calves when you walk the stairs."
+    > "Vale's ledger showed a 0.4t discrepancy in the Silt allocation for Sector 4. I wrote it down as shipping loss. The exchange doesn't audit losses under a ton. But the air in Sector 4 is heavy this week. You can feel it in the calves when you walk the stairs." *(Drift is describing the ongoing side-skim — the sub-tonne rounds he and Kessler run every cycle, the one the audit threshold is calibrated to miss. The 12.4-tonne grid that left the Pit in year 3 was never Drift's to hide. That one left legally, on a clean manifest, with Vale's initial. Drift's job is the small one: the death of a thousand cuts that keeps the slow bleed invisible.)*
 
 *   **Hale (Customs, Gate 3):**
     > "The manifest says titanium. The scan says 12,400 kilograms. The seal is Concord ALA. Under REG 44-C, I don't break Concord seals. If the Pit is short of Silt this cycle, they can file an appeal with Logistics Oversight. I don't change the numbers on the sheet. I just sign it."
 
 ---
 
-## 5. The Ritchie Connection: Contract 47-A Re-evaluated
+## 5. Contract 47-A Re-evaluated
 
-The Bacigalupi Silt economy integrates directly with the Ritchie-style reveal in **NPC-ECOLOGY.md**:
+The Silt economy integrates directly with the eight-node reveal in **NPC-ECOLOGY.md**:
 
 1.  **The Theft:** The 12.4 tons of "TITANIUM ALLOY" the player carried in **Contract 47-A** (the B0 opening run) was actually the **Pit's primary recycler catalyst grid**, pre-loaded with high-grade, un-degraded Core-refined Silt.
-2.  **The Impact:** When Vale approved the decommissioning of Shaft 7 under manifest code `VALE-ALA-47A`, he didn't just sign a property transfer. He signed the order that took the Pit's primary catalytic resource and routed it to Helios Prime to maintain the Core's pristine "Vale's Breath."
-3.  **The Result:** The Pit's lower decks didn't fail to produce ore because they were lazy; they failed because they were breathing un-scrubbed air, which slowed their arms, dulled their eyes, and guaranteed they would fail the production formula. The theft itself created the debt that justified the neglect.
+2.  **The Authorization:** The grid left the Pit on a *lawful* transfer. The allocation algorithm flagged Shaft 7's recycler as underutilized relative to the Core's maintenance queue and *recommended* reallocation; the recommendation crossed Vale's desk the way every recommendation crosses Vale's desk, and Vale initialed it the way Hale initials the second fine — because refusing would cost effort Vale had no reason to spend. `VALE-ALA-47A` is a real code on a clean manifest. The signature made it legal. That is the only thing the signature did. Vale did not choose the Pit. The algorithm chose the Pit. The algorithm chooses every cycle. Vale initials.
+3.  **The Result:** The Pit's lower decks didn't fail to produce ore because they were lazy; they failed because they were breathing un-scrubbed air, which slowed their arms, dulled their eyes, and guaranteed they would fail the production formula. The transfer itself created the debt that justified the neglect. The theft was never a theft. It was a filing.

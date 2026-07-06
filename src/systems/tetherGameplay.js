@@ -35,14 +35,15 @@ export const tetherGameplay = {
     this._lastStrainT = -Infinity;
     this._noRelatchUntil = -Infinity;
     this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
     this._resetPhaseMirror();
   },
 
   update(dt, state) {
     this._tickSlingshotState(state, dt);
-    if (state.mode !== 'flight') { this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
+    if (state.mode !== 'flight') { this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-    if (!player || !player.alive || (player.flags && player.flags.docked)) { this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
+    if (!player || !player.alive || (player.flags && player.flags.docked)) { this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); return; }
 
     const kernel = combatKernel(this);
     const attachments = kernel && kernel.attachments;
@@ -52,8 +53,13 @@ export const tetherGameplay = {
     this._adoptExisting(attachments, state);
     const actions = state.input?.actions;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
+    const reelHeld = !!(actions?.reelDelta < 0);
 
-    if (this._active && actions?.tetherCut && !this._pendingCut) {
+    if (this._ignoreReleaseCutUntilReelIdle && !reelHeld) {
+      this._ignoreReleaseCutUntilReelIdle = false;
+    }
+
+    if (this._active && !this._pendingCut && !this._ignoreReleaseCutUntilReelIdle && actions?.tetherCut) {
       this._pendingCut = {
         attachmentId: this._active.attachmentId,
         targetId: this._active.targetId,
@@ -62,27 +68,30 @@ export const tetherGameplay = {
       };
     }
 
-    if (this._active && this._pendingCut && actions?.reelDelta < 0 && state.tick !== this._pendingCut.firstTick) {
-      this._pendingCut = null;
-    }
-
-    if (this._active && this._pendingCut && now - this._pendingCut.requestedAt >= TAP_CUT_DELAY_S) {
-      const targetId = this._active.targetId;
-      const cutPayload = this._cutPayload(state, player, targetId);
-      const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
-      // attachment_missing = the orphan sweep already broke it (target died) and reconcile
-      // emitted the event — only emit released on a cut WE performed.
-      if (result && result.ok) {
-        if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
-        this.bus.emit('tether:cut', cutPayload);
-        this.bus.emit('tether:released', { targetId });
+    if (this._active && this._pendingCut) {
+      const releasedAfterPress = !reelHeld && state.tick !== this._pendingCut.firstTick;
+      const heldLongEnough = now - this._pendingCut.requestedAt >= TAP_CUT_DELAY_S;
+      if (releasedAfterPress) {
+        const targetId = this._active.targetId;
+        const cutPayload = this._cutPayload(state, player, targetId);
+        const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
+        // attachment_missing = the orphan sweep already broke it (target died) and reconcile
+        // emitted the event — only emit released on a cut WE performed.
+        if (result && result.ok) {
+          if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
+          this.bus.emit('tether:cut', cutPayload);
+          this.bus.emit('tether:released', { targetId });
+        }
+        this._active = null;
+        this._pendingCut = null;
+        this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+        this._resetPhaseMirror();
+        this._mirror(state, null, 0);
+        return;
       }
-      this._active = null;
-      this._pendingCut = null;
-      this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
-      this._resetPhaseMirror();
-      this._mirror(state, null, 0);
-      return;
+      if (heldLongEnough && reelHeld) {
+        this._pendingCut = null;
+      }
     }
 
     if (this._active) {
@@ -94,12 +103,13 @@ export const tetherGameplay = {
         this.bus.emit('tether:broke', { targetId: this._active.targetId });
         this._active = null;
         this._pendingCut = null;
+        this._ignoreReleaseCutUntilReelIdle = false;
         this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
         this._resetPhaseMirror();
         this._mirror(state, null, 0);
         return;
       }
-      this._reelActive(attachments, actions?.reelDelta, dt);
+      this._reelActive(attachments, this._pendingCut ? 0 : actions?.reelDelta, dt);
       this._emitStrain(attachments, state);
       const att = attachments.get(this._active.attachmentId);
       const phase = this._phaseFor(state, att, dt, this._lastStrainRatio || 0);
@@ -132,6 +142,7 @@ export const tetherGameplay = {
     };
     this._resetPhaseMirror();
     this._lastStrainT = -Infinity;
+    this._ignoreReleaseCutUntilReelIdle = true;
     this.bus.emit('tether:latched', { targetId: target.id, type: TETHER_DEF_ID });
   },
 
@@ -297,6 +308,11 @@ export const tetherGameplay = {
 
   _resetPhaseMirror() {
     this._phaseMirror = createPhaseMirror();
+  },
+
+  _resetGestureState() {
+    this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
   },
 
   _tickSlingshotState(state, dt) {

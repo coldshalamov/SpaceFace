@@ -1,5 +1,9 @@
 # Art & VFX direction (Three.js primitives only)
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 A fully procedural visual layer for a semi-3D top-down space game: every mesh is built from Three.js r160 primitives (BoxGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, TorusGeometry, OctahedronGeometry) merged via BufferGeometryUtils.mergeGeometries, every texture is a runtime <canvas> (noise/gradient/greeble/star), and every glow uses additive sprite halos + emissive materials plus ONE cheap single-pass bloom (bright-extract -> separable blur at 1/4 res -> additive composite via three custom ShaderMaterials and two WebGLRenderTargets, no postprocessing addon). The look is moody, high-contrast, near-black space with saturated per-faction emissive accents under a single tilted top-down chase camera. The VFX module owns a pooled GPU-Points/Sprite particle system driven entirely by event-bus events (weapon.fired, entity.damaged, entity.destroyed, mining.tick, shield.hit, ship.thrust, jump.start) so it never reaches into other systems' logic — it only reads transform/visual hints off GameState entities and spawns ephemeral visuals. A central VisualFactory caches geometries/materials/textures by key so 200+ entities share a handful of GPU resources. Determinism is preserved by seeding all procedural noise from entity.id; VFX particles are purely cosmetic and excluded from save/load.
 

@@ -1,5 +1,9 @@
 # Factions & Reputation
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 A data-driven faction & reputation layer for SpaceFace. 8 factions, each with a personality, home sectors, controlled assets (stations/lanes/asteroid fields), and a static base-relationship matrix. The player holds a numeric reputation value per faction on a [-1000, +1000] scale, bucketed into 9 named tiers from Sworn Enemy to Hero. A central applyRep(faction, delta, reason) function (driven by a data table of action weights) is the single mutation point; it emits rep events, applies cross-faction spillover via the relationship matrix, clamps, and updates derived per-faction flags (hostile/locked/discount). Reputation drives: trade price multipliers, dock access vs lockout, attack-on-sight, mission availability/quality, NPC escort & combat assistance, and bribe costs. A lightweight dynamic-conflict layer tracks per-faction-pair tension that the player tips via kills/missions/contraband, periodically flipping contested sectors and spawning war fleets. All state lives in GameState.factions and mutates only through the event bus + applyRep, so AI spawning, economy pricing, missions, and combat all read the same source of truth.
 

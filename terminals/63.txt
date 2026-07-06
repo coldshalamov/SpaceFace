@@ -1,0 +1,12 @@
+---
+pid: 40392
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/verify-place-identity-slice.mjs"
+started_at: 2026-07-05T00:38:59.271Z
+running_for_ms: 7829991  
+---
+verify-place-identity-slice: PASS
+concept=true geo=true glb=true art=true navFeatures=6
+PLACE-IDENTITY-GAP-FILL exists=true
+wiredRenderables=37
+

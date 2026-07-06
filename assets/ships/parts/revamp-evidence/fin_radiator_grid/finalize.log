@@ -1,0 +1,8 @@
+{
+  "partId": "fin_radiator_grid",
+  "file": "fins/fin_radiator_grid.glb",
+  "tris": 652,
+  "bytes": 209476,
+  "images": 3,
+  "materials": "Material_Hull"
+}

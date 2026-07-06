@@ -1,0 +1,13 @@
+{
+  "partId": "hull_starter",
+  "file": "hulls/hull_starter.glb",
+  "tris": 20322,
+  "bytes": 1489256,
+  "dims": [
+    18.6996,
+    2.888,
+    12.9761
+  ],
+  "images": 2,
+  "materials": "Material_Hull"
+}

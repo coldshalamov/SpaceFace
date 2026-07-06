@@ -3,6 +3,14 @@
 **Companion to `design/GDD_2_0.md` (authoritative design).** This file is the execution contract:
 if the current session dies, a fresh agent reads GDD → this file → picks the next unclaimed item.
 
+**Current-state reconciliation (2026-07-04):** `design/CURRENT_BUILD_STATUS.md` is the quick status
+map for what is built, what needs proof/cleanup, and what remains. Use it with this file. Older rows
+below were synchronized on 2026-07-04 where live checks gave clear evidence; if a row and a named
+check disagree later, trust the live check and update both docs in the same pass.
+
+**Target platform:** PC/browser. Electron/packaged desktop is an optional distribution shell for the
+same player route. Handheld-specific readiness is not a target or release blocker.
+
 **Working-tree note (2026-07-03):** uncommitted edits removing `backdrop-filter: blur()` across UI
 files are an intentional perf pass — KEEP them. `advisor-artifacts/` is archived profiling history.
 
@@ -51,47 +59,47 @@ the sim harness (`scripts/sf-sim.mjs --inputs`), not via keyboard.
 ### WS-A — Game feel (GDD §4, §10) — *the make-or-break workstream*
 | # | Item | Owner | Status | Accept when |
 |---|---|---|---|---|
-| A1 | Helm Assist scheme: mouse-nose steering, WASD thrust/strafe, Space brake, V cruise, scheme picker (Classic preserved) | **Claude** | **DONE** (2026-07-03: nose-chase verified err 3.07→0.013 rad; brake 108→6.6 wu/s; classic regression-tested; scheme-aware prompts live) | Feel targets GDD §4.1; `check:flight` green; both schemes switchable in Settings |
-| A2 | Hitch elimination: shader precompile, spawn amortization (≤2 mesh builds/frame), GC audit of 10-min play, hitch CI guard | **CODEX-2** | **LANDED, GATE OPEN** — structural fixes in (precompile.js, VFX warm salvo, mesh FIFO cap 2, event-record pooling, scratch reuse). Headless gate numbers are driver-stall-polluted (app phases ~15 ms of a 512 ms worst); steady-state preview improved (worst 54→42 ms under load). NEXT: run `check:hitch-budget` on real hardware via Electron; consider renderScale auto-tune | New `check:hitch-budget` passes: no frame >32 ms in scripted 60 s run; boot precompile behind loading veil |
-| A3 | Cruise tier: 3 s charge, 4× speed, agility crush, drop on damage/mass-lock; interdiction hook event `cruise:dropped` | CODEX (wave 2) | QUEUED | Sim-harness scenario: engage, mass-lock near station drops it; no weapons while cruising |
+| A1 | Helm Assist scheme: mouse-nose steering, WASD thrust/strafe, Space brake, V cruise, scheme picker (Classic preserved) | **Claude** | **DONE** (2026-07-04: `check:flight:clean` passed 5 desktop/mobile browser visual runs; nose-chase/brake/classic checks remain covered by `check:flight:v3`) | Feel targets GDD §4.1; keep `check:flight:clean` green; both schemes switchable in Settings |
+| A2 | Hitch elimination: shader precompile, spawn amortization (≤2 mesh builds/frame), GC audit of 10-min play, hitch CI guard | **CODEX-2** | **BUILT, STRICT PERF PROOF RED** — structural fixes in (precompile.js, VFX warm salvo, mesh FIFO cap 2, event-record pooling, scratch reuse). `check:bundle` passes. `check:perf` now runs to completion on the release route, but strict 60fps p95 is 16.9 ms vs the 16.7 ms target; 30fps floor, authored fallback, draw-call, render/sim/UI, and heap budgets pass. | Preserve authored visuals, then reduce occasional present/compositor/post spikes until `check:perf` is comfortably green; boot precompile behind loading veil |
+| A3 | Cruise tier: 3 s charge, 4× speed, agility crush, drop on damage/mass-lock; interdiction hook event `cruise:dropped` | CODEX (wave 2) | **BUILT, CHECK GAP** (`src/systems/cruise.js` wired; `check-juice-contract` covers charge/drop; `check:cruise` is stale because `scripts/check-cruise.mjs` is missing) | Add/fix dedicated `check:cruise`; sim-harness scenario: engage, mass-lock near station drops it; no weapons while cruising |
 
 ### WS-B — Information layer (GDD §7)
 | # | Item | Owner | Status | Accept when |
 |---|---|---|---|---|
-| B1 | M=local map, N=nav chart swap; charted-by-default discovery (core+mid sectors); ??? only frontier/anomaly; survey-data purchase at bars | **CODEX-3** | **DONE** (all named checks green; Claude moved claimBase C→U for scanner key + made check-claim-base registry-driven) | Fresh save: M shows populated local map; nav chart shows all core sectors named; `check:controls-discoverability`, `check:starmap-objective`, `check:localmap-routes` green |
-| B2 | Scanner pulse (C): 8 s cd, seam highlight 20 s, wreck/anomaly ping, "?" bait markers on local map | **CODEX-3** | **DONE** (scanner.js registered; pings persist in world.scanPings; harness green) | Pulse event visible in sim telemetry; localmap renders pings; feeds `recon_scan` missions |
-| B3 | Overview strip (right edge, 8 rows, IFF chips, click-to-target) + radar glyph/IFF pass | Claude (wave 2) | QUEUED | Five-second test: stranger IDs every contact class |
-| B4 | Target panel: shield/armor/hull segmented bars + in-world target arcs | Claude (wave 2) | QUEUED | Damage triangle legible without numbers |
+| B1 | M=local map, N=nav chart swap; charted-by-default discovery (core+mid sectors); ??? only frontier/anomaly; survey-data purchase at bars | **CODEX-3** | **BUILT, CLAIM-BASE CHECK RED** (`check:controls-discoverability`, `check:starmap-objective`, `check:localmap-routes` pass; `check:claim-base` currently fails around C-key fallthrough) | Fresh save: M shows populated local map; nav chart shows all core sectors named; `check:claim-base` green without scanner/control collisions |
+| B2 | Scanner pulse (C): 8 s cd, seam highlight 20 s, wreck/anomaly ping, "?" bait markers on local map | **CODEX-3** | **BUILT, CLAIM-BASE CHECK RED** (scanner.js registered; pings persist in world.scanPings; local-map checks green; shared input proof blocked by `check:claim-base`) | Pulse event visible in sim telemetry; localmap renders pings; feeds `recon_scan` missions; `check:claim-base` green |
+| B3 | Overview strip (right edge, 8 rows, IFF chips, click-to-target) + radar glyph/IFF pass | Claude (wave 2) | **DONE** (`check-ui-identity` green: overview strip, IFF, cadence, click-to-target) | Five-second test: stranger IDs every contact class |
+| B4 | Target panel: shield/armor/hull segmented bars + in-world target arcs | Claude (wave 2) | **DONE** (`check-ui-identity` green: segmented bars + in-world arcs) | Damage triangle legible without numbers |
 
 ### WS-C — Mining 2.0 (GDD §5)
 | # | Item | Owner | Status | Accept when |
 |---|---|---|---|---|
-| C1 | Seams (deterministic, 1–4/asteroid, 100%/35% yield split), vent-bonus rhythm band, fracture-into-chunks, vacuum buff (420 wu/520 accel/beam-line direct-to-cargo) | CODEX (wave 2) | QUEUED | `check:sim` deterministic; play: zero manual ball-chasing; mining a field feels pulse-timed |
-| C2 | Rich cores + charged drill timing ring (3–8× rare) | Claude tune after C1 | QUEUED | Timing window hit-rate ~60% for a mid player |
-| C3 | Tether-haul chunks >20 u to refinery; bulk payout; refinery fee sink | CODEX (after CODEX-1) | QUEUED | Contract type ships; hauling a chunk with tether physics feels weighty |
+| C1 | Seams (deterministic, 1–4/asteroid, 100%/35% yield split), vent-bonus rhythm band, fracture-into-chunks, vacuum buff (420 wu/520 accel/beam-line direct-to-cargo) | CODEX (wave 2) | **DONE** (`check:mining:2` green) | `check:sim` deterministic after 47-A re-record; play: zero manual ball-chasing; mining a field feels pulse-timed |
+| C2 | Rich cores + charged drill timing ring (3–8× rare) | Claude tune after C1 | **DONE** (`check-price-memory` covers rich-core payout/fizzle path) | Timing window hit-rate ~60% for a mid player |
+| C3 | Tether-haul chunks >20 u to refinery; bulk payout; refinery fee sink | CODEX (after CODEX-1) | **DONE** (`check-price-memory` covers bulk_haul formula + mission completion) | Contract type ships; hauling a chunk with tether physics feels weighty |
 
 ### WS-D — Combat 2.0 (GDD §6) + physics verbs (GDD §4.3–4.5)
 | # | Item | Owner | Status | Accept when |
 |---|---|---|---|---|
-| D1 | **Tether gameplay integration** (flagship): fire/latch/reel/cut on input contract, slingshot physics, tension telegraphy events, mass-ratio yank rules, break thresholds | **CODEX-1** | **DONE** (sim-side; check-tether-gameplay + sg02 tether suites green. NOTE: tether has NO in-world visual yet — cable line + strain color is a D3/wave-2 VFX item) | `check:sg02:tether*` green + new scenario: latch asteroid at speed, cut at tangent, exit velocity ≥ 1.4× entry; events `tether:latched/strain/broke/released` emitted |
-| D2 | Impulse charges: sticky lob (Q/helm, Y/classic), R-detonate radial impulse, self-plate trick, 6 s throw cd, friendly fire | **GROK-1** | **DONE** (system + data + registry wired; cmdty_impulse_charge added; sanity sim passes. No in-world visual yet — same wave-2 VFX item) | Standalone system + data file; sim scenario knocks a drone into an asteroid; lead wires registry |
-| D3 | Juice contract: shield ripple/break stack, hit-stop, kill sequence, flee smoke, damage-direction contrast | Claude (wave 2) | QUEUED | GDD §6.3 checklist; motionReduce respected |
-| D4 | AI telegraphs + wedge formations-lite + comms barks (1/4 s cap) | CODEX (wave 2) | QUEUED | `check:sg06:ai` green; attack runs visibly telegraphed 0.5 s |
-| D5 | Encounter shapes: interdiction snare + toll choice card; patrol-scan chase; named bounty gimmicks | CODEX (wave 3) | QUEUED | Scenario scripts pass; toll feeds faction/econ |
+| D1 | **Tether gameplay integration** (flagship): fire/latch/reel/cut on input contract, slingshot physics, tension telegraphy events, mass-ratio yank rules, break thresholds | **CODEX-1** | **DONE** (sim + in-world segmented cable/HUD readout covered by later tether feel pass) | `check:sg02:tether*` green + new scenario: latch asteroid at speed, cut at tangent, exit velocity ≥ 1.4× entry; events `tether:latched/strain/broke/released` emitted |
+| D2 | Impulse charges: sticky lob (Q/helm, Y/classic), R-detonate radial impulse, self-plate trick, 6 s throw cd, friendly fire | **GROK-1** | **DONE** (system + data + registry wired; juice contract covers charge detonation cue path) | Standalone system + data file; sim scenario knocks a drone into an asteroid; lead wires registry |
+| D3 | Juice contract: shield ripple/break stack, hit-stop, kill sequence, flee smoke, damage-direction contrast | Claude (wave 2) | **DONE** (`check-juice-contract` green) | GDD §6.3 checklist; motionReduce respected |
+| D4 | AI telegraphs + wedge formations-lite + comms barks (1/4 s cap) | CODEX (wave 2) | **DONE** (`check-ai-telegraphs` green) | `check:sg06:ai` green; attack runs visibly telegraphed 0.5 s |
+| D5 | Encounter shapes: interdiction snare + toll choice card; patrol-scan chase; named bounty gimmicks | CODEX (wave 3) | **NOT BUILT** (`src/systems/encounterDirector.js` and `scripts/check-encounter-director.mjs` missing; existing interdiction/bulk-haul pieces are partial plumbing) | Scenario scripts pass; toll feeds faction/econ |
 
 ### WS-E — Visual depth & HUD (GDD §9)
 | # | Item | Owner | Status | Accept when |
 |---|---|---|---|---|
 | E1 | Parallax stack: far dust sheets, mid instanced debris, near speed-motes w/ boost streaks; motion-reduce halves | **DONE** (CODEX-8 built `src/render/parallaxLayers.js`; Claude fixed a uStretch precision mismatch in the mote shader — fragment must declare `precision highp float` to match the vertex default; verified 141/141 programs valid + boost streaks visible) | Boost visibly *reads* fast; no added hitches (check:hitch-budget) |
-| E2 | Data-driven sector palettes in `sectors.js` (lights/fog/nebula/dust); 4 palette classes authored | CODEX (wave 2) | QUEUED | Jumping sectors visibly changes identity in 1 s |
-| E3 | HUD 2.0: three-anchor layout, retire bottom text strip, priority channel top-center, contextual chips | **Claude** | ACTIVE (after A1) | GDD §9.4; `check:ui-a11y`, `check:wcag-contrast` green |
-| E4 | Readability: faction rim-light, planet-sphere labeling, emissive audit for selective bloom | Claude + CODEX (wave 3) — **PARTIAL**: the "giant ambiguous blob" bugs are dead (station/gate chrome shells 0.655→≤0.07 opacity + env intensity halved in visualFactory `applyStructureProfile`; nebula canvas repainted in starfield.js — filament clouds instead of giant lobes, compact bright cores, planets sized for the 60° camera magnification). Mining seams now render as ember markers, scanner-lit after C-pulse (vfx `_initSeamMarkers`) | Five-second test passes |
+| E2 | Data-driven sector palettes in `sectors.js` (lights/fog/nebula/dust); 4 palette classes authored | CODEX (wave 2) | **DONE** (`check:sector-palettes` green; 10 sectors across anomaly/belt/core/fringe) | Jumping sectors visibly changes identity in 1 s |
+| E3 | HUD 2.0: three-anchor layout, retire bottom text strip, priority channel top-center, contextual chips | **Claude** | **DONE, BROADER UI GATE RED** (`check-ui-identity` green; `check-ui-screen-imports` currently has unrelated dirty-tree failures) | GDD §9.4; `check:ui-a11y`, `check:wcag-contrast` green |
+| E4 | Readability: faction rim-light, planet-sphere labeling, emissive audit for selective bloom | Claude + CODEX (wave 3) — **PARTIAL, NEEDS LIVE FIVE-SECOND PROOF**: the "giant ambiguous blob" bugs are dead (station/gate chrome shells 0.655→≤0.07 opacity + env intensity halved in visualFactory `applyStructureProfile`; nebula canvas repainted in starfield.js — filament clouds instead of giant lobes, compact bright cores, planets sized for the 60° camera magnification). Mining seams now render as ember markers, scanner-lit after C-pulse (vfx `_initSeamMarkers`). Browser route proof is available through green `check:flight:clean`, `check:assets:live`, and `check:visual-stability`, but the curated five-second readability capture still needs to be produced. | Five-second test/capture passes on the browser route with no asset fallback or ship flicker |
 
 ### WS-F — Onboarding & shell (GDD §8)
 | # | Item | Owner | Status | Accept when |
 |---|---|---|---|---|
-| F1 | Attention arbiter: single priority text channel, queue/drop rules | Claude (wave 2) | QUEUED | 10-min recording: zero overlapping text events |
-| F2 | First-15 re-pace to GDD §8.2 (wake→derelict tether→seam→snare→dock→choice) | Claude + CODEX script (wave 3) | QUEUED | `check:onboarding`, `check:first-15-runtime` updated + green; each beat teaches one verb |
+| F1 | Attention arbiter: single priority text channel, queue/drop rules | Claude (wave 2) | **PARTIAL** (minimal one-voice gate + first-hour static audit pass; broader 10-min runtime proof still pending) | 10-min recording: zero overlapping text events |
+| F2 | First-15 re-pace to GDD §8.2 (wake→derelict tether→seam→snare→dock→choice) | Claude + CODEX script (wave 3) | **BUILT, RUNTIME PROOF RED** (`check-first-hour` + `check:onboarding` pass; `check:first-15-runtime` timed out in current tree) | `check:onboarding`, `check:first-15-runtime` updated + green; each beat teaches one verb |
 | F3 | Wiring pass: telemetry activate, accessibility.css link + applyAccessibility(), radar a11y palette, settings additions (scheme picker slot, damage numbers, shake slider) | **AGY-1** | **DONE** (all verified by file evidence + checks) | `window.__SF_TELEMETRY__` live; `check:ui-a11y` green; settings render |
 | F1a | One-voice comms gate (minimal arbiter): chatter queues behind intro modal, drips 3.5 s apart, stale ambient drops | **Claude** | **DONE** (verified: 1 comms line during intro vs prior wall) | 10-min recording: zero overlapping text events (full F1 arbiter still wave-2) |
 | E3a | HUD strip→chips: SPD+WPN live; CARGO/CR/CLASS contextual chips; THR/STOP retired into SPD tip | **Claude** | **DONE** | GDD §9.4 three-anchor layout (full pass incl. priority channel still wave-2) |
@@ -106,23 +114,31 @@ re-derive the 47a expectations — run the sf-sim record path for `test/47a.tele
 test/47a.inputs.json if the tutorial rock now fractures first), then freeze with
 `npm run check:sim` (--repeat 20 --reload-at 600) and `check:sim:compare` green.
 
-**Wave-2 status (2026-07-04):** C1 mining seams/vent/fracture/vacuum/noise **DONE** (CODEX-4,
-`check:mining:2` green). D4 AI telegraphs/flee-jettison/wedges/barks **DONE** (CODEX-5,
-`check-ai-telegraphs` green). E2 sector palettes **DONE** (CODEX-7B, `check:sector-palettes` green;
-palette lerp 1.5 s on jump). Tether feel pass **DONE** (Claude): ghost-anchor bug fixed at service
-level (breakOrphans + unconditional break-on-cut-failure), G toggle + 0.25 s re-latch cooldown,
-pickups no longer attachable, reload-safe adoption (`_adoptExisting`), `state.player.tether` mirror,
-segmented cable visual with slack bow/whip/strain colors + snap burst (vfx.js, supersedes the stiff
-HDR ribbon for player-owned tethers), HUD TETHER readout with [G] RELEASE, all verbs in Settings
-Controls, physics socket tuned [0.3, 0.15] with all three tether contracts green. A3 cruise brief
-still staged (brief-codex-6-cruise.md). Remaining: E1 parallax depth, D3 juice stack, B3 overview
-strip, B4 target panel, F1 full arbiter, F2 first-15 re-pace, golden re-record above.
+**Status reconciliation (2026-07-04):** C1/C2/C3, D3/D4, E1/E2/E3, B3/B4, SPEC2/01, SPEC2/03 static,
+SPEC2/05 mining/economy slices, SPEC2/06, and SPEC2/07 all have passing targeted checks as listed in
+`design/CURRENT_BUILD_STATUS.md`. Do not re-brief those as unstarted work. Current red/missing gates
+are: `check:cruise` (missing script), `check:first-15-runtime` (timeout),
+`check:market-first-loop` (timeout), `check:claim-base` (C-key fallthrough), `check-ui-screen-imports`
+(4 failures in the dirty tree), `check:perf` (strict 60fps p95 16.9 ms vs 16.7 ms target),
+`check:sim:compare`/`check:replay` (stale 47-A tape), SPEC2/04 encounter director (missing
+source/check), and SPEC2/08 PC/browser release readiness (missing soak/capture/perf proof).
+Green proof to preserve: `check:flight:clean`, `check:assets:live`, and `check:visual-stability`.
 
 ### Wave plan
-- **Wave 1 (now, parallel):** A1+E3 (Claude) ∥ A2 (CODEX-2) ∥ D1 (CODEX-1) ∥ B1+B2 (CODEX-3) ∥ F3 (AGY-1) ∥ D2 (GROK-1)
-- **Wave 2:** C1, D3, D4, A3, E1, E2, F1, B3, B4 — after wave-1 review; reuse ownership map, updated per collision
-- **Wave 3:** C2, C3, D5, E4, F2, balance pass on CONTENT_BIBLE prices for new sinks
-- **Wave 4:** integration playtest, telemetry-informed tuning, `npm run check:ci`, release notes
+- **Stabilization wave:** fix the current proof surface first: keep `check:bundle`,
+  `check:flight:clean`, `check:assets:live`, and `check:visual-stability` green, then repair
+  `check-ui-screen-imports`, `check:first-15-runtime`, `check:market-first-loop`, `check:claim-base`,
+  `check:cruise`, `check:perf`, and the 47-A re-record batch.
+- **World Alive wave:** implement D5 / SPEC2/04 (`encounterDirector`, encounter shapes, one-voice
+  trace check, toll/faction/econ hooks).
+- **Asset/media reachability wave:** preserve the repaired whole-ship GLB runtime contract for
+  Kestrel/Pelican/Wasp and the green `check:assets:live` / `check:visual-stability` gates, plus
+  tasteful default UI wiring/classification for existing cinematics/ore/pilot/UI media.
+- **PC/browser release wave:** SPEC2/08 revised for PC/browser readiness:
+  release soak, PC browser perf evidence, optional desktop-shell parity evidence, capture scripts,
+  zero-console loop, `check:ci`.
+- **Optional expansion wave:** sector-count/content expansion and longform Blender asset production
+  after the proof surface is green.
 
 ## 2. Review gate (lead runs after every agent)
 1. `git status` — only owned files touched. 2. Grep the promised symbols exist. 3. Run the item's

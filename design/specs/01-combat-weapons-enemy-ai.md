@@ -1,5 +1,9 @@
 # Combat, weapons & enemy AI
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 A fixed-60Hz, data-driven combat layer resolving all damage through a unified shield -> armor -> hull pipeline with 4 damage types (kinetic, energy, explosive, thermal), one shared energy capacitor powering weapons + afterburner boost, and 6 data-defined weapon archetypes (pulse, beam, autocannon, missile, flak/PD, mining-laser-as-weapon). Ships expose typed hardpoints (S/M/L) + module slots; player and NPCs share one `combatants` array and one pooled `projectiles` array so the same resolver, targeting, and steering run for both. Enemy AI is a steering + finite-state-machine stack across 6 archetypes (swarmer, sniper, brawler, fleeing trader, pirate, mini-boss capital), driven by an aggro/threat table. Enemy strength, loot, and credit rewards scale off sector.securityLevel (0..5 danger tier). Player death runs an insurance/respawn flow that refunds a fraction of hull+cargo value and returns to last docked station. All state lives in shared GameState; systems talk via the event bus (combat:damage, combat:kill, combat:fire, ai:stateChange, player:death, loot:drop) so trade/mining/economy/save compose without combat knowing their internals.
 

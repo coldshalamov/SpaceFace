@@ -3,14 +3,14 @@ import { BINDINGS } from './bindings.js';
 const KBM_PROMPTS = Object.freeze({
   flight: `W/Up thrust  •  A D steer  •  Mouse aim  •  LMB/Space fire  •  RMB mine  •  Shift boost  •  X countermeasure  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.codex.label} codex  •  ${BINDINGS.cargo.label} cargo  •  ${BINDINGS.comms.label} comms`,
   mining: `RMB hold to mine  •  Release to cool  •  Fly through cargo drift  •  ${BINDINGS.drill.label} drill view  •  Tab next signal`,
-  combat: 'LMB/Space fire  •  Mouse aim at target  •  Tab cycle targets  •  X countermeasure  •  F auto-fire  •  Shift boost to dodge',
+  combat: 'LMB/Space fire  •  Mouse aim at target  •  Tab cycle hostiles  •  X countermeasure  •  F auto-target  •  Shift boost to dodge',
   station: `${BINDINGS.dock.label} dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  ${BINDINGS.dock.label}/Esc undock`,
   gate: `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. W / Up thrusts, A D / arrows steer, and the mouse aims.',
   tutorialMine: 'The Kestrel is armed: LMB or Space fires the Pulse Laser S. Hold RMB on the marked rock to mine the mass reading, then collect the drift.',
   tutorialDock: `Follow the cyan station arrow. Press ${BINDINGS.dock.label} at the dock prompt. Bring the discrepancy back before someone edits it out.`,
   firstFlight: `W/Up to thrust, A D/arrows to steer, Mouse to aim, LMB/Space fires the Pulse Laser S, RMB mines marked rocks, Shift boosts, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} opens the star map, ${BINDINGS.missionLog.label} opens the Mission Log, ${BINDINGS.dock.label} docks.`,
-  firstCombat: 'Hostile detected! LMB or Space to fire. Hold aim on a target to lock on. F toggles auto-fire.',
+  firstCombat: 'Hostile detected! LMB or Space to fire. F toggles auto-target — guns lock hostiles while you steer with the mouse.',
   firstStation: `Stations offer repairs, trading, upgrades, and mission boards. Press ${BINDINGS.dock.label} to dock; inside the hub, arrow keys change tabs, Enter/Space acts, and Departure Check shows what needs attention before ${BINDINGS.dock.label}/Escape undocks.`,
   firstGate: `Jump gates connect star systems. Open the Star Map (${BINDINGS.starmap.label}) to plot a jump route.`,
 });
@@ -50,16 +50,25 @@ const TOUCH_PROMPTS = Object.freeze({
 // classic table. Keep verbs honest: don't promise mechanics that haven't shipped.
 const KBM_HELM_OVERRIDES = Object.freeze({
   flight: `Mouse steer+aim  •  W thrust  •  S reverse  •  A D strafe  •  Space brake  •  LMB fire  •  RMB mine  •  Shift boost  •  G tether  •  X countermeasure  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} nav chart  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.cargo.label} cargo`,
-  combat: 'Steer with the mouse  •  LMB fire  •  Tab cycle targets  •  X countermeasure  •  F auto-fire  •  Shift boost  •  Space brake to break pursuit',
+  combat: 'Steer with the mouse  •  LMB fire  •  Tab cycle hostiles  •  X countermeasure  •  F auto-target  •  Shift boost  •  Space brake to break pursuit',
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Your nose follows the mouse — W thrusts toward it, Space brakes.',
   firstFlight: `Your nose follows the mouse. W thrusts, S reverses, A/D strafe, Space brakes to a full stop, Shift boosts. LMB fires the Pulse Laser S, RMB mines marked rocks. ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} the nav chart, ${BINDINGS.dock.label} docks.`,
-  firstCombat: 'Hostile detected! Steer with the mouse and fire with LMB. F toggles auto-fire. Space-brake hard to break their firing line.',
+  firstCombat: 'Hostile detected! F toggles auto-target — guns track hostiles while you steer. LMB fires. Space-brake hard to dodge.',
+});
+
+// PILOT (the default scheme) — keyboard flies, mouse fights. Same override-only policy as helm.
+const KBM_PILOT_OVERRIDES = Object.freeze({
+  flight: `W thrust  •  A D turn (strafe while thrusting)  •  S retro  •  Space brake  •  Mouse aim  •  LMB fire  •  MMB pursue target  •  RMB mine  •  Shift boost  •  G tether  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} nav chart  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.cargo.label} cargo`,
+  combat: 'Mouse aims, LMB fires  •  MMB pursue — the ship tails your target while you shoot  •  A/D turn while coasting, Q/E orbit-strafe  •  Any thrust/turn/brake key breaks pursuit',
+  tutorialFlight: 'Follow the yellow nav arrow. W thrusts; A/D turn the nose while coasting and strafe while thrusting; Space brakes; the mouse only aims.',
+  firstFlight: `W thrusts, S retro-burns, Space brakes to a stop. A/D (or arrows) turn while coasting and strafe while thrusting forward. The mouse aims — LMB fires, RMB mines, MMB pursues your locked target. Shift boosts, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.dock.label} docks.`,
+  firstCombat: 'Hostile detected! Lock a target, then MMB to pursue — the flight computer tails them while you fire with LMB. Touch any flight key to take back manual control.',
 });
 
 // Active kbm scheme — uiRoot keeps this current from settings (boot + settings:changed).
-let _kbmScheme = 'helm-assist';
+let _kbmScheme = 'pilot';
 export function setPromptScheme(scheme) {
-  _kbmScheme = scheme === 'classic' ? 'classic' : 'helm-assist';
+  _kbmScheme = (scheme === 'classic' || scheme === 'helm-assist' || scheme === 'pilot') ? scheme : 'pilot';
 }
 
 export const CONTROL_PROMPTS = Object.freeze({
@@ -80,8 +89,9 @@ export function currentPromptModality(ctx = {}) {
 }
 
 export function controlPrompt(key, modality = 'kbm') {
-  if ((modality === 'kbm' || !CONTROL_PROMPTS[modality]) && _kbmScheme !== 'classic' && KBM_HELM_OVERRIDES[key]) {
-    return KBM_HELM_OVERRIDES[key];
+  if (modality === 'kbm' || !CONTROL_PROMPTS[modality]) {
+    if (_kbmScheme === 'helm-assist' && KBM_HELM_OVERRIDES[key]) return KBM_HELM_OVERRIDES[key];
+    if (_kbmScheme === 'pilot' && KBM_PILOT_OVERRIDES[key]) return KBM_PILOT_OVERRIDES[key];
   }
   const prompts = CONTROL_PROMPTS[modality] || CONTROL_PROMPTS.kbm;
   return prompts[key] || CONTROL_PROMPTS.kbm[key] || '';

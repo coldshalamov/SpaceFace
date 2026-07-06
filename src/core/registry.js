@@ -3,6 +3,7 @@
 import { core } from './coreSystem.js';
 import { physics } from './physics.js';
 import { input } from '../systems/input.js';
+import { autoTargetAssist } from '../systems/autoTargetAssist.js';
 import { scanner } from '../systems/scanner.js';
 import { aiPorts } from '../systems/aiPorts.js';
 import { ai } from '../systems/ai.js';
@@ -39,6 +40,11 @@ import { intervention } from '../systems/intervention.js';
 import { claims } from '../systems/claims.js';
 import { beacons } from '../systems/beacons.js';
 import { onboarding } from '../systems/onboarding.js';
+// WORLD OVERHAUL / REVAMP 2.1 — Wave 1 systems (see design/revamp/REVAMP_MASTER.md).
+import { spawnBudget } from '../systems/spawnBudget.js';            // single ship-cap arbiter (ctx.helpers.spawnBudget)
+import { encounterDirector } from '../systems/encounterDirector.js'; // zone-anchored living-universe encounters
+import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
+import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 import { render } from '../render/renderer.js';
 import { vfx } from '../render/vfx.js';
 import { feel } from '../render/feel.js';
@@ -54,8 +60,8 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, input, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, mining, cargo, economy,
-    automation, wingmen, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, render, vfx, feel, audio, ui, save,
+    core, voiceArbiter, input, autoTargetAssist, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, mining, cargo, economy,
+    automation, wingmen, intervention, spawnBudget, world, encounterDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -75,8 +81,8 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, scanner, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, mining, cargo, automation, wingmen, crafting,
-    economy, intervention, world, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding,
+    input, autoTargetAssist, scanner, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, mining, cargo, automation, wingmen, crafting,
+    economy, intervention, world, encounterDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
   ];
   // beacons runs after AI/actions and before flight so its lure can override a hostile's intent for
   // this tick (drift toward the beacon) without touching AI internals; it is a no-op when none exist.
@@ -89,6 +95,14 @@ export function createRegistry(ctx) {
     ctx,
     get(name) { return byName.get(name); },
     init() { for (const s of SYSTEMS) { if (s.init) s.init(ctx); } },
+    destroy() {
+      const seen = new Set();
+      for (const s of [...UPDATE_ORDER, ...SYSTEMS]) {
+        if (!s || seen.has(s) || !s.destroy) continue;
+        seen.add(s);
+        s.destroy();
+      }
+    },
     step(dt) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);

@@ -37,7 +37,14 @@ export function isIgnorableWebglValidation(issue) {
 
 export function isProbeInducedWarning(issue) {
   if (!issue || issue.type !== 'warning') return false;
-  return /GPU stall due to ReadPixels/i.test(String(issue.text || ''));
+  const text = String(issue.text || '');
+  // Environmental warnings that are not code defects, filtered under --strict-warnings:
+  //  - "GPU stall due to ReadPixels": induced by the probe reading the framebuffer for screenshots.
+  //  - "KHR_parallel_shader_compile extension not supported": an OPTIONAL Three.js perf extension
+  //    absent under software rendering (SwiftShader) but present on hardware GPUs — a capability
+  //    notice, not a bug (it never appears on the real-GPU release path).
+  return /GPU stall due to ReadPixels/i.test(text)
+    || /KHR_parallel_shader_compile extension not supported/i.test(text);
 }
 
 export function summarizeIssues(issues) {

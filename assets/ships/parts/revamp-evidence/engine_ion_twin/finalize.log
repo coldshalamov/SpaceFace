@@ -1,0 +1,8 @@
+{
+  "partId": "engine_ion_twin",
+  "file": "engines/engine_ion_twin.glb",
+  "tris": 1968,
+  "bytes": 268976,
+  "images": 3,
+  "materials": "Material_Mechanical"
+}

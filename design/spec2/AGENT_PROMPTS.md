@@ -20,7 +20,7 @@ commands (the INDEX gives these generically; this file makes them spec-specific 
 | 2 | `05_ECONOMY_PROGRESSION` | **Backend / systems** (leans backend) | 02 |
 | 3 | `04_WORLD_ALIVE` | **Backend / sim + AI** (after 02) | 06 |
 | 3 | `06_UI_IDENTITY` | **Frontend** (after 04) | 04 |
-| 4 | `08_STEAM_RELEASE` | **QA / release** (after all + 47a golden re-record) | — |
+| 4 | `08_RELEASE_READINESS` | **QA / release** (after all + 47a golden re-record) | — |
 | ∞ | **Asset production** | **Blender MCP** (longform, see §10) | runs on its own lane; coordinate via `release.__lock/` |
 
 ---
@@ -382,33 +382,40 @@ Regression floor:
 
 ## Wave 4 (after all + 47a golden re-record)
 
-### 8. `08_STEAM_RELEASE` — QA / release agent
+### 8. `08_RELEASE_READINESS` — PC/browser QA / release agent
 ```
-Implement design/spec2/08_STEAM_RELEASE.md exactly. This is the EXIT CHECKLIST — no features, only
-BARS. A build that passes this file is demo-able and wishlist-worthy. Run AFTER every other spec and
+Implement design/spec2/08_RELEASE_READINESS.md exactly. This is the EXIT CHECKLIST — no features, only
+BARS. A build that passes this file is demo-able as a PC/browser game. Run AFTER every other spec and
 AFTER the 47a golden re-record batch (documented in BUILD_PLAN — do that re-record first, it
 unblocks the whole suite).
+
+Scope correction: SpaceFace is a PC/browser game. Do not add handheld-specific gates or gamepad-only
+release blockers. Browser play is primary; packaged desktop is an optional shell that must boot the
+same route when distributed.
 
 Gating prerequisite: re-record the 47a goldens deliberately (the pending re-record batch), so
 check:sim:compare can move from hashEqual:true to the real expected hashes. Document the batch.
 
 Performance (spec §1, REAL HARDWARE not headless — headless numbers are driver-polluted, known):
 60fps sustained, ZERO frames > 32ms during: 6-ship brawl, 3-asteroid fracture, station approach with
-8 ambient NPCs, cruise through dust. Measure via check:hitch-budget in ELECTRON (npm run electron
-after build:bundle). Boot-to-menu <5s, menu-to-flight <3s. Heap growth <30MB over 30min soak;
+8 ambient NPCs, cruise through dust. Measure via check:hitch-budget on the primary PC browser route;
+if a desktop shell is distributed, repeat in Electron after build:bundle. Boot-to-menu <5s,
+menu-to-flight <3s. Heap growth <30MB over 30min soak;
 entity/mesh counts return to baseline after sector round-trip. If bars fail: renderScale auto-tune
 (0.85->0.7 under sustained >24ms, restore on calm, notify once via one-voice "Render scale
 adjusted.") — implement only if needed.
 
-Input (spec §2): gamepad EVERY verb bound (tether=RB, charge throw=X hold, detonate=X tap, scan=
-Dpad up, cruise=Y, reel=Dpad down+stick Y); prompts swap automatically; rebindable flight actions
-include new verbs. Full KBM rebind persists + round-trips (check:settings-profile). Steam Deck:
-readable at 1280x800 (min font 11px), gamepad-only first-15 possible (audit every screen's key
-handling — no mouse-only interactions).
+Input (spec §2): KBM is primary. Every player verb has a documented KBM binding, visible prompts use
+the live binding registry, and full KBM rebind persists + round-trips (check:settings-profile).
+Controller support is optional PC support where it already exists; keep prompts accurate if touched,
+but do not make gamepad-only play a release blocker. Browser viewport sanity: 1280x800 and common
+desktop sizes have no clipping or required modal traps.
 
-Content floor (spec §3): 8 factions, >=24 sectors w/ palette identity, 13 hulls + 6 role-kit
-modules (spec2/05), 10 mission types + bulk-haul + named bounties, 8-beat story w/ B4 branch, 3
-endings (verify reachable), 28-node tech tree, automation/claims loops functional post-tutorial.
+Content floor (spec §3): 8 factions, current authored 10-sector graph w/ palette identity, 13 hulls
++ 6 role-kit modules (spec2/05), 10 mission types + bulk-haul + named bounties, 8-beat story w/ B4
+branch, 3 endings (verify reachable), 28-node tech tree, automation/claims loops functional
+post-tutorial. Expanding beyond 10 sectors is future content production, not a PC/browser release
+hygiene prerequisite unless GDD/BUILD_PLAN is explicitly revised.
 
 Trust sweep (spec §4, the things reviewers dock $10 for): save anywhere except combat; autosave
 checksum verified; Continue never dead-ends; pause instant+silent; alt-tab safe; window resize
@@ -417,7 +424,7 @@ jump->dock->save->load->quit); renderer.info.programs all valid (fragment 'preci
 EVERY check in npm run check:ci green incl re-recorded 47a goldens; a11y palettes/motion/flash
 honored everywhere; UI scale 0.85-1.25 without clipping.
 
-Store-page ammunition (spec §5, produced by the BUILD not Photoshop): scripts/capture-capsule-
+Release capture ammunition (spec §5, produced by the BUILD not Photoshop): scripts/capture-capsule-
 shots.mjs screenshots the 6 money moments (tether slingshot mid-arc, seam-lit asteroid, station
 approach core palette, wedge formation telegraphing, cruise streaks, capital kill bloom) at
 2560x1440. 60s gameplay capture script (devshots pipeline) hitting launch->scan->mine->interdiction->
@@ -426,8 +433,10 @@ save-disabled via ?demo build gate.
 
 Definition of done (spec §6):
   1. scripts/check-release-soak.mjs completes the §4 loop with zero errors, all autosaves loadable.
-  2. Electron hitch run recorded into .devshots/spec2/perf-electron.json, all §1 bars met.
-  3. Gamepad-only first-15 recorded (input trace) with zero mouse events required.
+  2. PC browser hitch run recorded into .devshots/spec2/perf-browser.json, all §1 bars met; add
+     .devshots/spec2/perf-electron.json only when shipping the optional desktop shell.
+  3. KBM first-15 runtime proof passes in browser; controller prompt coverage remains optional unless
+     controller support is intentionally touched.
   4. Capsule shots + capture script outputs exist, pass five-second test.
   5. npm run check:ci fully green on the release-candidate commit.
 Regression floor: npm run check:ci  (the whole suite — this spec IS the final gate)

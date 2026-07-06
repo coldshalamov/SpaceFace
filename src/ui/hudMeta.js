@@ -221,7 +221,7 @@ export const HUD_META_CSS = `
     text-shadow:var(--text-shadow-hard), 0 0 8px rgba(255,42,42,.5); }
   /* phase readout — general ship-status line, just under the top-center target lock (§3E).
      (Chromeless: stays clear of the now-borderless bottom-right radar/target dock.) */
-  .sf-hudphase { position:absolute; top:54px; left:50%; transform:translateX(-50%);
+  .sf-hudphase { position:absolute; top:96px; left:50%; transform:translateX(-50%);
     display:flex; align-items:center; gap:7px; pointer-events:none; opacity:.85; }
   .sf-hudphase__k { font-size:9px; letter-spacing:.14em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
   .sf-hudphase__v { font-size:11px; letter-spacing:.08em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }

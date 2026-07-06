@@ -79,10 +79,12 @@ src/
   data/               pure‑data catalogs (ships, weapons, modules, commodities, sectors,
                       factions, missions, tech, enemies, automation, palettes, …)
 ARCHITECTURE.md       the canonical contract (state schema, event table, file manifest)
-design/               per‑subsystem design specs + the content/balance bible
+design/               current GDD/build plan plus historical design material
 ```
 
 **Architecture in one breath:** a single flat `GameState`, an event bus, and ~20 self‑contained "systems" (each `init(ctx)` + `update(dt, state)`) wired in a fixed order and driven by a 60 Hz fixed‑timestep loop decoupled from rendering. Content is data‑driven. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full contract and [`design/`](design/) for subsystem specs.
+
+Current design authority lives in [`design/GDD_2_0.md`](design/GDD_2_0.md), [`design/BUILD_PLAN_2_0.md`](design/BUILD_PLAN_2_0.md), [`design/CURRENT_BUILD_STATUS.md`](design/CURRENT_BUILD_STATUS.md), and [`design/spec2/INDEX.md`](design/spec2/INDEX.md). The older `design/specs/` suite is retained as legacy reference material only unless a current 2.0 doc explicitly revives a section.
 
 ### Dev helpers
 - `node scripts/check-data.mjs` — verify every data module's exports.
@@ -91,9 +93,9 @@ design/               per‑subsystem design specs + the content/balance bible
 
 ---
 
-## Packaging for Steam (desktop build)
+## Optional Desktop Packaging
 
-An **Electron** shell is included (`electron/main.cjs`) — it serves the app on a private localhost port and opens a game window.
+SpaceFace is a PC/browser game first. The browser route (`node server.js` → `http://localhost:8123/`) is the primary player-facing path. An optional **Electron** shell is included (`electron/main.cjs`) for desktop distribution; it serves the same game route on a private localhost port and opens a game window.
 
 - **Dev** (`npm run electron`): serves the raw ES modules + importmap from the project root at the same root URL as the browser path — no build step, hot-editable source.
 - **Release** (`npm run dist`): first runs `build:bundle` (esbuild) to produce a tree-shaken, minified bundle in `build/web/` (~45% smaller JS than the raw `src/`+`vendor/` tree, with three/rapier/loaders code-split into on-demand chunks), then electron-builder packages that into an installer. The Electron shell auto-detects the bundle and serves it when present.
@@ -105,7 +107,7 @@ npm run build:bundle   # build the minified bundle to build/web/ (without packag
 npm run dist           # bundle + package a distributable (Win installer / mac dmg / linux AppImage) into dist/
 ```
 
-For **Steam**: add Steamworks via `steamworks.js` in `electron/main.cjs`, then ship the `electron-builder` output through SteamPipe. (Prefer **Tauri** for much smaller binaries — point its dev URL at this same web app, unchanged. A fully native port to Godot/Unity is also straightforward since the design is data-driven.)
+Desktop packaging is a shell concern only. It must not change gameplay, assets, settings defaults, scenarios, renderer features, or UI reachability from the browser route.
 
 ---
 

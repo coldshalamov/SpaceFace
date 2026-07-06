@@ -59,7 +59,9 @@ const PIRATE_FLEE_CARGO = Object.freeze(['cmdty_stolen_goods', 'cmdty_munitions'
 const UNSAFE_PLAYER_SECURITY = 0.45;
 const LANE_CONTEXT_INNER_R = 900;
 const LANE_CONTEXT_OUTER_R = 2200;
-const PLAYER_DANGER_CONTEXTS = new Set(['interdiction', 'spawn_request', 'bounty_hunter', 'mission', 'encounter']);
+const PLAYER_DANGER_CONTEXTS = new Set([
+  'interdiction', 'spawn_request', 'bounty_hunter', 'mission', 'encounter', 'tutorial_pirate',
+]);
 const AI_BARKS = Object.freeze({
   attackRun: Object.freeze(['Coming around.', 'Weapons lining up.', 'Run starts now.']),
   alphaStrike: Object.freeze(['Charging heavy guns.', 'Hold for alpha.', 'Big guns hot.']),

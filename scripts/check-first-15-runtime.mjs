@@ -30,6 +30,7 @@ try {
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 15000 });
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
+  await waitForBootOverlayGone(page);
 
   const opened = await clickButton(page, 'New Game');
   assert.equal(opened, true, 'main menu should expose New Game');
@@ -136,6 +137,19 @@ async function clickButton(page, label) {
   if (await button.count() <= 0) return false;
   await button.click({ timeout: 10000 });
   return true;
+}
+
+// The full-screen boot overlay (z-index 2000, pointer-events:auto) intercepts clicks until
+// precompilePipelines() finishes and hideBootOverlay() adds `.hidden` (→ pointer-events:none). That's
+// sub-second on a real GPU but ~20 s under software rendering (SwiftShader), which would otherwise
+// blow the New Game click's 10 s actionability timeout. Wait for it to clear first.
+async function waitForBootOverlayGone(page, timeoutMs = 90000) {
+  await page.waitForFunction(() => {
+    const o = document.getElementById('boot-overlay');
+    if (!o) return true;
+    const s = getComputedStyle(o);
+    return o.classList.contains('hidden') || s.pointerEvents === 'none' || s.display === 'none' || s.visibility === 'hidden';
+  }, null, { timeout: timeoutMs });
 }
 
 async function startFreshServer() {

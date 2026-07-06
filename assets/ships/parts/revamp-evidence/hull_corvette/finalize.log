@@ -1,0 +1,8 @@
+{
+  "partId": "hull_corvette",
+  "file": "hulls/hull_corvette.glb",
+  "tris": 4276,
+  "bytes": 1531576,
+  "images": 5,
+  "materials": "Material_Hull"
+}

@@ -71,8 +71,8 @@ export function createTargetPanel(ctx) {
   el.className = 'sf-target sf-hudpanel';
   el.style.display = 'none';
   el.setAttribute('role', 'status');
-  el.setAttribute('aria-live', 'polite');
-  el.setAttribute('aria-atomic', 'true');
+  el.setAttribute('aria-live', 'off');
+  el.setAttribute('aria-atomic', 'false');
   el.innerHTML = `
     <div class="sf-target__head">
       <span class="sf-target__name">—</span>

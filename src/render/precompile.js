@@ -5,11 +5,12 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { createVisualFactory } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
+  getAuthoredUpgradeQueueStats,
   preloadAuthoredPartLibrary,
   shipArchetypeKeyForDefId,
   shipArchetypesForPrecompile,
 } from './partsLibrary.js';
-import { createVfxPrecompileSalvo } from './vfx.js';
+import { createVfxPrecompileSalvo, eventLightPoolSizeFor } from './vfx.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -74,6 +75,22 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
       addBeamWarmup(staging);
       staging.add(createVfxPrecompileSalvo());
     }
+    // Warm shaders against the EXACT light configuration the game runs with. three bakes the
+    // visible light count into every shader program, so compiling against a different count
+    // makes every warmed program a cache miss — the whole scene then recompiles synchronously
+    // the first time a weapon flash fires (measured as multi-second freezes on Intel/ANGLE).
+    // The vfx event-light pool keeps its lights permanently visible (intensity-only flashes);
+    // if it hasn't attached yet, stage stand-ins so the compiled count still matches runtime.
+    const targetPointLights = eventLightPoolSizeFor(options.video);
+    let visiblePointLights = 0;
+    scene.traverseVisible((object) => { if (object.isPointLight) visiblePointLights++; });
+    for (let i = visiblePointLights; i < targetPointLights; i++) {
+      const standIn = new THREE.PointLight(0xffffff, 0, 400, 2.0);
+      standIn.name = `SF_Precompile_EventLight_${i}`;
+      standIn.position.set(i * 24, 10, 0);
+      staging.add(standIn);
+    }
+    const authoredQueue = await waitForAuthoredUpgradeQueue(scene);
     staging.updateMatrixWorld(true);
     await renderer.compileAsync(staging, camera, scene);
     if (includeGlobalPipelines && typeof options.warmPostProcess === 'function') {
@@ -85,12 +102,32 @@ async function precompileNow(renderer, scene, camera, shipSpecs, includeGlobalPi
       skipped: false,
       shipArchetypes: shipSpecs.length,
       globalPipelines: includeGlobalPipelines,
+      authoredUpgradeQueue: authoredQueue,
       programs: renderer.info && renderer.info.programs ? renderer.info.programs.length : 0,
     };
   } finally {
     scene.remove(staging);
     disposeObject(staging);
   }
+}
+
+async function waitForAuthoredUpgradeQueue(scene, maxFrames = 300) {
+  let stats = getAuthoredUpgradeQueueStats(scene);
+  for (let i = 0; i < maxFrames && stats && (stats.pending > 0 || stats.running); i++) {
+    await nextFrame();
+    stats = getAuthoredUpgradeQueueStats(scene);
+  }
+  return stats || { pending: 0, running: false };
+}
+
+function nextFrame() {
+  return new Promise((resolve) => {
+    const raf = globalThis && typeof globalThis.requestAnimationFrame === 'function'
+      ? globalThis.requestAnimationFrame.bind(globalThis)
+      : null;
+    if (raf) raf(() => resolve());
+    else setTimeout(resolve, 16);
+  });
 }
 
 function allShipSpecsForPrecompile() {

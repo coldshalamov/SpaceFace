@@ -91,11 +91,17 @@ const stationEnt = {
 };
 const stationMesh = vf.build(stationEnt);
 const gateMesh = vf.build(gateEnt);
+const worldSrc = readFileSync(resolve(ROOT, 'src/systems/world.js'), 'utf8');
+const visualFactorySrc = readFileSync(resolve(ROOT, 'src/render/visualFactory.js'), 'utf8');
 check('visualOverrides station uses authored boundary', stationMesh?.userData?.requestAuthoredUpgrade != null);
 check('visualOverrides gate uses authored boundary', gateMesh?.userData?.requestAuthoredUpgrade != null);
 check('visualOverrides station != generic primitive count',
   stationMesh && stationMesh.name && stationMesh.name.includes('AuthoredAssetBoundary'));
-check('world.js forwards archetypeGlb', readFileSync(resolve(ROOT, 'src/systems/world.js'), 'utf8').includes('archetypeGlb: st.archetypeGlb'));
+check('world.js forwards archetypeGlb', worldSrc.includes('archetypeGlb: st.archetypeGlb'));
+check('world.js decouples station collision radius from dock radius',
+  worldSrc.includes('radius: collisionRadius') && worldSrc.includes('placeScale: dockRadius / 14'));
+check('visualFactory has no station bubble shell meshes',
+  !/stat:(?:haze|chromeshell|grimeshell)/.test(visualFactorySrc));
 
 console.log(`\nstation-archetype-wiring: ${ok} ok, ${fail} fail`);
 process.exit(fail ? 1 : 0);

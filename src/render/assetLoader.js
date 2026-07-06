@@ -13,7 +13,7 @@ export const ASSET_AUTHORING_CONTRACT = Object.freeze({
     key: 'spacefaceAsset',
     required: Object.freeze({
       contractVersion: 1,
-      slot: 'hull | cockpit | engine | fin | weapon | greeble | gear | pod',
+      slot: 'hull | cockpit | engine | fin | weapon | greeble | gear | pod | place',
       forward: '+X', up: '+Y', starboard: '+Z', unit: 'metre',
       normalConvention: 'OpenGL',
       ormChannels: 'R=AO,G=Roughness,B=Metallic',
@@ -67,6 +67,11 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
 
 const runtimeByRenderer = new WeakMap();
 const warned = new Set();
+const WHOLE_SHIP_BODY_MIN_TRIS = 800;
+const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
+const GLB_MAGIC = 0x46546c67;
+const GLB_VERSION = 2;
+const GLB_CHUNK_JSON = 0x4e4f534a;
 const _inverseRoot = new THREE.Matrix4();
 const _relative = new THREE.Matrix4();
 const _anchorRelative = new THREE.Matrix4();
@@ -106,7 +111,8 @@ export async function loadAuthoredPart(url, options = {}) {
 
   const cacheKey = `${url}::${slot || '*'}`;
   if (!runtime.assets.has(cacheKey)) {
-    const task = runtime.gltf.loadAsync(url)
+    const task = validateWholeShipGlbJson(url)
+      .then(() => runtime.gltf.loadAsync(url))
       .then((gltf) => compileBlueprint(url, gltf, slot))
       .catch((error) => {
         runtime.failures.set(cacheKey, error);
@@ -176,6 +182,20 @@ export function invalidateAuthoredAsset(renderer, url = null) {
   }).catch(() => {});
 }
 
+export function disposeAuthoredAssetRuntime(renderer) {
+  const runtimePromise = runtimeByRenderer.get(renderer);
+  if (!runtimePromise) return;
+  runtimeByRenderer.delete(renderer);
+  runtimePromise.then((runtime) => {
+    runtime.assets.clear();
+    runtime.failures.clear();
+    for (const decoder of runtime.disposableDecoders || []) {
+      try { if (decoder && typeof decoder.dispose === 'function') decoder.dispose(); } catch (_) {}
+    }
+    runtime.disposableDecoders = [];
+  }).catch(() => {});
+}
+
 function runtimeFor(renderer) {
   let promise = runtimeByRenderer.get(renderer);
   if (!promise) {
@@ -188,6 +208,7 @@ function runtimeFor(renderer) {
 async function createRuntime(renderer) {
   const decoders = { gltf: false, ktx2: false, draco: false, meshopt: false };
   const paths = { ...ASSET_RUNTIME_DECODER_CONTRACT };
+  const disposableDecoders = [];
   let gltf;
   let source = 'three/addons/loaders/GLTFLoader.js';
 
@@ -203,13 +224,13 @@ async function createRuntime(renderer) {
   }
 
   if (decoders.gltf) {
-    await attachRuntimeDecoders(gltf, renderer, decoders);
+    await attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoders);
   }
 
-  return { gltf, assets: new Map(), failures: new Map(), source, decoders, paths };
+  return { gltf, assets: new Map(), failures: new Map(), source, decoders, paths, disposableDecoders };
 }
 
-async function attachRuntimeDecoders(gltf, renderer, decoders) {
+async function attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoders) {
   if (typeof gltf.setKTX2Loader === 'function') {
     try {
       const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
@@ -217,6 +238,7 @@ async function attachRuntimeDecoders(gltf, renderer, decoders) {
       ktx2.setTranscoderPath(ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath);
       if (renderer && typeof ktx2.detectSupport === 'function') ktx2.detectSupport(renderer);
       gltf.setKTX2Loader(ktx2);
+      disposableDecoders.push(ktx2);
       decoders.ktx2 = true;
     } catch (error) {
       warnOnce('ktx2-loader', '[assetLoader] KTX2/BasisU decoder unavailable; release-compressed textures will fail', error);
@@ -229,6 +251,7 @@ async function attachRuntimeDecoders(gltf, renderer, decoders) {
       const draco = new DRACOLoader();
       draco.setDecoderPath(ASSET_RUNTIME_DECODER_CONTRACT.dracoDecoderPath);
       gltf.setDRACOLoader(draco);
+      disposableDecoders.push(draco);
       decoders.draco = true;
     } catch (error) {
       warnOnce('draco-loader', '[assetLoader] DRACO decoder unavailable; Draco-compressed meshes will fail', error);
@@ -338,6 +361,7 @@ function compileBlueprint(url, gltf, expectedSlot) {
   }
 
   validateHookSurface(expectedSlot || metadata.slot, primitives, markers, errors, { legacyPart: metadata.legacyPart === true });
+  if (isWholeShipUrl(url)) validateWholeShipBody(url, primitives, errors);
 
   _bounds.setFromObject(scene);
   _bounds.getSize(_boundsSize);
@@ -447,6 +471,7 @@ function slotFromCategory(category) {
   if (value === 'greebles') return 'greeble';
   if (value === 'gear') return 'gear';
   if (value === 'pods') return 'pod';
+  if (value === 'places') return 'place';
   return null;
 }
 
@@ -464,7 +489,7 @@ function validateAssetMetadata(meta, expectedSlot, errors) {
   if (!meta.assetId || typeof meta.assetId !== 'string') {
     errors.push('spacefaceAsset.assetId must be a stable non-empty string');
   }
-  const allowedSlots = ['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod'];
+  const allowedSlots = ['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod', 'place'];
   if (!allowedSlots.includes(meta.slot)) {
     errors.push(`spacefaceAsset.slot must be one of ${allowedSlots.join(', ')}`);
   } else if (expectedSlot && meta.slot !== expectedSlot) {
@@ -597,6 +622,111 @@ function validateHookSurface(slot, primitives, markers, errors, options = {}) {
     if (mountCounts.engine > 4) errors.push(`hull exposes ${mountCounts.engine} engine mounts; at most four are allowed`);
     if (mountCounts.fin > 4) errors.push(`hull exposes ${mountCounts.fin} fin mounts; at most four are allowed`);
   }
+}
+
+function isWholeShipUrl(url) {
+  return /\/wholeships\/[^/]+\.glb$/i.test(String(url || ''));
+}
+
+async function validateWholeShipGlbJson(url) {
+  if (!isWholeShipUrl(url) || typeof fetch !== 'function') return;
+  const response = await fetch(url, { cache: 'force-cache' });
+  if (!response.ok) throw new AssetContractError(url, [`whole-ship GLB fetch failed: HTTP ${response.status}`]);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const gltf = parseGlbJson(bytes);
+  const errors = validateWholeShipJsonDocument(url, gltf);
+  if (errors.length) throw new AssetContractError(url, errors);
+}
+
+function parseGlbJson(bytes) {
+  if (!bytes || bytes.byteLength < 20) throw new Error('whole-ship GLB is too small');
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (view.getUint32(0, true) !== GLB_MAGIC) throw new Error('whole-ship GLB has bad magic');
+  if (view.getUint32(4, true) !== GLB_VERSION) throw new Error('whole-ship GLB has unsupported version');
+  let off = 12;
+  while (off + 8 <= bytes.byteLength) {
+    const len = view.getUint32(off, true);
+    const type = view.getUint32(off + 4, true);
+    const start = off + 8;
+    if (start + len > bytes.byteLength) break;
+    if (type === GLB_CHUNK_JSON) {
+      const json = new TextDecoder().decode(bytes.subarray(start, start + len)).replace(/\0+$/, '').trim();
+      return JSON.parse(json);
+    }
+    off = start + len;
+  }
+  throw new Error('whole-ship GLB is missing JSON chunk');
+}
+
+function validateWholeShipJsonDocument(url, gltf) {
+  const meshByIdx = Object.fromEntries((gltf.meshes || []).map((mesh, index) => [index, mesh]));
+  const meshNames = [];
+  let hullTris = 0;
+  for (const node of gltf.nodes || []) {
+    if (node.mesh == null) continue;
+    const mesh = meshByIdx[node.mesh] || {};
+    meshNames.push(mesh.name || node.name || 'unnamed');
+    if (wholeShipJsonMeshLooksLikeBody(gltf, node, mesh)) hullTris += gltfMeshTriangleCount(gltf, mesh);
+  }
+  if (hullTris >= WHOLE_SHIP_BODY_MIN_TRIS) return [];
+  return [`whole-ship hull body missing: hull triangles=${hullTris} < ${WHOLE_SHIP_BODY_MIN_TRIS}; asset=${url}; meshes=${meshNames.join(', ')}`];
+}
+
+function wholeShipJsonMeshLooksLikeBody(gltf, node, mesh) {
+  const meshName = String(mesh && mesh.name || '').toLowerCase();
+  if (WHOLE_SHIP_ACCESSORY_TOKENS.some((part) => meshName.includes(part))) return false;
+  const materials = gltf.materials || [];
+  const materialNames = [];
+  for (const prim of mesh.primitives || []) {
+    const mat = materials[prim.material];
+    if (mat && mat.name) materialNames.push(mat.name);
+  }
+  const token = `${node && node.name || ''} ${meshName} ${materialNames.join(' ')}`.toLowerCase();
+  if (WHOLE_SHIP_ACCESSORY_TOKENS.some((part) => token.includes(part))) return false;
+  return token.includes('hull') || token.includes('main') || token.includes('body') || token.includes('merged_material_hull') || token.includes('material_hull');
+}
+
+function gltfMeshTriangleCount(gltf, mesh) {
+  let count = 0;
+  for (const prim of mesh.primitives || []) {
+    if ((prim.mode ?? 4) !== 4) continue;
+    const indexed = gltf.accessors && gltf.accessors[prim.indices];
+    const positioned = gltf.accessors && gltf.accessors[prim.attributes && prim.attributes.POSITION];
+    count += Math.floor(((indexed && indexed.count) || (positioned && positioned.count) || 0) / 3);
+  }
+  return count;
+}
+
+function validateWholeShipBody(url, primitives, errors) {
+  let hullTris = 0;
+  const meshNames = [];
+  for (const primitive of primitives) {
+    meshNames.push(primitive.name || 'unnamed');
+    if (wholeShipPrimitiveLooksLikeBody(primitive)) {
+      hullTris += triangleCount(primitive.geometry);
+    }
+  }
+  if (hullTris < WHOLE_SHIP_BODY_MIN_TRIS) {
+    errors.push(`whole-ship hull body missing: hull triangles=${hullTris} < ${WHOLE_SHIP_BODY_MIN_TRIS}; asset=${url}; meshes=${meshNames.join(', ')}`);
+  }
+}
+
+function wholeShipPrimitiveLooksLikeBody(primitive) {
+  const tags = primitive && primitive.tags || {};
+  if (tags.canopy) return false;
+  const material = primitive && primitive.material;
+  const geometry = primitive && primitive.geometry;
+  const token = `${primitive && primitive.name || ''} ${geometry && geometry.name || ''} ${material && material.name || ''} ${tags.tint || ''}`.toLowerCase();
+  if (WHOLE_SHIP_ACCESSORY_TOKENS.some((part) => token.includes(part))) return false;
+  return token.includes('hull') || token.includes('main') || token.includes('body') || token.includes('merged_material_hull') || token.includes('material_hull');
+}
+
+function triangleCount(geometry) {
+  if (!geometry) return 0;
+  const index = typeof geometry.getIndex === 'function' ? geometry.getIndex() : geometry.index;
+  if (index && Number.isFinite(index.count)) return Math.floor(index.count / 3);
+  const position = geometry.getAttribute && geometry.getAttribute('position');
+  return position && Number.isFinite(position.count) ? Math.floor(position.count / 3) : 0;
 }
 
 function collectTags(node, scene, slot, legacyPart) {

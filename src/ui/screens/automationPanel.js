@@ -100,9 +100,13 @@ const CSS = `
 #sf-automation .au-head { padding: 12px 18px; border-bottom: 1px solid var(--panel-edge); background: rgba(8,14,26,.7);
   display: flex; flex-direction: column; gap: 10px; }
 #sf-automation .au-top { display: flex; align-items: center; justify-content: space-between; }
+#sf-automation .au-top-right { display: flex; align-items: center; gap: 14px; }
 #sf-automation .au-title { font-size: 1.2em; letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
   text-shadow: 0 0 12px rgba(57,208,255,.5); }
 #sf-automation .au-credits { font-family: var(--mono); font-size: .9em; color: var(--energy); }
+#sf-automation .au-close { font-family: var(--mono); font-size: .74em; letter-spacing: .08em; text-transform: uppercase;
+  padding: 5px 12px; border-radius: 6px; color: var(--ink-dim); }
+#sf-automation .au-close:hover { color: #fff; border-color: var(--accent); }
 #sf-automation .au-income { display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: .8em; }
 #sf-automation .au-income .lbl { color: var(--ink-dim); }
 #sf-automation .au-income .val { color: var(--accent-2); font-weight: 700; }
@@ -199,7 +203,10 @@ export const automationScreen = {
       <div class="au-head">
         <div class="au-top">
           <div class="au-title">Automation</div>
-          <div class="au-credits">CR <span data-cr>0</span></div>
+          <div class="au-top-right">
+            <div class="au-credits">CR <span data-cr>0</span></div>
+            <button class="au-close" type="button" data-close aria-label="Close operations board">Close</button>
+          </div>
         </div>
         <div class="au-income">
           <span class="lbl">PASSIVE</span><span class="val" data-rate>0 cr/min</span>
@@ -226,6 +233,9 @@ export const automationScreen = {
       if (btn && btn.dataset.tab !== this._tab) { this._tab = btn.dataset.tab; this.refresh(this._ctx, { forceBody: true }); }
     });
 
+    const closeBtn = rootEl.querySelector('[data-close]');
+    if (closeBtn) closeBtn.addEventListener('click', () => this._close());
+
     // one delegated listener for all action buttons in the body
     body.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
@@ -241,6 +251,16 @@ export const automationScreen = {
 
   onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
   onHide() { /* cached DOM retained */ },
+
+  // Pop back to whatever pushed us (pause menu in normal play). Mirrors codex.js's Close; ESC also
+  // pops (input.js), but a visible exit keeps the screen self-explanatory (taste bar §7).
+  _close() {
+    const ctx = this._ctx;
+    const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+    const mgr = (ctx && ctx.screenManager) || (ui && ui.screenManager) || null;
+    if (mgr && typeof mgr.popScreen === 'function') { mgr.popScreen(); return; }
+    if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
+  },
 
   refresh(ctx, opts = {}) {
     if (ctx) this._ctx = ctx;

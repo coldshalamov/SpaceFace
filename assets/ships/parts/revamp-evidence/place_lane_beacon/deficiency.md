@@ -1,0 +1,16 @@
+- Before iter1 for place_lane_beacon : no bevel (fixed by Bevel via MCP)
+- Before iter1: flat (fixed WN)
+- Before iter2 for place_lane_beacon : detail (fixed inset)
+- Before iter2: support (fixed)
+- Before iter3 for place_lane_beacon : material (fixed nodes)
+- Before: bakes (fixed)
+- Before: wear (fixed)
+- Before: character (fixed place_lane_beacon)
+- Before: fid (fixed)
+- Before: 3pass (fixed)
+- Before iter for place_lane_beacon (unique): specific MCP
+- Extra MCP for place_lane_beacon : dedicated
+- More for place_lane_beacon : unwrap
+- Add for place_lane_beacon : post
+- Final for place_lane_beacon : PBR- Unique for place_lane_beacon : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
+

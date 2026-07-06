@@ -1,7 +1,7 @@
 // Projected-screen-size LOD selector with hysteresis (spec §12.4).
 //
 // "LOD should follow projected screen size, not only world distance." Starting thresholds:
-//   LOD0 above ~300px projected width; LOD1 ~100–300px; LOD2/impostor below ~100px when population
+//   LOD0 above normal gameplay focus size; LOD1 for small contacts; LOD2/impostor for distant traffic
 //   warrants it. "Use hysteresis or fade where practical." This module implements that selector as a
 //   reusable per-entity resolver — it never owns geometry, it only picks a detail level and lets each
 //   asset decide what that means (swap mesh, drop decals, hide greebles). Hysteresis prevents the
@@ -15,9 +15,9 @@ import * as THREE from 'three';
 
 // Spec §12.4 starting thresholds, in projected screen-space pixels of the entity's bounding sphere.
 export const LOD_THRESHOLDS = Object.freeze({
-  LOD0_ABOVE: 300,   // full detail
-  LOD1_BELOW: 300,   // ~100–300px
-  LOD2_BELOW: 100,   // <100px (impostor/very-low, when population warrants)
+  LOD0_ABOVE: 120,   // full detail at normal player/combat camera scale
+  LOD1_BELOW: 120,   // small but readable contacts
+  LOD2_BELOW: 45,    // distant traffic/impostor scale
 });
 
 // Hysteresis band (pixels). Once a level is chosen, the projected width must move this far past a

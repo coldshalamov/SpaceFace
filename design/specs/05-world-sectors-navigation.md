@@ -1,5 +1,9 @@
 # World, Sectors & Navigation
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 A 10-sector star-map graph forming a "core-to-frontier" gradient: security falls and wealth/danger rise as you travel outward from Helios Prime (core) through industrial mid-ring sectors to lawless frontier and a wormhole-gated endgame. Each sector is a self-contained 2.5D playfield (a finite XZ disc of radius worldRadius) populated from data: stations, asteroid fields, hazard zones, POIs, and spawn tables. Movement is two-layered: (1) in-system flight on the plane, fly to a sector's jump gate or charge a personal jump drive; (2) sector-to-sector JUMP that unloads the current sector and loads a neighbor, costing fuel + charge time, with an interdiction roll that can drop the player into an ambush. Sectors and POIs start as fog-of-war (UNKNOWN) and are revealed by jumping in (sector) or scanning/approaching (POIs). The system owns the world graph, the active sector's live contents, discovery flags, and jump state; it emits events that mining/combat/economy/spawning systems consume. All content is data-driven (SECTORS table + STATION_TYPES + HAZARD_TYPES), so adding a sector is pure data.
 

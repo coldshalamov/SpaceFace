@@ -64,6 +64,22 @@ function injectStyle() {
     font-family:var(--mono, monospace); font-size:12px; letter-spacing:.04em; pointer-events:auto; }
   .sf-codex-search:focus { outline:none; border-color:var(--accent, #39d0ff);
     box-shadow:0 0 0 2px rgba(57,208,255,.14); }
+  .sf-arch-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; }
+  .sf-arch-card { display:flex; flex-direction:column; padding:0; text-align:left; overflow:hidden;
+    border:1px solid var(--panel-edge, rgba(120,160,200,.22)); border-radius:8px; background:rgba(8,14,24,.55);
+    cursor:pointer; pointer-events:auto; transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+  .sf-arch-card:hover, .sf-arch-card:focus-visible { border-color:var(--accent, #39d0ff);
+    box-shadow:0 0 16px rgba(57,208,255,.28); transform:translateY(-2px); outline:none; }
+  .sf-arch-thumb { position:relative; aspect-ratio:16/9; background-size:cover; background-position:center;
+    background-color:#05070d; }
+  .sf-arch-play { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:34px; color:#eafcff; text-shadow:0 0 14px rgba(57,208,255,.9); opacity:.82;
+    background:radial-gradient(circle at center, rgba(5,9,18,.15), rgba(5,9,18,.55)); transition:opacity .16s ease; }
+  .sf-arch-card:hover .sf-arch-play, .sf-arch-card:focus-visible .sf-arch-play { opacity:1; }
+  .sf-arch-meta { padding:10px 12px; }
+  .sf-arch-title { font-size:13.5px; color:var(--accent, #39d0ff); letter-spacing:.06em;
+    text-transform:uppercase; font-family:var(--mono, monospace); }
+  .sf-arch-cap { font-size:12px; line-height:1.4; color:var(--ink-dim, #8fa3c0); margin-top:4px; }
   `;
   document.head.appendChild(s);
 }
@@ -87,7 +103,26 @@ function shell(rootEl, title, extraClass) {
   return { panel: rootEl, body };
 }
 
-const TABS = ['Story', 'Comms', 'Graffiti', 'Figures', 'Ship'];
+const TABS = ['Story', 'Comms', 'Graffiti', 'Figures', 'Ship', 'Archive'];
+
+// Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
+// player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
+// Titles/captions are in the game's dry working-space voice (00_MASTER_TASTE §5). Exported so the
+// bundle/reachability checks can prove every referenced media asset is shipped.
+export const SIGNAL_ARCHIVE = Object.freeze([
+  { id: '01', title: 'Gate Approach', poster: 'assets/cinematics/C-INTRO-01.jpg',
+    video: 'assets/cinematics/C-INTRO-01_6s.mp4', caption: 'Inbound to a jump ring. The belt keeps its own traffic.' },
+  { id: '02', title: 'Belt Runner', poster: 'assets/cinematics/C-INTRO-02.jpg',
+    video: 'assets/cinematics/C-INTRO-02_6s.mp4', caption: 'A hauler works the drift. Masslines only.' },
+  { id: '03', title: 'Anomaly Contact', poster: 'assets/cinematics/C-INTRO-03.jpg',
+    video: 'assets/cinematics/C-INTRO-03_6s.mp4', caption: 'Violet core, live. Charted space ends here.' },
+  { id: '04', title: 'Station Berth', poster: 'assets/cinematics/C-INTRO-04.jpg',
+    video: 'assets/cinematics/C-INTRO-04_6s.mp4', caption: 'Docking wall ahead. Someone always logs the arrival.' },
+]);
+
+// Deep-link support: the main menu's "Signal Archive" entry sets a pending tab so codex opens on it.
+let _requestedTab = null;
+export function requestCodexTab(tab) { if (TABS.includes(tab)) _requestedTab = tab; }
 const COMMS_CATEGORIES = [
   ['Ambient', 'ambient'], ['Traps', 'traps'], ['Personal', 'personal'],
   ['Late Game', 'late'], ['Story', 'story'],
@@ -270,7 +305,12 @@ export const codexScreen = {
   },
 
   refresh(ctx) { this._ctx = ctx; if (this._body) this._render(ctx); },
-  onShow(ctx) { this._ctx = ctx; this._visible = true; },
+  onShow(ctx) {
+    this._ctx = ctx;
+    this._visible = true;
+    // Honor a deep-link request (main menu "Signal Archive" opens straight to that tab).
+    if (_requestedTab) { this._activeTab = _requestedTab; _requestedTab = null; if (this._body) this._render(ctx); }
+  },
   onHide() { this._visible = false; },
 
   _render(ctx) {
@@ -279,16 +319,57 @@ export const codexScreen = {
     for (const t of TABS) {
       if (this._tabBtns[t]) this._tabBtns[t].classList.toggle('active', t === this._activeTab);
     }
-    if (this._search && this._search.value !== this._query) this._search.value = this._query;
-    this._renderStatus(ctx);
+    // The Archive tab is media, not searchable narrative — hide the search + unlock-status chrome.
+    const isArchive = this._activeTab === 'Archive';
+    if (this._search) {
+      this._search.style.display = isArchive ? 'none' : '';
+      if (!isArchive && this._search.value !== this._query) this._search.value = this._query;
+    }
+    if (!isArchive) this._renderStatus(ctx);
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
       case 'Graffiti': this._renderGraffiti(ctx); break;
       case 'Figures':  this._renderFigures(ctx); break;
       case 'Ship':     this._renderShip(ctx); break;
+      case 'Archive':  this._renderArchive(ctx); break;
     }
-    this._applySearchFilter();
+    if (!isArchive) this._applySearchFilter();
+  },
+
+  // Signal Archive — a grid of poster cards; clicking one plays its 6s clip through the UI system's
+  // shared cinematic player (ui.playCinematic). No new modal machinery; reuses the existing player.
+  _renderArchive() {
+    this._body.appendChild(el('div', 'sf-codex-section-h', 'Signal Archive'));
+    const intro = el('div', 'sf-codex-body', 'Recovered transmission stills from the Reach corridor. Select a signal to replay its clip.');
+    intro.style.marginBottom = '12px';
+    this._body.appendChild(intro);
+    const grid = el('div', 'sf-arch-grid');
+    for (const c of SIGNAL_ARCHIVE) {
+      const card = el('button', 'sf-arch-card');
+      card.type = 'button';
+      card.setAttribute('aria-label', 'Play signal ' + c.id + ': ' + c.title);
+      const thumb = el('div', 'sf-arch-thumb');
+      thumb.style.backgroundImage = "url('" + c.poster + "')";
+      thumb.appendChild(el('div', 'sf-arch-play', '▶'));
+      card.appendChild(thumb);
+      const meta = el('div', 'sf-arch-meta');
+      meta.appendChild(el('div', 'sf-arch-title', c.title));
+      meta.appendChild(el('div', 'sf-arch-cap', c.caption));
+      card.appendChild(meta);
+      card.addEventListener('click', () => this._playCinematic(c.video, c.title));
+      grid.appendChild(card);
+    }
+    this._body.appendChild(grid);
+  },
+
+  _playCinematic(video, title) {
+    const ctx = this._ctx;
+    const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+    if (ui && typeof ui.playCinematic === 'function') { ui.playCinematic(video, title); return; }
+    if (typeof window !== 'undefined' && typeof window.playSpaceFaceCinematic === 'function') {
+      window.playSpaceFaceCinematic(video, title);
+    }
   },
 
   _renderStatus(ctx) {

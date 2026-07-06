@@ -1,0 +1,15 @@
+- Before iter1 for hull_freighter : no bevel on freighter forms (fixed by Bevel segs=3 via MCP)
+- Before iter1: flat (fixed WN)
+- Before iter2 for hull_freighter : cargo panels (fixed inset)
+- Before iter2: support (fixed)
+- Before iter3 for hull_freighter : surfacing (fixed nodes)
+- Before: bakes (fixed)
+- Before: wear (fixed)
+- Before: character (fixed bulky freighter)
+- Before: fid (fixed)
+- Before: 3pass (fixed)
+- Before iter for hull_freighter (unique): freighter specific MCP
+- Extra MCP for hull_freighter : dedicated
+- More for hull_freighter : unwrap
+- Add for hull_freighter : post
+- Final for hull_freighter : PBR

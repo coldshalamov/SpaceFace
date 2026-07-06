@@ -942,7 +942,7 @@ export const starmapScreen = {
       g.font = `${current ? '700' : '500'} ${11 / z}px var(--font,sans-serif)`;
       g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(s.name, n.x, labelY);
       
-      const memory = state.player && state.player.marketMemory;
+      const memory = this._ctx.state.player && this._ctx.state.player.marketMemory;
       const sectMemory = memory && memory[s.id];
       const commQuote = sectMemory && sectMemory[this._commodityId];
       if (commQuote) {

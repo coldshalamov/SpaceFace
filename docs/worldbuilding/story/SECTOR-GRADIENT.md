@@ -1,6 +1,6 @@
 **SPACEFACE — SECTOR GRADIENT (WHAT THE JOURNEY FEELS LIKE)**
 
-The Conrad structure. The player starts at The Pit (S0) — already marked, already the labor colony — and the first major mission hub is Helios Prime (S1), the clean core. The journey is not innocent-to-corrupt. It is already-marked moving outward to face the mechanism that marked them. Marlow wasn't innocent when he set out. Neither is this player.
+The river structure. The player starts at The Pit (S0) — already marked, already the labor colony — and the first major mission hub is Helios Prime (S1), the clean core. The journey is not innocent-to-corrupt. It is already-marked moving outward to face the mechanism that marked them. The traveler wasn't innocent when they set out. Neither is this player.
 
 This document is not about what each sector contains mechanically. It's about what the air smells like. S0 (The Pit) is covered in vibe-04-the-pit.md.
 
@@ -10,7 +10,7 @@ This document is not about what each sector contains mechanically. It's about wh
 
 Full spectrum. 22 degrees. Food that tastes like food. The recyclers are serviced on schedule because the people who fund the recyclers live here and breathe the air. The graffiti exists but gets painted over within 48 hours — maintenance runs on a strict cycle in the inner sectors. What stays up is licensed: faction insignia, navigation markers, corporate branding. Unauthorized text is cleaned before the reader can copy it down.
 
-The corruption here is invisible because the surfaces are maintained. This is Le Carré's London. The men in clean stations sign the orders. The paperwork is filed correctly. Nothing looks wrong. Nothing is wrong, in the sense that every law on the books has been followed. The laws were written by the people who benefit from them being followed this way.
+The corruption here is invisible because the surfaces are maintained. This is the clean core. The men in clean stations sign the orders. The paperwork is filed correctly. Nothing looks wrong. Nothing is wrong, in the sense that every law on the books has been followed. The laws were written by the people who benefit from them being followed this way.
 
 Helios Prime is where Vale's division has its offices. The organizational chart doesn't list Atmospheric Logistics Allocation. It lists Logistics Oversight. The door looks like every other door.
 
@@ -60,7 +60,7 @@ Reserve atmosphere only. The Kurtz figure's station runs on sealed tanks and a p
 
 The player has smelled this before. It's the lower decks of the Pit.
 
-The recognition is supposed to land wrong. This is the end of the Conrad journey — the furthest point from the lit core — and it smells like home. Like the place they left. The darkness at the end of the river isn't alien. It's familiar. This is what Conrad's Marlow felt arriving at Kurtz's station: not horror at the unknown, but recognition of the already-known in a new context.
+The recognition is supposed to land wrong. This is the end of the river — the furthest point from the lit core — and it smells like home. Like the place they left. The darkness at the end of the river isn't alien. It's familiar. Arriving at the end and finding the already-known in a new context: not horror at the unknown, but recognition.
 
 14 degrees. The temperature of being alive in the Pit.
 

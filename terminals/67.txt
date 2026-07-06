@@ -1,0 +1,18 @@
+---
+pid: 7148
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; $env:SF_PROBE_URL=\"http://127.0.0.1:8123\"; node scripts/probe-ship-visual-stability.mjs"
+started_at: 2026-07-05T01:06:35.877Z
+running_for_ms: 6175010  
+---
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForFunction: Timeout 15000ms exceeded.
+    at C:\Users\93rob\Documents\GitHub\SpaceFace\scripts\probe-ship-visual-stability.mjs:34:14 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v24.15.0

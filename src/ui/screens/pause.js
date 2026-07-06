@@ -354,6 +354,11 @@ export const pauseScreen = {
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     });
     mk('Mission Log (' + BINDINGS.missionLog.label + ')', () => nav(ctx, 'pushScreen', 'missionLog'));
+    // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
+    // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
+    // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
+    // UI-polish scope this cycle; a first-class station tab would be promotion).
+    mk('Operations', () => nav(ctx, 'pushScreen', 'automation'));
     const mapAction = pauseMapAction(ctx && ctx.state);
     if (mapAction) mk('Review ' + mapAction.label, () => nav(ctx, 'pushScreen', mapAction.screenId));
     mk('Help / Controls', () => nav(ctx, 'pushScreen', 'help'));

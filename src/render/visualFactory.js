@@ -27,6 +27,7 @@ import { MODULES } from '../data/modules.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
+import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -461,6 +462,54 @@ function makeHalo(color, scale) {
   const s = new THREE.Sprite(haloSpriteMaterial(color));
   s.scale.set(scale, scale, scale);
   return s;
+}
+
+// --- Energy-shader bolt material (the modern replacement for basic-material + sprite-halo bolts) ---
+// Reuses the HDR energy-volume shader (energyMaterials.js) as a sibling of the thruster plume and
+// massline tether: hot core + fbm turbulence scroll along local +X + fresnel rim, writing radiance
+// >1.0 with toneMapped:false so the bloom pipeline picks it up SELECTIVELY (per the taste constitution
+// §3: "Bloom is selective — raise per-material emissiveIntensity, never the global bloom"). This is the
+// professional 2026 energy-weapon primitive, not a flat additive sprite.
+//
+// Caching: keyed by `bolt:<color>:<variant>` so each team×variant pair gets its own tuned material
+// instance (variants differ in geometry AND in shader params like flowSpeed/intensity). Three.js caches
+// the GPU program by shader source, not material instance, so all 18 team×variant materials share ONE
+// compiled program — the per-instance cost is just the uniform block, not a shader compile.
+function boltMaterial(color, fringe, variant) {
+  return getMaterial(`bolt:${color}:${variant}`, () => {
+    const mat = createEnergyMaterial({
+      name: `SpaceFaceBolt:${variant}:${color}`,
+      colorA: color,
+      colorB: fringe,
+      // Bolts are smaller and faster-moving than plumes: higher intensity to read through bloom,
+      // tighter noise scale for a crackling energy edge rather than a roiling flame.
+      intensity: 6.0,
+      opacity: 0.95,
+      fresnelPower: 2.4,
+      noiseScale: 2.6,
+      flowSpeed: 9.0,
+      pulse: 1.0,
+      core: 0.62,
+      edgeNoise: 0.55,
+      // No depth-soft intersection: bolts are additive, short-lived, and read fine without it.
+      depthTest: true,
+    });
+    return mat;
+  });
+}
+
+// Build one energy-shader bolt mesh from a cached geometry + team material, hooking onBeforeRender to
+// advance the shared material's uTime clock via nowSec() (the established self-animation pattern — see
+// the comment at nowSec()). Because the material is shared per team×variant, every bolt redundantly
+// writes the same uTime value; that is harmless and idempotent.
+function boltMesh(geometryKey, geometryFactory, color, fringe, variant, scale) {
+  const mesh = new THREE.Mesh(getGeometry(geometryKey, geometryFactory), boltMaterial(color, fringe, variant));
+  mesh.scale.setScalar(scale);
+  mesh.onBeforeRender = () => {
+    const u = mesh.material.uniforms;
+    if (u && u.uTime) u.uTime.value = nowSec();
+  };
+  return mesh;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2154,116 +2203,88 @@ function buildProjectile(e) {
     // isPulseLaser is the default/fallback (energy bolts)
 
     if (isSiege) {
-      // SIEGE LANCE — massive, very elongated bright streak. Brightest projectile in the game.
-      const core = new THREE.Mesh(
-        getGeometry('proj:siege:core', () => new THREE.CapsuleGeometry(0.38, 9.0, 4, 8).rotateZ(Math.PI / 2)),
-        basicGlowMaterial('#ffffff'),
-      );
-      core.scale.setScalar(R); g.add(core);
-      const glow = new THREE.Mesh(
-        getGeometry('proj:siege:glow', () => new THREE.CapsuleGeometry(0.80, 10.0, 4, 8).rotateZ(Math.PI / 2)),
-        additiveGlowMaterial(color, 0.95),
-      );
-      glow.scale.setScalar(R); g.add(glow);
-      const fringeMesh = new THREE.Mesh(
-        getGeometry('proj:siege:fringe', () => new THREE.CapsuleGeometry(0.60, 9.5, 4, 8).rotateZ(Math.PI / 2)),
-        additiveGlowMaterial(fringe, 0.6),
-      );
-      fringeMesh.scale.setScalar(R); g.add(fringeMesh);
-      // Extra-large leading halo and trailing bloom
-      const halo = makeHalo(color, R * 7.0); halo.position.x = R * 2.0; g.add(halo);
-      g.add(makeHalo('#ffffff', R * 4.5));
-      g.add(makeHalo(fringe, R * 3.5));
+      // SIEGE LANCE — massive, very elongated energy streak. Brightest projectile in the game.
+      // Two-layer energy volume: a tight hot core + a wide roiling halo, both shader-driven so the
+      // lance reads as a coherent beam of energy rather than a stack of flat capsules.
+      const core = boltMesh('proj:siege:core',
+        () => new THREE.CapsuleGeometry(0.42, 9.0, 4, 10).rotateZ(Math.PI / 2), color, fringe, 'siege-core', R);
+      tuneBoltMaterial(core.material, { intensity: 7.5, core: 0.72, opacity: 1.0 });
+      g.add(core);
+      const halo = boltMesh('proj:siege:halo',
+        () => new THREE.CapsuleGeometry(1.05, 10.0, 4, 10).rotateZ(Math.PI / 2), color, fringe, 'siege-halo', R);
+      tuneBoltMaterial(halo.material, { intensity: 3.0, core: 0.18, opacity: 0.42, fresnelPower: 1.5, noiseScale: 1.9 });
+      halo.renderOrder = 20; core.renderOrder = 21; g.add(halo);
     } else if (isRailgun) {
-      // RAILGUN — very long, thin white streak with heavy bloom. Fastest projectile.
-      const core = new THREE.Mesh(
-        getGeometry('proj:rail:core', () => new THREE.CapsuleGeometry(0.14, 8.0, 4, 8).rotateZ(Math.PI / 2)),
-        basicGlowMaterial('#ffffff'),
-      );
-      core.scale.setScalar(R); g.add(core);
-      const glow = new THREE.Mesh(
-        getGeometry('proj:rail:glow', () => new THREE.CapsuleGeometry(0.36, 8.6, 4, 8).rotateZ(Math.PI / 2)),
-        additiveGlowMaterial('#ccddff', 0.9),
-      );
-      glow.scale.setScalar(R); g.add(glow);
-      // Bright white leading-tip halo for the signature railgun flash
-      const halo = makeHalo('#ffffff', R * 5.0); halo.position.x = R * 2.4; g.add(halo);
-      g.add(makeHalo(color, R * 2.8));
+      // RAILGUN — very long, thin white-hot streak with heavy bloom. Fastest projectile.
+      const core = boltMesh('proj:rail:core',
+        () => new THREE.CapsuleGeometry(0.16, 8.0, 4, 10).rotateZ(Math.PI / 2), '#ffffff', '#ccddff', 'rail-core', R);
+      tuneBoltMaterial(core.material, { intensity: 8.0, core: 0.82, opacity: 1.0, flowSpeed: 16.0 });
+      g.add(core);
+      const halo = boltMesh('proj:rail:halo',
+        () => new THREE.CapsuleGeometry(0.40, 8.6, 4, 10).rotateZ(Math.PI / 2), '#ccddff', color, 'rail-halo', R);
+      tuneBoltMaterial(halo.material, { intensity: 3.2, core: 0.16, opacity: 0.4, fresnelPower: 1.6 });
+      halo.renderOrder = 20; core.renderOrder = 21; g.add(halo);
     } else if (isPlasma) {
       // PLASMA CANNON — larger, rounder bolt with a big glow sphere. Orange/hot tinted.
-      // Override colors: plasma always has an orange-hot tint blended with team color.
+      // Override colors: plasma always has an orange-hot tint blended with team color. Sphere geometry
+      // works with the energy shader's length(vLocal.yz) radial mask (it just becomes a 3D bead).
       const plasmaCore = e.team === 1 ? '#ff6040' : (e.team === 0 ? '#80ffcc' : '#ffcc44');
       const plasmaGlow = e.team === 1 ? '#ff4020' : (e.team === 0 ? '#40ffa0' : '#ffaa22');
-      const core = new THREE.Mesh(
-        getGeometry('proj:plasma:core', () => new THREE.SphereGeometry(0.55, 10, 8)),
-        basicGlowMaterial('#ffffee'),
-      );
-      core.scale.setScalar(R); g.add(core);
-      const glow = new THREE.Mesh(
-        getGeometry('proj:plasma:glow', () => new THREE.SphereGeometry(1.0, 10, 8)),
-        additiveGlowMaterial(plasmaCore, 0.8),
-      );
-      glow.scale.setScalar(R); g.add(glow);
-      const outer = new THREE.Mesh(
-        getGeometry('proj:plasma:outer', () => new THREE.SphereGeometry(1.5, 10, 8)),
-        additiveGlowMaterial(plasmaGlow, 0.35),
-      );
-      outer.scale.setScalar(R); g.add(outer);
-      // Large diffuse halo for the roiling plasma look
-      g.add(makeHalo(plasmaCore, R * 5.5));
-      g.add(makeHalo(plasmaGlow, R * 3.5));
+      const plasmaVariant = `plasma-${e.team == null ? 'n' : e.team}`;
+      const core = boltMesh('proj:plasma:core',
+        () => new THREE.SphereGeometry(0.6, 12, 10), '#ffffee', plasmaCore, `${plasmaVariant}-core`, R);
+      tuneBoltMaterial(core.material, { intensity: 6.5, core: 0.7, opacity: 1.0, noiseScale: 3.2, flowSpeed: 5.0 });
+      g.add(core);
+      const halo = boltMesh('proj:plasma:halo',
+        () => new THREE.SphereGeometry(1.55, 12, 10), plasmaCore, plasmaGlow, `${plasmaVariant}-halo`, R);
+      tuneBoltMaterial(halo.material, { intensity: 2.6, core: 0.2, opacity: 0.4, fresnelPower: 1.4, noiseScale: 2.2 });
+      halo.renderOrder = 20; core.renderOrder = 21; g.add(halo);
     } else if (isFlak) {
-      // FLAK / PD — tiny, fast dots. Very small projectiles with minimal glow.
-      const core = new THREE.Mesh(
-        getGeometry('proj:flak:core', () => new THREE.SphereGeometry(0.18, 6, 4)),
-        basicGlowMaterial(color),
-      );
-      core.scale.setScalar(R); g.add(core);
-      const glow = new THREE.Mesh(
-        getGeometry('proj:flak:glow', () => new THREE.SphereGeometry(0.30, 6, 4)),
-        additiveGlowMaterial(color, 0.5),
-      );
-      glow.scale.setScalar(R); g.add(glow);
-      // Small subtle halo — just enough to see
-      g.add(makeHalo(color, R * 1.4));
+      // FLAK / PD — tiny, fast dots. One small energy bead; minimal glow.
+      const core = boltMesh('proj:flak:core',
+        () => new THREE.SphereGeometry(0.22, 8, 6), color, fringe, 'flak-core', R);
+      tuneBoltMaterial(core.material, { intensity: 5.0, core: 0.66, opacity: 0.95, noiseScale: 4.0 });
+      g.add(core);
     } else if (isAutocannon) {
       // AUTOCANNON — shorter, fatter bolt. More solid/opaque, like a physical slug.
-      const core = new THREE.Mesh(
-        getGeometry('proj:auto:core', () => new THREE.CapsuleGeometry(0.32, 1.8, 4, 8).rotateZ(Math.PI / 2)),
-        basicGlowMaterial('#eeddbb'),
-      );
-      core.scale.setScalar(R); g.add(core);
-      const shell = new THREE.Mesh(
-        getGeometry('proj:auto:shell', () => new THREE.CapsuleGeometry(0.44, 2.2, 4, 8).rotateZ(Math.PI / 2)),
-        additiveGlowMaterial(color, 0.6),
-      );
-      shell.scale.setScalar(R); g.add(shell);
-      // Compact halo — less bloom than energy weapons
-      const halo = makeHalo(color, R * 2.2); halo.position.x = R * 0.5; g.add(halo);
+      const core = boltMesh('proj:auto:core',
+        () => new THREE.CapsuleGeometry(0.34, 1.8, 4, 10).rotateZ(Math.PI / 2), '#eeddbb', color, 'auto-core', R);
+      tuneBoltMaterial(core.material, { intensity: 5.5, core: 0.74, opacity: 1.0, noiseScale: 3.4, flowSpeed: 6.0 });
+      g.add(core);
+      const shell = boltMesh('proj:auto:shell',
+        () => new THREE.CapsuleGeometry(0.48, 2.2, 4, 10).rotateZ(Math.PI / 2), color, fringe, 'auto-shell', R);
+      tuneBoltMaterial(shell.material, { intensity: 2.4, core: 0.2, opacity: 0.4, fresnelPower: 1.7 });
+      shell.renderOrder = 20; core.renderOrder = 21; g.add(shell);
     } else {
-      // PULSE LASER (default) — thin, elongated bright bolt. Classic energy-weapon look,
-      // thinner and longer than the old universal bolt.
-      const core = new THREE.Mesh(
-        getGeometry('proj:pulse:core', () => new THREE.CapsuleGeometry(0.18, 5.2, 4, 8).rotateZ(Math.PI / 2)),
-        basicGlowMaterial('#ffffff'),
-      );
-      core.scale.setScalar(R); g.add(core);
-      const glow = new THREE.Mesh(
-        getGeometry('proj:pulse:glow', () => new THREE.CapsuleGeometry(0.44, 5.8, 4, 8).rotateZ(Math.PI / 2)),
-        additiveGlowMaterial(color, 0.85),
-      );
-      glow.scale.setScalar(R); g.add(glow);
-      const fringeMesh = new THREE.Mesh(
-        getGeometry('proj:pulse:fringe', () => new THREE.CapsuleGeometry(0.32, 5.5, 4, 8).rotateZ(Math.PI / 2)),
-        additiveGlowMaterial(fringe, 0.45),
-      );
-      fringeMesh.scale.setScalar(R); g.add(fringeMesh);
-      const halo = makeHalo(color, R * 3.5); halo.position.x = R * 1.4; g.add(halo);
-      g.add(makeHalo(fringe, R * 2.0));
+      // PULSE LASER (default) — thin, elongated bright energy bolt. Classic energy-weapon look.
+      // Core + halo two-layer energy volume replaces the old triple-capsule + double-sprite stack.
+      const core = boltMesh('proj:pulse:core',
+        () => new THREE.CapsuleGeometry(0.20, 5.2, 4, 10).rotateZ(Math.PI / 2), '#ffffff', color, 'pulse-core', R);
+      tuneBoltMaterial(core.material, { intensity: 6.5, core: 0.74, opacity: 1.0, flowSpeed: 11.0 });
+      g.add(core);
+      const halo = boltMesh('proj:pulse:halo',
+        () => new THREE.CapsuleGeometry(0.50, 5.8, 4, 10).rotateZ(Math.PI / 2), color, fringe, 'pulse-halo', R);
+      tuneBoltMaterial(halo.material, { intensity: 2.8, core: 0.18, opacity: 0.42, fresnelPower: 1.6, noiseScale: 1.9 });
+      halo.renderOrder = 20; core.renderOrder = 21; g.add(halo);
     }
   }
   g.userData.kind = 'projectile';
   return g;
+}
+
+// Per-variant uniform tuning applied once when a variant's material is first cached. Because
+// boltMaterial is keyed by `bolt:<color>:<variant>`, each team×variant pair owns its own material
+// instance, so tuning siege differently from pulse is safe — they never share a material instance.
+// (They do share a GPU program — three.js keys programs by shader source — so this stays cheap.)
+function tuneBoltMaterial(material, opts) {
+  if (!material || !material.uniforms) return;
+  const u = material.uniforms;
+  if (u.uIntensity && Number.isFinite(opts.intensity)) u.uIntensity.value = opts.intensity;
+  if (u.uOpacity && Number.isFinite(opts.opacity)) u.uOpacity.value = opts.opacity;
+  if (u.uCore && Number.isFinite(opts.core)) u.uCore.value = opts.core;
+  if (u.uFresnelPower && Number.isFinite(opts.fresnelPower)) u.uFresnelPower.value = opts.fresnelPower;
+  if (u.uNoiseScale && Number.isFinite(opts.noiseScale)) u.uNoiseScale.value = opts.noiseScale;
+  if (u.uFlowSpeed && Number.isFinite(opts.flowSpeed)) u.uFlowSpeed.value = opts.flowSpeed;
 }
 
 // ---------------------------------------------------------------------------------------------

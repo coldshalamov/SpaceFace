@@ -12,7 +12,7 @@ Whenever weight appears in the text, it should also mean what was done to arrive
 
 "THEY KNEW THE MASS." — The mass of what? The cargo. The bodies. The distance between what was logged and what was true. All three, always.
 
-"THEY KNEW THE MASS. THEY ALWAYS KNEW THE MASS." — The endgame variant. First appearance is at Ashfall Reach, in the player's own hand, written during an oxygen-deprived micro-episode while docked at the Kurtz figure's station. The second line is the Conrad element: "they always knew" is the recognition of pre-existing complicity. The player didn't enter the system when they took B0. They were already in the ledger six weeks before B0, under the transponder ID the ship carried before they got it. The system knew the mass before the player did. The mass was always going to be 12.4t. Only the manifest was going to change.
+"THEY KNEW THE MASS. THEY ALWAYS KNEW THE MASS." — The endgame variant. First appearance is at Ashfall Reach, in the player's own hand, written during an oxygen-deprived micro-episode while docked at the Kurtz figure's station. The second line is the recognition of pre-existing complicity. The player didn't enter the system when they took B0. They were already in the ledger six weeks before B0, under the transponder ID the ship carried before they got it. The system knew the mass before the player did. The mass was always going to be 12.4t. Only the manifest was going to change.
 
 Recurring weight language: manifest weight, the scale, the thumb on the scale, yield, variance adjustment, moisture loss, cargo stable, mass 12.4t → mass 0kg. These are not synonyms. They are the same event described by different parties.
 
@@ -59,7 +59,7 @@ When the game shows a warm room, it's showing the player something they can't qu
 
 Every significant transition happens at an airlock. The graffiti appears at the airlock. Payment is withheld at the airlock. The player starts the game by stepping through an airlock. The endgame option C (the only honest option) is about not coming back through an airlock.
 
-The airlock is the threshold. It is the only place in the game that is neither inside nor outside, neither here nor there. In the Pit, the airlock was where the count happened. Every arrival, every departure, every shift change — the count at the airlock. The practice continues on every station in the solar system. The count never ends. Only the counters change.
+The airlock is the threshold. It is the only place in the game that is neither inside nor outside, neither here nor there. In the Pit, the airlock was where the count happened — every arrival, every departure, every shift change, heads counted against the last headcount. The practice continues on every station in the settled reaches. The numbers change. The counting doesn't.
 
 Graffiti at airlocks should always be the most honest. The airlock is the only space no one controls for long enough to maintain the official version.
 
@@ -79,7 +79,7 @@ Both languages describe the same events. The gap between them is the game.
 
 **ATMOSPHERE / BREATH**
 
-The Bacigalupi layer. Everything in the game is ultimately about who controls the recyclers — the atmospheric processing infrastructure that determines what the air is like on every station. Temperature and light are the visible symptoms. The recycler budget is the underlying cause.
+Everything in the game is ultimately about who controls the recyclers — the atmospheric processing infrastructure that determines what the air is like on every station. Temperature and light are the visible symptoms. The recycler budget is the underlying cause.
 
 The Pit's failing recyclers are not an accident of engineering. They are the Pit's faction position in the atmospheric maintenance queue. The queue is administered by Director Vale's division. The richer the station, the better the air. The better the air, the sharper the thinking, the healthier the inhabitants, the higher the productivity, the more ore moved — the more recycler budget allocated next cycle. It is a closed loop that the Pit exited in year 3.
 
@@ -87,7 +87,7 @@ Recurring breath language: filter quality, scrubber maintenance, oxygen saturati
 
 The player's ship runs on recycled air from an original-equipment recycler that hasn't been serviced since before they got the ship. They breathe Pit air in transit. The first time they dock at a rich station, the air hits differently. That difference is money. That money flows up through the faction system to the allocation that Vale administers. The player has been paying for air since B0. They just didn't know which account it went into.
 
-The specific commodity (the Bacigalupi layer): sectors don't pay for air directly. They pay off ATMO DEBT. When a sector consumes more atmospheric processing than it contributes to the shared grid (through ore production, freight throughput, or direct purchase), it accumulates ATMO DEBT in Vale's division ledger. ATMO DEBT determines your maintenance allocation score next cycle. If the debt climbs past a threshold, allocation drops. If allocation drops, the recyclers slip. If the recyclers slip, the debt climbs. The Pit crossed the threshold in year 3 of the ledger.
+The specific commodity — the resource everything is actually organized around — sectors don't pay for air directly. They pay off ATMO DEBT. When a sector consumes more atmospheric processing than it contributes to the shared grid (through ore production, freight throughput, or direct purchase), it accumulates ATMO DEBT in Vale's division ledger. ATMO DEBT determines your maintenance allocation score next cycle. If the debt climbs past a threshold, allocation drops. If allocation drops, the recyclers slip. If the recyclers slip, the debt climbs. The Pit crossed the threshold in year 3 of the ledger.
 
 The Quiet has a secondary business buying excess ATMO TOKENS (credits that reduce ATMO DEBT) from inner-sector stations that are running surplus and selling them at markup to outer-sector stations that are going underwater. The S6-S7 "secondary market in breathable air" IS the ATMO TOKEN market. This is not in any public document. It is in the Kurtz figure's ledger in a column titled "ATMO DEBT — COUNTERPARTY TRANSFERS." The Quiet's account number appears in that column every cycle. They are not a smuggling operation that also sells air. They are an ATMO TOKEN broker that also smuggles.
 
@@ -114,7 +114,7 @@ Design application: any time there are two records that contradict each other, t
 
 Helios Prime runs on a star called Helios. The star is not referenced anywhere in the game text. This is intentional: the star predates everything, will outlast everything, and has nothing to say about what happens in its gravity well. The player starts the game orbiting something they never see.
 
-This is the Conrad structural element: the game begins in the light (Helios Prime, safe, high-security, warm) and moves toward darkness (Ashfall Reach, no infrastructure, radiation, the Kurtz figure). The light is behind you. The darkness is ahead. The star that powers everything is the thing you're moving away from.
+This is the structural element the journey enacts: the game begins in the light (Helios Prime, safe, high-security, warm) and moves toward darkness (Ashfall Reach, no infrastructure, radiation, the Kurtz figure). The light is behind you. The darkness is ahead. The star that powers everything is the thing you're moving away from.
 
 ---
 
@@ -134,7 +134,7 @@ Design application: every time the HUD and the graffiti contradict each other ab
 
 The same reference number appears in four unconnected contexts: Hale uses REF 44-C to file the double customs fine (gate operations). Vale's contract authorizations cite REF 44-C (logistics oversight). The atmospheric maintenance advisory lists eligibility under REF 44-C (recycler allocation). The station records at the clearing station in B4 show the administrator as "V. Director, acting" under REF 44-C (sector governance).
 
-REF 44-C is not a conspiracy. It is a regulatory code in the Concord administrative framework. One code governs four completely separate systems because the people who wrote the framework correctly understood that customs, logistics, atmosphere, and governance are the same system. The game should never explain this. The player may eventually notice that the same number keeps appearing. They are correct that this is not a coincidence.
+REF 44-C is a regulatory code in the Concord administrative framework — one code governing four operations the drafters understood to be one operation. The game should never explain this. The player may eventually notice that the same number keeps appearing. They are correct that it isn't a coincidence.
 
 Design application: wherever REF 44-C appears in-game, it should be typeset identically — same font, same capitalization, same format. The repetition is the tell. The game never labels it as significant. The label is that it keeps appearing.
 

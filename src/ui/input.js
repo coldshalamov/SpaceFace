@@ -12,6 +12,8 @@
 import { isConfirmOpen } from './confirm.js';
 import { BINDINGS } from './bindings.js';
 
+const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
+
 export function createUiInput(ctx, screenManager) {
   const { state, bus } = ctx;
   const gp = ctx.gamepad;
@@ -134,14 +136,15 @@ export function createUiInput(ctx, screenManager) {
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
+      // REVAMP 2.1 — both map keys now open the single zoomable galaxy map (LOCAL→SYSTEM→SECTOR→GALAXY).
+      // The legacy 'localmap'/'starmap' screens stay registered as a fallback until BP-03 retires them
+      // after the parity checklist passes; revert these two cases to restore the split maps if needed.
       case BINDINGS.localmap.key:
       case BINDINGS.localmap.label:
-        // Local/system map (player position, objective, stations, gates) — the everyday
-        // "where am I / where do I go" map.
-        ev.preventDefault(); screenManager.pushScreen('localmap'); return;
+        ev.preventDefault(); screenManager.pushScreen('galaxyMap'); return;
       case BINDINGS.starmap.key:
       case BINDINGS.starmap.label:
-        ev.preventDefault(); screenManager.pushScreen('starmap'); return;
+        ev.preventDefault(); screenManager.pushScreen('galaxyMap'); return;
       case BINDINGS.techTree.key:
       case BINDINGS.techTree.label:
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;
@@ -203,14 +206,13 @@ export function createUiInput(ctx, screenManager) {
       case BINDINGS.claimBase.key:
       case BINDINGS.claimBase.label:
         // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base
-        // screen for an already-claimed body to build modules / teleport. With no claimable body in
-        // range, the same key drops a CLAIM BEACON (Micro-Loops) — a cheap temporary marked zone.
+        // screen for an already-claimed body to build modules / teleport. In OPEN SPACE (no claimable
+        // body) the UI router does NOT own the key — it falls through so the flight-input verb
+        // `deployBeacon` (KeyU) drops a claim beacon. Keeps the claim key from firing an accidental
+        // action away from bodies (see check-claim-base-input) while preserving the beacon micro-loop.
         if (claimOrOpenBase()) {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-        } else {
-          ev.preventDefault();
-          bus.emit('beacon:deploy');
         }
         return;
       case 'F5':
@@ -226,11 +228,16 @@ export function createUiInput(ctx, screenManager) {
   }
 
   // Resolve a drillable asteroid: player's selected target (if it's an asteroid), else the mining
-  // system's soft-locked asteroid. Sets the pending id and pushes the drill screen.
+  // system's soft-locked asteroid. Checks range and triggers transition.
   function openDrill() {
     let astId = null;
+    let activeTether = activeAsteroidDrillTether();
+    if (activeTether) {
+      const t = state.entities.get(activeTether.targetId);
+      if (t && t.type === 'asteroid' && t.alive) astId = t.id;
+    }
     const tid = state.player.targetId;
-    if (tid != null) {
+    if (astId == null && tid != null) {
       const t = state.entities.get(tid);
       if (t && t.type === 'asteroid' && t.alive) astId = t.id;
     }
@@ -246,10 +253,39 @@ export function createUiInput(ctx, screenManager) {
       bus.emit('toast', { text: 'No asteroid targeted — target a rock and press ' + BINDINGS.drill.label + ' to drill', kind: 'warn', ttl: 3 });
       return;
     }
-    if (!state.ui) state.ui = {};
-    state.ui.pendingDrillAsteroidId = astId;
-    screenManager.pushScreen('drill');
-    bus.emit('audio:cue', { id: 'ui_open' });
+
+    const player = state.entities.get(state.playerId);
+    const ast = state.entities.get(astId);
+    if (player && ast) {
+      const dx = ast.pos.x - player.pos.x;
+      const dz = ast.pos.z - player.pos.z;
+      const dist = Math.hypot(dx, dz);
+      const surfaceDist = Math.max(0, dist - (ast.radius || 0) - (player.radius || 0));
+      if (surfaceDist > 220) {
+        bus.emit('toast', { text: 'Too far to establish drill link! Fly closer to the asteroid.', kind: 'warn', ttl: 3 });
+        return;
+      }
+    }
+
+    // --- Massline Latch Check ---
+    activeTether = activeTether && activeTether.targetId === astId ? activeTether : Object.values(state.combat?.attachments?.byId || {}).find(
+      (att) => att.state === 'active' && att.ownerId === state.playerId && att.targetId === astId && DRILL_MASSLINE_DEF_IDS.has(att.defId)
+    );
+    if (!activeTether) {
+      bus.emit('toast', { text: `No massline link! Launch a tether (Key G) to lock onto the asteroid first.`, kind: 'warn', ttl: 3.5 });
+      return;
+    }
+
+    // Trigger transition event which pulls ship in, zooms camera, fades to black
+    bus.emit('ui:drillFadeStart', { asteroidId: astId, attachmentId: activeTether.id });
+  }
+
+  function activeAsteroidDrillTether() {
+    return Object.values(state.combat?.attachments?.byId || {}).find((att) => {
+      if (!att || att.state !== 'active' || att.ownerId !== state.playerId || !DRILL_MASSLINE_DEF_IDS.has(att.defId)) return false;
+      const target = state.entities.get(att.targetId);
+      return !!(target && target.type === 'asteroid' && target.alive);
+    }) || null;
   }
 
   // V2 §6 / M3: claim the nearest claimable body POI in range, or — if the player is near an

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Browser smoke for the Automation operations board. Boots the normal player route, opens the
-// registered Automation screen through the live screen manager, clicks the board CTA, and captures
-// a screenshot for visual review.
+// Browser smoke for the Automation operations board. Boots the normal player route, reaches the
+// Automation screen the way a PLAYER does — open the pause menu, click "Operations" — asserts the
+// screen came up that way (not via direct injection), then clicks the board CTA and captures a
+// screenshot for visual review.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -42,10 +43,22 @@ try {
     const sf = window.SF;
     const sm = sf.ctx && sf.ctx.screenManager;
     if (!sm) return { error: 'missing screen manager' };
-    sm.pushScreen('automation');
+    // --- Normal player route: open the pause menu, then click its "Operations" entry. ---
+    sm.pushScreen('pause');
     if (sm.syncVisibility) sm.syncVisibility();
-    await new Promise((resolve) => setTimeout(resolve, 120));
+    await new Promise((resolve) => setTimeout(resolve, 90));
+    const pausePanel = document.querySelector('[data-screen="pause"]');
+    const opsBtn = pausePanel && [...pausePanel.querySelectorAll('button')]
+      .find((b) => /operations/i.test(b.textContent || ''));
+    const pauseHadOperations = !!opsBtn;
+    const topBeforeOps = sm.top && sm.top();
+    if (opsBtn) opsBtn.click();
+    await new Promise((resolve) => setTimeout(resolve, 130));
+    const reachedTop = sm.top && sm.top();
+    // Confirm we can also close it back out the way a player would (visible Close button).
     const screen = document.getElementById('sf-automation');
+    const closeBtn = screen && screen.querySelector('.au-close[data-close]');
+    const hasCloseButton = !!closeBtn;
     const board = screen && screen.querySelector('.au-command');
     const summary = screen && screen.querySelector('.au-summary');
     const cta = board && board.querySelector('button.au-cta[data-act]');
@@ -78,6 +91,10 @@ try {
     const rect = screen ? screen.getBoundingClientRect() : null;
     return {
       top: sm.top && sm.top(),
+      pauseHadOperations,
+      topBeforeOps,
+      reachedTop,
+      hasCloseButton,
       visible: !!(screen && rect && rect.width > 500 && rect.height > 350),
       boardVisible: !!board,
       summaryVisible: !!summary,
@@ -93,6 +110,16 @@ try {
   });
 
   assert.ok(!report.error, report.error || 'automation runtime error');
+  // Player-navigation proof: the pause menu exposes "Operations", and clicking it (not a direct
+  // pushScreen injection) is what brings up the Automation screen.
+  assert.equal(report.pauseHadOperations, true,
+    'Pause menu must expose an "Operations" entry — the normal player route to the Automation board');
+  assert.notEqual(report.topBeforeOps, 'automation',
+    'Automation must not already be open before the Operations entry is clicked (proves the click did the work)');
+  assert.equal(report.reachedTop, 'automation',
+    'Clicking the pause "Operations" entry must open the Automation screen');
+  assert.equal(report.hasCloseButton, true,
+    'Automation screen must render a visible Close button so the player can exit it');
   assert.equal(report.top, 'automation', 'Automation screen should be the live top screen');
   assert.equal(report.visible, true, 'Automation screen should be visible');
   assert.equal(report.boardVisible, true, 'Operations Board should render');

@@ -91,6 +91,13 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   deny: 'sfx_ui_error', error: 'sfx_ui_error', alert: 'sfx_ui_alert', warning: 'sfx_ui_alert',
   pickup: 'sfx_mining_impact', cash: 'sfx_ui_confirm',
   lock_acquired: 'sfx_lock_acquired', lock: 'sfx_lock_acquired',
+  // UI navigation + feedback cues emitted with the ui_* prefix (hud.js, input.js, stationHub.js).
+  // Without these they collapse to the generic sfx_ui_click; each now maps to its own SPEC2/07 recipe.
+  ui_open: 'sfx_ui_open', ui_back: 'sfx_ui_back', ui_tab: 'sfx_ui_tab', ui_tick: 'sfx_ui_tab',
+  ui_deny: 'sfx_ui_error', ui_alert: 'sfx_ui_alert', ui_dock: 'sfx_dock_clunk',
+  // Gameplay cues with dedicated recipes (drill.js loot/hazard, countermeasures.js, combat shield break).
+  loot_collect: 'sfx_loot_collect', mining_core_fizzle: 'sfx_mining_core_fizzle',
+  shield_break: 'sfx.shieldBreak', cm_chaff: 'sfx_cm_chaff', cm_ecm: 'sfx_cm_ecm',
   'presentation.tether.attach': 'sfx.tetherLatch',
   'presentation.tether.near_break': 'sfx_ui_alert',
   'presentation.tether.break': 'sfx.tetherSnap',
@@ -1416,15 +1423,6 @@ export const audio = {
     this._updatePads(now);
     this._updateStationMurmur(now);
 
-    // Mining heat pitch-bend
-    if (rt.loops.mining && rt.loops.mining.filter) {
-      const heat = (this.state.player && this.state.player.beam && this.state.player.beam.heat) || 0;
-      const targetFreq = 1200 + (heat / 100.0) * 1200;
-      try {
-        rt.loops.mining.filter.frequency.setTargetAtTime(targetFreq, now, 0.1);
-      } catch (_) {}
-    }
-
     // recover music gain after a duck (skip while paused — _onPause manages the bus)
     if (!rt._paused && rt._duckUntil && now >= rt._duckUntil && rt.musicBus) {
       rt._duckUntil = 0;
@@ -1587,10 +1585,8 @@ export const audio = {
     const cruising = cruise && cruise.phase === 'cruising';
     
     const thrusting = !!(this.state.input && (
-      this.state.input.actions.forward ||
-      this.state.input.actions.backward ||
-      this.state.input.actions.strafeLeft ||
-      this.state.input.actions.strafeRight
+      Math.abs(Number(this.state.input.moveZ) || 0) > 0.02 ||
+      Math.abs(Number(this.state.input.moveX) || 0) > 0.02
     ));
 
     let f1 = 55, f2 = 55, d2 = 6, noiseG = 0.0001;

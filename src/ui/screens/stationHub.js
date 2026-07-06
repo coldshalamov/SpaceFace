@@ -269,10 +269,14 @@ function departureChipActionTitle(chip) {
 }
 
 function departureChipHtml(chip) {
+  let icon = '●';
+  const l = (chip.label || '').toLowerCase();
+  if (l.includes('nav') || l.includes('obj') || l.includes('mission')) icon = '◆';
+  else if (l.includes('hold') || l.includes('cargo') || l.includes('mass')) icon = '■';
+  
   const cls = 'st-departure-chip st-departure-chip--' + chip.kind;
-  const body =
-    '<b>' + escapeHtml(chip.label) + '</b>' +
-    '<span>' + escapeHtml(chip.text) + '</span>';
+  const body = '<b>' + escapeHtml(chip.label) + ' [' + icon + ' ' + escapeHtml(chip.text) + ']</b>';
+  
   const targetAttr = chip.targetScreen
     ? ' data-departure-screen="' + escapeHtml(chip.targetScreen) + '"'
     : (chip.targetTab ? ' data-departure-tab="' + escapeHtml(chip.targetTab) + '"' : '');
@@ -762,6 +766,35 @@ export const stationHub = {
     body.appendChild(content);
     screen.appendChild(body);
 
+    // Comms Side Panel
+    const commsPanel = document.createElement('div');
+    commsPanel.className = 'st-comms-panel';
+    commsPanel.innerHTML = `
+      <div class="st-comms-panel-head">
+        <span>Comms Log</span>
+        <span class="st-comms-panel-close">CLOSE [X]</span>
+      </div>
+      <div class="st-comms-panel-body">
+        <div class="st-comms-panel-row"><span class="sender">ATCX</span> CLEARED FOR DEPARTURE.</div>
+        <div class="st-comms-panel-row"><span class="sender">TRADER</span> ANYONE SELLING ORE?</div>
+        <div class="st-comms-panel-row"><span class="sender">STATION</span> REMINDER: CONTRABAND SCANS ARE ACTIVE.</div>
+      </div>
+    `;
+    screen.appendChild(commsPanel);
+
+    commsPanel.querySelector('.st-comms-panel-close').addEventListener('click', () => {
+      commsPanel.classList.remove('open');
+    });
+
+    // Comms Ticker
+    const commsTicker = document.createElement('div');
+    commsTicker.className = 'st-comms-ticker';
+    commsTicker.innerHTML = '<span class="sender">ATCX</span> CLEARED FOR DEPARTURE. &nbsp;&nbsp;&nbsp; <span class="sender">TRADER</span> ANYONE SELLING ORE?';
+    commsTicker.addEventListener('click', () => {
+      commsPanel.classList.toggle('open');
+    });
+    screen.appendChild(commsTicker);
+
     // build rail buttons (one delegated listener)
     const railFrag = document.createDocumentFragment();
     for (const t of TABS) {
@@ -793,9 +826,47 @@ export const stationHub = {
 
     const undockBtn = topbar.querySelector('.st-undock');
     this._undockBtn = undockBtn;
-    undockBtn.addEventListener('click', () => {
-      ctx.bus.emit('audio:cue', { id: 'ui_click' });
-      ctx.bus.emit('dock:undocked', {});
+    
+    let chargeTimer = null;
+    undockBtn.addEventListener('mousedown', (e) => {
+      if (e.button !== 0 || undockBtn.disabled) return;
+      undockBtn.classList.remove('abort');
+      undockBtn.classList.add('charging');
+      ctx.bus.emit('audio:cue', { id: 'ui_charge_start' });
+      
+      chargeTimer = setTimeout(() => {
+        undockBtn.classList.remove('charging');
+        ctx.bus.emit('audio:cue', { id: 'ui_undock' });
+        ctx.bus.emit('dock:undocked', {});
+        chargeTimer = null;
+      }, 600);
+    });
+
+    undockBtn.addEventListener('mouseup', () => {
+      if (chargeTimer) {
+        clearTimeout(chargeTimer);
+        chargeTimer = null;
+        undockBtn.classList.remove('charging');
+        undockBtn.classList.add('abort');
+        ctx.bus.emit('audio:cue', { id: 'ui_charge_abort' });
+      }
+    });
+
+    undockBtn.addEventListener('mouseleave', () => {
+      if (chargeTimer) {
+        clearTimeout(chargeTimer);
+        chargeTimer = null;
+        undockBtn.classList.remove('charging');
+        undockBtn.classList.add('abort');
+      }
+    });
+
+    // Keep click for keyboard accessibility
+    undockBtn.addEventListener('click', (e) => {
+      if (e.detail === 0) { // synthetic click (e.g. keyboard Enter/Space)
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        ctx.bus.emit('dock:undocked', {});
+      }
     });
 
     // instantiate tab panels (factories from this file-set)
@@ -1020,6 +1091,13 @@ export const stationHub = {
       b.setAttribute('tabindex', isActive ? '0' : '-1');
       if (isActive) activeButton = b;
     });
+    // Trigger channel wipe animation
+    if (this._content) {
+      this._content.classList.remove('switching');
+      void this._content.offsetWidth;
+      this._content.classList.add('switching');
+      setTimeout(() => this._content && this._content.classList.remove('switching'), 130);
+    }
     // panel visibility
     for (const id in this._panels) {
       const isActive = id === tabId;
@@ -1125,7 +1203,10 @@ export const stationHub = {
     const nameEl = this._topbar.querySelector('.st-station-name');
     const facEl = this._topbar.querySelector('.st-station-fac');
     if (stn) {
-      nameEl.textContent = stn.name || stn.id;
+      const targetName = stn.name || stn.id;
+      if (nameEl.textContent !== targetName) {
+        this._signalAcquire(nameEl, targetName, { duration: 400 });
+      }
       const fac = stn.factionId ? FACTION_BY_ID.get(stn.factionId) : null;
       facEl.textContent = (fac ? (fac.short || fac.name) : '') + '  ·  ' + (stn.type || '').replace('_', ' ');
       if (fac) facEl.style.color = fac.color || '';
@@ -1133,6 +1214,36 @@ export const stationHub = {
       nameEl.textContent = 'Station';
       facEl.textContent = '';
     }
+  },
+
+  _signalAcquire(element, finalText, opts = {}) {
+    const duration = opts.duration || 400;
+    const glyphPool = '▒░▓█▐▌╍╌┄┈';
+    const len = finalText.length;
+    const perChar = duration / len;
+    let resolved = 0;
+    
+    element.textContent = finalText.replace(/./g, () => glyphPool[Math.floor(Math.random() * glyphPool.length)]);
+    element.style.opacity = '1';
+    element.classList.remove('acquiring');
+    void element.offsetWidth;
+    element.classList.add('acquiring');
+    
+    const step = () => {
+      if (resolved >= len) {
+        element.textContent = finalText;
+        return;
+      }
+      let out = finalText.slice(0, resolved);
+      out += glyphPool[Math.floor(Math.random() * glyphPool.length)];
+      for (let i = resolved + 1; i < len; i++) {
+        out += finalText[i] === ' ' ? ' ' : glyphPool[Math.floor(Math.random() * glyphPool.length)];
+      }
+      element.textContent = out;
+      resolved++;
+      setTimeout(step, perChar);
+    };
+    setTimeout(step, 60);
   },
 
   _refreshRailServiceStatus() {
@@ -1486,6 +1597,21 @@ function missionAfterAcceptText(m) {
 
 // ---- scoped CSS (injected once; uses theme vars from styles/ui.css) --------------------------
 const STATION_CSS = `
+/* Magic UI Animations */
+@keyframes sf-signal-acquire { 0% { opacity: 0; filter: blur(4px); } 100% { opacity: 1; filter: blur(0); } }
+.acquiring { animation: sf-signal-acquire .4s var(--ease) forwards; color: #ffca58; }
+.st-undock { transition: background-color 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
+.st-undock::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 0%; background: #ffca58; transition: none; }
+.st-undock.charging::after { width: 100%; transition: width 0.6s linear; }
+.st-undock.abort::after { width: 0%; transition: width 0.2s ease-out; }
+@keyframes channel-wipe { 0% { clip-path: inset(0 100% 0 0); filter: brightness(2) contrast(1.5); } 100% { clip-path: inset(0 0 0 0); filter: brightness(1) contrast(1); } }
+.switching { animation: channel-wipe .13s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
+@keyframes market-tick { 0% { background-color: rgba(255, 202, 88, 0.15); border-color: rgba(255, 202, 88, 0.4); } 100% { background-color: transparent; border-color: transparent; } }
+.st-card-spark-wrap { border: 1px solid transparent; border-radius: 4px; transition: border-color 0.5s; }
+.st-card-spark-wrap.tick { animation: market-tick .5s ease-out; }
+.trend-up { color: #f2a83b; font-size: 0.8em; margin-left: 4px; }
+.trend-down { color: #8fb0c0; font-size: 0.8em; margin-left: 4px; }
+
 .st-hub { width: min(1100px, 94vw); height: min(760px, 92vh); display: flex; flex-direction: column;
   pointer-events: auto; overflow: hidden; animation: sf-fadein .3s var(--ease) both; }
 .st-topbar { display: flex; align-items: center; justify-content: space-between;
@@ -1980,4 +2106,174 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-mission-btns { display: flex; gap: 8px; align-items: center; }
 .st-mission-btns button { font-size: .78rem; }
 .st-mission-unmet { font-size: .7rem; color: var(--danger); }
+
+/* --- SCORCHED BULKHEAD CONSOLE OVERRIDES --- */
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Saira+Semi+Condensed:wght@300;400;500;600&display=swap');
+
+.st-hub {
+  --font-display: 'Chakra Petch', var(--mono), monospace;
+  --font-body: 'Saira Semi Condensed', 'Segoe UI', sans-serif;
+  --panel-edge: rgba(58,50,33,0.4);
+}
+.st-station-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  position: relative;
+}
+.st-station-name::after {
+  content: ''; position: absolute; bottom: -2px; left: 0; height: 1px;
+  background: var(--accent); width: 0; box-shadow: 0 0 6px var(--accent);
+}
+.st-station-name.acquiring::after {
+  animation: signal-sweep 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes signal-sweep {
+  from { width: 0; opacity: 1; }
+  to { width: 100%; opacity: 0.3; }
+}
+.st-tab-label {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.c-name, .st-sy-name, .st-svc-name, .st-inv-name, .st-mission-title, .st-bar-name {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+}
+.st-cmdty-purpose, .st-market-mission-body, .st-sy-guide, .st-sy-purpose, .st-mission-brief, .st-mission-purpose, .st-bar-line {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+.st-row-head, .st-sub-h, .st-manuf-group-h {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.st-topbar {
+  height: 52px;
+  padding: 0 20px;
+}
+.st-hub *, .st-hub button {
+  border-radius: 1px !important;
+}
+.st-undock {
+  font-family: var(--font-display);
+  border-radius: 1px !important;
+}
+.st-undock::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, var(--accent), transparent 70%);
+  opacity: 0; transform: scaleX(0); transform-origin: left;
+  transition: none; pointer-events: none; z-index: 0;
+}
+.st-undock.charging::before {
+  opacity: 0.25; transform: scaleX(1);
+  transition: transform 600ms cubic-bezier(0.33, 1, 0.68, 1), opacity 80ms ease;
+}
+.st-undock.abort::before {
+  opacity: 0; transform: scaleX(0);
+  transition: all 150ms ease;
+}
+.st-undock > * { position: relative; z-index: 1; }
+.st-content::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 4px;
+  background: repeating-linear-gradient(90deg, rgba(242,168,59,0.6) 0px, transparent 2px, rgba(242,168,59,0.3) 4px, transparent 6px);
+  opacity: 0; pointer-events: none; z-index: 10; top: 0;
+}
+.st-content.switching::after {
+  animation: channel-wipe-trace 120ms ease-out forwards;
+}
+@keyframes channel-wipe-trace {
+  0% { top: 0; opacity: 0.9; }
+  100% { top: 100%; opacity: 0; }
+}
+.st-trend-arrow {
+  display: inline-block; font-size: 1.4em; line-height: 1;
+  transition: transform 0.3s var(--ease), color 0.3s var(--ease);
+}
+.st-trend-arrow.up { color: var(--danger); transform: rotate(-90deg); }
+.st-trend-arrow.down { color: var(--good); transform: rotate(90deg); }
+.st-trend-arrow.flat { color: var(--ink-mute); opacity: 0.4; }
+.st-trend-arrow.strong { font-size: 1.8em; }
+
+.st-faction-gauge {
+  height: 6px; border-radius: 1px; position: relative; width: 140px; margin-top: 4px;
+  background: linear-gradient(90deg, var(--danger) 0%, var(--danger) 20%, var(--warn) 20%, var(--warn) 40%, var(--ink-mute) 40%, var(--ink-mute) 60%, var(--accent-2) 60%, var(--accent-2) 80%, var(--good) 80%, var(--good) 100%);
+}
+.st-faction-gauge::after {
+  content: ''; position: absolute; top: -3px; width: 2px; height: 12px;
+  background: var(--ink); box-shadow: 0 0 4px rgba(0,0,0,0.8);
+  left: var(--rep-pct, 50%); transition: left 0.5s var(--ease);
+}
+.st-comms-ticker {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
+  letter-spacing: 0.04em; white-space: nowrap; overflow: hidden;
+  border-top: 1px solid var(--panel-edge); padding: 5px 16px; background: var(--sh-black);
+  cursor: pointer; transition: background-color 0.2s ease;
+}
+.st-comms-ticker:hover {
+  background: rgba(57,208,255,0.05);
+}
+.st-comms-ticker .sender {
+  color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em;
+  font-size: 9px; margin-right: 8px;
+}
+#sf-comms, #sf-comm-backlog, #sf-comm-backlog-btn {
+  display: none !important;
+}
+.st-comms-panel {
+  position: absolute; right: 0; top: 53px; bottom: 25px; width: 340px;
+  background: rgba(8,14,26,0.95); border-left: 1px solid var(--panel-edge);
+  transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex; flex-direction: column; z-index: 100;
+  backdrop-filter: blur(8px);
+}
+.st-comms-panel.open {
+  transform: translateX(0);
+}
+.st-comms-panel-head {
+  padding: 10px 16px; border-bottom: 1px solid var(--panel-edge);
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--font-display); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent);
+}
+.st-comms-panel-close {
+  cursor: pointer; color: var(--ink-mute); font-family: var(--mono); font-size: 11px;
+}
+.st-comms-panel-close:hover { color: var(--ink); }
+.st-comms-panel-body {
+  flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.st-comms-panel-row {
+  font-family: var(--font-body); font-size: 13px; line-height: 1.45; color: var(--ink);
+}
+.st-hub button:active:not(:disabled) {
+  transform: scale(0.96); transition: transform 50ms ease;
+}
+[data-tip]::after {
+  border-left: 3px solid var(--tip-accent, var(--panel-edge-2));
+}
+[data-tip-severity="ok"]   { --tip-accent: var(--good); }
+[data-tip-severity="warn"] { --tip-accent: var(--warn); }
+[data-tip-severity="bad"]  { --tip-accent: var(--danger); }
+
+@media (prefers-reduced-motion: reduce) {
+  .st-hub *, .st-modal * {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important;
+  }
+  .st-station-name.acquiring::after { animation: none; }
+  .st-undock::before { transition: none; }
+  .st-content::after { animation: none; }
+}
 `;

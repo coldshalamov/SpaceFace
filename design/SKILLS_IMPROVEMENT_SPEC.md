@@ -61,7 +61,7 @@ expose. Everything in §3–§5 traces back to one of these.
    `game-ux-designer`, `threejs-game-ui-designer`
 
 3. **Release & debug-surface hygiene — including two confirmed packaged-build blockers.** V2 never asks
-   "what would a Steam build refuse to ship with?" Reported: `window.SF` ships unguarded (`main.js:36`), boot
+   "what would a premium PC/browser build refuse to ship with?" Reported: `window.SF` ships unguarded (`main.js:36`), boot
    `console.log`s ship, `preserveDrawingBuffer:true` (`renderer.js:24`) has no reader in the packaged build,
    and the dev `server.js` MIME/route table **diverges from the packaged Electron build**. Two of these are
    **confirmed critical bugs** (verified against the code, not just reported):

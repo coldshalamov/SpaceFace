@@ -25,6 +25,10 @@ import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { addCargo, removeCargo } from './cargo.js';
+import {
+  getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
+  serializeCycles, deserializeCycles,
+} from './economyCycles.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 const BASE_EQ_DEFAULT = 1000;      // baseEq before sizeFactor
@@ -175,10 +179,22 @@ export function economySpotPriceForRole(def, role, side = 'mid', opts = {}) {
   return mid;
 }
 
-/** Effective stock drift target = equilibrium (role*size*BASE_EQ) * event eq mods, clamped. */
-function effectiveEq(entry) {
+/** Effective stock drift target = equilibrium (role*size*BASE_EQ) * event eq mods * cycle factor. */
+function effectiveEq(entry, state, stationId, cmdtyId) {
   const m = clamp(eventModMult(entry, 'equilibrium'), EQ_MULT_CLAMP[0], EQ_MULT_CLAMP[1]);
-  return entry.equilibrium * m;
+  const cycle = state && state.economy && state.economy.cycles
+    ? getCycleCore(state, stationId, cmdtyId, cycleRngFor(state, stationId, cmdtyId), state.simTime || 0)
+    : null;
+  const cf = cycle ? cycleFactorAt(cycle, state.simTime || 0) : 1;
+  return entry.equilibrium * m * cf;
+}
+
+function cycleRngFor(state, stationId, cmdtyId) {
+  if (economy._instance && typeof economy._instance._rng === 'function') {
+    return () => economy._instance._rng();
+  }
+  const seedOwner = { seed: hash32(state && state.meta && state.meta.seed, 'economy-cycle', stationId, cmdtyId) };
+  return () => drawSeeded(seedOwner, 'seed', seedOwner.seed);
 }
 
 /** Effective spread for a market entry (base * event spread mods * frontier penalty), clamped. */
@@ -216,8 +232,9 @@ export const economy = {
     economy._instance = this; // so exported quote()/execute() reach the live system
 
     const state = this.state, bus = this.bus;
-    if (!state.economy) state.economy = { markets: {}, econEvents: [], econClock: { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }, marketIntel: {} };
+    if (!state.economy) state.economy = { markets: {}, cycles: {}, econEvents: [], econClock: { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }, marketIntel: {} };
     if (!state.economy.markets) state.economy.markets = {};
+    if (!state.economy.cycles) state.economy.cycles = {};
     if (!state.economy.econEvents) state.economy.econEvents = [];
     if (!state.economy.econClock) state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     if (!state.economy.marketIntel) state.economy.marketIntel = {};
@@ -319,7 +336,13 @@ export const economy = {
         const entry = market[cid];
         const def = commodityDef(state, cid);
         if (!def) continue;
-        const eff = effectiveEq(entry);
+        // advance hidden regional cycle regime (may re-roll amplitude/bias/frequency)
+        const cycle = getCycleCore(state, sid, cid, () => this._rng(), state.simTime);
+        const nextCycle = maybeAdvanceRegime(cycle, () => this._rng(), state.simTime);
+        if (nextCycle !== cycle) {
+          state.economy.cycles[sid][cid] = nextCycle;
+        }
+        const eff = effectiveEq(entry, state, sid, cid);
         const driftMod = eventModMult(entry, 'drift'); // BLOCKADE freezes drift (mult 0.1)
         // stock' = clamp(stock + DRIFT_RATE*driftMod*(eff - stock)*dt, 0, cap)
         entry.stock = Math.max(0, entry.stock + DRIFT_RATE * driftMod * (eff - entry.stock) * tickDt);
@@ -368,12 +391,17 @@ export const economy = {
     const market = {};
     for (const def of COMMODITIES) {
       const role = roleFor(def, type);
-      if (role === 'none') continue;                  // commodity not traded here (hidden)
-      // contraband/illegal only appears at blackmarket-tolerant stations
+      // Every legal commodity trades at every station — role only drives price/stock target, not
+      // availability. A 'none'-role commodity (e.g. iron ore at a military station) still gets an
+      // entry so the player can always sell what they mined/bought. Contraband/illegal goods stay
+      // gated to blackmarket-tolerant stations (that is a design-correct restriction, not a filter).
       if (def.legality === 'contraband' || def.legality === 'illegal') {
         if (!allowContraband) continue;
       }
-      const equilibrium = economyStockTargetForRole(role, baseEqRef); // stock drift target
+      // 'none'-role goods have no produce/consume pull, so drift them toward a neutral baseEq stock
+      // (price settles near basePrice; player can both buy and sell). Produce/consume keep their
+      // role-driven surplus/shortage targets so A->B routes stay profitable.
+      const equilibrium = role === 'none' ? baseEqRef : economyStockTargetForRole(role, baseEqRef);
       const stock = equilibrium;                                 // start at rest
       const entry = {
         stock, equilibrium, baseEq: baseEqRef, role,
@@ -382,6 +410,12 @@ export const economy = {
       const frontier = info ? this.frontierPenalty(info) : 0;
       this.recomputePrices(entry, def, frontier);
       market[def.id] = entry;
+      // seed the hidden regional price cycle for this commodity
+      if (!state.economy.cycles) state.economy.cycles = {};
+      if (!state.economy.cycles[stationId]) state.economy.cycles[stationId] = {};
+      const cycle = createCycle(() => this._rng(), def, state.simTime || 0);
+      cycle.cmdtyId = def.id;
+      state.economy.cycles[stationId][def.id] = cycle;
     }
     markets[stationId] = market;
     return market;
@@ -1062,6 +1096,7 @@ export const economy = {
   newGame() {
     const state = this.state;
     state.economy.markets = {};
+    state.economy.cycles = {};
     state.economy.econEvents = [];
     state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     state.economy.marketIntel = {};
@@ -1091,6 +1126,7 @@ export const economy = {
     }
     return {
       markets,
+      cycles: serializeCycles(this.state),
       econEvents: (econ.econEvents || []).map((e) => ({ ...e })),
       econClock: { ...econ.econClock },
       marketIntel: econ.marketIntel,
@@ -1121,6 +1157,7 @@ export const economy = {
     econ.econEvents = (data.econEvents || []).map((e) => ({ ...e }));
     econ.econClock = data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     econ.marketIntel = data.marketIntel || {};
+    deserializeCycles(this.state, data.cycles);
     econ.rngSeed = (Number.isFinite(data.rngSeed) && (data.rngSeed >>> 0) !== 0)
       ? data.rngSeed >>> 0
       : hash32(this.state.meta && this.state.meta.seed, 'economy');
@@ -1137,3 +1174,11 @@ export function quote(stationId, commodityId, side, qty) {
 export function execute(stationId, commodityId, side, qty) {
   return economy._instance ? economy._instance.execute(stationId, commodityId, side, qty) : { ok: false, reason: 'no_economy' };
 }
+export function getCycle(stationId, commodityId) {
+  return economy._instance ? economy._instance.getCycle(stationId, commodityId) : null;
+}
+economy.getCycle = function (stationId, commodityId) {
+  const state = this.state;
+  if (!state || !state.economy) return null;
+  return getCycleCore(state, stationId, commodityId, () => this._rng(), state.simTime || 0);
+};

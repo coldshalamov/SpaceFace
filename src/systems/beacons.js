@@ -82,6 +82,13 @@ export const beacons = {
   },
 
   update(dt, state) {
+    // Deploy trigger: the flight-input edge flag (U in open space). Read BEFORE the empty-list
+    // early-return so the first beacon can be planted. The UI router falls through in open space
+    // (it owns U only when a claimable body is in range — see check-claim-base-input), so the key
+    // reaches this deterministic sim-step verb instead of a DOM handler. `beacon:deploy` stays as a
+    // programmatic API. Inert during the 47a golden (U never pressed → deployBeacon stays false).
+    const acts = state.input && state.input.actions;
+    if (acts && acts.deployBeacon && state.mode === 'flight') this.deploy();
     const list = state.beacons;
     if (!list || !list.length) return;         // no beacon → strict no-op (deterministic sim safe)
     if (state.mode !== 'flight') return;

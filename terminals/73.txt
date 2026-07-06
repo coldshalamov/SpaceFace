@@ -1,0 +1,138 @@
+---
+pid: 19260
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; git add assets/ships/parts/parts_manifest.json package.json package-lock.json 2>$null; git commit -m \"feat(world-identity): story-grounded place pipeline with IoU-gated Blender slice
+
+- End-to-end pipeline docs, 10 sector style specs, story gap-fill with city districts
+- 53 indexed concept refs organized by area; cities marked concept_only tier
+- Fixed sector anchors + geography validation; Eve-inspired nav spec (6 features)
+- Bootstrap/promote Blender lane: 5 blender_mcp archetypes with iteration_ledger IoU gate
+- Silhouette resemblance checks in glb-load + dedicated validator; visual audit PNG export
+- Runtime wiring: archetypeGlb forwarding, partsLibrary station archetype builds
+- verify:place-identity orchestrator; live probe for Helios + Pallas sectors\""
+started_at: 2026-07-05T01:35:32.573Z
+running_for_ms: 4435001  
+---
+Auto packing the repository for optimum performance.
+See "git help gc" for manual housekeeping.
+warning: There are too many unreachable loose objects; run 'git prune' to remove them.
+[master 94f3ee3e] feat(world-identity): story-grounded place pipeline with IoU-gated Blender slice
+ 126 files changed, 6069 insertions(+), 51 deletions(-)
+ create mode 100644 assets/concept/archetypes/concept_gate_jump_ring.jpg
+ create mode 100644 assets/concept/archetypes/concept_station_blackmarket.jpg
+ create mode 100644 assets/concept/archetypes/concept_station_fab.jpg
+ create mode 100644 assets/concept/archetypes/concept_station_military.jpg
+ create mode 100644 assets/concept/archetypes/concept_station_mining.jpg
+ create mode 100644 assets/concept/archetypes/concept_station_refinery.jpg
+ create mode 100644 assets/concept/archetypes/concept_station_research.jpg
+ create mode 100644 assets/concept/archetypes/concept_station_trade_hub.jpg
+ create mode 100644 assets/concept/cities/concept_ashfall_city.jpg
+ create mode 100644 assets/concept/cities/concept_ceres_city.jpg
+ create mode 100644 assets/concept/cities/concept_charon_city.jpg
+ create mode 100644 assets/concept/cities/concept_helios_city.jpg
+ create mode 100644 assets/concept/cities/concept_io_city.jpg
+ create mode 100644 assets/concept/cities/concept_pallas_city.jpg
+ create mode 100644 assets/concept/cities/concept_sker_city.jpg
+ create mode 100644 assets/concept/cities/concept_tethys_city.jpg
+ create mode 100644 assets/concept/cities/concept_veil_city.jpg
+ create mode 100644 assets/concept/cities/concept_vesta_city.jpg
+ create mode 100644 assets/concept/factions/concept_faction_dmc.jpg
+ create mode 100644 assets/concept/factions/concept_faction_mts.jpg
+ create mode 100644 assets/concept/factions/concept_faction_scn.jpg
+ create mode 100644 assets/concept/index.json
+ create mode 100644 assets/concept/landmarks/concept_landmark_ashfall.jpg
+ create mode 100644 assets/concept/landmarks/concept_landmark_charon.jpg
+ create mode 100644 assets/concept/landmarks/concept_landmark_driller.jpg
+ create mode 100644 assets/concept/landmarks/concept_landmark_io.jpg
+ create mode 100644 assets/concept/landmarks/concept_landmark_memorial.jpg
+ create mode 100644 assets/concept/landmarks/concept_landmark_pallas.jpg
+ create mode 100644 assets/concept/landmarks/concept_landmark_sker.jpg
+ create mode 100644 assets/concept/landmarks/concept_landmark_tethys.jpg
+ create mode 100644 assets/concept/landmarks/concept_landmark_veil.jpg
+ create mode 100644 assets/concept/landmarks/concept_landmark_vesta.jpg
+ create mode 100644 assets/concept/map/concept_universe_map.jpg
+ create mode 100644 assets/concept/people/concept_npc_belt_foreman.jpg
+ create mode 100644 assets/concept/people/concept_npc_dock_worker.jpg
+ create mode 100644 assets/concept/people/concept_npc_fringe_smuggler.jpg
+ create mode 100644 assets/concept/planets/concept_planet_ceres.jpg
+ create mode 100644 assets/concept/planets/concept_planet_helios.jpg
+ create mode 100644 assets/concept/planets/concept_planet_veil.jpg
+ create mode 100644 assets/concept/sectors/sector_ashfall_reach/concept_ashfall_overview.jpg
+ create mode 100644 assets/concept/sectors/sector_ceres_belt/concept_ceres_overview.jpg
+ create mode 100644 assets/concept/sectors/sector_charon_expanse/concept_charon_overview.jpg
+ create mode 100644 assets/concept/sectors/sector_helios_prime/concept_helios_overview.jpg
+ create mode 100644 assets/concept/sectors/sector_io_reach/concept_io_overview.jpg
+ create mode 100644 assets/concept/sectors/sector_pallas_drift/concept_pallas_overview.jpg
+ create mode 100644 assets/concept/sectors/sector_sker_haven/concept_sker_overview.jpg
+ create mode 100644 assets/concept/sectors/sector_tethys_junction/concept_tethys_overview.jpg
+ create mode 100644 assets/concept/sectors/sector_veil_nebula/concept_veil_overview.jpg
+ create mode 100644 assets/concept/sectors/sector_vesta_forge/concept_vesta_overview.jpg
+ create mode 100644 assets/concept/ships/concept_ship_concord_patrol.jpg
+ create mode 100644 assets/concept/ships/concept_ship_drift_hauler.jpg
+ create mode 100644 assets/concept/ships/concept_ship_meridian_trader.jpg
+ create mode 100644 assets/concept/ships/concept_ship_quiet_raider.jpg
+ create mode 100644 assets/concept/styles/concept_style_bible.jpg
+ create mode 100644 assets/ships/parts/blender/authoring.json
+ create mode 100644 assets/ships/parts/blender/iteration_ledger.json
+ create mode 100644 assets/ships/parts/blender/place_gate_jump_ring.blend
+ create mode 100644 assets/ships/parts/blender/place_station_blackmarket.blend
+ create mode 100644 assets/ships/parts/blender/place_station_military.blend
+ create mode 100644 assets/ships/parts/blender/place_station_refinery.blend
+ create mode 100644 assets/ships/parts/blender/place_station_trade_hub.blend
+ create mode 100644 assets/ships/parts/blender/place_station_trade_hub.blend1
+ create mode 100644 assets/ships/parts/places/place_gate_jump_ring.glb
+ create mode 100644 assets/ships/parts/places/place_station_blackmarket.glb
+ create mode 100644 assets/ships/parts/places/place_station_fab.glb
+ create mode 100644 assets/ships/parts/places/place_station_military.glb
+ create mode 100644 assets/ships/parts/places/place_station_mining.glb
+ create mode 100644 assets/ships/parts/places/place_station_refinery.glb
+ create mode 100644 assets/ships/parts/places/place_station_research.glb
+ create mode 100644 assets/ships/parts/places/place_station_trade_hub.glb
+ create mode 100644 assets/ships/release/parts/places/place_gate_jump_ring.glb
+ create mode 100644 assets/ships/release/parts/places/place_station_blackmarket.glb
+ create mode 100644 assets/ships/release/parts/places/place_station_fab.glb
+ create mode 100644 assets/ships/release/parts/places/place_station_military.glb
+ create mode 100644 assets/ships/release/parts/places/place_station_mining.glb
+ create mode 100644 assets/ships/release/parts/places/place_station_refinery.glb
+ create mode 100644 assets/ships/release/parts/places/place_station_research.glb
+ create mode 100644 assets/ships/release/parts/places/place_station_trade_hub.glb
+ create mode 100644 design/world-identity/BLENDER_ITERATION_EVIDENCE.md
+ create mode 100644 design/world-identity/CURATED_SPACE_FEATURES.md
+ create mode 100644 design/world-identity/PIPELINE.md
+ create mode 100644 design/world-identity/SECTOR_STYLE_INDEX.md
+ create mode 100644 design/world-identity/STORY_SECTOR_MAP.md
+ create mode 100644 design/world-identity/WORLD_NAVIGATION_SPEC.md
+ create mode 100644 design/world-identity/place-identity-index.json
+ create mode 100644 design/world-identity/sectors/sector_ashfall_reach.md
+ create mode 100644 design/world-identity/sectors/sector_ceres_belt.md
+ create mode 100644 design/world-identity/sectors/sector_charon_expanse.md
+ create mode 100644 design/world-identity/sectors/sector_helios_prime.md
+ create mode 100644 design/world-identity/sectors/sector_io_reach.md
+ create mode 100644 design/world-identity/sectors/sector_pallas_drift.md
+ create mode 100644 design/world-identity/sectors/sector_sker_haven.md
+ create mode 100644 design/world-identity/sectors/sector_tethys_junction.md
+ create mode 100644 design/world-identity/sectors/sector_veil_nebula.md
+ create mode 100644 design/world-identity/sectors/sector_vesta_forge.md
+ create mode 100644 docs/worldbuilding/story/PLACE-IDENTITY-GAP-FILL.md
+ create mode 100644 scripts/author-place-archetype.mjs
+ create mode 100644 scripts/build-world-station-archetypes.mjs
+ create mode 100644 scripts/check-concept-index.mjs
+ create mode 100644 scripts/check-place-concept-resemblance.mjs
+ create mode 100644 scripts/check-sector-geography.mjs
+ create mode 100644 scripts/check-station-archetype-glb-load.mjs
+ create mode 100644 scripts/check-station-archetype-wiring.mjs
+ create mode 100644 scripts/export-place-silhouette-audit.mjs
+ create mode 100644 scripts/gen-sector-geography-draft.mjs
+ create mode 100644 scripts/lib/silhouette-raster.mjs
+ create mode 100644 scripts/patch-single-release-place.mjs
+ create mode 100644 scripts/probe-ship-visual-stability.mjs
+ create mode 100644 scripts/probe-station-archetypes-live.mjs
+ create mode 100644 scripts/promote-place-archetype.mjs
+ create mode 100644 scripts/verify-place-identity-slice.mjs
+ create mode 100644 scripts/wire-concept-renderables.mjs
+ create mode 100644 src/data/sectorAnchors.js
+ create mode 100644 test/place-identity-provenance.test.mjs
+ create mode 100644 test/sector-geography.test.mjs
+ create mode 100644 test/station-archetype-wiring.test.mjs
+ create mode 100644 tools/art/blender/author_place_archetype.py
+ create mode 100644 tools/art/generate_concept_place_refs.py

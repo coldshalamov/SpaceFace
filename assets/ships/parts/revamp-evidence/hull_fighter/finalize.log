@@ -1,0 +1,13 @@
+{
+  "partId": "hull_fighter",
+  "file": "hulls/hull_fighter.glb",
+  "tris": 4226,
+  "bytes": 1530128,
+  "dims": [
+    10.449,
+    1.1919,
+    5.8845
+  ],
+  "images": 3,
+  "materials": "Material_Hull"
+}

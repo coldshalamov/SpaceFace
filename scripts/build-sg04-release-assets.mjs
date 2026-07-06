@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +45,12 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 
 const partManifest = JSON.parse(readFileSync(PART_MANIFEST, 'utf8'));
 const packageJson = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8'));
+// Authored whole-ship bodies live in assets/ships/parts/wholeships/ but are NOT in parts_manifest.json.
+// They are runtime-wired (partsLibrary.js WHOLE_SHIP_FILE_BY_DEF_ID) and were previously copied into
+// release/ uncompressed and unmanifested. Fold them into the standard build so they get meshopt
+// compression (their SOCKET_*/LOD* nodes are preserved by inspectReleaseAssetPair's parity check) and
+// a release_manifest.json entry — same release standard as the kestrel reference and every part.
+const WHOLE_SHIP_FILES = ['kestrel.glb', 'pelican.glb', 'wasp.glb'];
 const assets = [
   {
     id: 'ship_kestrel_reference',
@@ -57,6 +63,12 @@ const assets = [
     kind: `part:${part.category}`,
     source: `assets/ships/parts/${part.file}`,
     release: `assets/ships/release/parts/${part.file}`,
+  })),
+  ...WHOLE_SHIP_FILES.map((file) => ({
+    id: `wholeship_${file.replace(/\.glb$/, '')}`,
+    kind: 'part:wholeships',
+    source: `assets/ships/parts/wholeships/${file}`,
+    release: `assets/ships/release/parts/wholeships/${file}`,
   })),
 ];
 
@@ -157,6 +169,7 @@ for (let index = 0; index < assets.length; index++) {
     }));
 
     await document.transform(...transforms);
+    stampReleaseTextureCompression(document, sourceInspection);
     await mkdir(dirname(releaseAbs), { recursive: true });
     await io.write(releaseAbs, document);
 
@@ -225,6 +238,36 @@ function appendManifestAsset(manifest, asset, pair, sourceBytes, releaseBytes) {
   });
 }
 
+function stampReleaseTextureCompression(document, sourceInspection) {
+  const textureCount = sourceInspection && sourceInspection.metrics
+    ? Number(sourceInspection.metrics.textureCount) || 0
+    : 0;
+  if (textureCount <= 0) return;
+  const root = document.getRoot();
+  const compression = 'KTX2/BasisU';
+  const asset = root.getAsset();
+  if (asset.extras && asset.extras.spacefaceAsset) {
+    asset.extras = {
+      ...asset.extras,
+      spacefaceAsset: {
+        ...asset.extras.spacefaceAsset,
+        textureCompression: compression,
+      },
+    };
+  }
+  for (const scene of root.listScenes()) {
+    const extras = scene.getExtras() || {};
+    if (!extras.spacefaceAsset) continue;
+    scene.setExtras({
+      ...extras,
+      spacefaceAsset: {
+        ...extras.spacefaceAsset,
+        textureCompression: compression,
+      },
+    });
+  }
+}
+
 function inspectExistingReleasePair(asset, outputReleasePath) {
   if (!existsSync(resolve(ROOT, outputReleasePath))) return null;
   const pair = inspectReleaseAssetPair(asset.source, outputReleasePath, { root: ROOT });
@@ -291,18 +334,9 @@ function isProcessRunning(pid) {
 }
 
 async function publishStagedRelease() {
-  // Authored whole-ship bodies (assets/ships/parts/wholeships/) are not in parts_manifest.json, so the
-  // manifest-driven staged build doesn't contain them. Copy them into the staged tree before the atomic
-  // swap or the swap would wipe them from release/ and ships would fall back to the parts-assembly.
-  try {
-    const wsSrc = resolve(ROOT, 'assets/ships/parts/wholeships');
-    if (existsSync(wsSrc)) {
-      const wsDst = resolve(STAGED_RELEASE_ROOT, 'parts/wholeships');
-      mkdirSync(wsDst, { recursive: true });
-      cpSync(wsSrc, wsDst, { recursive: true });
-      console.log('[sg04] preserved whole-ship bodies into staged release');
-    }
-  } catch (error) { console.error(`[sg04] whole-ship preserve failed: ${errorMessage(error)}`); }
+  // Whole-ship bodies are now first-class manifest assets (built with meshopt into the staged tree by
+  // the main loop), so the previous uncompressed preserve-copy is gone: copying the raw source over
+  // the compressed staged output would defeat the release compression + node-parity validation.
   await rm(PREVIOUS_RELEASE_ROOT, { recursive: true, force: true });
   let movedLiveRelease = false;
   try {

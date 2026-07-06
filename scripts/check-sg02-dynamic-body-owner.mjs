@@ -128,6 +128,7 @@ async function runTetherScenario() {
       targetWorld: { x: targetShip.pos.x, y: 0, z: targetShip.pos.z },
       restLength: 12,
       break: { maxTension: 10_000, maxImpulse: 10_000, stiffness: 180, damping: 12 },
+      spring: { K: 180, zeta: 0.9, captureS: 0.35, maxStretchRatio: 0.9, reelSafeStretchRatio: 0.8 },
       tick: 0,
     });
     assert.deepEqual(handle, {
@@ -143,16 +144,19 @@ async function runTetherScenario() {
     assertAttachmentTelemetry(firstTelemetry, 12);
     assert(firstTelemetry.distance < 20, 'rope joint should reduce initial cable violation');
 
-    assert.equal(port.setAttachmentReel({
+    const reelAccepted = port.setAttachmentReel({
       attachmentId: 'att_sg02_lab',
       physicsHandle: handle,
       restLength: 8,
       previousRestLength: 12,
       tick: 31,
-    }), true, 'setAttachmentReel should rebuild the rope at the requested rest length');
+    });
+    assert.notEqual(reelAccepted, false, 'setAttachmentReel should accept a safe rest-length update');
+    assert(Number.isFinite(reelAccepted.restLength), 'setAttachmentReel should report the accepted rest length');
+    assert(reelAccepted.restLength > 8 && reelAccepted.restLength < 12, 'setAttachmentReel should clamp unsafe reel-in while still shortening the rope');
     for (let i = 0; i < 30; i++) owner.step(1 / 60);
     const reeledTelemetry = port.getAttachmentTelemetry({ attachmentId: 'att_sg02_lab', physicsHandle: handle, tick: 61 });
-    assertAttachmentTelemetry(reeledTelemetry, 8);
+    assertAttachmentTelemetry(reeledTelemetry, reelAccepted.restLength);
     assert(reeledTelemetry.distance <= firstTelemetry.distance + 1e-6, 'reeling should not increase anchor distance');
 
     assert.equal(port.cutAttachment({
@@ -224,7 +228,7 @@ async function runLayeredSyncScenario() {
 
 async function runCombatKernelScenario() {
   const actor = makeCombatShip(1, 0, 0);
-  const target = makeCombatShip(2, 1, 40);
+  const target = makeCombatShip(2, 1, 22);
   const owner = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, quantum: 1e-5 });
   owner.syncFromEntities([actor, target]);
   const state = {

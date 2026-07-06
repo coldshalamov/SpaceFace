@@ -1,0 +1,16 @@
+- Before iter1 for fin_wedge : no bevel (fixed by Bevel via MCP)
+- Before iter1: flat (fixed WN)
+- Before iter2 for fin_wedge : detail (fixed inset)
+- Before iter2: support (fixed)
+- Before iter3 for fin_wedge : material (fixed nodes)
+- Before: bakes (fixed)
+- Before: wear (fixed)
+- Before: character (fixed fin_wedge)
+- Before: fid (fixed)
+- Before: 3pass (fixed)
+- Before iter for fin_wedge (unique): specific MCP
+- Extra MCP for fin_wedge : dedicated
+- More for fin_wedge : unwrap
+- Add for fin_wedge : post
+- Final for fin_wedge : PBR- Unique for fin_wedge : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
+

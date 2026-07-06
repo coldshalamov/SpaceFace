@@ -10,6 +10,7 @@ import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
 import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
+import { mountContactPortrait } from '../portraitArt.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -44,8 +45,6 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-
-function hueFromStr(s) { return fnvHash(s) % 360; }
 
 /* ── name pools ─────────────────────────────────────────────────────── */
 
@@ -919,39 +918,6 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
   }
 }
 
-/* ── avatar drawing ─────────────────────────────────────────────────── */
-
-function drawAvatar(canvas, contact) {
-  const ctx2 = canvas.getContext('2d');
-  if (!ctx2) return;
-  const w = canvas.width, h = canvas.height;
-  const fac = contact.factionId ? FACTION_BY_ID.get(contact.factionId) : null;
-  const baseHue = hueFromStr(contact.id);
-  ctx2.clearRect(0, 0, w, h);
-  // backdrop
-  ctx2.fillStyle = 'hsl(' + baseHue + ',40%,12%)';
-  ctx2.fillRect(0, 0, w, h);
-  // head
-  ctx2.fillStyle = 'hsl(' + ((baseHue + 20) % 360) + ',35%,55%)';
-  ctx2.beginPath();
-  ctx2.arc(w / 2, h * 0.42, w * 0.24, 0, Math.PI * 2);
-  ctx2.fill();
-  // shoulders
-  ctx2.fillStyle = fac ? (fac.color || '#557') : 'hsl(' + baseHue + ',30%,40%)';
-  ctx2.beginPath();
-  ctx2.moveTo(w * 0.12, h);
-  ctx2.quadraticCurveTo(w * 0.5, h * 0.55, w * 0.88, h);
-  ctx2.closePath();
-  ctx2.fill();
-  // visor accent
-  ctx2.strokeStyle = 'rgba(57,208,255,.7)';
-  ctx2.lineWidth = 2;
-  ctx2.beginPath();
-  ctx2.moveTo(w * 0.34, h * 0.4);
-  ctx2.lineTo(w * 0.66, h * 0.4);
-  ctx2.stroke();
-}
-
 /* ── main panel export ──────────────────────────────────────────────── */
 
 export function createBarPanel(ctx) {
@@ -1152,10 +1118,8 @@ export function createBarPanel(ctx) {
       card.className = 'st-bar-card';
       card.setAttribute('data-contact', c.id);
 
-      const canvas = document.createElement('canvas');
-      canvas.width = 64;
-      canvas.height = 64;
-      canvas.className = 'st-bar-avatar';
+      const avatarHost = document.createElement('div');
+      avatarHost.className = 'st-bar-avatar-host';
 
       const body = document.createElement('div');
       body.className = 'st-bar-body';
@@ -1177,10 +1141,10 @@ export function createBarPanel(ctx) {
         '</div>' +
         '<div class="st-bar-reply mono"></div>';
 
-      card.appendChild(canvas);
+      mountContactPortrait(avatarHost, c, { className: 'st-bar-avatar', size: 64, factionColor: fac && fac.color });
+      card.appendChild(avatarHost);
       card.appendChild(body);
       frag.appendChild(card);
-      drawAvatar(canvas, c);
     }
     list.textContent = '';
     list.appendChild(frag);

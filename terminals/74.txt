@@ -1,0 +1,16 @@
+---
+pid: 40012
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; npm run verify:place-identity"
+started_at: 2026-07-05T01:37:55.007Z
+running_for_ms: 4295011  
+---
+
+> spaceface@0.1.0 verify:place-identity
+> node scripts/verify-place-identity-slice.mjs
+
+verify-place-identity-slice: PASS
+concept=true geo=true resemblance=true glb=true silhouetteAudit=true liveProbe=true art=true navFeatures=6
+PLACE-IDENTITY-GAP-FILL exists=true
+wiredRenderables=37
+

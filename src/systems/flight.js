@@ -23,6 +23,10 @@ import { wrapAngle } from '../core/rng.js';
 
 const ANG_VEL_DRAG = 2.2;     // per-second decay of yaw rate for drifting (intent-less) ships
 const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
+const AUTOPILOT_TURN_SOFT_ANGLE = 0.62;
+const AUTOPILOT_ARRIVAL_RADIUS = 38;
+const AUTOPILOT_MAX_LOOKAHEAD = 760;
+const AUTOPILOT_MIN_LOOKAHEAD = 180;
 const DEFAULT_BOOST_RESOURCE = Object.freeze({
   energy: 0,
   max: 0,
@@ -92,7 +96,8 @@ export const flight = {
     if (player && playerFlightSimActive(state, player)) {
       const controlsActive = playerFlightControlsActive(state, player);
       if (!controlsActive) this._cancelPlayerBoost(player);
-      this.applyPlayerIntent(player, dt, controlsActive ? null : NEUTRAL_PLAYER_INPUT, { physicsAuthority: dynamicAuthority });
+      const autopilotInput = controlsActive ? this._autopilotInput(player, dt) : null;
+      this.applyPlayerIntent(player, dt, controlsActive ? autopilotInput : NEUTRAL_PLAYER_INPUT, { physicsAuthority: dynamicAuthority });
       // Emit boost start/stop on the TRUE transition (applyPlayerIntent already set flags.boosting
       // to the actual sustained-boost state above). The old code re-derived it from raw input.boost,
       // which desynced the audio loop and VFX trails whenever energy cut boost mid-hold.
@@ -167,7 +172,9 @@ export const flight = {
     e.flags.boosting = boosting;
 
     const profile = resolveFlightProfile(e, this.state);
-    stepPlayerFlight(e, inp, dt, profile, { boosting, physicsAuthority: opts.physicsAuthority, source: 'player-flight' });
+    const frame = stepPlayerFlight(e, inp, dt, profile, { boosting, physicsAuthority: opts.physicsAuthority, source: 'player-flight' });
+    this._emitThrustCue(e, inp, frame);
+    return frame;
   },
 
   _triggerDash(e, boost, opts = {}) {
@@ -215,10 +222,12 @@ export const flight = {
   applyIntent(e, intent, dt, opts = {}) {
     normalizeFlightRuntime(e);
     e.flags.boosting = !!intent.boost;
-    stepNpcFlight(e, intent, dt, resolveFlightProfile(e, this.state), {
+    const frame = stepNpcFlight(e, intent, dt, resolveFlightProfile(e, this.state), {
       physicsAuthority: opts.physicsAuthority,
       source: 'npc-flight',
     });
+    this._emitThrustCue(e, intent, frame);
+    return frame;
   },
 
   // Linear-only drag for intent-less drifters. Also decays yaw rate so a ship that lost its pilot
@@ -267,6 +276,157 @@ export const flight = {
     this.state.flightRuntime = this.state.flightRuntime || {};
     this.state.flightRuntime.diagnostics = this._diag;
   },
+
+  _autopilotInput(player, dt) {
+    const state = this.state;
+    const nav = state && state.nav;
+    const autopilot = nav && nav.autopilot;
+    if (!autopilot || autopilot.active !== true) return null;
+    const raw = state.input || {};
+    if (hasManualFlightInput(raw)) {
+      this._stopAutopilot('manual');
+      return null;
+    }
+
+    const target = resolveAutopilotTarget(state, autopilot);
+    if (!target) {
+      this._stopAutopilot('lost-target');
+      return null;
+    }
+
+    const px = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+    const pz = player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+    const dx = target.x - px;
+    const dz = target.z - pz;
+    const dist = Math.hypot(dx, dz);
+    const arrivalRadius = Math.max(AUTOPILOT_ARRIVAL_RADIUS, autopilot.arrivalRadius || 0, (player.radius || 0) + (target.radius || 0) + 18);
+    const speed = Math.hypot((player.vel && player.vel.x) || 0, (player.vel && player.vel.z) || 0);
+    if (dist <= arrivalRadius && speed < 11) {
+      this._stopAutopilot('arrived');
+      return {
+        ...raw,
+        moveX: 0,
+        moveZ: 0,
+        turnIntent: 0,
+        boost: false,
+        brake: false,
+        controlsBlocked: false,
+        _autopilot: true,
+      };
+    }
+
+    if (!Number.isFinite(autopilot.initialDistance) || autopilot.initialDistance < dist) {
+      autopilot.initialDistance = Math.max(dist, arrivalRadius);
+    }
+
+    const profile = resolveFlightProfile(player, state);
+    const guidance = computeAutopilotGuidance(state, player, target, dist, arrivalRadius);
+    const desiredAngle = Math.atan2(guidance.z, guidance.x);
+    const turnError = wrapAngle(desiredAngle - (player.rot || 0));
+    const turnIntent = clampUnit(turnError / AUTOPILOT_TURN_SOFT_ANGLE);
+    const tx = dist > 0.0001 ? dx / dist : Math.cos(player.rot || 0);
+    const tz = dist > 0.0001 ? dz / dist : Math.sin(player.rot || 0);
+    const vx = (player.vel && player.vel.x) || 0;
+    const vz = (player.vel && player.vel.z) || 0;
+    const closingSpeed = vx * tx + vz * tz;
+    const lateralSpeed = Math.abs(vx * -tz + vz * tx);
+    const brakeAccel = Math.max(profile.reverseAccel || 0, (profile.mainAccel || 0) * 0.72, 1);
+    const desiredSpeed = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, dist - arrivalRadius)));
+    const stoppingDistance = closingSpeed > 0 ? (closingSpeed * closingSpeed) / (2 * brakeAccel) : 0;
+    const halfway = Number.isFinite(autopilot.initialDistance) && dist <= autopilot.initialDistance * 0.52;
+    const shouldBrake = closingSpeed > 4 && (
+      dist <= stoppingDistance + arrivalRadius + 45 + lateralSpeed * 1.4 ||
+      (halfway && closingSpeed > desiredSpeed * 0.92)
+    );
+
+    let moveX = 0;
+    let moveZ = 0;
+    let brake = false;
+    let boost = false;
+    if (shouldBrake) {
+      const counter = counterVelocityInput(player);
+      moveX = counter.moveX;
+      moveZ = counter.moveZ;
+      brake = true;
+    } else {
+      const cf = Math.cos(player.rot || 0), sf = Math.sin(player.rot || 0);
+      const rightX = -sf, rightZ = cf;
+      const facingDot = Math.cos(turnError);
+      moveZ = facingDot > -0.25 ? clampUnit(0.35 + facingDot * 0.78) : 0;
+      moveX = clampUnit((guidance.x * rightX + guidance.z * rightZ) * 0.72);
+      const cruiseClear = !guidance.avoiding && Math.abs(turnError) < 0.34;
+      boost = cruiseClear && dist > Math.max(arrivalRadius * 5, stoppingDistance * 1.25 + 220) && speed < (profile.maxSpeed || 120) * 1.85;
+    }
+
+    const result = {
+      ...raw,
+      moveX,
+      moveZ,
+      turnIntent,
+      boost,
+      brake,
+      controlsBlocked: false,
+      _autopilot: true,
+    };
+    this._syncAutopilotInput(result, { dist, arrivalRadius, braking: brake, avoiding: guidance.avoiding, target });
+    autopilot.status = brake ? 'braking' : guidance.avoiding ? 'avoiding' : boost ? 'boosting' : 'cruising';
+    autopilot.distance = dist;
+    return result;
+  },
+
+  _syncAutopilotInput(input, telemetry) {
+    const stateInput = this.state && this.state.input;
+    if (!stateInput || !input) return;
+    stateInput.moveX = input.moveX;
+    stateInput.moveZ = input.moveZ;
+    stateInput.turnIntent = input.turnIntent;
+    stateInput.boost = input.boost;
+    stateInput.brake = input.brake;
+    stateInput.autopilot = telemetry || true;
+    const actions = stateInput.actions || (stateInput.actions = {});
+    actions.brake = !!input.brake;
+  },
+
+  _stopAutopilot(reason) {
+    const nav = this.state && this.state.nav;
+    const autopilot = nav && nav.autopilot;
+    if (!autopilot || autopilot.active !== true) return;
+    autopilot.active = false;
+    autopilot.status = reason || 'idle';
+    if (this.state && this.state.input) {
+      this.state.input.autopilot = false;
+      if (this.state.input.actions) this.state.input.actions.brake = false;
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('nav:autopilot', autopilot);
+      this.bus.emit('toast', {
+        text: reason === 'arrived' ? 'Autopilot arrived' : 'Autopilot disengaged',
+        kind: reason === 'arrived' ? 'good' : 'info',
+        ttl: 2,
+      });
+    }
+  },
+
+  _emitThrustCue(e, input, frame) {
+    if (!this.bus || typeof this.bus.emit !== 'function' || !e) return;
+    if (this.state && e.id !== this.state.playerId) return;
+    const throttle = clampUnit((input && input.moveZ) || 0);
+    const strafe = clampUnit((input && input.moveX) || 0);
+    const manual = Math.abs(throttle) > 0.025 || Math.abs(strafe) > 0.025;
+    const speed = frame && Number.isFinite(frame.speed) ? frame.speed : Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
+    const neutralAssistBrake = frame && frame.neutralCounterThrust && frame.mode === 'assisted' && !manual && speed > 1.2;
+    const brake = !!(input && input.brake) || throttle < -0.025 || neutralAssistBrake;
+    if (!manual && !brake && !(e.flags && e.flags.boosting)) return;
+    this.bus.emit('ship:thrust', {
+      id: e.id,
+      shipId: e.id,
+      throttle: Math.max(0, throttle),
+      reverse: brake ? Math.max(0.25, Math.min(1, speed / Math.max(30, (e.maxSpeed || 120) * 0.5))) : 0,
+      strafe,
+      boost: !!(e.flags && e.flags.boosting),
+      nozzles: thrustNozzles(throttle, strafe, brake),
+    });
+  },
 };
 
 function nowMs() {
@@ -296,6 +456,121 @@ function playerFlightControlsActive(state, player) {
   const ui = state.ui || {};
   const stack = Array.isArray(ui.screenStack) ? ui.screenStack : (Array.isArray(ui.screens) ? ui.screens : []);
   return !ui.docked && stack.length === 0;
+}
+
+function hasManualFlightInput(input) {
+  if (!input) return false;
+  return Math.abs(input.moveX || 0) > 0.08 ||
+    Math.abs(input.moveZ || 0) > 0.08 ||
+    Math.abs(input.turnIntent || 0) > 0.08 ||
+    !!input.boost ||
+    !!input.brake;
+}
+
+function resolveAutopilotTarget(state, autopilot) {
+  if (!state || !autopilot) return null;
+  const id = autopilot.targetEntityId;
+  let entity = null;
+  if (id != null && state.entities && typeof state.entities.get === 'function') {
+    entity = state.entities.get(id);
+    if (!entity && typeof id === 'string') {
+      const numeric = Number(id);
+      if (Number.isFinite(numeric)) entity = state.entities.get(numeric);
+    }
+  }
+  if (entity && entity.alive !== false && entity.pos) {
+    return {
+      x: entity.pos.x,
+      z: entity.pos.z,
+      radius: entity.radius || 0,
+      entity,
+      label: autopilot.label || entity.name || (entity.data && entity.data.name) || entity.type || 'Autopilot target',
+    };
+  }
+  const target = autopilot.target;
+  if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.z)) return null;
+  return { x: target.x, z: target.z, radius: 0, entity: null, label: autopilot.label || 'Autopilot target' };
+}
+
+function computeAutopilotGuidance(state, player, target, distance, arrivalRadius) {
+  const px = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+  const pz = player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+  const baseX = distance > 0.0001 ? (target.x - px) / distance : Math.cos(player.rot || 0);
+  const baseZ = distance > 0.0001 ? (target.z - pz) / distance : Math.sin(player.rot || 0);
+  const perpX = -baseZ;
+  const perpZ = baseX;
+  const speed = Math.hypot((player.vel && player.vel.x) || 0, (player.vel && player.vel.z) || 0);
+  const lookAhead = Math.max(AUTOPILOT_MIN_LOOKAHEAD, Math.min(AUTOPILOT_MAX_LOOKAHEAD, speed * 3.2 + distance * 0.24));
+  let steerX = baseX;
+  let steerZ = baseZ;
+  let avoiding = false;
+  const maxProjection = Math.max(0, Math.min(distance - arrivalRadius, lookAhead));
+  if (maxProjection > 0) {
+    for (const obstacle of autopilotObstacles(state, player, target)) {
+      const ox = obstacle.pos.x - px;
+      const oz = obstacle.pos.z - pz;
+      const projection = ox * baseX + oz * baseZ;
+      if (projection <= 0 || projection > maxProjection) continue;
+      const lateral = ox * perpX + oz * perpZ;
+      const clearance = (player.radius || 0) + (obstacle.radius || 0) + 58 + Math.min(70, speed * 0.22);
+      const absLateral = Math.abs(lateral);
+      if (absLateral >= clearance) continue;
+      const side = absLateral > 0.01 ? -Math.sign(lateral) : (((state && state.tick) || 0) % 2 ? 1 : -1);
+      const depth = 1 - projection / Math.max(1, maxProjection);
+      const strength = (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
+      steerX += perpX * side * strength * 1.65;
+      steerZ += perpZ * side * strength * 1.65;
+      avoiding = true;
+    }
+  }
+  const len = Math.hypot(steerX, steerZ) || 1;
+  return { x: steerX / len, z: steerZ / len, avoiding };
+}
+
+function autopilotObstacles(state, player, target) {
+  const out = [];
+  const list = state && state.entityList ? state.entityList : [];
+  for (const e of list) {
+    if (!e || e === player || e === target.entity || e.alive === false || !e.pos) continue;
+    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
+    const radius = Number.isFinite(e.radius) ? e.radius : 0;
+    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
+    out.push(e);
+  }
+  return out;
+}
+
+function counterVelocityInput(player) {
+  const vx = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
+  const vz = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
+  const speed = Math.hypot(vx, vz);
+  if (!(speed > 0.001)) return { moveX: 0, moveZ: 0 };
+  const nx = -vx / speed;
+  const nz = -vz / speed;
+  const cf = Math.cos(player.rot || 0);
+  const sf = Math.sin(player.rot || 0);
+  return {
+    moveZ: clampUnit(nx * cf + nz * sf),
+    moveX: clampUnit(nx * -sf + nz * cf),
+  };
+}
+
+function thrustNozzles(throttle, strafe, brake) {
+  const nozzles = [];
+  if (throttle > 0.025) nozzles.push({ role: 'main', strength: Math.min(1, throttle), angle: 0 });
+  if (brake) {
+    nozzles.push({ role: 'reverse-left', strength: 1, angle: Math.PI * 0.75 });
+    nozzles.push({ role: 'reverse-right', strength: 1, angle: -Math.PI * 0.75 });
+  }
+  if (strafe > 0.025) nozzles.push({ role: 'strafe-right', strength: Math.min(1, strafe), angle: -Math.PI / 2 });
+  else if (strafe < -0.025) nozzles.push({ role: 'strafe-left', strength: Math.min(1, -strafe), angle: Math.PI / 2 });
+  return nozzles;
+}
+
+function clampUnit(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return n < -1 ? -1 : n > 1 ? 1 : n;
 }
 
 function usesSg02DynamicAuthority(state) {

@@ -20,8 +20,8 @@
 //   mouse aims weapons independently, Space fires. The arrow cluster keeps the same flight split:
 //   bare ←/→ yaw, W/↑ + ←/→ strafe.
 //
-//   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · F auto-fire
-//   + cursor-nearest hostile target · G tether latch/cut · Q charge throw (helm) · R detonate
+//   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · F auto-target
+//   toggle (owned by autoTargetAssist — guns track lock, mouse steers ship) · G tether latch/cut · Q charge throw (helm) · R detonate
 //   charges · C scanner pulse · V cruise.
 //   MMB TAP = pursuit/approach toggle: ship target → sustained autopursuit (tail + speed-match,
 //   fight with the mouse while the flight computer flies); station/other target → goto autopilot.
@@ -477,7 +477,6 @@ export const input = {
     // Manual throttle/yaw/brake breaks pursuit instantly (trick moves stay one key away).
     // Q/E strafe deliberately does NOT break it — flightV3 blends it in as orbit adjustment.
     const pursuitKeyHeld = this._held(state, 'autopursuit');
-    const autopursuitHeld = this._m1 || pursuitKeyHeld;   // F-key autofire guard below
     const pursuitPressed = (this._m1 && !this._prevM1) || (pursuitKeyHeld && !this._prevPursuitKey);
     this._prevM1 = this._m1;
     this._prevPursuitKey = pursuitKeyHeld;
@@ -524,33 +523,7 @@ export const input = {
       }
     }
 
-    // Auto-target / auto-fire toggle (edge-triggered): F flips state.input.autoFire only when it is
-    // not being used as the hold-to-autopursuit key on an already-selected target.
-    if (this._held(state, 'autoFire')) {
-      if (!this._autoFireHeld) {
-        const hasLockedTarget = !!(state.player && state.player.targetId != null);
-        if (!autopursuitHeld || !hasLockedTarget) inp.autoFire = !inp.autoFire;
-        this._autoFireHeld = true;
-        if (inp.autoFire) {
-          this.bus.emit('ui:targetNearestHostileToCursor', { pos: { x: inp.aimWorld.x, z: inp.aimWorld.z } });
-          this._autoTargetRefreshT = 0.12;
-        }
-        if (!autopursuitHeld || !hasLockedTarget) {
-          this.bus.emit('toast', { text: 'Auto-fire ' + (inp.autoFire ? 'ON' : 'OFF'), kind: 'info', ttl: 2 });
-        }
-      }
-    } else {
-      this._autoFireHeld = false;
-    }
-    if (inp.autoFire) {
-      this._autoTargetRefreshT = Math.max(0, (this._autoTargetRefreshT || 0) - dt);
-      if (this._autoTargetRefreshT <= 0 && Number.isFinite(inp.aimWorld && inp.aimWorld.x) && Number.isFinite(inp.aimWorld && inp.aimWorld.z)) {
-        this._autoTargetRefreshT = 0.12;
-        this.bus.emit('ui:targetNearestHostileToCursor', { pos: { x: inp.aimWorld.x, z: inp.aimWorld.z }, quiet: true });
-      }
-    } else {
-      this._autoTargetRefreshT = 0;
-    }
+    // Auto-target (F) is owned by autoTargetAssist — registry runs it immediately after input.
 
     // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
     const edges = this._edgePrev || (this._edgePrev = {});

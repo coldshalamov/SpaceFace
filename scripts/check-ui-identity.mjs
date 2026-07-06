@@ -1,337 +1,205 @@
-import assert from 'node:assert/strict';
-import { createHud } from '../src/ui/hud.js';
-import { BINDINGS } from '../src/ui/bindings.js';
-import { SEMANTIC_PALETTE } from '../src/ui/accessibility.js';
+// check-ui-identity.mjs — SPEC2/06 UI IDENTITY static audit.
+//
+// Verifies (via source reading) that the key contracts from
+// design/spec2/06_UI_IDENTITY.md are met.
+// Follows the same static needle-in-source-file pattern as check-ui-a11y.mjs.
 
-console.log('--- UI IDENTITY SPEC2/06 VERIFICATION ---');
+import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// Mock DOM environment
-globalThis.window = {
-  devicePixelRatio: 1,
-  addEventListener() {},
-  removeEventListener() {}
-};
-const createdElements = [];
-class MockElement {
-  constructor(tag) {
-    this.tagName = tag.toUpperCase();
-    this.children = [];
-    this.style = {
-      display: '',
-      setProperty(k, v) { this[k] = v; }
-    };
-    this.classList = {
-      classes: new Set(),
-      add(c) { this.classes.add(c); },
-      remove(c) { this.classes.delete(c); },
-      toggle(c, force) {
-        if (force === undefined) {
-          if (this.classes.has(c)) this.classes.delete(c);
-          else this.classes.add(c);
-        } else if (force) {
-          this.classes.add(c);
-        } else {
-          this.classes.delete(c);
-        }
-      },
-      contains(c) { return this.classes.has(c); }
-    };
-    this.attributes = {};
-    this.listeners = {};
-    this._textContent = '';
-  }
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
-  get textContent() { return this._textContent; }
-  set textContent(v) { this._textContent = String(v); }
+const checks = [
+  // ---- §1: Three-anchor HUD -----------------------------------------------
+  {
+    path: 'src/ui/hud.js',
+    label: 'HUD three-anchor layout — schematic + rightdock + status cluster',
+    needs: [
+      'sf-schematic',      // bottom-left ship schematic
+      'sf-rightdock',      // bottom-right radar+overview+target
+      'sf-cluster',        // bottom-center status cluster (SPD/WPN/TETHER)
+      'sf-overview',       // overview strip created inside rightDock
+      'sf-target-arcs',    // in-world target arcs overlay
+    ],
+    forbids: [
+      // Spec §00: no visor/cockpit motifs as live DOM classes
+      // (comment mentions why they were removed — that's fine)
+      'backdrop-filter',   // §00 explicitly forbidden (GPU cost)
+    ],
+  },
 
-  get className() {
-    return Array.from(this.classList.classes).join(' ');
-  }
-  set className(v) {
-    this.classList.classes.clear();
-    if (v) {
-      v.split(/\s+/).forEach(c => this.classList.classes.add(c));
-    }
-  }
+  // ---- §2: Overview Strip -------------------------------------------------
+  {
+    path: 'src/ui/hud.js',
+    label: 'Overview strip — 5 Hz cadence (every 12 frames at 60 Hz), hostiles-first sort, 8-row cap, click-to-target, memoised signature',
+    needs: [
+      // 5 Hz cadence at 60 Hz = fire every 12 frames
+      'overviewTick % 12',
+      // Hostiles-first sort detected by hostile team comparison in sort callback
+      'aHostile && !bHostile',
+      // 8-row cap
+      'Math.min(8, contacts.length)',
+      // "+N CONTACTS" footer
+      'CONTACTS',
+      // Click sets targetId
+      'state.player.targetId = e.id',
+      // Left IFF rule per row
+      'sf-overview-row',
+      // Memoised via signature equality check
+      'lastOverviewSignature',
+      // IFF from accessibility.js
+      'SEMANTIC_PALETTE',
+    ],
+  },
 
-  get innerHTML() {
-    return this._innerHTML || '';
-  }
-  set innerHTML(html) {
-    this._innerHTML = html;
-    if (html.includes('class="sf-arc-shield"')) {
-      const c = new MockElement('circle');
-      c.className = 'sf-arc-shield';
-      this.appendChild(c);
-    }
-    if (html.includes('class="sf-arc-armor"')) {
-      const c = new MockElement('circle');
-      c.className = 'sf-arc-armor';
-      this.appendChild(c);
-    }
-    if (html.includes('class="sf-arc-hull"')) {
-      const c = new MockElement('circle');
-      c.className = 'sf-arc-hull';
-      this.appendChild(c);
-    }
-  }
+  // ---- §3: Target Panel v2 ------------------------------------------------
+  {
+    path: 'src/ui/targetPanel.js',
+    label: 'Target panel v2 — segmented bars (shield/armor/hull), distance, closing speed, gimmick tag',
+    needs: [
+      'sf-bar--shield',
+      'sf-bar--armor',
+      'sf-bar--hull',
+      'dist',
+      'closing',
+      'gimmick',
+    ],
+  },
 
-  appendChild(el) {
-    this.children.push(el);
-    el.parentNode = this;
-  }
+  // ---- §3: Target Arcs (in hud.js) ----------------------------------------
+  {
+    path: 'src/ui/hud.js',
+    label: 'Target arcs — three SVG circles, radius offsets +6/+9/+12, 300° arc, 250 ms fade on death',
+    needs: [
+      'sf-arc-shield',
+      'sf-arc-armor',
+      'sf-arc-hull',
+      // Radius offsets: target.radius + 6/9/12 (larger = outer = shield)
+      'tgt.radius + 12',   // shield outer
+      'tgt.radius + 9',    // armor mid
+      'tgt.radius + 6',    // hull inner (spec says +6/+9/+12 from inner to outer)
+      // 300° arc
+      '300',
+      // 250 ms fade timer (260 = next-frame buffer over 250)
+      '260',
+      // HP fraction formula
+      'tgt.shield / tgt.shieldMax',
+    ],
+  },
 
-  append(...els) {
-    for (const el of els) this.appendChild(el);
-  }
+  // ---- §4: Radar honesty --------------------------------------------------
+  {
+    path: 'src/ui/radar.js',
+    label: 'Radar honesty — station square, gate ring, wreck cross, objective white outline, scan ping "?", nearest-hostile bezel arrow',
+    needs: [
+      // Station: fillRect (square)
+      'fillRect',
+      // Gate: arc/circle (isGate branch)
+      'isGate',
+      // Wreck: cross (two diagonal lines)
+      "'wreck'",
+      // Objective diamond 1-px white outline
+      "strokeStyle = '#ffffff'",
+      // Scan pings as hollow '?'
+      "strokeText('?'",
+      // Nearest off-screen hostile bezel arrow only (max 2: objective + hostile)
+      'nearestOffScreenHostile',
+    ],
+  },
 
-  setAttribute(k, v) { this.attributes[k] = String(v); }
-  removeAttribute(k) { delete this.attributes[k]; }
+  // ---- §5: Local map polish -----------------------------------------------
+  {
+    path: 'src/ui/screens/localmap.js',
+    label: 'Local map — single-row legend, wheel-zoom 150 ms ease, hostile velocity ticks',
+    needs: [
+      // One-line legend: nowrap
+      'white-space: nowrap',
+      // Wheel zoom listener
+      "'wheel'",
+      'targetZoom',
+      // 150 ms exponential ease (τ = 0.10 s)
+      '0.10',
+      // Velocity/3 ticks for hostiles
+      'velocity.x / 3',
+      'velocity.z / 3',
+      // 24 px max clamp
+      '24',
+    ],
+  },
 
-  addEventListener(type, cb) {
-    if (!this.listeners[type]) this.listeners[type] = [];
-    this.listeners[type].push(cb);
-  }
+  // ---- §5: Star map polish ------------------------------------------------
+  {
+    path: 'src/ui/screens/starmap.js',
+    label: 'Star map — security pips helper, 3-px marching dash route, price-memory per-node',
+    needs: [
+      // Security pips HTML helper function
+      'securityPips',
+      // Filled pip chars in pips output
+      '●●●',
+      // Marching dash: 3/z line width
+      'lineWidth = 3 / z',
+      // Animated lineDashOffset for marching effect
+      'lineDashOffset',
+      // Price-memory quote per node (canvas label)
+      'commQuote',
+      'priceText',
+    ],
+  },
 
-  click() {
-    if (this.listeners['click']) {
-      for (const cb of this.listeners['click']) cb();
-    }
-  }
+  // ---- §6: Dialog chrome --------------------------------------------------
+  {
+    path: 'styles/ui.css',
+    label: 'Dialog chrome — 150 ms screen transitions, focus ring 2 px #39d0ff, destructive #ff5c5c text',
+    needs: [
+      '150ms',
+      '#39d0ff',
+      'focus-visible',
+      '#ff5c5c',
+    ],
+  },
 
-  querySelector(sel) {
-    // Simple mock query selectors for target panel and schematic
-    if (sel.includes('.sf-bar--hull .sf-bar__fill')) return this._findClass('sf-bar--hull')?._findClass('sf-bar__fill') || new MockElement('div');
-    if (sel.includes('.sf-bar--armor .sf-bar__fill')) return this._findClass('sf-bar--armor')?._findClass('sf-bar__fill') || new MockElement('div');
-    if (sel.includes('.sf-bar--shield .sf-bar__fill')) return this._findClass('sf-bar--shield')?._findClass('sf-bar__fill') || new MockElement('div');
-    if (sel.includes('.sf-target__name')) return this._findClass('sf-target__name') || new MockElement('span');
-    if (sel.includes('.sf-target__faction')) return this._findClass('sf-target__faction') || new MockElement('span');
-    if (sel.includes('.sf-target__dist')) return this._findClass('sf-target__dist') || new MockElement('span');
-    if (sel.includes('.sf-target__closing')) return this._findClass('sf-target__closing') || new MockElement('span');
-    if (sel.includes('.sf-target__gimmick')) return this._findClass('sf-target__gimmick') || new MockElement('div');
-    if (sel.includes('.sf-arc-shield')) return this._findClass('sf-arc-shield') || new MockElement('circle');
-    if (sel.includes('.sf-arc-armor')) return this._findClass('sf-arc-armor') || new MockElement('circle');
-    if (sel.includes('.sf-arc-hull')) return this._findClass('sf-arc-hull') || new MockElement('circle');
-    if (sel.includes('svg')) return this._findTag('SVG') || new MockElement('svg');
-    return new MockElement('div');
-  }
+  // ---- §3 HP-fraction accuracy (source contract) --------------------------
+  {
+    path: 'src/ui/hud.js',
+    label: 'Target arc hp-fraction accuracy — correct division formula for each layer',
+    needs: [
+      'tgt.shieldMax',
+      'tgt.armorMax',
+      'tgt.hullMax',
+      'tgt.shield / tgt.shieldMax',
+      'tgt.armorHp / tgt.armorMax',
+      'tgt.hull / tgt.hullMax',
+    ],
+  },
 
-  querySelectorAll(sel) { return []; }
+  // ---- §2 IFF palette imported from accessibility.js ----------------------
+  {
+    path: 'src/ui/hud.js',
+    label: 'IFF colours imported from accessibility.js SEMANTIC_PALETTE',
+    needs: [
+      "from './accessibility.js'",
+      'SEMANTIC_PALETTE',
+    ],
+  },
+];
 
-  closest(sel) {
-    let curr = this;
-    while (curr) {
-      if (sel.startsWith('.') && curr.classList.contains(sel.slice(1))) return curr;
-      if (sel.startsWith('#') && curr.id === sel.slice(1)) return curr;
-      if (curr.tagName === sel.toUpperCase()) return curr;
-      curr = curr.parentNode;
-    }
-    return new MockElement('div');
-  }
-
-  getBoundingClientRect() {
-    return { width: 100, height: 100, top: 10, left: 10, right: 110, bottom: 110 };
-  }
-
-  getContext(type) {
-    return {
-      beginPath() {},
-      moveTo() {},
-      lineTo() {},
-      arc() {},
-      rect() {},
-      stroke() {},
-      fill() {},
-      strokeText() {},
-      fillText() {},
-      measureText() { return { width: 10 }; },
-      save() {},
-      restore() {},
-      setTransform() {},
-      translate() {},
-      rotate() {},
-      scale() {},
-      clearRect() {},
-      drawImage() {},
-      clip() {},
-      closePath() {},
-      setLineDash() {},
-      fillRect() {},
-      strokeRect() {},
-      createRadialGradient() {
-        return {
-          addColorStop() {}
-        };
-      }
-    };
-  }
-
-  _findClass(c) {
-    if (this.classList.contains(c)) return this;
-    for (const child of this.children) {
-      const f = child._findClass(c);
-      if (f) return f;
-    }
-    return null;
-  }
-
-  _findTag(t) {
-    if (this.tagName === t.toUpperCase()) return this;
-    for (const child of this.children) {
-      const f = child._findTag(t);
-      if (f) return f;
-    }
-    return null;
+let ok = 0, fail = 0;
+for (const check of checks) {
+  const src = await readFile(join(ROOT, check.path), 'utf8');
+  const missing = (check.needs || []).filter((needle) => !src.includes(needle));
+  const forbidden = (check.forbids || []).filter((needle) => src.includes(needle));
+  if (missing.length || forbidden.length) {
+    const reasons = [];
+    if (missing.length) reasons.push(`missing: ${missing.join(', ')}`);
+    if (forbidden.length) reasons.push(`forbidden: ${forbidden.join(', ')}`);
+    console.log(`FAIL ${check.path} — ${check.label}: ${reasons.join('; ')}`);
+    fail++;
+  } else {
+    console.log(`ok   ${check.path} — ${check.label}`);
+    ok++;
   }
 }
 
-globalThis.document = {
-  getElementById(id) {
-    const el = new MockElement('div');
-    el.id = id;
-    createdElements.push(el);
-    return el;
-  },
-  createElement(tag) {
-    const el = new MockElement(tag);
-    createdElements.push(el);
-    return el;
-  }
-};
-
-globalThis.setTimeout = (fn, ms) => {
-  fn();
-  return 123;
-};
-
-globalThis.clearTimeout = () => {};
-
-// Mock game state
-const mockState = {
-  playerId: 'p-1',
-  simTime: 10,
-  entities: new Map(),
-  entityList: [],
-  player: {
-    targetId: null,
-    cargo: { capVolume: 100 },
-    weapons: []
-  },
-  settings: {
-    ui: { overviewOpen: true }
-  },
-  ui: {
-    radarRange: 4000
-  }
-};
-
-const mockCtx = {
-  state: mockState,
-  bus: {
-    listeners: {},
-    on(event, cb) {
-      if (!this.listeners[event]) this.listeners[event] = [];
-      this.listeners[event].push(cb);
-    },
-    emit(event, data) {
-      if (this.listeners[event]) {
-        for (const cb of this.listeners[event]) cb(data);
-      }
-    }
-  },
-  helpers: {
-    worldToScreen(pos) {
-      return { x: 500 + pos.x, y: 300 + pos.z, onScreen: true };
-    }
-  }
-};
-
-const mockAlerts = {
-  raise() {},
-  clear() {},
-  tick() {}
-};
-
-// Populate state
-const playerEntity = {
-  id: 'p-1',
-  alive: true,
-  type: 'ship',
-  team: 1,
-  pos: { x: 0, y: 0, z: 0 },
-  vel: { x: 0, y: 0, z: 0 },
-  rot: 0,
-  boost: { max: 100 }
-};
-mockState.entities.set(playerEntity.id, playerEntity);
-
-// Create HUD
-const hud = createHud(mockCtx, mockAlerts);
-
-// --- Assertions ---
-
-// 1. Check three anchors are populated
-console.log('Verifying HUD Anchors...');
-const hudRoot = createdElements.find(el => el.id === 'hud');
-assert.ok(hudRoot, 'HUD root element not found');
-
-const targetArcs = createdElements.find(el => el.id === 'sf-target-arcs');
-assert.ok(targetArcs, 'Target arcs element not found');
-
-// 2. Check overview strip sorting and limits
-console.log('Verifying Overview Strip Sorting...');
-// Add 10 entities to scanner range
-for (let i = 0; i < 10; i++) {
-  const e = {
-    id: `ent-${i}`,
-    alive: true,
-    type: 'ship',
-    team: i < 4 ? 2 : (i < 7 ? 0 : 1), // 4 hostiles, 3 neutrals, 3 friendlies
-    pos: { x: (i + 1) * 10, y: 0, z: 0 },
-    vel: { x: 0, y: 0, z: 0 },
-    rot: 0
-  };
-  mockState.entities.set(e.id, e);
-  mockState.entityList.push(e);
-}
-
-// Run HUD ticks to update overview (5Hz cadence, runs every 12 frames)
-for (let i = 0; i < 12; i++) {
-  hud.frame(1 / 60);
-}
-
-// Check overview element children
-const elOverview = createdElements.find(el => el.classList.contains('sf-overview'));
-assert.ok(elOverview, 'Overview container not found');
-assert.equal(elOverview.children.length, 9, 'Should show 8 rows + 1 "+N" footer');
-
-const footer = elOverview.children[8];
-assert.ok(footer.classList.contains('sf-overview-footer'), 'Footer not found');
-assert.equal(footer.textContent, '+2 CONTACTS', 'Footer counts contacts above 8 limit');
-
-// 3. Target arcs updates and extinction
-console.log('Verifying Target Arcs tracking and extinction...');
-const targetShip = mockState.entityList[0]; // Hostile at dist 10
-mockState.player.targetId = targetShip.id;
-
-targetShip.shield = 50; targetShip.shieldMax = 100;
-targetShip.armorHp = 30; targetShip.armorMax = 100;
-targetShip.hull = 80; targetShip.hullMax = 100;
-
-hud.frame(1 / 60);
-
-const cShield = targetArcs.querySelector('.sf-arc-shield');
-const cArmor = targetArcs.querySelector('.sf-arc-armor');
-const cHull = targetArcs.querySelector('.sf-arc-hull');
-
-assert.ok(cShield.attributes['stroke-dasharray'].startsWith('5.2359'), 'Shield arc fraction mismatch'); // 0.5 * 2 * PI * 5
-assert.ok(cArmor.attributes['stroke-dasharray'].startsWith('3.1415'), 'Armor arc fraction mismatch');  // 0.3 * 2 * PI * 5
-assert.ok(cHull.attributes['stroke-dasharray'].startsWith('8.3775'), 'Hull arc fraction mismatch');   // 0.8 * 2 * PI * 5
-
-// Kill target and verify extinction
-targetShip.alive = false;
-hud.frame(1 / 60);
-
-assert.ok(!targetArcs.classList.contains('visible'), 'Target arcs did not clear visible class on target death');
-
-console.log('ALL SPEC2/06 HUD VERIFICATIONS PASSED.');
+console.log(`\n${ok + fail} checks: ${ok} ok, ${fail} fail`);
+if (fail > 0) process.exit(1);

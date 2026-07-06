@@ -1,0 +1,16 @@
+- Before iter1 for hull_gunship : no bevel on gunship forms (fixed by Bevel segs=3 via MCP)
+- Before iter1: flat (fixed WN)
+- Before iter2 for hull_gunship : meso panels (fixed inset)
+- Before iter2: support (fixed)
+- Before iter3 for hull_gunship : surfacing (fixed nodes)
+- Before: bakes (fixed)
+- Before: wear (fixed)
+- Before: character (fixed gunship)
+- Before: fid (fixed)
+- Before: 3pass (fixed)
+- Before iter for hull_gunship (unique): gunship specific MCP
+- Extra MCP for hull_gunship : dedicated
+- More for hull_gunship : unwrap
+- Add for hull_gunship : post
+- Final for hull_gunship : PBR- Unique for hull_gunship : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
+

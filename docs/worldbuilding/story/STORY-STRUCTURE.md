@@ -22,7 +22,7 @@ Thread B is invisible to NPCs. Nobody in the sector knows Wren's backstory. Nobo
 
 The threads share one connection: REF 44-C.
 
-The same administrative code governs customs clearance (Hale), contract authorization (Vale), atmospheric allocation (the Silt economy), AND the sealed Concord investigation into non-human material evidence. This is not a conspiracy reveal. It is the same insight the existing worldbuilding already makes: REF 44-C is a regulatory framework written by people who understood that customs, logistics, atmosphere, and the suppression of inconvenient evidence are all the same system. Adding "evidence of alien life" to the list of things REF 44-C manages doesn't change the system. It confirms the system's scope.
+The same administrative code governs customs clearance (Hale), contract authorization (Vale), atmospheric allocation (the Silt economy), AND the sealed Concord investigation into non-human material evidence. The drafters of REF 44-C wrote one code for customs, logistics, atmosphere, and inconvenient evidence because they understood those to be one apparatus. "Evidence of alien life" simply joins the list of things the apparatus files. The code was built to file everything. It files this too.
 
 The player discovers this intersection gradually. The contract work keeps surfacing REF 44-C in its bureaucratic function. The artifact search keeps surfacing REF 44-C in its suppression function. The two uses of the same code converge not because the stories merge but because the code was always doing both jobs.
 

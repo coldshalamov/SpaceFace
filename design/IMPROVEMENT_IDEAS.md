@@ -1,5 +1,10 @@
 # SpaceFace — Improvement Ideas (brainstorm + rating)
 
+> **Reference-only status (2026-07-04):** This is an idea archive. Current build authority lives in
+> `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`, `design/CURRENT_BUILD_STATUS.md`, and
+> `design/spec2/*`. Do not treat ratings or pass lists here as current implementation priority unless
+> a current 2.0 doc explicitly revives the idea.
+
 > **Process:** ≥25 ideas, each rated 1–10 on a weighted metric: *player-felt impact ×
 > cost-to-build⁻¹ × alignment-with-vision*. Threshold to implement: **≥8**. Ideas below 8 go
 > through up to 3 refinement passes to see if sharpening gets them over the line. Grounded in a

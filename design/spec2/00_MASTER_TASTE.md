@@ -8,7 +8,7 @@ Authority chain: 00_MASTER_TASTE > the specific spec2 file > design/GDD_2_0.md >
 Three.js, UI emits intents only, determinism via state.rng, no per-frame allocations in hot paths).
 
 ## 1. The one-sentence bar
-This game must feel like a **$30 Steam release**: nothing on screen is unexplained, nothing stutters,
+This game must feel like a **$30 premium PC/browser release**: nothing on screen is unexplained, nothing stutters,
 every input answers within 50 ms, and any 10-second clip of play looks deliberate enough to be a
 store-page GIF.
 

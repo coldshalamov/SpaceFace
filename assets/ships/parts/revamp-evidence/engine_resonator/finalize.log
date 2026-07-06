@@ -1,0 +1,8 @@
+{
+  "partId": "engine_resonator",
+  "file": "engines/engine_resonator.glb",
+  "tris": 2608,
+  "bytes": 274176,
+  "images": 4,
+  "materials": "Material_Mechanical"
+}

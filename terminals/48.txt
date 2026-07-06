@@ -1,0 +1,62 @@
+---
+pid: 3012
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run build:sg04:release-assets"
+started_at: 2026-07-04T21:38:20.851Z
+running_for_ms: 18665014 
+---
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.

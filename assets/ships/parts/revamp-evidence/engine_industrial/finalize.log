@@ -1,0 +1,8 @@
+{
+  "partId": "engine_industrial",
+  "file": "engines/engine_industrial.glb",
+  "tris": 4000,
+  "bytes": 311260,
+  "images": 3,
+  "materials": "Material_Mechanical"
+}

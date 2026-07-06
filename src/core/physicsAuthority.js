@@ -112,7 +112,7 @@ export function ensurePhysicsBodySpec(entity) {
   if (!entity || typeof entity !== 'object') return null;
   const authored = authoredPhysicsBody(entity) || {};
   const radius = positive(authored.radius, positive(entity.radius, 1));
-  const mass = positive(authored.mass, positive(entity.mass, 1));
+  const mass = positive(authored.mass, positive(entity.mass, defaultMass(entity)));
   const derivedModel = entity.data && entity.data.derived && entity.data.derived.flightModel;
   const modelInertia = finite(entity.flightModel && entity.flightModel.inertia, finite(derivedModel && derivedModel.inertia, 0));
   const inertiaY = positive(authored.inertiaY, positive(modelInertia, 0.5 * mass * radius * radius));
@@ -271,6 +271,11 @@ function defaultMaterial(entity) {
   if (entity.type === 'pickup') return 'sensor';
   if (entity.type === 'payload') return 'payload';
   return entity.type === 'ship' || entity.type === 'drone' ? 'ship' : 'default';
+}
+
+function defaultMass(entity) {
+  if (entity && entity.type === 'pickup') return 0.1;
+  return 1;
 }
 
 function finite(value, fallback = 0) {

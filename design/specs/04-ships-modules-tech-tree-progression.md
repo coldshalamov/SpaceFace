@@ -1,5 +1,9 @@
 # Ships, Modules & Tech Tree (progression)
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 Data-driven ship/module/research progression spanning 6 tiers (T0 starter -> T5 capital). 13 ships defined by role with hull/shield/cargo/mass/handling/energy + a typed-and-sized slot grid (weapon/shield/engine/cargo/mining/utility x S/M/L). 35 modules/weapons fill those slots; every ship is viable in its lane with no dead tier (effective power ~2.3x per tier, price ~3x per tier so upgrades always feel earned). Shipyard handles buy/sell ships & modules with 50% sell-back, hot-swapping fittings (cargo must fit before downsizing), and a per-station stock list. A tech tree of 28 nodes gated by credits + research points (RP earned from scanning/missions/kills, owned by another system) unlocks module access, ship-tier purchase rights, drone tiers, and global efficiency bonuses. All ship/module/tech definitions are plain data in GameState.content; the runtime computes a ship's derived stats by folding equipped module modifiers over the hull base, and re-emits ship:statsChanged so combat, movement, cargo, mining and economy systems read one canonical stat block. Composes purely through GameState fields + event bus; this system owns hull/fitting/research state and exposes getDerivedStats(state) as the single source of truth other systems consume.
 

@@ -187,6 +187,67 @@ export const RECIPES = [
     filterType: 'highpass', filterFreq: 800,
   },
 
+  // --- Panel open: soft rising two-tone (a surface appears). Quieter than confirm. ---
+  {
+    id: 'sfx_ui_open',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 520, freqSweep: [520, 780], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.09 },
+    filterType: 'highpass', filterFreq: 360,
+    gainMult: 0.75,
+  },
+  // --- Panel back/close: soft falling two-tone (a surface dismisses). Mirror of open. ---
+  {
+    id: 'sfx_ui_back',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 660, freqSweep: [660, 440], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.09 },
+    filterType: 'highpass', filterFreq: 300,
+    gainMult: 0.7,
+  },
+  // --- Tab switch: a very short muted tick. Subtler than click so rapid tabbing never fatigues. ---
+  {
+    id: 'sfx_ui_tab',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 940, freqSweep: [940, 900], sweepTimeS: 0.02,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.028 },
+    filterType: 'highpass', filterFreq: 700,
+    gainMult: 0.55,
+  },
+  // --- Denied/invalid action: a short low buzz (unambiguously negative, distinct from alert). ---
+  {
+    id: 'sfx_ui_error',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 220, freqSweep: [220, 160], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.003, sustain: 0.04, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 300, filterQ: 2.2,
+    gainMult: 0.85,
+  },
+  // --- Loot collected: a bright ascending pickup chime (positive reward feedback). ---
+  {
+    id: 'sfx_loot_collect',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 780, freqSweep: [780, 1170], sweepTimeS: 0.08,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.09 },
+    repeatCount: 2, repeatIntervalS: 0.06,
+    gainMult: 0.7,
+  },
+  // --- Mining core fizzle: a descending warble when a drill node collapses/misfires (hazard warn). ---
+  {
+    id: 'sfx_mining_core_fizzle',
+    category: 'mining',
+    type: 'oscillator',
+    baseFreq: 420, freqSweep: [420, 120], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.004, sustain: 0.05, release: 0.28 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 1.4,
+    gainMult: 0.7,
+  },
+
   // --- Docking thud/clunk (metallic impact on successful dock) ---
   {
     id: 'sfx_dock_clunk',

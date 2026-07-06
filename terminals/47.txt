@@ -1,0 +1,52 @@
+---
+pid: 26248
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run check:art"
+started_at: 2026-07-04T21:25:11.211Z
+running_for_ms: 19454999 
+---
+
+> spaceface@0.1.0 check:art
+> node scripts/check-kestrel-asset.mjs && node scripts/check-parts-manifest.mjs && node scripts/check-sg04-release-assets.mjs && node scripts/check-kestrel-hero.mjs && node scripts/check-kestrel-silhouette.mjs && node scripts/check-kestrel-damage.mjs && node scripts/check-kestrel-leak.mjs && node scripts/check-lod.mjs && node scripts/check-collision-debug.mjs && node scripts/check-concord-patrol.mjs && node scripts/check-reaver-pirate.mjs && node scripts/check-faction-ships.mjs && npm run check:station-archetype-wiring && npm run check:47a:visuals
+
+
+43 ok, 0 fail
+
+2546 ok, 0 fail
+SG-04 release asset gate OK (67 assets, releaseReady=true, 47a authored=8 runtime=7 pending=0 narrative=1)
+
+23 ok, 0 fail
+
+7 ok, 0 fail
+
+21 ok, 0 fail
+per-build counts (materials/geometries/textures):
+  build #1: 15 / 19 / 2
+  build #2: 15 / 19 / 2
+  build #3: 15 / 19 / 2
+  build #4: 15 / 19 / 2
+
+4 ok, 0 fail
+
+13 ok, 0 fail
+
+12 ok, 0 fail
+
+15 ok, 0 fail
+
+12 ok, 0 fail
+
+25 ok, 0 fail
+
+> spaceface@0.1.0 check:station-archetype-wiring
+> node scripts/check-station-archetype-wiring.mjs && node test/station-archetype-wiring.test.mjs
+
+
+station-archetype-wiring: 95 ok, 0 fail
+station-archetype-wiring.test: ok
+
+> spaceface@0.1.0 check:47a:visuals
+> node scripts/check-47a-visual-assets.mjs
+
+
+35 ok, 0 fail

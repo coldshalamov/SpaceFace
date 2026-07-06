@@ -45,8 +45,13 @@ const BEACON_RANGE_WU = 420;  // B0 DONE: within this of the beacon
 const TETHER_REEL_MAX_WU = 60;// B1: reel target distance
 const SEAM_ORE_TARGET = 3;    // B2 DONE: ore collected
 const PIRATE_HULL_FLEE_FRAC = 0.30; // B3: pirate flees at ≤30% hull
-const B3_SPAWN_MIN_WU = 1700;       // B3 pirate must telegraph before it can threaten the player
-const B3_SPAWN_MAX_WU = 2300;
+// spec2/03 §2: spawn ~700 wu — must sit inside starter gun range (Pulse Laser S = 600 wu) once the
+// pirate closes, or the player can lock from scanner range and fire for minutes with zero damage.
+const B3_SPAWN_MIN_WU = 520;
+const B3_SPAWN_MAX_WU = 720;
+const B3_TUTORIAL_SHIELD = 40;
+const B3_TUTORIAL_ARMOR = 22;
+const B3_TUTORIAL_HULL_MULT = 0.42;
 const B1_DERELICT_OFFSET_WU = 80;   // B1 derelict spawn distance from beacon
 const PORT_SAFE_SPAWN_RADIUS_WU = 1200;
 
@@ -656,13 +661,18 @@ export const onboarding = {
     if (typeof makeEnemySpawnSpec !== 'function' || !this.helpers || !this.helpers.spawnEntity) return;
     const pos = this._tutorialHostileSpawnPos(player);
     if (!pos) return;
-    // Weak: level 1 reaver_pirate (pirate archetype). Reduced hull so it reads as a tutorial foe.
+    // Weak: level 1 reaver_pirate silhouette, tutorial stats — killable in ~15s at point-blank, not a
+    // regenning brick. Flee at 30% hull still completes the beat without requiring a kill.
     const spec = makeEnemySpawnSpec('reaver_pirate', 1, pos);
     if (spec) {
       spec.data = spec.data || {};
       spec.data.ai = spec.data.ai || {};
       spec.data.ai.spawnContext = 'tutorial_pirate';
-      spec.hull = spec.hullMax = Math.round((spec.hullMax || 80) * 0.6);
+      spec.shield = spec.shieldMax = B3_TUTORIAL_SHIELD;
+      spec.armorHp = spec.armorMax = B3_TUTORIAL_ARMOR;
+      spec.armorFlat = 2;
+      spec.shieldRegenRate = 0;
+      spec.hull = spec.hullMax = Math.round((spec.hullMax || 80) * B3_TUTORIAL_HULL_MULT);
       const pirate = this.helpers.spawnEntity(spec);
       if (pirate) {
         this._pirateId = pirate.id;

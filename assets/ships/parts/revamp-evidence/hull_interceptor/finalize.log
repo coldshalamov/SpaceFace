@@ -1,0 +1,8 @@
+{
+  "partId": "hull_interceptor",
+  "file": "hulls/hull_interceptor.glb",
+  "tris": 4226,
+  "bytes": 1530808,
+  "images": 5,
+  "materials": "Material_Hull"
+}

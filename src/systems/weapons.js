@@ -11,7 +11,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
-import { isHostileToPlayer } from './scanner.js';
+import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from './scanner.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -21,8 +21,11 @@ const AUTO_FIRE_QUERY_RADIUS_PAD = 128;
 // When the player's guns peg heatMax they lock out for WEAPON_VENT_S seconds while heat is dumped,
 // turning sustained fire into a vent-and-resume rhythm. Player-only, so NPC combat and the
 // deterministic 47a sim telemetry are unaffected — the vent only reads/writes player weapon state.
-const WEAPON_VENT_S = 2;
-const WEAPON_VENT_DUMP = 1.6;   // heat-dump multiplier so the guns clear well within the window
+// Player-facing weapon recharge pacing — cap/heat recover ~15% faster than the baseline authored
+// rates so burst-and-recharge stays tactical without long dead-air waits.
+const WEAPON_RECHARGE_MULT = 1.15;
+const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
+const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
 // The forced vent is a live-play feel layer. It is gated to browser sessions (window present) so the
 // headless deterministic 47a replay — which records a specific combat encounter and would be
 // invalidated by the vent's firing lockout — stays byte-for-byte stable. This mirrors the existing
@@ -84,23 +87,21 @@ export const weapons = {
       const cruise = state.player && state.player.cruise;
       const playerFireBlocked = cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising');
 
-      // Manual fire (LMB/Space) always wins; it aims at the mouse. Otherwise, if auto-fire is on,
-      // find the nearest aggressive enemy and fire at it (so the player can fly while guns auto-engage).
+      // Manual fire (LMB/Space) only — auto-target supplies aim, never holds the trigger.
       // Cruise charge/cruise forces firing=false but still services the ship so beams release and
       // cooldowns/heat tick down (spec2/02 §1).
-      let firing = false, autoTgt = null;
+      let firing = false;
+      let autoTgt = null;
       if (!playerFireBlocked) {
         firing = !!state.input.fire;
         if (state.input.actions?.tetherFire) firing = false;
-        if (!firing && state.input.autoFire) {
-          autoTgt = this._selectedAutoFireTarget(player, state) || this._autoFireTarget(player, state);
-          firing = !!autoTgt;
-        }
       }
-      // aimAngle for gimbal/turret: mouse aim for manual, lead-angle for auto-fire, else nose.
-      const aimAngle = firing ? (autoTgt ? this._leadAngle(player, autoTgt, this._playerProjSpeed(player))
-                                         : (state.input.aimAngle || player.rot))
-                              : (state.input.aimAngle || player.rot);
+      if (state.input.autoFire) {
+        autoTgt = this._selectedAutoFireTarget(player, state) ?? this._autoFireTarget(player, state);
+      }
+      const aimAngle = autoTgt
+        ? this._leadAngle(player, autoTgt, this._playerProjSpeed(player))
+        : (state.input.aimAngle || player.rot);
       this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, autoTgt);
     }
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
@@ -131,7 +132,7 @@ export const weapons = {
       for (const w of ws) {
         const def = this._byId.get(w.defId) || {};
         if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
-        const dissip = def.heatDissip != null ? def.heatDissip : (w.heatDissip || 0);
+        const dissip = (def.heatDissip != null ? def.heatDissip : (w.heatDissip || 0)) * WEAPON_RECHARGE_MULT;
         if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
       }
       // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
@@ -280,7 +281,7 @@ export const weapons = {
     if (!canFire) {
       // cool while not firing
       if (!firing) {
-        const dissip = def.heatDissip != null ? def.heatDissip : (w.heatDissip || 0);
+        const dissip = (def.heatDissip != null ? def.heatDissip : (w.heatDissip || 0)) * WEAPON_RECHARGE_MULT;
         if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
       }
       return capLeft;
@@ -387,12 +388,11 @@ export const weapons = {
     // launch speed: missiles start slow and accelerate to projSpeed; bullets launch at projSpeed
     const launchSpeed = isMissile && projSpeedMin != null ? projSpeedMin : projSpeed;
     const muzzle = this._muzzle(e, w, dir);
-    // Inertial launch: weapon speed is relative to the firing ship, so a fast ship cannot
-    // overtake its own bullets immediately after they leave the muzzle.
-    const vel = {
-      x: cf * launchSpeed + e.vel.x,
-      z: sf * launchSpeed + e.vel.z,
-    };
+    // Bullets compensate lateral shooter velocity so the aimed line remains the collision line.
+    // Missiles keep full inertial launch; their guidance owns the post-launch correction.
+    const vel = isMissile
+      ? { x: cf * launchSpeed + e.vel.x, z: sf * launchSpeed + e.vel.z }
+      : projectileVelocityForAimedBullet(cf, sf, launchSpeed, e.vel);
 
     // time-to-live is a backup cleanup only; physics enforces maxDistance spatially before hit
     // resolution, so inherited ship speed cannot turn a stray shot into a far-off friendly-fire hit.
@@ -451,17 +451,10 @@ export const weapons = {
   },
 
   // Iterative lead/intercept (2 passes); falls back to aim-direct if the shot can't catch up.
+  // Delegates to the module-level `solveLeadAngle` so the exact same solver feeds the player HUD lead
+  // pip (via src/ai/gunnery.js) — one solver, never two (a second would drift from the sim and lie).
   _leadAngle(shooter, tgt, projSpeed) {
-    const px = tgt.pos.x - shooter.pos.x, pz = tgt.pos.z - shooter.pos.z;
-    const rvx = tgt.vel.x - shooter.vel.x, rvz = tgt.vel.z - shooter.vel.z;
-    let t = 0;
-    for (let i = 0; i < 2; i++) {
-      const aimx = px + rvx * t, aimz = pz + rvz * t;
-      const dist = Math.hypot(aimx, aimz);
-      t = dist / Math.max(1, projSpeed);
-    }
-    const aimx = px + rvx * t, aimz = pz + rvz * t;
-    return Math.atan2(aimz, aimx);
+    return solveLeadAngle(shooter, tgt, projSpeed);
   },
 
   // Approx gaussian spread (sum of two uniforms) in radians, from our own deterministic stream.
@@ -513,12 +506,11 @@ export const weapons = {
     if (id == null) return null;
     const e = state.entities && state.entities.get ? state.entities.get(id) : null;
     if (!e || !e.alive || (e.type !== 'ship' && e.type !== 'drone') || e.id === player.id) return null;
-    if (e.team === player.team) return null;
-    if (!this._isAggressive(e, player, state)) return null;
+    if (!isHostileToPlayer(e, player.team, state)) return null;
     const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-    const maxRange = playerAutoFireRange(this, player);
     const d2 = dx * dx + dz * dz;
-    if (maxRange > 0 && d2 > (maxRange + (e.radius || 0)) * (maxRange + (e.radius || 0))) return null;
+    const scanR = SCANNER_CONTACT_RANGE + (e.radius || 0);
+    if (d2 > scanR * scanR) return null;
     return e;
   },
 
@@ -584,6 +576,22 @@ export const weapons = {
 void DEG2;
 void TWO_PI;
 
+// Iterative lead/intercept solver (2 passes), extracted so BOTH the sim fire path (weapons._leadAngle)
+// and the player HUD lead pip (src/ai/gunnery.js) share ONE ballistic model. Pure; no RNG, no state.
+// Returns the world-space angle to aim so a shot at `projSpeed` intercepts `tgt` given both velocities.
+export function solveLeadAngle(shooter, tgt, projSpeed) {
+  const px = tgt.pos.x - shooter.pos.x, pz = tgt.pos.z - shooter.pos.z;
+  const rvx = tgt.vel.x - shooter.vel.x, rvz = tgt.vel.z - shooter.vel.z;
+  let t = 0;
+  for (let i = 0; i < 2; i++) {
+    const aimx = px + rvx * t, aimz = pz + rvz * t;
+    const dist = Math.hypot(aimx, aimz);
+    t = dist / Math.max(1, projSpeed);
+  }
+  const aimx = px + rvx * t, aimz = pz + rvz * t;
+  return Math.atan2(aimz, aimx);
+}
+
 function shipsNearPlayer(state, player, radius, out) {
   return queryNearbyEntities(state, player.pos, radius, out,
     (state.entityIndex && state.entityIndex.ships) || state.entityList);
@@ -612,6 +620,23 @@ function npcFireTargetVisibleOnPlayerRadar(e, state) {
   const dx = e.pos.x - player.pos.x;
   const dz = e.pos.z - player.pos.z;
   return dx * dx + dz * dz <= (range + pad) * (range + pad);
+}
+
+function projectileVelocityForAimedBullet(cf, sf, launchSpeed, shooterVel) {
+  const sx = Number.isFinite(shooterVel && shooterVel.x) ? shooterVel.x : 0;
+  const sz = Number.isFinite(shooterVel && shooterVel.z) ? shooterVel.z : 0;
+  const along = sx * cf + sz * sf;
+  const shooterSpeed2 = sx * sx + sz * sz;
+  const lateral2 = Math.max(0, shooterSpeed2 - along * along);
+  const launch2 = launchSpeed * launchSpeed;
+  if (!(launch2 > lateral2)) {
+    return { x: cf * launchSpeed, z: sf * launchSpeed };
+  }
+  const worldSpeed = along + Math.sqrt(launch2 - lateral2);
+  if (!(worldSpeed > 0)) {
+    return { x: cf * launchSpeed, z: sf * launchSpeed };
+  }
+  return { x: cf * worldSpeed, z: sf * worldSpeed };
 }
 
 function ensureWeaponRuntime(host) {

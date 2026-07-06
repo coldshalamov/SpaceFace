@@ -62,17 +62,25 @@ function resolveEnemyWeapon(w, slotIndex) {
 }
 
 /** Build a spawnEntity spec for a hostile NPC (team 1) from an enemy archetype id. */
-export function makeEnemySpawnSpec(enemyTypeId, level, pos) {
+// Weapon capacitor regen boost for the player — same ~15% faster recharge as weapons.js heat pacing.
+const WEAPON_CAP_REGEN_MULT = 1.15;
+
+export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   const def = ENEMY.get(enemyTypeId) || ENEMY_TYPES[0];
   level = level || (def.levelRange ? def.levelRange[0] : 1);
   const s = scaleCombatant(def, level);
-  const factionId = def.factionLawful ? 'faction_scn' : 'faction_vael';
+  // Faction identity is READABILITY only (radar/HUD color + kill-rep target) — hostility is decided
+  // by team/archetype/context in scanner.isHostileToPlayer, never by factionId. Precedence:
+  //   caller override (a zone's owning faction) > archetype's own faction > lawful/hostile fallback.
+  // The old code tagged EVERY hostile as faction_vael, so a Crimson Reach pirate read as a green alien.
+  const factionId = opts.factionId || def.factionId || (def.factionLawful ? 'faction_scn' : 'faction_reach');
   const spec = makeShipEntitySpec(def.shipId, { team: 1, factionId, pos, ai: { archetype: def.aiArchetype } });
   spec.hull = spec.hullMax = s.hull;
   spec.armorHp = spec.armorMax = s.armor;
   spec.armorFlat = def.armorFlat || 0;
   spec.shield = spec.shieldMax = s.shield;
-  spec.shieldRegenRate = def.shieldRegen || 0;
+  // Only advanced hulls mount regenerating deflectors; cheap early enemies have static shields.
+  spec.shieldRegenRate = def.shieldRegenCapable ? (def.shieldRegen || 0) : 0;
   spec.shieldRegenDelay = def.shieldRegenDelay || 3;
   spec.cap = spec.capMax = def.cap || 80;
   spec.capRegen = def.capRegen || 20;
@@ -439,7 +447,8 @@ export const combat = {
       }
       if (e.capMax > 0 && e.cap < e.capMax) {
         const regenMult = this.kernel ? this.kernel.capRegenMultiplier(e.id) : 1;
-        e.cap = Math.min(e.capMax, e.cap + (e.capRegen || 0) * regenMult * dt);
+        const playerCapMult = e.id === state.playerId ? WEAPON_CAP_REGEN_MULT : 1;
+        e.cap = Math.min(e.capMax, e.cap + (e.capRegen || 0) * regenMult * playerCapMult * dt);
       }
     }
     this._applyBeamDamage(state);

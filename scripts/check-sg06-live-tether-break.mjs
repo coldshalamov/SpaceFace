@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
+import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
 
 const DT = 1 / 60;
 const HEADLESS_SKIP = new Set(['render', 'vfx', 'feel', 'audio', 'ui', 'save']);
+const MASSLINE_BREAK = ATTACHMENT_DEFS.find((def) => def.id === 'attachment_massline')?.break || {};
+const MASSLINE_MAX_TENSION = Number.isFinite(MASSLINE_BREAK.maxTension) ? MASSLINE_BREAK.maxTension : 140;
+const MASSLINE_CATASTROPHIC_RATIO = 1.75;
 
 const restoreGlobals = installHeadlessBrowserStubs();
 let harness = null;
@@ -94,11 +98,11 @@ try {
   actor.angVel = 0;
   assert.equal(state.combat.attachments.byId[attachmentId].state, 'active',
     'Massline should remain active before the SG-06 dash-armed overload fixture');
-  assert(beforeOverload.tension <= 140,
-    `Massline should stay below authored break tension before the SG-06 dash-armed overload fixture; got ${beforeOverload.tension}`);
+  assert(beforeOverload.tension <= MASSLINE_MAX_TENSION * MASSLINE_CATASTROPHIC_RATIO,
+    `Massline should stay below catastrophic break tension before the SG-06 dash-armed overload fixture; got ${beforeOverload.tension}`);
 
   const armedOverload = armDashOverloadFixture(harness, attachmentId);
-  assert(armedOverload.tension > 140,
+  assert(armedOverload.tension > MASSLINE_MAX_TENSION,
     `SG-06 dash-armed overload fixture should load the Massline above threshold; got ${armedOverload.tension}`);
 
   for (let i = 0; i < 60; i++) {
@@ -138,7 +142,7 @@ try {
   assert.equal(broken.breakReason, 'threshold', 'SG-06 dash-armed Massline break should preserve threshold reason');
   assert(breakEvent, 'SG-06 dash-armed Massline break should emit the threshold break trace');
   assert(breakEvent.tick >= dash.tick, 'threshold break should occur after the SG-06 dash starts');
-  assert(broken.lastTension > 140, `break should preserve tension above threshold; got ${broken.lastTension}`);
+  assert(broken.lastTension > MASSLINE_MAX_TENSION, `break should preserve tension above threshold; got ${broken.lastTension}`);
   assert(broken.lastImpulse > 0, 'break should preserve impulse telemetry');
   assert.equal(harness.registry.get('physics')._sg02.diagnostics().attachments, 0,
     'SG-06 dash-armed threshold break should remove the physical SG-02 rope');

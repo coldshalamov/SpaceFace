@@ -1,5 +1,9 @@
 # Mining, Ores & Cargo
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 This subsystem owns asteroid extraction, the raw ore/material registry (12+ entries), the unified cargo container (volume cap + derived mass), collectible pickups with magnet auto-collect, wreck salvage, and station-side refining/crafting chains. Ores are first-class commodities living in ONE shared cargo container (not a private ore bag), so the trade subsystem sells them through the same addCargo/removeCargo helpers and the cargo_changed event. Cargo capacity is a HARD cap in volume units (u) — 1 ore unit = 1 u except bulky gas/ice (vol>1); total mass (t) is DERIVED (sum of qty*mass_per_unit) and exported as a handling input the flight system consumes — mass is a penalty, never a second cap. The mining laser is a hardpoint-mounted beam (composes with weapons/hardpoint system): it must target an asteroid, deals ore-HP/s, and asteroids drop ore as physical collectible pickups (so combat looting/jettison/drones share one pickup path). The extraction routine is exposed as a callable applyMining(targetId, dps, dt) so mining-drone passive income can drive the EXACT same mechanic. Refining (raw ore -> refined metal -> ship components) runs at stations, marked optional/late-game; beam overheat is optional QoL. Derived early loop: starter hold 40u, beam 18 ore-HP/s, small common rock (120 HP -> 8u) mines in 6.7s, fill hold ~43s active, ~440 cr raw, ~2.7 min round trip = ~160 cr/min raw; metallic mid-field ~22 cr/s while mining; refining 2 iron ore (24cr) -> 1 ingot (40cr) = +67% value and half the volume.
 

@@ -1,0 +1,16 @@
+- Before iter1 for cockpit_dome : no bevel on dome forms (fixed by Bevel segs=2 via MCP)
+- Before iter1: flat (fixed WN)
+- Before iter2 for cockpit_dome : glass/mech zones (fixed by multi-mat)
+- Before iter2: no support (fixed)
+- Before iter3 for cockpit_dome : surfacing (fixed node layers)
+- Before: no bakes (fixed)
+- Before: no wear (fixed curvature)
+- Before: no character (fixed dome sleek)
+- Before: low fid (fixed)
+- Before: no 3pass (fixed)
+- Before iter for cockpit_dome (unique): dome specific MCP pass
+- Extra MCP for cockpit_dome : dedicated
+- More for cockpit_dome : unwrap
+- Add for cockpit_dome : compositor
+- Final for cockpit_dome : clearcoat- Unique for cockpit_dome : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
+

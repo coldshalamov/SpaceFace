@@ -78,11 +78,11 @@ envelope** with atomic, migration-aware loads. Specifically:
     (migrate-a-copy, atomic) but **has never executed** — `MIGRATIONS = []`, schema is v1, zero
     migrations authored. The first real schema bump (v1→v2) must ship *with* a round-trip migration
     test; do not let it ride on untested code. (QA_MATRIX.md §C.)
-  - **Electron save-origin risk.** localStorage is keyed by origin, and the Electron shell currently
-    binds a **random port per launch** (`electron/main.cjs` `server.listen(0)`) — so saves may not
-    survive a relaunch. This is a persistence bug independent of the model and is the headline
-    UNVERIFIED row in the QA matrix (QA_MATRIX.md SAVE-1). The seed+mutation model makes saves tiny
-    enough that a **file-based sink under `userData`** is a clean fix if the origin problem bites.
+  - **Desktop-shell save-origin verification.** localStorage is keyed by origin. The Electron shell
+    now normally binds a fixed port (`electron/main.cjs` `PORT = 41788`) so saves should persist
+    across relaunches; QA still must verify SAVE-1 because the shell can fall back to an ephemeral
+    port if 41788 is busy. The seed+mutation model makes saves tiny enough that a **file-based sink
+    under `userData`** remains a clean future hardening option if needed.
   - **Seed-stable offscreen RNG** is a correctness invariant, not a nicety — a non-stable stream
     makes the world change based on *when you look*. Must be enforced and tested as the offscreen
     engine lands.

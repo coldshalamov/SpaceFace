@@ -1,0 +1,10 @@
+{
+  "partId": "weapon_heavy_cannon",
+  "file": "weapons/weapon_heavy_cannon.glb",
+  "tris": 2296,
+  "bytes": 246532,
+  "dims": [6.43, 1.495, 1.7],
+  "images": 3,
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical,Material_Glass",
+  "note": "PRO MCP bevel+WN 2026-07-05"
+}

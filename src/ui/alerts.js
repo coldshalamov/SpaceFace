@@ -131,8 +131,6 @@ export function createAlerts(ctx) {
     else clear('lock');
   });
   bus.on('cargo:full', () => raise({ key: 'cargo-full', sev: 'warn', text: 'CARGO HOLD FULL', ttl: 2.5 }));
-  bus.on('beam:overheated', () => raise({ key: 'overheat', sev: 'warn', text: 'MINING BEAM OVERHEATED', ttl: 2 }));
-  bus.on('beam:ready', () => clear('overheat'));
   bus.on('fuel:empty', () => raise({ key: 'fuel', sev: 'danger', text: 'OUT OF FUEL', ttl: 4 }));
 
   // low-shield/hull driven from the HUD per-frame check via these helpers:

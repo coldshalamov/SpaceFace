@@ -24,10 +24,6 @@ function boot(seed = 2202) {
     tierId: 'beam_mk1',
     dps: 30,
     range: 320,
-    heat: 0,
-    heatRate: 12,
-    coolRate: 20,
-    overheated: false,
     directToCargo: false,
   };
   const player = sim.spawn({
@@ -149,20 +145,48 @@ function checkWorldSpawnSeams() {
     'world asteroid spawn should attach 1-4 deterministic seams');
 }
 
-function checkVentBonus() {
+function checkMiningHasNoHeatLockout() {
   const { sim, state, player } = boot(3303);
+  const overheatEvents = [];
   const ventEvents = [];
+  sim.bus.on('beam:overheated', () => overheatEvents.push(state.simTime));
   sim.bus.on('mining:ventBonus', () => ventEvents.push(state.simTime));
-  const ast = spawnAsteroid(sim, { radius: 20, hp: 100, yieldU: 20 });
-  state.player.miningBeam.heat = 74;
+  const ast = spawnAsteroid(sim, { radius: 20, hp: 800, yieldU: 20 });
   setPlayerForContact(state, player, ast, Math.PI);
   state.input.fireGroup = 2;
+  for (let i = 0; i < 900; i++) sim.step(SIM_DT);
+  assert.equal(overheatEvents.length, 0, 'mining beam should never emit overheat lockout events');
+  assert.equal(ventEvents.length, 0, 'mining beam should not emit removed vent bonus events');
+  assert.equal(state.player.miningBeam.heat, undefined, 'mining beam runtime should not track heat');
+  assert.equal(state.player.miningBeam.overheated, undefined, 'mining beam runtime should not latch overheat');
+  assert(ast.data.oreHP < ast.data.oreHPMax, 'sustained mining should keep damaging the asteroid');
+}
+
+function checkMasslineTargetOwnsMiningBeam() {
+  const { sim, state, player, miningSys } = boot(6607);
+  const tethered = spawnAsteroid(sim, { radius: 20, hp: 100, yieldU: 10, pos: { x: 140, z: 0 } });
+  const aimed = spawnAsteroid(sim, { radius: 20, hp: 100, yieldU: 10, pos: { x: 0, z: 110 } });
+  state.input.aimAngle = Math.atan2(aimed.pos.z - player.pos.z, aimed.pos.x - player.pos.x);
+  state.input.aimWorld = { x: aimed.pos.x, z: aimed.pos.z };
+  state.combat = state.combat || {};
+  state.combat.attachments = state.combat.attachments || { byId: {} };
+  state.combat.attachments.byId = state.combat.attachments.byId || {};
+  state.combat.attachments.byId.att_test_tether = {
+    id: 'att_test_tether',
+    defId: 'tether_standard',
+    state: 'active',
+    ownerId: player.id,
+    targetId: tethered.id,
+  };
+
+  const picked = miningSys._acquireTarget(player, state.player.miningBeam.range, state);
+  assert.equal(picked, tethered,
+    'active massline asteroid should own the mining beam even when the reticle points at another rock');
+
+  state.input.fireGroup = 2;
   sim.step(SIM_DT);
-  state.input.fireGroup = null;
-  sim.step(SIM_DT);
-  assert.equal(ventEvents.length, 1, 'releasing in the 70-95 heat band should emit mining:ventBonus once');
-  assert(state.player.mining && state.player.mining.ventBonusUntil > state.simTime,
-    'vent bonus should stay active after release');
+  assert(tethered.data.oreHP < tethered.data.oreHPMax, 'mining tick should damage the tethered asteroid');
+  assert.equal(aimed.data.oreHP, aimed.data.oreHPMax, 'mining tick should not damage the aimed non-tethered asteroid');
 }
 
 function checkFractureAndVacuumCargo() {
@@ -224,7 +248,8 @@ function checkMiningNoiseCrossing() {
 
 checkWorldSpawnSeams();
 checkSeamYield();
-checkVentBonus();
+checkMiningHasNoHeatLockout();
+checkMasslineTargetOwnsMiningBeam();
 checkFractureAndVacuumCargo();
 checkMiningNoiseCrossing();
 

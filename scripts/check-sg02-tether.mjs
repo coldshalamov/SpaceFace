@@ -46,12 +46,14 @@ try {
   assert(Math.hypot(momentum.x, momentum.z) < 0.75, 'isolated tether should conserve paired-body momentum within tolerance');
 
   const beforeReel = port.getAttachmentTelemetry({ physicsHandle: handle, tick: 181 }).distance;
-  assert.equal(port.setAttachmentReel({
+  const reelAccepted = port.setAttachmentReel({
     physicsHandle: handle,
     restLength: 10,
     previousRestLength: REST,
     tick: 181,
-  }), true, 'Massline reel should update the physical rope rest length');
+  });
+  assert.notEqual(reelAccepted, false, 'Massline reel should update the physical rope rest length');
+  assert(Number.isFinite(reelAccepted.restLength), 'Massline reel should report the accepted rest length');
   for (let i = 0; i < 90; i++) runtime.step(DT);
   const afterReel = port.getAttachmentTelemetry({ physicsHandle: handle, tick: 271 }).distance;
   assert(afterReel < beforeReel, 'Massline reel should reduce anchor distance');

@@ -15,8 +15,50 @@ import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
+import { disposeAuthoredAssetRuntime, loadAuthoredPart } from '../render/assetLoader.js';
+import { isReleaseAssetMode } from '../render/releaseMode.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
+
+const PART_ROOT = 'assets/ships/parts/';
+const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
+
+/** Station archetype → shipyard preview dock interior (shaded hangar shell). */
+export const DOCK_INTERIOR_BY_ARCHETYPE = Object.freeze({
+  place_station_military: 'place_dock_interior_military',
+  place_station_blackmarket: 'place_dock_interior_grit',
+});
+
+export function dockInteriorIdForArchetype(archetypeGlb) {
+  if (typeof archetypeGlb === 'string' && DOCK_INTERIOR_BY_ARCHETYPE[archetypeGlb]) {
+    return DOCK_INTERIOR_BY_ARCHETYPE[archetypeGlb];
+  }
+  return 'place_dock_interior';
+}
+
+function dockPartUrls(id) {
+  const file = `places/${id}.glb`;
+  if (!isReleaseAssetMode()) return [`${PART_ROOT}${file}`];
+  return [`${PART_RELEASE_ROOT}${file}`, `${PART_ROOT}${file}`];
+}
+
+function groupFromBlueprint(record) {
+  const root = new THREE.Group();
+  root.name = 'DockInterior';
+  for (const prim of record.primitives) {
+    const mesh = new THREE.Mesh(prim.geometry, prim.material);
+    mesh.name = prim.name;
+    const pos = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    const scl = new THREE.Vector3();
+    prim.matrix.decompose(pos, quat, scl);
+    mesh.position.copy(pos);
+    mesh.quaternion.copy(quat);
+    mesh.scale.copy(scl);
+    root.add(mesh);
+  }
+  return root;
+}
 
 const WPN_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
@@ -57,25 +99,34 @@ function makeEntity(defId, seedId) {
  * @param {HTMLCanvasElement} canvas
  * @param {object} opts
  * @param {object} [opts.envMap]  - the main scene's PMREM envMap (for chrome); optional
- * @returns {{ show(defId, opts):void, setRotating(boolean):void, frame():void, dispose():void }}
+ * @param {string} [opts.dockId]  - place_dock_interior* part id for station hangar backdrop; optional
+ * @returns {{ show(defId, opts):void, setRotating(boolean):void, setDockId(string):void, frame():void, dispose():void }}
  */
 export function createShipPreviewMount(canvas, opts) {
   opts = opts || {};
   const W = canvas.clientWidth || 320;
   const H = canvas.clientHeight || 200;
+  const useDock = typeof opts.dockId === 'string' && opts.dockId.length > 0;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: !useDock, powerPreference: 'low-power' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(W, H, false);
-  renderer.setClearColor(0x000000, 0); // transparent so the panel shows through
+  renderer.setClearColor(useDock ? 0x05070d : 0x000000, useDock ? 1 : 0);
 
   const scene = new THREE.Scene();
-  // three-point-ish lighting mirroring the game's rig (key + rim + fill + ambient) so the preview
-  // reads as part of the same world, not a flat studio shot.
-  scene.add(new THREE.AmbientLight(0x42506f, 0.9));
-  const key = new THREE.DirectionalLight(0xcfe2ff, 1.6); key.position.set(-0.6, 1, 0.8); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x6a5cff, 0.7); rim.position.set(0.8, 0.4, -0.6); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0x39d0ff, 0.35); fill.position.set(0.6, -0.3, 0.5); scene.add(fill);
+  if (useDock) scene.fog = new THREE.FogExp2(0x0a1426, 0.012);
+  // Hangar rig: warmer key from dock lamps + cool rim from bay glass when a dock shell is present.
+  scene.add(new THREE.AmbientLight(0x42506f, useDock ? 0.75 : 0.9));
+  const key = new THREE.DirectionalLight(useDock ? 0xffd9b0 : 0xcfe2ff, useDock ? 1.35 : 1.6);
+  key.position.set(-0.55, 1.1, 0.75); scene.add(key);
+  const rim = new THREE.DirectionalLight(0x6a5cff, useDock ? 0.45 : 0.7);
+  rim.position.set(0.75, 0.35, -0.55); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0x39d0ff, useDock ? 0.28 : 0.35);
+  fill.position.set(0.5, -0.25, 0.45); scene.add(fill);
+  if (useDock) {
+    const pad = new THREE.PointLight(0x39d0ff, 0.55, 80);
+    pad.position.set(0, -1, 0); scene.add(pad);
+  }
 
   const cam = new THREE.PerspectiveCamera(38, W / H, 0.1, 2000);
   cam.position.set(0, 0, 50);
@@ -88,11 +139,35 @@ export function createShipPreviewMount(canvas, opts) {
   });
 
   let current = null;     // the displayed THREE.Object3D
+  let dockRoot = null;
+  let dockId = useDock ? opts.dockId : null;
+  let dockLoadGen = 0;
   let rotating = true;
   let active = true;
   let yaw = 0;
   let rafId = 0;
   let disposed = false;
+
+  async function loadDockBackdrop(id) {
+    if (!id || disposed) return;
+    const gen = ++dockLoadGen;
+    let record = null;
+    for (const url of dockPartUrls(id)) {
+      record = await loadAuthoredPart(url, { renderer, slot: 'place', optional: true });
+      if (record) break;
+    }
+    if (!record || gen !== dockLoadGen || disposed) return;
+    if (dockRoot) {
+      scene.remove(dockRoot);
+      dockRoot = null;
+    }
+    dockRoot = groupFromBlueprint(record);
+    dockRoot.position.y = 1.5;
+    scene.add(dockRoot);
+    if (active && !rafId) frame();
+  }
+
+  if (dockId) loadDockBackdrop(dockId).catch(() => {});
 
   function frame() {
     if (disposed) return;
@@ -150,6 +225,18 @@ export function createShipPreviewMount(canvas, opts) {
   }
 
   function setRotating(v) { rotating = !!v; }
+  function setDockId(id) {
+    const next = typeof id === 'string' && id.length > 0 ? id : null;
+    if (next === dockId) return;
+    dockId = next;
+    renderer.setClearColor(dockId ? 0x05070d : 0x000000, dockId ? 1 : 0);
+    if (!dockId) {
+      dockLoadGen++;
+      if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
+      return;
+    }
+    loadDockBackdrop(dockId).catch(() => {});
+  }
   function setActive(v) {
     active = !!v;
     if (!active) {
@@ -164,9 +251,12 @@ export function createShipPreviewMount(canvas, opts) {
     disposed = true;
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
+    dockLoadGen++;
+    if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
     if (current) { scene.remove(current); current.traverse((c) => { if (c.geometry) c.geometry.dispose(); }); current = null; }
+    disposeAuthoredAssetRuntime(renderer);
     renderer.dispose();
   }
 
-  return { show, setRotating, setActive, frame, dispose };
+  return { show, setRotating, setDockId, setActive, frame, dispose };
 }

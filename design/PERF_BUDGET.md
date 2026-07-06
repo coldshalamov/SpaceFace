@@ -11,7 +11,7 @@ against.
 | Tier | Frame budget | Notes |
 |------|--------------|-------|
 | **Target (desktop)** | **16.7 ms** (60 fps) | The number we ship and tune to. |
-| **Floor (low-end / Steam Deck)** | **33.3 ms** (30 fps) | Hard floor. Below this on the floor profile is a release blocker. |
+| **Floor (low-end PC/browser)** | **33.3 ms** (30 fps) | Hard floor. Below this on the floor profile is a release blocker. |
 
 The loop (`src/core/loop.js`) is a fixed-60Hz sim accumulator with a per-frame interpolated render.
 Sim cost is **quantized in whole 1/60s steps** (up to `MAX_STEPS = 8`); render cost is whatever the

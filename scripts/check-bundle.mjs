@@ -17,11 +17,12 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 
+import { SIGNAL_ARCHIVE } from '../src/ui/screens/codex.js';
+
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const BUILD_WEB = join(ROOT, 'build', 'web');
 const MIN_SAVING_PCT = 20; // the bundler must beat raw by at least this much
 const SCENARIO_47A_BUNDLE_PATH = join(BUILD_WEB, 'data', 'scenarios', '47a.scenario.json');
-const INTRO_CINEMATIC_BUNDLE_PATH = join(BUILD_WEB, 'assets', 'cinematics', 'C-INTRO-02_6s.mp4');
 const UI_ICON_ATLAS_BUNDLE_PATH = join(BUILD_WEB, 'assets', 'ui', 'icons_atlas.jpg');
 
 function runBuild() {
@@ -73,8 +74,15 @@ assert.ok(existsSync(SCENARIO_47A_BUNDLE_PATH),
 const scenario47a = JSON.parse(await readFile(SCENARIO_47A_BUNDLE_PATH, 'utf8'));
 assert.equal(scenario47a.id, 'scenario.47a.mass-discrepancy',
   'bundled 47-A scenario contract must be the canonical contract');
-assert.ok(existsSync(INTRO_CINEMATIC_BUNDLE_PATH),
-  'build/web/assets/cinematics/C-INTRO-02_6s.mp4 must exist for the bundled Watch Intro Cinematic action');
+// Every Signal Archive cinematic — poster JPG + 6s clip — must ship in the bundle. The codex Archive
+// tab and the main-menu "Signal Archive" entry reference these by URL; a missing copy is a 404 in the
+// release route (One Game Path: browser dev and packaged build must expose the same cinematics).
+for (const clip of SIGNAL_ARCHIVE) {
+  for (const rel of [clip.poster, clip.video]) {
+    const p = join(BUILD_WEB, ...rel.split('/'));
+    assert.ok(existsSync(p), `${rel} must be bundled for the Signal Archive (missing ${p})`);
+  }
+}
 assert.ok(existsSync(UI_ICON_ATLAS_BUNDLE_PATH),
   'build/web/assets/ui/icons_atlas.jpg must exist for bundled CSS icon atlas references');
 

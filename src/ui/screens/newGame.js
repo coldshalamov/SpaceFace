@@ -168,6 +168,17 @@ function starterLoadoutRows() {
 
 let refs = null;
 
+function disposePreviewMount(mount) {
+  if (!mount || typeof mount.dispose !== 'function') return;
+  try { mount.dispose(); } catch (e) {}
+}
+
+function disposeRefsPreview() {
+  if (!refs || !refs.preview) return;
+  disposePreviewMount(refs.preview);
+  refs.preview = null;
+}
+
 export const newGameScreen = {
   id: 'newGame',
 
@@ -176,6 +187,7 @@ export const newGameScreen = {
     if (refs && refs.unsubStartFailed) {
       try { refs.unsubStartFailed(); } catch (e) {}
     }
+    disposeRefsPreview();
     shell(rootEl, 'New Game', 'sf-menu-narrow');
     rootEl.classList.remove('sf-menu-narrow');
     rootEl.style.width = '420px';
@@ -277,7 +289,7 @@ export const newGameScreen = {
       back.disabled = launching;
       name.disabled = launching;
       diff.disabled = launching;
-      launch.textContent = launching ? 'Launching' : 'Launch';
+      launch.textContent = launching ? 'Launching...' : 'Launch';
       if (launching) {
         // Veil the warmup after 300ms so the disabled button itself is never the resting state.
         if (veilTimer) clearTimeout(veilTimer);
@@ -295,6 +307,9 @@ export const newGameScreen = {
       const pilot = (name.value || '').trim() || 'Pilot';
       // First-run splash (spec2/03 §3): a single full-screen line on black, 2.5s, then B0.
       try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
+      disposePreviewMount(ngPreview);
+      ngPreview = null;
+      if (refs) refs.preview = null;
       ctx.bus.emit('game:new', { name: pilot, shipId: STARTER_SHIP, difficulty: diff.value });
     });
     foot.appendChild(back); foot.appendChild(launch);
@@ -320,6 +335,10 @@ export const newGameScreen = {
     if (refs && refs.name) try { refs.name.focus(); refs.name.select(); } catch (e) {}
   },
   onHide() {
+    if (refs && refs.ctx && refs.ctx.state && refs.ctx.state.mode === 'flight') {
+      disposeRefsPreview();
+      return;
+    }
     // ScreenManager caches this DOM; pause the turntable so reopening New Game can resume it.
     if (refs && refs.preview && typeof refs.preview.setActive === 'function') {
       try { refs.preview.setActive(false); } catch (e) {}

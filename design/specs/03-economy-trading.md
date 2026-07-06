@@ -1,5 +1,9 @@
 # Economy & Trading
 
+> **Legacy spec suite:** Superseded by `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*`. Use for history only unless a current 2.0
+> doc explicitly revives a section.
+
 ## Summary
 A data-driven, stock-based market economy. Every station owns an independent market: each tradeable commodity has a live `stock` that drifts exponentially toward a per-station `equilibrium`, and price is derived purely from the stock/equilibrium ratio via an elasticity curve (low stock = expensive, high stock = cheap). Producer station types hold high equilibrium stock of what they make (so they sell it cheap) and low equilibrium stock of what they consume (so they buy it dear); consumer types are the inverse. Players profit by hauling goods from producer stations (low buy price) to consumer stations (high sell price). Large trades move stock and therefore self-impact price with diminishing returns, so each route has a capacity sweet spot rather than infinite scaling. A buy/sell spread gives the house edge. Economic events (shortages, booms, blockades, piracy spikes) are time-boxed modifiers injected onto a station+commodity's equilibrium/drift and propagate to neighbors along trade links. Contraband trades at high margin but triggers scan checks at gates/patrols with value-scaled fines and reputation hits. The system runs on a slow economy tick (5 s) decoupled from the 60 Hz sim, mutates only GameState.markets, and communicates entirely through the event bus so combat/mission/AI-trader systems compose without coupling.
 

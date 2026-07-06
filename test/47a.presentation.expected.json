@@ -4,8 +4,8 @@
   "seed": 47,
   "ticks": 720,
   "inputTape": "test/47a.inputs.json",
-  "stateHash": "0fb0e5228eeb8e7e6cab8022b08ffd7adb4e12a31de68512e9f010e310b91133",
-  "traceLimit": 120,
+  "stateHash": "c20b04f5eef2bd28d2d49afd21a37cb89363769aa244a22aa667ccbb3e51a7c4",
+  "traceLimit": 35,
   "events": [
     "scenario.*",
     "tether.*",
@@ -15,19 +15,23 @@
     "alert"
   ],
   "summaryCounts": {
+    "scenario:loaded": 1,
+    "scenario:factsInitialized": 1,
+    "scenario:actorBindings": 1,
     "scenario:beatEntered": 1,
     "scenario:dialogueLine": 1,
-    "tether:attached": 1,
-    "presentation:cue": 3,
-    "presentation:cueApplied": 3,
-    "presentation:cameraCue": 2,
-    "camera:shake": 2,
     "presentation:vfxCue": 3,
     "presentation:audioCue": 3,
     "audio:cue": 3,
     "presentation:uiCue": 3,
     "alert": 3,
-    "presentation:caption": 3
+    "presentation:caption": 3,
+    "presentation:cueApplied": 3,
+    "presentation:cue": 3,
+    "tether:attached": 1,
+    "presentation:cameraCue": 2,
+    "camera:shake": 2,
+    "tether:broken": 1
   },
   "cues": [
     {
@@ -46,7 +50,12 @@
         "presentation:cueApplied",
         "presentation:cue"
       ],
-      "outputLanes": ["accessibility", "audio", "ui", "vfx"],
+      "outputLanes": [
+        "accessibility",
+        "audio",
+        "ui",
+        "vfx"
+      ],
       "audioId": "presentation.scenario.signal",
       "audioGain": 0.688,
       "uiKey": "presentation:scenario:signal",
@@ -73,7 +82,13 @@
         "presentation:cueApplied",
         "presentation:cue"
       ],
-      "outputLanes": ["accessibility", "audio", "camera", "ui", "vfx"],
+      "outputLanes": [
+        "accessibility",
+        "audio",
+        "camera",
+        "ui",
+        "vfx"
+      ],
       "audioId": "presentation.tether.attach",
       "audioGain": 0.723,
       "uiKey": "presentation:tether:attach",
@@ -81,6 +96,39 @@
       "particles": 48,
       "lights": 0,
       "cameraAmount": 0.12
+    },
+    {
+      "id": "tether.break",
+      "sourceEvent": "tether:broken",
+      "tick": 116,
+      "sourceToAppliedTicks": 0,
+      "orderedTypes": [
+        "tether:broken",
+        "presentation:cameraCue",
+        "camera:shake",
+        "presentation:vfxCue",
+        "presentation:audioCue",
+        "audio:cue",
+        "presentation:uiCue",
+        "alert",
+        "presentation:caption",
+        "presentation:cueApplied",
+        "presentation:cue"
+      ],
+      "outputLanes": [
+        "accessibility",
+        "audio",
+        "camera",
+        "ui",
+        "vfx"
+      ],
+      "audioId": "presentation.tether.break",
+      "audioGain": 0.772,
+      "uiKey": "presentation:tether:break",
+      "shape": "arc",
+      "particles": 96,
+      "lights": 0,
+      "cameraAmount": 0.22
     }
   ]
 }

@@ -13,7 +13,7 @@ Reveal: kill-feed +1 "HAULER — 12 souls"
 **02**  
 Board: "RECLAMATION RUN — CLEAN"  
 HUD on accept: "No hostiles detected."  
-Graffiti: "Clean means no witnesses left."  
+Graffiti: "No hostiles detected. No witnesses either."  
 Reveal: manifest "MEDICAL — 47 units diverted"
 
 **03**  
@@ -31,7 +31,7 @@ Reveal: manifest "AMMO — 800 rounds, serials match ours"
 **05**  
 Board: "SURVEY UPDATE — ROUTINE"  
 HUD on accept: "Data logged. No anomalies."  
-Graffiti: "Survey said empty. We made it empty."  
+Graffiti: "Survey logged empty. Sensors logged two hulls. One still pinging."  
 Reveal: kill-feed "SCAVENGER — 2 tags, 1 still blinking"
 
 **06**  
@@ -108,7 +108,7 @@ Reveal: none.
 
 **Design principle — the clean contract:**
 
-Not every contract reveals horror. If every manifest self-corrects, every kill feed surprises, every graffiti line accuses — the player expects the reveal and the reveals stop working. Le Carré's London is not a place where every door opens onto a crime. It's a place where most doors open onto ordinary rooms, and the extraordinary ones look like the rest until they don't.
+Not every contract reveals horror. If every manifest self-corrects, every kill feed surprises, every graffiti line accuses — the player expects the reveal and the reveals stop working. A clean intelligence trade is not a place where every door opens onto a crime. It's a place where most doors open onto ordinary rooms, and the extraordinary ones look like the rest until they don't.
 
 The clean contracts (15, 16, and procedural variants) should be indistinguishable from the corrupt ones at the board level. Same language. Same HUD text. The graffiti is flat because nothing happened. "Cargo arrived." is the graffiti for a job that was exactly what it said it was. The player doesn't know until the end. This is the structure: a dozen ordinary hauls, then Contract 08.
 

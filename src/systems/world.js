@@ -20,6 +20,7 @@ import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '.
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 
 // ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
 const DEFAULT_WORLD_RADIUS = 4000;
@@ -63,6 +64,8 @@ const HUNTER_SPAWN_MIN_RADIUS = 1900;
 const HUNTER_SPAWN_MAX_RADIUS = 2700;
 const AMBUSH_SPAWN_MIN_RADIUS = 1500;
 const AMBUSH_SPAWN_MAX_RADIUS = 2300;
+const ZONE_HOSTILE_PLAYER_CLEARANCE = 1200; // zone-anchored hostiles never spawn this close to the player
+const AMBIENT_HEADROOM = 8; // REVAMP 2.1 — max live-ship slots ambient may reserve; the rest (MAX-8) stays for encounters
 const PALETTE_CLASS_BY_REF = new Map(Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]));
 const DRESSING_RADIUS = Object.freeze({
   place_lane_beacon: 18,
@@ -613,17 +616,63 @@ export const world = {
     if (density <= 0) return;
     const di = dangerIndex(sec);
     const count = Math.min(10, Math.round(density * 8 + di * 2 + rng() * 1.5));
-    const pool = this._enemyPool(sector);
     const [lvLo, lvHi] = sector.enemyLevel || [1, 2];
-    for (let i = 0; i < count; i++) {
-      const typeId = pool[Math.floor(rng() * pool.length)];
-      const level = Math.round(lvLo + (lvHi - lvLo) * (rng() * 0.6 + 0.4 * (1 - sec.security)));
-      const pos = this._ambientEnemySpawnPos(sector, active, rng, wr);
-      if (!pos) continue;
-      const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos);
-      tagAiSpawnContext(spec, sector, sec, 'ambient');
-      const ent = this.helpers.spawnEntity(spec);
-      active.enemies.push(ent.id);
+
+    // REVAMP 2.1 — ambient is a spawnBudget CLIENT with static headroom: reserve at most AMBIENT_HEADROOM
+    // of the shared live-ship cap so the encounterDirector always retains slots (no eviction — we simply
+    // spawn fewer ambient when the world is tight). The reservation is a per-sector allotment freed on
+    // sector:exit (spawnBudget resets there); any unspent slots are released below. No budget → unchanged.
+    const budget = this.helpers && this.helpers.spawnBudget;
+    let grant = Math.min(count, AMBIENT_HEADROOM);
+    if (budget && typeof budget.request === 'function') grant = budget.request(grant, 'world_ambient');
+    const enemiesBefore = active.enemies.length;
+
+    // Purposeful presence (WORLD_OVERHAUL_2_1): place ambient hostiles/patrols onto NAMED zones —
+    // ambush lanes, patrol corridors, outlaw dens — as cohesive faction squads with a shared squadId
+    // (so the SG-06 roster forms them up on the zone) instead of scattering singletons on random rings.
+    // The ships are relocated onto believable zones, not multiplied. Sectors with no authored zones
+    // keep the legacy ring path. `grant` (not `count`) caps how many we place, per the budget above.
+    const zonePlan = grant > 0 ? planZoneSpawns(sector.id, grant, sector.enemyLevel || [lvLo, lvHi], rng) : [];
+    if (zonePlan.length) {
+      const player = this.state.entities.get(this.state.playerId);
+      const starterSafe = starterSafeRadius(sector);
+      for (const intent of zonePlan) {
+        const pos = intent.pos;
+        if (intent.context === 'zone_hostile') {
+          // Never drop a hostile in the tutorial-safe bubble or on top of the player at entry.
+          if (starterSafe > 0 && dist2(pos, { x: 0, z: 0 }) < starterSafe * starterSafe) continue;
+          if (player && player.pos && dist2(pos, player.pos) < ZONE_HOSTILE_PLAYER_CLEARANCE * ZONE_HOSTILE_PLAYER_CLEARANCE) continue;
+        }
+        const spec = makeEnemySpawnSpec(intent.archetypeId, clamp(intent.level, lvLo, lvHi + 2), pos, { factionId: intent.factionId });
+        spec.data = spec.data || {};
+        spec.data.ai = spec.data.ai || {};
+        spec.data.ai.squadId = intent.squadId;   // one squad per zone → coherent formation on the zone
+        spec.data.ai.doctrine = intent.doctrine;
+        spec.data.ai.formation = intent.formation;
+        spec.data.ai.zoneId = intent.zoneId;
+        spec.data.ai.zoneName = intent.zoneName;
+        tagAiSpawnContext(spec, sector, sec, intent.context);
+        const ent = this.helpers.spawnEntity(spec);
+        active.enemies.push(ent.id);
+      }
+    } else if (grant > 0) {
+      const pool = this._enemyPool(sector);
+      for (let i = 0; i < grant; i++) {
+        const typeId = pool[Math.floor(rng() * pool.length)];
+        const level = Math.round(lvLo + (lvHi - lvLo) * (rng() * 0.6 + 0.4 * (1 - sec.security)));
+        const pos = this._ambientEnemySpawnPos(sector, active, rng, wr);
+        if (!pos) continue;
+        const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos);
+        tagAiSpawnContext(spec, sector, sec, 'ambient');
+        const ent = this.helpers.spawnEntity(spec);
+        active.enemies.push(ent.id);
+      }
+    }
+    // Return any reserved-but-unspent ambient slots (safe-zone skips / no valid pos) so the
+    // encounterDirector can use them. Reserve/release keeps the shared cap honest (REVAMP 2.1 risk #1).
+    if (budget && typeof budget.releaseSome === 'function') {
+      const spawned = active.enemies.length - enemiesBefore;
+      if (spawned < grant) budget.releaseSome('world_ambient', grant - spawned);
     }
     // WANTED hunters (V2 §20b / cut-list #15): if the player is hot, bounty-hunter lawful patrols
     // spawn specifically to hunt them — real consequence for piracy. Count scales with heat; they
@@ -859,7 +908,33 @@ export const world = {
 
     this._tickScan(dt, state);
     this._tickHazards(dt, state);
+    this._tickZoneLabel(state);
     this._tickPOIScan(state);
+  },
+
+  // Named-zone awareness (WORLD_OVERHAUL_2_1): announce when the player crosses into a named zone so
+  // the world reads as inhabited/territorial ("⟢ Belt-Shadow Ambush") instead of anonymous space.
+  // Also publishes state.world.currentZone for the HUD/map to label the player's surroundings.
+  _tickZoneLabel(state) {
+    const player = state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const sectorId = state.world.currentSectorId;
+    const zone = zoneAt(sectorId, player.pos.x, player.pos.z);
+    const prevId = state.world.currentZoneId || null;
+    const nextId = zone ? zone.id : null;
+    if (nextId === prevId) return;
+    state.world.currentZoneId = nextId;
+    state.world.currentZone = zone
+      ? { id: zone.id, name: zone.name, type: zone.type, factionId: zone.factionId, threat: zoneThreat(zone) }
+      : null;
+    if (zone) {
+      const threat = zoneThreat(zone);
+      const kind = threat >= 3 ? 'danger' : (threat >= 2 ? 'warn' : 'info');
+      this.bus.emit('world:zoneEntered', { zoneId: zone.id, name: zone.name, type: zone.type, factionId: zone.factionId, threat, reason: zone.reason });
+      this.bus.emit('toast', { text: `⟢ ${zone.name}`, kind, ttl: 2.5 });
+    } else {
+      this.bus.emit('world:zoneExited', { zoneId: prevId });
+    }
   },
 
   // --- jump: CHARGING --------------------------------------------------------

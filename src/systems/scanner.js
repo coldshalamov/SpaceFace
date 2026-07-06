@@ -6,6 +6,8 @@ import { ASTEROIDS } from '../data/mining.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isPlayerWanted } from './heat.js';
 
+export const SCANNER_CONTACT_RANGE = 5200;
+
 const PULSE_COOLDOWN_S = 8;
 const NEAR_SCAN_RADIUS = 1200;
 const HIDDEN_POI_RADIUS = 2000;
@@ -14,7 +16,10 @@ const PINGED_S = 45;
 const UNSAFE_PLAYER_SECURITY = 0.45;
 const LANE_CONTEXT_INNER_R = 900;
 const LANE_CONTEXT_OUTER_R = 2200;
-const PLAYER_DANGER_CONTEXTS = new Set(['interdiction', 'spawn_request', 'bounty_hunter', 'mission', 'encounter']);
+const PLAYER_DANGER_CONTEXTS = new Set([
+  'interdiction', 'spawn_request', 'bounty_hunter', 'mission', 'encounter', 'tutorial_pirate',
+  'zone_hostile', // WORLD_OVERHAUL_2_1: pirates/raiders camping a named ambush/outlaw zone
+]);
 
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
 const ORE_GLYPH_BY_TAG = Object.freeze({

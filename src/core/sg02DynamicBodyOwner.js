@@ -19,6 +19,18 @@ const CAPTURE_SLACK_S = 0.1;
 const MAX_STRETCH_RATIO = 0.45;
 const REEL_SAFE_STRETCH_RATIO = 0.43;
 const STRETCH_EPSILON = 1e-6;
+// While the pilot actively reels in (holds G / negative reelDelta), the winch hauls harder so a
+// thrusting target can't cancel the pull by matching the spring force. This multiplier is GATED to
+// active reel only — it does not affect neutral auto-hold or slingshot capture, so the massline-feel
+// golden (which issues no reel command) is unaffected. 1.15 = +15% pull while reeling.
+const REEL_BOOST_K_MULT = 1.15;
+// When actively reeling, the winch must still shorten the line against a fleeing target. The
+// opening-speed guard (safeReelRestLength) and the per-step re-lengthening (reelSlip) exist to keep
+// the line from snapping under sudden yanks — but applied indiscriminately they make reel-in
+// impossible against any thrust (the bug: "I never get closer"). Below, the reelSlip path only
+// re-lengthens when stretch is right at the break edge, so a violently fleeing capital can still
+// snap the line (the intended escape) but a normal haul no longer pays out.
+const REEL_SLIP_RELENGTH_RATIO = 0.95;
 const MAX_TETHER_RELEASE_YAW_RATE = 3.4;
 const MAX_TETHER_LOADED_YAW_RATE = 5.2;
 const MAX_TETHER_OPENING_SPEED_PAD = 10;
@@ -661,6 +673,14 @@ export class Sg02DynamicBodyOwner {
       if (usesLegacyRopeSpring(attachment.spring)) continue;
       this._applyAttachmentSpring(attachment);
     }
+    // reelSlip is an edge signal: setAttachmentReel sets it on each tick it actually shortens the
+    // line (i.e. the player is still holding G this tick). Clearing it after the spring pass means
+    // the +15% reel boost and the relaxed opening-speed guard only apply during ACTIVE reel — if
+    // the player releases G, setAttachmentReel is not called next tick, reelSlip stays false, and
+    // the line reverts to normal capture/hold behavior with the break-guard re-armed.
+    for (const attachment of this.attachments.values()) {
+      if (attachment.springState) attachment.springState.reelSlip = false;
+    }
   }
 
   _applyAttachmentSpring(attachment) {
@@ -680,8 +700,10 @@ export class Sg02DynamicBodyOwner {
     const reelSafeStretchRatio = positive(attachment.spring && attachment.spring.reelSafeStretchRatio,
       Math.min(REEL_SAFE_STRETCH_RATIO, Math.max(0.05, maxStretchRatio - 0.04)));
 
-    if (state.reelSlip && restLength > 0 && stretch > restLength * reelSafeStretchRatio) {
-      restLength = distance / (1 + reelSafeStretchRatio);
+    if (state.reelSlip && restLength > 0 && stretch > restLength * maxStretchRatio * REEL_SLIP_RELENGTH_RATIO) {
+      // Only pay out line when stretch is right at the break edge (a violently fleeing capital that
+      // would otherwise snap). Normal reel-in no longer re-lengthens, so holding G actually hauls.
+      restLength = distance / (1 + maxStretchRatio * REEL_SLIP_RELENGTH_RATIO);
       attachment.restLength = restLength;
       stretch = Math.max(0, distance - restLength);
     }
@@ -720,7 +742,13 @@ export class Sg02DynamicBodyOwner {
     const smooth = smoothstep(captureX);
     const k = inCapture ? spring.K * smooth * smooth : spring.K;
     const c = inCapture ? damping * (0.5 + 0.5 * smooth) : damping;
-    let force = Math.max(0, k * stretch + c * relativeSpeed);
+    // Active reel hauls harder so a thrusting target can't cancel the pull. GATED to reelSlip
+    // (set only on an explicit shorten command from setAttachmentReel) and to the post-capture
+    // regime: capture-phase k is left untouched so the soft-catch envelope (massline-feel golden)
+    // is preserved. Damping is NOT boosted — only the spring term — so the line pulls harder
+    // without becoming twitchy.
+    const reelBoost = state.reelSlip && !inCapture ? REEL_BOOST_K_MULT : 1;
+    let force = Math.max(0, k * reelBoost * stretch + c * relativeSpeed);
 
     const breakStretch = restLength * maxStretchRatio;
     if (stretch > breakStretch) {
@@ -964,6 +992,8 @@ function safeReelRestLength(attachment, requested, dt = SG02_DYNAMIC_BODY_OWNER_
   const maxStretchRatio = positive(spring && spring.maxStretchRatio, MAX_STRETCH_RATIO);
   const reelSafeStretchRatio = positive(spring && spring.reelSafeStretchRatio,
     Math.min(REEL_SAFE_STRETCH_RATIO, Math.max(0.05, maxStretchRatio - 0.04)));
+  const state = attachment.springState;
+  const activeReel = !!(state && state.reelSlip);
   const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
   const source = worldAnchorInto(scratch.source, attachment.owner, attachment.anchorA);
   const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
@@ -976,8 +1006,17 @@ function safeReelRestLength(attachment, requested, dt = SG02_DYNAMIC_BODY_OWNER_
   const openingSpeed = invD > 0
     ? Math.max(0, (scratch.velocityB.x - scratch.velocityA.x) * dx * invD + (scratch.velocityB.z - scratch.velocityA.z) * dz * invD)
     : 0;
-  const predictedDistance = distance + openingSpeed * Math.max(0, finite(dt));
-  const minByGuard = predictedDistance / (1 + reelSafeStretchRatio);
+  // The guard's job is to keep the line from snapping on a yank: don't reel shorter than the
+  // distance the line will actually span. The ORIGINAL formula predicted that distance forward by
+  // openingSpeed*dt — which, against a thrusting target, made reel-in impossible (openingSpeed
+  // pushed the floor above `requested` every tick, so the winch refused to shorten and the player
+  // "never got closer" — the reported bug). During ACTIVE reel we drop the opening-speed term and
+  // clamp against the current distance only: a stationary target's clamp is unchanged (preserves
+  // the sg02 dynamic-body-owner + tether-break goldens, whose targets have zero opening speed),
+  // while a fleeing target no longer locks the winch open. The +15% reel boost plus the break-edge
+  // reelSlip cap (in _applyAttachmentSpring) keep a violently fleeing capital able to snap the line.
+  const spanForGuard = activeReel ? distance : distance + openingSpeed * Math.max(0, finite(dt));
+  const minByGuard = spanForGuard / (1 + reelSafeStretchRatio);
   return Math.max(requested, minByGuard);
 }
 

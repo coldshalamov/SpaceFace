@@ -1,0 +1,22 @@
+---
+pid: 14032
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/probe-station-archetypes-live.mjs"
+started_at: 2026-07-04T21:52:31.963Z
+running_for_ms: 17815005 
+---
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: authored station mesh count should exceed box fallback: 2
+    at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/probe-station-archetypes-live.mjs:53:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.15.0

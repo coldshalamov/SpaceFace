@@ -1,0 +1,32 @@
+---
+pid: 41724
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; npm run check:art 2>&1 | Select-Object -Last 25"
+started_at: 2026-07-05T01:20:05.161Z
+running_for_ms: 5365005  
+---
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_drifter_b81f9490",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 8,
+        "authoredSurfaceCount": 10,
+        "visibleAuthoredSurfaceCount": 8,
+        "staticBatchCount": 3,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 27,
+        "screenRadiusPx": 100.452,
+        "largePrimitives": []
+      }
+    ]
+  },
+  "pageErrors": []
+}
+
+> spaceface@0.1.0 check:47a:visuals
+> node scripts/check-47a-visual-assets.mjs
+
+
+35 ok, 0 fail

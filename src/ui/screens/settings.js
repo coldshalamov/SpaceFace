@@ -109,7 +109,7 @@ const REBIND_LABELS = {
   strafeLeft: 'Lateral thrust left',
   strafeRight: 'Lateral thrust right',
   boost: 'Boost / dash',
-  autoFire: 'Toggle auto-fire',
+  autoFire: 'Toggle auto-target',
   brake: 'Brake to stop (Helm Assist)',
   tether: 'Tether: latch / reel / release',
   chargeThrow: 'Impulse charge: throw',
@@ -269,7 +269,7 @@ export const settingsScreen = {
     } else if (refs.active === 'Video') {
       const vd = s.video;
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
-      rowSlider('Bloom strength', () => vd.bloomStrength != null ? vd.bloomStrength : 0.22, 0, 2, 0.05, (x) => Math.round(x / 2 * 100) + '%', (v) => this._set(ctx, 'video', 'bloomStrength', v));
+      rowSlider('Bloom strength', () => vd.bloomStrength != null ? vd.bloomStrength : 0.40, 0, 2, 0.05, (x) => Math.round(x / 2 * 100) + '%', (v) => this._set(ctx, 'video', 'bloomStrength', v));
       // HDR energy materials (spec §14.5): shader-driven thruster plume + Massline ribbon that write
       // HDR radiance into the bloom target. On by default for the beautiful flight look.
       if (vd.energyMaterials == null) vd.energyMaterials = true;

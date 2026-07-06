@@ -205,8 +205,8 @@ export class SpaceRenderGraph {
       bloom: options.bloom !== false,
       renderScale: clamp(finite(options.renderScale, 1), 0.5, 1),
       aoScale: clamp(finite(options.aoScale, 0.5), 0.25, 1),
-      bloomStrength: finite(options.bloomStrength, 0.82),
-      bloomThreshold: finite(options.bloomThreshold, 0.82),
+      bloomStrength: finite(options.bloomStrength, 0.40),
+      bloomThreshold: finite(options.bloomThreshold, 0.72),
       bloomKnee: finite(options.bloomKnee, 0.18),
       aoStrength: finite(options.aoStrength, 0.72),
       exposure: finite(options.exposure, 1.0),
@@ -249,9 +249,9 @@ export class SpaceRenderGraph {
     this._allocate();
   }
 
-  setSize(width, height, pixelRatio = 1) {
-    const w = Math.max(1, Math.floor(width * pixelRatio));
-    const h = Math.max(1, Math.floor(height * pixelRatio));
+  setSize(width, height) {
+    const w = Math.max(1, Math.floor(width));
+    const h = Math.max(1, Math.floor(height));
     if (w === this.width && h === this.height) return;
     this.width = w;
     this.height = h;
@@ -263,13 +263,13 @@ export class SpaceRenderGraph {
     this.options.renderScale = clamp(finite(this.options.renderScale, 1), 0.5, 1);
     this.options.aoScale = clamp(finite(this.options.aoScale, 0.5), 0.25, 1);
     const u = this.compositeMaterial.uniforms;
-    u.uBloomStrength.value = finite(this.options.bloomStrength, 0.82);
+    u.uBloomStrength.value = finite(this.options.bloomStrength, 0.40);
     u.uAoStrength.value = finite(this.options.aoStrength, 0.72);
     u.uExposure.value = finite(this.options.exposure, 1);
     u.uGrade.value = finite(this.options.grade, 0.62);
     u.uVignette.value = finite(this.options.vignette, 0.18);
     u.uGrain.value = finite(this.options.grain, 0.025);
-    this.bloomMaterial.uniforms.uThreshold.value = finite(this.options.bloomThreshold, 0.82);
+    this.bloomMaterial.uniforms.uThreshold.value = finite(this.options.bloomThreshold, 0.72);
     this.bloomMaterial.uniforms.uKnee.value = finite(this.options.bloomKnee, 0.18);
   }
 

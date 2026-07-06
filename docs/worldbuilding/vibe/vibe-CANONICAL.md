@@ -1,10 +1,10 @@
 **SPACEFACE — CANONICAL VIBE DOCUMENT (v03 + v02 fusion)**
 
 **Core Tone**
-Vietnam-era punk graffiti sprayed on a bulkhead that still smells like cordite and coolant. The game lives in the gap between "we're all gonna die" and "might as well get paid first." Every sector is a demilitarized zone that someone already lost. The player is another ex-gangster with ink under the scars, flying a ship that remembers every body it used to carry. The ship is haunted. The player is the ghost.
+A bulkhead that still smells like cordite and coolant, with something scratched into the paint that management keeps covering and the paint keeps giving back. The game lives in the gap between "the contract was clean" and "we took it anyway." Every sector is a demilitarized zone that someone already lost. The player is a pilot flying a ship that remembers every body it used to carry. The ship is haunted. The player is the ghost.
 
 **Origin — The Pit**
-SpaceFace starts in the armpit of the solar system: a half-abandoned prison-colony called The Pit, where the UN dumped the last generation of "unreformable" debtors, hackers, and political embarrassments. Your ship is a repossessed tug with a reactor that prays to Saint Jude. Your crew is whatever three idiots will still talk to you after the last job went sideways. You are the guy who knows which airlock the inspectors never check.
+SpaceFace starts in the armpit of the solar system: a half-abandoned prison-colony called The Pit, where the last generation of "unreformable" debtors, hackers, and political embarrassments got dumped. Your ship is a repossessed tug with a reactor that has been "fine" for three owners. Your crew is whoever will still talk to you after the last job went sideways. You are the pilot who knows which airlock the inspectors never check.
 
 **Voice**
 Eleven months on a Pit survey crew and five years of contracts that paid what they paid. Short sentences. Silence as punctuation. "They said the contract was clean. They lied. We still took it." No inspirational speeches. No "we can do this." No performance for an audience that doesn't exist. Just hands on the controls when the reactor screams, because that's what you do with your hands.
@@ -17,11 +17,11 @@ Not silence. Not quips. Flat, unyielding declaratives of physical and economic r
 
 *Finding a body they recognize:* Just the name. The identification is the statement. If the body is a stranger: "Another mouth closed. Log the air." Not gallows humor. Operational accounting.
 
-*Getting stiffed:* "You will pay the difference to someone else. The sector does not leave ledgers open." McCarthy-register: the debt is a physical asset. The client will pay it to the next contractor who buys the ledger. The player is not threatening. They are stating the math.
+*Getting stiffed:* "You will pay the difference to someone else. The sector does not leave ledgers open." The debt is a physical asset. The client will pay it to the next contractor who buys the ledger. The player is not threatening. They are stating the math.
 
 *Getting paid correctly after being stiffed before:* "Correct." Not "thank you." Verification that the number matches.
 
-*Customs interception:* "The seal is Concord. If the weight is off, talk to Tycho." Le Carré bureaucratic defense — passing administrative liability back to the relay where the cargo was logged.
+*Customs interception:* "The seal is Concord. If the weight is off, talk to Tycho." Bureaucratic defense — passing administrative liability back to the relay where the cargo was logged.
 
 *Asked to justify a contract that ruined a colony:* "The fuel was already in the tanks. We had to go somewhere." A moral choice reframed as inventory calculation. The ship has a vector determined by fuel and cargo. The player is the operator executing the math.
 
@@ -59,11 +59,11 @@ Moral descent doesn't arrive with violins. It arrives in the cargo hold after yo
 Comms are a constant low-grade migraine. Micro-popups slide in from every direction—corporate debt collectors, exes, rival smugglers, your own increasingly unhinged nav AI. Most are noise. Some are traps. A few are the only warning you'll get before a "routine" customs scan turns into a boarding action. The best pilots learn to read the popups the way old sailors read clouds.
 
 **Story Escalation — Small Crimes to Systemic Rot**
-The story begins small and stays small for as long as it can. First jobs are the usual: smuggle a crate of vat-meat that definitely isn't human, rig a dock auction, plant a virus that makes a rival's ore scanner hallucinate gold. You're just trying to keep the reactor fueled and the hull patched. Then the jobs start arriving with names attached—mid-level bureaucrats, minor corporate officers, one actual UN inspector who should not be talking to someone like you. The money gets better. The bodies get harder to hide. The graffiti starts mentioning you by callsign.
+The story begins small and stays small for as long as it can. First jobs are the usual: smuggle a crate of vat-meat that definitely isn't human, rig a dock auction, plant a virus that makes a rival's ore scanner hallucinate gold. You're just trying to keep the reactor fueled and the hull patched. Then the jobs start arriving with names attached — mid-level bureaucrats, minor corporate officers, one actual Concord inspector who should not be talking to someone like you. The money gets better. The bodies get harder to hide. The graffiti starts mentioning you by callsign.
 
 What escalates isn't your ambition. It's the realization that the entire system is already rotting from the inside and everyone with a clean uniform is either complicit or will be soon. The gray men in clean stations sign the orders that get your friends spaced — and sleep well because the orders were authorized and the paperwork was filed correctly. The priest blesses the smuggling hold because the orphanage needs new filters, and knows exactly what he's blessing. The air recyclers fail first on the lowest decks; the rich buy bottled atmosphere while everyone else learns to ignore the smell. The journey goes outward from the lit core to the dark frontier, and the thing at the end of it has been waiting for something that looks exactly like you. Bodies accumulate not because anyone chose it but because the math of the situation resolves to bodies. Whoever controls the information layer — the HUD, the manifests, the after-action logs — controls what happened, regardless of what happened. Everyone is in each other's story without knowing it. One job, seen from eight different angles, all of them wrong about who was in charge.
 
-You never fight the system head-on. You steal its lunch money, sell it back to them at a markup, then use the profit to buy the next layer of rot. The only way to stay human is to keep being a criminal, and eventually even the criminals start acting like the institutions they hate — with worse bookkeeping.
+You never fight the system head-on. You skim it, sell the skim back to it at markup, and use the proceeds to buy into the next layer of rot. The only way to stay human is to keep being a criminal, and eventually even the criminals start acting like the institutions they hate — with worse bookkeeping.
 
 **The Player — Cipher and Person**
 The game's surface treats the player as interchangeable. The contracts don't care who you are. The NPCs don't ask about your childhood. The HUD doesn't know your name. On the surface you're a cipher: any pilot, any ship, any debt. Thread A works on anyone.

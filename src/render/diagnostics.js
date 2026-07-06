@@ -99,11 +99,16 @@ export function installDiagnostics(renderer, opts = {}) {
   function refreshOverlayText() {
     if (!overlayEl) return;
     // textContent (never innerHTML) — no markup, no injection surface.
-    overlayEl.textContent =
+    let text =
       'FPS ' + fpsEma.toFixed(0) + '  (' + lastMs.toFixed(2) + 'ms)\n' +
       'calls ' + info.calls + '  tris ' + info.triangles + '\n' +
       'geo ' + info.geometries + '  tex ' + info.textures + '  prog ' + info.programs + '\n' +
       'part ' + counts.particles + '  ent ' + counts.entities;
+    // Optional caller-supplied extra line(s) — e.g. GPU tier + dynamic-resolution scale (renderer.js).
+    if (typeof opts.extraLines === 'function') {
+      try { const extra = opts.extraLines(); if (extra) text += '\n' + extra; } catch (_) { /* overlay is best-effort */ }
+    }
+    overlayEl.textContent = text;
   }
 
   function resetFrameStats() {

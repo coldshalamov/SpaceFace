@@ -19,7 +19,7 @@
 ## Context
 
 What forces a decision *now*? The problem, the constraints (perf, team size, zero-build mandate,
-browser limits, Steam target), and any prior ADRs or design docs that bound the space. State the
+browser limits, PC/browser target, optional distribution shells), and any prior ADRs or design docs that bound the space. State the
 forces honestly — including the ones pulling the other way.
 
 ## Decision

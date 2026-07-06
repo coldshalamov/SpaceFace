@@ -191,12 +191,15 @@ if (!bindingsSrc.includes("cargo: { key: 'i', code: 'KeyI', label: 'I' }")
   console.log('ok   cargo/comms binding - input and visible copy read the binding registry');
   ok++;
 }
+// claimBase is deliberately on U (not C): C is the scanner-pulse flight verb in the 2.0 input
+// contract (systems/input.js VERB_BINDINGS), so claim-base yields the key to avoid a collision.
+// This assertion tracks the shipped binding — the check verifies keys are centralized in bindings.js.
 if (!bindingsSrc.includes("techTree: { key: 't', code: 'KeyT', label: 'T' }")
   || !bindingsSrc.includes("drill: { key: 'b', code: 'KeyB', label: 'B' }")
-  || !bindingsSrc.includes("claimBase: { key: 'c', code: 'KeyC', label: 'C' }")
+  || !bindingsSrc.includes("claimBase: { key: 'u', code: 'KeyU', label: 'U' }")
   || BINDINGS.techTree.key !== 't'
   || BINDINGS.drill.key !== 'b'
-  || BINDINGS.claimBase.key !== 'c'
+  || BINDINGS.claimBase.key !== 'u'
   || !inputSrc.includes('BINDINGS.techTree.key')
   || !inputSrc.includes('BINDINGS.drill.key')
   || !inputSrc.includes('BINDINGS.claimBase.key')
@@ -208,7 +211,7 @@ if (!bindingsSrc.includes("techTree: { key: 't', code: 'KeyT', label: 'T' }")
   || !baseSrc.includes('BINDINGS.claimBase.label')) {
   console.log('FAIL tech/drill/claim binding - fixed action keys must read src/ui/bindings.js across input, Help, prompts, and base fallback copy');
   fail++;
-} else if (/case 't'|case 'b'|case 'c'|B drill view|press B|press C|Press C|Tech tree', null, 'T'|Deep-drill \(ant-farm\)', null, 'B|Claim body \/ open base', null, 'C'/.test(inputSrc + helpSrc + controlPromptsSrc + baseSrc)) {
+} else if (/case 't'|case 'b'|case 'u'|B drill view|press B|press U|Press U|Tech tree', null, 'T'|Deep-drill \(ant-farm\)', null, 'B|Claim body \/ open base', null, 'U'/.test(inputSrc + helpSrc + controlPromptsSrc + baseSrc)) {
   console.log('FAIL tech/drill/claim binding - visible tech/drill/claim key text must not hard-code T/B/C');
   fail++;
 } else {

@@ -506,13 +506,13 @@ function injectCommsCss() {
   .sf-comm-backlog__empty { padding:30px 16px; text-align:center; color:var(--ink-mute); font-style:italic; }
 
   /* ===== bulkhead graffiti (player's own ship) ===== */
-  .sf-bulkhead { position:absolute; left:50%; bottom:30%; transform:translateX(-50%); z-index:9;
-    pointer-events:none; opacity:0; transition:opacity 1.2s ease; max-width:60vw; text-align:center; }
-  .sf-bulkhead--visible { opacity:.55; }
-  .sf-bulkhead__line { font-family:var(--mono); font-size:clamp(14px, 2.4vw, 22px); letter-spacing:.18em;
-    color:#b9c4d6; text-transform:uppercase; text-shadow:0 0 18px rgba(0,0,0,.9), 0 2px 3px #000;
+  .sf-bulkhead { position:absolute; left:clamp(220px, 18vw, 340px); bottom:22%; transform:none; z-index:9;
+    pointer-events:none; opacity:0; transition:opacity 1.2s ease; max-width:min(420px, 32vw); text-align:left; }
+  .sf-bulkhead--visible { opacity:.22; }
+  .sf-bulkhead__line { font-family:var(--mono); font-size:clamp(11px, 1.2vw, 13px); letter-spacing:.12em;
+    color:#b9c4d6; text-transform:uppercase; text-shadow:0 0 12px rgba(0,0,0,.85), 0 1px 2px #000;
     transform:rotate(-1.5deg); }
-  @media (max-width: 760px) { .sf-bulkhead { bottom:38%; } .sf-bulkhead__line { font-size:13px; letter-spacing:.1em; }
+  @media (max-width: 760px) { .sf-bulkhead { left:18px; right:18px; bottom:150px; max-width:none; } .sf-bulkhead__line { font-size:11px; letter-spacing:.08em; }
     #sf-comms { width:220px; top:88px; bottom:140px; } .sf-comm { font-size:11px; padding:6px 9px; } }
 
   /* ===== endgame choice modal ===== */

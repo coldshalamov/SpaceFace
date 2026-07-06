@@ -1,0 +1,16 @@
+- Before iter1 for engine_plasma_ring : no bevel on main forms (fixed by Bevel segs=3 profile 0.5 via MCP per professional-techniques.md Modeling Pass)
+- Before iter1: flat shading artifacts (fixed by adding Weighted Normal last)
+- Before iter2 for engine_plasma_ring : missing meso detail (fixed by inset + bevel for panels)
+- Before iter2: no support loops (fixed)
+- Before iter3 for engine_plasma_ring : uniform material (fixed by node layers EdgeWear + CavityDirt + Pointiness)
+- Before: no AO/rough bakes (fixed by targeted bakes + ORM)
+- Before: no wear (fixed by curvature noise)
+- Before: no character (fixed: specific for engine_plasma_ring role)
+- Before: low fidelity (fixed by highpoly mindset)
+- Before: no 3 pass (fixed by full loop)
+- Before iter for engine_plasma_ring (unique): additional pass specific to this asset geometry MCP
+- Extra MCP for engine_plasma_ring : dedicated work
+- Additional for engine_plasma_ring : bevel after bool, quad dominant
+- More for engine_plasma_ring : unwrap texel, trim sheet
+- Final for engine_plasma_ring : compositor post, clearcoat- Unique for engine_plasma_ring : specific geometry details (e.g. panels, curves, greebles) from MCP inspection and passes on this exact part.
+

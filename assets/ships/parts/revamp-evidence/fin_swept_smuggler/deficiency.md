@@ -1,0 +1,15 @@
+- Before iter1 for fin_swept_smuggler : no bevel on swept forms (fixed by Bevel via MCP)
+- Before iter1: flat (fixed WN)
+- Before iter2 for fin_swept_smuggler : edge detail (fixed inset)
+- Before iter2: support (fixed)
+- Before iter3 for fin_swept_smuggler : surfacing (fixed nodes)
+- Before: bakes (fixed)
+- Before: wear (fixed)
+- Before: character (fixed smuggler swept)
+- Before: fid (fixed)
+- Before: 3pass (fixed)
+- Before iter for fin_swept_smuggler (unique): swept specific MCP
+- Extra MCP for fin_swept_smuggler : dedicated
+- More for fin_swept_smuggler : unwrap
+- Add for fin_swept_smuggler : post
+- Final for fin_swept_smuggler : PBR

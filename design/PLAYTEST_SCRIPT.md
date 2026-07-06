@@ -13,8 +13,9 @@
 >
 > **How to run it.** One observer, one fresh tester who has *never* seen the game. Tester thinks
 > aloud. Observer does **not** help unless a step hard-times-out (record the rescue — it's a
-> finding). Run it on the **packaged Electron build** when possible (that is the ship vehicle; see
-> QA_MATRIX.md), and at least once on the dev server for comparison.
+> finding). Run it first on the primary PC browser route (`node server.js` → `http://localhost:8123/`).
+> If a packaged desktop shell is part of the deliverable, repeat the same session there for parity
+> (see QA_MATRIX.md).
 >
 > **Automation note (DEFERRED — do not build now).** A later harness will drive these same beats
 > programmatically against `window.SF` (`window.SF.state`, `window.SF.bus`, `window.SF.registry`) —
@@ -127,7 +128,7 @@ Each beat lists: **goal**, **exact steps**, **success criterion**, **timeout / r
 | Field | Value |
 |---|---|
 | Build (dev SHA / installer ver) | |
-| Platform (dev tab / Electron binary) | |
+| Platform (browser / desktop shell if applicable) | |
 | Tester (first-time? Y/N) | |
 | Time-to-flight (Beat 0) | |
 | Time-to-first-movement (Beat 1) | |
@@ -161,5 +162,5 @@ automate the starred ✦ items.)
       on the death frame.
 - [ ] ✦ Quicksave (F5) then Quickload (F9) round-trips without crash; F5 does **not** refresh the
       dev tab.
-- [ ] On the **packaged Electron build**: Main-Menu background + HUD icons load (guards ASSET-1), and
-      a save survives a full quit + relaunch (guards SAVE-1). See QA_MATRIX.md.
+- [ ] If testing the packaged desktop shell: Main-Menu background + HUD icons load (guards ASSET-1),
+      and a save survives a full quit + relaunch (guards SAVE-1). See QA_MATRIX.md.

@@ -20,7 +20,6 @@
 //
 // This is a render-phase system (no sim update). Driven from registry.renderUpdate -> feel.frame().
 // All event subscriptions are registered in init; frame() integrates the timers.
-import * as THREE from 'three';
 import { damp } from '../core/math.js';
 import { WEAPONS } from '../data/weapons.js';
 
@@ -47,14 +46,15 @@ function recoilWeight(weaponId) {
 
 const STYLE_ID = 'sf-feel-style';
 
-// Tunables — kept conservative for a space game (not a brawler). Hit-stop is short so it reads as
-// "weight," not "lag." FOV punch is a few degrees. Vignette is brief.
+// Tunables — spec2/02 §3 exact numbers. Hit-stop is short so it reads as "weight," not "lag.
+// No hit-stop on ordinary hits; shield-break = 40 ms, player kill = 60 ms. Capital kills carry
+// longer trauma but no extended freeze by default. Death is the only long cinematic dip.
 const HS_HEAVY = 0.055;       // s — timeScale dip duration for a heavy hit (big damage)
-const HS_SHIELD_BREAK = 0.22; // s — shield-break freeze (spec2/02 §2)
-const HS_ARMOR_HIT = 0.10;    // s — first armor/hull hit freeze (spec2/02 §2)
-const HS_KILL_FREEZE = 0.55;  // s — kill-cam freeze window
-const HS_KILL_SLOW = 0.35;    // s — kill-cam slow-mo tail
-const HS_KILL_SLOW_DEPTH = 0.35; // timeScale floor during slow-mo tail
+const HS_SHIELD_BREAK = 0.04; // s — shield-break hit-stop (spec2/02 §3)
+const HS_ARMOR_HIT = 0.0;     // s — armor hits do NOT freeze (spec2/02 §3)
+const HS_HULL_HIT = 0.0;      // s — hull hits do NOT freeze (spec2/02 §3)
+const HS_KILL = 0.06;         // s — small-kill hit-stop (spec2/02 §3)
+const HS_CAPITAL_KILL = 0.80; // s — capital-kill hit-stop window (≤ 800 ms, spec2/02 §3)
 const HS_DEATH = 0.90;        // s — dip duration for the player dying (the biggest beat)
 const HS_RAMP_TIME = 0.25;    // s — cinematic ease-IN for the death dip (1 -> floor over this window)
 const HS_DEPTH = 0.12;        // timeScale floor during a normal dip
@@ -153,11 +153,10 @@ export const feel = {
     const ctx = this._slCtx;
     if (!cvs || !ctx) return;
 
-    // Resolve player entity and camera
+    // Resolve player entity
     const ents = this.state.entities;
     const pid = this.state.playerId;
     const player = ents && pid != null ? ents.get(pid) : null;
-    const cam = this.state.render && this.state.render.camera;
 
     let targetOpacity = 0;
     let boosting = false;
@@ -165,7 +164,7 @@ export const feel = {
     let dirX = 0, dirY = -1;    // default fall-back: drift downward like light rain
     let speed = 0, maxSpd = 1;
 
-    if (player && player.vel && cam && cam.isPerspectiveCamera) {
+    if (player && player.vel) {
       const vel = player.vel;
       speed = Math.hypot(vel.x, vel.z);
       maxSpd = Math.max(1, player.maxSpeed || 1);
@@ -181,17 +180,21 @@ export const feel = {
         targetOpacity = intensity * 0.30;
       }
 
-      // Project world velocity onto screen space to get the direction the world appears to slip.
-      // The camera matrices must be current (renderer updates them before renderUpdate).
-      const p0 = new THREE.Vector3(player.pos.x, 0, player.pos.z).project(cam);
-      const p1 = new THREE.Vector3(player.pos.x + vel.x, 0, player.pos.z + vel.z).project(cam);
-      const dx = p1.x - p0.x;
-      const dy = p1.y - p0.y;
-      const dlen = Math.hypot(dx, dy);
+      // Project world velocity onto the camera view plane analytically.
+      // The chase camera is fixed in yaw, offset behind and above the player.
+      // World +X maps to screen -X (left), world +Z maps to screen -Y (up) scaled by sin(tilt).
+      // Canvas Y is inverted relative to screen Y, so we negate the vertical component.
+      const camState = this.state.camera || {};
+      const tiltDeg = camState.tilt || 60;
+      const tiltScale = Math.sin(tiltDeg * Math.PI / 180);
+      const sx = -vel.x;
+      const sy = -(vel.z * tiltScale);
+      const dlen = Math.hypot(sx, sy);
       if (dlen > 0.0001) {
-        // dir points toward where the ship is going on screen; streaks move opposite (world slides past).
-        dirX = dx / dlen;
-        dirY = dy / dlen;
+        // dir points toward where the ship is going on the canvas;
+        // streaks move opposite (particles slide past the ship).
+        dirX = sx / dlen;
+        dirY = sy / dlen;
       }
     }
 
@@ -226,10 +229,14 @@ export const feel = {
     // "the world is sliding past the ship" rather than "the ship is tunneling into the monitor".
     const flowX = -dirX;            // streaks move opposite to travel
     const flowY = -dirY;
+    const perpX = -flowY;           // perpendicular axis in screen space
+    const perpY = flowX;
+    const cx = w * 0.5, cy = h * 0.5;
+    const span = Math.max(w, h) * 0.55;
 
     if (!this._streaks) this._streaks = [];
     const want = Math.round((boosting ? 46 : 28) * (0.50 + 0.50 * intensity));
-    while (this._streaks.length < want) this._streaks.push(this._newStreak(false));
+    while (this._streaks.length < want) this._streaks.push(this._newStreak(false, span));
     if (this._streaks.length > want) this._streaks.length = want;
 
     // Speed scales with how fast the world is moving past the ship. We express it in screen-pixels/s
@@ -237,63 +244,68 @@ export const feel = {
     // boost pushes it toward "fast fly-by".
     const baseFlow = 220 + speed * 1.2;                 // screen-pixels/s, tuned by eye
     const flowSpeed = baseFlow * (0.55 + 0.75 * intensity) * (boosting ? 1.55 : 1.0);
-    const lenScale = (0.35 + 0.75 * intensity) * (boosting ? 1.35 : 1.0);
+    // FR-3: streak LENGTH tracks raw speed continuously so throttle is readable — decoupled from
+    // the opacity gate. Length is geometry (contrast/parallax), not luminance, so nothing brightens.
+    const speedRatio = speed / maxSpd;
+    const lenScale = (0.18 + 1.1 * speedRatio) * (boosting ? 1.15 : 1.0);
     const widthMul = boosting ? 1.4 : 1.0;
 
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'round';
     for (const s of this._streaks) {
-      // Advance the streak along the flow direction.
+      // Advance the streak along the flow direction (opposite to ship travel).
       s.uv += flowSpeed * frameDt * s.v;
 
       // Recycle when the streak has crossed the screen far enough behind the ship.
       // We keep a generous margin so streaks can start well ahead of the player and finish well behind.
-      if (s.uv > h * 1.1 || s.uv < -h * 1.1 ||
-          s.p < -w * 1.1 || s.p > w * 1.1) {
-        Object.assign(s, this._newStreak(true));
+      if (s.uv > span * 1.35 || s.uv < -span * 1.35 ||
+          s.p < -span * 1.35 || s.p > span * 1.35) {
+        Object.assign(s, this._newStreak(true, span));
       }
 
-      // Streak endpoints in screen space: uv is along the flow axis, p is the perpendicular offset.
-      const uTail = s.uv - s.len * lenScale * h;
-      const x0 = s.p + flowX * uTail;
-      const y0 = s.uv + flowY * uTail;
-      const x1 = s.p + flowX * s.uv;
-      const y1 = s.uv + flowY * s.uv;
+      // Streak endpoints in screen space.
+      // uv = signed distance along flow axis from screen center.
+      // p  = signed distance along perpendicular axis from flow axis.
+      const leadX = cx + s.uv * flowX + s.p * perpX;
+      const leadY = cy + s.uv * flowY + s.p * perpY;
+      const tailLen = Math.min(0.55 * h, s.len * lenScale * h);   // FR-3: cap so cruise never smears full-screen
+      const tailX = leadX - tailLen * flowX;
+      const tailY = leadY - tailLen * flowY;
 
       // Fade in near spawn, fade out near recycle, plus distance-from-center bias so the
       // effect is strongest where the ship is.
       const travelled = Math.abs(s.uv - s.spawnU);
-      const halfSpan = Math.max(h, w) * 0.55;
-      const edgeFade = Math.min(1, travelled / (halfSpan * 0.12)) *
-                       Math.max(0, 1 - Math.max(0, (travelled - halfSpan * 0.75) / (halfSpan * 0.35)));
-      const centerBias = 1.0 - Math.min(1, Math.hypot(s.p, s.uv - h * 0.5) / Math.max(h, w));
+      const edgeFade = Math.min(1, travelled / (span * 0.12)) *
+                       Math.max(0, 1 - Math.max(0, (travelled - span * 0.75) / (span * 0.35)));
+      const centerBias = 1.0 - Math.min(1, Math.hypot(s.p, s.uv) / (span * 1.1));
       const a = this._slOpacity * s.b * edgeFade * (0.55 + 0.45 * centerBias);
       if (a <= 0.012) continue;
 
-      const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      const grad = ctx.createLinearGradient(tailX, tailY, leadX, leadY);
       grad.addColorStop(0, 'rgba(160,205,255,0)');
       grad.addColorStop(0.55, `rgba(195,230,255,${(a * 0.45).toFixed(3)})`);
       grad.addColorStop(1, `rgba(232,248,255,${a.toFixed(3)})`);
       ctx.strokeStyle = grad;
       ctx.lineWidth = s.w * widthMul;
-      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(leadX, leadY); ctx.stroke();
     }
     ctx.globalCompositeOperation = 'source-over';
   },
 
   // One lateral streak in screen-space coordinates.
-  // uv  = position along the flow axis (origin is roughly screen center).
-  // p   = position along the perpendicular axis (lateral scatter).
+  // uv  = signed distance along the flow axis from screen center.
+  // p   = signed distance along the perpendicular axis from the flow axis.
   // len = streak length as a fraction of screen height.
-  _newStreak(spawnCenter) {
+  _newStreak(spawnCenter, span) {
     const w = window.innerWidth;
     const h = window.innerHeight;
     if (spawnCenter) {
-      // Spawn just ahead of center with a small random lateral offset.
+      // Spawn just ahead of center (negative uv) with a random lateral offset.
+      // uv = 0 is screen center; positive uv moves with the flow (behind the ship).
       return {
-        uv: -(0.05 + Math.random() * 0.18) * h,
-        spawnU: -(0.05 + Math.random() * 0.18) * h,
-        p: (Math.random() - 0.5) * w * 0.9,
+        uv: -(0.08 + Math.random() * 0.35) * span,
+        spawnU: -(0.08 + Math.random() * 0.35) * span,
+        p: (Math.random() - 0.5) * Math.max(w, h) * 0.95,
         v: 0.65 + Math.random() * 0.85,
         len: 0.10 + Math.random() * 0.18,
         b: 0.40 + Math.random() * 0.55,
@@ -302,9 +314,9 @@ export const feel = {
     }
     // Distribute across the screen so the first frame isn't empty.
     return {
-      uv: (Math.random() - 0.5) * h * 1.6,
-      spawnU: (Math.random() - 0.5) * h * 1.6,
-      p: (Math.random() - 0.5) * w * 1.0,
+      uv: (Math.random() - 0.5) * span * 1.6,
+      spawnU: (Math.random() - 0.5) * span * 1.6,
+      p: (Math.random() - 0.5) * Math.max(w, h) * 1.1,
       v: 0.65 + Math.random() * 0.85,
       len: 0.10 + Math.random() * 0.18,
       b: 0.40 + Math.random() * 0.55,
@@ -315,21 +327,29 @@ export const feel = {
   _subscribe() {
     const bus = this.bus, state = this.state;
 
-    // Heavy hit = big damage OR a shield break, on any entity. We weight player involvement higher
-    // (taking a big hit yourself should punch harder than watching two NPCs trade blows).
+    // Spec2/02 §3 exact feel rules: shield-break 40 ms hit-stop + 0.3 trauma if player involved;
+    // armor/hull hits get NO hit-stop (only trauma for player-as-target); big damage gets a micro dip.
     bus.on('combat:damage', (p) => {
       if (!p) return;
       const isPlayer = p.isPlayer || (p.targetId === state.playerId);
+      const playerInvolved = isPlayer || p.attackerId === state.playerId;
+      const ctrl = this.state.render && this.state.render.cameraCtrl;
 
-      // Shield break gets its own longer freeze; armor/hull first hit gets a micro-freeze.
       if (p.brokeShield) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
         this._trigger(HS_SHIELD_BREAK, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
+        if (playerInvolved && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.3);
         return;
       }
-      if (p.armorHit || p.hullHit) {
+      if (p.armorHit) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY * 0.7 : FOV_PUNCH_HEAVY * 0.3;
         this._trigger(HS_ARMOR_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
+        return;
+      }
+      if (p.hullHit) {
+        const fov = isPlayer ? FOV_PUNCH_HEAVY * 0.7 : FOV_PUNCH_HEAVY * 0.3;
+        this._trigger(HS_HULL_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
+        if (isPlayer && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.08);
         return;
       }
 
@@ -340,18 +360,33 @@ export const feel = {
       this._trigger(dur, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
     });
 
-    // A kill is a bigger beat — but only punch hard if the player is involved (killer or victim),
-    // otherwise a distant NPC dogfight would stutter the camera constantly.
+    // Spec2/02 §3: small kill = 60 ms hit-stop + kill-cam kiss; capital kill = 0.5 trauma scaled
+    // 1/d² (max 0.5 at ≤ 400 wu) + 800 ms hit-stop window. Player involvement required for the kiss.
     bus.on('entity:killed', (p) => {
       if (!p) return;
       const playerInvolved = (p.killerId === state.playerId) || (p.id === state.playerId);
+      const ctrl = this.state.render && this.state.render.cameraCtrl;
+      const isCapital = p.capital || /capital|flagship|cruiser|gunship/i.test(String(p.victimClass || p.type || '')) || (p.radius || 0) >= 55;
       if (!playerInvolved) {
-        // Distant NPC kill: tiny punch only.
-        this._trigger(HS_KILL_FREEZE * 0.35, FOV_PUNCH_KILL * 0.3, 0, null);
+        // Distant NPC kill: tiny punch only, never a hit-stop.
+        this._trigger(0, FOV_PUNCH_KILL * 0.3, 0, null);
         return;
       }
-      // Kill-cam "kiss": 0.55s freeze + 0.35s slow-mo + camera dolly (spec2/02 §2).
-      this._triggerKillCam();
+      if (isCapital) {
+        // Trauma falls off with distance² from the kill.
+        const player = state.entities && state.entities.get(state.playerId);
+        let trauma = 0.5;
+        if (player && p.pos) {
+          const d2 = (player.pos.x - p.pos.x) ** 2 + (player.pos.z - p.pos.z) ** 2;
+          trauma = d2 <= 400 * 400 ? 0.5 : Math.min(0.5, 0.5 * ((400 * 400) / d2));
+        }
+        if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma);
+        this._trigger(HS_CAPITAL_KILL, FOV_PUNCH_KILL, 0, null);
+        return;
+      }
+      // Small kill: short hit-stop + camera kiss.
+      this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null);
+      this.bus.emit('camera:kill', {});
     });
 
     // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash.
@@ -431,8 +466,34 @@ export const feel = {
       const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
       if (mr) return;
       this._fovPunch = Math.min(this._fovPunch + BOOST_FOV_PUNCH, FOV_PUNCH_DEATH + 1);
-      const ctrl = _warpCtrl();
+      const ctrl = this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(BOOST_TRAUMA);
+    });
+
+    // Tether snap: 0.25 trauma (spec2/02 §3).
+    bus.on('tether:broken', (p) => {
+      if (!p) return;
+      if (this.state.mode !== 'flight' || !this._modalClear()) return;
+      const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+      if (mr) return;
+      const ctrl = this.state.render && this.state.render.cameraCtrl;
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.25);
+    });
+
+    // Impulse charge detonate: trauma 0.2 at epicenter, 1/d² falloff (spec2/02 §3).
+    bus.on('charge:detonated', (p) => {
+      if (!p || !p.pos) return;
+      if (this.state.mode !== 'flight' || !this._modalClear()) return;
+      const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+      if (mr) return;
+      const player = state.entities && state.entities.get(state.playerId);
+      let trauma = 0.2;
+      if (player) {
+        const d2 = (player.pos.x - p.pos.x) ** 2 + (player.pos.z - p.pos.z) ** 2;
+        trauma = d2 <= 1 ? 0.2 : Math.min(0.2, 0.2 / d2);
+      }
+      const ctrl = this.state.render && this.state.render.cameraCtrl;
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma);
     });
   },
 
@@ -468,19 +529,12 @@ export const feel = {
     }
   },
 
-  // Kill-cam "kiss": hard freeze then slow-mo tail (spec2/02 §2).
+  // Kill-cam "kiss": camera push-zoom only. The actual hit-stop is now a short 60 ms dip in the
+  // entity:killed handler; this helper exists for callers that want to trigger the kiss explicitly.
   _triggerKillCam() {
     if (this.state.mode !== 'flight') return;
     if (!this._modalClear()) return;
     if (this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce) return;
-
-    const total = HS_KILL_FREEZE + HS_KILL_SLOW;
-    if (total > this._hsTimer) {
-      this._hsTimer = total;
-      this._hsFreezeTimer = HS_KILL_FREEZE;
-      this._hsRampIn = 0;
-    }
-    this._fovPunch = Math.min(this._fovPunch + FOV_PUNCH_KILL, FOV_PUNCH_DEATH + 1);
     this.bus.emit('camera:kill', {});
   },
 
@@ -524,9 +578,7 @@ export const feel = {
           if (this._hsRampIn <= 0) this._hsRampIn = 0;
         } else {
           // Normal hit: snap to the floor (reads as "weight", not "lag").
-          // During kill-cam slow tail, use a shallower floor for readable slow-mo.
-          const floor = (this._hsTimer <= HS_KILL_SLOW + 0.001) ? HS_KILL_SLOW_DEPTH : HS_DEPTH;
-          this.state.timeScale = this._hsReturn = floor;
+          this.state.timeScale = this._hsReturn = HS_DEPTH;
         }
       }
     }

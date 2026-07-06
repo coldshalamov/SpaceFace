@@ -25,13 +25,19 @@ const scenario47a = JSON.parse(readFileSync(SCENARIO_47A, 'utf8'));
 const releaseManifest = existsSync(RELEASE_MANIFEST)
   ? JSON.parse(readFileSync(RELEASE_MANIFEST, 'utf8'))
   : null;
+// Authored whole-ship bodies (not in parts_manifest.json) are runtime-wired via partsLibrary.js and
+// must be release-verified like every other ship asset: compressed, source/release paired, and
+// enumerated in release_manifest.json.
+const WHOLE_SHIP_FILES = ['wholeships/kestrel.glb', 'wholeships/pelican.glb', 'wholeships/wasp.glb'];
 const devAssetPaths = [
   'assets/ships/kestrel/kestrel_reference.glb',
   ...(partManifest.parts || []).map((part) => `assets/ships/parts/${part.file}`),
+  ...WHOLE_SHIP_FILES.map((file) => `assets/ships/parts/${file}`),
 ];
 const releaseAssetPaths = [
   'assets/ships/release/kestrel/kestrel_reference.glb',
   ...(partManifest.parts || []).map((part) => `assets/ships/release/parts/${part.file}`),
+  ...WHOLE_SHIP_FILES.map((file) => `assets/ships/release/parts/${file}`),
 ];
 const assetPairs = devAssetPaths.map((source, index) => ({
   source,

@@ -9,7 +9,8 @@ import { SHIPS } from '../../data/ships.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { confirm } from '../confirm.js';
 import { createListControls, buildSortHeader, sortHeaderAria } from '../listControls.js';
-import { createShipPreviewMount } from '../shipPreviewMount.js';
+import { SECTORS } from '../../data/sectors.js';
+import { createShipPreviewMount, dockInteriorIdForArchetype } from '../shipPreviewMount.js';
 import { escapeHtml } from '../comms.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -38,6 +39,16 @@ function driveLabelFor(def) {
 }
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
+
+function archetypeGlbForStation(stationId) {
+  if (!stationId) return null;
+  for (const sec of SECTORS) {
+    for (const st of sec.stations || []) {
+      if (st.id === stationId) return st.archetypeGlb || null;
+    }
+  }
+  return null;
+}
 function techName(id) {
   const node = TECH_BY_ID.get(id);
   return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
@@ -342,11 +353,15 @@ export function createShipyardPanel(ctx) {
   buyWrap.appendChild(previewWrap);
   let previewMount = null;     // lazy
   let previewShown = null;     // current defId on display
+  let activeStationId = null;
+  function dockIdForPanel() {
+    return dockInteriorIdForArchetype(archetypeGlbForStation(activeStationId));
+  }
   function ensurePreview() {
     if (previewMount) return previewMount;
     try {
       const envMap = ctx.state && ctx.state.render && ctx.state.render.envMap;
-      previewMount = createShipPreviewMount(previewCanvas, { envMap });
+      previewMount = createShipPreviewMount(previewCanvas, { envMap, dockId: dockIdForPanel() });
     } catch (e) { console.warn('[shipyard] preview mount failed', e); previewMount = null; }
     return previewMount;
   }
@@ -452,11 +467,19 @@ export function createShipyardPanel(ctx) {
     const row = ev.target.closest('[data-ship]');
     if (!row) { cmpPanel.style.display = 'none'; return; }
     const defId = row.getAttribute('data-ship');
-    const hovDef = SHIP_BY_ID.get(defId);
-    if (!hovDef) { cmpPanel.style.display = 'none'; return; }
-    showComparison(hovDef, row);
     // UX-1: spin up the 3D preview for the hovered hull.
     showPreview(defId);
+
+    // Only show comparison popup when hovering the "?" help icon
+    const trigger = ev.target.closest('.st-sy-help-trigger');
+    if (trigger) {
+      const hovDef = SHIP_BY_ID.get(defId);
+      if (hovDef) {
+        showComparison(hovDef, row);
+        return;
+      }
+    }
+    cmpPanel.style.display = 'none';
   });
   list.addEventListener('mouseleave', () => { cmpPanel.style.display = 'none'; });
 
@@ -643,11 +666,12 @@ export function createShipyardPanel(ctx) {
       const fit = describeShipyardMissionFit(def, mission);
       const purchaseTitle = purchase.title + (fit ? ' ' + fit.title + ': ' + fit.body : '');
       const btn = '<button' + (purchase.disabled ? ' disabled' : ' data-act="buy"') +
-        ' title="' + escapeHtml(purchaseTitle) + '" aria-label="' + escapeHtml(purchaseTitle) + '">' +
+        ' data-tip="' + escapeHtml(purchaseTitle) + '" aria-label="' + escapeHtml(purchaseTitle) + '">' +
         escapeHtml(purchase.label) + '</button>';
       if (fit) row.classList.add('mission-fit', 'mission-fit-' + fit.kind);
+      const helpTrigger = '<button type="button" class="st-sy-help-trigger" data-tip="Compare stats with active ship" aria-label="Compare stats">?</button>';
       row.innerHTML =
-        '<span class="c-name">' + escapeHtml(def.name) + (owned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
+        '<span class="c-name">' + escapeHtml(def.name) + helpTrigger + (owned ? ' <span class="st-tag st-tag-owned">owned</span>' : '') +
           (fit ? ' <span class="st-tag st-tag-active">' + escapeHtml(fit.label.toLowerCase()) + '</span>' : '') +
           '<br><span class="st-slotline mono">' + escapeHtml(slotSummary(def)) + '</span>' +
           '<span class="st-sy-purpose">' + escapeHtml(hullPurpose(def)) + '</span>' +
@@ -678,7 +702,10 @@ export function createShipyardPanel(ctx) {
     el: root,
     stationId: null,
     onShow(c) {
-      if (c && c.stationId) this.stationId = c.stationId;
+      if (c && c.stationId) { activeStationId = c.stationId; this.stationId = c.stationId; }
+      if (previewMount && typeof previewMount.setDockId === 'function') {
+        previewMount.setDockId(dockIdForPanel());
+      }
       if (previewMount && typeof previewMount.setActive === 'function') previewMount.setActive(true);
       refresh();
     },

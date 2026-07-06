@@ -250,7 +250,7 @@ export const missions = {
       const m = active[i];
       if (m.status !== 'active') continue;
       // Expiry by deadline.
-      if (now >= m.deadline_s) { this._expireMission(m, i); continue; }
+      if (m.deadline_s != null && Number.isFinite(m.deadline_s) && now >= m.deadline_s) { this._expireMission(m, i); continue; }
       // Escort: steer the friendly escortee toward the destination each tick.
       if (m.type === 'escort' && m._escorteeId != null) this._steerEscortee(m, state, dt);
     }
@@ -686,7 +686,7 @@ export const missions = {
       objectiveProgress: 0,
       objectiveTarget: this._objectiveTarget(offer.type, offer.params),
       acceptedAt_s: state.simTime,
-      deadline_s: state.simTime + offer.time_limit_s,
+      deadline_s: null, // missions do not expire
       reward_cr: offer.reward_cr, collateral_cr: offer.collateral_cr,
       riskTier: offer.riskTier,
       destStationId: offer.destStationId, destSectorId: offer.destSectorId,

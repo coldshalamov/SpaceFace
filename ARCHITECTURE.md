@@ -387,7 +387,7 @@ player = {
   insurance:{ rate:0.6, deductibleCr:500, insuredModules:false, lastStationId:string|null },
   // mining hold derived (mining reads ship.derived)
   magnetRange:90,
-  miningBeam:{ tierId:'beam_mk1', range, dps, heat, heatRate, coolRate, overheated, directToCargo },
+  miningBeam:{ tierId:'beam_mk1', range, dps, directToCargo },
   // stats / meta
   stats:{ lifetimeProfit, tradesCount, biggestSingleProfit, smuggledValue,
           kills, missionsDone, totalPassiveEarnedLifetime },
@@ -641,7 +641,6 @@ Legend: emitters/handlers are system `name`s. Payloads are the canonical shapes;
 | `mining:tick` | `{contactPos,oreType}` | mining | vfx, audio | `mining.tick` |
 | `mining:yield` | `{commodityId,qty,pos}` | mining | missions, stats, vfx(pickup) | `ore_mined`, `mining.yield` |
 | `asteroid:destroyed` | `{id,typeId,pos}` | mining | audio, vfx, missions | `asteroid_destroyed` |
-| `beam:overheated`/`beam:ready` | `{}` | mining | ui, audio | `beam_overheated/ready` |
 | `salvage:completed` | `{wreckId,loot}` | mining | missions, ui | `salvage_completed` |
 | `loot:drop` | `{pos,credits,items[]}` | combat | mining(materialize pickups) | `loot:drop` |
 | `economy:tick` | `{t,ticksElapsed}` | economy | automation, ui(market refresh) | `economy/tick` |

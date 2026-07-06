@@ -1,5 +1,5 @@
 // Mining system (ARCHITECTURE §2.3 step 9). Owns asteroid extraction, ore ejection as
-// collectible pickups, the magnet auto-collect pull, wreck salvage, and mining-beam heat.
+// collectible pickups, the magnet auto-collect pull, and wreck salvage.
 //
 // Drive: the player holds RIGHT-MOUSE / gamepad LT / touch MINE -> state.input.fireGroup === 2.
 // The active mining beam
@@ -31,16 +31,11 @@ export const BULK_HAUL_REFINERY_FEE = 0.06;
 const MAGNET_MAX_SPEED = 210;   // wu/s cap on pulled pickups
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
-const EJECT_STEP = 0.25;        // ore ejects each time cumulative loss crosses 25%
 const SALVAGE_TIME_DEFAULT = 6; // s to fully drain a wreck if combat didn't set one
 const MINEABLE_QUERY_RADIUS_PAD = 64;
 const SEAM_HIT_RADIUS = 14;
 export const SEAM_YIELD_OFF = 0.35;
 const SEAM_HIT_EVENT_INTERVAL = 0.5;
-const VENT_HEAT_MIN = 70;
-const VENT_HEAT_MAX = 95;
-const VENT_BONUS_SECONDS = 2;
-const VENT_BONUS_MULT = 1.25;
 const BEAM_PICKUP_DIRECT_RADIUS = 60;
 const MINING_NOISE_GAIN_PER_S = 8;
 const MINING_NOISE_DECAY_PER_S = 3;
@@ -99,8 +94,6 @@ export const mining = {
       const beam = this._beamRuntime(player);
       if (firing && beam) this._runPlayerBeam(player, beam, dt, state);
       else {
-        if (this._beaming) this._tryVentBonus(beam, state);
-        this._coolBeam(beam, dt);
         this._stopBeam();
       }
     }
@@ -111,8 +104,8 @@ export const mining = {
   },
 
   // ---- beam runtime resolution ----------------------------------------------
-  // The beam's mutable runtime (heat/overheated/directToCargo/tierId) lives on the player record;
-  // dps/range/heatRate/coolRate come from the BEAMS tier table keyed by tierId.
+  // The beam's mutable runtime (directToCargo/tierId) lives on the player record;
+  // dps/range come from the BEAMS tier table keyed by tierId.
   _beamRuntime(player) {
     const beam = (player.data && player.data.miningBeam) || this.state.player.miningBeam;
     if (!beam) return null;
@@ -120,20 +113,19 @@ export const mining = {
     if (tier) {
       if (!beam.dps) beam.dps = tier.dps;
       if (!beam.range) beam.range = tier.range;
-      if (!beam.heatRate) beam.heatRate = tier.heatRate;
-      if (!beam.coolRate) beam.coolRate = tier.coolRate;
     }
-    if (beam.heat == null) beam.heat = 0;
-    if (beam.overheated == null) beam.overheated = false;
+    delete beam.heat;
+    delete beam.heatRate;
+    delete beam.coolRate;
+    delete beam.overheated;
+    delete beam._heat;
+    delete beam.heatMax;
     return beam;
   },
 
   _runPlayerBeam(player, beam, dt, state) {
-    // Overheated: force-cool, beam inert until heat falls to <=40.
-    if (beam.overheated) { this._coolBeam(beam, dt); this._stopBeam(); return; }
-
     const target = this._acquireTarget(player, beam.range, state);
-    if (!target) { this._coolBeam(beam, dt); this._stopBeam(); return; }
+    if (!target) { this._stopBeam(); return; }
 
     // start edge (or re-lock onto a different rock)
     if (!this._beaming || this._lockTargetId !== target.id) {
@@ -142,27 +134,11 @@ export const mining = {
     }
     this._beaming = true;
 
-    // heat up (overheat is optional QoL; if heatRate is 0 the beam never overheats)
-    beam.heat = Math.min(100, beam.heat + (beam.heatRate || 0) * dt);
-    if (beam.heat >= 100 && !beam.overheated) {
-      beam.overheated = true;
-      this.bus.emit('beam:overheated', {});
-    }
-
     this._activeBeamLine = beamLineFor(player, target);
 
-    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1) * this._ventBonusMultiplier(state);
+    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
     if (target.type === 'wreck') this._drainWreck(player, target, dps, dt);
     else this.applyMining(target.id, dps, dt, player.id);
-  },
-
-  _coolBeam(beam, dt) {
-    if (!beam) return;
-    beam.heat = Math.max(0, beam.heat - (beam.coolRate || 0) * dt);
-    if (beam.overheated && beam.heat <= 40) {
-      beam.overheated = false;
-      this.bus.emit('beam:ready', {});
-    }
   },
 
   _stopBeam() {
@@ -177,6 +153,9 @@ export const mining = {
 
   // Nearest mineable target (asteroid or salvageable wreck) within range, biased toward aim.
   _acquireTarget(ship, range, state) {
+    const tetherTarget = activeMineableTetherTarget(state, ship, range);
+    if (tetherTarget !== undefined) return tetherTarget;
+
     const aim = state.input.aimAngle || 0;
     const ax = Math.cos(aim), az = Math.sin(aim);
     let best = null, bestScore = -Infinity;
@@ -246,18 +225,24 @@ export const mining = {
       yieldMult: seam.mult,
     });
 
-    // Convert cumulative ore-HP loss into ore units, gated to 25% ejection thresholds.
+    // Continuous ore delivery (Mining 2.0 feel fix — see design/WORLD_OVERHAUL_2_1.md §Mining).
+    // Convert the ore-HP shaved THIS tick straight into fractional ore units and release whole
+    // units as they accrue, so gain trickles in lockstep with beam damage. Previously ore only
+    // ejected when cumulative loss crossed 25% thresholds (EJECT_STEP), so the player saw long
+    // silent beams punctuated by lump "dumps". Total yield is unchanged: Σ(per-tick loss) == hpMax,
+    // so Σ(release) == hpMax * (yieldTotal / hpMax) == yieldTotal. Seam hits raise `lost` (via
+    // seam.mult), so mining a seam simply delivers the same total ore faster.
     const pctNow = 1 - d.oreHP / hpMax;
     const destroyed = d.oreHP <= 0;
-    const stepPct = destroyed ? 1 : Math.floor(pctNow / EJECT_STEP) * EJECT_STEP;
-    let releaseUnits = 0;
-    if (stepPct > d.pctEjected || destroyed) {
-      const wantTotal = yieldTotal * (destroyed ? 1 : stepPct);
-      const alreadyOut = yieldTotal * d.pctEjected;
-      d._oreCarry += Math.max(0, wantTotal - alreadyOut);
-      d.pctEjected = destroyed ? 1 : stepPct;
-      releaseUnits = Math.floor(d._oreCarry);
-      d._oreCarry -= releaseUnits;
+    const yieldPerHp = hpMax > 0 ? yieldTotal / hpMax : 0;
+    d._oreCarry += lost * yieldPerHp;
+    d.pctEjected = destroyed ? 1 : pctNow; // kept in sync for telemetry/readers
+    d.miningWear = destroyed ? 1 : pctNow; // render hint: 0 = pristine, 1 = spent (progressive shrink/darken)
+    let releaseUnits = Math.floor(d._oreCarry + 1e-9);
+    d._oreCarry -= releaseUnits;
+    if (destroyed && d._oreCarry > 1e-6) {
+      releaseUnits += 1; // flush the final fractional remainder so small rocks still yield their last unit
+      d._oreCarry = 0;
     }
 
     if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner);
@@ -673,22 +658,6 @@ export const mining = {
   },
 
   // ---- helpers --------------------------------------------------------------
-  _tryVentBonus(beam, state) {
-    if (!beam || beam.overheated) return false;
-    const heat = beam.heat || 0;
-    const windowBonus = playerModSum(state, 'ventBonusWindowHeat');
-    if (heat < VENT_HEAT_MIN - windowBonus || heat > VENT_HEAT_MAX + windowBonus) return false;
-    const runtime = state.player.mining || (state.player.mining = {});
-    runtime.ventBonusUntil = state.simTime + VENT_BONUS_SECONDS;
-    this.bus.emit('mining:ventBonus', {});
-    return true;
-  },
-
-  _ventBonusMultiplier(state) {
-    const runtime = state.player && state.player.mining;
-    return runtime && runtime.ventBonusUntil > state.simTime ? VENT_BONUS_MULT : 1;
-  },
-
   _updateMiningNoise(beaming, dt, state) {
     if (!state || !state.player) return;
     const before = clamp(state.player.miningNoise || 0, 0, 100);
@@ -774,6 +743,30 @@ function pickupsNearPlayer(state, player, radius, out) {
 function mineablesNearShip(state, ship, radius, out) {
   return queryNearbyEntities(state, ship.pos, radius, out,
     (state.entityIndex && state.entityIndex.mineables) || state.entityList);
+}
+
+function activeMineableTetherTarget(state, ship, range) {
+  if (!state || !ship) return undefined;
+  const ids = [];
+  const tether = state.player && state.player.tether;
+  if (tether && tether.active && tether.targetId != null) ids.push(tether.targetId);
+  const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId || {};
+  for (const att of Object.values(attachments)) {
+    if (!att || att.state !== 'active' || att.ownerId !== state.playerId || att.targetId == null) continue;
+    if (att.defId !== 'tether_standard' && att.defId !== 'attachment_massline') continue;
+    ids.push(att.targetId);
+  }
+  if (!ids.length) return undefined;
+  for (const id of ids) {
+    const target = state.entities && state.entities.get && state.entities.get(id);
+    if (!target || !target.alive || (target.type !== 'asteroid' && target.type !== 'wreck')) continue;
+    const dx = target.pos.x - ship.pos.x;
+    const dz = target.pos.z - ship.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const allowed = Math.max(0, Number(range) || 0) + (target.radius || 0) + (ship.radius || 0);
+    return dist <= allowed ? target : null;
+  }
+  return undefined;
 }
 
 function resetMiningDiagnostics(diag) {

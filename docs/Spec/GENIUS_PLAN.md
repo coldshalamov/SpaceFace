@@ -1,9 +1,13 @@
 # SpaceFace — Genius Commission Plan & Division of Labor
 
-**You are the main planner.** This doc fixes the path: what the supergenius does (3 code commissions,
-~2hr each, sequenced), what the resident (ZCode) does in parallel and as the integration torch, and
-what mid models do once contracts exist. The Kestrel authored model is downstream of Commission 3 and
-is an art task (not a code commission).
+> **Current status (2026-07-04):** Historical commissioning plan. Do not fire these commissions as
+> fresh work without checking `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*` first.
+
+**Historical planner note.** This doc recorded an earlier path: what the supergenius would do
+(3 code commissions, ~2hr each, sequenced), what the resident (ZCode) would do in parallel and as the
+integration torch, and what mid models would do once contracts existed. The Kestrel authored model is
+downstream of Commission 3 and is an art task (not a code commission).
 
 ---
 

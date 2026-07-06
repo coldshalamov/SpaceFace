@@ -1119,6 +1119,86 @@ def place_asteroid_graffiti(b: PartBuilder) -> None:
     b.empty('SOCKET_Camera_Focus', (0, 2.0, 5.0), extras={'role': 'camera', 'forward': [0, 0, 1]})
 
 
+def place_station_trade_hub(b: PartBuilder) -> None:
+    """Concord/MTS trade hub — ring platform + central tower (Helios/Tethys silhouette)."""
+    b.bevel_box('Hub_Deck', (28.0, 1.2, 28.0), (14.0, 1.0, 0), 'Material_Mechanical', .18, 4)
+    b.torus_x('Hub_Ring', 11.0, .55, (14.0, 6.5, 0), 'Material_Accent', 28, 10)
+    b.bevel_box('Hub_Tower', (6.0, 14.0, 6.0), (14.0, 8.5, 0), 'Material_Hull', .28, 4)
+    hook = b.empty('HOOK_Emissive', (14.0, 12.0, 0))
+    for z in (-2.8, 2.8):
+        b.bevel_box(f'Hub_Window_{z}', (4.5, .35, .12), (0, 2.0, z), 'Material_Glass', .04, 2, parent=hook)
+    b.empty('SOCKET_Structure_Core', (14.0, 6.5, 0), extras={'role': 'dock', 'forward': [1, 0, 0]})
+
+
+def place_station_refinery(b: PartBuilder) -> None:
+    """DMC ore refinery — slag stacks and wide processing base (Ceres/Charon silhouette)."""
+    b.bevel_box('Refinery_Base', (34.0, 4.0, 22.0), (17.0, 2.0, 0), 'Material_Hull', .42, 4)
+    for x, h in ((8.0, 16.0), (17.0, 20.0), (26.0, 14.0)):
+        b.bevel_box(f'Refinery_Stack_{x}', (3.2, h, 3.2), (x, h * .5 + 2.0, -4.0), 'Material_Mechanical', .22, 3)
+    b.bevel_box('Refinery_Pipe_Run', (24.0, 1.2, 2.0), (12.0, 5.5, 6.0), 'Material_Mechanical', .12, 3, rot=(0, .15, 0))
+    hook = b.empty('HOOK_Emissive', (17.0, 9.0, 0))
+    b.bevel_box('Refinery_Slag_Glow', (8.0, .25, 6.0), (0, 0, 0), 'Material_Accent', .05, 2, parent=hook)
+    b.empty('SOCKET_Structure_Core', (17.0, 2.0, 0), extras={'role': 'dock', 'forward': [1, 0, 0]})
+
+
+def place_station_military(b: PartBuilder) -> None:
+    """Customs/military bastion — angular blocks and sensor dish (Coalition HQ silhouette)."""
+    b.bevel_box('Mil_Core', (16.0, 10.0, 20.0), (8.0, 5.0, 0), 'Material_Hull', .35, 4)
+    b.bevel_box('Mil_Bastion_L', (6.0, 12.0, 5.0), (2.0, 6.5, 0), 'Material_Mechanical', .3, 4, rot=(0, 0, .22))
+    b.bevel_box('Mil_Bastion_R', (6.0, 12.0, 5.0), (14.0, 6.5, 0), 'Material_Mechanical', .3, 4, rot=(0, 0, -.22))
+    hook = b.empty('HOOK_Emissive', (8.0, 11.5, 0))
+    b.torus_x('Mil_Dish', 3.2, .18, (0, 0, 0), 'Material_Accent', 20, 8, parent=hook)
+    b.empty('SOCKET_Structure_Core', (8.0, 3.0, 0), extras={'role': 'dock', 'forward': [1, 0, 0]})
+
+
+def place_station_blackmarket(b: PartBuilder) -> None:
+    """Quiet/Reach black market — asymmetric scrap cluster (Smuggler Den silhouette)."""
+    b.bevel_box('Black_Hull_A', (14.0, 6.0, 10.0), (5.0, 3.0, 3.5), 'Material_Hull', .38, 4)
+    b.bevel_box('Black_Hull_B', (10.0, 7.0, 8.0), (17.5, 3.8, -4.0), 'Material_Hull', .32, 4)
+    b.bevel_box('Black_Dock_Spur', (12.0, 1.0, 4.0), (3.0, 1.2, -6.5), 'Material_Mechanical', .15, 3)
+    hook = b.empty('HOOK_Emissive', (10.0, 5.5, 0))
+    b.bevel_box('Black_Neon_Sign', (4.0, .15, 1.2), (0, 0, 4.5), 'Material_Accent', .03, 2, parent=hook)
+    b.empty('SOCKET_Structure_Core', (8.0, 2.0, 0), extras={'role': 'dock', 'forward': [1, 0, 0]})
+
+
+def place_gate_jump_ring(b: PartBuilder) -> None:
+    """Jump gate torus — readable travel infrastructure at sector rim."""
+    b.torus_x('Gate_Outer_Ring', 14.0, 1.1, (0, 8.0, 0), 'Material_Accent', 32, 12)
+    b.torus_x('Gate_Inner_Ring', 11.0, .45, (0, 8.0, 0), 'Material_Hull', 28, 10)
+    for z in (-12.0, 12.0):
+        b.bevel_box(f'Gate_Pylon_{z}', (2.8, 14.0, 2.8), (0, 7.0, z), 'Material_Mechanical', .2, 3)
+    hook = b.empty('HOOK_Emissive', (0, 8.0, 0))
+    b.bevel_box('Gate_Core', (3.5, 3.5, 3.5), (0, 0, 0), 'Material_Accent', .08, 3, parent=hook)
+    b.empty('SOCKET_Structure_Core', (0, 8.0, 0), extras={'role': 'gate', 'forward': [1, 0, 0]})
+
+
+def place_station_mining(b: PartBuilder) -> None:
+    """Small belt mining outpost rig."""
+    b.bevel_box('Mine_Base', (12.0, 3.0, 10.0), (6.0, 1.5, 0), 'Material_Hull', .28, 4)
+    b.bevel_box('Mine_Tower', (3.0, 8.0, 3.0), (6.0, 5.5, 0), 'Material_Mechanical', .2, 3)
+    hook = b.empty('HOOK_Emissive', (9.0, 4.0, 0))
+    b.bevel_box('Mine_Beacon', (.4, .4, .4), (0, 0, 0), 'Material_Accent', .04, 2, parent=hook)
+    b.empty('SOCKET_Structure_Core', (6.0, 1.5, 0), extras={'role': 'dock', 'forward': [1, 0, 0]})
+
+
+def place_station_fab(b: PartBuilder) -> None:
+    """Forge foundry — heavy fabrication block (Vesta silhouette)."""
+    b.bevel_box('Fab_Hall', (22.0, 6.0, 14.0), (11.0, 3.0, 0), 'Material_Hull', .4, 4)
+    b.bevel_box('Fab_Crane', (4.0, 10.0, 4.0), (4.0, 6.0, 0), 'Material_Mechanical', .25, 3, rot=(0, 0, .18))
+    hook = b.empty('HOOK_Emissive', (11.0, 6.5, 0))
+    b.bevel_box('Fab_Forge_Glow', (6.0, .2, 3.0), (0, 0, 0), 'Material_Accent', .05, 2, parent=hook)
+    b.empty('SOCKET_Structure_Core', (11.0, 3.0, 0), extras={'role': 'dock', 'forward': [1, 0, 0]})
+
+
+def place_station_research(b: PartBuilder) -> None:
+    """Veil research dome — glass observatory on authority base."""
+    b.bevel_box('Research_Base', (14.0, 2.5, 14.0), (7.0, 1.2, 0), 'Material_Hull', .22, 4)
+    b.ellipsoid('Research_Dome', (6.5, 6.0, 6.5), (7.0, 5.0, 0), 'Material_Glass', 20, 12)
+    hook = b.empty('HOOK_Emissive', (7.0, 8.5, 0))
+    b.bevel_box('Research_Sensor', (1.2, 1.2, 1.2), (0, 0, 0), 'Material_Accent', .04, 2, parent=hook)
+    b.empty('SOCKET_Structure_Core', (7.0, 2.0, 0), extras={'role': 'dock', 'forward': [1, 0, 0]})
+
+
 PARTS: list[PartSpec] = [
     PartSpec('cockpit_dome','cockpits','P0','Bubble canopy with interior deck and structural frame.',cockpit_dome,('HOOK_Emissive',),(), 'cockpit'),
     PartSpec('cockpit_slab','cockpits','P0','Armored authority bridge with serialized viewports.',cockpit_slab,('HOOK_Emissive',),(), 'cockpit'),
@@ -1165,6 +1245,14 @@ PARTS: list[PartSpec] = [
     PartSpec('place_asteroid_rock_b','places','P1','Elongated potato belt rock variant B.',place_asteroid_rock_b,(),(), 'place'),
     PartSpec('place_asteroid_rock_c','places','P1','Small rubble-cluster belt rock variant C.',place_asteroid_rock_c,(),(), 'place'),
     PartSpec('place_asteroid_graffiti','places','P1','Fringe-tagged asteroid with pirate graffiti.',place_asteroid_graffiti,('HOOK_Emissive',),('SOCKET_Camera_Focus',), 'place'),
+    PartSpec('place_station_trade_hub','places','P0','Trade hub ring platform + tower (core/junction).',place_station_trade_hub,('HOOK_Emissive',),('SOCKET_Structure_Core',), 'place'),
+    PartSpec('place_station_refinery','places','P0','Ore refinery stacks + slag base (belt/expanse).',place_station_refinery,('HOOK_Emissive',),('SOCKET_Structure_Core',), 'place'),
+    PartSpec('place_station_military','places','P0','Customs bastion + sensor dish.',place_station_military,('HOOK_Emissive',),('SOCKET_Structure_Core',), 'place'),
+    PartSpec('place_station_blackmarket','places','P0','Asymmetric scrap black-market cluster.',place_station_blackmarket,('HOOK_Emissive',),('SOCKET_Structure_Core',), 'place'),
+    PartSpec('place_gate_jump_ring','places','P0','Jump gate torus with support pylons.',place_gate_jump_ring,('HOOK_Emissive',),('SOCKET_Structure_Core',), 'place'),
+    PartSpec('place_station_mining','places','P1','Small belt mining outpost rig.',place_station_mining,('HOOK_Emissive',),('SOCKET_Structure_Core',), 'place'),
+    PartSpec('place_station_fab','places','P1','Forge foundry fabrication hall.',place_station_fab,('HOOK_Emissive',),('SOCKET_Structure_Core',), 'place'),
+    PartSpec('place_station_research','places','P1','Veil glass-dome research station.',place_station_research,('HOOK_Emissive',),('SOCKET_Structure_Core',), 'place'),
 ]
 
 

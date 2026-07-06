@@ -1,16 +1,21 @@
 **SPACEFACE — ENDGAME REDESIGN (B7: THE DEEP REACH)**
 
+> **Implementation note (2026-07-04):** This is a story/design reference. Any references inside this
+> file to `design/specs/05` or `design/specs/07` are historical mechanical-spec references only.
+> Implementation must check `design/GDD_2_0.md`, `design/BUILD_PLAN_2_0.md`,
+> `design/CURRENT_BUILD_STATUS.md`, and `design/spec2/*` first.
+
 The current spec gives the player the title "Sector Baron." This is wrong for the world.
 
 A player who has been through the HUD's three phases of complicity, who has seen the NPC ecology operating beneath the surface, who has read enough graffiti to understand what it means — that player does not want a title. A title is what the system gives to the people the system approves of. This player knows what the system is.
 
-The endgame is not a reward. It is a recognition. Three choices, each of which is honest about what winning actually costs.
+The endgame is not a reward. It is a recognition. Five choices, each of which is honest about what winning actually costs.
 
 ---
 
 **THE CHOICE (presented after reaching 100,000 credits net worth and rep ≥50 with chosen faction):**
 
-No cutscene. No speech. A contract board update, a comms message, and a graffiti line that appears on the player's bulkhead simultaneously. The player has three contracts available. Only one can be accepted. The others expire the moment the player makes a choice.
+No cutscene. No speech. A contract board update, a comms message, and a graffiti line that appears on the player's bulkhead simultaneously. Two contracts sit on the board (A, B); one graffiti line is not clickable but is there (C); one prompt appears only if the player holds the ledger and tries to leave (D); one appears only if the player declines all four and returns to the Kurtz figure's station (E). The board contracts expire the moment the player commits to any of the five paths. Nothing tells the player the fifth exists.
 
 ---
 
@@ -58,11 +63,11 @@ If yes: the jump completes.
 
 The player emerges in Sector 1. Their ship is at the Pit's docking bay. The HUD loads normally. The ship's transponder ID is the same. The date is the same as the day they left. The contract board shows one entry: "CONTRACT 47-A — OPEN / PAYMENT: PENDING."
 
-The graffiti at the airlock is the same graffiti they saw on the first day. "THEY KNEW THE MASS." The jump didn't kill them. The wormhole didn't open. The wormhole is not an exit; it is the system's way of telling you that you are already in the only place you were ever going to be. The reactor didn't fail. The Pit didn't close. The contract is still pending. The count never ends. The player took the one option that looked like an escape and the system filed it as a return.
+The graffiti at the airlock is the same graffiti they saw on the first day. "THEY KNEW THE MASS." The jump didn't kill them. The wormhole didn't open. The wormhole is not an exit; it is the system's way of telling you that you are already in the only place you were ever going to be. The Pit didn't close. The contract is still pending. The count never ends. The player took the one option that looked like an escape and the system filed it as a return.
 
 No score screen. No title. The campaign resets. The HUD prints one line before the player regains control: "CARGO: STABLE."
 
-+(note: agy correctly identified that reactor death is too merciful — it lets the player escape the moral weight of their career via a cinematic exit. The loop-back is the McCarthy version of this ending: the relentless thing isn't the job, it's the inevitability. You can jump without a destination. The system already knew where you were going.)*
+> **DESIGN RATIONALE (scaffolding, not voice):** The ending commits to the loop and refuses the reactor death. Death is an exit, and the system doesn't grant exits — letting the player escape the moral weight of their career via a cinematic failure mode would be a mercy this world does not extend. The relentless thing isn't the job; it's the inevitability. You can jump without a destination. The system already knew where you were going.
 
 The kill feed at loop-back reads: +1 UNKNOWN. One entry. No name. The count continues.
 
@@ -90,8 +95,6 @@ What the HUD shows for the duration of Choice D: "CARGO: PERSONAL EFFECTS — 1 
 
 **CHOICE E: THE NEXT RUN**
 
-*(From agy Prompt 6 collaboration. This is the SpaceFace-native fifth choice — the one that most directly expresses the game's through-line.)*
-
 This option is available only if the player declines all four board entries (A, B, C, D) and approaches the Ashfall Reach station one final time. No contract board entry. No comms popup. The option appears as a single NPC dialog line from a courier who was not there before: "Contract settled. New one's open."
 
 What happens:
@@ -110,31 +113,40 @@ Endgame loop: the game continues. Not NewGame+. Not a reset. The contract board 
 
 This is the ending the game most specifically deserves. It refuses death, authority, isolation, and witnessing. It offers continuation without redemption. The moral weight of the player's career is not resolved by the ending. It is carried forward. That's the only honest thing the system knows how to do.
 
-*(agy note: "It forces them to live with their complicity in the very gameplay loop they spent the entire game mastering.")*
+> **DESIGN RATIONALE (scaffolding, not voice):** Choice E forces the player to live with their complicity in the very gameplay loop they spent the entire game mastering. It is the ending that most directly expresses the game's through-line.
 
 ---
 
 **Why these choices and not one:**
 
-Le Carré endings are not about winning or losing. They're about what kind of person you become in the process of surviving. George Smiley at the end of *Tinker Tailor* doesn't win. He understands. The winning is hollow. The understanding is what costs him everything.
+These endings are not about winning or losing. They're about what kind of person you become in the process of surviving. The player who understands the system doesn't get a victory. They get a choice about which part of the system they're willing to become.
 
-Choice A is Smiley becoming Karla's mirror: the player becomes the institution they hated. They are now the gray men in clean stations who sign the orders.
+Choice A is the player becoming the institution they hated — the gray figure in a clean station who signs the orders. The mirror held up to the mirror.
 
-Choice B is Smiley retiring to something that isn't retirement: the player becomes the system's lubricant. They make the rot run smoother. That's not nothing.
+Choice B is retirement into something that isn't retirement — the player becoming the system's lubricant. They make the rot run smoother. That's not nothing.
 
-Choice C is the book closing itself: the player stops before they become either. Whether this is dignity or waste depends on how many contracts they ran before choosing it.
+Choice C is the book closing itself — the player stopping before they become either. Whether this is dignity or waste depends on how many contracts they ran before choosing it.
 
-Choice D is the Conrad answer: the witness. Not the horror, not the man who escaped the horror — the man who saw enough to document it and then discovered that documentation changes nothing about the fact of it. The Kurtz figure in Heart of Darkness is hollowed out by what he's seen. The Conrad equivalent here is someone who survives the knowledge by refusing to stop counting it. The choice isn't heroic. It's just more honest than the other three.
+Choice D is the witness — not the horror, not the man who escaped the horror, but the one who saw enough to document it and then discovered that documentation changes nothing about the fact of it. Hollowed out by what they've seen, surviving the knowledge by refusing to stop counting it. Not heroic. More honest than A or B.
+
+Choice E is the one that refuses the other four — no authority, no invisibility, no exit, no witness's desk. Just the next contract. The player who finds it has to decline everything the game offered before the game will offer it. It is the only ending that does not require the player to become a part of the system at all. It requires them to keep working inside it anyway. That is worse.
 
 None of these choices is rewarded with a title. None of them is presented as the "good" ending. The game ends the same way it began: with the HUD showing cargo weight that doesn't match what's actually in the hold, and graffiti that knows something the system has already decided not to record.
 
 ---
 
+> **DESIGN RATIONALE — literary scaffolding (not voice; do not transcribe into game text):**
+> The five-choice structure owes debts it does not name in the prose. Choice A is the Smiley-becomes-Karla's-mirror move: the player becomes the institution. Choice B is the retired-operative-who-is-not-retired move: the system's lubricant. Choice D is the Conrad witness — the Marlow who arrives at Kurtz's station not to find alien darkness but to find the already-known in a new context, and survives the knowledge by counting it. The presiding insight, borrowed across the whole tradition: the horror is not that bad people run the system; the horror is that the system runs fine with good people running it, and still produces the same outcomes. The prose enacts these without attribution. If the reader feels the tradition, the tradition is present; if the prose has to name it, it isn't.
+
+---
+
 **The Kurtz figure (Ashfall Reach):**
 
-Before the endgame choice, in Ashfall Reach, the player finds a derelict station with one living occupant: a former Concord administrator who has been here for eleven years. They are not hostile. They are not raving. They have a desk, a working comms unit they use to talk to no one, and a wall covered in manifests from eleven years of cargo traffic they monitored after going off-grid.
+Before the endgame choice, in Ashfall Reach, the player must first get past the dreadnought that guards the approach — the Iron Maw, anchored to the Boss Arena Signal POI, the system's last piece of enforcement this far from the core. It spawns once per sector entry and stays defeated once killed (`world.js:_spawnBossIfDue`, gated by the sector's `poi_boss`). The dreadnought is not a narrative element; it is a mechanical gate. Treat it as the cost of admission to the part of the sector the system no longer patrols. Once it is down, the inner reaches of Ashfall are quiet.
 
-The station runs on sealed tanks and a patched recycler. The air is 14 degrees Celsius. It smells of hydraulic fluid and something organic the undersized scrubbers can't clear. This is the smell of the Pit's lower decks — the player's starting sector. The furthest point from the core is structurally identical to home. This is the Conrad moment: Marlow arrives at Kurtz's station not to find alien darkness but to find the already-known in a new context. The darkness at the end of the river smells like the beginning.
+Past the dreadnought, the player finds a derelict station with one living occupant: a former Concord administrator who has been here for eleven years. They are not hostile. They are not raving. They have a desk, a working comms unit they use to talk to no one, and a wall covered in manifests from eleven years of cargo traffic they monitored after going off-grid.
+
+The station runs on sealed tanks and a patched recycler. The air is 14 degrees Celsius. It smells of hydraulic fluid and something organic the undersized scrubbers can't clear. This is the smell of the Pit's lower decks — the player's starting sector. The furthest point from the core is structurally identical to home. The player arrives at the end of the river not to find alien darkness but to find the already-known in a new context. The darkness at the end of the journey smells like the beginning.
 
 Their name is in the Concord database as "DECEASED — SECTOR INCIDENT."
 
@@ -160,15 +172,16 @@ The player's ship departs. The station doesn't flag them on leaving. The derelic
 
 The mechanical spec (`design/specs/07-missions-contracts-story-spine.md`) B7 reward currently reads "title 'Sector Baron' + NewGame+ unlock." This narrative redesign replaces that reward structure. When implementing B7, the mission system's `story.beatAdvanced{fromIndex:6,toIndex:7}` event should trigger the four-contract-board update described above, not a title grant. The net-worth and rep preconditions (100k + rep ≥50) remain unchanged.
 
-The sector navigation spec (`design/specs/05-world-sectors-navigation.md`) tags S9 (Ashfall Reach) as "faction Rogue AI/Boss" with POIs "Boss Arena Signal, Ancient Vault (legendary loot)." **This must be overridden.** S9 in the narrative is not a boss arena. The correct S9 content:
-- Faction: **Unclaimed / No Infrastructure** (no faction affiliation)
-- POI 1: **Derelict Administrative Station** (the Kurtz figure's station — discoverable via recon_scan, shows as "SCAVENGER — UNKNOWN" in the mission log on first approach)
-- POI 2: **Wormhole Threshold** (the jump-without-destination prompt for Choice C — not a normal gate)
-- "Ancient Vault" → The Kurtz figure's ledger (cargo item "PERSONAL EFFECTS — 1 UNIT / 0.4t", not a loot drop)
-- "Boss Arena Signal" → "ASHFALL REACH — SIGNAL DETECTED: LONG-FORM TRANSMISSION. SOURCE: DERELICT STATION." (comms popup, not a beacon POI)
+The sector navigation spec (`design/specs/05-world-sectors-navigation.md`) and the live data tag S9 (Ashfall Reach) with the dreadnought boss arena — POIs "Boss Arena Signal" (`poi_boss`, spawns the Iron Maw via `world.js:_spawnBossIfDue`) and "Ancient Vault" (`poi_vault`, hidden). These are **kept** (SPEC3-F7:111 defines Ashfall as the endgame dreadnought arena and the boss fight is CI-gated). The narrative does not remove them; it stages the Kurtz-figure encounter *behind* the boss, as the content the player reaches once the system's enforcement is down. Reconciled S9 content:
+
+- Faction: `faction_vael` in live data (retained — see `STORY_SECTOR_MAP.md` divergence note for why this is cosmetic, not load-bearing).
+- POI 1 (existing): **Boss Arena Signal** (`poi_boss`) — the dreadnought Iron Maw. Mechanical gate. Spawns once per entry, stays defeated once killed. Treat narratively as the system's last patrol.
+- POI 2 (existing): **Ancient Vault** (`poi_vault`, hidden) — re-skinned in narrative as the Kurtz figure's sealed records cache. The "legendary loot" framing is dropped; the cargo the player can take is the ledger ("PERSONAL EFFECTS — 1 UNIT / 0.4t"), which the game has nowhere to spend.
+- POI 3 (narrative, post-boss): **Derelict Administrative Station** — the Kurtz figure's station, reached after the dreadnought is defeated. Shows as "SCAVENGER — UNKNOWN" in the mission log on first approach.
+- POI 4 (narrative): **Wormhole Threshold** — the jump-without-destination prompt for Choice C — not a normal gate.
 
 ---
 
 **Implementation note:**
 
-The Kurtz figure's station should be discoverable mid-game (B5 or later) via a recon_scan mission that leads somewhere the briefing said would be empty. The administrator appears in the mission log as "SCAVENGER — UNKNOWN." If the player doesn't interact with them, they leave the sector. The administrator is still there next visit. And the next. They don't go anywhere. They've been here for eleven years. A few more cycles isn't going to change anything.
+The Kurtz figure's station sits in the inner reaches of Ashfall Reach, behind the dreadnought that guards the sector's approach. A recon_scan in the outer reaches can register it early as a contact ("SCAVENGER — UNKNOWN" / "DERELICT — LONG-FORM TRANSMISSION"), but the player cannot dock until the Iron Maw is defeated — the boss is the gate. The administrator is still there next visit after the first docking. And the next. They don't go anywhere. They've been here for eleven years. A few more cycles isn't going to change anything.

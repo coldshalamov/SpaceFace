@@ -1,8 +1,14 @@
 # SPEC2 INDEX — dispatch map for implementing agents
 
-**What this is:** the taste-locked implementation spec suite for taking SpaceFace to a $30 Steam
-bar. Written 2026-07-04 by the lead-design session. Every file is self-contained for one agent
+**What this is:** the taste-locked implementation spec suite for taking SpaceFace to a premium
+PC/browser release bar. Written 2026-07-04 by the lead-design session. Every file is self-contained for one agent
 lane; `00_MASTER_TASTE.md` is the constitution they all inherit.
+
+**Current status:** before dispatching, read `design/CURRENT_BUILD_STATUS.md`. As of 2026-07-04,
+SPEC2/01, /06, and /07 are built on targeted checks. SPEC2/02, /03, and /05 have passing targeted
+checks but still need broader runtime/browser proof (`check:flight:clean`, `check:first-15-runtime`,
+`check:market-first-loop`). SPEC2/04 is not built. SPEC2/08 remains a PC/browser release-readiness
+lane, not handheld-specific work.
 
 ## Dispatch order (respects dependencies + file-conflict lanes)
 | Wave | Spec | Lane / files | Parallel-safe with |
@@ -14,7 +20,7 @@ lane; `00_MASTER_TASTE.md` is the constitution they all inherit.
 | 2 | `05_ECONOMY_PROGRESSION` | systems: market/starmap screens, data tuning | 02 |
 | 3 | `04_WORLD_ALIVE` | sim: encounterDirector, traffic, world dressing | 06 |
 | 3 | `06_UI_IDENTITY` | frontend: hud, radar, targetPanel, ui.css | 04 |
-| 4 | `08_STEAM_RELEASE` | release/QA: checks, captures, soak | (after all) |
+| 4 | `08_RELEASE_READINESS` | PC/browser release/QA: checks, captures, soak | (after all) |
 Do not run two specs that share a lane concurrently. Wave 2 waits for 01 (juice binds to tether
 phases). Wave 3 waits for 02 (encounters use cruise; UI uses juice events). BEFORE wave 4: run the
 47a golden re-record batch (BUILD_PLAN "Golden/tape note").

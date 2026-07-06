@@ -22,6 +22,7 @@ Allowed current call sites:
 | `src/render/vfx.js` | cosmetic render | Particle variation; no gameplay state mutation. |
 | `src/systems/telemetry.js` | local telemetry | Builds a local session id; not read by simulation. |
 | `src/ui/floatingText.js` | cosmetic UI | Adds presentation drift to damage/pickup text. |
+| `src/ui/screens/drill.js` | cosmetic UI | Varies drill particles, steam, dust, and rover shake inside the local drill screen; authoritative drill yields remain system-driven. |
 
 Forbidden classes:
 

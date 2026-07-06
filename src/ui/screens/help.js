@@ -109,7 +109,7 @@ const SECTIONS = [
     ['Lateral thruster (right)', 'strafeRight', 'Q / E'],
     ['Boost (hold) / Dash (tap)', 'boost', 'Shift'],
     ['Fire weapons', 'fire', 'LMB / Space'],
-    ['Auto-fire toggle', 'autoFire', 'F'],
+    ['Auto-target toggle', 'autoFire', 'F'],
     ['Countermeasure', 'countermeasure', 'X'],
   ]],
   ['Interface (fixed keys)', [

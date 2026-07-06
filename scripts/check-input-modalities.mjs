@@ -17,6 +17,24 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
+function ok(label) {
+  console.log(`ok   ${label}`);
+}
+
+function installLoggedAsserts() {
+  for (const method of ['ok', 'equal', 'notEqual', 'deepEqual', 'match', 'doesNotMatch', 'throws', 'doesNotThrow']) {
+    if (typeof assert[method] !== 'function') continue;
+    const orig = assert[method].bind(assert);
+    assert[method] = (...args) => {
+      const out = orig(...args);
+      const msg = [...args].reverse().find((a) => typeof a === 'string') || `assert.${method}`;
+      ok(msg);
+      return out;
+    };
+  }
+}
+installLoggedAsserts();
+
 // 1. Both modality modules exist + export their factories.
 assert.ok(existsSync(join(ROOT, 'src/systems/gamepad.js')), 'src/systems/gamepad.js must exist (gamepad modality)');
 assert.ok(existsSync(join(ROOT, 'src/systems/touch.js')), 'src/systems/touch.js must exist (touch modality)');
@@ -68,12 +86,40 @@ assert.match(inputSrc, /syncPointerScreen\(this\.state, e\.clientX, e\.clientY\)
   'pointer movement must update state.input.pointerScreen immediately so the software reticle tracks the OS cursor');
 assert.match(stylesSrc, /body\.sf-flight-cursor[\s\S]*cursor:\s*none/,
   'flight cursor mode must hide the OS cursor so the software bullseye is the cursor');
+assert.match(inputSrc, /F auto-target/,
+  'input.js header must describe F as auto-target, not legacy auto-fire');
 assert.match(inputSrc, /autopursuit:\s*\[\]/,
-  'F must remain auto-target/fire-only; autopursuit is held by MMB so arrow pilots keep flight control');
-assert.match(inputSrc, /ui:targetNearestHostileToCursor[\s\S]*aimWorld/,
-  'F auto-fire must request the hostile nearest the cursor/aim world point');
-assert.match(inputSrc, /_autoTargetRefreshT[\s\S]*quiet:\s*true/,
-  'F auto-fire must keep quietly refreshing cursor-nearest hostile targeting while active');
+  'F must remain auto-target-only; autopursuit is held by MMB so arrow pilots keep flight control');
+const autoTargetAssistSrc = read('src/systems/autoTargetAssist.js');
+const autoTargetModeSrc = read('src/combat/autoTargetMode.js');
+const registrySrc = read('src/core/registry.js');
+const mainSrc = read('src/main.js');
+assert.doesNotMatch(inputSrc, /ui:targetNearestHostileToPlayer/,
+  'lead-owned input.js must not own auto-target hostile acquisition');
+assert.match(autoTargetModeSrc, /ui:targetNearestHostileToPlayer/,
+  'autoTargetMode must request the hostile nearest the player');
+assert.match(autoTargetModeSrc, /quiet:\s*true/,
+  'autoTargetMode must keep quietly refreshing nearest-hostile lock while active');
+assert.match(autoTargetModeSrc, /inp\.autoFire[\s\S]*cursorAngle[\s\S]*inp\.turnIntent/,
+  'auto-target must steer the ship toward the cursor while weapons aim at the locked hostile');
+assert.match(autoTargetModeSrc, /inp\.autoFire = !inp\.autoFire/,
+  'F toggle must always flip auto-target without autopursuit guards');
+assert.match(autoTargetAssistSrc, /toggleAutoTarget/,
+  'autoTargetAssist shell must delegate F toggle to autoTargetMode');
+assert.doesNotMatch(autoTargetAssistSrc, /autopursuitHeld/,
+  'autoTargetAssist F toggle must not be gated on MMB/autopursuit state');
+assert.match(registrySrc, /input,\s*autoTargetAssist,\s*scanner/,
+  'registry UPDATE_ORDER must run autoTargetAssist immediately after input');
+assert.match(registrySrc, /core, input, autoTargetAssist/,
+  'registry SYSTEMS init must call autoTargetAssist.init for F-key capture listeners');
+assert.match(registrySrc, /destroy\(\)/,
+  'registry must expose destroy() so capture-phase listeners do not stack on re-init');
+assert.match(autoTargetAssistSrc, /if \(this\._onKeyDown\) this\.destroy\(\)/,
+  'autoTargetAssist.init must tear down prior listeners before re-attaching');
+assert.match(mainSrc, /registry\.destroy\(\)/,
+  'main.js must call registry.destroy on teardown so capture-phase F listeners do not leak');
+assert.match(mainSrc, /resetCombatInputMode/,
+  'main.js must reset auto-target state on new game / loaded game entry');
 
 // 4. saveSystem normalizes both settings.controls objects (so a legacy/partial save can't crash).
 const saveSrc = read('src/save/saveSystem.js');
@@ -92,18 +138,25 @@ assert.match(saveSrc, /controlScheme:\s*s\.gameplay && s\.gameplay\.controlSchem
 
 // 5. Settings UI exposes toggles for both (so the player can enable/disable each).
 const settingsSrc = read('src/ui/screens/settings.js');
+const weaponsSrc = read('src/systems/weapons.js');
 const uiRootSrc = read('src/ui/uiRoot.js');
 const uiInputSrc = read('src/ui/input.js');
 const helpSrc = read('src/ui/screens/help.js');
 const promptSrc = read('src/ui/controlPrompts.js');
 const screenManagerSrc = read('src/ui/screenManager.js');
 const localmapSrc = read('src/ui/screens/localmap.js');
-assert.match(uiRootSrc, /function targetNearestHostileToCursor/,
-  'UI root must implement cursor-nearest hostile selection for F auto-target');
-assert.match(uiRootSrc, /ui:targetNearestHostileToCursor[\s\S]*quiet[\s\S]*targetNearestHostileToCursor/,
-  'UI root must route quiet cursor-target refreshes without toast spam');
-assert.match(uiRootSrc, /isHostileToPlayer[\s\S]*cursorD2[\s\S]*bestCursorD2/,
-  'F auto-target must filter hostiles and rank by distance to the cursor, not only by ship distance');
+assert.match(uiRootSrc, /function targetNearestHostileToPlayer/,
+  'UI root must implement player-nearest hostile selection for F auto-target');
+assert.match(uiRootSrc, /ui:targetNearestHostileToPlayer[\s\S]*quiet[\s\S]*targetNearestHostileToPlayer/,
+  'UI root must route quiet player-target refreshes without toast spam');
+assert.match(uiRootSrc, /isHostileToPlayer[\s\S]*bestD2/,
+  'F auto-target must filter hostiles and rank by distance to the player');
+assert.match(uiRootSrc, /cycleTarget[\s\S]*isHostileToPlayer/,
+  'Tab target cycle must advance only among nearby hostile contacts');
+assert.match(uiRootSrc, /isScannerHostileLock[\s\S]*quiet\) return/,
+  'quiet auto-target refresh must keep a live Tab lock instead of re-picking nearest');
+assert.match(weaponsSrc, /SCANNER_CONTACT_RANGE/,
+  'auto-target selected lock must use scanner range, not weapon range only');
 assert.match(uiRootSrc, /bus && !quiet/,
   'quiet cursor-target refreshes must not emit target toasts every tick');
 assert.match(settingsSrc, /Gamepad enabled/, 'Settings must expose a Gamepad enabled toggle');

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +18,12 @@ const DURATION_MS = Number(argv.duration || 60000);
 const FRAME_BUDGET_MS = Number(argv.frameBudgetMs || argv['frame-budget-ms'] || 32);
 const OUT = argv.out || '.devshots/perf/hitch-budget.json';
 const HEADED = !!(argv.headed || argv.headful || argv.headless === 'false');
+// Diagnostic bisect: disable the dynamic-resolution controller for the run, to separate hitches it
+// causes (render-target reallocation on every scale change) from hitches it merely reacts to.
+const NO_DYNRES = !!(argv.noDynres || argv['no-dynres']);
+// Diagnostic bisect: freeze the deep-field background (hide + stop updates) to separate its
+// bake/rebuild costs from the rest of the frame.
+const NO_BG = !!(argv.noBg || argv['no-bg']);
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -26,20 +31,7 @@ let browser = null;
 
 try {
   server = await startFreshServer();
-  browser = await chromium.launch({
-    headless: !HEADED,
-    args: [
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-frame-rate-limit',
-      '--disable-gpu-vsync',
-      '--disable-features=CalculateNativeWinOcclusion',
-      '--ignore-gpu-blocklist',
-      '--enable-webgl',
-      `--window-size=${WIDTH},${HEIGHT}`,
-    ],
-  });
+  browser = await launchProbeBrowser();
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
   const issues = collectPageIssues(page);
 
@@ -56,6 +48,22 @@ try {
     window.SF.bus.emit('game:new', { name: 'Hitch Budget', seed });
     window.SF.bus.emit('ui:closeAll', {});
   }, SEED);
+  if (NO_DYNRES) {
+    await page.evaluate(() => {
+      window.SF.state.settings.video.dynamicResolution = false;
+      window.SF.bus.emit('settings:changed', { section: 'video', key: 'dynamicResolution' });
+    });
+  }
+  if (NO_BG) {
+    await page.evaluate(() => {
+      const bg = window.SF.state.render.spaceBg;
+      if (bg) {
+        if (bg.group) bg.group.visible = false;
+        bg.update = () => {};
+        bg.onResize = () => {};
+      }
+    });
+  }
   await page.waitForFunction(() => {
     const sf = window.SF;
     const state = sf && sf.state;
@@ -63,11 +71,44 @@ try {
     return !!(state && state.mode === 'flight' && player && player.alive !== false && player.mesh);
   }, null, { timeout: 90000 });
   await dismissOnboarding(page);
+  // Attribute between-frame stalls: longtask entries prove main-thread blockage (GC, GLB parse,
+  // JSON work); their absence during a long rAF gap means the stall is GPU/compositor-side.
+  // Resource entries timestamp asset fetches so stalls can be correlated with what just loaded.
+  await page.evaluate(() => {
+    window.__HITCH_LONGTASKS__ = [];
+    window.__HITCH_RESOURCES__ = [];
+    try {
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) {
+          window.__HITCH_LONGTASKS__.push({ start: Math.round(e.startTime), ms: Math.round(e.duration) });
+        }
+      }).observe({ entryTypes: ['longtask'] });
+    } catch (_) {}
+    try {
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) {
+          if (!/\.(glb|png|jpg|ktx2|json)(\?|$)/i.test(e.name)) continue;
+          window.__HITCH_RESOURCES__.push({ end: Math.round(e.responseEnd), ms: Math.round(e.duration), url: e.name.split('/').slice(-2).join('/') });
+        }
+      }).observe({ entryTypes: ['resource'], buffered: true });
+    } catch (_) {}
+  });
   const stress = await installStressScenario(page);
   await waitForStressAssets(page);
+  const renderWarmup = await waitForRenderWarmup(page);
   await warmStressPipelines(page);
+  await waitForStressAssets(page);
   const sample = await sampleHitches(page, { warmupMs: WARMUP_MS, durationMs: DURATION_MS, frameBudgetMs: FRAME_BUDGET_MS });
+  const attribution = await page.evaluate(() => ({
+    longtasks: (window.__HITCH_LONGTASKS__ || []).filter((t) => t.ms >= 50).slice(-40),
+    resources: (window.__HITCH_RESOURCES__ || []).slice(-40),
+  }));
+  console.log('[hitch-budget] main-thread longtasks >=50ms:', JSON.stringify(attribution.longtasks));
+  console.log('[hitch-budget] recent asset fetches:', JSON.stringify(attribution.resources.slice(-15)));
 
+  const pageErrors = issues.errorIssues();
+  const pageWarnings = issues.warningIssues().slice(0, 12);
+  const pass = sample.frameMs.overBudget === 0 && pageErrors.length === 0;
   const report = {
     schema: 'spaceface.hitchBudget.v1',
     generatedAt: new Date().toISOString(),
@@ -77,20 +118,28 @@ try {
     histogram: sample.histogram,
     spikes: sample.spikes.slice(0, 20),
     topSpikeSources: sample.topSpikeSources,
+    renderWarmup,
     diagnostics: sample.diagnostics,
-    pageIssues: { errors: issues.errorIssues(), warnings: issues.warningIssues().slice(0, 12) },
-    pass: sample.frameMs.overBudget === 0 && issues.errorIssues().length === 0,
+    pageIssues: { errors: pageErrors, warnings: pageWarnings },
+    failureEvidence: buildFailureEvidence({
+      frameBudgetMs: FRAME_BUDGET_MS,
+      frameMs: sample.frameMs,
+      spikes: sample.spikes,
+      topSpikeSources: sample.topSpikeSources,
+      pageErrors,
+      out: OUT,
+    }),
+    pass,
   };
 
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(report, null, 2));
 
   printReport(report);
-  assert.deepEqual(report.pageIssues.errors, [], 'browser run should not report page errors');
-  assert.equal(report.frameMs.overBudget, 0, `expected zero post-warmup frames > ${FRAME_BUDGET_MS} ms`);
+  if (!report.pass) process.exitCode = 1;
 } finally {
-  if (browser) await browser.close();
-  if (server && server.kill) server.kill();
+  await closeProbeBrowser(browser);
+  await stopProbeServer(server);
 }
 
 async function installStressScenario(page) {
@@ -141,13 +190,34 @@ async function installStressScenario(page) {
 }
 
 async function waitForStressAssets(page) {
-  await page.waitForFunction(() => {
+  await page.waitForFunction(async () => {
     const sf = window.SF;
     const stress = window.__SF_HITCH_STRESS__;
     if (!sf || !stress) return false;
     const state = sf.state;
     const render = sf.registry && sf.registry.get && sf.registry.get('render');
     if (render && render._meshBuildQueue && render._meshBuildQueue.length > 0) return false;
+    if (render && render._meshReconcileDirty) return false;
+    const renderState = state && state.render || {};
+    const promiseStatus = async (promise) => {
+      if (!promise || typeof promise.then !== 'function') return { present: false, settled: true };
+      return Promise.race([
+        promise.then(() => ({ present: true, settled: true, ok: true }), () => ({ present: true, settled: true, ok: false })),
+        new Promise((resolve) => setTimeout(() => resolve({ present: true, settled: false }), 1000)),
+      ]);
+    };
+    const authoredPartLibrary = await promiseStatus(renderState.authoredPartLibraryReady);
+    const pipelinePrecompile = await promiseStatus(renderState.pipelinePrecompileReady);
+    if (!authoredPartLibrary.settled || !pipelinePrecompile.settled) return false;
+    const scene = state && state.render && state.render.scene;
+    let queue = { pending: 0, running: false };
+    try {
+      const partsLibrary = await import('./src/render/partsLibrary.js');
+      if (partsLibrary && typeof partsLibrary.getAuthoredUpgradeQueueStats === 'function') {
+        queue = partsLibrary.getAuthoredUpgradeQueueStats(scene);
+      }
+    } catch (_) {}
+    if (queue.pending > 0 || queue.running) return false;
     for (const id of stress.enemyIds || []) {
       const entity = state.entities.get(id);
       if (!entity || entity.alive === false) continue;
@@ -160,6 +230,71 @@ async function waitForStressAssets(page) {
   }, null, { timeout: 90000 });
 }
 
+async function waitForRenderWarmup(page) {
+  const promises = await page.evaluate(async () => {
+    window.__SF_RENDER_WARMUP_READY__ = false;
+    const sf = window.SF;
+    const render = sf && sf.state && sf.state.render;
+    try {
+      const partsLibrary = await import('./src/render/partsLibrary.js');
+      if (partsLibrary && typeof partsLibrary.getAuthoredUpgradeQueueStats === 'function') {
+        window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__ = partsLibrary.getAuthoredUpgradeQueueStats;
+      }
+    } catch (_) {}
+    const wait = async (promise, label) => {
+      if (!promise || typeof promise.then !== 'function') return { label, present: false, settled: true };
+      return Promise.race([
+        promise.then(() => ({ label, present: true, settled: true, ok: true }), () => ({ label, present: true, settled: true, ok: false })),
+        new Promise((resolve) => setTimeout(() => resolve({ label, present: true, settled: false, timeout: true }), 90000)),
+      ]);
+    };
+    const authoredPartLibrary = await wait(render && render.authoredPartLibraryReady, 'authoredPartLibraryReady');
+    const pipelinePrecompile = await wait(render && render.pipelinePrecompileReady, 'pipelinePrecompileReady');
+    window.__SF_RENDER_WARMUP_READY__ = authoredPartLibrary.settled && pipelinePrecompile.settled;
+    return { authoredPartLibrary, pipelinePrecompile };
+  });
+  await page.waitForFunction(async () => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const render = state && state.render;
+    const renderSys = sf && sf.registry && typeof sf.registry.get === 'function' ? sf.registry.get('render') : null;
+    if (!render) return false;
+    if (window.__SF_RENDER_WARMUP_READY__ === false) return false;
+    const meshQueueRemaining = renderSys && Array.isArray(renderSys._meshBuildQueue)
+      ? Math.max(0, renderSys._meshBuildQueue.length - (renderSys._meshBuildQueueHead || 0))
+      : 0;
+    if (meshQueueRemaining > 0 || (renderSys && renderSys._meshReconcileDirty)) return false;
+    let queue = { pending: 0, running: false };
+    try {
+      const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;
+      if (typeof queueStats === 'function') {
+        queue = queueStats(render.scene);
+      }
+    } catch (_) {}
+    return queue.pending === 0 && queue.running === false;
+  }, null, { timeout: 90000 });
+  const queues = await page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const render = state && state.render;
+    const renderSys = sf && sf.registry && typeof sf.registry.get === 'function' ? sf.registry.get('render') : null;
+    const meshQueueRemaining = renderSys && Array.isArray(renderSys._meshBuildQueue)
+      ? Math.max(0, renderSys._meshBuildQueue.length - (renderSys._meshBuildQueueHead || 0))
+      : 0;
+    let authoredUpgradeQueue = { pending: 0, running: false };
+    try {
+      const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;
+      if (typeof queueStats === 'function') authoredUpgradeQueue = queueStats(render && render.scene);
+    } catch (_) {}
+    return {
+      authoredUpgradeQueue,
+      meshQueueRemaining,
+      meshReconcileDirty: !!(renderSys && renderSys._meshReconcileDirty),
+    };
+  });
+  return { ...promises, ...queues };
+}
+
 async function warmStressPipelines(page) {
   await page.evaluate(async () => {
     const sf = window.SF;
@@ -168,6 +303,13 @@ async function warmStressPipelines(page) {
     const renderer = render && render.renderer;
     const scene = render && render.scene;
     const camera = render && render.camera;
+    const wait = async (promise) => {
+      if (promise && typeof promise.then === 'function') {
+        await promise.catch(() => null);
+      }
+    };
+    await wait(render && render.authoredPartLibraryReady);
+    await wait(render && render.pipelinePrecompileReady);
     if (renderer && scene && camera && typeof renderer.compileAsync === 'function') {
       await renderer.compileAsync(scene, camera, scene).catch(() => null);
     }
@@ -311,6 +453,14 @@ async function sampleHitches(page, opts) {
       if (!state || !render) return false;
       if (render._meshBuildQueue && render._meshBuildQueue.length > 0) return false;
       if (render._meshReconcileDirty) return false;
+      if (window.__SF_RENDER_WARMUP_READY__ === false) return false;
+      try {
+        const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;
+        const queue = typeof queueStats === 'function'
+          ? queueStats(state.render && state.render.scene)
+          : { pending: 0, running: false };
+        if (queue.pending > 0 || queue.running) return false;
+      } catch (_) {}
       for (const entity of state.entityList || []) {
         if (!entity || entity.alive === false || entity._noMesh || entity.type === 'fx') continue;
         if (!entity.mesh) return false;
@@ -385,10 +535,45 @@ function printReport(report) {
   console.log('[hitch-budget] histogram:');
   for (const bin of report.histogram) console.log(`  ${bin.label.padEnd(8)} ${bin.count}`);
   if (!report.pass) {
+    console.log('[hitch-budget] failure evidence:');
+    for (const reason of report.failureEvidence.reasons) console.log(`  ${reason}`);
+    if (report.failureEvidence.topSpikes.length) {
+      console.log('[hitch-budget] top over-budget frames:');
+      for (const spike of report.failureEvidence.topSpikes) {
+        console.log(`  +${spike.atMs}ms ${spike.ms}ms entities=${spike.entityCount}`);
+      }
+    }
     console.log('[hitch-budget] top spike sources:');
     for (const source of report.topSpikeSources) console.log(`  ${source.name.padEnd(18)} ${source.ms}ms`);
+    if (report.failureEvidence.pageErrors.length) {
+      console.log('[hitch-budget] page errors:');
+      for (const issue of report.failureEvidence.pageErrors) console.log(`  ${issue}`);
+    }
   }
   console.log(`[hitch-budget] report: ${OUT}`);
+}
+
+function buildFailureEvidence({ frameBudgetMs, frameMs, spikes, topSpikeSources, pageErrors, out }) {
+  const reasons = [];
+  if (frameMs.overBudget > 0) reasons.push(`${frameMs.overBudget} post-warmup frames exceeded ${frameBudgetMs} ms`);
+  if (pageErrors.length > 0) reasons.push(`${pageErrors.length} browser page errors were reported`);
+  if (!reasons.length) reasons.push('no failure recorded');
+  return {
+    reasons,
+    report: out,
+    worstFrameMs: frameMs.max,
+    p95FrameMs: frameMs.p95,
+    p99FrameMs: frameMs.p99,
+    topSpikes: spikes.slice().sort((a, b) => b.ms - a.ms).slice(0, 8),
+    topSpikeSources,
+    pageErrors: pageErrors.slice(0, 5).map(formatPageIssue),
+  };
+}
+
+function formatPageIssue(issue) {
+  if (!issue) return 'unknown page error';
+  if (typeof issue === 'string') return issue;
+  return issue.text || issue.message || issue.errorText || JSON.stringify(issue);
 }
 
 async function startFreshServer() {
@@ -396,7 +581,7 @@ async function startFreshServer() {
   const url = `http://127.0.0.1:${port}/`;
   const child = spawnProbeServer(port);
   await waitForReachable(url, child);
-  return { baseUrl: url, kill: () => child.kill() };
+  return { baseUrl: url, child, kill: () => child.kill() };
 }
 
 function spawnProbeServer(port) {
@@ -456,13 +641,110 @@ function withDebugFlight(url) {
   return String(u);
 }
 
+async function launchProbeBrowser() {
+  const args = [
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+    '--disable-frame-rate-limit',
+    '--disable-gpu-vsync',
+    '--disable-features=CalculateNativeWinOcclusion',
+    '--ignore-gpu-blocklist',
+    '--enable-webgl',
+    `--window-size=${WIDTH},${HEIGHT}`,
+  ];
+  const executablePath = findSystemBrowser();
+  if (executablePath) {
+    try {
+      const launched = await chromium.launch({ headless: !HEADED, executablePath, args });
+      attachProbeProcess(launched);
+      return launched;
+    } catch (error) {
+      console.warn(`[hitch-budget] system browser launch failed; falling back to bundled Chromium: ${error && error.message ? error.message : error}`);
+    }
+  }
+  const launched = await chromium.launch({ headless: !HEADED, args });
+  attachProbeProcess(launched);
+  return launched;
+}
+
+function attachProbeProcess(launched) {
+  try {
+    if (launched && typeof launched.process === 'function') launched._probeProcess = launched.process();
+  } catch (_) {}
+}
+
+function findSystemBrowser() {
+  const candidates = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) || null;
+}
+
+async function closeProbeBrowser(target) {
+  if (!target) return;
+  const proc = target._probeProcess || null;
+  try {
+    await Promise.race([
+      target.close(),
+      sleep(5000),
+    ]);
+  } catch (_) {}
+  if (proc && proc.exitCode == null && proc.signalCode == null) await terminateChild(proc);
+}
+
+async function stopProbeServer(target) {
+  if (!target) return;
+  if (target.child) {
+    await terminateChild(target.child);
+    return;
+  }
+  if (typeof target.kill === 'function') {
+    try { target.kill(); } catch (_) {}
+  }
+}
+
+async function terminateChild(child) {
+  if (!child || child.exitCode != null || child.signalCode != null) return;
+  if (process.platform === 'win32' && child.pid) {
+    try { spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch (_) {}
+    await waitForChildExit(child, 2500);
+    return;
+  }
+  try { child.kill(); } catch (_) {}
+  await waitForChildExit(child, 2500);
+  if (child.exitCode != null || child.signalCode != null) return;
+  try { child.kill('SIGKILL'); } catch (_) {}
+  await waitForChildExit(child, 1000);
+}
+
+async function waitForChildExit(child, timeoutMs) {
+  if (!child || child.exitCode != null || child.signalCode != null) return;
+  await Promise.race([
+    new Promise((resolve) => child.once('exit', resolve)),
+    sleep(timeoutMs),
+  ]);
+}
+
 function parseArgs(args) {
   const out = {};
-  for (const arg of args) {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
     if (!arg.startsWith('--')) continue;
     const eq = arg.indexOf('=');
     if (eq >= 0) out[arg.slice(2, eq)] = arg.slice(eq + 1);
-    else out[arg.slice(2)] = true;
+    else {
+      const next = args[i + 1];
+      if (next && !next.startsWith('--')) {
+        out[arg.slice(2)] = next;
+        i++;
+      } else {
+        out[arg.slice(2)] = true;
+      }
+    }
   }
   return out;
 }

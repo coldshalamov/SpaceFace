@@ -388,10 +388,10 @@ const SHIELD_FRAG = /* glsl */`
   void main() {
     vec3 N = normalize(vNormal);
     vec3 V = normalize(cameraPosition - vWorldPos);
-    float fres = pow(1.0 - max(0.0, dot(N, V)), 2.5);
+    float fres = pow(1.0 - max(0.0, dot(N, V)), 3.2);
     float alpha = clamp(uBase * fres + uFlash, 0.0, 1.0);
     vec3 col = mix(uColor, vec3(1.0), uFlash * 0.7);
-    gl_FragColor = vec4(col, alpha * (0.45 + 0.55 * fres));
+    gl_FragColor = vec4(col, alpha * (0.08 + 0.92 * fres));
   }
 `;
 let _shieldGeo = null;
@@ -406,7 +406,7 @@ export function createShieldBubble(color = '#5fd0ff', radius = 12) {
     uniforms: {
       uColor: { value: new THREE.Color(color) },
       uFlash: { value: 0 },
-      uBase:  { value: 0.22 },
+      uBase:  { value: 0.035 },
     },
     transparent: true,
     blending: THREE.AdditiveBlending,
@@ -416,7 +416,7 @@ export function createShieldBubble(color = '#5fd0ff', radius = 12) {
   });
   const bubble = new THREE.Mesh(shieldBubbleGeometry(), mat);
   bubble.name = 'Ship_Shield_Bubble';
-  bubble.scale.setScalar(radius * 1.5);
+  bubble.scale.setScalar(radius);
   bubble.frustumCulled = false;
   bubble.visible = false;
   bubble.renderOrder = 2;
@@ -572,8 +572,8 @@ export function mergeStaticByMaterial(parent, keepSeparate) {
 
 // ---------------------------------------------------------------------------------------------
 // DRIVE — a reusable engine assembly: housing + bright nozzle ring + spinning turbine fan +
-// hot core + additive plume + soft halo. The fan/core/plume get an onBeforeRender micro-motion
-// driver (speed-reactive) wired by finalizeShip. driveColor drives nozzle+plume tint.
+// hot core + additive plume + soft halo. The fan/core/plume get a presentation-frame
+// micro-motion driver (speed-reactive) wired by finalizeShip. driveColor drives nozzle+plume tint.
 // ---------------------------------------------------------------------------------------------
 export function buildDrive(parent, opts) {
   const {
@@ -637,29 +637,33 @@ export function finalizeShip(options) {
   attachLodState(root);
 
   // ---- drive micro-motion: fan spins + core pulses + plume scales with speed. Restrained and
-  //      state-linked — the drive responds to actual speed, no ornamental animation.
+  //      state-linked - the drive responds to actual speed, no ornamental animation.
+  //      Updated from the renderer's presentation pass so it runs once per frame, independent of
+  //      post-processing render passes.
   if (driveParts) {
     const { fan, driveCore, plume, plumeMat, basePlumeOpacity, flicker } = driveParts;
     const driveCorePose = captureDrivePose(driveCore);
     const plumePose = captureDrivePose(plume);
     if (fan) {
-      fan.frustumCulled = false;
-      fan.onBeforeRender = () => {
-        const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
-        const vx = entity && entity.vel && Number.isFinite(entity.vel.x) ? entity.vel.x : 0;
-        const vz = entity && entity.vel && Number.isFinite(entity.vel.z) ? entity.vel.z : 0;
+      root.userData.updateDriveState = function updateDriveState(liveEntity, now) {
+        const t = Number.isFinite(now)
+          ? now
+          : (typeof performance !== 'undefined' ? performance.now() * 0.001 : 0);
+        const src = liveEntity || entity;
+        const vx = src && src.vel && Number.isFinite(src.vel.x) ? src.vel.x : 0;
+        const vz = src && src.vel && Number.isFinite(src.vel.z) ? src.vel.z : 0;
         const speed = Math.hypot(vx, vz);
         const drive = Math.min(1, speed / 135);
-        fan.rotation.x = now * (1.5 + drive * 8.0);
-        const pulse = 1 + Math.sin(now * 9.0) * (0.025 + drive * 0.025);
+        fan.rotation.x = t * (1.5 + drive * 8.0);
+        const pulse = 1 + Math.sin(t * 9.0) * (0.025 + drive * 0.025);
         if (driveCore) applyDrivePoseScale(driveCore, driveCorePose, pulse * (0.92 + drive * 0.16));
         if (plume) {
-          const flick = flicker ? (0.85 + Math.sin(now * 17.3) * 0.1 + Math.sin(now * 31.7) * 0.05) : 1;
+          const flick = flicker ? (0.85 + Math.sin(t * 17.3) * 0.1 + Math.sin(t * 31.7) * 0.05) : 1;
           applyDrivePoseScale(plume, plumePose,
-            (0.88 + drive * 0.40 + Math.sin(now * 7.0) * 0.025) * flick,
+            (0.88 + drive * 0.40 + Math.sin(t * 7.0) * 0.025) * flick,
             { lockForwardEdgeX: true });
         }
-        if (plumeMat) plumeMat.opacity = (0.30 + drive * 0.35) * (flicker ? (0.8 + Math.sin(now * 13.0) * 0.15) : 1);
+        if (plumeMat) plumeMat.opacity = (0.30 + drive * 0.35) * (flicker ? (0.8 + Math.sin(t * 13.0) * 0.15) : 1);
       };
     }
   }

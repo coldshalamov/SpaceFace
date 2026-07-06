@@ -263,7 +263,7 @@ function checkRoleModules() {
     mod_ram_plate: { ramSelfDamageMult: 0.40, ramDamageDealtMult: 1.80 },
     mod_winch_hd: { tetherReelRateMult: 1.80, tetherBreakMult: 1.25 },
     mod_charge_rack: { impulseChargeCapacity: 8 },
-    mod_drill_amp: { ventBonusWindowHeat: 6, richCoreRingPctBonus: 0.04 },
+    mod_drill_amp: { richCoreRingPctBonus: 0.04 },
     mod_survey_suite: { scannerRadiusMult: 1.50, pingPersistMult: 2.00 },
     mod_smuggler_hold: { hiddenCargoPct: 0.20 },
   };

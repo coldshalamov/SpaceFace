@@ -110,6 +110,8 @@ async function build() {
     if (existsSync(join(ROOT, 'assets', 'cinematics'))) await copyDir(join(ROOT, 'assets', 'cinematics'), join(OUT, 'assets', 'cinematics'));
     if (existsSync(join(ROOT, 'assets', 'ui'))) await copyDir(join(ROOT, 'assets', 'ui'), join(OUT, 'assets', 'ui'));
     if (existsSync(join(ROOT, 'assets', 'ships'))) await copyDir(join(ROOT, 'assets', 'ships'), join(OUT, 'assets', 'ships'));
+    if (existsSync(join(ROOT, 'assets', 'portraits'))) await copyDir(join(ROOT, 'assets', 'portraits'), join(OUT, 'assets', 'portraits'));
+    if (existsSync(join(ROOT, 'assets', 'portraits'))) await copyDir(join(ROOT, 'assets', 'portraits'), join(OUT, 'assets', 'portraits'));
   }
   // Scenario contracts are fetched by URL at runtime so designers can inspect the exact authored
   // JSON that powered a run. They are not part of the JS graph, so esbuild will not copy them.

@@ -217,4 +217,37 @@ function simulate({ profile, b, input, ticks, runtime }) {
   assert.equal(routes[0].grossProfit, 150);
 }
 
+// 12. Assisted speed governor: held throttle settles at combatSpeed instead of growing forever.
+{
+  const profile = PROPULSION_PROFILES.drive_reaction_s;
+  const b = body();
+  simulate({ profile, b, input: { throttle: 1, assistMode: 'assisted' }, ticks: 1800 }); // 30 s
+  const speed = Math.hypot(b.vel.x, b.vel.z);
+  assert.ok(speed > profile.combatSpeed * 0.9 && speed < profile.combatSpeed * 1.05,
+    `assisted held throttle should settle at combatSpeed (got ${speed.toFixed(1)} vs ${profile.combatSpeed})`);
+}
+
+// 12b. Boost raises the governed cap; drift mode stays ungoverned for slingshot play.
+{
+  const profile = PROPULSION_PROFILES.drive_reaction_s;
+  const bBoost = body();
+  simulate({ profile, b: bBoost, input: { throttle: 1, boost: true, assistMode: 'assisted' }, ticks: 1800 });
+  const boostSpeed = Math.hypot(bBoost.vel.x, bBoost.vel.z);
+  assert.ok(boostSpeed > profile.combatSpeed * 1.2, 'boost should exceed the un-boosted governed cap');
+  assert.ok(boostSpeed < profile.combatSpeed * profile.boostSpeedMult * 1.05, 'boosted speed still governed');
+  const bDrift = body();
+  simulate({ profile, b: bDrift, input: { throttle: 1, assistMode: 'drift' }, ticks: 1800 });
+  const driftSpeed = Math.hypot(bDrift.vel.x, bDrift.vel.z);
+  assert.ok(driftSpeed > profile.combatSpeed * 1.5, 'drift throttle must stay ungoverned (trick mode)');
+}
+
+// 12c. Overspeed with throttle held converges gently — slingshot speed is spent, not confiscated.
+{
+  const profile = PROPULSION_PROFILES.drive_reaction_s;
+  const b = body({ vel: { x: 400, z: 0 } });
+  simulate({ profile, b, input: { throttle: 1, assistMode: 'assisted' }, ticks: 60 }); // 1 s
+  assert.ok(b.vel.x < 400, 'overspeed under held throttle should decay toward the cap');
+  assert.ok(b.vel.x > 380, 'but gently — capped at overspeedBrakeFraction of reverse authority');
+}
+
 console.log('SpaceFace Flight V3 generated checks: PASS');
