@@ -41,13 +41,13 @@
 | id | task | files | status | branch | depends-on | next |
 |---|---|---|---|---|---|---|
 | T2a | Move stale `design/ARCHITECTURE.md` (3.5KB handoff) → `design/_ARCHIVE/` (collides with root `ARCHITECTURE.md`) | `design/ARCHITECTURE.md` → `design/_ARCHIVE/handoff_architecture.md` | DONE 2026-07-06 | — | file moved via `git mv`; refs updated in `AGENTS.md:82`, `design/AGENTS.md:9`, `docs/MODULE_MAP.md:262`; root `ARCHITECTURE.md` (920 lines) intact | — |
-| T2b | Mark `design/adr/0003-flight-physics-controller.md` SUPERSEDED (V3+rapier mandatory; it says "optional") | `design/adr/0003-flight-physics-controller.md` | NEXT | — | T2a | — |
-| T2c | Mark `design/FLIGHT_PHYSICS_SPEC.md` legacy (point to SPEC3-F3) | `design/FLIGHT_PHYSICS_SPEC.md` | NEXT | — | — | — |
-| T2d | Fix `design/BUILD_PLAN_2_0.md §42` ownership line → `flightV3.js` + `src/core/flight/*` | `design/BUILD_PLAN_2_0.md` | NEXT | — | — | — |
-| T2e | Fix `README.md §87` → add spec3 + AGENTS.md front-door pointer | `README.md` | NEXT | — | — | — |
-| T2f | Fix `design/CURRENT_BUILD_STATUS.md` line 54 (encounterDirector NOT missing) + line 41 (check-cruise EXISTS) | `design/CURRENT_BUILD_STATUS.md` | NEXT | — | — | — |
-| T2g | Fix `AGENTS.md §5` "zero importers" wording for flight.js/ai.js (CI-live/runtime-fallback, load-bearing) | `AGENTS.md` | NEXT | — | — | — |
-| T2h | Add `Status: LEGACY` headers to loose drift docs (SKILLS/STATION_MARKET/WORLD_OVERHAUL/GRAPHICS_*) | various `design/*.md` | NEXT | — | — | — |
+| T2b | Mark `design/adr/0003-flight-physics-controller.md` SUPERSEDED (V3+rapier mandatory; it says "optional") | `design/adr/0003-flight-physics-controller.md` | IN-FLIGHT | — | T2a | — |
+| T2c | Mark `design/FLIGHT_PHYSICS_SPEC.md` legacy (point to SPEC3-F3) | `design/FLIGHT_PHYSICS_SPEC.md` | IN-FLIGHT | — | — | — |
+| T2d | Fix `design/BUILD_PLAN_2_0.md §42` ownership line → `flightV3.js` + `src/core/flight/*` | `design/BUILD_PLAN_2_0.md` | IN-FLIGHT | — | — | — |
+| T2e | Fix `README.md §87` → add spec3 + AGENTS.md front-door pointer | `README.md` | IN-FLIGHT | — | — | — |
+| T2f | Fix `design/CURRENT_BUILD_STATUS.md` line 54 (encounterDirector NOT missing) + line 41 (check-cruise EXISTS) | `design/CURRENT_BUILD_STATUS.md` | IN-FLIGHT | — | — | — |
+| T2g | Fix `AGENTS.md §5` "zero importers" wording for flight.js/ai.js (CI-live/runtime-fallback, load-bearing) | `AGENTS.md` | IN-FLIGHT | — | — | — |
+| T2h | Add `Status: LEGACY` headers to loose drift docs (SKILLS/STATION_MARKET/WORLD_OVERHAUL/GRAPHICS_*) | various `design/*.md` | IN-FLIGHT | — | — | — |
 
 ## T3 — FINISH MASSLINE LADDER (Wave 2's unfinished rungs; `STATUS.md` confirms lane is free)
 
@@ -60,7 +60,7 @@
 | T3-02 | 02 | release-rated event | `tetherGameplay.js` | DONE-VALIDATED | — | `check:massline:release` | — | — |
 | T3-03 | 03 | release feedback | presentation layer | DONE-VALIDATED | — | `check:massline:release-feedback` | — | — |
 | T3-04 | 04 | `tether.load` field | `tetherGameplay.js`, `masslineTelemetry.js`, `vfx.js` | DONE 2026-07-06 | — | `npm run check:massline:load` PASS | T3-03 | T3-05 |
-| T3-05 | 05 | snap-catch | `masslineTelemetry.js` | NEXT | — | `check:massline:snapcatch` | T3-04 | T3-06 |
+| T3-05 | 05 | snap-catch | `masslineTelemetry.js` | IN-FLIGHT | — | `check:massline:snapcatch` | T3-04 | T3-06 |
 | T3-06 | 06 | reel-pump | `masslineTelemetry.js` | NEXT | — | `check:massline:reelpump` | T3-05 | T3-07 |
 | T3-07 | 07 | target-scoring (pure) | `combat/masslineTargetScoring.js` (new) | NEXT | — | `check:massline:target-scoring` | T3-06 | T3-08 |
 | T3-08 | 08 | auto-target wire | `combat/autoTargetMode.js` | NEXT | — | `check:massline:auto-target` | T3-07 | T3-09 |
