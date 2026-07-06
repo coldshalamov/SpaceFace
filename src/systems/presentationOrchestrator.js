@@ -53,6 +53,20 @@ export const presentationOrchestrator = {
         material: 'massline',
         magnitude: Math.max(1, Number(payload && payload.tension) || 0, Number(payload && payload.impulse) || 0),
       })),
+      // Rung 10 — massline threat feedback, the consume half of masslineThreats' rung-09 emit.
+      // One cue; severity (0..1) drives magnitude so adapters scale sting/warn intensity, and the
+      // threat kind rides the tags for downstream flavor. Sibling of tether.near_break above.
+      this.bus.on('massline:threat', (payload) => this._emitCue('massline.threat', payload || {}, {
+        sourceEvent: 'massline:threat',
+        targetId: payload && payload.targetId,
+        material: 'massline',
+        magnitude: Math.max(1, finiteScore(payload && payload.severity) * 100),
+        tags: ['threat', payload && payload.kind].filter(Boolean),
+      })),
+      // Prompt 03 — release-rated feedback. Classification tiers map to escalating cues; "messy"
+      // intentionally has no recipe, so _emitCue suppresses it (missing_recipe) and no
+      // presentation:cue is emitted. The releaseScore drives magnitude so adapters can scale.
+      this.bus.on('tether:releaseRated', (payload) => this._onReleaseRated(payload || {})),
       this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
       this.bus.on('combat:subsystemDisabled', (payload) => this._emitCue('subsystem.disabled', payload || {}, {
         sourceEvent: 'combat:subsystemDisabled',
@@ -114,6 +128,20 @@ export const presentationOrchestrator = {
       targetId: payload.targetId,
       material: 'shield',
       magnitude: Math.max(1, Number(payload.applied) || Number(payload.amount) || 0),
+    });
+  },
+
+  _onReleaseRated(payload) {
+    const cueId = RELEASE_CUE_BY_CLASSIFICATION[payload && payload.classification];
+    // "messy" maps to undefined → no recipe → _emitCue suppresses via missing_recipe, so messy
+    // releases get no premium feedback, exactly as Prompt 03 requires.
+    if (!cueId) return;
+    this._emitCue(cueId, payload, {
+      sourceEvent: 'tether:releaseRated',
+      targetId: payload && payload.targetId,
+      material: 'massline',
+      magnitude: Math.max(1, finiteScore(payload && payload.releaseScore) * 100),
+      tags: ['release', payload && payload.classification],
     });
   },
 
@@ -211,6 +239,18 @@ export const presentationOrchestrator = {
 function resolveActorEntityId(state, actorId) {
   const binding = state && state.scenario && state.scenario.actorBindings && state.scenario.actorBindings[actorId];
   return binding && binding.entityId != null ? binding.entityId : null;
+}
+
+// Prompt 03 — release classification → presentation cue. "messy" is deliberately absent so the
+// orchestrator emits no cue for messy releases (no premium feedback).
+const RELEASE_CUE_BY_CLASSIFICATION = Object.freeze({
+  good: 'tether.release.good',
+  clean: 'tether.release.clean',
+  razor: 'tether.release.razor',
+});
+
+function finiteScore(value) {
+  return Number.isFinite(value) ? value : 0;
 }
 
 function mergeTags(...groups) {

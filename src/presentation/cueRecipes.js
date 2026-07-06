@@ -40,6 +40,24 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { cameraTrauma: 0.08, particles: 24, voices: 2, uiPulses: 1 },
     tags: ['critical', 'tether', 'warning'],
   }),
+  // Rung 10 — massline threat feedback (consumes masslineThreats' rung-09 massline:threat emit).
+  // One recipe for all three threat kinds (line-near-break / hostile-on-arc / collision-course);
+  // severity rides the cue magnitude so the audio sting + HUD warn scale, and the kind rides the
+  // tags. HUD read stays clean non-diegetic (a plain warn pulse — no visor/cockpit motifs).
+  'massline.threat': recipe({
+    importance: 0.74,
+    dedupeWindowTicks: 12,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.threat_composition',
+      vfx: 'vfx.massline_threat',
+      audio: 'audio.massline_threat',
+      ui: 'ui.threat_warning',
+      accessibility: 'accessibility.directional_warning',
+    },
+    budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
+    tags: ['critical', 'tether', 'threat'],
+  }),
   'tether.break': recipe({
     importance: 0.92,
     dedupeWindowTicks: 10,
@@ -53,6 +71,53 @@ export const PRESENTATION_RECIPES = Object.freeze({
     },
     budgets: { cameraTrauma: 0.22, particles: 96, voices: 3, uiPulses: 1 },
     tags: ['critical', 'tether', 'break'],
+  }),
+  // Prompt 03 — release-rated feedback. Classification tiers map to escalating cues; "messy"
+  // has no recipe on purpose so the orchestrator suppresses it (missing_recipe) and emits no
+  // presentation:cue, leaving messy releases with no premium feedback. Camera trauma lives on the
+  // reduced-motion-safe presentation:cameraCue path (presentationAdapters dampens it under
+  // motionReduce), so these stay accessibility-safe even at the razor tier.
+  'tether.release.good': recipe({
+    importance: 0.5,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_release',
+      vfx: 'vfx.tether_release',
+      audio: 'audio.tether_release',
+      ui: 'ui.tether_release',
+      accessibility: 'accessibility.release_caption',
+    },
+    budgets: { cameraTrauma: 0.04, particles: 12, voices: 1, uiPulses: 1 },
+    tags: ['tether', 'release', 'good'],
+  }),
+  'tether.release.clean': recipe({
+    importance: 0.72,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_release',
+      vfx: 'vfx.tether_release',
+      audio: 'audio.tether_release',
+      ui: 'ui.tether_release',
+      accessibility: 'accessibility.release_caption',
+    },
+    budgets: { cameraTrauma: 0.09, particles: 28, voices: 1, uiPulses: 1 },
+    tags: ['tether', 'release', 'clean'],
+  }),
+  'tether.release.razor': recipe({
+    importance: 0.9,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_release',
+      vfx: 'vfx.tether_release',
+      audio: 'audio.tether_release',
+      ui: 'ui.tether_release',
+      accessibility: 'accessibility.release_caption',
+    },
+    budgets: { cameraTrauma: 0.16, particles: 56, voices: 2, uiPulses: 1 },
+    tags: ['tether', 'release', 'razor'],
   }),
   'shield.collapse': recipe({
     importance: 0.84,
