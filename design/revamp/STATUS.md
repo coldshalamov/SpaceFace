@@ -168,3 +168,23 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   A/B-verified byte-identical with masslineThreats unregistered. Pre-existing (not ours):
   `check-phase0-slice-contract` red on `stationHub.js:1226` Math.random site (committed 7/5 state,
   zero working diff). Next: **T3-13 (whip-impact detect) — Chunk B, whip+impulse**.
+
+### T3-13 whip-impact detect (rung 13) — DONE (2026-07-06)
+- NEW observer `src/systems/masslineImpacts.js`, registered immediately after `masslineThreats`
+  (registry SYSTEMS + UPDATE_ORDER + rationale comment). The whip verb belongs to the MASS: the
+  tether target — latched, or coasting ≤ 6 s post-release (sling window, armed only if it left the
+  line ≥ 25 wu/s) — contacting a solid body (asteroid/ship/station/drone; never the player, never
+  itself) with world speed ≥ 25 wu/s AND relative contact speed ≥ 25 wu/s (the SNAP_CATCH
+  "genuinely moving" bar). Contact = padded-radius overlap OR one-tick swept crossing (no
+  tunneling). Once per victim per run; a new latch re-arms; a relatch onto the sling-tracked mass
+  resumes the same run. Writes ONLY `state.player.masslineImpacts` {tracking, slung, massId,
+  impacts[cap 12], latest}; records PERSIST post-run (the rung-20 debris-sling proof reads them
+  after the fact); single emit `tether:whipImpact` {targetId=mass, victimId, relSpeed, massSpeed,
+  mass, momentum, slung, severity, rating glance/solid/crushing, tick, time} — momentum is the
+  rung-14 damage read.
+- `check:massline:whip-impact` PASS (10 cases: latched full-record, slow-contact gate, parked-tow
+  gate, once-per-victim + relatch re-arm, slung end-to-end, window expiry, static release,
+  no-tether, player-never-victim, observer-only); 4 break-controls red (relSpeed gate, per-victim
+  throttle, sling arming, world-speed gate). No-regression: all 12 prior `check:massline:*` +
+  `check-tether-gameplay` green; `check:sim:compare` fails ONLY on the documented 47-A
+  projectile-collision precondition (identical to `_BASELINE.md`). Next: **T3-14 (whip feedback)**.

@@ -68,7 +68,7 @@
 | T3-10 | 10 | threat feedback | presentation layer | DONE 2026-07-06 | — | `npm run check:massline:threat-feedback` PASS | T3-09 | T3-11 |
 | T3-11 | 11 | arc-preview data | `masslineTelemetry.js` | DONE 2026-07-06 | — | `npm run check:massline:arc-data` PASS | T3-10 | T3-12 |
 | T3-12 | 12 | arc-preview render | `vfx.js` | DONE 2026-07-06 | — | `npm run check:massline:arc-render` PASS | T3-11 | T3-13 |
-| T3-13 | 13 | whip-impact detect | `masslineImpacts.js` (new) or `masslineTelemetry.js` | IN-FLIGHT | — | `check:massline:whip-impact` | T3-12 | T3-14 |
+| T3-13 | 13 | whip-impact detect | `masslineImpacts.js` (new), `registry.js` | DONE 2026-07-06 | — | `npm run check:massline:whip-impact` PASS | T3-12 | T3-14 |
 | T3-14 | 14 | whip feedback (+opt damage) | presentation + `combat.js` | NEXT | — | `check:massline:whip-feedback` | T3-13 | T3-15 |
 | T3-15 | 15 | impulse authority helper | `impulseCharges.js` | NEXT | — | `check:impulse:authority` | T3-14 | T3-16 |
 | T3-16 | 16 | impulse+massline combos | `impulseCharges.js` | NEXT | — | `check:impulse:massline-combos` | T3-15 | T3-17 |
