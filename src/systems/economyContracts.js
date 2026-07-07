@@ -30,7 +30,7 @@ import { FACTION_META } from '../data/factions.js';
 import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorSignalFor, effectiveDangerTierFor } from './sectorSim.js';
-import { selectEconContract, fillCause, SCARCITY_PAY_SCALE } from '../data/economyContractTemplates.js';
+import { selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS } from '../data/economyContractTemplates.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -153,7 +153,14 @@ export const economyContracts = {
     let destStationId = info.id;
     let destSectorId = info.sectorId;
     let cmdtyId = null;
-    if (selected.template.key === 'scarcity_fuel_run') {
+    if (selected.template.key === 'blockade_relief') {
+      // BP-12 BLOCKADE_RELIEF: relief cargo (medical/food/fuel) INTO the besieged station. The
+      // destination is the station itself (the player picks the cargo up at a neighbor and runs it
+      // in past the interdiction). Seeded pick from the relief pool.
+      cmdtyId = BLOCKADE_RELIEF_CMDTYS[Math.floor(rng() * BLOCKADE_RELIEF_CMDTYS.length)];
+      destStationId = info.id; // relief runs INTO the besieged station
+      destSectorId = info.sectorId;
+    } else if (selected.template.key === 'scarcity_fuel_run') {
       cmdtyId = FUEL_CMDTY; // the fuel run: bring fuel IN to the scarce station
     } else if (selected.template.key === 'surplus_haul_out') {
       cmdtyId = LEGAL_TRADE_CMDTYS[Math.floor(rng() * LEGAL_TRADE_CMDTYS.length)] || FUEL_CMDTY;
@@ -209,10 +216,14 @@ export const economyContracts = {
     const fDist = 1 + distance / (cfg.distDivisor || 2000);
     const fRisk = (cfg.RISK_MULT && cfg.RISK_MULT[riskTier]) || 1;
     // Scarcity premium scales with the modeled pressure (never a constant): +0% at the 0.25
-    // threshold up to ~+105% at full pressure. Other templates pay the standard family.
+    // threshold up to ~+105% at full pressure. BP-12 BLOCKADE_RELIEF pays the war-profiteer premium
+    // (BLOCKADE_PAY_SCALE) on the LIVE scarcity — the relief run's pay must read the field, not a
+    // constant (the packet's named failureMode). Other templates pay the standard family.
     const fField = selected.template.key === 'scarcity_fuel_run'
       ? 1 + Math.max(0, local.pricePressure) * SCARCITY_PAY_SCALE
-      : 1;
+      : selected.template.key === 'blockade_relief'
+        ? 1 + Math.max(0, local.pricePressure) * BLOCKADE_PAY_SCALE
+        : 1;
     const reward_cr = round(base * fDist * fRisk * params.fValue * fField);
     const travel = distance / (cfg.cruiseSpeedRef || 140);
     const time_limit_s = round((travel + params.taskTime) * (cfg.slackDefault || 2.2));
@@ -246,6 +257,10 @@ export const economyContracts = {
   _titleFor(typeId, templateKey, params, info, destStationId, commodity) {
     const destName = (STATION_INFO.get(destStationId) || info).name;
     switch (templateKey) {
+      case 'blockade_relief':
+        // Headline names the blockade cause — the offer card and the headline AGREE (same driver:
+        // infrastructure_disruption). The relief run is war-priced because the field is starving.
+        return `Blockade relief: run ${params.qty}u ${commodity} into ${destName} (infrastructure disrupted)`;
       case 'scarcity_fuel_run':
         return `Scarcity run: ${params.qty}u ${commodity} to ${destName} (route scarcity)`;
       case 'surplus_haul_out':

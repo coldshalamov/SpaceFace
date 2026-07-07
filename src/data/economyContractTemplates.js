@@ -25,10 +25,25 @@ export const ECON_CONTRACT_THRESHOLDS = Object.freeze({
   surplusPressure: -0.12,   // pricePressure below → surplus haul-out (kernel's route_surplus band)
   dangerTrendRising: 0.0015, // trend.danger above (kernel's own rising band) → escort/patrol
   dangerFloor: 0.45,        // rising danger must also be materially dangerous before we sell escorts
+  // BP-12 BLOCKADE_RELIEF: infrastructure_disruption + scarcity this severe → a relief run. Above
+  // the plain scarcity band so a relief run only posts when a station is genuinely besieged, and high
+  // enough that the relief template beats station_loss_salvage (the field is BOTH disrupted AND starving).
+  blockadeScarcity: 0.45,
 });
 
 /** Scarcity pay scales with the LIVE modeled pressure (never a constant — the field sets the pay). */
 export const SCARCITY_PAY_SCALE = 1.4;
+
+/**
+ * BP-12 BLOCKADE_RELIEF_CONTRACTS: relief-run pay scales with the LIVE modeled scarcity (never a
+ * constant — the failureMode is a payout untethered from the field). +0% at the blockade threshold
+ * up to ~+140% at full pressure. Higher than SCARCITY_PAY_SCALE because running a blockade is the
+ * war-profiteer premium.
+ */
+export const BLOCKADE_PAY_SCALE = 2.0;
+
+/** BP-12 BLOCKADE_RELIEF: the commodities a besieged station is starving for (relief cargo pool). */
+export const BLOCKADE_RELIEF_CMDTYS = Object.freeze(['cmdty_medical', 'cmdty_food', 'cmdty_fuel_cells']);
 
 /**
  * The template bank, in authored priority order (used as the deterministic tie-break).
@@ -40,6 +55,26 @@ export const SCARCITY_PAY_SCALE = 1.4;
  *   cause     — prose template naming the commodity + the cause ({commodity}/{sector}/{station})
  */
 export const ECON_CONTRACT_TEMPLATES = Object.freeze([
+  // ── BP-12 BLOCKADE_RELIEF_CONTRACTS — first so it wins the authored-order tie-break when a
+  // sector is BOTH infrastructure-disrupted AND deeply scarce (the besieged-station condition).
+  // The relief run is a cargo_delivery whose pay scales with the LIVE scarcity and whose card names
+  // the blockade cause. The danger tag is real: the field is disrupted, so the escort/patrol template
+  // fires alongside on the same driver (the escort leg is the existing patrol_clear/escort path). ──
+  Object.freeze({
+    key: 'blockade_relief',
+    offerType: 'cargo_delivery',
+    causeAxis: 'pricePressure',
+    appliesTag: 'infrastructure_disruption',
+    strength(signal) {
+      const disrupted = signal.driver.pricePressure === 'infrastructure_disruption'
+        || signal.driver.danger === 'infrastructure_disruption';
+      // Only fires when the station is BOTH disrupted AND starving past the blockade threshold — a
+      // disrupted-but-fed station posts salvage (station_loss_salvage), not a relief run.
+      const starving = signal.pricePressure > ECON_CONTRACT_THRESHOLDS.blockadeScarcity;
+      return (disrupted && starving) ? 4 + signal.pricePressure : 0;
+    },
+    cause: '{station} is besieged — blockade has {commodity} running dry. Run relief cargo in past the interdiction and the station pays war-prices to keep breathing.',
+  }),
   Object.freeze({
     key: 'station_loss_salvage',
     offerType: 'salvage_retrieval',

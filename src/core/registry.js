@@ -58,7 +58,18 @@ import { dangerGradient } from '../ui/dangerGradient.js';              // A9: da
 // BP-12 Causal Economy (Wave 3, design/revamp/detail/E_salvage_economy_contracts.md) — SYSTEMS-only
 // read layers over the shipped dangerModel/sectorSim field ("no economy change without cause").
 import { causeLedger } from '../ui/causeLedger.js';                    // E: "why prices changed" tooltip over the live driver tags (voice:none)
-import { economyContracts } from '../systems/economyContracts.js';     // E: field-born contract offers (emit-only mission:offered; ≤1 per station-epoch)
+// BP-12 remaining 7 packets — SYSTEMS-only surfacing + enrich modules (event-driven; no update;
+// DOM fully guarded; voice via ctx.helpers.voice; emit-only — single-writer honored).
+import { customsPrompt } from '../ui/customsPrompt.js';                // CUSTOMS_MOMENT: scan decision panel (submit/bribe/run) over the shipped runScan
+import { cargoConscience } from '../ui/cargoConscience.js';            // CARGO_REPUTATION_GLYPH: hold moral-color lean glyph (read-only)
+import { securityReadoutSystem } from '../ui/securityReadout.js';      // SECURITY_RESPONSE_READ: "patrols responding" map line over driver.danger
+import { priceForecastSystem } from '../ui/priceForecast.js';          // PRICE_FORECAST_CONE: rising/falling map arrow over trend.pricePressure
+import { contractClausesSystem } from '../systems/contractClauses.js'; // COLLATERAL_AND_CLAUSES: clause breach → contract:clauseBroken (one penalty path)
+import { moralTrapSystem } from '../systems/moralTrap.js';             // MORAL_TRAP_CONTRACTS: mid-run reveal + binary choice → distinct shipped consequences
+import { lossLedger } from '../systems/lossLedger.js';                 // BP-01.1 WRECK_PROVENANCE: event-sourced loss recorder (assetLost/outpostRaided → ring buffer + wreck tag)
+import { lossInvestigation } from '../systems/lossInvestigation.js';   // CONVOY_LOSS_INVESTIGATION: loss-ledger provenance overlay on salvage communicator offers
+import { salvageActions } from '../systems/salvageActions.js';         // SALVAGE_DISTINCT_FROM_MINING: wreck verb readouts + unstable reactor counterplay
+import { survivorPod } from '../systems/survivorPod.js';               // SURVIVOR_POD_TRIAGE: wm_survivor_pod rescue/strip backend over salvage communicators
 import { stationSideEventDirector } from '../systems/stationSideEventDirector.js'; // A6: seeded station side-events director (spawnBudget client)
 import { gateControlDirector } from '../systems/gateControlDirector.js';          // A8: seeded gate traffic-control director (toll via economy:chargeCredits)
 import { render } from '../render/renderer.js';
@@ -77,7 +88,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, voiceArbiter, input, autoTargetAssist, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, economy,
-    automation, wingmen, intervention, spawnBudget, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, dangerGradient, causeLedger, economyContracts, render, vfx, feel, audio, ui, save,
+    automation, wingmen, intervention, lossLedger, spawnBudget, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -98,7 +109,7 @@ export function createRegistry(ctx) {
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
     input, autoTargetAssist, scanner, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, automation, wingmen, crafting,
-    economy, intervention, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
+    economy, intervention, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own

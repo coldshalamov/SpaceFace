@@ -113,7 +113,11 @@ function testTemplateSelectionKeyedToDriver() {
   // Below the acceptance threshold, scarcity does not fire even with the tag present.
   assert.equal(selectEconContract(fieldNode({ pricePressure: 0.2, priceTag: 'route_scarcity' })), null,
     'route_scarcity below 0.25 pressure → no offer');
-  assert.ok(ECON_CONTRACT_TEMPLATES.length === 5, 'the five spec arrows, no more');
+  const keys = ECON_CONTRACT_TEMPLATES.map((t) => t.key);
+  const baseKeys = ['scarcity_fuel_run', 'surplus_haul_out', 'reach_bounty', 'station_loss_salvage', 'rising_danger_escort'];
+  for (const key of baseKeys) assert.ok(keys.includes(key), `base spec arrow remains present: ${key}`);
+  assert.deepEqual(keys.filter((key) => !baseKeys.includes(key)), ['blockade_relief'],
+    'only the BP-12 blockade relief extension is allowed beyond the five base arrows');
 }
 
 // ── 2. docking a scarce sector emits EXACTLY ONE offer naming commodity + cause ────────────────

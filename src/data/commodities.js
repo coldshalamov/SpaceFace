@@ -2,6 +2,8 @@
 // 43 cmdty_* IDs per ARCHITECTURE §3.6.1. Balance data only; flavor merged from commodityFlavor.js.
 import { COMMODITY_FLAVOR } from './commodityFlavor.js';
 export { COMMODITY_FLAVOR } from './commodityFlavor.js';
+import { COMMODITY_MORAL_TAGS } from './commodityMoralTags.js'; // BP-12 CARGO_REPUTATION_GLYPH addendum
+export { COMMODITY_MORAL_TAGS, MORAL_TAGS } from './commodityMoralTags.js';
 // basePrice (cr/u): price at equilibrium stock. volatility: event amplitude.
 // elasticity: price curve steepness. legality: 'legal'|'restricted'|'contraband'.
 // volPerU / massPerU: hold footprint. producedBy/consumedBy: station-type roles.
@@ -69,6 +71,7 @@ export const COMMODITIES = [
   // --- SALVAGE ---
   { id: 'cmdty_scrap_metal',        name: 'Scrap Metal',           category: 'salvage',   basePrice: 8,   volatility: 0.18, elasticity: 0.30, legality: 'legal',      volPerU: 1.0, massPerU: 0.9, fineMult: 0,   producedBy: ['mining'],                         consumedBy: ['refinery','fab'] },
   { id: 'cmdty_salvage_electronics',name: 'Salvage Electronics',   category: 'salvage',   basePrice: 55,  volatility: 0.25, elasticity: 0.40, legality: 'legal',      volPerU: 0.6, massPerU: 0.4, fineMult: 0,   producedBy: ['mining'],                         consumedBy: ['fab','military'] },
+  { id: 'cmdty_classified_salvage', name: 'Classified Salvage',    category: 'salvage',   basePrice: 90,  volatility: 0.35, elasticity: 0.45, legality: 'restricted', volPerU: 0.6, massPerU: 0.4, fineMult: 0.8, producedBy: ['blackmarket'],                    consumedBy: ['military','blackmarket','fab'] },
 
   // --- CONTRABAND ---
   { id: 'cmdty_narcotics',          name: 'Narcotics',             category: 'contraband',basePrice: 220, volatility: 0.55, elasticity: 0.60, legality: 'contraband', volPerU: 0.6, massPerU: 0.2, fineMult: 1.2, producedBy: ['blackmarket'],                    consumedBy: ['blackmarket'] },
@@ -85,4 +88,11 @@ for (const cmdty of COMMODITIES) {
   const flavor = COMMODITY_FLAVOR[cmdty.id];
   if (!flavor) continue;
   Object.assign(cmdty, flavor);
+}
+
+// BP-12 CARGO_REPUTATION_GLYPH: merge the moralTag addendum onto each record (one source of truth,
+// same merge pattern as COMMODITY_FLAVOR above). moralTag is OPTIONAL — neutral cargo has none.
+for (const cmdty of COMMODITIES) {
+  const tag = COMMODITY_MORAL_TAGS[cmdty.id];
+  if (tag) cmdty.moralTag = tag;
 }
