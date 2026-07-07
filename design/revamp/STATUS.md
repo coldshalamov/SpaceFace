@@ -748,3 +748,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Related gates: `check:release-soak` PASS, `check:encounter-director` PASS,
   `check:one-voice` PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the
   documented 47-A projectile-collision precondition.
+
+### T3-17 MINING_BULK_GUIDANCE — claim (2026-07-07)
+- Claimed on `master` for backend/system surfacing only. The detail packet is
+  `design/revamp/detail/D_flight_ships_mining.md` TOW-THE-CHUNK: ship the guarded
+  `src/ui/prompts/bulkHaulTag.js` event-driven tag/check surface over already-shipped
+  `mining:bulkRequiresTether`, `BULK_HAUL_MIN_U`, `bulkHaulPayoutForChunk`, and refinery delivery.
+- Scope guard: do not edit lead-owned `src/ui/hud.js`; register the prompt as an additive SYSTEMS-only
+  module, DOM-guarded/headless-clean. Acceptance check: `npm run check:mining:bulk-guidance`, with a
+  non-vacuous break/restore control proving the threshold/tag assertion has teeth.
