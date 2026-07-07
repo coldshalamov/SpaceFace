@@ -518,3 +518,23 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition.
   Next backend row: **T4d-11 B16 BOUNTY_HUNTER_NEUTRALITY**.
+
+### T4d-11 B16 BOUNTY_HUNTER_NEUTRALITY — NPC quarry contracts — DONE (2026-07-07)
+- NEW `src/data/bountyHunters.js` and `src/systems/bountyHunt.js`. Contract hunters now carry a
+  neutral scanner context (`bounty_contract`) while chasing an NPC quarry, avoiding the existing
+  force-hostile `bounty_hunter` scanner context until `contractTargetId === state.playerId`.
+- The `bountyHunt` system normalizes hunter AI each tick: NPC-target contracts set quarry pursuit
+  intent and stay scanner-neutral via shipped `isHostileToPlayer`; player-target contracts set
+  `forcePlayerTarget` + hostile team 0 and flip hostile.
+- Player interference is recorded deterministically: killing the quarry records
+  `player_helped_hunter`; killing the hunter records `player_defended_quarry`, with one
+  `bountyHunt:outcome` event per contract.
+- `check:bounty-hunter-neutrality` was added and `check:pirate-ecology` now aggregates B16. Red:
+  the check failed before `src/systems/bountyHunt.js` existed. Non-vacuous control: changing the
+  neutral context to `bounty_hunter` failed the scanner-hostility guard, then restore GREEN.
+- NoTouch honored: `scanner.js`, `encounterDirector.js`, and `combat.js` were not edited.
+- No-regression: `check:bounty-hunter-neutrality` PASS, `check:pirate-ecology` PASS,
+  `check:save-schema` PASS, `check:save-resume-confidence` PASS, `check-tether-gameplay.mjs`
+  PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition.
+  Next backend row: **T4d-12 B17 BOUNTY_HUNTER_SIGNATURE_TRICK**.
