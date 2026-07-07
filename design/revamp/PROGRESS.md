@@ -173,7 +173,7 @@
 | T8e | `check:station-mood` | BP-11 station life | DONE 2026-07-07 | T4a | T8h |
 | T8f | `check:claim-ledger` | BP-06 bases | NEXT | T4 | — |
 | T8g | `check:war-overlay` | faction war map | NEXT | T4 | — |
-| T8h | `check:market-chart` | BP-12 market viz | NEXT | T4b | — |
+| T8h | `check:market-chart` | BP-12 market viz | IN-FLIGHT 2026-07-07 | T4b | — |
 
 ## T9 — RELEASE-READINESS GATE (LAST — the §15 8-point bar)
 
