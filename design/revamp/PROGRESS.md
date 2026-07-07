@@ -32,7 +32,7 @@
 
 | id | task | files | status | branch | check | depends-on | next |
 |---|---|---|---|---|---|---|---|
-| T1a | `check-encounter-director.mjs` — verify `encounterDirector.js` determinism + budget + one-voice | `scripts/check-encounter-director.mjs` (new), `package.json` | NEXT | — | `npm run check:encounter-director` | — | T1b |
+| T1a | `check-encounter-director.mjs` — verify `encounterDirector.js` determinism + budget + one-voice | `scripts/check-encounter-director.mjs` (new), `package.json` | IN-FLIGHT 2026-07-07 | — | `npm run check:encounter-director` | — | T1b |
 | T1b | `check-one-voice.mjs` — verify `voiceArbiter.js` (no overlap 10-min; migrate legacy-toast stragglers) | `scripts/check-one-voice.mjs` (new), `package.json`, possibly 1-2 `src/` toast callers | NEXT | — | `npm run check:one-voice` | T1a | T1c |
 | T1c | `check-release-soak.mjs` — 30-min soak within budget, no drift/leaks/untelegraphed spawns | `scripts/check-release-soak.mjs` (new), `package.json` | NEXT | — | `npm run check:release-soak` | T1a | — |
 
