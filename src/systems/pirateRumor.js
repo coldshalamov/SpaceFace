@@ -4,6 +4,7 @@
 // traffic deaths. It never spawns and never writes economy state.
 import { pickVariant } from '../ui/marketNews.js';
 import { zoneAt, zonesForSector } from '../data/sectorZones.js';
+import { hash32 } from '../core/rng.js';
 
 export const PIRATE_RUMOR_THRESHOLD = 3;
 export const PIRATE_RUMOR_DECAY_PER_S = 0.003;
@@ -13,6 +14,7 @@ export const ROUTE_DANGER_MIN = -0.6;
 export const ROUTE_DANGER_CLEAR_DELTA = -0.35;
 export const ROUTE_DANGER_IGNORED_DELTA = 0.2;
 export const ROUTE_CONVOY_CLEAR_DELTA = 0.35;
+export const PIRATE_BASE_CANDIDATE_EVENTS = 6;
 const PIRATE_RUMOR_COOLDOWN_S = 300;
 const ROUTE_FEEDBACK_DURATION_S = 900;
 const ROUTE_FEEDBACK_NEWS_COOLDOWN_S = 300;
@@ -26,6 +28,7 @@ const PIRATE_ENCOUNTER_KINDS = new Set([
 ]);
 
 const CIVILIAN_TRAFFIC_ROLES = new Set(['hauler', 'courier', 'miner', 'rescue', 'trader']);
+const PIRATE_BASE_VECTOR_KINDS = new Set(['ambush_snare', 'pirate_toll', 'named_hunter']);
 
 const HEADLINES = Object.freeze([
   'Station boards warn: {count} ships vanished near {zone}.',
@@ -99,6 +102,7 @@ export const pirateRumor = {
       amount: 1,
       source: 'encounter',
       detail: payload.kind,
+      eventId: payload.encounterId || `${payload.kind}:${payload.zoneId || 'zone'}:${this.state && this.state.simTime || 0}`,
       count: payload.count || 1,
     });
   },
@@ -138,7 +142,7 @@ export const pirateRumor = {
     });
   },
 
-  _addHeat({ sectorId, zone, amount, source, detail, count }) {
+  _addHeat({ sectorId, zone, amount, source, detail, eventId, count }) {
     const own = ensureRumorState(this.state);
     const key = rumorKey(sectorId, zone.id);
     const rec = own.zones[key] || (own.zones[key] = freshZoneRecord(sectorId, zone));
@@ -153,6 +157,10 @@ export const pirateRumor = {
     rec.zoneType = zone.type || rec.zoneType || null;
     rec.sectorId = sectorId;
     rec.zoneId = zone.id;
+    if (source === 'encounter' && PIRATE_BASE_VECTOR_KINDS.has(detail)) {
+      rememberAmbushVector(rec, detail, eventId, now);
+      this._maybeMarkPirateBaseCandidate(rec, now);
+    }
     this._maybeSurface(key, rec, now);
     if (source === 'encounter') this._maybeRaiseRouteDanger(rec);
   },
@@ -208,6 +216,14 @@ export const pirateRumor = {
     rec.routeFeedbackUntil = now + ROUTE_FEEDBACK_DURATION_S;
     rec.lastRouteFeedbackReason = reason || null;
     this._emitRouteFeedbackNews(rec, reason, now);
+  },
+
+  _maybeMarkPirateBaseCandidate(rec, now) {
+    if (!rec || rec.pirateBaseCandidate || (rec.ambushEventCount | 0) < PIRATE_BASE_CANDIDATE_EVENTS) return;
+    const candidate = pirateBaseCandidateFromRecord(rec, this.state, now);
+    rec.pirateBaseCandidate = candidate;
+    emit(this.bus, 'pirateRumor:baseCandidate', clonePlain(candidate));
+    emit(this.bus, 'poi:candidate', clonePlain(candidate));
   },
 
   _emitRouteFeedbackNews(rec, reason, now) {
@@ -306,6 +322,24 @@ export function routeAdjustedTrafficMix(state, sectorId, zoneId, roleWeights) {
   return out;
 }
 
+export function pirateBaseCandidateForZone(state, sectorId, zoneId) {
+  const own = state && state.pirateRumor;
+  const rec = own && own.zones && own.zones[rumorKey(sectorId, zoneId)];
+  return rec && rec.pirateBaseCandidate ? clonePlain(rec.pirateBaseCandidate) : null;
+}
+
+export function pirateBaseCandidates(state, sectorId = null) {
+  const own = state && state.pirateRumor;
+  if (!own || !own.zones) return [];
+  const out = [];
+  for (const rec of Object.values(own.zones)) {
+    if (!rec || !rec.pirateBaseCandidate) continue;
+    if (sectorId && rec.sectorId !== sectorId) continue;
+    out.push(clonePlain(rec.pirateBaseCandidate));
+  }
+  return out.sort((a, b) => String(a.candidateId).localeCompare(String(b.candidateId)));
+}
+
 function freshState() {
   return { schemaVersion: SCHEMA_VERSION, zones: {}, lastRouteFeedbackPlanKey: null };
 }
@@ -339,6 +373,51 @@ function freshZoneRecord(sectorId, zone) {
     routeConvoy: 0,
     routeFeedbackUntil: 0,
     lastRouteFeedbackNewsAt: null,
+    ambushEventCount: 0,
+    ambushEventIds: [],
+    ambushEventKinds: [],
+    pirateBaseCandidate: null,
+  };
+}
+
+function rememberAmbushVector(rec, kind, eventId, now) {
+  rec.ambushEventCount = (rec.ambushEventCount | 0) + 1;
+  if (!Array.isArray(rec.ambushEventIds)) rec.ambushEventIds = [];
+  if (!Array.isArray(rec.ambushEventKinds)) rec.ambushEventKinds = [];
+  rec.ambushEventIds.push(String(eventId || `${kind}:${rec.ambushEventCount}`));
+  rec.ambushEventKinds.push(kind || 'unknown');
+  if (rec.ambushEventIds.length > 12) rec.ambushEventIds.splice(0, rec.ambushEventIds.length - 12);
+  if (rec.ambushEventKinds.length > 12) rec.ambushEventKinds.splice(0, rec.ambushEventKinds.length - 12);
+  if (!Number.isFinite(rec.firstAmbushAt)) rec.firstAmbushAt = now;
+  rec.lastAmbushAt = now;
+}
+
+function pirateBaseCandidateFromRecord(rec, state, now) {
+  const seed = hash32(state && state.meta && state.meta.seed, rec.sectorId, rec.zoneId, 'pirateBaseCandidate');
+  return {
+    candidateId: `pirateBase:${rec.sectorId}:${rec.zoneId}`,
+    poiType: 'pirate_base_candidate',
+    source: 'pirateRumor',
+    sectorId: rec.sectorId,
+    zoneId: rec.zoneId,
+    zoneName: rec.zoneName,
+    zoneType: rec.zoneType || null,
+    seed,
+    posHint: null,
+    createdAt: now,
+    provenance: {
+      source: 'actual_ambush_events',
+      eventCount: rec.ambushEventCount | 0,
+      eventIds: (rec.ambushEventIds || []).slice(),
+      eventKinds: (rec.ambushEventKinds || []).slice(),
+      firstEventAt: Number.isFinite(rec.firstAmbushAt) ? rec.firstAmbushAt : now,
+      lastEventAt: Number.isFinite(rec.lastAmbushAt) ? rec.lastAmbushAt : now,
+    },
+    payoff: {
+      salvage: true,
+      bounty: true,
+      ownerFactionId: 'faction_reach',
+    },
   };
 }
 

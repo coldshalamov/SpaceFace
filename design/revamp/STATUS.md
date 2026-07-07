@@ -497,3 +497,24 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition.
   Next backend row: **T4d-10 B15 AMBUSH_WRECK_FIELDS_AND_BASE_DISCOVERY**.
+
+### T4d-10 B15 AMBUSH_WRECK_FIELDS_AND_BASE_DISCOVERY — pirate-base provenance seed — DONE (2026-07-07)
+- ADDENDUM in `src/systems/pirateRumor.js`: repeated real pirate ambush vectors in one named zone
+  now plant a single deterministic `pirate_base_candidate` record. This is only the pirate-vector
+  provenance seed; it does not spawn a base, seed wreck fields, or write salvage/sector-sim state.
+- Candidate creation is causally gated by `PIRATE_BASE_CANDIDATE_EVENTS = 6` actual
+  `encounter:spawned` events with pirate vector kinds (`ambush_snare`, `pirate_toll`,
+  `named_hunter`). Naked rumor heat or manually inflated event counts produce no candidate.
+- The candidate payload is exposed through `pirateBaseCandidateForZone`,
+  `pirateBaseCandidates`, `pirateRumor:baseCandidate`, and generic `poi:candidate`. It carries
+  sector/zone identity, deterministic seed, actual event ids/kinds/timing provenance, and explicit
+  future payoff flags (`salvage`, `bounty`) for POI/salvage consumers.
+- `check:pirate-base-provenance` was added and `check:pirate-ecology` now aggregates B15. Red: the
+  check failed before the candidate exports existed. Non-vacuous control: changing the candidate
+  threshold from 6 to 7 failed the six-event contract, then restore GREEN.
+- NoTouch honored: `salvage.js`, `encounterDirector.js`, and `sectorSim.js` were not edited.
+- No-regression: `check:pirate-base-provenance` PASS, `check:pirate-ecology` PASS,
+  `check:save-schema` PASS, `check:save-resume-confidence` PASS, `check-tether-gameplay.mjs`
+  PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition.
+  Next backend row: **T4d-11 B16 BOUNTY_HUNTER_NEUTRALITY**.
