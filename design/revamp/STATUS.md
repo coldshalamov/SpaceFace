@@ -538,3 +538,26 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition.
   Next backend row: **T4d-12 B17 BOUNTY_HUNTER_SIGNATURE_TRICK**.
+
+### T4d-12 B17 BOUNTY_HUNTER_SIGNATURE_TRICK — telegraphed hunter gimmicks — DONE (2026-07-07)
+- NEW `src/data/hunterTricks.js` defines the seven spec tricks in stable order: tether-cutter,
+  mine-dropper, phase-jammer, shield-turtle, ram-plate, decoy-clone, and emergency-jump-spool.
+  Each entry has a readable telegraph, counter-window, cooldown, and exactly one existing verb/event
+  mapping so the packet does not introduce a new physics/combat subsystem.
+- `src/data/bountyHunters.js` now lets the B16 hunter shape carry an explicit `trick`, while
+  `src/systems/bountyHunt.js` assigns a deterministic trick from seed+contract when none is
+  specified. The trick state rides `data.bountyHunt.trickState`; it does not spawn extra hunters.
+- The runtime starts with a telegraph phase, emits one `bountyHunt:trickTelegraph` payload and one
+  voice bark through the existing voice helper, waits the counter-window, then emits
+  `bountyHunt:trickActivated` and applies the mapped backend intent/effect. Emergency-jump-spool
+  physically moves the hunter only after the counter-window, proving the "predict it" rule headless.
+- `check:bounty-hunter-tricks` was added and `check:pirate-ecology` now aggregates all 12 BP-13
+  packets. Red: the check failed before `src/data/hunterTricks.js` existed. Non-vacuous control:
+  reducing the emergency-jump counter-window from 1.75s to 0.1s failed the readability guard, then
+  restore GREEN.
+- NoTouch honored: `combat.js`, `flightV3.js`, tether system files, and SG-06 AI were not edited.
+- No-regression: `check:bounty-hunter-tricks` PASS, `check:pirate-ecology` PASS,
+  `check:save-schema` PASS, `check:save-resume-confidence` PASS, `check-tether-gameplay.mjs`
+  PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition.
+  Next backend row: **T8d SMUGGLING_CARD**.

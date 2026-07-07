@@ -9,6 +9,7 @@ export const BOUNTY_HUNTER_PLAYER_CONTEXT = 'bounty_hunter';
 export function makeBountyHunterSpec({
   contractId = 'bounty-contract',
   contractTargetId = null,
+  trick = null,
   pos = { x: 0, z: 0 },
   factionId = 'faction_quiet',
 } = {}) {
@@ -28,7 +29,9 @@ export function makeBountyHunterSpec({
         contractId,
         targetId: contractTargetId,
         pursuing: false,
+        trickId: trick,
       },
+      hunterTrick: trick,
       ai: {
         archetype: 'hunter',
         spawnContext: BOUNTY_HUNTER_NEUTRAL_CONTEXT,
