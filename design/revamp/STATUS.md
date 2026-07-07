@@ -335,3 +335,21 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   only by its check, so this row cannot alter 47-A sim behavior yet. No-regression: `check:pirate-ecology`
   PASS, `check-tether-gameplay.mjs` PASS, `check:balance` 0 FAIL. `check:sim:compare` fails only on
   the documented 47-A projectile-collision precondition. Next backend row: **T4d-2 B6 PIRATE_TOLL_LADDER**.
+
+### T4d-2 B6 PIRATE_TOLL_LADDER — doctrine parley state machine — DONE (2026-07-07)
+- NEW `src/systems/pirateParley.js` registered immediately after scanner and before AI. It layers
+  SCAN -> DEMAND -> ATTACK over already-spawned `toll` doctrine squads only, keeping them passive,
+  no-fire, and scanner-non-hostile until the demand resolves. It does not spawn ships and does not
+  edit encounterDirector/combat/scanner/barks/cargo.
+- Compliance uses the cargo system's `jettison(...)` seam to drop a deterministic tithe as a
+  recoverable pickup, then marks the squad as break-off/passive. Refuse or timeout emits the attack
+  bark and flips scanner-readable hostility through AI fields (`hostileTeams`, `forcePlayerTarget`,
+  player combat target). `thief`/non-parley pirates remain untouched.
+- `check:pirate-parley` was added and `check:pirate-ecology` now aggregates doctrines + parley. Red:
+  the check failed before `src/systems/pirateParley.js` existed. Non-vacuous control: inverting the
+  startsParley gate made the first scan voice disappear and the check fail, then restore GREEN.
+- No-regression: `check:pirate-ecology` PASS, `check-tether-gameplay.mjs` PASS after local dependency
+  refresh, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition. Wider `check:sg06:live-registry` is blocked by pre-existing
+  `src/render/bloom.js` syntax (`rtScene.dispose()` inside the composite uniforms object), outside
+  this backend lane. Next backend row: **T4d-3 B7 FAKE_CIVILIAN_UNTIL_SCAN**.
