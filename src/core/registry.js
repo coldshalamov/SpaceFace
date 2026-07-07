@@ -61,6 +61,7 @@ import { sectorPostcard } from '../ui/sectorPostcard.js';             // A1: arr
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';             // A3: dockDeny.js surfaced — scan line + one 'comms' denial
 import { stationBroadcast } from '../systems/stationBroadcast.js';    // A5: ambient station flavor (window-timer only; lowest voice priority)
 import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type 'warn' counterplay hint + state.ui.hazardRead
+import { bulkHaulTag } from '../ui/prompts/bulkHaulTag.js';             // T3-17: TOW-THE-CHUNK oversized mining chunk prompt
 import { dangerGradient } from '../ui/dangerGradient.js';              // A9: dangerTier tint+badge overlay on existing starmap nodes (guarded applier)
 // BP-12 Causal Economy (Wave 3, design/revamp/detail/E_salvage_economy_contracts.md) — SYSTEMS-only
 // read layers over the shipped dangerModel/sectorSim field ("no economy change without cause").
@@ -95,7 +96,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, voiceArbiter, input, autoTargetAssist, scanner, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, economy,
-    automation, wingmen, intervention, lossLedger, spawnBudget, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
+    automation, wingmen, intervention, lossLedger, spawnBudget, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // pirateDisguise subscribes to scanner's scan:pulse seam; it runs before AI so revealed pirates

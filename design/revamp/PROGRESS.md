@@ -77,7 +77,7 @@
 | T3-14 | 14 | whip feedback (+opt damage) | presentation + `combat.js` | DONE 2026-07-06 | — | `npm run check:massline:whip-feedback` PASS | T3-13 | T3-15 |
 | T3-15 | 15 | impulse authority helper | `impulseCharges.js` | DONE 2026-07-06 | — | `npm run check:impulse:authority` PASS | T3-14 | T3-16 |
 | T3-16 | 16 | impulse+massline combos | `impulseCharges.js` | DONE 2026-07-06 | — | `npm run check:impulse:massline-combos` PASS | T3-15 | T3-17 |
-| T3-17 | 17 | mining bulk-haul guidance | `mining.js`, HUD | IN-FLIGHT 2026-07-07 | — | `check:mining:bulk-guidance` | T3-16 | T3-18 |
+| T3-17 | 17 | mining bulk-haul guidance | `mining.js`, HUD | DONE 2026-07-07 | — | `npm run check:mining:bulk-guidance` PASS | T3-16 | T3-18 |
 | T3-18 | 18 | 47-A spindle stabilization | `47aLiveScene.js`, `scenarioRuntime.js`, `sf-sim.mjs` | DONE 2026-07-06 | — | `npm run check:47a:spindle` PASS | T3-16 | T3-19 |
 | T3-19 | 19 | 47-A scavenger line-threat | `47aLiveScene.js` | DONE 2026-07-06 | — | `npm run check:47a:scavenger-threat` PASS | T3-18 | T3-20 |
 | T3-20 | 20 | 47-A debris sling | `47aLiveScene.js`, `scenarioRuntime.js` | DONE 2026-07-06 | — | `npm run check:47a:debris-sling` PASS | T3-19 | T3-21 |

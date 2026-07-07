@@ -749,11 +749,23 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:one-voice` PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the
   documented 47-A projectile-collision precondition.
 
-### T3-17 MINING_BULK_GUIDANCE — claim (2026-07-07)
-- Claimed on `master` for backend/system surfacing only. The detail packet is
-  `design/revamp/detail/D_flight_ships_mining.md` TOW-THE-CHUNK: ship the guarded
-  `src/ui/prompts/bulkHaulTag.js` event-driven tag/check surface over already-shipped
-  `mining:bulkRequiresTether`, `BULK_HAUL_MIN_U`, `bulkHaulPayoutForChunk`, and refinery delivery.
-- Scope guard: do not edit lead-owned `src/ui/hud.js`; register the prompt as an additive SYSTEMS-only
-  module, DOM-guarded/headless-clean. Acceptance check: `npm run check:mining:bulk-guidance`, with a
-  non-vacuous break/restore control proving the threshold/tag assertion has teeth.
+### T3-17 MINING_BULK_GUIDANCE — oversized chunk tag + route hint — DONE (2026-07-07)
+- NEW additive prompt module `src/ui/prompts/bulkHaulTag.js` plus `npm run check:mining:bulk-guidance`.
+  It listens to the shipped `mining:bulkRequiresTether` event, builds a guarded tag only when the real
+  chunk mass is `> BULK_HAUL_MIN_U`, mirrors it to `state.ui.bulkHaulTag`, emits `ui:bulkHaulTag`, and
+  optionally renders a DOM label when a browser HUD exists.
+- The tag starts as `TETHER TO HAUL · {massU}u`; a matching `tether:latched`/`tether:attached` updates it
+  to the hauling phase with a refinery route hint. `mining:bulkHaulDelivered`, sector changes, or chunk
+  destruction clear the tag. No lead-owned `src/ui/hud.js`, mining behavior, tether behavior, economy,
+  cargo, or mission ownership was edited.
+- The check proves pure threshold behavior at the exact boundary, event dedupe while the beam is held on
+  the same chunk, current-sector refinery route hints, tether phase update, delivery payout/contract
+  completion still flowing through shipped mining/economy/missions, headless DOM guard, package script,
+  registry SYSTEMS-only wiring, and no RNG/wall-clock/timers.
+- Red: package script failed before `check:mining:bulk-guidance` existed. Non-vacuous control:
+  temporarily changing the tag threshold from `>` to `>=` made the check fail on "tag must not arm at the
+  threshold", then restore GREEN.
+- Related gates: `check:mining:bulk-guidance` PASS, `check:mining:2` PASS, `check-price-memory.mjs` PASS,
+  `check-tether-gameplay.mjs` PASS, `check:player-facing-labels` PASS, `check:balance` 0 FAIL.
+  `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition.
+  Next backend row: **T3-24 MASSLINE aggregate + mechanics doc**.
