@@ -1,0 +1,24 @@
+---
+pid: 36840
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/rebuild-release-parts.mjs cockpit_recessed"
+started_at: 2026-07-07T03:31:22.418Z
+running_for_ms: 60160009 
+---
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (77)quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+
+prune: Removed types... TextureInfo (5), Material (1), Accessor (33)
+[rebuild] cockpit_recessed: 1652500 -> 3135228 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "cockpit_recessed",
+      "sourceBytes": 1652500,
+      "releaseBytes": 3135228,
+      "ok": true
+    }
+  ]
+}

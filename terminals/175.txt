@@ -1,0 +1,21 @@
+---
+pid: 22612
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/rebuild-release-parts.mjs hull_capital"
+started_at: 2026-07-07T03:02:16.784Z
+running_for_ms: 61905004 
+---
+prune: Removed types... Accessor (45)
+prune: Removed types... Accessor (28)
+[rebuild] hull_capital: 1167964 -> 2676536 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "hull_capital",
+      "sourceBytes": 1167964,
+      "releaseBytes": 2676536,
+      "ok": true
+    }
+  ]
+}

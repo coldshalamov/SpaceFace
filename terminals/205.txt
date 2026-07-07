@@ -1,0 +1,830 @@
+---
+pid: 18992
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\run_greeble_phases.ps1\" 2>&1 | Tee-Object -FilePath \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\greeble_batch.log\""
+started_at: 2026-07-07T08:23:16.634Z
+running_for_ms: 42659988 
+---
+=== greeble_docking_latch phase=setup ===
+00:02.188  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_docking_latch_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_docking_latch_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_docking_latch phase=clay ===
+00:02.172  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_docking_latch_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:271: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:05.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter0_clay_34.png'
+00:07.938  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter0_clay_front.png'
+00:11.797  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter0_clay_side.png'
+00:18.141  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter0_clay_close_story.png'
+00:24.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_docking_latch_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_docking_latch phase=lit1 ===
+00:02.484  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_docking_latch_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.359  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter1_lit_34.png'
+00:12.172  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter1_lit_front.png'
+00:16.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter1_lit_side.png'
+00:22.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter1_lit_close_story.png'
+00:29.265  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_docking_latch_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_docking_latch phase=lit2 ===
+00:02.641  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_docking_latch_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.219  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter2_lit_34.png'
+00:13.156  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter2_lit_front.png'
+00:17.235  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter2_lit_side.png'
+00:23.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter2_lit_close_story.png'
+00:29.531  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_docking_latch_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_docking_latch phase=lit3 ===
+00:02.546  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_docking_latch_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter3_lit_34.png'
+00:12.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter3_lit_front.png'
+00:18.062  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter3_lit_side.png'
+00:23.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter3_lit_close_story.png'
+00:29.875  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_docking_latch_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_docking_latch phase=lit4 ===
+00:02.641  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_docking_latch_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter4_lit_34.png'
+00:13.813  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter4_lit_front.png'
+00:17.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter4_lit_side.png'
+00:21.813  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter4_lit_close_story.png'
+00:27.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_docking_latch_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_docking_latch phase=lit5 ===
+00:02.329  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_docking_latch_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.313  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter5_lit_34.png'
+00:13.204  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter5_lit_front.png'
+00:17.485  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter5_lit_side.png'
+00:23.532  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter5_lit_close_story.png'
+00:29.579  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_docking_latch_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_docking_latch_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_docking_latch phase=export ===
+00:02.187  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_docking_latch_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+04:26:15 | INFO: Starting glTF 2.0 export
+04:26:15 | INFO: Extracting primitive: greeble_hatches_Material_Hull_Merged.001
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.005
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.009
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.010
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.003
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.007
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.011
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.001
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.004
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.006
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.002
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.008
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: greeble_hatches_Material_Mechanical_Merged.001
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.013
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.012
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.014
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Cube.015
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Extracting primitive: Hatch_Handle.001
+04:26:15 | INFO: Primitives created: 1
+04:26:15 | INFO: Finished glTF 2.0 export in 0.46194887161254883 s
+
+Info: Saved "greeble_docking_latch_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_sensor_dish phase=setup ===
+00:02.484  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_sensor_dish_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_sensor_dish_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_sensor_dish phase=clay ===
+00:02.406  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_sensor_dish_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:271: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:08.953  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter0_clay_34.png'
+00:14.093  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter0_clay_front.png'
+00:19.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter0_clay_side.png'
+00:24.453  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter0_clay_close_story.png'
+00:29.328  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_sensor_dish_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_sensor_dish phase=lit1 ===
+00:02.609  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_sensor_dish_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:09.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter1_lit_34.png'
+00:14.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter1_lit_front.png'
+00:19.359  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter1_lit_side.png'
+00:24.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter1_lit_close_story.png'
+00:26.969  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_sensor_dish_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_sensor_dish phase=lit2 ===
+00:02.110  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_sensor_dish_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:07.407  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter2_lit_34.png'
+00:09.563  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter2_lit_front.png'
+00:14.204  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter2_lit_side.png'
+00:17.641  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter2_lit_close_story.png'
+00:21.516  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_sensor_dish_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_sensor_dish phase=lit3 ===
+00:02.141  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_sensor_dish_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.094  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter3_lit_34.png'
+00:13.094  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter3_lit_front.png'
+00:18.281  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter3_lit_side.png'
+00:23.969  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter3_lit_close_story.png'
+00:29.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_sensor_dish_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_sensor_dish phase=lit4 ===
+00:02.265  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_sensor_dish_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.594  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter4_lit_34.png'
+00:12.281  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter4_lit_front.png'
+00:14.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter4_lit_side.png'
+00:17.078  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter4_lit_close_story.png'
+00:21.094  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_sensor_dish_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_sensor_dish phase=lit5 ===
+00:02.375  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_sensor_dish_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:09.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter5_lit_34.png'
+00:13.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter5_lit_front.png'
+00:15.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter5_lit_side.png'
+00:20.187  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter5_lit_close_story.png'
+00:25.187  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_sensor_dish_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_sensor_dish_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_sensor_dish phase=export ===
+00:02.437  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_sensor_dish_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+04:28:57 | INFO: Starting glTF 2.0 export
+04:28:57 | INFO: Extracting primitive: Antenna_Loop
+04:28:57 | INFO: Primitives created: 1
+04:28:57 | INFO: Extracting primitive: greeble_antennas_Material_Hull_Merged
+04:28:57 | WARNING: greeble_antennas_Material_Hull_Merged: Could not calculate tangents. Please try to triangulate the mesh first.
+04:28:57 | INFO: Primitives created: 1
+04:28:57 | INFO: Extracting primitive: Cube.007
+04:28:57 | INFO: Primitives created: 1
+04:28:57 | INFO: Extracting primitive: Cube.005
+04:28:57 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.001
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.009
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.010
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.003
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.011
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.004
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.006
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.002
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.008
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: greeble_antennas_Material_Mechanical_Merged
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.015
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.012
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.014
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Cube.013
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Extracting primitive: Antenna_Beacon
+04:28:58 | INFO: Primitives created: 1
+04:28:58 | INFO: Finished glTF 2.0 export in 0.5768957138061523 s
+
+Warning: greeble_antennas_Material_Hull_Merged: Could not calculate tangents. Please try to triangulate the mesh first.
+Info: Saved "greeble_sensor_dish_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_fuel_coupling phase=setup ===
+00:02.454  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_fuel_coupling_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_fuel_coupling_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_fuel_coupling phase=clay ===
+00:02.359  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_fuel_coupling_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:271: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:09.031  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter0_clay_34.png'
+00:13.469  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter0_clay_front.png'
+00:18.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter0_clay_side.png'
+00:26.390  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter0_clay_close_story.png'
+00:33.609  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_fuel_coupling_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_fuel_coupling phase=lit1 ===
+00:02.407  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_fuel_coupling_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.328  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter1_lit_34.png'
+00:12.891  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter1_lit_front.png'
+00:17.610  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter1_lit_side.png'
+00:23.688  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter1_lit_close_story.png'
+00:30.313  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_fuel_coupling_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_fuel_coupling phase=lit2 ===
+00:02.313  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_fuel_coupling_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.547  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter2_lit_34.png'
+00:12.844  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter2_lit_front.png'
+00:16.313  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter2_lit_side.png'
+00:21.032  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter2_lit_close_story.png'
+00:26.282  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_fuel_coupling_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_fuel_coupling phase=lit3 ===
+00:02.594  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_fuel_coupling_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:09.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter3_lit_34.png'
+00:14.640  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter3_lit_front.png'
+00:20.172  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter3_lit_side.png'
+00:25.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter3_lit_close_story.png'
+00:31.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_fuel_coupling_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_fuel_coupling phase=lit4 ===
+00:02.547  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_fuel_coupling_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.735  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter4_lit_34.png'
+00:11.047  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter4_lit_front.png'
+00:14.657  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter4_lit_side.png'
+00:20.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter4_lit_close_story.png'
+00:26.407  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_fuel_coupling_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_fuel_coupling phase=lit5 ===
+00:02.875  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_fuel_coupling_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:09.437  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter5_lit_34.png'
+00:11.594  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter5_lit_front.png'
+00:13.797  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter5_lit_side.png'
+00:19.641  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter5_lit_close_story.png'
+00:25.906  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_fuel_coupling_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_fuel_coupling_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_fuel_coupling phase=export ===
+00:02.218  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_fuel_coupling_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+04:32:01 | INFO: Starting glTF 2.0 export
+04:32:01 | INFO: Extracting primitive: greeble_pipes_Material_Accent_Merged
+04:32:01 | INFO: Primitives created: 1
+04:32:01 | INFO: Extracting primitive: greeble_pipes_Material_Mechanical_Merged
+04:32:01 | INFO: Primitives created: 1
+04:32:01 | INFO: Extracting primitive: Cube.012
+04:32:01 | INFO: Primitives created: 1
+04:32:01 | INFO: Extracting primitive: Cube.015
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.013
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.014
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Pipe_Base
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.005
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.009
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.010
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.003
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.001
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.011
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.004
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.006
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.002
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.008
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Extracting primitive: Cube.007
+04:32:02 | INFO: Primitives created: 1
+04:32:02 | INFO: Finished glTF 2.0 export in 0.9384365081787109 s
+
+Info: Saved "greeble_fuel_coupling_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_reactive_plate phase=setup ===
+00:02.187  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_reactive_plate_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_reactive_plate_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_reactive_plate phase=clay ===
+00:02.437  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_reactive_plate_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:271: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:07.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter0_clay_34.png'
+00:09.812  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter0_clay_front.png'
+00:12.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter0_clay_side.png'
+00:16.281  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter0_clay_close_story.png'
+00:20.562  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_reactive_plate_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_reactive_plate phase=lit1 ===
+00:02.125  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_reactive_plate_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.875  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter1_lit_34.png'
+00:08.860  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter1_lit_front.png'
+00:11.125  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter1_lit_side.png'
+00:15.219  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter1_lit_close_story.png'
+00:21.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_reactive_plate_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_reactive_plate phase=lit2 ===
+00:02.203  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_reactive_plate_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:07.234  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter2_lit_34.png'
+00:09.234  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter2_lit_front.png'
+00:11.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter2_lit_side.png'
+00:15.500  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter2_lit_close_story.png'
+00:21.063  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_reactive_plate_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_reactive_plate phase=lit3 ===
+00:02.172  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_reactive_plate_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter3_lit_34.png'
+00:09.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter3_lit_front.png'
+00:11.266  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter3_lit_side.png'
+00:15.391  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter3_lit_close_story.png'
+00:20.797  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_reactive_plate_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_reactive_plate phase=lit4 ===
+00:02.078  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_reactive_plate_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:07.485  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter4_lit_34.png'
+00:09.610  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter4_lit_front.png'
+00:11.719  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter4_lit_side.png'
+00:15.953  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter4_lit_close_story.png'
+00:21.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_reactive_plate_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_reactive_plate phase=lit5 ===
+00:02.156  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_reactive_plate_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter5_lit_34.png'
+00:11.687  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter5_lit_front.png'
+00:16.156  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter5_lit_side.png'
+00:22.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter5_lit_close_story.png'
+00:29.094  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_reactive_plate_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_reactive_plate_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_reactive_plate phase=export ===
+00:02.250  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_reactive_plate_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+04:34:24 | INFO: Starting glTF 2.0 export
+04:34:24 | INFO: Extracting primitive: greeble_armor_plates_Material_Hull_Merged
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.001
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.013
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.014
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.005
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.009
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.010
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.003
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.015
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.007
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.011
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.004
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.006
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.002
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.012
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: Cube.008
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Extracting primitive: greeble_armor_plates_Material_Mechanical_Merged
+04:34:25 | INFO: Primitives created: 1
+04:34:25 | INFO: Finished glTF 2.0 export in 0.4220099449157715 s
+
+Info: Saved "greeble_reactive_plate_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_hazard_strobe phase=setup ===
+00:02.562  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_hazard_strobe_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_hazard_strobe_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_hazard_strobe phase=clay ===
+00:02.328  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_hazard_strobe_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:271: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:08.719  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter0_clay_34.png'
+00:12.672  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter0_clay_front.png'
+00:15.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter0_clay_side.png'
+00:20.110  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter0_clay_close_story.png'
+00:25.719  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_hazard_strobe_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_hazard_strobe phase=lit1 ===
+00:04.500  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_hazard_strobe_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:09.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter1_lit_34.png'
+00:11.984  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter1_lit_front.png'
+00:16.234  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter1_lit_side.png'
+00:23.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter1_lit_close_story.png'
+00:30.062  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_hazard_strobe_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_hazard_strobe phase=lit2 ===
+00:02.453  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_hazard_strobe_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.578  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter2_lit_34.png'
+00:11.437  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter2_lit_front.png'
+00:13.797  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter2_lit_side.png'
+00:20.156  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter2_lit_close_story.png'
+00:26.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_hazard_strobe_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_hazard_strobe phase=lit3 ===
+00:02.781  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_hazard_strobe_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:09.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter3_lit_34.png'
+00:14.671  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter3_lit_front.png'
+00:20.390  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter3_lit_side.png'
+00:26.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter3_lit_close_story.png'
+00:32.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_hazard_strobe_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_hazard_strobe phase=lit4 ===
+00:02.219  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_hazard_strobe_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:07.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter4_lit_34.png'
+00:09.906  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter4_lit_front.png'
+00:12.281  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter4_lit_side.png'
+00:17.047  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter4_lit_close_story.png'
+00:22.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_hazard_strobe_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_hazard_strobe phase=lit5 ===
+00:02.140  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_hazard_strobe_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:218: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:07.328  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter5_lit_34.png'
+00:09.640  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter5_lit_front.png'
+00:11.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter5_lit_side.png'
+00:16.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter5_lit_close_story.png'
+00:22.687  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_greeble_hazard_strobe_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "greeble_hazard_strobe_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== greeble_hazard_strobe phase=export ===
+00:02.140  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\greeble_hazard_strobe_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\greeble_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+04:37:14 | INFO: Starting glTF 2.0 export
+04:37:14 | INFO: Extracting primitive: greeble_nav_lights_Material_Accent_Merged
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.013
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.014
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.012
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.015
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: greeble_nav_lights_Material_Mechanical_Merged
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Nav_Base
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.006
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.010
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.011
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.004
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.005
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.007
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.003
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.009
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.001
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.002
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Extracting primitive: Cube.008
+04:37:14 | INFO: Primitives created: 1
+04:37:14 | INFO: Finished glTF 2.0 export in 0.36277318000793457 s
+
+Info: Saved "greeble_hazard_strobe_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+ALL_GREEBLE_PHASES_DONE

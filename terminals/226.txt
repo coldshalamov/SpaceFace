@@ -1,0 +1,27 @@
+---
+pid: 18628
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && npm run check:visual-stability 2>&1 | Tee-Object -FilePath \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\visual-stability.log\" | Select-Object -Last 20"
+started_at: 2026-07-07T17:36:43.669Z
+running_for_ms: 9435007  
+---
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 57755,
+        "authoredBodyMaxWorldPrimitiveRadius": 12.172,
+        "authoredBodyRadiusRatio": 0.676,
+        "authoredBodyDiagonalRatio": 1.352,
+        "authoredBodyScreenRadiusPx": 46.344,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 16.41,
+        "authoredBodyToReadabilityDiagonalRatio": 0.742,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 20.426,
+        "screenRadiusPx": 77.77,
+        "largePrimitives": []
+      }
+    ]
+  },
+  "pageErrors": []
+}

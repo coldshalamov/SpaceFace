@@ -1,0 +1,238 @@
+---
+pid: 40368
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$pattern = 'ALL_FIN_PHASES_DONE|Blender failed'; $deadline = (Get-Date).AddMinutes(25); do { Start-Sleep -Seconds 30; $tail = Get-Content \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\fin_batch.log\" -Tail 5 -ErrorAction SilentlyContinue; $tail | ForEach-Object { Write-Output $_ }; if ($tail -match $pattern) { break } } while ((Get-Date) -lt $deadline); if ($tail -notmatch 'ALL_FIN_PHASES_DONE') { Write-Output 'TIMEOUT_OR_INCOMPLETE' }"
+started_at: 2026-07-07T07:59:06.136Z
+running_for_ms: 44094980 
+---
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_vtol_skeg_iter5_lit_34.png'
+00:25.563  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_vtol_skeg_iter5_lit_front.png'
+00:41.657  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_vtol_skeg_iter5_lit_side.png'
+  mat.use_nodes = True
+00:08.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_vtol_skeg_iter5_lit_34.png'
+00:25.563  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_vtol_skeg_iter5_lit_front.png'
+00:41.657  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_vtol_skeg_iter5_lit_side.png'
+01:05.954  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_vtol_skeg_iter5_lit_close_story.png'
+00:03.266  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_solar_array_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:03.266  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_solar_array_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+01:00.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_34.png'
+01:11.735  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_front.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+01:00.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_34.png'
+01:11.735  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_front.png'
+01:24.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_side.png'
+  clay_mat.use_nodes = True
+01:00.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_34.png'
+01:11.735  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_front.png'
+01:24.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_side.png'
+01:57.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_close_story.png'
+  clay_mat.use_nodes = True
+01:00.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_34.png'
+01:11.735  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_front.png'
+01:24.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_side.png'
+01:57.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter0_clay_close_story.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:18.453  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter1_lit_34.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:18.453  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter1_lit_34.png'
+00:27.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter1_lit_front.png'
+00:32.328  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter1_lit_side.png'
+00:02.735  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_solar_array_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:10.985  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter2_lit_34.png'
+00:14.594  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter2_lit_front.png'
+00:20.407  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter2_lit_side.png'
+00:02.672  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_solar_array_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:10.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter3_lit_34.png'
+00:15.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter3_lit_front.png'
+00:22.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter3_lit_side.png'
+00:02.687  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_solar_array_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.906  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter4_lit_34.png'
+00:15.953  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter4_lit_front.png'
+00:21.187  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter4_lit_side.png'
+00:02.563  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_solar_array_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:12.063  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter5_lit_34.png'
+00:15.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter5_lit_front.png'
+00:20.985  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_solar_array_iter5_lit_side.png'
+00:02.829  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_armor_skid_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:11.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter0_clay_34.png'
+00:14.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter0_clay_front.png'
+00:20.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter0_clay_side.png'
+  clay_mat.use_nodes = True
+00:11.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter0_clay_34.png'
+00:14.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter0_clay_front.png'
+00:20.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter0_clay_side.png'
+00:51.125  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter0_clay_close_story.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.735  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter1_lit_34.png'
+  mat.use_nodes = True
+00:11.735  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter1_lit_34.png'
+00:16.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter1_lit_front.png'
+00:22.578  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter1_lit_side.png'
+00:41.672  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter1_lit_close_story.png'
+00:02.672  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_armor_skid_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter2_lit_34.png'
+00:14.984  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter2_lit_front.png'
+00:19.687  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter2_lit_side.png'
+00:02.828  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_armor_skid_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.110  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter3_lit_34.png'
+00:16.891  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter3_lit_front.png'
+00:20.719  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter3_lit_side.png'
+  mat.use_nodes = True
+00:11.110  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter3_lit_34.png'
+00:16.891  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter3_lit_front.png'
+00:20.719  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter3_lit_side.png'
+00:47.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter3_lit_close_story.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.141  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter4_lit_34.png'
+00:16.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter4_lit_front.png'
+00:23.141  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter4_lit_side.png'
+  mat.use_nodes = True
+00:11.141  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter4_lit_34.png'
+00:16.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter4_lit_front.png'
+00:23.141  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter4_lit_side.png'
+00:43.438  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter4_lit_close_story.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.032  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter5_lit_34.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.032  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter5_lit_34.png'
+00:15.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter5_lit_front.png'
+00:22.094  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_armor_skid_iter5_lit_side.png'
+Info: Saved "fin_armor_skid_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== fin_ion_blade phase=setup ===
+00:02.750  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_ion_blade_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:07.172  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_ion_blade_iter2_lit_34.png'
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.859  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_ion_blade_iter3_lit_34.png'
+00:08.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_ion_blade_iter3_lit_front.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.984  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_ion_blade_iter4_lit_34.png'
+00:09.015  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_ion_blade_iter4_lit_front.png'
+00:11.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_ion_blade_iter4_lit_side.png'
+Info: Saved "fin_ion_blade_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== fin_ion_blade phase=export ===
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:09.015  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter0_clay_34.png'
+00:14.046  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter0_clay_front.png'
+00:16.765  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter0_clay_side.png'
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:09.313  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter1_lit_34.png'
+00:11.782  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter1_lit_front.png'
+00:02.813  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\fin_contraband_cowl_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+  mat.use_nodes = True
+00:10.094  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter2_lit_34.png'
+00:13.563  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter2_lit_front.png'
+00:17.313  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter2_lit_side.png'
+00:27.938  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter2_lit_close_story.png'
+  mat.use_nodes = True
+00:10.782  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter3_lit_34.png'
+00:15.547  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter3_lit_front.png'
+00:20.469  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter3_lit_side.png'
+00:27.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter3_lit_close_story.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:09.594  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter4_lit_34.png'
+00:12.844  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter4_lit_front.png'
+00:19.672  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter4_lit_side.png'
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\fin_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:10.047  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_fin_contraband_cowl_iter5_lit_34.png'
+Info: Saved "fin_contraband_cowl_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+ALL_FIN_PHASES_DONE
+TIMEOUT_OR_INCOMPLETE

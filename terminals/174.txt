@@ -1,0 +1,31 @@
+---
+pid: 5456
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && node scripts/fix-revamp-part-contract.mjs 2>&1 | Select-String \"hull_frigate\"; node tools/art/finalize_part.mjs \"assets/ships/parts/hulls/hull_frigate.glb\" hull_frigate --method=blender_mcp 2>&1 | Select-Object -Last 2; node scripts/rebuild-release-parts.mjs hull_frigate 2>&1; node scripts/verify-elite-finish-evidence.mjs --id hull_frigate 2>&1"
+started_at: 2026-07-07T02:54:21.341Z
+running_for_ms: 62380009 
+---
+
+      "id": "hull_frigate",
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical"
+}
+prune: Removed types... Accessor (42)
+prune: Removed types... Accessor (26)
+[rebuild] hull_frigate: 923880 -> 2115512 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "hull_frigate",
+      "sourceBytes": 923880,
+      "releaseBytes": 2115512,
+      "ok": true
+    }
+  ]
+}
+PHASE1_FLOOR_FAIL — run check:revamp:evidence first
+FAIL hull_frigate [T2]: fin_mismatch manifest=3348/923880 log=3348/923964
+
+SUMMARY fail=1 pass=0 total=1
+
+

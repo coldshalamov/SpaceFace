@@ -1,0 +1,140 @@
+---
+pid: 21068
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\batch_finalize_stations.mjs\""
+started_at: 2026-07-07T05:27:10.348Z
+running_for_ms: 53215001 
+---
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (129)
+prune: Removed types... Accessor (55)
+[rebuild] place_station_military: 1506412 -> 1098624 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "place_station_military",
+      "sourceBytes": 1506412,
+      "releaseBytes": 1098624,
+      "ok": true
+    }
+  ]
+}
+prune: Removed types... Accessor (154)
+prune: Removed types... Accessor (66)
+[rebuild] place_station_blackmarket: 1603580 -> 1167808 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "place_station_blackmarket",
+      "sourceBytes": 1603580,
+      "releaseBytes": 1167808,
+      "ok": true
+    }
+  ]
+}
+prune: Removed types... Accessor (139)
+prune: Removed types... Accessor (60)
+[rebuild] place_gate_jump_ring: 771856 -> 152028 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "place_gate_jump_ring",
+      "sourceBytes": 771856,
+      "releaseBytes": 152028,
+      "ok": true
+    }
+  ]
+}
+prune: Removed types... Accessor (67)
+prune: Removed types... Accessor (31)
+[rebuild] place_station_mining: 1293316 -> 1095184 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "place_station_mining",
+      "sourceBytes": 1293316,
+      "releaseBytes": 1095184,
+      "ok": true
+    }
+  ]
+}
+prune: Removed types... Accessor (67)
+prune: Removed types... Accessor (31)
+[rebuild] place_station_fab: 514092 -> 280984 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "place_station_fab",
+      "sourceBytes": 514092,
+      "releaseBytes": 280984,
+      "ok": true
+    }
+  ]
+}
+prune: Removed types... Accessor (67)
+prune: Removed types... Accessor (33)
+[rebuild] place_station_research: 514604 -> 323144 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "place_station_research",
+      "sourceBytes": 514604,
+      "releaseBytes": 323144,
+      "ok": true
+    }
+  ]
+}
+[
+  {
+    "id": "place_station_military",
+    "tris": 4596,
+    "bytes": 1506412,
+    "pass": true,
+    "verify": "PASS place_station_military [T2] tech=12 det=12 uplift_lit=5 |  | ELITE_SUMMARY fail=0 pass=1 total=1"
+  },
+  {
+    "id": "place_station_blackmarket",
+    "tris": 5244,
+    "bytes": 1603580,
+    "pass": true,
+    "verify": "PASS place_station_blackmarket [T2] tech=12 det=12 uplift_lit=5 |  | ELITE_SUMMARY fail=0 pass=1 total=1"
+  },
+  {
+    "id": "place_gate_jump_ring",
+    "tris": 6080,
+    "bytes": 771856,
+    "pass": true,
+    "verify": "PASS place_gate_jump_ring [T2] tech=12 det=12 uplift_lit=5 |  | ELITE_SUMMARY fail=0 pass=1 total=1"
+  },
+  {
+    "id": "place_station_mining",
+    "tris": 2844,
+    "bytes": 1293316,
+    "pass": true,
+    "verify": "PASS place_station_mining [T2] tech=12 det=12 uplift_lit=5 |  | ELITE_SUMMARY fail=0 pass=1 total=1"
+  },
+  {
+    "id": "place_station_fab",
+    "tris": 2844,
+    "bytes": 514092,
+    "pass": true,
+    "verify": "PASS place_station_fab [T2] tech=12 det=12 uplift_lit=5 |  | ELITE_SUMMARY fail=0 pass=1 total=1"
+  },
+  {
+    "id": "place_station_research",
+    "tris": 2175,
+    "bytes": 514604,
+    "pass": true,
+    "verify": "PASS place_station_research [T2] tech=12 det=12 uplift_lit=5 |  | ELITE_SUMMARY fail=0 pass=1 total=1"
+  }
+]

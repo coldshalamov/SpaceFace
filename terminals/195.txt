@@ -1,0 +1,13 @@
+---
+pid: 14084
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$log = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\engine_batch.log\"; $lastPhase = \"\"; for ($i=0; $i -lt 60; $i++) { if (Select-String -Path $log -Pattern \"ALL_ENGINE_PHASES_DONE\" -Quiet) { Write-Host \"BATCH_DONE at $(Get-Date -Format HH:mm:ss)\"; break }; $phase = (Select-String -Path $log -Pattern \"^===\" | Select-Object -Last 1).Line; if ($phase -ne $lastPhase) { Write-Host \"$(Get-Date -Format HH:mm:ss) $phase\"; $lastPhase = $phase }; Start-Sleep -Seconds 60 }; if (-not (Select-String -Path $log -Pattern \"ALL_ENGINE_PHASES_DONE\" -Quiet)) { Write-Host \"NOT_DONE\"; Get-Content $log -Tail 5 }"
+started_at: 2026-07-07T07:17:01.996Z
+running_for_ms: 499996   
+---
+03:17:02 === engine_tug_drive phase=lit1 ===
+03:19:02 === engine_tug_drive phase=lit2 ===
+03:20:02 === engine_tug_drive phase=lit3 ===
+03:22:02 === engine_tug_drive phase=lit4 ===
+03:23:02 === engine_tug_drive phase=lit5 ===
+03:25:02 === engine_ore_thruster phase=clay ===

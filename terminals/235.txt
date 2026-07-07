@@ -1,0 +1,13 @@
+---
+pid: 36000
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$SCRATCH = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\"; Set-Location \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; node scripts/probe-authored-assets-live.mjs 2>&1 | Tee-Object -FilePath \"$SCRATCH\\check-assets-live.log\" | Select-String \"failureCount|loadedCount\""
+started_at: 2026-07-07T18:37:05.542Z
+running_for_ms: 5810008  
+---
+
+    "loadedCount": 108,
+    "failureCount": 0,
+    "wholeShipLoadedCount": 0,
+    "wholeShipFailureCount": 0
+

@@ -1,0 +1,28 @@
+---
+pid: 40464
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/rebuild-release-parts.mjs engine_plasma_ring && node scripts/verify-elite-finish-evidence.mjs --id engine_plasma_ring 2>&1 | Tee-Object -FilePath \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\per-id-elite-audit.txt\" -Append"
+started_at: 2026-07-07T03:51:12.892Z
+running_for_ms: 58970005 
+---
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (94)
+prune: Removed types... Accessor (40)
+[rebuild] engine_plasma_ring: 1901232 -> 1491028 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "engine_plasma_ring",
+      "sourceBytes": 1901232,
+      "releaseBytes": 1491028,
+      "ok": true
+    }
+  ]
+}
+PHASE1_FLOOR: PASS
+
+PASS engine_plasma_ring [T2] tech=12 det=12 uplift_lit=5
+
+ELITE_SUMMARY fail=0 pass=1 total=1

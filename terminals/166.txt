@@ -1,0 +1,27 @@
+---
+pid: 13952
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && npm run build:sg04:release-assets 2>&1 | Select-Object -Last 20"
+started_at: 2026-07-07T02:03:22.034Z
+running_for_ms: 65440005 
+---
+[sg04] 2/67 hull_starter: build-start assets/ships/parts/hulls/hull_starter.glb -> assets/ships/release.__building/parts/hulls/hull_starter.glb
+prune: Removed types... Accessor (68)
+prune: Removed types... Accessor (38)
+[sg04] failed 2/67 hull_starter: assets/ships/parts/hulls/hull_starter.glb -> assets/ships/release.__building/parts/hulls/hull_starter.glb
+file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/build-sg04-release-assets.mjs:179
+      throw new Error(`release asset failed SG-04 validation: ${outputReleasePath}\n${JSON.stringify(pair.issues, null, 2)}`);
+            ^
+
+Error: release asset failed SG-04 validation: assets/ships/release.__building/parts/hulls/hull_starter.glb
+[
+  {
+    "rule": "release.textureTopology",
+    "path": "assets/ships/release.__building/parts/hulls/hull_starter.glb",
+    "message": "release compression must preserve texture slot count",
+    "detail": "6 -> 4"
+  }
+]
+    at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/build-sg04-release-assets.mjs:179:13
+
+Node.js v24.15.0

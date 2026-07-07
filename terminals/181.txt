@@ -1,0 +1,30 @@
+---
+pid: 9420
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/rebuild-release-parts.mjs weapon_gatling && node scripts/verify-elite-finish-evidence.mjs --id weapon_gatling"
+started_at: 2026-07-07T04:08:50.109Z
+running_for_ms: 57915004 
+---
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (83)PHASE1_FLOOR_FAIL — run check:revamp:evidence first
+
+prune: Removed types... TextureInfo (5), Material (1), Accessor (35)
+[rebuild] weapon_gatling: 1655068 -> 3387208 bytes
+{
+  "rebuilt": 1,
+  "results": [
+    {
+      "id": "weapon_gatling",
+      "sourceBytes": 1655068,
+      "releaseBytes": 3387208,
+      "ok": true
+    }
+  ]
+}
+FAIL weapon_gatling [T1]: no_ao_hull
+
+SUMMARY fail=1 pass=0 total=1
+

@@ -1,0 +1,14 @@
+---
+pid: 8556
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "Start-Sleep -Seconds 120; $log = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\engine_batch.log\"; if (Select-String -Path $log -Pattern \"ALL_ENGINE_PHASES_DONE\" -Quiet) { \"DONE\" } else { \"RUNNING\" }; Select-String -Path $log -Pattern \"^===\" | Select-Object -Last 3 | ForEach-Object { $_.Line }; foreach ($id in @('engine_ramjet','engine_tug_drive','engine_ore_thruster')) { $c = (Get-ChildItem \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\graphics-revamp\" -Filter \"*${id}*\" -ErrorAction SilentlyContinue).Count; Write-Host \"$id renders=$c export=$(Test-Path \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\engines\\_${id}_elite_export.glb\")\" }"
+started_at: 2026-07-07T07:13:43.076Z
+running_for_ms: 46819989 
+---
+RUNNING
+=== engine_ramjet phase=export ===
+=== engine_tug_drive phase=setup ===
+=== engine_tug_drive phase=clay ===
+engine_ramjet renders=30 export=True
+engine_tug_drive renders=3 export=False
+engine_ore_thruster renders=0 export=False

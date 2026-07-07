@@ -1,0 +1,36 @@
+---
+pid: 3204
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && node scripts/fix-revamp-part-contract.mjs 2>&1 | Select-String \"hull_miner|hull_fighter\"; node tools/art/finalize_part.mjs \"assets/ships/parts/hulls/hull_miner.glb\" hull_miner --method=blender_mcp 2>&1 | Select-Object -Last 3; node scripts/rebuild-release-parts.mjs hull_fighter hull_miner 2>&1"
+started_at: 2026-07-07T02:32:15.738Z
+running_for_ms: 63709999 
+---
+
+      "id": "hull_miner",
+  "images": 2,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent"
+}
+prune: Removed types... Accessor (42)
+prune: Removed types... Accessor (26)
+[rebuild] hull_fighter: 1577016 -> 2234564 bytes
+prune: Removed types... Accessor (42)
+prune: Removed types... Accessor (26)
+[rebuild] hull_miner: 2555956 -> 2631004 bytes
+{
+  "rebuilt": 2,
+  "results": [
+    {
+      "id": "hull_fighter",
+      "sourceBytes": 1577016,
+      "releaseBytes": 2234564,
+      "ok": true
+    },
+    {
+      "id": "hull_miner",
+      "sourceBytes": 2555956,
+      "releaseBytes": 2631004,
+      "ok": true
+    }
+  ]
+}
+

@@ -1,0 +1,39 @@
+---
+pid: 26984
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\finalize_fins.mjs\" 2>&1 | Tee-Object \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\finalize-fins.log\""
+started_at: 2026-07-07T08:22:21.765Z
+running_for_ms: 42699993 
+---
+[
+  {
+    "id": "fin_vtol_skeg",
+    "tris": 5276,
+    "bytes": 1052332,
+    "verify": "PASS"
+  },
+  {
+    "id": "fin_solar_array",
+    "tris": 2796,
+    "bytes": 536524,
+    "verify": "PASS"
+  },
+  {
+    "id": "fin_armor_skid",
+    "tris": 8166,
+    "bytes": 1523124,
+    "verify": "PASS"
+  },
+  {
+    "id": "fin_ion_blade",
+    "tris": 4680,
+    "bytes": 642144,
+    "verify": "PASS"
+  },
+  {
+    "id": "fin_contraband_cowl",
+    "tris": 7960,
+    "bytes": 1507736,
+    "verify": "PASS"
+  }
+]

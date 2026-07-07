@@ -1,0 +1,8 @@
+---
+pid: 30176
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\scripts\\colocate-elite-renders.mjs\""
+started_at: 2026-07-07T18:22:06.331Z
+running_for_ms: 6710012  
+---
+colocate-elite-renders: copied=1350 skipped=0 ids=45

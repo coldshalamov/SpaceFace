@@ -1,0 +1,21 @@
+---
+pid: 35888
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$log = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\engine_batch.log\"; $lastLen = 0; $stall = 0; while (-not (Select-String -Path $log -Pattern \"ALL_ENGINE_PHASES_DONE\" -Quiet)) { Start-Sleep -Seconds 45; $len = (Get-Item $log).Length; if ($len -eq $lastLen) { $stall++ } else { $stall = 0; $lastLen = $len }; if ($stall -ge 14) { Write-Host \"STALL_DETECTED\"; break }; $phases = (Select-String -Path $log -Pattern \"^===\" | Select-Object -Last 1).Line; Write-Host \"$(Get-Date -Format HH:mm:ss) $phases len=$len\" }; if (Select-String -Path $log -Pattern \"ALL_ENGINE_PHASES_DONE\" -Quiet) { \"BATCH_DONE\" } else { Get-Content $log -Tail 6 }"
+started_at: 2026-07-07T07:14:39.913Z
+running_for_ms: 655005   
+---
+03:15:25 === engine_tug_drive phase=clay === len=23811
+03:16:10 === engine_tug_drive phase=clay === len=24130
+03:16:55 === engine_tug_drive phase=lit1 === len=25375
+03:17:40 === engine_tug_drive phase=lit1 === len=25692
+03:18:25 === engine_tug_drive phase=lit2 === len=26780
+03:19:10 === engine_tug_drive phase=lit2 === len=27091
+03:19:55 === engine_tug_drive phase=lit3 === len=28188
+03:20:40 === engine_tug_drive phase=lit3 === len=28652
+03:21:25 === engine_tug_drive phase=lit4 === len=29749
+03:22:10 === engine_tug_drive phase=lit4 === len=30213
+03:22:55 === engine_tug_drive phase=lit5 === len=30759
+03:23:40 === engine_tug_drive phase=lit5 === len=31774
+03:24:25 === engine_tug_drive phase=lit5 === len=31936
+03:25:10 === engine_ore_thruster phase=clay === len=35831

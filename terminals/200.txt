@@ -1,0 +1,44 @@
+---
+pid: 32060
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; foreach ($id in @('weapon_missile_pod','weapon_beam_slicer','weapon_autocannon','weapon_plasma_thrower','weapon_torpedo_rack')) { $c=(Get-ChildItem \".devshots/graphics-revamp\" -Filter \"*${id}*\").Count; $e=Test-Path \"assets/ships/parts/weapons/_${id}_elite_export.glb\"; Write-Host \"$id renders=$c export=$e\" }; node \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\finalize_weapons.mjs\" 2>&1 | Tee-Object \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\finalize-weapons.log\""
+started_at: 2026-07-07T07:54:11.458Z
+running_for_ms: 44390000 
+---
+weapon_missile_pod renders=30 export=True
+weapon_beam_slicer renders=30 export=True
+weapon_autocannon renders=30 export=True
+weapon_plasma_thrower renders=30 export=True
+weapon_torpedo_rack renders=30 export=True
+[
+  {
+    "id": "weapon_missile_pod",
+    "tris": 8776,
+    "bytes": 553700,
+    "verify": "PASS"
+  },
+  {
+    "id": "weapon_beam_slicer",
+    "tris": 7006,
+    "bytes": 365844,
+    "verify": "PASS"
+  },
+  {
+    "id": "weapon_autocannon",
+    "tris": 6056,
+    "bytes": 3169948,
+    "verify": "PASS"
+  },
+  {
+    "id": "weapon_plasma_thrower",
+    "tris": 14612,
+    "bytes": 3645976,
+    "verify": "PASS"
+  },
+  {
+    "id": "weapon_torpedo_rack",
+    "tris": 11888,
+    "bytes": 801684,
+    "verify": "PASS"
+  }
+]

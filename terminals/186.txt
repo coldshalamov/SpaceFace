@@ -1,0 +1,23 @@
+---
+pid: 14720
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"; $env:SF_PART_ID='engine_fusion_lattice'; $env:SF_PHASE='clay'; & $blender --background \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\blender\\engine_fusion_lattice_authored.blend\" --python \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\engine_elite_phase.py\""
+started_at: 2026-07-07T06:59:18.405Z
+running_for_ms: 800007   
+---
+00:13.484  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_fusion_lattice_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:207: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:260: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:24.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter0_clay_34.png'
+00:31.969  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter0_clay_front.png'
+00:41.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter0_clay_side.png'
+00:58.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter0_clay_close_story.png'
+01:14.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_fusion_lattice_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit

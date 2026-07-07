@@ -1,0 +1,25 @@
+---
+pid: 26180
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$SCRATCH = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\"; cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; npm run check:vfx:elite 2>&1 | Tee-Object -FilePath \"$SCRATCH\\vfx-elite-audit.txt\" | Select-Object -Last 12; node scripts/check-sg04-release-assets.mjs --release 2>&1 | Tee-Object -FilePath \"$SCRATCH\\check-sg04-release-exit.txt\" | Select-Object -Last 3; npm run check:visual-stability 2>&1 | Tee-Object -FilePath \"$SCRATCH\\visual-stability.log\" | Select-Object -Last 5"
+started_at: 2026-07-07T17:57:13.048Z
+running_for_ms: 8204998  
+---
+
+VFX_ELITE: PASS
+PASS muzzle: variations=4
+PASS projectile: variations=3
+PASS impact: variations=3
+PASS explosion: variations=3
+PASS thruster: variations=3
+PASS mining: variations=3
+PASS countermeasure: variations=3
+PASS station_emissive: variations=3
+
+SUMMARY fail=0 issues=0
+SG-04 release asset gate OK (112 assets, releaseReady=true)
+      }
+    ]
+  },
+  "pageErrors": []
+}

@@ -1,0 +1,782 @@
+---
+pid: 31840
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "powershell -ExecutionPolicy Bypass -File \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\run_weapon_phases.ps1\" 2>&1 | Tee-Object -FilePath \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\weapon_batch.log\""
+started_at: 2026-07-07T07:37:30.099Z
+running_for_ms: 45410008 
+---
+=== weapon_missile_pod phase=setup ===
+00:02.890  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_missile_pod_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_missile_pod_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_missile_pod phase=clay ===
+00:02.984  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_missile_pod_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:07.296  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter0_clay_34.png'
+00:09.578  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter0_clay_front.png'
+00:11.531  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter0_clay_side.png'
+00:16.671  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter0_clay_close_story.png'
+00:21.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_missile_pod_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_missile_pod phase=lit1 ===
+00:02.828  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_missile_pod_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.797  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter1_lit_34.png'
+00:08.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter1_lit_front.png'
+00:10.906  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter1_lit_side.png'
+00:15.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter1_lit_close_story.png'
+00:20.313  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_missile_pod_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_missile_pod phase=lit2 ===
+00:02.500  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_missile_pod_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter2_lit_34.png'
+00:08.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter2_lit_front.png'
+00:10.234  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter2_lit_side.png'
+00:14.328  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter2_lit_close_story.png'
+00:18.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_missile_pod_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_missile_pod phase=lit3 ===
+00:02.609  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_missile_pod_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter3_lit_34.png'
+00:08.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter3_lit_front.png'
+00:10.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter3_lit_side.png'
+00:14.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter3_lit_close_story.png'
+00:19.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_missile_pod_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_missile_pod phase=lit4 ===
+00:02.531  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_missile_pod_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.390  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter4_lit_34.png'
+00:08.156  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter4_lit_front.png'
+00:10.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter4_lit_side.png'
+00:14.468  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter4_lit_close_story.png'
+00:19.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_missile_pod_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_missile_pod phase=lit5 ===
+00:02.532  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_missile_pod_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter5_lit_34.png'
+00:07.938  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter5_lit_front.png'
+00:10.110  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter5_lit_side.png'
+00:14.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter5_lit_close_story.png'
+00:18.954  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_missile_pod_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_missile_pod_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_missile_pod phase=export ===
+00:02.625  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_missile_pod_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+03:39:38 | INFO: Starting glTF 2.0 export
+03:39:38 | INFO: Extracting primitive: Heavy_Muzzle_Glow
+03:39:38 | INFO: Primitives created: 1
+03:39:38 | INFO: Extracting primitive: weapon_heavy_cannon_Material_Hull_Merged
+03:39:39 | INFO: Primitives created: 1
+03:39:39 | INFO: Extracting primitive: Cube.003
+03:39:39 | INFO: Primitives created: 1
+03:39:39 | INFO: Extracting primitive: Cube.002
+03:39:39 | INFO: Primitives created: 1
+03:39:39 | INFO: Extracting primitive: Cube
+03:39:39 | INFO: Primitives created: 1
+03:39:39 | INFO: Extracting primitive: Cube.001
+03:39:39 | INFO: Primitives created: 1
+03:39:39 | INFO: Extracting primitive: weapon_heavy_cannon_Material_Mechanical_Merged
+03:39:39 | INFO: Primitives created: 1
+03:39:39 | INFO: Finished glTF 2.0 export in 1.1703805923461914 s
+
+Info: Saved "weapon_missile_pod_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_beam_slicer phase=setup ===
+00:02.562  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_beam_slicer_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_beam_slicer_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_beam_slicer phase=clay ===
+00:02.719  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_beam_slicer_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:06.547  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter0_clay_34.png'
+00:08.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter0_clay_front.png'
+00:10.062  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter0_clay_side.png'
+00:15.031  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter0_clay_close_story.png'
+00:19.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_beam_slicer_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_beam_slicer phase=lit1 ===
+00:02.625  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_beam_slicer_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter1_lit_34.png'
+00:07.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter1_lit_front.png'
+00:09.719  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter1_lit_side.png'
+00:14.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter1_lit_close_story.png'
+00:19.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_beam_slicer_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_beam_slicer phase=lit2 ===
+00:02.656  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_beam_slicer_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.234  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter2_lit_34.png'
+00:07.859  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter2_lit_front.png'
+00:09.546  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter2_lit_side.png'
+00:14.140  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter2_lit_close_story.png'
+00:18.234  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_beam_slicer_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_beam_slicer phase=lit3 ===
+00:02.547  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_beam_slicer_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.187  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter3_lit_34.png'
+00:07.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter3_lit_front.png'
+00:09.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter3_lit_side.png'
+00:14.265  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter3_lit_close_story.png'
+00:18.859  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_beam_slicer_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_beam_slicer phase=lit4 ===
+00:02.547  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_beam_slicer_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.141  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter4_lit_34.png'
+00:07.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter4_lit_front.png'
+00:09.641  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter4_lit_side.png'
+00:14.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter4_lit_close_story.png'
+00:19.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_beam_slicer_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_beam_slicer phase=lit5 ===
+00:02.563  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_beam_slicer_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.172  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter5_lit_34.png'
+00:07.875  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter5_lit_front.png'
+00:09.641  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter5_lit_side.png'
+00:14.156  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter5_lit_close_story.png'
+00:19.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_beam_slicer_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_beam_slicer_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_beam_slicer phase=export ===
+00:02.641  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_beam_slicer_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+03:41:43 | INFO: Starting glTF 2.0 export
+03:41:43 | INFO: Extracting primitive: weapon_lance_Material_Accent_Merged
+03:41:43 | WARNING: weapon_lance_Material_Accent_Merged: Could not calculate tangents. Please try to triangulate the mesh first.
+03:41:43 | INFO: Primitives created: 1
+03:41:43 | INFO: Extracting primitive: weapon_lance_Material_Hull_Merged
+03:41:44 | INFO: Primitives created: 1
+03:41:44 | INFO: Extracting primitive: Cube
+03:41:44 | INFO: Primitives created: 1
+03:41:44 | INFO: Extracting primitive: Cube.002
+03:41:44 | INFO: Primitives created: 1
+03:41:44 | INFO: Extracting primitive: Cube.003
+03:41:44 | INFO: Primitives created: 1
+03:41:44 | INFO: Extracting primitive: Cube.001
+03:41:44 | INFO: Primitives created: 1
+03:41:44 | INFO: Extracting primitive: weapon_lance_Material_Mechanical_Merged
+03:41:44 | INFO: Primitives created: 1
+03:41:44 | INFO: Finished glTF 2.0 export in 1.0461413860321045 s
+
+Warning: weapon_lance_Material_Accent_Merged: Could not calculate tangents. Please try to triangulate the mesh first.
+Info: Saved "weapon_beam_slicer_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_autocannon phase=setup ===
+00:02.609  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_autocannon_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_autocannon_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_autocannon phase=clay ===
+00:02.609  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_autocannon_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:08.390  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter0_clay_34.png'
+00:12.609  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter0_clay_front.png'
+00:17.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter0_clay_side.png'
+00:35.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter0_clay_close_story.png'
+00:52.875  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_autocannon_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_autocannon phase=lit1 ===
+00:02.516  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_autocannon_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.204  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter1_lit_34.png'
+00:12.563  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter1_lit_front.png'
+00:17.469  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter1_lit_side.png'
+00:34.235  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter1_lit_close_story.png'
+00:51.266  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_autocannon_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_autocannon phase=lit2 ===
+00:02.656  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_autocannon_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.235  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter2_lit_34.png'
+00:13.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter2_lit_front.png'
+00:17.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter2_lit_side.png'
+00:34.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter2_lit_close_story.png'
+00:52.078  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_autocannon_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_autocannon phase=lit3 ===
+00:02.656  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_autocannon_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.062  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter3_lit_34.png'
+00:12.812  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter3_lit_front.png'
+00:17.515  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter3_lit_side.png'
+00:34.343  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter3_lit_close_story.png'
+00:52.609  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_autocannon_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_autocannon phase=lit4 ===
+00:02.531  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_autocannon_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.219  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter4_lit_34.png'
+00:12.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter4_lit_front.png'
+00:17.390  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter4_lit_side.png'
+00:33.812  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter4_lit_close_story.png'
+00:50.125  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_autocannon_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_autocannon phase=lit5 ===
+00:02.562  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_autocannon_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.328  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter5_lit_34.png'
+00:12.890  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter5_lit_front.png'
+00:17.953  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter5_lit_side.png'
+00:37.765  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter5_lit_close_story.png'
+00:57.218  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_autocannon_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_autocannon_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_autocannon phase=export ===
+00:02.547  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_autocannon_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+03:47:10 | INFO: Starting glTF 2.0 export
+03:47:10 | INFO: Extracting primitive: Cube
+03:47:10 | INFO: Primitives created: 1
+03:47:10 | INFO: Extracting primitive: Cylinder
+03:47:10 | WARNING: Cylinder: Could not calculate tangents. Please try to triangulate the mesh first.
+03:47:10 | INFO: Primitives created: 1
+03:47:10 | INFO: Extracting primitive: Cube.001
+03:47:10 | INFO: Primitives created: 1
+03:47:10 | INFO: Extracting primitive: Cube.002
+03:47:10 | INFO: Primitives created: 1
+03:47:10 | INFO: Extracting primitive: Gatling_Housing
+03:47:10 | INFO: Primitives created: 1
+03:47:10 | INFO: Extracting primitive: Gatling_Barrel_Cluster
+03:47:10 | INFO: Primitives created: 1
+03:47:10 | INFO: Extracting primitive: Gatling_Coils_Merged
+03:47:11 | INFO: Primitives created: 1
+03:47:11 | INFO: Extracting primitive: Gatling_Muzzle
+03:47:11 | INFO: Primitives created: 1
+03:47:11 | INFO: Extracting primitive: weapon_gatling_Material_Mechanical_Merged
+03:47:11 | INFO: Primitives created: 1
+03:47:11 | INFO: Extracting primitive: Cube.003
+03:47:11 | INFO: Primitives created: 1
+03:47:11 | INFO: Extracting primitive: Cube.004
+03:47:11 | INFO: Primitives created: 1
+03:47:11 | INFO: Extracting primitive: Cube.005
+03:47:11 | INFO: Primitives created: 1
+03:47:11 | INFO: Extracting primitive: Cube.006
+03:47:11 | INFO: Primitives created: 1
+03:47:11 | INFO: Finished glTF 2.0 export in 1.8123550415039062 s
+
+Warning: Cylinder: Could not calculate tangents. Please try to triangulate the mesh first.
+Info: Saved "weapon_autocannon_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_plasma_thrower phase=setup ===
+00:02.781  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_plasma_thrower_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_plasma_thrower_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_plasma_thrower phase=clay ===
+00:02.656  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_plasma_thrower_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:09.078  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter0_clay_34.png'
+00:14.594  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter0_clay_front.png'
+00:21.844  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter0_clay_side.png'
+00:40.438  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter0_clay_close_story.png'
+00:57.813  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_plasma_thrower_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_plasma_thrower phase=lit1 ===
+00:02.688  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_plasma_thrower_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.578  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter1_lit_34.png'
+00:13.500  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter1_lit_front.png'
+00:18.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter1_lit_side.png'
+00:33.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter1_lit_close_story.png'
+00:47.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_plasma_thrower_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_plasma_thrower phase=lit2 ===
+00:02.500  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_plasma_thrower_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.469  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter2_lit_34.png'
+00:12.891  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter2_lit_front.png'
+00:18.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter2_lit_side.png'
+00:35.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter2_lit_close_story.png'
+00:50.610  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_plasma_thrower_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_plasma_thrower phase=lit3 ===
+00:02.672  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_plasma_thrower_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter3_lit_34.png'
+00:13.844  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter3_lit_front.png'
+00:19.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter3_lit_side.png'
+00:36.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter3_lit_close_story.png'
+00:51.266  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_plasma_thrower_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_plasma_thrower phase=lit4 ===
+00:02.687  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_plasma_thrower_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.671  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter4_lit_34.png'
+00:13.578  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter4_lit_front.png'
+00:19.156  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter4_lit_side.png'
+00:33.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter4_lit_close_story.png'
+00:47.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_plasma_thrower_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_plasma_thrower phase=lit5 ===
+00:02.563  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_plasma_thrower_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:08.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter5_lit_34.png'
+00:13.313  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter5_lit_front.png'
+00:18.672  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter5_lit_side.png'
+00:34.891  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter5_lit_close_story.png'
+00:49.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_plasma_thrower_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_plasma_thrower_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_plasma_thrower phase=export ===
+00:02.516  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_plasma_thrower_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+03:52:24 | INFO: Starting glTF 2.0 export
+03:52:24 | INFO: Extracting primitive: Pulse_Muzzle_Glow
+03:52:25 | INFO: Primitives created: 1
+03:52:25 | INFO: Extracting primitive: weapon_pulse_cannon_Material_Hull_Merged
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.004
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.010
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.014
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.011
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.001
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.009
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.002
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.005
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.007
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.006
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.008
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.012
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.003
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.015
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: Cube.013
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Extracting primitive: weapon_pulse_cannon_Material_Mechanical_Merged
+03:52:26 | INFO: Primitives created: 1
+03:52:26 | INFO: Finished glTF 2.0 export in 1.7220146656036377 s
+
+Info: Saved "weapon_plasma_thrower_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_torpedo_rack phase=setup ===
+00:02.563  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_torpedo_rack_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_torpedo_rack_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_torpedo_rack phase=clay ===
+00:02.609  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_torpedo_rack_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:275: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:06.531  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter0_clay_34.png'
+00:08.500  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter0_clay_front.png'
+00:10.344  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter0_clay_side.png'
+00:12.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter0_clay_close_story.png'
+00:13.609  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_torpedo_rack_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_torpedo_rack phase=lit1 ===
+00:02.688  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_torpedo_rack_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.438  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter1_lit_34.png'
+00:08.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter1_lit_front.png'
+00:10.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter1_lit_side.png'
+00:11.985  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter1_lit_close_story.png'
+00:13.735  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_torpedo_rack_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_torpedo_rack phase=lit2 ===
+00:02.562  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_torpedo_rack_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.343  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter2_lit_34.png'
+00:08.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter2_lit_front.png'
+00:10.406  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter2_lit_side.png'
+00:12.062  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter2_lit_close_story.png'
+00:13.609  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_torpedo_rack_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_torpedo_rack phase=lit3 ===
+00:02.562  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_torpedo_rack_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter3_lit_34.png'
+00:08.125  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter3_lit_front.png'
+00:10.156  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter3_lit_side.png'
+00:11.859  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter3_lit_close_story.png'
+00:13.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_torpedo_rack_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_torpedo_rack phase=lit4 ===
+00:02.547  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_torpedo_rack_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter4_lit_34.png'
+00:08.063  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter4_lit_front.png'
+00:10.344  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter4_lit_side.png'
+00:12.016  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter4_lit_close_story.png'
+00:13.719  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_torpedo_rack_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_torpedo_rack phase=lit5 ===
+00:02.500  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_torpedo_rack_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:222: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:06.359  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter5_lit_34.png'
+00:08.078  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter5_lit_front.png'
+00:10.109  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter5_lit_side.png'
+00:11.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter5_lit_close_story.png'
+00:13.343  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_weapon_torpedo_rack_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "weapon_torpedo_rack_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== weapon_torpedo_rack phase=export ===
+00:02.750  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\weapon_torpedo_rack_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\weapon_elite_phase.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+03:53:57 | INFO: Starting glTF 2.0 export
+03:53:57 | INFO: Extracting primitive: Cube.013
+03:53:57 | INFO: Primitives created: 1
+03:53:57 | INFO: Extracting primitive: Cube.014
+03:53:57 | INFO: Primitives created: 1
+03:53:57 | INFO: Extracting primitive: Cube.017
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.015
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.016
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.018
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.019
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.020
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.021
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.022
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.023
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.024
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Turret_Charge_Block
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Turret_Barrel_-0.62
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Turret_Barrel_0.62
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Turret_Head
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Turret_Muzzle_-0.62
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Turret_Muzzle_0.62
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Turret_Base
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: weapon_turret_dual_Material_Mechanical_Merged
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.001
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.002
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Extracting primitive: Cube.003
+03:53:58 | INFO: Primitives created: 1
+03:53:58 | INFO: Finished glTF 2.0 export in 1.2057185173034668 s
+
+Info: Saved "weapon_torpedo_rack_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+ALL_WEAPON_PHASES_DONE

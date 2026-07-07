@@ -1,0 +1,32 @@
+---
+pid: 22068
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && npm run check:assets:live 2>&1 | Tee-Object -FilePath \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\check-assets-live.log\" | Select-Object -Last 25"
+started_at: 2026-07-07T17:32:01.339Z
+running_for_ms: 9715004  
+---
+    {
+      "label": "mode:changed",
+      "mode": "flight",
+      "tick": 0,
+      "shipCount": 10,
+      "authored": 10,
+      "states": {
+        "authored": 10
+      },
+      "nonAuthored": 0
+    },
+    {
+      "label": "game:started",
+      "mode": "flight",
+      "tick": 0,
+      "shipCount": 10,
+      "authored": 10,
+      "states": {
+        "authored": 10
+      },
+      "nonAuthored": 0
+    }
+  ],
+  "screenshot": ".devshots/authored-assets-live.jpg"
+}

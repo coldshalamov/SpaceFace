@@ -1,0 +1,34 @@
+---
+pid: 19664
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node scripts/rebuild-release-parts.mjs place_asteroid_rock_b place_asteroid_rock_c"
+started_at: 2026-07-07T05:19:17.053Z
+running_for_ms: 53684999 
+---
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (54)quantize: Skipping TEXCOORD_1; out of [0,1] range.
+
+prune: Removed types... Accessor (25)
+[rebuild] place_asteroid_rock_b: 1273984 -> 1089748 bytes
+prune: Removed types... Accessor (54)
+prune: Removed types... Accessor (25)
+[rebuild] place_asteroid_rock_c: 1261048 -> 1087580 bytes
+{
+  "rebuilt": 2,
+  "results": [
+    {
+      "id": "place_asteroid_rock_b",
+      "sourceBytes": 1273984,
+      "releaseBytes": 1089748,
+      "ok": true
+    },
+    {
+      "id": "place_asteroid_rock_c",
+      "sourceBytes": 1261048,
+      "releaseBytes": 1087580,
+      "ok": true
+    }
+  ]
+}
