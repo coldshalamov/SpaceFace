@@ -790,3 +790,13 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - `design/revamp/EXECUTION_LANES.md` is also absent in this snapshot, so this blockage is recorded here
   and in `PROGRESS.md`. Next backend work should pick a row that does not depend on the 47-A physical
   branch family until those advertised checks either exist or the ledger is corrected.
+
+### T7a PERF_GATE_HARDENING — BLOCKED (2026-07-07)
+- T7a cannot honestly fold `check:perf`, `check:hitch-budget`, and `check:gpu-path` into the default
+  `check`/`check:ci` chains yet. Its declared dependency is "T4 render lane"; the render lane is not
+  stable in this tree.
+- Proof: `node --check src/render/bloom.js` fails at `src/render/bloom.js:344` with
+  `SyntaxError: Unexpected token '.'`. Runtime probes also fail to reach the game surface:
+  `npm run check:hitch-budget` and `npm run check:gpu-path` both timed out in `page.waitForFunction`.
+- No package-chain changes were kept. Next backend work should use the T5 backend packets and skip
+  visual/render halves until the render syntax/runtime boot blocker is cleared by that lane.

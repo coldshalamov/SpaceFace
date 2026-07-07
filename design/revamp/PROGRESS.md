@@ -159,7 +159,7 @@
 
 | id | task | status | depends-on | next |
 |---|---|---|---|---|
-| T7a | Fold `check:perf`/`check:hitch-budget`/`check:gpu-path` into default `check`/`check:ci` chain | NEXT | T4 render lane | T7b |
+| T7a | Fold `check:perf`/`check:hitch-budget`/`check:gpu-path` into default `check`/`check:ci` chain | BLOCKED 2026-07-07 | T4 render lane not stable; `src/render/bloom.js` syntax error blocks headed probes | T7b |
 | T7b | Verify headed deep-perf runs in CI (quality-preserving; no asset disables) | NEXT | T7a | — |
 
 ## T8 — STORY-NARRATIVE CHECK FAMILY (alongside T4 BPs)
