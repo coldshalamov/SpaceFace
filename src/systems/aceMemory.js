@@ -3,16 +3,23 @@
 // Durable event layer only: listens for named ace outcomes, records state.aceMemory, and emits the
 // station-news seam. It does not spawn ships or change hostility.
 import {
+  PIRATE_PROMOTION_MAX_TIER,
   aceById,
   aceByName,
   aceFromText,
   newsForAceTransition,
+  returnCrewForAce,
+  returnLevelBandsForAce,
   returnPlanForAce,
 } from '../data/namedAces.js';
+import { barkFor } from '../data/barks.js';
+import { hash32 } from '../core/rng.js';
+import { makeEnemySpawnSpec } from './combat.js';
 
 export const ACE_MEMORY_VERSION = 1;
 
-const META_KEYS = new Set(['schemaVersion', 'news']);
+const META_KEYS = new Set(['schemaVersion', 'news', 'activeReturns']);
+const RETURN_CHECK_S = 0.5;
 
 export const aceMemory = {
   name: 'aceMemory',
@@ -22,11 +29,13 @@ export const aceMemory = {
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
     this._subs = [];
+    this._returnAccum = 0;
     ensureMemory(this.state);
     this._listen('namedAce:appeared', (p) => this._appeared(p));
     this._listen('namedAce:fled', (p) => this._transition('fled', p));
     this._listen('namedAce:defeated', (p) => this._transition('defeated', p));
     this._listen('encounter:receipt', (p) => this._receipt(p));
+    this._listen('entity:destroyed', (p) => this._entityDestroyed(p));
   },
 
   newGame() {
@@ -39,6 +48,15 @@ export const aceMemory = {
 
   deserialize(data) {
     if (this.state) this.state.aceMemory = normalizeMemory(data);
+  },
+
+  update(dt, state) {
+    if (state.mode && state.mode !== 'flight') return;
+    this.state = state;
+    this._returnAccum = (this._returnAccum || 0) + dt;
+    if (this._returnAccum < RETURN_CHECK_S) return;
+    this._returnAccum = 0;
+    this._processReturns(state);
   },
 
   destroy() {
@@ -91,7 +109,7 @@ export const aceMemory = {
       rec.fleeCount = (rec.fleeCount | 0) + 1;
       rec.returnsBigger = true;
       rec.returnScheduled = true;
-      rec.returnTier = Math.min(3, Math.max(1, (rec.returnTier | 0) + 1));
+      rec.returnTier = Math.min(PIRATE_PROMOTION_MAX_TIER, Math.max(1, (rec.returnTier | 0) + 1));
       Object.assign(rec, returnPlanForAce(ace, seedOf(this.state), now));
       if (first) this._completeTransition('fled', ace, rec);
       return;
@@ -117,6 +135,167 @@ export const aceMemory = {
     const ace = resolveAce(payload) || aceFromText(payload.text);
     if (!ace) return;
     this._transition(outcome, { ...payload, aceId: ace.id });
+  },
+
+  _processReturns(state) {
+    const memory = ensureMemory(state);
+    const now = state.simTime || 0;
+    for (const [id, rec] of Object.entries(memory)) {
+      if (META_KEYS.has(id) || !rec || typeof rec !== 'object') continue;
+      if (rec.defeated === true || rec.returnScheduled !== true) continue;
+      if (Number.isFinite(rec.nextReturnAttemptAt) && rec.nextReturnAttemptAt > now) continue;
+      if (!Number.isFinite(rec.returnAt) || rec.returnAt > now) continue;
+      const ace = aceById(id);
+      if (!ace) continue;
+      this._spawnReturn(ace, rec, now);
+    }
+  },
+
+  _spawnReturn(ace, rec, now) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requestId = `aceReturn:${ace.id}:${rec.returnSeed || 0}:${rec.returnTier || 1}`;
+    const crew = returnCrewForAce(ace, rec.returnTier || 1);
+    const bands = returnLevelBandsForAce(ace, rec.returnTier || 1);
+    const wanted = crew.length;
+    emit(this.bus, 'aceMemory:returnRequested', {
+      aceId: ace.id,
+      aceName: ace.name,
+      requestId,
+      returnTier: rec.returnTier || 1,
+      wanted,
+      levelBand: bands.current.slice(),
+      previousLevelBand: bands.previous.slice(),
+    });
+
+    if (typeof spawnEntity !== 'function') {
+      rec.nextReturnAttemptAt = now + 10;
+      return;
+    }
+
+    let grant = wanted;
+    if (budget && typeof budget.request === 'function') {
+      grant = budget.request(wanted, requestId);
+      if (grant <= 0) {
+        rec.nextReturnAttemptAt = now + 10;
+        return;
+      }
+    }
+
+    const spawnedIds = [];
+    for (let i = 0; i < crew.length && spawnedIds.length < grant; i++) {
+      const ship = crew[i];
+      const spec = this._returnShipSpec(ace, rec, requestId, ship, i);
+      const entity = spawnEntity(spec);
+      if (entity && entity.id != null) {
+        spawnedIds.push(entity.id);
+        rememberActiveReturn(this.state, entity.id, ace.id, requestId);
+      }
+    }
+    if (budget && typeof budget.releaseSome === 'function' && spawnedIds.length < grant) {
+      budget.releaseSome(requestId, grant - spawnedIds.length);
+    }
+    if (!spawnedIds.length) {
+      if (budget && typeof budget.release === 'function') budget.release(requestId);
+      rec.nextReturnAttemptAt = now + 10;
+      return;
+    }
+
+    rec.returnScheduled = false;
+    rec.returned = true;
+    rec.returnedAt = now;
+    rec.returnRequestId = requestId;
+    rec.activeReturnIds = spawnedIds.slice();
+    rec.levelBand = bands.current.slice();
+    rec.previousLevelBand = bands.previous.slice();
+    rec.spawnedCount = spawnedIds.length;
+    this._speakReturnTaunt(ace, rec, requestId);
+    emit(this.bus, 'aceMemory:returnSpawned', {
+      aceId: ace.id,
+      aceName: ace.name,
+      requestId,
+      returnTier: rec.returnTier || 1,
+      levelBand: bands.current.slice(),
+      previousLevelBand: bands.previous.slice(),
+      spawnedIds: spawnedIds.slice(),
+      t: now,
+    });
+  },
+
+  _returnShipSpec(ace, rec, requestId, ship, index) {
+    const pos = returnPosition(this.state, ace, rec, index);
+    const spec = makeEnemySpawnSpec(ship.archetype, ship.level, pos, { factionId: ace.factionId || 'faction_reach' });
+    spec.data = spec.data || {};
+    spec.data.ai = spec.data.ai || {};
+    const ai = spec.data.ai;
+    ai.squadId = requestId;
+    ai.doctrine = 'scavenger';
+    ai.formation = 'wedge';
+    ai.spawnContext = 'ace_return';
+    ai.encounterKind = 'named_ace_return';
+    ai.encounterRole = ship.role;
+    ai.forcePlayerTarget = true;
+    ai.hostileTeams = [0];
+    ai.passive = false;
+    if (ship.role === 'boss') {
+      ai.name = ace.name;
+      spec.data.encounterBoss = true;
+      spec.data.bountyCr = (spec.data.bountyCr || 0) + 250 * Math.max(1, rec.returnTier | 0);
+    }
+    spec.data.aceMemory = {
+      aceId: ace.id,
+      aceName: ace.name,
+      requestId,
+      role: ship.role,
+      promoted: true,
+      returnTier: rec.returnTier || 1,
+      level: ship.level,
+      gimmickTag: ace.gimmickTag || 'ace',
+    };
+    return spec;
+  },
+
+  _speakReturnTaunt(ace, rec, requestId) {
+    if (rec.lastTauntRequestId === requestId) return;
+    rec.lastTauntRequestId = requestId;
+    const bark = barkFor(
+      ace.factionId || 'faction_reach',
+      'taunt',
+      hash32(seedOf(this.state), ace.id, requestId, 'taunt'),
+    );
+    const text = `${ace.name}: you should have finished me. ${bark}`;
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'aceMemory',
+        id: `aceMemory:${ace.id}:return-taunt`,
+        factionId: ace.factionId || 'faction_reach',
+        ttl: 2,
+      });
+    }
+    emit(this.bus, 'aceMemory:voice', {
+      aceId: ace.id,
+      aceName: ace.name,
+      situation: 'taunt',
+      text,
+    });
+  },
+
+  _entityDestroyed(payload) {
+    const id = payload && payload.id;
+    if (id == null || !this.state) return;
+    const memory = ensureMemory(this.state);
+    const active = memory.activeReturns && memory.activeReturns[String(id)];
+    if (!active) return;
+    delete memory.activeReturns[String(id)];
+    const rec = memory[active.aceId];
+    if (rec && Array.isArray(rec.activeReturnIds)) {
+      rec.activeReturnIds = rec.activeReturnIds.filter((entityId) => entityId !== id);
+    }
+    const budget = this.helpers && this.helpers.spawnBudget;
+    if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(active.requestId, 1);
   },
 
   _completeTransition(transition, ace, rec) {
@@ -179,7 +358,7 @@ function resolveAce(payload) {
 }
 
 function freshMemory() {
-  return { schemaVersion: ACE_MEMORY_VERSION, news: {} };
+  return { schemaVersion: ACE_MEMORY_VERSION, news: {}, activeReturns: {} };
 }
 
 function ensureMemory(state) {
@@ -192,6 +371,7 @@ function normalizeMemory(input) {
   const out = freshMemory();
   if (!input || typeof input !== 'object') return out;
   out.news = clonePlain(input.news || {});
+  out.activeReturns = clonePlain(input.activeReturns || {});
   if (input.aces && typeof input.aces === 'object') {
     for (const [id, rec] of Object.entries(input.aces)) out[id] = normalizeRecord(id, rec);
   }
@@ -240,6 +420,34 @@ function nowOf(state, payload) {
 function sectorOf(state, payload) {
   if (payload && payload.sectorId) return payload.sectorId;
   return state && state.world && state.world.currentSectorId || null;
+}
+
+function returnPosition(state, ace, rec, index) {
+  const player = state && state.entities && state.entities.get(state.playerId);
+  const anchor = player && player.pos || { x: 0, z: 0 };
+  const seed = seedOf(state);
+  const h = hash32(seed, ace.id, rec.returnSeed || 0, 'return-pos', index | 0);
+  const angle = (h / 0x100000000) * Math.PI * 2;
+  const radius = index === 0 ? 900 : 120 + index * 35;
+  const bossH = hash32(seed, ace.id, rec.returnSeed || 0, 'return-pos', 0);
+  const bossAngle = (bossH / 0x100000000) * Math.PI * 2;
+  const center = {
+    x: anchor.x + Math.cos(bossAngle) * 900,
+    z: anchor.z + Math.sin(bossAngle) * 900,
+  };
+  if (index === 0) return center;
+  return {
+    x: center.x + Math.cos(angle) * radius,
+    z: center.z + Math.sin(angle) * radius,
+  };
+}
+
+function rememberActiveReturn(state, entityId, aceId, requestId) {
+  const memory = state && state.aceMemory && typeof state.aceMemory === 'object'
+    ? state.aceMemory
+    : ensureMemory(state);
+  if (!memory.activeReturns || typeof memory.activeReturns !== 'object') memory.activeReturns = {};
+  memory.activeReturns[String(entityId)] = { aceId, requestId };
 }
 
 function emit(bus, evt, payload) {

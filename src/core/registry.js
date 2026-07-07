@@ -101,8 +101,8 @@ export function createRegistry(ctx) {
   // tactical AI/weapons observe them; it never spawns and only uses cargo's jettison seam.
   // pirateDisengage also runs before AI; lawful patrol pressure converts pirate squads to flee
   // intent before tactical AI/weapons keep pursuing the player.
-  // aceMemory is SYSTEMS-only: it listens for named-ace/encounter receipts and persists durable
-  // captain memory, but never participates in per-frame combat/spawn decisions.
+  // aceMemory runs at a throttled cadence: B10 listens for named-ace/encounter receipts, and B11
+  // consumes due ace-return schedules into spawnBudget-backed promoted crews before AI ticks.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
   // heat runs late so piracy events from combat/factions this tick have landed before decay.
   // traffic runs after world (sector:enter has spawned stations) and after heat (so piracy on a
@@ -120,7 +120,7 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, autoTargetAssist, scanner, pirateDisguise, pirateParley, pirateDisengage, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, automation, wingmen, crafting,
+    input, autoTargetAssist, scanner, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, automation, wingmen, crafting,
     economy, intervention, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether

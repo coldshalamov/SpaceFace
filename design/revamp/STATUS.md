@@ -408,3 +408,25 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:save-schema` PASS, `check-tether-gameplay.mjs` PASS, `check:balance` 0 FAIL.
   `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition.
   Next backend row: **T4d-6 B11 SPARED_PIRATE_RETURNS_BIGGER**.
+
+### T4d-6 B11 SPARED_PIRATE_RETURNS_BIGGER — promoted ace comeback — DONE (2026-07-07)
+- B11 is an addendum to the B10 files, as specified: `aceMemory` now runs in UPDATE_ORDER at a
+  throttled cadence, consumes due `returnScheduled` records, and turns them into spawnBudget-backed
+  comeback squads. It does not edit `encounterDirector.js` or `enemies.js`.
+- `src/data/namedAces.js` now carries return archetypes/escorts/base levels plus pure helpers for
+  bounded promotion tiers, bumped level bands, and deterministic return crews. Promotion caps at
+  tier 3 to avoid infinite escalation.
+- A due spared ace emits `aceMemory:returnRequested`, reserves spawnBudget slots, spawns a named
+  encounterBoss plus escorts with `spawnContext:'ace_return'`, tags each entity with
+  `data.aceMemory`, consumes the schedule, and speaks one callback taunt: "you should have finished
+  me" plus a faction `taunt` bark. Spawn positions and loadouts derive only from seed + ace id.
+- Defeated aces clear `returnScheduled` and do not zombie-return. Active return slots release on
+  `entity:destroyed`.
+- `check:pirate-promotion` was added and `check:pirate-ecology` now aggregates B9+B6+B7+B8+B10+B11.
+  Red: the check saw zero return requests before the addendum. Non-vacuous control: forcing
+  `rec.returnScheduled` to remain true after spawn made the schedule-consumption assertion fail,
+  then restore GREEN.
+- No-regression: `check:pirate-promotion` PASS, `check:pirate-ecology` PASS,
+  `check:save-schema` PASS, `check:save-resume-confidence` PASS, `check-tether-gameplay.mjs`
+  PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition. Next backend row: **T4d-7 B12 STATION_PIRATE_RUMOR_HEAT**.
