@@ -769,3 +769,11 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check-tether-gameplay.mjs` PASS, `check:player-facing-labels` PASS, `check:balance` 0 FAIL.
   `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition.
   Next backend row: **T3-24 MASSLINE aggregate + mechanics doc**.
+
+### T3-24 MASSLINE_AGGREGATE — claim (2026-07-07)
+- Claimed on `master`. Live proof before claim: `docs/MASSLINE_MECHANICS.md` is absent and package.json has
+  no aggregate `check:massline` script. Scope is backend/doc only: add the aggregate gate over the shipped
+  massline/impulse/47-A rung checks and write `docs/MASSLINE_MECHANICS.md` as the current mechanics map.
+- Acceptance: `npm run check:massline` green, non-vacuous aggregate control proving the gate fails if a
+  required child is missing/miswired, and no-regression floor remains `check:balance` 0 FAIL plus
+  `check:sim:compare` failing only on the documented 47-A precondition.
