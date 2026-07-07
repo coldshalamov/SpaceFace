@@ -600,3 +600,22 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Related gates: `check:station-broadcast` PASS, `check:station-side-events` PASS,
   `check:station-bubbles` PASS, `check:station-glyphs` PASS, `check:sector-atmosphere` PASS.
   Next backend row: **T8h MARKET_CHART**.
+
+### T8h MARKET_CHART — market chart data/forecast proof — DONE (2026-07-07)
+- NEW check `scripts/check-market-chart.mjs` plus `npm run check:market-chart`. This is a
+  verification-only row: no shipped gameplay/UI/asset/render source is changed.
+- The check boots the real economy system headless, warms the home market, records live
+  `priceHistory` from `economy:tick`, verifies active economic event ids are captured for the
+  chart event log, and proves `predictPriceCurve` is deterministic over the live hidden cycle.
+- It pins the shipped Market screen chart contract: commodity-card click opens the chart modal,
+  regime uses the live economy cycle wrapper, forecast uses the 24x5s window, history uses the
+  recorder, trend labels are thresholded, active events are filtered to station/commodity, the
+  expanded canvas draws base/history/forecast, tooltips use the same data, and row sparklines use
+  the same history source.
+- Red: package script failed before `scripts/check-market-chart.mjs` existed. Non-vacuous control:
+  changing the shipped chart forecast window from `24` to `6` failed the source contract, then
+  restore GREEN.
+- Related gates: `check:price-forecast` PASS, `check:market-nav` PASS, `check:balance` 0 FAIL.
+  `check:market-first-loop` is blocked before `window.SF` by the existing render syntax error;
+  confirmed separately with `node --check src/render/bloom.js` failing at `src/render/bloom.js:344`.
+  Next backend row: **T8f CLAIM_LEDGER**.
