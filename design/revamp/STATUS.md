@@ -727,7 +727,24 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition.
   Next backend row: **T1c RELEASE_SOAK**.
 
-### T1c RELEASE_SOAK — long-run drift/spawn budget proof — IN-FLIGHT (2026-07-07)
-- Claimed on `master` per the revamp ledger and no-worktree policy. Scope is the named gate
-  `scripts/check-release-soak.mjs` plus `npm run check:release-soak`; no shipped gameplay changes
-  unless the check exposes a backend release-soak violation.
+### T1c RELEASE_SOAK — long-run drift/spawn budget proof — DONE (2026-07-07)
+- NEW check `scripts/check-release-soak.mjs` plus `npm run check:release-soak`. The check runs two
+  deterministic 30 sim-minute headless release soaks (seeds 47 and 109) through real gameplay
+  systems: `spawnBudget`, `economy`, `factions`, `sectorSim`, `world`, `encounterDirector`,
+  `stationSideEventDirector`, and `gateControlDirector`.
+- The soak enters live Sker Haven, steers the player across authored zones/stations/gates, exercises
+  encounter telegraphs/resolution, station side events, and gate charge/abort seams, and records a
+  replay digest. Same seed must produce byte-identical event/sample digests.
+- Runtime guards assert `spawnBudget.used` equals reservation sums, budget/live non-player ships stay
+  at or below the 12-ship release cap, entity-count drift remains bounded, active directors clean up
+  after the final window, and every non-entry combat spawn is attributed to a prior
+  `encounter:telegraph`, station side-event, or gate-control wing.
+- Red: package script failed before `scripts/check-release-soak.mjs` existed. First script pass also
+  corrected an over-specific pressure threshold: Sker seed 47 legitimately peaked at 7 budgeted
+  ships, so the gate now requires real shared-budget pressure (>=6) without assuming all ambient
+  headroom slots land in that sector.
+- Non-vacuous control: temporarily lowering shipped `spawnBudget.DEFAULT_MAX` from `12` to `4`
+  made `check:release-soak` fail on the release-cap guard, then restore GREEN.
+- Related gates: `check:release-soak` PASS, `check:encounter-director` PASS,
+  `check:one-voice` PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the
+  documented 47-A projectile-collision precondition.
