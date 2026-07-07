@@ -1,0 +1,21 @@
+{
+  "partId": "engine_fusion_lattice",
+  "file": "engines/engine_fusion_lattice.glb",
+  "tris": 7920,
+  "bytes": 489588,
+  "dims": [
+    2.85,
+    2.08,
+    2.08
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "engine_fusion_lattice_coil_glow_roughness_story_2k.jpg"
+}

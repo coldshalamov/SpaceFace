@@ -2327,9 +2327,27 @@ function buildWreck(e) {
 
 function buildFallback(e) {
   const R = (e && e.radius) || 3;
-  const mat = getMaterial('fallback:mat', () => new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.7, metalness: 0.3, emissive: 0x223040, emissiveIntensity: 0.3 }));
+  const seed = hashId((e && e.id) || 'fallback') & 0xffff;
+  const pal = e ? resolvePalette(e) : NEUTRAL_PAL;
+  const mat = getMaterial(`fallback:pbr:${pal.hull}:${pal.accent}:${seed}`, () => {
+    const albedo = makeHullPanelTexture({ size: 512, seed, hull: pal.hull, accent: pal.accent, panelCount: 8, wear: 0.62 });
+    const normal = makeHullNormalMap({ size: 512, seed: seed + 1, panelCount: 8, bevel: 0.48 });
+    const rough = makeNoiseTexture({ size: 256, seed: seed + 7, octaves: 3, baseCells: 4, contrast: 1.05, brightness: 0.08 });
+    return new THREE.MeshStandardMaterial({
+      map: albedo,
+      normalMap: normal,
+      roughnessMap: rough,
+      color: 0xffffff,
+      roughness: 0.58,
+      metalness: 0.24,
+      normalScale: new THREE.Vector2(0.55, 0.55),
+      emissive: new THREE.Color(pal.emissive || pal.accent),
+      emissiveIntensity: 0.12,
+    });
+  });
   const m = new THREE.Mesh(getGeometry('fallback:geo', () => new THREE.BoxGeometry(1, 0.5, 1)), mat);
   m.scale.setScalar(R);
+  m.userData.kind = (e && e.type) || 'fallback';
   return m;
 }
 

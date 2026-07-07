@@ -2,6 +2,8 @@
 // 43 cmdty_* IDs per ARCHITECTURE §3.6.1. Balance data only; flavor merged from commodityFlavor.js.
 import { COMMODITY_FLAVOR } from './commodityFlavor.js';
 export { COMMODITY_FLAVOR } from './commodityFlavor.js';
+import { COMMODITY_MORAL_TAGS } from './commodityMoralTags.js'; // BP-12 CARGO_REPUTATION_GLYPH addendum
+export { COMMODITY_MORAL_TAGS, MORAL_TAGS } from './commodityMoralTags.js';
 // basePrice (cr/u): price at equilibrium stock. volatility: event amplitude.
 // elasticity: price curve steepness. legality: 'legal'|'restricted'|'contraband'.
 // volPerU / massPerU: hold footprint. producedBy/consumedBy: station-type roles.
@@ -85,4 +87,11 @@ for (const cmdty of COMMODITIES) {
   const flavor = COMMODITY_FLAVOR[cmdty.id];
   if (!flavor) continue;
   Object.assign(cmdty, flavor);
+}
+
+// BP-12 CARGO_REPUTATION_GLYPH: merge the moralTag addendum onto each record (one source of truth,
+// same merge pattern as COMMODITY_FLAVOR above). moralTag is OPTIONAL — neutral cargo has none.
+for (const cmdty of COMMODITIES) {
+  const tag = COMMODITY_MORAL_TAGS[cmdty.id];
+  if (tag) cmdty.moralTag = tag;
 }

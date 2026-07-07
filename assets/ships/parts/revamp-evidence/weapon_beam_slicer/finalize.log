@@ -1,0 +1,21 @@
+{
+  "partId": "weapon_beam_slicer",
+  "file": "weapons/weapon_beam_slicer.glb",
+  "tris": 7006,
+  "bytes": 365844,
+  "dims": [
+    7.65,
+    1.07,
+    1.7935
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Hull,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "weapon_beam_slicer_choir_cut_roughness_story_2k.jpg"
+}

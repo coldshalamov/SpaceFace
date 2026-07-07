@@ -1,15 +1,18 @@
 {
   "partId": "hull_starter",
   "file": "hulls/hull_starter.glb",
-  "tris": 1612,
-  "bytes": 664636,
+  "tris": 1660,
+  "bytes": 1001148,
   "dims": [11.3052, 1.6242, 6.4043],
   "images": 5,
   "materials": "Material_Hull,Material_Mechanical,Material_Accent",
   "method": "blender_mcp",
   "date": "2026-07-06",
-  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+clearcoat+roughness_variation",
-  "skin_pass": "DEBT_stencil+port_weld_scar+reactor_soot+repossession_tag+3owner_wear",
-  "screenshots": 27,
+  "phase": "elite",
+  "eliteFinish": true,
+  "surfacing": "2k_trim+2k_wear+faction_stripe_story+SF_EdgeWear+SF_CavityDirt+AO_bake+micro_scratch+panel_lines+secondary_wear+clearcoat+emissive_accent",
+  "skin_pass": "DEBT_stencil+port_weld_scar+reactor_soot+repossession_tag+faction_stripe+3owner_wear",
+  "det_layers": 18,
+  "screenshots": 32,
   "full_finish": true
 }

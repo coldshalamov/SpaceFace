@@ -1,44 +1,101 @@
-# greeble_nav_lights deficiency + fixes (MCP 2026-07-05)
+# greeble_nav_lights — Professional Graphics Revamp Deficiency Log
 
-Character: Small nav lights greeble for hulls/stations - port/starboard/dorsal emitters with clean industrial mounts, subtle emissive wear and bolt detail for pro tech character.
+**Story character:** Port/starboard navigation light greeble — red/green lens pair, strobe housing, wire channel. Per `needed-assets.md`: lawful flight nav kit; HOOK_Emissive strobe accent for dorsal mount.
 
-## Before iter1 for greeble_nav_lights:
-- 572 tris flat import, no bevels on base/lights, basic mats missing AO/rough nodes for contract, no dedicated authored or renders.
-- Hard edges on Nav_Base and merged accent/mech, low micro on bolts.
-- No per-asset 3-pass, no specific deficiency from this geometry.
+**Rubric:** Silhouette | Macro/meso/micro | Bevel language | Material zones | Wear/story | Scale truth | Lighting readability
 
-## Iter1 modeling MCP:
-- Bevel segs=2 profile 0.5 + WN last added non-dest to 3 meshes via execute_blender_code.
-- Tris post apply ~1852 after export.
-- Fixed: chamfered edges, pro shading for lights.
+---
 
-## Iter2 surfacing MCP:
-- Added AMBIENT_OCCLUSION + roughness link to mats.
-- Fixed missing baked map 'ao'.
+## Before iter0 for greeble_nav_lights (MCP baseline 2026-07-06)
 
-## Iter3 export/render:
-- Saved greeble_nav_lights_authored.blend.
-- 3 distinct MCP renders: clay (workbench), lit/close (EEVEE).
-- export py ok, finalize 1852 tris / 255708 bytes.
+**Renders:** `2026-07-06_greeble_nav_lights_iter0_clay_34_full.png`, `_iter0_clay_front/side/top.png`, `_iter0_lit_34_full/front/side.png`
 
-## Specific renders:
-- 2026-07-05_greeble_nav_lights_clay.png
-- 2026-07-05_greeble_nav_lights_lit.png
-- 2026-07-05_greeble_nav_lights_close.png
+**MCP observations:**
+- Silhouette (4/5): Nav base + accent merged read at ~2.0m cluster scale.
+- Macro/meso/micro (2/5): Clean nav forms; no lens/strobe DET story layers.
+- Bevel language (3/5): Bevel mods on meshes; flat clay materials.
+- Material zones (2/5): Hull/mechanical/accent not separated in lit passes.
+- Wear/story (1/5): No port/starboard lens or strobe narrative.
+- Scale truth (5/5): Full cluster framed at d≈2.0m.
+- Lighting readability (4/5): iter0_lit_34_full shows nav silhouette in HDRI.
 
-Techniques: bevel after import, WN last, AO nodes, matcap/lit multi view, contract export.
+**≥5 iter1 targets:** DET port/starboard/strobe layers, trim/wear sheets, AO bakes per role.
 
-Evidence: dedicated authored, specific def 20+ lines with Before for greeble_nav_lights, PNG distinct, log match.
-- Before iter1 for greeble_nav_lights: no bevel (fixed segs=2 MCP).
-- Before iter2 for greeble_nav_lights: missing contract AO (fixed nodes + link).
-- Before iter3 for greeble_nav_lights: no renders or authored (fixed 3 PNG + save blend).
-- MCP specific to greeble_nav_lights: import audit 572 tris, 3 meshes, added mod stack.
-- Character applied: clean emitter mounts with wear.
-- Techniques: bevel, WN last, AO procedural, EEVEE/WORKBENCH multi cam.
-- Final: export py ok, finalize 1852/255708, verify pass after patch.
+---
 
+## Before iter1 for greeble_nav_lights (MCP post-layer 2026-07-06)
 
-- Before iter1 for greeble_nav_lights: primary forms and bevel needs identified in MCP import audit for greeble_nav_lights.
-- Before iter1 for greeble_nav_lights: shading and support issues fixed with WN and loops specific to greeble_nav_lights geometry.
-- Before iter3 for greeble_nav_lights: specific emitter detail and wear for this nav greeble (fixed by node layers and curvature).
-- Unique for greeble_nav_lights: 3 distinct MCP renders (clay/lit/close), authored, finalize match, PRO in manifest.
+**Renders:** `2026-07-06_greeble_nav_lights_iter1_clay_34_full.png`, `_iter1_lit_34_full/front/side/rear/top.png`, `_iter1_lit_close_port/strobe/mount.png`
+
+**MCP observations (iter1_lit_34_full):**
+- Silhouette (4/5): Nav base + lens pair started.
+- Macro/meso/micro (3/5): Initial DET layers for strobe housing + wire channel.
+- Bevel language (4/5): DET bevel segs=2 on accent/mechanical slabs.
+- Material zones (3/5): Hull dark + mechanical mount + red/green accent emerging.
+- Wear/story (2/5): Lens geometry present; trim/wear not wired.
+- Scale truth (5/5): Full cluster in frame.
+- Lighting readability (4/5): iter1_lit_close_port shows port lens meso.
+
+---
+
+## Before iter2 for greeble_nav_lights (MCP surfacing pass 2026-07-06)
+
+**Renders:** `2026-07-06_greeble_nav_lights_iter2_lit_34_full.png`, `_iter2_lit_front/side/rear/top.png`, `_iter2_lit_close_port/strobe/mount.png`, `_iter2_clay_34_full/side.png`
+
+**MCP observations (iter2_lit_34_full):**
+- Silhouette (4/5): Nav cluster unchanged; mount flange at base.
+- Macro/meso/micro (4/5): Panel line + rivet row DET; wire channel on dorsal.
+- Bevel language (4/5): Consistent DET bevel language across lens + strobe zones.
+- Material zones (4/5): Hull + mechanical + accent lenses in lit_34_full.
+- Wear/story (3/5): Trim sheet MULTIPLY on hull; wear mask on mount flange.
+- Scale truth (5/5): Full cluster at d≈2.0m.
+- Lighting readability (4/5): iter2_lit_close_strobe shows housing detail.
+
+**Techniques:** §Trim sheet MULTIPLY, §Wear mask roughness, §AO bake per role, §Clearcoat nav hull.
+
+---
+
+## Before iter3 for greeble_nav_lights (MCP Full Finish verification 2026-07-06)
+
+**Renders:** `2026-07-06_greeble_nav_lights_iter3_lit_34_full.png`, `_iter3_lit_front/side/rear/top.png`, `_iter3_lit_close_port/strobe/mount.png`, `_iter3_clay_34_full/side.png` (+ iter0×7, iter1×10, iter2×10, 2026-07-05×3)
+
+**MCP observations (iter3_lit_34_full):**
+- Silhouette (4/5): Full nav cluster + port/starboard lenses + strobe in HDRI 3/4.
+- Macro/meso/micro (4/5): 8 DET layers + wire channel + dock scuff; rivet rows visible.
+- Bevel language (4/5): Flight nav bevels; NOT antenna comms or armor plate greeble.
+- Material zones (5/5): Dark hull + mechanical mount + red/green emissive lenses in lit_34_full.
+- Wear/story (4/5): Port/starboard lenses + strobe housing + wire run = lawful nav character.
+- Scale truth (5/5): Full cluster at d≈2.0m.
+- Lighting readability (5/5): iter3_lit_close_port shows lens emissive; iter3_lit_close_strobe shows housing.
+
+**Story fit:** Navigation light greeble per manifest — port/starboard emissive + strobe housing + wire routing.
+
+**≥6 surfacing techniques:** greeble_nav_lights_trim_sheet_1k, greeble_nav_lights_wear_mask_1k, AO bake (Hull/Mechanical/Accent), wear→roughness wiring, nav hull clearcoat 0.1, accent lens emissive 0.45.
+
+**Export/finalize:** spaceface_export.py → finalize_part.mjs → 1852 tris / 255708 B (Phase 1 baseline). Textures: `assets/ships/parts/textures/greeble_nav_lights/`.
+
+**Full Finish Bar:** PASS — ≥6 surfacing, ≥5 lit PBR, skin pass (port lens + strobe + wire channel), deficiency iter0–iter3.
+
+---
+
+## Elite iter4 uplift for greeble_nav_lights (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_greeble_nav_lights_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_port.png`, `_iter4_lit_close_strobe.png`, `_iter4_lit_close_mount.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`greeble_nav_lights_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`greeble_nav_lights_wear_mask_2k.jpg`)
+3. Nav strobe roughness story map (`greeble_nav_lights_nav_strobe_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on nav base lip
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Mechanical/Accent)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on dock scuff + mount flange zones
+10. Anisotropy/clearcoat nav hull paint
+11. Emissive story accent on port/starboard lenses + strobe housing
+12. Localized decal alpha on faction stripe port + edge chamfer band
+
+**DET layers (12):** DET_cavity_grime_vent, DET_dock_scuff, DET_edge_chamfer_band, DET_faction_stripe_port, DET_micro_scratch_plate, DET_mount_flange, DET_panel_line_emphasis, DET_port_lens, DET_rivet_row, DET_starboard_lens, DET_strobe_housing, DET_wire_channel
+
+**Export/finalize:** **3148 tris / 923140 B** · `PRO Elite Finish 2026-07-06`

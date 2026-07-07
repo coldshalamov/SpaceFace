@@ -1,0 +1,21 @@
+{
+  "partId": "engine_afterburner",
+  "file": "engines/engine_afterburner.glb",
+  "tris": 2372,
+  "bytes": 327764,
+  "dims": [
+    3.3,
+    1.7342,
+    1.6
+  ],
+  "images": 2,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "engine_afterburner_scorch_plume_roughness_story_2k.jpg"
+}

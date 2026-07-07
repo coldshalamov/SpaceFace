@@ -1,1 +1,15 @@
-{"partId":"place_asteroid_graffiti","tris":952,"bytes":196976,"images":3}
+{
+  "id": "place_asteroid_graffiti",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:21:54Z",
+  "tris": 2979,
+  "bytes": 1168336,
+  "textureSize": 2048,
+  "storyMap": "place_asteroid_graffiti_graffiti_stencil_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — tagged asteroid uplift"
+}

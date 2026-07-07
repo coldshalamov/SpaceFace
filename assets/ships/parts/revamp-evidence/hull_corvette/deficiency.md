@@ -85,3 +85,27 @@
 **Screenshot count:** 24 distinct MCP viewport renders (6 iter0 clay + 6 iter1 lit + 6 iter2 lit + 6 iter3 lit).
 
 **Full Finish Bar:** SATISFIED.
+
+---
+
+## Elite iter4 uplift for hull_corvette (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_hull_corvette_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_bridge.png`, `_iter4_lit_close_stripe.png`, `_iter4_lit_close_bow.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`hull_corvette_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`hull_corvette_wear_mask_2k.jpg`)
+3. Patrol stripe roughness story map (`hull_corvette_patrol_stripe_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation
+9. Secondary wear on bridge + bow patrol zones
+10. Anisotropy/clearcoat hull paint vs mechanical vents
+11. Emissive story accent on patrol command stripe
+12. Localized decal alpha on faction stripe port
+
+**DET layers (12):** prior 8 + DET_micro_scratch_plate, DET_panel_line_emphasis, DET_faction_stripe_port, DET_cavity_grime_vent
+
+**Export/finalize:** **2520 tris / 1375212 B** · `PRO Elite Finish 2026-07-06`

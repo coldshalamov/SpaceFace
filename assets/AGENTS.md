@@ -194,7 +194,33 @@ Blender (.blend)
 - `assets/QUEUE.md` — blockers + queued props/landmarks
 - `tools/art/finalize_whole_ship.mjs` / `finalize_part.mjs`
 - `scripts/build-sg04-release-assets.mjs`
+- `scripts/fix-revamp-part-contract.mjs` — post-finalize GLB contract repairs
 - `tools/blender/spaceface_export.py`
+
+### 3.1 Full Finish Bar (Phase 1 floor — do not regress)
+
+Canonical spec: `design/spec3/SPEC3-F9-full-finish-bar.md`
+
+| Requirement | Bar |
+|---|---|
+| Surfacing techniques | ≥6 named in `revamp-evidence/<id>/deficiency.md` |
+| Before-iter blocks | 4 (`iter0`–`iter3`) |
+| Lit EEVEE renders | ≥20 T2 / ≥10 T1 in `.devshots/graphics-revamp/` |
+| Textures | trim_sheet + wear_mask + 3× AO per role |
+| Export | `spaceface_export.py` → `finalize_part.mjs` → manifest tris/bytes match |
+| Gate | `npm run check:revamp:evidence` — **must stay 0 fail** |
+
+### 3.2 Elite Finish Bar (Phase 2 — current target)
+
+Canonical spec: `design/spec3/SPEC3-F9-elite-finish-bar.md` · Tracking: `GOAL_ELITE_VISUAL_STANDARD.md`
+
+**Existing ID uplift:** ≥10 techniques, ≥12 `DET_*` layers, ≥5 new `iter4`/`iter5` lit renders, 2K textures + story map, manifest note `PRO Elite Finish YYYY-MM-DD`.
+
+**New ID:** full MCP loop, ≥25 lit (T2) / ≥15 (T1), ≤22k tris, ≤8 submeshes.
+
+**Pipeline after export batch:** `fix-revamp-part-contract.mjs` → `build-sg04-release-assets.mjs` → `check:elite:evidence` + `check:assets:live`.
+
+**VFX:** `design/VFX_ELITE_STANDARD.md` — ≥3 variations per family; `npm run check:vfx:elite`.
 
 ---
 

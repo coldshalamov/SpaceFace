@@ -79,3 +79,27 @@
 **Export/finalize:** GLB export → finalize_part.mjs → 15474 tris / 951260 B. HOOK_DRIVE retained (tangent warn non-fatal). Textures: `assets/ships/parts/textures/engine_resonator/`.
 
 **PASS — Full Finish verified 2026-07-06.**
+
+---
+
+## Elite iter4 uplift for engine_resonator (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_engine_resonator_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_vein.png`, `_iter4_lit_close_stencil.png`, `_iter4_lit_close_port.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`engine_resonator_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`engine_resonator_wear_mask_2k.jpg`)
+3. Violet bleed roughness story map (`engine_resonator_violet_bleed_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on oxidized hull
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Mechanical/Accent)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on phase seam + crystal fracture zones
+10. Anisotropy/clearcoat anomaly oxidized hull
+11. Emissive story accent on emissive port + violet bleed vein
+12. Localized decal alpha on faction stripe port
+
+**DET layers (12):** DET_anomaly_facet_plate, DET_cavity_grime_vent, DET_crystal_fracture, DET_emissive_port, DET_faction_stripe_port, DET_micro_scratch_plate, DET_oxidized_rib, DET_panel_line_emphasis, DET_phase_seam, DET_resonance_ring, DET_veil_stencil, DET_violet_bleed_vein
+
+**Export/finalize:** **13720 tris / 848052 B** · `PRO Elite Finish 2026-07-06`

@@ -296,6 +296,37 @@ export function grimeMaterial({ hull, seed, intensity = 0.5 }) {
   });
 }
 
+/** Elite Finish wear overlays: grime + micro-scratch decal shells for code-native hero ships. */
+export function applyEliteWearShell(hull, {
+  hull: hullColor,
+  accent,
+  seed,
+  length = 20,
+  halfWidth = 2.5,
+  height = 1.5,
+  grime = 0.35,
+  microScratch = 0.22,
+}) {
+  if (grime > 0.05) {
+    const shell = new THREE.Mesh(
+      new THREE.BoxGeometry(length * 1.02, height * 1.02, halfWidth * 2.02),
+      grimeMaterial({ hull: hullColor, seed, intensity: grime }),
+    );
+    shell.name = 'Elite_Grime_Shell';
+    shell.renderOrder = 1;
+    hull.add(shell);
+  }
+  if (microScratch > 0.05) {
+    const scratch = new THREE.Mesh(
+      new THREE.BoxGeometry(length * 1.01, height * 1.01, halfWidth * 2.01),
+      decalMaterial({ hull: hullColor, accent, seed: seed + 11, kind: 'greeble' }),
+    );
+    scratch.name = 'Elite_MicroScratch_Shell';
+    scratch.renderOrder = 2;
+    hull.add(scratch);
+  }
+}
+
 // Build a faction nose-art / crest decal texture (bomber shark-mouth, punk spray tag, or crisp
 // insignia crest) and return a transparent material for a flank decal plane.
 export function noseArtMaterial({ style, accent, seed, motto, mascot, tally }) {

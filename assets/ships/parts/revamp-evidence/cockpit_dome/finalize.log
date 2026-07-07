@@ -1,12 +1,19 @@
 {
   "partId": "cockpit_dome",
   "file": "cockpits/cockpit_dome.glb",
-  "tris": 3214,
-  "bytes": 288048,
-  "dims": [4.6, 3.26, 3.26],
+  "tris": 3862,
+  "bytes": 354636,
+  "dims": [
+    4.6,
+    3.26,
+    3.26
+  ],
   "images": 1,
-  "materials": "Material_Accent,Material_Mechanical,Material_Glass,Material_Hull",
-  "source": "blender_mcp",
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical,Material_Glass",
+  "method": "blender_mcp",
   "date": "2026-07-06",
-  "note": "PRO Full Finish — trim/wear + AO bakes + interrogation emissive glass + Core DET layers, 31 MCP renders"
+  "phase": "elite",
+  "eliteFinish": true,
+  "det_layers": 13,
+  "full_finish": true
 }

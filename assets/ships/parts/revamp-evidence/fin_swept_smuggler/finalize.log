@@ -1,5 +1,9 @@
 {
   "partId": "fin_swept_smuggler",
-  "tris": 576,
-  "bytes": 194864
+  "tris": 7528,
+  "bytes": 454596,
+  "eliteFinish": true,
+  "phase": "elite",
+  "note": "PRO Elite Finish 2026-07-06",
+  "method": "blender_mcp"
 }

@@ -1,0 +1,21 @@
+{
+  "partId": "weapon_missile_pod",
+  "file": "weapons/weapon_missile_pod.glb",
+  "tris": 8776,
+  "bytes": 553700,
+  "dims": [
+    6.43,
+    1.495,
+    1.7327
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Hull,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "weapon_missile_pod_missile_rack_roughness_story_2k.jpg"
+}

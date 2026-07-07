@@ -108,3 +108,27 @@
 **Screenshot count:** 30 distinct renders (8 iter0 clay + 8 iter1 lit + 7 iter2 lit + 6 iter3 lit + 1 oxidation_fixed).
 
 **Full Finish Bar:** SATISFIED (including story-matched skin pass item 6).
+
+---
+
+## Elite iter4 uplift for hull_capital (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_hull_capital_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_bridge.png`, `_iter4_lit_close_stripe.png`, `_iter4_lit_close_bow.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`hull_capital_trim_sheet_2k.jpg`)
+2. 2K ashfall wear mask (`hull_capital_wear_mask_2k.jpg`)
+3. Ashfall oxidation roughness story map (`hull_capital_ashfall_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Accent/Mechanical)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on cathedral ribs + vault keel
+10. Anisotropy/clearcoat oxidized hull vs mechanical dread panels
+11. Emissive story accent on anomaly vein + boss spire
+12. Localized decal alpha on faction stripe port
+
+**DET layers (13):** DET_anomaly_vein, DET_ashfall_oxidation, DET_boss_signal_spire, DET_cathedral_rib, DET_cathedral_rib_001, DET_cavity_grime_vent, DET_dread_panel, DET_dungeon_port, DET_faction_stripe_port, DET_micro_scratch_plate, DET_panel_line_emphasis, DET_vault_keel, DET_wreck_scar
+
+**Export/finalize:** **3516 tris / 1168048 B** · `PRO Elite Finish 2026-07-06`

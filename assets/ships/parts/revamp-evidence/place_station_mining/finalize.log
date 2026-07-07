@@ -1,1 +1,15 @@
-{"partId":"place_station_mining","tris":588,"bytes":188628,"images":3}
+{
+  "id": "place_station_mining",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:26:56Z",
+  "tris": 2844,
+  "bytes": 1293316,
+  "textureSize": 2048,
+  "storyMap": "place_station_mining_ore_dust_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — ore dust story"
+}

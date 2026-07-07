@@ -1,0 +1,17 @@
+{
+  "partId": "hull_scout",
+  "file": "hulls/hull_scout.glb",
+  "tris": 4076,
+  "bytes": 1174780,
+  "dims": [11.1487, 1.5896, 5.3921],
+  "images": 2,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "hull_scout_stealth_sensor_roughness_story_2k.jpg"
+}

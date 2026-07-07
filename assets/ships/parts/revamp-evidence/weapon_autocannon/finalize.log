@@ -1,0 +1,21 @@
+{
+  "partId": "weapon_autocannon",
+  "file": "weapons/weapon_autocannon.glb",
+  "tris": 6056,
+  "bytes": 3169948,
+  "dims": [
+    9.1532,
+    1.41,
+    1.375
+  ],
+  "images": 1,
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "weapon_autocannon_belt_feed_roughness_story_2k.jpg"
+}

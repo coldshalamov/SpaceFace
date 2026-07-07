@@ -1,1 +1,15 @@
-{"partId":"place_conveyor_barge","file":"places/place_conveyor_barge.glb","tris":1144,"bytes":242592,"images":3,"note":"PRO revamp 2026-07-05 - bevel (segs=2) + WN + AO/rough bakes via MCP for conveyor barge. Character: long industrial cargo hauler with drive wear. 1144 tris."}
+{
+  "id": "place_conveyor_barge",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:13:45Z",
+  "tris": 2440,
+  "bytes": 1182288,
+  "textureSize": 2048,
+  "storyMap": "place_conveyor_barge_cargo_scuff_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — conveyor barge uplift: belt + hatch DET stack"
+}

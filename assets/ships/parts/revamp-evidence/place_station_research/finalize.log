@@ -1,1 +1,15 @@
-{"partId":"place_station_research","tris":720,"bytes":190620,"images":3}
+{
+  "id": "place_station_research",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:26:56Z",
+  "tris": 2175,
+  "bytes": 514604,
+  "textureSize": 2048,
+  "storyMap": "place_station_research_sensor_wear_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — sensor wear story"
+}

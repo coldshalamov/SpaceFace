@@ -34,9 +34,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_starter.glb",
-      "tris": 1612,
-      "bytes": 664636,
-      "textureSize": 1024,
+      "tris": 1660,
+      "bytes": 1001148,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -69,7 +69,7 @@
           6.4043
         ]
       },
-      "note": "PRO Full Finish 2026-07-06 — Bevel4+WN+meso insets+DET weld/reactor/DEBT/hatch/bolts/tag/soot. Surfacing: trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO bake+clearcoat+roughness_variation (textures/hull_starter/). Skin: Pit repossessed 3-owner wear, DEBT graffiti, port weld scar, reactor soot, inventory tag. 1612 tris / blender_mcp.",
+      "note": "PRO Elite Finish 2026-07-06 — 18 DET layers (+4 elite), 2K trim/wear+faction_stripe_story map, iter4 lit uplift. Pit repossessed 3-owner wear, DEBT graffiti, port weld, reactor soot, faction stripe. 1660 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -94,9 +94,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_fighter.glb",
-      "tris": 3308,
-      "bytes": 1708364,
-      "textureSize": 1024,
+      "tris": 3260,
+      "bytes": 1577016,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -129,7 +129,7 @@
           5.8845
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + trim sheet + combat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Core lawful patrol bounty hunter cyan-steel. 31 MCP renders. tris=3308.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+faction_stripe_story, iter4 lit uplift. Core lawful patrol hunter cyan-steel. 3260 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -154,9 +154,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_miner.glb",
-      "tris": 21048,
-      "bytes": 3352340,
-      "textureSize": 1024,
+      "tris": 15608,
+      "bytes": 2555956,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -189,7 +189,7 @@
           5.404
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + ore trim sheet + dust wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Belt ore hauler dust-caked rust-amber. 30 MCP renders. tris=21048.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+ore_dust_story map, iter4 lit uplift. Belt ore hauler dust-caked rust-amber. 15608 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -214,9 +214,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_freighter.glb",
-      "tris": 3248,
-      "bytes": 1781788,
-      "textureSize": 1024,
+      "tris": 4435,
+      "bytes": 2915160,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -249,7 +249,7 @@
           4.24
         ]
       },
-      "note": "PRO revamp 2026-07-06 — 8 DET layers + Full Finish surfacing: trim sheet + wear mask (image-gen), SF_EdgeWear/SF_CavityDirt node groups, AO bake, roughness variation, clearcoat, 3-role PBR (Hull/Mech/Accent). Belt cargo runner manifest-lies character. tris=3248.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+manifest_stripe_story, iter4 lit uplift. Belt cargo runner manifest-lies. 4435 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -274,9 +274,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_interceptor.glb",
-      "tris": 3212,
-      "bytes": 1429832,
-      "textureSize": 1024,
+      "tris": 2492,
+      "bytes": 1251096,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -309,7 +309,7 @@
           5.3921
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + interceptor trim + heat wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, 3-role EEVEE lit PBR. Fringe fast pursuit heat-scarred sodium-red. 24 MCP renders. tris=3212.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+heat_scorch_story, iter4 lit uplift. Fringe fast pursuit sodium-red heat-scar. 2492 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -334,9 +334,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_corvette.glb",
-      "tris": 3240,
-      "bytes": 1558760,
-      "textureSize": 1024,
+      "tris": 2520,
+      "bytes": 1375212,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -369,7 +369,7 @@
           5.05
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + corporate trim + fade wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.22, 3-role EEVEE lit PBR. Core Bastion escort corporate-clean-fading. 24 MCP renders. tris=3240.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+patrol_stripe_story, iter4 lit uplift. Core Bastion escort corporate-clean-fading. 2520 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -394,9 +394,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_frigate.glb",
-      "tris": 3300,
-      "bytes": 841536,
-      "textureSize": 1024,
+      "tris": 3348,
+      "bytes": 923880,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -429,7 +429,7 @@
           5.323
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + frigate trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.28, stencil emissive, 3-role EEVEE lit PBR. Core authority squadron stripe + disciplined wear skin pass. 29 MCP renders. tris=3300.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+command_stripe_story, iter4 lit uplift. Core authority squadron stripe. 3348 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -454,9 +454,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_capital.glb",
-      "tris": 3468,
-      "bytes": 930292,
-      "textureSize": 1024,
+      "tris": 3516,
+      "bytes": 1167964,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -489,7 +489,7 @@
           7.05
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 9 DET + cathedral trim/ashfall wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, matte oxidized, anomaly emissive, 3-role EEVEE lit PBR. Ashfall cathedral ribs + oxidation + violet vein skin pass. 30 MCP renders. tris=3468.",
+      "note": "PRO Elite Finish 2026-07-06 — 13 DET (+4 elite), 2K trim/wear+ashfall_story, iter4 lit uplift. Ashfall cathedral dread capital. 3516 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -514,9 +514,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_multirole.glb",
-      "tris": 2566,
-      "bytes": 774824,
-      "textureSize": 1024,
+      "tris": 2998,
+      "bytes": 1099348,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -549,7 +549,7 @@
           4.45
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + patchwork trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, violet emissive stripe, 3-role EEVEE lit PBR. Free Frontier smuggler patchwork skin pass. 29 render_viewport_to_path MCP renders. tris=2566.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+violet_stripe_story, iter4 lit uplift. Free Frontier smuggler patchwork. 2998 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -574,9 +574,9 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_gunship.glb",
-      "tris": 3288,
-      "bytes": 914176,
-      "textureSize": 1024,
+      "tris": 3720,
+      "bytes": 1234768,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull"
       },
@@ -609,7 +609,307 @@
           5.5
         ]
       },
-      "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + gunship trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, stencil emissive, 3-role EEVEE lit PBR. Military/fringe battle-scar + soot + red stencil skin pass. 32 MCP renders. tris=3288.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+battle_scorch_story, iter4 lit uplift. Military/fringe gunship battle-scar. 3720 tris / blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "hull_scout",
+      "category": "hulls",
+      "priority": "P1",
+      "file": "hulls/hull_scout.glb",
+      "tris": 4076,
+      "bytes": 1174780,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [
+        "MOUNT_COCKPIT",
+        "MOUNT_ENGINE_L",
+        "MOUNT_ENGINE_R",
+        "MOUNT_FIN_L",
+        "MOUNT_FIN_R"
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.45,
+          -0.4988,
+          -2.6961
+        ],
+        "max": [
+          5.6987,
+          1.0908,
+          2.6961
+        ],
+        "dimensionsM": [
+          11.1487,
+          1.5896,
+          5.3921
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Pit stealth recon hull; 16 DET layers, 2K trim/wear+stealth_sensor_story, 25 lit EEVEE iter1-5. 4076 tris / blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "hull_courier",
+      "category": "hulls",
+      "priority": "P1",
+      "file": "hulls/hull_courier.glb",
+      "tris": 4104,
+      "bytes": 1371964,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [
+        "MOUNT_COCKPIT",
+        "MOUNT_ENGINE_L",
+        "MOUNT_ENGINE_R",
+        "MOUNT_FIN_L",
+        "MOUNT_FIN_R"
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.55,
+          -1.145,
+          -2.525
+        ],
+        "max": [
+          5.95,
+          2.3183,
+          2.525
+        ],
+        "dimensionsM": [
+          11.5,
+          3.4633,
+          5.05
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Meridian fast courier; 16 DET, 2K trim/wear+meridian_stripe_story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "hull_salvager",
+      "category": "hulls",
+      "priority": "P1",
+      "file": "hulls/hull_salvager.glb",
+      "tris": 6019,
+      "bytes": 1708536,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [
+        "MOUNT_COCKPIT",
+        "MOUNT_ENGINE_L",
+        "MOUNT_ENGINE_R",
+        "MOUNT_FIN_L",
+        "MOUNT_FIN_R"
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.55,
+          -1.15,
+          -2.12
+        ],
+        "max": [
+          5.8006,
+          2.453,
+          2.12
+        ],
+        "dimensionsM": [
+          11.3506,
+          3.603,
+          4.24
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Belt salvage-field hull; 16 DET, 2K trim/wear+salvage_field_story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "hull_dreadnought",
+      "category": "hulls",
+      "priority": "P1",
+      "file": "hulls/hull_dreadnought.glb",
+      "tris": 4352,
+      "bytes": 1582308,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [
+        "MOUNT_COCKPIT",
+        "MOUNT_ENGINE_L",
+        "MOUNT_ENGINE_R",
+        "MOUNT_FIN_L",
+        "MOUNT_FIN_R"
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -6.496,
+          -3.245,
+          -3.525
+        ],
+        "max": [
+          7.616,
+          3.365,
+          3.525
+        ],
+        "dimensionsM": [
+          14.112,
+          6.61,
+          7.05
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Anomaly cathedral dread; 16 DET, 2K trim/wear+cathedral_rib_story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "hull_smuggler",
+      "category": "hulls",
+      "priority": "P1",
+      "file": "hulls/hull_smuggler.glb",
+      "tris": 3618,
+      "bytes": 1369940,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "hooks": [
+        "MOUNT_COCKPIT",
+        "MOUNT_ENGINE_L",
+        "MOUNT_ENGINE_R",
+        "MOUNT_FIN_L",
+        "MOUNT_FIN_R"
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.665,
+          -1.86,
+          -2.225
+        ],
+        "max": [
+          6.517,
+          1.92,
+          2.225
+        ],
+        "dimensionsM": [
+          12.182,
+          3.78,
+          4.45
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Reach contraband smuggler; 16 DET, 2K trim/wear+contraband_stencil_story, 25 lit EEVEE. blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -634,14 +934,14 @@
       "category": "cockpits",
       "priority": "P0",
       "file": "cockpits/cockpit_dome.glb",
-      "tris": 3214,
-      "bytes": 288048,
-      "textureSize": 1024,
+      "tris": 3862,
+      "bytes": 354636,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — 31 MCP viewport renders; trim/wear sheets + AO bakes + SF node groups; DET frame ribs/core stencil/collar seam/glass scratch/mount bolts; interrogation-bright emissive glass + clearcoat collar. Character: Core corporate bubble (clean-fading). tris=3214.",
+      "note": "PRO Elite Finish 2026-07-06 — 13 DET (+4 elite), 2K trim/wear+interrogation_stripe_story, iter4 lit uplift. Core corporate bubble interrogation glass. 3862 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -688,14 +988,14 @@
       "category": "cockpits",
       "priority": "P0",
       "file": "cockpits/cockpit_slab.glb",
-      "tris": 2644,
-      "bytes": 699892,
-      "textureSize": 1024,
+      "tris": 3076,
+      "bytes": 741504,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — trim/wear sheets + AO bakes (Hull/Mech/Glass) + rust-amber belt stencil + muted glass + dock scuff DET via blender_mcp. 31 MCP renders. tris=2644.",
+      "note": "PRO Elite Finish 2026-07-06 — 14 DET (+5 elite), 2K trim/wear+belt_stencil_story, iter4 lit uplift, SF_EdgeWear+SF_CavityDirt via blender_mcp. tris=3076.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -742,14 +1042,14 @@
       "category": "cockpits",
       "priority": "P0",
       "file": "cockpits/cockpit_recessed.glb",
-      "tris": 1884,
-      "bytes": 1596312,
-      "textureSize": 1024,
+      "tris": 2424,
+      "bytes": 1652500,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — trim+wear image-gen textures, SF_EdgeWear/SF_CavityDirt, AO bake Hull/Mech/Accent/Glass, clearcoat stealth hull, emissive sensor slits; DET canopy_wear_streak+mount_bolt; 31 MCP renders. Pit/Quiet paranoid stealth recessed canopy. tris=1884.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+5 elite), 2K trim/wear+quiet_stencil_story, iter4 lit uplift. Pit/Quiet stealth recessed canopy. 2424 tris / blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -792,18 +1092,288 @@
       }
     },
     {
-      "id": "engine_ion_small",
-      "category": "engines",
-      "priority": "P0",
-      "file": "engines/engine_ion_small.glb",
-      "tris": 13564,
-      "bytes": 821340,
-      "textureSize": 1024,
+      "id": "cockpit_canopy_angled",
+      "category": "cockpits",
+      "priority": "P1",
+      "file": "cockpits/cockpit_canopy_angled.glb",
+      "tris": 6854,
+      "bytes": 795824,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — trim/wear sheets + AO bakes (Hull/Mech/Accent) + Pit patch/stencil/soot/cable DET via blender_mcp. 32 MCP renders. tris=13564.",
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1.1,
+          -1.1455,
+          -1.6255
+        ],
+        "max": [
+          3.5,
+          2.1055,
+          1.6255
+        ],
+        "dimensionsM": [
+          4.6,
+          3.251,
+          3.251
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Angled HUD fighter canopy; 16 DET, 2K+hud_stripe story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "cockpit_armored",
+      "category": "cockpits",
+      "priority": "P1",
+      "file": "cockpits/cockpit_armored.glb",
+      "tris": 6068,
+      "bytes": 873624,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.8,
+          -0.175,
+          -1.85
+        ],
+        "max": [
+          4.055,
+          1.81,
+          1.85
+        ],
+        "dimensionsM": [
+          4.855,
+          1.985,
+          3.7
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Military armored viewport slit; 16 DET, 2K+slat_armor story, 25 lit. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "cockpit_bubble_twin",
+      "category": "cockpits",
+      "priority": "P1",
+      "file": "cockpits/cockpit_bubble_twin.glb",
+      "tris": 6854,
+      "bytes": 795944,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1.1,
+          -1.1455,
+          -1.6255
+        ],
+        "max": [
+          3.5,
+          2.1055,
+          1.6255
+        ],
+        "dimensionsM": [
+          4.6,
+          3.251,
+          3.251
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Patrol dual-bubble canopy; 16 DET, 2K+patrol_glass story, 25 lit. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "cockpit_stealth_hood",
+      "category": "cockpits",
+      "priority": "P1",
+      "file": "cockpits/cockpit_stealth_hood.glb",
+      "tris": 2856,
+      "bytes": 1116084,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.9,
+          -0.223,
+          -2.22
+        ],
+        "max": [
+          4.8099,
+          1.18,
+          1.75
+        ],
+        "dimensionsM": [
+          5.7099,
+          1.403,
+          3.97
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Pit stealth hood shroud; 16 DET, 2K+quiet_coat story, 25 lit. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "cockpit_bridge_cap",
+      "category": "cockpits",
+      "priority": "P1",
+      "file": "cockpits/cockpit_bridge_cap.glb",
+      "tris": 6068,
+      "bytes": 873848,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.8,
+          -0.25,
+          -1.85
+        ],
+        "max": [
+          4.055,
+          1.81,
+          1.85
+        ],
+        "dimensionsM": [
+          4.855,
+          2.06,
+          3.7
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Capital bridge cap window; 16 DET, 2K+officer_stripe story, 25 lit. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "engine_ion_small",
+      "category": "engines",
+      "priority": "P0",
+      "file": "engines/engine_ion_small.glb",
+      "tris": 14104,
+      "bytes": 874972,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+5 elite), 2K trim/wear+pit_soot_story, iter4 lit uplift, SF_EdgeWear+SF_CavityDirt via blender_mcp. tris=14104.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -852,14 +1422,14 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_ion_twin.glb",
-      "tris": 5664,
-      "bytes": 459984,
-      "textureSize": 1024,
+      "tris": 6096,
+      "bytes": 508024,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — trim/wear sheets + AO bakes (Hull/Mech/Accent) + Core cyan stripe/stencil/sync bridge DET via blender_mcp. 30 MCP renders. tris=5664.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+core_inspection_story, iter4 lit uplift, SF_EdgeWear+SF_CavityDirt via blender_mcp. tris=6096.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -912,14 +1482,14 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_industrial.glb",
-      "tris": 23308,
-      "bytes": 1009464,
-      "textureSize": 1024,
+      "tris": 23740,
+      "bytes": 1057892,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — trim/wear sheets + AO bakes (Hull/Mech/Accent) + Belt soot/ore/hazard/stencil DET via blender_mcp. 30 MCP renders. tris=23308.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+refinery_soot_story, iter4 lit uplift, SF_EdgeWear+SF_CavityDirt via blender_mcp. tris=23740.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -968,14 +1538,14 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_resonator.glb",
-      "tris": 15474,
-      "bytes": 951260,
-      "textureSize": 1024,
+      "tris": 13720,
+      "bytes": 848052,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — trim/wear + AO bakes + Anomaly violet bleed/facet/stencil/port DET, 29 MCP renders. 15474 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+violet_bleed_story, iter4 lit uplift, SF_EdgeWear+SF_CavityDirt via blender_mcp. tris=13720.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1003,7 +1573,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.63,
+          -0.36,
           -1.2967,
           -1.2967
         ],
@@ -1013,7 +1583,7 @@
           1.2967
         ],
         "dimensionsM": [
-          3.23,
+          2.96,
           2.5935,
           2.5935
         ]
@@ -1024,14 +1594,14 @@
       "category": "engines",
       "priority": "P1",
       "file": "engines/engine_vector.glb",
-      "tris": 1076,
-      "bytes": 243280,
-      "textureSize": 1024,
+      "tris": 2372,
+      "bytes": 432360,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3, profile=0.6, angle limit) + WeightedNormal (last) via MCP import + modeling pass. Character: precision vectoring drive, clean futuristic base + mechanical wear/heat on fan/nozzle. 1076 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+4 elite), 2K trim/wear+vector_burn_story, iter4 lit uplift, SF_EdgeWear+SF_CavityDirt via blender_mcp. tris=2372.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1080,14 +1650,14 @@
       "category": "engines",
       "priority": "P1",
       "file": "engines/engine_plasma_ring.glb",
-      "tris": 1888,
-      "bytes": 248812,
-      "textureSize": 1024,
+      "tris": 8784,
+      "bytes": 1900224,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + node layers via MCP for engine_plasma_ring. Character: role-specific. tris=1888.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET, 2K trim/wear+plasma_glow_story, iter4 lit uplift, SF_EdgeWear+SF_CavityDirt via blender_mcp. tris=8784.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1132,18 +1702,302 @@
       }
     },
     {
-      "id": "weapon_pulse_cannon",
-      "category": "weapons",
+      "id": "engine_afterburner",
+      "category": "engines",
       "priority": "P1",
-      "file": "weapons/weapon_pulse_cannon.glb",
-      "tris": 1944,
-      "bytes": 239152,
-      "textureSize": 1024,
+      "file": "engines/engine_afterburner.glb",
+      "tris": 2372,
+      "bytes": 327764,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN on meshes. Applied modeling pass. 1944 tris.",
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "HOOK_DRIVE_PLUME"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.7,
+          -0.875,
+          -0.8
+        ],
+        "max": [
+          2.6,
+          0.8592,
+          0.8
+        ],
+        "dimensionsM": [
+          3.3,
+          1.7342,
+          1.6
+        ]
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Pursuit afterburner vector gimbal; 16 DET, 2K+scorch_plume story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      }
+    },
+    {
+      "id": "engine_fusion_lattice",
+      "category": "engines",
+      "priority": "P1",
+      "file": "engines/engine_fusion_lattice.glb",
+      "tris": 7920,
+      "bytes": 489588,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Fusion lattice coil ring; 16 DET, 2K+coil_glow story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "HOOK_DRIVE_PLUME"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.45,
+          -1.04,
+          -1.04
+        ],
+        "max": [
+          2.4,
+          1.04,
+          1.04
+        ],
+        "dimensionsM": [
+          2.85,
+          2.08,
+          2.08
+        ]
+      }
+    },
+    {
+      "id": "engine_ore_thruster",
+      "category": "engines",
+      "priority": "P0",
+      "file": "engines/engine_ore_thruster.glb",
+      "tris": 23632,
+      "bytes": 1090864,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Ore dust thruster; 16 DET, 2K+dust_exhaust story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "HOOK_DRIVE_PLUME"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.3,
+          -1.4331,
+          -1.4331
+        ],
+        "max": [
+          3.302,
+          1.469,
+          1.4331
+        ],
+        "dimensionsM": [
+          3.602,
+          2.9022,
+          2.8663
+        ]
+      }
+    },
+    {
+      "id": "engine_tug_drive",
+      "category": "engines",
+      "priority": "P0",
+      "file": "engines/engine_tug_drive.glb",
+      "tris": 14380,
+      "bytes": 983976,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Tug jury-patch drive; 16 DET, 2K+jury_patch story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "HOOK_DRIVE_PLUME"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.36,
+          -1.0525,
+          -1.0525
+        ],
+        "max": [
+          2.5,
+          1.0525,
+          1.0525
+        ],
+        "dimensionsM": [
+          2.86,
+          2.105,
+          2.105
+        ]
+      }
+    },
+    {
+      "id": "engine_ramjet",
+      "category": "engines",
+      "priority": "P0",
+      "file": "engines/engine_ramjet.glb",
+      "tris": 6096,
+      "bytes": 535768,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Ramjet intake heat twin; 16 DET, 2K+intake_heat story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE_P",
+        "HOOK_DRIVE_CORE_S",
+        "HOOK_DRIVE_FAN_P",
+        "HOOK_DRIVE_FAN_S",
+        "HOOK_DRIVE_PLUME_P",
+        "HOOK_DRIVE_PLUME_S",
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.22,
+          -1.075,
+          -1.8676
+        ],
+        "max": [
+          2.8,
+          0.8176,
+          1.8676
+        ],
+        "dimensionsM": [
+          3.02,
+          1.8926,
+          3.7352
+        ]
+      }
+    },
+    {
+      "id": "weapon_pulse_cannon",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_pulse_cannon.glb",
+      "tris": 14180,
+      "bytes": 764196,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish 2026-07-06 — Core pulse cannon: 12 DET layers, pulse glow story map, 2K trim/wear. 14180 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1173,17 +2027,17 @@
         "min": [
           -0.15,
           -0.52,
-          -0.5
+          -0.5032
         ],
         "max": [
           4.64,
           0.52,
-          0.5
+          0.5032
         ],
         "dimensionsM": [
           4.79,
           1.04,
-          1
+          1.0064
         ]
       }
     },
@@ -1192,14 +2046,14 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_heavy_cannon.glb",
-      "tris": 2296,
-      "bytes": 246532,
-      "textureSize": 1024,
+      "tris": 9640,
+      "bytes": 600676,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3, profile=0.55) + WN last via MCP on 3 meshes (muzzle/hull/mech). Character: oversized bolted heavy cannon, combat wear on cylinders. 2296 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+12 new), 2K trim/wear+combat_scorch_story, iter4 lit uplift, SF_EdgeWear+SF_CavityDirt via blender_mcp. tris=9640.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1229,17 +2083,17 @@
         "min": [
           -0.3,
           -0.725,
-          -0.85
+          -0.8663
         ],
         "max": [
           6.13,
           0.77,
-          0.85
+          0.8663
         ],
         "dimensionsM": [
           6.43,
           1.495,
-          1.7
+          1.7327
         ]
       }
     },
@@ -1248,14 +2102,14 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_turret_dual.glb",
-      "tris": 1808,
-      "bytes": 241160,
-      "textureSize": 1024,
+      "tris": 11456,
+      "bytes": 707188,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for dual turret. Character: dual barrel turret with charge block, combat wear. 1808 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — dual gimbal turret: 12 DET layers, combat scorch story map, 2K trim/wear. 11456 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1284,7 +2138,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.25,
+          -0.55,
           -1.05,
           -1.125
         ],
@@ -1294,7 +2148,7 @@
           1.125
         ],
         "dimensionsM": [
-          5.28,
+          5.58,
           2.1,
           2.25
         ]
@@ -1305,14 +2159,14 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_lance.glb",
-      "tris": 1112,
-      "bytes": 220168,
-      "textureSize": 1024,
+      "tris": 7870,
+      "bytes": 412316,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for lance weapon. Character: long lance with rail, precision wear. 1112 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — long precision energy lance: 12 DET layers, beam glow story map, 2K trim/wear. 7870 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1342,17 +2196,17 @@
         "min": [
           -0.3,
           -0.535,
-          -0.85
+          -0.8967
         ],
         "max": [
           7.35,
           0.535,
-          0.85
+          0.8967
         ],
         "dimensionsM": [
           7.65,
           1.07,
-          1.7
+          1.7935
         ]
       }
     },
@@ -1361,14 +2215,14 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_gatling.glb",
-      "tris": 3680,
-      "bytes": 1466816,
-      "textureSize": 1024,
+      "tris": 8064,
+      "bytes": 1655012,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — DET ammo/heat/rail/scuff + trim_sheet+wear_mask+SF_EdgeWear+AO bake+emissive heat+clearcoat (textures/weapon_gatling/). Skin: belt-fed Fringe rapid-fire, heat disc, cartridge scuff, BELT barrel marking. 3680 tris / blender_mcp.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET (+8 elite), 2K trim/wear+heat_scorch_story, iter4 lit uplift, SF_EdgeWear+SF_CavityDirt via blender_mcp. tris=8064.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1418,14 +2272,14 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_railgun.glb",
-      "tris": 1788,
-      "bytes": 237656,
-      "textureSize": 1024,
+      "tris": 9324,
+      "bytes": 600848,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for railgun. Character: linear rail accelerator with long barrel, high-energy wear. 1788 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — linear rail accelerator: 12 DET layers, arc flux story map, 2K trim/wear. 9324 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1455,17 +2309,299 @@
         "min": [
           -0.2,
           -0.45,
-          -0.4628
+          -0.4687
         ],
         "max": [
           6.1,
           0.52,
-          0.4628
+          0.48
         ],
         "dimensionsM": [
           6.3,
           0.97,
-          0.9256
+          0.9487
+        ]
+      }
+    },
+    {
+      "id": "weapon_torpedo_rack",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_torpedo_rack.glb",
+      "tris": 11888,
+      "bytes": 801684,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Patrol torpedo rack turret; 16 DET, 2K+patrol_tube story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "HOOK_Spin"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.55,
+          -1.05,
+          -1.125
+        ],
+        "max": [
+          5.03,
+          1.05,
+          1.125
+        ],
+        "dimensionsM": [
+          5.58,
+          2.1,
+          2.25
+        ]
+      }
+    },
+    {
+      "id": "weapon_plasma_thrower",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_plasma_thrower.glb",
+      "tris": 14612,
+      "bytes": 3645976,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Energy plasma thrower; 16 DET, 2K+arc_plasma story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.15,
+          -0.52,
+          -0.5032
+        ],
+        "max": [
+          4.64,
+          0.52,
+          0.5032
+        ],
+        "dimensionsM": [
+          4.79,
+          1.04,
+          1.0064
+        ]
+      }
+    },
+    {
+      "id": "weapon_autocannon",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_autocannon.glb",
+      "tris": 6056,
+      "bytes": 3169948,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Fringe belt-fed autocannon; 16 DET, 2K+belt_feed story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "HOOK_Spin"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.2,
+          -0.91,
+          -0.8
+        ],
+        "max": [
+          8.9,
+          0.5,
+          0.575
+        ],
+        "dimensionsM": [
+          9.1,
+          1.41,
+          1.375
+        ]
+      }
+    },
+    {
+      "id": "weapon_beam_slicer",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_beam_slicer.glb",
+      "tris": 7006,
+      "bytes": 365844,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Choir beam slicer lance; 16 DET, 2K+choir_cut story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.3,
+          -0.535,
+          -0.8967
+        ],
+        "max": [
+          7.35,
+          0.535,
+          0.8967
+        ],
+        "dimensionsM": [
+          7.65,
+          1.07,
+          1.7935
+        ]
+      }
+    },
+    {
+      "id": "weapon_missile_pod",
+      "category": "weapons",
+      "priority": "P1",
+      "file": "weapons/weapon_missile_pod.glb",
+      "tris": 8776,
+      "bytes": 553700,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Belt missile pod rack; 16 DET, 2K+missile_rack story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Muzzle"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.3,
+          -0.725,
+          -0.8663
+        ],
+        "max": [
+          6.13,
+          0.77,
+          0.8663
+        ],
+        "dimensionsM": [
+          6.43,
+          1.495,
+          1.7327
         ]
       }
     },
@@ -1474,14 +2610,14 @@
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_wedge.glb",
-      "tris": 1566,
-      "bytes": 1289392,
-      "textureSize": 1024,
+      "tris": 4214,
+      "bytes": 302480,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — DET radiator/mount/wear/soot + trim_sheet+wear_mask+SF_EdgeWear+AO bake+emissive sodium edge (textures/fin_wedge/). Skin: Pit starter stabilizer, radiator slits, field-repair wear. 1566 tris / blender_mcp.",
+      "note": "PRO Elite Finish 2026-07-06 — Pit starter fin: 12 DET layers, sodium edge story map, 2K trim/wear. 4214 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1508,18 +2644,18 @@
       "bounds": {
         "min": [
           -0.4108,
-          -0.214,
-          -0.0181
+          -0.35,
+          -0.23
         ],
         "max": [
           3.8154,
-          0.3325,
+          0.44,
           4.1108
         ],
         "dimensionsM": [
           4.2261,
-          0.5465,
-          4.1289
+          0.79,
+          4.3408
         ]
       }
     },
@@ -1528,14 +2664,14 @@
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_radiator_grid.glb",
-      "tris": 652,
-      "bytes": 209476,
-      "textureSize": 1024,
+      "tris": 2364,
+      "bytes": 228064,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel segs=3 + WN on meshes (modeling pass). 652 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — industrial radiator fin: 12 DET layers, heat flow story map, 2K trim/wear. 2364 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1561,19 +2697,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
-          -0.12,
-          0
+          -0.49,
+          -0.28,
+          -0.44
         ],
         "max": [
-          3.6,
+          3.6116,
           0.32,
-          3.8
+          3.8114
         ],
         "dimensionsM": [
-          3.6,
-          0.44,
-          3.8
+          4.1016,
+          0.6,
+          4.2514
         ]
       }
     },
@@ -1582,14 +2718,14 @@
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_swept_smuggler.glb",
-      "tris": 576,
-      "bytes": 194864,
-      "textureSize": 1024,
+      "tris": 7528,
+      "bytes": 454596,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for fin_swept_smuggler. Character: swept smuggler fin. tris=576.",
+      "note": "PRO Elite Finish 2026-07-06 — Belt smuggler swept fin: 12 DET layers, belt stripe story map, 2K trim/wear. 7528 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1615,19 +2751,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2,
-          -0.09,
-          0
+          -0.32,
+          -0.32,
+          -0.43
         ],
         "max": [
-          4.8,
-          0.2,
-          4
+          4.8385,
+          0.37,
+          4.0121
         ],
         "dimensionsM": [
-          5,
-          0.29,
-          4
+          5.1585,
+          0.69,
+          4.4421
         ]
       }
     },
@@ -1636,14 +2772,14 @@
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_crystalline.glb",
-      "tris": 540,
-      "bytes": 194568,
-      "textureSize": 1024,
+      "tris": 4248,
+      "bytes": 329464,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for crystalline fin form. Character: elegant faceted fin with crystalline accents, light wear. 540 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — Anomaly crystalline fin: 12 DET layers, violet vein story map, 2K trim/wear. 4248 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1669,19 +2805,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
+          -0.3401,
           -0.3,
-          -0.11,
-          0
+          -0.41
         ],
         "max": [
-          3.8,
-          0.2,
-          4.3
+          3.8565,
+          0.4,
+          4.3523
         ],
         "dimensionsM": [
-          4.1,
-          0.31,
-          4.3
+          4.1966,
+          0.7,
+          4.7623
         ]
       }
     },
@@ -1690,14 +2826,14 @@
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_delta.glb",
-      "tris": 584,
-      "bytes": 195408,
-      "textureSize": 1024,
+      "tris": 4952,
+      "bytes": 1018096,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for delta fin. Character: sharp delta fin with edge highlights, light wear. 584 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — Core patrol delta wing: 12 DET layers, 2K trim/wear + patrol stripe story map, EEVEE iter4 uplift. 4952 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1723,19 +2859,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
+          -0.0877,
           -0.11,
-          0
+          -0.239
         ],
         "max": [
-          5.2,
-          0.3025,
-          5.5
+          5.2747,
+          4.9792,
+          5.5662
         ],
         "dimensionsM": [
-          5.2,
-          0.4125,
-          5.5
+          5.3624,
+          5.0892,
+          5.8052
         ]
       }
     },
@@ -1744,14 +2880,14 @@
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_stabilator.glb",
-      "tris": 520,
-      "bytes": 197944,
-      "textureSize": 1024,
+      "tris": 3360,
+      "bytes": 1215792,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for stabilator fin. Character: swept stabilator with control surfaces, light wear. 520 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — multirole stabilator: 12 DET layers, 2K trim/wear + control surface story map, EEVEE iter4 uplift. 3360 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1782,14 +2918,284 @@
           -1.8
         ],
         "max": [
-          4.6,
-          0.66,
+          4.6212,
+          2.1,
           1.8
         ],
         "dimensionsM": [
-          4.8,
-          0.835,
+          4.8212,
+          2.275,
           3.6
+        ]
+      }
+    },
+    {
+      "id": "fin_contraband_cowl",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_contraband_cowl.glb",
+      "tris": 7960,
+      "bytes": 1507240,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Contraband cowl smuggler fin; 16 DET, 2K+hidden_hatch story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.32,
+          -0.32,
+          -0.43
+        ],
+        "max": [
+          4.8385,
+          0.37,
+          4.0121
+        ],
+        "dimensionsM": [
+          5.1585,
+          0.69,
+          4.4421
+        ]
+      }
+    },
+    {
+      "id": "fin_ion_blade",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_ion_blade.glb",
+      "tris": 4680,
+      "bytes": 642144,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Ion blade crystalline fin; 16 DET, 2K+ion_vein story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.3401,
+          -0.3,
+          -0.41
+        ],
+        "max": [
+          3.8565,
+          0.4,
+          4.3523
+        ],
+        "dimensionsM": [
+          4.1966,
+          0.7,
+          4.7623
+        ]
+      }
+    },
+    {
+      "id": "fin_armor_skid",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_armor_skid.glb",
+      "tris": 8166,
+      "bytes": 1523124,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Armored skid wedge fin; 16 DET, 2K+battle_scar story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.4108,
+          -0.35,
+          -0.23
+        ],
+        "max": [
+          3.8154,
+          0.44,
+          4.1108
+        ],
+        "dimensionsM": [
+          4.2261,
+          0.79,
+          4.3408
+        ]
+      }
+    },
+    {
+      "id": "fin_solar_array",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_solar_array.glb",
+      "tris": 2796,
+      "bytes": 536524,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — Solar radiator array fin; 16 DET, 2K+panel_glow story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.49,
+          -0.28,
+          -0.44
+        ],
+        "max": [
+          3.6116,
+          0.32,
+          3.8114
+        ],
+        "dimensionsM": [
+          4.1016,
+          0.6,
+          4.2514
+        ]
+      }
+    },
+    {
+      "id": "fin_vtol_skeg",
+      "category": "fins",
+      "priority": "P1",
+      "file": "fins/fin_vtol_skeg.glb",
+      "tris": 5276,
+      "bytes": 1052332,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — VTOL skeg stabilizer; 16 DET, 2K+vtol_stripe story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.0877,
+          -0.11,
+          -0.239
+        ],
+        "max": [
+          5.2747,
+          4.9792,
+          5.5662
+        ],
+        "dimensionsM": [
+          5.3624,
+          5.0892,
+          5.8052
         ]
       }
     },
@@ -1798,14 +3204,14 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_vents.glb",
-      "tris": 968,
-      "bytes": 243904,
-      "textureSize": 1024,
+      "tris": 4240,
+      "bytes": 589320,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for greeble_vents. Character: greeble_vents. tris=968.",
+      "note": "PRO Elite Finish 2026-07-06 — heat vent greeble: 12 DET layers, 2K trim/wear + heat vent story map, EEVEE iter4 uplift. 4240 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1829,18 +3235,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.2,
-          -0.26,
+          -0.325,
+          -0.2588,
           -1.3
         ],
         "max": [
           3.8,
-          1.1,
+          1.0988,
           1.3
         ],
         "dimensionsM": [
-          4,
-          1.36,
+          4.125,
+          1.3576,
           2.6
         ]
       }
@@ -1850,14 +3256,14 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_hatches.glb",
-      "tris": 1620,
-      "bytes": 257188,
-      "textureSize": 1024,
+      "tris": 8580,
+      "bytes": 1513880,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble hatches. Character: access hatches with seals, maintenance wear. 1620 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — access hatch greeble: 12 DET layers, 2K trim/wear + hatch stencil story map, EEVEE iter4 uplift. 8580 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1882,17 +3288,69 @@
       "bounds": {
         "min": [
           -0.9,
-          -0.01,
+          -0.16,
           -0.7
         ],
         "max": [
           2.8,
-          0.585,
+          0.7902,
           1.925
         ],
         "dimensionsM": [
           3.7,
-          0.595,
+          0.9502,
+          2.625
+        ]
+      }
+    },
+    {
+      "id": "greeble_docking_latch",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_docking_latch.glb",
+      "tris": 9012,
+      "bytes": 1557648,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — greeble_docking_latch; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.9,
+          -0.16,
+          -0.7
+        ],
+        "max": [
+          2.8,
+          0.7902,
+          1.925
+        ],
+        "dimensionsM": [
+          3.7,
+          0.9502,
           2.625
         ]
       }
@@ -1902,14 +3360,14 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_pipes.glb",
-      "tris": 1180,
-      "bytes": 240896,
-      "textureSize": 1024,
+      "tris": 5964,
+      "bytes": 684356,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for greeble pipes. Character: piping greeble with bends, industrial wear. 1180 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — industrial pipe greeble: 12 DET layers, 2K trim/wear + pipe soot story map, EEVEE iter4 uplift. 5964 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1934,17 +3392,69 @@
       "bounds": {
         "min": [
           -0.4,
-          -0.03,
+          -0.14,
           -1.4
         ],
         "max": [
           3.8,
-          0.52,
+          0.6882,
           1.4
         ],
         "dimensionsM": [
           4.2,
-          0.55,
+          0.8282,
+          2.8
+        ]
+      }
+    },
+    {
+      "id": "greeble_fuel_coupling",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_fuel_coupling.glb",
+      "tris": 6396,
+      "bytes": 731072,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — greeble_fuel_coupling; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.4,
+          -0.14,
+          -1.4
+        ],
+        "max": [
+          3.8,
+          0.6882,
+          1.4
+        ],
+        "dimensionsM": [
+          4.2,
+          0.8282,
           2.8
         ]
       }
@@ -1954,14 +3464,14 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_rcs.glb",
-      "tris": 1040,
-      "bytes": 238516,
-      "textureSize": 1024,
+      "tris": 4448,
+      "bytes": 470752,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2, profile=0.5) + WN last + AO/rough nodes via MCP for greeble antennas. Character: lightweight comms/sensor antennas, delicate tech with industrial paint wear, bolt mounts, cavity dirt. 2734 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — RCS thruster greeble: 12 DET layers, 2K trim/wear + RCS burn story map, EEVEE iter4 uplift. 4448 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -1988,17 +3498,17 @@
       "bounds": {
         "min": [
           -0.4,
-          -0.04,
+          -0.13,
           -1.6
         ],
         "max": [
           2.8,
-          0.63,
+          0.6856,
           1.6
         ],
         "dimensionsM": [
           3.2,
-          0.67,
+          0.8156,
           3.2
         ]
       }
@@ -2008,14 +3518,14 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_antennas.glb",
-      "tris": 2734,
-      "bytes": 284752,
-      "textureSize": 1024,
+      "tris": 4030,
+      "bytes": 953016,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1214 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — comms antenna greeble: 12 DET layers, 2K trim/wear + beacon stencil story map, EEVEE iter4 uplift. 4030 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2042,7 +3552,7 @@
       "bounds": {
         "min": [
           -0.4,
-          -0.04,
+          -0.125,
           -1.4386
         ],
         "max": [
@@ -2052,24 +3562,24 @@
         ],
         "dimensionsM": [
           2.8,
-          3.35,
+          3.435,
           2.6386
         ]
       }
     },
     {
-      "id": "greeble_nav_lights",
+      "id": "greeble_sensor_dish",
       "category": "greebles",
       "priority": "P1",
-      "file": "greebles/greeble_nav_lights.glb",
-      "tris": 1852,
-      "bytes": 255708,
-      "textureSize": 1024,
+      "file": "greebles/greeble_sensor_dish.glb",
+      "tris": 4462,
+      "bytes": 997824,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 572 tris.",
+      "note": "PRO Elite Finish NEW 2026-07-06 — greeble_sensor_dish; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2095,18 +3605,126 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.3,
-          -0.01,
+          -0.4,
+          -0.125,
+          -1.4386
+        ],
+        "max": [
+          2.4,
+          3.31,
+          1.2
+        ],
+        "dimensionsM": [
+          2.8,
+          3.435,
+          2.6386
+        ]
+      }
+    },
+    {
+      "id": "greeble_nav_lights",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_nav_lights.glb",
+      "tris": 3148,
+      "bytes": 923140,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish 2026-07-06 — nav light greeble: 12 DET layers, 2K trim/wear + nav strobe story map, EEVEE iter4 uplift. 3148 tris.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.31,
+          -0.125,
           -1.2
         ],
         "max": [
           3.3,
-          0.2725,
+          0.59,
           1.275
         ],
         "dimensionsM": [
-          3.6,
-          0.2825,
+          3.61,
+          0.715,
+          2.475
+        ]
+      }
+    },
+    {
+      "id": "greeble_hazard_strobe",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_hazard_strobe.glb",
+      "tris": 3580,
+      "bytes": 968520,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — greeble_hazard_strobe; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.31,
+          -0.125,
+          -1.2
+        ],
+        "max": [
+          3.3,
+          0.59,
+          1.275
+        ],
+        "dimensionsM": [
+          3.61,
+          0.715,
           2.475
         ]
       }
@@ -2116,14 +3734,14 @@
       "category": "greebles",
       "priority": "P1",
       "file": "greebles/greeble_armor_plates.glb",
-      "tris": 3492,
-      "bytes": 337068,
-      "textureSize": 1024,
+      "tris": 4788,
+      "bytes": 1294756,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 852 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — ablative armor greeble: 12 DET layers, 2K trim/wear + ablative scorch story map, EEVEE iter4 uplift. 4788 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2148,17 +3766,69 @@
       "bounds": {
         "min": [
           -1,
-          -0.0818,
+          -0.15,
           -1.5
         ],
         "max": [
           2.9446,
-          0.29,
+          0.747,
           0.9
         ],
         "dimensionsM": [
           3.9446,
-          0.3718,
+          0.897,
+          2.4
+        ]
+      }
+    },
+    {
+      "id": "greeble_reactive_plate",
+      "category": "greebles",
+      "priority": "P1",
+      "file": "greebles/greeble_reactive_plate.glb",
+      "tris": 5220,
+      "bytes": 1339764,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — greeble_reactive_plate; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1,
+          -0.15,
+          -1.5
+        ],
+        "max": [
+          2.9446,
+          0.747,
+          0.9
+        ],
+        "dimensionsM": [
+          3.9446,
+          0.897,
           2.4
         ]
       }
@@ -2168,14 +3838,14 @@
       "category": "gear",
       "priority": "P2",
       "file": "gear/skid_trio.glb",
-      "tris": 1040,
-      "bytes": 214564,
-      "textureSize": 1024,
+      "tris": 4576,
+      "bytes": 1352872,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1040 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 4576 tris, 2K trim/wear + landing contact story map, 12 DET layers.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2200,17 +3870,121 @@
       "bounds": {
         "min": [
           -0.65,
-          -0.02,
+          -0.175,
           -1.4
         ],
         "max": [
           3.75,
-          1.2728,
+          1.2845,
           1.4
         ],
         "dimensionsM": [
           4.4,
-          1.2928,
+          1.4595,
+          2.8
+        ]
+      }
+    },
+    {
+      "id": "gear_dock_skid",
+      "category": "gear",
+      "priority": "P2",
+      "file": "gear/gear_dock_skid.glb",
+      "tris": 5008,
+      "bytes": 1398160,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — gear_dock_skid; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.65,
+          -0.175,
+          -1.4
+        ],
+        "max": [
+          3.75,
+          1.2845,
+          1.4
+        ],
+        "dimensionsM": [
+          4.4,
+          1.4595,
+          2.8
+        ]
+      }
+    },
+    {
+      "id": "gear_mag_clamp",
+      "category": "gear",
+      "priority": "P2",
+      "file": "gear/gear_mag_clamp.glb",
+      "tris": 5008,
+      "bytes": 1398704,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — gear_mag_clamp; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.65,
+          -0.175,
+          -1.4
+        ],
+        "max": [
+          3.75,
+          1.2845,
+          1.4
+        ],
+        "dimensionsM": [
+          4.4,
+          1.4595,
           2.8
         ]
       }
@@ -2220,14 +3994,14 @@
       "category": "gear",
       "priority": "P2",
       "file": "gear/skid_quad.glb",
-      "tris": 1532,
-      "bytes": 226208,
-      "textureSize": 1024,
+      "tris": 4812,
+      "bytes": 1373008,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1532 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 4812 tris, 2K trim/wear + hauler contact story map, 12 DET layers.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2252,17 +4026,173 @@
       "bounds": {
         "min": [
           -0.575,
-          -0.04,
+          -0.155,
           -1.8
         ],
         "max": [
           3.775,
-          1.82,
+          1.8195,
           1.8
         ],
         "dimensionsM": [
           4.35,
-          1.86,
+          1.9745,
+          3.6
+        ]
+      }
+    },
+    {
+      "id": "gear_vtol_stabilizer",
+      "category": "gear",
+      "priority": "P2",
+      "file": "gear/gear_vtol_stabilizer.glb",
+      "tris": 5244,
+      "bytes": 1418668,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — gear_vtol_stabilizer; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.575,
+          -0.155,
+          -1.8
+        ],
+        "max": [
+          3.775,
+          1.8195,
+          1.8
+        ],
+        "dimensionsM": [
+          4.35,
+          1.9745,
+          3.6
+        ]
+      }
+    },
+    {
+      "id": "gear_landing_truss",
+      "category": "gear",
+      "priority": "P2",
+      "file": "gear/gear_landing_truss.glb",
+      "tris": 5244,
+      "bytes": 1419268,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — gear_landing_truss; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.575,
+          -0.155,
+          -1.8
+        ],
+        "max": [
+          3.775,
+          1.8195,
+          1.8
+        ],
+        "dimensionsM": [
+          4.35,
+          1.9745,
+          3.6
+        ]
+      }
+    },
+    {
+      "id": "gear_tow_hook",
+      "category": "gear",
+      "priority": "P2",
+      "file": "gear/gear_tow_hook.glb",
+      "tris": 5244,
+      "bytes": 1420368,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — gear_tow_hook; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.575,
+          -0.155,
+          -1.8
+        ],
+        "max": [
+          3.775,
+          1.8195,
+          1.8
+        ],
+        "dimensionsM": [
+          4.35,
+          1.9745,
           3.6
         ]
       }
@@ -2272,14 +4202,14 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_utility.glb",
-      "tris": 952,
-      "bytes": 230524,
-      "textureSize": 1024,
+      "tris": 3848,
+      "bytes": 580840,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 952 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 3848 tris, 2K trim/wear + tool wear story map, 12 DET layers.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2307,7 +4237,7 @@
       "bounds": {
         "min": [
           -0.45,
-          -0.095,
+          -0.225,
           -1.34
         ],
         "max": [
@@ -2317,7 +4247,117 @@
         ],
         "dimensionsM": [
           4.2,
-          1.755,
+          1.885,
+          2.68
+        ]
+      }
+    },
+    {
+      "id": "pod_sensor_array",
+      "category": "pods",
+      "priority": "P2",
+      "file": "pods/pod_sensor_array.glb",
+      "tris": 4280,
+      "bytes": 625612,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — pod_sensor_array; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.45,
+          -0.225,
+          -1.34
+        ],
+        "max": [
+          3.75,
+          1.66,
+          1.34
+        ],
+        "dimensionsM": [
+          4.2,
+          1.885,
+          2.68
+        ]
+      }
+    },
+    {
+      "id": "pod_fuel_cell",
+      "category": "pods",
+      "priority": "P2",
+      "file": "pods/pod_fuel_cell.glb",
+      "tris": 4172,
+      "bytes": 613924,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — pod_fuel_cell; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive",
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.45,
+          -0.225,
+          -1.34
+        ],
+        "max": [
+          3.75,
+          1.66,
+          1.34
+        ],
+        "dimensionsM": [
+          4.2,
+          1.885,
           2.68
         ]
       }
@@ -2327,14 +4367,14 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
-      "tris": 1216,
-      "bytes": 237948,
-      "textureSize": 1024,
+      "tris": 5072,
+      "bytes": 1308984,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1216 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 5072 tris, 2K trim/wear + stencil story map, 12 DET layers.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2361,7 +4401,7 @@
       "bounds": {
         "min": [
           -0.5,
-          -0.125,
+          -0.26,
           -1.5
         ],
         "max": [
@@ -2371,7 +4411,115 @@
         ],
         "dimensionsM": [
           5.2,
-          2.25,
+          2.385,
+          3
+        ]
+      }
+    },
+    {
+      "id": "pod_drone_bay",
+      "category": "pods",
+      "priority": "P2",
+      "file": "pods/pod_drone_bay.glb",
+      "tris": 5504,
+      "bytes": 1354124,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — pod_drone_bay; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.5,
+          -0.26,
+          -1.5
+        ],
+        "max": [
+          4.7,
+          2.125,
+          1.5
+        ],
+        "dimensionsM": [
+          5.2,
+          2.385,
+          3
+        ]
+      }
+    },
+    {
+      "id": "pod_ammo_magazine",
+      "category": "pods",
+      "priority": "P2",
+      "file": "pods/pod_ammo_magazine.glb",
+      "tris": 5504,
+      "bytes": 1353008,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — pod_ammo_magazine; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.5,
+          -0.26,
+          -1.5
+        ],
+        "max": [
+          4.7,
+          2.125,
+          1.5
+        ],
+        "dimensionsM": [
+          5.2,
+          2.385,
           3
         ]
       }
@@ -2381,14 +4529,14 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_repair_patch.glb",
-      "tris": 1688,
-      "bytes": 241076,
-      "textureSize": 1024,
+      "tris": 10072,
+      "bytes": 1698136,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1688 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 10072 tris, 2K trim/wear + weld story map, 12 DET layers.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2412,19 +4560,71 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.25,
-          -0.06,
-          -1.5694
+          -0.27,
+          -0.21,
+          -1.5753
         ],
         "max": [
-          4.6,
-          0.23,
-          1.55
+          4.6196,
+          0.34,
+          1.5687
         ],
         "dimensionsM": [
-          4.85,
-          0.29,
-          3.1194
+          4.8896,
+          0.55,
+          3.1439
+        ]
+      }
+    },
+    {
+      "id": "pod_escape_capsule",
+      "category": "pods",
+      "priority": "P2",
+      "file": "pods/pod_escape_capsule.glb",
+      "tris": 10504,
+      "bytes": 1741556,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — pod_escape_capsule; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.27,
+          -0.21,
+          -1.5753
+        ],
+        "max": [
+          4.6196,
+          0.34,
+          1.5687
+        ],
+        "dimensionsM": [
+          4.8896,
+          0.55,
+          3.1439
         ]
       }
     },
@@ -2433,14 +4633,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_lane_beacon.glb",
-      "tris": 700,
-      "bytes": 189604,
-      "textureSize": 1024,
+      "tris": 3020,
+      "bytes": 893556,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN via MCP for place_lane_beacon. Character: place_lane_beacon. tris=700.",
+      "note": "PRO Elite Finish 2026-07-06 — 3020 tris, 2K trim/wear + sodium rust story map, 12 DET layers.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2474,12 +4674,68 @@
         ],
         "max": [
           5.2,
-          11.54,
+          11.5333,
           1.2
         ],
         "dimensionsM": [
           6.4,
-          11.55,
+          11.5433,
+          2.4
+        ]
+      }
+    },
+    {
+      "id": "place_patrol_pylon",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_patrol_pylon.glb",
+      "tris": 2156,
+      "bytes": 803796,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — place_patrol_pylon; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Beacon_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1.2,
+          -0.01,
+          -1.2
+        ],
+        "max": [
+          5.2,
+          11.5333,
+          1.2
+        ],
+        "dimensionsM": [
+          6.4,
+          11.5433,
           2.4
         ]
       }
@@ -2489,14 +4745,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_nav_buoy.glb",
-      "tris": 540,
-      "bytes": 184964,
-      "textureSize": 1024,
+      "tris": 2652,
+      "bytes": 892364,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel (segs=2) + WN via MCP for nav buoy. Character: navigation buoy with barrel/collar, marine wear. 540 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 2652 tris, 2K trim/wear + marine scuff story map, 12 DET layers.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2525,17 +4781,73 @@
       "bounds": {
         "min": [
           -1.1,
-          0.05,
+          -0.005,
           -1.1
         ],
         "max": [
-          2,
-          5.43,
+          1.962,
+          5.4297,
           1.1
         ],
         "dimensionsM": [
-          3.1,
-          5.38,
+          3.062,
+          5.4347,
+          2.2
+        ]
+      }
+    },
+    {
+      "id": "place_salvage_beacon",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_salvage_beacon.glb",
+      "tris": 3084,
+      "bytes": 936836,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — place_salvage_beacon; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Buoy_Top"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1.1,
+          -0.005,
+          -1.1
+        ],
+        "max": [
+          1.962,
+          5.4297,
+          1.1
+        ],
+        "dimensionsM": [
+          3.062,
+          5.4347,
           2.2
         ]
       }
@@ -2545,14 +4857,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
-      "tris": 1232,
-      "bytes": 201596,
-      "textureSize": 1024,
+      "tris": 3881,
+      "bytes": 1286844,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 1232 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 3881 tris, 2K trim/wear + ore vein story map, 12 DET layers.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2601,14 +4913,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
-      "tris": 524,
-      "bytes": 187196,
-      "textureSize": 1024,
+      "tris": 2420,
+      "bytes": 268936,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 524 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — combat debris uplift: 12 DET layers, scorch story map, 2K trim/wear. 2420 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2634,17 +4946,71 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
+          -0.2598,
           -3.2117,
           -4.8696
         ],
         "max": [
-          24.2,
+          24.2112,
           4.1193,
           5.5846
         ],
         "dimensionsM": [
-          24.2,
+          24.471,
+          7.331,
+          10.4541
+        ]
+      }
+    },
+    {
+      "id": "place_claim_marker",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_claim_marker.glb",
+      "tris": 2852,
+      "bytes": 314172,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — place_claim_marker; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Tether_Massline"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.2598,
+          -3.2117,
+          -4.8696
+        ],
+        "max": [
+          24.2112,
+          4.1193,
+          5.5846
+        ],
+        "dimensionsM": [
+          24.471,
           7.331,
           10.4541
         ]
@@ -2655,14 +5021,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_billboard.glb",
-      "tris": 948,
-      "bytes": 231964,
-      "textureSize": 1024,
+      "tris": 2244,
+      "bytes": 873204,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — commercial signage uplift: 12 DET layers, weather story map, 2K trim/wear. 2244 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2697,12 +5063,12 @@
         "max": [
           9.05,
           12.0525,
-          9
+          13.9678
         ],
         "dimensionsM": [
           18,
           12.0525,
-          18
+          22.9678
         ]
       }
     },
@@ -2711,14 +5077,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
-      "tris": 1740,
-      "bytes": 261540,
-      "textureSize": 1024,
+      "tris": 3036,
+      "bytes": 1193488,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 988 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — derelict hulk uplift: 12 DET layers, wreck scorch story map, 2K trim/wear. 3036 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2747,7 +5113,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
+          -1.5512,
           -1.3978,
           -3.5
         ],
@@ -2757,7 +5123,64 @@
           3.5
         ],
         "dimensionsM": [
+          49.5512,
+          7.7083,
+          7
+        ]
+      }
+    },
+    {
+      "id": "place_wreck_flare",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_wreck_flare.glb",
+      "tris": 3468,
+      "bytes": 1238672,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — place_wreck_flare; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Hazard_Core",
+        "SOCKET_Salvage_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1.5512,
+          -1.3978,
+          -3.5
+        ],
+        "max": [
           48,
+          6.3106,
+          3.5
+        ],
+        "dimensionsM": [
+          49.5512,
           7.7083,
           7
         ]
@@ -2768,14 +5191,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_conveyor_barge.glb",
-      "tris": 1144,
-      "bytes": 242592,
-      "textureSize": 1024,
+      "tris": 2440,
+      "bytes": 1182288,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 936 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — conveyor barge uplift: 12 DET layers, cargo scuff story map, 2K trim/wear. 2440 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2804,7 +5227,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -2.5,
+          -2.8,
           -2,
           -9
         ],
@@ -2814,7 +5237,7 @@
           9
         ],
         "dimensionsM": [
-          72.675,
+          72.975,
           10,
           18
         ]
@@ -2825,14 +5248,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_mining_drone.glb",
-      "tris": 580,
-      "bytes": 189216,
-      "textureSize": 1024,
+      "tris": 2612,
+      "bytes": 1280260,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 580 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — mining drone uplift: 12 DET layers, ore dust story map, 2K trim/wear. 2612 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2861,8 +5284,8 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.4,
-          -0.05,
+          -0.512,
+          -0.5,
           -1.2
         ],
         "max": [
@@ -2871,8 +5294,65 @@
           1.2
         ],
         "dimensionsM": [
-          5,
-          1.3275,
+          5.112,
+          1.7775,
+          2.4
+        ]
+      }
+    },
+    {
+      "id": "place_ore_spool",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_ore_spool.glb",
+      "tris": 3044,
+      "bytes": 1325528,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "note": "PRO Elite Finish NEW 2026-07-06 — place_ore_spool; 16 DET, 2K+story, 25 lit EEVEE. blender_mcp.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Spin",
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Mining_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.512,
+          -0.5,
+          -1.2
+        ],
+        "max": [
+          4.6,
+          1.2775,
+          1.2
+        ],
+        "dimensionsM": [
+          5.112,
+          1.7775,
           2.4
         ]
       }
@@ -2882,14 +5362,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_a.glb",
-      "tris": 9403,
-      "bytes": 2316688,
-      "textureSize": 1024,
+      "tris": 72779,
+      "bytes": 3320804,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — trim+wear image-gen textures, SF_EdgeWear, AO bake Hull/Mech/Accent, bump/clearcoat; DET dust_lee + mining seams/ore vein/drill/impact; 32 MCP renders. Belt hero irregular mined rock. tris=9403.",
+      "note": "PRO Elite Finish 2026-07-06 — Belt hero rock A uplift: 12 DET layers, 2K ore vein story map. 72779 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2934,14 +5414,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
-      "tris": 688,
-      "bytes": 187152,
-      "textureSize": 1024,
+      "tris": 4076,
+      "bytes": 1273984,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 688 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — Belt hero rock B uplift: 12 DET layers, 2K ore vein story. 4076 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -2986,14 +5466,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_c.glb",
-      "tris": 584,
-      "bytes": 184628,
-      "textureSize": 1024,
+      "tris": 3619,
+      "bytes": 1261048,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 584 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — Belt hero rock C uplift: 12 DET layers, 2K ore vein story. 3619 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3019,17 +5499,17 @@
         "min": [
           -7,
           -6,
-          -6.33703
+          -6.337
         ],
         "max": [
           7,
           6,
-          6.33703
+          6.337
         ],
         "dimensionsM": [
           14,
           12,
-          12.67406
+          12.6741
         ]
       }
     },
@@ -3038,14 +5518,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_graffiti.glb",
-      "tris": 952,
-      "bytes": 196976,
-      "textureSize": 1024,
+      "tris": 2979,
+      "bytes": 1168336,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 952 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — tagged asteroid uplift: 12 DET layers, graffiti stencil story. 2979 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3075,17 +5555,17 @@
         "min": [
           -12,
           -9,
-          -9.84808
+          -9.8481
         ],
         "max": [
           12,
           9,
-          9.84808
+          9.8481
         ],
         "dimensionsM": [
           24,
           18,
-          19.69616
+          19.6962
         ]
       }
     },
@@ -3094,14 +5574,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_trade_hub.glb",
-      "tris": 6392,
-      "bytes": 2050056,
-      "textureSize": 1024,
+      "tris": 6932,
+      "bytes": 1615616,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO Full Finish 2026-07-06 — 38 MCP viewport renders; trim/wear sheets + SF_EdgeWear/CavityDirt + per-role AO bakes; DET gold_trim/signage/lie_billboard/dock_collar/antenna/cargo_rib/deck_traffic_wear; bevel segs=2 + clearcoat hull + emissive windows. Character: Meridian gold trade hub (corporate polish over industrial grit). tris=6392.",
+      "note": "PRO Elite Finish 2026-07-06 — Meridian trade hub uplift: 12 DET layers, 2K gold stripe story map. 6932 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3129,7 +5609,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0,
+          -8.25,
           -14,
           -18.25
         ],
@@ -3139,7 +5619,7 @@
           5.05
         ],
         "dimensionsM": [
-          28,
+          36.25,
           28,
           23.3
         ]
@@ -3150,14 +5630,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_refinery.glb",
-      "tris": 3008,
-      "bytes": 210032,
-      "textureSize": 1024,
+      "tris": 4304,
+      "bytes": 798060,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN on meshes (modeling pass). 3008 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET layers, 2K refinery soot story. 4304 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3192,12 +5672,12 @@
         "max": [
           34,
           11,
-          0
+          0.6
         ],
         "dimensionsM": [
           40,
           22,
-          24
+          24.6
         ]
       }
     },
@@ -3206,14 +5686,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_military.glb",
-      "tris": 3300,
-      "bytes": 231104,
-      "textureSize": 1024,
+      "tris": 4596,
+      "bytes": 1506412,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 3300 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET layers, 2K armor scorch story. 4596 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3262,14 +5742,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_blackmarket.glb",
-      "tris": 3948,
-      "bytes": 277124,
-      "textureSize": 1024,
+      "tris": 5244,
+      "bytes": 1603580,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 3948 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET layers, 2K contraband stencil story. 5244 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3318,14 +5798,14 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_gate_jump_ring.glb",
-      "tris": 4784,
-      "bytes": 340708,
-      "textureSize": 1024,
+      "tris": 6080,
+      "bytes": 771856,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 4784 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET layers, 2K warp scorch story. 6080 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3374,14 +5854,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_mining.glb",
-      "tris": 588,
-      "bytes": 188628,
-      "textureSize": 1024,
+      "tris": 2844,
+      "bytes": 1293316,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET layers, 2K ore dust story. 2844 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3430,14 +5910,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_fab.glb",
-      "tris": 588,
-      "bytes": 188660,
-      "textureSize": 1024,
+      "tris": 2844,
+      "bytes": 514092,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 588 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET layers, 2K forge heat story. 2844 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3486,14 +5966,14 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_research.glb",
-      "tris": 720,
-      "bytes": 190620,
-      "textureSize": 1024,
+      "tris": 2175,
+      "bytes": 514604,
+      "textureSize": 2048,
       "tintable": {
         "hull": "Material_Hull",
         "accent": "Material_Accent"
       },
-      "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 720 tris.",
+      "note": "PRO Elite Finish 2026-07-06 — 12 DET layers, 2K sensor wear story. 2175 tris.",
       "factionAccentVariants": {
         "core": {
           "accent": "#39d0ff",
@@ -3565,7 +6045,9 @@
       "engines/engine_industrial.glb",
       "engines/engine_resonator.glb",
       "engines/engine_vector.glb",
-      "engines/engine_plasma_ring.glb"
+      "engines/engine_plasma_ring.glb",
+      "engines/engine_afterburner.glb",
+      "engines/engine_fusion_lattice.glb"
     ],
     "fin": [
       "fins/fin_wedge.glb",
@@ -3622,6 +6104,63 @@
       "places/place_station_mining.glb",
       "places/place_station_fab.glb",
       "places/place_station_research.glb"
+    ]
+  },
+  "fileIndex": {
+    "engine": [
+      "engines/engine_ion_small.glb",
+      "engines/engine_ion_twin.glb",
+      "engines/engine_industrial.glb",
+      "engines/engine_resonator.glb",
+      "engines/engine_vector.glb",
+      "engines/engine_plasma_ring.glb",
+      "engines/engine_afterburner.glb",
+      "engines/engine_fusion_lattice.glb",
+      "engines/engine_ramjet.glb",
+      "engines/engine_tug_drive.glb",
+      "engines/engine_ore_thruster.glb"
+    ],
+    "weapon": [
+      "weapons/weapon_missile_pod.glb",
+      "weapons/weapon_beam_slicer.glb",
+      "weapons/weapon_autocannon.glb",
+      "weapons/weapon_plasma_thrower.glb",
+      "weapons/weapon_torpedo_rack.glb"
+    ],
+    "fin": [
+      "fins/fin_vtol_skeg.glb",
+      "fins/fin_solar_array.glb",
+      "fins/fin_armor_skid.glb",
+      "fins/fin_ion_blade.glb",
+      "fins/fin_contraband_cowl.glb"
+    ],
+    "greeble": [
+      "greebles/greeble_docking_latch.glb",
+      "greebles/greeble_sensor_dish.glb",
+      "greebles/greeble_fuel_coupling.glb",
+      "greebles/greeble_reactive_plate.glb",
+      "greebles/greeble_hazard_strobe.glb"
+    ],
+    "gear": [
+      "gear/gear_mag_clamp.glb",
+      "gear/gear_tow_hook.glb",
+      "gear/gear_dock_skid.glb",
+      "gear/gear_landing_truss.glb",
+      "gear/gear_vtol_stabilizer.glb"
+    ],
+    "pod": [
+      "pods/pod_fuel_cell.glb",
+      "pods/pod_sensor_array.glb",
+      "pods/pod_ammo_magazine.glb",
+      "pods/pod_escape_capsule.glb",
+      "pods/pod_drone_bay.glb"
+    ],
+    "place": [
+      "places/place_salvage_beacon.glb",
+      "places/place_patrol_pylon.glb",
+      "places/place_ore_spool.glb",
+      "places/place_wreck_flare.glb",
+      "places/place_claim_marker.glb"
     ]
   }
 }

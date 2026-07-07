@@ -156,6 +156,12 @@ export function buildReaverPirate(entity) {
     damageParts: { navLights: [navLight], navLightBase, driveCore: drive.driveCore, plume: drive.plume, secondary: [cargoDoor], armor: [] },
   });
 
+  kit.applyEliteWearShell(hull, {
+    hull: COLOR.hull, accent: COLOR.tag, seed,
+    length: 26, halfWidth: 2.4, height: 1.75,
+    grime: 0.48, microScratch: 0.32,
+  });
+
   root.userData.renderContract = {
     coordinateSystem: '+X forward, +Y up, +Z starboard',
     authoredMetres: true,

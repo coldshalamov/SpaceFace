@@ -1,1 +1,15 @@
-{"bytes":187196,"tris":524,"note":"PRO revamp 2026-07-05 MCP","partId":"place_debris_chunk"}
+{
+  "id": "place_debris_chunk",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:10:25Z",
+  "tris": 2420,
+  "bytes": 268936,
+  "textureSize": 2048,
+  "storyMap": "place_debris_chunk_combat_scorch_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — combat debris uplift: twisted plate + cable + scorch DET stack"
+}

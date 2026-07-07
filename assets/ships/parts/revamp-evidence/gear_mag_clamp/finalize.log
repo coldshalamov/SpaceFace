@@ -1,0 +1,21 @@
+{
+  "partId": "gear_mag_clamp",
+  "file": "gear/gear_mag_clamp.glb",
+  "tris": 5008,
+  "bytes": 1398704,
+  "dims": [
+    4.4,
+    1.4595,
+    2.8
+  ],
+  "images": 1,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "gear_mag_clamp_mag_field_roughness_story_2k.jpg"
+}

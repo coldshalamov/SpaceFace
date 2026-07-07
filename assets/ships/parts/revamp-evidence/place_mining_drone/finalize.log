@@ -1,1 +1,15 @@
-{"partId":"place_mining_drone","file":"places/place_mining_drone.glb","tris":580,"bytes":189216,"images":3,"note":"PRO revamp 2026-07-05 - bevel+WN+AO via MCP for mining drone. Character: small industrial mining drone with drill/beam. 580 tris."}
+{
+  "id": "place_mining_drone",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:15:15Z",
+  "tris": 2612,
+  "bytes": 1280260,
+  "textureSize": 2048,
+  "storyMap": "place_mining_drone_ore_dust_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — mining drone uplift: drill + beam DET stack"
+}

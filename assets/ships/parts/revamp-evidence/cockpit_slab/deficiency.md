@@ -81,3 +81,27 @@
 **Screenshot audit:** 31 MCP viewport renders total; 28 analyzable full/close (iter0×9, iter1×5 full + 1 dark close documented, iter2×6, iter3×7, 2026-07-05×3); iter2/3 early black-void fails fixed by EEVEE shader rebuild + scene isolation.
 
 **Full Finish Bar:** PASS — ≥6 surfacing, ≥5 lit PBR, skin pass (belt stencil + rust streak + laminate scratch + dock scuff), deficiency iter0–iter3.
+
+---
+
+## Elite iter4 uplift for cockpit_slab (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_cockpit_slab_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_glass.png`, `_iter4_lit_close_stencil.png`, `_iter4_lit_close_rust.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`cockpit_slab_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`cockpit_slab_wear_mask_2k.jpg`)
+3. Belt stencil roughness story map (`cockpit_slab_belt_stencil_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on hull brow
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Accent/Mechanical/Glass)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on rust streak + dock scuff zones
+10. Anisotropy/clearcoat rust-amber belt industrial hull
+11. Muted glass emissive (not interrogation-bright)
+12. Localized decal alpha on faction stripe port
+
+**DET layers (14):** DET_belt_stencil, DET_cavity_grime_vent, DET_dock_scuff, DET_faction_stripe_port, DET_laminate_scratch, DET_micro_scratch_plate, DET_mount_bolt, DET_mount_bolt_port, DET_panel_line_emphasis, DET_panel_seam_L, DET_panel_seam_R, DET_rust_streak, DET_vent_grille_detail, DET_wiper_scar
+
+**Export/finalize:** **3076 tris / 741536 B** · `PRO Elite Finish 2026-07-06`

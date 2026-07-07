@@ -340,7 +340,77 @@ export function createBloom(renderer, width, height) {
     uBloomNorm: { value: BLOOM_PYRAMID_NORM },
     uExposure:  { value: exposure },
     uAces:      { value: aces },
-    // recreate the whole pyramid at the current size so the next frame can render cleanly.
+    uGrain:     { value: 0.35 },
+    uVignette:  { value: 0.85 },
+    uGrade:     { value: 0.55 },
+    uGrainFrame: { value: 0 },
+  });
+
+  function blit(material, target) {
+    quadMesh.material = material;
+    renderer.setRenderTarget(target);
+    renderer.render(quadScene, quadCam);
+  }
+
+  function render(scene, camera) {
+    if (!enabled || strength <= 0.0001) {
+      renderer.setRenderTarget(null);
+      renderer.render(scene, camera);
+      return;
+    }
+
+    const prevAutoClear = renderer.autoClear;
+
+    renderer.setRenderTarget(rtScene);
+    renderer.clear();
+    renderer.render(scene, camera);
+
+    renderer.autoClear = false;
+
+    let src = rtScene.texture;
+    for (let i = 0; i < levels; i++) {
+      const sw = i === 0 ? W : Math.max(1, W >> i);
+      const sh = i === 0 ? H : Math.max(1, H >> i);
+      downsampleMat.uniforms.tDiffuse.value = src;
+      downsampleMat.uniforms.uTexel.value.set(1 / sw, 1 / sh);
+      downsampleMat.uniforms.uThreshold.value = threshold;
+      downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
+      blit(downsampleMat, down[i]);
+      src = down[i].texture;
+    }
+
+    let readTex = down[levels - 1].texture;
+    let outRT = bloomPing;
+    let scratchRT = bloomPong;
+    let finalTex = down[levels - 1].texture;
+    for (let i = levels - 1; i >= 1; i--) {
+      const targetW = Math.max(1, W >> i);
+      const targetH = Math.max(1, H >> i);
+      outRT.setSize(targetW, targetH);
+      upsampleMat.uniforms.tCoarse.value = readTex;
+      upsampleMat.uniforms.tFine.value = down[i - 1].texture;
+      upsampleMat.uniforms.uTexel.value.set(1 / targetW, 1 / targetH);
+      upsampleMat.uniforms.uWeight.value = 0.36;
+      blit(upsampleMat, outRT);
+      finalTex = outRT.texture;
+      readTex = finalTex;
+      const used = outRT; outRT = scratchRT; scratchRT = used;
+    }
+
+    compositeMat.uniforms.tScene.value = rtScene.texture;
+    compositeMat.uniforms.tBloom.value = finalTex;
+    compositeMat.uniforms.uStrength.value = strength;
+    compositeMat.uniforms.uExposure.value = exposure;
+    compositeMat.uniforms.uAces.value = aces;
+    const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+    compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * FILM_GRAIN_FPS);
+    blit(compositeMat, null);
+
+    renderer.autoClear = prevAutoClear;
+    renderer.setRenderTarget(null);
+  }
+
+  function rebuild() {
     rtScene.dispose();
     for (const rt of down) rt.dispose();
     bloomPing.dispose();

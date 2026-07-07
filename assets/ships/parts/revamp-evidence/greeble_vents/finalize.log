@@ -1,5 +1,9 @@
 {
   "partId": "greeble_vents",
-  "tris": 968,
-  "bytes": 243904
+  "tris": 4240,
+  "bytes": 589320,
+  "eliteFinish": true,
+  "phase": "elite",
+  "note": "PRO Elite Finish 2026-07-06",
+  "method": "blender_mcp"
 }

@@ -1,0 +1,14 @@
+{
+  "partId": "hull_smuggler",
+  "file": "hulls/hull_smuggler.glb",
+  "tris": 3618,
+  "bytes": 1369940,
+  "dims": [12.182, 3.78, 4.45],
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "lit_renders": 25,
+  "story_map": "hull_smuggler_contraband_stencil_roughness_story_2k.jpg"
+}

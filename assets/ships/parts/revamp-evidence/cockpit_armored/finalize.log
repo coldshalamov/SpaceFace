@@ -1,0 +1,18 @@
+{
+  "partId": "cockpit_armored",
+  "file": "cockpits/cockpit_armored.glb",
+  "tris": 6068,
+  "bytes": 873624,
+  "dims": [
+    4.855,
+    1.985,
+    3.7
+  ],
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "lit_renders": 25,
+  "story_map": "cockpit_armored_slat_armor_roughness_story_2k.jpg"
+}

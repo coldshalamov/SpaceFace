@@ -1,1 +1,15 @@
-{"partId":"place_station_military","tris":3300,"bytes":231104,"images":3}
+{
+  "id": "place_station_military",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:26:56Z",
+  "tris": 4596,
+  "bytes": 1506412,
+  "textureSize": 2048,
+  "storyMap": "place_station_military_armor_scorch_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — armor scorch story"
+}

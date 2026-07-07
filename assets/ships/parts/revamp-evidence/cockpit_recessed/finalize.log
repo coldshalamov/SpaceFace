@@ -1,13 +1,15 @@
 {
   "partId": "cockpit_recessed",
   "file": "cockpits/cockpit_recessed.glb",
-  "tris": 1884,
-  "bytes": 1596312,
-  "dims": [
-    5.7099,
-    1.336,
-    3.97
-  ],
+  "tris": 2424,
+  "bytes": 1652500,
+  "dims": [5.7099, 1.336, 3.97],
   "images": 4,
-  "materials": "Material_Accent,Material_Hull.002,Material_Mechanical,Material_Glass,Material_Hull"
+  "materials": "Material_Hull,Material_Hull.002,Material_Accent,Material_Mechanical,Material_Glass",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "det_layers": 12,
+  "full_finish": true
 }

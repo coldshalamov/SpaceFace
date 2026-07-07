@@ -64,6 +64,11 @@ const PLACE_FILES = Object.freeze([
   'places/place_asteroid_rock_b.glb',
   'places/place_asteroid_rock_c.glb',
   'places/place_asteroid_graffiti.glb',
+  'places/place_salvage_beacon.glb',
+  'places/place_patrol_pylon.glb',
+  'places/place_ore_spool.glb',
+  'places/place_wreck_flare.glb',
+  'places/place_claim_marker.glb',
   ...STATION_ARCHETYPE_FILES,
 ]);
 const PLACE_FILE_BY_ID = Object.freeze(Object.fromEntries(PLACE_FILES.map((file) => [
@@ -135,6 +140,11 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'hulls/hull_capital.glb',
       'hulls/hull_multirole.glb',
       'hulls/hull_gunship.glb',
+      'hulls/hull_scout.glb',
+      'hulls/hull_courier.glb',
+      'hulls/hull_salvager.glb',
+      'hulls/hull_dreadnought.glb',
+      'hulls/hull_smuggler.glb',
       // Whole-ship GLBs stay out of the live runtime declaration until SPEC3-37 re-exports real hull
       // bodies. The release copies currently contain accessory meshes only; modular authored hulls are
       // the valid default-play path meanwhile, and check-exporter keeps the broken files visible.
@@ -143,6 +153,11 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'cockpits/cockpit_dome.glb',
       'cockpits/cockpit_slab.glb',
       'cockpits/cockpit_recessed.glb',
+      'cockpits/cockpit_canopy_angled.glb',
+      'cockpits/cockpit_armored.glb',
+      'cockpits/cockpit_bubble_twin.glb',
+      'cockpits/cockpit_stealth_hood.glb',
+      'cockpits/cockpit_bridge_cap.glb',
     ]),
     engine: Object.freeze([
       'engines/engine_ion_small.glb',
@@ -151,6 +166,11 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'engines/engine_resonator.glb',
       'engines/engine_vector.glb',
       'engines/engine_plasma_ring.glb',
+      'engines/engine_afterburner.glb',
+      'engines/engine_fusion_lattice.glb',
+      'engines/engine_ramjet.glb',
+      'engines/engine_tug_drive.glb',
+      'engines/engine_ore_thruster.glb',
     ]),
     fin: Object.freeze([
       'fins/fin_wedge.glb',
@@ -159,6 +179,11 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'fins/fin_crystalline.glb',
       'fins/fin_delta.glb',
       'fins/fin_stabilator.glb',
+      'fins/fin_vtol_skeg.glb',
+      'fins/fin_solar_array.glb',
+      'fins/fin_armor_skid.glb',
+      'fins/fin_ion_blade.glb',
+      'fins/fin_contraband_cowl.glb',
     ]),
     weapon: Object.freeze([
       'weapons/weapon_pulse_cannon.glb',
@@ -167,6 +192,11 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'weapons/weapon_lance.glb',
       'weapons/weapon_gatling.glb',
       'weapons/weapon_railgun.glb',
+      'weapons/weapon_missile_pod.glb',
+      'weapons/weapon_beam_slicer.glb',
+      'weapons/weapon_autocannon.glb',
+      'weapons/weapon_plasma_thrower.glb',
+      'weapons/weapon_torpedo_rack.glb',
     ]),
     greeble: Object.freeze([
       'greebles/greeble_vents.glb',
@@ -176,15 +206,30 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
       'greebles/greeble_antennas.glb',
       'greebles/greeble_nav_lights.glb',
       'greebles/greeble_armor_plates.glb',
+      'greebles/greeble_docking_latch.glb',
+      'greebles/greeble_sensor_dish.glb',
+      'greebles/greeble_fuel_coupling.glb',
+      'greebles/greeble_reactive_plate.glb',
+      'greebles/greeble_hazard_strobe.glb',
     ]),
     gear: Object.freeze([
       'gear/skid_trio.glb',
       'gear/skid_quad.glb',
+      'gear/gear_mag_clamp.glb',
+      'gear/gear_tow_hook.glb',
+      'gear/gear_dock_skid.glb',
+      'gear/gear_landing_truss.glb',
+      'gear/gear_vtol_stabilizer.glb',
     ]),
     pod: Object.freeze([
       'pods/pod_utility.glb',
       'pods/pod_cargo_container.glb',
       'pods/pod_repair_patch.glb',
+      'pods/pod_fuel_cell.glb',
+      'pods/pod_sensor_array.glb',
+      'pods/pod_ammo_magazine.glb',
+      'pods/pod_escape_capsule.glb',
+      'pods/pod_drone_bay.glb',
     ]),
     place: PLACE_FILES,
   }),
@@ -1414,11 +1459,14 @@ function weaponRecordFor(records, wdef, facing, size, seed, index) {
   const id = String(wdef && wdef.id || '').toLowerCase();
   const tracking = String(wdef && wdef.tracking || '').toLowerCase();
   let file = 'weapons/weapon_pulse_cannon.glb';
-  if (facing === 'turret' || tracking === 'auto_turret') file = 'weapons/weapon_turret_dual.glb';
-  else if (size === 'L' || id.includes('lance') || id.includes('beam')) file = 'weapons/weapon_lance.glb';
+  if (facing === 'turret' || tracking === 'auto_turret') file = 'weapons/weapon_torpedo_rack.glb';
+  else if (id.includes('torpedo')) file = 'weapons/weapon_torpedo_rack.glb';
+  else if (id.includes('missile')) file = 'weapons/weapon_missile_pod.glb';
+  else if (id.includes('plasma')) file = 'weapons/weapon_plasma_thrower.glb';
+  else if (size === 'L' || id.includes('lance') || id.includes('beam')) file = 'weapons/weapon_beam_slicer.glb';
   else if (id.includes('rail')) file = 'weapons/weapon_railgun.glb';
-  else if (id.includes('autocannon') || id.includes('gatling')) file = 'weapons/weapon_gatling.glb';
-  else if (id.includes('torpedo') || id.includes('missile') || id.includes('plasma')) file = 'weapons/weapon_heavy_cannon.glb';
+  else if (id.includes('autocannon')) file = 'weapons/weapon_autocannon.glb';
+  else if (id.includes('gatling')) file = 'weapons/weapon_gatling.glb';
   return recordForFile(records, file) || hashedRecord(records, seed, `weapon:${index}`);
 }
 

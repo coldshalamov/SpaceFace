@@ -1,5 +1,19 @@
 {
   "partId": "engine_plasma_ring",
-  "tris": 1888,
-  "bytes": 248812
+  "file": "engines/engine_plasma_ring.glb",
+  "tris": 8784,
+  "bytes": 1900224,
+  "dims": [
+    2.77,
+    2.08,
+    2.08
+  ],
+  "images": 7,
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "det_layers": 12,
+  "full_finish": true
 }

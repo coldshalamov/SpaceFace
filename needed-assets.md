@@ -24,6 +24,87 @@
 | hull_capital | Cathedral-scale ribs, dungeon dread | Anomaly / ashfall | **FULL FINISH 2026-07-06** — cathedral ribs + oxidation + anomaly vein skin pass, 7 surfacing techniques, 30 renders |
 | hull_multirole | Jack-of-all-trades smuggler patchwork | Free Frontier | **FULL FINISH 2026-07-06** — salvage patchwork + jury weld + violet stripe skin pass, 7 surfacing techniques, 29 MCP renders |
 
+### New Elite hulls (Phase 2 Lane B)
+| ID | Story Role | Tone |
+|---|---|---|
+| hull_scout | Pit stealth recon survivor; low-profile sensor blister | Quiet / Pit | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit EEVEE, stealth_sensor story map |
+| hull_courier | Meridian fast message runner | Core gold | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit |
+| hull_salvager | Belt salvage-field specialist | Belt ochre | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit |
+| hull_dreadnought | Anomaly cathedral dread hull | Ashfall / anomaly | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit |
+| hull_smuggler | Crimson Reach contraband welded | Reach red | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit |
+
+### New Elite cockpits (Phase 2 Lane B)
+| ID | Story Role | Tone |
+|---|---|---|
+| cockpit_canopy_angled | Fighter angled HUD canopy | Core fighter | **ELITE NEW 2026-07-06** |
+| cockpit_armored | Military viewport slit armor | Military | **ELITE NEW 2026-07-06** |
+| cockpit_bubble_twin | Patrol dual-bubble canopy | Core patrol | **ELITE NEW 2026-07-06** |
+| cockpit_stealth_hood | Pit stealth hood shroud | Quiet / Pit | **ELITE NEW 2026-07-06** |
+| cockpit_bridge_cap | Capital bridge officer window | Authority | **ELITE NEW 2026-07-06** |
+
+### New Elite engines (Phase 2 Lane B)
+| ID | Story Role | Tone |
+|---|---|---|
+| engine_afterburner | Pursuit afterburner collar — vector gimbal, scorch-plume exhaust | Fringe pursuit | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, scorch_plume story map |
+| engine_fusion_lattice | Corporate fusion lattice coil ring | Core / Meridian | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, coil_glow story map |
+| engine_ore_thruster | Refinery ore thruster — dust cowl, hopper feed duct | Belt rust | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, dust_exhaust story map |
+| engine_ramjet | High-speed ramjet intake — shock cone, heat tile row | Fringe red | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, intake_heat story map |
+| engine_tug_drive | Debt-marked tug drive — jury weld patch, owner stencil | Pit rugged | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, jury_patch story map |
+
+### New Elite weapons (Phase 2 Lane B)
+| ID | Story Role | Tone |
+|---|---|---|
+| weapon_autocannon | Fringe belt-fed autocannon — cartridge scuffs, feed duct | Fringe / Pit | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, belt_feed story map |
+| weapon_beam_slicer | Choir beam slicer lance — ritual ominous cut | Choir / military | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, choir_cut story map |
+| weapon_missile_pod | Belt missile pod rack — tube cluster, hazard stripe | Belt industrial | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, missile_rack story map |
+| weapon_plasma_thrower | Energy plasma thrower — arc plasma exhaust | Universal energy | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, arc_plasma story map |
+| weapon_torpedo_rack | Patrol torpedo rack turret — lawful tube cluster | Core patrol | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, patrol_tube story map |
+
+### New Elite fins (Phase 2 Lane B)
+| ID | Story Role | Tone |
+|---|---|---|
+| fin_armor_skid | Armored skid wedge fin — battle scar, ablative patch | Combat | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, battle_scar story map |
+| fin_contraband_cowl | Contraband cowl smuggler fin — hidden hatch, reach stripe | Crimson Reach | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, hidden_hatch story map |
+| fin_ion_blade | Ion blade crystalline fin — violet vein bleed | Anomaly / Veil | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, ion_vein story map |
+| fin_solar_array | Solar radiator array fin — panel glow, oxidized grid | Belt industrial | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, panel_glow story map |
+| fin_vtol_skeg | VTOL skeg stabilizer — vtol stripe, actuator slot | Multirole | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, vtol_stripe story map |
+
+### New Elite greebles (Phase 2 Lane B)
+| ID | Story Role | Tone |
+|---|---|---|
+| greeble_docking_latch | Docking latch hardware — mag clamp, seal wear | Universal dock | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, dock_latch story map |
+| greeble_fuel_coupling | Fuel coupling run — valve wheel, soot joint | Belt industrial | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, fuel_coupling story map |
+| greeble_hazard_strobe | Hazard strobe housing — amber lens, wire channel | Industrial safety | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, hazard_strobe story map |
+| greeble_reactive_plate | Reactive armor plate — impact scar, ablative zone | Combat | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, reactive_plate story map |
+| greeble_sensor_dish | Sensor dish array — coax run, beacon lens emissive | Patrol / scanner | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, sensor_dish story map |
+
+### New Elite gear (Phase 2 Lane B)
+| ID | Story Role | Tone |
+|---|---|---|
+| gear_dock_skid | Station dock skid pad — scratched landing pad, bolt rows | Universal dock | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, dock_skid story map |
+| gear_landing_truss | Heavy landing truss — structural ribs, dock scuff | Belt hauler | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, landing_truss story map |
+| gear_mag_clamp | Magnetic dock clamp — mag ring, seal wear | Core / Meridian | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, mag_clamp story map |
+| gear_tow_hook | Salvage tow hook — cable winch, rust bloom | Belt salvage | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, tow_hook story map |
+| gear_vtol_stabilizer | VTOL stabilizer leg — actuator piston, vtol stripe | Multirole | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, vtol_stabilizer story map |
+
+### New Elite pods (Phase 2 Lane B)
+| ID | Story Role | Tone |
+|---|---|---|
+| pod_ammo_magazine | Ammo magazine pod — belt feed port, hazard stencil | Military | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, ammo_mag story map |
+| pod_drone_bay | Drone bay pod — launch rail, maintenance hatch | Belt mining | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, drone_bay story map |
+| pod_escape_capsule | Escape capsule pod — ejection seam, emergency stripe | Universal safety | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, escape_capsule story map |
+| pod_fuel_cell | Fuel cell pod — hazard band, valve wheel | Industrial | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, fuel_cell story map |
+| pod_sensor_array | Sensor array pod — dish mount, coax cable run | Patrol / scout | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, sensor_array story map |
+
+### New Elite places (Phase 2 Lane B)
+| ID | Story Role | Tone |
+|---|---|---|
+| place_claim_marker | Mining claim marker — survey stake, faction stencil | Belt claim | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, claim_marker story map |
+| place_ore_spool | Ore conveyor spool — belt drum, rust bloom | Belt industrial | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, ore_spool story map |
+| place_patrol_pylon | Lawful patrol pylon — cyan stripe, sodium lamp | Core patrol | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, patrol_pylon story map |
+| place_salvage_beacon | Salvage field beacon — blinking antenna, wreck magnet | Belt salvage | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, salvage_beacon story map |
+| place_wreck_flare | Combat wreck flare buoy — emergency strobe, blast scorch | Wreck field | **ELITE NEW 2026-07-06** — 12 techniques, 16 DET, 25 lit, wreck_flare story map |
+
 ### Cockpits (3)
 | ID | Story Role | Tone |
 |---|---|---|

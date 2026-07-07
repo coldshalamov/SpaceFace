@@ -44,7 +44,8 @@ try {
 
   const pageIssues = collectPageIssues(cdp);
   await cdp.send('Page.navigate', { url: withDebugFlight(server.baseUrl) });
-  await waitFor(cdp, isBootReady, 15000, 'SpaceFace debug runtime');
+  const SF_BOOT_TIMEOUT_MS = readPositiveIntArg('--boot-timeout', Number(process.env.SF_ASSETS_LIVE_BOOT_MS) || 90000);
+  await waitFor(cdp, isBootReady, SF_BOOT_TIMEOUT_MS, 'SpaceFace debug runtime');
   await installStartupTrace(cdp);
 
   await evalVoid(cdp, `(() => {

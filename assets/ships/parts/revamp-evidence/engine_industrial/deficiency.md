@@ -81,3 +81,27 @@
 **Screenshot audit:** 30 MCP viewport renders total; 27 analyzable full/close (iter0×8, iter1×6, iter2×6, iter3×7, 2026-07-05×3).
 
 **Full Finish Bar:** PASS — ≥6 surfacing, ≥5 lit PBR, skin pass (soot vent + ore dust + refinery stencil + hazard stripe), deficiency iter0–iter3.
+
+---
+
+## Elite iter4 uplift for engine_industrial (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_engine_industrial_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_nozzle.png`, `_iter4_lit_close_soot.png`, `_iter4_lit_close_pipe.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`engine_industrial_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`engine_industrial_wear_mask_2k.jpg`)
+3. Refinery soot roughness story map (`engine_industrial_refinery_soot_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on hull cylinder
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Mechanical/Accent)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on soot vent + ore dust cake zones
+10. Anisotropy/clearcoat rust-brown Belt refinery hull
+11. Emissive story accent on hazard stripe + refinery stencil
+12. Localized decal alpha on faction stripe port
+
+**DET layers (12):** DET_belt_hazard_stripe, DET_cavity_grime_vent, DET_cinder_spatter, DET_exhaust_scorch_band, DET_faction_stripe_port, DET_micro_scratch_plate, DET_ore_dust_cake, DET_panel_line_emphasis, DET_pipe_coupling, DET_refinery_stencil, DET_rust_bloom_flank, DET_soot_vent_stack
+
+**Export/finalize:** **23740 tris / 1057892 B** · `PRO Elite Finish 2026-07-06`

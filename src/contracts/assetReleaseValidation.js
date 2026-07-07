@@ -250,11 +250,34 @@ function parseGlb(bytes) {
   throw new Error('missing JSON chunk');
 }
 
+function materialTextureSlotCount(gltf) {
+  let count = 0;
+  const slotKeys = [
+    'baseColorTexture', 'normalTexture', 'occlusionTexture',
+    'metallicRoughnessTexture', 'emissiveTexture',
+  ];
+  for (const mat of gltf.materials || []) {
+    for (const key of slotKeys) {
+      const binding = mat[key];
+      const index = typeof binding === 'number' ? binding : binding?.index;
+      if (index != null) count++;
+    }
+    const pbr = mat.pbrMetallicRoughness || {};
+    for (const key of ['baseColorTexture', 'metallicRoughnessTexture']) {
+      const binding = pbr[key];
+      const index = typeof binding === 'number' ? binding : binding?.index;
+      if (index != null) count++;
+    }
+  }
+  return count || (gltf.textures || []).length;
+}
+
 function releaseMetrics(gltf, bytes) {
   const extensionsUsed = new Set(gltf.extensionsUsed || []);
   const extensionsRequired = new Set(gltf.extensionsRequired || []);
   const textures = gltf.textures || [];
-  const textureCount = textures.length;
+  const textureCount = materialTextureSlotCount(gltf);
+  const imageTextureCount = textures.length;
   const ktx2TextureCount = textures.filter((texture) =>
     !!(texture.extensions && texture.extensions.KHR_texture_basisu)).length;
   const imageMimeTypes = new Set((gltf.images || []).map((image) => image && image.mimeType).filter(Boolean));
@@ -278,6 +301,7 @@ function releaseMetrics(gltf, bytes) {
   return {
     bytes,
     textureCount,
+    imageTextureCount,
     ktx2TextureCount,
     imageMimeTypes: [...imageMimeTypes].sort(),
     primitiveCount,
@@ -290,7 +314,7 @@ function releaseMetrics(gltf, bytes) {
       .map((node) => node.name)
       .filter((name) => /^(SOCKET|HOOK|MOUNT|LOD[0-2])/i.test(String(name || '')))
       .sort(),
-    hasKtx2Textures: textureCount === 0 || ktx2TextureCount === textureCount,
+    hasKtx2Textures: imageTextureCount === 0 || ktx2TextureCount === imageTextureCount,
     hasMeshCompression: primitiveCount > 0 && (
       dracoPrimitiveCount > 0 || meshoptBufferViewCount > 0 || declaredMeshCompression
     ),
@@ -303,7 +327,7 @@ function releaseCompressionIssues(metrics) {
     issues.push({
       rule: 'release.textures.ktx2',
       message: 'every release texture must use KHR_texture_basisu',
-      detail: `${metrics.ktx2TextureCount}/${metrics.textureCount} textures use KTX2`,
+      detail: `${metrics.ktx2TextureCount}/${metrics.imageTextureCount} textures use KTX2`,
     });
   }
   if (!metrics.hasMeshCompression) {

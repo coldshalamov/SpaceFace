@@ -9,12 +9,14 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { meshopt } from '@gltf-transform/functions';
 import { ktx2 } from 'ktx2-encoder/gltf-transform';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
+import JPEG from 'jpeg-js';
 import { PNG } from 'pngjs';
 
 import {
   inspectGlbReleaseCompression,
   inspectReleaseAssetPair,
 } from '../src/contracts/assetReleaseValidation.js';
+import { computePartsSourceRollupSha256, partsSourceEntryCount } from './lib/releaseManifestRollup.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_MANIFEST = resolve(ROOT, 'assets/ships/parts/parts_manifest.json');
@@ -126,7 +128,7 @@ for (let index = 0; index < assets.length; index++) {
       transforms.push(
         ktx2({
           slots: /^baseColorTexture$/,
-          imageDecoder: decodePng,
+          imageDecoder: decodeImage,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
           generateMipmap: true,
@@ -136,7 +138,7 @@ for (let index = 0; index < assets.length; index++) {
         }),
         ktx2({
           slots: /^normalTexture$/,
-          imageDecoder: decodePng,
+          imageDecoder: decodeImage,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
           generateMipmap: true,
@@ -147,7 +149,7 @@ for (let index = 0; index < assets.length; index++) {
         }),
         ktx2({
           slots: /^(occlusionTexture|metallicRoughnessTexture|roughnessTexture|metalnessTexture)$/,
-          imageDecoder: decodePng,
+          imageDecoder: decodeImage,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
           generateMipmap: true,
@@ -189,9 +191,13 @@ for (let index = 0; index < assets.length; index++) {
 }
 
 const devDeps = packageJson.devDependencies || {};
+const sourceSha256 = computePartsSourceRollupSha256(manifestAssets);
 await writeFile(BUILD_RELEASE_MANIFEST, `${JSON.stringify({
   schemaVersion: 1,
   releaseRoot: 'assets/ships/release',
+  sourceSha256,
+  partsSourceCount: partsSourceEntryCount(manifestAssets),
+  sourceSha256Algorithm: 'sha256(sorted parts source paths as source:perAssetHash lines)',
   generatedBy: 'scripts/build-sg04-release-assets.mjs',
   contract: {
     textureContainer: 'KTX2/BasisU via KHR_texture_basisu',
@@ -377,6 +383,15 @@ function decodePng(buffer) {
     height: png.height,
     data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.byteLength),
   };
+}
+
+function decodeImage(buffer) {
+  const bytes = Buffer.from(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+    const jpeg = JPEG.decode(bytes, { useTArray: true });
+    return { width: jpeg.width, height: jpeg.height, data: jpeg.data };
+  }
+  return decodePng(bytes);
 }
 
 function sha256(bytes) {

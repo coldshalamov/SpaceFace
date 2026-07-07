@@ -33,6 +33,8 @@ import {
   updateTrailStreakMesh,
 } from './engineTrailSurfaces.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { resolveWeaponCueTable } from '../data/combatDefs.js';
+import { WEAPONS } from '../data/weapons.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 
@@ -372,6 +374,7 @@ export const vfx = {
     add('jump:start', (p) => this._onJumpStart(p));
     add('jump:arrive', (p) => this._onJumpArrive(p));
     add('pickup:collected', (p) => this._onPickup(p));
+    add('countermeasure:deployed', (p) => this._onCountermeasureDeployed(p));
   },
 
   // Spec2/02 §3 juice-stack trace: emit a presentation cue + audio cue for every
@@ -727,40 +730,99 @@ export const vfx = {
   // -------------------------------------------------------------------------
   // Event handlers (each pushes pooled visuals; no per-event allocation of GPU objects)
   // -------------------------------------------------------------------------
-  _onFire(p) {
-    if (!this._scene) return;
-    // Hero assets carry named sockets (spec §9.9): a weapon muzzle should leave the visible barrel, not
-    // the entity center. Resolve from the live mesh socket when available, else use the payload origin.
-    let origin = (p.origin && typeof p.origin.x === 'number') ? p.origin : this._posFrom(p, p.ownerId);
-    if (this.helpers.socketWorldPos && p.ownerId === this.state.playerId) {
-      const sock = this.helpers.socketWorldPos(p.ownerId, 'SOCKET_Weapon_Front');
-      if (sock) origin = sock;
-    }
-    if (!origin) return;
-    // combat:fire emits `dir` as a NUMBER (yaw radians) — both weapons.js emitters do. Older callers
-    // may pass {x,z}. Resolve robustly (0 is a valid heading, so never treat dir===0 as falsy).
-    const base = this._dirAngle(p.dir, p.ownerId);
-    const owner = this._ent(p.ownerId);
-    const col = this._engineColor(owner); // weapon colour not in payload; faction accent reads well
-    const burst = this._burst || 1;
-    this._c0.set('#ffffff'); this._c1.set(col);
-    // muzzle flash: BIGGER — hot white core punch, coloured mid flare, and a wide neon outer bloom
+  _muzzleVariant(p) {
+    const w = WEAPONS.find((x) => x.id === (p && p.weaponId));
+    if (w && w.continuous) return 'beam';
+    const cues = resolveWeaponCueTable(p && p.weaponId, WEAPONS);
+    const muzzleCue = cues.muzzle || '';
+    if (muzzleCue.includes('explosive') || muzzleCue.includes('missile')) return 'explosive';
+    if (muzzleCue.includes('energy')) return 'energy';
+    return 'ballistic';
+  },
+
+  _spawnMuzzleBallistic(origin, base, col, burst) {
+    this._c0.set('#ffffff'); this._c1.set('#ffb35c');
     this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.09, 3.5, 6.0, 1.0, 0.0, '#ffffff', 0, 0);
-    const mx = origin.x + Math.cos(base) * 1.5, mz = origin.z + Math.sin(base) * 1.5;
+    const mx = origin.x + Math.cos(base) * 1.5;
+    const mz = origin.z + Math.sin(base) * 1.5;
     this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.14, 5.0, 9.0, 0.9, 0.0, col, 0, 0);
-    // wide neon bloom feeder behind the core — feeds into the bloom pass for a satisfying pop
-    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.18, 4.0, 10.0, 0.45, 0.0, col, 0, 0);
-    // dynamic muzzle light — brighter, wider radius to light surrounding geometry
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.18, 4.0, 10.0, 0.45, 0.0, '#ff8844', 0, 0);
     this._flashLight({ x: origin.x, z: origin.z }, 0xffffff, 5.0, 12, 180);
-    // secondary weapon-colored light slightly ahead — paints the barrel area
     this._flashLight({ x: mx, z: mz }, col, 3.0, 14, 100);
-    // spark particles ejected forward along the aim cone +/-15deg — more sparks, faster
     const n = Math.max(4, Math.round(10 * burst));
     for (let k = 0; k < n; k++) {
       const a = base + (Math.random() - 0.5) * 0.52;
       const sp = 40 + Math.random() * 50;
       this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.18, 2.2, 0.0, this._c0, this._c1, 3.5, 0, 0);
     }
+  },
+
+  _spawnMuzzleEnergy(origin, base, col, burst) {
+    this._c0.set('#e8ffff'); this._c1.set('#39d0ff');
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.07, 2.8, 5.5, 1.0, 0.0, '#ffffff', 0, 0);
+    const mx = origin.x + Math.cos(base) * 1.8;
+    const mz = origin.z + Math.sin(base) * 1.8;
+    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.11, 4.5, 8.0, 0.85, 0.0, '#66e8ff', 0, 0);
+    this._spawnSprite(SPR_RING, origin.x, 0, origin.z, 0.16, 1.2, 4.5, 0.55, 0.0, col, 0, 0);
+    this._flashLight({ x: mx, z: mz }, '#88eeff', 4.5, 10, 140);
+    const n = Math.max(3, Math.round(6 * burst));
+    for (let k = 0; k < n; k++) {
+      const a = base + (Math.random() - 0.5) * 0.28;
+      const sp = 28 + Math.random() * 32;
+      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.14, 1.6, 0.0, this._c0, this._c1, 4.0, 0, 0);
+    }
+  },
+
+  _spawnMuzzleExplosive(origin, base, col, burst) {
+    this._c0.set('#ffe8c0'); this._c1.set('#ff6622');
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.10, 4.0, 7.0, 1.0, 0.0, '#ffffff', 0, 0);
+    this._spawnSprite(SPR_RING, origin.x, 0, origin.z, 0.20, 1.5, 6.5, 0.75, 0.0, '#ffb35c', 0, 0);
+    this._spawnSprite(SPR_PUFF, origin.x, 0, origin.z, 0.28, 2.0, 5.0, 0.5, 0.0, '#ff8844', 0, 0);
+    this._flashLight({ x: origin.x, z: origin.z }, '#ffaa44', 6.0, 14, 200);
+    const n = Math.max(5, Math.round(12 * burst));
+    for (let k = 0; k < n; k++) {
+      const a = base + (Math.random() - 0.5) * 0.85;
+      const sp = 18 + Math.random() * 26;
+      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.24, 2.8, 0.2, this._c0, this._c1, 2.8, 0, 0);
+    }
+  },
+
+  _spawnMuzzleBeam(origin, base, col) {
+    const mx = origin.x + Math.cos(base) * 2.2;
+    const mz = origin.z + Math.sin(base) * 2.2;
+    this._c0.set('#ffffff'); this._c1.set('#aaf8ff');
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.12, 2.0, 4.0, 0.95, 0.0, '#ffffff', 0, 0);
+    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.18, 3.5, 7.5, 0.7, 0.0, '#88eeff', 0, 0);
+    this._spawnSprite(SPR_RING, mx, 0, mz, 0.22, 0.8, 3.2, 0.45, 0.0, col, 0, 0);
+    this._flashLight({ x: mx, z: mz }, '#aaf8ff', 5.5, 16, 120);
+    for (let k = 0; k < 4; k++) {
+      const t = (k + 1) * 0.45;
+      this._spawnParticle(
+        origin.x + Math.cos(base) * t, origin.z + Math.sin(base) * t,
+        Math.cos(base) * 8, Math.sin(base) * 8,
+        0.10, 1.2, 0.0, this._c0, this._c1, 5.0, 0, 0,
+      );
+    }
+  },
+
+  _onFire(p) {
+    if (!this._scene) return;
+    let origin = (p.origin && typeof p.origin.x === 'number') ? p.origin : this._posFrom(p, p.ownerId);
+    if (this.helpers.socketWorldPos && p.ownerId === this.state.playerId) {
+      const sock = this.helpers.socketWorldPos(p.ownerId, 'SOCKET_Weapon_Front');
+      if (sock) origin = sock;
+    }
+    if (!origin) return;
+    const base = this._dirAngle(p.dir, p.ownerId);
+    const owner = this._ent(p.ownerId);
+    const col = this._engineColor(owner);
+    const burst = this._burst || 1;
+    const variant = this._muzzleVariant(p);
+    if (variant === 'energy') this._spawnMuzzleEnergy(origin, base, col, burst);
+    else if (variant === 'explosive') this._spawnMuzzleExplosive(origin, base, col, burst);
+    else if (variant === 'beam') this._spawnMuzzleBeam(origin, base, col);
+    else this._spawnMuzzleBallistic(origin, base, col, burst);
+    this._emitJuiceCue(`vfx.muzzle.${variant}`, { ...p, pos: origin }, 1);
   },
 
   // resolve a heading angle from a payload `dir` that may be a number (radians), a {x,z} vector, or
@@ -781,6 +843,7 @@ export const vfx = {
     const hitShield = tgt && tgt.shield > 0;
 
     if (hitShield) {
+      this._emitJuiceCue('vfx.impact.shield_ripple', p, 1);
       // Shield impact: distinct blue/cyan sparks + visible ripple so it reads differently from hull
       const col = this._shieldColor(fid);
       const r = (tgt && tgt.radius) || 6;
@@ -799,9 +862,16 @@ export const vfx = {
       }
       this._flashLight({ x: pos.x, z: pos.z }, col, 3.0, 12, 120);
     } else {
+      const dmgType = (p.damageType || p.type || 'kinetic').toLowerCase();
+      const variant = dmgType === 'explosive' || dmgType === 'thermal' ? 'hull_scorch' : 'sparks';
+      this._emitJuiceCue(`vfx.impact.${variant}`, p, 1);
       // Hull impact: hot orange/yellow sparks — directional spray, more particles
       const col = tgt ? this._engineColor(tgt) : '#ffcc66';
       this._impactSparks(pos.x, pos.z, p.pos && p.dir ? p.dir : null, col, 18);
+      if (variant === 'hull_scorch') {
+        this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.35, 1.8, 4.2, 0.5, 0.0, '#2a2018',
+          (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4);
+      }
       // extra hull debris — a few slower, longer-lived chunks
       this._c0.set('#ffa040'); this._c1.set('#301008');
       const dn = Math.max(2, Math.round(5 * (this._burst || 1)));
@@ -1021,6 +1091,15 @@ export const vfx = {
     if (lane.includes('comms')) {
       return presentationStyle('#e6fbff', '#5fd7ff', SPR_PUFF, { radial: true, lightPeak: 0, lightDistance: 0, speed0: 10, speedJitter: 18, life0: 0.55, size0: 1.7, size1: 0.2, drag: 0.9 });
     }
+    if (id.includes('station.dock') || id === 'vfx.station.dock') {
+      return presentationStyle('#88ccff', '#2244aa', SPR_RING, { radial: true, echoRing: true, lightPeak: 2.8, lightDistance: 140, speed0: 8, speedJitter: 12, life0: 0.65, size0: 1.4 });
+    }
+    if (id.includes('station.nav') || id === 'vfx.station.nav_strobe') {
+      return presentationStyle('#ffee88', '#ffaa22', SPR_FLASH, { radial: true, lightPeak: 3.2, lightDistance: 120, speed0: 14, speedJitter: 18, life0: 0.35, size0: 1.2 });
+    }
+    if (id.includes('station.hazard') || id === 'vfx.station.hazard') {
+      return presentationStyle('#ff6644', '#ff2200', SPR_RING, { radial: true, echoRing: true, lightPeak: 4.0, lightDistance: 160, speed0: 22, speedJitter: 28, life0: 0.5, size0: 1.6 });
+    }
     if (lane.includes('branch') || id.includes('branch')) {
       return presentationStyle('#fff8d8', '#f5d06f', SPR_RING, { radial: true, echoRing: true, lightPeak: 4.0, lightDistance: 180, speed0: 18, speedJitter: 32, life0: 0.5 });
     }
@@ -1035,8 +1114,13 @@ export const vfx = {
 
   _onKilled(p) {
     this._emitJuiceCue('combat.damage.kill', p, 2);
-    if (this._isCapitalKill(p)) this._explodeCapital(p);
-    else this._explodeSmall(p);
+    if (this._isCapitalKill(p)) {
+      this._emitJuiceCue('vfx.explosion.capital', p, 3);
+      this._explodeCapital(p);
+    } else {
+      this._emitJuiceCue('vfx.explosion.small', p, 1.5);
+      this._explodeSmall(p);
+    }
   },
 
   _isCapitalKill(p) {
@@ -1054,6 +1138,7 @@ export const vfx = {
     const t = p.type;
     if (t === 'projectile' || t === 'pickup' || t === 'fx') return;
     if (t === 'ship') return; // ships handled by entity:killed (avoid double explosion)
+    this._emitJuiceCue('vfx.explosion.medium', p, 2);
     this._explode(p, false);
   },
 
@@ -1061,6 +1146,8 @@ export const vfx = {
     if (!this._scene) return;
     const pos = this._posFrom(p, p.id);
     if (!pos) return;
+    if (big) this._emitJuiceCue('vfx.explosion.capital', p, 3);
+    else this._emitJuiceCue('vfx.explosion.medium', p, 2);
     const r = Math.max(3, p.radius || 6);
     const x = pos.x, z = pos.z;
     const burst = this._burst || 1;
@@ -1249,6 +1336,37 @@ export const vfx = {
     this._miningBeam = { mesh, glow, active: false, t: 0, color: '#60d0ff' };
   },
 
+  _onCountermeasureDeployed(p) {
+    if (!this._scene || !p) return;
+    const x = p.x, z = p.z;
+    const kind = p.kind || 'chaff';
+    const radius = Math.min(520, Math.max(80, p.radius || 380));
+    this._emitJuiceCue('vfx.countermeasure.burst', p, kind === 'ecm' ? 1.5 : 1);
+    if (kind === 'ecm') {
+      this._c0.set('#dff8ff'); this._c1.set('#5fe0ff');
+      this._spawnSprite(SPR_RING, x, 0, z, 0.55, radius * 0.08, radius * 0.42, 0.65, 0.0, '#88eeff', 0, 0);
+      this._spawnSprite(SPR_FRESNEL, x, 0, z, 0.35, radius * 0.05, radius * 0.28, 0.45, 0.0, '#aaf8ff', 0, 0);
+      const n = Math.max(12, Math.round(24 * (this._burst || 1)));
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 12 + Math.random() * 28;
+        this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.45 + Math.random() * 0.25, 1.4, 0.0, this._c0, this._c1, 2.2, 0, 0);
+      }
+      this._flashLight({ x, z }, '#88eeff', 4.5, 18, 200);
+    } else {
+      this._c0.set('#ffffff'); this._c1.set('#c9d0d8');
+      this._spawnSprite(SPR_PUFF, x, 0, z, 0.45, radius * 0.06, radius * 0.22, 0.75, 0.0, '#dde4ec', 0, 0);
+      this._spawnSprite(SPR_FLASH, x, 0, z, 0.12, radius * 0.04, radius * 0.14, 0.9, 0.0, '#ffffff', 0, 0);
+      const n = Math.max(16, Math.round(32 * (this._burst || 1)));
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 22 + Math.random() * 55;
+        this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.28 + Math.random() * 0.18, 1.8, 0.0, this._c0, this._c1, 1.6, 0, 0);
+      }
+      this._flashLight({ x, z }, '#ffffff', 5.0, 12, 160);
+    }
+  },
+
   _onMiningStart(p) {
     if (!this._miningBeam) {
       if (!this._scene) return;
@@ -1258,8 +1376,11 @@ export const vfx = {
     this._miningBeam.active = true;
     this._miningBeam.t = 0;
     this._miningBeam.targetId = (p && p.targetId) || null;
-    // Tint to the target asteroid's ore type if we can resolve it
+    this._emitJuiceCue('vfx.mining.beam', p, 1);
     const target = p && p.targetId ? this._ent(p.targetId) : null;
+    if (target && target.data && target.data.seams && target.data.seams.length) {
+      this._emitJuiceCue('vfx.mining.seam_marker', p, 1);
+    }
     if (target && target.data) {
       const def = target.data.typeId;
       const col = oreColor(def);
@@ -1820,6 +1941,7 @@ export const vfx = {
   // Snap burst at both cable ends when the line breaks under load (tether:broken).
   _onTetherSnap(p) {
     this._emitJuiceCue('presentation.tether.break', p, 1.5);
+    this._emitJuiceCue('vfx.countermeasure.tether_snap', p, 1.5);
     const cable = this._tetherCable;
     if (!cable || !this._scene) return;
     cable.fade = 0; cable.wasActive = false;
@@ -1968,6 +2090,7 @@ export const vfx = {
     if (!this._scene) return;
     const pos = this._posFrom(p, null);
     if (!pos) return;
+    this._emitJuiceCue('vfx.mining.ore_chunk', p, 1);
     const col = oreColor(p.oreType);
     // Spray sparks outward from the contact point, biased away from the miner so they fan
     // off the rock face like molten chips. Bigger, brighter, more numerous than before.
@@ -2092,6 +2215,7 @@ export const vfx = {
     const e = this._ent(p && p.shipId);
     if (!e || !this._scene) return;
     if (on) {
+      this._emitJuiceCue('vfx.thruster.boost', p, 1.5);
       // Boost ignition: a tight rear-nozzle kick, not a ship-sized bloom.
       const col = this._engineColor(e);
       const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
@@ -2154,6 +2278,7 @@ export const vfx = {
     const player = this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     const pos = this._posFrom(p, this.state.playerId) || (player ? player.pos : null);
     if (!pos) return;
+    this._emitJuiceCue('vfx.countermeasure.jump_warp', p, 2);
     this._warpStreak(pos.x, pos.z, true);
   },
   _onJumpArrive(p) {
@@ -2291,6 +2416,8 @@ export const vfx = {
     particlesSpawned++;
 
     // AFTERBURNER / CRUISE: when boosting or cruising, add extra bright wide particles.
+    if (cruiseBlend > 0 && Math.random() < 0.08) this._emitJuiceCue('vfx.thruster.cruise', { id: e.id, pos: e.pos }, 1);
+    else if (boostBlend > 0 && Math.random() < 0.06) this._emitJuiceCue('vfx.thruster.boost', { id: e.id, pos: e.pos }, 1);
     if (boostBlend > 0 || cruiseBlend > 0 || drive > 1.05) {
       // Extra wide bright outer particles — faction colored, bigger, slightly random y offset
       this._c0.set(col0); if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT); this._c1.set('#ffffff');
@@ -3025,7 +3152,10 @@ export const vfx = {
       // smokes, so you can spot a limping enemy without HUD readouts.
       if (tier !== TRAIL_TIER.SKIP && e.hullMax && e.hull < e.hullMax) {
         const frac = e.hull / e.hullMax;
-        if (frac < 0.40) this._emitDamageSmoke(e, frac, step);
+        if (frac < 0.40) {
+        if (Math.random() < 0.05) this._emitJuiceCue('vfx.thruster.damage', { id: e.id, pos: e.pos }, 1);
+        this._emitDamageSmoke(e, frac, step);
+      }
       }
     }
     this._publishTrailBudgetDiag();

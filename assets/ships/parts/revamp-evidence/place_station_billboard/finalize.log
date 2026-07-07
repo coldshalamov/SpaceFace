@@ -1,1 +1,15 @@
-{"partId":"place_station_billboard","file":"places/place_station_billboard.glb","tris":948,"bytes":231964,"images":3,"materials":"Material_Hull.001,Material_Accent,Material_Mechanical.001,Material_Hull","note":"PRO revamp 2026-07-05 — bevel (segs=2) + WN + AO/rough bakes via MCP for billboard. Character: commercial signage weathered frontier station ad panel. 948 tris."}
+{
+  "id": "place_station_billboard",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:11:42Z",
+  "tris": 2244,
+  "bytes": 873204,
+  "textureSize": 2048,
+  "storyMap": "place_station_billboard_signage_weather_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — commercial signage uplift: emissive ad zone + weather DET stack"
+}

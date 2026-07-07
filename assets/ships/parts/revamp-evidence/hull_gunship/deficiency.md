@@ -110,3 +110,27 @@
 **Screenshot count:** 32 distinct MCP viewport renders (8 iter0 clay + 8 iter1 lit + 8 iter2 lit + 6 iter3 lit + 2 close_soot_fixed retakes).
 
 **Full Finish Bar:** SATISFIED (including story-matched skin pass item 6).
+
+---
+
+## Elite iter4 uplift for hull_gunship (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_hull_gunship_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_scar.png`, `_iter4_lit_close_stripe.png`, `_iter4_lit_close_hardpoint.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`hull_gunship_trim_sheet_2k.jpg`)
+2. 2K battle wear mask (`hull_gunship_wear_mask_2k.jpg`)
+3. Battle scorch roughness story map (`hull_gunship_battle_scorch_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Accent/Mechanical)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on battle scar + exhaust soot bands
+10. Anisotropy/clearcoat gunmetal paint vs mechanical hardpoints
+11. Emissive story accent on military stencil
+12. Localized decal alpha on faction stripe port
+
+**DET layers (12):** DET_armor_plate, DET_battle_scar, DET_cavity_grime_vent, DET_exhaust_soot, DET_faction_stripe_port, DET_fracture_patch, DET_micro_scratch_plate, DET_military_stencil, DET_panel_line_emphasis, DET_sensor_dome, DET_turret_mount, DET_weapon_hardpoint
+
+**Export/finalize:** **3720 tris / 1234768 B** · `PRO Elite Finish 2026-07-06`

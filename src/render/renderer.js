@@ -751,11 +751,15 @@ export const render = {
       // palette class (no-op when re-entering the same sector).
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector);
       this._updateHazardVisuals(sector);
-      const warmup = precompilePipelines(renderer, scene, cam.obj, {
+      // Chain the per-sector pass BEHIND the boot-time global precompile so a fast New Game
+      // click doesn't fire a concurrent sector precompile fighting the global one for the GPU
+      // compile queue. After global finishes, precompile.js dedup makes this a near-no-op.
+      const globalReady = state.render.globalPipelinePrecompileReady || Promise.resolve();
+      const warmup = globalReady.then(() => precompilePipelines(renderer, scene, cam.obj, {
         sector,
         warmPostProcess: state.render.warmPostProcess,
         video: state.settings && state.settings.video,
-      }).catch((error) => {
+      })).catch((error) => {
         console.warn('[render] sector pipeline precompile failed', error);
         return null;
       });

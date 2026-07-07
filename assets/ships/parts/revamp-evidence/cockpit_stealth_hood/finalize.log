@@ -1,0 +1,14 @@
+{
+  "partId": "cockpit_stealth_hood",
+  "file": "cockpits/cockpit_stealth_hood.glb",
+  "tris": 2856,
+  "bytes": 1116084,
+  "dims": [5.7099, 1.403, 3.97],
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "lit_renders": 25,
+  "story_map": "cockpit_stealth_hood_quiet_coat_roughness_story_2k.jpg"
+}

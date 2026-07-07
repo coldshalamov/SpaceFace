@@ -1,0 +1,21 @@
+{
+  "partId": "place_patrol_pylon",
+  "file": "places/place_patrol_pylon.glb",
+  "tris": 2156,
+  "bytes": 803796,
+  "dims": [
+    6.4,
+    11.6546,
+    2.4
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Hull",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "place_patrol_pylon_patrol_stripe_roughness_story_2k.jpg"
+}

@@ -1,0 +1,18 @@
+{
+  "partId": "cockpit_bubble_twin",
+  "file": "cockpits/cockpit_bubble_twin.glb",
+  "tris": 6854,
+  "bytes": 795944,
+  "dims": [
+    4.6,
+    3.251,
+    3.251
+  ],
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "lit_renders": 25,
+  "story_map": "cockpit_bubble_twin_patrol_glass_roughness_story_2k.jpg"
+}

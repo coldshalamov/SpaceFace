@@ -1,1 +1,15 @@
-{"partId":"place_dead_hulk","file":"places/place_dead_hulk.glb","tris":1740,"bytes":261540,"images":3,"note":"PRO revamp 2026-07-05 - bevel (segs=2) + WN + AO/rough bakes via MCP for dead hulk. Character: derelict wrecked hulk, rusted fractured ruin. 1740 tris."}
+{
+  "id": "place_dead_hulk",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:12:39Z",
+  "tris": 3036,
+  "bytes": 1193488,
+  "textureSize": 2048,
+  "storyMap": "place_dead_hulk_wreck_scorch_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — derelict hulk uplift: fracture + salvage DET stack"
+}

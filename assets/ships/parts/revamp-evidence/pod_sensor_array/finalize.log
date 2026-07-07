@@ -1,0 +1,21 @@
+{
+  "partId": "pod_sensor_array",
+  "file": "pods/pod_sensor_array.glb",
+  "tris": 4280,
+  "bytes": 625612,
+  "dims": [
+    4.2,
+    1.885,
+    2.68
+  ],
+  "images": 1,
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "pod_sensor_array_sensor_grid_roughness_story_2k.jpg"
+}

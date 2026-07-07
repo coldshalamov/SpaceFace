@@ -1,0 +1,21 @@
+{
+  "partId": "gear_landing_truss",
+  "file": "gear/gear_landing_truss.glb",
+  "tris": 5244,
+  "bytes": 1419268,
+  "dims": [
+    4.35,
+    1.9794,
+    3.6
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "gear_landing_truss_truss_wear_roughness_story_2k.jpg"
+}

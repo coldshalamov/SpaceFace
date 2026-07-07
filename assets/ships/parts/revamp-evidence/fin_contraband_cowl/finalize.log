@@ -1,0 +1,21 @@
+{
+  "partId": "fin_contraband_cowl",
+  "file": "fins/fin_contraband_cowl.glb",
+  "tris": 7960,
+  "bytes": 1507240,
+  "dims": [
+    5.1585,
+    0.745,
+    4.4421
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Hull,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "fin_contraband_cowl_hidden_hatch_roughness_story_2k.jpg"
+}

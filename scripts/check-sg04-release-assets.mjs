@@ -10,6 +10,7 @@ import {
   validateReleaseAssetSet,
 } from '../src/contracts/assetReleaseValidation.js';
 import { PART_LIBRARY_CONTRACT } from '../src/render/partsLibrary.js';
+import { computePartsSourceRollupSha256, partsSourceEntryCount } from './lib/releaseManifestRollup.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_MANIFEST = resolve(ROOT, 'assets/ships/parts/parts_manifest.json');
@@ -289,6 +290,30 @@ function inspectReleaseManifestCoverage(manifest, pairs = []) {
     });
   }
   const entries = Array.isArray(manifest.assets) ? manifest.assets : [];
+  const expectedRollup = computePartsSourceRollupSha256(entries);
+  if (!manifest.sourceSha256) {
+    issues.push({
+      rule: 'release.manifest.rollupHash',
+      path: 'assets/ships/release/release_manifest.json',
+      message: 'release manifest must include top-level sourceSha256 rollup of parts/ sources',
+    });
+  } else if (manifest.sourceSha256 !== expectedRollup) {
+    issues.push({
+      rule: 'release.manifest.rollupHash',
+      path: 'assets/ships/release/release_manifest.json',
+      message: 'release manifest top-level sourceSha256 must match parts/ source rollup',
+      detail: `expected ${expectedRollup}, got ${manifest.sourceSha256}`,
+    });
+  }
+  const expectedPartsCount = partsSourceEntryCount(entries);
+  if (manifest.partsSourceCount != null && manifest.partsSourceCount !== expectedPartsCount) {
+    issues.push({
+      rule: 'release.manifest.partsSourceCount',
+      path: 'assets/ships/release/release_manifest.json',
+      message: 'release manifest partsSourceCount must match enumerated parts/ assets',
+      detail: `${manifest.partsSourceCount} != ${expectedPartsCount}`,
+    });
+  }
   if (entries.length !== pairs.length) {
     issues.push({
       rule: 'release.manifest.assetCount',

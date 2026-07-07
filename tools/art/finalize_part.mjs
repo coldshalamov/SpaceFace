@@ -16,6 +16,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import * as THREE from 'three';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -232,6 +233,13 @@ function main() {
   const imgCount = (gltf.images || []).length;
   const mats = (gltf.materials || []).map((m) => m.name).join(',');
   console.log(JSON.stringify({ partId, file: entry.file, tris, bytes: finalBuf.length, dims, images: imgCount, materials: mats }, null, 2));
+
+  if ((entry.note || '').includes('NEW')) {
+    const col = spawnSync(process.execPath, ['scripts/colocate-elite-renders.mjs', '--id', partId], {
+      cwd: ROOT, encoding: 'utf8',
+    });
+    if (col.status !== 0) console.warn(`[finalize] colocate renders advisory for ${partId}: ${col.stderr || col.stdout}`);
+  }
 }
 
 function validateEngineDriveSurface(gltf, partId) {

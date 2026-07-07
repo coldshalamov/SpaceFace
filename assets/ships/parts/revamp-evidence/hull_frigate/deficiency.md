@@ -101,3 +101,27 @@
 **Screenshot count:** 29 distinct MCP viewport renders (8 iter0 clay + 8 iter1 lit + 7 iter2 lit + 6 iter3 lit).
 
 **Full Finish Bar:** SATISFIED (including story-matched skin pass item 6).
+
+---
+
+## Elite iter4 uplift for hull_frigate (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_hull_frigate_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_bridge.png`, `_iter4_lit_close_stripe.png`, `_iter4_lit_close_bow.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`hull_frigate_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`hull_frigate_wear_mask_2k.jpg`)
+3. Command stripe roughness story map (`hull_frigate_command_stripe_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Accent/Mechanical)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on command bridge + bow patrol zones
+10. Anisotropy/clearcoat warship paint vs mechanical vents
+11. Emissive story accent on command stripe
+12. Localized decal alpha on faction stripe port
+
+**DET layers (12):** DET_authority_stencil, DET_bridge_super, DET_disciplined_wear, DET_engine_vent, DET_field_insignia, DET_sensor_mast, DET_squadron_stripe, DET_turret_collar, DET_micro_scratch_plate, DET_panel_line_emphasis, DET_faction_stripe_port, DET_cavity_grime_vent
+
+**Export/finalize:** **3348 tris / 923880 B** · `PRO Elite Finish 2026-07-06`

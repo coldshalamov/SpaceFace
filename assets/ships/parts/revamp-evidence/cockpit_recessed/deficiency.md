@@ -94,3 +94,27 @@
 **Screenshot audit:** 31 MCP renders total; 22 analyzable full-view (iter0×5, iter1×7, iter3×8, 2026-07-05×3); iter2×7 documented camera-fail; stencil close v2/v3 overexposed — Quiet stencil reads in lit_34 brow zone instead.
 
 **Full Finish Bar:** PASS — ≥6 surfacing, ≥5 lit PBR, skin pass (stealth dark hull + Quiet stencil + canopy wear streak + sensor slit emissive), deficiency iter0–iter3.
+
+---
+
+## Elite iter4 uplift for cockpit_recessed (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_cockpit_recessed_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_canopy.png`, `_iter4_lit_close_brow.png`, `_iter4_lit_close_stencil.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`cockpit_recessed_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`cockpit_recessed_wear_mask_2k.jpg`)
+3. Quiet stencil roughness story map (`cockpit_recessed_quiet_stencil_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on armor brow
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Accent/Mechanical/Glass)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on canopy streak + stealth scrub zones
+10. Anisotropy/clearcoat matte stealth hull vs mechanical brow
+11. Emissive sensor slit accent in recess floor
+12. Localized decal alpha on faction stripe port
+
+**DET layers (12):** DET_armor_brow, DET_canopy_wear_streak, DET_cavity_grime_vent, DET_dash_panel, DET_faction_stripe_port, DET_micro_scratch_plate, DET_mount_bolt, DET_mount_collar, DET_panel_line_emphasis, DET_sensor_cluster, DET_stealth_scrub, DET_stencil_quiet
+
+**Export/finalize:** **2424 tris / 1652500 B** · `PRO Elite Finish 2026-07-06`

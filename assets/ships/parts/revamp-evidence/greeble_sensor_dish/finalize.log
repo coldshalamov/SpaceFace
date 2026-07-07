@@ -1,0 +1,21 @@
+{
+  "partId": "greeble_sensor_dish",
+  "file": "greebles/greeble_sensor_dish.glb",
+  "tris": 4462,
+  "bytes": 997824,
+  "dims": [
+    2.8,
+    3.51,
+    2.6386
+  ],
+  "images": 1,
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "greeble_sensor_dish_sensor_sweep_roughness_story_2k.jpg"
+}

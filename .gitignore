@@ -1,4 +1,7 @@
 .devshots/
+# Blender autosave backups (not authoring inputs)
+*.blend1
+*.blend11
 node_modules/
 build/
 dist/

@@ -732,8 +732,8 @@ export class SpaceBackground {
     this.bakeSize = this.bakeSizes.L1_nebula; // L0 micro-star density keys off this
     // star counts look sparse relative to the wrap cell (sized for max zoom-out), so they
     // run higher than "visible stars": at default zoom only ~2-6% of the cell is on screen.
-    this.starCount = tier === 'low' ? 4200 : tier === 'mid' ? 7000 : 12000;
-    this.flareCount = tier === 'low' ? 28 : tier === 'mid' ? 44 : 60;
+    this.starCount = tier === 'low' ? 4200 : tier === 'mid' ? 8400 : 14500;
+    this.flareCount = tier === 'low' ? 28 : tier === 'mid' ? 56 : 78;
   }
 
   // Renderer calls this right after detectGpu() (which runs later in init than our
@@ -1209,7 +1209,7 @@ export class SpaceBackground {
       for (let cz = pgz - 2; cz <= pgz + 2; cz++) {
         const h = hash32(`p:${cx},${cz}:${this.skySeed}`);
         const r = mulberry32(h);
-        if (r() >= 0.35) continue;
+        if (r() >= 0.42) continue;
         const bx = (cx + r()) * planetCellW;
         const bz = (cz + r()) * planetCellW;
         const typeRoll = r();
@@ -1237,14 +1237,14 @@ export class SpaceBackground {
     }
     this.heroPlacement = list;
 
-    // spawn what's near the window, capped: <=1 planet + 1 wormhole
+    // spawn what's near the window, capped: <=2 planets + 1 wormhole (elite parallax hero density)
     let planetsSpawned = 0;
     for (const spec of list) {
       const par = spec.kind === 'planet' ? PLANET_PAR : WORM_PAR;
       const ox = spec.bx - this.camX * par;
       const oz = spec.bz - this.camZ * par;
       if (Math.abs(ox) > windowR || Math.abs(oz) > windowR) continue;
-      if (spec.kind === 'planet' && planetsSpawned < 1) {
+      if (spec.kind === 'planet' && planetsSpawned < 2) {
         this._spawnPlanet(spec);
         planetsSpawned++;
       } else if (spec.kind === 'wormhole' && !this.wormhole) {

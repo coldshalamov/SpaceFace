@@ -1,5 +1,9 @@
 {
   "partId": "place_lane_beacon",
-  "tris": 700,
-  "bytes": 189604
+  "tris": 3020,
+  "bytes": 893556,
+  "eliteFinish": true,
+  "phase": "elite",
+  "note": "PRO Elite Finish 2026-07-06",
+  "method": "blender_mcp"
 }

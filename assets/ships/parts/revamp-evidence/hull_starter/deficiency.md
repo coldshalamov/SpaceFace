@@ -115,3 +115,37 @@
 **Screenshot audit:** 27 analyzable full-view MCP renders (iter0×5, iter1×7, iter3×15); 9 iter2 HDRI misfires excluded per camera-fix protocol.
 
 **Full Finish Bar:** PASS — ≥6 surfacing techniques, ≥5 lit PBR renders, skin pass (DEBT+weld+soot+tag), deficiency iter0–iter3, export log match manifest.
+
+---
+
+## Elite iter4 uplift for hull_starter (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_hull_starter_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_weld.png`, `_iter4_lit_close_stencil.png`, `_iter4_lit_close_reactor.png`
+
+**MCP observations (iter4 vs Phase 1):**
+- Silhouette (4/5): Unchanged; faction stripe port adds asymmetric color read at distance.
+- Macro/meso/micro (5/5): 18 DET layers (+4 elite: micro_scratch_plate, panel_line_emphasis, faction_stripe_port, cavity_grime_vent); hatch bolt cluster + weld close reads professional.
+- Bevel language (4/5): New DET cubes bevel segs=2; panel line emphasis catches rim light.
+- Material zones (5/5): Pit hull / mechanical / accent separation stronger with 2K trim + faction story map.
+- Wear/story (5/5): Secondary wear layer + micro-scratch plate + cavity grime vent sell 3-owner Pit repossession beyond Phase 1.
+- Lighting readability (5/5): iter4 lit mid + 3 close frames show improvement vs iter3 (clearcoat punch, soot streak, DEBT peel).
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`hull_starter_trim_sheet_2k.jpg`)
+2. 2K wear mask green-channel roughness (`hull_starter_wear_mask_2k.jpg`)
+3. Faction stripe roughness story map (`hull_starter_faction_stripe_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature-driven edge lighten
+5. SF_CavityDirt AO-darken recesses + cavity grime gradient on DET_cavity_grime_vent
+6. Cycles AO bake per material role (Hull/Accent/Mechanical)
+7. Micro-scratch mask plate (DET_micro_scratch_plate localized alpha)
+8. Panel line emphasis inset trim orientation per UV island
+9. Secondary wear layer (wear factor 0.68 + clearcoat coat weight 0.35)
+10. Anisotropy/clearcoat zones on paint vs mechanical
+11. Emissive story accent on DEBT stencil + repossession tag
+12. Localized decal alpha (DEBT + faction stripe port)
+
+**DET layers (18):** DET_weld_patch_port, DET_reactor_scar, DET_stencil_debt, DET_maint_hatch, DET_vent_0, DET_vent_1, DET_hatch_handle, DET_bolt_hatch_0–3, DET_accent_trim, DET_soot_streak_port, DET_repossession_tag, DET_micro_scratch_plate, DET_panel_line_emphasis, DET_faction_stripe_port, DET_cavity_grime_vent
+
+**Export/finalize:** elite export → finalize_part.mjs → **1660 tris / 1001232 B**. Textures: `textures/hull_starter/` (2K upgrade + faction story map).
+
+**Elite Finish Bar:** PASS — ≥10 techniques, ≥12 DET, ≥5 iter4 lit EEVEE, 2K+story textures.

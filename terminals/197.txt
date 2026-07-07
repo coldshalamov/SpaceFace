@@ -1,0 +1,19 @@
+---
+pid: 11424
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "Start-Sleep -Seconds 300; $log = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\engine_batch.log\"; Write-Host \"Phases:\"; (Select-String -Path $log -Pattern \"^===\" | Select-Object -Last 5).Line; Write-Host \"Tail:\"; Get-Content $log -Tail 4; if (Select-String -Path $log -Pattern \"ALL_ENGINE_PHASES_DONE\") { \"STATUS: DONE\" } else { \"STATUS: RUNNING\" }"
+started_at: 2026-07-07T07:17:58.254Z
+running_for_ms: 440000   
+---
+Phases:
+=== engine_tug_drive phase=lit1 ===
+=== engine_tug_drive phase=lit2 ===
+=== engine_tug_drive phase=lit3 ===
+=== engine_tug_drive phase=lit4 ===
+=== engine_tug_drive phase=lit5 ===
+Tail:
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:217: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+STATUS: RUNNING

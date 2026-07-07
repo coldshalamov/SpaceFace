@@ -81,3 +81,27 @@
 **Screenshot audit:** 30 MCP viewport renders total; 27 analyzable full/close (iter0×8, iter1×6, iter2×6, iter3×7, 2026-07-05×3); render_viewport_to_path desync documented + atomic opengl retake.
 
 **Full Finish Bar:** PASS — ≥6 surfacing, ≥5 lit PBR, skin pass (cyan stripe + inspection stencil + maintenance tick + sync bridge), deficiency iter0–iter3.
+
+---
+
+## Elite iter4 uplift for engine_ion_twin (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_engine_ion_twin_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_nozzle.png`, `_iter4_lit_close_stencil.png`, `_iter4_lit_close_sync.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`engine_ion_twin_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`engine_ion_twin_wear_mask_2k.jpg`)
+3. Core inspection roughness story map (`engine_ion_twin_core_inspection_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on cyan-steel hull
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Mechanical/Accent)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on dock collar scuff + panel respray edge
+10. Anisotropy/clearcoat corporate Core hull paint
+11. Emissive story accent on inspection stencil + cyan nav stripe
+12. Localized decal alpha on faction stripe port
+
+**DET layers (12):** DET_cavity_grime_vent, DET_cyan_nav_stripe, DET_dock_collar_scuff, DET_faction_stripe_port, DET_inspection_stencil, DET_maintenance_tick, DET_micro_scratch_plate, DET_panel_line_emphasis, DET_panel_respray_edge, DET_sync_ring_bridge, DET_torque_witness, DET_torque_witness_port
+
+**Export/finalize:** **6096 tris / 508024 B** · `PRO Elite Finish 2026-07-06`

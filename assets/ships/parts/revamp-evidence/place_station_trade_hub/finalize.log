@@ -1,12 +1,15 @@
 {
-  "partId": "place_station_trade_hub",
-  "file": "places/place_station_trade_hub.glb",
-  "tris": 6392,
-  "bytes": 2050056,
-  "dims": [28, 28, 23.3],
-  "images": 3,
-  "materials": "Material_Accent,Material_Mechanical,Material_Hull",
-  "source": "blender_mcp",
-  "date": "2026-07-06",
-  "note": "PRO Full Finish — trim/wear sheets, SF_EdgeWear+SF_CavityDirt, per-role AO bakes, 38 MCP viewport renders"
+  "id": "place_station_trade_hub",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:23:42Z",
+  "tris": 6932,
+  "bytes": 1615616,
+  "textureSize": 2048,
+  "storyMap": "place_station_trade_hub_meridian_gold_stripe_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter5Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — Meridian trade hub uplift: 12 DET, 2K gold stripe story"
 }

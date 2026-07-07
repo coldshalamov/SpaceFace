@@ -1,10 +1,19 @@
 {
   "partId": "engine_vector",
   "file": "engines/engine_vector.glb",
-  "tris": 1076,
-  "bytes": 243280,
-  "dims": [3.3, 1.7184, 1.6],
-  "images": 3,
-  "materials": "Material_Hull,Material_Accent,Material_Mechanical,Material_Glass",
-  "note": "PRO via MCP: bevel+WN modeling pass + export+finalize 2026-07-05"
+  "tris": 2372,
+  "bytes": 432360,
+  "dims": [
+    3.3,
+    1.7184,
+    1.6
+  ],
+  "images": 4,
+  "materials": "Material_Mechanical,Material_Accent,Material_Hull",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "det_layers": 12,
+  "full_finish": true
 }

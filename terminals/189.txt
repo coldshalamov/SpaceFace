@@ -1,0 +1,205 @@
+---
+pid: 39556
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "powershell -ExecutionPolicy Bypass -File \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\run_engine_phases.ps1\" 2>&1 | Tee-Object -FilePath \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-1cee974d5c56\\implementer\\engine_batch.log\""
+started_at: 2026-07-07T07:00:41.022Z
+running_for_ms: 735011   
+---
+=== engine_fusion_lattice phase=lit1 ===
+00:02.890  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_fusion_lattice_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:207: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:12.281  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter1_lit_34.png'
+00:19.937  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter1_lit_front.png'
+00:29.672  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter1_lit_side.png'
+00:45.640  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter1_lit_close_story.png'
+01:00.984  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_fusion_lattice_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_fusion_lattice phase=lit2 ===
+00:02.813  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_fusion_lattice_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:207: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter2_lit_34.png'
+00:20.047  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter2_lit_front.png'
+00:29.110  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter2_lit_side.png'
+00:45.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter2_lit_close_story.png'
+01:00.344  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_fusion_lattice_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_fusion_lattice phase=lit3 ===
+00:02.750  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_fusion_lattice_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:207: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:12.094  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter3_lit_34.png'
+00:19.407  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter3_lit_front.png'
+00:29.110  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter3_lit_side.png'
+00:43.860  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter3_lit_close_story.png'
+00:58.282  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_fusion_lattice_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_fusion_lattice phase=lit4 ===
+00:02.578  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_fusion_lattice_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:207: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter4_lit_34.png'
+00:18.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter4_lit_front.png'
+00:28.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter4_lit_side.png'
+00:43.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter4_lit_close_story.png'
+00:58.390  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter4_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_fusion_lattice_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_fusion_lattice phase=lit5 ===
+00:02.812  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_fusion_lattice_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:207: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter5_lit_34.png'
+00:19.437  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter5_lit_front.png'
+00:28.328  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter5_lit_side.png'
+00:44.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter5_lit_close_story.png'
+00:59.906  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_fusion_lattice_iter5_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_fusion_lattice_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_fusion_lattice phase=export ===
+00:02.656  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_fusion_lattice_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Traceback (most recent call last):
+  File "C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py", line 317, in <module>
+    mod.export_gltf(export_path, {'kind': 'part', 'id': PART_ID, 'slot': 'engines', 'assetId': cfg['asset']})
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\spaceface_export.py", line 316, in export_gltf
+    validate_scene_objects(spec)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\spaceface_export.py", line 306, in validate_scene_objects
+    validate_object(obj, spec)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\spaceface_export.py", line 180, in validate_object
+    _fail(f"missing baked map '{role}'", obj.name)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\spaceface_export.py", line 60, in _fail
+    raise ExportContractError(assertion, detail)
+spaceface_export.ExportContractError: missing baked map 'ao': HOOK_DRIVE_CORE
+Reloading external rigs...
+Reloading external metarigs...
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_ramjet phase=setup ===
+00:02.719  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_ramjet_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_ramjet_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_ramjet phase=clay ===
+00:02.610  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_ramjet_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:207: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:260: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay_mat.use_nodes = True
+00:13.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter0_clay_34.png'
+00:22.282  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter0_clay_front.png'
+00:35.454  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter0_clay_side.png'
+01:01.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter0_clay_close_story.png'
+01:31.110  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter0_clay_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_ramjet_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_ramjet phase=lit1 ===
+00:02.796  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_ramjet_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:217: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:14.515  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter1_lit_34.png'
+00:23.593  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter1_lit_front.png'
+00:37.140  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter1_lit_side.png'
+01:05.468  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter1_lit_close_story.png'
+01:37.296  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter1_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_ramjet_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_ramjet phase=lit2 ===
+00:02.844  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_ramjet_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:217: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:14.641  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter2_lit_34.png'
+00:23.797  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter2_lit_front.png'
+00:37.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter2_lit_side.png'
+01:00.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter2_lit_close_story.png'
+01:30.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter2_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_ramjet_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_ramjet phase=lit3 ===
+00:02.782  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_ramjet_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:217: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:13.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter3_lit_34.png'
+00:24.563  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter3_lit_front.png'
+00:37.500  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter3_lit_side.png'
+00:59.032  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter3_lit_close_story.png'
+01:27.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter3_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved "engine_ramjet_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+=== engine_ramjet phase=lit4 ===
+00:02.578  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_ramjet_authored.blend"
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:217: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\AppData\Local\Temp\grok-goal-1cee974d5c56\implementer\engine_elite_phase.py:125: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:13.609  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter4_lit_34.png'
+00:22.968  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter4_lit_front.png'
+00:35.968  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter4_lit_side.png'
+00:54.953  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\graphics-revamp\2026-07-06_engine_ramjet_iter4_lit_close_story.png'

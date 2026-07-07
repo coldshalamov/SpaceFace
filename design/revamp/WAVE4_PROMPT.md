@@ -16,6 +16,41 @@ tracked row-by-row in `design/revamp/PROGRESS.md`.
 
 ## 0. THE LEDGER PROTOCOL (do this FIRST and LAST — non-negotiable)
 
+### 0.0 Execution model — numeric order is the FALLBACK, not the law (added 2026-07-07)
+
+The `T1→T2→…→T9` numeric sequence and the "lowest-NEXT-row" rule below exist for **one reason:
+preventing two parallel agents from diverging**. For a single session holding the full repo in
+context, strict numeric order buys nothing and serializes work that has no real dependency on it.
+
+**The real rule is the dependency DAG, not the row number.** You may work any row whose real
+`depends-on` are met AND whose `files` are disjoint from any `IN-FLIGHT` row, **in any order**. The
+numeric order remains the recommended *fallback* when you have no reason to deviate.
+
+**The real serialization points (verified 2026-07-07):**
+1. `lossLedger.js` (T4c/WRECK_PROVENANCE) must land before its 3 consumers: GHOST_CONVOY_RUMOR,
+   CONVOY_LOSS_INVESTIGATION (the BP-12 hole), and WRECK_PROVENANCE's wreck-class assignment.
+2. T9 (release bar) is last by definition — it gates everything else.
+3. T6f salvage *visual* parts block only the *visual* half of BP-01.1 (logic lands fine — same
+   pattern as BP-11 shipped its logic with render halves handed off).
+
+Everything else is **parallel-unblocked** (disjoint files): T8 checks over shipped systems, the
+lossLedger-independent T4c packets (SALVAGE_DISTINCT, SURVIVOR_POD_TRIAGE, SALVAGE_PERMIT),
+most of T4d/BP-13 (pirate doctrines, named aces, rumor heat, bounty hunters), T3-17, T3-24, T1c,
+and ~35 of ~42 T5 addenda packets.
+
+**When you deviate from numeric order:** stamp the ledger row-by-row as you go (status is truth;
+row number is not). A future strict-sequence agent seeing T8 DONE before T4d is fine — the `status`
+column handles it. See `design/revamp/EXECUTION_LANES.md` for the backend/frontend/both lane split
+(use it to pick rows that match your tool's strengths).
+
+### Lane discipline (which rows match which tool)
+- **Backend-only agent (e.g. Codex, no frontend taste):** logic/data/check-script rows. Avoid any
+  row whose `files` include `src/render/**`, `src/ui/**` *aesthetic* work (logic UI panels are
+  fine), or `assets/**`, and any row requiring a screenshot pair (T9a/T9b, BP-11 render halves).
+- **Frontend/vision agent:** `src/render/**`, `assets/**`, screenshot rituals, open-ended visual
+  design (map-glyph *rendering*, intent-banner *rendering*, HUD polish).
+- **Full-stack agent:** anything.
+
 **Before any code:**
 1. `cat design/revamp/PROGRESS.md`. Find the lowest-numbered `NEXT` row in the track you're working.
 2. Verify its `depends-on` are all `DONE`/`DONE-VALIDATED`. If not, pick a different row.
@@ -41,12 +76,13 @@ accidentally collide, the earlier ledger commit wins; re-pick.
 4. `design/revamp/PROGRESS.md` — **your work queue.**
 5. `design/revamp/_BASELINE.md` — diff 47-A against this.
 
-## 2. Scope — IN (the tracks; pick by the ledger)
+## 2. Scope — IN (the tracks; pick by the ledger, OR by the DAG in §0.0)
 - **T1 Verification scaffolding** — 3 check scripts for already-existing systems (encounter-director, one-voice, release-soak). New `scripts/` files only.
-- **T2 Doc cleanup** — 8 stale-doc corrections. Zero code/assets.
+- **T2 Doc cleanup** — 8 stale-doc corrections. Zero code/assets. (DONE 2026-07-06.)
 - **T3 Finish massline** — rungs 04–24 of the ladder (01–03 done). Each rung is one atomic task with its own check.
-- **T4 Wave 3 new BPs** — BP-11 → BP-12 → BP-01.1 → BP-13 (LAST). After T3 lands.
-- **T5–T8** — addenda, assets, perf, narrative checks. Per ledger dependencies.
+- **T4 Wave 3 new BPs** — BP-11 (DONE) → BP-12 (10/14 packets DONE; CONVOY_LOSS hole) → BP-01.1 → BP-13. **Not strictly serial** — see §0.0; BP-13 is largely unblocked and can run alongside BP-01.1.
+- **T5–T8** — addenda, assets, perf, narrative checks. Per ledger dependencies (real ones, §0.0).
+- **Lane routing:** see `design/revamp/EXECUTION_LANES.md` for the backend/frontend/both split of every row.
 
 ## 3. Scope — OUT (do NOT do these)
 - **No destructive git** (`checkout .`, `reset --hard`, `stash`, `clean`, `restore` on tracked files). The tree has ~17k uncommitted lines.

@@ -1,0 +1,14 @@
+{
+  "partId": "hull_salvager",
+  "file": "hulls/hull_salvager.glb",
+  "tris": 6019,
+  "bytes": 1708536,
+  "dims": [11.3506, 3.603, 4.24],
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "lit_renders": 25,
+  "story_map": "hull_salvager_salvage_field_roughness_story_2k.jpg"
+}

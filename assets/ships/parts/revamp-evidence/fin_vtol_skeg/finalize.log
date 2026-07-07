@@ -1,0 +1,21 @@
+{
+  "partId": "fin_vtol_skeg",
+  "file": "fins/fin_vtol_skeg.glb",
+  "tris": 5276,
+  "bytes": 1052332,
+  "dims": [
+    5.5247,
+    5.4542,
+    6.2412
+  ],
+  "images": 1,
+  "materials": "Material_Mechanical,Material_Hull,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "fin_vtol_skeg_vtol_stripe_roughness_story_2k.jpg"
+}

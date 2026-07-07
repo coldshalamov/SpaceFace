@@ -1,0 +1,21 @@
+{
+  "partId": "pod_ammo_magazine",
+  "file": "pods/pod_ammo_magazine.glb",
+  "tris": 5504,
+  "bytes": 1353008,
+  "dims": [
+    5.2,
+    2.385,
+    3
+  ],
+  "images": 1,
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "pod_ammo_magazine_ammo_rack_roughness_story_2k.jpg"
+}

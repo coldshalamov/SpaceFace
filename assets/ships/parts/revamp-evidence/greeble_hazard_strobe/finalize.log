@@ -1,0 +1,21 @@
+{
+  "partId": "greeble_hazard_strobe",
+  "file": "greebles/greeble_hazard_strobe.glb",
+  "tris": 3580,
+  "bytes": 968520,
+  "dims": [
+    3.61,
+    0.715,
+    2.475
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "greeble_hazard_strobe_hazard_strobe_roughness_story_2k.jpg"
+}

@@ -96,3 +96,27 @@
 **Screenshot audit:** 23 analyzable MCP renders (iter0×5, iter1×7, iter2×5, iter3×4, 2026-07-05×3). Invalid tight heat close retaken as `_fixed`.
 
 **Full Finish Bar:** PASS — ≥6 surfacing techniques, ≥5 lit PBR renders, skin pass (heat+scuff+belt), deficiency iter0–iter3, export log match manifest.
+
+---
+
+## Elite iter4 uplift for weapon_gatling (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_weapon_gatling_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_barrel.png`, `_iter4_lit_close_heat.png`, `_iter4_lit_close_scuff.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`weapon_gatling_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`weapon_gatling_wear_mask_2k.jpg`)
+3. Heat scorch roughness story map (`weapon_gatling_heat_scorch_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on barrel cluster
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Mechanical/Accent)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on barrel wear band + cartridge scuff zones
+10. Anisotropy/clearcoat mechanical housing paint
+11. Emissive story accent on heat disc + heat scoring
+12. Localized decal alpha on belt barrel stencil + faction stripe port
+
+**DET layers (12):** DET_ammo_feed, DET_barrel_wear_band, DET_belt_barrel_stencil, DET_cartridge_bracket, DET_cavity_grime_vent, DET_faction_stripe_port, DET_heat_disc, DET_heat_scoring, DET_micro_scratch_plate, DET_mount_rail, DET_panel_line_emphasis, DET_scuff_plate
+
+**Export/finalize:** **8064 tris / 1655068 B** · `PRO Elite Finish 2026-07-06`

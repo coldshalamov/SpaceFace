@@ -95,3 +95,27 @@
 **Screenshot audit:** 32 MCP renders; 24+ analyzable full-view (iter1×9, iter3×9, iter0×5, 2026-07-05×3); iter2×6 partial/dark documented.
 
 **Full Finish Bar:** PASS — ≥6 surfacing, ≥5 lit PBR, skin pass (rust trim + luminite vein + belt dust lee), deficiency iter0–iter3.
+
+---
+
+## Elite iter4 uplift for place_asteroid_rock_a (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_place_asteroid_rock_a_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_seam.png`, `_iter4_lit_close_vein.png`, `_iter4_lit_close_fracture.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`place_asteroid_rock_a_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`place_asteroid_rock_a_wear_mask_2k.jpg`)
+3. Ore vein roughness story map (`place_asteroid_rock_a_ore_vein_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on fracture lip
+5. SF_CavityDirt cavity grime on DET_cavity_grime_fissure
+6. Cycles AO bake per role (Hull/Mechanical/Accent)
+7. Micro-scratch mask plate (DET_micro_scratch_facets)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on regolith crust + dust lee zones
+10. Anisotropy/clearcoat on ore vein accent
+11. Emissive story accent on DET_ore_vein (0.08 strength)
+12. Localized decal alpha on micrometeor pit ticks
+
+**DET layers (12):** DET_mining_seam_a, DET_mining_seam_b, DET_ore_vein, DET_fracture_shard, DET_impact_crater, DET_drill_scar, DET_dust_lee, DET_regolith_crust, DET_micrometeor_pit, DET_panel_line_emphasis, DET_micro_scratch_facets, DET_cavity_grime_fissure
+
+**Export/finalize:** **72779 tris / 3320804 B** · `PRO Elite Finish 2026-07-06`

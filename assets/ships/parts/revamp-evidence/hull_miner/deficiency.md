@@ -92,3 +92,27 @@
 **Screenshot count:** 30 distinct MCP viewport renders (24 geometry + 6 iter3 lit).
 
 **Full Finish Bar:** SATISFIED.
+
+---
+
+## Elite iter4 uplift for hull_miner (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_hull_miner_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_bay.png`, `_iter4_lit_close_drill.png`, `_iter4_lit_close_stripe.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`hull_miner_trim_sheet_2k.jpg`)
+2. 2K ore-dust wear mask (`hull_miner_wear_mask_2k.jpg`)
+3. Ore-dust roughness story map (`hull_miner_ore_dust_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten
+5. SF_CavityDirt cavity grime gradient on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Accent/Mechanical)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear layer on cargo bay + hopper zones
+10. Anisotropy/clearcoat maintained-paint vs soot mechanical
+11. Emissive story accent on manifest stencil stripe
+12. Localized decal alpha on dock-scrape + ore dust cake
+
+**DET layers (12):** prior 8 + DET_micro_scratch_plate, DET_panel_line_emphasis, DET_faction_stripe_port, DET_cavity_grime_vent
+
+**Export/finalize:** **15608 tris / 2556400 B** · `PRO Elite Finish 2026-07-06`

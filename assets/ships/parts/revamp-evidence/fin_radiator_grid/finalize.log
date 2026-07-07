@@ -1,8 +1,1 @@
-{
-  "partId": "fin_radiator_grid",
-  "file": "fins/fin_radiator_grid.glb",
-  "tris": 652,
-  "bytes": 209476,
-  "images": 3,
-  "materials": "Material_Hull"
-}
+{"partId":"fin_radiator_grid","tris":2364,"bytes":228064,"eliteFinish":true,"phase":"elite","note":"PRO Elite Finish 2026-07-06","method":"blender_mcp"}

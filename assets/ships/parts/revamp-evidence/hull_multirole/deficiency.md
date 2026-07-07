@@ -108,3 +108,27 @@
 **Screenshot count:** 29 distinct MCP `render_viewport_to_path` renders (8 iter0 clay + 8 iter1 lit + 7 iter2 lit + 6 iter3 lit).
 
 **Full Finish Bar:** SATISFIED (including story-matched skin pass item 6).
+
+---
+
+## Elite iter4 uplift for hull_multirole (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_hull_multirole_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_patch.png`, `_iter4_lit_close_stripe.png`, `_iter4_lit_close_weld.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`hull_multirole_trim_sheet_2k.jpg`)
+2. 2K patchwork wear mask (`hull_multirole_wear_mask_2k.jpg`)
+3. Violet stripe roughness story map (`hull_multirole_violet_stripe_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Accent/Mechanical)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on salvage patch + mismatched panel boundaries
+10. Anisotropy/clearcoat smuggler matte vs mechanical hatch zones
+11. Emissive story accent on violet fringe stripe
+12. Localized decal alpha on faction stripe port
+
+**DET layers (12):** DET_antenna_jury, DET_cargo_rig, DET_cavity_grime_vent, DET_faction_stripe_port, DET_field_repair, DET_jury_weld, DET_micro_scratch_plate, DET_mismatched_panel, DET_panel_line_emphasis, DET_salvage_patch, DET_smuggler_hatch, DET_violet_stripe
+
+**Export/finalize:** **2998 tris / 1099348 B** · `PRO Elite Finish 2026-07-06`

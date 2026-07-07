@@ -1,0 +1,21 @@
+{
+  "partId": "fin_solar_array",
+  "file": "fins/fin_solar_array.glb",
+  "tris": 2796,
+  "bytes": 536524,
+  "dims": [
+    4.1016,
+    0.73,
+    4.2614
+  ],
+  "images": 1,
+  "materials": "Material_Mechanical,Material_Hull,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "fin_solar_array_panel_glow_roughness_story_2k.jpg"
+}

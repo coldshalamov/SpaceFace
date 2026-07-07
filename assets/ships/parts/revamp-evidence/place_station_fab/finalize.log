@@ -1,1 +1,15 @@
-{"partId":"place_station_fab","tris":588,"bytes":188660,"images":3}
+{
+  "id": "place_station_fab",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:26:56Z",
+  "tris": 2844,
+  "bytes": 514092,
+  "textureSize": 2048,
+  "storyMap": "place_station_fab_forge_heat_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — forge heat story"
+}

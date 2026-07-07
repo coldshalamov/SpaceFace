@@ -1,0 +1,21 @@
+{
+  "partId": "gear_vtol_stabilizer",
+  "file": "gear/gear_vtol_stabilizer.glb",
+  "tris": 5244,
+  "bytes": 1418668,
+  "dims": [
+    4.35,
+    2.0445,
+    3.6
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "gear_vtol_stabilizer_vtol_pad_roughness_story_2k.jpg"
+}

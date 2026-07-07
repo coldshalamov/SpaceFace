@@ -1,0 +1,21 @@
+{
+  "partId": "weapon_plasma_thrower",
+  "file": "weapons/weapon_plasma_thrower.glb",
+  "tris": 14612,
+  "bytes": 3645976,
+  "dims": [
+    4.885,
+    1.04,
+    1.0782
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Hull,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "weapon_plasma_thrower_arc_plasma_roughness_story_2k.jpg"
+}

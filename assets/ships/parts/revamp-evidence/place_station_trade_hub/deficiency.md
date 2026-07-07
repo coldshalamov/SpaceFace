@@ -89,7 +89,7 @@
 
 ---
 
-## Before iter4 for place_station_trade_hub (MCP Full Finish verification 2026-07-06)
+## Phase 1 iter4 verification for place_station_trade_hub (MCP Full Finish 2026-07-06)
 
 **Renders:** `2026-07-06_place_station_trade_hub_iter4_{lit_34_full,lit_front_full,lit_side,lit_top,clay_34_full,clay_front,lit_close_dock,lit_close_signage}.png` (+ iter0×7, iter1×7, iter2×6, iter3×7, 2026-07-05×3; iter2/iter3 cross-call full-frame fails documented)
 
@@ -111,3 +111,27 @@
 **Screenshot audit:** 38 MCP viewport renders total; 30 analyzable (iter4×8 full/close pass, iter1×7, iter0×7, iter3 close×4, 2026-07-05×3); iter2×6 + iter3×3 full-frame fails = cross-call MCP desync (fixed iter4 via atomic opengl).
 
 **Full Finish Bar:** PASS — ≥6 surfacing, ≥5 lit PBR, skin pass (Meridian gold trim + lie billboard + deck traffic wear + CORPSEC dock), deficiency iter0–iter4.
+
+---
+
+## Elite iter5 uplift for place_station_trade_hub (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_place_station_trade_hub_iter5_lit_34.png`, `_iter5_lit_front.png`, `_iter5_lit_close_dock.png`, `_iter5_lit_close_signage.png`, `_iter5_lit_close_gold.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`place_station_trade_hub_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`place_station_trade_hub_wear_mask_2k.jpg`)
+3. Meridian gold stripe roughness story map (`place_station_trade_hub_meridian_gold_stripe_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on dock collar lip
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Mechanical/Accent)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on deck traffic + rivet row zones
+10. Anisotropy/clearcoat on gold trim band
+11. Emissive story accent on Meridian signage (0.12 strength)
+12. Localized decal alpha on lie billboard face ticks
+
+**DET layers (12):** DET_gold_trim_band, DET_signage_meridian, DET_lie_billboard, DET_dock_collar, DET_antenna_mast, DET_cargo_rib, DET_deck_traffic_wear, DET_panel_line_emphasis, DET_micro_scratch_plate, DET_cavity_grime_vent, DET_rivet_row, DET_edge_chamfer_band
+
+**Export/finalize:** **6932 tris / 1616108 B** · `PRO Elite Finish 2026-07-06`

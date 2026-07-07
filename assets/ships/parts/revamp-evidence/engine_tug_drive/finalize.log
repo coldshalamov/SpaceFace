@@ -1,0 +1,21 @@
+{
+  "partId": "engine_tug_drive",
+  "file": "engines/engine_tug_drive.glb",
+  "tris": 14380,
+  "bytes": 983976,
+  "dims": [
+    2.86,
+    2.105,
+    2.105
+  ],
+  "images": 1,
+  "materials": "Material_Mechanical,Material_Hull,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "engine_tug_drive_jury_patch_roughness_story_2k.jpg"
+}

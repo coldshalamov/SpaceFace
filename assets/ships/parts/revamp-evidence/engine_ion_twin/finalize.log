@@ -1,12 +1,15 @@
 {
   "partId": "engine_ion_twin",
   "file": "engines/engine_ion_twin.glb",
-  "tris": 5664,
-  "bytes": 459984,
+  "tris": 6096,
+  "bytes": 508024,
   "dims": [3.02, 1.8926, 3.7352],
   "images": 2,
-  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
-  "source": "blender_mcp",
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical",
+  "method": "blender_mcp",
   "date": "2026-07-06",
-  "note": "PRO Full Finish — trim/wear + AO bakes + Core cyan stripe/stencil/sync bridge DET, 30 MCP renders. Twin HOOK P/S advisory non-fatal."
+  "phase": "elite",
+  "eliteFinish": true,
+  "det_layers": 12,
+  "full_finish": true
 }

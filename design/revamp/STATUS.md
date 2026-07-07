@@ -188,3 +188,71 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   throttle, sling arming, world-speed gate). No-regression: all 12 prior `check:massline:*` +
   `check-tether-gameplay` green; `check:sim:compare` fails ONLY on the documented 47-A
   projectile-collision precondition (identical to `_BASELINE.md`). Next: **T3-14 (whip feedback)**.
+
+
+### T4c-1 WRECK_PROVENANCE — BP-01.1 loss ledger seam — DONE (2026-07-07)
+- NEW event-sourced loss recorder `src/systems/lossLedger.js` + pure wreck-class taxonomy
+  `src/data/wreckClasses.js` (fresh/battlefield/military/ancient; military=restricted for the later
+  SALVAGE_PERMIT packet). The system LISTENS to the two loss events ALL offscreen+live+offline
+  losses funnel through (`automation:assetLost {kind,id,value,sectorId}` +
+  `automation:outpostRaided {outpostId,sectorId,lossVol}` — `offscreenRiskPass` reuses them, so one
+  subscription pair captures 100% of losses). Records structured entries
+  `{lossId, sectorId, assetId, factionId, kind, simDay, t, cargoHint, value, source}` in a per-sector
+  ring buffer (MAX_PER_SECTOR=8, newest-first, global backstop 64). Seeded lossId via
+  `hash32(seed,sectorId,kind,simTime,assetId)` — same loss ⇒ same id on every load, so the ledger
+  and the wreck read IDENTICAL provenance (both key off lossId+sectorId — failureMode "provenance
+  drift" closed). Public reads: `lossesFor/latestLossFor/latestLossLine`.
+- Wreck tagging is ADDITIVE via `entity:spawned` (coreSystem.js:29) — NO edit to salvage.js or
+  intervention.js. A wreck spawned in a sector with a recorded loss gets `data.provenance` +
+  `data.wreckClass` + an enriched `data.scanLabel` (the class label); communicators keep their
+  mission-bearing label (don't clobber the mission hook). A wreck with NO recorded loss is UNCHANGED
+  (generic debris) — this is the golden-sim-safe path: the 47a slice emits no loss events ⇒ the
+  ledger stays empty ⇒ no leak.
+- One news-channel voice headline per loss via `ctx.helpers.voice.say({channel:'news'})`
+  (marketNews.js has NO inbound custom-headline event — the 'news' voiceArbiter channel IS the
+  station-news channel). Emits ONLY `lossLedger:recorded` (consumed by GHOST_CONVOY_RUMOR +
+  CONVOY_LOSS_INVESTIGATION) — single-writer honored, never writes credits/cargo/rep. Serialize/
+  deserialize round-trips through saveSystem (durable subset: entries + seed; bySector rebuilt).
+- `check:wreck-provenance` PASS (14 tests: catalog integrity, event-sourcing empty-until-loss,
+  loss→entry+headline, outpost raid, seeded determinism, wreck tagging, no-provenance unchanged,
+  communicator-keeps-label, ring buffer, single-writer, dedupe, serialize round-trip + 3 non-vacuous
+  controls). Non-vacuous controls proven: (A) break event-sourcing → record from a non-loss event →
+  FAIL → restore GREEN; (B) break ring buffer cap → unbounded → FAIL → restore GREEN. No-regression:
+  `check:causal-economy` 8/8 GREEN, `check:balance` 0 FAIL, `check:sim:compare` fails ONLY on the
+  documented 47-A projectile precondition (identical to `_BASELINE.md`). **Unblocks CONVOY_LOSS
+  INVESTIGATION (T4b last hole) + GHOST_CONVOY_RUMOR (T4c-4).** Next: **T4c-2 SALVAGE_DISTINCT_FROM_MINING**.
+
+### T4b-10 CONVOY_LOSS_INVESTIGATION — BP-12 hole closed — DONE (2026-07-07)
+- NEW event-driven `src/systems/lossInvestigation.js` registered after `salvage` and before
+  `missions`, so salvage can place points first and the provenance overlay can mutate the outgoing
+  `mission:offered` payload before consumers see it. It reads the real `lossLedger` only; no recorded
+  sector loss means strict no-op, no communicator promotion, and no offer rewrite.
+- With a recorded loss, exactly one existing salvage point/entity in that sector is promoted into a
+  communicator. It does not spawn extra entities, and it reuses `wm_manifest_run` /
+  `wm_blackbox_attacker` from `wreckMissions`. The outgoing salvage offer remains `source:'salvage'`
+  and `tag:'wreck_salvage'`, with additive `lossInvestigation` metadata and log/summary text naming
+  the lost asset/faction/sector. No direct credits/cargo/rep writes.
+- `check:convoy-loss-investigation` PASS + non-vacuous control: disabling `point.isCommunicator`
+  made the check fail (`0 !== 1` promoted points), then restore GREEN. `check:causal-economy` now
+  includes this row and passes. No-regression: `check:wreck-provenance` PASS, `check:balance` 0 FAIL.
+  `check:sim:compare` fails only on the documented 47-A projectile-collision precondition; A/B with
+  the new registry entry temporarily removed produced the identical `sf-sim.mjs:1161` failure.
+  Next backend row per objective: **T4c-2 SALVAGE_DISTINCT_FROM_MINING**.
+
+### T4c-2 SALVAGE_DISTINCT_FROM_MINING — wreck verbs + reactor counterplay — DONE (2026-07-07)
+- NEW pure catalog `src/data/salvageActions.js`: debris maps to `cut_panel`, communicators to
+  `decode_blackbox`, ship/module wreckage to `pull_module`, and unstable reactors to `vent_reactor`.
+  Each verb has a distinct label/glyph/pool; reactor action carries explicit `vent` and `tether-away`
+  counterplay plus bounded burst damage.
+- NEW event-driven `src/systems/salvageActions.js` registered beside salvage/lossInvestigation. It
+  annotates existing wreck entities on `entity:spawned`, surfaces a targeted scan readout on
+  `scan:completed`, and handles the unstable-reactor timer. Venting or towing the reactor clear emits
+  a counterplay receipt and prevents damage; ignoring it routes one bounded hit through
+  `combat.onHit` (or emits `combat:hit` only if combat is absent), then consumes the wreck.
+  No edits to `salvage.js`, `mining.js`, or `combat.js`; no new spawns.
+- `check:salvage-actions` PASS + non-vacuous control: forcing every wreck to use one generic pool
+  made the check fail on the distinct-pool assertion, then restore GREEN. No-regression:
+  `check:wreck-provenance` PASS, `node scripts/check-tether-gameplay.mjs` PASS, `check:balance` 0
+  FAIL. `check:sim:compare` fails only on the documented 47-A projectile-collision precondition;
+  A/B with only the new `salvageActions` registry entry removed produced the identical
+  `sf-sim.mjs:1161` failure. Next backend row: **T4c-3 SURVIVOR_POD_TRIAGE**.

@@ -1,13 +1,15 @@
 {
   "partId": "hull_freighter",
   "file": "hulls/hull_freighter.glb",
-  "tris": 3248,
-  "bytes": 1781788,
+  "tris": 4435,
+  "bytes": 2915160,
   "dims": [11.3506, 3.603, 4.24],
-  "images": 2,
+  "images": 5,
   "materials": "Material_Hull,Material_Mechanical,Material_Accent",
   "method": "blender_mcp",
   "date": "2026-07-06",
-  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+clearcoat",
-  "screenshots": 23
+  "phase": "elite",
+  "eliteFinish": true,
+  "det_layers": 12,
+  "full_finish": true
 }

@@ -1,0 +1,21 @@
+{
+  "partId": "weapon_torpedo_rack",
+  "file": "weapons/weapon_torpedo_rack.glb",
+  "tris": 11888,
+  "bytes": 801684,
+  "dims": [
+    5.58,
+    2.1,
+    2.25
+  ],
+  "images": 1,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "weapon_torpedo_rack_patrol_tube_roughness_story_2k.jpg"
+}

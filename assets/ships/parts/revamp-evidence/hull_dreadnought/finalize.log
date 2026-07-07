@@ -1,0 +1,14 @@
+{
+  "partId": "hull_dreadnought",
+  "file": "hulls/hull_dreadnought.glb",
+  "tris": 4352,
+  "bytes": 1582308,
+  "dims": [14.112, 6.61, 7.05],
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "lit_renders": 25,
+  "story_map": "hull_dreadnought_cathedral_rib_roughness_story_2k.jpg"
+}

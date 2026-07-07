@@ -1,0 +1,21 @@
+{
+  "partId": "greeble_fuel_coupling",
+  "file": "greebles/greeble_fuel_coupling.glb",
+  "tris": 6396,
+  "bytes": 731072,
+  "dims": [
+    4.2,
+    0.8858,
+    2.8
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "greeble_fuel_coupling_fuel_coupling_roughness_story_2k.jpg"
+}

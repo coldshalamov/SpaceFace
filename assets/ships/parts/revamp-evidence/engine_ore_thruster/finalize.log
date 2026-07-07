@@ -1,0 +1,21 @@
+{
+  "partId": "engine_ore_thruster",
+  "file": "engines/engine_ore_thruster.glb",
+  "tris": 23632,
+  "bytes": 1090864,
+  "dims": [
+    3.602,
+    2.9022,
+    2.8663
+  ],
+  "images": 1,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "engine_ore_thruster_dust_exhaust_roughness_story_2k.jpg"
+}

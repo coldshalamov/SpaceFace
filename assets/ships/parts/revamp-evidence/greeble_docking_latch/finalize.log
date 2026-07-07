@@ -1,0 +1,21 @@
+{
+  "partId": "greeble_docking_latch",
+  "file": "greebles/greeble_docking_latch.glb",
+  "tris": 9012,
+  "bytes": 1557648,
+  "dims": [
+    3.7,
+    0.9732,
+    2.625
+  ],
+  "images": 1,
+  "materials": "Material_Mechanical,Material_Hull,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "greeble_docking_latch_dock_latch_roughness_story_2k.jpg"
+}

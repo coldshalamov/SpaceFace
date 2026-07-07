@@ -1,0 +1,21 @@
+{
+  "partId": "pod_escape_capsule",
+  "file": "pods/pod_escape_capsule.glb",
+  "tris": 10504,
+  "bytes": 1741556,
+  "dims": [
+    4.8896,
+    0.56,
+    3.1439
+  ],
+  "images": 1,
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "pod_escape_capsule_escape_hatch_roughness_story_2k.jpg"
+}

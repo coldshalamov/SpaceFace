@@ -1,14 +1,15 @@
 {
   "partId": "hull_miner",
   "file": "hulls/hull_miner.glb",
-  "tris": 21048,
-  "bytes": 3352340,
+  "tris": 15608,
+  "bytes": 2555956,
   "dims": [10.95, 4.0567, 5.404],
   "images": 2,
   "materials": "Material_Hull,Material_Mechanical,Material_Accent",
   "method": "blender_mcp",
   "date": "2026-07-06",
-  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+clearcoat",
-  "screenshots": 30,
+  "phase": "elite",
+  "eliteFinish": true,
+  "det_layers": 12,
   "full_finish": true
 }

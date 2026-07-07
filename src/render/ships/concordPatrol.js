@@ -184,6 +184,12 @@ export function buildConcordPatrol(entity) {
     damageParts: { navLights, navLightBase, driveCore: primaryDrive.driveCore, plume: primaryDrive.plume, secondary: [], armor: [] },
   });
 
+  kit.applyEliteWearShell(hull, {
+    hull: COLOR.hull, accent: COLOR.insignia, seed,
+    length: 30, halfWidth: 2.75, height: 1.95,
+    grime: 0.12, microScratch: 0.18,
+  });
+
   root.userData.renderContract = {
     coordinateSystem: '+X forward, +Y up, +Z starboard',
     authoredMetres: true,

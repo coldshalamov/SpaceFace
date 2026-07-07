@@ -116,7 +116,16 @@ async function boot() {
 
     startLoop(state, registry);
     if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace });
-    await precompilePipelines(state.render.renderer, state.render.scene, state.render.camera, { warmPostProcess: state.render.warmPostProcess, video: state.settings && state.settings.video }).catch((error) => console.warn('[SpaceFace] pipeline precompile failed', error));
+    // GLOBAL pipeline precompile (bloom composite + weapons + beams + vfx + every ship
+    // archetype) runs in the BACKGROUND while the player browses the menu. Front-loads shader
+    // compilation so sector entry is instant, but must NOT block the menu: overlay hides as soon
+    // as the render loop is live; the flight-entry gate (waitForRenderPipelineWarmup) awaits this
+    // before flight. Menu interactive in ~3s instead of ~20s frozen splash; shaders always warm;
+    // no quality lost (PERF_BUDGET sec 3: remove invisible work, not quality).
+    state.render.globalPipelinePrecompileReady = precompilePipelines(
+      state.render.renderer, state.render.scene, state.render.camera,
+      { warmPostProcess: state.render.warmPostProcess, video: state.settings && state.settings.video }
+    ).catch((error) => { console.warn('[SpaceFace] pipeline precompile failed', error); return null; });
     hideBootOverlay();
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
@@ -292,14 +301,21 @@ async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000) {
 }
 
 async function waitForRenderPipelineWarmup(state, timeoutMs = 20000) {
-  const ready = state && state.render && state.render.pipelinePrecompileReady;
-  if (!ready || typeof ready.then !== 'function') return true;
-  const result = await Promise.race([
-    ready.then(() => true, () => false),
+  // Await BOTH the boot-time global precompile (started in boot(), runs during the menu) and the
+  // per-sector precompile (fired by sector:enter) so the player never enters flight with
+  // uncompiled shaders. Each is raced independently vs the timeout.
+  const warmups = [];
+  const global = state && state.render && state.render.globalPipelinePrecompileReady;
+  if (global && typeof global.then === 'function') warmups.push(global);
+  const sector = state && state.render && state.render.pipelinePrecompileReady;
+  if (sector && typeof sector.then === 'function') warmups.push(sector);
+  if (!warmups.length) return true;
+  const settled = await Promise.all(warmups.map((p) => Promise.race([
+    p.then(() => true, () => false),
     delay(timeoutMs).then(() => false),
-  ]);
-  if (!result) console.warn('[SpaceFace] render pipeline warm-up did not finish before flight start');
-  return result;
+  ])));
+  if (!settled.every(Boolean)) console.warn('[SpaceFace] render pipeline warm-up did not finish before flight start');
+  return settled.every(Boolean);
 }
 
 function authoredVisualReadiness(state) {

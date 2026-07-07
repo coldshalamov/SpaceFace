@@ -1,12 +1,19 @@
 {
   "partId": "cockpit_slab",
   "file": "cockpits/cockpit_slab.glb",
-  "tris": 2644,
-  "bytes": 699892,
-  "dims": [4.855, 1.855, 3.7],
+  "tris": 3076,
+  "bytes": 741504,
+  "dims": [
+    4.855,
+    1.855,
+    3.7
+  ],
   "images": 2,
-  "materials": "Material_Glass,Material_Mechanical,Material_Hull,Material_Accent",
-  "source": "blender_mcp",
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical,Material_Glass",
+  "method": "blender_mcp",
   "date": "2026-07-06",
-  "note": "PRO Full Finish — trim/wear + AO bakes + rust-amber belt stencil + muted glass + dock scuff DET, 31 MCP renders"
+  "phase": "elite",
+  "eliteFinish": true,
+  "det_layers": 14,
+  "full_finish": true
 }

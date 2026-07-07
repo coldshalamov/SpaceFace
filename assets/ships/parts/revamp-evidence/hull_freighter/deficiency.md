@@ -103,3 +103,27 @@
 **Screenshot count:** 23 distinct MCP viewport renders (6 iter0 clay + 6 iter1 clay + 5 iter2 lit + 5 iter3 lit + 1 prior iter0 clay_34).
 
 **Full Finish Bar:** Surfacing pass SATISFIED (≥6 techniques + ≥5 lit). Life pass partial.
+
+---
+
+## Elite iter4 uplift for hull_freighter (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_hull_freighter_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_cargo.png`, `_iter4_lit_close_stripe.png`, `_iter4_lit_close_bow.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`hull_freighter_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`hull_freighter_wear_mask_2k.jpg`)
+3. Manifest stripe roughness story map (`hull_freighter_manifest_stripe_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation
+9. Secondary wear on cargo bay + dock scrape zones
+10. Anisotropy/clearcoat cargo paint vs soot mechanical
+11. Emissive story accent on manifest stencil
+12. Localized decal alpha on faction stripe port
+
+**DET layers (12):** prior 8 + DET_micro_scratch_plate, DET_panel_line_emphasis, DET_faction_stripe_port, DET_cavity_grime_vent
+
+**Export/finalize:** **4435 tris / 2915472 B** · `PRO Elite Finish 2026-07-06`

@@ -1,13 +1,15 @@
 {
-  "partId": "place_asteroid_rock_a",
-  "file": "places/place_asteroid_rock_a.glb",
-  "tris": 9403,
-  "bytes": 2316688,
-  "dims": [
-    20.0619,
-    17.0899,
-    17.9346
-  ],
-  "images": 3,
-  "materials": "Material_Hull,Material_Mechanical,Material_Accent"
+  "id": "place_asteroid_rock_a",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:17:24Z",
+  "tris": 72779,
+  "bytes": 3320804,
+  "textureSize": 2048,
+  "storyMap": "place_asteroid_rock_a_ore_vein_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — Belt hero rock A uplift: 12 DET layers, 2K ore vein story"
 }

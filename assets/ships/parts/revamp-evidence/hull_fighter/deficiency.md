@@ -96,3 +96,27 @@
 **Screenshot count:** 31 distinct MCP viewport renders (25 geometry + 6 iter3 lit surfacing).
 
 **Full Finish Bar:** SATISFIED.
+
+---
+
+## Elite iter4 uplift for hull_fighter (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_hull_fighter_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_panel.png`, `_iter4_lit_close_stripe.png`, `_iter4_lit_close_nose.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`hull_fighter_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`hull_fighter_wear_mask_2k.jpg`)
+3. Faction stripe roughness story map (`hull_fighter_faction_stripe_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten
+5. SF_CavityDirt cavity grime gradient
+6. Cycles AO bake per role (Hull/Accent/Mechanical)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation
+9. Secondary wear layer + clearcoat lawful-paint zone
+10. Anisotropy/clearcoat separation hull vs mechanical
+11. Emissive story accent on patrol stencil zone
+12. Localized decal alpha on bounty weld + faction stripe
+
+**DET layers (12):** prior 8 + DET_micro_scratch_plate, DET_panel_line_emphasis, DET_faction_stripe_port, DET_cavity_grime_vent
+
+**Export/finalize:** **3260 tris / 1577312 B** · `PRO Elite Finish 2026-07-06`

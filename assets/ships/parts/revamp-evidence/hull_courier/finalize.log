@@ -1,0 +1,14 @@
+{
+  "partId": "hull_courier",
+  "file": "hulls/hull_courier.glb",
+  "tris": 4104,
+  "bytes": 1371964,
+  "dims": [11.5, 3.4633, 5.05],
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "lit_renders": 25,
+  "story_map": "hull_courier_meridian_stripe_roughness_story_2k.jpg"
+}

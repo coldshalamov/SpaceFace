@@ -1,0 +1,18 @@
+{
+  "partId": "cockpit_bridge_cap",
+  "file": "cockpits/cockpit_bridge_cap.glb",
+  "tris": 6068,
+  "bytes": 873848,
+  "dims": [
+    4.855,
+    2.06,
+    3.7
+  ],
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "lit_renders": 25,
+  "story_map": "cockpit_bridge_cap_officer_stripe_roughness_story_2k.jpg"
+}

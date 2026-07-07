@@ -1,1 +1,15 @@
-{"partId":"place_asteroid_rock_b","tris":688,"bytes":187152,"images":3}
+{
+  "id": "place_asteroid_rock_b",
+  "method": "blender_mcp",
+  "phase": "elite",
+  "eliteFinish": true,
+  "timestamp": "2026-07-06T01:18:24Z",
+  "tris": 4076,
+  "bytes": 1273984,
+  "textureSize": 2048,
+  "storyMap": "place_asteroid_rock_b_ore_vein_roughness_story_2k.jpg",
+  "detLayers": 12,
+  "techniques": 12,
+  "iter4Renders": 5,
+  "note": "PRO Elite Finish 2026-07-06 — Belt hero rock B uplift"
+}

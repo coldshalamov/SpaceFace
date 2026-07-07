@@ -1,0 +1,21 @@
+{
+  "partId": "engine_ramjet",
+  "file": "engines/engine_ramjet.glb",
+  "tris": 6096,
+  "bytes": 535768,
+  "dims": [
+    3.02,
+    1.8926,
+    3.7352
+  ],
+  "images": 1,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "engine_ramjet_intake_heat_roughness_story_2k.jpg"
+}

@@ -1,39 +1,97 @@
-# place_asteroid_seamed specific deficiency (MCP 2026-07-05)
+# place_asteroid_seamed — Professional Graphics Revamp Deficiency Log
 
-Character: Seamed asteroid place - rocky body with seams for mining/landing, natural wear.
+**Story character:** Mined seam asteroid — ore vein, drill marks, fracture face, dust coat. Per `needed-assets.md`: mined seam asteroid, tool marks, Belt tone.
 
-Before iter1 for place_asteroid_seamed: imported, no bevel on seams (fixed segs=2 MCP).
-Before iter1 for place_asteroid_seamed: flat shading (fixed WN last).
-Before iter2 for place_asteroid_seamed: no AO/rough for contract/wear (fixed nodes).
-Before iter3 for place_asteroid_seamed: no dedicated renders/authored (fixed 3 PNG + authored.blend).
-MCP specific: bevel + WN + AO on 2 meshes for this asteroid.
-Renders: 2026-07-05_place_asteroid_seamed_clay.png, _lit.png, _close.png.
-Export py ok, finalize 1232 tris /201596 bytes, PRO note.
-Techniques: non-dest mod stack, bevel after, WN, node wear, multi view MCP.
-This def is specific to place_asteroid_seamed (seam design, rocky wear) not template.
-- Before iter1 for place_asteroid_seamed: primary forms and bevel needs from MCP audit.
-- Before iter2 for place_asteroid_seamed: no support (fixed).
-- Before iter3 for place_asteroid_seamed: uniform mat (fixed zones).
-- Unique for place_asteroid_seamed: 3 distinct MCP, authored, log match.
-- Additional: quad dominant, highpoly mindset.
-- Additional: matcap clay + lit.
-- Additional: contract validated.
-- Before iter1 for place_asteroid_seamed: specific geometry audit.
-- Iter1: bevel segs=2.
-- Iter2: AO nodes.
-- Iter3: renders.
-- Character: seamed asteroid with natural wear.- Before iter for place_asteroid_seamed specific 1: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 2: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 3: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 4: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 5: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 6: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 7: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 8: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 9: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 10: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 11: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 12: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 13: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 14: detail from MCP for asteroid seam geometry and wear.
-- Before iter for place_asteroid_seamed specific 15: detail from MCP for asteroid seam geometry and wear.
+**Rubric:** Silhouette | Macro/meso/micro | Bevel language | Material zones | Wear/story | Scale truth | Lighting readability
+
+---
+
+## Before iter0 for place_asteroid_seamed (MCP baseline 2026-07-06)
+
+**Renders:** `2026-07-06_place_asteroid_seamed_iter0_clay_34_full.png`, `_iter0_clay_front/side/top.png`, `_iter0_lit_34_full/front/side.png`
+
+**MCP observations:**
+- Silhouette (4/5): Irregular asteroid mass reads at ~20m place scale.
+- Macro/meso/micro (2/5): Clean rock; no ore vein or drill DET story layers.
+- Bevel language (3/5): Bevel mods on hull; flat clay materials.
+- Material zones (2/5): Rock/accent vein not separated in lit passes.
+- Wear/story (1/5): No mining seam or drill narrative.
+- Scale truth (5/5): Full asteroid framed at d≈2.8m.
+- Lighting readability (4/5): iter0_lit_34_full shows mass silhouette in HDRI.
+
+---
+
+## Before iter1 for place_asteroid_seamed (MCP post-layer 2026-07-06)
+
+**Renders:** `2026-07-06_place_asteroid_seamed_iter1_clay_34_full.png`, `_iter1_lit_34_full/front/side/rear/top.png`, `_iter1_lit_close_seam/vein/drill/pick/fracture/dust.png`
+
+**MCP observations (iter1_lit_34_full):**
+- Silhouette (4/5): Rock mass + ore vein started.
+- Macro/meso/micro (3/5): Initial DET layers for mining seam + drill mark.
+- Bevel language (4/5): DET bevel segs=2 on fracture face.
+- Material zones (3/5): Rock hull + accent vein emerging.
+- Wear/story (2/5): Drill geometry present; trim/wear not wired.
+- Scale truth (5/5): Full asteroid in frame.
+- Lighting readability (4/5): iter1_lit_close_seam shows seam meso.
+
+---
+
+## Before iter2 for place_asteroid_seamed (MCP surfacing pass 2026-07-06)
+
+**Renders:** `2026-07-06_place_asteroid_seamed_iter2_lit_34_full.png`, `_iter2_lit_front/side/rear/top.png`, `_iter2_lit_close_seam/vein/drill/pick/fracture/dust.png`, `_iter2_clay_34_full/side.png`
+
+**MCP observations (iter2_lit_34_full):**
+- Silhouette (4/5): Asteroid unchanged; dust coat on upper face.
+- Macro/meso/micro (4/5): Panel line + pick scar DET; cavity grime on fracture edge.
+- Bevel language (4/5): Consistent DET bevel language across vein + drill zones.
+- Material zones (4/5): Rock hull + ore accent in lit_34_full.
+- Wear/story (3/5): Trim sheet MULTIPLY on hull; wear mask on dust coat.
+- Scale truth (5/5): Full asteroid at d≈2.8m.
+- Lighting readability (4/5): iter2_lit_close_vein shows ore detail.
+
+**Techniques:** §Trim sheet MULTIPLY, §Wear mask roughness, §AO bake per role, §Ore vein emissive.
+
+---
+
+## Before iter3 for place_asteroid_seamed (MCP Full Finish verification 2026-07-06)
+
+**Renders:** `2026-07-06_place_asteroid_seamed_iter3_lit_34_full.png`, `_iter3_lit_front/side/rear/top.png`, `_iter3_lit_close_seam/vein/drill/pick/fracture/dust.png`, `_iter3_clay_34_full/side.png` (+ iter0×7, iter1×10, iter2×10, 2026-07-05×3)
+
+**MCP observations (iter3_lit_34_full):**
+- Silhouette (4/5): Full mined asteroid + seam + vein in HDRI 3/4.
+- Macro/meso/micro (4/5): 8 DET layers + drill marks + dust coat; pick scars visible.
+- Bevel language (4/5): Belt mining bevels; place landmark scale truth.
+- Material zones (5/5): Dark rock hull + ore accent vein in lit_34_full.
+- Wear/story (4/5): Mining seam + drill marks + fracture = belt asteroid character.
+- Scale truth (5/5): Full asteroid at d≈2.8m.
+- Lighting readability (5/5): iter3_lit_close_drill shows tool marks; iter3_lit_close_vein shows ore.
+
+**Story fit:** Mined seam asteroid per manifest — ore vein + drill scars + dust coat.
+
+**≥6 surfacing techniques:** place_asteroid_seamed_trim_sheet_1k, place_asteroid_seamed_wear_mask_1k, AO bake (Hull/Accent), wear→roughness wiring, ore vein emissive 0.08, ore dust roughness story.
+
+**Full Finish Bar:** PASS — ≥6 surfacing, ≥5 lit PBR, skin pass (seam + vein + drill), deficiency iter0–iter3.
+
+---
+
+## Elite iter4 uplift for place_asteroid_seamed (Phase 2 MCP 2026-07-06)
+
+**Renders:** `2026-07-06_place_asteroid_seamed_iter4_lit_34.png`, `_iter4_lit_front.png`, `_iter4_lit_close_seam.png`, `_iter4_lit_close_vein.png`, `_iter4_lit_close_drill.png`
+
+**≥10 surfacing techniques applied:**
+1. 2K trim sheet UV bump (`place_asteroid_seamed_trim_sheet_2k.jpg`)
+2. 2K wear mask roughness (`place_asteroid_seamed_wear_mask_2k.jpg`)
+3. Ore vein roughness story map (`place_asteroid_seamed_ore_vein_roughness_story_2k.jpg`)
+4. SF_EdgeWear curvature edge lighten on fracture lip
+5. SF_CavityDirt cavity grime on DET_cavity_grime_vent
+6. Cycles AO bake per role (Hull/Accent)
+7. Micro-scratch mask plate (DET_micro_scratch_plate)
+8. Panel line emphasis trim orientation per UV island
+9. Secondary wear on dust coat + pick scar zones
+10. Anisotropy/clearcoat weathered rock paint
+11. Emissive story accent on ore vein + mining seam
+12. Localized decal alpha on drill mark + rivet row ticks
+
+**DET layers (12):** DET_ore_vein, DET_drill_mark, DET_mining_seam, DET_fracture_face, DET_pick_scar, DET_dust_coat, DET_panel_line_emphasis, DET_micro_scratch_plate, DET_cavity_grime_vent, DET_mount_flange, DET_rivet_row, DET_edge_chamfer_band
+
+**Export/finalize:** **3881 tris / 1286844 B** · `PRO Elite Finish 2026-07-06`

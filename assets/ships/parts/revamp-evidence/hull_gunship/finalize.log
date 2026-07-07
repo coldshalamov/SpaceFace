@@ -1,15 +1,15 @@
 {
   "partId": "hull_gunship",
   "file": "hulls/hull_gunship.glb",
-  "tris": 3288,
-  "bytes": 914176,
+  "tris": 3720,
+  "bytes": 1234768,
   "dims": [11.75, 3.7401, 5.5],
   "images": 5,
-  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "materials": "Material_Hull,Material_Accent,Material_Mechanical",
   "method": "blender_mcp",
   "date": "2026-07-06",
-  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+clearcoat+stencil_emissive",
-  "skin_pass": "battle_scar+exhaust_soot+military_stencil",
-  "screenshots": 32,
+  "phase": "elite",
+  "eliteFinish": true,
+  "det_layers": 12,
   "full_finish": true
 }

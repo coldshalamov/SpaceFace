@@ -1,0 +1,21 @@
+{
+  "partId": "pod_fuel_cell",
+  "file": "pods/pod_fuel_cell.glb",
+  "tris": 4172,
+  "bytes": 613924,
+  "dims": [
+    4.2,
+    1.885,
+    2.68
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Hull,Material_Mechanical",
+  "method": "blender_mcp",
+  "date": "2026-07-06",
+  "phase": "elite",
+  "eliteFinish": true,
+  "newAsset": true,
+  "det_layers": 16,
+  "lit_renders": 25,
+  "story_map": "pod_fuel_cell_fuel_cell_roughness_story_2k.jpg"
+}
