@@ -821,3 +821,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Related gates: `check:scan-reveal` PASS, `check:pirate-disguise` PASS, `check:combat` PASS, and
   `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition at `sf-sim.mjs:1161`.
+
+### T5a-C9 COMBAT_OUTCOME — claim (2026-07-07)
+- Claimed backend-safe BP-02.1 packet C9 from `detail/C_combat_encounters.md`: classify
+  non-kill combat exits (`fled`/`disabled`/`surrendered`) beside shipped `entity:killed`.
+- Live proof before claim: `src/systems/combatOutcome.js` and `scripts/check-combat-outcome.mjs`
+  are absent; `package.json` has no `check:combat-outcome` script.
+- Scope guard: no `combat.js`, `ai.js`, `missions.js`, HUD, render, or input edits. Reuses
+  `ai:flee`, live `data.ai.forceFlee`, `combat:subsystemDisabled`, `entity:killed`, and
+  `ctx.helpers.voice.say` for the single post-combat line.
