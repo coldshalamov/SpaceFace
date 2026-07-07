@@ -726,3 +726,8 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:encounter-director` PASS, `check:station-broadcast` PASS, `check:balance` 0 FAIL.
   `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition.
   Next backend row: **T1c RELEASE_SOAK**.
+
+### T1c RELEASE_SOAK — long-run drift/spawn budget proof — IN-FLIGHT (2026-07-07)
+- Claimed on `master` per the revamp ledger and no-worktree policy. Scope is the named gate
+  `scripts/check-release-soak.mjs` plus `npm run check:release-soak`; no shipped gameplay changes
+  unless the check exposes a backend release-soak violation.

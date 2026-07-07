@@ -34,7 +34,7 @@
 |---|---|---|---|---|---|---|---|
 | T1a | `check-encounter-director.mjs` — verify `encounterDirector.js` determinism + budget + one-voice | `scripts/check-encounter-director.mjs` (existing), `scripts/check-encounter-one-voice.mjs` (existing), `package.json` | DONE 2026-07-07 | — | `npm run check:encounter-director` | — | T1b |
 | T1b | `check-one-voice.mjs` — verify `voiceArbiter.js` (no overlap 10-min; migrate legacy-toast stragglers) | `scripts/check-one-voice.mjs`, `package.json`, `src/systems/missions.js`, `src/systems/story.js` | DONE 2026-07-07 | — | `npm run check:one-voice` | T1a | T1c |
-| T1c | `check-release-soak.mjs` — 30-min soak within budget, no drift/leaks/untelegraphed spawns | `scripts/check-release-soak.mjs` (new), `package.json` | NEXT | — | `npm run check:release-soak` | T1a | — |
+| T1c | `check-release-soak.mjs` — 30-min soak within budget, no drift/leaks/untelegraphed spawns | `scripts/check-release-soak.mjs` (new), `package.json` | IN-FLIGHT 2026-07-07 | — | `npm run check:release-soak` | T1a | — |
 
 ## T2 — DOC CLEANUP (zero code/assets)
 
