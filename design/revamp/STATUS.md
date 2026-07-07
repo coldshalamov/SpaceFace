@@ -370,3 +370,20 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   precondition. Wider `check:sg06:live-registry` remains blocked by the pre-existing
   `src/render/bloom.js` syntax issue outside this backend lane. Next backend row:
   **T4d-4 B8 BREAK_OFF_WHEN_PATROL_ARRIVES**.
+
+### T4d-4 B8 BREAK_OFF_WHEN_PATROL_ARRIVES — lawful patrol pressure — DONE (2026-07-07)
+- NEW `src/systems/pirateDisengage.js` registered before AI. It scans for active pirate squads near
+  lawful patrol ships, waits a one-second nerve beat, then supplies normal AI-facing flee fields:
+  `fsm:'flee'`, no fire intent, dropped player combat target, and an immediate movement intent away
+  from the patrol.
+- The trigger is sticky per squad and speaks exactly one `flee` bark through the voice arbiter. No
+  patrol, out-of-role patrol spoof, or non-lawful nearby ship leaves pirate behavior unchanged.
+  encounterDirector, enemies, combat, and SG-06 AI files were not edited.
+- `check:pirate-disengage` was added and `check:pirate-ecology` now aggregates B9+B6+B7+B8. Red:
+  the check failed before `src/systems/pirateDisengage.js` existed. Non-vacuous control: increasing
+  the nerve delay from 1s to 10s made the acceptance window fail, then restore GREEN.
+- No-regression: `check:pirate-ecology` PASS, `check-tether-gameplay.mjs` PASS, `check:balance`
+  0 FAIL. `check:sim:compare` still fails only on the documented 47-A projectile-collision
+  precondition. Wider `check:sg06:live-registry` remains blocked by the pre-existing
+  `src/render/bloom.js` syntax issue outside this backend lane. Next backend row:
+  **T4d-5 B10 NAMED_CREWS_AND_ACES**.
