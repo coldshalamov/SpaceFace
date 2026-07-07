@@ -560,7 +560,7 @@ export const encounterDirector = {
   // ── one voice ───────────────────────────────────────────────────────────────────────────────
   say(live, channel, barkIdOrText, vars, o) {
     o = o || {};
-    const text = o.literal ? barkIdOrText : barkText(barkIdOrText, vars || live.vars);
+    const text = o.literal ? barkIdOrText : barkText(barkIdOrText, vars || live.vars, live.id);
     if (!text) return false;
     const now = this.now();
     if (o.primary) {

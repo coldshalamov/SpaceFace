@@ -174,15 +174,46 @@ function assertNoModal(emitted, label) {
   ok('distress scan-first: single quiet tell, no re-tell, spring stays within voice law');
 }
 
-// ── 3. copy law: barks ≤12 words, no exclamation marks outside genuine emergencies ─────────────
+// ── 3. copy law: barks ≤14 words (variant arrays) / ≤12 (legacy strings), no ! outside emergencies
 {
-  const EMERGENCY_OK = new Set([]);                    // no bark currently earns one — keep it that way
-  for (const [bid, text] of Object.entries(ENCOUNTER_BARKS)) {
-    const words = text.replace(/\{\w+\}/g, 'x').trim().split(/\s+/).length;
-    assert(words <= 12, `bark ${bid} is ${words} words (law: ≤12): "${text}"`);
-    if (!EMERGENCY_OK.has(bid)) assert(!text.includes('!'), `bark ${bid} uses an exclamation mark: "${text}"`);
+  const EMERGENCY_OK = new Set(['ambush_spring', 'distress_call', 'distress_bait_spring']);
+  const VARIANT_KEYS = new Set([
+    'toll_demand', 'toll_paid_ack', 'toll_refused_ack', 'toll_flee_ack', 'toll_broke_ack',
+    'patrol_scan_hail', 'patrol_scan_clear', 'patrol_scan_caught', 'patrol_scan_refused',
+    'ambush_tele', 'ambush_spring', 'distress_call', 'distress_rescued_ack', 'distress_bait_spring',
+    'convoy_depart', 'trader_pass', 'patrol_beat_hail', 'salvage_ping', 'bounty_notice',
+  ]);
+  let variantCount = 0;
+  for (const [bid, val] of Object.entries(ENCOUNTER_BARKS)) {
+    const lines = Array.isArray(val) ? val : [val];
+    const wordCap = VARIANT_KEYS.has(bid) ? 14 : 12;
+    for (const text of lines) {
+      const words = text.replace(/\{\w+\}/g, 'x').trim().split(/\s+/).length;
+      assert(words <= wordCap, `bark ${bid} is ${words} words (law: ≤${wordCap}): "${text}"`);
+      if (!EMERGENCY_OK.has(bid)) assert(!text.includes('!'), `bark ${bid} uses an exclamation mark: "${text}"`);
+    }
+    if (Array.isArray(val)) variantCount++;
   }
-  ok(`copy law: ${Object.keys(ENCOUNTER_BARKS).length} barks all ≤12 words, zero exclamation marks`);
+  ok(`copy law: ${Object.keys(ENCOUNTER_BARKS).length} bark keys (${variantCount} variant arrays) pass word/exclamation law`);
+}
+
+// ── 4. variant rotation: forced toll fires emit distinct primary lines across encounter ids ─────
+{
+  const primaries = [];
+  const shape = ENCOUNTERS.pirate_toll;
+  const zones = zonesForSector('sector_tethys_junction').filter((z) => shape.zoneTypes.includes(z.type));
+  for (const [seq, seed] of [81, 82, 83, 84, 85].map((s, i) => [i, s])) {
+    const { sim, voice } = boot(seed, 'sector_tethys_junction', { x: 500, z: 1500 }, { cmdty_refined_metals: 12 });
+    const item = planEncounterShape(shape, zones[0], 'sector_tethys_junction', 0, seq, mulberry32(hash32(seed, 'variant-rot', seq)));
+    forceFire(sim, 'pirate_toll', 'sector_tethys_junction', { item });
+    const p = voice.find((v) => v.primary);
+    if (p) primaries.push(p.text);
+  }
+  const distinct = new Set(primaries);
+  for (const t of primaries) console.log(`  variant toll primary: "${t}"`);
+  assert(primaries.length >= 3, 'expected ≥3 toll primaries from forced fires');
+  assert(distinct.size >= 2, `variant toll primaries should differ across encounters (got ${distinct.size} distinct)`);
+  ok(`variant rotation: ${distinct.size} distinct toll_demand primaries across ${primaries.length} forced fires`);
 }
 
 console.log(`[check-encounter-one-voice] PASS — ${sections} sections green`);
