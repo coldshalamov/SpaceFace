@@ -808,3 +808,16 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `scripts/check-scan-reveal.mjs` are absent; `package.json` has no `check:scan-reveal` script.
 - Scope guard: no HUD/render/input edits. Reuses `scanner.js` scan pulse, `SHIPS`/weapon data,
   `weakPointForEntity`, bounty/faction data already present on entities, and `registry.js` ordering.
+
+### T5a-C3 SCAN_REVEALS_LOADOUT — DONE (2026-07-07)
+- NEW pure helper `src/data/scanReveal.js`, additive system `src/systems/scanReveal.js`, and
+  `npm run check:scan-reveal`. The system registers immediately after `scanner`, listens to
+  `scan:pulse`, and writes only `entity.data.scanRevealed` for ship/drone contacts.
+- Behavior pinned: nearby scans reveal compact weapon loadout, bounty, faction, class, weak-point data,
+  and manifest trust; farther in-range scans degrade to class-only and do not leak loadout/bounty; a
+  smuggler/false-manifest target needs a second close pulse before `manifestTrust:'suspect'`.
+- Non-vacuous control: temporarily making the range-degraded branch return `full` made
+  `check:scan-reveal` fail on "range past full radius degrades to class", then restore GREEN.
+- Related gates: `check:scan-reveal` PASS, `check:pirate-disguise` PASS, `check:combat` PASS, and
+  `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition at `sf-sim.mjs:1161`.
