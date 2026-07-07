@@ -475,3 +475,25 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition.
   Next backend row: **T4d-9 B14 AMBUSH_SIGNATURES**.
+
+### T4d-9 B14 AMBUSH_SIGNATURES — scannable pre-ambush tells — DONE (2026-07-07)
+- NEW data table `src/data/ambushSignatures.js` maps ambush-capable encounter shapes to passive,
+  scannable tells such as a dead beacon, cargo bait, callsign echo, sensor tripline, or false
+  distress ping. Non-ambush shapes intentionally return no tell.
+- NEW backend system `src/systems/ambushSignatures.js` is registry-wired after
+  `encounterDirector`/`pirateRumor`. It reads `state.encounterDirector.pending` and writes only
+  `state.ambushSignatures` passive tell records; it does not spawn hostiles, consume spawnBudget,
+  or touch renderer state.
+- A `scan:pulse` near an unscanned tell emits one `ambushSignature:scanned` warning hint and marks
+  that tell scanned, giving counterplay before ships spawn. Re-scanning the same tell does not spam.
+- `check:ambush-signatures` was added and `check:pirate-ecology` now aggregates B14. Red: the check
+  failed before `src/systems/ambushSignatures.js` existed. Non-vacuous control: disabling the
+  `ambush_snare` signature key failed the "ambush_snare has a signature tell" guard, then restore
+  GREEN.
+- NoTouch honored: `encounterDirector.js`, `scanner.js`, `sectorZones.js`, and `src/render/**` were
+  not edited.
+- No-regression: `check:ambush-signatures` PASS, `check:pirate-ecology` PASS,
+  `check:save-schema` PASS, `check:save-resume-confidence` PASS, `check-tether-gameplay.mjs`
+  PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition.
+  Next backend row: **T4d-10 B15 AMBUSH_WRECK_FIELDS_AND_BASE_DISCOVERY**.
