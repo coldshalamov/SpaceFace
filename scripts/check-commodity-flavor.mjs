@@ -7,7 +7,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { COMMODITIES, COMMODITY_FLAVOR } from '../src/data/commodities.js';
+import { pathToFileURL } from 'node:url';
+import { COMMODITIES } from '../src/data/commodities.js';
+import { COMMODITY_FLAVOR } from '../src/data/commodityFlavor.js';
 
 const BALANCE_KEYS = [
   'id', 'name', 'category', 'basePrice', 'volatility', 'elasticity', 'legality',
@@ -93,6 +95,7 @@ function deepEqualBalance(a, b) {
   return true;
 }
 
+export function runCommodityFlavorCheck() {
 const logs = [];
 const balanceLogs = ['# commodity balance-field integrity (frozen baseline vs live COMMODITIES)'];
 
@@ -218,4 +221,12 @@ if (scratch) {
   console.log(`wrote logs to ${scratch}`);
 }
 
-if (fail) process.exit(1);
+return fail;
+}
+
+const isMain = process.argv[1]
+  && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (isMain) {
+  const fail = runCommodityFlavorCheck();
+  if (fail) process.exit(1);
+}
