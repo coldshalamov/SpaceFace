@@ -703,3 +703,8 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   check aggregation, not encounter runtime behavior. `check:sim:compare` still fails only on the
   documented 47-A projectile-collision precondition.
   Next backend row: **T1b ONE_VOICE verify/augment**.
+
+### T1b ONE_VOICE — voice arbiter no-overlap proof — IN-FLIGHT (2026-07-07)
+- Claimed on `master` per the revamp ledger and no-worktree policy. Scope is the named gate
+  `scripts/check-one-voice.mjs` plus `npm run check:one-voice`, with source changes only if the
+  new check exposes a real legacy-toast straggler.
