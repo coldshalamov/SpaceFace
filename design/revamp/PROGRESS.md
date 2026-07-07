@@ -169,7 +169,7 @@
 | T8a | `check:career-profile` | BP-12 careers surface economy | NEXT | T4b | — |
 | T8b | `check:fact-ledger` | surfaces existing `state.world.facts` | NEXT | T1a | — |
 | T8c | `check:salvage-anatomy` | BP-01.1 wreck-module anatomy | NEXT | T4c | — |
-| T8d | `check:smuggling-card` | BP-12 customs/contraband | IN-FLIGHT 2026-07-07 | T4b | — |
+| T8d | `check:smuggling-card` | BP-12 customs/contraband | DONE 2026-07-07 | T4b | T8e |
 | T8e | `check:station-mood` | BP-11 station life | NEXT | T4a | — |
 | T8f | `check:claim-ledger` | BP-06 bases | NEXT | T4 | — |
 | T8g | `check:war-overlay` | faction war map | NEXT | T4 | — |

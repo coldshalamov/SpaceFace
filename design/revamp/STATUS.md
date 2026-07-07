@@ -561,3 +561,24 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition.
   Next backend row: **T8d SMUGGLING_CARD**.
+
+### T8d SMUGGLING_CARD — customs/contraband card proof — DONE (2026-07-07)
+- NEW check `scripts/check-smuggling-card.mjs` plus `npm run check:smuggling-card`. This is a
+  verification-only row: no shipped gameplay/UI file is changed.
+- The check composes the real smuggling contract surfaces: `missionConsequenceSummary` for the
+  station card heat/stake chips, `missionPreflight`/`missionCargoStaging` for readiness and
+  contraband staging, and `activeMissionContractTerms` for the accepted Mission Log card.
+- It also boots a real headless customs stack (`cargo`, `economy`, `factions`, `heat`, `missions`)
+  and proves the warning is backed by shipped behavior: bribe charges through `economy.payBribe`,
+  submit/scan fine confiscates cargo, emits law-faction rep, raises WANTED heat, and a patrol scan
+  bust fails an active smuggling run as `reason:'busted'`.
+- Red: package script failed before the check file existed. Non-vacuous control: changing the
+  shipped smuggling heat chip kind from `bad` to `info` failed `check:smuggling-card`, then restore
+  GREEN.
+- Related gates: `check:customs-prompt` PASS, `check:mission-preflight` PASS,
+  `check:mission-log-contract-terms` PASS, `check:causal-economy` PASS.
+- No-regression: `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented
+  47-A projectile-collision precondition.
+- Note: the objective file names `design/revamp/EXECUTION_LANES.md`, but that file is absent in the
+  current tree; this row followed `PROGRESS.md` + `WAVE4_PROMPT.md` instead.
+  Next backend row: **T8e STATION_MOOD**.
