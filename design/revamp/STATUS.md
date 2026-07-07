@@ -318,3 +318,20 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - T4c's active E-spec backend sequence is now closed. The broader BP-01 encounter-aftermath ideas in
   `detail/C_combat_encounters.md` are separate rows, not T4c leftovers in this objective. Next backend
   row per `goal-objective.md` / `EXECUTION_LANES.md`: **T4d / BP-13 Pirate Ecology**.
+
+### T4d-1 B9 PIRATE_DOCTRINES — pirate motive/readout axis — DONE (2026-07-07)
+- NEW pure data helper `src/data/pirateDoctrines.js` defines exactly the five BP-13 B9 doctrines:
+  `toll`, `thief`, `salvage-jackal`, `tech-raider`, and `ideological`. The cut `slaver` doctrine stays
+  absent. Unknown legacy doctrines (`scavenger`, `balanced`, `official`) return `null` so existing
+  encounters are not silently converted into parley pirates.
+- Each doctrine changes an observable axis: demand type, target preference, bark situation, parley
+  start, or cargo strategy. `toll` exposes a B6-compatible scan -> demand-cargo -> attack parley plan
+  with comply -> break-off; `thief` skips the formal demand and goes straight to `grab-cargo`.
+  `pirateDoctrineReadout(...)` returns a stable compact shape for later contacts/scan consumers.
+- `check:pirate-doctrines` was added, and `check:pirate-ecology` now aggregates it. Red: the check
+  failed before `src/data/pirateDoctrines.js` existed. Non-vacuous control: changing toll
+  `startsParley:true` to `false` made the B6 ladder assertion fail, then restore GREEN.
+- No runtime system was registered and `rg "pirateDoctrines"` shows the data is currently imported
+  only by its check, so this row cannot alter 47-A sim behavior yet. No-regression: `check:pirate-ecology`
+  PASS, `check-tether-gameplay.mjs` PASS, `check:balance` 0 FAIL. `check:sim:compare` fails only on
+  the documented 47-A projectile-collision precondition. Next backend row: **T4d-2 B6 PIRATE_TOLL_LADDER**.
