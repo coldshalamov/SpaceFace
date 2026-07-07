@@ -1659,7 +1659,7 @@ export const missions = {
     const nextBeat = STORY_BEATS[story.beatIndex];
     this._refreshNavigation({ forceStory: true, silent: true });
     const dir = (nextBeat && story.beatIndex !== fromIndex) ? BEAT_HINT[nextBeat.beat] : 'The contracts continue. The count never ends.';
-    if (dir) this.bus.emit('toast', { text: dir, kind: 'story', ttl: 6 });
+    if (dir) this._sayStoryLine(dir, 6);
     this.bus.emit('mission:updated', { missionId: null });
   },
 
@@ -1678,6 +1678,19 @@ export const missions = {
   /** Net worth ≈ credits (cheap approximation for the B7 north star; ship/asset value omitted). */
   _netWorth() {
     return this.state.player.credits | 0;
+  },
+  _sayStoryLine(text, ttl = 6) {
+    if (!text) return false;
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      const said = voice.say({ channel: 'story', text, kind: 'story', ttl });
+      if (said) return true;
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('toast', { text, kind: 'story', ttl });
+      return true;
+    }
+    return false;
   },
 
   _findOffer(missionId) {
@@ -1713,7 +1726,7 @@ export const missions = {
     if (this._newGameToastSeed !== toastKey) {
       this._newGameToastSeed = toastKey;
       const b0 = STORY_BEATS[state.story.beatIndex];
-      if (b0 && BEAT_HINT[b0.beat]) this.bus.emit('toast', { text: BEAT_HINT[b0.beat], kind: 'story', ttl: 6 });
+      if (b0 && BEAT_HINT[b0.beat]) this._sayStoryLine(BEAT_HINT[b0.beat], 6);
     }
   },
 

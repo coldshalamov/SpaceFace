@@ -266,6 +266,20 @@ export const story = {
     this.bus.emit('comms:popup', p);
   },
 
+  _sayStoryLine(text, ttl = 6) {
+    if (!text) return false;
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      const said = voice.say({ channel: 'story', text, kind: 'story', ttl });
+      if (said) return true;
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('toast', { text, kind: 'story', ttl });
+      return true;
+    }
+    return false;
+  },
+
   // B8 — salvage communicator hook (Wren artifact thread opener). Fires once per save after B2+.
   _onB8SalvageTrigger() {
     const s = this.state.story;
@@ -441,7 +455,7 @@ export const story = {
     // Apply the mechanical consequences (rep/credits/identity) via the canonical single-writers.
     this._applyEndgameConsequences(def);
     this.bus.emit('endgame:chosen', { choice: def.id, key: def.key, title: def.title });
-    this.bus.emit('toast', { text: `Ending: ${def.title}`, kind: 'story', ttl: 8 });
+    this._sayStoryLine(`Ending: ${def.title}`, 8);
   },
 
   _applyEndgameConsequences(def) {

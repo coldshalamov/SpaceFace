@@ -704,7 +704,25 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   documented 47-A projectile-collision precondition.
   Next backend row: **T1b ONE_VOICE verify/augment**.
 
-### T1b ONE_VOICE — voice arbiter no-overlap proof — IN-FLIGHT (2026-07-07)
-- Claimed on `master` per the revamp ledger and no-worktree policy. Scope is the named gate
-  `scripts/check-one-voice.mjs` plus `npm run check:one-voice`, with source changes only if the
-  new check exposes a real legacy-toast straggler.
+### T1b ONE_VOICE — voice arbiter no-overlap proof — DONE (2026-07-07)
+- NEW check `scripts/check-one-voice.mjs` plus `npm run check:one-voice`. It pins the pure
+  `VoiceQueue` contract (priority order, equal-priority hold, strict higher-priority preemption,
+  same-id replacement, stale drop, bark rate cap), the `voiceArbiter` wrapper, sim-time-only
+  timing, disabled legacy-toast interception, registry ordering, and a 10-minute no-overlap soak.
+- The check also pins the spoken backend/source contract for encounter, story, market/news,
+  station, pirate, bounty, gate-control, clause, and moral-trap lanes. Direct UI/action toasts
+  remain allowed; spoken narrative/comms/news/bark surfaces route through `helpers.voice.say`.
+- The row migrated the real legacy story-toast stragglers in `missions` and `story`: mission beat
+  direction lines, the new-game beat hint, and the endgame title line now prefer
+  `helpers.voice.say({channel:'story'})` and preserve the existing `toast` fallback if voice is
+  unavailable or declines.
+- Red: package script failed before `scripts/check-one-voice.mjs` existed; then the check failed on
+  the unmigrated story-toast sites; then the runtime fallback assertion failed until the helpers
+  fell through on `voice.say() === false`.
+- Non-vacuous control: temporarily weakening the shipped arbiter preemption guard from
+  `best.priority <= active.priority` to `<` made `check:one-voice` fail at the equal-priority floor
+  assertion, then restore GREEN.
+- Related gates: `check:one-voice` PASS (13 sections), `check:story-beats` PASS,
+  `check:encounter-director` PASS, `check:station-broadcast` PASS, `check:balance` 0 FAIL.
+  `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition.
+  Next backend row: **T1c RELEASE_SOAK**.
