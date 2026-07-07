@@ -830,3 +830,18 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Scope guard: no `combat.js`, `ai.js`, `missions.js`, HUD, render, or input edits. Reuses
   `ai:flee`, live `data.ai.forceFlee`, `combat:subsystemDisabled`, `entity:killed`, and
   `ctx.helpers.voice.say` for the single post-combat line.
+
+### T5a-C9 COMBAT_OUTCOME — DONE (2026-07-07)
+- NEW observer `src/systems/combatOutcome.js` plus `npm run check:combat-outcome`. It registers after
+  `combat`, records one terminal receipt per hostile in `state.combatOutcome`, and emits
+  `combat:outcome` plus `combat:outcomeConsequence` for future economy/rep consumers.
+- Outcomes pinned: `ai:flee` and live `data.ai.forceFlee` record `fled`; terminal subsystem disables
+  record `disabled`; `entity:killed` records `killed`; `combat:surrendered` records `surrendered`.
+  Civilian/nonterminal subsystem events are ignored.
+- Single-writer/one-voice guard: no direct credits/cargo/rep writes and no AI/combat mutations; each
+  outcome routes exactly one post-combat line through `ctx.helpers.voice.say`.
+- Non-vacuous control: temporarily removing `subsystem_drive` from the terminal-disable set made
+  `check:combat-outcome` fail in the disabled-outcome path, then restore GREEN.
+- Related gates: `check:combat-outcome` PASS, `check:combat` PASS, `check:pirate-disengage` PASS,
+  `check:scan-reveal` PASS, and `check:balance` 0 FAIL. `check:sim:compare` still fails only on the
+  documented 47-A projectile-collision precondition at `sf-sim.mjs:1161`.

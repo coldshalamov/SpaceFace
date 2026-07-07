@@ -135,9 +135,9 @@
 
 | id | addendum | status | depends-on | next |
 |---|---|---|---|---|
-| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-07 (T5a-C3 DONE; T5a-C9 claimed) | T4 (combat lane) | — |
+| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-07 (T5a-C3/T5a-C9 DONE) | T4 (combat lane) | — |
 | T5a-C3 | BP-02.1 C3 Scan-Reveals-Loadout | DONE 2026-07-07 | T4 (combat lane) | `npm run check:scan-reveal` PASS |
-| T5a-C9 | BP-02.1 C9 Kills-Less-Central Outcomes | IN-FLIGHT 2026-07-07 | T4 (combat lane) | — |
+| T5a-C9 | BP-02.1 C9 Kills-Less-Central Outcomes | DONE 2026-07-07 | T4 (combat lane) | `npm run check:combat-outcome` PASS |
 | T5b | BP-05.1 story/comms (7 packets) | NEXT | T4 | — |
 | T5c | BP-07.1 flight/ship-mass (5 packets) | NEXT | T4 | — |
 | T5d | BP-10.1 audio (7 packets) | NEXT | T4 | — |
