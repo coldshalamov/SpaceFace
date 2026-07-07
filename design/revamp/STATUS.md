@@ -256,3 +256,65 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   FAIL. `check:sim:compare` fails only on the documented 47-A projectile-collision precondition;
   A/B with only the new `salvageActions` registry entry removed produced the identical
   `sf-sim.mjs:1161` failure. Next backend row: **T4c-3 SURVIVOR_POD_TRIAGE**.
+
+### T4c-3 SURVIVOR_POD_TRIAGE — survivor-pod rescue/strip backend — DONE (2026-07-07)
+- NEW event-driven `src/systems/survivorPod.js` registered after `salvageActions` and before
+  `factions`/`missions`. It promotes exactly one existing salvage point/entity in a sector into a
+  tetherable `wm_survivor_pod` communicator; it does not spawn content and does not edit
+  `salvage.js`, `missions.js`, `wreckMissions.js`, or `economy.js`.
+- The outgoing salvage `mission:offered` payload is stamped with the shipped `wm_survivor_pod`
+  template and exact binary `choice`, converted to a `passenger_transport` offer with one passenger,
+  a concrete destination, and `faction_scn` (Solar Concord Navy/Concord goodwill). The oxygen clock
+  is visible metadata on the offer and `state.ui.survivorPod`; expiry is soft, decaying reward down
+  to a floor rather than killing the pod.
+- Rescue requires the pod to be under tow and emits `survivorPod:rescueSelected`; payout and
+  goodwill remain on the passenger mission completion path. Strip emits `economy:grantCredits` plus
+  `faction:repDelta{reason:'survivorPod:strip'}` and resolves the pod; no direct credits/rep writes.
+- `check:survivor-pod` PASS + non-vacuous control: forcing the rescue offer type back to
+  `salvage_retrieval` made the check fail, then restore GREEN. No-regression:
+  `check:causal-economy` PASS (now includes `check:salvage-actions` + `check:survivor-pod`),
+  `check:wreck-provenance` PASS, `check:salvage-actions` PASS, `check-tether-gameplay.mjs` PASS,
+  `check:balance` 0 FAIL. `check:sim:compare` fails only on the documented 47-A projectile-collision
+  precondition; A/B with only the new `survivorPod` registry entry removed produced the identical
+  `sf-sim.mjs:1161` failure. Next backend row: **T4c-4 GHOST_CONVOY_RUMOR**.
+
+### T4c-4 GHOST_CONVOY_RUMOR — repeated-loss raider-nest rumor — DONE (2026-07-07)
+- No new runtime system. `src/systems/lossLedger.js` now owns the read rule promised by the spec:
+  when the event-sourced ledger records at least three losses in the same sector/faction lane and
+  `sectorSignalFor(sectorId).driver.danger === 'reach_pressure'`, it emits a durable one-shot
+  `rumor:ghostConvoy` intent plus a `mission:offered` payload. Fewer than three losses, calm/non-Reach
+  pressure, or losses split across victim factions stay silent.
+- The emitted offer reuses shipped `wm_reach_bounty` and the existing `bounty_hunt` mission pipeline:
+  it carries `targetStrength`, `clearCount`, reward/time/risk fields, concrete sector/station anchors,
+  and `budgetedEncounter.spawnBudgetClient:'missions'`. The rumor itself spawns nothing; hostiles
+  remain deferred to missions' existing spawn-on-accept path.
+- Fired lane keys are serialized inside `lossLedger.serialize()`/`deserialize()` so a saved game does
+  not repeat the same rumor after reload. Consequences are emit-only: no credits/cargo/rep writes.
+  noTouch honored: `sectorSim.js`, `missions.js`, and `automation.js` were not edited.
+- `check:ghost-convoy-rumor` PASS + non-vacuous control: raising the threshold from 3 to 4 made the
+  third-loss assertion fail, then restore GREEN. No-regression: `check:wreck-provenance` PASS,
+  `check:causal-economy` PASS (now includes ghost convoy), `check-tether-gameplay.mjs` PASS,
+  `check:balance` 0 FAIL. `check:sim:compare` fails only on the documented 47-A projectile-collision
+  precondition; A/B with only the new `maybeEmitGhostConvoyRumor(...)` call removed produced the
+  identical `sf-sim.mjs:1161` failure. Next backend row: **T4c-5 SALVAGE_PERMIT_AND_FINES**.
+
+### T4c-5 SALVAGE_PERMIT_AND_FINES — restricted classified salvage — DONE (2026-07-07)
+- NEW pure data helper `src/data/salvageLegality.js` maps wreck metadata to cargo legality. Only
+  `wreckClass:'military'` or `parentType:'military'` converts ordinary salvage electronics into
+  `cmdty_classified_salvage`; common debris/fresh wrecks stay legal. `salvageActions` is the only
+  runtime consumer and still annotates existing wreck entities only.
+- `cmdty_classified_salvage` was added to `src/data/commodities.js` as category `salvage` with
+  legality `restricted` and `fineMult:0.8`. That means the shipped `economy.runScan` path applies
+  the existing restricted fine/confiscation/rep-hit machinery; no salvage-specific fine event or
+  alternate cargo writer was introduced. Blackmarket sale at `station_smuggler` clears the cargo via
+  the shipped market/sell path before scans.
+- noTouch honored: `economy.js`, `cargo.js`, and `salvage.js` were not edited.
+- `check:salvage-legality` PASS + non-vacuous control: changing classified salvage legality from
+  `restricted` to `legal` made the check fail, then restore GREEN. No-regression:
+  `check:causal-economy` PASS (now includes salvage legality), `check:salvage-actions` PASS,
+  `check-tether-gameplay.mjs` PASS, `check:balance` 0 FAIL. `check:sim:compare` fails only on the
+  documented 47-A projectile-collision precondition; A/B with only the new `salvagePoolForWreck(...)`
+  call removed produced the identical `sf-sim.mjs:1161` failure.
+- T4c's active E-spec backend sequence is now closed. The broader BP-01 encounter-aftermath ideas in
+  `detail/C_combat_encounters.md` are separate rows, not T4c leftovers in this objective. Next backend
+  row per `goal-objective.md` / `EXECUTION_LANES.md`: **T4d / BP-13 Pirate Ecology**.

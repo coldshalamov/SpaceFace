@@ -44,10 +44,19 @@
 // No recorded loss ⇒ generic wreck (unchanged).
 
 import { hash32 } from '../core/rng.js';
+import { SECTORS } from '../data/sectors.js';
+import { MISSION_TUNING } from '../data/missions.js';
+import { wreckMissionById } from '../data/wreckMissions.js';
 import { pickWreckClass, wreckClassById } from '../data/wreckClasses.js';
+import { effectiveDangerTierFor, sectorSignalFor } from './sectorSim.js';
 
 const MAX_PER_SECTOR = 8;           // ring-buffer cap — bounded growth (failureMode guard)
 const MAX_TOTAL = 64;               // global backstop across all sectors (rare; trims oldest)
+const GHOST_CONVOY_THRESHOLD = 3;
+const GHOST_CONVOY_DRIVER = 'reach_pressure';
+const GHOST_CONVOY_MISSION_ID = 'wm_reach_bounty';
+const STATION_BY_SECTOR = new Map();
+for (const sector of SECTORS) STATION_BY_SECTOR.set(sector.id, sector.stations || []);
 const KIND_NORMALIZE = {
   trader: 'trader',
   drone: 'drone',
@@ -88,6 +97,8 @@ export function ensureState(state) {
   if (!L.bySector || typeof L.bySector !== 'object') L.bySector = {};
   if (!Array.isArray(L.entries)) L.entries = [];
   if (typeof L.seed !== 'number') L.seed = (state.meta && state.meta.seed) || 1;
+  if (!L.ghostConvoy || typeof L.ghostConvoy !== 'object') L.ghostConvoy = { fired: {} };
+  if (!L.ghostConvoy.fired || typeof L.ghostConvoy.fired !== 'object') L.ghostConvoy.fired = {};
   return L;
 }
 
@@ -130,6 +141,131 @@ function makeLossId(seed, sectorId, kind, simTime, assetId) {
   return 'loss_' + hash32(seed, sectorId, kind, simTime, assetId).toString(36);
 }
 
+function clamp(v, lo, hi) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+function laneKeyFor(entry) {
+  return `${entry.sectorId}:${entry.factionId || 'unknown'}`;
+}
+
+function stationForSector(sectorId) {
+  const stations = STATION_BY_SECTOR.get(sectorId) || [];
+  return stations.find((s) => s.services && s.services.includes('missions')) || stations[0] || null;
+}
+
+function ghostConvoyLine(state, entry, count) {
+  const sName = sectorName(state, entry.sectorId);
+  return `Ghost convoy rumor: ${count} losses on the ${sName} lane point to a Reach raider nest.`;
+}
+
+function buildGhostConvoyOffer(state, entry, sameLane, signal) {
+  const template = wreckMissionById(GHOST_CONVOY_MISSION_ID);
+  const sectorId = entry.sectorId;
+  const station = stationForSector(sectorId);
+  const laneKey = laneKeyFor(entry);
+  const dangerTier = clamp(
+    Math.max(effectiveDangerTierFor(state, sectorId), Math.round(((signal && signal.danger) || 0) * 4)),
+    2,
+    4,
+  );
+  const distance = 600;
+  const targetStrength = Number((1.3 + dangerTier * 0.5 + Math.min(4, sameLane.length) * 0.25).toFixed(2));
+  const params = {
+    clearCount: 1,
+    killCount: 0,
+    targetStrength,
+    fValue: targetStrength,
+    taskTime: 60,
+    ghostConvoy: true,
+  };
+  const base = (MISSION_TUNING.BASE && MISSION_TUNING.BASE.bounty_hunt) || 200;
+  const fRisk = (MISSION_TUNING.RISK_MULT && MISSION_TUNING.RISK_MULT[dangerTier]) || 1;
+  const fDist = 1 + distance / (MISSION_TUNING.distDivisor || 2000);
+  const reward_cr = Math.round(base * fDist * fRisk * params.fValue);
+  const time_limit_s = Math.round((distance / (MISSION_TUNING.cruiseSpeedRef || 140) + params.taskTime) * (MISSION_TUNING.slackDefault || 2.2));
+  const lossIds = sameLane.slice(0, GHOST_CONVOY_THRESHOLD).map((loss) => loss.lossId);
+
+  return {
+    id: `ghost_${hash32((state.meta && state.meta.seed) || 1, laneKey, 'ghostConvoy').toString(36)}`,
+    source: 'ghostConvoyRumor',
+    type: (template && template.type) || 'bounty_hunt',
+    wreckMissionId: GHOST_CONVOY_MISSION_ID,
+    stationId: station ? station.id : null,
+    factionId: entry.factionId || (signal && signal.ownerId) || null,
+    reward_cr,
+    time_limit_s,
+    collateral_cr: 0,
+    riskTier: dangerTier,
+    destStationId: station ? station.id : null,
+    destSectorId: sectorId,
+    distance,
+    params,
+    title: `Ghost convoy: Reach raider nest near ${sectorName(state, sectorId)}`,
+    summary: `${sameLane.length} losses in this lane point to a repeat Reach ambush pattern. Clear the nest before the next convoy vanishes.`,
+    giver: template ? template.giver : 'Lane rumor',
+    log: template ? template.log : null,
+    tag: template ? template.tag : 'wreck_salvage',
+    budgetedEncounter: {
+      spawnOnAccept: true,
+      spawnBudgetClient: 'missions',
+      noSpawnAtRumor: true,
+    },
+    rumor: {
+      laneKey,
+      sectorId,
+      factionId: entry.factionId || null,
+      driver: GHOST_CONVOY_DRIVER,
+      lossCount: sameLane.length,
+      lossIds,
+    },
+  };
+}
+
+function maybeEmitGhostConvoyRumor(state, bus, helpers, entry) {
+  const L = ensureState(state);
+  if (!L || !entry || !entry.sectorId) return null;
+  const laneKey = laneKeyFor(entry);
+  if (L.ghostConvoy.fired[laneKey]) return null;
+
+  const signal = sectorSignalFor(state, entry.sectorId);
+  if (!signal || !signal.driver || signal.driver.danger !== GHOST_CONVOY_DRIVER) return null;
+
+  const sameLane = lossesFor(state, entry.sectorId)
+    .filter((loss) => loss && (loss.factionId || 'unknown') === (entry.factionId || 'unknown'));
+  if (sameLane.length < GHOST_CONVOY_THRESHOLD) return null;
+
+  const offer = buildGhostConvoyOffer(state, entry, sameLane, signal);
+  const line = ghostConvoyLine(state, entry, sameLane.length);
+  const fired = {
+    laneKey,
+    sectorId: entry.sectorId,
+    factionId: entry.factionId || null,
+    lossCount: sameLane.length,
+    firedAt: state.simTime || 0,
+    offerId: offer.id,
+  };
+  L.ghostConvoy.fired[laneKey] = fired;
+
+  const payload = {
+    ...fired,
+    driver: GHOST_CONVOY_DRIVER,
+    line,
+    offer,
+  };
+  if (bus && bus.emit) {
+    bus.emit('rumor:ghostConvoy', payload);
+    bus.emit('mission:offered', offer);
+  }
+  if (helpers && helpers.voice && typeof helpers.voice.say === 'function') {
+    const said = helpers.voice.say({ channel: 'news', text: line, kind: 'ghostConvoy' });
+    if (!said && bus && bus.emit) bus.emit('toast', { text: line, kind: 'info', ttl: 5 });
+  } else if (bus && bus.emit) {
+    bus.emit('toast', { text: line, kind: 'info', ttl: 5 });
+  }
+  return payload;
+}
+
 function record(state, bus, helpers, entry) {
   const L = ensureState(state);
   if (!L) return null;
@@ -153,6 +289,7 @@ function record(state, bus, helpers, entry) {
   } else if (bus && bus.emit) {
     bus.emit('toast', { text: line, kind: 'warn', ttl: 4 });
   }
+  maybeEmitGhostConvoyRumor(state, bus, helpers, entry);
   return entry;
 }
 
@@ -185,7 +322,7 @@ export const lossLedger = {
     const state = this._state;
     if (!state) return;
     const seed = (state.meta && state.meta.seed) || 1;
-    state.lossLedger = { bySector: {}, entries: [], seed };
+    state.lossLedger = { bySector: {}, entries: [], seed, ghostConvoy: { fired: {} } };
   },
 
   _handleAssetLost(p) {
@@ -282,9 +419,13 @@ export const lossLedger = {
   // Serialization — durable subset only (the recorded entries + seed). Round-trips through save.
   serialize() {
     const L = ensureState(this._state);
-    if (!L) return { bySector: {}, entries: [], seed: 1 };
+    if (!L) return { bySector: {}, entries: [], seed: 1, ghostConvoy: { fired: {} } };
     // Entries only — bySector is derivable from entries (rebuilt on deserialize).
-    return { entries: L.entries.slice(-MAX_TOTAL), seed: L.seed };
+    return {
+      entries: L.entries.slice(-MAX_TOTAL),
+      seed: L.seed,
+      ghostConvoy: { fired: { ...(L.ghostConvoy && L.ghostConvoy.fired || {}) } },
+    };
   },
 
   deserialize(data) {
@@ -294,6 +435,11 @@ export const lossLedger = {
     const entries = (data && Array.isArray(data.entries)) ? data.entries : [];
     L.entries = entries.slice(-MAX_TOTAL);
     L.seed = (data && typeof data.seed === 'number') ? (data.seed >>> 0) : ((state.meta && state.meta.seed) || 1);
+    L.ghostConvoy = {
+      fired: {
+        ...(data && data.ghostConvoy && data.ghostConvoy.fired || {}),
+      },
+    };
     L.bySector = {};
     for (const e of L.entries) {
       if (!e || !e.sectorId) continue;

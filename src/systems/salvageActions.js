@@ -5,6 +5,7 @@
 // the player is working on. This system does not edit salvage.js, mining.js, or combat.js.
 
 import { actionForWreck, actionReadoutForWreck, poolForAction } from '../data/salvageActions.js';
+import { salvagePoolForWreck } from '../data/salvageLegality.js';
 
 const TETHER_AWAY_DISTANCE = 260;
 
@@ -48,7 +49,7 @@ export const salvageActions = {
     const data = entity.data || (entity.data = {});
     const action = actionForWreck(entity);
     data.salvageAction = actionReadoutForWreck(entity);
-    data.salvagePool = poolForAction(action);
+    data.salvagePool = salvagePoolForWreck(entity, poolForAction(action));
     data.scanGlyph = action.glyph;
     data.scanLabel = action.label;
     if (action.unstable) this._armReactor(entity, action);
