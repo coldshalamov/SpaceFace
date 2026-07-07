@@ -800,3 +800,11 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `npm run check:hitch-budget` and `npm run check:gpu-path` both timed out in `page.waitForFunction`.
 - No package-chain changes were kept. Next backend work should use the T5 backend packets and skip
   visual/render halves until the render syntax/runtime boot blocker is cleared by that lane.
+
+### T5a-C3 SCAN_REVEALS_LOADOUT — claim (2026-07-07)
+- Claimed backend-safe BP-02.1 packet C3 from `detail/C_combat_encounters.md`: listen to the shipped
+  `scan:pulse` seam and write deterministic ship-only `data.scanRevealed` payloads for UI consumers.
+- Live proof before claim: `src/systems/scanReveal.js`, `src/data/scanReveal.js`, and
+  `scripts/check-scan-reveal.mjs` are absent; `package.json` has no `check:scan-reveal` script.
+- Scope guard: no HUD/render/input edits. Reuses `scanner.js` scan pulse, `SHIPS`/weapon data,
+  `weakPointForEntity`, bounty/faction data already present on entities, and `registry.js` ordering.
