@@ -87,6 +87,7 @@
     "check:dock-deny-banner": "node scripts/check-dock-deny-banner.mjs",
     "check:station-glyphs": "node scripts/check-station-glyphs.mjs",
     "check:station-broadcast": "node scripts/check-station-broadcast.mjs",
+    "check:station-mood": "node scripts/check-station-mood.mjs",
     "check:hazard-language": "node scripts/check-hazard-language.mjs",
     "check:danger-gradient": "node scripts/check-danger-gradient.mjs",
     "check:station-side-events": "node scripts/check-station-side-events.mjs",

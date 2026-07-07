@@ -582,3 +582,21 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Note: the objective file names `design/revamp/EXECUTION_LANES.md`, but that file is absent in the
   current tree; this row followed `PROGRESS.md` + `WAVE4_PROMPT.md` instead.
   Next backend row: **T8e STATION_MOOD**.
+
+### T8e STATION_MOOD — station life cross-surface proof — DONE (2026-07-07)
+- NEW check `scripts/check-station-mood.mjs` plus `npm run check:station-mood`. This is a
+  verification-only row: no shipped gameplay/UI/asset/render source is changed.
+- The check composes the shipped BP-11 station-life surfaces into one station mood proof:
+  `STATION_GLYPHS` labels, `STATION_BROADCASTS` text/tics, orbit bubble colors/radii,
+  no-fire warning comms, seeded side-event affinities, and the visible-only silent side-event
+  director.
+- It guards the backend path by poisoning `Math.random` and `Date.now`, proves all 7
+  `STATION_TYPES` have type-specific reads, proves blackmarket stations stay furtive/no-patrol,
+  proves military stations can launch patrol mood events, and verifies side-events do not speak
+  over the one-voice channel.
+- Red: package script failed before `scripts/check-station-mood.mjs` existed. Non-vacuous control:
+  changing the blackmarket glyph label from `Cache` to `Market` failed the station mood catalog,
+  then restore GREEN.
+- Related gates: `check:station-broadcast` PASS, `check:station-side-events` PASS,
+  `check:station-bubbles` PASS, `check:station-glyphs` PASS, `check:sector-atmosphere` PASS.
+  Next backend row: **T8h MARKET_CHART**.
