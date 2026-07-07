@@ -430,3 +430,23 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:save-schema` PASS, `check:save-resume-confidence` PASS, `check-tether-gameplay.mjs`
   PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition. Next backend row: **T4d-7 B12 STATION_PIRATE_RUMOR_HEAT**.
+
+### T4d-7 B12 STATION_PIRATE_RUMOR_HEAT — zone-named piracy rumors — DONE (2026-07-07)
+- NEW reader/aggregator `src/systems/pirateRumor.js` registered after `encounterDirector`. It listens
+  only to real `encounter:spawned` pirate shapes (`ambush_snare`, `pirate_toll`, `named_hunter`,
+  `claim_threat`) and civilian traffic `entity:killed` events whose position resolves to a named
+  `sectorZones` zone. No random/prospective rumor source exists.
+- Per-zone heat lives in `state.pirateRumor.zones`. At the three-real-event threshold, the hottest
+  zone emits one `news:headline {kind:'piracy'}` and one `pirateRumor:card` payload naming the zone
+  (for dock-card consumers). The headline variants use `marketNews.pickVariant`; the system never
+  edits market/economy state.
+- Rumors are rate-limited per zone and heat decays (`PIRATE_RUMOR_DECAY_PER_S`) so a hot lane
+  becomes quiet again without further events.
+- `check:pirate-rumor` was added and `check:pirate-ecology` now aggregates B9+B6+B7+B8+B10+B11+B12.
+  Red: the check failed before `src/systems/pirateRumor.js` existed. Non-vacuous control: changing
+  the threshold from 3 to 4 failed the explicit three-event bar, then restore GREEN.
+- No-regression: `check:pirate-rumor` PASS, `check:pirate-ecology` PASS,
+  `check:save-schema` PASS, `check:save-resume-confidence` PASS, `check-tether-gameplay.mjs`
+  PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition.
+  Next backend row: **T4d-8 B13 ROUTE_DANGER_FEEDBACK**.
