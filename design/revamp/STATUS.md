@@ -619,3 +619,23 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:market-first-loop` is blocked before `window.SF` by the existing render syntax error;
   confirmed separately with `node --check src/render/bloom.js` failing at `src/render/bloom.js:344`.
   Next backend row: **T8f CLAIM_LEDGER**.
+
+### T8f CLAIM_LEDGER — claimed-body receipt/save proof — DONE (2026-07-07)
+- NEW check `scripts/check-claim-ledger.mjs` plus `npm run check:claim-ledger`. This is a
+  verification-only row: no shipped gameplay/UI/asset/render source is changed.
+- The check exercises the real `claims` system headless: claiming a body creates a durable ledger
+  row with sector/POI/name/size/slots/modules/position/claimedAt, routes claim cost through
+  `economy:chargeCredits` reason `claim_body`, emits `claim:claimed`, and rejects duplicate claims.
+- It verifies module builds append module ids to the body ledger, route costs through
+  `economy:chargeCredits` reason `build_module`, emit `claim:moduleBuilt`, reject duplicates,
+  and that teleporter builds link to the nearest station before `claim:teleportRequest`.
+- It proves `serialize()` copies module arrays, `deserialize()` restores bodies, and the next claim
+  id is re-derived past restored `claim_N` rows. The base-screen source contract is pinned so the
+  UI reads `claims.list()`, shows size/slots/sector/module slots, consumes pending claim handoff,
+  rebuilds after module builds, and routes teleport through `claims.teleportFrom`.
+- Red: package script failed before `scripts/check-claim-ledger.mjs` existed. Non-vacuous control:
+  changing the shipped module-build charge reason from `build_module` to `base_module` failed the
+  build receipt check, then restore GREEN.
+- Related gates: `check:claim-base` PASS, `check:base-build-guidance` PASS,
+  `check:claims-guidance` PASS, `check:balance` 0 FAIL.
+  Next backend row: **T8g WAR_OVERLAY**.

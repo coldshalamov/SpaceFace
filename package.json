@@ -223,6 +223,7 @@
     "check:market-first-loop": "node scripts/check-market-first-loop-runtime.mjs",
     "check:localmap-routes": "node scripts/check-localmap-route-metrics.mjs",
     "check:claim-base": "node scripts/check-claim-base-input.mjs",
+    "check:claim-ledger": "node scripts/check-claim-ledger.mjs",
     "check:base-build-guidance": "node scripts/check-base-build-guidance.mjs",
     "check:claims-guidance": "node scripts/check-claims-guidance.mjs",
     "check:flight:v3": "node test/flightV3.spec.mjs",
