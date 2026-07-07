@@ -78,7 +78,7 @@
     "check:sg06:ai": "node scripts/check-sg06-ai.mjs --runs=100 --ticks=600",
     "check:ai:telegraphs": "node scripts/check-ai-telegraphs.mjs",
     "check:ai": "npm run check:sg06:ai",
-    "check:encounter-director": "node scripts/check-encounter-director.mjs",
+    "check:encounter-director": "node scripts/check-encounter-director.mjs && node scripts/check-encounter-one-voice.mjs",
     "check:living-universe": "node scripts/check-living-universe-events.mjs",
     "check:encounter-voice": "node scripts/check-encounter-one-voice.mjs",
     "check:named-captains": "node scripts/check-named-captains.mjs",

@@ -686,3 +686,20 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   projectile-collision precondition via `sf-sim`; `check:sim:compare` fails on that same
   documented precondition.
   Next backend row: **T1a ENCOUNTER_DIRECTOR verify/augment**.
+
+### T1a ENCOUNTER_DIRECTOR — determinism/budget/one-voice gate — DONE (2026-07-07)
+- Verified the existing `scripts/check-encounter-director.mjs` instead of recreating it. The T2f
+  side-finding was correct: the file already existed, and the row scope is verify/augment.
+- Package script `check:encounter-director` now chains both existing proofs:
+  `check-encounter-director.mjs` for static discipline, planner determinism, schedule budgets,
+  runtime pacing, quiet time, dock/tutorial suppression, spawnBudget use, pressure spend, and
+  bounty gate; plus `check-encounter-one-voice.mjs` for exactly-one primary line, bark spacing,
+  snare warning window, scan-first distress tell, copy law, and no modal-shaped encounter events.
+- Red/control: temporarily bypassing the shipped dock/tutorial pump guard in `encounterDirector`
+  made `check:encounter-director` fail on "encounter fired during protected tutorial beat", then
+  restore GREEN.
+- Related gates: `check:encounter-director` PASS and `check:balance` 0 FAIL. `check:living-universe`
+  currently fails on its existing `bait spring line` assertion; this row changed only the package
+  check aggregation, not encounter runtime behavior. `check:sim:compare` still fails only on the
+  documented 47-A projectile-collision precondition.
+  Next backend row: **T1b ONE_VOICE verify/augment**.
