@@ -58,6 +58,7 @@ import { dangerGradient } from '../ui/dangerGradient.js';              // A9: da
 // BP-12 Causal Economy (Wave 3, design/revamp/detail/E_salvage_economy_contracts.md) — SYSTEMS-only
 // read layers over the shipped dangerModel/sectorSim field ("no economy change without cause").
 import { causeLedger } from '../ui/causeLedger.js';                    // E: "why prices changed" tooltip over the live driver tags (voice:none)
+import { economyContracts } from '../systems/economyContracts.js';     // E: field-born contract offers (emit-only mission:offered; ≤1 per station-epoch)
 import { stationSideEventDirector } from '../systems/stationSideEventDirector.js'; // A6: seeded station side-events director (spawnBudget client)
 import { gateControlDirector } from '../systems/gateControlDirector.js';          // A8: seeded gate traffic-control director (toll via economy:chargeCredits)
 import { render } from '../render/renderer.js';
@@ -76,7 +77,7 @@ export function createRegistry(ctx) {
   // init / registration order
   const SYSTEMS = [
     core, voiceArbiter, input, autoTargetAssist, scanner, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, economy,
-    automation, wingmen, intervention, spawnBudget, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, dangerGradient, causeLedger, render, vfx, feel, audio, ui, save,
+    automation, wingmen, intervention, spawnBudget, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, dangerGradient, causeLedger, economyContracts, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
