@@ -639,3 +639,24 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Related gates: `check:claim-base` PASS, `check:base-build-guidance` PASS,
   `check:claims-guidance` PASS, `check:balance` 0 FAIL.
   Next backend row: **T8g WAR_OVERLAY**.
+
+### T8g WAR_OVERLAY — faction war map proof — DONE (2026-07-07)
+- NEW check `scripts/check-war-overlay.mjs` plus `npm run check:war-overlay`. This is a
+  verification-only row: no shipped gameplay/UI/asset/render source is changed.
+- The check exercises the real `factions` system headless: offscreen tension creates the conflict
+  ledger row, crosses the real war threshold, emits `conflict:warDeclared`, preserves zero
+  `playerLean`, resolves a contested-sector flip through the factions single-writer path, emits
+  `conflict:flip`, and proves `sectorSignalFor` reads the runtime owner after the flip.
+- It also boots `sectorSim` with a real contested field and a fake factions registry boundary,
+  proving sectorSim injects only through `factions.addOffscreenTension(pairKey, delta,
+  'sector_field')`, never writes `state.conflicts` directly, and keeps runtime owner separate from
+  modeled dominant influence.
+- The starmap source contract is pinned for the overlay surface: shared `sectorSignalFor` import,
+  driver labels for contested/shift/flip states, low-margin contested ring, dominant-influence node
+  coloring/tooltip, sorted influence bars, runtime-owner strip, and the single-writer explanation.
+- Red: package script failed before `scripts/check-war-overlay.mjs` existed. Non-vacuous control:
+  raising the shipped `WAR_THRESHOLD` from `75` to `95` made the check fail at the war-state guard,
+  then restore GREEN.
+- Related gates: `check:war-overlay` PASS, `check-sectorSim.mjs` PASS, `check:balance` 0 FAIL.
+  `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition.
+  Next backend row: **T8b FACT_LEDGER**.
