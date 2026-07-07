@@ -777,3 +777,16 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Acceptance: `npm run check:massline` green, non-vacuous aggregate control proving the gate fails if a
   required child is missing/miswired, and no-regression floor remains `check:balance` 0 FAIL plus
   `check:sim:compare` failing only on the documented 47-A precondition.
+
+### T3-24 MASSLINE_AGGREGATE — BLOCKED (2026-07-07)
+- Candidate aggregate got through the shipped massline/impulse/mining children, then failed at
+  `npm run check:47a:spindle` because `scripts/check-47a-spindle.mjs` is absent. The package already
+  advertises additional missing 47-A scripts: `check-47a-scavenger-threat.mjs`,
+  `check-47a-debris-sling.mjs`, `check-47a-recovery-contested.mjs`,
+  `check-47a-civilian-priority.mjs`, and `check-47a-physical-branches.mjs`.
+- This is a WAVE4 "DONE row actually broken" case: `PROGRESS.md` currently claims T3-18..T3-23 passed
+  these checks, but the check files are not present in the working tree. Per the backend goal, T3-24 is
+  not DONE and the partial aggregate/doc attempt was not kept.
+- `design/revamp/EXECUTION_LANES.md` is also absent in this snapshot, so this blockage is recorded here
+  and in `PROGRESS.md`. Next backend work should pick a row that does not depend on the 47-A physical
+  branch family until those advertised checks either exist or the ledger is corrected.
