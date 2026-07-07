@@ -450,3 +450,28 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition.
   Next backend row: **T4d-8 B13 ROUTE_DANGER_FEEDBACK**.
+
+### T4d-8 B13 ROUTE_DANGER_FEEDBACK — causal route danger shifts — DONE (2026-07-07)
+- ADDENDUM in `src/systems/pirateRumor.js`: sustained ignored pirate heat now creates bounded
+  route danger feedback, while a `named_hunter` leader clear creates an opposite suppression/convoy
+  boost. The runtime hook applies the modifier to existing pending encounter plans when present;
+  exported pure helpers expose the same route-adjusted plan and traffic role-mix for checks/future
+  consumers.
+- The feedback is causal only: ignored danger comes from real `encounter:spawned` pirate events after
+  the sustained threshold; leader relief comes from real `encounter:resolved {shape:'named_hunter',
+  outcome:'killed'}` for a named zone. No random/prospective route shift exists.
+- Bounded clamps prevent runaway escalation (`ROUTE_DANGER_MAX` <= 0.75). Leader clear suppresses one
+  next-plan pirate item for the affected zone and annotates convoy/traffic weighting; ignored raids
+  add one bounded pressure item instead of bypassing spawnBudget or spawning directly.
+- Every shift emits exactly one `news:headline {kind:'route-feedback'}` cause line inside cooldown, so
+  route changes are not silent. NoTouch honored: `encounterDirector.js`, `traffic.js`, and
+  `marketNews.js` were not edited.
+- `check:route-danger-feedback` was added and `check:pirate-ecology` now aggregates B13. Red: the
+  check failed before the route-feedback exports existed. Non-vacuous control: changing the
+  leader-clear delta from negative to positive failed the "leader clears lower route danger" guard,
+  then restore GREEN.
+- No-regression: `check:route-danger-feedback` PASS, `check:pirate-ecology` PASS,
+  `check:save-schema` PASS, `check:save-resume-confidence` PASS, `check-tether-gameplay.mjs`
+  PASS, `check:balance` 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition.
+  Next backend row: **T4d-9 B14 AMBUSH_SIGNATURES**.

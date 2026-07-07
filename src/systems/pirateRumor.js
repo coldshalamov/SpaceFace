@@ -1,13 +1,21 @@
 // BP-13/B12 Station Pirate-Rumor Heat.
 //
 // Reader/aggregator only: derives lane rumors from real spawned pirate encounters and civilian
-// traffic deaths. It never spawns, never edits encounter weights, and never writes economy state.
+// traffic deaths. It never spawns and never writes economy state.
 import { pickVariant } from '../ui/marketNews.js';
 import { zoneAt, zonesForSector } from '../data/sectorZones.js';
 
 export const PIRATE_RUMOR_THRESHOLD = 3;
 export const PIRATE_RUMOR_DECAY_PER_S = 0.003;
+export const ROUTE_DANGER_IGNORED_EVENTS = 5;
+export const ROUTE_DANGER_MAX = 0.6;
+export const ROUTE_DANGER_MIN = -0.6;
+export const ROUTE_DANGER_CLEAR_DELTA = -0.35;
+export const ROUTE_DANGER_IGNORED_DELTA = 0.2;
+export const ROUTE_CONVOY_CLEAR_DELTA = 0.35;
 const PIRATE_RUMOR_COOLDOWN_S = 300;
+const ROUTE_FEEDBACK_DURATION_S = 900;
+const ROUTE_FEEDBACK_NEWS_COOLDOWN_S = 300;
 const SCHEMA_VERSION = 1;
 
 const PIRATE_ENCOUNTER_KINDS = new Set([
@@ -25,6 +33,17 @@ const HEADLINES = Object.freeze([
   'Route notice: avoid {zone}; raider reports are piling up.',
 ]);
 
+const ROUTE_FEEDBACK_HEADLINES = Object.freeze({
+  ignored: [
+    'Route warning: {zone} is getting deadlier after ignored raids.',
+    'Station boards flag {zone}: raider confidence is rising.',
+  ],
+  leaderCleared: [
+    'Route update: {zone} convoys are moving again after a raider leader fell.',
+    'Station boards mark {zone} safer; convoy captains are testing the lane.',
+  ],
+});
+
 export const pirateRumor = {
   name: 'pirateRumor',
 
@@ -34,6 +53,7 @@ export const pirateRumor = {
     this._subs = [];
     ensureRumorState(this.state);
     this._listen('encounter:spawned', (p) => this._onEncounterSpawned(p));
+    this._listen('encounter:resolved', (p) => this._onEncounterResolved(p));
     this._listen('entity:killed', (p) => this._onEntityKilled(p));
   },
 
@@ -46,9 +66,13 @@ export const pirateRumor = {
     this.state = state;
     const own = ensureRumorState(state);
     for (const rec of Object.values(own.zones)) {
-      if (!rec || !Number.isFinite(rec.heat) || rec.heat <= 0) continue;
-      rec.heat = Math.max(0, rec.heat - PIRATE_RUMOR_DECAY_PER_S * Math.max(0, dt || 0));
+      if (!rec) continue;
+      if (Number.isFinite(rec.heat) && rec.heat > 0) {
+        rec.heat = Math.max(0, rec.heat - PIRATE_RUMOR_DECAY_PER_S * Math.max(0, dt || 0));
+      }
+      decayRouteFeedback(rec, state.simTime || 0);
     }
+    this._applyPendingFeedback(state);
   },
 
   destroy() {
@@ -98,6 +122,22 @@ export const pirateRumor = {
     });
   },
 
+  _onEncounterResolved(payload) {
+    if (!payload) return;
+    const shape = payload.shape || payload.kind || payload.shapeId;
+    const outcome = String(payload.outcome || '').toLowerCase();
+    if (shape !== 'named_hunter' || !['killed', 'defeated', 'cleared'].includes(outcome)) return;
+    const sectorId = payload.sectorId || currentSectorId(this.state);
+    const zone = zoneById(sectorId, payload.zoneId);
+    if (!sectorId || !zone) return;
+    const rec = zoneRecordFor(this.state, sectorId, zone);
+    this._shiftRouteFeedback(rec, {
+      dangerDelta: ROUTE_DANGER_CLEAR_DELTA,
+      convoyDelta: ROUTE_CONVOY_CLEAR_DELTA,
+      reason: 'leaderCleared',
+    });
+  },
+
   _addHeat({ sectorId, zone, amount, source, detail, count }) {
     const own = ensureRumorState(this.state);
     const key = rumorKey(sectorId, zone.id);
@@ -114,6 +154,7 @@ export const pirateRumor = {
     rec.sectorId = sectorId;
     rec.zoneId = zone.id;
     this._maybeSurface(key, rec, now);
+    if (source === 'encounter') this._maybeRaiseRouteDanger(rec);
   },
 
   _maybeSurface(key, rec, now) {
@@ -146,6 +187,60 @@ export const pirateRumor = {
     emit(this.bus, 'pirateRumor:headline', payload);
     emit(this.bus, 'pirateRumor:card', card);
   },
+
+  _maybeRaiseRouteDanger(rec) {
+    if (!rec || (rec.eventCount | 0) < ROUTE_DANGER_IGNORED_EVENTS) return;
+    const last = rec.lastIgnoredFeedbackEventCount | 0;
+    if ((rec.eventCount | 0) - last < ROUTE_DANGER_IGNORED_EVENTS) return;
+    rec.lastIgnoredFeedbackEventCount = rec.eventCount | 0;
+    this._shiftRouteFeedback(rec, {
+      dangerDelta: ROUTE_DANGER_IGNORED_DELTA,
+      convoyDelta: 0,
+      reason: 'ignored',
+    });
+  },
+
+  _shiftRouteFeedback(rec, { dangerDelta, convoyDelta, reason }) {
+    if (!rec || !this.state) return;
+    const now = this.state.simTime || 0;
+    rec.routeDanger = clamp((rec.routeDanger || 0) + (dangerDelta || 0), ROUTE_DANGER_MIN, ROUTE_DANGER_MAX);
+    rec.routeConvoy = clamp((rec.routeConvoy || 0) + (convoyDelta || 0), -ROUTE_DANGER_MAX, ROUTE_DANGER_MAX);
+    rec.routeFeedbackUntil = now + ROUTE_FEEDBACK_DURATION_S;
+    rec.lastRouteFeedbackReason = reason || null;
+    this._emitRouteFeedbackNews(rec, reason, now);
+  },
+
+  _emitRouteFeedbackNews(rec, reason, now) {
+    if (Number.isFinite(rec.lastRouteFeedbackNewsAt) &&
+        (now - rec.lastRouteFeedbackNewsAt) < ROUTE_FEEDBACK_NEWS_COOLDOWN_S) return;
+    const variants = ROUTE_FEEDBACK_HEADLINES[reason] || ROUTE_FEEDBACK_HEADLINES.ignored;
+    const seed = this.state && this.state.meta && this.state.meta.seed || 0;
+    const template = pickVariant(variants, seed, `${rec.sectorId}:${rec.zoneId}:${reason}:${rec.routeShiftCount | 0}`) || variants[0];
+    const headline = template.replace('{zone}', rec.zoneName || rec.zoneId || 'the lane');
+    rec.lastRouteFeedbackNewsAt = now;
+    rec.routeShiftCount = (rec.routeShiftCount | 0) + 1;
+    emit(this.bus, 'news:headline', {
+      headline,
+      text: headline,
+      kind: 'route-feedback',
+      sectorId: rec.sectorId,
+      zoneId: rec.zoneId,
+      zoneName: rec.zoneName,
+      reason,
+      feedback: routeDangerFeedbackFromRecord(rec, now),
+    });
+  },
+
+  _applyPendingFeedback(state) {
+    const dir = state && state.encounterDirector;
+    if (!dir || !Array.isArray(dir.pending) || !dir.pending.length) return;
+    const own = ensureRumorState(state);
+    const signature = `${dir.plannedKey || 'unkeyed'}:${routeFeedbackSignature(state)}`;
+    if (!signature || own.lastRouteFeedbackPlanKey === signature) return;
+    const adjusted = routeAdjustedEncounterPlan(state, dir.pending);
+    if (!samePlanShape(dir.pending, adjusted)) dir.pending = adjusted;
+    own.lastRouteFeedbackPlanKey = signature;
+  },
 };
 
 export function rumorKey(sectorId, zoneId) {
@@ -167,8 +262,52 @@ export function rumorReadoutForZone(state, sectorId, zoneId) {
   };
 }
 
+export function routeDangerFeedbackForZone(state, sectorId, zoneId) {
+  const own = state && state.pirateRumor;
+  const rec = own && own.zones && own.zones[rumorKey(sectorId, zoneId)];
+  return routeDangerFeedbackFromRecord(rec, state && state.simTime || 0);
+}
+
+export function routeAdjustedEncounterPlan(state, plan) {
+  if (!Array.isArray(plan) || !plan.length) return Array.isArray(plan) ? plan.slice() : [];
+  let out = plan.map(clonePlain);
+  for (const rec of activeRouteRecords(state)) {
+    const feedback = routeDangerFeedbackFromRecord(rec, state && state.simTime || 0);
+    if (!feedback.active) continue;
+    out = out.map((item) => item && item.zoneId === rec.zoneId
+      ? { ...item, routeDangerFeedback: feedback }
+      : item);
+    if (feedback.danger < 0) {
+      const idx = out.findIndex((item) => item && item.zoneId === rec.zoneId && isPiratePlanItem(item));
+      if (idx >= 0) out.splice(idx, 1);
+    } else if (feedback.danger > 0 && !out.some((item) => item && item.zoneId === rec.zoneId && item.routeDangerAdded)) {
+      const src = out.find((item) => item && item.zoneId === rec.zoneId && isPiratePlanItem(item));
+      if (src) {
+        out.push({
+          ...clonePlain(src),
+          encounterId: `${src.encounterId || src.shapeId || src.kind || 'pirate'}:route-danger`,
+          dueAt: Number.isFinite(src.dueAt) ? src.dueAt + 45 : src.dueAt,
+          routeDangerAdded: true,
+          routeDangerFeedback: feedback,
+        });
+      }
+    }
+  }
+  return out.sort((a, b) => (a.dueAt || 0) - (b.dueAt || 0));
+}
+
+export function routeAdjustedTrafficMix(state, sectorId, zoneId, roleWeights) {
+  const out = { ...(roleWeights || {}) };
+  const feedback = routeDangerFeedbackForZone(state, sectorId, zoneId);
+  if (!feedback.active) return out;
+  if (Number.isFinite(out.hauler)) out.hauler = roundWeight(out.hauler * feedback.convoyWeightMult);
+  if (Number.isFinite(out.escort)) out.escort = roundWeight(out.escort * feedback.convoyWeightMult);
+  if (Number.isFinite(out.pirate)) out.pirate = roundWeight(out.pirate * feedback.ambushWeightMult);
+  return out;
+}
+
 function freshState() {
-  return { schemaVersion: SCHEMA_VERSION, zones: {} };
+  return { schemaVersion: SCHEMA_VERSION, zones: {}, lastRouteFeedbackPlanKey: null };
 }
 
 function ensureRumorState(state) {
@@ -176,6 +315,12 @@ function ensureRumorState(state) {
   if (!state.pirateRumor.zones || typeof state.pirateRumor.zones !== 'object') state.pirateRumor.zones = {};
   state.pirateRumor.schemaVersion = SCHEMA_VERSION;
   return state.pirateRumor;
+}
+
+function zoneRecordFor(state, sectorId, zone) {
+  const own = ensureRumorState(state);
+  const key = rumorKey(sectorId, zone.id);
+  return own.zones[key] || (own.zones[key] = freshZoneRecord(sectorId, zone));
 }
 
 function freshZoneRecord(sectorId, zone) {
@@ -190,7 +335,73 @@ function freshZoneRecord(sectorId, zone) {
     lastEventAt: 0,
     lastHeadlineAt: null,
     lastHeadline: null,
+    routeDanger: 0,
+    routeConvoy: 0,
+    routeFeedbackUntil: 0,
+    lastRouteFeedbackNewsAt: null,
   };
+}
+
+function routeDangerFeedbackFromRecord(rec, now) {
+  if (!rec || !Number.isFinite(rec.routeFeedbackUntil) || rec.routeFeedbackUntil <= now) {
+    return {
+      active: false,
+      danger: 0,
+      ambushWeightMult: 1,
+      convoyWeightMult: 1,
+      until: 0,
+    };
+  }
+  const danger = clamp(rec.routeDanger || 0, ROUTE_DANGER_MIN, ROUTE_DANGER_MAX);
+  const convoy = clamp(rec.routeConvoy || 0, -ROUTE_DANGER_MAX, ROUTE_DANGER_MAX);
+  return {
+    active: Math.abs(danger) > 0.001 || Math.abs(convoy) > 0.001,
+    sectorId: rec.sectorId,
+    zoneId: rec.zoneId,
+    zoneName: rec.zoneName,
+    danger: round(danger),
+    ambushWeightMult: round(clamp(1 + danger, 0.4, 1.8)),
+    convoyWeightMult: round(clamp(1 + convoy, 0.5, 1.8)),
+    until: rec.routeFeedbackUntil,
+    reason: rec.lastRouteFeedbackReason || null,
+  };
+}
+
+function activeRouteRecords(state) {
+  const own = state && state.pirateRumor;
+  if (!own || !own.zones) return [];
+  const now = state && state.simTime || 0;
+  return Object.values(own.zones).filter((rec) => routeDangerFeedbackFromRecord(rec, now).active);
+}
+
+function decayRouteFeedback(rec, now) {
+  if (!rec || !Number.isFinite(rec.routeFeedbackUntil) || rec.routeFeedbackUntil > now) return;
+  rec.routeDanger = 0;
+  rec.routeConvoy = 0;
+}
+
+function routeFeedbackSignature(state) {
+  return activeRouteRecords(state)
+    .map((rec) => {
+      const fb = routeDangerFeedbackFromRecord(rec, state && state.simTime || 0);
+      return `${rec.sectorId}:${rec.zoneId}:${fb.danger}:${fb.convoyWeightMult}:${fb.until}`;
+    })
+    .sort()
+    .join('|');
+}
+
+function isPiratePlanItem(item) {
+  const kind = item && (item.shapeId || item.kind || item.shape);
+  return PIRATE_ENCOUNTER_KINDS.has(kind);
+}
+
+function samePlanShape(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if ((a[i] && a[i].encounterId) !== (b[i] && b[i].encounterId)) return false;
+    if ((a[i] && a[i].routeDangerAdded) !== (b[i] && b[i].routeDangerAdded)) return false;
+  }
+  return true;
 }
 
 function zoneById(sectorId, zoneId) {
@@ -252,6 +463,18 @@ function emit(bus, evt, payload) {
 
 function round(n) {
   return Number((Number(n) || 0).toFixed(3));
+}
+
+function roundWeight(n) {
+  return Number((Number(n) || 0).toFixed(2));
+}
+
+function clamp(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, Number(n) || 0));
+}
+
+function clonePlain(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
 export default pirateRumor;
