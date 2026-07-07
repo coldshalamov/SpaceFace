@@ -190,6 +190,7 @@
     "check:ui:perf": "npm run check:perf-budget && npm run check:spatial-hash && npm run check:perf-summary && npm run check:vfx-sleep && node scripts/check-ui-frame-sleep.mjs && npm run check:radar:perf && npm run check:ui-identity",
     "check:bar:narrative": "node scripts/check-bar-canonical-contacts.mjs",
     "check:smuggling-card": "node scripts/check-smuggling-card.mjs",
+    "check:fact-ledger": "node scripts/check-fact-ledger.mjs",
     "check:market-chart": "node scripts/check-market-chart.mjs",
     "check:bar:mission-readiness": "node scripts/check-bar-mission-readiness-live.mjs",
     "check:station-departure": "node scripts/check-station-departure-readiness.mjs",

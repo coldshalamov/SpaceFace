@@ -660,3 +660,29 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Related gates: `check:war-overlay` PASS, `check-sectorSim.mjs` PASS, `check:balance` 0 FAIL.
   `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition.
   Next backend row: **T8b FACT_LEDGER**.
+
+### T8b FACT_LEDGER — scenario fact ledger proof — DONE (2026-07-07)
+- NEW check `scripts/check-fact-ledger.mjs` plus `npm run check:fact-ledger`. This is a
+  verification-only row: no shipped gameplay/UI/asset/render source is changed.
+- The row uncovered stale wording in the revamp docs: the shipped fact ledger is
+  `state.scenario.facts`, not `state.world.facts`. The check pins that live contract without
+  rebuilding it: `gameState` initializes `scenario.facts`, `scenarioRuntime` owns it, and
+  branch effects mutate it.
+- The check validates the 47-A scenario contract, pins the five initial fact values, proves every
+  beat references declared facts, proves branch `worldFactEffects` reference declared facts, and
+  pins the escape branch's immediate fact outcomes.
+- Runtime coverage boots the real `scenarioRuntime`, verifies `scenario:factsInitialized`, applies
+  `escape_with_evidence` through the shipped `applyScenarioBranch` helper, verifies one
+  `scenario:factChanged` receipt per effect, verifies the `scenario:branchResolved` payload carries
+  the same fact deltas and authored aftermath, and checks serialize/deserialize preserves the fact
+  ledger plus resolution.
+- Surface coverage pins `sf-sim` factValues extraction, `eventTrace` inclusion of initialized /
+  changed / resolved fact events, and `comms` consumption of branch lifecycle text.
+- Red: package script failed before `scripts/check-fact-ledger.mjs` existed. Non-vacuous control:
+  renaming the shipped `scenario:factChanged` emission to `scenario:factDelta` made the check fail
+  at the receipt-count guard, then restore GREEN.
+- Related gates: `check:fact-ledger` PASS, `check:encounter-director` PASS, `check:balance` 0 FAIL.
+  `check:sg05` gets through `check-sg05-scenario` and then hits the same documented 47-A
+  projectile-collision precondition via `sf-sim`; `check:sim:compare` fails on that same
+  documented precondition.
+  Next backend row: **T1a ENCOUNTER_DIRECTOR verify/augment**.
