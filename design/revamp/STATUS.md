@@ -353,3 +353,20 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   projectile-collision precondition. Wider `check:sg06:live-registry` is blocked by pre-existing
   `src/render/bloom.js` syntax (`rtScene.dispose()` inside the composite uniforms object), outside
   this backend lane. Next backend row: **T4d-3 B7 FAKE_CIVILIAN_UNTIL_SCAN**.
+
+### T4d-3 B7 FAKE_CIVILIAN_UNTIL_SCAN — scannable pirate disguise — DONE (2026-07-07)
+- NEW `src/data/pirateDisguise.js` defines deterministic disguise skins and reveal helpers. The
+  `thief` doctrine now carries `disguised:true`, so a disguised thief can present as neutral
+  traffic (`trafficRole:'hauler'`, `team:2`, passive trader AI) until scanned.
+- NEW `src/systems/pirateDisguise.js` listens to the existing `scan:pulse` event. In-range disguised
+  pirates are revealed once, get `data.disguiseBlown=true`, swap to their true hostile team/archetype,
+  and use ordinary scanner-readable AI fields (`forcePlayerTarget`, `hostileTeams`, attack fsm).
+  Scanner, traffic, HUD, and combat were not edited.
+- `check:pirate-disguise` was added and `check:pirate-ecology` now aggregates B9+B6+B7. Red: the
+  check failed before `src/data/pirateDisguise.js` existed. Non-vacuous control: changing
+  `disguiseBlown` to false made the scanner flip assertion fail, then restore GREEN.
+- No-regression: `check:pirate-ecology` PASS, `check-tether-gameplay.mjs` PASS, `check:balance`
+  0 FAIL. `check:sim:compare` still fails only on the documented 47-A projectile-collision
+  precondition. Wider `check:sg06:live-registry` remains blocked by the pre-existing
+  `src/render/bloom.js` syntax issue outside this backend lane. Next backend row:
+  **T4d-4 B8 BREAK_OFF_WHEN_PATROL_ARRIVES**.

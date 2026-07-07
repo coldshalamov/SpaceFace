@@ -30,6 +30,7 @@ const DEFINITIONS = Object.freeze([
     cargoStrategy: 'grab-cargo',
     complianceOutcome: 'none',
     parleyMode: 'raid',
+    disguised: true,
   }),
   Object.freeze({
     id: 'salvage-jackal',
