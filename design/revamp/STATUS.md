@@ -387,3 +387,24 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   precondition. Wider `check:sg06:live-registry` remains blocked by the pre-existing
   `src/render/bloom.js` syntax issue outside this backend lane. Next backend row:
   **T4d-5 B10 NAMED_CREWS_AND_ACES**.
+
+### T4d-5 B10 NAMED_CREWS_AND_ACES — durable pirate ace memory — DONE (2026-07-07)
+- NEW pure roster `src/data/namedAces.js` defines the three B10 crews and leaders: Yara No-Cut
+  (Red Latch Crew), Toll Saint Venn (Sker Hooks), and Mako of the Broken Ring (The Empty Ledger),
+  each with a loadout gimmick tag and signature bark. The reader also aliases shipped
+  `NAMED_CAPTAINS` (Sable Iask / Redcut Sorrel / Vane the Ash) so existing named-hunter receipts
+  feed the new memory layer without an encounterDirector edit.
+- NEW event-driven `src/systems/aceMemory.js` registered SYSTEMS-only. It writes only
+  `state.aceMemory`, records `encountered` / `fled` / `defeated` at `state.aceMemory[id]`, emits
+  exactly one `news:headline` per flee/defeat transition, and schedules bigger returns
+  deterministically from `state.meta.seed + aceId`. It listens to direct `namedAce:*` seams and
+  shipped `encounter:receipt {shape:'named_hunter'}`; it does not spawn ships or alter hostility.
+- Save persistence is wired through `saveSystem.js` and regenerated `SAVE_SCHEMA.md`. `check:save-schema`
+  is green after generation; old saves without `aceMemory` normalize to an empty versioned record.
+- `check:ace-memory` was added and `check:pirate-ecology` now aggregates B9+B6+B7+B8+B10. Red: the
+  check failed before `src/data/namedAces.js` existed. Non-vacuous control: changing `rec.fled=true`
+  to `false` made the fled-state assertion fail, then restore GREEN.
+- No-regression: `check:pirate-ecology` PASS, `check:save-resume-confidence` PASS,
+  `check:save-schema` PASS, `check-tether-gameplay.mjs` PASS, `check:balance` 0 FAIL.
+  `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition.
+  Next backend row: **T4d-6 B11 SPARED_PIRATE_RETURNS_BIGGER**.

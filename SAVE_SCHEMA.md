@@ -20,6 +20,8 @@ Current save version: `6`
 - `crafting`
 - `sectorSim`
 - `claims`
+- `aceMemory`
+- `encounterDirector`
 - `flight`
 - `nav`
 - `settings`
@@ -45,6 +47,7 @@ Current save version: `6`
 | Path | Type | Sample |
 |---|---|---|
 | `$` | object | {} |
+| `$.aceMemory` | object | {} |
 | `$.automation` | object | {} |
 | `$.automation.accumulators` | object | {} |
 | `$.automation.accumulators.creditBuffer` | number | 0 |
@@ -90,6 +93,7 @@ Current save version: `6`
 | `$.crafting` | object | {} |
 | `$.crafting.queues` | object | {} |
 | `$.economy` | object | {} |
+| `$.encounterDirector` | object | {} |
 | `$.entities` | object | {} |
 | `$.entities.persistent` | array | length 0 |
 | `$.entities.player` | object | {} |
@@ -264,10 +268,11 @@ Current save version: `6`
 | `$.settings.uiScale` | number | 1 |
 | `$.settings.video` | object | {} |
 | `$.settings.video.bloom` | boolean | true |
-| `$.settings.video.bloomStrength` | number | 0.9 |
-| `$.settings.video.bloomThreshold` | number | 0.65 |
+| `$.settings.video.bloomStrength` | number | 0.35 |
+| `$.settings.video.bloomThreshold` | number | 0.72 |
 | `$.settings.video.dynamicResolution` | boolean | false |
 | `$.settings.video.energyMaterials` | boolean | true |
+| `$.settings.video.engineTrails` | boolean | true |
 | `$.settings.video.fov` | number | 50 |
 | `$.settings.video.motionReduce` | boolean | false |
 | `$.settings.video.particleQuality` | string | medium |

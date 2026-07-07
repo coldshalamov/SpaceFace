@@ -8,6 +8,7 @@ import { scanner } from '../systems/scanner.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
 import { pirateParley } from '../systems/pirateParley.js';
 import { pirateDisengage } from '../systems/pirateDisengage.js';
+import { aceMemory } from '../systems/aceMemory.js';
 import { aiPorts } from '../systems/aiPorts.js';
 import { ai } from '../systems/ai.js';
 import { createTacticalAISystem } from '../systems/tacticalAI.js';
@@ -90,7 +91,7 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, scanner, pirateDisguise, pirateParley, pirateDisengage, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, economy,
+    core, voiceArbiter, input, autoTargetAssist, scanner, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, economy,
     automation, wingmen, intervention, lossLedger, spawnBudget, world, encounterDirector, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -100,6 +101,8 @@ export function createRegistry(ctx) {
   // tactical AI/weapons observe them; it never spawns and only uses cargo's jettison seam.
   // pirateDisengage also runs before AI; lawful patrol pressure converts pirate squads to flee
   // intent before tactical AI/weapons keep pursuing the player.
+  // aceMemory is SYSTEMS-only: it listens for named-ace/encounter receipts and persists durable
+  // captain memory, but never participates in per-frame combat/spawn decisions.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
   // heat runs late so piracy events from combat/factions this tick have landed before decay.
   // traffic runs after world (sector:enter has spawned stations) and after heat (so piracy on a

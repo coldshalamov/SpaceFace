@@ -118,6 +118,7 @@ export const save = {
     data.crafting = this._callSerialize('crafting') || this._serializeCrafting();
     data.sectorSim = this._callSerialize('sectorSim') || {};   // ADR-0002 / V2 §33 — offscreen sim state
     data.claims = this._callSerialize('claims') || clonePlain(state.claims || { bodies: [] });
+    data.aceMemory = this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {});
     // Campaign-director DURABLE subset only (named captains / receipts / cooldowns / stats).
     // Live encounters, squads, and pressure are transient by contract — never persisted.
     data.encounterDirector = this._serializeEncounterDirector();
@@ -576,6 +577,7 @@ export const save = {
       this._callDeserialize('sectorSim', data.sectorSim);
       // Claimed bases (after world so sectorId/poiId resolve to real sectors/POIs).
       this._callDeserialize('claims', data.claims);
+      this._callDeserialize('aceMemory', data.aceMemory);
       // Campaign-director durable state. Staged here so the director's save:loaded handler can
       // durable-merge it (named captains persist; transients rebuild). Absent in old saves → null
       // → the director starts fresh (migration-safe absence handling).
