@@ -362,7 +362,7 @@ const distress = {
         if (d.aliveCount(live, 'threat') === 0) {
           d.grant(live.shape.rescuePay || 120, 'rescue:distress');
           d.emit('distress:rescued', { factionId: 'faction_free', encounterId: live.id });
-          d.emit('comms:log', { from: 'STRICKEN HAULER', text: barkText('distress_rescued_ack'), kind: 'encounter' });
+          d.emit('comms:log', { from: 'STRICKEN HAULER', text: barkText('distress_rescued_ack', null, live.id), kind: 'encounter' });
           d.despawnAll(live, 30, 'victim');             // she limps off to a dock, alive
           live.vars.faction = 'Frontier';
           live.vars.pay = live.shape.rescuePay || 120;
