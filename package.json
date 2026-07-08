@@ -170,6 +170,7 @@
     "check:first-dock-handoff": "node scripts/check-first-dock-handoff.mjs",
     "probe:experience": "node scripts/probe-game-experience.mjs",
     "check:experience": "node scripts/probe-game-experience.mjs",
+    "check:experience:strict": "node scripts/probe-game-experience.mjs --strict-experience",
     "check:first-15-runtime": "node scripts/check-first-15-runtime.mjs",
     "check:combat": "node scripts/check-combat-grammar.mjs && npm run check:sg03:save-reload",
     "check:combat-ceiling": "node scripts/check-combat-ceiling.mjs",

@@ -19,6 +19,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WIDTH = readPositiveIntArg('--width', 1440);
 const HEIGHT = readPositiveIntArg('--height', 900);
 const HEADLESS = !hasArg('--headed');
+const STRICT_EXPERIENCE = hasArg('--strict-experience') || hasArg('--strict');
 const START_TIMEOUT_MS = readPositiveIntArg('--start-timeout', 90000);
 const OUT_DIR = join(ROOT, '.devshots', 'game-experience');
 const REPORT_PATH = join(OUT_DIR, 'experience-report.json');
@@ -97,6 +98,7 @@ try {
 
   const finalIssues = issues.errorIssues();
   const warningIssues = issues.warningIssues();
+  const summary = buildSummary(timeline, finalIssues, warningIssues);
   const report = {
     schema: 'spaceface.gameExperienceProbe.v1',
     generatedAt: new Date().toISOString(),
@@ -104,19 +106,28 @@ try {
     headless: HEADLESS,
     viewport: { width: WIDTH, height: HEIGHT },
     pass: finalIssues.length === 0,
-    summary: buildSummary(timeline, finalIssues, warningIssues),
+    summary,
     timeline,
     pageIssues: summarizeIssues(finalIssues),
     warningIssues: summarizeIssues(warningIssues),
     ignoredPageIssues: summarizeIssues(issues.ignoredIssues),
   };
+  report.strictExperience = gradeExperience(report);
+  if (STRICT_EXPERIENCE) report.pass = report.pass && report.strictExperience.failures.length === 0;
 
   writeJson(REPORT_PATH, report);
   assert.deepEqual(finalIssues, [], 'experience probe should not record runtime page errors');
+  if (STRICT_EXPERIENCE) {
+    assert.deepEqual(report.strictExperience.failures, [], 'strict experience grader should pass');
+  }
 
   console.log('Game experience probe OK');
   console.log(`Report: ${toRepoPath(REPORT_PATH)}`);
   console.log(`Screenshots: ${toRepoPath(OUT_DIR)}`);
+  if (report.strictExperience.failures.length || report.strictExperience.warnings.length) {
+    console.log('Strict experience findings:');
+    console.log(JSON.stringify(report.strictExperience, null, 2));
+  }
   console.log(JSON.stringify(report.summary, null, 2));
 } finally {
   if (browser) await browser.close();
@@ -250,13 +261,13 @@ async function sample(page, label, note) {
         shieldMax: round2(entity.shieldMax),
         heat: round3(s.player && s.player.heat),
         credits: s.player && s.player.credits,
-        cargoUsed: s.player && s.player.cargoUsed,
-        cargoCap: s.player && s.player.cargoCap,
+        cargoUsed: s.player && s.player.cargo ? round2(s.player.cargo.usedVolume) : null,
+        cargoCap: s.player && s.player.cargo ? round2(s.player.cargo.capVolume) : null,
         pos: vec(entity.pos),
         vel: vec(entity.vel),
         speed: speed(entity),
         rot: round3(entity.rot),
-        targetId: entity.data && entity.data.combat ? entity.data.combat.targetId ?? null : null,
+        targetId: s.player && s.player.targetId != null ? s.player.targetId : null,
         activeShipIndex: s.player && s.player.activeShipIndex,
         activeShip: s.player && Array.isArray(s.player.ownedShips)
           ? scrub(s.player.ownedShips[s.player.activeShipIndex || 0])
@@ -357,7 +368,7 @@ async function sample(page, label, note) {
           })),
         missionTrackerText: shortText(document.querySelector('.sf-mission-tracker')?.textContent, 400),
         navReadoutText: shortText(document.querySelector('.sf-nav-readout')?.textContent, 300),
-        targetPanelText: shortText(document.querySelector('.sf-target-panel')?.textContent, 400),
+        targetPanelText: shortText((document.querySelector('.sf-target') || document.querySelector('.sf-target-panel'))?.textContent, 400),
         alertText: shortText(visibleText('.sf-alerts, .sf-alert, [role="alert"], [role="status"], .sf-toast, .toast'), 700),
         commsText: shortText(visibleText('.sf-comms, .sf-comms-log, .sf-caption, .sf-graffiti'), 900),
         bodyClasses: document.body ? document.body.className : '',
@@ -528,11 +539,116 @@ function buildSummary(samples, errorIssues, warningIssues) {
     observedTraceTypes: Object.keys(allTraceCounts).sort(),
     combatFireEvents: allTraceCounts['combat:fire'] || 0,
     damageEvents: allTraceCounts['combat:damage'] || 0,
-    tetherEvents: allTraceCounts['tether:attached'] || 0,
+    tetherEvents: (allTraceCounts['tether:attached'] || 0) +
+      (allTraceCounts['tether:latched'] || 0) +
+      (allTraceCounts['tether:released'] || 0) +
+      (allTraceCounts['tether:broken'] || 0),
     enemyVariety: latestVariety.enemyVariety || null,
     finalPlayer: lastFlight && lastFlight.player || null,
     pageErrorCount: errorIssues.length,
     warningCount: warningIssues.length,
+  };
+}
+
+function gradeExperience(report) {
+  const failures = [];
+  const warnings = [];
+  const notes = [];
+  const samples = Array.isArray(report.timeline) ? report.timeline : [];
+  const summary = report.summary || {};
+  const byLabel = new Map(samples.map((entry) => [entry.label, entry]));
+  const required = [
+    'main-menu',
+    'new-game-setup',
+    'flight-start',
+    'flight-after-inputs',
+    'station-hub',
+    'station-market',
+    'station-missions',
+    'station-services',
+    'flight-after-undock',
+  ];
+
+  for (const label of required) {
+    if (!byLabel.has(label)) failures.push(`missing-sample:${label}`);
+  }
+
+  const visibleText = samples
+    .flatMap((entry) => {
+      const ui = entry && entry.ui || {};
+      const screens = Array.isArray(ui.visibleScreens) ? ui.visibleScreens.map((s) => s.text || '') : [];
+      const buttons = Array.isArray(ui.visibleButtons) ? ui.visibleButtons.map((b) => b.text || '') : [];
+      return [
+        entry && entry.label || '',
+        ui.missionTrackerText || '',
+        ui.navReadoutText || '',
+        ui.targetPanelText || '',
+        ui.alertText || '',
+        ui.commsText || '',
+        ...(entry && entry.station ? [entry.station.panelText || ''] : []),
+        ...screens,
+        ...buttons,
+      ];
+    })
+    .join(' ')
+    .replace(/\s+/g, ' ');
+
+  const bannedCopy = [
+    /shared browser\/desktop route/i,
+    /trade\s*&\s*combat sandbox/i,
+    /baseline SpaceFace experience/i,
+  ];
+  for (const pattern of bannedCopy) {
+    if (pattern.test(visibleText)) failures.push(`out-of-fiction-copy:${pattern.source}`);
+  }
+
+  const finalPlayer = summary.finalPlayer || null;
+  const targetPanelSamples = samples.filter((entry) => entry && entry.ui && entry.ui.targetPanelText);
+  if (finalPlayer && finalPlayer.targetId != null && targetPanelSamples.length === 0) {
+    failures.push('target-selected-but-target-panel-empty');
+  }
+
+  const hostileCount = summary.enemyVariety && summary.enemyVariety.hostileShipCount || 0;
+  if (hostileCount > 0 && targetPanelSamples.length === 0) {
+    failures.push('hostiles-present-but-no-target-panel-text');
+  }
+  if ((summary.combatFireEvents || 0) > 0 && (summary.damageEvents || 0) === 0) {
+    failures.push('combat-fired-without-observed-damage');
+  }
+  if ((summary.tetherEvents || 0) === 0) {
+    failures.push('no-tether-events-observed');
+  }
+
+  const stationSamples = samples.filter((entry) => entry && entry.label && entry.label.startsWith('station-'));
+  for (const entry of stationSamples) {
+    const cargoUsed = entry.player && entry.player.cargoUsed;
+    const stationText = ((entry.station && entry.station.panelText) || '') + ' ' +
+      ((entry.ui && entry.ui.visibleScreens || []).map((screen) => screen.text || '').join(' '));
+    if (cargoUsed === 0 && /sell (the )?(sample|mined cargo)|sample cleared/i.test(stationText)) {
+      failures.push(`empty-hold-sell-copy:${entry.label}`);
+      break;
+    }
+  }
+
+  const missionText = (byLabel.get('station-missions') && byLabel.get('station-missions').station &&
+    byLabel.get('station-missions').station.panelText) || '';
+  if (/recommended/i.test(missionText) && /risk\s*[234]/i.test(missionText)) {
+    warnings.push('recommended-risk-2-plus-visible-on-first-dock');
+  }
+
+  const coldStartObserved = /KAEL|TESSERA|VHL-4471-T|7741|cold start/i.test(visibleText);
+  if (!coldStartObserved) warnings.push('cold-start-fiction-not-visible-in-sampled-surfaces');
+
+  if (summary.pageErrorCount === 0) notes.push('no-page-errors');
+  if (summary.finalMode) notes.push(`final-mode:${summary.finalMode}`);
+  if (hostileCount > 0) notes.push(`hostiles-observed:${hostileCount}`);
+
+  return {
+    pass: failures.length === 0,
+    mode: STRICT_EXPERIENCE ? 'strict' : 'informational',
+    failures,
+    warnings,
+    notes,
   };
 }
 

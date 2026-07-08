@@ -244,7 +244,7 @@ export const mainMenuScreen = {
     }
 
     rootEl.appendChild(el('h1', 'sf-title-logo', 'SPACEFACE'));
-    rootEl.appendChild(el('div', 'sf-title-tag', 'A trade & combat sandbox'));
+    rootEl.appendChild(el('div', 'sf-title-tag', 'CONTRACT 47-A REMAINS OPEN'));
 
     const saveSummary = el('div', 'sf-menu-save-summary', 'Checking saves...');
     rootEl.appendChild(saveSummary);
@@ -297,7 +297,7 @@ export const mainMenuScreen = {
       refs.saveSummary.textContent = 'Continue: ' + summary;
       refs.bContinue.title = 'Load ' + summary;
     } else {
-      refs.saveSummary.textContent = 'No save found - New Game starts Contract 47-A from the shared browser/desktop route.';
+      refs.saveSummary.textContent = 'No save found - New Game opens Contract 47-A in Helios.';
       refs.bContinue.title = 'No save found yet';
     }
   },

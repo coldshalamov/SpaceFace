@@ -12,7 +12,7 @@ const FITTABLE_BY_ID = new Map();
 for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
 const DIFFICULTIES = [
   ['casual', 'Casual', 'Softer damage. Friendlier prices.'],      // 4 words
-  ['standard', 'Standard', 'The baseline SpaceFace experience.'],   // 4 words
+  ['standard', 'Standard', 'Balanced hazards. Standard payouts.'],   // 4 words
   ['veteran', 'Veteran', 'Harder hits. Steeper prices.'],          // 4 words
   ['ironman', 'Ironman', 'One save. Death ends the run.'],         // 6 words
 ];
