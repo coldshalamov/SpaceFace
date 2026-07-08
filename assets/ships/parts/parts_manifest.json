@@ -3560,6 +3560,174 @@
       "file": "wholeships/wasp.glb",
       "status": "blocked",
       "statusNote": "Accessory-only export missing a Material_Hull body. Do not wire into runtime until re-exported with a real hull body per SPEC3-37."
+    },
+    {
+      "id": "place_dock_interior",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_dock_interior.glb",
+      "tris": 636,
+      "bytes": 105676,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -26,
+          -4.425,
+          -18
+        ],
+        "max": [
+          26,
+          13,
+          18
+        ],
+        "dimensionsM": [
+          52,
+          17.425,
+          36
+        ]
+      },
+      "note": "Default trade/refinery/fab hangar bay for shipyard preview."
+    },
+    {
+      "id": "place_dock_interior_military",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_dock_interior_military.glb",
+      "tris": 636,
+      "bytes": 105624,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -26,
+          -4.425,
+          -18
+        ],
+        "max": [
+          26,
+          13,
+          18
+        ],
+        "dimensionsM": [
+          52,
+          17.425,
+          36
+        ]
+      },
+      "note": "Armored military dock — amber warning accents."
+    },
+    {
+      "id": "place_dock_interior_grit",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_dock_interior_grit.glb",
+      "tris": 636,
+      "bytes": 105716,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "HOOK_Emissive"
+      ],
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -26,
+          -4.425,
+          -18
+        ],
+        "max": [
+          26,
+          13,
+          18
+        ],
+        "dimensionsM": [
+          52,
+          17.425,
+          36
+        ]
+      },
+      "note": "Black-market grit dock — scuffed plates, dim heat lamps."
     }
   ],
   "runtimeSlots": {
@@ -3645,7 +3813,10 @@
       "places/place_gate_jump_ring.glb",
       "places/place_station_mining.glb",
       "places/place_station_fab.glb",
-      "places/place_station_research.glb"
+      "places/place_station_research.glb",
+      "places/place_dock_interior.glb",
+      "places/place_dock_interior_military.glb",
+      "places/place_dock_interior_grit.glb"
     ]
   }
 }

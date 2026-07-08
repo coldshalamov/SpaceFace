@@ -31,6 +31,22 @@ const BOX_IDX = new Uint16Array([
   0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11,
   12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23,
 ]);
+const BOX_NORMALS = new Float32Array([
+  0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1,
+  0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
+  0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
+  0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
+  1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
+  -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
+]);
+const BOX_UVS = new Float32Array([
+  0, 0, 1, 0, 1, 1, 0, 1,
+  0, 0, 1, 0, 1, 1, 0, 1,
+  0, 0, 1, 0, 1, 1, 0, 1,
+  0, 0, 1, 0, 1, 1, 0, 1,
+  0, 0, 1, 0, 1, 1, 0, 1,
+  0, 0, 1, 0, 1, 1, 0, 1,
+]);
 
 function transformVerts(verts, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0 } = {}) {
   const out = new Float32Array(verts.length);
@@ -43,6 +59,17 @@ function transformVerts(verts, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0 } =
     px = cz * tx + sz * tz; py = ty; pz = -sz * tx + cz * tz;
     tx = px; ty = cx * py - sx * pz; tz = sx * py + cx * pz;
     out[i] = tx + x; out[i + 1] = ty + y; out[i + 2] = tz + z;
+  }
+  return out;
+}
+
+function transformNormals(normals, opts = {}) {
+  const out = transformVerts(normals, { ...opts, x: 0, y: 0, z: 0 });
+  for (let i = 0; i < out.length; i += 3) {
+    const len = Math.hypot(out[i], out[i + 1], out[i + 2]) || 1;
+    out[i] /= len;
+    out[i + 1] /= len;
+    out[i + 2] /= len;
   }
   return out;
 }
@@ -110,8 +137,17 @@ function buildDoc(parts, matDefs, seed) {
     const base = boxVerts(p.w, p.h, p.d);
     const pos = transformVerts(base, p);
     const posAcc = doc.createAccessor(`pos_${primIdx}`).setType('VEC3').setArray(pos).setBuffer(buffer);
+    const normalAcc = doc.createAccessor(`normal_${primIdx}`).setType('VEC3')
+      .setArray(transformNormals(BOX_NORMALS, p))
+      .setBuffer(buffer);
+    const uvAcc = doc.createAccessor(`uv_${primIdx}`).setType('VEC2').setArray(BOX_UVS).setBuffer(buffer);
     const idxAcc = doc.createAccessor(`idx_${primIdx}`).setType('SCALAR').setArray(BOX_IDX).setBuffer(buffer);
-    const prim = doc.createPrimitive().setAttribute('POSITION', posAcc).setIndices(idxAcc).setMaterial(mats[p.mat]);
+    const prim = doc.createPrimitive()
+      .setAttribute('POSITION', posAcc)
+      .setAttribute('NORMAL', normalAcc)
+      .setAttribute('TEXCOORD_0', uvAcc)
+      .setIndices(idxAcc)
+      .setMaterial(mats[p.mat]);
     const mesh = doc.createMesh(`LOD0_${p.name || primIdx}`).addPrimitive(prim);
     const node = doc.createNode(p.name || `part_${primIdx}`).setMesh(mesh);
     root.addChild(node);

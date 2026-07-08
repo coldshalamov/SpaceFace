@@ -144,8 +144,17 @@ for (const id of DOCK_IDS) {
 }
 
 const manifest = JSON.parse(readFileSync(RELEASE_MANIFEST, 'utf8'));
-const byId = new Map((manifest.assets || []).map((a) => [a.id, a]));
-for (const entry of built) byId.set(entry.id, entry);
-manifest.assets = [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+const assets = Array.isArray(manifest.assets) ? manifest.assets.slice() : [];
+for (const entry of built) {
+  const index = assets.findIndex((asset) => asset && asset.id === entry.id);
+  if (index >= 0) assets[index] = entry;
+}
+const missing = built.filter((entry) => !assets.some((asset) => asset && asset.id === entry.id));
+if (missing.length) {
+  const insertAfter = assets.findIndex((asset) => asset && asset.id === 'place_conveyor_barge');
+  const insertAt = insertAfter >= 0 ? insertAfter + 1 : assets.length;
+  assets.splice(insertAt, 0, ...missing);
+}
+manifest.assets = assets;
 writeFileSync(RELEASE_MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`[dock-release] patched ${RELEASE_MANIFEST} (+${built.length} dock assets)`);
