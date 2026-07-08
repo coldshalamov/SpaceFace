@@ -5,6 +5,8 @@ export const SIGNATURE_RECIPE_VERSION = 1;
 
 export const SIGNATURE_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.strain': 'presentation.tether.strain',
+  'sensor.scan': 'presentation.sensor.scan',
+  'sensor.lock': 'presentation.sensor.lock',
 });
 
 export const TETHER_STRAIN_BUCKETS = Object.freeze([
@@ -47,6 +49,36 @@ export const SIGNATURE_RECIPES = Object.freeze({
     tags: ['tether', 'strain', 'signature'],
     buckets: TETHER_STRAIN_BUCKETS,
     layersWith: ['tether.near_break'],
+  }),
+  'sensor.scan': freezeSignature({
+    id: 'sensor.scan',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['sensor.scan'],
+    material: 'sensor',
+    mode: 'one-shot',
+    sourceEvent: 'scan:pulse',
+    importance: 0.5,
+    playerRelevance: 0.62,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['sensor', 'scan', 'signature'],
+    tones: [
+      { offsetMs: 0, playbackRate: 0.86, gain: 0.18 },
+      { offsetMs: 120, playbackRate: 1.02, gain: 0.14 },
+    ],
+  }),
+  'sensor.lock': freezeSignature({
+    id: 'sensor.lock',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['sensor.lock'],
+    material: 'sensor',
+    mode: 'one-shot',
+    sourceEvent: 'scan:pulse',
+    importance: 0.82,
+    playerRelevance: 0.95,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['sensor', 'lock', 'signature', 'warning'],
+    tones: [
+      { offsetMs: 0, playbackRate: 1.08, gain: 0.28 },
+      { offsetMs: 90, playbackRate: 1.38, gain: 0.36 },
+    ],
   }),
 });
 
@@ -116,8 +148,11 @@ export function validateSignatureRecipes(recipes = SIGNATURE_RECIPES) {
     if (!Number.isFinite(recipe.importance) || recipe.importance < 0 || recipe.importance > 1) {
       issues.push(`${path}.importance must be in [0,1]`);
     }
-    if (!Array.isArray(recipe.buckets) || recipe.buckets.length !== 3) {
+    if (id === 'tether.strain' && (!Array.isArray(recipe.buckets) || recipe.buckets.length !== 3)) {
       issues.push(`${path}.buckets must contain exactly three derivative steps`);
+    }
+    if (id.startsWith('sensor.') && (!Array.isArray(recipe.tones) || recipe.tones.length < 2)) {
+      issues.push(`${path}.tones must contain the scan/lock tone steps`);
     }
   }
   return { ok: issues.length === 0, issues };
@@ -130,6 +165,7 @@ function freezeSignature(value) {
     budgets: Object.freeze({ ...(value.budgets || {}) }),
     tags: Object.freeze([...(value.tags || [])]),
     buckets: Object.freeze([...(value.buckets || [])]),
+    tones: Object.freeze([...(value.tones || [])].map((tone) => Object.freeze({ ...tone }))),
     layersWith: Object.freeze([...(value.layersWith || [])]),
   });
 }

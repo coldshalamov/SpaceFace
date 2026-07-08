@@ -1336,3 +1336,23 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Backend-safe scope: add `sensor.scan` / `sensor.lock` signature data and a pure signature adapter/check that
   resolves scan vs weapons-lock through the exported `scanner.isHostileToPlayer` predicate, not `factionId`.
 - No-touch remains `src/audio/audioSystem.js`, `src/systems/scanner.js`, and the shipped presentation adapter file.
+
+### T5d-AUD-03 — DONE (2026-07-08)
+- Extended `src/presentation/cueRecipesSignatures.js` with `sensor.scan` / `sensor.lock`, added pure
+  `src/systems/signatureAdapters.js`, and added `scripts/check-sensor-signatures.mjs` plus
+  `npm run check:sensor-signatures`. `sensor.lock` is higher priority than `sensor.scan`, qualifies for the
+  priority bus, and uses a sharper/louder two-tone doublet while `sensor.scan` stays a soft sweep.
+- Captions/titles are additive and match the packet: `Scanned.` vs `Weapons lock.` / `SCAN SWEEP` vs
+  `WEAPONS LOCK`. The adapter debounces target flips for 1000 ms so a contact cannot emit both tones in one
+  sweep window.
+- The check proves hostility resolution goes through `scanner.isHostileToPlayer`: a faction-looking bait contact
+  remains `sensor.scan` when the injected scanner predicate returns false, and the adapter source is guarded
+  against `factionId` coupling.
+- Non-vacuous control: temporarily changed the lock caption from `Weapons lock.` to `Scanned.`; the check failed
+  on caption parity. Restored the caption; the check passed.
+- No-regression floor: `node --check src/presentation/cueRecipesSignatures.js`,
+  `node --check src/systems/signatureAdapters.js`, `node --check scripts/check-sensor-signatures.mjs`,
+  `npm run check:sensor-signatures`, `npm run check:tether-strain-signature`, `npm run check:cue-priority-bus`,
+  `node scripts/check-presentation-cues.mjs`, `node scripts/check-data-refs.mjs`, and `npm run check:balance`
+  passed (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
