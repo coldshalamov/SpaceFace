@@ -1051,3 +1051,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `package.json` has no `check:silhouette-roles` script.
 - Scope guard: no render, HUD, assets, `world.js`, `ships.js`, `targetPanel.js`, scanner behavior, or runtime
   mesh selection edits. Expected files are the pure data helper, its check, package wiring, and progress notes.
+
+### T5a-C4 SILHOUETTE_THREAT_LANGUAGE — DONE (2026-07-08)
+- Added pure `src/data/silhouetteRoles.js`: five C4 families are pinned exactly as swarmer/darting-dot,
+  sniper/long-triangle, brawler/fat-wedge, hauler/wide-slab, and carrier/spoked.
+- Every canonical ship role now has one silhouette family, one single-word tell, tactical read text, and
+  counterplay text. The helper also checks whether a hull's existing `visuals.family` matches the contract.
+- Added `npm run check:silhouette-roles`, which proves all 13 canonical hull roles are covered, all five
+  silhouette families are exercised, current ship visual families match, unknown roles return `null`, and the
+  packet stays data-only with no registry, scanner, target-panel, render, HUD, or asset wiring.

@@ -37,6 +37,7 @@
     "check:balance": "node scripts/balance-sim.mjs",
     "check:commodity-flavor": "node scripts/check-commodity-flavor.mjs",
     "check:scan-reveal": "node scripts/check-scan-reveal.mjs",
+    "check:silhouette-roles": "node scripts/check-silhouette-roles.mjs",
     "check:combat-outcome": "node scripts/check-combat-outcome.mjs",
     "check:battle-aftermath": "node scripts/check-battle-aftermath.mjs",
     "check:wing-morale": "node scripts/check-wing-morale.mjs",

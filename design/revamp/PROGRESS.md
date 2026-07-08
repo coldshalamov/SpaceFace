@@ -135,9 +135,9 @@
 
 | id | addendum | status | depends-on | next |
 |---|---|---|---|---|
-| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-08 (T5a-C3/T5a-C9/T5a-C11/T5a-C12 DONE; T5a-C4 IN-FLIGHT) | T4 (combat lane) | — |
+| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-08 (T5a-C3/T5a-C4/T5a-C9/T5a-C11/T5a-C12 DONE) | T4 (combat lane) | — |
 | T5a-C3 | BP-02.1 C3 Scan-Reveals-Loadout | DONE 2026-07-07 | T4 (combat lane) | `npm run check:scan-reveal` PASS |
-| T5a-C4 | BP-02.1 C4 Silhouette Threat Language | IN-FLIGHT 2026-07-08 | T4 (combat lane) | backend/data contract only |
+| T5a-C4 | BP-02.1 C4 Silhouette Threat Language | DONE 2026-07-08 | T4 (combat lane) | `npm run check:silhouette-roles` PASS |
 | T5a-C9 | BP-02.1 C9 Kills-Less-Central Outcomes | DONE 2026-07-07 | T4 (combat lane) | `npm run check:combat-outcome` PASS |
 | T5a-C11 | BP-01/C11 Battle-Aftermath Persistence | DONE 2026-07-08 | T4 (combat lane) | `npm run check:battle-aftermath` PASS |
 | T5a-C12 | BP-02.1 C12 Wing Morale | DONE 2026-07-08 | T4 (combat lane) | `npm run check:wing-morale` PASS |
