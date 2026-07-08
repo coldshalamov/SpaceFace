@@ -382,7 +382,11 @@ export const onboarding = {
   // Spawn the world content for a beat on entry (derelict for B1, pirate for B3, etc).
   _enterBeat(beat) {
     if (!beat) return;
-    if (beat.key === 'derelict') this._spawnDerelict();
+    if (beat.key === 'wake') this._setObjectiveWaypoint(true);
+    else if (beat.key === 'derelict') {
+      this._spawnDerelict();
+      this._setObjectiveWaypoint(true);
+    }
     else if (beat.key === 'snare') this._spawnPirate();
     else if (beat.key === 'dock') this._setObjectiveWaypoint(true);
     else if (beat.key === 'choice') this._openChoice();

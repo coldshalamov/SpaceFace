@@ -24,6 +24,7 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 const onboardingSrc = read('src/systems/onboarding.js');
 const storySrc = read('src/systems/story.js');
+const missionsSrc = read('src/systems/missions.js');
 const telemetrySrc = read('src/systems/telemetry.js');
 const newGameSrc = read('src/ui/screens/newGame.js');
 const mainMenuSrc = read('src/ui/screens/mainMenu.js');
@@ -224,9 +225,16 @@ assert.doesNotMatch(onboardingSrc, /The manifest says one mass/, 'the old intro 
 
 // ── COLD_START must be gated during onboarding (one-voice: no parallel t=0 comms) ─────────────
 assert.match(storySrc, /_onboardingActive\(\)/, 'story.js must check onboarding-active before firing cold-start');
+assert.match(storySrc, /_tutorialOwnsOpening\(\)/, 'story.js must defer cold-start before onboarding init when tutorial hints are on');
 assert.match(storySrc, /_coldStartDeferred/, 'story.js must defer cold-start while the tutorial owns the channel');
 assert.match(storySrc, /tutorial:finished/, 'story.js must release the deferred cold-start on tutorial:finished');
 assert.match(storySrc, /_recentTutorialLine/, 'story.js must suppress ambient comms near a tutorial line');
+assert.match(missionsSrc, /tutorial:finished.*_releaseStoryNavigationAfterTutorial/s,
+  'missions.js must release the story waypoint only after the tutorial finishes');
+assert.match(missionsSrc, /_tutorialOwnsOpening\(\)/,
+  'missions.js must not force story waypoint/toast over the tutorial opening');
+assert.match(onboardingSrc, /beat\.key === 'wake'[\s\S]*_setObjectiveWaypoint\(true\)/,
+  'B0 must force its onboarding waypoint on beat entry');
 
 // ── Assertion 4: B3 pirate flees ≤30% hull, drops ≥1 pickup; death respawns ≤3s ───────────────
 assert.match(onboardingSrc, /PIRATE_HULL_FLEE_FRAC = 0\.30/, 'B3 pirate must flee at ≤30% hull (spec2/03 §2/B3)');

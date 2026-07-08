@@ -566,11 +566,18 @@ export const story = {
     // start comms + bulkhead graffiti are deferred so the open teaches ONE verb at a time. They are
     // released when the tutorial finishes (tutorial:finished → _releaseDeferredColdStart). For a
     // player who opted out of tutorial hints, onboarding is inactive and the cold start fires now.
-    if (this._onboardingActive()) {
+    if (this._tutorialOwnsOpening()) {
       this._coldStartDeferred = true;
     } else {
       this._fireColdStart();
     }
+  },
+
+  _tutorialOwnsOpening() {
+    const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
+    if (gameplay && gameplay.tutorialHints === false) return false;
+    const ob = this.state && this.state.onboarding;
+    return !ob || (ob.active && !ob.finished) || ob.finished === false;
   },
 
   _onboardingActive() {

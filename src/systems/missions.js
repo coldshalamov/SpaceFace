@@ -196,6 +196,7 @@ export const missions = {
 
     // New game → seed config + reset boards/active (idempotent: a load may already have populated).
     bus.on('game:started', () => this.newGame());
+    bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
     bus.on('save:loaded', () => this._restoreNavigationAfterLoad());
 
     // ── Player intents (UI) ────────────────────────────────────────────────────────────────
@@ -765,6 +766,11 @@ export const missions = {
     }
     if (state.ui) state.ui.trackedMissionId = null;
     return this._ensureStoryWaypoint(options);
+  },
+
+  _releaseStoryNavigationAfterTutorial() {
+    if (!this.state || !this.state.story) return;
+    this._refreshNavigation({ forceStory: true, silent: true });
   },
 
   _restoreNavigationAfterLoad() {
@@ -1729,15 +1735,25 @@ export const missions = {
     this._navRefreshT = 0;
     this._lastWaypointRouteKey = null;
     this._lastWaypointRouteAt = 0;
-    this._refreshNavigation({ forceStory: true, silent: true });
+    const tutorialOwnsOpening = this._tutorialOwnsOpening();
+    if (!tutorialOwnsOpening) {
+      this._refreshNavigation({ forceStory: true, silent: true });
+    }
     // Direction toast for the opening beat (guard against the double newGame call: save.newGame()
     // then game:started both fire it → only toast once).
     const toastKey = state.meta && state.meta.seed;
     if (this._newGameToastSeed !== toastKey) {
       this._newGameToastSeed = toastKey;
       const b0 = STORY_BEATS[state.story.beatIndex];
-      if (b0 && BEAT_HINT[b0.beat]) this._sayStoryLine(BEAT_HINT[b0.beat], 6);
+      if (!tutorialOwnsOpening && b0 && BEAT_HINT[b0.beat]) this._sayStoryLine(BEAT_HINT[b0.beat], 6);
     }
+  },
+
+  _tutorialOwnsOpening() {
+    const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
+    if (gameplay && gameplay.tutorialHints === false) return false;
+    const ob = this.state && this.state.onboarding;
+    return !ob || (ob.active && !ob.finished) || ob.finished === false;
   },
 
   serialize() {
