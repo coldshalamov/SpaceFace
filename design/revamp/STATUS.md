@@ -1314,3 +1314,19 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   replacing it.
 - No-touch remains `src/combat/attachments.js`, `src/audio/audioSystem.js`, and
   `src/presentation/cueRecipes.js`.
+
+### T5d-AUD-02 — DONE (2026-07-08)
+- Added pure `src/presentation/cueRecipesSignatures.js` and `scripts/check-tether-strain-signature.mjs` plus
+  `npm run check:tether-strain-signature`. The signature defines `tether.strain` / `presentation.tether.strain`
+  as a continuous one-voice, no-draw/no-spawn/no-voice audio surface with exactly three derivative buckets.
+- The helper builds a cue from `tether:strain`-shaped samples: rising heavy pull maps to the high bucket
+  (`playbackRate 1.26`, `gain 0.46`), while letting off maps back to low (`playbackRate 0.92`, `gain 0.18`).
+  The high-bucket importance stays below the shipped `tether.near_break` recipe (`0.68 < 0.72`) so the existing
+  alert remains the distinct threshold ping.
+- Non-vacuous control: temporarily lowered the high bucket playback rate below the medium bucket; the check
+  failed on monotonic bucket ordering. Restored `1.26`; the check passed.
+- No-regression floor: `node --check src/presentation/cueRecipesSignatures.js`,
+  `node --check scripts/check-tether-strain-signature.mjs`, `npm run check:tether-strain-signature`,
+  `npm run check:cue-priority-bus`, `node scripts/check-presentation-cues.mjs`, `node scripts/check-data-refs.mjs`,
+  and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only
+  on the documented 47-A projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
