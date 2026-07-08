@@ -56,12 +56,15 @@ const BASELINE = [
   { id: 'cmdty_medical', name: 'Medical Supplies', category: 'med', basePrice: 150, volatility: 0.30, elasticity: 0.40, legality: 'legal', volPerU: 0.8, massPerU: 0.4, fineMult: 0, producedBy: ['research', 'fab'], consumedBy: ['trade_hub', 'mining', 'military'] },
   { id: 'cmdty_scrap_metal', name: 'Scrap Metal', category: 'salvage', basePrice: 8, volatility: 0.18, elasticity: 0.30, legality: 'legal', volPerU: 1.0, massPerU: 0.9, fineMult: 0, producedBy: ['mining'], consumedBy: ['refinery', 'fab'] },
   { id: 'cmdty_salvage_electronics', name: 'Salvage Electronics', category: 'salvage', basePrice: 55, volatility: 0.25, elasticity: 0.40, legality: 'legal', volPerU: 0.6, massPerU: 0.4, fineMult: 0, producedBy: ['mining'], consumedBy: ['fab', 'military'] },
+  { id: 'cmdty_classified_salvage', name: 'Classified Salvage', category: 'salvage', basePrice: 90, volatility: 0.35, elasticity: 0.45, legality: 'restricted', volPerU: 0.6, massPerU: 0.4, fineMult: 0.8, producedBy: ['blackmarket'], consumedBy: ['military', 'blackmarket', 'fab'] },
   { id: 'cmdty_narcotics', name: 'Narcotics', category: 'contraband', basePrice: 220, volatility: 0.55, elasticity: 0.60, legality: 'contraband', volPerU: 0.6, massPerU: 0.2, fineMult: 1.2, producedBy: ['blackmarket'], consumedBy: ['blackmarket'] },
   { id: 'cmdty_stolen_goods', name: 'Stolen Goods', category: 'contraband', basePrice: 150, volatility: 0.50, elasticity: 0.55, legality: 'contraband', volPerU: 1.0, massPerU: 0.8, fineMult: 1.5, producedBy: ['blackmarket'], consumedBy: ['blackmarket'] },
   { id: 'cmdty_weapons', name: 'Weapon Systems', category: 'military', basePrice: 280, volatility: 0.40, elasticity: 0.48, legality: 'restricted', volPerU: 0.9, massPerU: 1.5, fineMult: 1.2, producedBy: ['military'], consumedBy: ['military', 'blackmarket'] },
   { id: 'cmdty_munitions', name: 'Munitions', category: 'military', basePrice: 115, volatility: 0.32, elasticity: 0.48, legality: 'restricted', volPerU: 0.6, massPerU: 1.1, fineMult: 0.8, producedBy: ['military', 'fab'], consumedBy: ['military', 'blackmarket'] },
   { id: 'cmdty_impulse_charge', name: 'Impulse Charge', category: 'military', basePrice: 180, volatility: 0.25, elasticity: 0.50, legality: 'restricted', volPerU: 2.0, massPerU: 2.0, fineMult: 1.0, producedBy: ['military', 'fab'], consumedBy: ['military', 'blackmarket'] },
 ];
+
+const EXPECTED_COMMODITY_COUNT = BASELINE.length;
 
 const PLACE_FACTION_RE = /\b(ceres|helios|vael|meridian|concord|reach|luna|kuiper|outer)\b/i;
 const MORALIZING_RE = /\b(evil|wrong|should not|immoral|unethical|sinful|shameful)\b/i;
@@ -111,12 +114,12 @@ function balanceLog(line) {
 let fail = 0;
 let balanceFail = 0;
 
-assert.equal(COMMODITIES.length, 43, 'COMMODITIES length must be 43');
-assert.equal(Object.keys(COMMODITY_FLAVOR).length, 43, 'COMMODITY_FLAVOR keys must be 43');
+assert.equal(COMMODITIES.length, EXPECTED_COMMODITY_COUNT, `COMMODITIES length must be ${EXPECTED_COMMODITY_COUNT}`);
+assert.equal(Object.keys(COMMODITY_FLAVOR).length, EXPECTED_COMMODITY_COUNT, `COMMODITY_FLAVOR keys must be ${EXPECTED_COMMODITY_COUNT}`);
 
 const ids = COMMODITIES.map((c) => c.id);
 const uniqueIds = new Set(ids);
-assert.equal(uniqueIds.size, 43, 'commodity ids must be unique');
+assert.equal(uniqueIds.size, EXPECTED_COMMODITY_COUNT, 'commodity ids must be unique');
 
 const flavorIds = new Set(Object.keys(COMMODITY_FLAVOR));
 for (const id of ids) {
@@ -209,9 +212,9 @@ for (const id of ['cmdty_narcotics', 'cmdty_stolen_goods', 'cmdty_weapons']) {
 }
 
 balanceLogs.push('');
-balanceLogs.push(`${balanceFail ? 'FAIL' : 'PASS'} balance integrity (${43 - balanceFail}/${43} ok)`);
+balanceLogs.push(`${balanceFail ? 'FAIL' : 'PASS'} balance integrity (${EXPECTED_COMMODITY_COUNT - balanceFail}/${EXPECTED_COMMODITY_COUNT} ok)`);
 
-log(`\n${fail ? 'FAIL' : 'PASS'} commodity flavor check (${43 - fail}/${43} ok)`);
+log(`\n${fail ? 'FAIL' : 'PASS'} commodity flavor check (${EXPECTED_COMMODITY_COUNT - fail}/${EXPECTED_COMMODITY_COUNT} ok)`);
 
 const scratch = process.env.COMMODITY_FLAVOR_SCRATCH;
 if (scratch) {

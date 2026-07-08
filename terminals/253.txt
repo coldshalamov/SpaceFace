@@ -1,0 +1,40 @@
+---
+pid: 20976
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run build:sg04:release-assets 2>&1"
+started_at: 2026-07-08T15:20:53.182Z
+running_for_ms: 4630005  
+---
+
+> spaceface@0.1.0 build:sg04:release-assets
+> node scripts/build-sg04-release-assets.mjs
+
+[sg04] acquired release build lock: assets/ships/release.__lock
+[sg04] 1/67 ship_kestrel_reference: build-start assets/ships/kestrel/kestrel_reference.glb -> assets/ships/release.__building/kestrel/kestrel_reference.glb
+prune: Removed types... Accessor (12)
+prune: Removed types... Accessor (4)
+[sg04] 1/67 ship_kestrel_reference: 148372 -> 36584 bytes
+[sg04] 2/67 hull_starter: build-start assets/ships/parts/hulls/hull_starter.glb -> assets/ships/release.__building/parts/hulls/hull_starter.glb
+prune: Removed types... Accessor (67)
+prune: Removed types... Accessor (30)
+[sg04] 2/67 hull_starter: 664636 -> 1607028 bytes
+[sg04] 3/67 hull_fighter: build-start assets/ships/parts/hulls/hull_fighter.glb -> assets/ships/release.__building/parts/hulls/hull_fighter.glb
+prune: Removed types... Accessor (38)
+prune: Removed types... Accessor (18)
+[sg04] failed 3/67 hull_fighter: assets/ships/parts/hulls/hull_fighter.glb -> assets/ships/release.__building/parts/hulls/hull_fighter.glb
+file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/build-sg04-release-assets.mjs:197
+      throw new Error(`release asset failed SG-04 validation: ${outputReleasePath}\n${JSON.stringify(pair.issues, null, 2)}`);
+            ^
+
+Error: release asset failed SG-04 validation: assets/ships/release.__building/parts/hulls/hull_fighter.glb
+[
+  {
+    "rule": "release.textureTopology",
+    "path": "assets/ships/release.__building/parts/hulls/hull_fighter.glb",
+    "message": "release compression must preserve texture slot count",
+    "detail": "2 -> 5"
+  }
+]
+    at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/build-sg04-release-assets.mjs:197:13
+
+Node.js v24.15.0

@@ -18,7 +18,9 @@ import { getPostRenderTargetTelemetry, resetPostRenderTargetSampleCounter } from
 import { precompilePipelines } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { SHIPS } from '../data/ships.js';
 
+const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
 const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
 
@@ -689,6 +691,7 @@ export const render = {
     ctx.helpers.addTrauma = (a) => cam.addTrauma(a);
     ctx.helpers.socketWorldPose = (id, name) => this.socketWorldPose(id, name);
     ctx.helpers.socketWorldPos = (id, name) => this.socketWorldPos(id, name);
+    ctx.helpers.entityMeshMeta = (id) => this.entityMeshMeta(id);
 
     bus.on('entity:spawned', () => { this._meshReconcileDirty = true; });
     bus.on('entity:destroyed', ({ id }) => {
@@ -1302,6 +1305,24 @@ export const render = {
   socketWorldPos(entityId, socketName) {
     const pose = this.socketWorldPose(entityId, socketName);
     return pose ? { x: pose.x, z: pose.z } : null;
+  },
+
+  // Authored composition metadata for VFX profile resolution (engine/weapon part IDs, ship def).
+  entityMeshMeta(entityId) {
+    const m = this._meshes.get(entityId);
+    const e = this.state.entities && this.state.entities.get(entityId);
+    if (!m && !e) return null;
+    const ud = (m && m.userData) || {};
+    const contract = ud.authoredRenderContract || ud.renderContract || null;
+    const slots = ud.authoredSlots || (contract && contract.authoredSlots) || null;
+    const shipDef = e && e.data && e.data.defId ? SHIP_BY_ID.get(e.data.defId) : null;
+    return {
+      slots,
+      defId: e && e.data && e.data.defId || null,
+      driveId: shipDef && shipDef.driveId || null,
+      factionId: e && (e.factionId || (e.data && e.data.factionId)) || null,
+      authoredState: ud.authoredAssetState || null,
+    };
   },
 
   socketWorldPose(entityId, socketName) {

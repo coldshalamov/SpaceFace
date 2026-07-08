@@ -38,7 +38,8 @@ task* — use BP-08's identity note as that asset's "define character" step (FGR
    existing-70 scope; they are new assets the zones/encounters/salvage/galaxy-map systems now reference:
    landmarks (vault-maw, crystal-spire, pit-anchor, cathedral-wreck), 3 faction ring-gate variants, and the
    4–6 wreck variants + `place_comm_beacon` (the salvage "floating communicator"). Full FGRG rigor; larger
-   landmark budget (≤2.5k, 2048² allowed).
+   landmark budget (live exporter default ≤10k, 2048² allowed; raise with manifest/spec rationale
+   and perf evidence).
 4. **FGRG Batch 4 (asteroids/props) ← BP-08 §2 P5** hero asteroids (`place_asteroid_luminite`/`_ice`) join here.
 5. **FGRG Batch 5 (whole-ships) = BP-08 §2 P1** — identical task (repair `kestrel`/`pelican`/`wasp` to contract).
 6. **FGRG Batch 6 sign-off unchanged.**
@@ -65,7 +66,7 @@ reports them export-clean (see WAVE2_PROMPT.md "asset-gated" note).
 | Textures | baseColor (sRGB), normal (tangent, **OpenGL green-up**), ORM (packed: **R=AO, G=Roughness, B=Metallic**). 1024² default; 2048² only for hero landmarks. All KTX2. |
 | Geometry | **Bevel every hard edge (≥2 segments)** — the contract asserts chamfer. LOD0/LOD1/LOD2 node groups (`LOD0_*` …). |
 | Nodes | `MOUNT_*` hardpoints, `SOCKET_*` anchors (e.g. `SOCKET_Trail_Main`, `SOCKET_Weapon_Front`), optional damage hooks `HOOK_*`, drive-anim `HOOK_DRIVE_FAN/CORE/PLUME`. |
-| Tri budgets | part ≤ 1.2k · **whole-ship body ≥ 800 and ≤ 6k** · prop ≤ 600 · **landmark/station ≤ 2.5k**. |
+| Tri budgets | Follow the live `assets/ships/parts/parts_manifest.json` + `tools/blender/spaceface_export.py` budgets: current defaults are part ≤15k, whole-ship body ≥800 and ≤20k, prop ≤3k, landmark/station ≤10k. Budgets are alarms, not taste ceilings; raise a row only with rationale + perf evidence. |
 | Faction accent | provide `factionAccentVariants` in the manifest row (accent color per palette class: core/belt/fringe/anomaly). |
 
 **Per-asset delivery = 3 steps:** (1) export GLB to `assets/ships/parts/<category>/<id>.glb`; (2) add a row to
@@ -101,7 +102,7 @@ so a player reads the faction and function instantly.
 fail the `WHOLE_SHIP_BODY_MIN_TRIS ≥ 800` audit. Re-export each with a proper `Material_Hull` body (≥800 tris),
 all maps, and MOUNT/SOCKET nodes so they load without the modular-assembly fallback.
 
-### P2 — LANDMARKS (navigation + identity; ≤2.5k, can be 2048²)
+### P2 — LANDMARKS (navigation + identity; default ≤10k, can be 2048²)
 The player should say "meet me at the crystal spire." One authored landmark per key sector.
 
 | id | Sector / fiction | Silhouette |

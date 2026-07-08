@@ -1,5 +1,18 @@
+=== spaceface_export (Blender MCP 2026-07-08) ===
+part: engine_plasma_ring
+export_tmp: assets/ships/parts/revamp-evidence/engine_plasma_ring/_export_tmp.glb
+pre-export: removed scene contamination (engine_resonator, cockpit_slab, engine_ion_small, hull roots, MOUNT_*)
+export bytes (tmp): 486068
+nodes: DET_corporate_polish_band, DET_fusion_coil_ring, DET_lattice_strut_a, engine_plasma_ring_Material_Mechanical_Merged, HOOK_DRIVE_CORE, HOOK_DRIVE_FAN, HOOK_DRIVE_PLUME, LOD0_ENGINE_PLASMA_RING_MAIN, Plasma_Ring_Outer, engine_plasma_ring
+mounts: 0
+
+=== finalize_part.mjs ===
 {
   "partId": "engine_plasma_ring",
-  "tris": 1888,
-  "bytes": 248812
+  "file": "engines/engine_plasma_ring.glb",
+  "tris": 9698,
+  "bytes": 486772,
+  "dims": [2.77, 2.08, 2.0772],
+  "images": 0,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull"
 }

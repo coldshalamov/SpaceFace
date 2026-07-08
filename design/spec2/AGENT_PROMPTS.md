@@ -40,10 +40,13 @@ Non-negotiables:
 - Any deviation from a NUMBER in a spec2 file requires editing that spec in the same change with a
   one-line justification. Transcripts are not evidence — CHECKS are.
 - Never edit test/*.expected.json goldens to make a check pass (fix the code, or flag the golden for
-  a deliberate re-record batch). Never add dependencies.
+  a deliberate re-record batch). Never add dependencies silently: build-time tools need
+  documentation, and runtime deps require lead sign-off with license, bundle/perf, determinism/save,
+  and maintenance notes.
 - Acceptance assertions in the spec are the definition of done. If the named check script does not
   exist yet, WRITE IT (it is part of the task).
-- Touch ONLY the files the spec names. Do not edit assets/** or src/render/** (active graphics lane).
+- Touch ONLY the files the spec names. If the spec missed a required file, stop and name the missing
+  file/spec fix instead of freelancing. Do not edit assets/** or src/render/** (active graphics lane).
 - Determinism: no Math.random() in sim (use state.rng); no wall-clock time in sim (use state.simTime).
 - Print a 10-line summary when finished: files changed, check results, any spec number you adjusted
   and why.
@@ -484,7 +487,10 @@ THE EXPORT CONTRACT (from parts_manifest.json — non-negotiable):
     Material_Glass, Material_Mechanical. Hull parts declare tintable.Material_Hull for faction hue.
   - Texture contract: baseColor sRGB, normal = tangent OpenGL green-up, ORM = R=AO G=roughness
     B=metallic, resolution 1024.
-  - Budgets: 500-8000 triangles per part; max 3,500,000 bytes per part. Author THREE LODs per hull.
+  - Budgets: use the live manifest/exporter numbers, currently 500-15,000 triangles per part and
+    max 5,000,000 bytes per part, with higher kind-specific exporter caps for whole-ships and
+    landmarks. Author THREE LODs per hull. Budgets are alarms, not taste ceilings; raise a row only
+    with manifest/spec rationale plus perf proof.
   - Sockets/hooks naming: SOCKET_Trail_Main, SOCKET_Weapon_Front, MOUNT_COCKPIT, MOUNT_ENGINE_L/R,
     MOUNT_FIN_L/R — match the existing hull entries exactly so assembly + tether/weapon anchors fit.
   - Merge static bolts/ribs/panels/repeated detail into a SMALL number of submeshes per material/

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "description": "Lifecycle + wiring truth for graphics sprint threads. Updated by Integrator (RELEASE_BUILT) and Thread C (wired).",
+  "lifecycle_enum": [
+    "CONCEPT",
+    "SOURCE_GLB",
+    "RELEASE_BUILT",
+    "MANIFEST_SLOT",
+    "RUNTIME_MAP",
+    "VISIBLE_IN_PLAY",
+    "BLOCKED"
+  ],
+  "assets": {}
+}

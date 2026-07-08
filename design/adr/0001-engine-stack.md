@@ -23,9 +23,12 @@ play:
 
 - **Iteration speed over ceremony.** A build step (bundler, transpiler, asset pipeline) is friction
   on every edit and a barrier to parallel, single-responsibility file ownership.
-- **No art/audio budget for assets.** The plan mandates *no external art assets* and *100%
-  procedural audio* (ARCHITECTURE.md §1.1) — meshes from Three primitives, textures from runtime
-  `<canvas>`, sound from the Web Audio graph.
+- **Original no-art-budget phase.** This ADR was written when the plan mandated *no external art
+  assets* and *100% procedural audio* (ARCHITECTURE.md §1.1) — meshes from Three primitives,
+  textures from runtime `<canvas>`, sound from the Web Audio graph. That is now historical for
+  fallback/prototype surfaces: the live game uses an authored GLB pipeline under `assets/ships/`
+  and allows reviewed build-time tooling plus lead-approved runtime dependencies when they improve
+  quality without breaking determinism, perf, or browser/Electron parity.
 - **A lot of 2D UI** (HUD, trade, starmap, tech tree, missions, settings) that must stay crisp and
   readable *through* screen shake and at any DPI.
 - **Modern evergreen runtime only** (Chromium-class browsers and the optional Electron shell); no
@@ -56,7 +59,7 @@ overlay** and **100% procedural Web Audio**, served as plain static files. Speci
 
 | Option | Pros | Cons | Verdict |
 |---|---|---|---|
-| **Zero-build ESM + Three + DOM UI + procedural audio** (chosen) | Instant iteration; trivial parallel file ownership; UI is just HTML/CSS (fast, accessible, DPI-crisp); source route stays simple; no required asset pipeline | Must vendor + pin Three by hand; production bundling can diverge if not tested; relies on importmap support in dev; ESM `.js`-extension discipline | **Chosen** — matches team size, zero-asset mandate, and the PC/browser path |
+| **Zero-build ESM + Three + DOM UI + procedural audio** (chosen) | Instant iteration; trivial parallel file ownership; UI is just HTML/CSS (fast, accessible, DPI-crisp); source route stays simple; asset pipeline can remain optional/tooling-side | Must vendor + pin Three by hand; production bundling can diverge if not tested; relies on importmap support in dev; ESM `.js`-extension discipline | **Chosen** — matched team size, the original zero-asset mandate, and the PC/browser path. Current asset work layers an authored GLB pipeline on top rather than replacing the app route. |
 | Bundler (Vite/esbuild/Rollup) + Three | Tree-shaking, HMR, TS option | A build step on every change; bundling diverges dev from packaged output; heavier for parallel agents; unnecessary given Chromium-only target | Rejected — friction without payoff for this team/target |
 | Canvas/WebGL UI (in-engine 2D, no DOM) | One render path; no DOM/WebGL split | Reimplements text/layout/focus/accessibility badly; unreadable under shake; far slower to build the large 2D UI surface | Rejected — DOM gives the UI for free |
 | Game-engine runtime (Unity/Godot/Phaser) | Batteries included | Heavy, opinionated, harder zero-asset procedural pipeline; larger desktop build; less control over the exact render/UI split | Rejected — overkill; loses the zero-build simplicity |

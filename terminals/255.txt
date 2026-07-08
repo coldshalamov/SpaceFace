@@ -1,0 +1,7 @@
+---
+pid: 26780
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run build:sg04:release-assets 2>&1"
+started_at: 2026-07-08T15:59:15.883Z
+running_for_ms: 2330010  
+---

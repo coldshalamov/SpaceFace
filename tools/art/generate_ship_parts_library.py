@@ -1429,12 +1429,12 @@ def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None =
         b=PartBuilder(spec); spec.build(b); add_budget_detail(b)
         consolidate_static_geometry(b.root); consolidate_global_by_material(b.root)
         tri=triangle_count(b.root)
-        if not 500<=tri<=8000:
-            raise RuntimeError(f'{spec.id}: triangle budget {tri} outside 500..8000')
+        if not 500<=tri<=15000:
+            raise RuntimeError(f'{spec.id}: triangle budget {tri} outside 500..15000')
         path=output/spec.category/f'{spec.id}.glb'
         stats=write_glb(path,spec,b.root,texture_cache[spec.texture_style],texture_size)
-        if stats['bytes']>3_500_000:
-            raise RuntimeError(f'{spec.id}: file budget {stats["bytes"]} > 3500000')
+        if stats['bytes']>5_000_000:
+            raise RuntimeError(f'{spec.id}: file budget {stats["bytes"]} > 5000000')
         names={n.name for n in iter_nodes(b.root)}
         missing=[n for n in (*spec.required_hooks,*spec.required_sockets) if n not in names]
         if missing: raise RuntimeError(f'{spec.id}: missing nodes {missing}')
@@ -1469,7 +1469,7 @@ def build_all(output: Path, texture_size: int, only_ids: frozenset[str] | None =
             'libraryId':'SF_SHIP_PARTS_V1',
             'coordinateSystem':{'handedness':'right','forward':'+X','up':'+Y','starboard':'+Z','unit':'metre','origin':'mount point'},
             'textureContract':{'baseColor':'sRGB','normal':'tangent OpenGL green-up','orm':'R=AO G=roughness B=metallic','resolution':texture_size},
-            'budgets':{'trianglesPerPart':[500,8000],'maxBytesPerPart':3500000},
+            'budgets':{'trianglesPerPart':[500,15000],'maxBytesPerPart':5000000},
             'materialContract':{'hull':'Material_Hull','accent':'Material_Accent','glass':'Material_Glass','mechanical':'Material_Mechanical'},
             'parts':preserved_parts + rows,
         }

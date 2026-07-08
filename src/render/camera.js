@@ -6,10 +6,18 @@ import * as THREE from 'three';
 import { damp } from '../core/math.js';
 
 const THREAT_COMPOSE_RANGE = 600;
-const THREAT_COMPOSE_MAX_BIAS = 90;
-const THREAT_COMPOSE_FRACTION = 0.18;
-const TETHER_COMPOSE_MAX_BIAS = 130;
-const TETHER_COMPOSE_FRACTION = 0.24;
+const THREAT_COMPOSE_MAX_BIAS = 42;
+const THREAT_COMPOSE_FRACTION = 0.08;
+const TETHER_COMPOSE_MAX_BIAS = 64;
+const TETHER_COMPOSE_FRACTION = 0.12;
+const CONTEXT_ZOOM_MAX = 0.14;
+const THREAT_ZOOM_BASE = 0.04;
+const THREAT_ZOOM_RANGE = 0.08;
+const TETHER_ZOOM_BASE = 0.03;
+const TETHER_ZOOM_RANGE = 0.06;
+const COMPOSITION_BIAS_LERP = 1.6;
+const COMPOSITION_BIAS_SLEW = 90;
+const CONTEXT_ZOOM_LERP = 1.2;
 const SAFE_VIEW_X = 0.52;
 const SAFE_VIEW_Z = 0.46;
 const LOOKAHEAD_MAX = 18;           // wu — normal cap
@@ -54,6 +62,19 @@ function finiteOr(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function clamp01(value) {
+  return Math.max(0, Math.min(1, finiteOr(value, 0)));
+}
+
+function dampSlewed(current, target, lerp, maxSpeed, dt) {
+  const desired = damp(current, target, lerp, dt);
+  const maxStep = Math.max(0, maxSpeed * dt);
+  const delta = desired - current;
+  if (delta > maxStep) return current + maxStep;
+  if (delta < -maxStep) return current - maxStep;
+  return desired;
+}
+
 function isMotionReduced(state) {
   return !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
 }
@@ -73,6 +94,14 @@ function resolveAimLead(input, player) {
   if (d <= 0.0001) return { x: 0, z: 0 };
   const lead = Math.min(AIM_BIAS_MAX, d * AIM_BIAS);
   return { x: (dx / d) * lead, z: (dz / d) * lead };
+}
+
+export function recenterBiasScale(remaining, duration) {
+  const dur = Number.isFinite(duration) && duration > 0 ? duration : 0;
+  if (dur <= 0) return 0;
+  const t = clamp01(1 - Math.max(0, finiteOr(remaining, 0)) / dur);
+  const smooth = t * t * (3 - 2 * t);
+  return 1 - smooth;
 }
 
 export function clampFocusToPlayerSafeRect(focus, player, options = {}) {
@@ -110,9 +139,10 @@ export function resolveChaseComposition(state, player, focus) {
   let nearbyEnemies = 0;
   let nearestThreat = null;
   let nearestThreatD2 = Infinity;
+  let zoomBias = 0;
 
   if (!state || !player || !player.pos || !state.entities || typeof state.entities.values !== 'function') {
-    return { x: fx, z: fz, nearbyEnemies, hasThreatFocus: false, hasTetherFocus: false };
+    return { x: fx, z: fz, nearbyEnemies, hasThreatFocus: false, hasTetherFocus: false, zoomBias };
   }
 
   // Combat composes player + nearest threat instead of only following the player.
@@ -136,6 +166,7 @@ export function resolveChaseComposition(state, player, focus) {
     const bias = Math.min(THREAT_COMPOSE_MAX_BIAS, d * THREAT_COMPOSE_FRACTION);
     fx += ((nearestThreat.pos.x - player.pos.x) / d) * bias;
     fz += ((nearestThreat.pos.z - player.pos.z) / d) * bias;
+    zoomBias = Math.max(zoomBias, THREAT_ZOOM_BASE + clamp01(d / THREAT_COMPOSE_RANGE) * THREAT_ZOOM_RANGE);
   }
 
   const tetherAnchor = resolveTetherCompositionAnchor(state, player);
@@ -147,6 +178,7 @@ export function resolveChaseComposition(state, player, focus) {
       const bias = Math.min(TETHER_COMPOSE_MAX_BIAS, d * TETHER_COMPOSE_FRACTION);
       fx += (dx / d) * bias;
       fz += (dz / d) * bias;
+      zoomBias = Math.min(CONTEXT_ZOOM_MAX, zoomBias + TETHER_ZOOM_BASE + clamp01(d / THREAT_COMPOSE_RANGE) * TETHER_ZOOM_RANGE);
     }
   }
 
@@ -156,6 +188,7 @@ export function resolveChaseComposition(state, player, focus) {
     nearbyEnemies,
     hasThreatFocus: !!nearestThreat,
     hasTetherFocus: !!tetherAnchor,
+    zoomBias: Math.min(CONTEXT_ZOOM_MAX, zoomBias),
   };
 }
 
@@ -235,6 +268,9 @@ export function createChaseCamera(state) {
   let _recenterT = 0;         // seconds remaining in the recenter window
   let _recenterDur = 0;       // total window length (for the ease fraction)
   let _snappedPlayerId = null;
+  let _compositionBiasX = 0;
+  let _compositionBiasZ = 0;
+  let _contextZoomBias = 0;
 
   function snapToEntity(p) {
     if (!p || !p.pos) return false;
@@ -312,9 +348,17 @@ export function createChaseCamera(state) {
         const aimLead = resolveAimLead(state.input, p);
         fx += aimLead.x;
         fz += aimLead.z;
-        const composition = resolveChaseComposition(state, p, { x: fx, z: fz });
-        fx = composition.x;
-        fz = composition.z;
+        const baseFx = fx;
+        const baseFz = fz;
+        const composition = resolveChaseComposition(state, p, { x: baseFx, z: baseFz });
+        const motionScale = isMotionReduced(state) ? 0.35 : 1;
+        const desiredBiasX = (composition.x - baseFx) * motionScale;
+        const desiredBiasZ = (composition.z - baseFz) * motionScale;
+        _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
+        _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
+        _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * motionScale, CONTEXT_ZOOM_LERP, frameDt);
+        fx = baseFx + _compositionBiasX;
+        fz = baseFz + _compositionBiasZ;
         const desiredSafe = clampFocusToPlayerSafeRect({ x: fx, z: fz }, p, {
           zoom: _dynamicZoom,
           fov: cam.fov,
@@ -326,8 +370,7 @@ export function createChaseCamera(state) {
         // toward the ship so a boost-release or slingshot glides to center rather than snapping.
         if (_recenterT > 0) {
           _recenterT = Math.max(0, _recenterT - frameDt);
-          const el = _recenterDur > 0 ? 1 - _recenterT / _recenterDur : 1;
-          const biasScale = 1 - Math.pow(1 - el, 3);   // ease-out-cubic 0→1 across the window
+          const biasScale = recenterBiasScale(_recenterT, _recenterDur);
           fx = p.pos.x + (fx - p.pos.x) * biasScale;
           fz = p.pos.z + (fz - p.pos.z) * biasScale;
         }
@@ -349,6 +392,7 @@ export function createChaseCamera(state) {
         const speedRatio = Math.min(1, playerSpeed / cruiseSpeed);
         const zoomFactor = SPEED_ZOOM_MIN + (SPEED_ZOOM_MAX - SPEED_ZOOM_MIN) * speedRatio;
         targetZoom = baseZoom * zoomFactor;
+        targetZoom *= (1 + _contextZoomBias);
       }
       // scripted push-zoom (dock fly-in / jump / kill-cam): multiplies the view while active, then
       // decays. Negative factors push IN (tighter). Applied to targetZoom so it eases through the

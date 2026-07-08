@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { clampFocusToPlayerSafeRect, resolveChaseComposition } from '../src/render/camera.js';
+import { clampFocusToPlayerSafeRect, recenterBiasScale, resolveChaseComposition } from '../src/render/camera.js';
 
 function ship(id, x, z, team = 'enemy') {
   return {
@@ -41,8 +41,9 @@ const threat = resolveChaseComposition(threatState, player, { x: 0, z: 0 });
 assert.equal(threat.nearbyEnemies, 1, 'nearby hostile should be counted for combat zoom');
 assert.equal(threat.hasThreatFocus, true, 'nearest hostile should become a composition anchor');
 assert.equal(threat.hasTetherFocus, false, 'threat-only framing should not report tether focus');
-near(threat.x, 90, 'combat threat bias should push toward the target without zooming out');
+near(threat.x, 40, 'combat threat bias should push mildly toward the target');
 near(threat.z, 0, 'combat threat bias should preserve lateral alignment');
+assert.ok(threat.zoomBias > 0.10 && threat.zoomBias < 0.12, 'combat threat should prefer zoom-out context over large focus displacement');
 
 const despawnedThreat = ship(5, 500, 0, 'enemy');
 despawnedThreat.alive = false;
@@ -51,6 +52,7 @@ const deadThreat = resolveChaseComposition(deadThreatState, player, { x: 0, z: 0
 assert.equal(deadThreat.nearbyEnemies, 0, 'dead hostiles should not count as active threats');
 assert.equal(deadThreat.hasThreatFocus, false, 'dead hostiles should not pull camera composition');
 near(deadThreat.x, 0, 'dead hostile should leave player focus unchanged');
+near(deadThreat.zoomBias, 0, 'dead hostile should not request context zoom');
 
 const tetherState = stateWith([player, payload(3, 320, 0)], {
   att_payload: { id: 'att_payload', state: 'active', ownerId: 1, targetId: 3 },
@@ -59,7 +61,8 @@ const tether = resolveChaseComposition(tetherState, player, { x: 0, z: 0 });
 assert.equal(tether.nearbyEnemies, 0, 'payload tether should not masquerade as a hostile');
 assert.equal(tether.hasThreatFocus, false, 'payload-only framing should not report threat focus');
 assert.equal(tether.hasTetherFocus, true, 'active player tether should become a composition anchor');
-near(tether.x, 76.8, 'payload tether bias should compose toward the Massline endpoint');
+near(tether.x, 38.4, 'payload tether bias should compose gently toward the Massline endpoint');
+assert.ok(tether.zoomBias > 0.06 && tether.zoomBias < 0.07, 'payload tether should widen the camera more than it drags focus');
 
 const combinedState = stateWith([player, ship(2, 500, 0, 'enemy'), payload(3, 320, 0)], {
   att_payload: { id: 'att_payload', state: 'active', ownerId: 1, targetId: 3 },
@@ -69,7 +72,8 @@ const combined = resolveChaseComposition(combinedState, player, { x: 0, z: 0 });
 assert.equal(combined.nearbyEnemies, 1, 'combined combat+tether framing should keep threat count');
 assert.equal(combined.hasThreatFocus, true, 'combined framing should include threat focus');
 assert.equal(combined.hasTetherFocus, true, 'combined framing should include tether focus');
-near(combined.x, 166.8, 'combined framing should include both threat and Massline endpoint bias');
+near(combined.x, 78.4, 'combined framing should include bounded threat and Massline endpoint bias');
+near(combined.zoomBias, 0.14, 'combined combat+tether context zoom should cap before feeling like a map peek');
 
 const unrelatedTetherState = stateWith([player, payload(3, 320, 0), ship(4, -200, 0, 'player')], {
   att_unrelated: { id: 'att_unrelated', state: 'active', ownerId: 4, targetId: 3 },
@@ -92,5 +96,9 @@ const missingFocus = clampFocusToPlayerSafeRect(null, player, { zoom: 95, fov: 5
 assert.equal(missingFocus.clamped, false, 'camera safety clamp should tolerate missing focus during startup');
 near(missingFocus.x, player.pos.x, 'missing focus should fall back to the player x position');
 near(missingFocus.z, player.pos.z, 'missing focus should fall back to the player z position');
+
+near(recenterBiasScale(0.4, 0.4), 1, 'recenter should start with the current bias instead of snapping to center');
+assert.ok(recenterBiasScale(0.383, 0.4) > 0.99, 'recenter should barely move on its first frame');
+near(recenterBiasScale(0, 0.4), 0, 'recenter should end fully player-centered');
 
 console.log('Camera composition checks OK');

@@ -615,7 +615,10 @@ export const missions = {
 
     // Spawn any immediate/deferred targets (if the player is already in the target sector).
     this._ensureMissionTargets(inst);
-    this.trackMission(inst.id, { silent: true });
+    // Accepting auto-tracks AND speaks the objective through the voiceArbiter objective channel
+    // (tier 60) — same one-voice path as a manual Mission Log track. The ambient "Mission accepted"
+    // toast below is a separate lane (transaction confirmation), so the two do not contend.
+    this.trackMission(inst.id);
 
     this.bus.emit('mission:accepted', { missionId: inst.id, type: inst.type, storyTag: inst.storyTag || undefined });
     this.bus.emit('mission:updated', { missionId: inst.id });

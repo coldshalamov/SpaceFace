@@ -206,6 +206,32 @@ export const PART_LIBRARY_CONTRACT = Object.freeze({
 // freighter/heavy_hauler→freighter, interceptor/explorer→interceptor, corvette→corvette,
 // gunship/battlecruiser/flagship→gunship. New ladder hulls override the older broad buckets where
 // the authored library now has role-specific silhouettes.
+const ENGINE_FILE_BY_DEF_ID = Object.freeze({
+  ship_kestrel: 'engines/engine_ion_small.glb',
+  ship_drifter: 'engines/engine_ion_small.glb',
+  ship_ranger: 'engines/engine_ion_small.glb',
+  ship_pelican: 'engines/engine_ion_twin.glb',
+  ship_ironback: 'engines/engine_ion_twin.glb',
+  ship_wasp: 'engines/engine_vector.glb',
+  ship_hornet: 'engines/engine_vector.glb',
+  ship_mule: 'engines/engine_industrial.glb',
+  ship_atlas: 'engines/engine_industrial.glb',
+  ship_bastion: 'engines/engine_plasma_ring.glb',
+  ship_warden: 'engines/engine_plasma_ring.glb',
+  ship_colossus: 'engines/engine_plasma_ring.glb',
+  ship_leviathan: 'engines/engine_plasma_ring.glb',
+});
+
+const ENGINE_FILE_BY_DRIVE_ID = Object.freeze({
+  drive_reaction_s: 'engines/engine_vector.glb',
+  drive_reaction_m: 'engines/engine_ion_small.glb',
+  drive_reaction_l: 'engines/engine_ion_twin.glb',
+  drive_gravimetric_s: 'engines/engine_resonator.glb',
+  drive_pulse_plate_m: 'engines/engine_vector.glb',
+  drive_torch_l: 'engines/engine_plasma_ring.glb',
+  drive_field_sail_m: 'engines/engine_resonator.glb',
+});
+
 const HULL_FILE_BY_DEF_ID = Object.freeze({
   ship_kestrel: 'hulls/hull_starter.glb',
   ship_drifter: 'hulls/hull_multirole.glb',
@@ -997,6 +1023,8 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
         }
         selected.set(slot, exact || (pool.length ? pool[((seed ^ hashString(slot)) >>> 0) % pool.length] : null));
       }
+    } else if (slot === 'engine') {
+      selected.set(slot, engineRecordFor(records, entity, seed));
     } else {
       selected.set(slot, records.length ? records[((seed ^ hashString(slot)) >>> 0) % records.length] : null);
     }
@@ -1408,6 +1436,21 @@ function weaponTargetLength(size, wdef) {
   if (size === 'L') return 0.44;
   if (size === 'M') return 0.34;
   return 0.24;
+}
+
+function engineRecordFor(records, entity, seed) {
+  const defId = entity.data && entity.data.defId;
+  const shipDef = SHIP_BY_ID.get(defId);
+  const driveId = shipDef && shipDef.driveId;
+  let file = ENGINE_FILE_BY_DEF_ID[defId] || ENGINE_FILE_BY_DRIVE_ID[driveId] || null;
+  if (!file) {
+    const role = String(shipDef && shipDef.role || '').toLowerCase();
+    if (role.includes('miner') || role.includes('freighter')) file = 'engines/engine_industrial.glb';
+    else if (role.includes('interceptor') || role.includes('fighter')) file = 'engines/engine_vector.glb';
+    else if (role.includes('capital') || role.includes('gunship') || role.includes('corvette')) file = 'engines/engine_plasma_ring.glb';
+    else file = 'engines/engine_ion_small.glb';
+  }
+  return recordForFile(records, file) || hashedRecord(records, seed, 'engine');
 }
 
 function weaponRecordFor(records, wdef, facing, size, seed, index) {

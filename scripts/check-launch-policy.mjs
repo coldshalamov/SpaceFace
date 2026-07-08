@@ -85,6 +85,19 @@ assert.doesNotMatch(
   'Browser server must NOT inline its own MIME table or freshness logic — it must come from the shared module'
 );
 
+const browserLauncher = read('SpaceFace.bat');
+assert.match(browserLauncher, /node scripts\\launch-browser\.mjs/, 'Browser .bat must use the robust launcher helper');
+assert.doesNotMatch(
+  browserLauncher,
+  /start\s+""\s+"http:\/\/localhost:8123\/"[\s\S]*node server\.js/,
+  'Browser .bat must not open the browser before proving the server is ready'
+);
+
+const browserLauncherHelper = read('scripts/launch-browser.mjs');
+assert.match(browserLauncherHelper, /probeSpaceFace/, 'Browser launcher helper must probe the route before opening the browser');
+assert.match(browserLauncherHelper, /SpaceFace is already running/, 'Browser launcher helper must reuse an existing healthy SpaceFace server');
+assert.match(browserLauncherHelper, /waitForSpaceFace/, 'Browser launcher helper must wait for readiness after starting the server');
+
 // ─────────────────────────────────────────────────────────────────────────────
 // RUNTIME — backend defaults, asset mode, save canonicalization, no URL forks.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,7 +117,7 @@ const main = read('src/main.js');
 assert.doesNotMatch(main, /prod=1|get\('prod'\)|\?prod/, 'Boot/debug policy must not use a prod query flag to fork the runtime');
 assert.match(
   main,
-  /helpers\.finalizeLoadedGame\s*=\s*\(payload\)\s*=>\s*finalizeLoadedGame\(state,\s*bus,\s*payload\s*\|\|\s*\{\}\);/,
+  /helpers\.finalizeLoadedGame\s*=\s*\(payload\)\s*=>\s*finalizeLoadedGame\(state,\s*bus,\s*registry,\s*payload\s*\|\|\s*\{\}\);/,
   'Browser/Electron save-load must use the same authored visual gate before returning to flight'
 );
 assert.match(

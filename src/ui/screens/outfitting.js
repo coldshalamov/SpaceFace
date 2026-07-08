@@ -1,13 +1,9 @@
 // src/ui/screens/outfitting.js — STATION "Outfitting" tab panel.
-// Shows the active ship's slot grid + installed modules + the player's module inventory.
-// Fitting/unfitting emits ui:fitModule / ui:unfitModule; the ships system owns the mutation and
-// re-derives stats (§0.6, §0.18, §4.4). Includes a live stat-delta preview computed with
-// ships.getDerivedStats (a pure exported builder) — preview only, never mutates state.
-// MODULE SHOP: lists purchasable modules/weapons filtered by the docked station's sector tier and
-// the player's researched tech. Emits ui:buyModule {defId}; the ships system owns the credit
-// charge + inventory push (§0.6). Comparison delta vs the currently fitted module of the same
-// slot type is shown so the player can evaluate upgrades at a glance.
-import { buildSlotList, getDerivedStats } from '../../systems/ships.js';
+// Premium 3D engineering view: file-tree fit hierarchy, central 3D stage with hardpoint highlights
+// and power-flow beams, circular stat gauges, ghost preview on hover, and amber/red invalid-fit
+// path interruption. Fit/unfit emits ui:fitModule / ui:unfitModule; ships system owns mutation.
+// Module shop emits ui:buyModule. Read-only over sim state; UI emits intents only.
+import { buildSlotList, getDerivedStats, fits } from '../../systems/ships.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -15,12 +11,13 @@ import { SECTORS } from '../../data/sectors.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { confirm } from '../confirm.js';
 import { escapeHtml } from '../comms.js';
+import { createShipEngineeringStage } from '../shipEngineeringStage.js';
+import { createFitTree } from '../fitTree.js';
+import { createMorphLabel } from '../effects/index.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 
-// Drive-family label for the preview header. The hull's driveId resolves to one of five propulsion
-// families (spec §6); surfacing it in outfitting lets the player feel the family switch on a new hull.
 const DRIVE_FAMILY_LABEL = {
   reaction: 'Reaction', gravimetric: 'Gravimetric', pulse_plate: 'Pulse Plate',
   torch: 'Torch', field_sail: 'Field Sail',
@@ -40,7 +37,6 @@ const FITTABLE_BY_ID = new Map();
 for (const m of MODULES) FITTABLE_BY_ID.set(m.id, m);
 for (const w of WEAPONS) if (!FITTABLE_BY_ID.has(w.id)) FITTABLE_BY_ID.set(w.id, w);
 
-// All purchasable items (modules + weapons), sorted by slot type then tier then price.
 const ALL_BUYABLE = [...MODULES, ...WEAPONS].filter((d) => d.price > 0);
 ALL_BUYABLE.sort((a, b) => {
   if (a.slotType < b.slotType) return -1;
@@ -50,9 +46,6 @@ ALL_BUYABLE.sort((a, b) => {
 });
 
 const SIZE_RANK = { S: 1, M: 2, L: 3 };
-function fits(slot, def) {
-  return !!slot && !!def && slot.type === def.slotType && SIZE_RANK[slot.size] >= SIZE_RANK[def.size];
-}
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
 function techName(id) {
@@ -239,7 +232,6 @@ export function recommendOutfittingPurchase(player = {}, slots = [], fittings = 
   };
 }
 
-/** Resolve the sector tier for the station the player is docked at. */
 function stationTier(stationId) {
   for (const sec of SECTORS) {
     for (const st of sec.stations || []) {
@@ -249,14 +241,11 @@ function stationTier(stationId) {
   return 0;
 }
 
-/** Readable stat summary for a module/weapon def (compact, for the shop row). */
 function statSnippet(def) {
   const parts = [];
-  // weapons
   if (def.dps != null) parts.push(Math.round(def.dps) + ' dps');
   if (def.range != null) parts.push(def.range + ' rng');
   if (def.dmg != null && def.rof != null) parts.push(def.dmg + 'x' + def.rof.toFixed(1));
-  // modules with mods
   const m = def.mods;
   if (m) {
     if (m.shieldFlat) parts.push('+' + m.shieldFlat + ' shd');
@@ -277,9 +266,8 @@ function statSnippet(def) {
     if (m.revealCargo) parts.push('scan cargo');
     if (m.marketIntel) parts.push('market data');
   }
-  // mining modules
   if (def.dps != null && def.slotType === 'mining') {
-    parts.length = 0; // clear weapon-style entries
+    parts.length = 0;
     parts.push(def.dps + ' ore/s');
     if (def.range) parts.push(def.range + ' rng');
     if (def.rareOreChance) parts.push(Math.round(def.rareOreChance * 100) + '% rare');
@@ -313,60 +301,24 @@ export function missionFitGuide(mission) {
   switch (mission.type) {
     case 'cargo_delivery':
     case 'bulk_trade':
-      return {
-        label: 'Haulage Fit',
-        text: 'Cargo space is the payout lever; add engine or shield margin only after the hold can carry the contract cleanly.',
-        wants: ['cargo', 'engine', 'shield'],
-      };
+      return { label: 'Haulage Fit', text: 'Cargo space is the payout lever; add engine or shield margin only after the hold can carry the contract cleanly.', wants: ['cargo', 'engine', 'shield'] };
     case 'mining_quota':
-      return {
-        label: 'Mining Fit',
-        text: 'Mining beams and cargo racks shorten the loop; shields keep the ore run from turning into debris.',
-        wants: ['mining', 'cargo', 'shield'],
-      };
+      return { label: 'Mining Fit', text: 'Mining beams and cargo racks shorten the loop; shields keep the ore run from turning into debris.', wants: ['mining', 'cargo', 'shield'] };
     case 'salvage_retrieval':
-      return {
-        label: 'Recovery Fit',
-        text: 'Bring cargo space for the claim and enough shield or utility support to survive the wreck field.',
-        wants: ['cargo', 'shield', 'utility'],
-      };
+      return { label: 'Recovery Fit', text: 'Bring cargo space for the claim and enough shield or utility support to survive the wreck field.', wants: ['cargo', 'shield', 'utility'] };
     case 'smuggling_run':
-      return {
-        label: 'Smuggling Fit',
-        text: 'Speed and cargo beat fair fights here; shields are the apology letter if a patrol gets curious.',
-        wants: ['engine', 'cargo', 'shield'],
-      };
+      return { label: 'Smuggling Fit', text: 'Speed and cargo beat fair fights here; shields are the apology letter if a patrol gets curious.', wants: ['engine', 'cargo', 'shield'] };
     case 'passenger_transport':
-      return {
-        label: 'Courier Fit',
-        text: 'Engine and shield upgrades protect the schedule; cargo is secondary unless the job also asks for freight.',
-        wants: ['engine', 'shield', 'utility'],
-      };
+      return { label: 'Courier Fit', text: 'Engine and shield upgrades protect the schedule; cargo is secondary unless the job also asks for freight.', wants: ['engine', 'shield', 'utility'] };
     case 'bounty_hunt':
     case 'patrol_clear':
-      return {
-        label: 'Combat Fit',
-        text: 'Weapons make the timer honest; shields and engines decide whether you leave with the bounty or become it.',
-        wants: ['weapon', 'shield', 'engine'],
-      };
+      return { label: 'Combat Fit', text: 'Weapons make the timer honest; shields and engines decide whether you leave with the bounty or become it.', wants: ['weapon', 'shield', 'engine'] };
     case 'escort':
-      return {
-        label: 'Escort Fit',
-        text: 'Sustained weapons and shields matter more than cargo; fit to stay alive beside the convoy.',
-        wants: ['weapon', 'shield', 'utility'],
-      };
+      return { label: 'Escort Fit', text: 'Sustained weapons and shields matter more than cargo; fit to stay alive beside the convoy.', wants: ['weapon', 'shield', 'utility'] };
     case 'recon_scan':
-      return {
-        label: 'Scout Fit',
-        text: 'Utility and engine upgrades shorten the sweep; shields cover mistakes in dirty lanes.',
-        wants: ['utility', 'engine', 'shield'],
-      };
+      return { label: 'Scout Fit', text: 'Utility and engine upgrades shorten the sweep; shields cover mistakes in dirty lanes.', wants: ['utility', 'engine', 'shield'] };
     default:
-      return {
-        label: 'Mission Fit',
-        text: 'Use the tracked contract to buy toward a job instead of buying anonymous numbers in a vacuum.',
-        wants: ['weapon', 'shield', 'cargo'],
-      };
+      return { label: 'Mission Fit', text: 'Use the tracked contract to buy toward a job instead of buying anonymous numbers in a vacuum.', wants: ['weapon', 'shield', 'cargo'] };
   }
 }
 
@@ -389,20 +341,6 @@ function missionAdvisorChipHtml(chip) {
   return '<span class="st-mission-preflight-chip st-mission-preflight-chip--' + chip.kind + '">' + escapeHtml(chip.text) + '</span>';
 }
 
-// Stat fields shown in the preview (label, key, higherIsBetter, suffix).
-const PREVIEW_STATS = [
-  { k: 'hullMax', l: 'Hull', up: true },
-  { k: 'shieldMax', l: 'Shield', up: true },
-  { k: 'shieldRegenRate', l: 'Shield Regen', up: true, dp: 1 },
-  { k: 'capMax', l: 'Energy', up: true },
-  { k: 'capRegen', l: 'Energy Regen', up: true, dp: 1 },
-  { k: 'cargoCap', l: 'Cargo', up: true, suffix: 'u' },
-  { k: 'maxSpeed', l: 'Top Speed', up: true, dp: 0 },
-  { k: 'thrust', l: 'Thrust', up: true, dp: 0 },
-  { k: 'turnRate', l: 'Turn Rate', up: true, dp: 2 },
-  { k: 'mass', l: 'Mass', up: false, dp: 0, suffix: 't' },
-];
-
 export function createOutfittingPanel(ctx) {
   const root = document.createElement('div');
   root.className = 'st-panel st-outfit';
@@ -411,139 +349,145 @@ export function createOutfittingPanel(ctx) {
   advisor.className = 'st-mission-guide st-outfit-advisor';
   root.appendChild(advisor);
 
-  const top = document.createElement('div');
-  top.className = 'st-outfit-top';
-  top.innerHTML =
-    '<div class="st-outfit-grid"><div class="st-sub-h">Slots</div><div class="st-slot-grid"></div></div>' +
-    '<div class="st-outfit-preview"><div class="st-sub-h">Stats</div><div class="st-stat-table"></div></div>';
-  root.appendChild(top);
-  const slotGrid = top.querySelector('.st-slot-grid');
-  const statTable = top.querySelector('.st-stat-table');
+  const engineering = document.createElement('div');
+  engineering.className = 'st-outfit-engineering';
+  root.appendChild(engineering);
+
+  // Left: fit tree
+  const treeWrap = document.createElement('div');
+  treeWrap.className = 'st-outfit-tree-wrap';
+  engineering.appendChild(treeWrap);
+
+  // Center: 3D stage
+  const stageWrap = document.createElement('div');
+  stageWrap.className = 'st-outfit-stage-wrap';
+  engineering.appendChild(stageWrap);
+
+  let stage = null;
+  function ensureStage() {
+    if (stage) return stage;
+    stage = createShipEngineeringStage(stageWrap, {
+      envMap: ctx.state && ctx.state.render && ctx.state.render.envMap,
+    });
+    return stage;
+  }
+
+  // Right: inventory + shop
+  const rightWrap = document.createElement('div');
+  rightWrap.className = 'st-outfit-right';
+  engineering.appendChild(rightWrap);
 
   const invWrap = document.createElement('div');
   invWrap.className = 'st-outfit-inv';
   invWrap.innerHTML = '<div class="st-sub-h">Module Inventory</div><div class="st-inv-list"></div>';
-  root.appendChild(invWrap);
+  rightWrap.appendChild(invWrap);
   const invList = invWrap.querySelector('.st-inv-list');
 
-  // ---- Module Shop section ----
   const shopWrap = document.createElement('div');
   shopWrap.className = 'st-outfit-shop';
   shopWrap.innerHTML =
     '<div class="st-sub-h">Module Shop</div>' +
-    '<div class="st-shop-head">' +
-      '<span class="st-shop-credits mono"></span>' +
-    '</div>' +
-    '<div class="st-shop-head-row st-row st-row-head">' +
-      '<span class="c-name">Module</span>' +
-      '<span class="c-num">Slot</span>' +
-      '<span class="c-num">Stats</span>' +
-      '<span class="c-num">Price</span>' +
-      '<span class="c-act"></span>' +
-    '</div>' +
+    '<div class="st-shop-head"><span class="st-shop-credits mono"></span></div>' +
     '<div class="st-shop-list"></div>';
-  root.appendChild(shopWrap);
+  rightWrap.appendChild(shopWrap);
   const shopList = shopWrap.querySelector('.st-shop-list');
   const shopCredits = shopWrap.querySelector('.st-shop-credits');
 
-  // selected slot index for fitting from inventory; null = none.
+  const creditsMount = document.createElement('span');
+  shopCredits.appendChild(creditsMount);
+  const creditsLabel = createMorphLabel(creditsMount, { numeric: true });
+
+  // Fit tree
+  const fitTree = createFitTree(treeWrap, {
+    onSelect: (idx) => { selectedSlot = idx; refreshStage(); },
+    onHover: (idx) => { hoverSlot = idx; refreshStage(); },
+    onLeave: () => { hoverSlot = null; refreshStage(); },
+  });
+
+  let panel = { stationId: null };
   let selectedSlot = null;
-  // hovered preview fitting: {slotIndex, defId} or {slotIndex, remove:true} or null.
-  let previewFit = null;
+  let hoverSlot = null;
+  let previewFit = null; // { slotIndex, defId }
 
   function activeOwned() {
     const p = ctx.state.player;
     return (p.ownedShips || [])[p.activeShipIndex] || null;
   }
 
-  // ---- delegated listeners ----
-  slotGrid.addEventListener('click', async (ev) => {
-    const cell = ev.target.closest('[data-slot]');
-    if (!cell) return;
-    const slotIndex = Number(cell.getAttribute('data-slot'));
-    const unfitBtn = ev.target.closest('[data-act="unfit"]');
-    if (unfitBtn) {
-      const owned = activeOwned();
-      const fittedId = owned && owned.fittings && owned.fittings[slotIndex];
-      const def = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
-      const name = def && def.name || 'this module';
-      const ok = await confirm({
-        title: 'Unfit ' + name + '?',
-        body: 'The module will move to inventory and this ship will immediately lose its fitted stats.',
-        confirmLabel: 'Unfit',
-        danger: true,
-      });
-      if (!ok) return;
-      ctx.bus.emit('ui:unfitModule', { slotIndex });
-      ctx.bus.emit('audio:cue', { id: 'ui_click' });
-      selectedSlot = null; previewFit = null;
-      refresh();
+  function activeShipDef() {
+    const owned = activeOwned();
+    return owned ? SHIP_BY_ID.get(owned.defId) : null;
+  }
+
+  function activeSlots() {
+    const def = activeShipDef();
+    return def ? buildSlotList(def) : [];
+  }
+
+  function refreshStage() {
+    const owned = activeOwned();
+    const def = activeShipDef();
+    if (!owned || !def) {
+      if (stage) stage.setActive(false);
       return;
     }
-    // select an empty slot to fit into from inventory
-    selectedSlot = (selectedSlot === slotIndex) ? null : slotIndex;
-    previewFit = null;
-    refresh();
-  });
-  slotGrid.addEventListener('mouseover', (ev) => {
-    const cell = ev.target.closest('[data-slot]');
-    if (!cell) return;
-    const has = cell.getAttribute('data-filled') === '1';
-    if (has) { previewFit = { slotIndex: Number(cell.getAttribute('data-slot')), remove: true }; renderPreview(); }
-  });
-  slotGrid.addEventListener('mouseout', () => { if (previewFit && previewFit.remove) { previewFit = null; renderPreview(); } });
+    ensureStage();
+    stage.setShip(def.id);
+    stage.setActive(true);
+    // Re-fit the canvas to the laid-out stage size (the canvas may have been created before the
+    // tab panel was visible/sized). Idempotent; cheap when already correct.
+    try { stage.resize(); } catch (_) {}
 
-  invList.addEventListener('click', (ev) => {
-    const item = ev.target.closest('[data-inst]');
-    if (!item) return;
-    const instanceId = item.getAttribute('data-inst');
-    const defId = item.getAttribute('data-def');
-    const def = FITTABLE_BY_ID.get(defId);
-    // target slot: the selected slot if compatible, else the first compatible empty slot.
-    const owned = activeOwned();
-    if (!owned) return;
-    const shipDef = SHIP_BY_ID.get(owned.defId);
-    const slots = buildSlotList(shipDef);
-    let target = (selectedSlot != null && fits(slots[selectedSlot], def)) ? selectedSlot : -1;
-    if (target < 0) target = slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
-    if (target < 0) {
-      ctx.bus.emit('toast', { text: 'No compatible empty slot for ' + def.name, kind: 'warn', ttl: 3 });
-      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-      return;
+    const slots = activeSlots();
+    const fittings = owned.fittings || [];
+
+    // Power-flow beams to every fitted / hovered system.
+    const beamSpecs = [];
+    slots.forEach((slot, i) => {
+      const filled = !!fittings[i];
+      const isHover = hoverSlot === i;
+      const isSelected = selectedSlot === i;
+      if (filled || isHover || isSelected) {
+        let kind = slot.type === 'weapon' ? 'danger' : slot.type === 'shield' ? 'shield' : slot.type === 'engine' ? 'warn' : 'accent';
+        if (previewFit && previewFit.slotIndex === i) {
+          const previewDef = FITTABLE_BY_ID.get(previewFit.defId);
+          if (previewDef && !fits(slot, previewDef)) kind = 'heat'; // amber invalid
+        }
+        beamSpecs.push({ slotIndex: i, kind, active: filled || (previewFit && previewFit.slotIndex === i) });
+      }
+    });
+    stage.setPowerFlow(beamSpecs);
+
+    const targetSlot = hoverSlot != null ? hoverSlot : selectedSlot;
+    if (targetSlot != null) stage.setHighlightSlot(targetSlot);
+
+    // Ghost preview: if hovering a shop/inventory item, show it on the tree + beams.
+    if (previewFit) {
+      fitTree.setPreview(previewFit.slotIndex, previewFit.defId);
+    } else {
+      fitTree.setPreview(-1, null);
     }
-    ctx.bus.emit('ui:fitModule', { slotIndex: target, instanceId });
-    ctx.bus.emit('audio:cue', { id: 'ui_click' });
-    selectedSlot = null; previewFit = null;
-    refresh();
-  });
-  invList.addEventListener('mouseover', (ev) => {
-    const item = ev.target.closest('[data-inst]');
-    if (!item) { return; }
-    const owned = activeOwned();
-    if (!owned) return;
-    const def = FITTABLE_BY_ID.get(item.getAttribute('data-def'));
-    const shipDef = SHIP_BY_ID.get(owned.defId);
-    const slots = buildSlotList(shipDef);
-    let target = (selectedSlot != null && fits(slots[selectedSlot], def)) ? selectedSlot : slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
-    if (target >= 0) { previewFit = { slotIndex: target, defId: def.id }; renderPreview(); }
-  });
-  invList.addEventListener('mouseout', () => { if (previewFit && !previewFit.remove) { previewFit = null; renderPreview(); } });
 
-  // ---- shop delegated listener ----
-  shopList.addEventListener('click', (ev) => {
-    const btn = ev.target.closest('[data-act="buy"]');
-    if (!btn || btn.disabled) return;
-    const defId = btn.closest('[data-shop]').getAttribute('data-shop');
-    const fitSlotIndex = Number(btn.getAttribute('data-fit-slot'));
-    const payload = { defId };
-    if (Number.isInteger(fitSlotIndex) && fitSlotIndex >= 0) payload.fitSlotIndex = fitSlotIndex;
-    ctx.bus.emit('ui:buyModule', payload);
-    ctx.bus.emit('audio:cue', { id: 'ui_click' });
-    // Refresh after a short delay so the credits:changed event has processed.
-    setTimeout(() => refresh(), 50);
-  });
+    // Stats: use preview fittings if any.
+    const previewFittings = previewFit ? fittings.slice() : null;
+    if (previewFittings) {
+      if (previewFit.remove) previewFittings[previewFit.slotIndex] = null;
+      else previewFittings[previewFit.slotIndex] = previewFit.defId;
+    }
+    const stats = getDerivedStats(def.id, previewFittings || fittings, ctx.state.player);
+    stage.setGauges({
+      mass: stats.mass,
+      capMax: stats.capMax,
+      capRegen: stats.capRegen,
+      shieldMax: stats.shieldMax,
+      cargoCap: stats.cargoCap,
+      maxSpeed: stats.maxSpeed,
+      continuousDrain: stats.continuousDrain,
+    });
+    stage.setLabel('<span class="mono">' + escapeHtml(def.name) + '</span>' +
+      (previewFit ? ' <span class="st-outfit-ghost-label">preview</span>' : ''));
+  }
 
-  // ---- builders ----
   function renderMissionAdvisor() {
     const pick = missionPickForOutfitting(ctx.state);
     const mission = pick.mission;
@@ -573,33 +517,6 @@ export function createOutfittingPanel(ctx) {
       '<div class="st-mission-accepted-title">' + escapeHtml(mission.title || prettyMissionType(mission.type)) + '</div>' +
       '<div class="st-mission-purpose"><b>' + escapeHtml(guide.label) + ':</b> ' + escapeHtml(guide.text) + '</div>' +
       '<div class="st-mission-purpose st-outfit-nextbuy"><b>' + escapeHtml(nextBuy.title) + ':</b> ' + escapeHtml(nextBuy.detail) + '</div>';
-  }
-
-  function rebuildSlots() {
-    const owned = activeOwned();
-    slotGrid.textContent = '';
-    if (!owned) { slotGrid.innerHTML = '<div class="st-empty">No active ship.</div>'; return; }
-    const shipDef = SHIP_BY_ID.get(owned.defId);
-    const slots = buildSlotList(shipDef);
-    const frag = document.createDocumentFragment();
-    slots.forEach((slot, i) => {
-      const fittedId = owned.fittings[i];
-      const def = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
-      const cell = document.createElement('div');
-      cell.className = 'st-slot st-slot-' + slot.type + (fittedId ? ' filled' : ' empty') + (selectedSlot === i ? ' sel' : '');
-      cell.setAttribute('data-slot', String(i));
-      cell.setAttribute('data-filled', fittedId ? '1' : '0');
-      // Weapon hardpoints show their facing (Phase 2) — front/left/right/rear/turret — so the
-      // strategic choice of where a gun sits on the hull is legible at a glance.
-      const facingTag = (slot.type === 'weapon' && slot.facing && slot.facing !== 'front')
-        ? ' <span class="st-slot-facing">' + escapeHtml(slot.facing) + '</span>' : '';
-      cell.innerHTML =
-        '<div class="st-slot-type mono">' + escapeHtml(slot.type) + ' ' + escapeHtml(slot.size) + facingTag + '</div>' +
-        '<div class="st-slot-mod">' + (def ? escapeHtml(def.name) : (selectedSlot === i ? 'pick a module ▾' : '— empty —')) + '</div>' +
-        (fittedId ? '<button class="st-slot-unfit" data-act="unfit">unfit</button>' : '');
-      frag.appendChild(cell);
-    });
-    slotGrid.appendChild(frag);
   }
 
   function rebuildInventory() {
@@ -638,20 +555,17 @@ export function createOutfittingPanel(ctx) {
     const guide = missionFitGuide(mission);
     const wantedSlots = new Set(guide ? guide.wants : []);
 
-    shopCredits.textContent = 'CREDITS: ' + fmtCr(p.credits);
+    creditsLabel.set(fmtCr(p.credits));
 
     shopList.textContent = '';
     const frag = document.createDocumentFragment();
     let lastSlotType = '';
 
     for (const def of ALL_BUYABLE) {
-      // Station tier filter: station sells modules up to tier+1 (a T0 station sells T0 and T1).
       if (def.tier > tier + 1) continue;
-
       const alreadyOwned = (p.moduleInventory || []).some((m) => m.defId === def.id);
       const missionFit = wantedSlots.has(def.slotType);
 
-      // Slot-type group header
       if (def.slotType !== lastSlotType) {
         lastSlotType = def.slotType;
         const hdr = document.createElement('div');
@@ -660,10 +574,8 @@ export function createOutfittingPanel(ctx) {
         frag.appendChild(hdr);
       }
 
-      // Check if the ship has a compatible slot for this module
       const purchase = describeOutfittingPurchase(def, p, slots, fittings);
 
-      // Comparison delta: find the first fitted module of the same slot type and compare key stats.
       let deltaHtml = '';
       if (owned && def.mods) {
         const fittedSlotIdx = slots.findIndex((s, i) => s.type === def.slotType && owned.fittings[i]);
@@ -710,61 +622,92 @@ export function createOutfittingPanel(ctx) {
     }
   }
 
-  // Compute the hypothetical fittings array for the preview.
-  function fittingsWithPreview(owned) {
-    const f = (owned.fittings || []).slice();
-    if (previewFit) {
-      if (previewFit.remove) f[previewFit.slotIndex] = null;
-      else f[previewFit.slotIndex] = previewFit.defId;
-    }
-    return f;
-  }
-
-  function renderPreview() {
+  // ---- event listeners ----
+  invList.addEventListener('click', (ev) => {
+    const item = ev.target.closest('[data-inst]');
+    if (!item) return;
+    const instanceId = item.getAttribute('data-inst');
+    const defId = item.getAttribute('data-def');
+    const def = FITTABLE_BY_ID.get(defId);
     const owned = activeOwned();
-    statTable.textContent = '';
-    if (!owned) { statTable.innerHTML = '<div class="st-empty">—</div>'; return; }
-    const cur = getDerivedStats(owned.defId, owned.fittings || [], ctx.state.player);
-    const next = previewFit ? getDerivedStats(owned.defId, fittingsWithPreview(owned), ctx.state.player) : cur;
-    const frag = document.createDocumentFragment();
-    const driveLabel = driveLabelFor(owned.defId);
-    if (driveLabel) {
-      const driveRow = document.createElement('div');
-      driveRow.className = 'st-stat-row st-stat-row--drive';
-      driveRow.innerHTML =
-        '<span class="st-stat-l">Drive</span>' +
-        '<span class="st-stat-v mono">' + escapeHtml(driveLabel) + '</span>';
-      frag.appendChild(driveRow);
+    if (!owned) return;
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    const slots = buildSlotList(shipDef);
+    let target = (selectedSlot != null && fits(slots[selectedSlot], def)) ? selectedSlot : -1;
+    if (target < 0) target = slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+    if (target < 0) {
+      ctx.bus.emit('toast', { text: 'No compatible empty slot for ' + def.name, kind: 'warn', ttl: 3 });
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
     }
-    for (const s of PREVIEW_STATS) {
-      const a = cur[s.k] || 0;
-      const b = next[s.k] || 0;
-      const dp = s.dp != null ? s.dp : 0;
-      const delta = b - a;
-      const row = document.createElement('div');
-      row.className = 'st-stat-row';
-      let deltaHtml = '';
-      if (Math.abs(delta) > 1e-6) {
-        const better = s.up ? delta > 0 : delta < 0;
-        const sign = delta > 0 ? '+' : '';
-        deltaHtml = '<span class="st-delta ' + (better ? 'up' : 'down') + '">' + sign + delta.toFixed(dp) + '</span>';
-      }
-      row.innerHTML =
-        '<span class="st-stat-l">' + s.l + '</span>' +
-        '<span class="st-stat-v mono">' + b.toFixed(dp) + (s.suffix || '') + '</span>' +
-        deltaHtml;
-      frag.appendChild(row);
-    }
-    statTable.appendChild(frag);
+    ctx.bus.emit('ui:fitModule', { slotIndex: target, instanceId });
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    selectedSlot = null; previewFit = null;
+    refresh();
+  });
+
+  invList.addEventListener('mouseover', (ev) => {
+    const item = ev.target.closest('[data-inst]');
+    if (!item) { previewFit = null; refreshStage(); return; }
+    const owned = activeOwned();
+    if (!owned) return;
+    const def = FITTABLE_BY_ID.get(item.getAttribute('data-def'));
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    const slots = buildSlotList(shipDef);
+    let target = (selectedSlot != null && fits(slots[selectedSlot], def)) ? selectedSlot : slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+    if (target >= 0) previewFit = { slotIndex: target, defId: def.id };
+    else previewFit = { slotIndex: -1, defId: def.id }; // invalid fit path
+    refreshStage();
+  });
+
+  invList.addEventListener('mouseout', () => { previewFit = null; refreshStage(); });
+
+  shopList.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-act="buy"]');
+    if (!btn || btn.disabled) return;
+    const defId = btn.closest('[data-shop]').getAttribute('data-shop');
+    const fitSlotIndex = Number(btn.getAttribute('data-fit-slot'));
+    const payload = { defId };
+    if (Number.isInteger(fitSlotIndex) && fitSlotIndex >= 0) payload.fitSlotIndex = fitSlotIndex;
+    ctx.bus.emit('ui:buyModule', payload);
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    setTimeout(() => refresh(), 50);
+  });
+
+  shopList.addEventListener('mouseover', (ev) => {
+    const row = ev.target.closest('[data-shop]');
+    if (!row) { previewFit = null; refreshStage(); return; }
+    const defId = row.getAttribute('data-shop');
+    const def = FITTABLE_BY_ID.get(defId);
+    const owned = activeOwned();
+    if (!owned || !def) return;
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    const slots = buildSlotList(shipDef);
+    let target = (selectedSlot != null && fits(slots[selectedSlot], def)) ? selectedSlot : slots.findIndex((s, i) => !owned.fittings[i] && fits(s, def));
+    if (target >= 0) previewFit = { slotIndex: target, defId };
+    else previewFit = { slotIndex: -1, defId };
+    refreshStage();
+  });
+
+  shopList.addEventListener('mouseout', () => { previewFit = null; refreshStage(); });
+
+  function refresh() {
+    renderMissionAdvisor();
+    const owned = activeOwned();
+    const def = activeShipDef();
+    fitTree.setShip(def ? def.id : null, owned ? owned.fittings : []);
+    fitTree.setSelected(selectedSlot);
+    rebuildInventory();
+    rebuildShop();
+    refreshStage();
+    creditsLabel.set(fmtCr(ctx.state.player.credits || 0));
   }
 
-  function refresh() { renderMissionAdvisor(); rebuildSlots(); rebuildInventory(); rebuildShop(); renderPreview(); }
-
-  const panel = {
+  return {
     el: root,
     stationId: null,
     onShow(c) { if (c && c.stationId) panel.stationId = c.stationId; selectedSlot = null; previewFit = null; refresh(); },
     refresh,
+    dispose() { if (stage) { try { stage.dispose(); } catch (e) {} stage = null; } if (fitTree) fitTree.dispose(); },
   };
-  return panel;
 }

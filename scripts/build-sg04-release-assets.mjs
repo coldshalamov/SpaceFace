@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,7 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { meshopt } from '@gltf-transform/functions';
 import { ktx2 } from 'ktx2-encoder/gltf-transform';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
+import JPEG from 'jpeg-js';
 import { PNG } from 'pngjs';
 
 import {
@@ -58,12 +59,14 @@ const assets = [
     source: 'assets/ships/kestrel/kestrel_reference.glb',
     release: 'assets/ships/release/kestrel/kestrel_reference.glb',
   },
-  ...(partManifest.parts || []).map((part) => ({
-    id: part.id,
-    kind: `part:${part.category}`,
-    source: `assets/ships/parts/${part.file}`,
-    release: `assets/ships/release/parts/${part.file}`,
-  })),
+  ...(partManifest.parts || [])
+    .filter((part) => part.status !== 'blocked')
+    .map((part) => ({
+      id: part.id,
+      kind: `part:${part.category}`,
+      source: `assets/ships/parts/${part.file}`,
+      release: `assets/ships/release/parts/${part.file}`,
+    })),
   ...WHOLE_SHIP_FILES.map((file) => ({
     id: `wholeship_${file.replace(/\.glb$/, '')}`,
     kind: 'part:wholeships',
@@ -116,6 +119,7 @@ for (let index = 0; index < assets.length; index++) {
     console.log(`[sg04] ${index + 1}/${assets.length} ${asset.id}: build-start ${asset.source} -> ${outputReleasePath}`);
     await mkdir(dirname(releaseAbs), { recursive: true });
     const document = await io.read(sourceAbs);
+    splitIncompatibleTextureSlots(document);
     const transforms = [];
     // Sources that already ship KTX2/BasisU textures (e.g. authored hull GLBs) are KTX2-native and
     // must skip the pngjs decode -> re-encode path: re-encoding would be lossy and pngjs can't read KTX2.
@@ -126,7 +130,7 @@ for (let index = 0; index < assets.length; index++) {
       transforms.push(
         ktx2({
           slots: /^baseColorTexture$/,
-          imageDecoder: decodePng,
+          imageDecoder: decodeImage,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
           generateMipmap: true,
@@ -136,7 +140,7 @@ for (let index = 0; index < assets.length; index++) {
         }),
         ktx2({
           slots: /^normalTexture$/,
-          imageDecoder: decodePng,
+          imageDecoder: decodeImage,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
           generateMipmap: true,
@@ -147,7 +151,7 @@ for (let index = 0; index < assets.length; index++) {
         }),
         ktx2({
           slots: /^(occlusionTexture|metallicRoughnessTexture|roughnessTexture|metalnessTexture)$/,
-          imageDecoder: decodePng,
+          imageDecoder: decodeImage,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
           generateMipmap: true,
@@ -173,7 +177,24 @@ for (let index = 0; index < assets.length; index++) {
     await mkdir(dirname(releaseAbs), { recursive: true });
     await io.write(releaseAbs, document);
 
-    const pair = inspectReleaseAssetPair(asset.source, outputReleasePath, { root: ROOT });
+    // gltf-transform deduplicates redundant texture objects on write (e.g. hull_starter
+    // ships 9 texture entries over 5 images). Compare against a normalized source snapshot
+    // so release.textureTopology checks image-backed slots, not duplicate JSON indices.
+    const normalizedSourceAbs = `${releaseAbs}.source-normalized.glb`;
+    let normalizedSourcePath = asset.source;
+    try {
+      const normalizedSourceDoc = await io.read(sourceAbs);
+      splitIncompatibleTextureSlots(normalizedSourceDoc);
+      await io.write(normalizedSourceAbs, normalizedSourceDoc);
+      normalizedSourcePath = relativeToRoot(normalizedSourceAbs);
+    } catch (normalizeError) {
+      console.warn(`[sg04] ${asset.id}: could not normalize source textures for parity check: ${errorMessage(normalizeError)}`);
+    }
+
+    const pair = inspectReleaseAssetPair(normalizedSourcePath, outputReleasePath, { root: ROOT });
+    if (normalizedSourceAbs !== asset.source) {
+      try { unlinkSync(normalizedSourceAbs); } catch (_) {}
+    }
     if (!pair.ok) {
       throw new Error(`release asset failed SG-04 validation: ${outputReleasePath}\n${JSON.stringify(pair.issues, null, 2)}`);
     }
@@ -370,6 +391,23 @@ function errorMessage(error) {
   return error && error.stack ? error.stack : String(error);
 }
 
+function splitIncompatibleTextureSlots(document) {
+  const root = document.getRoot();
+  for (const material of root.listMaterials()) {
+    const baseTexture = material.getBaseColorTexture();
+    const normalTexture = material.getNormalTexture();
+    if (!baseTexture || !normalTexture || baseTexture !== normalTexture) continue;
+    const image = normalTexture.getImage();
+    if (!image) continue;
+    const clone = document.createTexture(normalTexture.getName()
+      ? `${normalTexture.getName()}_normal_slot`
+      : 'normal_slot_clone')
+      .setImage(image)
+      .setMimeType(normalTexture.getMimeType());
+    material.setNormalTexture(clone);
+  }
+}
+
 function decodePng(buffer) {
   const png = PNG.sync.read(Buffer.from(buffer));
   return {
@@ -377,6 +415,19 @@ function decodePng(buffer) {
     height: png.height,
     data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.byteLength),
   };
+}
+
+function decodeImage(buffer) {
+  try {
+    return decodePng(buffer);
+  } catch {
+    const decoded = JPEG.decode(Buffer.from(buffer), { useTArray: true });
+    return {
+      width: decoded.width,
+      height: decoded.height,
+      data: new Uint8Array(decoded.data.buffer, decoded.data.byteOffset, decoded.data.byteLength),
+    };
+  }
 }
 
 function sha256(bytes) {

@@ -919,6 +919,7 @@ export const stationHub = {
     // inspector column. Effects are view-only and parked when the screen hides.
     const consoleConsole = document.createElement('div');
     consoleConsole.className = 'st-console-deck';
+    consoleConsole.setAttribute('data-centerpiece', 'station-service-console');
     consoleConsole.innerHTML = `
       <div class="st-schematic-pane">
         <div class="st-fx-scan" aria-hidden="true"></div>
@@ -1630,7 +1631,7 @@ export const stationHub = {
           '<div class="st-ops-rail-h mono">Contracts</div>' +
           '<div class="st-mission-list"></div>' +
         '</div>' +
-        '<div class="st-ops-center">' +
+        '<div class="st-ops-center" data-centerpiece="contract-route-board">' +
           '<div class="st-ops-empty">No contract selected. Pick one from the left to run its route preflight.</div>' +
           '<div class="st-ops-dossier" hidden>' +
             '<div class="st-ops-head">' +
@@ -2061,6 +2062,10 @@ export const stationHub = {
       }
     }
     this._ctx.state.ui.activeStationTab = tabId;
+    if (this._el) {
+      this._el.dataset.activeTab = tabId;
+      this._el.classList.toggle('st-hub--engineering', tabId === 'shipyard' || tabId === 'outfit');
+    }
     // rail highlight
     let activeButton = null;
     this._rail.querySelectorAll('[data-tab]').forEach((b) => {
@@ -2203,7 +2208,7 @@ export const stationHub = {
     const facEl = this._topbar.querySelector('.st-station-fac');
     if (stn) {
       const targetName = stn.name || stn.id;
-      if (nameEl.textContent !== targetName) {
+      if (nameEl.textContent !== targetName && nameEl.dataset.acquireTarget !== targetName) {
         this._signalAcquire(nameEl, targetName, { duration: 400 });
       }
       const fac = stn.factionId ? FACTION_BY_ID.get(stn.factionId) : null;
@@ -2221,7 +2226,10 @@ export const stationHub = {
     const len = finalText.length;
     const perChar = duration / len;
     let resolved = 0;
+    const token = String(Date.now()) + ':' + Math.random().toString(36).slice(2);
 
+    element.dataset.acquireTarget = finalText;
+    element.dataset.acquireToken = token;
     element.textContent = finalText.replace(/./g, () => glyphPool[Math.floor(Math.random() * glyphPool.length)]);
     element.style.opacity = '1';
     element.classList.remove('acquiring');
@@ -2229,8 +2237,11 @@ export const stationHub = {
     element.classList.add('acquiring');
 
     const step = () => {
+      if (element.dataset.acquireToken !== token) return;
       if (resolved >= len) {
         element.textContent = finalText;
+        delete element.dataset.acquireTarget;
+        delete element.dataset.acquireToken;
         return;
       }
       let out = finalText.slice(0, resolved);
@@ -2765,8 +2776,14 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 /* ===== Docked service console: center stage · Service Dock · inspector · effect layers ========== */
 .st-workspace-wrapper { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
 .st-center-stage { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; position: relative; }
-.st-content { position: absolute; inset: 0; min-width: 0; overflow: hidden; }
+.st-content { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
 .st-faction-stripe { height: 3px; flex: none; opacity: .85; }
+.st-hub--engineering .st-console-deck,
+.st-hub--engineering .st-status-row,
+.st-hub--engineering .st-handoff,
+.st-hub--engineering .st-departure {
+  display: none;
+}
 
 /* Console deck: station schematic (with scanner-grid backdrop) above the Service Dock berth strip.
    Column layout so the dock is always a horizontal berth strip that uses the full stage width. */
@@ -2805,8 +2822,8 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-readiness--check { color: var(--warn); }
 .st-readiness--ready { color: var(--good); }
 
-/* .st-content fills .st-center-stage (position:relative above) via absolute inset so the absolute
-   tabpanels inside it get the full engineering-stage height, not the collapsed in-flow min-height. */
+/* .st-content occupies the remaining center-stage flex space below the station console/status strips;
+   the absolute tabpanels inside it fill that scoped area instead of covering the station chrome. */
 
 /* Right inspector column (diagnostics for the selected service / section). */
 .st-inspector { position: relative; z-index: 1; flex: none; width: 244px; display: flex; flex-direction: column;
@@ -3068,6 +3085,10 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-sy-fitline--bad { color: var(--ink-mute); }
 .st-shipyard .st-row.mission-fit-ok { border-color: rgba(98,224,138,.34); background: rgba(98,224,138,.045); }
 .st-shipyard .st-row.mission-fit-warn { border-color: rgba(255,198,77,.26); background: rgba(255,198,77,.035); }
+.st-shipyard { display: flex; flex-direction: column; gap: 12px; }
+.st-shipyard .st-sy-engineering { order: 0; }
+.st-shipyard .st-sy-job-guide { order: 1; margin: 0; }
+.st-shipyard .st-sy-owned { order: 2; margin: 0; }
 .st-sy-card-purpose { margin: -3px 0 8px; color: var(--ink-mute); }
 .st-sy-btns { display: flex; gap: 6px; }
 .st-sy-btns button { font-size: .75rem; padding: 4px 8px; }

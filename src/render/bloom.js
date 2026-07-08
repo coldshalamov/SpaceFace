@@ -244,8 +244,8 @@ export function createBloom(renderer, width, height) {
 
   // ---- render targets ----
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
-  // level (½→¼→⅛). bloomPing/bloomPong are scratch targets for the additive upsample chain, resized
-  // per step. All HalfFloat + linear colorSpace (default) so brights exceed 1.0.
+  // level (½→¼→⅛). Upsample outputs are preallocated per pyramid level so render() never resizes a
+  // render target on the hot path. All HalfFloat + linear colorSpace (default) so brights exceed 1.0.
   const rtOpts = () => ({
     type: THREE.HalfFloatType,
     magFilter: THREE.LinearFilter,
@@ -295,13 +295,14 @@ export function createBloom(renderer, width, height) {
       const dh = Math.max(1, H >> (i + 1));
       down.push(allocRenderTarget(dw, dh, rtOpts(), reason));
     }
-    // Upsample scratch targets stay at half-res (max upsample output) — never resize per frame.
-    const bloomPing = allocRenderTarget(halfW, halfH, rtOpts(), reason);
-    const bloomPong = allocRenderTarget(halfW, halfH, rtOpts(), reason);
-    return { rtScene, halfW, halfH, levels: newLevels, down, bloomPing, bloomPong };
+    const upsampleTargets = [];
+    for (let i = 1; i < newLevels; i++) {
+      upsampleTargets.push(allocRenderTarget(Math.max(1, W >> i), Math.max(1, H >> i), rtOpts(), reason));
+    }
+    return { rtScene, halfW, halfH, levels: newLevels, down, upsampleTargets };
   }
 
-  let { rtScene, halfW, halfH, levels, down, bloomPing, bloomPong } = createRenderTargets();
+  let { rtScene, halfW, halfH, levels, down, upsampleTargets } = createRenderTargets();
 
   // ---- fullscreen quad (one geometry, one mesh, swapped material per pass) ----
   const quadGeo = new THREE.PlaneGeometry(2, 2);
@@ -387,26 +388,23 @@ export function createBloom(renderer, width, height) {
     }
 
     // ---- upsample chain: deepest level -> ½, ADDITIVELY blending each coarse level over the next
-    // finer down level. The additive spread is what makes the halo wide. Two scratch RTs ping/pong;
-    // `outRT`/`readRT` are local per-frame aliases so we never mutate the module-level refs mid-loop.
+    // finer down level. The additive spread is what makes the halo wide. Upsample targets are sized
+    // during init/resize/context restore, never inside the frame hot path.
     // Step for i = levels-1 down to 1: upsample level i (coarse) + add level i-1 (fine) -> level i-1 size.
     let readTex = down[levels - 1].texture;            // coarsest pyramid level
-    let outRT = bloomPing;
-    let scratchRT = bloomPong;
     let finalTex = down[levels - 1].texture;            // result of the upsample chain (½-res if levels>1)
     for (let i = levels - 1; i >= 1; i--) {
       const targetW = Math.max(1, W >> i);              // output = finer level (down[i-1]) resolution
       const targetH = Math.max(1, H >> i);
-      outRT.setSize(targetW, targetH);
+      const outRT = upsampleTargets[i - 1];
       upsampleMat.uniforms.tCoarse.value = readTex;     // level i (coarse, to be spread up)
       upsampleMat.uniforms.tFine.value = down[i - 1].texture; // level i-1 (sharp brights to keep)
       upsampleMat.uniforms.uTexel.value.set(1 / targetW, 1 / targetH);
       upsampleMat.uniforms.uWeight.value = 0.36;
       blit(upsampleMat, outRT);
       finalTex = outRT.texture;
-      // the just-written RT becomes the coarse input next iteration; reuse the other scratch as output
+      // the just-written RT becomes the coarse input next iteration.
       readTex = finalTex;
-      const used = outRT; outRT = scratchRT; scratchRT = used;
     }
 
     // pass 6 — composite to screen (sRGB-encoded, with cinematic post grade applied)
@@ -428,16 +426,14 @@ export function createBloom(renderer, width, height) {
     // recreate the whole pyramid at the current size so the next frame can render cleanly.
     rtScene.dispose();
     for (const rt of down) rt.dispose();
-    bloomPing.dispose();
-    bloomPong.dispose();
+    for (const rt of upsampleTargets) rt.dispose();
     const next = createRenderTargets('contextRestore');
     rtScene = next.rtScene;
     halfW = next.halfW;
     halfH = next.halfH;
     levels = next.levels;
     down = next.down;
-    bloomPing = next.bloomPing;
-    bloomPong = next.bloomPong;
+    upsampleTargets = next.upsampleTargets;
     upsampleMat.uniforms.uTexel.value.set(1 / halfW, 1 / halfH);
   }
 
@@ -458,8 +454,14 @@ export function createBloom(renderer, width, height) {
     for (let i = 0; i < levels; i++) {
       resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
     }
-    resizeRenderTarget(bloomPing, halfW, halfH, 'resize');
-    resizeRenderTarget(bloomPong, halfW, halfH, 'resize');
+    while (upsampleTargets.length < Math.max(0, newLevels - 1)) {
+      const i = upsampleTargets.length + 1;
+      upsampleTargets.push(allocRenderTarget(Math.max(1, W >> i), Math.max(1, H >> i), rtOpts(), 'resize'));
+    }
+    while (upsampleTargets.length > Math.max(0, newLevels - 1)) { const rt = upsampleTargets.pop(); rt.dispose(); }
+    for (let i = 1; i < levels; i++) {
+      resizeRenderTarget(upsampleTargets[i - 1], Math.max(1, W >> i), Math.max(1, H >> i), 'resize');
+    }
     // per-level texel sizes are derived in render(); default uniforms stay roughly correct.
     upsampleMat.uniforms.uTexel.value.set(1 / halfW, 1 / halfH);
   }
@@ -518,8 +520,8 @@ export function createBloom(renderer, width, height) {
       exposure,
       grainSource: 'quantized-interleaved-gradient',
       grainFps: FILM_GRAIN_FPS,
-      targets: 1 + down.length + 2,
-      renderTargetCount: 1 + down.length + 2,
+      targets: 1 + down.length + upsampleTargets.length,
+      renderTargetCount: 1 + down.length + upsampleTargets.length,
       fullFramePasses: enabled && strength > 0.0001 ? 2 : 1,
       bloomPasses: enabled && strength > 0.0001 ? down.length + Math.max(0, down.length - 1) : 0,
     };
@@ -528,8 +530,7 @@ export function createBloom(renderer, width, height) {
   function dispose() {
     rtScene.dispose();
     for (const rt of down) rt.dispose();
-    bloomPing.dispose();
-    bloomPong.dispose();
+    for (const rt of upsampleTargets) rt.dispose();
     quadGeo.dispose();
     downsampleMat.dispose();
     upsampleMat.dispose();

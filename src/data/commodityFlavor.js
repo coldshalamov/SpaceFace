@@ -1,4 +1,4 @@
-// src/data/commodityFlavor.js – trade-terminal flavor for all 43 commodities.
+// src/data/commodityFlavor.js – trade-terminal flavor for all 44 commodities.
 // Pure data keyed by cmdty_* id: displayName, desc, lore. No balance fields.
 // Consumed by commodities.js (merge) and scripts/check-commodity-flavor.mjs.
 
@@ -192,6 +192,11 @@ export const COMMODITY_FLAVOR = {
     displayName: 'Derelict Boards, Outer Reach Pickings',
     desc: 'Stripped nav boards and relay packs from wreck hulks.',
     lore: 'Reach pickers strip wrecks before Concord patrols note them. Fabs refurbish what military buyers do not seize first.',
+  },
+  cmdty_classified_salvage: {
+    displayName: 'Blackfile Salvage, Concord Seizure Locker',
+    desc: 'Restricted wreck evidence packed in sealed chain-of-custody crates.',
+    lore: 'Concord tags these crates before military review. Vael brokers pay quietly when blackmarket docks unlock the file.',
   },
   cmdty_narcotics: {
     displayName: 'Lane Dust, Vael Locker Trade',

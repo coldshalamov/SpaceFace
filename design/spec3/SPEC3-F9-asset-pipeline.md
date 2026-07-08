@@ -41,9 +41,11 @@ variants ×8). Without an industrial lane, F5/F6/F8 starve.
   palette, status) seeded from SPEC3 needs (list above) + `wantsVisual` flags from F5-23. Queue
   discipline: nothing enters release without exporter pass + manifest entry + reachability check.
 - **Style law (from VISUAL_ASSET_PLAN, enforced):** hard-surface, chamfered everything (no razor
-  edges), one emissive accent material slot fed by sector/faction palette at runtime, tri budgets
-  (part ≤1.2k, whole-ship ≤6k, prop ≤600, landmark ≤2.5k), no textures where vertex color + one
-  trim sheet suffices.
+  edges), one emissive accent material slot fed by sector/faction palette at runtime, and
+  budget-aware authoring from the live manifest/exporter contract. Current defaults are part ≤15k,
+  whole-ship ≤20k with ≥800 hull-body tris, prop ≤3k, landmark ≤10k. These are alarms, not taste
+  ceilings: raise or lower a row with a manifest/spec rationale plus perf evidence. No textures where
+  vertex color + one trim sheet suffices.
 - **LOD & batching by construction:** exporter generates LOD1 (decimate 45%) + LOD2 (silhouette
   hull) into the GLB; assetLoader already LODs — authored assets arrive LOD-complete so the F8-33
   stability probe never sees improvised swaps.
@@ -70,7 +72,8 @@ def validate(obj, spec):
 ### 5. Assets & generation (the queue, priority order)
 1. Whole-ship repairs ×3 (unblocks `check:assets:live`). 2. Claim module parts ×7 (F6-26).
 3. Hunter signature parts ×12 (F4-22). 4. Landmarks ×4 + vault/tower ×2 (F7-30/31, F8-35).
-5. Module-visual variants ×8 (F5-23). Each queue row carries its palette + budget from the style law.
+5. Module-visual variants ×8 (F5-23). Each queue row carries its palette + budget from the live
+   manifest/exporter policy.
 
 ### 6. Libraries / tooling
 Build-time only: **gltf-transform** (MIT) in the release script for Draco/meshopt compression +
@@ -88,7 +91,7 @@ No runtime deps.
 ### 8. Anti-patterns
 Relaxing the contract to ship an asset (repair the asset); authoring without the exporter (tribal
 knowledge rot); texture sprawl (trim sheet + vertex color first); un-queued asset work (the queue
-is the contract with the other threads); runtime dependencies for build-time problems.
+is the contract with the other threads); unreviewed runtime dependencies for build-time problems.
 
 ### 9. Ambition ceiling
 Parametric part families: exporter-side scripts generate size variants (S/M/L battery masts) from

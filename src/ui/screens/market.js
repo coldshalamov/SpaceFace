@@ -720,9 +720,9 @@ export function createMarketPanel(ctx) {
     const stationId = panel.stationId;
     const owned = (state.player.cargo.items[cmdtyId]) || 0;
 
-    // Background clicks select the inline analysis stage. The explicit expand button opens the modal.
+    // Background clicks open the chart; the chart opener also syncs the inline analysis stage.
     if (!btn) {
-      selectCommodity(cmdtyId);
+      openChartModal(cmdtyId);
       return;
     }
 

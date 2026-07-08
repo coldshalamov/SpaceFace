@@ -39,7 +39,9 @@ Same pattern per spec. `agy -p "..." --dangerously-skip-permissions` works for t
 - Read 00_MASTER_TASTE first. Where interpolating, choose the QUIETER option.
 - Deviating from any number requires editing the spec in the same change with a one-line reason.
 - Acceptance assertions are the definition of done; transcripts are not evidence — checks are.
-- Never edit test/*.expected.json to make something pass. Never add dependencies.
+- Never edit test/*.expected.json to make something pass. Never add dependencies silently: build-time
+  tools need documentation, and runtime deps require lead sign-off with license, bundle/perf,
+  determinism/save, and maintenance notes.
 - Regression floor after every task: the spec's named checks + `npm run check:sim:compare`
   (hashEqual:true) + `node scripts/check-tether-gameplay.mjs`.
 

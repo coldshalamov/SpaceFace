@@ -21,6 +21,8 @@
 | Use **concept art** as Blender reference | `assets/concept/AGENTS.md` + `assets/concept/index.json` |
 | Understand why an agent wired the **wrong ship** | §Blocked & trap assets + §Ship visual stack |
 | See what's **queued but not built** | `assets/QUEUE.md` |
+| **Parallel graphics sprint threads** (goal prompts, locks, handoffs) | `design/graphics-sprints/GOAL_PROMPTS.md` + `00_ORCHESTRATION.md` |
+| Asset lifecycle / wiring status | `assets/ASSET_STATUS.json` + `npm run report:asset-status` |
 | Confirm an asset **ships in the bundle** | `npm run check:asset-reachability` |
 | Confirm GLBs **load in flight** | `npm run check:assets:live` + `npm run check:asset-status` |
 

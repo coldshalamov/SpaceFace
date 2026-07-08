@@ -16,6 +16,7 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { disposeAuthoredAssetRuntime, loadAuthoredPart } from '../render/assetLoader.js';
+import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
@@ -100,13 +101,14 @@ function makeEntity(defId, seedId) {
  * @param {object} opts
  * @param {object} [opts.envMap]  - the main scene's PMREM envMap (for chrome); optional
  * @param {string} [opts.dockId]  - place_dock_interior* part id for station hangar backdrop; optional
- * @returns {{ show(defId, opts):void, setRotating(boolean):void, setDockId(string):void, frame():void, dispose():void }}
+ * @returns {{ show(defId, opts):void, setRotating(boolean):void, setDockId(string):void, setActive(boolean):void, warmAssets():Promise<boolean>, resize():void, frame():void, dispose():void }}
  */
 export function createShipPreviewMount(canvas, opts) {
   opts = opts || {};
-  const W = canvas.clientWidth || 320;
-  const H = canvas.clientHeight || 200;
+  let W = canvas.clientWidth || canvas.width || 320;
+  let H = canvas.clientHeight || canvas.height || 200;
   const useDock = typeof opts.dockId === 'string' && opts.dockId.length > 0;
+  const onFirstFrame = typeof opts.onFirstFrame === 'function' ? opts.onFirstFrame : null;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: !useDock, powerPreference: 'low-power' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -147,6 +149,18 @@ export function createShipPreviewMount(canvas, opts) {
   let yaw = 0;
   let rafId = 0;
   let disposed = false;
+  let renderedDefId = null;
+  let warmupPromise = null;
+
+  function resize() {
+    const nextW = Math.max(1, Math.floor(canvas.clientWidth || canvas.width || W || 320));
+    const nextH = Math.max(1, Math.floor(canvas.clientHeight || canvas.height || H || 200));
+    if (nextW === W && nextH === H) return;
+    W = nextW; H = nextH;
+    renderer.setSize(W, H, false);
+    cam.aspect = W / H;
+    cam.updateProjectionMatrix();
+  }
 
   async function loadDockBackdrop(id) {
     if (!id || disposed) return;
@@ -164,21 +178,85 @@ export function createShipPreviewMount(canvas, opts) {
     dockRoot = groupFromBlueprint(record);
     dockRoot.position.y = 1.5;
     scene.add(dockRoot);
-    if (active && !rafId) frame();
+    renderNow();
+    if (active && !rafId) requestLoop();
   }
 
   if (dockId) loadDockBackdrop(dockId).catch(() => {});
 
-  function frame() {
+  function requestCurrentAuthoredUpgrade() {
+    const request = current && current.userData && current.userData.requestAuthoredUpgrade;
+    if (typeof request === 'function') request(renderer, scene);
+  }
+
+  function warmAssets() {
+    if (!warmupPromise) {
+      warmupPromise = preloadAuthoredPartLibrary(renderer)
+        .then(() => {
+          if (disposed) return false;
+          requestCurrentAuthoredUpgrade();
+          renderNow();
+          if (active && !rafId) requestLoop();
+          return true;
+        })
+        .catch((error) => {
+          console.warn('[shipPreviewMount] authored preview warmup failed', error);
+          return false;
+        });
+    }
+    return warmupPromise;
+  }
+
+  function renderNow() {
     if (disposed) return;
-    if (!active) { rafId = 0; return; }
-    rafId = requestAnimationFrame(frame);
+    resize();
     if (current && rotating) {
       yaw += 0.012;
       current.rotation.y = yaw;
     }
     renderer.render(scene, cam);
+    const defId = current && current.userData && current.userData.previewDefId;
+    if (defId && defId !== renderedDefId) {
+      renderedDefId = defId;
+      if (onFirstFrame) onFirstFrame({ defId });
+    }
   }
+
+  function requestLoop() {
+    if (disposed || !active || rafId) return;
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function frame() {
+    rafId = 0;
+    if (disposed) return;
+    if (!active) return;
+    renderNow();
+    requestLoop();
+  }
+
+  /**
+   * Project a point in the current ship's local space to canvas client coordinates.
+   * Useful for overlay highlights (hardpoints, power beams) that track the turntable.
+   * Returns null if no ship is currently displayed or the renderer is not ready.
+   * @param {{x:number,y:number,z:number}} localPos
+   * @returns {{x:number,y:number}|null}
+   */
+  function projectLocalPoint(localPos) {
+    if (!current || !cam || !renderer || !canvas) return null;
+    const pos = new THREE.Vector3(localPos.x || 0, localPos.y || 0, localPos.z || 0);
+    current.updateWorldMatrix(true, false);
+    pos.applyMatrix4(current.matrixWorld);
+    pos.project(cam);
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (pos.x * 0.5 + 0.5) * rect.width + rect.left,
+      y: (-pos.y * 0.5 + 0.5) * rect.height + rect.top,
+    };
+  }
+
+  /** @returns {string|null} current displayed defId, or null. */
+  function getDefId() { return current && current.userData && current.userData.previewDefId; }
 
   /**
    * Show a ship by defId. Rebuilds the mesh + reframes the camera around its bounding sphere.
@@ -199,6 +277,7 @@ export function createShipPreviewMount(canvas, opts) {
     let mesh = null;
     try { mesh = vf.build(ent); } catch (e) { mesh = null; }
     if (!mesh) return;
+    mesh.userData.previewDefId = defId;
     // warm up procedural canvas textures (force upload) so the first frame isn't black
     mesh.traverse((c) => {
       const m = c.material;
@@ -221,7 +300,10 @@ export function createShipPreviewMount(canvas, opts) {
     cam.position.set(-D * 0.35, D * 0.55, D * 0.85);
     cam.lookAt(0, sphere.center.y * 0.3, 0);
     cam.updateProjectionMatrix();
-    if (active && !rafId) frame();
+    renderNow();
+    requestCurrentAuthoredUpgrade();
+    warmAssets();
+    requestLoop();
   }
 
   function setRotating(v) { rotating = !!v; }
@@ -233,6 +315,7 @@ export function createShipPreviewMount(canvas, opts) {
     if (!dockId) {
       dockLoadGen++;
       if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
+      renderNow();
       return;
     }
     loadDockBackdrop(dockId).catch(() => {});
@@ -244,7 +327,10 @@ export function createShipPreviewMount(canvas, opts) {
       rafId = 0;
       return;
     }
-    if (current && !rafId) frame();
+    if (current) {
+      renderNow();
+      requestLoop();
+    }
   }
 
   function dispose() {
@@ -258,5 +344,5 @@ export function createShipPreviewMount(canvas, opts) {
     renderer.dispose();
   }
 
-  return { show, setRotating, setDockId, setActive, frame, dispose };
+  return { show, setRotating, setDockId, setActive, warmAssets, resize, frame, dispose, projectLocalPoint, getDefId };
 }

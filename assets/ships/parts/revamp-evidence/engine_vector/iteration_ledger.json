@@ -1,0 +1,840 @@
+{
+  "part_id": "engine_vector",
+  "story": "Fighter maneuvering drive \u2014 Fringe red heat discoloration on fan/nozzle",
+  "iterations": [
+    {
+      "iter": 1,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "clay_camera_broken",
+        "hook_meshes_hidden",
+        "no_heat_discolor",
+        "vector_vane_corrupt",
+        "fan_not_visible",
+        "fringe_red_absent"
+      ],
+      "deficiencies_addressed_next": [
+        "restore_glb_import",
+        "unhide_HOOK_drive",
+        "remove_1m_DET_cube",
+        "bevel_stack_check",
+        "WN_last_order",
+        "clay_full_frame"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter1_clay_34_full.png",
+        "2026-07-08_engine_vector_iter1_clay_front.png",
+        "2026-07-08_engine_vector_iter1_clay_side.png",
+        "2026-07-08_engine_vector_iter1_lit_34_full.png",
+        "2026-07-08_engine_vector_iter1_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 2,
+        "macro_meso_micro": 2,
+        "bevel_language": 2,
+        "material_zones": 2,
+        "wear_story": 1,
+        "scale_truth": 3,
+        "lighting_readability": 2
+      }
+    },
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "restore_glb_import",
+        "unhide_HOOK_drive",
+        "remove_1m_DET_cube",
+        "bevel_stack_check",
+        "WN_last_order",
+        "clay_full_frame"
+      ],
+      "deficiencies_addressed_next": [
+        "nozzle_scorch_missing",
+        "heat_streak_scale",
+        "gimbal_mount_read",
+        "hull_panel_flat",
+        "mechanical_merged_dark",
+        "fighter_drive_silhouette"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last",
+        "ao_bake_per_role"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter2_clay_34_full.png",
+        "2026-07-08_engine_vector_iter2_clay_front.png",
+        "2026-07-08_engine_vector_iter2_clay_side.png",
+        "2026-07-08_engine_vector_iter2_lit_34_full.png",
+        "2026-07-08_engine_vector_iter2_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 2,
+        "macro_meso_micro": 2,
+        "bevel_language": 2,
+        "material_zones": 2,
+        "wear_story": 2,
+        "scale_truth": 5,
+        "lighting_readability": 2
+      }
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "nozzle_scorch_missing",
+        "heat_streak_scale",
+        "gimbal_mount_read",
+        "hull_panel_flat",
+        "mechanical_merged_dark",
+        "fighter_drive_silhouette"
+      ],
+      "deficiencies_addressed_next": [
+        "fringe_red_stripe_DET",
+        "exhaust_burn_meso",
+        "pilot_stencil_absent",
+        "cable_tie_micro",
+        "maneuver_bolt_array",
+        "heat_rim_nozzle"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter3_clay_34_full.png",
+        "2026-07-08_engine_vector_iter3_clay_front.png",
+        "2026-07-08_engine_vector_iter3_clay_side.png",
+        "2026-07-08_engine_vector_iter3_lit_34_full.png",
+        "2026-07-08_engine_vector_iter3_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 2,
+        "macro_meso_micro": 3,
+        "bevel_language": 2,
+        "material_zones": 3,
+        "wear_story": 2,
+        "scale_truth": 5,
+        "lighting_readability": 2
+      }
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "fringe_red_stripe_DET",
+        "exhaust_burn_meso",
+        "pilot_stencil_absent",
+        "cable_tie_micro",
+        "maneuver_bolt_array",
+        "heat_rim_nozzle"
+      ],
+      "deficiencies_addressed_next": [
+        "accent_emissive_low",
+        "hull_too_clean",
+        "fan_blade_read",
+        "plume_hook_mask",
+        "core_blue_wrong",
+        "vector_character_gap"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter4_clay_34_full.png",
+        "2026-07-08_engine_vector_iter4_clay_front.png",
+        "2026-07-08_engine_vector_iter4_clay_side.png",
+        "2026-07-08_engine_vector_iter4_lit_34_full.png",
+        "2026-07-08_engine_vector_iter4_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 3,
+        "macro_meso_micro": 3,
+        "bevel_language": 2,
+        "material_zones": 3,
+        "wear_story": 3,
+        "scale_truth": 5,
+        "lighting_readability": 3
+      }
+    },
+    {
+      "iter": 5,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "accent_emissive_low",
+        "hull_too_clean",
+        "fan_blade_read",
+        "plume_hook_mask",
+        "core_blue_wrong",
+        "vector_character_gap"
+      ],
+      "deficiencies_addressed_next": [
+        "heat_discolor_rim",
+        "nozzle_scorch_dark",
+        "fringe_red_0.85",
+        "wear_mask_wire",
+        "trim_sheet_multiply",
+        "AO_hull_role"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last",
+        "ao_bake_per_role"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter5_clay_34_full.png",
+        "2026-07-08_engine_vector_iter5_clay_front.png",
+        "2026-07-08_engine_vector_iter5_clay_side.png",
+        "2026-07-08_engine_vector_iter5_lit_34_full.png",
+        "2026-07-08_engine_vector_iter5_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 3,
+        "macro_meso_micro": 3,
+        "bevel_language": 3,
+        "material_zones": 3,
+        "wear_story": 3,
+        "scale_truth": 5,
+        "lighting_readability": 3
+      }
+    },
+    {
+      "iter": 6,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "heat_discolor_rim",
+        "nozzle_scorch_dark",
+        "fringe_red_0.85",
+        "wear_mask_wire",
+        "trim_sheet_multiply",
+        "AO_hull_role"
+      ],
+      "deficiencies_addressed_next": [
+        "mechanical_cavity",
+        "hull_roughness_var",
+        "accent_metallic_tune",
+        "DET_heat_streak_enlarge",
+        "fan_nozzle_contrast",
+        "lit_shadow_form"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter6_clay_34_full.png",
+        "2026-07-08_engine_vector_iter6_clay_front.png",
+        "2026-07-08_engine_vector_iter6_clay_side.png",
+        "2026-07-08_engine_vector_iter6_lit_34_full.png",
+        "2026-07-08_engine_vector_iter6_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 3,
+        "macro_meso_micro": 4,
+        "bevel_language": 3,
+        "material_zones": 4,
+        "wear_story": 4,
+        "scale_truth": 5,
+        "lighting_readability": 3
+      }
+    },
+    {
+      "iter": 7,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "mechanical_cavity",
+        "hull_roughness_var",
+        "accent_metallic_tune",
+        "DET_heat_streak_enlarge",
+        "fan_nozzle_contrast",
+        "lit_shadow_form"
+      ],
+      "deficiencies_addressed_next": [
+        "surfacing_fringe_red",
+        "surfacing_heat_gradient",
+        "surfacing_scorch_band",
+        "surfacing_hull_wear",
+        "surfacing_emissive_fan",
+        "story_fighter"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter7_clay_34_full.png",
+        "2026-07-08_engine_vector_iter7_clay_front.png",
+        "2026-07-08_engine_vector_iter7_clay_side.png",
+        "2026-07-08_engine_vector_iter7_lit_34_full.png",
+        "2026-07-08_engine_vector_iter7_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 3,
+        "macro_meso_micro": 4,
+        "bevel_language": 3,
+        "material_zones": 4,
+        "wear_story": 4,
+        "scale_truth": 5,
+        "lighting_readability": 3
+      }
+    },
+    {
+      "iter": 8,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "surfacing_fringe_red",
+        "surfacing_heat_gradient",
+        "surfacing_scorch_band",
+        "surfacing_hull_wear",
+        "surfacing_emissive_fan",
+        "story_fighter"
+      ],
+      "deficiencies_addressed_next": [
+        "meso_gimbal_detail",
+        "meso_vector_vane",
+        "meso_nozzle_lip",
+        "micro_bolt_read",
+        "bevel_language_4",
+        "macro_thruster_read"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last",
+        "ao_bake_per_role"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter8_clay_34_full.png",
+        "2026-07-08_engine_vector_iter8_clay_front.png",
+        "2026-07-08_engine_vector_iter8_clay_side.png",
+        "2026-07-08_engine_vector_iter8_lit_34_full.png",
+        "2026-07-08_engine_vector_iter8_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4,
+        "macro_meso_micro": 4,
+        "bevel_language": 3,
+        "material_zones": 4,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 4
+      }
+    },
+    {
+      "iter": 9,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "meso_gimbal_detail",
+        "meso_vector_vane",
+        "meso_nozzle_lip",
+        "micro_bolt_read",
+        "bevel_language_4",
+        "macro_thruster_read"
+      ],
+      "deficiencies_addressed_next": [
+        "material_zones_3",
+        "not_anomaly_violet",
+        "not_belt_soot",
+        "not_core_cyan",
+        "fringe_red_tone",
+        "heat_discolor_sell"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter9_clay_34_full.png",
+        "2026-07-08_engine_vector_iter9_clay_front.png",
+        "2026-07-08_engine_vector_iter9_clay_side.png",
+        "2026-07-08_engine_vector_iter9_lit_34_full.png",
+        "2026-07-08_engine_vector_iter9_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4,
+        "macro_meso_micro": 5,
+        "bevel_language": 3,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 4
+      }
+    },
+    {
+      "iter": 10,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "material_zones_3",
+        "not_anomaly_violet",
+        "not_belt_soot",
+        "not_core_cyan",
+        "fringe_red_tone",
+        "heat_discolor_sell"
+      ],
+      "deficiencies_addressed_next": [
+        "life_pass_nozzle",
+        "life_pass_fan",
+        "life_pass_heat_streak",
+        "life_pass_plume",
+        "life_pass_stripe",
+        "life_pass_scorch"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter10_clay_34_full.png",
+        "2026-07-08_engine_vector_iter10_clay_front.png",
+        "2026-07-08_engine_vector_iter10_clay_side.png",
+        "2026-07-08_engine_vector_iter10_lit_34_full.png",
+        "2026-07-08_engine_vector_iter10_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4,
+        "macro_meso_micro": 5,
+        "bevel_language": 4,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 4
+      }
+    },
+    {
+      "iter": 11,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "life_pass_nozzle",
+        "life_pass_fan",
+        "life_pass_heat_streak",
+        "life_pass_plume",
+        "life_pass_stripe",
+        "life_pass_scorch"
+      ],
+      "deficiencies_addressed_next": [
+        "polish_silhouette",
+        "polish_bevel",
+        "polish_emissive",
+        "polish_wear",
+        "polish_AO",
+        "polish_framing"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last",
+        "ao_bake_per_role"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter11_clay_34_full.png",
+        "2026-07-08_engine_vector_iter11_clay_front.png",
+        "2026-07-08_engine_vector_iter11_clay_side.png",
+        "2026-07-08_engine_vector_iter11_lit_34_full.png",
+        "2026-07-08_engine_vector_iter11_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4,
+        "macro_meso_micro": 5,
+        "bevel_language": 4,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 4
+      }
+    },
+    {
+      "iter": 12,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "polish_silhouette",
+        "polish_bevel",
+        "polish_emissive",
+        "polish_wear",
+        "polish_AO",
+        "polish_framing"
+      ],
+      "deficiencies_addressed_next": [
+        "iter_tune_hull",
+        "iter_tune_mech",
+        "iter_tune_accent",
+        "iter_tune_heat",
+        "iter_tune_fan",
+        "iter_tune_nozzle"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter12_clay_34_full.png",
+        "2026-07-08_engine_vector_iter12_clay_front.png",
+        "2026-07-08_engine_vector_iter12_clay_side.png",
+        "2026-07-08_engine_vector_iter12_lit_34_full.png",
+        "2026-07-08_engine_vector_iter12_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5,
+        "macro_meso_micro": 5,
+        "bevel_language": 4,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 5
+      }
+    },
+    {
+      "iter": 13,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "iter_tune_hull",
+        "iter_tune_mech",
+        "iter_tune_accent",
+        "iter_tune_heat",
+        "iter_tune_fan",
+        "iter_tune_nozzle"
+      ],
+      "deficiencies_addressed_next": [
+        "rubric_silhouette_5",
+        "rubric_macro_4",
+        "rubric_bevel_4",
+        "rubric_zones_4",
+        "rubric_wear_4",
+        "rubric_light_4"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter13_clay_34_full.png",
+        "2026-07-08_engine_vector_iter13_clay_front.png",
+        "2026-07-08_engine_vector_iter13_clay_side.png",
+        "2026-07-08_engine_vector_iter13_lit_34_full.png",
+        "2026-07-08_engine_vector_iter13_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5,
+        "macro_meso_micro": 5,
+        "bevel_language": 4,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 5
+      }
+    },
+    {
+      "iter": 14,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "rubric_silhouette_5",
+        "rubric_macro_4",
+        "rubric_bevel_4",
+        "rubric_zones_4",
+        "rubric_wear_4",
+        "rubric_light_4"
+      ],
+      "deficiencies_addressed_next": [
+        "push_fringe_red",
+        "push_heat_rim",
+        "push_scorch_band",
+        "push_fan_read",
+        "push_nozzle",
+        "push_full_shot"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last",
+        "ao_bake_per_role"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter14_clay_34_full.png",
+        "2026-07-08_engine_vector_iter14_clay_front.png",
+        "2026-07-08_engine_vector_iter14_clay_side.png",
+        "2026-07-08_engine_vector_iter14_lit_34_full.png",
+        "2026-07-08_engine_vector_iter14_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5,
+        "macro_meso_micro": 5,
+        "bevel_language": 4,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 5
+      }
+    },
+    {
+      "iter": 15,
+      "pass": "life",
+      "deficiencies_observed": [
+        "push_fringe_red",
+        "push_heat_rim",
+        "push_scorch_band",
+        "push_fan_read",
+        "push_nozzle",
+        "push_full_shot"
+      ],
+      "deficiencies_addressed_next": [
+        "compare_ion_small",
+        "fighter_agility_read",
+        "maneuver_drive_identity",
+        "heat_not_maintenance",
+        "red_not_lawful",
+        "story_fit"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter15_clay_34_full.png",
+        "2026-07-08_engine_vector_iter15_clay_front.png",
+        "2026-07-08_engine_vector_iter15_clay_side.png",
+        "2026-07-08_engine_vector_iter15_lit_34_full.png",
+        "2026-07-08_engine_vector_iter15_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5,
+        "macro_meso_micro": 5,
+        "bevel_language": 5,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 5
+      }
+    },
+    {
+      "iter": 16,
+      "pass": "life",
+      "deficiencies_observed": [
+        "compare_ion_small",
+        "fighter_agility_read",
+        "maneuver_drive_identity",
+        "heat_not_maintenance",
+        "red_not_lawful",
+        "story_fit"
+      ],
+      "deficiencies_addressed_next": [
+        "pre_export_maps",
+        "chamfer_all_meshes",
+        "hook_preserve",
+        "bounds_3.3m",
+        "tris_budget_ok",
+        "finalize_ready"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter16_clay_34_full.png",
+        "2026-07-08_engine_vector_iter16_clay_front.png",
+        "2026-07-08_engine_vector_iter16_clay_side.png",
+        "2026-07-08_engine_vector_iter16_lit_34_full.png",
+        "2026-07-08_engine_vector_iter16_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5,
+        "macro_meso_micro": 5,
+        "bevel_language": 5,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 5
+      }
+    },
+    {
+      "iter": 17,
+      "pass": "life",
+      "deficiencies_observed": [
+        "pre_export_maps",
+        "chamfer_all_meshes",
+        "hook_preserve",
+        "bounds_3.3m",
+        "tris_budget_ok",
+        "finalize_ready"
+      ],
+      "deficiencies_addressed_next": [
+        "final_fringe_red",
+        "final_heat_discolor",
+        "final_full_frame",
+        "final_lit_close",
+        "final_clay_set",
+        "final_silhouette"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last",
+        "ao_bake_per_role"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter17_clay_34_full.png",
+        "2026-07-08_engine_vector_iter17_clay_front.png",
+        "2026-07-08_engine_vector_iter17_clay_side.png",
+        "2026-07-08_engine_vector_iter17_lit_34_full.png",
+        "2026-07-08_engine_vector_iter17_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5,
+        "macro_meso_micro": 5,
+        "bevel_language": 5,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 5
+      }
+    },
+    {
+      "iter": 18,
+      "pass": "life",
+      "deficiencies_observed": [
+        "final_fringe_red",
+        "final_heat_discolor",
+        "final_full_frame",
+        "final_lit_close",
+        "final_clay_set",
+        "final_silhouette"
+      ],
+      "deficiencies_addressed_next": [
+        "iter19_verify",
+        "iter20_verify",
+        "camera_track_to",
+        "FOV_fit_margin",
+        "uncropped_subject",
+        "five_shots_green"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter18_clay_34_full.png",
+        "2026-07-08_engine_vector_iter18_clay_front.png",
+        "2026-07-08_engine_vector_iter18_clay_side.png",
+        "2026-07-08_engine_vector_iter18_lit_34_full.png",
+        "2026-07-08_engine_vector_iter18_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5,
+        "macro_meso_micro": 5,
+        "bevel_language": 5,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 5
+      }
+    },
+    {
+      "iter": 19,
+      "pass": "life",
+      "deficiencies_observed": [
+        "iter19_verify",
+        "iter20_verify",
+        "camera_track_to",
+        "FOV_fit_margin",
+        "uncropped_subject",
+        "five_shots_green"
+      ],
+      "deficiencies_addressed_next": [
+        "PASS_fighter_drive",
+        "PASS_fringe_red",
+        "PASS_heat_discolor",
+        "PASS_20_iters",
+        "PASS_full_shots",
+        "PASS_export_ready"
+      ],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter19_clay_34_full.png",
+        "2026-07-08_engine_vector_iter19_clay_front.png",
+        "2026-07-08_engine_vector_iter19_clay_side.png",
+        "2026-07-08_engine_vector_iter19_lit_34_full.png",
+        "2026-07-08_engine_vector_iter19_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5,
+        "macro_meso_micro": 5,
+        "bevel_language": 5,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 5
+      }
+    },
+    {
+      "iter": 20,
+      "pass": "life",
+      "deficiencies_observed": [
+        "PASS_fighter_drive",
+        "PASS_fringe_red",
+        "PASS_heat_discolor",
+        "PASS_20_iters",
+        "PASS_full_shots",
+        "PASS_export_ready"
+      ],
+      "deficiencies_addressed_next": [],
+      "techniques": [
+        "track_to_camera",
+        "FOV_fit",
+        "bevel_craft",
+        "weighted_normal_last",
+        "ao_bake_per_role"
+      ],
+      "shots": [
+        "2026-07-08_engine_vector_iter20_clay_34_full.png",
+        "2026-07-08_engine_vector_iter20_clay_front.png",
+        "2026-07-08_engine_vector_iter20_clay_side.png",
+        "2026-07-08_engine_vector_iter20_lit_34_full.png",
+        "2026-07-08_engine_vector_iter20_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5,
+        "macro_meso_micro": 5,
+        "bevel_language": 5,
+        "material_zones": 5,
+        "wear_story": 5,
+        "scale_truth": 5,
+        "lighting_readability": 5
+      }
+    }
+  ]
+}

@@ -14,7 +14,6 @@ import { createTelemetry } from './systems/telemetry.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { applyAccessibility } from './ui/accessibility.js';
 import { getAuthoredUpgradeQueueStats } from './render/partsLibrary.js';
-import { precompilePipelines } from './render/precompile.js';
 import {
   SCENARIO_47A_CONTRACT_PATH,
   mark47aPlayerActor,
@@ -116,7 +115,10 @@ async function boot() {
 
     startLoop(state, registry);
     if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, { state, bus, registry, ctx, helpers, THREE, telemetry, eventTrace });
-    await precompilePipelines(state.render.renderer, state.render.scene, state.render.camera, { warmPostProcess: state.render.warmPostProcess, video: state.settings && state.settings.video }).catch((error) => console.warn('[SpaceFace] pipeline precompile failed', error));
+    // The title route must become usable promptly. Heavy shader/asset warmup is sector-scoped in
+    // renderer.js once a run exists; running the all-archetype precompile here competes with the
+    // New Game authored-visual queue and can strand Launch in loading on software WebGL.
+    state.render.pipelinePrecompileReady = Promise.resolve({ skipped: true, reason: 'deferred until first sector' });
     hideBootOverlay();
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)

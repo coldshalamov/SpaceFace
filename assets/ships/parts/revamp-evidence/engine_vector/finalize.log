@@ -1,10 +1,12 @@
 {
   "partId": "engine_vector",
   "file": "engines/engine_vector.glb",
-  "tris": 1076,
-  "bytes": 243280,
+  "tris": 1292,
+  "bytes": 148124,
   "dims": [3.3, 1.7184, 1.6],
-  "images": 3,
-  "materials": "Material_Hull,Material_Accent,Material_Mechanical,Material_Glass",
-  "note": "PRO via MCP: bevel+WN modeling pass + export+finalize 2026-07-05"
+  "images": 1,
+  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
+  "source": "blender_mcp",
+  "date": "2026-07-08",
+  "note": "PRO sprint 2026-07-08 — 20 QUALITY_RITUAL iterations, Fringe red heat discoloration fighter drive, spaceface_export + finalize green."
 }

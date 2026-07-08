@@ -33,6 +33,14 @@ import {
   updateTrailStreakMesh,
 } from './engineTrailSurfaces.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import {
+  partIdFromSlotUrls,
+  resolveEngineProfile,
+  resolveMuzzleProfile,
+  resolveProjectileTrailProfile,
+  buildProjectileTrailSpawnPlan,
+  assertProjectileTrailProfileContracts,
+} from './vfxProfiles.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 
@@ -102,6 +110,7 @@ const TRAIL_REDUCED_EMIT_CAP = 18;
 const VFX_SEAM_MARKERS_HZ = 20;
 const VFX_RIBBON_TRAILS_HZ = 30;
 const VFX_ENERGY_PLUME_HZ = 30;
+const VFX_PROJECTILE_TRAILS_HZ = 45;
 const VFX_SEAM_DRAW_RANGE = 640;
 
 function emptyTrailBudgetDiag() {
@@ -117,10 +126,21 @@ function emptyTrailBudgetDiag() {
   };
 }
 
+function emptyProjectileTrailDiag() {
+  return {
+    candidates: 0,
+    particlesSpawned: 0,
+    streaksSpawned: 0,
+    spritesSpawned: 0,
+    byClass: {},
+  };
+}
+
 function emptyVfxSubsystemDiag() {
   return {
     trails: 0,
     ribbons: 0,
+    projectileTrails: 0,
     miningBeam: 0,
     tetherCable: 0,
     seamMarkers: 0,
@@ -169,6 +189,13 @@ export const vfx = {
     this._cadenceSeam = 0;
     this._cadenceRibbon = 0;
     this._cadenceEnergyPlume = 0;
+    this._cadenceProjectileTrail = 0;
+    this._projectileCandidates = [];
+    this._projectileCacheDirty = true;
+    this._projectileListRef = null;
+    this._projectileListLength = -1;
+    this._projectileTrailDiag = emptyProjectileTrailDiag();
+    this._projectileTrailsWereRelevant = false;
     this._seamMarkersWereRelevant = false;
     this._energyPlumeWasRelevant = false;
 
@@ -197,6 +224,7 @@ export const vfx = {
         last,
       },
       trails: this._trailBudgetDiag ? { ...this._trailBudgetDiag } : emptyTrailBudgetDiag(),
+      projectileTrails: this._projectileTrailDiag ? { ...this._projectileTrailDiag } : emptyProjectileTrailDiag(),
       subsystems: {
         lastFrame: this._vfxSubsystemLast ? { ...this._vfxSubsystemLast } : emptyVfxSubsystemDiag(),
       },
@@ -350,8 +378,8 @@ export const vfx = {
     add('entity:destroyed', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onDestroyed(p); });
     add('entity:spawned', (p) => this._markEntityCacheDirtyIfTrailType(p));
     add('ship:appearanceChanged', (p) => { this._invalidateTrailSocket(p && p.id); this._markEntityCacheDirty(); });
-    add('sector:enter', () => this._markEntityCacheDirty());
-    add('save:loaded', () => this._markEntityCacheDirty());
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); });
     add('player:death', (p) => this._explode({ pos: p && p.pos, radius: 12 }, true));
     add('mining:start', (p) => this._onMiningStart(p));
     add('mining:stop', () => this._onMiningStop());
@@ -485,6 +513,46 @@ export const vfx = {
     return st;
   },
 
+  // Projectile rail wisps — thin constant-width streak; not gated on engineTrails setting.
+  _spawnProjectileTrailStreak(x, y, z, life, width, length, op0, color, vx, vz) {
+    if (!this._scene || !this._trailStreakPool) return null;
+    const n = TRAIL_STREAK_CAP;
+    let i;
+    if (this._freeTrailStreakCount > 0) i = this._freeTrailStreaks[--this._freeTrailStreakCount];
+    else i = this._tsHead;
+    this._tsHead = (i + 1) % n;
+    const st = this._ts[i];
+    const wasAlive = st.alive;
+    const w = Math.max(0.04, width);
+    const len = Math.max(0.5, length);
+    const baseSize = w / 0.42;
+    st.alive = true;
+    st.age = 0;
+    st.life = life;
+    st.size0 = baseSize;
+    st.size1 = baseSize;
+    st.op0 = op0;
+    st.x = x;
+    st.y = y || 0;
+    st.z = z;
+    st.vx = vx || 0;
+    st.vz = vz || 0;
+    st.stretch = len / baseSize;
+    if (!wasAlive) this._activateTrailStreak(i);
+    const mesh = this._trailStreakPool[i];
+    mesh.material.uniforms.uColor.value.set(color);
+    const scroll = ((this._t || 0) * 0.35) % 1;
+    updateTrailStreakMesh(mesh, {
+      x, y, z, vx: st.vx, vz: st.vz,
+      width: w,
+      length: len,
+      opacity: op0,
+      scroll,
+      time: this._t || 0,
+    });
+    return st;
+  },
+
   _activateTrailStreak(i) {
     this._activeTrailStreakPos[i] = this._liveTrailStreakCount;
     this._activeTrailStreaks[this._liveTrailStreakCount++] = i;
@@ -571,6 +639,26 @@ export const vfx = {
     const pal = this._factionPalette(fid);
     return (pal && pal.thruster) || '#88AAFF';
   },
+  _entityMeshMeta(entityId) {
+    return this.helpers && this.helpers.entityMeshMeta
+      ? this.helpers.entityMeshMeta(entityId)
+      : null;
+  },
+  _engineProfile(e) {
+    const meta = e ? this._entityMeshMeta(e.id) : null;
+    return resolveEngineProfile(meta, this._engineColor(e));
+  },
+  _muzzleProfile(p, owner) {
+    const meta = p && p.ownerId != null ? this._entityMeshMeta(p.ownerId) : null;
+    const idx = Number.isFinite(p && p.hardpointIdx) ? p.hardpointIdx : 0;
+    const weaponPartId = meta ? partIdFromSlotUrls(meta.slots, 'weapon', idx) : null;
+    const profile = resolveMuzzleProfile(p && p.weaponId, weaponPartId);
+    if (owner) {
+      const accent = this._shieldColor(owner.factionId || (owner.data && owner.data.factionId));
+      profile.accentColor = profile.lane === 'energy' ? accent : profile.accentColor;
+    }
+    return profile;
+  },
   _shieldColor(factionId) {
     const pal = this._factionPalette(factionId);
     return (pal && (pal.accent || pal.emissive)) || '#66ccff';
@@ -595,9 +683,14 @@ export const vfx = {
     this._trailCacheDirty = true;
   },
 
+  _markProjectileCacheDirty() {
+    this._projectileCacheDirty = true;
+  },
+
   _markEntityCacheDirtyIfTrailType(p) {
     const t = p && p.type;
     if (!t || t === 'ship' || t === 'drone') this._markEntityCacheDirty();
+    if (t === 'projectile') this._markProjectileCacheDirty();
   },
 
   _refreshTrailCandidates() {
@@ -729,37 +822,101 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _onFire(p) {
     if (!this._scene) return;
-    // Hero assets carry named sockets (spec §9.9): a weapon muzzle should leave the visible barrel, not
-    // the entity center. Resolve from the live mesh socket when available, else use the payload origin.
     let origin = (p.origin && typeof p.origin.x === 'number') ? p.origin : this._posFrom(p, p.ownerId);
-    if (this.helpers.socketWorldPos && p.ownerId === this.state.playerId) {
+    if (this.helpers.socketWorldPos && p.ownerId != null) {
       const sock = this.helpers.socketWorldPos(p.ownerId, 'SOCKET_Weapon_Front');
       if (sock) origin = sock;
     }
     if (!origin) return;
-    // combat:fire emits `dir` as a NUMBER (yaw radians) — both weapons.js emitters do. Older callers
-    // may pass {x,z}. Resolve robustly (0 is a valid heading, so never treat dir===0 as falsy).
     const base = this._dirAngle(p.dir, p.ownerId);
     const owner = this._ent(p.ownerId);
-    const col = this._engineColor(owner); // weapon colour not in payload; faction accent reads well
+    const profile = this._muzzleProfile(p, owner);
     const burst = this._burst || 1;
-    this._c0.set('#ffffff'); this._c1.set(col);
-    // muzzle flash: BIGGER — hot white core punch, coloured mid flare, and a wide neon outer bloom
-    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.09, 3.5, 6.0, 1.0, 0.0, '#ffffff', 0, 0);
+    switch (profile.lane) {
+      case 'beam': this._spawnMuzzleBeam(origin, base, profile, burst); break;
+      case 'energy': this._spawnMuzzleEnergy(origin, base, profile, burst); break;
+      case 'explosive': this._spawnMuzzleExplosive(origin, base, profile, burst); break;
+      default: this._spawnMuzzleBallistic(origin, base, profile, burst); break;
+    }
+  },
+
+  _spawnMuzzleBallistic(origin, base, profile, burst) {
+    const sm = profile.sizeMul || 1;
+    const col = profile.accentColor || '#ffcc88';
     const mx = origin.x + Math.cos(base) * 1.5, mz = origin.z + Math.sin(base) * 1.5;
-    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.14, 5.0, 9.0, 0.9, 0.0, col, 0, 0);
-    // wide neon bloom feeder behind the core — feeds into the bloom pass for a satisfying pop
-    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.18, 4.0, 10.0, 0.45, 0.0, col, 0, 0);
-    // dynamic muzzle light — brighter, wider radius to light surrounding geometry
-    this._flashLight({ x: origin.x, z: origin.z }, 0xffffff, 5.0, 12, 180);
-    // secondary weapon-colored light slightly ahead — paints the barrel area
-    this._flashLight({ x: mx, z: mz }, col, 3.0, 14, 100);
-    // spark particles ejected forward along the aim cone +/-15deg — more sparks, faster
-    const n = Math.max(4, Math.round(10 * burst));
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.08 * sm, 3.2 * sm, 5.8 * sm, 1.0, 0.0, profile.coreColor || '#ffffff', 0, 0);
+    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.12 * sm, 4.6 * sm, 8.4 * sm, 0.92, 0.0, col, 0, 0);
+    if (profile.ring) {
+      this._spawnSprite(SPR_RING, origin.x, 0, origin.z, 0.10 * sm, 2.2 * sm, 6.5 * sm, 0.55, 0.0, col, 0, 0);
+    }
+    if (profile.arc) {
+      this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.06 * sm, 2.0 * sm, 5.0 * sm, 0.7, 0.0, '#a8d8ff', 0, 0);
+    }
+    this._flashLight({ x: origin.x, z: origin.z }, profile.coreColor || '#ffffff', 4.8 * sm, 12, 170);
+    this._flashLight({ x: mx, z: mz }, col, 2.8 * sm, 14, 95);
+    this._c0.set(profile.coreColor || '#ffffff'); this._c1.set(col);
+    const n = Math.max(3, Math.round(9 * burst * (profile.sparkMul || 1)));
+    const spread = profile.rapid ? 0.38 : 0.52;
     for (let k = 0; k < n; k++) {
-      const a = base + (Math.random() - 0.5) * 0.52;
-      const sp = 40 + Math.random() * 50;
-      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.18, 2.2, 0.0, this._c0, this._c1, 3.5, 0, 0);
+      const a = base + (Math.random() - 0.5) * spread;
+      const sp = 38 + Math.random() * 48;
+      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.16, 2.0, 0.0, this._c0, this._c1, 3.2, 0, 0);
+    }
+  },
+
+  _spawnMuzzleEnergy(origin, base, profile, burst) {
+    const sm = profile.sizeMul || 1;
+    const col = profile.accentColor || '#39d0ff';
+    const mx = origin.x + Math.cos(base) * 1.6, mz = origin.z + Math.sin(base) * 1.6;
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.07 * sm, 3.8 * sm, 7.2 * sm, 1.0, 0.0, profile.coreColor || '#e8f8ff', 0, 0);
+    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.11 * sm, 5.2 * sm, 9.8 * sm, 0.88, 0.0, col, 0, 0);
+    this._spawnSprite(SPR_RING, origin.x, 0, origin.z, 0.08 * sm, 1.8 * sm, 5.5 * sm, 0.62, 0.0, col, 0, 0);
+    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col, 5.2 * sm, 11, 185);
+    this._c0.set(profile.coreColor || '#ffffff'); this._c1.set(col);
+    const n = Math.max(4, Math.round(8 * burst * (profile.sparkMul || 1)));
+    for (let k = 0; k < n; k++) {
+      const a = base + (Math.random() - 0.5) * 0.28;
+      const sp = 44 + Math.random() * 36;
+      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.14, 1.8, 0.0, this._c0, this._c1, 4.0, 0, 0);
+    }
+  },
+
+  _spawnMuzzleExplosive(origin, base, profile, burst) {
+    const sm = profile.sizeMul || 1;
+    const col = profile.accentColor || '#ff8844';
+    const mx = origin.x + Math.cos(base) * 1.4, mz = origin.z + Math.sin(base) * 1.4;
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.12 * sm, 4.8 * sm, 10.5 * sm, 1.0, 0.0, profile.coreColor || '#fff0d0', 0, 0);
+    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.18 * sm, 6.2 * sm, 12.0 * sm, 0.82, 0.0, col, 0, 0);
+    this._spawnSprite(SPR_RING, origin.x, 0, origin.z, 0.14 * sm, 2.8 * sm, 8.5 * sm, 0.68, 0.0, col, 0, 0);
+    if (profile.smoke) {
+      this._spawnSprite(SPR_PUFF, origin.x, 0, origin.z, 0.22 * sm, 3.5 * sm, 7.0 * sm, 0.42, 0.0, '#6a4030', 0, 0);
+    }
+    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col, 6.0 * sm, 10, 200);
+    this._c0.set(profile.coreColor || '#ffffff'); this._c1.set(col);
+    const n = Math.max(5, Math.round(11 * burst * (profile.sparkMul || 1)));
+    for (let k = 0; k < n; k++) {
+      const a = base + (Math.random() - 0.5) * 0.72;
+      const sp = 28 + Math.random() * 42;
+      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp, 0.22, 2.4, 0.05, this._c0, this._c1, 2.4, 0, 0);
+    }
+  },
+
+  _spawnMuzzleBeam(origin, base, profile, burst) {
+    const sm = profile.sizeMul || 1;
+    const col = profile.accentColor || '#66ccff';
+    const mx = origin.x + Math.cos(base) * 2.0, mz = origin.z + Math.sin(base) * 2.0;
+    this._spawnSprite(SPR_FLASH, origin.x, 0, origin.z, 0.05 * sm, 2.6 * sm, 5.0 * sm, 0.75, 0.0, profile.coreColor || '#d8f0ff', 0, 0);
+    this._spawnSprite(SPR_FLASH, mx, 0, mz, 0.08 * sm, 3.8 * sm, 7.5 * sm, 0.55, 0.0, col, 0, 0);
+    if (profile.ring) {
+      this._spawnSprite(SPR_RING, mx, 0, mz, 0.06 * sm, 1.4 * sm, 4.2 * sm, 0.45, 0.0, col, 0, 0);
+    }
+    this._flashLight({ x: mx, z: mz }, profile.lightColor || col, 2.4 * sm, 18, 70);
+    this._c0.set(profile.coreColor || '#ffffff'); this._c1.set(col);
+    const n = Math.max(2, Math.round(4 * burst * (profile.sparkMul || 1)));
+    for (let k = 0; k < n; k++) {
+      const a = base + (Math.random() - 0.5) * 0.12;
+      const sp = 55 + Math.random() * 30;
+      this._spawnParticle(mx, mz, Math.cos(a) * sp, Math.sin(a) * sp, 0.10, 1.4, 0.0, this._c0, this._c1, 4.5, 0, 0);
     }
   },
 
@@ -2218,7 +2375,13 @@ export const vfx = {
     if (drive <= 0.03) return { particles: 0, streaks: 0 };
     let particlesSpawned = 0;
     let streaksSpawned = 0;
-    const col0 = this._engineColor(e);
+    const prof = this._engineProfile(e);
+    const col0 = prof.coreColor || this._engineColor(e);
+    const tailCol = prof.tailColor || '#10204a';
+    const spreadMul = prof.spreadMul || 1;
+    const particleMul = prof.particleMul || 1;
+    const streakMul = prof.streakMul || 1;
+    const streakLenMul = prof.streakLenMul || 1;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const boostBlend = e.flags && e.flags.boosting ? 1 : 0;
     const cruising = e.id === this.state.playerId && this.state.player && this.state.player.cruise && this.state.player.cruise.phase === 'cruising';
@@ -2254,16 +2417,12 @@ export const vfx = {
     const svx = (e.vel && e.vel.x) || 0;
     const svz = (e.vel && e.vel.z) || 0;
 
-    // Lean point count — procedural streak meshes + axis-aligned trail particles carry the warp-line look.
-    const pCount = Math.max(1, Math.min(5, Math.floor(1 + drive * 2.0 + boostBlend * 1.5 + cruiseBlend * 2.0)));
-    const spread = 0.18 + drive * 0.18 + boostBlend * 0.22 + cruiseBlend * 0.14;
+    const pCount = Math.max(1, Math.min(6, Math.floor((1 + drive * 2.0 + boostBlend * 1.5 + cruiseBlend * 2.0) * particleMul)));
+    const spread = (0.18 + drive * 0.18 + boostBlend * 0.22 + cruiseBlend * 0.14) * spreadMul;
     for (let pi = 0; pi < pCount; pi++) {
-      // outer plume: faction-hot -> dark blue, wider with throttle, jittered backward.
-      // Under boost it shifts toward a hot blue-white so the trail reads as the same energy system.
-      // Under cruise it lengthens and cools to a cyan spear.
-      this._c0.set(col0); if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT); this._c1.set('#10204a');
-      if (boostBlend > 0) this._c0.lerp(this._ctmp.set('#d8f0ff'), 0.45);
-      if (cruiseBlend > 0) { this._c0.lerp(this._ctmp.set('#a6e8ff'), 0.55); this._c1.set('#0a2840'); }
+      this._c0.set(col0); if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT); this._c1.set(tailCol);
+      if (boostBlend > 0) this._c0.lerp(this._ctmp.set(prof.boostCore || '#d8f0ff'), 0.45);
+      if (cruiseBlend > 0) { this._c0.lerp(this._ctmp.set(prof.cruiseCore || '#a6e8ff'), 0.55); this._c1.set('#0a2840'); }
       const sp = (22 + drive * 38) * (1 + boostBlend * 0.55 + cruiseBlend * 0.70);
       const a = baseA + (Math.random() - 0.5) * spread;
       const jitter = 0.7 + drive * 1.1 + boostBlend * 1.2 + cruiseBlend * 0.6;
@@ -2277,11 +2436,9 @@ export const vfx = {
       particlesSpawned++;
     }
 
-    // white-hot inner core right at the nozzle — bigger, brighter, gives the trail a visible spine.
-    // Boost makes the core brilliant white and longer-lived so it forms a coherent spear behind the ship.
     this._c0.set('#ffffff'); this._c1.set(col0); if (glowT > 0) this._c1.lerp(this._ctmp.set('#ffffff'), glowT);
-    if (boostBlend > 0) this._c1.lerp(this._ctmp.set('#a6d8ff'), 0.65);
-    if (cruiseBlend > 0) this._c1.lerp(this._ctmp.set('#39d0ff'), 0.55);
+    if (boostBlend > 0) this._c1.lerp(this._ctmp.set(prof.boostCore || '#a6d8ff'), 0.65);
+    if (cruiseBlend > 0) this._c1.lerp(this._ctmp.set(prof.cruiseCore || '#39d0ff'), 0.55);
     const a2 = baseA + (Math.random() - 0.5) * (0.16 + boostBlend * 0.14 + cruiseBlend * 0.10);
     const sp2 = (26 + drive * 36) * (1 + boostBlend * 0.45 + cruiseBlend * 0.60);
     const coreSize = 0.5 + drive * 0.55 + boostBlend * 0.48 + cruiseBlend * 0.30;
@@ -2308,14 +2465,14 @@ export const vfx = {
     // Procedural streak meshes carry the bulk of the Saeki warp-line trail (shader planes along exhaust axis).
     // Low-opacity streaks overlap axis-modulated point particles (and the HDR energy plume for the player)
     // so exhaust reads as a continuous wavy jet instead of discrete glowing balls.
-    const puffCount = Math.max(2, Math.min(7, Math.floor(2 + drive * 3.0 + (boostBlend + cruiseBlend) * 2.2)));
+    const puffCount = Math.max(2, Math.min(8, Math.floor((2 + drive * 3.0 + (boostBlend + cruiseBlend) * 2.2) * streakMul)));
     for (let k = 0; k < puffCount; k++) {
-      const pa = baseA + (Math.random() - 0.5) * (0.55 + boostBlend * 0.2);
+      const pa = baseA + (Math.random() - 0.5) * (0.55 + boostBlend * 0.2) * spreadMul;
       const psp = (10 + drive * 16) * (0.85 + boostBlend * 0.4 + cruiseBlend * 0.5);
       const pvxP = svx + Math.cos(pa) * psp;
       const pvzP = svz + Math.sin(pa) * psp;
       const plife = 0.32 + drive * 0.16 + boostBlend * 0.18;
-      const streakLen = 2.8 + drive * 2.4 + boostBlend * 1.6;
+      const streakLen = (2.8 + drive * 2.4 + boostBlend * 1.6) * streakLenMul;
       this._spawnTrailStreak(bx, 0, bz, plife, 0.65, streakLen, 0.48, col0, pvxP * 0.82, pvzP * 0.82);
       streaksSpawned++;
     }
@@ -2344,6 +2501,25 @@ export const vfx = {
     const sub = this._vfxSubsystemLast;
     sub.trails = this._emitTrails(dt) ? 1 : 0;
     sub.ribbons = this._updateRibbonTrails(dt) ? 1 : 0;
+    if (this._projectileTrailsRelevant()) {
+      const projWake = !this._projectileTrailsWereRelevant;
+      this._projectileTrailsWereRelevant = true;
+      let projStep = this._consumeCadence('_cadenceProjectileTrail', dt, VFX_PROJECTILE_TRAILS_HZ);
+      if (projWake) {
+        this._cadenceProjectileTrail = 0;
+        projStep = Math.max(projStep, dt);
+      }
+      if (projStep > 0) {
+        this._emitProjectileTrails(projStep);
+        sub.projectileTrails = 1;
+      } else {
+        sub.projectileTrails = 0;
+      }
+    } else {
+      this._projectileTrailsWereRelevant = false;
+      this._projectileTrailDiag = emptyProjectileTrailDiag();
+      sub.projectileTrails = 0;
+    }
     if (this._miningBeamActive()) {
       this._updateMiningBeam(dt);
       sub.miningBeam = 1;
@@ -2603,10 +2779,13 @@ export const vfx = {
     if (fade <= 0.01) { this._hideEnergyPlumes(0); return; }
     // Slightly longer/wider gaseous volume + stronger intensity so the volumetric plume reads as the
     // primary "engine flame" that the point+ sprite particles augment rather than dominate.
-    const width = 0.28 + drive * 0.36 + boostBlend * 0.26;
-    const length = 0.28 + drive * 1.55 + boostBlend * 1.85;
-    const coreColor = this._c0.set('#36c8ff').lerp(this._c1.set('#fff4dd'), boostBlend);
-    const haloColor = this._ctmp.set('#6a4cff').lerp(this._c1.set('#c98cff'), boostBlend);
+    const prof = this._engineProfile(player);
+    const widthMul = prof.plumeWidthMul || 1;
+    const lengthMul = prof.plumeLengthMul || 1;
+    const width = (0.28 + drive * 0.36 + boostBlend * 0.26) * widthMul;
+    const length = (0.28 + drive * 1.55 + boostBlend * 1.85) * lengthMul;
+    const coreColor = this._c0.set(prof.plumeCore || '#36c8ff').lerp(this._c1.set('#fff4dd'), boostBlend);
+    const haloColor = this._ctmp.set(prof.plumeHalo || '#6a4cff').lerp(this._c1.set('#c98cff'), boostBlend);
     const sockets = this._trailSocketObjects(player);
     const count = Math.max(1, sockets.length);
     for (let i = 0; i < count; i++) {
@@ -2617,8 +2796,18 @@ export const vfx = {
       plume.visible = true;
       const core = plume.userData.energyCore;
       const halo = plume.userData.energyHalo;
-      if (core) updateEnergyMaterial(core.material, { time: this._t, colorA: coreColor, colorB: haloColor, intensity: 4.4 + drive * 3.6 + boostBlend * 2.8, opacity: (0.22 + drive * 0.30 + boostBlend * 0.16) * fade });
-      if (halo) updateEnergyMaterial(halo.material, { time: this._t, colorA: haloColor, colorB: coreColor, intensity: 1.2 + drive * 1.3 + boostBlend * 1.4, opacity: (0.05 + drive * 0.10 + boostBlend * 0.07) * fade });
+      const coreIntensity = prof.coreIntensity || 6.5;
+      const haloIntensity = prof.haloIntensity || 2.6;
+      if (core) updateEnergyMaterial(core.material, {
+        time: this._t, colorA: coreColor, colorB: haloColor,
+        intensity: (coreIntensity * 0.68) + drive * 3.6 + boostBlend * 2.8,
+        opacity: (0.22 + drive * 0.30 + boostBlend * 0.16) * fade,
+      });
+      if (halo) updateEnergyMaterial(halo.material, {
+        time: this._t, colorA: haloColor, colorB: coreColor,
+        intensity: (haloIntensity * 0.46) + drive * 1.3 + boostBlend * 1.4,
+        opacity: (0.05 + drive * 0.10 + boostBlend * 0.07) * fade,
+      });
     }
     this._hideEnergyPlumes(count);
   },
@@ -2981,6 +3170,132 @@ export const vfx = {
     if (perf && typeof perf.recordVfxTrails === 'function') perf.recordVfxTrails(this._trailBudgetDiag);
   },
 
+  _refreshProjectileCandidates() {
+    const list = this.state.entityList || [];
+    if (!this._projectileCacheDirty && this._projectileListRef === list && this._projectileListLength === list.length) return;
+    this._projectileCandidates.length = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'projectile') continue;
+      this._projectileCandidates.push(e);
+    }
+    this._projectileListRef = list;
+    this._projectileListLength = list.length;
+    this._projectileCacheDirty = false;
+  },
+
+  _projectileTrailsRelevant() {
+    this._refreshProjectileCandidates();
+    return this._projectileCandidates.length > 0;
+  },
+
+  _recordProjectileTrailClass(diag, cls, kind) {
+    if (!diag.byClass[cls]) diag.byClass[cls] = { particles: 0, streaks: 0, sprites: 0 };
+    diag.byClass[cls][kind]++;
+  },
+
+  _executeProjectileTrailPlan(plan, diag) {
+    const cls = plan.class || 'kinetic';
+    const { x: bx, z: bz } = plan.origin;
+    const { x: vx, z: vz } = plan.vel;
+    const { x: backX, z: backZ } = plan.backVel;
+    const trailAxis = plan.trailAxis;
+
+    if (plan.mode === 'streak' && plan.streak) {
+      const streak = this._spawnProjectileTrailStreak(
+        bx, 0, bz, plan.life, plan.streak.width, plan.streak.length, plan.streak.opacity,
+        plan.coreColor, vx * 0.12, vz * 0.12,
+      );
+      if (streak) {
+        diag.streaksSpawned++;
+        this._recordProjectileTrailClass(diag, cls, 'streaks');
+      } else {
+        const fb = plan.streak.fallback || {};
+        this._c0.set(plan.coreColor); this._c1.set(plan.tailColor);
+        this._spawnParticle(bx, bz, vx * 0.06, vz * 0.06, plan.life, fb.size0 || 0.28, 0.0,
+          this._c0, this._c1, plan.drag, 0, 0, trailAxis, fb.stretch || 2.2);
+        diag.particlesSpawned++;
+        this._recordProjectileTrailClass(diag, cls, 'particles');
+      }
+      return true;
+    }
+
+    if (plan.mode === 'smoke' && plan.sprite) {
+      for (let pi = 0; pi < plan.emitCount; pi++) {
+        const jx = (Math.random() - 0.5) * 1.4;
+        const jz = (Math.random() - 0.5) * 1.4;
+        this._spawnSprite(SPR_PUFF, bx + jx, 0, bz + jz, plan.life, plan.sprite.size0, plan.sprite.size1,
+          0.40, 0.0, plan.coreColor, backX * 5, backZ * 5);
+        diag.spritesSpawned++;
+        this._recordProjectileTrailClass(diag, cls, 'sprites');
+        this._c0.set(plan.coreColor); this._c1.set(plan.tailColor);
+        this._spawnParticle(bx + jx, bz + jz,
+          backX * 10 + (Math.random() - 0.5) * 2, backZ * 10 + (Math.random() - 0.5) * 2,
+          plan.life * 1.05, plan.particle.size0, plan.particle.size1,
+          this._c0, this._c1, plan.drag, 0, 0, 0, 0);
+        diag.particlesSpawned++;
+        this._recordProjectileTrailClass(diag, cls, 'particles');
+      }
+      return true;
+    }
+
+    if (plan.mode === 'heat' && plan.particle) {
+      for (let pi = 0; pi < plan.emitCount; pi++) {
+        const spread = (Math.random() - 0.5) * 0.9;
+        this._c0.set(plan.coreColor); this._c1.set(plan.tailColor);
+        const pvx = vx * 0.04 + Math.cos(trailAxis + spread) * 4;
+        const pvz = vz * 0.04 + Math.sin(trailAxis + spread) * 4;
+        this._spawnParticle(bx, bz, pvx, pvz, plan.life, plan.particle.size0, plan.particle.size1,
+          this._c0, this._c1, plan.drag, 0, 0, trailAxis, plan.particle.stretch);
+        diag.particlesSpawned++;
+        this._recordProjectileTrailClass(diag, cls, 'particles');
+      }
+      return true;
+    }
+
+    if (plan.particle) {
+      for (let pi = 0; pi < plan.emitCount; pi++) {
+        const j = (Math.random() - 0.5) * 0.5;
+        this._c0.set(plan.coreColor); this._c1.set(plan.tailColor);
+        this._spawnParticle(bx + j, bz + j, vx * 0.03, vz * 0.03, plan.life,
+          plan.particle.size0, plan.particle.size1,
+          this._c0, this._c1, plan.drag, 0, 0, trailAxis, plan.particle.stretch);
+        diag.particlesSpawned++;
+        this._recordProjectileTrailClass(diag, cls, 'particles');
+      }
+      return true;
+    }
+    return false;
+  },
+
+  _emitProjectileTrails(dt) {
+    if (!this._scene) return false;
+    this._projectileTrailDiag = emptyProjectileTrailDiag();
+    this._refreshProjectileCandidates();
+    const list = this._projectileCandidates;
+    const diag = this._projectileTrailDiag;
+    diag.candidates = list.length;
+    if (!list.length) return false;
+
+    const video = this.state.settings && this.state.settings.video;
+    const q = (video && video.particleQuality) || 'high';
+    const qualityMul = q === 'low' ? 0.45 : (q === 'med' || q === 'medium' ? 0.72 : 1.0);
+    const motionMul = (video && video.motionReduce) ? 0.5 : 1.0;
+    const burst = (this._burst || 1) * qualityMul * motionMul;
+
+    let anySpawned = false;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'projectile') continue;
+      const data = e.data || {};
+      const prof = resolveProjectileTrailProfile(data.weaponId, data);
+      const plan = buildProjectileTrailSpawnPlan(prof, e, burst);
+      if (plan.skip) continue;
+      if (this._executeProjectileTrailPlan(plan, diag)) anySpawned = true;
+    }
+    return anySpawned;
+  },
+
   // per-frame engine-trail emission for every thrusting ship/drone (steady-state, pooled)
   _emitTrails(dt) {
     this._trailAcc = (this._trailAcc || 0) + dt;
@@ -3265,6 +3580,166 @@ export const vfx = {
     }
   },
 };
+
+function _makeProjectileTrailSelfCheckHarness(projectiles, video = {}) {
+  const scene = new THREE.Scene();
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12 };
+  const entities = new Map([[player.id, player]]);
+  const entityList = [player, ...projectiles];
+  for (const p of projectiles) entities.set(p.id, p);
+  const state = {
+    playerId: player.id,
+    entities,
+    entityList,
+    settings: {
+      video: {
+        particleQuality: 'high',
+        motionReduce: false,
+        engineTrails: false,
+        bloom: true,
+        ...video,
+      },
+    },
+    render: { scene },
+    content: {},
+  };
+  const system = Object.create(vfx);
+  system.init({ state, bus: { on() {} }, helpers: {} });
+  return system;
+}
+
+function _selfCheckProjectile(id, weaponId, extraData = {}) {
+  return {
+    id,
+    type: 'projectile',
+    alive: true,
+    pos: { x: 100 + id * 20, z: 50 },
+    vel: { x: 280, z: 40 },
+    rot: 0,
+    radius: 1.2,
+    data: { weaponId, kind: 'bullet', ...extraData },
+  };
+}
+
+export function runProjectileTrailEmissionSelfCheck() {
+  const errors = [];
+  const fail = (msg) => errors.push(msg);
+
+  const projectiles = [
+    _selfCheckProjectile(10, 'wpn_autocannon_m', { damageType: 'kinetic' }),
+    _selfCheckProjectile(11, 'wpn_missile_rack_m', { kind: 'missile', damageType: 'explosive' }),
+    _selfCheckProjectile(12, 'wpn_plasma_cannon_m', { damageType: 'thermal' }),
+    _selfCheckProjectile(13, 'wpn_railgun_m', { damageType: 'kinetic' }),
+  ];
+  const system = _makeProjectileTrailSelfCheckHarness(projectiles);
+  system._markProjectileCacheDirty();
+  for (let f = 0; f < 8; f++) system.update(1 / 60);
+
+  const pt = system.inspect().projectileTrails;
+  if (pt.candidates < 4) fail(`expected 4 projectile candidates, got ${pt.candidates}`);
+  if (pt.particlesSpawned <= 0) fail('projectile trails should spawn particles');
+  if (!pt.byClass.kinetic || pt.byClass.kinetic.particles <= 0) fail('kinetic class should emit sparks');
+  if (!pt.byClass.missile || (pt.byClass.missile.sprites <= 0 && pt.byClass.missile.particles <= 0)) {
+    fail('missile class should emit smoke');
+  }
+  if (!pt.byClass.plasma || pt.byClass.plasma.particles <= 0) fail('plasma class should emit heat');
+  if (!pt.byClass.rail || pt.byClass.rail.streaks <= 0) fail('rail class should emit thin streaks');
+
+  const live = system._trailStreakPool && system._trailStreakPool.find((m) => m.visible);
+  const st = system._ts && system._ts.find((s) => s.alive);
+  if (!live) fail('rail streak mesh should be visible');
+  else {
+    if (live.scale.x >= 0.2) fail(`rail streak width must stay thin, got ${live.scale.x}`);
+    if (live.scale.z <= 3) fail(`rail streak length must stay long, got ${live.scale.z}`);
+  }
+  if (!st || st.size0 !== st.size1) fail('projectile rail streak must use constant width (size0 === size1)');
+
+  if (errors.length) throw new Error(`projectile trail emission self-check failed:\n${errors.join('\n')}`);
+  return {
+    ok: true,
+    projectileTrails: pt,
+    rail: live ? { width: live.scale.x, length: live.scale.z, size0: st && st.size0, size1: st && st.size1 } : null,
+    subsystem: system.inspect().subsystems.lastFrame.projectileTrails,
+  };
+}
+
+export function assertProjectileTrailSleepContracts() {
+  const errors = [];
+  const fail = (msg) => errors.push(msg);
+
+  const idle = _makeProjectileTrailSelfCheckHarness([]);
+  idle.update(1 / 60);
+  const idleFrame = idle.inspect().subsystems.lastFrame;
+  if (idleFrame.projectileTrails !== 0) {
+    fail(`idle harness should sleep projectile trails, got ${idleFrame.projectileTrails}`);
+  }
+
+  const wake = _makeProjectileTrailSelfCheckHarness([
+    _selfCheckProjectile(42, 'wpn_railgun_m', { damageType: 'kinetic' }),
+  ]);
+  wake._markProjectileCacheDirty();
+  for (let i = 0; i < 4; i++) wake.update(1 / 60);
+  const wakeFrame = wake.inspect().subsystems.lastFrame;
+  if (wakeFrame.projectileTrails !== 1) {
+    fail(`alive projectile should wake projectile trail subsystem, got ${wakeFrame.projectileTrails}`);
+  }
+  const wakeDiag = wake.inspect().projectileTrails;
+  if (wakeDiag.streaksSpawned <= 0 && wakeDiag.particlesSpawned <= 0) {
+    fail('woken projectile trail subsystem should spawn pooled wisps');
+  }
+
+  if (errors.length) throw new Error(`projectile trail sleep contracts failed:\n${errors.join('\n')}`);
+  return {
+    ok: true,
+    idle: { projectileTrails: idleFrame.projectileTrails },
+    wakeup: { projectileTrails: wakeFrame.projectileTrails, streaksSpawned: wakeDiag.streaksSpawned },
+  };
+}
+
+function _isProjectileTrailGateImport() {
+  if (typeof process === 'undefined' || !Array.isArray(process.argv) || !process.argv[1]) return false;
+  const entry = String(process.argv[1]).replace(/\\/g, '/');
+  return entry.endsWith('check-sg08-render-vfx.mjs') || entry.endsWith('check-vfx-frame-sleep.mjs');
+}
+
+function _assertProjectileTrailWiringGuards() {
+  if (typeof vfx._projectileTrailsRelevant !== 'function') {
+    throw new Error('vfx must gate projectile trails with _projectileTrailsRelevant()');
+  }
+  if (typeof vfx._emitProjectileTrails !== 'function') {
+    throw new Error('vfx must emit projectile trails from _emitProjectileTrails()');
+  }
+  console.log('ok    projectile trail wiring guards');
+}
+
+export function runProjectileTrailGateEvidenceSync() {
+  const profiles = assertProjectileTrailProfileContracts();
+  console.log('PASS profile contracts', JSON.stringify(profiles));
+
+  const sleep = assertProjectileTrailSleepContracts();
+  console.log('ok    projectile trail sleep', JSON.stringify(sleep.idle));
+  console.log('ok    projectile trail wakeup', JSON.stringify(sleep.wakeup));
+
+  const emission = runProjectileTrailEmissionSelfCheck();
+  console.log('PASS emission self-check', JSON.stringify(emission));
+
+  _assertProjectileTrailWiringGuards();
+  return { ok: true, profiles, sleep, emission };
+}
+
+export async function runProjectileTrailGoalEvidence() {
+  return runProjectileTrailGateEvidenceSync();
+}
+
+if (_isProjectileTrailGateImport()) {
+  try {
+    runProjectileTrailGateEvidenceSync();
+  } catch (err) {
+    console.error('FAIL projectile trail gate evidence', err);
+    process.exitCode = 1;
+    throw err;
+  }
+}
 
 export function createVfxPrecompileSalvo() {
   const group = new THREE.Group();

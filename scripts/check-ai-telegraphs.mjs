@@ -41,7 +41,7 @@ function checkAttackTelegraph({ dps, expectedKind, minDelay }) {
     z: 0,
     rot: 0,
     name: expectedKind === 'alphaStrike' ? 'Corsair Heavy' : 'Reaver Scout',
-    ai: { archetype: 'pirate', fsm: 'patrol' },
+    ai: { archetype: 'pirate', fsm: 'patrol', forcePlayerTarget: true },
     combat: { targetId: player.id },
     weapons: [{ defId: `fixture_${expectedKind}`, dps, dmg: dps, rof: 1, projSpeed: 420 }],
   });
@@ -86,7 +86,7 @@ function checkVisibleFlee() {
     name: 'Panic Reaver',
     hull: 12,
     hullMax: 100,
-    ai: { archetype: 'pirate', fsm: 'patrol' },
+    ai: { archetype: 'pirate', fsm: 'patrol', forcePlayerTarget: true },
     combat: { targetId: player.id },
     loot: {
       drops: [
@@ -187,7 +187,7 @@ function checkBarkCooldown() {
       z: (i - 2) * 18,
       rot: 0,
       name: `Brawler ${i + 1}`,
-      ai: { archetype: 'pirate', fsm: 'patrol' },
+      ai: { archetype: 'pirate', fsm: 'patrol', forcePlayerTarget: true },
       combat: { targetId: player.id },
       weapons: [{ defId: `fixture_brawl_${i}`, dps: 32, dmg: 8, rof: 4, projSpeed: 420 }],
     });

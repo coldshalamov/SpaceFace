@@ -968,8 +968,8 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_resonator.glb",
-      "tris": 15474,
-      "bytes": 951260,
+      "tris": 15690,
+      "bytes": 889008,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1024,8 +1024,8 @@
       "category": "engines",
       "priority": "P1",
       "file": "engines/engine_vector.glb",
-      "tris": 1076,
-      "bytes": 243280,
+      "tris": 1368,
+      "bytes": 153388,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1080,8 +1080,8 @@
       "category": "engines",
       "priority": "P1",
       "file": "engines/engine_plasma_ring.glb",
-      "tris": 1888,
-      "bytes": 248812,
+      "tris": 9698,
+      "bytes": 486772,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1117,17 +1117,17 @@
         "min": [
           -0.37,
           -1.04,
-          -1.04
+          -1.0386
         ],
         "max": [
           2.4,
           1.04,
-          1.04
+          1.0386
         ],
         "dimensionsM": [
           2.77,
           2.08,
-          2.08
+          2.0772
         ]
       }
     },
@@ -3536,6 +3536,30 @@
           14
         ]
       }
+    },
+    {
+      "id": "wholeship_kestrel",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/kestrel.glb",
+      "status": "blocked",
+      "statusNote": "Accessory-only export missing a Material_Hull body (0 hull tris). Do not wire into runtime until re-exported with a real hull body per SPEC3-37."
+    },
+    {
+      "id": "wholeship_pelican",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/pelican.glb",
+      "status": "blocked",
+      "statusNote": "Accessory-only export missing a Material_Hull body. Do not wire into runtime until re-exported with a real hull body per SPEC3-37."
+    },
+    {
+      "id": "wholeship_wasp",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/wasp.glb",
+      "status": "blocked",
+      "statusNote": "Accessory-only export missing a Material_Hull body. Do not wire into runtime until re-exported with a real hull body per SPEC3-37."
     }
   ],
   "runtimeSlots": {

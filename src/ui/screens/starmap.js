@@ -506,7 +506,7 @@ export const starmapScreen = {
         </div>
       </div>
       <div class="sm-body">
-        <div class="sm-canvas-wrap"><canvas></canvas></div>
+        <div class="sm-canvas-wrap" data-centerpiece="map-command-table"><canvas></canvas></div>
         <div class="sm-side">
           <div class="sm-objective" data-objective hidden></div>
           <div data-sel><div class="sm-hint">Select a sector to inspect the live danger, market, and influence fields.</div></div>

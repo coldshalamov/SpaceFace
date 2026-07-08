@@ -1,0 +1,635 @@
+---
+pid: 33460
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run check:visual-stability"
+started_at: 2026-07-08T12:41:36.168Z
+running_for_ms: 14170009 
+---
+
+> spaceface@0.1.0 check:visual-stability
+> node scripts/probe-ship-visual-stability.mjs
+
+{
+  "ok": true,
+  "baseUrl": "http://127.0.0.1:8123",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "frames": 360,
+  "warmupFrames": 45,
+  "stability": {
+    "ok": true,
+    "frameCount": 360,
+    "warmupFrames": 45,
+    "inspectedFrameCount": 315,
+    "maxShipCount": 10,
+    "failureCount": 0,
+    "failures": [],
+    "trackedShips": [
+      {
+        "id": 1,
+        "defId": "ship_kestrel",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 315,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "6656aec8-696e-45e5-a52f-816be65f1a7a"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_kestrel_deb0ac72"
+        ],
+        "lodLevels": [
+          "lod0"
+        ],
+        "meshCounts": [
+          "33"
+        ],
+        "authoredBodySurfaceCounts": [
+          "22"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      },
+      {
+        "id": 33,
+        "defId": "ship_hornet",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 0,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "bf6cf6a5-dd32-4ec9-a8bd-56579b5c10d0"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_hornet_9589007b"
+        ],
+        "lodLevels": [
+          "lod2"
+        ],
+        "meshCounts": [
+          "14"
+        ],
+        "authoredBodySurfaceCounts": [
+          "3"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      },
+      {
+        "id": 34,
+        "defId": "ship_kestrel",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 0,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "c8459e06-db4e-45f7-a74d-6f7daddc512d"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_kestrel_ca45bd0a"
+        ],
+        "lodLevels": [
+          "lod2"
+        ],
+        "meshCounts": [
+          "14"
+        ],
+        "authoredBodySurfaceCounts": [
+          "3"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      },
+      {
+        "id": 35,
+        "defId": "ship_mule",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 0,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "13e8b5f8-388b-4596-a18b-262d7a3074d5"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_mule_d4ccc804"
+        ],
+        "lodLevels": [
+          "lod2"
+        ],
+        "meshCounts": [
+          "14"
+        ],
+        "authoredBodySurfaceCounts": [
+          "3"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      },
+      {
+        "id": 36,
+        "defId": "ship_mule",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 0,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "119637bc-ce71-4b70-bc2e-36d6dd41a574"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_mule_91c4a591"
+        ],
+        "lodLevels": [
+          "lod2"
+        ],
+        "meshCounts": [
+          "14"
+        ],
+        "authoredBodySurfaceCounts": [
+          "3"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      },
+      {
+        "id": 37,
+        "defId": "ship_drifter",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 0,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "0002a603-c592-410d-89bf-97fe3075c059"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_drifter_8da7cdb7"
+        ],
+        "lodLevels": [
+          "lod2"
+        ],
+        "meshCounts": [
+          "14"
+        ],
+        "authoredBodySurfaceCounts": [
+          "3"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      },
+      {
+        "id": 38,
+        "defId": "ship_drifter",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 0,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "f327174b-1fa6-442b-b3f7-f3dadaf8ee01"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_drifter_169739c8"
+        ],
+        "lodLevels": [
+          "lod2"
+        ],
+        "meshCounts": [
+          "14"
+        ],
+        "authoredBodySurfaceCounts": [
+          "3"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      },
+      {
+        "id": 41,
+        "defId": "ship_wasp",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 0,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "32455262-d911-4682-bd25-e83e1636a5ae"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_wasp_b87c5d69"
+        ],
+        "lodLevels": [
+          "lod2"
+        ],
+        "meshCounts": [
+          "14"
+        ],
+        "authoredBodySurfaceCounts": [
+          "3"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      },
+      {
+        "id": 42,
+        "defId": "ship_mule",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 0,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "edee5334-7ec1-4cdb-84af-3ce4e136cc59"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_mule_ff42a18"
+        ],
+        "lodLevels": [
+          "lod2"
+        ],
+        "meshCounts": [
+          "14"
+        ],
+        "authoredBodySurfaceCounts": [
+          "3"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      },
+      {
+        "id": 43,
+        "defId": "ship_mule",
+        "firstFrame": 45,
+        "framesSeen": 315,
+        "inViewFrames": 0,
+        "missingMeshFrames": 0,
+        "rootUuids": [
+          "89609b19-37f6-41a5-b1b7-18739bfb8995"
+        ],
+        "authoredStates": [
+          "authored"
+        ],
+        "compositionIds": [
+          "GLTFKIT_ship_mule_4dda7251"
+        ],
+        "lodLevels": [
+          "lod2"
+        ],
+        "meshCounts": [
+          "14"
+        ],
+        "authoredBodySurfaceCounts": [
+          "3"
+        ],
+        "staticBatchCounts": [
+          "4"
+        ]
+      }
+    ],
+    "finalShips": [
+      {
+        "id": 1,
+        "defId": "ship_kestrel",
+        "isPlayer": true,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_kestrel_deb0ac72",
+        "lodLevel": "lod0",
+        "inView": true,
+        "meshCount": 33,
+        "visibleRenderableCount": 26,
+        "authoredSurfaceCount": 30,
+        "visibleAuthoredSurfaceCount": 26,
+        "authoredBodySurfaceCount": 22,
+        "visibleAuthoredBodySurfaceCount": 19,
+        "authoredBodyTriangleCount": 159747,
+        "authoredBodyMaxWorldPrimitiveRadius": 13.746,
+        "authoredBodyRadiusRatio": 0.982,
+        "authoredBodyDiagonalRatio": 1.964,
+        "authoredBodyScreenRadiusPx": 179.312,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 12.763,
+        "authoredBodyToReadabilityDiagonalRatio": 1.077,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 0,
+        "maxWorldPrimitiveRadius": 15.887,
+        "screenRadiusPx": 207.236,
+        "largePrimitives": []
+      },
+      {
+        "id": 33,
+        "defId": "ship_hornet",
+        "isPlayer": false,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_hornet_9589007b",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 6,
+        "authoredSurfaceCount": 11,
+        "visibleAuthoredSurfaceCount": 6,
+        "authoredBodySurfaceCount": 3,
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 18362,
+        "authoredBodyMaxWorldPrimitiveRadius": 15.377,
+        "authoredBodyRadiusRatio": 0.854,
+        "authoredBodyDiagonalRatio": 1.709,
+        "authoredBodyScreenRadiusPx": 13.989,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 16.41,
+        "authoredBodyToReadabilityDiagonalRatio": 0.937,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 20.426,
+        "screenRadiusPx": 18.582,
+        "largePrimitives": []
+      },
+      {
+        "id": 34,
+        "defId": "ship_kestrel",
+        "isPlayer": false,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_kestrel_ca45bd0a",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 6,
+        "authoredSurfaceCount": 11,
+        "visibleAuthoredSurfaceCount": 6,
+        "authoredBodySurfaceCount": 3,
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 157865,
+        "authoredBodyMaxWorldPrimitiveRadius": 9.988,
+        "authoredBodyRadiusRatio": 0.713,
+        "authoredBodyDiagonalRatio": 1.427,
+        "authoredBodyScreenRadiusPx": 61.745,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 12.763,
+        "authoredBodyToReadabilityDiagonalRatio": 0.783,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 15.887,
+        "screenRadiusPx": 98.212,
+        "largePrimitives": []
+      },
+      {
+        "id": 35,
+        "defId": "ship_mule",
+        "isPlayer": false,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_mule_d4ccc804",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 6,
+        "authoredSurfaceCount": 11,
+        "visibleAuthoredSurfaceCount": 6,
+        "authoredBodySurfaceCount": 3,
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 21011,
+        "authoredBodyMaxWorldPrimitiveRadius": 12.522,
+        "authoredBodyRadiusRatio": 0.696,
+        "authoredBodyDiagonalRatio": 1.391,
+        "authoredBodyScreenRadiusPx": 18.718,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 16.41,
+        "authoredBodyToReadabilityDiagonalRatio": 0.763,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 20.426,
+        "screenRadiusPx": 30.534,
+        "largePrimitives": []
+      },
+      {
+        "id": 36,
+        "defId": "ship_mule",
+        "isPlayer": false,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_mule_91c4a591",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 6,
+        "authoredSurfaceCount": 11,
+        "visibleAuthoredSurfaceCount": 6,
+        "authoredBodySurfaceCount": 3,
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 21059,
+        "authoredBodyMaxWorldPrimitiveRadius": 12.665,
+        "authoredBodyRadiusRatio": 0.704,
+        "authoredBodyDiagonalRatio": 1.407,
+        "authoredBodyScreenRadiusPx": 81.193,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 16.41,
+        "authoredBodyToReadabilityDiagonalRatio": 0.772,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 20.426,
+        "screenRadiusPx": 130.942,
+        "largePrimitives": []
+      },
+      {
+        "id": 37,
+        "defId": "ship_drifter",
+        "isPlayer": false,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_drifter_8da7cdb7",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 6,
+        "authoredSurfaceCount": 11,
+        "visibleAuthoredSurfaceCount": 6,
+        "authoredBodySurfaceCount": 3,
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 22003,
+        "authoredBodyMaxWorldPrimitiveRadius": 15.409,
+        "authoredBodyRadiusRatio": 0.856,
+        "authoredBodyDiagonalRatio": 1.712,
+        "authoredBodyScreenRadiusPx": 162.771,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 16.41,
+        "authoredBodyToReadabilityDiagonalRatio": 0.939,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 20.426,
+        "screenRadiusPx": 215.768,
+        "largePrimitives": []
+      },
+      {
+        "id": 38,
+        "defId": "ship_drifter",
+        "isPlayer": false,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_drifter_169739c8",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 6,
+        "authoredSurfaceCount": 11,
+        "visibleAuthoredSurfaceCount": 6,
+        "authoredBodySurfaceCount": 3,
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 22671,
+        "authoredBodyMaxWorldPrimitiveRadius": 15.409,
+        "authoredBodyRadiusRatio": 0.856,
+        "authoredBodyDiagonalRatio": 1.712,
+        "authoredBodyScreenRadiusPx": 56.334,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 16.41,
+        "authoredBodyToReadabilityDiagonalRatio": 0.939,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 20.426,
+        "screenRadiusPx": 74.675,
+        "largePrimitives": []
+      },
+      {
+        "id": 41,
+        "defId": "ship_wasp",
+        "isPlayer": false,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_wasp_b87c5d69",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 6,
+        "authoredSurfaceCount": 11,
+        "visibleAuthoredSurfaceCount": 6,
+        "authoredBodySurfaceCount": 3,
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 14550,
+        "authoredBodyMaxWorldPrimitiveRadius": 11.83,
+        "authoredBodyRadiusRatio": 0.845,
+        "authoredBodyDiagonalRatio": 1.69,
+        "authoredBodyScreenRadiusPx": 25.148,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 12.763,
+        "authoredBodyToReadabilityDiagonalRatio": 0.927,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 15.887,
+        "screenRadiusPx": 33.771,
+        "largePrimitives": []
+      },
+      {
+        "id": 42,
+        "defId": "ship_mule",
+        "isPlayer": false,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_mule_ff42a18",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 6,
+        "authoredSurfaceCount": 11,
+        "visibleAuthoredSurfaceCount": 6,
+        "authoredBodySurfaceCount": 3,
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 21187,
+        "authoredBodyMaxWorldPrimitiveRadius": 12.705,
+        "authoredBodyRadiusRatio": 0.706,
+        "authoredBodyDiagonalRatio": 1.412,
+        "authoredBodyScreenRadiusPx": 36.712,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 16.41,
+        "authoredBodyToReadabilityDiagonalRatio": 0.774,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 20.426,
+        "screenRadiusPx": 59.02,
+        "largePrimitives": []
+      },
+      {
+        "id": 43,
+        "defId": "ship_mule",
+        "isPlayer": false,
+        "meshExists": true,
+        "authoredState": "authored",
+        "authoredMode": "release",
+        "compositionId": "GLTFKIT_ship_mule_4dda7251",
+        "lodLevel": "lod2",
+        "inView": false,
+        "meshCount": 14,
+        "visibleRenderableCount": 6,
+        "authoredSurfaceCount": 11,
+        "visibleAuthoredSurfaceCount": 6,
+        "authoredBodySurfaceCount": 3,
+        "visibleAuthoredBodySurfaceCount": 1,
+        "authoredBodyTriangleCount": 20519,
+        "authoredBodyMaxWorldPrimitiveRadius": 12.407,
+        "authoredBodyRadiusRatio": 0.689,
+        "authoredBodyDiagonalRatio": 1.379,
+        "authoredBodyScreenRadiusPx": 48.667,
+        "readabilityCoreSurfaceCount": 1,
+        "visibleReadabilityCoreSurfaceCount": 0,
+        "readabilityCoreMaxWorldPrimitiveRadius": 16.41,
+        "authoredBodyToReadabilityDiagonalRatio": 0.756,
+        "staticBatchCount": 4,
+        "visibleStaticBatchCount": 1,
+        "maxWorldPrimitiveRadius": 20.426,
+        "screenRadiusPx": 80.121,
+        "largePrimitives": []
+      }
+    ]
+  },
+  "pageErrors": []
+}

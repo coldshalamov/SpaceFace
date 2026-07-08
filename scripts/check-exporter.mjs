@@ -10,11 +10,12 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const EXPORTER_PY = resolve(ROOT, 'tools/blender/spaceface_export.py');
 
+// Mirrors tools/blender/spaceface_export.py. If quality work changes one, update both.
 const KIND_BUDGETS = Object.freeze({
-  part: { triBudget: 1200, minHullTris: 0 },
-  wholeship: { triBudget: 6000, minHullTris: 800 },
-  prop: { triBudget: 600, minHullTris: 0 },
-  landmark: { triBudget: 2500, minHullTris: 0 },
+  part: { triBudget: 15000, minHullTris: 0 },
+  wholeship: { triBudget: 20000, minHullTris: 800 },
+  prop: { triBudget: 3000, minHullTris: 0 },
+  landmark: { triBudget: 10000, minHullTris: 0 },
 });
 
 const REQUIRED_MAPS = ['ao', 'roughness'];
@@ -195,7 +196,7 @@ function buildBrokenFixture(kind) {
   } else if (kind === 'chamfer') {
     gltf.nodes[0].extras.spaceface.chamfered = false;
   } else if (kind === 'tris') {
-    gltf.accessors[1].count = 36000;
+    gltf.accessors[1].count = 60000;
   }
   const json = Buffer.from(JSON.stringify(gltf));
   const pad = (4 - (json.length % 4)) % 4;
@@ -275,7 +276,7 @@ try {
   const brokenTris = join(tmp, 'broken-tris.glb');
   writeFileSync(brokenTris, buildBrokenFixture('tris'));
   const trisErrors = validateGltfDocument(parseGlb(readFileSync(brokenTris)), {
-    kind: 'part', id: 'broken-tris', triBudget: 1200, skipMaps: true, skipChamfer: true, allowMissingMetadata: true,
+    kind: 'part', id: 'broken-tris', triBudget: KIND_BUDGETS.part.triBudget, skipMaps: true, skipChamfer: true, allowMissingMetadata: true,
   });
   check('broken fixture fails tri budget exceeded', trisErrors.some((e) => e.includes('tri budget exceeded')),
     trisErrors.join('; '));

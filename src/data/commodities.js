@@ -1,5 +1,6 @@
 // src/data/commodities.js – canonical tradeable commodities.
-// 43 cmdty_* IDs per ARCHITECTURE §3.6.1. Balance data only; flavor merged from commodityFlavor.js.
+// 44 cmdty_* IDs: ARCHITECTURE §3.6.1 baseline plus classified-salvage addendum.
+// Balance data only; flavor merged from commodityFlavor.js.
 import { COMMODITY_FLAVOR } from './commodityFlavor.js';
 export { COMMODITY_FLAVOR } from './commodityFlavor.js';
 import { COMMODITY_MORAL_TAGS } from './commodityMoralTags.js'; // BP-12 CARGO_REPUTATION_GLYPH addendum

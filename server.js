@@ -47,6 +47,15 @@ const server = createGameServer({
   ],
 });
 
+server.on('error', (error) => {
+  if (error && error.code === 'EADDRINUSE') {
+    console.error(`SpaceFace dev server could not start: port ${PORT} is already in use.`);
+    console.error(`If SpaceFace is already running, open http://localhost:${PORT}/ or use scripts/launch-browser.mjs to reuse it.`);
+    process.exit(1);
+  }
+  throw error;
+});
+
 server.listen(PORT, () => {
   console.log(`SpaceFace dev server running -> http://localhost:${PORT}/`);
 });

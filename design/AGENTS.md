@@ -27,7 +27,7 @@ Per user direction 2026-07-05: **spec3 is being finished and is effectively the 
 The earlier policy contradiction (old AGENTS.md said "spec2 only"; live briefs dispatched spec3) is resolved — both are sanctioned. `README.md:87` mentions only spec2 and is stale on this point.
 
 **The dispatch brief template** (used by repo-root `brief.md` and `design/spec3/CODEX_ORCHESTRATION_PROMPT.md`):
-> "Read `design/spec2/00_MASTER_TASTE.md` fully, [then `design/spec3/_context/06_PLANNING_CONSTITUTION.md`,] then implement `<SPEC-XX §N>` from `<spec file>` exactly. Acceptance = the spec's named check script green. Touch only files your spec names. `git add -N` every new file immediately. Never edit `test/*.expected.json`. No new runtime deps."
+> "Read `design/spec2/00_MASTER_TASTE.md` fully, [then `design/spec3/_context/06_PLANNING_CONSTITUTION.md`,] then implement `<SPEC-XX §N>` from `<spec file>` exactly. Acceptance = the spec's named check script green. Touch only files your spec names unless the spec is missing a required file; then stop and name the missing file/spec fix. `git add -N` every new file immediately. Never edit `test/*.expected.json`. No silent runtime deps: build-time/tooling deps are allowed when documented; runtime deps require lead sign-off with license, bundle/perf, determinism/save, and maintenance notes."
 
 If your brief points at spec3, **spec3 is current for that task** — do not re-litigate it against spec2. The taste constitution (spec2/00) still applies on top.
 

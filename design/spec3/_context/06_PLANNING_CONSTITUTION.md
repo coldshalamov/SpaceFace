@@ -33,9 +33,11 @@ Concretely, aim the game at these north stars:
 
 ## 2. Hard constraints — do not plan around breaking these
 
-- **No engine swap. No new runtime dependencies** unless the spec explicitly flags it as *build-time
-  only* (e.g. gltf-transform, esbuild) or names a specific vendored single-file addon with a license and
-  an integration-cost note. The game ships as raw ES modules + importmap with a zero-dep static server.
+- **No silent engine swap or runtime dependency.** Build-time/tooling dependencies are allowed when
+  they improve quality and are documented with license + integration cost. Runtime dependencies require
+  lead sign-off plus license, bundle/perf, determinism/save, maintenance, and browser/Electron parity
+  notes. Vendored single-file addons follow the same review. The game still ships as raw ES modules +
+  importmap with a zero-dep static server.
 - **No first-person / cockpit / visor motifs.** This is a third-person top-down game. No screen-edge
   arcs, helmet avatars, or diegetic visor framing. (GDD §9, rejected by the user.)
 - **Determinism is sacred.** The 60 Hz fixed-timestep sim, the 47a golden replay, and the `check:*`

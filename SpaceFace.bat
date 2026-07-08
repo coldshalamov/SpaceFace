@@ -1,21 +1,36 @@
 @echo off
+setlocal
+pushd "%~dp0"
 title SpaceFace
 echo.
 echo ============================================
 echo   SpaceFace - Launching...
 echo ============================================
 echo.
-echo Starting local game server...
-echo The game will open in your browser automatically.
-echo (Close this window to stop the game)
+echo Starting the local game route...
 echo.
 
-REM Open the game in the default browser (it will wait a moment for the server)
-start "" "http://localhost:8123/"
+where node >nul 2>nul
+if %errorlevel% neq 0 (
+    echo ERROR: Node.js is not installed or not in your PATH.
+    echo.
+    echo Please install Node.js from https://nodejs.org/
+    echo Then run this file again.
+    echo.
+    pause
+    popd
+    exit /b 1
+)
 
-REM Start the server (this keeps the window open)
-node server.js
+node scripts\launch-browser.mjs
+set EXIT_CODE=%errorlevel%
 
 echo.
-echo Server stopped.
-pause >nul
+if %EXIT_CODE% neq 0 (
+    echo SpaceFace launcher stopped with an error.
+    pause
+    popd
+    exit /b %EXIT_CODE%
+)
+
+popd

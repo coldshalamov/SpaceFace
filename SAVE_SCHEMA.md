@@ -23,6 +23,7 @@ Current save version: `8`
 - `aceMemory`
 - `lossLedger`
 - `aftermathWrecks`
+- `fieldDepletion`
 - `encounterDirector`
 - `flight`
 - `nav`
@@ -131,6 +132,7 @@ Current save version: `8`
 | `$.entities.simTime` | number | 0 |
 | `$.entities.tick` | number | 0 |
 | `$.factions` | object | {} |
+| `$.fieldDepletion` | object | {} |
 | `$.flight` | object | {} |
 | `$.flight.mode` | string | manual |
 | `$.flight.modeChangedTick` | number | 0 |

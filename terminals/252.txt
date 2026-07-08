@@ -1,0 +1,53 @@
+---
+pid: 26776
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "node -e \"
+import { readFileSync, unlinkSync, mkdirSync } from 'fs';
+import { dirname } from 'path';
+import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { ktx2 } from 'ktx2-encoder/gltf-transform';
+import JPEG from 'jpeg-js';
+import { PNG } from 'pngjs';
+
+function decodeImage(buffer) {
+  try {
+    const png = PNG.sync.read(Buffer.from(buffer));
+    return { width: png.width, height: png.height, data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.byteLength) };
+  } catch {
+    const decoded = JPEG.decode(Buffer.from(buffer), { useTArray: true });
+    return { width: decoded.width, height: decoded.height, data: new Uint8Array(decoded.data.buffer, decoded.data.byteOffset, decoded.data.byteLength) };
+  }
+}
+
+function splitIncompatibleTextureSlots(document) {
+  for (const material of document.getRoot().listMaterials()) {
+    const baseTexture = material.getBaseColorTexture();
+    const normalTexture = material.getNormalTexture();
+    if (!baseTexture || !normalTexture || baseTexture !== normalTexture) continue;
+    const image = normalTexture.getImage();
+    if (!image) continue;
+    material.setNormalTexture(document.createTexture('normal_slot_clone').setImage(image).setMimeType(normalTexture.getMimeType()));
+  }
+}
+
+const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+const out = 'assets/ships/release.__building/_test_hull_fighter.glb';
+mkdirSync(dirname(out), { recursive: true });
+const doc = await io.read('assets/ships/parts/hulls/hull_fighter.glb');
+splitIncompatibleTextureSlots(doc);
+await doc.transform(
+  ktx2({ slots: /^baseColorTexture$/, imageDecoder: decodeImage, isUASTC: true, uastcLDRQualityLevel: 2, generateMipmap: true, needSupercompression: true, isPerceptual: true, isSetKTX2SRGBTransferFunc: true }),
+  ktx2({ slots: /^normalTexture$/, imageDecoder: decodeImage, isUASTC: true, uastcLDRQualityLevel: 2, generateMipmap: true, needSupercompression: true, isNormalMap: true, isPerceptual: false, isSetKTX2SRGBTransferFunc: false }),
+);
+await io.write(out, doc);
+const buf = readFileSync(out);
+const json = JSON.parse(buf.slice(20, 20+buf.readUInt32LE(12)).toString());
+for (const m of json.materials) console.log(m.name, 'base', m.pbrMetallicRoughness?.baseColorTexture?.index, 'normal', m.normalTexture?.index, 'same', m.pbrMetallicRoughness?.baseColorTexture?.index === m.normalTexture?.index);
+\""
+started_at: 2026-07-08T15:19:17.839Z
+running_for_ms: 4710007  
+---
+Material_Hull base 0 normal 1 same false
+Material_Mechanical base 0 normal 3 same false
+Material_Accent base 0 normal 4 same false

@@ -40,7 +40,7 @@ This goal exists because prior efforts focused on the starter ship + pipeline se
 Current baseline (2026-07-05):
 - Most parts have generic "Class-authored ..." notes and basic topology.
 - Only 4 authored .blend sources exist with deeper work (hull_starter_authored, weapon_gatling_authored, place_station_trade_hub_authored + a few station .blends).
-- Budgets: trianglesPerPart [500, 8000], maxBytesPerPart 3500000 (already raised from legacy 1200; will raise further for hero assets).
+- Budgets: trianglesPerPart [500, 15000], maxBytesPerPart 5000000 (already raised from legacy 1200; whole-ships/landmarks use the exporter kind budgets and may rise further for hero assets with rationale + perf proof).
 - Live probe can pass on loader (authored path loads), but artistic quality is the gap.
 
 ## 2. Professional Bar (Non-Negotiable)
@@ -173,7 +173,7 @@ After **every asset** (or small logical group) and after **every batch**:
 
 ## 6. Budget & Performance Policy
 
-- Current manifest budgets already raised. For hero/main assets (starter, other hulls, major stations): further increase justified (e.g. main hulls 8k-15k tris range if it buys real pro density via smart bakes; update manifest + this goal).
+- Current manifest/exporter budgets are already raised. For hero/main assets (starter, other hulls, major stations): further increase is justified when it buys real pro density via smart bakes/LODs; update the manifest/queue/spec and record perf proof.
 - Always prefer optimization techniques (bakes over geo, GN instances, trim sheets, efficient packing).
 - After batches, run perf checks. No silent quality drops to hit perf.
 - Document any budget change with rationale.

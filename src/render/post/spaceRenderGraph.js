@@ -10,6 +10,7 @@
 // particles and camera publish correct motion vectors. Ghosting is not modernity.
 
 import * as THREE from 'three';
+import { recordPostRenderTargetAllocation } from '../postTelemetry.js';
 
 const FULLSCREEN_VERT = /* glsl */`
   varying vec2 vUv;
@@ -451,6 +452,7 @@ function shaderMaterial(fragmentShader, values) {
 }
 
 function hdrTarget(width,height,depth,samples) {
+  recordPostRenderTargetAllocation('renderGraph:hdr');
   const target = new THREE.WebGLRenderTarget(width,height,{
     type:THREE.HalfFloatType, format:THREE.RGBAFormat,
     minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
@@ -466,6 +468,7 @@ function hdrTarget(width,height,depth,samples) {
 }
 
 function ldrTarget(width,height,depth) {
+  recordPostRenderTargetAllocation('renderGraph:ldr');
   return new THREE.WebGLRenderTarget(width,height,{
     type:THREE.UnsignedByteType, format:THREE.RGBAFormat,
     minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,

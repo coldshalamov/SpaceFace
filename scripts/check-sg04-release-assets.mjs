@@ -31,12 +31,16 @@ const releaseManifest = existsSync(RELEASE_MANIFEST)
 const WHOLE_SHIP_FILES = ['wholeships/kestrel.glb', 'wholeships/pelican.glb', 'wholeships/wasp.glb'];
 const devAssetPaths = [
   'assets/ships/kestrel/kestrel_reference.glb',
-  ...(partManifest.parts || []).map((part) => `assets/ships/parts/${part.file}`),
+  ...(partManifest.parts || [])
+    .filter((part) => part.status !== 'blocked')
+    .map((part) => `assets/ships/parts/${part.file}`),
   ...WHOLE_SHIP_FILES.map((file) => `assets/ships/parts/${file}`),
 ];
 const releaseAssetPaths = [
   'assets/ships/release/kestrel/kestrel_reference.glb',
-  ...(partManifest.parts || []).map((part) => `assets/ships/release/parts/${part.file}`),
+  ...(partManifest.parts || [])
+    .filter((part) => part.status !== 'blocked')
+    .map((part) => `assets/ships/release/parts/${part.file}`),
   ...WHOLE_SHIP_FILES.map((file) => `assets/ships/release/parts/${file}`),
 ];
 const assetPairs = devAssetPaths.map((source, index) => ({

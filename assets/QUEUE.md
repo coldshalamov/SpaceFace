@@ -1,7 +1,7 @@
 # SpaceFace authored-asset queue (SPEC3-37 §2 step 3)
 
 Nothing enters `assets/ships/release/` without exporter pass + manifest entry + reachability check.
-Tri budgets: part ≤1.2k · whole-ship ≤6k · prop ≤600 · landmark ≤2.5k.
+Tri budgets follow the live manifest/exporter contract: part ≤15k · whole-ship ≤20k with ≥800 hull-body tris · prop ≤3k · landmark ≤10k. Treat these as alarms, not taste ceilings; change a row with rationale + perf evidence.
 
 | id | kind | thread | tri budget | palette | status |
 |---|---|---|---:|---|---|
@@ -27,12 +27,12 @@ Tri budgets: part ≤1.2k · whole-ship ≤6k · prop ≤600 · landmark ≤2.5k
 | hunter_sig_rail_10 | part | F4-22 | 1200 | hostile rim red | queued |
 | hunter_sig_rail_11 | part | F4-22 | 1200 | hostile rim red | queued |
 | hunter_sig_rail_12 | part | F4-22 | 1200 | hostile rim red | queued |
-| landmark_beacon_spire | landmark | F7-30 | 2500 | sector identity | queued |
-| landmark_wreck_cathedral | landmark | F7-30 | 2500 | ashfall rust | queued |
-| landmark_veil_obelisk | landmark | F7-31 | 2500 | veil cyan | queued |
-| landmark_pit_anchor | landmark | F7-31 | 2500 | pit ember | queued |
-| landmark_vault_maw | landmark | F7-31 | 2500 | anomaly violet | queued |
-| landmark_tower_crown | landmark | F6-27 | 2500 | siege brass | queued |
+| landmark_beacon_spire | landmark | F7-30 | 10000 | sector identity | queued |
+| landmark_wreck_cathedral | landmark | F7-30 | 10000 | ashfall rust | queued |
+| landmark_veil_obelisk | landmark | F7-31 | 10000 | veil cyan | queued |
+| landmark_pit_anchor | landmark | F7-31 | 10000 | pit ember | queued |
+| landmark_vault_maw | landmark | F7-31 | 10000 | anomaly violet | queued |
+| landmark_tower_crown | landmark | F6-27 | 10000 | siege brass | queued |
 | module_vis_battery_S | part | F5-23 | 1200 | faction trim | queued (`wantsVisual`) |
 | module_vis_battery_M | part | F5-23 | 1200 | faction trim | queued (`wantsVisual`) |
 | module_vis_battery_L | part | F5-23 | 1200 | faction trim | queued (`wantsVisual`) |
