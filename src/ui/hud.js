@@ -32,6 +32,9 @@ import { SEMANTIC_PALETTE } from './accessibility.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
+import { confirm } from './confirm.js';
+import { bestKnownSellFor, applyTradeNavigation } from './screens/market.js';
+import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -68,6 +71,15 @@ for (const sec of SECTORS) {
 }
 const MT_CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const PERSISTENT_CARGO_BY_ID = new Map(PERSISTENT_CARGO.map((c) => [c.id, c]));
+const STATION_ROLE_LABELS = {
+  trade_hub: 'Trade Hub',
+  refinery: 'Refinery',
+  mining: 'Mining',
+  fab: 'Fabricator',
+  military: 'Military',
+  blackmarket: 'Black Market',
+  research: 'Research',
+};
 
 function mtCmdtyName(id) {
   const c = MT_CMDTY_BY_ID.get(id);
@@ -77,6 +89,10 @@ function mtCmdtyName(id) {
 function cargoDisplayName(id) {
   const c = MT_CMDTY_BY_ID.get(id) || PERSISTENT_CARGO_BY_ID.get(id);
   return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
+}
+
+function stationRoleLabel(id) {
+  return STATION_ROLE_LABELS[id] || String(id || 'unknown').replace(/_/g, ' ');
 }
 
 function isPersistentCargoId(state, id) {
@@ -275,6 +291,16 @@ export function createHud(ctx, alerts) {
   root.innerHTML = '';
 
   // ---- bottom-left: ship schematic (hull + shield) + thin micro-bars (energy/heat/boost) ----
+  // Bottom-left anchor (SPEC3-36 three-anchor law, design/revamp/HUD_THREE_ANCHOR.md): one flex
+  // column — a CONTEXTUAL sub-column (mission tracker + objectives + nav readout, all relocated here
+  // from the old top-left/top-right/top-center straggler positions) sitting ABOVE the schematic +
+  // vitals. leftContext collapses to nothing when its children are all hidden (:empty).
+  const leftStack = document.createElement('div');
+  leftStack.className = 'sf-leftstack';
+  const leftContext = document.createElement('div');
+  leftContext.className = 'sf-leftcontext';
+  leftStack.appendChild(leftContext);
+
   // Tactical-Visor §3C: the clunky stacked bars become a top-down structural schematic. Hull is the
   // tint + centered numeric; shield is the glowing ring (stroke-dashoffset). Energy/heat/boost — which
   // the arcs/schematic don't cover — live on as thin 2px glowing micro-lines below it.
@@ -319,7 +345,8 @@ export function createHud(ctx, alerts) {
     numEls[key] = row.querySelector('.sf-barrow__num');
     rowEls[key] = row;
   }
-  root.appendChild(bars);
+  leftStack.appendChild(bars);   // bars below the contextual column
+  root.appendChild(leftStack);
   // Shield ring: dasharray = full circumference, dashoffset grows as shields drop (erasing the ring).
   // Measured after mount so getTotalLength() reads the live geometry (the fallback equals 2πr anyway).
   const SHIELD_RING_LEN = (() => { try { return schShield.getTotalLength() || 2 * Math.PI * 44; } catch (e) { return 2 * Math.PI * 44; } })();
@@ -392,7 +419,7 @@ export function createHud(ctx, alerts) {
     '<div class="sf-mt-title mono"></div>' +
     '<div class="sf-mt-obj mono"></div>' +
     '<div class="sf-mt-time mono"></div>';
-  root.appendChild(missionTracker);
+  leftContext.appendChild(missionTracker);   // relocated into the bottom-left contextual column
   const mtTitle = missionTracker.querySelector('.sf-mt-title');
   const mtObj = missionTracker.querySelector('.sf-mt-obj');
   const mtTime = missionTracker.querySelector('.sf-mt-time');
@@ -572,20 +599,22 @@ export function createHud(ctx, alerts) {
   root.appendChild(dmgInd.el);
   ctx.bus.on('combat:damage', (p) => dmgInd.onDamage(p));
 
-  // ---- top-right: objective tracker + arrow ----
+  // ---- objective tracker (relocated to the bottom-left contextual column) + off-screen arrow.
+  // The arrow (below) stays a root-level, world-following overlay; only the objective LIST moves. ----
   const objWrap = document.createElement('div');
   objWrap.className = 'sf-objectives';
   objWrap.style.display = 'none';
-  root.appendChild(objWrap);
+  leftContext.appendChild(objWrap);
 
-  // ---- Phase 4: nav readout (destination / distance / ETA) + fuel gauge (top-left) ----
+  // ---- Phase 4: nav readout (destination / distance / ETA) — relocated from top-center into the
+  // bottom-left contextual column (persistent "where I'm going" state belongs in the left anchor). ----
   const elNavReadout = document.createElement('div');
   elNavReadout.className = 'sf-nav-readout';
   elNavReadout.style.display = 'none';
   elNavReadout.innerHTML =
     '<div class="sf-nav-label mono">—</div>' +
     '<div class="sf-nav-meta"><span class="sf-nav-dist">0 u</span> · ETA <span class="sf-nav-eta">—</span></div>';
-  root.appendChild(elNavReadout);
+  leftContext.appendChild(elNavReadout);
   const elNavLabel = elNavReadout.querySelector('.sf-nav-label');
   const elNavDist = elNavReadout.querySelector('.sf-nav-dist');
   const elNavEta = elNavReadout.querySelector('.sf-nav-eta');
@@ -780,127 +809,989 @@ export function createHud(ctx, alerts) {
   }
   const hudMeta = createHudMeta(ctx);
 
-  // ---- cargo panel overlay (toggled by I key or clicking CARGO stat) ----
+  // ---- cargo hold physical style sheet ----
+  const CARGO_HOLD_CSS = `
+  .sf-cargo-panel {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 980px;
+    height: 600px;
+    background: color-mix(in srgb, var(--panel) 96%, transparent);
+    border: 1px solid var(--visor-cyan);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px color-mix(in srgb, var(--visor-cyan) 15%, transparent);
+    z-index: 1000;
+    pointer-events: auto;
+    font-family: var(--mono, monospace);
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sf-cargo-panel.open {
+    display: flex;
+  }
+  .sf-cargo-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--panel-edge);
+    background: color-mix(in srgb, var(--panel-2) 40%, transparent);
+  }
+  .sf-cargo-title-group {
+    display: flex;
+    flex-direction: column;
+  }
+  .sf-cargo-panel__title {
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    color: var(--visor-cyan);
+  }
+  .sf-cargo-status-tag {
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    color: var(--ink-dim);
+  }
+  .sf-cargo-gauges {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+  }
+  .sf-cargo-gauge-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sf-gauge-label {
+    font-size: 11px;
+    color: var(--ink-dim);
+    display: flex;
+    flex-direction: column;
+  }
+  .sf-gauge-label span {
+    font-weight: bold;
+    color: var(--visor-cyan);
+  }
+  .sf-cargo-panel__close {
+    background: none;
+    border: 1px solid var(--ink-mute);
+    border-radius: 4px;
+    color: var(--ink-dim);
+    font-size: 11px;
+    padding: 4px 12px;
+    cursor: pointer;
+  }
+  .sf-cargo-panel__close:hover {
+    border-color: var(--visor-cyan);
+    color: var(--visor-cyan);
+  }
+  .sf-cargo-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .sf-cargo-left-rail {
+    width: 160px;
+    border-right: 1px solid var(--panel-edge);
+    background: color-mix(in srgb, var(--panel-2) 20%, transparent);
+    display: flex;
+    flex-direction: column;
+    padding: 15px 10px;
+    gap: 10px;
+  }
+  .sf-cargo-rail-btn {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 10px 15px;
+    text-align: left;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s ease;
+  }
+  .sf-cargo-rail-btn:hover {
+    background: color-mix(in srgb, var(--visor-cyan) 8%, transparent);
+    color: var(--visor-cyan);
+  }
+  .sf-cargo-rail-btn.active {
+    background: color-mix(in srgb, var(--visor-cyan) 12%, transparent);
+    border-color: var(--visor-cyan-dim);
+    color: var(--visor-cyan);
+    font-weight: bold;
+  }
+  .sf-cargo-centerpiece {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--panel-edge);
+  }
+  .sf-cargo-hex-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.25;
+    z-index: 1;
+  }
+  .sf-cargo-flicker-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.15;
+    z-index: 2;
+  }
+  .sf-cargo-schematic {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 12px;
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 5;
+  }
+  .sf-cargo-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 140px;
+    height: 120px;
+    box-sizing: border-box;
+    z-index: 10;
+    position: relative;
+  }
+  .sf-cargo-block.legal {
+    border: 1px solid var(--visor-cyan-dim);
+    background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  }
+  .sf-cargo-block.restricted {
+    border: 1px solid var(--warn);
+    background: color-mix(in srgb, var(--warn) 6%, color-mix(in srgb, var(--panel-2) 70%, transparent));
+  }
+  .sf-cargo-block.contraband {
+    border: 1px solid var(--danger);
+    background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 5%, transparent), color-mix(in srgb, var(--danger) 5%, transparent) 10px, color-mix(in srgb, var(--danger) 15%, transparent) 10px, color-mix(in srgb, var(--danger) 15%, transparent) 20px);
+  }
+  .sf-cargo-block.free-space {
+    border: 1px dashed var(--ink-mute);
+    background: transparent;
+    cursor: default;
+  }
+  .sf-cargo-block:hover, .sf-cargo-block.selected {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  }
+  .sf-cargo-block.legal:hover, .sf-cargo-block.legal.selected {
+    border-color: var(--visor-cyan);
+    background: color-mix(in srgb, var(--visor-cyan) 10%, color-mix(in srgb, var(--panel-2) 70%, transparent));
+    box-shadow: 0 0 15px color-mix(in srgb, var(--visor-cyan) 20%, transparent);
+  }
+  .sf-cargo-block.restricted:hover, .sf-cargo-block.restricted.selected {
+    border-color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 15%, color-mix(in srgb, var(--panel-2) 70%, transparent));
+    box-shadow: 0 0 15px color-mix(in srgb, var(--warn) 20%, transparent);
+  }
+  .sf-cargo-block.contraband:hover, .sf-cargo-block.contraband.selected {
+    border-color: var(--danger);
+    background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 10%, transparent), color-mix(in srgb, var(--danger) 10%, transparent) 10px, color-mix(in srgb, var(--danger) 25%, transparent) 10px, color-mix(in srgb, var(--danger) 25%, transparent) 20px);
+    box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 20%, transparent);
+  }
+  .sf-cargo-block-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  .sf-cargo-block-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .sf-cargo-lock-icon {
+    font-size: 10px;
+    color: var(--warn);
+  }
+  .sf-cargo-block-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sf-cargo-block-qty {
+    font-size: 11px;
+    color: var(--accent-2);
+  }
+  .sf-cargo-block-vol {
+    font-size: 9px;
+    color: var(--ink-dim);
+  }
+  .sf-cargo-badge {
+    font-size: 8px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-weight: bold;
+    align-self: flex-start;
+    margin-top: 4px;
+  }
+  .sf-cargo-badge.fragile {
+    background: color-mix(in srgb, var(--warn) 15%, transparent);
+    color: var(--warn);
+    border: 1px solid var(--warn);
+  }
+  .sf-cargo-badge.special {
+    background: color-mix(in srgb, var(--visor-cyan) 15%, transparent);
+    color: var(--visor-cyan);
+    border: 1px solid var(--visor-cyan-dim);
+  }
+  .sf-cargo-badge.mission {
+    background: color-mix(in srgb, var(--accent-2) 15%, transparent);
+    color: var(--accent-2);
+    border: 1px solid var(--accent-2);
+  }
+  .sf-cargo-supply-tree {
+    height: 180px;
+    border-top: 1px solid var(--panel-edge);
+    background: color-mix(in srgb, var(--panel-2) 15%, transparent);
+    padding: 15px 20px;
+    overflow: hidden;
+    z-index: 5;
+  }
+  .sf-cargo-supply-title {
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .sf-cargo-supply-chart {
+    height: 140px;
+  }
+  .sf-cargo-inspector {
+    width: 260px;
+    padding: 20px;
+    background: color-mix(in srgb, var(--panel-2) 20%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  .sf-inspector-empty {
+    color: var(--ink-mute);
+    font-size: 12px;
+    text-align: center;
+    margin: auto 0;
+  }
+  .sf-inspector-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    height: 100%;
+  }
+  .sf-ins-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--visor-cyan);
+    margin: 0;
+    border-bottom: 1px solid var(--panel-edge);
+    padding-bottom: 8px;
+  }
+  .sf-ins-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sf-ins-meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .sf-ins-meta-row span:first-child {
+    color: var(--ink-dim);
+  }
+  .sf-ins-meta-row span:last-child {
+    color: var(--ink);
+    font-weight: bold;
+  }
+  .sf-ins-market {
+    background: color-mix(in srgb, var(--panel-2) 30%, transparent);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sf-ins-market h4 {
+    font-size: 11px;
+    margin: 0;
+    text-transform: uppercase;
+    color: var(--visor-cyan);
+    letter-spacing: 0.05em;
+  }
+  .sf-ins-buyer {
+    font-size: 11px;
+    color: var(--ink);
+    line-height: 1.4;
+    margin: 0;
+  }
+  .sf-ins-actions {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sf-btn-fx {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sf-btn-route {
+    background: var(--visor-cyan-dim, color-mix(in srgb, var(--visor-cyan) 30%, transparent));
+    border: 1px solid var(--visor-cyan);
+    color: var(--visor-cyan);
+  }
+  .sf-btn-route:hover:not(:disabled) {
+    background: var(--visor-cyan);
+    color: var(--panel);
+  }
+  .sf-btn-jettison {
+    background: color-mix(in srgb, var(--danger) 15%, transparent);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+  }
+  .sf-btn-jettison:hover:not(:disabled) {
+    background: var(--danger);
+    color: var(--ink);
+  }
+  .sf-btn-fx:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .sf-cargo-ledger {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow: hidden;
+    z-index: 5;
+  }
+  .sf-ledger-header {
+    font-size: 12px;
+    color: var(--visor-cyan);
+    font-weight: bold;
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+  }
+  .sf-ledger-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sf-ledger-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--panel-2) 40%, transparent);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    font-size: 11px;
+  }
+  .sf-ledger-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sf-ledger-title {
+    font-weight: bold;
+    color: var(--ink);
+  }
+  .sf-ledger-side {
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 9px;
+    font-weight: bold;
+    margin-right: 6px;
+  }
+  .sf-ledger-side.buy {
+    background: color-mix(in srgb, var(--visor-cyan) 15%, transparent);
+    color: var(--visor-cyan);
+  }
+  .sf-ledger-side.sell {
+    background: color-mix(in srgb, var(--warn) 15%, transparent);
+    color: var(--warn);
+  }
+  .sf-ledger-station {
+    color: var(--ink-dim);
+  }
+  .sf-ledger-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .sf-ledger-val {
+    font-weight: bold;
+    color: var(--accent-2);
+  }
+  .sf-ledger-profit {
+    font-size: 9px;
+    color: var(--good);
+  }
+  .sf-cargo-empty-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--ink-mute);
+    font-size: 13px;
+    width: 100%;
+  }
+  .sf-cargo-beam-mount {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 900;
+  }
+  `;
+
+  if (!document.getElementById('sf-cargohold-style')) {
+    const ms = document.createElement('style');
+    ms.id = 'sf-cargohold-style';
+    ms.textContent = CARGO_HOLD_CSS;
+    document.head.appendChild(ms);
+  }
+
+  // ---- cargo panel overlay ----
   const cargoPanel = document.createElement('div');
   cargoPanel.className = 'sf-cargo-panel';
-  cargoPanel.innerHTML =
-    '<div class="sf-cargo-panel__head">' +
-      '<span class="sf-cargo-panel__title">CARGO HOLD</span>' +
-      '<button class="sf-cargo-panel__close" type="button">ESC</button>' +
-    '</div>' +
-    '<div class="sf-cargo-panel__summary">' +
-      '<span class="sf-cargo-summary-used">0 / 40 u</span>' +
-      '<span class="sf-cargo-summary-mass">0 t</span>' +
-      '<span class="sf-cargo-summary-val">~0 CR</span>' +
-    '</div>' +
-    '<div class="sf-cargo-panel__list"></div>';
+  cargoPanel.innerHTML = `
+    <div class="sf-cargo-panel__head">
+      <div class="sf-cargo-title-group">
+        <span class="sf-cargo-panel__title">CARGO HOLD MANIFEST</span>
+        <span class="sf-cargo-status-tag">MANIFEST ACQUIRED</span>
+      </div>
+      <div class="sf-cargo-gauges">
+        <div class="sf-cargo-gauge-item" id="sf-gauge-used">
+          <span class="sf-gauge-label">CAPACITY: <span class="sf-cargo-summary-used">0 / 40 u</span></span>
+        </div>
+        <div class="sf-cargo-gauge-item" id="sf-gauge-risk">
+          <span class="sf-gauge-label">SCAN RISK: <span class="sf-cargo-summary-risk">0%</span></span>
+        </div>
+      </div>
+      <button class="sf-cargo-panel__close" type="button">ESC</button>
+    </div>
+    <div class="sf-cargo-body">
+      <div class="sf-cargo-left-rail">
+        <button class="sf-cargo-rail-btn active" data-tab="cargo" type="button">CARGO</button>
+        <button class="sf-cargo-rail-btn" data-tab="materials" type="button">MATERIALS</button>
+        <button class="sf-cargo-rail-btn" data-tab="salvage" type="button">SALVAGE</button>
+        <button class="sf-cargo-rail-btn" data-tab="mission" type="button">MISSION</button>
+        <button class="sf-cargo-rail-btn" data-tab="ledger" type="button">LEDGER</button>
+      </div>
+      <div class="sf-cargo-centerpiece">
+        <div class="sf-cargo-hex-bg"></div>
+        <div class="sf-cargo-flicker-bg"></div>
+        <div class="sf-cargo-schematic"></div>
+        <div class="sf-cargo-supply-tree"></div>
+      </div>
+      <div class="sf-cargo-inspector">
+        <div class="sf-inspector-empty">No item selected. Select a block to inspect.</div>
+        <div class="sf-inspector-content" style="display:none;">
+          <h3 class="sf-ins-name">Commodity</h3>
+          <div class="sf-ins-meta">
+            <div class="sf-ins-meta-row"><span>Units/Vol:</span><span class="sf-ins-qty">0 u / 0 u</span></div>
+            <div class="sf-ins-meta-row"><span>Legality:</span><span class="sf-ins-legal">LEGAL</span></div>
+            <div class="sf-ins-meta-row"><span>Avg Basis:</span><span class="sf-ins-basis">N/A</span></div>
+          </div>
+          <div class="sf-ins-market">
+            <h4>Market Intelligence</h4>
+            <p class="sf-ins-buyer">Best Buyer: None</p>
+          </div>
+          <div class="sf-ins-actions">
+            <button class="sf-btn-route sf-btn-fx" type="button">SET COURSE</button>
+            <button class="sf-btn-jettison sf-btn-fx" type="button">JETTISON</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
   root.appendChild(cargoPanel);
+
+  // mount route beam overlay
+  const beamMount = document.createElement('div');
+  beamMount.className = 'sf-cargo-beam-mount';
+  cargoPanel.appendChild(beamMount);
+  const beamFx = createRouteBeam(beamMount, { width: 980, height: 600 });
+
+  // mount background hexPattern
+  const hexBg = cargoPanel.querySelector('.sf-cargo-hex-bg');
+  const hexFx = createHexPattern(hexBg, { cols: 15, rows: 6, size: 16, width: 560, height: 260 });
+  const hexCells = [];
+  for (let cIdx = 0; cIdx < 15; cIdx++) {
+    for (let rIdx = 0; rIdx < 6; rIdx++) {
+      const isEdge = cIdx === 0 || cIdx === 14 || rIdx === 0 || rIdx === 5;
+      hexCells.push({ col: cIdx, row: rIdx, kind: isEdge ? 'neutral' : 'good', intensity: isEdge ? 0.12 : 0.04 });
+    }
+  }
+  hexFx.setCells(hexCells);
+
+  // mount flickerGrid
+  const flickerBg = cargoPanel.querySelector('.sf-cargo-flicker-bg');
+  const gridFx = createFlickerGrid(flickerBg, { width: 560, height: 260, cell: 8, gap: 2, token: '--visor-cyan' });
+
+  // mount gauges
+  const gaugeUsedEl = cargoPanel.querySelector('#sf-gauge-used');
+  const gaugeUsedFx = createCircularGauge(gaugeUsedEl, { size: 36, stroke: 4, kind: 'route' });
+
+  const gaugeRiskEl = cargoPanel.querySelector('#sf-gauge-risk');
+  const gaugeRiskFx = createCircularGauge(gaugeRiskEl, { size: 36, stroke: 4, kind: 'danger' });
+
+  const supplyTreeEl = cargoPanel.querySelector('.sf-cargo-supply-tree');
+  const supplyTreeTitle = document.createElement('div');
+  supplyTreeTitle.className = 'sf-cargo-supply-title';
+  supplyTreeTitle.textContent = 'Catalog Supply Chain';
+  const supplyTreeMount = document.createElement('div');
+  supplyTreeMount.className = 'sf-cargo-supply-chart';
+  supplyTreeEl.append(supplyTreeTitle, supplyTreeMount);
+  const supplyTreeFx = createSupplyTree(supplyTreeMount, { width: 520, height: 140 });
 
   let cargoPanelOpen = false;
   if (state.ui) state.ui.cargoPanelOpen = false;
-  const cargoListEl = cargoPanel.querySelector('.sf-cargo-panel__list');
-  const cargoSummaryUsed = cargoPanel.querySelector('.sf-cargo-summary-used');
-  const cargoSummaryMass = cargoPanel.querySelector('.sf-cargo-summary-mass');
-  const cargoSummaryVal = cargoPanel.querySelector('.sf-cargo-summary-val');
+  let activeTab = 'cargo';
+  let selectedCommodityId = null;
 
   const CMDTY_MAP = new Map();
-
   function buildCmdtyMap() {
     if (CMDTY_MAP.size > 0) return;
     for (const c of COMMODITIES) CMDTY_MAP.set(c.id, c);
   }
 
+  function getAverageBasis(s, commodityId) {
+    const player = s.player;
+    const lots = player && player.tradeLots && player.tradeLots[commodityId];
+    if (!lots || !lots.length) return null;
+    let totalCost = 0;
+    let totalQty = 0;
+    for (const lot of lots) {
+      totalCost += lot.qty * lot.unit;
+      totalQty += lot.qty;
+    }
+    return totalQty > 0 ? Math.round(totalCost / totalQty) : null;
+  }
+
+  function getMissionCargoIds(s) {
+    const ids = new Set();
+    if (s.missions && Array.isArray(s.missions.active)) {
+      for (const m of s.missions.active) {
+        if (m.status === 'active' && m.params && m.params.cmdtyId) {
+          ids.add(m.params.cmdtyId);
+        }
+      }
+    }
+    return ids;
+  }
+
+  function cargoMemoryAgeLabel(s, seenAt) {
+    const now = Math.max(0, Number(s && s.simTime) || 0);
+    const ageS = Math.max(0, now - Math.max(0, Number(seenAt) || 0));
+    if (ageS < 60) return 'fresh';
+    return Math.max(1, Math.round(ageS / 60)) + ' min ago';
+  }
+
+  function supplyTreeNodesFor(commodityId) {
+    const def = CMDTY_MAP.get(commodityId);
+    if (!def) return [];
+    const nodes = [{ id: commodityId, label: def.name, role: 'hub' }];
+    for (const role of def.producedBy || []) {
+      nodes.push({ id: 'produce:' + role, label: stationRoleLabel(role), role: 'produce' });
+    }
+    for (const role of def.consumedBy || []) {
+      nodes.push({ id: 'consume:' + role, label: stationRoleLabel(role), role: 'consume' });
+    }
+    return nodes;
+  }
+
+  function updateSupplyTree(commodityId, hasKnownBuyer) {
+    if (!commodityId) {
+      supplyTreeTitle.textContent = 'Catalog Supply Chain';
+      supplyTreeFx.setNodes([]);
+      supplyTreeFx.setFlow(false);
+      return;
+    }
+    const def = CMDTY_MAP.get(commodityId);
+    supplyTreeTitle.textContent = def
+      ? `Catalog Supply Chain: ${def.category}`
+      : 'Catalog Supply Chain';
+    const nodes = supplyTreeNodesFor(commodityId);
+    if (hasKnownBuyer) {
+      for (const node of nodes) {
+        if (node.role === 'consume') node.flow = true;
+      }
+    }
+    supplyTreeFx.setNodes(nodes);
+    supplyTreeFx.setFlow(!!hasKnownBuyer);
+  }
+
+  function updateInspector(commodityId) {
+    const emptyEl = cargoPanel.querySelector('.sf-inspector-empty');
+    const contentEl = cargoPanel.querySelector('.sf-inspector-content');
+
+    if (!commodityId) {
+      emptyEl.style.display = 'block';
+      contentEl.style.display = 'none';
+      updateSupplyTree(null, false);
+      beamFx.setPath([], { active: false });
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    contentEl.style.display = 'flex';
+
+    const def = CMDTY_MAP.get(commodityId);
+    const qty = (state.player.cargo.items || {})[commodityId] || 0;
+    const vol = def ? (def.volPerU || 1) * qty : qty;
+    const name = cargoDisplayName(commodityId);
+
+    contentEl.querySelector('.sf-ins-name').textContent = name;
+    contentEl.querySelector('.sf-ins-qty').textContent = `${qty} u / ${vol.toFixed(1)} u`;
+
+    const legalEl = contentEl.querySelector('.sf-ins-legal');
+    const legality = def ? def.legality : 'legal';
+    legalEl.textContent = legality.toUpperCase();
+    if (legality === 'contraband') {
+      legalEl.style.color = 'var(--danger)';
+    } else if (legality === 'restricted') {
+      legalEl.style.color = 'var(--warn)';
+    } else {
+      legalEl.style.color = 'var(--visor-cyan)';
+    }
+
+    const basisText = contentEl.querySelector('.sf-ins-basis');
+    const basis = getAverageBasis(state, commodityId);
+    basisText.textContent = basis != null ? `${basis} CR` : 'N/A';
+
+    const buyerText = contentEl.querySelector('.sf-ins-buyer');
+    const routeBtn = contentEl.querySelector('.sf-btn-route');
+    const best = bestKnownSellFor(state, commodityId);
+
+    if (best) {
+      const age = cargoMemoryAgeLabel(state, best.seenAt);
+      const jumps = best.jumps == null ? '?' : best.jumps;
+      const jumpText = jumps === 1 ? '1 jump' : `${jumps} jumps`;
+      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${best.sell.toLocaleString()} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
+      routeBtn.disabled = false;
+      routeBtn.onclick = () => {
+        applyTradeNavigation(ctx, best.stationId, commodityId);
+      };
+    } else {
+      buyerText.innerHTML = `Best Buyer: <b>None Known</b><br><span style="color:var(--ink-mute);">No market data recorded.</span>`;
+      routeBtn.disabled = true;
+      routeBtn.onclick = null;
+    }
+
+    const jetBtn = contentEl.querySelector('.sf-btn-jettison');
+    const missionCmdtyIds = getMissionCargoIds(state);
+    const persistent = isPersistentCargoId(state, commodityId);
+    const isLocked = persistent || missionCmdtyIds.has(commodityId);
+
+    if (isLocked) {
+      jetBtn.disabled = true;
+      jetBtn.onclick = null;
+      if (persistent) {
+        jetBtn.title = 'Personal effects cannot be jettisoned';
+        jetBtn.textContent = 'LOCK: PERSISTENT';
+      } else {
+        jetBtn.title = 'Contract cargo cannot be jettisoned';
+        jetBtn.textContent = 'LOCK: CONTRACT';
+      }
+    } else {
+      jetBtn.disabled = false;
+      jetBtn.title = `Jettison all ${qty} units of ${name}`;
+      jetBtn.textContent = 'JETTISON';
+      jetBtn.onclick = async () => {
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        const ok = await confirm({
+          title: 'Confirm Jettison',
+          body: `Are you sure you want to jettison ${qty}x ${name}? This action is permanent.`,
+          confirmLabel: 'Jettison',
+          danger: true
+        });
+        if (ok) {
+          ctx.bus.emit('cargo:jettison', { commodityId, qty });
+        }
+      };
+    }
+
+    updateSupplyTree(commodityId, !!best);
+
+    setTimeout(() => {
+      if (!cargoPanelOpen) return;
+      const parentRect = cargoPanel.getBoundingClientRect();
+      const elBlock = cargoPanel.querySelector(`.sf-cargo-block[data-id="${commodityId}"]`);
+      const elBuyerCard = cargoPanel.querySelector('.sf-ins-market');
+      if (elBlock && elBuyerCard && best) {
+        const rA = elBlock.getBoundingClientRect();
+        const rB = elBuyerCard.getBoundingClientRect();
+        const ptA = {
+          x: rA.left + rA.width / 2 - parentRect.left,
+          y: rA.top + rA.height / 2 - parentRect.top
+        };
+        const ptB = {
+          x: rB.left + rB.width / 2 - parentRect.left,
+          y: rB.top + rB.height / 2 - parentRect.top
+        };
+        beamFx.setPath([ptA, ptB], { active: true, kind: 'route' });
+      } else {
+        beamFx.setPath([], { active: false });
+      }
+    }, 50);
+  }
+
   function refreshCargoPanel() {
     if (!cargoPanelOpen) return;
     buildCmdtyMap();
+
     const c = (state.player || {}).cargo || {};
     const items = c.items || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
-    const mass = (c.usedMass || 0).toFixed(1);
 
-    cargoSummaryUsed.textContent = `${used} / ${cap} u`;
-    cargoSummaryMass.textContent = `${mass} t`;
+    gaugeUsedFx.setValue(cap > 0 ? used / cap : 0, { label: `${used}/${cap} u` });
+    cargoPanel.querySelector('.sf-cargo-summary-used').textContent = `${used} / ${cap} u`;
 
-    const keys = Object.keys(items).filter(id => items[id] > 0);
-    cargoListEl.innerHTML = '';
+    let hasContraband = false;
+    for (const id in items) {
+      if (items[id] > 0) {
+        const def = CMDTY_MAP.get(id);
+        if (def && def.legality === 'contraband') hasContraband = true;
+      }
+    }
+    gaugeRiskFx.setValue(hasContraband ? 0.75 : 0, { label: hasContraband ? '75%' : '0%' });
+    cargoPanel.querySelector('.sf-cargo-summary-risk').textContent = hasContraband ? '75%' : '0%';
 
-    if (!keys.length) {
-      cargoListEl.innerHTML = '<div class="sf-cargo-empty">Cargo hold is empty</div>';
-      cargoSummaryVal.textContent = '~0 CR';
+    const schematicEl = cargoPanel.querySelector('.sf-cargo-schematic');
+    const supplyTreeEl = cargoPanel.querySelector('.sf-cargo-supply-tree');
+
+    if (activeTab === 'ledger') {
+      schematicEl.style.display = 'none';
+      supplyTreeEl.style.display = 'none';
+      let led = cargoPanel.querySelector('.sf-cargo-ledger');
+      if (!led) {
+        led = document.createElement('div');
+        led.className = 'sf-cargo-ledger';
+        cargoPanel.querySelector('.sf-cargo-centerpiece').appendChild(led);
+      }
+      led.style.display = 'flex';
+
+      const ledgerList = state.player.tradeLedger || [];
+      if (!ledgerList.length) {
+        led.innerHTML = `
+          <div class="sf-ledger-header">RECENT TRANSACTIONS</div>
+          <div class="sf-cargo-empty-msg">No transactions recorded in ledger.</div>
+        `;
+      } else {
+        let rowsHtml = '';
+        for (const entry of ledgerList) {
+          const name = escapeHtml(cargoDisplayName(entry.commodityId));
+          const sideClass = entry.side === 'buy' ? 'buy' : 'sell';
+          const sideText = sideClass.toUpperCase();
+          const age = escapeHtml(cargoMemoryAgeLabel(state, entry.seenAt));
+          const stn = escapeHtml(respawnStationName(entry.stationId));
+          const qty = Math.max(0, Math.floor(Number(entry.qty) || 0));
+          const total = Math.max(0, Math.round(Number(entry.total) || 0));
+          const profit = Math.round(Number(entry.profit) || 0);
+          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${profit.toLocaleString()} CR</span>` : '';
+          rowsHtml += `
+            <div class="sf-ledger-row">
+              <div class="sf-ledger-left">
+                <span class="sf-ledger-title"><span class="sf-ledger-side ${sideClass}">${sideText}</span> ${qty}x ${name}</span>
+                <span class="sf-ledger-station">${stn} (${age})</span>
+              </div>
+              <div class="sf-ledger-right">
+                <span class="sf-ledger-val">${total.toLocaleString()} CR</span>
+                ${profitHtml}
+              </div>
+            </div>
+          `;
+        }
+        led.innerHTML = `
+          <div class="sf-ledger-header">RECENT TRANSACTIONS</div>
+          <div class="sf-ledger-list">${rowsHtml}</div>
+        `;
+      }
+      beamFx.setPath([], { active: false });
+      updateInspector(null);
       return;
     }
 
-    let totalVal = 0;
-    const frag = document.createDocumentFragment();
+    schematicEl.style.display = 'flex';
+    supplyTreeEl.style.display = 'block';
+    const led = cargoPanel.querySelector('.sf-cargo-ledger');
+    if (led) led.style.display = 'none';
 
-    // Header row
-    const header = document.createElement('div');
-    header.className = 'sf-cargo-row';
-    header.style.color = 'var(--ink-mute)';
-    header.style.fontSize = '9px';
-    header.style.letterSpacing = '.1em';
-    header.innerHTML = '<span>ITEM</span><span style="text-align:right">QTY</span><span style="text-align:right">VOL</span><span style="text-align:right">~VALUE</span><span></span>';
-    frag.appendChild(header);
+    const missionCmdtyIds = getMissionCargoIds(state);
+    const keys = Object.keys(items).filter(id => {
+      if (items[id] <= 0) return false;
+      const def = CMDTY_MAP.get(id);
+      if (activeTab === 'materials') {
+        return def && (def.category === 'raw ore' || def.category === 'gas' || def.category === 'crystal');
+      }
+      if (activeTab === 'salvage') {
+        return def && def.category === 'salvage';
+      }
+      if (activeTab === 'mission') {
+        return missionCmdtyIds.has(id);
+      }
+      return true;
+    });
 
+    schematicEl.innerHTML = '';
+
+    if (!keys.length) {
+      schematicEl.innerHTML = `<div class="sf-cargo-empty-msg">No items in this category.</div>`;
+      updateInspector(null);
+      beamFx.setPath([], { active: false });
+      return;
+    }
+
+    let totalFilteredVolume = 0;
+    const itemVolumes = {};
     for (const id of keys) {
       const qty = items[id];
       const def = CMDTY_MAP.get(id);
-      const name = cargoDisplayName(id);
-      const price = def ? (def.basePrice || 0) : 0;
-      const vol = Math.round(cargoVolumeForRow(state, id, qty, def));
-      const val = qty * price;
-      const persistent = isPersistentCargoId(state, id);
-      totalVal += val;
-
-      const row = document.createElement('div');
-      row.className = 'sf-cargo-row';
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'sf-cargo-row__name';
-      nameSpan.title = name;
-      nameSpan.textContent = name;
-      const qtySpan = document.createElement('span');
-      qtySpan.className = 'sf-cargo-row__qty';
-      qtySpan.textContent = String(qty);
-      const volSpan = document.createElement('span');
-      volSpan.className = 'sf-cargo-row__vol';
-      volSpan.textContent = `${vol}u`;
-      const valSpan = document.createElement('span');
-      valSpan.className = 'sf-cargo-row__val';
-      valSpan.textContent = val > 0 ? val.toLocaleString() : '—';
-      const jetBtn = document.createElement('button');
-      jetBtn.className = 'sf-cargo-row__jet';
-      jetBtn.dataset.id = id;
-      if (persistent) {
-        jetBtn.disabled = true;
-        jetBtn.title = 'Personal effects cannot be jettisoned';
-        jetBtn.setAttribute('aria-label', name + ' is personal effects and cannot be jettisoned');
-        jetBtn.textContent = 'LOCK';
-      } else {
-        jetBtn.title = 'Jettison 1 unit of ' + name;
-        jetBtn.setAttribute('aria-label', 'Jettison 1 unit of ' + name);
-        jetBtn.textContent = 'JET';
-      }
-      row.append(nameSpan, qtySpan, volSpan, valSpan, jetBtn);
-      frag.appendChild(row);
+      const vol = cargoVolumeForRow(state, id, qty, def);
+      itemVolumes[id] = vol;
+      totalFilteredVolume += vol;
     }
 
-    cargoListEl.appendChild(frag);
-    cargoSummaryVal.textContent = `~${totalVal.toLocaleString()} CR`;
+    const frag = document.createDocumentFragment();
+    for (const id of keys) {
+      const qty = items[id];
+      const def = CMDTY_MAP.get(id);
+      const name = escapeHtml(cargoDisplayName(id));
+      const vol = itemVolumes[id];
+      const persistent = isPersistentCargoId(state, id);
+      const isLocked = persistent || missionCmdtyIds.has(id);
+
+      let legalClass = 'legal';
+      if (def && def.legality === 'restricted') legalClass = 'restricted';
+      if (def && def.legality === 'contraband') legalClass = 'contraband';
+
+      const block = document.createElement('div');
+      block.className = `sf-cargo-block ${legalClass}`;
+      if (selectedCommodityId === id) block.classList.add('selected');
+      block.dataset.id = id;
+      block.style.flex = `${Math.max(1, Math.round(vol))} ${Math.max(1, Math.round(vol))} 140px`;
+
+      let badgeHtml = '';
+      if (def) {
+        if (id === 'cmdty_volatiles' || id === 'cmdty_medical') {
+          badgeHtml = `<span class="sf-cargo-badge fragile">FRAGILE</span>`;
+        } else if (def.category === 'exotic' || def.category === 'tech') {
+          badgeHtml = `<span class="sf-cargo-badge special">EXOTIC</span>`;
+        } else if (missionCmdtyIds.has(id)) {
+          badgeHtml = `<span class="sf-cargo-badge mission">CONTRACT</span>`;
+        }
+      }
+
+      block.innerHTML = `
+        <div class="sf-cargo-block-top">
+          <span class="sf-cargo-block-name">${name}</span>
+          ${isLocked ? '<span class="sf-cargo-lock-icon">🔒</span>' : ''}
+        </div>
+        <div class="sf-cargo-block-bottom">
+          <span class="sf-cargo-block-qty">${qty} units</span>
+          <span class="sf-cargo-block-vol">${vol.toFixed(1)} u vol</span>
+          ${badgeHtml}
+        </div>
+      `;
+
+      block.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        selectedCommodityId = id;
+        schematicEl.querySelectorAll('.sf-cargo-block').forEach(b => b.classList.remove('selected'));
+        block.classList.add('selected');
+        updateInspector(id);
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      });
+
+      frag.appendChild(block);
+    }
+
+    const freeVol = Math.max(0, cap - used);
+    if (freeVol > 0 && activeTab === 'cargo') {
+      const freeBlock = document.createElement('div');
+      freeBlock.className = 'sf-cargo-block free-space';
+      freeBlock.style.flex = `${Math.max(1, Math.round(freeVol))} ${Math.max(1, Math.round(freeVol))} 140px`;
+      freeBlock.innerHTML = `
+        <div class="sf-cargo-block-top">
+          <span class="sf-cargo-block-name" style="color:var(--ink-mute);">FREE CAPACITY</span>
+        </div>
+        <div class="sf-cargo-block-bottom">
+          <span class="sf-cargo-block-qty" style="color:var(--ink-mute);">${freeVol} u free</span>
+        </div>
+      `;
+      frag.appendChild(freeBlock);
+    }
+
+    schematicEl.appendChild(frag);
+
+    if (!selectedCommodityId && keys.length > 0) {
+      selectedCommodityId = keys[0];
+      const firstBlock = schematicEl.querySelector(`.sf-cargo-block[data-id="${selectedCommodityId}"]`);
+      if (firstBlock) firstBlock.classList.add('selected');
+    }
+
+    if (selectedCommodityId) {
+      updateInspector(selectedCommodityId);
+    } else {
+      updateInspector(null);
+    }
   }
 
-  // Jettison click handler (event delegation)
-  cargoListEl.addEventListener('click', (ev) => {
-    const btn = ev.target.closest('.sf-cargo-row__jet');
-    if (!btn) return;
-    const id = btn.dataset.id;
-    if (!id) return;
-    if (btn.disabled || isPersistentCargoId(state, id)) {
-      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-      ctx.bus.emit('toast', { text: 'Personal effects cannot be jettisoned', kind: 'info', ttl: 2 });
-      return;
-    }
-    ctx.bus.emit('cargo:jettison', { commodityId: id, qty: 1 });
+  const railBtns = cargoPanel.querySelectorAll('.sf-cargo-rail-btn');
+  railBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      railBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeTab = btn.dataset.tab;
+      selectedCommodityId = null;
+      refreshCargoPanel();
+      gridFx.reveal({
+        resolveTo: (c, r, cols, rows) => {
+          return 0.1 + 0.4 * Math.sin(c * 0.5) * Math.cos(r * 0.5);
+        },
+        durationMs: 400
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    });
   });
 
   // Listen for the jettison event in case the cargo system doesn't handle it natively
@@ -920,15 +1811,41 @@ export function createHud(ctx, alerts) {
     cargoPanelOpen = !cargoPanelOpen;
     if (state.ui) state.ui.cargoPanelOpen = cargoPanelOpen;
     cargoPanel.classList.toggle('open', cargoPanelOpen);
-    if (cargoPanelOpen) refreshCargoPanel();
+
+    gridFx.setActive(cargoPanelOpen);
+    hexFx.setActive(cargoPanelOpen);
+    beamFx.setActive(cargoPanelOpen);
+    gaugeUsedFx.setActive(cargoPanelOpen);
+    gaugeRiskFx.setActive(cargoPanelOpen);
+
+    if (cargoPanelOpen) {
+      refreshCargoPanel();
+      gridFx.reveal({
+        resolveTo: (c, r, cols, rows) => {
+          return 0.1 + 0.4 * Math.sin(c * 0.5) * Math.cos(r * 0.5);
+        },
+        durationMs: 400
+      });
+    } else {
+      beamFx.setPath([], { active: false });
+    }
     ctx.bus.emit('audio:cue', { id: cargoPanelOpen ? 'ui_open' : 'ui_back' });
   }
 
+  // close function
   function closeCargoPanel() {
     if (!cargoPanelOpen) return;
     cargoPanelOpen = false;
     if (state.ui) state.ui.cargoPanelOpen = false;
     cargoPanel.classList.remove('open');
+
+    gridFx.setActive(false);
+    hexFx.setActive(false);
+    beamFx.setActive(false);
+    gaugeUsedFx.setActive(false);
+    gaugeRiskFx.setActive(false);
+    beamFx.setPath([], { active: false });
+
     ctx.bus.emit('audio:cue', { id: 'ui_back' });
   }
 

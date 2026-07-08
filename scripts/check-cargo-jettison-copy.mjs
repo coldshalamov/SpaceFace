@@ -39,5 +39,25 @@ assert.match(
   /PERSISTENT_CARGO_BY_ID/,
   'persistent cargo names must still resolve from narrative data',
 );
+assert.match(
+  source,
+  /createSupplyTree/,
+  'cargo hold supply-chain panel must use the shared supplyTree effect primitive',
+);
+assert.match(
+  source,
+  /function cargoMemoryAgeLabel\(s, seenAt\)/,
+  'cargo hold market memory copy must own its HUD-safe age formatter',
+);
+assert.doesNotMatch(
+  source,
+  /\bageLabel\(state,/,
+  'cargo hold must not call Market screen private ageLabel() from HUD scope',
+);
+assert.doesNotMatch(
+  source,
+  /SUPPLY_CHAINS/,
+  'cargo hold supply tree must not hard-code or invent production chains',
+);
 
 console.log('Cargo display copy checks OK');
