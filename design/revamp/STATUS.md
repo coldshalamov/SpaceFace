@@ -869,3 +869,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:encounter-director` PASS, `check:pirate-disengage` PASS, and `check:balance` 0 FAIL.
   `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
   `sf-sim.mjs:1161`.
+
+### T5b-BARK-02 BARK_SILENCE_DECAY — claim (2026-07-07)
+- Claimed backend-safe BP-05.1 packet BARK-02 from `detail/F_comms_audio_onboarding.md`: add a short
+  post-combat silence window and quiet-sector ambient bark decay to the existing `barkDirector`.
+- Live proof before claim: `scripts/check-bark-silence.mjs` is absent; `package.json` has no
+  `check:bark-silence` script; `src/systems/barkDirector.js` has no `postCombatSilenceUntil` or
+  ambient decay state.
+- Scope guard: no `src/ui/voiceArbiter.js`, HUD, render, input, combat, AI internals, or bark corpus edits.
+  Only flavor `bark` situations may be suppressed; story/alert/news channels remain owned by voiceArbiter.
