@@ -190,7 +190,7 @@ function testPackageAndRegistryWiring() {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ combatOutcome \} from '\.\.\/systems\/combatOutcome\.js';/,
     'registry imports combatOutcome system');
-  assert.match(registry, /combat, combatOutcome, (?:aftermathWrecks, )?tetherGameplay/,
+  assert.match(registry, /combat, combatOutcome, (?:aftermathWrecks, )?(?:wingMorale, )?tetherGameplay/,
     'combatOutcome is registered after combat and before later combat/salvage readers');
 
   const source = readFileSync(new URL('../src/systems/combatOutcome.js', import.meta.url), 'utf8');

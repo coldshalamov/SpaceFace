@@ -1032,3 +1032,14 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `package.json` has no `check:wing-morale` script.
 - Scope guard: no `src/systems/ai.js`, `src/ai/squad.js`, `src/ai/director.js`, combat, input, HUD, render,
   or asset edits. Expected files are the new system/check, registry/package wiring, and progress notes.
+
+### T5a-C12 WING_MORALE — DONE (2026-07-08)
+- Added `src/systems/wingMorale.js`: observes `entity:killed` and `combat:subsystemDisabled`, reads existing
+  `data.ai.squadId` / role metadata, and writes only short-lived morale/AI intent flags on affected ships.
+- Leader death scatters surviving squadmates via `ai.forceFlee`, `ai:flee`, and `ai:formationBroken`, with
+  one `helpers.voice.say({ kind:'combat' })` cue: `SQUAD BROKEN`. If no explicit leader exists, the fallback
+  leader is the highest-mass squad member.
+- Escort death marks the protected ward `enraged`; sensor/comms disable marks the whole squad
+  `reinforcementBlocked` and clears legacy reinforcement configs without emitting reinforcement toasts.
+- Verification: `npm run check:wing-morale`, `npm run check:combat-outcome`, `npm run check:battle-aftermath`,
+  and `npm run check:one-voice` all pass.

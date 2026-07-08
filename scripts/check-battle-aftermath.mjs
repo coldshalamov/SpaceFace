@@ -225,7 +225,7 @@ function testPackageRegistryAndSchemaWiring() {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ aftermathWrecks \} from '\.\.\/systems\/aftermathWrecks\.js';/,
     'registry imports aftermathWrecks');
-  assert.match(registry, /combat, combatOutcome, aftermathWrecks, tetherGameplay/,
+  assert.match(registry, /combat, combatOutcome, aftermathWrecks, (?:wingMorale, )?tetherGameplay/,
     'aftermathWrecks registers after combat outcomes and before salvage readers');
 
   const saveSrc = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');

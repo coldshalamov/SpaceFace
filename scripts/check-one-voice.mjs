@@ -243,6 +243,7 @@ run('spoken backend lanes route through helpers.voice.say', () => {
     ['src/systems/pirateDisengage.js', /this\.helpers && this\.helpers\.voice/, /voice\.say\(\{/],
     ['src/systems/bountyHunt.js', /helpers && helpers\.voice/, /voice\.say\(\{/],
     ['src/systems/aceMemory.js', /this\.helpers && this\.helpers\.voice/, /voice\.say\(\{/],
+    ['src/systems/wingMorale.js', /this\.helpers = ctx && ctx\.helpers/, /voice\.say\(\{/],
     ['src/systems/economyContracts.js', /this\.helpers && this\.helpers\.voice/, /voice\.say\(\{ channel: 'news'/],
     ['src/systems/gateControlDirector.js', /this\.helpers && this\.helpers\.voice/, /voice\.say\(\{ channel: 'comms'/],
     ['src/systems/contractClauses.js', /helpers\.voice/, /voice\.say\(\{ channel: 'comms'/],
