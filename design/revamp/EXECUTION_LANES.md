@@ -79,7 +79,7 @@ Current ledger state shows no unblocked backend implementation row remaining.
 | T5c | Mixed | Backend halves DONE. DRIVE-VOICE, OVERLOAD-HANDLING, and HULL-SCARS are render/HUD/frontend remainders. Backend skips. |
 | T5d | Backend audio-signature checks | DONE. |
 | T5e | Mixed | Backend halves DONE. LOADOUT-SILHOUETTE needs render socket props. Backend skips. |
-| T5f | Maps/frontend-shaped but blocked | Only `T5f-MAP-CONFIDENCE` remains; blocked because the packet requires shipped `buildGalaxyModel`/`buildSystemModel` confidence output while declaring `galaxyMap.js` no-touch and `newFiles:none`. Backend skips unless the packet is re-scoped. |
+| T5f | Backend-checkable map model | DONE. INTENT-STRIP, PRICE-MEMORY, and MAP-CONFIDENCE are green. |
 | T6a-T6h | Assets / graphics | NEXT but out of backend scope. Backend skips. |
 | T7a | Gate hardening blocked by render lane | BLOCKED. `node --check src/render/bloom.js` currently fails at `src/render/bloom.js:344` with `SyntaxError: Unexpected token '.'`, so folding headed perf checks into default gates would make the default gate fail on out-of-lane render code. |
 | T7b | Perf CI | NEXT but depends on T7a. Backend skips until T7a is unblocked. |
@@ -136,7 +136,7 @@ For each backend-safe row:
 - `npm run check:sim:compare` currently stops on the documented 47-A
   projectile-collision precondition at `scripts/sf-sim.mjs:1161`; this is the
   accepted baseline failure for backend floor checks.
-- T5a-FRAGILE-ORE, T5b-PKT-RITUAL, and T5f-MAP-CONFIDENCE are not greenable by a
-  backend agent without either a packet re-scope or an approved ownership change
-  to their no-touch seams.
+- T5a-FRAGILE-ORE and T5b-PKT-RITUAL are not greenable by a backend agent
+  without either a packet re-scope or an approved ownership change to their
+  no-touch seams.
 - T6 and T9 are not backend-lane work for this objective.

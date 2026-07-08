@@ -1222,7 +1222,7 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
   `scripts/sf-sim.mjs:1161`.
 
-### T5f-MAP-CONFIDENCE — BLOCKED (2026-07-08)
+### T5f-MAP-CONFIDENCE — BLOCKED (2026-07-08; superseded by DONE below)
 - Investigated BP-03.1 `map_confidence_not_fog` from `detail/G_story_evidence_map.md`. The packet asks for a
   `confidence: live|known|stale|rumored` field on the pure `buildGalaxyModel` / `buildSystemModel` map output,
   derived from `isSectorCharted`, `state.world.discovery`, and `sectorSignalFor(...).epochDays`.
@@ -1486,14 +1486,16 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - No gameplay/runtime code changed in this pass; this is ledger/status alignment only.
 
 ### T5 parent blocker audit - BLOCKED (2026-07-08)
-- Updated T5a, T5b, and T5f parent rows from `IN-PROGRESS` to `BLOCKED` because their backend-safe completed
-  sub-packets are already green and the only remaining sub-packets are the named blockers below.
+- Originally updated T5a, T5b, and T5f parent rows from `IN-PROGRESS` to `BLOCKED` because their backend-safe
+  completed sub-packets were already green and the only remaining sub-packets were the named blockers below.
+  Superseded for T5f by the later MAP-CONFIDENCE completion.
 - T5a is blocked only on FRAGILE-ORE: it needs a sanctioned hard-impact/ram impulse event or cargo-owner loss
   seam, while the packet keeps `combat.js`, `cargo.js`, and `mining.js` no-touch.
 - T5b is blocked only on PKT-RITUAL: runtime proof of B1/B3 onboarding spawns needs an onboarding helper seam,
   but `onboarding.init(ctx)` does not store `ctx.helpers` and the packet marks `onboarding.js` no-touch.
-- T5f is blocked only on MAP-CONFIDENCE: acceptance requires shipped `buildGalaxyModel`/`buildSystemModel`
-  confidence output while the packet declares `galaxyMap.js` no-touch and `newFiles:none`.
+- T5f was blocked only on MAP-CONFIDENCE: acceptance required shipped `buildGalaxyModel`/`buildSystemModel`
+  confidence output while the packet declared `galaxyMap.js` no-touch and `newFiles:none`. This blocker is now
+  cleared by the later T5f-MAP-CONFIDENCE completion.
 - Backend sequence state after this audit: T4c/T4b/T4d, T8, T1, T3-17, and all backend-safe T5 completed halves
   are green; T3-24 and T7a remain separately blocked; T6/T9 and render/HUD/frontend work remain out of lane.
 
@@ -1525,16 +1527,14 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `scripts/sf-sim.mjs:1161`.
 
 ### Backend lane exhaustion audit - BLOCKED (2026-07-08)
-- Re-audited after T3-24 went green. `design/revamp/EXECUTION_LANES.md` is still absent, so this audit follows
-  the goal objective order, `PROGRESS.md`, `STATUS.md`, and live checks.
+- Re-audited after T3-24 went green. At this point `design/revamp/EXECUTION_LANES.md` was still absent, so this
+  audit followed the goal objective order, `PROGRESS.md`, `STATUS.md`, and live checks.
 - No unblocked backend row remains in the current ledger: T4c/T4b/T4d, T8, T1, T3-17, T3-24, and the
   backend-safe T5 packets are green; T6/T9 and render/HUD/frontend lanes remain intentionally out of scope.
 - T5a is blocked only on FRAGILE-ORE: it needs a sanctioned hard-impact/ram impulse event or cargo-owner loss
   seam, while the packet keeps `combat.js`, `cargo.js`, and `mining.js` no-touch.
 - T5b is blocked only on PKT-RITUAL: runtime proof of B1/B3 onboarding spawns needs an onboarding helper seam,
   but `onboarding.init(ctx)` does not store `ctx.helpers` and the packet marks `onboarding.js` no-touch.
-- T5f is blocked only on MAP-CONFIDENCE: acceptance requires shipped `buildGalaxyModel`/`buildSystemModel`
-  confidence output while the packet declares `galaxyMap.js` no-touch and `newFiles:none`.
 - T7a remains blocked before package-chain integration: `node --check src/render/bloom.js` fails at
   `src/render/bloom.js:344` with `SyntaxError: Unexpected token '.'`. Because the render lane does not parse,
   folding `check:perf`, `check:hitch-budget`, and `check:gpu-path` into default `check`/`check:ci` would make
@@ -1545,6 +1545,14 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   routing doc, but it was absent in the live tree.
 - The restored doc records the three serialization points, backend-agent contract, current remaining-row
   classification, backend sequence, iterate-to-green protocol, and known non-backend blockers.
-- It preserves the current backend conclusion: no unblocked backend implementation row remains; T5a-FRAGILE-ORE,
-  T5b-PKT-RITUAL, T5f-MAP-CONFIDENCE, and T7a remain blocked for the specific no-touch/render-lane reasons
+- It preserved the then-current backend conclusion; T5f-MAP-CONFIDENCE was later cleared by a focused pure-model
+  pass. T5a-FRAGILE-ORE, T5b-PKT-RITUAL, and T7a remain blocked for the specific no-touch/render-lane reasons
   already recorded above.
+
+### T5f-MAP-CONFIDENCE — DONE (2026-07-08)
+- Cleared BP-03.1 `map_confidence_not_fog` by adding pure `mapConfidenceForSector(state, sector)` output to
+  `buildGalaxyModel` nodes and `buildSystemModel` roots.
+- Confidence is deterministic and read-only: `live` for the current sector, `known` for fresh discovered/surveyed
+  sectors, `stale` when discovery epoch age is at least 7 sector-sim days, and `rumored` for uncharted frontier fog.
+- Added `scripts/check-map-confidence.mjs` and `npm run check:map-confidence` to assert the pure confidence reader,
+  galaxy/system model output, runtime scope, and no RNG/wall-clock feedback into `sectorSim` or `economy`.

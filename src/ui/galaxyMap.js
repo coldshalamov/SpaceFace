@@ -95,6 +95,64 @@ export function isSectorCharted(state, sector) {
   return !!(disc && disc.discovered);
 }
 
+export const MAP_CONFIDENCE_STALE_DAYS = 7;
+
+function currentFieldEpochDays(state) {
+  const field = state && state.sectorSim && state.sectorSim.field;
+  const days = field && Number(field.epochDays);
+  return Number.isFinite(days) ? days : null;
+}
+
+function discoveryForSector(state, sectorId) {
+  return state && state.world && state.world.discovery && state.world.discovery[sectorId] || null;
+}
+
+function discoveryEpochDays(disc) {
+  if (!disc) return null;
+  const candidates = [
+    disc.lastVisitedEpochDays,
+    disc.lastSeenEpochDays,
+    disc.surveyedEpochDays,
+    disc.chartedEpochDays,
+    disc.epochDays,
+  ];
+  for (const value of candidates) {
+    const days = Number(value);
+    if (Number.isFinite(days)) return days;
+  }
+  return null;
+}
+
+/**
+ * Confidence is a pure read of discovery + sector-field epoch data:
+ * live=current sector, known=charted/discovered but fresh/undated, stale=known with old epoch,
+ * rumored=uncharted frontier/fog. No extra map layer and no pricing/danger feedback.
+ */
+export function mapConfidenceForSector(state, sector) {
+  if (!sector || !sector.id) {
+    return { confidence: 'rumored', confidenceAgeDays: null, lastSeenEpochDays: null };
+  }
+  const sectorId = sector.id;
+  const disc = discoveryForSector(state, sectorId);
+  if (!isSectorCharted(state, sector)) {
+    return { confidence: 'rumored', confidenceAgeDays: null, lastSeenEpochDays: null };
+  }
+  const now = currentFieldEpochDays(state);
+  if (sectorId === currentSectorId(state)) {
+    return { confidence: 'live', confidenceAgeDays: 0, lastSeenEpochDays: now };
+  }
+  const seenAt = discoveryEpochDays(disc);
+  if (Number.isFinite(seenAt) && Number.isFinite(now)) {
+    const age = Math.max(0, now - seenAt);
+    return {
+      confidence: age >= MAP_CONFIDENCE_STALE_DAYS ? 'stale' : 'known',
+      confidenceAgeDays: age,
+      lastSeenEpochDays: seenAt,
+    };
+  }
+  return { confidence: 'known', confidenceAgeDays: null, lastSeenEpochDays: seenAt };
+}
+
 function playerEntity(state) {
   if (!state || !state.entities || typeof state.entities.get !== 'function') return null;
   const id = state.playerId != null ? state.playerId : (state.player && state.player.id);
@@ -130,6 +188,7 @@ export function buildGalaxyModel(state) {
     if (!s || !s.id) continue;
     const pos = s.position || { x: 0, y: 0 };
     const charted = isSectorCharted(state, s);
+    const confidence = mapConfidenceForSector(state, s);
     const node = {
       id: s.id,
       name: s.name || s.id,
@@ -138,6 +197,7 @@ export function buildGalaxyModel(state) {
       factionId: s.factionId || null,
       color: factionColorOf(s.factionId),
       charted,
+      ...confidence,
       current: s.id === curId,
       tier: Number(s.tier) || 0,
       security: Number.isFinite(s.security) ? s.security : null,
@@ -184,6 +244,7 @@ export function buildSystemModel(state, sectorId) {
   const sid = sectorId || currentSectorId(state);
   const record = sectorRecordById(state, sid);
   const sectorName = (record && record.name) || sid || 'System';
+  const confidence = mapConfidenceForSector(state, record || { id: sid });
 
   // Zones (labeled, tinted, threat-ranked regions).
   const zones = zonesForSector(sid).map((z) => {
@@ -268,7 +329,7 @@ export function buildSystemModel(state, sectorId) {
     }
   }
 
-  return { level: 'system', sectorId: sid, sectorName, zones, points };
+  return { level: 'system', sectorId: sid, sectorName, ...confidence, zones, points };
 }
 
 // ---------------------------------------------------------------------------------------------
