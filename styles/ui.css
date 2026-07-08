@@ -678,3 +678,220 @@ button:active { transform: translateY(1px); }
 .sf-cs--miner { color: var(--visor-amber, var(--warn)); }
 .sf-cs--ally { color: var(--good); }
 .sf-cs--neutral { color: var(--ink-dim); }
+
+/* ==============================================================================================
+   UI PRIMITIVE LAYER  ·  frontend-reboot reusable building blocks (design/revamp/FRONTEND_REBOOT_AUDIT.md)
+   ----------------------------------------------------------------------------------------------
+   One additive, token-only vocabulary of "premium sci-fi" primitives, built from plain CSS/DOM/SVG
+   — NO new dependency, NO backdrop-filter, NO new hues (semantic palette tokens only). Matching DOM
+   factory helpers live in src/ui/uiPrimitives.js. Kept as ONE contiguous end-of-file section so
+   concurrent writers merge cleanly. It EXTENDS the existing .sf-console-* / .sf-card / .sf-badge /
+   .sf-bar--segmented layers; it does not redefine or break them.
+
+   THE VOCABULARY (primitive → supersedes / relates to → flight-HUD-safe? → motion policy)
+   ┌────────────────────┬──────────────────────────────────┬────────────┬─────────────────────────┐
+   │ .sf-panel[--cut]   │ .sf-console-panel (cut-corner)    │ yes(--hud) │ none at rest            │
+   │ .sf-card__label/…  │ .sf-console-stat (label + value)  │ yes        │ none at rest            │
+   │ .sf-chip           │ .sf-badge (static → LIVE state)   │ yes        │ hover/focus only        │
+   │ .sf-rail           │ .st-rail / .sf-tabs (station rail)│ yes        │ hover/focus/active only │
+   │ .sf-glyph          │ emoji / unicode tab icons         │ yes        │ inherits colour only    │
+   │ .sf-data-bar       │ .sf-bar--segmented (target panel) │ yes        │ opt-in --animate (xform)│
+   │ .sf-asset-stage    │ (new — outfitting 3D preview)     │ yes        │ none at rest            │
+   │ .sf-border-trace   │ (new — state-change edge sweep)   │ screens    │ ONE-SHOT ≤250ms, state  │
+   │ .sf-spotlight      │ (new — hover/focus highlight)     │ screens    │ hover/focus opacity only│
+   └────────────────────┴──────────────────────────────────┴────────────┴─────────────────────────┘
+   .sf-chip is the canonical status primitive going forward; .sf-badge is its legacy equivalent.
+
+   MOTION LAW (spec2/00 §3–4): nothing animates AT REST — motion means a state change. Every
+   transition/animation below fires ONLY on :hover, :focus, open/close, or a toggled state class;
+   runs 120–250ms on --ease; and is auto-neutralised by the global reduce-motion blanket in
+   styles/accessibility.css (@media prefers-reduced-motion + html.sf-reduce-motion *). No glow at
+   rest anywhere. Base primitives carry NO box-shadow/transition, so they are safe next to the live
+   canvas (the check-ui-frame-sleep contract); every "loud" affordance is an opt-in modifier.
+
+   ── WHEN IS .sf-border-trace ALLOWED? ─────────────────────────────────────────────────────────
+   ONLY as a one-shot acknowledgement of a discrete STATE CHANGE on a SCREEN / menu surface — e.g. a
+   panel that just received new data, a tab that became available, a module that was installed. Add
+   the `.is-tracing` class for the sweep (uiPrimitives.trace() re-triggers it); the animation ENDS at
+   opacity:0 so nothing lingers lit. NEVER put it on an always-mounted flight-HUD element, never loop
+   it, never leave `.is-tracing` on at rest. It is punctuation for a change, not decoration.
+
+   ── WHEN IS .sf-spotlight ALLOWED? ────────────────────────────────────────────────────────────
+   ONLY to raise a hover/focus target on a SCREEN / menu surface (list row, card, rail item). It is a
+   STATIC radial wash revealed by an opacity transition on :hover / :focus-within — there is NO idle
+   animation and NO cursor tracking (per-frame style writes are forbidden by the frame-sleep budget).
+   Alpha stays ≤ .08 so it never reads as "glow at rest." Do not apply it to always-mounted HUD chrome.
+   ============================================================================================== */
+
+/* Primitive-scoped tunables — all live in property-VALUE positions and reference nothing off-palette. */
+:root {
+  --sf-trace-dur: 220ms;   /* one-shot edge sweep — inside the 250ms ceiling */
+  --sf-cut: 10px;          /* command-console corner-cut depth */
+}
+
+/* 1 ─ sf-panel : opaque dark panel, 1px edge, no backdrop-filter, quiet by default ------------- */
+.sf-panel {
+  background: var(--console-bg-solid);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+}
+/* --cut : the command-console corner tell (asymmetric clip, same grammar as .sf-console-panel).
+   NOTE: clip-path clips the border box, so the two cut diagonals render without their edge line —
+   the accepted console look, matched to .sf-console-panel. Do NOT add a double-layer border hack. */
+.sf-panel--cut {
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - var(--sf-cut)) 0, 100% var(--sf-cut),
+                     100% 100%, var(--sf-cut) 100%, 0 calc(100% - var(--sf-cut)));
+}
+/* --hud : flight-mounted variant — semi-transparent, still shadow/transition-free (compositor-cheap). */
+.sf-panel--hud { background: var(--console-bg); }
+/* --raised : screens MAY opt into elevation (never used on the flight HUD). */
+.sf-panel--raised { box-shadow: var(--sh-2); }
+
+/* 2 ─ sf-card body hierarchy : label / value / body ------------------------------------------
+   Additive to the existing .sf-card box (untouched). STRICT child classes only — never a loose
+   `.sf-card .label` descendant selector — so existing card innards across every screen stay safe.
+   Mirrors the .sf-console-stat metric recipe. Label stays --ink-dim (not --ink-mute) to hold 4.5:1
+   over the .88 panel ground (check-wcag-contrast). */
+.sf-card__label {
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-dim); line-height: 1.2;
+}
+.sf-card__value {
+  font-family: var(--mono); font-size: var(--t-lg); color: var(--ink);
+  font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.sf-card__body { font-size: var(--t-sm); color: var(--ink-dim); line-height: 1.45; }
+.sf-card__row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+
+/* 3 ─ sf-chip : small LIVE status chip (state that CHANGES) ----------------------------------
+   Earns its place beside static .sf-badge via three capabilities badge lacks: a state-dot channel,
+   a leading glyph slot, and a focusable interactive variant. Token-driven tints via color-mix (the
+   same technique already shipped in styles/accessibility.css) so no raw hex enters this layer. */
+.sf-chip {
+  --sf-chip-color: var(--ink-dim);
+  display: inline-flex; align-items: center; gap: .4em;
+  padding: .15em .6em; border-radius: var(--r-pill);
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--sf-chip-color);
+  background: color-mix(in srgb, var(--sf-chip-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sf-chip-color) 32%, transparent);
+  white-space: nowrap;
+}
+.sf-chip__dot   { width: .5em; height: .5em; border-radius: 50%; background: currentColor; flex: none; }
+.sf-chip__glyph { display: inline-flex; width: 1em; height: 1em; flex: none; }
+.sf-chip--info   { --sf-chip-color: var(--accent);   }
+.sf-chip--good   { --sf-chip-color: var(--good);     }
+.sf-chip--warn   { --sf-chip-color: var(--warn);     }
+.sf-chip--danger { --sf-chip-color: var(--danger);   }
+.sf-chip--story  { --sf-chip-color: var(--accent-3); }
+.sf-chip--muted  { --sf-chip-color: var(--ink-mute); }
+/* interactive chip (rendered as a <button> or role="button"): hover/focus lift + obvious keyboard ring. */
+.sf-chip--btn { cursor: pointer; pointer-events: auto;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+.sf-chip--btn:hover { background: color-mix(in srgb, var(--sf-chip-color) 20%, transparent);
+  border-color: var(--sf-chip-color); }
+.sf-chip--btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 4 ─ sf-rail : vertical (default) / horizontal nav rail ------------------------------------- */
+.sf-rail { display: flex; flex-direction: column; gap: var(--sp-1); }
+.sf-rail--h { flex-direction: row; }
+.sf-rail__item {
+  display: flex; align-items: center; gap: .6em; text-align: left;
+  background: transparent; border: 1px solid transparent; border-radius: var(--r-md);
+  color: var(--ink-dim); font-family: inherit; font-size: var(--t-sm); letter-spacing: .04em;
+  padding: var(--sp-2) var(--sp-3); cursor: pointer; pointer-events: auto;
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.sf-rail__item:hover { color: var(--ink); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.sf-rail__item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; color: var(--ink); }
+.sf-rail__item[aria-current="true"], .sf-rail__item.active {
+  color: var(--ink);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* 5 ─ sf-glyph : 1em SVG icon wrapper (retires emoji / unicode tab icons) ----------------------
+   Sizes in em so it tracks font-size AND --ui-scale (#hud / #ui-root font-size). SVG strokes with
+   currentColor, so a glyph inherits its context's state colour (hover / active / IFF) for free. */
+.sf-glyph { display: inline-flex; align-items: center; justify-content: center;
+  width: 1em; height: 1em; flex: none; line-height: 1; vertical-align: -0.125em; }
+.sf-glyph > svg { width: 100%; height: 100%; display: block;
+  fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.sf-glyph--lg { width: 1.35em; height: 1.35em; }
+
+/* 6 ─ sf-data-bar : segmented value bar (hull, shield, heat, cargo, route risk…) --------------
+   The fill is a FLAT solid colour scaled by transform:scaleX(var(--sf-bar-v)) — compositor-cheap and
+   reflow-free (JS sets ONE custom property, never touches layout). Segmentation is a mask on the
+   CONTAINER, so gaps reveal whatever truly sits behind the bar and can never distort the scaled fill.
+   Base has NO transition (a heat bar updates every frame while firing and must stay quiet at rest);
+   --animate opts screens into a transform-ONLY ease — never `all`, because a threshold hue swap must
+   SNAP, never interpolate through an off-palette mid-tone (a per-frame constitution violation). */
+.sf-data-bar {
+  --sf-bar-v: 0; --sf-bar-color: var(--accent); --sf-bar-seg: 9px; --sf-bar-gap: 2px;
+  position: relative; height: 6px; overflow: hidden; border-radius: 1px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  -webkit-mask-image: repeating-linear-gradient(90deg, var(--ink) 0 calc(var(--sf-bar-seg) - var(--sf-bar-gap)), transparent calc(var(--sf-bar-seg) - var(--sf-bar-gap)) var(--sf-bar-seg));
+          mask-image: repeating-linear-gradient(90deg, var(--ink) 0 calc(var(--sf-bar-seg) - var(--sf-bar-gap)), transparent calc(var(--sf-bar-seg) - var(--sf-bar-gap)) var(--sf-bar-seg));
+}
+.sf-data-bar__fill {
+  position: absolute; inset: 0; transform-origin: left center;
+  transform: scaleX(var(--sf-bar-v)); background: var(--sf-bar-color);
+}
+.sf-data-bar--animate .sf-data-bar__fill { transition: transform var(--dur) var(--ease); }
+.sf-data-bar--shield { --sf-bar-color: var(--shield); }
+.sf-data-bar--hull   { --sf-bar-color: var(--hull);   }
+.sf-data-bar--energy { --sf-bar-color: var(--energy); }
+.sf-data-bar--cargo  { --sf-bar-color: var(--cargo);  }
+.sf-data-bar--heat   { --sf-bar-color: var(--warn);   }
+.sf-data-bar--risk   { --sf-bar-color: var(--warn);   }
+.sf-data-bar--danger { --sf-bar-color: var(--danger); }
+.sf-data-bar--tall   { height: 10px; }
+
+/* 7 ─ sf-asset-stage : dark 3D-preview shell + fallback silhouette (outfitting debt #5) --------
+   A dark, quiet staging box (space is dark) a UI mini-renderer canvas can mount into; until then a
+   low-contrast ship silhouette holds the frame. Add --loaded once a canvas mounts to hide the
+   fallback. No animation at rest; the faint floor lift is a static studio backdrop, not a glow. */
+.sf-asset-stage {
+  position: relative; overflow: hidden; aspect-ratio: 4 / 3;
+  background: radial-gradient(130% 100% at 50% 118%, color-mix(in srgb, var(--console-steel) 10%, var(--bg)), var(--bg) 62%);
+  border: 1px solid var(--console-edge); border-radius: var(--r-md);
+}
+.sf-asset-stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.sf-asset-stage__fallback {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--sp-2); color: var(--ink-mute); pointer-events: none;
+}
+.sf-asset-stage__fallback svg { width: 42%; max-width: 160px; opacity: .5; }
+.sf-asset-stage__fallback span { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .16em; text-transform: uppercase; }
+.sf-asset-stage--loaded .sf-asset-stage__fallback { display: none; }
+
+/* 8 ─ sf-border-trace : ONE-SHOT edge sweep on a state change (see WHEN-ALLOWED note above) ----- */
+.sf-border-trace { position: relative; }
+.sf-border-trace::after {
+  content: ""; position: absolute; inset: -1px; pointer-events: none; border-radius: inherit;
+  border: 1px solid var(--sf-trace-color, var(--accent)); opacity: 0;
+}
+.sf-border-trace.is-tracing::after { animation: sf-trace-sweep var(--sf-trace-dur) var(--ease) forwards; }
+.sf-border-trace--good   { --sf-trace-color: var(--good);   }
+.sf-border-trace--warn   { --sf-trace-color: var(--warn);   }
+.sf-border-trace--danger { --sf-trace-color: var(--danger); }
+/* Final keyframe is opacity:0 → nothing lingers lit, AND the reduce-motion blanket (which snaps to
+   the last frame via `forwards`) degrades to "invisible" — the correct quiet fallback for free. */
+@keyframes sf-trace-sweep {
+  0%   { opacity: 1; clip-path: inset(0 100% 0 0); }
+  70%  { opacity: 1; clip-path: inset(0 0 0 0); }
+  100% { opacity: 0; clip-path: inset(0 0 0 0); }
+}
+
+/* 9 ─ sf-spotlight : hover/focus wash, no idle animation (see WHEN-ALLOWED note above) ---------- */
+.sf-spotlight { position: relative; }
+.sf-spotlight::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(120% 120% at 50% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%);
+  opacity: 0; transition: opacity 150ms var(--ease);
+}
+.sf-spotlight:hover::before,
+.sf-spotlight:focus-within::before,
+.sf-spotlight:focus-visible::before { opacity: 1; }
