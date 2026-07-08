@@ -1,7 +1,7 @@
 // Additive signature adapters for BP-10.1 audio/caption surfaces.
 // Pure helpers: no DOM/Web Audio, and scanner hostility remains the canonical predicate.
 
-import { getSignatureRecipe } from '../presentation/cueRecipesSignatures.js';
+import { SIGNATURE_RECIPES, getSignatureRecipe } from '../presentation/cueRecipesSignatures.js';
 import { isHostileToPlayer as scannerIsHostileToPlayer } from './scanner.js';
 
 export const SENSOR_SIGNATURE_DEBOUNCE_MS = 1000;
@@ -9,6 +9,7 @@ export const CUSTOMS_SIGNATURE_DEBOUNCE_MS = 4000;
 export const TETHER_CUT_WHIPCRACK_EVENTS = Object.freeze(['tether:released', 'tether:broke']);
 export const MINING_SEAM_CHIME_THROTTLE_MS = 500;
 export const MINING_SEAM_BASELINE_YIELD_MULT = 0.35;
+export const SIGNATURE_CAPTION_IMPORTANCE_THRESHOLD = 0.8;
 
 export const CUSTOMS_ZONE_TYPES = Object.freeze([
   'border_checkpoint',
@@ -16,6 +17,7 @@ export const CUSTOMS_ZONE_TYPES = Object.freeze([
 ]);
 
 export const SIGNATURE_TITLES = Object.freeze({
+  'tether.strain': 'MASSLINE STRAIN',
   'tether.cut_whipcrack': 'TAUT CUT',
   'mass.groan': 'HEAVY TOW',
   'mining.seam_chime': 'RICH SEAM',
@@ -26,6 +28,7 @@ export const SIGNATURE_TITLES = Object.freeze({
 });
 
 export const SIGNATURE_CAPTIONS = Object.freeze({
+  'tether.strain': 'Massline strain.',
   'tether.cut_whipcrack': 'Taut line cut.',
   'mass.groan': 'Heavy mass under tow.',
   'mining.seam_chime': 'Rich seam hit.',
@@ -35,12 +38,60 @@ export const SIGNATURE_CAPTIONS = Object.freeze({
   'customs.scan': 'Customs sweep.',
 });
 
+export const CAPTIONS_SIGNATURES = SIGNATURE_CAPTIONS;
+
 export function captionForSignature(id) {
   return SIGNATURE_CAPTIONS[id] || null;
 }
 
 export function titleForSignature(id) {
   return SIGNATURE_TITLES[id] || null;
+}
+
+export function shouldCaptionSignature(input = {}) {
+  const id = typeof input === 'string' ? input : input.id;
+  const recipe = getSignatureRecipe(id);
+  if (!recipe || !captionForSignature(id)) return false;
+  const importance = finite(typeof input === 'string' ? recipe.importance : input.importance, recipe.importance);
+  return importance >= SIGNATURE_CAPTION_IMPORTANCE_THRESHOLD;
+}
+
+export function buildSignatureCaptionCue(input = {}) {
+  const id = typeof input === 'string' ? input : input.id;
+  if (!shouldCaptionSignature(input)) return null;
+  const recipe = getSignatureRecipe(id);
+  const importance = finite(typeof input === 'string' ? recipe.importance : input.importance, recipe.importance);
+  const nowMs = typeof input === 'string' ? 0 : Math.max(0, finite(input.nowMs, 0));
+  return Object.freeze({
+    id,
+    audioId: recipe.audioId,
+    sourceEvent: typeof input === 'string' ? recipe.sourceEvent : input.sourceEvent || recipe.sourceEvent,
+    title: titleForSignature(id),
+    caption: captionForSignature(id),
+    importance,
+    assertive: true,
+    startedAtMs: nowMs,
+    tags: recipe.tags,
+  });
+}
+
+export function signatureCaptionAudit(recipes = SIGNATURE_RECIPES) {
+  const ids = Object.keys(recipes || {}).sort();
+  const captionedIds = ids.filter((id) => !!captionForSignature(id));
+  const missingCaptionIds = ids.filter((id) => !captionForSignature(id));
+  const criticalIds = ids.filter((id) => {
+    const recipe = recipes[id];
+    return recipe && Number.isFinite(recipe.importance) && recipe.importance >= SIGNATURE_CAPTION_IMPORTANCE_THRESHOLD;
+  });
+  const criticalMissingCaptionIds = criticalIds.filter((id) => !captionForSignature(id));
+  return Object.freeze({
+    ids: Object.freeze(ids),
+    captionedIds: Object.freeze(captionedIds),
+    missingCaptionIds: Object.freeze(missingCaptionIds),
+    criticalIds: Object.freeze(criticalIds),
+    criticalMissingCaptionIds: Object.freeze(criticalMissingCaptionIds),
+    threshold: SIGNATURE_CAPTION_IMPORTANCE_THRESHOLD,
+  });
 }
 
 export function resolveSensorSignature(contact, state, opts = {}) {

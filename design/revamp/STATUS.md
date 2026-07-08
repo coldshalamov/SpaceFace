@@ -1450,3 +1450,24 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   by the same `0.8` importance threshold used by `cuePriorityBus`, and verify every AUD-02..06 signature id has one
   short caption line.
 - No-touch remains `src/systems/presentationAdapters.js`.
+
+### T5d-AUD-07 — DONE (2026-07-08)
+- Added `CAPTIONS_SIGNATURES`, `signatureCaptionAudit()`, `shouldCaptionSignature()`, and
+  `buildSignatureCaptionCue()` to the pure `signatureAdapters` helper, plus
+  `scripts/check-critical-signature-captions.mjs` and `npm run check:critical-signature-captions`.
+- The new check found and fixed the one missing AUD caption/title pair: `tether.strain` now has
+  `MASSLINE STRAIN` / `Massline strain.`. All AUD-02..06 signature ids now have one short caption line.
+- Caption payloads are gated at the same `0.8` threshold as `cuePriorityBus`: base `sensor.lock` emits an
+  assertive caption; low-importance scan/customs signatures stay quiet unless a cue instance is elevated above
+  the gate. `src/systems/presentationAdapters.js` remained no-touch.
+- Non-vacuous control: temporarily raised `SIGNATURE_CAPTION_IMPORTANCE_THRESHOLD` to `0.95`; the check failed
+  against the priority-bus threshold parity. Restored `0.8`; the check passed.
+- No-regression floor: `node --check src/systems/signatureAdapters.js`,
+  `node --check scripts/check-critical-signature-captions.mjs`,
+  `npm run check:critical-signature-captions`, `npm run check:mining-audio-signatures`,
+  `npm run check:tether-body-signature`, `npm run check:customs-signature`,
+  `npm run check:sensor-signatures`, `npm run check:tether-strain-signature`,
+  `npm run check:cue-priority-bus`, `node scripts/check-presentation-cues.mjs`,
+  `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed
+  (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
