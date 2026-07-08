@@ -1496,3 +1496,9 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   confidence output while the packet declares `galaxyMap.js` no-touch and `newFiles:none`.
 - Backend sequence state after this audit: T4c/T4b/T4d, T8, T1, T3-17, and all backend-safe T5 completed halves
   are green; T3-24 and T7a remain separately blocked; T6/T9 and render/HUD/frontend work remain out of lane.
+
+### T3-24 MASSLINE_AGGREGATE — reclaimed (2026-07-08)
+- Reclaimed T3-24 on `master` after confirming the blocker is actionable backend verification work: `package.json`
+  already advertises the six 47-A child checks, but their `scripts/check-47a-*.mjs` files are absent.
+- Scope: add honest 47-A child checks over shipped scenario contract/runtime evidence first, then add the
+  `check:massline` aggregate and `docs/MASSLINE_MECHANICS.md`.
