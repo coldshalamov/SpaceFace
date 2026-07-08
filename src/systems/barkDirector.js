@@ -10,11 +10,17 @@ import { isHostileToPlayer } from './scanner.js';
 const BARK_SET = new Set(BARK_SITUATIONS);
 const VOICE_TTL_S = 1.2;
 const PLAYER_TEAM = 0;
+export const POST_COMBAT_SILENCE_S = 8.0;
+export const AMBIENT_BASE_GAP_S = 12.0;
+export const AMBIENT_GAP_STEP_S = 12.0;
+export const AMBIENT_QUIET_STEP_S = 60.0;
+export const AMBIENT_MAX_GAP_S = 60.0;
 
 const FLEE_FSMS = new Set(['flee', 'retreat', 'withdraw']);
 const ATTACK_FSMS = new Set(['attack', 'strafe', 'engage', 'fight']);
 const SCAN_FSMS = new Set(['scan', 'inspect', 'intercept', 'pursue', 'approach', 'patrol']);
 const WARN_FSMS = new Set(['warn', 'challenge', 'blockade']);
+const FLAVOR_SITUATIONS = new Set(['patrol-greeting', 'taunt']);
 
 export const barkDirector = {
   name: 'barkDirector',
@@ -25,9 +31,11 @@ export const barkDirector = {
     this.helpers = ctx.helpers || {};
     this._onFlee = (payload) => this._speakFromEvent(payload, 'flee', 'ai:flee');
     this._onReinforcement = (payload) => this._speakFromEvent(payload, 'reinforce', 'ai:reinforcementScheduled');
+    this._onCombatOutcome = () => this._enterPostCombatSilence();
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
+      this.bus.on('combat:outcome', this._onCombatOutcome);
     }
   },
 
@@ -61,6 +69,7 @@ export const barkDirector = {
     const entityId = String(entity.id);
     const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
     if (rec.lastSituation === situation || rec.said[situation]) return false;
+    if (this._isSuppressed(entity, situation, rec)) return false;
 
     const factionId = factionFor(entity);
     const seed = state.meta && state.meta.seed;
@@ -97,6 +106,47 @@ export const barkDirector = {
     return !!accepted;
   },
 
+  _enterPostCombatSilence() {
+    if (!this.state) return false;
+    const own = ensureState(this.state);
+    const now = this.state.simTime || 0;
+    const until = now + POST_COMBAT_SILENCE_S;
+    own.postCombatSilenceUntil = Math.max(Number(own.postCombatSilenceUntil) || 0, until);
+    const sectorId = currentSectorId(this.state);
+    const ambient = ambientRecord(own, sectorId);
+    ambient.quietSince = now;
+    ambient.nextAt = Math.max(Number(ambient.nextAt) || -Infinity, until);
+    this._emit('barkDirector:silence', { sectorId, until, t: now, reason: 'combat:outcome' });
+    return true;
+  },
+
+  _isSuppressed(entity, situation, rec) {
+    const state = this.state;
+    const own = ensureState(state);
+    const now = state.simTime || 0;
+    let until = 0;
+    if (FLAVOR_SITUATIONS.has(situation)) until = Number(own.postCombatSilenceUntil) || 0;
+    if (until > now) {
+      rememberSuppressed(own, entity, situation, now, until, 'post-combat-silence');
+      return true;
+    }
+    if (situation !== 'patrol-greeting') return false;
+
+    const sectorId = currentSectorId(state);
+    const ambient = ambientRecord(own, sectorId);
+    if (Number(ambient.nextAt) > now) {
+      rememberSuppressed(own, entity, situation, now, ambient.nextAt, 'ambient-decay');
+      return true;
+    }
+    const gap = ambientGap(ambient, now);
+    ambient.lastAt = now;
+    ambient.lastEntityId = entity && entity.id;
+    ambient.lastGap = gap;
+    ambient.nextAt = now + gap;
+    rec.ambientGap = gap;
+    return false;
+  },
+
   _emit(event, payload) {
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
   },
@@ -105,9 +155,11 @@ export const barkDirector = {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onFlee) this.bus.off('ai:flee', this._onFlee);
       if (this._onReinforcement) this.bus.off('ai:reinforcementScheduled', this._onReinforcement);
+      if (this._onCombatOutcome) this.bus.off('combat:outcome', this._onCombatOutcome);
     }
     this._onFlee = null;
     this._onReinforcement = null;
+    this._onCombatOutcome = null;
   },
 };
 
@@ -130,12 +182,19 @@ export function classifyBarkSituation(entity, state) {
 }
 
 function freshState() {
-  return { entities: {} };
+  return {
+    entities: {},
+    postCombatSilenceUntil: 0,
+    ambientBySector: {},
+    suppressed: [],
+  };
 }
 
 function ensureState(state) {
   if (!state.barkDirector || typeof state.barkDirector !== 'object') state.barkDirector = freshState();
   if (!state.barkDirector.entities || typeof state.barkDirector.entities !== 'object') state.barkDirector.entities = {};
+  if (!state.barkDirector.ambientBySector || typeof state.barkDirector.ambientBySector !== 'object') state.barkDirector.ambientBySector = {};
+  if (!Array.isArray(state.barkDirector.suppressed)) state.barkDirector.suppressed = [];
   return state.barkDirector;
 }
 
@@ -205,6 +264,42 @@ function isScanningPlayer(entity, state, fsm) {
   if (targeting && !isAttackingPlayer(entity, state, fsm)) return true;
   if (isHostileToPlayer(entity, playerTeam(state), state) && !isAttackingPlayer(entity, state, fsm)) return true;
   return false;
+}
+
+function currentSectorId(state) {
+  return state && state.world && state.world.currentSectorId || 'unknown';
+}
+
+function ambientRecord(own, sectorId) {
+  const key = sectorId || 'unknown';
+  let rec = own.ambientBySector[key];
+  if (!rec || typeof rec !== 'object') {
+    rec = {
+      quietSince: 0,
+      lastAt: -Infinity,
+      nextAt: -Infinity,
+      lastGap: AMBIENT_BASE_GAP_S,
+    };
+    own.ambientBySector[key] = rec;
+  }
+  return rec;
+}
+
+function ambientGap(rec, now) {
+  const quietAge = Math.max(0, now - (Number(rec.quietSince) || 0));
+  const steps = Math.floor(quietAge / AMBIENT_QUIET_STEP_S);
+  return Math.min(AMBIENT_MAX_GAP_S, AMBIENT_BASE_GAP_S + steps * AMBIENT_GAP_STEP_S);
+}
+
+function rememberSuppressed(own, entity, situation, now, until, reason) {
+  own.suppressed.push({
+    entityId: entity && entity.id,
+    situation,
+    reason,
+    t: now,
+    until,
+  });
+  if (own.suppressed.length > 16) own.suppressed.shift();
 }
 
 export default barkDirector;

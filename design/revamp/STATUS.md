@@ -878,3 +878,17 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   ambient decay state.
 - Scope guard: no `src/ui/voiceArbiter.js`, HUD, render, input, combat, AI internals, or bark corpus edits.
   Only flavor `bark` situations may be suppressed; story/alert/news channels remain owned by voiceArbiter.
+
+### T5b-BARK-02 BARK_SILENCE_DECAY — DONE (2026-07-07)
+- Extended `src/systems/barkDirector.js` plus NEW `npm run check:bark-silence`. `combat:outcome` now opens
+  an 8s `postCombatSilenceUntil` window for flavor-only bark situations (`patrol-greeting`, `taunt`), while
+  story/alert/news/info channels keep flowing through voiceArbiter unchanged.
+- Ambient `patrol-greeting` barks now use per-sector quiet cadence: first greeting is allowed, immediate
+  repeats are suppressed, and the next gap grows by quiet-time buckets with a nonzero floor instead of
+  permanently silencing a sector.
+- Non-vacuous control: temporarily changed `POST_COMBAT_SILENCE_S` to `0.0`; `check:bark-silence` failed
+  because the post-combat taunt surfaced. Restored GREEN.
+- Related gates: `check:bark-silence` PASS, `check:bark-director` PASS, `check:one-voice` PASS,
+  `check:encounter-voice` PASS, `check:pirate-disengage` PASS, and `check:balance` 0 FAIL.
+  `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
+  `sf-sim.mjs:1161`.
