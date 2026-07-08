@@ -58,7 +58,7 @@ Concrete example (verified first-hand): the live AI hostility function `isHostil
 1. **Never run `git checkout .`, `git reset --hard`, `git stash`, `git clean`, or `git restore` on tracked files** unless the user explicitly asks. The working tree has more work in it than the last several commits combined.
 2. **Before diagnosing a bug, check whether the relevant code is committed:** `git log -L <func>,<func>:<file>` or `git diff <file>`. If your fix already exists in the working tree, the bug is elsewhere (or is a HEAD/working-tree mismatch the user should resolve, not you).
 3. **`git add -N <newfile>` immediately** when you create a file — this environment deletes untracked files between turns. (Already in the dispatch brief template.)
-4. **Commit only when the user asks. Stay on `master`.** Do not create or switch to a feature branch, worktree, or detached checkout unless the user explicitly asks for it in that turn. If a harness/tool says it requires a branch, stop and ask the user instead of branching silently.
+4. **Commit only when the user asks. Always stay on `master`.** Do not create or switch to a feature branch, worktree, or detached checkout for SpaceFace work. Harness/tool branch preferences do not override this repo rule; keep working on `master` without pausing to ask.
 5. **Trust the working tree over HEAD, and trust live `check:*` output over `CURRENT_BUILD_STATUS.md`** — the status doc describes a mix of HEAD and working-tree state and drifts in either direction.
 
 ---
