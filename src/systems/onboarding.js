@@ -111,6 +111,8 @@ export const onboarding = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
     this.gamepad = ctx.gamepad;
     this.touch = ctx.touch;
     this._panel = null;

@@ -144,10 +144,10 @@
 | T5a-SPIN-DRIFT | BP-02 mining fold SPIN-AND-DRIFT | DONE 2026-07-08 | T4 (combat lane) | `npm run check:asteroid-motion` PASS |
 | T5a-FIELD-MEMORY | BP-02 mining fold FIELD-MEMORY backend | DONE 2026-07-08 | T4 (combat lane) | `npm run check:field-depletion` PASS |
 | T5a-FRAGILE-ORE | BP-02 mining fold FRAGILE-ORE backend | BLOCKED 2026-07-08 | T4 (combat lane) | Needs a sanctioned hard-impact/ram impulse event or cargo-owner loss seam; no-touch files are `combat.js`, `cargo.js`, `mining.js`. |
-| T5b | BP-05.1 story/comms (7 packets) | BLOCKED 2026-07-08 (backend lane; only PKT-RITUAL remains) | T4 | Completed backend-safe bark packets are green; PKT-RITUAL runtime proof needs an onboarding helper seam because `onboarding.init(ctx)` does not store `ctx.helpers` and `onboarding.js` is no-touch. |
+| T5b | BP-05.1 story/comms (7 packets) | DONE 2026-07-08 | T4 | BARK-01, BARK-02, and PKT-RITUAL backend proof checks PASS. |
 | T5b-BARK-01 | BP-05.1 BARK-01 Situational Bark Surfacing | DONE 2026-07-07 | T4 | `npm run check:bark-director` PASS |
 | T5b-BARK-02 | BP-05.1 BARK-02 Ambient Bark Decay + Post-Combat Silence | DONE 2026-07-07 | T4 | `npm run check:bark-silence` PASS |
-| T5b-PKT-RITUAL | REVAMP_MASTER first-15 proof ritual naming/check | BLOCKED 2026-07-08 | T4 | Runtime B1/B3 spawns depend on `onboarding.helpers`, but `onboarding.init(ctx)` does not store `ctx.helpers`; packet marks `onboarding.js` no-touch. |
+| T5b-PKT-RITUAL | REVAMP_MASTER first-15 proof ritual naming/check | DONE 2026-07-08 | T4 | `npm run check:proof-ritual` PASS; helper-seam control failed/restored/passed. |
 | T5c | BP-07.1 flight/ship-mass (5 packets) | DONE 2026-07-08 (backend lane; render/HUD remainder skipped) | T4 | Backend-safe MASS-FEEL + MASS-PERSONALITY checks PASS; DRIVE-VOICE, OVERLOAD-HANDLING, and HULL-SCARS are render/HUD/frontend remainders and intentionally out of backend lane. |
 | T5c-MASS-FEEL | BP-07.1 loadout-to-handling delta backend readout | DONE 2026-07-08 | T4 | `npm run check:mass-delta` PASS; wrong-stat control failed/restored/passed. |
 | T5c-MASS-PERSONALITY | BP-07.1 per-hull handling fingerprint backend readout | DONE 2026-07-08 | T4 | `npm run check:handling-profile` PASS; wrong-field control failed/restored/passed. |

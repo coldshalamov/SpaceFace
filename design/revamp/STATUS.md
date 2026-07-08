@@ -1148,7 +1148,7 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - `src/systems/onboarding.js` remains frozen by the packet's `noTouch`; BARK-03 is presentation/UI work and is
   intentionally skipped by this backend lane.
 
-### T5b-PKT-RITUAL — BLOCKED (2026-07-08)
+### T5b-PKT-RITUAL — BLOCKED (2026-07-08; superseded by DONE below)
 - Attempted to add a non-vacuous proof guard that source-pins `BEATS`/`SILENCE_S` and exercises the B3
   tutorial pirate flee path with a small harness. The source/doc portions passed, but the runtime harness could
   not spawn the B3 pirate because `onboarding._spawnPirate()` requires `this.helpers.spawnEntity`.
@@ -1491,8 +1491,9 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   Superseded for T5f by the later MAP-CONFIDENCE completion.
 - T5a is blocked only on FRAGILE-ORE: it needs a sanctioned hard-impact/ram impulse event or cargo-owner loss
   seam, while the packet keeps `combat.js`, `cargo.js`, and `mining.js` no-touch.
-- T5b is blocked only on PKT-RITUAL: runtime proof of B1/B3 onboarding spawns needs an onboarding helper seam,
-  but `onboarding.init(ctx)` does not store `ctx.helpers` and the packet marks `onboarding.js` no-touch.
+- T5b was blocked only on PKT-RITUAL: runtime proof of B1/B3 onboarding spawns needed an onboarding helper seam,
+  but `onboarding.init(ctx)` did not store `ctx.helpers` and the packet marked `onboarding.js` no-touch. This
+  blocker is now cleared by the later T5b-PKT-RITUAL completion.
 - T5f was blocked only on MAP-CONFIDENCE: acceptance required shipped `buildGalaxyModel`/`buildSystemModel`
   confidence output while the packet declared `galaxyMap.js` no-touch and `newFiles:none`. This blocker is now
   cleared by the later T5f-MAP-CONFIDENCE completion.
@@ -1533,8 +1534,6 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   backend-safe T5 packets are green; T6/T9 and render/HUD/frontend lanes remain intentionally out of scope.
 - T5a is blocked only on FRAGILE-ORE: it needs a sanctioned hard-impact/ram impulse event or cargo-owner loss
   seam, while the packet keeps `combat.js`, `cargo.js`, and `mining.js` no-touch.
-- T5b is blocked only on PKT-RITUAL: runtime proof of B1/B3 onboarding spawns needs an onboarding helper seam,
-  but `onboarding.init(ctx)` does not store `ctx.helpers` and the packet marks `onboarding.js` no-touch.
 - T7a remains blocked before package-chain integration: `node --check src/render/bloom.js` fails at
   `src/render/bloom.js:344` with `SyntaxError: Unexpected token '.'`. Because the render lane does not parse,
   folding `check:perf`, `check:hitch-budget`, and `check:gpu-path` into default `check`/`check:ci` would make
@@ -1545,8 +1544,8 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   routing doc, but it was absent in the live tree.
 - The restored doc records the three serialization points, backend-agent contract, current remaining-row
   classification, backend sequence, iterate-to-green protocol, and known non-backend blockers.
-- It preserved the then-current backend conclusion; T5f-MAP-CONFIDENCE was later cleared by a focused pure-model
-  pass. T5a-FRAGILE-ORE, T5b-PKT-RITUAL, and T7a remain blocked for the specific no-touch/render-lane reasons
+- It preserved the then-current backend conclusion; T5f-MAP-CONFIDENCE and T5b-PKT-RITUAL were later cleared by
+  focused backend passes. T5a-FRAGILE-ORE and T7a remain blocked for the specific no-touch/render-lane reasons
   already recorded above.
 
 ### T5f-MAP-CONFIDENCE — DONE (2026-07-08)
@@ -1556,3 +1555,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   sectors, `stale` when discovery epoch age is at least 7 sector-sim days, and `rumored` for uncharted frontier fog.
 - Added `scripts/check-map-confidence.mjs` and `npm run check:map-confidence` to assert the pure confidence reader,
   galaxy/system model output, runtime scope, and no RNG/wall-clock feedback into `sectorSim` or `economy`.
+
+### T5b-PKT-RITUAL — DONE (2026-07-08)
+- Cleared BP-05.1 `PKT-RITUAL` by making `onboarding.init(ctx)` retain `ctx.helpers` and `ctx.registry`, matching
+  the system context contract that B1, B3, and B5 already expected.
+- Added `design/revamp/PROOF_RITUAL.md` to name the First-15 proof surface: B0 wake, B1 derelict, B2 seam, B3
+  snare/mercy flee, B4 dock, and B5 choice.
+- Added `scripts/check-proof-ritual.mjs` and `npm run check:proof-ritual` to assert helper-backed B1 derelict
+  spawn, helper-backed B3 pirate spawn, low-hull mercy flee, cargo lesson drop, snare completion, package wiring,
+  and proof doc coverage.

@@ -45,6 +45,7 @@
     "check:field-depletion": "node scripts/check-field-depletion.mjs",
     "check:bark-director": "node scripts/check-bark-director.mjs",
     "check:bark-silence": "node scripts/check-bark-silence.mjs",
+    "check:proof-ritual": "node scripts/check-proof-ritual.mjs",
     "check:build-identity": "node scripts/check-build-identity.mjs",
     "check:synergy-tells": "node scripts/check-synergy-tells.mjs",
     "check:intent-glyphs": "node scripts/check-intent-glyphs.mjs",
