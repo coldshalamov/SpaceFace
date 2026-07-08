@@ -1125,3 +1125,16 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-data-refs.mjs`, `npm run check:mining:bulk-guidance`, `npm run check:save-resume-confidence`,
   `npm run check:balance`, and `npm run build:indexes` passed. `npm run check:sim:compare` still fails only on
   the documented 47-A projectile-collision precondition in `scripts/sf-sim.mjs:1161`.
+
+### T5a-FRAGILE-ORE — BLOCKED (2026-07-08)
+- Investigated BP-02 mining-fold FRAGILE-ORE from `detail/D_flight_ships_mining.md`. The packet requires a
+  deterministic hard-collision/ram impulse input and a cargo quantity/value haircut while `cargo.js`,
+  `combat.js`, and `mining.js` are explicit no-touch files.
+- Live seams are insufficient today: `cargo.js` owns the canonical `addCargo`/`removeCargo` helpers and emits
+  `cargo:changed`, but has no event subscriber for an external loss request. `combat:damage` is emitted from
+  `src/combat/damage.js` without the applied impulse in its public payload, and there is no generic
+  hard-collision/ram-impact event for the player cargo hold. `tether:whipImpact` is a massline-specific struck-body
+  event, not a general player hard-landing/ram signal.
+- Do not implement this by guessing from plain damage or directly writing `state.player.cargo`; that would either
+  punish non-impact damage or violate the cargo single-writer contract. Unblock options: add a sanctioned cargo
+  loss intent handled by `cargo.js`, or expose a hard-impact impulse event from the combat/physics owner first.

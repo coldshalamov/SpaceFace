@@ -135,7 +135,7 @@
 
 | id | addendum | status | depends-on | next |
 |---|---|---|---|---|
-| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-08 (T5a-C3/T5a-C4/T5a-C9/T5a-C11/T5a-C12/T5a-SPIN-DRIFT/T5a-FIELD-MEMORY DONE) | T4 (combat lane) | — |
+| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-08 (T5a-C3/T5a-C4/T5a-C9/T5a-C11/T5a-C12/T5a-SPIN-DRIFT/T5a-FIELD-MEMORY DONE; T5a-FRAGILE-ORE BLOCKED) | T4 (combat lane) | — |
 | T5a-C3 | BP-02.1 C3 Scan-Reveals-Loadout | DONE 2026-07-07 | T4 (combat lane) | `npm run check:scan-reveal` PASS |
 | T5a-C4 | BP-02.1 C4 Silhouette Threat Language | DONE 2026-07-08 | T4 (combat lane) | `npm run check:silhouette-roles` PASS |
 | T5a-C9 | BP-02.1 C9 Kills-Less-Central Outcomes | DONE 2026-07-07 | T4 (combat lane) | `npm run check:combat-outcome` PASS |
@@ -143,6 +143,7 @@
 | T5a-C12 | BP-02.1 C12 Wing Morale | DONE 2026-07-08 | T4 (combat lane) | `npm run check:wing-morale` PASS |
 | T5a-SPIN-DRIFT | BP-02 mining fold SPIN-AND-DRIFT | DONE 2026-07-08 | T4 (combat lane) | `npm run check:asteroid-motion` PASS |
 | T5a-FIELD-MEMORY | BP-02 mining fold FIELD-MEMORY backend | DONE 2026-07-08 | T4 (combat lane) | `npm run check:field-depletion` PASS |
+| T5a-FRAGILE-ORE | BP-02 mining fold FRAGILE-ORE backend | BLOCKED 2026-07-08 | T4 (combat lane) | Needs a sanctioned hard-impact/ram impulse event or cargo-owner loss seam; no-touch files are `combat.js`, `cargo.js`, `mining.js`. |
 | T5b | BP-05.1 story/comms (7 packets) | IN-PROGRESS 2026-07-07 (BARK-01/BARK-02 DONE) | T4 | — |
 | T5b-BARK-01 | BP-05.1 BARK-01 Situational Bark Surfacing | DONE 2026-07-07 | T4 | `npm run check:bark-director` PASS |
 | T5b-BARK-02 | BP-05.1 BARK-02 Ambient Bark Decay + Post-Combat Silence | DONE 2026-07-07 | T4 | `npm run check:bark-silence` PASS |
