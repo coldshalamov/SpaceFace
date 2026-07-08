@@ -148,7 +148,7 @@
 | T5b-BARK-01 | BP-05.1 BARK-01 Situational Bark Surfacing | DONE 2026-07-07 | T4 | `npm run check:bark-director` PASS |
 | T5b-BARK-02 | BP-05.1 BARK-02 Ambient Bark Decay + Post-Combat Silence | DONE 2026-07-07 | T4 | `npm run check:bark-silence` PASS |
 | T5b-PKT-RITUAL | REVAMP_MASTER first-15 proof ritual naming/check | BLOCKED 2026-07-08 | T4 | Runtime B1/B3 spawns depend on `onboarding.helpers`, but `onboarding.init(ctx)` does not store `ctx.helpers`; packet marks `onboarding.js` no-touch. |
-| T5c | BP-07.1 flight/ship-mass (5 packets) | IN-PROGRESS 2026-07-08 (MASS-PERSONALITY + MASS-FEEL DONE) | T4 | — |
+| T5c | BP-07.1 flight/ship-mass (5 packets) | DONE 2026-07-08 (backend lane; render/HUD remainder skipped) | T4 | Backend-safe MASS-FEEL + MASS-PERSONALITY checks PASS; DRIVE-VOICE, OVERLOAD-HANDLING, and HULL-SCARS are render/HUD/frontend remainders and intentionally out of backend lane. |
 | T5c-MASS-FEEL | BP-07.1 loadout-to-handling delta backend readout | DONE 2026-07-08 | T4 | `npm run check:mass-delta` PASS; wrong-stat control failed/restored/passed. |
 | T5c-MASS-PERSONALITY | BP-07.1 per-hull handling fingerprint backend readout | DONE 2026-07-08 | T4 | `npm run check:handling-profile` PASS; wrong-field control failed/restored/passed. |
 | T5d | BP-10.1 audio (7 packets) | DONE 2026-07-08 | T4 | AUD-01..AUD-07 all PASS with non-vacuous controls; latest gate `npm run check:critical-signature-captions` PASS. |
@@ -159,7 +159,7 @@
 | T5d-AUD-05 | BP-10.1 line-cut whipcrack + large-mass groan backend signatures | DONE 2026-07-08 | T4 | `npm run check:tether-body-signature` PASS; whipcrack-threshold control failed/restored/passed. Additive `tether.cut_whipcrack` + `mass.groan` signature data/adapters/check only; no `src/combat/attachments.js` or `src/audio/audioSystem.js` edits. |
 | T5d-AUD-06 | BP-10.1 ore-seam and vent-bonus mining signatures | DONE 2026-07-08 | T4 | `npm run check:mining-audio-signatures` PASS; seam-threshold control failed/restored/passed. Additive `mining.seam_chime` + `mining.vent_bonus` signature data/adapters/check plus missing `sfx_core_bell` data recipe; no `src/audio/audioSystem.js` or `src/systems/mining*.js` edits. |
 | T5d-AUD-07 | BP-10.1 critical signature caption parity | DONE 2026-07-08 | T4 | `npm run check:critical-signature-captions` PASS; caption-threshold control failed/restored/passed. Additive signature caption audit/gate in `src/systems/signatureAdapters.js` plus check only; no `src/systems/presentationAdapters.js` edits. |
-| T5e | BP-09.1 builds/synergies (4 packets) | IN-PROGRESS 2026-07-08 (BUILD-ID + SYNERGY-TELLS + MODULE-RISK DONE) | T4 | — |
+| T5e | BP-09.1 builds/synergies (4 packets) | DONE 2026-07-08 (backend lane; socket-props render half skipped) | T4 | Backend-safe BUILD-ID, SYNERGY-TELLS, and MODULE-RISK checks PASS; LOADOUT-SILHOUETTE requires render socket props and is intentionally out of backend lane. |
 | T5e-BUILD-ID | BP-09.1 BUILD-ID archetype badge backend | DONE 2026-07-08 | T4 | `npm run check:build-identity` PASS |
 | T5e-SYNERGY-TELLS | BP-09.1 SYNERGY-TELLS backend data | DONE 2026-07-08 | T4 | `npm run check:synergy-tells` PASS |
 | T5e-MODULE-RISK | BP-09.1 MODULE-DRAWBACK-GLYPHS backend readout | DONE 2026-07-08 | T4 | `npm run check:module-risk` PASS; contraband-gate control failed/restored/passed. |

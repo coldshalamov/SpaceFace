@@ -1471,3 +1471,16 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed
   (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
+
+### T5c/T5e parent backend-lane audit - DONE (2026-07-08)
+- Audited `design/revamp/detail/D_flight_ships_mining.md`: T5c's remaining packets are DRIVE-VOICE
+  (`src/render/driveSignature.js`), OVERLOAD-HANDLING (`src/ui/hud/massWarn.js`), and HULL-SCARS
+  (`src/render/hullScars.js`), all render/HUD/frontend remainders and intentionally out of the backend lane.
+- Audited `design/revamp/detail/E_economy_builds_world.md`: T5e's remaining LOADOUT-SILHOUETTE packet needs
+  `src/render/socketProps.js`, so it is a render-lane remainder and intentionally out of the backend lane.
+- Backend checks passed for the completed halves: `npm run check:mass-delta`,
+  `npm run check:handling-profile`, `npm run check:build-identity`, `npm run check:synergy-tells`, and
+  `npm run check:module-risk`.
+- Routing note: `design/revamp/EXECUTION_LANES.md` is absent in the live tree, so this audit follows the goal
+  objective order plus `PROGRESS.md` and the packet detail specs.
+- No gameplay/runtime code changed in this pass; this is ledger/status alignment only.
