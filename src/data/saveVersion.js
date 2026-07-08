@@ -3,4 +3,5 @@
 // v4: SG-02 dynamic authority persists yaw-rate and rapier-dynamic backend selection.
 // v5: SG-03 semantic combat state persists actions, combatants, and active attachments.
 // v6: player-authored navigation intent persists route/waypoint/autoTravel across Continue.
-export const CURRENT_VERSION = 6;
+// v7: BP-01.1 loss-ledger provenance persists across Continue.
+export const CURRENT_VERSION = 7;

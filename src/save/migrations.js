@@ -96,4 +96,24 @@ export const MIGRATIONS = [
       if (!('waypoint' in data.nav)) data.nav.waypoint = null;
     },
   },
+  // v7: BP-01.1 loss-ledger provenance. Old saves start with no recorded losses, while current
+  // saves preserve the event-sourced "who died here" records across Continue.
+  {
+    from: 6,
+    to: 7,
+    fn(data) {
+      if (!data.lossLedger || typeof data.lossLedger !== 'object' || Array.isArray(data.lossLedger)) {
+        data.lossLedger = { entries: [], seed: 0, ghostConvoy: { fired: {} } };
+        return;
+      }
+      if (!Array.isArray(data.lossLedger.entries)) data.lossLedger.entries = [];
+      if (typeof data.lossLedger.seed !== 'number') data.lossLedger.seed = 0;
+      if (!data.lossLedger.ghostConvoy || typeof data.lossLedger.ghostConvoy !== 'object') {
+        data.lossLedger.ghostConvoy = { fired: {} };
+      }
+      if (!data.lossLedger.ghostConvoy.fired || typeof data.lossLedger.ghostConvoy.fired !== 'object') {
+        data.lossLedger.ghostConvoy.fired = {};
+      }
+    },
+  },
 ];

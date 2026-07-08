@@ -22,6 +22,8 @@
 // Run: node scripts/check-wreck-provenance.mjs  (exit 0 = pass)
 
 import assert from 'node:assert/strict';
+import { createGameState } from '../src/core/gameState.js';
+import { save } from '../src/save/saveSystem.js';
 import { lossLedger, lossesFor, latestLossFor, latestLossLine } from '../src/systems/lossLedger.js';
 import { WRECK_CLASSES, WRECK_CLASS_IDS, wreckClassById, pickWreckClass } from '../src/data/wreckClasses.js';
 
@@ -73,6 +75,33 @@ function fakeVoice() {
     say(msg) { said.push(msg); return true; },
     said,
   };
+}
+
+function seedSaveablePlayer(state) {
+  state.mode = 'flight';
+  state.playerId = 1;
+  state.nextEntityId = 2;
+  state.entities.set(1, {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    team: 0,
+    factionId: 'faction_free',
+    pos: { x: 0, y: 0, z: 0 },
+    vel: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    radius: 12,
+    mass: 100,
+    hull: 100,
+    hullMax: 100,
+    shield: 50,
+    shieldMax: 50,
+    cap: 100,
+    capMax: 100,
+    flags: {},
+    data: { defId: 'ship_kestrel', fittings: [] },
+  });
+  state.entityList.push(state.entities.get(1));
 }
 
 // ── 1. catalog integrity ──────────────────────────────────────────────────────────────────
@@ -317,6 +346,37 @@ function testSerializeRoundTrip() {
   sys2.destroy();
 }
 
+// -- 13. save-system integration: provenance is in the save payload -----------------------
+function testSaveSystemCarriesLossLedger() {
+  const { bus } = makeBus();
+  const state = createGameState(42);
+  seedSaveablePlayer(state);
+  const voice = fakeVoice();
+  const sys = makeSys(state, bus, voice);
+  bus.emit('automation:assetLost', { kind: 'trader', id: 't_7', value: 1200, sectorId: 'sector_tethys' });
+
+  const saveSys = { ...save };
+  saveSys.init({
+    state,
+    bus: makeBus().bus,
+    helpers: {},
+    registry: { get(name) { return name === 'lossLedger' ? sys : null; } },
+  });
+  const data = saveSys.serializeData();
+  assert.ok(data.lossLedger, 'save payload includes lossLedger');
+  assert.equal(data.lossLedger.entries.length, 1, 'save payload carries recorded losses');
+  assert.equal(data.lossLedger.entries[0].lossId, latestLossFor(state, 'sector_tethys').lossId,
+    'saved loss entry matches live ledger');
+
+  const state2 = createGameState(42);
+  const sys2 = makeSys(state2, makeBus().bus, fakeVoice());
+  sys2.deserialize(data.lossLedger);
+  assert.equal(latestLossFor(state2, 'sector_tethys').lossId, data.lossLedger.entries[0].lossId,
+    'saved lossLedger snapshot restores through deserialize');
+  sys.destroy();
+  sys2.destroy();
+}
+
 // ── NON-VACUOUS CONTROL A: break event-sourcing (must NOT manufacture losses) ────────────
 // If we directly mutate state.lossLedger.entries, lossesFor still reads bySector — proving the
 // public read is sourced ONLY from recorded events, not from arbitrary state writes.
@@ -393,6 +453,7 @@ guarded(testRingBufferPerSector);
 guarded(testSingleWriter);
 guarded(testDedupe);
 guarded(testSerializeRoundTrip);
+guarded(testSaveSystemCarriesLossLedger);
 guarded(controlEventSourcingNotManufactured);
 guarded(controlProvenanceAgreement);
 guarded(controlRingBufferBinds);

@@ -991,3 +991,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Related gates: `check:synergy-tells`, `check:build-identity`, `check:scan-reveal`, and `check-data-refs`
   all PASS. `check:balance` stays at 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition at `sf-sim.mjs:1161`.
+
+### T4c-1 LOSS_LEDGER_SAVE_PERSISTENCE — repair (2026-07-08)
+- Repaired the T4c-1 durability claim: `lossLedger.serialize()`/`deserialize()` already existed, but
+  `save.serializeData()` was not including the `lossLedger` key and load was not restoring it through the
+  registry hook.
+- Save schema is now v7 with an idempotent v6->v7 migration seeding an empty loss-ledger subtree for old
+  saves; `SAVE_SCHEMA.md` regenerated from `node scripts/generate-save-schema.mjs --write`.
+- `check:wreck-provenance` now includes a save-system integration assertion proving recorded provenance
+  appears in the save payload and restores through `lossLedger.deserialize`.
