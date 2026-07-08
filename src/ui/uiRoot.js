@@ -164,11 +164,17 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
 
-    // Command Bar (UI full-pass Slice 3) — persistent top resource strip, RTS-style. Mounted as a
-    // #ui-root sibling (not inside #hud) so it survives createHud()'s innerHTML wipe and doesn't
-    // touch hud.js's body. Pins hull/shield/energy/heat/cargo/credits/role/sector so the player can
-    // always read their economic + vitals state (the strategy-game reframe). Event-driven, no rAF.
-    this.commandBar = createCommandBar(ctx);
+    // Command Bar — a persistent top-center resource strip (hull/shield/energy/heat/cargo/credits/
+    // role/sector). It is a FOURTH permanent anchor that duplicates the bottom-left schematic vitals
+    // and the bottom-center cargo/credits/role chips, and it competes with the one-voice channel.
+    // HUD three-anchor law (SPEC3-36, Option A — design/revamp/HUD_THREE_ANCHOR.md): retire it in
+    // flight; its data already lives in the anchors + contextual chips. Kept imported + flag-gated
+    // (NOT deleted) as the ready skeleton for the deferred SPEC3-36 shared screen-header (Option B) —
+    // that header belongs in the #screens layer (screenManager), not #ui-root. Flip to true only
+    // when that screen-layer header work lands. (Not in featureFlags.js: that registry is combat/
+    // determinism-scoped and orchestrator-owned; this is a UI-layout toggle.)
+    const COMMAND_BAR_IN_FLIGHT = false;
+    this.commandBar = COMMAND_BAR_IN_FLIGHT ? createCommandBar(ctx) : null;
 
     // === UI: aiming reticle ===
     // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
@@ -754,7 +760,14 @@ function injectHudCss() {
 
   /* ===== bottom-left: ship schematic + thin micro-bars (Tactical Visor §3C) ===== */
   /* Container is now chromeless — no panel background, border, or blur. */
-  .sf-bars { position:absolute; left:22px; bottom:22px; display:flex; flex-direction:column;
+  /* Bottom-left anchor is ONE flex column (SPEC3-36 three-anchor law): a contextual sub-column
+     (.sf-leftcontext — mission tracker + objectives + nav readout, relocated from the old top
+     stragglers) sits ABOVE the schematic + vitals (.sf-bars). Compositor-cheap: no shadow/transition. */
+  .sf-leftstack { position:absolute; left:22px; bottom:22px; display:flex; flex-direction:column;
+    gap:12px; align-items:flex-start; max-width:340px; }
+  .sf-leftcontext { display:flex; flex-direction:column; gap:8px; align-items:flex-start; max-width:300px; }
+  .sf-leftcontext:empty { display:none; }   /* collapses when every contextual readout is hidden */
+  .sf-bars { position:relative; display:flex; flex-direction:column;
     gap:10px; align-items:flex-start; }
 
   /* Top-down ship schematic: outline + shield ring + hull readout. */
@@ -805,9 +818,9 @@ function injectHudCss() {
   @keyframes sf-barpulse { from { box-shadow:0 0 4px var(--visor-red-dim); } to { box-shadow:0 0 10px 1px var(--visor-red); } }
   @keyframes sf-barready { from { box-shadow:0 0 4px rgba(201,140,255,.4); } to { box-shadow:0 0 10px 1px rgba(201,140,255,.9); } }
 
-  /* ===== top-center: nav / target-lock readout — chromeless floating text (§3E) ===== */
-   .sf-nav-readout { position:absolute; top:60px; left:50%; transform:translateX(-50%);
-    text-align:center; pointer-events:none; contain:layout paint style;
+  /* ===== nav / target-lock readout — chromeless text, relocated into the bottom-left column (§3E) ===== */
+   .sf-nav-readout { position:relative; text-align:left;
+    pointer-events:none; contain:layout paint style;
     padding:2px 10px; background:rgba(4,10,18,.34); }
   .sf-nav-label { font-family:var(--mono); font-size:13px; letter-spacing:.16em; text-transform:uppercase;
     color:var(--visor-cyan); text-shadow:none; }
@@ -927,8 +940,8 @@ function injectHudCss() {
   .sf-target__weak { margin-top:4px; font-size:10px; letter-spacing:.06em; color:#ffd24a;
     text-shadow:0 0 6px rgba(255,200,60,.5); }
 
-  /* ===== top-right: objective tracker — chromeless glowing lines (§3) ===== */
-  .sf-objectives { position:absolute; right:22px; top:18px; display:flex; flex-direction:column; gap:6px; align-items:flex-end; max-width:300px;
+  /* ===== objective tracker — chromeless lines, relocated into the bottom-left column (§3) ===== */
+  .sf-objectives { position:relative; display:flex; flex-direction:column; gap:6px; align-items:flex-start; max-width:300px;
     contain:layout paint style; }
   .sf-obj { display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:12px;
     letter-spacing:.04em; color:var(--text-primary); text-shadow:none; background:rgba(4,10,18,.24); padding:2px 6px; }
@@ -971,6 +984,9 @@ function injectHudCss() {
   .sf-alert--warn { color:var(--warn); border-color:rgba(255,179,71,.5); }
   .sf-alert--danger { color:var(--danger); border-color:rgba(255,84,112,.6);
     animation:sf-alertpulse .8s ease-in-out infinite alternate; }
+  /* One-voice floor: the arbiter-surfaced attention line always sits atop the persistent status
+     pills (dock/gate/lock/low-vitals) in the top-center slot, regardless of DOM insertion order. */
+  .sf-alert--floor { order:-1; }
   .sf-alert--dock { color:#30ffb0; border-color:rgba(48,255,176,.6); font-size:18px;
     padding:12px 28px; letter-spacing:.18em;
     background:rgba(8,14,24,.88); box-shadow:0 0 24px rgba(48,255,176,.3);
@@ -1070,7 +1086,7 @@ function injectHudCss() {
     .sf-fuel-label { font-size:8px; }
     .sf-bar--fuel { width:64px; }
     .sf-fuel-num { width:28px; font-size:9px; }
-    .sf-nav-readout { top:236px; max-width:calc(100vw - 24px); }
+    .sf-nav-readout { max-width:calc(100vw - 24px); }
     .sf-nav-label { max-width:calc(100vw - 32px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
     /* The full "[ TARGET LOCK: ... ]" prefix overflows a narrow pane — shorten to brackets here. */
     .sf-nav--lock .sf-nav-label::before { content:'[ '; }
@@ -1084,7 +1100,8 @@ function injectHudCss() {
     .sf-ob-intro h1 { font-size:20px; }
     .sf-ob-intro p { font-size:13px; }
 
-    .sf-bars { left:8px; bottom:96px; gap:7px; }
+    .sf-leftstack { left:8px; bottom:96px; max-width:calc(100vw - 16px); }
+    .sf-bars { gap:7px; }
     .sf-schematic { width:64px; height:64px; }
     .sf-sch-hull { font-size:12px; }
     .sf-barrow { gap:5px; }
@@ -1156,10 +1173,10 @@ function injectHudCss() {
     .sf-cargo-panel { width:calc(100vw - 24px); bottom:110px; }
   }
 
-  /* ===== HUD mission tracker (top-left) — chromeless, with a glowing edge marker ===== */
-  .sf-mission-tracker { position:absolute; top:96px; left:22px; max-width:280px;
+  /* ===== HUD mission tracker — chromeless, with an edge marker; relocated into the bottom-left column ===== */
+  .sf-mission-tracker { position:relative; max-width:280px;
     padding-left:10px; border-left:2px solid var(--visor-cyan-dim);
-    box-shadow:none; pointer-events:none; z-index:10; contain:layout paint style; }
+    box-shadow:none; pointer-events:none; contain:layout paint style; }
   .sf-mt-title { font-family:var(--mono); font-size:12px; color:var(--text-primary); letter-spacing:.06em;
     margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     text-shadow:none; }
@@ -1170,7 +1187,7 @@ function injectHudCss() {
   .sf-mt-time.sf-mt-urgent { color:var(--visor-amber); text-shadow:none; }
   @media (max-width: 760px) {
     /* Sit below the fuel line + comms (≡) button + top-center SYS line so nothing overlaps. */
-    .sf-mission-tracker { top:92px; left:8px; max-width:calc(100vw - 16px); }
+    .sf-mission-tracker { max-width:calc(100vw - 16px); }
     .sf-mt-title { font-size:10px; }
     .sf-mt-obj { font-size:9px; }
     .sf-mt-time { font-size:9px; }

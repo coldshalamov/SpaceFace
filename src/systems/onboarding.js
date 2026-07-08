@@ -272,7 +272,13 @@ export const onboarding = {
     if (!st.player.hints) st.player.hints = {};
     if (st.player.hints[key]) return;
     st.player.hints[key] = true;
-    this.bus.emit('toast', { text, kind: 'info', ttl: 7 });
+    // Contextual first-time hints are tutorial-tier too — routed through the one-voice arbiter so a
+    // hint never stacks on top of a beat line or a danger alert. Distinct id per hint key. Toast
+    // fallback only when the arbiter helper is absent.
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      && voice.say({ channel: 'tutorial', text, kind: 'info', ttl: 7, id: 'tutorial:hint:' + key });
+    if (!said) this.bus.emit('toast', { text, kind: 'info', ttl: 7 });
   },
 
   _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
@@ -341,7 +347,14 @@ export const onboarding = {
       ob.tutorialLog.push({ atS: this._lastTextAtS, text });
     }
     this.bus.emit('tutorial:say', { text, atS: this._lastTextAtS });
-    this.bus.emit('toast', { text, kind: 'info', ttl: 6 });
+    // Route the tutorial voice through the one-voice arbiter (channel 'tutorial'): it preempts
+    // objective nudges + chatter but yields to danger and story. A stable id means a beat's followup
+    // lines replace the beat line in place (one tutorial voice at a time). Fall back to a toast only
+    // when the arbiter helper is unavailable (headless/unit contexts).
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      && voice.say({ channel: 'tutorial', text, kind: 'info', ttl: 6, id: 'tutorial:beat' });
+    if (!said) this.bus.emit('toast', { text, kind: 'info', ttl: 6 });
   },
 
   // Try to advance to the next beat if the silence gate has passed since the previous beat's DONE.

@@ -670,7 +670,14 @@ export const missions = {
     this._refreshTrackedMissionNav(mission);
     if (!options.silent) {
       const wp = state.nav && state.nav.waypoint;
-      this.bus.emit('toast', { text: `Tracking: ${mission.title || 'Mission'}${wp && wp.reason ? ` - ${wp.reason}` : ''}`, kind: 'info', ttl: 3 });
+      const line = `Tracking: ${mission.title || 'Mission'}${wp && wp.reason ? ` - ${wp.reason}` : ''}`;
+      // Mission-objective nudge → the one-voice arbiter's 'objective' tier (preempts chatter, yields
+      // to tutorial/danger/story). Stable id so re-tracking replaces in place. Toast fallback only
+      // when the arbiter helper is unavailable (headless/unit contexts).
+      const voice = this.helpers && this.helpers.voice;
+      const said = voice && typeof voice.say === 'function'
+        && voice.say({ channel: 'objective', text: line, kind: 'info', ttl: 3, id: 'objective:tracked' });
+      if (!said) this.bus.emit('toast', { text: line, kind: 'info', ttl: 3 });
     }
     this.bus.emit('mission:updated', { missionId: mission.id, tracked: true });
     return true;

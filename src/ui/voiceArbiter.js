@@ -23,12 +23,22 @@
 // WITHOUT double-surfacing (a flag marks arbiter-originated toasts as pass-through).
 
 // Default priority per channel — higher wins the floor.
+//
+// Ordering law (spec2/00 §2 pillar 3 / SPEC3-F10 §40): danger > tutorial > objective > comms/story >
+// chatter. 'alert' is the danger channel; a danger-class caller passes an explicit priority (110) to
+// sit above 'story' when lives are at stake (see alerts.js). 'story' stays 100 (load-bearing: many
+// callers depend on story out-shouting flavor). tutorial(70)/objective(60) are the two tiers added
+// for the one-voice closeout — teaching preempts objective nudges + chatter but yields to danger and
+// story; objective nudges preempt chatter but yield to teaching. Do NOT renumber story/alert/bark/
+// news/info — 16+ callers reference them by string.
 export const CHANNEL_PRIORITY = {
-  story: 100,   // story comms — highest, must be heard
-  alert: 80,    // urgent gameplay alerts (danger, mission-critical)
-  bark:  50,    // enemy/wingman barks — flavor, rate-limited
-  news:  30,    // market / world news
-  info:  10,    // ambient info (default)
+  story:    100,  // story comms — highest by default, must be heard
+  alert:     80,  // urgent gameplay alerts (danger override to 110 in alerts.js when life-critical)
+  tutorial:  70,  // first-hour teaching — preempts objective/chatter, yields to danger + story
+  objective: 60,  // mission-objective nudges — preempt chatter, yield to tutorial/danger/story
+  bark:      50,  // enemy/wingman barks — flavor, rate-limited
+  news:      30,  // market / world news
+  info:      10,  // ambient info (default)
 };
 
 const DEFAULT_TTL_MS = 4000;         // matches toasts.js normalizeTtlMs default
@@ -46,6 +56,13 @@ function priorityFor(channel, priority) {
   if (Number.isFinite(priority)) return priority;
   const p = CHANNEL_PRIORITY[channel];
   return Number.isFinite(p) ? p : CHANNEL_PRIORITY.info;
+}
+
+// Stable presentation key for a queue entry: its explicit id, else a seq-derived key. Used so a
+// presenter (alerts.js top-center floor) can pair each voice:surface with its voice:clear.
+function presentationKey(entry) {
+  if (!entry) return null;
+  return entry.id != null ? String(entry.id) : 'seq:' + entry.seq;
 }
 
 // ── Pure, DOM-free priority queue ────────────────────────────────────────────────────────────────
@@ -160,6 +177,8 @@ export const voiceArbiter = {
     this.state = ctx.state;
     this.queue = new VoiceQueue();
     this._passThrough = false;                        // guards against re-arbitrating our own toasts
+    this._activeKey = null;                           // presentation key of the current floor holder
+    this._presentSig = null;                          // id+text of the presented floor (dedupe re-emit)
 
     const say = (msgOrChannel, text, opts) => {
       const msg = typeof msgOrChannel === 'string'
@@ -187,6 +206,8 @@ export const voiceArbiter = {
   newGame() {
     this.queue = new VoiceQueue();
     this._lastSurfacedId = null;
+    this._activeKey = null;
+    this._presentSig = null;
   },
 
   _now() {
@@ -197,10 +218,43 @@ export const voiceArbiter = {
 
   update(dt, state) {
     if (!this.queue) return;
-    const surfaced = this.queue.step(this._now());
+    const now = this._now();
+    const prevKey = this._activeKey || null;
+    const surfaced = this.queue.step(now);
+    const active = this.queue.active;
+    const activeKey = active ? presentationKey(active) : null;
+
+    // Floor released (its ttl elapsed) or replaced (a higher-priority arrival preempted it): retract
+    // the old presentation FIRST so the top-center presenter (alerts.js) never shows two floors.
+    if (prevKey && prevKey !== activeKey) {
+      this.bus.emit('voice:clear', { id: prevKey });
+    }
+
+    // Present the current floor whenever its identity OR text changed. This covers a fresh promotion
+    // AND an in-place same-id update (a live readout, or a tutorial followup replacing its beat line
+    // under a stable id) — the presenter must re-render either way.
+    const presentSig = active ? activeKey + '' + active.text : null;
+    if (active && presentSig !== this._presentSig) {
+      // The single top-center one-voice attention line (spec2/06). alerts.js renders it; toasts.js
+      // suppresses the _fromVoice mirror below so this is never double-surfaced.
+      this.bus.emit('voice:surface', {
+        id: activeKey,
+        channel: active.channel,
+        priority: active.priority,
+        text: active.text,
+        kind: active.kind,
+        ttl: active.ttlMs / 1000,
+      });
+    }
+    this._activeKey = activeKey;
+    this._presentSig = presentSig;
+
     if (surfaced) {
-      // Re-emit as a normal toast so toasts.js renders it. Preserve kind + ttl (in seconds, as the
-      // toast layer expects sub-60 values as seconds).
+      // Re-emit as a normal toast — BYTE-IDENTICAL to the pre-one-voice behavior (only on a fresh
+      // floor promotion, never on an in-place text update) so the golden telemetry + the
+      // check-one-voice system-wrapper contract are untouched. toasts.js ignores _fromVoice (renders
+      // nothing), keeping the toast purely as arbiter-origin telemetry/fallback. Preserve kind + ttl
+      // (seconds; the toast layer treats sub-60 values as seconds).
       this._passThrough = true;
       this.bus.emit('toast', {
         text: surfaced.text,

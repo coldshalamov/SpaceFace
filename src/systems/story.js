@@ -251,11 +251,12 @@ export const story = {
     // still receives comms:popup for the left-edge migraine; the arbiter serializes what the player
     // actually hears as a toast so story/ambient/trap lines never talk over each other.
     const voice = this.helpers && this.helpers.voice;
+    let said = false;
     if (voice && typeof voice.say === 'function') {
       const cat = p.category || 'ambient';
       const channel = (cat === 'story' || cat === 'personal' || cat === 'late') ? 'story'
         : (cat === 'trap' ? 'alert' : 'info');
-      voice.say({
+      said = voice.say({
         channel,
         text: p.sender ? `${p.sender}: ${p.text}` : p.text,
         kind: cat,
@@ -263,6 +264,11 @@ export const story = {
         id: p.id,
       });
     }
+    // The arbiter now PRESENTS the surfaced line as the top-center one-voice floor. Mark it so the
+    // comms feed logs it to the backlog only (re-readable) instead of ALSO stacking it on the live
+    // left-edge feed — otherwise the same player-addressed line shows twice (floor + feed). Ambient
+    // "not for you" chatter is unmarked and still fills the feed as the designed channel texture.
+    if (said) p._viaVoice = true;
     this.bus.emit('comms:popup', p);
   },
 

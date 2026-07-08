@@ -99,6 +99,15 @@ export function createComms(ctx) {
 
   function pushComms(p, fromQueue = false) {
     if (!p || !p.text) return;
+    // One-voice (spec2/06): a player-addressed line already surfaced by the arbiter as the top-center
+    // floor pill is logged to the BACKLOG only — re-stacking it on the live left-edge feed would show
+    // the same voice twice. Ambient chatter (unmarked) still fills the feed as the channel texture.
+    if (p._viaVoice) {
+      backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || 'ambient', note: p.note || null, at: Date.now() });
+      while (backlog.length > MAX_BACKLOG) backlog.pop();
+      if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
+      return;
+    }
     if (!fromQueue && introGateActive() && !GATE_BYPASS.test(p.category || '')) {
       p._heldAt = performance.now();
       held.push(p);

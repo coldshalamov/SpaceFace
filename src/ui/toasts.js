@@ -11,8 +11,13 @@ export function createToasts(ctx) {
   const live = []; // { el, born, ttl }
   let nextWakeAt = Infinity;
 
-  function push({ text = '', kind = 'info', ttl = 4 } = {}) {
+  function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false } = {}) {
     if (!root || !text) return;
+    // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
+    // telemetry/golden parity, but that floor is presented top-center by alerts.js (voice:surface).
+    // Rendering it here too would double the voice, so drop it. Mechanical action toasts (no
+    // _fromVoice — buy/sell/errors/pickups) are unaffected: they are an allowed separate channel.
+    if (_fromVoice) return;
     // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
     // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
     // copies ("Platinum x1" five times becomes "Platinum x1 ×5"). Keeps the feed readable under
