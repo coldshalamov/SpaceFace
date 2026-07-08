@@ -1413,3 +1413,10 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed
   (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
+
+### T5d-AUD-06 — claim (2026-07-08)
+- Claimed BP-10.1 `PKT-AUD-06` from `detail/F_comms_audio_onboarding.md`.
+- Backend-safe scope: add pure additive signature data/adapters/checks for `mining.seam_chime`
+  (richness-gated, throttle-aware seam hit chime) and `mining.vent_bonus` (clean forced-vent bonus chime)
+  using shipped `sfx_vent_chime`, `sfx_core_bell`, and `sfx_mining_impact` families without touching runtime audio.
+- No-touch remains `src/audio/audioSystem.js` and `src/systems/mining*.js`.
