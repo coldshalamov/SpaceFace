@@ -1420,3 +1420,26 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   (richness-gated, throttle-aware seam hit chime) and `mining.vent_bonus` (clean forced-vent bonus chime)
   using shipped `sfx_vent_chime`, `sfx_core_bell`, and `sfx_mining_impact` families without touching runtime audio.
 - No-touch remains `src/audio/audioSystem.js` and `src/systems/mining*.js`.
+
+### T5d-AUD-06 — DONE (2026-07-08)
+- Extended `src/presentation/cueRecipesSignatures.js` with `mining.seam_chime` /
+  `presentation.mining.seam_chime` and `mining.vent_bonus` / `presentation.mining.vent_bonus`, extended the
+  pure `signatureAdapters` helper, added `scripts/check-mining-audio-signatures.mjs` plus
+  `npm run check:mining-audio-signatures`, and added the missing data-only `sfx_core_bell` recipe that
+  `audioSystem` already referenced.
+- The seam helper reuses `mining:seamHit`, the live dull-rock baseline (`SEAM_YIELD_OFF = 0.35`), and the existing
+  0.5 s seam throttle. Poor/ordinary mining impacts return no cue; rich seam samples ring with an ascending chime
+  layered from `sfx_mining_impact` + `sfx_core_bell`.
+- The vent helper reuses `weapons:vent` but emits only on clean player phase-end samples with
+  `browserEligible:true`; dirty vents, start-phase vents, NPC vents, and headless samples return no cue.
+- Non-vacuous control: temporarily raised `mining.seam_chime.richnessThreshold` to `0.8`; the check failed because
+  the rich seam fixture no longer resolved. Restored `0.45`; the check passed.
+- No-regression floor: `node --check src/data/audioRecipes.js`,
+  `node --check src/presentation/cueRecipesSignatures.js`, `node --check src/systems/signatureAdapters.js`,
+  `node --check scripts/check-mining-audio-signatures.mjs`, `npm run check:mining-audio-signatures`,
+  `npm run check:tether-body-signature`, `npm run check:customs-signature`,
+  `npm run check:sensor-signatures`, `npm run check:tether-strain-signature`,
+  `npm run check:cue-priority-bus`, `node scripts/check-presentation-cues.mjs`,
+  `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed
+  (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition at `scripts/sf-sim.mjs:1161`.

@@ -7,6 +7,8 @@ export const SIGNATURE_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.strain': 'presentation.tether.strain',
   'tether.cut_whipcrack': 'presentation.tether.cut_whipcrack',
   'mass.groan': 'presentation.mass.groan',
+  'mining.seam_chime': 'presentation.mining.seam_chime',
+  'mining.vent_bonus': 'presentation.mining.vent_bonus',
   'sensor.scan': 'presentation.sensor.scan',
   'sensor.lock': 'presentation.sensor.lock',
   'customs.scan': 'presentation.customs.scan',
@@ -91,6 +93,44 @@ export const SIGNATURE_RECIPES = Object.freeze({
       { offsetMs: 180, playbackRate: 0.42, gain: 0.22, shape: 'groan' },
     ],
     layersWith: ['tether.strain'],
+  }),
+  'mining.seam_chime': freezeSignature({
+    id: 'mining.seam_chime',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['mining.seam_chime'],
+    material: 'mining',
+    mode: 'one-shot',
+    sourceEvent: 'mining:seamHit',
+    importance: 0.54,
+    playerRelevance: 0.74,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['mining', 'seam', 'signature', 'reward'],
+    richnessThreshold: 0.45,
+    baselineYieldMult: 0.35,
+    throttleMs: 500,
+    reuses: ['sfx_mining_impact', 'sfx_core_bell'],
+    tones: [
+      { offsetMs: 0, playbackRate: 1.04, gain: 0.16, shape: 'impact' },
+      { offsetMs: 72, playbackRate: 1.22, gain: 0.2, shape: 'bell' },
+      { offsetMs: 144, playbackRate: 1.44, gain: 0.16, shape: 'bell' },
+    ],
+  }),
+  'mining.vent_bonus': freezeSignature({
+    id: 'mining.vent_bonus',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['mining.vent_bonus'],
+    material: 'mining',
+    mode: 'one-shot',
+    sourceEvent: 'weapons:vent',
+    requiresPhase: 'end',
+    importance: 0.62,
+    playerRelevance: 0.78,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['mining', 'vent', 'signature', 'reward'],
+    reuses: ['sfx_vent_chime'],
+    tones: [
+      { offsetMs: 0, playbackRate: 1.0, gain: 0.28, shape: 'chime' },
+      { offsetMs: 90, playbackRate: 1.25, gain: 0.24, shape: 'chime' },
+      { offsetMs: 180, playbackRate: 1.5, gain: 0.18, shape: 'chime' },
+    ],
   }),
   'sensor.scan': freezeSignature({
     id: 'sensor.scan',
@@ -211,7 +251,13 @@ export function validateSignatureRecipes(recipes = SIGNATURE_RECIPES) {
       issues.push(`${path}.buckets must contain exactly three derivative steps`);
     }
     if (
-      (id.startsWith('sensor.') || id === 'customs.scan' || id === 'tether.cut_whipcrack' || id === 'mass.groan')
+      (
+        id.startsWith('sensor.')
+        || id === 'customs.scan'
+        || id === 'tether.cut_whipcrack'
+        || id === 'mass.groan'
+        || id.startsWith('mining.')
+      )
       && (!Array.isArray(recipe.tones) || recipe.tones.length < 2)
     ) {
       issues.push(`${path}.tones must contain the scan/lock tone steps`);
@@ -237,6 +283,26 @@ export function validateSignatureRecipes(recipes = SIGNATURE_RECIPES) {
       }
       if (!Number.isFinite(recipe.releaseFadeMs) || recipe.releaseFadeMs <= 0) {
         issues.push(`${path}.releaseFadeMs must define the release fade`);
+      }
+    }
+    if (id === 'mining.seam_chime') {
+      if (!Number.isFinite(recipe.richnessThreshold) || recipe.richnessThreshold <= 0 || recipe.richnessThreshold >= 1) {
+        issues.push(`${path}.richnessThreshold must gate rich seams`);
+      }
+      if (!Number.isFinite(recipe.baselineYieldMult) || recipe.baselineYieldMult <= 0 || recipe.baselineYieldMult >= 1) {
+        issues.push(`${path}.baselineYieldMult must match the dull-rock baseline`);
+      }
+      if (!Number.isFinite(recipe.throttleMs) || recipe.throttleMs < 500) {
+        issues.push(`${path}.throttleMs must preserve the seam-hit throttle`);
+      }
+      if (!Array.isArray(recipe.reuses) || !recipe.reuses.includes('sfx_mining_impact') || !recipe.reuses.includes('sfx_core_bell')) {
+        issues.push(`${path}.reuses must include shipped mining impact and core bell SFX`);
+      }
+    }
+    if (id === 'mining.vent_bonus') {
+      if (recipe.requiresPhase !== 'end') issues.push(`${path}.requiresPhase must be the clean vent end phase`);
+      if (!Array.isArray(recipe.reuses) || !recipe.reuses.includes('sfx_vent_chime')) {
+        issues.push(`${path}.reuses must include the shipped vent chime SFX`);
       }
     }
   }

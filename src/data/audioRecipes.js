@@ -561,6 +561,17 @@ export const RECIPES = [
     filterType: 'highpass', filterFreq: 600,
   },
   {
+    id: 'sfx_core_bell',
+    category: 'mining',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 660,
+    freqSweep: [660, 1320],
+    sweepTimeS: 0.18,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.32 },
+    filterType: 'highpass', filterFreq: 480,
+  },
+  {
     id: 'sfx_squelch_story',
     category: 'comms',
     type: 'oscillator',

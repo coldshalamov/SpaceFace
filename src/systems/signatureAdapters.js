@@ -7,6 +7,8 @@ import { isHostileToPlayer as scannerIsHostileToPlayer } from './scanner.js';
 export const SENSOR_SIGNATURE_DEBOUNCE_MS = 1000;
 export const CUSTOMS_SIGNATURE_DEBOUNCE_MS = 4000;
 export const TETHER_CUT_WHIPCRACK_EVENTS = Object.freeze(['tether:released', 'tether:broke']);
+export const MINING_SEAM_CHIME_THROTTLE_MS = 500;
+export const MINING_SEAM_BASELINE_YIELD_MULT = 0.35;
 
 export const CUSTOMS_ZONE_TYPES = Object.freeze([
   'border_checkpoint',
@@ -16,6 +18,8 @@ export const CUSTOMS_ZONE_TYPES = Object.freeze([
 export const SIGNATURE_TITLES = Object.freeze({
   'tether.cut_whipcrack': 'TAUT CUT',
   'mass.groan': 'HEAVY TOW',
+  'mining.seam_chime': 'RICH SEAM',
+  'mining.vent_bonus': 'CLEAN VENT',
   'sensor.scan': 'SCAN SWEEP',
   'sensor.lock': 'WEAPONS LOCK',
   'customs.scan': 'CUSTOMS SWEEP',
@@ -24,6 +28,8 @@ export const SIGNATURE_TITLES = Object.freeze({
 export const SIGNATURE_CAPTIONS = Object.freeze({
   'tether.cut_whipcrack': 'Taut line cut.',
   'mass.groan': 'Heavy mass under tow.',
+  'mining.seam_chime': 'Rich seam hit.',
+  'mining.vent_bonus': 'Clean vent bonus.',
   'sensor.scan': 'Scanned.',
   'sensor.lock': 'Weapons lock.',
   'customs.scan': 'Customs sweep.',
@@ -237,6 +243,112 @@ export function buildMassGroanCue(sample = {}) {
     tags: recipe.tags,
     tones: recipe.tones,
     layersWith: recipe.layersWith,
+  });
+}
+
+export function miningSourceEvent(sample = {}) {
+  return sample.sourceEvent || sample.eventId || sample.type || sample.eventType || null;
+}
+
+export function miningSeamRichnessDelta(sample = {}) {
+  const direct = sample.richnessDelta ?? sample.seamRichnessDelta;
+  if (Number.isFinite(direct)) return Math.max(0, direct);
+  const recipe = getSignatureRecipe('mining.seam_chime');
+  const baseline = finite(
+    sample.baselineYieldMult,
+    recipe && Number.isFinite(recipe.baselineYieldMult)
+      ? recipe.baselineYieldMult
+      : MINING_SEAM_BASELINE_YIELD_MULT,
+  );
+  const yieldMult = finite(sample.yieldMult ?? sample.multiplier ?? sample.seamMult, NaN);
+  if (Number.isFinite(yieldMult)) return Math.max(0, yieldMult - baseline);
+  if (sample.seamHit === true || sample.onSeam === true || miningSourceEvent(sample) === 'mining:seamHit') {
+    return Math.max(0, 1 - baseline);
+  }
+  return 0;
+}
+
+export function shouldThrottleMiningSeam(previous, nowMs, throttleMs = MINING_SEAM_CHIME_THROTTLE_MS) {
+  if (!previous) return false;
+  const untilMs = finite(previous.untilMs, finite(previous.startedAtMs, 0) + throttleMs);
+  return previous.id === 'mining.seam_chime' && finite(nowMs, 0) < untilMs;
+}
+
+export function resolveMiningSeamSignature(sample = {}) {
+  const recipe = getSignatureRecipe('mining.seam_chime');
+  if (!recipe) return null;
+  if (miningSourceEvent(sample) && miningSourceEvent(sample) !== recipe.sourceEvent) return null;
+  if (sample.seamHit === false || sample.onSeam === false) return null;
+  const nowMs = Math.max(0, finite(sample.nowMs, 0));
+  if (shouldThrottleMiningSeam(sample.previous, nowMs, recipe.throttleMs)) return null;
+  return miningSeamRichnessDelta(sample) >= recipe.richnessThreshold ? recipe.id : null;
+}
+
+export function buildMiningSeamCue(sample = {}) {
+  const id = resolveMiningSeamSignature(sample);
+  if (!id) return null;
+  const recipe = getSignatureRecipe(id);
+  const richnessDelta = miningSeamRichnessDelta(sample);
+  const normalized = clamp((richnessDelta - recipe.richnessThreshold) / (1 - recipe.richnessThreshold), 0, 1);
+  const nowMs = Math.max(0, finite(sample.nowMs, 0));
+  return Object.freeze({
+    id,
+    audioId: recipe.audioId,
+    sourceEvent: recipe.sourceEvent,
+    material: recipe.material,
+    mode: recipe.mode,
+    title: titleForSignature(id),
+    caption: captionForSignature(id),
+    importance: Math.min(1, recipe.importance + normalized * 0.06),
+    playerRelevance: recipe.playerRelevance,
+    asteroidId: sample.asteroidId ?? null,
+    richnessDelta: round4(richnessDelta),
+    yieldMult: Number.isFinite(sample.yieldMult) ? round4(sample.yieldMult) : null,
+    gain: round4(0.18 + normalized * 0.14),
+    playbackRate: round4(1.06 + normalized * 0.34),
+    startedAtMs: nowMs,
+    untilMs: nowMs + Math.max(1, finite(recipe.throttleMs, MINING_SEAM_CHIME_THROTTLE_MS)),
+    tags: recipe.tags,
+    tones: recipe.tones,
+    reuses: recipe.reuses,
+  });
+}
+
+export function resolveMiningVentBonusSignature(sample = {}) {
+  const recipe = getSignatureRecipe('mining.vent_bonus');
+  if (!recipe) return null;
+  if (miningSourceEvent(sample) && miningSourceEvent(sample) !== recipe.sourceEvent) return null;
+  if (sample.phase !== recipe.requiresPhase) return null;
+  if (sample.forced === false || sample.clean === false || sample.bonus === false) return null;
+  if (sample.browserEligible === false || sample.headless === true) return null;
+  if (sample.ownerId != null && sample.playerId != null && sample.ownerId !== sample.playerId) return null;
+  return recipe.id;
+}
+
+export function buildMiningVentBonusCue(sample = {}) {
+  const id = resolveMiningVentBonusSignature(sample);
+  if (!id) return null;
+  const recipe = getSignatureRecipe(id);
+  const nowMs = Math.max(0, finite(sample.nowMs, 0));
+  return Object.freeze({
+    id,
+    audioId: recipe.audioId,
+    sourceEvent: recipe.sourceEvent,
+    material: recipe.material,
+    mode: recipe.mode,
+    title: titleForSignature(id),
+    caption: captionForSignature(id),
+    importance: recipe.importance,
+    playerRelevance: recipe.playerRelevance,
+    ownerId: sample.ownerId ?? null,
+    phase: sample.phase,
+    forced: sample.forced !== false,
+    clean: sample.clean !== false,
+    browserEligible: sample.browserEligible !== false,
+    startedAtMs: nowMs,
+    tags: recipe.tags,
+    tones: recipe.tones,
+    reuses: recipe.reuses,
   });
 }
 
