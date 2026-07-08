@@ -967,3 +967,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:balance` 0 FAIL, and `check:sim:compare` still fails only on the documented 47-A projectile-collision
   precondition at `sf-sim.mjs:1161`. Additional broader gate attempted: `check:sg06:registry-init` fails
   outside this packet at `src/systems/tacticalAI.js:188` (`Cannot assign to read only property 'fire'`).
+
+### T5e-SYNERGY-TELLS — claim (2026-07-08)
+- Claimed BP-09.1 SYNERGY-TELLS as a backend data packet: name only module pairs whose benefit/drawback is
+  already mechanically real, then expose those rows through BUILD-ID metadata for UI panels to consume later.
+- Live proof before claim: `src/data/synergies.js` and `scripts/check-synergy-tells.mjs` are absent;
+  `package.json` has no `check:synergy-tells` script, and BUILD-ID currently returns archetype only.
+- Scope guard: no `modules.js`, `ships.js`, `flightV3.js`, `mining.js`, combat, UI, render, assets, or stat
+  coupling edits. Expected files are the pure data helper, its check, BUILD-ID metadata consumption, package,
+  and ledger notes.
