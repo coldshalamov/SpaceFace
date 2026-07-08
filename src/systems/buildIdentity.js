@@ -5,6 +5,7 @@
 // can render the badge without scanner, target-panel, combat, or module-stat edits.
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
+import { compactSynergy, synergiesForFittings } from '../data/synergies.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const MODULE_BY_ID = new Map(MODULES.map((mod) => [mod.id, mod]));
@@ -58,7 +59,7 @@ function hasModValue(defs, key) {
   return defs.some((def) => def.mods && def.mods[key] != null);
 }
 
-function makeIdentity(def, basis) {
+function makeIdentity(def, basis, synergies = []) {
   return Object.freeze({
     id: def.id,
     label: def.label,
@@ -71,6 +72,7 @@ function makeIdentity(def, basis) {
       modules: Object.freeze(basis.modules.slice()),
       matched: Object.freeze((def.matched || []).slice()),
     }),
+    synergies: Object.freeze(synergies.map(compactSynergy).filter(Boolean)),
   });
 }
 
@@ -246,7 +248,7 @@ export function classifyBuildIdentity(input, options = {}) {
     def = roleFallback(role);
   }
 
-  return makeIdentity(def, basis);
+  return makeIdentity(def, basis, synergiesForFittings(ids));
 }
 
 function sameIdentity(a, b) {

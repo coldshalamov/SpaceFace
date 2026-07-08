@@ -976,3 +976,18 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Scope guard: no `modules.js`, `ships.js`, `flightV3.js`, `mining.js`, combat, UI, render, assets, or stat
   coupling edits. Expected files are the pure data helper, its check, BUILD-ID metadata consumption, package,
   and ledger notes.
+
+### T5e-SYNERGY-TELLS — DONE (2026-07-08)
+- NEW pure `src/data/synergies.js` plus `npm run check:synergy-tells`. Four rows ship: Rammer-Truck,
+  Control-Tug, Bulk Miner, and Survey Control. Each row names required real module ids, one benefit line,
+  and one drawback line tied to a live derived stat.
+- BUILD-ID now attaches compact synergy metadata to each classified scan identity, so later UI panels can
+  show the named pair without recomputing rules or inventing stat coupling.
+- The check proves exact module-pair matching, rejects partial fittings, verifies every advertised drawback
+  against `getDerivedStats()` on its validation hull, and confirms BUILD-ID exposes the same compact helper
+  output.
+- Non-vacuous control: temporarily changed Rammer-Truck drawback direction from `down` to `up`; the check
+  failed because live `turnRate` decreases, then restored GREEN.
+- Related gates: `check:synergy-tells`, `check:build-identity`, `check:scan-reveal`, and `check-data-refs`
+  all PASS. `check:balance` stays at 0 FAIL. `check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition at `sf-sim.mjs:1161`.
