@@ -19,12 +19,13 @@ const { chromium } = await loadPlaywright();
 
 let server = null;
 let browser = null;
+let issues = null;
 
 try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page);
+  issues = collectPageIssues(page, { includeWarnings: true });
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
     window.stationTabSnapshot = () => {
@@ -133,7 +134,7 @@ try {
       'first dock handoff should expose an accessible button for ' + wanted + ': ' + JSON.stringify(initial.handoffTargets));
   }
   assert.deepEqual(initial.tabs.map((tab) => tab.tabId), [
-    'market', 'shipyard', 'outfit', 'manufacture', 'missions', 'services', 'factions', 'bar',
+    'market', 'hold', 'shipyard', 'outfit', 'manufacture', 'missions', 'services', 'factions', 'bar',
   ], 'station rail should preserve authored tab order');
   for (const tab of initial.tabs) {
     assert.equal(tab.controls, 'st-panel-' + tab.tabId, 'tab should point at its owned panel: ' + tab.tabId);
@@ -149,11 +150,11 @@ try {
 
   await pressAndExpect(page, 'End', 'bar');
   await pressAndExpect(page, 'Home', 'market');
-  await pressAndExpect(page, 'ArrowDown', 'shipyard');
-  await pressAndExpect(page, 'ArrowRight', 'outfit');
-  await pressAndExpect(page, 'PageDown', 'manufacture');
-  await pressAndExpect(page, 'PageUp', 'outfit');
-  await pressAndExpect(page, 'ArrowUp', 'shipyard');
+  await pressAndExpect(page, 'ArrowDown', 'hold');
+  await pressAndExpect(page, 'ArrowRight', 'shipyard');
+  await pressAndExpect(page, 'PageDown', 'outfit');
+  await pressAndExpect(page, 'PageUp', 'shipyard');
+  await pressAndExpect(page, 'ArrowUp', 'hold');
   await focusAndExpect(page, 'services', 'Enter');
   await focusAndExpect(page, 'missions', 'Space');
 
@@ -229,6 +230,11 @@ try {
 
   console.log('Station tab navigation OK: canonical New Game -> dock -> keyboard rail + departure chips -> coherent active panel');
   console.log('Dock target:', dockTarget.stationId, dockTarget.label);
+} catch (err) {
+  if (typeof issues !== 'undefined') {
+    console.error('Captured page issues during run:', issues.issues);
+  }
+  throw err;
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
@@ -373,7 +379,21 @@ async function waitForVisible(page, selector, timeoutMs, label) {
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
     return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
-  }, selector, { timeout: timeoutMs }).catch((err) => {
+  }, selector, { timeout: timeoutMs }).catch(async (err) => {
+    const info = await page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      const screens = document.querySelector('#screens');
+      return {
+        exists: !!el,
+        outerHtml: el ? el.outerHTML.slice(0, 1000) : null,
+        display: el ? getComputedStyle(el).display : null,
+        visibility: el ? getComputedStyle(el).visibility : null,
+        width: el ? el.getBoundingClientRect().width : null,
+        height: el ? el.getBoundingClientRect().height : null,
+        screensHtml: screens ? screens.innerHTML.slice(0, 2000) : null,
+      };
+    }, selector);
+    console.error('DEBUG WAIT FOR VISIBLE FAILED FOR', selector, 'INFO:', JSON.stringify(info, null, 2));
     throw new Error('Timed out waiting for ' + label + ': ' + err.message);
   });
 }
