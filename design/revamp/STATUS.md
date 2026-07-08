@@ -1043,3 +1043,11 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `reinforcementBlocked` and clears legacy reinforcement configs without emitting reinforcement toasts.
 - Verification: `npm run check:wing-morale`, `npm run check:combat-outcome`, `npm run check:battle-aftermath`,
   and `npm run check:one-voice` all pass.
+
+### T5a-C4 SILHOUETTE_THREAT_LANGUAGE — claim (2026-07-08)
+- Claimed backend-safe BP-02.1/C4 from `detail/C_combat_encounters.md`: define a role-to-silhouette-family
+  contract with tactical tells that future radar/asset surfaces can honor without inventing a second source.
+- Live proof before claim: `src/data/silhouetteRoles.js` and `scripts/check-silhouette-roles.mjs` are absent;
+  `package.json` has no `check:silhouette-roles` script.
+- Scope guard: no render, HUD, assets, `world.js`, `ships.js`, `targetPanel.js`, scanner behavior, or runtime
+  mesh selection edits. Expected files are the pure data helper, its check, package wiring, and progress notes.
