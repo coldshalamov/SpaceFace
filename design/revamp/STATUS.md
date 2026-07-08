@@ -1060,3 +1060,14 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Added `npm run check:silhouette-roles`, which proves all 13 canonical hull roles are covered, all five
   silhouette families are exercised, current ship visual families match, unknown roles return `null`, and the
   packet stays data-only with no registry, scanner, target-panel, render, HUD, or asset wiring.
+
+### T5a-SPIN-DRIFT — claim (2026-07-08)
+- Claimed the backend-safe BP-02 mining-fold packet SPIN-AND-DRIFT from
+  `detail/D_flight_ships_mining.md`: a data-only per-field motion profile contract over the already-shipped
+  asteroid `rot`/`angVel` seam math.
+- Live proof before claim: `src/data/asteroidMotion.js` and `scripts/check-asteroid-motion.mjs` are absent;
+  `package.json` has no `check:asteroid-motion` script. Live `world.js` already stamps asteroid `angVel`, and
+  live `mining.js` rotates seam world points from `ast.rot`, so this packet can pin/cap the contract without
+  editing those owners.
+- Scope guard: no `world.js`, `mining.js`, `data/mining.js`, render, assets, HUD, input, or combat edits.
+  Expected files are the pure data helper, its check, package wiring, and progress notes.
