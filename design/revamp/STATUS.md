@@ -1238,3 +1238,19 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   fields (`angularAccel`, `inertia`, `maxSpeed`, `angularBrake`) so shipyard/outfitting UI can consume real
   per-hull fingerprints later. No-touch remains `src/systems/ships.js`, `src/systems/flightV3.js`,
   `src/data/ships.js`, `src/core/flight/propulsionCatalog.js`, HUD, render, and input.
+
+### T5c-MASS-PERSONALITY — DONE (2026-07-08)
+- Added pure `src/ui/panels/handlingProfile.js` and `scripts/check-handling-profile.mjs` plus
+  `npm run check:handling-profile`. The helper exposes four bars directly from the shipped flight model:
+  `angularAccel`, `inertia`, `maxSpeed`, and `angularBrake`, with drive metadata read from the authored
+  `driveId` / propulsion catalog.
+- The check proves all 13 shipped hulls have distinct four-axis fingerprints, pins Kestrel / Ironback / Hornet
+  ordering against live `getDerivedStats()` output, and confirms Hornet/Ironback keep their authored drive
+  families. No runtime tuning was changed.
+- Non-vacuous control: temporarily changed the Agility axis source from `angularAccel` to `maxYawRate`;
+  `npm run check:handling-profile` failed on the source-field assertion. Restored `angularAccel`; the check passed.
+- No-regression floor: `node --check src/ui/panels/handlingProfile.js`,
+  `node --check scripts/check-handling-profile.mjs`, `npm run check:handling-profile`,
+  `npm run check:module-risk`, `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed
+  (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition at `scripts/sf-sim.mjs:1161`.

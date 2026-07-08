@@ -148,8 +148,8 @@
 | T5b-BARK-01 | BP-05.1 BARK-01 Situational Bark Surfacing | DONE 2026-07-07 | T4 | `npm run check:bark-director` PASS |
 | T5b-BARK-02 | BP-05.1 BARK-02 Ambient Bark Decay + Post-Combat Silence | DONE 2026-07-07 | T4 | `npm run check:bark-silence` PASS |
 | T5b-PKT-RITUAL | REVAMP_MASTER first-15 proof ritual naming/check | BLOCKED 2026-07-08 | T4 | Runtime B1/B3 spawns depend on `onboarding.helpers`, but `onboarding.init(ctx)` does not store `ctx.helpers`; packet marks `onboarding.js` no-touch. |
-| T5c | BP-07.1 flight/ship-mass (5 packets) | IN-PROGRESS 2026-07-08 (MASS-PERSONALITY CLAIMED) | T4 | — |
-| T5c-MASS-PERSONALITY | BP-07.1 per-hull handling fingerprint backend readout | CLAIMED 2026-07-08 | T4 | Pure `flightModel` profile helper/check; no `ships.js`, `flightV3.js`, data, HUD, or render edits. |
+| T5c | BP-07.1 flight/ship-mass (5 packets) | IN-PROGRESS 2026-07-08 (MASS-PERSONALITY DONE) | T4 | — |
+| T5c-MASS-PERSONALITY | BP-07.1 per-hull handling fingerprint backend readout | DONE 2026-07-08 | T4 | `npm run check:handling-profile` PASS; wrong-field control failed/restored/passed. |
 | T5d | BP-10.1 audio (7 packets) | NEXT | T4 | — |
 | T5e | BP-09.1 builds/synergies (4 packets) | IN-PROGRESS 2026-07-08 (BUILD-ID + SYNERGY-TELLS + MODULE-RISK DONE) | T4 | — |
 | T5e-BUILD-ID | BP-09.1 BUILD-ID archetype badge backend | DONE 2026-07-08 | T4 | `npm run check:build-identity` PASS |
