@@ -1,0 +1,7 @@
+---
+pid: 30764
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "npm run check:assets:live 2>&1"
+started_at: 2026-07-08T16:38:37.660Z
+running_for_ms: 56387    
+---
