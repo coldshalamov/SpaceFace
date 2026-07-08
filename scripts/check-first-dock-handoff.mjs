@@ -1,6 +1,6 @@
 // Guards the first dock handoff rail.
 // The rail is non-blocking UI, but it must keep the opening station loop explicit:
-// sell/audit cargo, accept one safe job, then leave when Departure Check is clean.
+// audit/sell cargo, accept one safe job, then leave when Departure Check is clean.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -19,8 +19,10 @@ assert.ok(stationSource.includes("handoff.className = 'st-handoff'"),
   'station hub must render a visible first dock handoff container');
 assert.ok(stationSource.includes('First Dock Handoff'),
   'handoff rail must have a player-facing title');
-assert.ok(stationSource.includes('Sell / audit sample'),
-  'handoff rail must start with the Market sample/audit step');
+assert.ok(stationSource.includes('Audit hold / sell cargo'),
+  'handoff rail must start with a truthful Market hold/audit step');
+assert.doesNotMatch(stationSource, /Sell the sample|Sample cleared|Sell mined cargo/i,
+  'first dock handoff must not claim a sample or mined cargo exists when the hold can be empty');
 assert.ok(stationSource.includes('Accept one low-risk job'),
   'handoff rail must send players to a safe first contract');
 assert.ok(stationSource.includes('Launch when safe'),
@@ -60,7 +62,7 @@ assert.doesNotMatch(onboardingSource, /tab labels at top/i,
   'first dock onboarding copy must not describe the old top-tab layout');
 assert.match(onboardingSource, /left rail/,
   'first dock onboarding copy must teach the actual station left rail');
-assert.match(onboardingSource, /sell the sample, accept one low-risk job/,
+assert.match(onboardingSource, /audit the hold, accept one low-risk job/,
   'first dock onboarding copy must match the handoff rail loop');
 assert.match(onboardingSource, /Departure Check looks safe/,
   'first dock onboarding copy must reinforce Departure Check before undocking');

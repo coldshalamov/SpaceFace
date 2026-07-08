@@ -500,6 +500,14 @@ function activeMissionCount(state) {
   return active.filter((m) => m && (m.status == null || m.status === 'active')).length;
 }
 
+function cargoUsedUnits(state) {
+  const cargo = state && state.player && state.player.cargo || {};
+  const used = Number(cargo.usedVolume);
+  if (Number.isFinite(used) && used > 0) return used;
+  const items = cargo.items || {};
+  return Object.values(items).reduce((sum, qty) => sum + Math.max(0, Number(qty) || 0), 0);
+}
+
 function firstDockStoryIndex(state) {
   const story = state && state.story || {};
   const raw = story.beatIndex != null ? story.beatIndex :
@@ -534,14 +542,17 @@ export function firstDockHandoffSteps(state = {}) {
   const departureChips = departureReadinessChips(state);
   const departure = departureReadinessSummary(departureChips);
   const marketDone = done.sell === true;
+  const hasCargo = cargoUsedUnits(state) > 0;
   return [
     {
       key: 'market',
       label: 'Market',
-      title: 'Sell / audit sample',
+      title: hasCargo || marketDone ? 'Audit hold / sell cargo' : 'Audit empty hold',
       text: marketDone
-        ? 'Sample cleared; credits and hold space are ready.'
-        : 'Sell mined cargo, free hold space, and confirm the manifest.',
+        ? 'Market checked; credits and hold space are ready.'
+        : (hasCargo
+            ? 'Sell cargo, free hold space, and confirm the manifest.'
+            : 'Hold is empty; open Market to confirm prices and route options.'),
       kind: marketDone ? 'ok' : 'warn',
       done: marketDone,
       targetTab: 'market',
@@ -954,7 +965,7 @@ export const stationHub = {
     handoff.innerHTML =
       '<div class="st-handoff-head">' +
         '<span class="st-handoff-label mono">First Dock Handoff</span>' +
-        '<span class="st-handoff-copy">Sell the sample, take one safe job, then launch only when Departure Check reads clean.</span>' +
+        '<span class="st-handoff-copy">Audit the hold, take one safe job, then launch only when Departure Check reads clean.</span>' +
       '</div>' +
       '<div class="st-handoff-steps"></div>';
     centerStage.appendChild(handoff);
