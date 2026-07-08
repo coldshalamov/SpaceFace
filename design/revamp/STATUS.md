@@ -1356,3 +1356,10 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-presentation-cues.mjs`, `node scripts/check-data-refs.mjs`, and `npm run check:balance`
   passed (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
+
+### T5d-AUD-04 — claim (2026-07-08)
+- Claimed BP-10.1 `PKT-AUD-04` from `detail/F_comms_audio_onboarding.md`.
+- Backend-safe scope: add `customs.scan` as a longer/colder variant of `sensor.scan`, plus a pure adapter/check
+  that returns the customs tone once on scan start only when a Concord customs zone/station and contraband are both
+  present; otherwise the shipped plain scan tone remains the fallback.
+- No-touch remains `src/systems/economy.js`, `src/audio/audioSystem.js`, and `src/data/sectorZones.js`.
