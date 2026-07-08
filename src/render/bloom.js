@@ -340,6 +340,91 @@ export function createBloom(renderer, width, height) {
     uBloomNorm: { value: BLOOM_PYRAMID_NORM },
     uExposure:  { value: exposure },
     uAces:      { value: aces },
+    uGrain:     { value: 0.35 },   // film grain (cyberpunk-noir mood)
+    uVignette:  { value: 0.85 },   // atmospheric corner fall-off
+    uGrade:     { value: 0.55 },   // teal-shadow/amber-highlight color grade
+    uGrainFrame: { value: 0 },
+  });
+
+  // draw the shared quad with a given material into a given target (null = screen)
+  function blit(material, target) {
+    quadMesh.material = material;
+    renderer.setRenderTarget(target);
+    renderer.render(quadScene, quadCam);
+  }
+
+  function render(scene, camera) {
+    // Fast path / fallback: bloom off OR strength ~0 — render straight to screen, no extra cost,
+    // and (importantly) no risk of the post pipeline altering the image.
+    if (!enabled || strength <= 0.0001) {
+      renderer.setRenderTarget(null);
+      renderer.render(scene, camera);
+      return;
+    }
+
+    const prevAutoClear = renderer.autoClear;
+
+    // pass 0 — scene into HDR buffer (renderer applies its own tone-mapping here)
+    renderer.setRenderTarget(rtScene);
+    renderer.clear();
+    renderer.render(scene, camera);
+
+    // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
+    renderer.autoClear = false;
+
+    // ---- downsample chain: full -> ½ (bright-pass) -> ¼ -> ⅛ ----
+    // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
+    let src = rtScene.texture;
+    for (let i = 0; i < levels; i++) {
+      const sw = i === 0 ? W : Math.max(1, W >> i);
+      const sh = i === 0 ? H : Math.max(1, H >> i);
+      downsampleMat.uniforms.tDiffuse.value = src;
+      downsampleMat.uniforms.uTexel.value.set(1 / sw, 1 / sh);
+      downsampleMat.uniforms.uThreshold.value = threshold;
+      downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
+      blit(downsampleMat, down[i]);
+      src = down[i].texture;
+    }
+
+    // ---- upsample chain: deepest level -> ½, ADDITIVELY blending each coarse level over the next
+    // finer down level. The additive spread is what makes the halo wide. Two scratch RTs ping/pong;
+    // `outRT`/`readRT` are local per-frame aliases so we never mutate the module-level refs mid-loop.
+    // Step for i = levels-1 down to 1: upsample level i (coarse) + add level i-1 (fine) -> level i-1 size.
+    let readTex = down[levels - 1].texture;            // coarsest pyramid level
+    let outRT = bloomPing;
+    let scratchRT = bloomPong;
+    let finalTex = down[levels - 1].texture;            // result of the upsample chain (½-res if levels>1)
+    for (let i = levels - 1; i >= 1; i--) {
+      const targetW = Math.max(1, W >> i);              // output = finer level (down[i-1]) resolution
+      const targetH = Math.max(1, H >> i);
+      outRT.setSize(targetW, targetH);
+      upsampleMat.uniforms.tCoarse.value = readTex;     // level i (coarse, to be spread up)
+      upsampleMat.uniforms.tFine.value = down[i - 1].texture; // level i-1 (sharp brights to keep)
+      upsampleMat.uniforms.uTexel.value.set(1 / targetW, 1 / targetH);
+      upsampleMat.uniforms.uWeight.value = 0.36;
+      blit(upsampleMat, outRT);
+      finalTex = outRT.texture;
+      // the just-written RT becomes the coarse input next iteration; reuse the other scratch as output
+      readTex = finalTex;
+      const used = outRT; outRT = scratchRT; scratchRT = used;
+    }
+
+    // pass 6 — composite to screen (sRGB-encoded, with cinematic post grade applied)
+    compositeMat.uniforms.tScene.value = rtScene.texture;
+    compositeMat.uniforms.tBloom.value = finalTex;
+    compositeMat.uniforms.uStrength.value = strength;
+    compositeMat.uniforms.uExposure.value = exposure;
+    compositeMat.uniforms.uAces.value = aces;
+    const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+    compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * FILM_GRAIN_FPS);
+    blit(compositeMat, null);
+
+    renderer.autoClear = prevAutoClear;
+    renderer.setRenderTarget(null);
+  }
+
+  function rebuild() {
+    // WebGL context restore: the old render-target GPU textures are invalid. Dispose them and
     // recreate the whole pyramid at the current size so the next frame can render cleanly.
     rtScene.dispose();
     for (const rt of down) rt.dispose();
