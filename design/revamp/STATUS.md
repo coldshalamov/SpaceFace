@@ -1204,3 +1204,20 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `npm run check:known-vs-live-prices`, `node scripts/check-price-memory.mjs`, `node scripts/check-data-refs.mjs`,
   and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on
   the documented 47-A projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
+
+### T5e-MODULE-RISK — DONE (2026-07-08)
+- Added pure `src/ui/panels/moduleRisk.js` and `scripts/check-module-risk.mjs` plus
+  `npm run check:module-risk`. The helper exposes only shipped, read-only risks: `mod_smuggler_hold`
+  contraband/hidden-hold flags, mining-module noise tied to `mining._updateMiningNoise` /
+  `danger:miningNoise`, heavy module/build mass from live module data and `getDerivedStats()`, and
+  `power_hungry` only when `continuousDrain > capRegen`.
+- No behavior-owning systems changed: `modules.js`, `ships.js`, and `economy.js` remained no-touch. The
+  helper has no DOM/render wiring, no RNG/time, and no economy/cargo writer access.
+- Non-vacuous control: temporarily changed the helper's contraband gate from `legality === 'contraband'` to
+  `legality === 'restricted'`; `npm run check:module-risk` failed on the missing smuggler-hold glyph. Restored
+  the gate; `npm run check:module-risk` passed again.
+- No-regression floor: `node --check src/ui/panels/moduleRisk.js`, `node --check scripts/check-module-risk.mjs`,
+  `npm run check:module-risk`, `npm run check:build-identity`, `npm run check:synergy-tells`,
+  `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`).
+  `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
+  `scripts/sf-sim.mjs:1161`.
