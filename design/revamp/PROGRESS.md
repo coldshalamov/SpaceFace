@@ -154,9 +154,10 @@
 | T5e-BUILD-ID | BP-09.1 BUILD-ID archetype badge backend | DONE 2026-07-08 | T4 | `npm run check:build-identity` PASS |
 | T5e-SYNERGY-TELLS | BP-09.1 SYNERGY-TELLS backend data | DONE 2026-07-08 | T4 | `npm run check:synergy-tells` PASS |
 | T5e-MODULE-RISK | BP-09.1 MODULE-DRAWBACK-GLYPHS backend readout | DONE 2026-07-08 | T4 | `npm run check:module-risk` PASS; contraband-gate control failed/restored/passed. |
-| T5f | BP-03.1 map (3 packets) | IN-PROGRESS 2026-07-08 (INTENT-STRIP DONE; PRICE-MEMORY DONE) | T4 | — |
+| T5f | BP-03.1 map (3 packets) | IN-PROGRESS 2026-07-08 (INTENT-STRIP DONE; PRICE-MEMORY DONE; MAP-CONFIDENCE BLOCKED) | T4 | — |
 | T5f-INTENT-STRIP | BP-03.1 `overview_intent_strip` data/check backend half | DONE 2026-07-08 | T4 | `npm run check:intent-glyphs` PASS |
 | T5f-PRICE-MEMORY | BP-03.1 `known_vs_live_prices` shipped runtime/check | DONE 2026-07-08 | T4 | `npm run check:known-vs-live-prices` PASS; runtime writer control failed/restored/passed. |
+| T5f-MAP-CONFIDENCE | BP-03.1 `map_confidence_not_fog` confidence field | BLOCKED 2026-07-08 | T4/maps lane | Packet requires `buildGalaxyModel`/`buildSystemModel` confidence output while declaring `galaxyMap.js` no-touch and `newFiles:none`; not safe for backend lane. |
 
 ## T6 — ASSET MANIFEST SYNC + QUEUED ASSET AUTHORING (coordinate with graphics lane)
 
