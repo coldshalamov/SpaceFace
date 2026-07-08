@@ -116,4 +116,21 @@ export const MIGRATIONS = [
       }
     },
   },
+  // v8: BP-01/C11 battle-aftermath wreck markers. Old saves begin with no recorded live battle
+  // residue; current saves preserve named-zone wreck markers across Continue.
+  {
+    from: 7,
+    to: 8,
+    fn(data) {
+      if (!data.aftermathWrecks || typeof data.aftermathWrecks !== 'object' || Array.isArray(data.aftermathWrecks)) {
+        data.aftermathWrecks = { schemaVersion: 1, bySector: {}, seed: 0 };
+        return;
+      }
+      data.aftermathWrecks.schemaVersion = 1;
+      if (!data.aftermathWrecks.bySector || typeof data.aftermathWrecks.bySector !== 'object' || Array.isArray(data.aftermathWrecks.bySector)) {
+        data.aftermathWrecks.bySector = {};
+      }
+      if (typeof data.aftermathWrecks.seed !== 'number') data.aftermathWrecks.seed = 0;
+    },
+  },
 ];

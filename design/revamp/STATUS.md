@@ -1009,3 +1009,17 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   repaired and pushed, so durable provenance has a working save path.
 - Scope guard: no `combat.js`, `salvage.js`, `sectorSim.js`, `world.js`, render, assets, HUD, or input edits.
   Expected files are the new system/check, registry/package/save-schema wiring, and ledger notes.
+
+### T5a-C11 BATTLE_AFTERMATH_PERSISTENCE — DONE (2026-07-08)
+- Added `src/systems/aftermathWrecks.js`: live `entity:killed` events inside authored named zones record a
+  bounded, newest-first aftermath marker with victim class, killer id, tick/time, zone identity, and faction
+  provenance. Out-of-zone kills and player deaths are ignored.
+- Sector re-entry now materializes those markers as ordinary salvageable `wreck` entities with
+  `salvagePool`, `salvageTimeLeft`, `wreckClass`, structured `data.provenance`, and a readable
+  `provenanceLine`; `salvage:completed` consumes the durable marker so stripped wrecks do not reappear.
+- Save schema is now v8 with a v7->v8 migration seeding `data.aftermathWrecks`; `SAVE_SCHEMA.md`
+  regenerated. The adjacent `check:combat-outcome` ordering assertion was updated to allow the new
+  observer between combat outcomes and later combat/salvage readers.
+- Verification: `npm run check:battle-aftermath`, `npm run check:save-schema`, `npm run check:combat-outcome`,
+  `npm run check:wreck-provenance`, `npm run check:save-resume-confidence`, `node scripts/check-data-refs.mjs`,
+  `npm run check:balance` (2 PASS / 2 WARN / 0 FAIL), and `git diff --check` all pass.

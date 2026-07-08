@@ -146,6 +146,7 @@ function legacyFixture(version) {
   if (version >= 5) data.combat = { schemaVersion: 1, combatSchemaVersion: 1, actions: {}, attachments: { byId: {} } };
   if (version >= 6) data.nav = { route: null, autoTravel: false, waypoint: null };
   if (version >= 7) data.lossLedger = { entries: [], seed: 0, ghostConvoy: { fired: {} } };
+  if (version >= 8) data.aftermathWrecks = { schemaVersion: 1, bySector: {}, seed: 0 };
   return data;
 }
 
@@ -174,6 +175,8 @@ function assertMigrationDefaults(data) {
     'migrations should seed lossLedger.entries');
   assert(data.lossLedger.ghostConvoy && typeof data.lossLedger.ghostConvoy.fired === 'object',
     'migrations should seed lossLedger ghost-convoy receipts');
+  assert(data.aftermathWrecks && typeof data.aftermathWrecks.bySector === 'object',
+    'migrations should seed aftermathWrecks.bySector');
 }
 
 function collectPaths(value) {

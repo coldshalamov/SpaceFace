@@ -4,4 +4,5 @@
 // v5: SG-03 semantic combat state persists actions, combatants, and active attachments.
 // v6: player-authored navigation intent persists route/waypoint/autoTravel across Continue.
 // v7: BP-01.1 loss-ledger provenance persists across Continue.
-export const CURRENT_VERSION = 7;
+// v8: BP-01/C11 battle-aftermath wreck markers persist across Continue.
+export const CURRENT_VERSION = 8;
