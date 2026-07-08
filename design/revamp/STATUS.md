@@ -1023,3 +1023,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Verification: `npm run check:battle-aftermath`, `npm run check:save-schema`, `npm run check:combat-outcome`,
   `npm run check:wreck-provenance`, `npm run check:save-resume-confidence`, `node scripts/check-data-refs.mjs`,
   `npm run check:balance` (2 PASS / 2 WARN / 0 FAIL), and `git diff --check` all pass.
+
+### T5a-C12 WING_MORALE — claim (2026-07-08)
+- Claimed backend-safe BP-02.1/C12 from `detail/C_combat_encounters.md`: killing a squad leader should
+  scatter surviving squadmates via existing `ai.forceFlee` / `ai:flee` seams; escort loss can mark the ward
+  enraged; disabling comms should block that squad's reinforcement request.
+- Live proof before claim: `src/systems/wingMorale.js` and `scripts/check-wing-morale.mjs` are absent;
+  `package.json` has no `check:wing-morale` script.
+- Scope guard: no `src/systems/ai.js`, `src/ai/squad.js`, `src/ai/director.js`, combat, input, HUD, render,
+  or asset edits. Expected files are the new system/check, registry/package wiring, and progress notes.
