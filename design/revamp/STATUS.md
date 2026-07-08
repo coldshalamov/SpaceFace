@@ -1288,3 +1288,21 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   cue itself, and leave music/global mix ducking to the existing `_duckMusic` path.
 - No-touch remains `src/audio/audioSystem.js`, `src/systems/presentationAdapters.js`, and
   `src/presentation/cueSchema.js`.
+
+### T5d-AUD-01 — DONE (2026-07-08)
+- Added pure `src/audio/cuePriorityBus.js` and `scripts/check-cue-priority-bus.mjs` plus
+  `npm run check:cue-priority-bus`. The arbiter creates a 250 ms `importance >= 0.8` envelope and exposes
+  target-role gains for `weaponLoop` and `engineLoop` only. It deliberately leaves whole `combat`, `sfx`, `music`,
+  `master`, UI, ambient, comms, and explicit critical-cue probes at gain `1`, because the shipped
+  `presentation.shield.collapse` cue itself resolves through the combat audio lane.
+- The check reuses the real SG-08 inputs (`CRITICAL_SLICE_EVENT_IDS`, `PRESENTATION_AUDIO_CUE_BY_ID`, and
+  `getPresentationRecipe('shield.collapse')`). The live recipe importance is `0.84`, which still qualifies for
+  the `0.8` AUD-01 threshold even though the packet prose says `1.0`.
+- Non-vacuous control: temporarily raised `PRIORITY_DUCK_THRESHOLD` from `0.8` to `0.85`; the check failed on the
+  constant/threshold and shield-collapse qualification assertions. Restored `0.8`; the check passed.
+- No-regression floor: `node --check src/audio/cuePriorityBus.js`,
+  `node --check scripts/check-cue-priority-bus.mjs`, `npm run check:cue-priority-bus`,
+  `node scripts/check-presentation-cues.mjs`, `node scripts/check-sg08-mix-profile.mjs`,
+  `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`).
+  `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
+  `scripts/sf-sim.mjs:1161`.
