@@ -19,6 +19,7 @@
 |---|---|
 | **Implementing a feature or fix** | (1) this file §3 + §5 + §7 · (2) `design/CURRENT_BUILD_STATUS.md` · (3) the spec your brief names · (4) `docs/MODULE_MAP.md` for the file you're touching · (5) `ARCHITECTURE.md` only the section your work touches |
 | **Adding or fixing a ship/station/place model** | `assets/AGENTS.md` (visual asset catalog + ship pipeline), then `design/spec3/SPEC3-F9-asset-pipeline.md` |
+| **Running parallel graphics sprint threads** | `design/graphics-sprints/GOAL_PROMPTS.md` (copy-paste thread prompts) → `00_ORCHESTRATION.md` |
 | **Wiring portraits, cinematics, or "what assets exist?"** | `assets/AGENTS.md` §1 master catalog · `assets/portraits/AGENTS.md` · `assets/concept/AGENTS.md` (reference-only) |
 | **Debugging combat / AI / hostility / "I get attacked on spawn"** | `docs/COMMON_BUGS.md` §"Spawn attack / friendly fire." **Read it before grepping** — the hostility system is subtle and the live code differs from HEAD. |
 | **Tracing an event ("who emits/handles `combat:fire`?")** | `docs/EVENT_ROUTING.md` — generated, 263 events × all emit/subscribe sites with file:line. Regenerate after structural changes: `npm run build:indexes`. |
@@ -57,7 +58,7 @@ Concrete example (verified first-hand): the live AI hostility function `isHostil
 1. **Never run `git checkout .`, `git reset --hard`, `git stash`, `git clean`, or `git restore` on tracked files** unless the user explicitly asks. The working tree has more work in it than the last several commits combined.
 2. **Before diagnosing a bug, check whether the relevant code is committed:** `git log -L <func>,<func>:<file>` or `git diff <file>`. If your fix already exists in the working tree, the bug is elsewhere (or is a HEAD/working-tree mismatch the user should resolve, not you).
 3. **`git add -N <newfile>` immediately** when you create a file — this environment deletes untracked files between turns. (Already in the dispatch brief template.)
-4. **Commit only when the user asks.** When they do, branch first if on `master` (per harness policy).
+4. **Commit only when the user asks. Stay on `master`.** Do not create or switch to a feature branch, worktree, or detached checkout unless the user explicitly asks for it in that turn. If a harness/tool says it requires a branch, stop and ask the user instead of branching silently.
 5. **Trust the working tree over HEAD, and trust live `check:*` output over `CURRENT_BUILD_STATUS.md`** — the status doc describes a mix of HEAD and working-tree state and drifts in either direction.
 
 ---
@@ -73,13 +74,13 @@ The repo has three spec folders. **Both `spec2/` and `spec3/` are live** (per us
 | `design/specs/` | **LEGACY reference only.** Original 12 subsystem specs (00-11). | Nothing actively. Do not implement from these unless a current spec2/spec3 doc explicitly revives a section. |
 
 **The dispatch brief template** (used by repo-root `brief.md` and `design/spec3/CODEX_ORCHESTRATION_PROMPT.md`):
-> "Read `design/spec2/00_MASTER_TASTE.md` fully, [then `design/spec3/_context/06_PLANNING_CONSTITUTION.md`,] then implement `<SPEC-XX §N>` from `<spec file>` exactly. Acceptance = the spec's named check script green. Touch only files your spec names. `git add -N` every new file immediately. Never edit `test/*.expected.json`. No new runtime deps. Print a 10-line summary."
+> "Read `design/spec2/00_MASTER_TASTE.md` fully, [then `design/spec3/_context/06_PLANNING_CONSTITUTION.md`,] then implement `<SPEC-XX §N>` from `<spec file>` exactly. Acceptance = the spec's named check script green. Touch only files your spec names unless the spec is missing a required file; then stop and name the missing file/spec fix. `git add -N` every new file immediately. Never edit `test/*.expected.json`. No silent runtime deps: build-time/tooling deps are allowed when documented; runtime deps require lead sign-off with license, bundle/perf, determinism/save, and maintenance notes. Print a 10-line summary."
 
 If your brief points at spec3, **spec3 is current for that task** — do not re-litigate it against spec2. The taste constitution (spec2/00) still applies on top.
 
 **The earlier contradiction is resolved:** old policy said "spec2 only"; live briefs dispatched spec3. Both are now sanctioned (§4). `README.md` line 87 still mentions only spec2 — that's stale; this file supersedes it.
 
-**Loose `design/*.md` files** (`V2_MASTER_PLAN`, `IMPROVEMENT_IDEAS`, `HUD_REVAMP_DESIGN`, `GRAPHICS_*`, `FLIGHT_*`, `SKILLS_*`, `STATION_MARKET_UI_REVAMP`, etc.) are **unmanaged drift** unless explicitly revived by a current doc. `GDD_2_0.md` outranks all of them. (The stale `design/ARCHITECTURE.md` handoff blurb that used to collide with the repo-root `ARCHITECTURE.md` has been archived to `design/_ARCHIVE/handoff_architecture.md`; the **repo-root** `ARCHITECTURE.md` is the only authoritative one.)
+**Loose `design/*.md` files** (`V2_MASTER_PLAN`, `IMPROVEMENT_IDEAS`, `HUD_REVAMP_DESIGN`, `GRAPHICS_*`, `FLIGHT_*`, `SKILLS_*`, `STATION_MARKET_UI_REVAMP`, etc.) are **unmanaged drift** unless explicitly revived by a current doc. `GDD_2_0.md` outranks all of them. (The stale `design/ARCHITECTURE.md` handoff blurb that used to collide with the repo-root `ARCHITECTURE.md` has been archived to `design/_ARCHIVE/handoff_architecture.md`; the **repo-root** `ARCHITECTURE.md` is the only authoritative one.) **Archived 2026-07-08:** `HUD_REVAMP_DESIGN.md`, `STATION_MARKET_UI_REVAMP.md`, `GRAPHICS_SPEC.md`, `GRAPHICS_MASTERPLAN.md`, `GRAPHICS_UPGRADE_PLAN.md` are now in `design/_ARCHIVE/` with drift banners — a frontend agent reading `design/` will no longer find a forbidden visor HUD presented as a live spec. The live UI authorities are `design/spec2/06_UI_IDENTITY.md`, `design/spec3/SPEC3-F8-graphics-visuals.md`, `design/spec3/SPEC3-F10-ux-meta-tastemaster.md`, and the surface inventory `design/revamp/FRONTEND_REBOOT_AUDIT.md`.
 
 ---
 
