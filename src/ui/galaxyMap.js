@@ -431,6 +431,7 @@ export function resolveCourseTarget(target) {
       autopilot: true,
     };
     if (target.entityId != null) payload.targetEntityId = target.entityId;
+    if (target.targetEntityId != null) payload.targetEntityId = target.targetEntityId;
     if (target.stationId) payload.stationId = target.stationId;
     return payload;
   }
@@ -449,16 +450,358 @@ const HAS_DOC = typeof document !== 'undefined';
 const STYLE_ID = 'sf-galaxymap-style';
 
 const CSS = `
-#sf-galaxymap { position:absolute; inset:0; display:flex; flex-direction:column; background:rgba(5,10,20,.97); color:var(--ink,#cfe3ff); }
-#sf-galaxymap .gm-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 16px; border-bottom:1px solid var(--panel-edge,#1d3350); background:rgba(8,14,26,.72); }
-#sf-galaxymap .gm-title { font-size:.95rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent,#39d0ff); text-shadow:0 0 10px rgba(57,208,255,.4); }
-#sf-galaxymap .gm-level { font-family:var(--mono,monospace); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim,#7e93b3); }
-#sf-galaxymap .gm-level b { color:var(--accent,#39d0ff); }
-#sf-galaxymap .gm-close { background:transparent; border:1px solid var(--panel-edge,#1d3350); color:inherit; padding:5px 12px; border-radius:5px; cursor:pointer; font-family:var(--mono,monospace); font-size:.72rem; letter-spacing:.08em; }
-#sf-galaxymap .gm-close:hover, #sf-galaxymap .gm-close:focus-visible { border-color:var(--accent,#39d0ff); color:#fff; }
-#sf-galaxymap .gm-body { flex:1; position:relative; min-height:0; }
-#sf-galaxymap canvas { position:absolute; inset:0; width:100%; height:100%; display:block; cursor:crosshair; }
-#sf-galaxymap .gm-hint { position:absolute; left:12px; bottom:10px; font-family:var(--mono,monospace); font-size:.62rem; color:var(--ink-mute,#5e7393); background:rgba(6,12,22,.7); border:1px solid var(--panel-edge,#1d3350); border-radius:5px; padding:5px 9px; line-height:1.5; pointer-events:none; }
+#sf-galaxymap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(4, 8, 16, 0.98);
+  color: var(--ink, #cfe3ff);
+  font-family: var(--mono, monospace);
+  user-select: none;
+}
+
+#sf-galaxymap .gm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--panel-edge, #1d3350);
+  background: rgba(8, 14, 26, 0.85);
+}
+
+#sf-galaxymap .gm-title {
+  font-size: 1.1rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent, #39d0ff);
+  text-shadow: 0 0 10px rgba(57, 208, 255, 0.5);
+  font-weight: 700;
+}
+
+#sf-galaxymap .gm-search-container {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+}
+
+#sf-galaxymap .gm-search-input {
+  width: 100%;
+  background: rgba(6, 12, 24, 0.8);
+  border: 1px solid var(--panel-edge, #1d3350);
+  border-radius: 4px;
+  color: #fff;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 0.75rem;
+  transition: border-color 0.15s ease;
+}
+
+#sf-galaxymap .gm-search-input:focus {
+  outline: none;
+  border-color: var(--accent, #39d0ff);
+  box-shadow: 0 0 8px rgba(57, 208, 255, 0.25);
+}
+
+#sf-galaxymap .gm-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(8, 13, 24, 0.96);
+  border: 1px solid var(--panel-edge, #1d3350);
+  border-radius: 4px;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+#sf-galaxymap .gm-search-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(29, 51, 80, 0.4);
+  font-size: 0.7rem;
+  transition: background 0.15s ease;
+}
+
+#sf-galaxymap .gm-search-item:hover,
+#sf-galaxymap .gm-search-item.selected {
+  background: rgba(57, 208, 255, 0.15);
+  color: #fff;
+}
+
+#sf-galaxymap .gm-search-item-name {
+  font-weight: 700;
+  color: var(--accent, #39d0ff);
+}
+
+#sf-galaxymap .gm-search-item-detail {
+  color: var(--ink-dim, #7e93b3);
+  font-size: 0.65rem;
+  margin-top: 2px;
+}
+
+#sf-galaxymap .gm-level {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim, #7e93b3);
+}
+
+#sf-galaxymap .gm-level b {
+  color: var(--accent, #39d0ff);
+}
+
+#sf-galaxymap .gm-close {
+  background: transparent;
+  border: 1px solid var(--panel-edge, #1d3350);
+  color: inherit;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+}
+
+#sf-galaxymap .gm-close:hover,
+#sf-galaxymap .gm-close:focus-visible {
+  border-color: var(--accent, #39d0ff);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(57, 208, 255, 0.2);
+}
+
+#sf-galaxymap .gm-body-container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+#sf-galaxymap .gm-left-rail {
+  width: 200px;
+  border-right: 1px solid var(--panel-edge, #1d3350);
+  background: rgba(6, 11, 22, 0.75);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+#sf-galaxymap .gm-rail-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent, #39d0ff);
+  border-bottom: 1px solid rgba(57, 208, 255, 0.2);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+#sf-galaxymap .gm-layer-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#sf-galaxymap .gm-layer-btn {
+  background: rgba(29, 51, 80, 0.2);
+  border: 1px solid var(--panel-edge, #1d3350);
+  color: var(--ink-dim, #7e93b3);
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#sf-galaxymap .gm-layer-btn:hover {
+  border-color: rgba(57, 208, 255, 0.5);
+  color: #fff;
+  background: rgba(57, 208, 255, 0.05);
+}
+
+#sf-galaxymap .gm-layer-btn.active {
+  border-color: var(--accent, #39d0ff);
+  color: #fff;
+  background: rgba(57, 208, 255, 0.12);
+  text-shadow: 0 0 6px rgba(57, 208, 255, 0.4);
+}
+
+#sf-galaxymap .gm-layer-btn.active::after {
+  content: "●";
+  color: var(--accent, #39d0ff);
+  font-size: 0.6rem;
+  text-shadow: 0 0 6px rgba(57, 208, 255, 0.8);
+}
+
+#sf-galaxymap .gm-rail-commodity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+#sf-galaxymap .gm-rail-commodity label {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim, #7e93b3);
+  text-transform: uppercase;
+}
+
+#sf-galaxymap .gm-rail-commodity select {
+  background: rgba(6, 12, 24, 0.9);
+  border: 1px solid var(--panel-edge, #1d3350);
+  border-radius: 4px;
+  color: #fff;
+  padding: 6px;
+  font-family: inherit;
+  font-size: 0.68rem;
+  outline: none;
+}
+
+#sf-galaxymap .gm-rail-commodity select:focus {
+  border-color: var(--accent, #39d0ff);
+}
+
+#sf-galaxymap .gm-rail-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--panel-edge, #1d3350);
+  padding-top: 12px;
+}
+
+#sf-galaxymap .gm-hint-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim, #7e93b3);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+#sf-galaxymap .gm-hint-text {
+  font-size: 0.6rem;
+  color: var(--ink-mute, #5e7393);
+  line-height: 1.5;
+}
+
+#sf-galaxymap .gm-viewport {
+  flex: 1;
+  position: relative;
+}
+
+#sf-galaxymap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+#sf-galaxymap .gm-right-inspector {
+  width: 300px;
+  border-left: 1px solid var(--panel-edge, #1d3350);
+  background: rgba(6, 11, 22, 0.75);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+#sf-galaxymap .gm-inspector-header {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent, #39d0ff);
+  border-bottom: 1px solid rgba(57, 208, 255, 0.2);
+  padding-bottom: 6px;
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(57, 208, 255, 0.3);
+}
+
+#sf-galaxymap .gm-inspector-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+#sf-galaxymap .gm-inspector-empty {
+  color: var(--ink-mute, #5e7393);
+  font-style: italic;
+  text-align: center;
+  padding-top: 30px;
+}
+
+#sf-galaxymap .gm-ins-section {
+  border-bottom: 1px solid rgba(29, 51, 80, 0.4);
+  padding-bottom: 8px;
+}
+
+#sf-galaxymap .gm-ins-section:last-child {
+  border-bottom: none;
+}
+
+#sf-galaxymap .gm-ins-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent, #39d0ff);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+#sf-galaxymap .gm-ins-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+#sf-galaxymap .gm-ins-row-val {
+  font-weight: 600;
+  color: #fff;
+}
+
+#sf-galaxymap .gm-ins-row-val.fresh { color: #39d0ff; }
+#sf-galaxymap .gm-ins-row-val.mid { color: #fff; }
+#sf-galaxymap .gm-ins-row-val.old { color: #5e7393; font-style: italic; }
+
+#sf-galaxymap .gm-ins-btn {
+  width: 100%;
+  background: rgba(57, 208, 255, 0.12);
+  border: 1px solid var(--accent, #39d0ff);
+  color: #fff;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  transition: all 0.15s ease;
+  margin-top: 10px;
+}
+
+#sf-galaxymap .gm-ins-btn:hover {
+  background: rgba(57, 208, 255, 0.2);
+  box-shadow: 0 0 12px rgba(57, 208, 255, 0.3);
+}
 `;
 
 let _styleInjected = false;
@@ -477,6 +820,199 @@ function popCurrentScreen(ctx) {
   if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
 }
 
+// ---------------------------------------------------------------------------------------------
+// Price/Market Memory Readers
+// ---------------------------------------------------------------------------------------------
+
+function memoryTint(ageS) {
+  if (ageS < 600) return { key: 'fresh', color: '#39d0ff', italic: false };
+  if (ageS < 3600) return { key: 'mid', color: '#ffffff', italic: false };
+  return { key: 'old', color: '#5e7393', italic: true };
+}
+
+function ageText(ageS) {
+  if (ageS < 60) return 'fresh';
+  return Math.max(1, Math.round(ageS / 60)) + ' min';
+}
+
+function getMarketMemoryForStation(state, stationId, commodityId) {
+  const memory = state && state.player && state.player.marketMemory;
+  if (!memory || !stationId || !commodityId) return null;
+  const quotes = memory[stationId];
+  const q = quotes && quotes[commodityId];
+  if (!q || !Number.isFinite(Number(q.sell))) return null;
+  const now = Math.max(0, Number(state.simTime) || 0);
+  const ageS = Math.max(0, now - Math.max(0, Number(q.seenAt) || 0));
+  return {
+    buy: Math.round(Number(q.buy) || 0),
+    sell: Math.round(Number(q.sell) || 0),
+    ageS,
+    reliability: Math.exp(-ageS / 1800),
+  };
+}
+
+function findStationRecord(state, stationId) {
+  if (!state || !stationId) return null;
+  for (const e of entityIterator(state)) {
+    if (e.type === 'station' && (e.id === stationId || (e.data && e.data.stationId === stationId))) {
+      return e.data;
+    }
+  }
+  for (const s of sectorRecords(state)) {
+    if (s && s.stations) {
+      for (const st of s.stations) {
+        if (st.id === stationId) return st;
+      }
+    }
+  }
+  return null;
+}
+
+function missionSummary(mission) {
+  if (!mission) return 'Proceed to the objective';
+  const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
+  const target = Math.max(1, Number(mission.objectiveTarget) || 1);
+  if (mission.type === 'mining_quota') return `Mine ${progress}/${target} units`;
+  if (mission.type === 'bulk_haul') return `Haul ${progress}/${target} bulk units`;
+  if (mission.type === 'bulk_trade') return `Sell ${progress}/${target} units`;
+  if (mission.type === 'patrol_clear') return `Clear ${progress}/${target} hostiles`;
+  if (mission.type === 'recon_scan') return `Scan ${progress}/${target} sites`;
+  return mission.objectiveProgress ? `${progress}/${target}` : 'Proceed to the objective';
+}
+
+function securityLabel(sec) { return sec >= 0.7 ? 'High' : sec >= 0.4 ? 'Mid' : sec >= 0.15 ? 'Low' : 'Null'; }
+function securityPips(sec) {
+  if (sec >= 0.7) return '<span style="color:#62e08a; letter-spacing: 2px;">●●●</span>';
+  if (sec >= 0.4) return '<span style="color:#ffd84a; letter-spacing: 2px;">●●○</span>';
+  if (sec >= 0.15) return '<span style="color:#ffb347; letter-spacing: 2px;">●○○</span>';
+  return '<span style="color:#ff5c5c; letter-spacing: 2px;">○○○</span>';
+}
+function dangerColor(v) {
+  if (v < 0.28) return '#62e08a';
+  if (v < 0.50) return '#ffd84a';
+  if (v < 0.72) return '#ffb347';
+  return '#ff5c5c';
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pure Dijkstra Hover preview path calculator
+// ---------------------------------------------------------------------------------------------
+
+export function computePreviewRoute(state, startSectorId, targetSectorId) {
+  if (!startSectorId || !targetSectorId || startSectorId === targetSectorId) return null;
+  const sectors = sectorRecords(state);
+  const nodeById = new Map(sectors.map((s) => [s.id, s]));
+
+  const dist = new Map();
+  const prev = new Map();
+  const visited = new Set();
+  const pq = [startSectorId];
+
+  dist.set(startSectorId, 0);
+
+  while (pq.length) {
+    let bi = 0;
+    for (let i = 1; i < pq.length; i++) {
+      if ((dist.get(pq[i]) ?? Infinity) < (dist.get(pq[bi]) ?? Infinity)) bi = i;
+    }
+    const u = pq.splice(bi, 1)[0];
+    if (visited.has(u)) continue;
+    visited.add(u);
+    if (u === targetSectorId) break;
+
+    const su = nodeById.get(u);
+    if (!su) continue;
+
+    const neighbors = Array.isArray(su.neighbors) ? su.neighbors : [];
+    for (const v of neighbors) {
+      const sv = nodeById.get(v);
+      if (!sv) continue;
+      const isCharted = isSectorCharted(state, sv);
+      if (!isCharted && v !== targetSectorId) continue;
+
+      const alt = (dist.get(u) ?? 0) + 1;
+      if (alt < (dist.get(v) ?? Infinity)) {
+        dist.set(v, alt);
+        prev.set(v, u);
+        pq.push(v);
+      }
+    }
+  }
+
+  if (!prev.has(targetSectorId)) return null;
+
+  const path = [];
+  let curr = targetSectorId;
+  while (curr) {
+    path.push(curr);
+    curr = prev.get(curr);
+  }
+  return path.reverse();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Search Target Gathering Helper
+// ---------------------------------------------------------------------------------------------
+
+function getSearchTargets(state, level, curSecId) {
+  const targets = [];
+  // 1. Sectors
+  const galaxyModel = buildGalaxyModel(state);
+  for (const n of galaxyModel.nodes) {
+    if (n.charted) {
+      targets.push({
+        id: n.id,
+        name: n.name,
+        kind: 'sector',
+        sectorId: n.id,
+        x: n.x,
+        y: n.y,
+        factionId: n.factionId,
+        security: n.security,
+        detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${n.security ? n.security.toFixed(2) : '0.00'}`,
+      });
+    }
+  }
+  // 2. Stations / Gates / POIs
+  const systemModel = buildSystemModel(state, curSecId);
+  for (const p of systemModel.points) {
+    if (Number.isFinite(p.x) && Number.isFinite(p.z)) {
+      targets.push({
+        id: p.id,
+        name: p.name,
+        kind: p.kind,
+        sectorId: curSecId,
+        x: p.x,
+        z: p.z,
+        stationId: p.stationId,
+        factionId: p.factionId,
+        detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`,
+      });
+    }
+  }
+  // 3. Contacts
+  if (level === 'local') {
+    const localModel = buildLocalModel(state);
+    for (const c of localModel.contacts) {
+      targets.push({
+        id: c.id,
+        name: c.name,
+        kind: c.kind,
+        x: c.x,
+        z: c.z,
+        entityId: c.entityId,
+        factionId: c.factionId,
+        detail: `Contact · ${c.kind.toUpperCase()}`,
+      });
+    }
+  }
+  return targets;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Flagship Screen Implementation
+// ---------------------------------------------------------------------------------------------
+
 export const galaxyMapScreen = {
   id: 'galaxyMap',
   _ctx: null,
@@ -484,61 +1020,238 @@ export const galaxyMapScreen = {
   _body: null,
   _canvas: null,
   _g: null,
-  _hint: null,
-  _levelEl: null,
   _ro: null,
   _visible: false,
   _animFrame: null,
-  _lastFrameAt: 0,
+  _lastDrawTime: 0,
   _dpr: 1,
   _lastCw: 0,
   _lastCh: 0,
   _zoom: 1,
   _targetZoom: 1,
   _lastTime: 0,
-  // world->screen transform for the currently-rendered level; click hit-testing reuses it.
   _view: null,
   _clickTargets: [],
   _isHostile: null,
+
+  // Flagship strategic table UI states
+  _layers: {
+    route: true,
+    mission: true,
+    market: true,
+    security: true,
+    faction: true,
+    hazard: true,
+    services: true,
+    discovery: true
+  },
+  _cams: {
+    galaxy: { cx: 0, cy: 0, zoom: 1.0 },
+    system: { cx: 0, cy: 0, zoom: 1.5 },
+    local: { cx: 0, cy: 0, zoom: 1.5 },
+  },
+  _selectedTarget: null,
+  _hoverTarget: null,
+  _scanRings: [],
+  _selectedCommodity: 'cmdty_ore_iron',
+  _searchResultsList: [],
+  _searchSelectedIdx: 0,
+  _currentLayerFocus: 'route',
+  _lastRouteDest: null,
+  _routeAnimTime: 0,
 
   mount(rootEl, ctx) {
     injectStyle();
     this._ctx = ctx;
     this._root = rootEl;
     if (!HAS_DOC || !rootEl) return this;
+
     rootEl.id = 'sf-galaxymap';
-    rootEl.innerHTML =
-      '<div class="gm-head">' +
-        '<div class="gm-title">Galaxy Map</div>' +
-        '<div class="gm-level">Scale <b data-level>GALAXY</b> · scroll to zoom</div>' +
-        '<button class="gm-close" type="button" aria-label="Close Map">Close</button>' +
-      '</div>' +
-      '<div class="gm-body"><canvas></canvas>' +
-        '<div class="gm-hint">Scroll: zoom across LOCAL / SYSTEM / GALAXY · Click a target to set course</div>' +
-      '</div>';
-    this._body = rootEl.querySelector('.gm-body');
+    rootEl.innerHTML = `
+      <div class="gm-head">
+        <div class="gm-title">Tactical Command Table</div>
+        <div class="gm-search-container">
+          <input type="text" class="gm-search-input" placeholder="Search galaxy... (Press /)" aria-label="Search map" />
+          <div class="gm-search-results" hidden></div>
+        </div>
+        <div class="gm-level">Scale <b data-level>GALAXY</b></div>
+        <button class="gm-close" type="button" aria-label="Close Map">Close</button>
+      </div>
+      <div class="gm-body-container">
+        <!-- Left Rail -->
+        <div class="gm-left-rail">
+          <div class="gm-rail-title">Layers</div>
+          <div class="gm-layer-buttons">
+            <button class="gm-layer-btn active" data-layer="route">ROUTE</button>
+            <button class="gm-layer-btn active" data-layer="mission">MISSION</button>
+            <button class="gm-layer-btn active" data-layer="market">MARKET</button>
+            <button class="gm-layer-btn active" data-layer="security">SECURITY</button>
+            <button class="gm-layer-btn active" data-layer="faction">FACTION</button>
+            <button class="gm-layer-btn active" data-layer="hazard">HAZARD</button>
+            <button class="gm-layer-btn active" data-layer="services">SERVICES</button>
+            <button class="gm-layer-btn active" data-layer="discovery">DISCOVERY</button>
+          </div>
+          <div class="gm-rail-commodity">
+            <label for="gm-commodity-select">Market Intel</label>
+            <select id="gm-commodity-select" aria-label="Select Commodity"></select>
+          </div>
+          <div class="gm-rail-footer">
+            <div class="gm-hint-title">Controls</div>
+            <div class="gm-hint-text">
+              Scroll: Zoom<br/>
+              Drag: Pan<br/>
+              Click: Inspect<br/>
+              Dbl-Click: Course<br/>
+              Tab: Cycle Layers<br/>
+              /: Focus Search
+            </div>
+          </div>
+        </div>
+
+        <!-- Viewport -->
+        <div class="gm-viewport" style="flex: 1; position: relative;">
+          <canvas></canvas>
+        </div>
+
+        <!-- Right Inspector -->
+        <div class="gm-right-inspector">
+          <div class="gm-inspector-header">Inspector</div>
+          <div class="gm-inspector-content">
+            <div class="gm-inspector-empty">No target selected. Click a sector, station, or contact to inspect.</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this._body = rootEl.querySelector('.gm-viewport');
     this._canvas = rootEl.querySelector('canvas');
     this._g = this._canvas.getContext('2d');
-    this._levelEl = rootEl.querySelector('[data-level]');
-    this._hint = rootEl.querySelector('.gm-hint');
 
-    // Lazy-load the scanner hostility predicate (async; the pure model degrades until it arrives).
-    import('../systems/scanner.js')
-      .then((m) => { if (m && typeof m.isHostileToPlayer === 'function') this._isHostile = m.isHostileToPlayer; })
-      .catch(() => {});
+    // Populate commodity dropdown
+    const commSelect = rootEl.querySelector('#gm-commodity-select');
+    if (commSelect) {
+      import('../data/commodities.js').then((m) => {
+        const list = m.COMMODITIES || [];
+        commSelect.innerHTML = list
+          .filter(c => c.legality === 'legal')
+          .map(c => `<option value="${c.id}">${c.name}</option>`)
+          .join('');
+        commSelect.value = this._selectedCommodity || 'cmdty_ore_iron';
+      }).catch(() => {});
 
+      commSelect.addEventListener('change', () => {
+        this._selectedCommodity = commSelect.value;
+        this.refresh();
+      });
+    }
+
+    // Toggle layer click listeners
+    const layerBtns = rootEl.querySelectorAll('.gm-layer-btn');
+    layerBtns.forEach(btn => {
+      const layer = btn.getAttribute('data-layer');
+      btn.addEventListener('click', () => {
+        this._layers[layer] = !this._layers[layer];
+        if (this._layers[layer]) btn.classList.add('active');
+        else btn.classList.remove('active');
+
+        // Trigger scan ring center
+        const w = this._canvas.width / this._dpr;
+        const h = this._canvas.height / this._dpr;
+        this.triggerScanRing(w / 2, h / 2, '#39d0ff');
+        this.refresh();
+      });
+    });
+
+    // Wire search bar listeners
+    const searchInput = rootEl.querySelector('.gm-search-input');
+    const resultsContainer = rootEl.querySelector('.gm-search-results');
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        resultsContainer.hidden = true;
+        resultsContainer.innerHTML = '';
+        return;
+      }
+
+      const state = this._ctx && this._ctx.state;
+      if (!state) return;
+
+      const targets = getSearchTargets(state, levelForZoom(this._zoom), currentSectorId(this._ctx.state));
+      const filtered = targets.filter(t => t.name.toLowerCase().includes(q));
+
+      if (filtered.length === 0) {
+        resultsContainer.innerHTML = '<div class="gm-search-item" style="color:var(--ink-mute); font-style:italic;">No results found</div>';
+        resultsContainer.hidden = false;
+        return;
+      }
+
+      resultsContainer.innerHTML = filtered.map((t, idx) => `
+        <div class="gm-search-item ${idx === 0 ? 'selected' : ''}" data-idx="${idx}">
+          <span class="gm-search-item-name">${t.name}</span>
+          <div class="gm-search-item-detail">${t.detail}</div>
+        </div>
+      `).join('');
+      resultsContainer.hidden = false;
+
+      this._searchResultsList = filtered;
+      this._searchSelectedIdx = 0;
+    });
+
+    searchInput.addEventListener('keydown', (ev) => {
+      const list = this._searchResultsList || [];
+      if (!list.length) return;
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        this._searchSelectedIdx = (this._searchSelectedIdx + 1) % list.length;
+        this._highlightSearchItem();
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        this._searchSelectedIdx = (this._searchSelectedIdx - 1 + list.length) % list.length;
+        this._highlightSearchItem();
+      } else if (ev.key === 'Enter') {
+        ev.preventDefault();
+        const selected = list[this._searchSelectedIdx];
+        if (selected) {
+          this._selectSearchTarget(selected);
+          searchInput.value = '';
+          resultsContainer.hidden = true;
+        }
+      }
+    });
+
+    resultsContainer.addEventListener('click', (ev) => {
+      const itemEl = ev.target.closest('.gm-search-item');
+      const idx = itemEl && parseInt(itemEl.getAttribute('data-idx'));
+      if (idx != null && this._searchResultsList && this._searchResultsList[idx]) {
+        this._selectSearchTarget(this._searchResultsList[idx]);
+        searchInput.value = '';
+        resultsContainer.hidden = true;
+      }
+    });
+
+    // Close button
     rootEl.querySelector('.gm-close').addEventListener('click', () => popCurrentScreen(this._ctx));
+
+    // Mouse Panning & Zooming Listeners
+    this._canvas.addEventListener('mousedown', (ev) => this._onMouseDown(ev));
+    this._canvas.addEventListener('mousemove', (ev) => this._onMouseMove(ev));
+    this._canvas.addEventListener('mouseup', () => this._onMouseUp());
+    this._canvas.addEventListener('mouseleave', () => this._onMouseLeave());
+    this._canvas.addEventListener('wheel', (ev) => this._onWheel(ev), { passive: false });
+    this._canvas.addEventListener('click', (ev) => this._onCanvasClick(ev));
+    this._canvas.addEventListener('dblclick', (ev) => this._onCanvasDblClick(ev));
 
     if (typeof ResizeObserver !== 'undefined') {
       this._ro = new ResizeObserver(() => this._resize());
       this._ro.observe(this._body);
     }
-    this._body.addEventListener('wheel', (ev) => {
-      ev.preventDefault();
-      const factor = ev.deltaY < 0 ? 1.18 : 1 / 1.18;
-      this._targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._targetZoom * factor));
-    }, { passive: false });
-    this._canvas.addEventListener('click', (ev) => this._onClick(ev));
+
+    // Lazy-load scan hostility predicate
+    import('../systems/scanner.js')
+      .then((m) => { if (m && typeof m.isHostileToPlayer === 'function') this._isHostile = m.isHostileToPlayer; })
+      .catch(() => {});
+
     this._resize();
     return this;
   },
@@ -546,29 +1259,56 @@ export const galaxyMapScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     this._visible = true;
-    // Open at the SYSTEM level (the useful middle scale) so the map is immediately readable.
     this._zoom = LEVEL_SYSTEM_AT + 0.5;
     this._targetZoom = this._zoom;
+    this._selectedTarget = null;
+    this._hoverTarget = null;
+    this._scanRings = [];
+
+    // Reset camera centers to players / sector origin
+    const state = this._ctx && this._ctx.state;
+    if (state) {
+      const player = playerEntity(state);
+      const px = player ? player.pos.x : 0;
+      const pz = player ? player.pos.z : 0;
+      this._cams.local.cx = px;
+      this._cams.local.cy = pz;
+      this._cams.system.cx = 0;
+      this._cams.system.cy = 0;
+    }
+
     if (!HAS_DOC) return;
-    if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(this._animFrame);
     this._resize();
     this._lastTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    this._lastFrameAt = 0;
+    this._lastDrawTime = 0;
+
     const loop = () => {
-      if (!this._visible) return;
+      if (!galaxyMapScreen._visible) return;
       const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       let zoomChanged = false;
-      if (Math.abs(this._zoom - this._targetZoom) > 0.0005) {
-        const dt = (now - this._lastTime) / 1000;
+      if (Math.abs(galaxyMapScreen._zoom - galaxyMapScreen._targetZoom) > 0.0005) {
+        const dt = (now - galaxyMapScreen._lastTime) / 1000;
         const alpha = 1 - Math.exp(-dt / 0.10);
-        this._zoom += (this._targetZoom - this._zoom) * Math.min(1, alpha);
+        galaxyMapScreen._zoom += (galaxyMapScreen._targetZoom - galaxyMapScreen._zoom) * Math.min(1, alpha);
         zoomChanged = true;
       }
-      this._lastTime = now;
-      const refreshTick = now - this._lastFrameAt >= 100;
-      if (refreshTick) { this._lastFrameAt = now; this._resize(); }
-      if (refreshTick || zoomChanged) this._draw();
-      this._animFrame = requestAnimationFrame(loop);
+      galaxyMapScreen._lastTime = now;
+
+      // Update scan rings
+      if (galaxyMapScreen._scanRings.length > 0) {
+        galaxyMapScreen._scanRings = galaxyMapScreen._scanRings.filter(ring => {
+          ring.t++;
+          ring.r = (ring.t / ring.maxT) * ring.maxR;
+          return ring.t < ring.maxT;
+        });
+        zoomChanged = true; // Force redraw to animate ring
+      }
+
+      const refreshTick = now - galaxyMapScreen._lastDrawTime >= 64;
+      if (refreshTick) { galaxyMapScreen._resize(); }
+      if (refreshTick || zoomChanged) { galaxyMapScreen._draw(); galaxyMapScreen._updateInspector(); }
+
+      galaxyMapScreen._animFrame = requestAnimationFrame(loop);
     };
     loop();
   },
@@ -580,6 +1320,41 @@ export const galaxyMapScreen = {
 
   onKey(event, ctx) {
     const key = event && typeof event.key === 'string' ? event.key.toLowerCase() : '';
+
+    // Focus search
+    if (key === '/') {
+      const input = this._root.querySelector('.gm-search-input');
+      if (input) {
+        event.preventDefault();
+        input.focus();
+        input.select();
+      }
+      return true;
+    }
+
+    // Cycle layers
+    if (key === 'tab') {
+      event.preventDefault();
+      const keys = Object.keys(this._layers);
+      const nextIdx = (keys.indexOf(this._currentLayerFocus) + 1) % keys.length;
+      this._currentLayerFocus = keys[nextIdx];
+
+      this._layers[this._currentLayerFocus] = !this._layers[this._currentLayerFocus];
+
+      const btn = this._root.querySelector(`.gm-layer-btn[data-layer="${this._currentLayerFocus}"]`);
+      if (btn) {
+        if (this._layers[this._currentLayerFocus]) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+
+      const w = this._canvas.width / this._dpr;
+      const h = this._canvas.height / this._dpr;
+      this.triggerScanRing(w / 2, h / 2, '#8d66ff');
+
+      this.refresh();
+      return true;
+    }
+
     if (key === 'escape' || key === 'm' || key === 'n') {
       popCurrentScreen(ctx || this._ctx);
       return true;
@@ -587,7 +1362,446 @@ export const galaxyMapScreen = {
     return false;
   },
 
-  refresh() { if (this._visible) this._draw(); },
+  refresh() {
+    if (galaxyMapScreen._visible) {
+      galaxyMapScreen._draw();
+      galaxyMapScreen._updateInspector();
+    }
+  },
+
+  triggerScanRing(x, y, color = '#39d0ff') {
+    this._scanRings.push({
+      x, y, r: 0, maxR: 120, t: 0, maxT: 35, color
+    });
+  },
+
+  _activeLevel() {
+    return levelForZoom(this._zoom);
+  },
+
+  _highlightSearchItem() {
+    const items = this._root.querySelectorAll('.gm-search-item');
+    items.forEach((item, idx) => {
+      if (idx === this._searchSelectedIdx) {
+        item.classList.add('selected');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  },
+
+  _updateInspector() {
+    if (!HAS_DOC || !this._root) return;
+    const contentEl = this._root.querySelector('.gm-inspector-content');
+    if (!contentEl) return;
+
+    const t = this._selectedTarget;
+    if (!t) {
+      contentEl.innerHTML = `<div class="gm-inspector-empty">No target selected. Click a sector, station, or contact to inspect.</div>`;
+      return;
+    }
+
+    const state = this._ctx && this._ctx.state;
+    if (!state) return;
+
+    let html = '';
+
+    if (t.kind === 'sector') {
+      const record = sectorRecordById(state, t.id);
+      const faction = factionNameOf(t.factionId);
+      const color = factionColorOf(t.factionId);
+      const sec = t.security != null ? t.security : 0.5;
+      const secLbl = securityLabel(sec);
+      const secPips = securityPips(sec);
+      const activeMissions = state.missions && state.missions.active || [];
+      const relevantMission = activeMissions.find(m => m.status === 'active' && (m.destSectorId === t.id || (m.params && m.params.sectorId === t.id)));
+
+      // Compute route distance/cost
+      const curSec = currentSectorId(state);
+      let routeInfo = 'Select to plot route';
+      let pathLen = 0;
+      if (curSec && curSec !== t.id) {
+        const previewPath = computePreviewRoute(state, curSec, t.id);
+        if (previewPath) {
+          pathLen = previewPath.length - 1;
+          routeInfo = `${pathLen} Jumps (Fuel: ${pathLen * 10} Units)`;
+        } else {
+          routeInfo = 'Unreachable/No path';
+        }
+      } else if (curSec === t.id) {
+        routeInfo = 'Current Sector';
+      }
+
+      html += `
+        <div class="gm-ins-section">
+          <div class="gm-title" style="color:#fff; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
+          <div style="color:var(--ink-dim); font-size: 0.65rem;">SECTOR COORDINATES: [${Math.round(t.x || 0)}, ${Math.round(t.y || 0)}]</div>
+        </div>
+
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Faction</div>
+          <div class="gm-ins-row">
+            <span>Authority</span>
+            <span class="gm-ins-row-val" style="color:${color}">${faction}</span>
+          </div>
+        </div>
+
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Security & Risk</div>
+          <div class="gm-ins-row">
+            <span>Status</span>
+            <span class="gm-ins-row-val">${secLbl} (${secPips})</span>
+          </div>
+        </div>
+
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Navigation Cost</div>
+          <div class="gm-ins-row">
+            <span>Route</span>
+            <span class="gm-ins-row-val">${routeInfo}</span>
+          </div>
+        </div>
+      `;
+
+      if (relevantMission) {
+        html += `
+          <div class="gm-ins-section">
+            <div class="gm-ins-title" style="color:#ffd24a;">Active Mission</div>
+            <div style="font-weight:bold; color:#fff;">${relevantMission.name || 'Contract Objective'}</div>
+            <div style="color:#ffd24a; font-size:0.65rem; margin-top:2px;">${missionSummary(relevantMission)}</div>
+          </div>
+        `;
+      }
+
+      // Add main station market memory
+      if (record && record.stations && record.stations[0]) {
+        const mainStation = record.stations[0];
+        const marketData = getMarketMemoryForStation(state, mainStation.id, this._selectedCommodity);
+        if (marketData) {
+          const tint = memoryTint(marketData.ageS);
+          html += `
+            <div class="gm-ins-section">
+              <div class="gm-ins-title">Market Intel (${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()})</div>
+              <div class="gm-ins-row">
+                <span>Buy / Sell</span>
+                <span class="gm-ins-row-val" style="color:${tint.color}">${marketData.buy} / ${marketData.sell}</span>
+              </div>
+              <div class="gm-ins-row">
+                <span>Data Age</span>
+                <span class="gm-ins-row-val ${tint.key}">${ageText(marketData.ageS)} ago</span>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      html += `<button class="gm-ins-btn" id="gm-set-course-btn" type="button">Plot Course</button>`;
+
+    } else if (t.kind === 'station' || t.kind === 'gate') {
+      const faction = factionNameOf(t.factionId);
+      const color = factionColorOf(t.factionId);
+      const isGate = t.kind === 'gate';
+      const record = findStationRecord(state, t.stationId || t.id);
+      const services = record && record.services ? record.services : [];
+      const activeMissions = state.missions && state.missions.active || [];
+      const relevantMission = activeMissions.find(m => m.status === 'active' && m.destStationId === (t.stationId || t.id));
+
+      html += `
+        <div class="gm-ins-section">
+          <div class="gm-title" style="color:#fff; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
+          <div style="color:var(--ink-dim); font-size: 0.65rem;">${t.kind.toUpperCase()} OBJECT</div>
+        </div>
+
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Faction</div>
+          <div class="gm-ins-row">
+            <span>Owner</span>
+            <span class="gm-ins-row-val" style="color:${color}">${faction}</span>
+          </div>
+        </div>
+      `;
+
+      if (!isGate && services.length > 0) {
+        html += `
+          <div class="gm-ins-section">
+            <div class="gm-ins-title">Available Services</div>
+            <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
+              ${services.map(s => `<span style="background:rgba(57,208,255,0.1); border:1px solid rgba(57,208,255,0.3); padding:2px 6px; border-radius:3px; font-size:0.6rem; color:#cfe3ff;">${s.toUpperCase()}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (!isGate) {
+        const marketData = getMarketMemoryForStation(state, t.stationId || t.id, this._selectedCommodity);
+        if (marketData) {
+          const tint = memoryTint(marketData.ageS);
+          html += `
+            <div class="gm-ins-section">
+              <div class="gm-ins-title">Market Memory</div>
+              <div class="gm-ins-row">
+                <span>Commodity</span>
+                <span style="color:#fff; font-weight:600;">${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()}</span>
+              </div>
+              <div class="gm-ins-row">
+                <span>Buy / Sell</span>
+                <span class="gm-ins-row-val" style="color:${tint.color}">${marketData.buy} / ${marketData.sell}</span>
+              </div>
+              <div class="gm-ins-row">
+                <span>Data Age</span>
+                <span class="gm-ins-row-val ${tint.key}">${ageText(marketData.ageS)} ago</span>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      if (relevantMission) {
+        html += `
+          <div class="gm-ins-section">
+            <div class="gm-ins-title" style="color:#ffd24a;">Active Mission Target</div>
+            <div style="font-weight:bold; color:#fff;">${relevantMission.name || 'Contract Objective'}</div>
+            <div style="color:#ffd24a; font-size:0.65rem; margin-top:2px;">${missionSummary(relevantMission)}</div>
+          </div>
+        `;
+      }
+
+      html += `<button class="gm-ins-btn" id="gm-set-course-btn" type="button">Set Waypoint</button>`;
+
+    } else if (t.kind === 'zone') {
+      html += `
+        <div class="gm-ins-section">
+          <div class="gm-title" style="color:#fff; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
+          <div style="color:var(--ink-dim); font-size: 0.65rem;">SECTOR ZONE REGION</div>
+        </div>
+
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Zone Classification</div>
+          <div class="gm-ins-row">
+            <span>Type</span>
+            <span class="gm-ins-row-val">${t.detail || 'Generic Region'}</span>
+          </div>
+          <div class="gm-ins-row">
+            <span>Threat Index</span>
+            <span class="gm-ins-row-val" style="color:${t.threat ? '#ff5c5c' : '#62e08a'}">Level ${t.threat || 0}</span>
+          </div>
+        </div>
+
+        <button class="gm-ins-btn" id="gm-set-course-btn" type="button">Align Autopilot</button>
+      `;
+    } else {
+      // General contact
+      html += `
+        <div class="gm-ins-section">
+          <div class="gm-title" style="color:#fff; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
+          <div style="color:var(--ink-dim); font-size: 0.65rem;">LOCAL CONTACT Intel</div>
+        </div>
+
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Object Class</div>
+          <div class="gm-ins-row">
+            <span>Type</span>
+            <span class="gm-ins-row-val">${t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span>
+          </div>
+        </div>
+
+        <button class="gm-ins-btn" id="gm-set-course-btn" type="button">Track Target</button>
+      `;
+    }
+
+    contentEl.innerHTML = html;
+
+    // Attach click handler to Set Course button
+    const btn = contentEl.querySelector('#gm-set-course-btn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const payload = resolveCourseTarget(t);
+        if (payload) {
+          if (payload.type === 'sector' && payload.sectorId) {
+            galaxyMapScreen._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
+          }
+          galaxyMapScreen._ctx.bus.emit('ui:setCourse', payload);
+          galaxyMapScreen._ctx.bus.emit('toast', { text: 'Course set: ' + (payload.label || 'target'), kind: 'info', ttl: 3 });
+          popCurrentScreen(galaxyMapScreen._ctx);
+        }
+      });
+    }
+  },
+
+  _selectSearchTarget(target) {
+    const state = this._ctx && this._ctx.state;
+    if (!state) return;
+
+    this._selectedTarget = target;
+
+    if (target.kind === 'sector') {
+      this._zoom = LEVEL_SYSTEM_AT - 0.5; // galaxy scale
+      this._targetZoom = this._zoom;
+      const cam = this._cams.galaxy;
+      cam.cx = target.x;
+      cam.cy = target.y;
+    } else if (target.kind === 'station' || target.kind === 'gate' || target.kind === 'poi' || target.kind === 'zone') {
+      this._zoom = LEVEL_SYSTEM_AT + 0.5; // system scale
+      this._targetZoom = this._zoom;
+      const cam = this._cams.system;
+      cam.cx = target.x;
+      cam.cy = target.z;
+    } else {
+      this._zoom = LEVEL_LOCAL_AT + 0.5; // local scale
+      this._targetZoom = this._zoom;
+      const cam = this._cams.local;
+      cam.cx = target.x;
+      cam.cy = target.z;
+    }
+
+    this.refresh();
+
+    // Trigger ring at target center
+    const w = this._canvas.width / this._dpr;
+    const h = this._canvas.height / this._dpr;
+    this.triggerScanRing(w / 2, h / 2, '#39d0ff');
+  },
+
+  _onMouseDown(ev) {
+    if (ev.button !== 0) return;
+    const level = this._activeLevel();
+    const cam = this._cams[level];
+    this._dragging = true;
+    this._dragStart = {
+      mx: ev.clientX,
+      my: ev.clientY,
+      cx: cam.cx,
+      cy: cam.cy,
+    };
+  },
+
+  _onMouseMove(ev) {
+    const level = this._activeLevel();
+    const cam = this._cams[level];
+    const rect = this._canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+
+    if (this._dragging && this._dragStart) {
+      const dx = ev.clientX - this._dragStart.mx;
+      const dy = ev.clientY - this._dragStart.my;
+      const baseScale = this._view ? this._view.baseScale : 1;
+
+      const factor = level === 'local' ? 1 : -1;
+      cam.cx = this._dragStart.cx + factor * dx / (baseScale * this._zoom);
+      cam.cy = this._dragStart.cy + factor * dy / (baseScale * this._zoom);
+      this._draw();
+      return;
+    }
+
+    // Hover hit test
+    let best = null, bestD2 = Infinity;
+    for (const t of this._clickTargets) {
+      const dx = mx - t.sx, dy = my - t.sy;
+      const d2 = dx * dx + dy * dy;
+      const rad = t.radiusPx || 14;
+      if (d2 <= rad * rad && d2 < bestD2) { best = t; bestD2 = d2; }
+    }
+    if (best !== this._hoverTarget) {
+      this._hoverTarget = best;
+      this._draw();
+    }
+    this._canvas.style.cursor = best ? 'pointer' : 'crosshair';
+  },
+
+  _onMouseUp() {
+    this._dragging = false;
+    this._dragStart = null;
+  },
+
+  _onMouseLeave() {
+    this._dragging = false;
+    this._dragStart = null;
+    this._hoverTarget = null;
+    this._draw();
+  },
+
+  _onWheel(ev) {
+    ev.preventDefault();
+    const rect = this._canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+    const w = rect.width, h = rect.height;
+
+    const factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
+    const oldZoom = this._zoom;
+    const nextZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._zoom * factor));
+
+    const oldLevel = levelForZoom(oldZoom);
+    const newLevel = levelForZoom(nextZoom);
+
+    this._zoom = nextZoom;
+    this._targetZoom = nextZoom;
+
+    if (oldLevel === newLevel) {
+      const cam = this._cams[newLevel];
+      const baseScale = this._view ? this._view.baseScale : 1;
+      const sign = newLevel === 'local' ? -1 : 1;
+      const wx = cam.cx + sign * (mx - w/2) / (baseScale * oldZoom);
+      const wy = cam.cy + sign * (my - h/2) / (baseScale * oldZoom);
+
+      cam.cx = wx - sign * (mx - w/2) / (baseScale * nextZoom);
+      cam.cy = wy - sign * (my - h/2) / (baseScale * nextZoom);
+    } else {
+      this.triggerScanRing(w / 2, h / 2, '#8d66ff');
+    }
+
+    this._draw();
+  },
+
+  _onCanvasClick(ev) {
+    const rect = this._canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+
+    let best = null, bestD2 = Infinity;
+    for (const t of this._clickTargets) {
+      const dx = mx - t.sx, dy = my - t.sy;
+      const d2 = dx * dx + dy * dy;
+      const rad = t.radiusPx || 14;
+      if (d2 <= rad * rad && d2 < bestD2) { best = t; bestD2 = d2; }
+    }
+
+    if (best) {
+      this._selectedTarget = best;
+      this.triggerScanRing(best.sx, best.sy, '#39d0ff');
+    } else {
+      this._selectedTarget = null;
+    }
+    this.refresh();
+  },
+
+  _onCanvasDblClick(ev) {
+    const rect = this._canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+
+    let best = null, bestD2 = Infinity;
+    for (const t of this._clickTargets) {
+      const dx = mx - t.sx, dy = my - t.sy;
+      const d2 = dx * dx + dy * dy;
+      const rad = t.radiusPx || 14;
+      if (d2 <= rad * rad && d2 < bestD2) { best = t; bestD2 = d2; }
+    }
+
+    if (best) {
+      const payload = resolveCourseTarget(best);
+      if (payload) {
+        if (payload.type === 'sector' && payload.sectorId) {
+          this._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
+        }
+        this._ctx.bus.emit('ui:setCourse', payload);
+        this._ctx.bus.emit('toast', { text: 'Course set: ' + (payload.label || 'target'), kind: 'info', ttl: 3 });
+        popCurrentScreen(this._ctx);
+      }
+    }
+  },
 
   _resize() {
     if (!HAS_DOC || !this._body || !this._canvas) return;
@@ -607,183 +1821,466 @@ export const galaxyMapScreen = {
     const state = this._ctx && this._ctx.state;
     const w = this._canvas.width / this._dpr, h = this._canvas.height / this._dpr;
     g.clearRect(0, 0, w, h);
-    g.fillStyle = 'rgba(6,11,21,0.9)'; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(6,11,21,0.95)'; g.fillRect(0, 0, w, h);
     this._clickTargets.length = 0;
     if (!state) return;
+
+    // Subtle background grid
+    g.strokeStyle = 'rgba(57, 208, 255, 0.03)';
+    g.lineWidth = 1;
+    const grid = 50;
+    for (let gx = 0; gx < w; gx += grid) { g.beginPath(); g.moveTo(gx, 0); g.lineTo(gx, h); g.stroke(); }
+    for (let gy = 0; gy < h; gy += grid) { g.beginPath(); g.moveTo(0, gy); g.lineTo(w, gy); g.stroke(); }
+
     const level = levelForZoom(this._zoom);
     if (this._levelEl) this._levelEl.textContent = level.toUpperCase();
+
+    const scaleEl = this._root.querySelector('[data-level]');
+    if (scaleEl) scaleEl.textContent = level.toUpperCase();
+
     if (level === 'galaxy') this._drawGalaxy(g, state, w, h);
     else if (level === 'system') this._drawSystem(g, state, w, h);
     else this._drawLocal(g, state, w, h);
+
+    // Draw active scan rings
+    for (const ring of this._scanRings || []) {
+      g.save();
+      g.strokeStyle = hexToRgba(ring.color, 1 - ring.t / ring.maxT);
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+      g.stroke();
+      g.restore();
+    }
   },
 
-  // --- galaxy render ---
+  // --- GALAXY DRAW ---
   _drawGalaxy(g, state, w, h) {
     const model = buildGalaxyModel(state);
     if (!model.nodes.length) return;
+
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const n of model.nodes) { minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x); minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y); }
     const spanX = (maxX - minX) || 1, spanY = (maxY - minY) || 1;
-    const pad = 70;
-    const scale = Math.min((w - pad * 2) / spanX, (h - pad * 2) / spanY);
-    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    const sx = (x) => w / 2 + (x - cx) * scale;
-    const sy = (y) => h / 2 + (y - cy) * scale;
-    this._view = { level: 'galaxy' };
+    const pad = 120;
+    const baseScale = Math.min((w - pad * 2) / spanX, (h - pad * 2) / spanY);
 
+    const cam = this._cams.galaxy;
+    if (cam.cx === 0 && cam.cy === 0) {
+      cam.cx = (minX + maxX) / 2;
+      cam.cy = (minY + maxY) / 2;
+    }
+
+    this._view = { level: 'galaxy', baseScale };
+    const sx = (x) => w / 2 + (x - cam.cx) * baseScale * cam.zoom;
+    const sy = (y) => h / 2 + (y - cam.cy) * baseScale * cam.zoom;
+
+    // Draw basic/undiscovered edges
     for (const e of model.edges) {
+      if (!this._layers.discovery && !e.charted) continue;
       g.beginPath(); g.moveTo(sx(e.ax), sy(e.ay)); g.lineTo(sx(e.bx), sy(e.by));
-      g.strokeStyle = e.charted ? 'rgba(57,208,255,0.28)' : 'rgba(90,110,150,0.14)';
-      g.lineWidth = e.charted ? 1.4 : 0.8;
-      if (!e.charted) g.setLineDash([4, 5]);
+      g.strokeStyle = e.charted ? 'rgba(57,208,255,0.22)' : 'rgba(90,110,150,0.06)';
+      g.lineWidth = e.charted ? 1.5 : 0.8;
+      if (!e.charted) g.setLineDash([4, 6]);
       g.stroke(); g.setLineDash([]);
     }
+
+    // Route Beam animation
+    const route = state.nav && state.nav.route;
+    const routeDest = route && route.legs && route.legs.length ? route.legs[route.legs.length - 1].to : null;
+    if (routeDest !== this._lastRouteDest) {
+      this._lastRouteDest = routeDest;
+      this._routeAnimTime = 1500;
+    }
+
+    // Draw active planned route
+    if (route && route.legs && this._layers.route) {
+      g.save();
+      g.strokeStyle = '#39d0ff';
+      g.lineWidth = 3.5;
+      const isAnimating = this._routeAnimTime > 0;
+      if (isAnimating) {
+        g.setLineDash([8, 6]);
+        g.lineDashOffset = -(Date.now() / 80) % 14;
+      }
+      g.beginPath();
+      let first = true;
+      for (const leg of route.legs) {
+        const fromNode = model.nodes.find(n => n.id === leg.from);
+        const toNode = model.nodes.find(n => n.id === leg.to);
+        if (fromNode && toNode) {
+          if (first) { g.moveTo(sx(fromNode.x), sy(fromNode.y)); first = false; }
+          g.lineTo(sx(toNode.x), sy(toNode.y));
+        }
+      }
+      g.stroke();
+      g.restore();
+    }
+
+    // Draw hover preview route
+    if (this._layers.route && this._hoverTarget && this._hoverTarget.kind === 'sector') {
+      const startSector = currentSectorId(state);
+      const endSector = this._hoverTarget.id;
+      if (startSector && endSector && startSector !== endSector) {
+        const previewPath = computePreviewRoute(state, startSector, endSector);
+        if (previewPath) {
+          g.save();
+          g.strokeStyle = 'rgba(255,255,255,0.6)';
+          g.lineWidth = 2;
+          g.setLineDash([4, 4]);
+          g.beginPath();
+          let first = true;
+          for (const sid of previewPath) {
+            const node = model.nodes.find(n => n.id === sid);
+            if (node) {
+              if (first) { g.moveTo(sx(node.x), sy(node.y)); first = false; }
+              else g.lineTo(sx(node.x), sy(node.y));
+            }
+          }
+          g.stroke();
+          g.restore();
+        }
+      }
+    }
+
+    // Draw Nodes
     for (const n of model.nodes) {
       const x = sx(n.x), y = sy(n.y);
-      const r = 12;
+      const r = 13;
+
+      // Check charted status
       if (!n.charted) {
-        g.beginPath(); g.arc(x, y, 9, 0, Math.PI * 2); g.fillStyle = 'rgba(40,54,76,.55)'; g.fill();
-        g.strokeStyle = 'rgba(120,140,170,.4)'; g.lineWidth = 1; g.stroke();
-        g.fillStyle = 'rgba(150,170,200,.5)'; g.font = '10px monospace'; g.textAlign = 'center'; g.textBaseline = 'top';
-        g.fillText('???', x, y + 12);
+        if (this._layers.discovery) {
+          g.beginPath(); g.arc(x, y, r - 3, 0, Math.PI * 2);
+          g.fillStyle = 'rgba(30,45,65,0.55)'; g.fill();
+          g.strokeStyle = 'rgba(100,120,150,0.3)'; g.lineWidth = 1; g.stroke();
+          g.fillStyle = 'rgba(150,170,200,0.4)'; g.font = '10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
+          g.fillText('???', x, y + r + 3);
+        }
         continue;
       }
-      this._clickTargets.push({ sx: x, sy: y, radiusPx: r + 8, kind: 'sector', id: n.id, sectorId: n.id, name: n.name });
-      if (n.current) {
-        g.beginPath(); g.arc(x, y, r + 6, 0, Math.PI * 2); g.strokeStyle = 'rgba(57,208,255,.8)'; g.lineWidth = 2; g.stroke();
+
+      this._clickTargets.push({
+        sx: x, sy: y, radiusPx: r + 8, kind: 'sector', id: n.id, sectorId: n.id, name: n.name,
+        factionId: n.factionId, security: n.security, x: n.x, y: n.y,
+        detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${n.security ? n.security.toFixed(2) : '0.00'}`
+      });
+
+      // Selection highlight
+      if (this._selectedTarget && this._selectedTarget.id === n.id) {
+        g.beginPath(); g.arc(x, y, r + 6, 0, Math.PI * 2);
+        g.strokeStyle = 'rgba(57,208,255,0.85)'; g.lineWidth = 2.5; g.stroke();
       }
+
+      // Current sector halo
+      if (n.current) {
+        g.beginPath(); g.arc(x, y, r + 5, 0, Math.PI * 2);
+        g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1.5; g.stroke();
+      }
+
+      // Draw node circle
       g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
-      g.fillStyle = n.color; g.globalAlpha = 0.85; g.fill(); g.globalAlpha = 1;
-      g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 1; g.stroke();
-      g.fillStyle = n.current ? '#fff' : 'rgba(211,230,255,.9)';
-      g.font = (n.current ? '700 ' : '500 ') + '11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
+      if (this._layers.faction) {
+        g.fillStyle = n.color; g.globalAlpha = 0.85;
+      } else {
+        g.fillStyle = 'rgba(60,80,110,0.9)'; g.globalAlpha = 1;
+      }
+      g.fill(); g.globalAlpha = 1;
+      g.strokeStyle = 'rgba(255,255,255,0.2)'; g.lineWidth = 1.2; g.stroke();
+
+      // Sector label
+      g.fillStyle = n.current ? '#fff' : 'rgba(211,230,255,0.9)';
+      g.font = (n.current ? 'bold ' : '') + '11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
       g.fillText(n.name, x, y + r + 4);
+
+      // Security overlay
+      if (this._layers.security && n.security != null) {
+        g.fillStyle = dangerColor(n.security);
+        g.beginPath(); g.arc(x - r - 2, y, 3, 0, Math.PI * 2); g.fill();
+      }
+
+      // Market price overlay
+      if (this._layers.market) {
+        const record = sectorRecordById(state, n.id);
+        const mainStation = record && record.stations && record.stations[0];
+        if (mainStation) {
+          const marketData = getMarketMemoryForStation(state, mainStation.id, this._selectedCommodity);
+          if (marketData) {
+            const tint = memoryTint(marketData.ageS);
+            g.save();
+            g.fillStyle = 'rgba(8,14,26,0.85)';
+            g.strokeStyle = tint.color; g.lineWidth = 1;
+            const text = `${marketData.buy}/${marketData.sell}`;
+            g.font = '9px monospace';
+            const tw = g.measureText(text).width;
+            g.beginPath(); g.rect(x + r + 3, y - 6, tw + 6, 12); g.fill(); g.stroke();
+            g.fillStyle = tint.color; g.textAlign = 'left'; g.textBaseline = 'middle';
+            g.fillText(text, x + r + 6, y);
+            g.restore();
+          }
+        }
+      }
+
+      // Mission Overlay
+      if (this._layers.mission) {
+        const activeMissions = state.missions && state.missions.active || [];
+        const isMissionDest = activeMissions.some(m => m.status === 'active' && (m.destSectorId === n.id || (m.params && m.params.sectorId === n.id)));
+        if (isMissionDest) {
+          g.save();
+          g.strokeStyle = '#ffd24a'; g.lineWidth = 2;
+          g.beginPath();
+          g.moveTo(x, y - r - 10); g.lineTo(x + 5, y - r - 5); g.lineTo(x, y - r); g.lineTo(x - 5, y - r - 5); g.closePath();
+          g.stroke();
+          g.restore();
+        }
+      }
+
+      // Hazard warning badge
+      if (this._layers.hazard) {
+        const hasHazards = zonesForSector(n.id).some(z => zoneTypeMeta(z.type).hazard);
+        if (hasHazards) {
+          g.fillStyle = '#ff5c5c'; g.font = 'bold 11px sans-serif';
+          g.fillText('⚠', x + r + 4, y - r - 4);
+        }
+      }
     }
   },
 
-  // --- system render ---
+  // --- SYSTEM DRAW ---
   _drawSystem(g, state, w, h) {
     const model = buildSystemModel(state);
-    // Fit to the union of zone discs + positioned points, with a sane default span.
-    let span = 2000;
+    let span = 3000;
     const pts = [];
-    for (const z of model.zones) { pts.push({ x: z.x, z: z.z, r: z.radius }); }
+    for (const z of model.zones) pts.push({ x: z.x, z: z.z, r: z.radius });
     for (const p of model.points) if (Number.isFinite(p.x) && Number.isFinite(p.z)) pts.push({ x: p.x, z: p.z, r: 0 });
     if (pts.length) {
       let m = 0;
       for (const p of pts) m = Math.max(m, Math.hypot(p.x, p.z) + (p.r || 0));
-      span = Math.max(800, m * 2.1);
+      span = Math.max(800, m * 2.2);
     }
-    const scale = (Math.min(w, h) * 0.9) / span;
-    const sx = (x) => w / 2 + x * scale;
-    const sz = (z) => h / 2 + z * scale;
-    this._view = { level: 'system' };
 
-    // Header label
-    g.fillStyle = 'rgba(207,227,255,.75)'; g.font = '600 12px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
-    g.fillText(model.sectorName, 14, 12);
+    const baseScale = (Math.min(w, h) * 0.85) / span;
+    const cam = this._cams.system;
 
-    // Zones as tinted discs.
+    this._view = { level: 'system', baseScale };
+    const sx = (x) => w / 2 + (x - cam.cx) * baseScale * cam.zoom;
+    const sz = (z) => h / 2 + (z - cam.cy) * baseScale * cam.zoom;
+
+    // Header sector label
+    g.fillStyle = 'rgba(207,227,255,0.75)'; g.font = 'bold 13px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
+    g.fillText(model.sectorName, 16, 16);
+
+    // Draw active system waypoint (tether path)
+    const wp = state.nav && state.nav.waypoint;
+    if (wp && wp.pos && this._layers.route) {
+      const player = playerEntity(state);
+      if (player) {
+        g.save();
+        g.strokeStyle = '#ffd24a'; g.lineWidth = 1.8; g.setLineDash([5, 5]);
+        g.beginPath(); g.moveTo(sx(player.pos.x), sz(player.pos.z)); g.lineTo(sx(wp.pos.x), sz(wp.pos.z)); g.stroke();
+        g.restore();
+      }
+    }
+
+    // Zones
     for (const z of model.zones) {
-      const x = sx(z.x), y = sz(z.z), rr = z.radius * scale;
-      g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
-      g.fillStyle = hexToRgba(z.color, 0.10); g.fill();
-      g.strokeStyle = hexToRgba(z.color, 0.5); g.lineWidth = 1; g.setLineDash([5, 5]); g.stroke(); g.setLineDash([]);
-      g.fillStyle = z.color; g.font = '10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(z.name + (z.threat ? '  ⚠' + z.threat : ''), x, y);
-      this._clickTargets.push({ sx: x, sy: y, radiusPx: Math.max(16, rr), kind: 'zone', id: z.id, x: z.x, z: z.z, radius: z.radius, name: z.name });
+      const x = sx(z.x), y = sz(z.z), rr = z.radius * baseScale * cam.zoom;
+
+      this._clickTargets.push({
+        sx: x, sy: y, radiusPx: Math.max(16, rr), kind: 'zone', id: z.id, x: z.x, z: z.z, radius: z.radius, name: z.name,
+        factionId: z.factionId, detail: `Zone · ${z.typeLabel} · threat ${z.threat || 0}`
+      });
+
+      // Boundary field hazards (explicit dashed red border lines, cross-hatch, not glow)
+      if (z.hazard && this._layers.hazard) {
+        g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
+        g.strokeStyle = '#ff5c5c'; g.lineWidth = 2.0; g.setLineDash([8, 6]); g.stroke(); g.setLineDash([]);
+        g.fillStyle = 'rgba(255,92,92,0.06)'; g.fill();
+        g.fillStyle = '#ff5c5c'; g.font = '9px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(`⚠ HAZARD BOUNDARY: ${z.name.toUpperCase()}`, x, y + rr - 12);
+      } else {
+        g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
+        if (this._layers.faction) {
+          g.fillStyle = hexToRgba(z.color, 0.08); g.fill();
+          g.strokeStyle = hexToRgba(z.color, 0.35);
+        } else {
+          g.strokeStyle = 'rgba(120,140,170,0.18)';
+        }
+        g.lineWidth = 1.2; g.stroke();
+        g.fillStyle = z.color; g.font = '10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(z.name + (z.threat ? '  ⚠' + z.threat : ''), x, y);
+      }
     }
-    // Stations / gates / POIs.
+
+    // Points of interest
     for (const p of model.points) {
       if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
       const x = sx(p.x), y = sz(p.z);
       const isGate = p.kind === 'gate';
       const isStation = p.kind === 'station';
-      g.save();
-      const col = isGate ? '#b99cff' : isStation ? '#7af7d0' : '#ffd24a';
-      g.fillStyle = col; g.strokeStyle = col; g.shadowColor = col; g.shadowBlur = 8;
-      if (isGate) { g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y); g.closePath(); g.stroke(); }
-      else if (isStation) { g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill(); }
-      else { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.stroke(); }
-      g.shadowBlur = 0;
-      g.fillStyle = 'rgba(207,227,255,.85)'; g.font = '9px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle';
-      g.fillText(p.name, x + 8, y);
-      g.restore();
+
       this._clickTargets.push({
-        sx: x, sy: y, radiusPx: 16, kind: p.kind, id: p.id, x: p.x, z: p.z,
-        entityId: p.entityId, stationId: p.stationId, name: p.name,
+        sx: x, sy: y, radiusPx: 18, kind: p.kind, id: p.id, x: p.x, z: p.z,
+        entityId: p.entityId, stationId: p.stationId, name: p.name, factionId: p.factionId,
+        detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}`
       });
+
+      // Highlight selected target
+      if (this._selectedTarget && this._selectedTarget.id === p.id) {
+        g.beginPath(); g.arc(x, y, 16, 0, Math.PI * 2);
+        g.strokeStyle = 'rgba(57,208,255,0.8)'; g.lineWidth = 2; g.stroke();
+      }
+
+      g.save();
+      const col = isGate ? '#8d66ff' : isStation ? '#39d0ff' : '#ffb35c';
+      g.fillStyle = col; g.strokeStyle = col; g.shadowColor = col; g.shadowBlur = 6;
+
+      if (isGate) {
+        g.beginPath(); g.moveTo(x, y - 6); g.lineTo(x + 6, y); g.lineTo(x, y + 6); g.lineTo(x - 6, y); g.closePath(); g.stroke();
+      } else if (isStation) {
+        g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill();
+      } else {
+        g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.stroke();
+      }
+      g.shadowBlur = 0;
+
+      g.fillStyle = 'rgba(207,227,255,0.85)'; g.font = '10px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle';
+      g.fillText(p.name, x + 10, y);
+
+      // Services Overlay
+      if (this._layers.services && (isStation || isGate)) {
+        const record = findStationRecord(state, p.stationId || p.id);
+        const services = record && record.services ? record.services : [];
+        if (services.length > 0) {
+          g.fillStyle = 'rgba(57,208,255,0.45)'; g.font = '8px monospace';
+          g.fillText(services.map(s => s[0].toUpperCase()).join('|'), x + 10, y + 10);
+        }
+      }
+
+      // Prices Overlay
+      if (this._layers.market && isStation) {
+        const marketData = getMarketMemoryForStation(state, p.stationId || p.id, this._selectedCommodity);
+        if (marketData) {
+          const tint = memoryTint(marketData.ageS);
+          g.save();
+          g.fillStyle = 'rgba(8,14,26,0.85)';
+          g.strokeStyle = tint.color; g.lineWidth = 1;
+          const text = `${marketData.buy}/${marketData.sell}`;
+          g.font = '9px monospace';
+          const tw = g.measureText(text).width;
+          g.beginPath(); g.rect(x + 10, y - 18, tw + 6, 12); g.fill(); g.stroke();
+          g.fillStyle = tint.color; g.textAlign = 'left'; g.textBaseline = 'middle';
+          g.fillText(text, x + 13, y - 12);
+          g.restore();
+        }
+      }
+
+      // Mission relevance overlay
+      if (this._layers.mission) {
+        const activeMissions = state.missions && state.missions.active || [];
+        const isMissionDest = activeMissions.some(m => m.status === 'active' && m.destStationId === p.stationId);
+        if (isMissionDest) {
+          g.strokeStyle = '#ffd24a'; g.lineWidth = 1.5;
+          g.beginPath(); g.arc(x, y, 11, 0, Math.PI * 2); g.stroke();
+        }
+      }
+
+      g.restore();
     }
   },
 
-  // --- local render ---
+  // --- LOCAL DRAW ---
   _drawLocal(g, state, w, h) {
     const model = buildLocalModel(state, this._isHostile);
-    const cx = w / 2, cy = h / 2;
-    const px = model.player ? model.player.x : 0;
-    const pz = model.player ? model.player.z : 0;
+    const cam = this._cams.local;
+
+    const player = playerEntity(state);
+    const px = player ? player.pos.x : 0;
+    const pz = player ? player.pos.z : 0;
+
     let span = 1600;
     let m = 0;
     for (const c of model.contacts) m = Math.max(m, Math.hypot(c.x - px, c.z - pz));
     if (m > 0) span = Math.max(600, m * 2.2);
-    const scale = (Math.min(w, h) * 0.85) / span;
-    const sx = (x) => cx - (x - px) * scale;
-    const sz = (z) => cy - (z - pz) * scale;
-    this._view = { level: 'local' };
 
-    // range rings
-    g.strokeStyle = 'rgba(57,208,255,0.10)'; g.setLineDash([3, 5]);
-    for (const rr of [0.33, 0.66, 1.0]) { g.beginPath(); g.arc(cx, cy, Math.min(w, h) * 0.42 * rr, 0, Math.PI * 2); g.stroke(); }
+    const baseScale = (Math.min(w, h) * 0.85) / span;
+    this._view = { level: 'local', baseScale };
+    const sx = (x) => w / 2 - (x - cam.cx) * baseScale * cam.zoom;
+    const sz = (z) => h / 2 - (z - cam.cy) * baseScale * cam.zoom;
+
+    // Range rings
+    g.strokeStyle = 'rgba(57,208,255,0.08)'; g.setLineDash([3, 5]);
+    for (const rr of [0.33, 0.66, 1.0]) {
+      g.beginPath(); g.arc(w / 2, h / 2, Math.min(w, h) * 0.42 * rr, 0, Math.PI * 2); g.stroke();
+    }
     g.setLineDash([]);
 
+    // Draw active waypoint line
+    const wp = state.nav && state.nav.waypoint;
+    if (wp && wp.pos && this._layers.route) {
+      g.save();
+      g.strokeStyle = '#ffd24a'; g.lineWidth = 2; g.setLineDash([6, 5]);
+      g.beginPath(); g.moveTo(sx(px), sz(pz)); g.lineTo(sx(wp.pos.x), sz(wp.pos.z)); g.stroke();
+      g.restore();
+    }
+
+    // Contacts
     for (const c of model.contacts) {
       const x = sx(c.x), y = sz(c.z);
+
+      this._clickTargets.push({
+        sx: x, sy: y, radiusPx: 14, kind: c.kind, id: c.id, x: c.x, z: c.z,
+        entityId: c.entityId, stationId: c.stationId, name: c.name, factionId: c.factionId,
+        detail: `Contact · ${c.name} · ${c.kind.toUpperCase()}`
+      });
+
+      // Selected highlight
+      if (this._selectedTarget && this._selectedTarget.id === c.id) {
+        g.beginPath(); g.arc(x, y, 14, 0, Math.PI * 2);
+        g.strokeStyle = 'rgba(57,208,255,0.85)'; g.lineWidth = 1.8; g.stroke();
+      }
+
       g.save();
-      if (c.kind === 'asteroid') { g.fillStyle = '#6e7b8c'; g.beginPath(); g.arc(x, y, 2.5, 0, Math.PI * 2); g.fill(); }
-      else if (c.kind === 'station') {
-        g.fillStyle = '#7af7d0'; g.shadowColor = '#7af7d0'; g.shadowBlur = 6; g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill();
+      if (c.kind === 'asteroid') {
+        g.fillStyle = '#6e7b8c'; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill();
+      } else if (c.kind === 'station') {
+        g.fillStyle = '#39d0ff'; g.shadowColor = '#39d0ff'; g.shadowBlur = 6;
+        g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.fill();
       } else {
-        const col = c.hostile ? '#ff5470' : (c.factionId ? '#4DA8FF' : '#9aa8bc');
+        const col = c.hostile ? '#ff5c5c' : (this._layers.faction && c.factionId ? factionColorOf(c.factionId) : '#39d0ff');
         g.fillStyle = col; g.shadowColor = col; g.shadowBlur = 6;
+
+        // Hostile velocity vector tick
+        if (c.hostile && c.vx != null) {
+          const pvx = -(c.vx / 3) * baseScale * cam.zoom;
+          const pvz = -(c.vz / 3) * baseScale * cam.zoom;
+          const len = Math.hypot(pvx, pvz);
+          if (len > 0.1) {
+            const mult = len > 24 ? 24 / len : 1;
+            g.strokeStyle = '#ff5c5c'; g.lineWidth = 1.2;
+            g.beginPath(); g.moveTo(x, y); g.lineTo(x + pvx * mult, y + pvz * mult); g.stroke();
+          }
+        }
+
         g.translate(x, y); g.rotate(Math.PI + (c.rot || 0));
-        g.beginPath(); g.moveTo(4, 0); g.lineTo(-3, -2.6); g.lineTo(-3, 2.6); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(5, 0); g.lineTo(-4, -3.2); g.lineTo(-4, 3.2); g.closePath(); g.fill();
       }
       g.restore();
-      this._clickTargets.push({ sx: x, sy: y, radiusPx: 14, kind: c.kind, id: c.id, x: c.x, z: c.z, entityId: c.entityId, stationId: c.stationId, name: c.name });
+
+      g.fillStyle = 'rgba(207,227,255,0.8)'; g.font = '9px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle';
+      g.fillText(c.name, x + 8, y);
     }
-    // player
+
+    // Player position
     g.save();
     g.fillStyle = '#39d0ff'; g.shadowColor = '#39d0ff'; g.shadowBlur = 10;
-    g.translate(cx, cy); g.rotate(Math.PI + (model.player ? model.player.rot : 0));
-    g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, -4.5); g.lineTo(-5, 4.5); g.closePath(); g.fill();
+    g.translate(w / 2, h / 2); g.rotate(Math.PI + (player ? player.rot : 0));
+    g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -5.5); g.lineTo(-6, 5.5); g.closePath(); g.fill();
     g.restore();
-  },
-
-  _onClick(ev) {
-    if (!this._ctx || !this._ctx.bus || !this._canvas) return;
-    const rect = this._canvas.getBoundingClientRect();
-    const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
-    let best = null, bestD2 = Infinity;
-    for (const t of this._clickTargets) {
-      const dx = mx - t.sx, dy = my - t.sy;
-      const d2 = dx * dx + dy * dy;
-      const rad = t.radiusPx || 14;
-      if (d2 <= rad * rad && d2 < bestD2) { best = t; bestD2 = d2; }
-    }
-    if (!best) return;
-    const payload = resolveCourseTarget(best);
-    if (!payload) return;
-    // Sector routes also ask the world system to plot/jump, matching the legacy starmap contract.
-    if (payload.type === 'sector' && payload.sectorId) {
-      this._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
-    }
-    this._ctx.bus.emit('ui:setCourse', payload);
-    this._ctx.bus.emit('toast', { text: 'Course set: ' + (payload.label || 'target'), kind: 'info', ttl: 3 });
-    popCurrentScreen(this._ctx);
   },
 };
 
-// hex "#rrggbb" -> "rgba(r,g,b,a)"; tolerant of bad input (returns a neutral tint).
+// hexToRgba utility
 function hexToRgba(hex, alpha) {
   const s = String(hex || '').replace('#', '');
   if (s.length !== 6) return 'rgba(136,153,170,' + alpha + ')';
