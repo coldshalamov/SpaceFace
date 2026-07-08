@@ -1263,3 +1263,20 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `flightRuntime.diagnostics.stopDistance`, but that is not a `getDerivedStats()` field today; the check must make
   that estimate explicit rather than claiming a nonexistent direct read.
 - No-touch remains `src/systems/ships.js`, `src/systems/flightV3.js`, `src/ui/screens/outfit*.js`, HUD, render, and input.
+
+### T5c-MASS-FEEL — DONE (2026-07-08)
+- Added pure `src/ui/panels/massDelta.js` and `scripts/check-mass-delta.mjs` plus `npm run check:mass-delta`.
+  The helper splices a candidate fitting with shipped `buildSlotList` / `fits`, calls `getDerivedStats()` before
+  and after, and reports a compact delta row for turn, top speed, stop-distance estimate, bank, and mass ratio.
+- The stop-distance line is deliberately named as an estimate: `maxSpeed^2 / (2 * reverseAccel)` from the live
+  `flightModel`, because `flightRuntime.diagnostics.stopDistance` depends on current velocity/heading and is not a
+  `getDerivedStats()` field.
+- Non-vacuous control: first attempt exposed a shared-helper weakness when changing `turn` from `derived.turnRate`
+  to `derived.maxSpeed` still passed. Tightened `check-mass-delta` to compare directly against live
+  `getDerivedStats()` output; the same wrong-stat change then failed (`93.6 !== 2.376`). Restored `turnRate`; the
+  check passed.
+- No-regression floor: `node --check src/ui/panels/massDelta.js`, `node --check scripts/check-mass-delta.mjs`,
+  `npm run check:mass-delta`, `npm run check:handling-profile`, `npm run check:module-risk`,
+  `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`).
+  `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
+  `scripts/sf-sim.mjs:1161`.
