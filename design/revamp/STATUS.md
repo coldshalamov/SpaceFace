@@ -1231,3 +1231,10 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   helper/check would not satisfy the acceptance because the shipped map builders still would not expose `confidence`.
 - Unblock by either sanctioning a maps-lane edit to `src/ui/galaxyMap.js`'s pure model builders, or revising the packet
   to allow a dedicated pure helper file that `galaxyMap.js` can consume in a later maps/frontend pass.
+
+### T5c-MASS-PERSONALITY — claim (2026-07-08)
+- Claimed BP-07.1 `MASS-PERSONALITY` from `detail/D_flight_ships_mining.md`.
+- Backend-safe scope: add a pure handling-profile helper/check over shipped `getDerivedStats(...).flightModel`
+  fields (`angularAccel`, `inertia`, `maxSpeed`, `angularBrake`) so shipyard/outfitting UI can consume real
+  per-hull fingerprints later. No-touch remains `src/systems/ships.js`, `src/systems/flightV3.js`,
+  `src/data/ships.js`, `src/core/flight/propulsionCatalog.js`, HUD, render, and input.
