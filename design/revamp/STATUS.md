@@ -1254,3 +1254,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `npm run check:module-risk`, `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed
   (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
+
+### T5c-MASS-FEEL — claim (2026-07-08)
+- Claimed BP-07.1 `MASS-FEEL` from `detail/D_flight_ships_mining.md`.
+- Backend-safe scope: add a pure before/after helper/check that splices a candidate fitting, calls shipped
+  `getDerivedStats()` for both sides, and reports deltas for turn rate, top speed, bank, mass ratio, and a named
+  stop-distance estimate derived from live `flightModel` fields. The packet text mentions
+  `flightRuntime.diagnostics.stopDistance`, but that is not a `getDerivedStats()` field today; the check must make
+  that estimate explicit rather than claiming a nonexistent direct read.
+- No-touch remains `src/systems/ships.js`, `src/systems/flightV3.js`, `src/ui/screens/outfit*.js`, HUD, render, and input.
