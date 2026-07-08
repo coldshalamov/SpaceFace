@@ -1167,3 +1167,16 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   it without inventing labels.
 - No-touch for this packet: `src/ui/hud.js`, `src/systems/aiPorts.js`, `src/systems/scanner.js`, map UI, render,
   assets, and SG-06 behavior.
+
+### T5f-INTENT-STRIP — DONE (2026-07-08)
+- Added pure `src/data/intentGlyphs.js` with the seven canonical overview-strip verbs/glyph ids:
+  `INTERCEPT`, `FLEE`, `SCAN`, `DOCK`, `MINE`, `ESCORT`, and `INTERDICT`.
+- Added `scripts/check-intent-glyphs.mjs` plus `npm run check:intent-glyphs`. The check pins exact roster/order,
+  alias coverage for SG-06/contact vocabulary, deterministic contact readout arbitration, compact immutable
+  readout shape, and no-touch/data-only scope against registry, HUD, `aiPorts`, and scanner wiring.
+- Non-vacuous control: temporarily changed the `fleeing` glyph token from `flee` to `run`; the check failed on
+  `fleeing: required glyph token`. Restored `flee`; `npm run check:intent-glyphs` passed again.
+- No-regression floor: `node --check src/data/intentGlyphs.js`, `node --check scripts/check-intent-glyphs.mjs`,
+  `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`).
+  `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
+  `scripts/sf-sim.mjs:1161`.
