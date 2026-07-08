@@ -1091,3 +1091,15 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-data-refs.mjs`, `npm run check:mining:bulk-guidance`, and `npm run check:balance` passed
   (balance remains 2 PASS / 2 WARN / 0 FAIL). `npm run check:sim:compare` still fails only on the documented
   47-A projectile-collision precondition in `scripts/sf-sim.mjs:1161`.
+
+### T5a-FIELD-MEMORY — claim (2026-07-08)
+- Claimed the backend-safe half of BP-02 mining-fold FIELD-MEMORY from `detail/D_flight_ships_mining.md`:
+  a per-field depletion ledger that turns repeated asteroid destruction into durable field-memory state.
+- Live proof before claim: `src/systems/fieldDepletion.js` and `scripts/check-field-depletion.mjs` are absent,
+  `package.json` has no `check:field-depletion` script, and `src/core/registry.js` has no `fieldDepletion`
+  import/registration.
+- Reuse seam verified: `mining.js` emits `asteroid:destroyed` synchronously while the asteroid entity still
+  has `data.fieldId`; `world.js` already listens for `field:depletedChanged` and stores the depletion scalar
+  in `state.world.discovery[currentSectorId].fieldsDepleted[fieldId]`, which its respawn budget already reads.
+- Scope guard: no `mining.js`, `world.js`, `data/mining.js`, map UI, HUD, render, assets, input, economy, cargo,
+  or combat edits. Expected files are the new backend system, registry/package/check wiring, and progress notes.
