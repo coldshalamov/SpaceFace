@@ -1280,3 +1280,11 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`).
   `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
   `scripts/sf-sim.mjs:1161`.
+
+### T5d-AUD-01 — claim (2026-07-08)
+- Claimed BP-10.1 `PKT-AUD-01` from `detail/F_comms_audio_onboarding.md`.
+- Backend-safe scope: add a pure `src/audio/cuePriorityBus.js` pre-mix arbiter and check. It should duck only
+  weapon/engine loop buses for ~250 ms when a presentation cue has `importance >= 0.8`, never duck the critical
+  cue itself, and leave music/global mix ducking to the existing `_duckMusic` path.
+- No-touch remains `src/audio/audioSystem.js`, `src/systems/presentationAdapters.js`, and
+  `src/presentation/cueSchema.js`.

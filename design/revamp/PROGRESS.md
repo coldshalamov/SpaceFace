@@ -151,7 +151,8 @@
 | T5c | BP-07.1 flight/ship-mass (5 packets) | IN-PROGRESS 2026-07-08 (MASS-PERSONALITY + MASS-FEEL DONE) | T4 | — |
 | T5c-MASS-FEEL | BP-07.1 loadout-to-handling delta backend readout | DONE 2026-07-08 | T4 | `npm run check:mass-delta` PASS; wrong-stat control failed/restored/passed. |
 | T5c-MASS-PERSONALITY | BP-07.1 per-hull handling fingerprint backend readout | DONE 2026-07-08 | T4 | `npm run check:handling-profile` PASS; wrong-field control failed/restored/passed. |
-| T5d | BP-10.1 audio (7 packets) | NEXT | T4 | — |
+| T5d | BP-10.1 audio (7 packets) | IN-PROGRESS 2026-07-08 (AUD-01 CLAIMED) | T4 | — |
+| T5d-AUD-01 | BP-10.1 mask-proof cue priority bus | CLAIMED 2026-07-08 | T4 | Pure pre-mix duck arbiter/check; no `audioSystem.js`, `presentationAdapters.js`, or `cueSchema.js` edits. |
 | T5e | BP-09.1 builds/synergies (4 packets) | IN-PROGRESS 2026-07-08 (BUILD-ID + SYNERGY-TELLS + MODULE-RISK DONE) | T4 | — |
 | T5e-BUILD-ID | BP-09.1 BUILD-ID archetype badge backend | DONE 2026-07-08 | T4 | `npm run check:build-identity` PASS |
 | T5e-SYNERGY-TELLS | BP-09.1 SYNERGY-TELLS backend data | DONE 2026-07-08 | T4 | `npm run check:synergy-tells` PASS |
