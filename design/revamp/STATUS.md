@@ -915,3 +915,14 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Related gates: `check:career-profile` PASS, `check:mission-receipts` PASS, and `check:balance` 0 FAIL.
   `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
   `sf-sim.mjs:1161`.
+
+### T8c SALVAGE_ANATOMY — claim (2026-07-08)
+- Claimed verification-only story/narrative row T8c: prove BP-01.1 wreck anatomy exposes typed black-box,
+  reactor, module, and survivor-pod salvage without relying on asset/render work.
+- Live proof before claim: `scripts/check-salvage-anatomy.mjs` is absent and `package.json` has no
+  `check:salvage-anatomy` script. Runtime code already has `src/data/salvageActions.js`,
+  `src/systems/salvageActions.js`, and `src/systems/survivorPod.js`; this row should pin those shipped
+  backend contracts, not build T6f visual parts.
+- Scope guard: no `assets/**`, `src/render/**`, HUD, input, mining, combat, or salvage.js edits. Expected
+  files are the new check script, `package.json`, and ledger notes only unless a shipped contract mismatch
+  is exposed.

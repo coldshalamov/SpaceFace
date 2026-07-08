@@ -172,7 +172,7 @@
 |---|---|---|---|---|---|
 | T8a | `check:career-profile` | BP-12 careers surface economy | DONE 2026-07-07 | T4b | `npm run check:career-profile` PASS |
 | T8b | `check:fact-ledger` | surfaces existing `state.world.facts` | DONE 2026-07-07 | T1a | — |
-| T8c | `check:salvage-anatomy` | BP-01.1 wreck-module anatomy | NEXT | T4c | — |
+| T8c | `check:salvage-anatomy` | BP-01.1 wreck-module anatomy | IN-FLIGHT 2026-07-08 | T4c | — |
 | T8d | `check:smuggling-card` | BP-12 customs/contraband | DONE 2026-07-07 | T4b | T8e |
 | T8e | `check:station-mood` | BP-11 station life | DONE 2026-07-07 | T4a | T8h |
 | T8f | `check:claim-ledger` | BP-06 bases | DONE 2026-07-07 | T4 | T8g |
