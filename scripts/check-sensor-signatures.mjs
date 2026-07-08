@@ -110,7 +110,11 @@ assert.equal(SENSOR_SIGNATURE_DEBOUNCE_MS, 1000, 'debounce should cover the <=1s
 
 const adapterSource = readFileSync(new URL('../src/systems/signatureAdapters.js', import.meta.url), 'utf8');
 assert.match(adapterSource, /scannerIsHostileToPlayer/, 'adapter should route through scanner hostility');
-assert.doesNotMatch(adapterSource, /factionId/, 'adapter must not infer hostility from faction ids');
+const sensorResolverSource = adapterSource.slice(
+  adapterSource.indexOf('export function resolveSensorSignature'),
+  adapterSource.indexOf('export function isCustomsZone'),
+);
+assert.doesNotMatch(sensorResolverSource, /factionId/, 'sensor lock resolver must not infer hostility from faction ids');
 assert.doesNotMatch(adapterSource, /Math\.random|Date\.now|performance\.now|setTimeout|setInterval|AudioContext|document|window/,
   'signature adapter must stay deterministic and DOM/WebAudio-free');
 

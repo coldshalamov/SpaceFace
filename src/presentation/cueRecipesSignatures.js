@@ -7,6 +7,7 @@ export const SIGNATURE_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.strain': 'presentation.tether.strain',
   'sensor.scan': 'presentation.sensor.scan',
   'sensor.lock': 'presentation.sensor.lock',
+  'customs.scan': 'presentation.customs.scan',
 });
 
 export const TETHER_STRAIN_BUCKETS = Object.freeze([
@@ -80,6 +81,23 @@ export const SIGNATURE_RECIPES = Object.freeze({
       { offsetMs: 90, playbackRate: 1.38, gain: 0.36 },
     ],
   }),
+  'customs.scan': freezeSignature({
+    id: 'customs.scan',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['customs.scan'],
+    material: 'customs',
+    mode: 'one-shot',
+    sourceEvent: 'player:scannedByPatrol',
+    extends: 'sensor.scan',
+    importance: 0.7,
+    playerRelevance: 0.92,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['sensor', 'customs', 'signature', 'warning'],
+    tones: [
+      { offsetMs: 0, playbackRate: 0.74, gain: 0.22 },
+      { offsetMs: 140, playbackRate: 0.82, gain: 0.28 },
+      { offsetMs: 420, playbackRate: 0.78, gain: 0.18 },
+    ],
+  }),
 });
 
 export function getSignatureRecipe(id) {
@@ -151,7 +169,7 @@ export function validateSignatureRecipes(recipes = SIGNATURE_RECIPES) {
     if (id === 'tether.strain' && (!Array.isArray(recipe.buckets) || recipe.buckets.length !== 3)) {
       issues.push(`${path}.buckets must contain exactly three derivative steps`);
     }
-    if (id.startsWith('sensor.') && (!Array.isArray(recipe.tones) || recipe.tones.length < 2)) {
+    if ((id.startsWith('sensor.') || id === 'customs.scan') && (!Array.isArray(recipe.tones) || recipe.tones.length < 2)) {
       issues.push(`${path}.tones must contain the scan/lock tone steps`);
     }
   }

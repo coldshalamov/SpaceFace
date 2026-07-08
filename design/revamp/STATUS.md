@@ -1363,3 +1363,22 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   that returns the customs tone once on scan start only when a Concord customs zone/station and contraband are both
   present; otherwise the shipped plain scan tone remains the fallback.
 - No-touch remains `src/systems/economy.js`, `src/audio/audioSystem.js`, and `src/data/sectorZones.js`.
+
+### T5d-AUD-04 — DONE (2026-07-08)
+- Extended `src/presentation/cueRecipesSignatures.js` with `customs.scan` /
+  `presentation.customs.scan`, extended the pure `signatureAdapters` helper, and added
+  `scripts/check-customs-signature.mjs` plus `npm run check:customs-signature`. The customs tone extends
+  `sensor.scan`, has a longer three-tone held tail, stays below `sensor.lock` importance, and has no draw/voice/spawn
+  budget.
+- The helper returns `customs.scan` only for scan-start + contraband + real Concord customs context. Clean holds fall
+  back to `sensor.scan`; secure but non-customs Concord core space also falls back to `sensor.scan`; Tethys Customs
+  Checkpoint, Helios Customs Corridor, and the Tethys Customs Gate station qualify.
+- Non-vacuous control: temporarily removed `border_checkpoint` from `CUSTOMS_ZONE_TYPES`; the check failed because
+  the Tethys customs checkpoint no longer qualified. Restored the zone type; the check passed.
+- No-regression floor: `node --check src/presentation/cueRecipesSignatures.js`,
+  `node --check src/systems/signatureAdapters.js`, `node --check scripts/check-customs-signature.mjs`,
+  `npm run check:customs-signature`, `npm run check:sensor-signatures`,
+  `npm run check:tether-strain-signature`, `npm run check:cue-priority-bus`,
+  `node scripts/check-presentation-cues.mjs`, `node scripts/check-data-refs.mjs`, and `npm run check:balance`
+  passed (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
