@@ -950,3 +950,20 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `package.json` has no `check:build-identity` script.
 - Scope guard: no `src/systems/scanner.js`, `src/ui/targetPanel.js`, render, assets, flight, input, combat, or
   modules stat edits. Expected files are the new system/check, registry/package wiring, and ledger notes.
+
+### T5e-BUILD-ID — DONE (2026-07-08)
+- NEW event-driven `src/systems/buildIdentity.js` plus `npm run check:build-identity`. It classifies fitted
+  module pairs into deterministic build archetypes, then stamps `entity.data.buildIdentity` and
+  `scanRevealed.buildIdentity` from the existing `scan:shipRevealed` seam. It also restamps after duplicate
+  scan pulses so `scanReveal` de-dupe rewrites cannot drop the badge.
+- The classifier pins real, shipped module reads: ram plate + cargo = `Rammer-Truck`, smuggler hold =
+  `Ghost Hauler`, winch + charge rack = `Control-Tug`, with non-unknown role fallbacks for all 13 canonical
+  hulls. It writes no economy/cargo/reputation/combat state and uses no RNG, wall-clock, or timers.
+- Registry order is now `scanner, scanReveal, buildIdentity, pirateDisguise`, and `check-scan-reveal` was
+  updated to assert that observer chain.
+- Non-vacuous control: temporarily changed the ram+cargo rule id to `cargo_runner`; `check:build-identity`
+  failed on the Rammer-Truck assertion, then restored GREEN.
+- Related gates: `check:build-identity` PASS, `check:scan-reveal` PASS, `check-data-refs` PASS,
+  `check:balance` 0 FAIL, and `check:sim:compare` still fails only on the documented 47-A projectile-collision
+  precondition at `sf-sim.mjs:1161`. Additional broader gate attempted: `check:sg06:registry-init` fails
+  outside this packet at `src/systems/tacticalAI.js:188` (`Cannot assign to read only property 'fire'`).
