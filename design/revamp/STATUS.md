@@ -942,3 +942,11 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:wreck-provenance`, `check:salvage-legality`, `check:ghost-convoy-rumor`, and
   `check:causal-economy` all PASS. `check:balance` stays at 0 FAIL. `check:sim:compare` still fails only
   on the documented 47-A projectile-collision precondition at `sf-sim.mjs:1161`.
+
+### T5e-BUILD-ID — claim (2026-07-08)
+- Claimed BP-09.1 BUILD-ID as a backend-safe ship-build packet: deterministic build archetype classification
+  stamped onto the existing scan-reveal payload, so target-panel/UI can consume it without scanner rewrites.
+- Live proof before claim: `src/systems/buildIdentity.js` and `scripts/check-build-identity.mjs` are absent;
+  `package.json` has no `check:build-identity` script.
+- Scope guard: no `src/systems/scanner.js`, `src/ui/targetPanel.js`, render, assets, flight, input, combat, or
+  modules stat edits. Expected files are the new system/check, registry/package wiring, and ledger notes.

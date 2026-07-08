@@ -143,7 +143,8 @@
 | T5b-BARK-02 | BP-05.1 BARK-02 Ambient Bark Decay + Post-Combat Silence | DONE 2026-07-07 | T4 | `npm run check:bark-silence` PASS |
 | T5c | BP-07.1 flight/ship-mass (5 packets) | NEXT | T4 | — |
 | T5d | BP-10.1 audio (7 packets) | NEXT | T4 | — |
-| T5e | BP-09.1 builds/synergies (4 packets) | NEXT | T4 | — |
+| T5e | BP-09.1 builds/synergies (4 packets) | IN-PROGRESS 2026-07-08 (BUILD-ID claimed) | T4 | — |
+| T5e-BUILD-ID | BP-09.1 BUILD-ID archetype badge backend | IN-FLIGHT 2026-07-08 | T4 | `src/systems/buildIdentity.js`, `scripts/check-build-identity.mjs`, `registry.js`, `package.json` |
 | T5f | BP-03.1 map (3 packets) | NEXT | T4 | — |
 
 ## T6 — ASSET MANIFEST SYNC + QUEUED ASSET AUTHORING (coordinate with graphics lane)
