@@ -1180,3 +1180,13 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`).
   `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
   `scripts/sf-sim.mjs:1161`.
+
+### T5f-PRICE-MEMORY — claim (2026-07-08)
+- Claimed BP-03.1 `known_vs_live_prices` from `detail/G_story_evidence_map.md`.
+- Current tree evidence: the runtime price-memory seam already exists in `economy.js` (`recordMarketMemory` writes
+  visited station quotes under `state.player.marketMemory`) and `starmap.js` (`marketMemoryStationOverlays` reads
+  only visited station memory for map rows). `scripts/check-price-memory.mjs` also exists, but it is not exposed as
+  an npm check and is bundled with unrelated progression checks.
+- Backend-safe scope: expose/augment a real check for the shipped `player.marketMemory` economy/starmap seam and
+  ledger it honestly. No-touch remains `galaxyMap.js`, `sectorSim.js`, `economy.js`, map UI wiring, render, and
+  assets unless the existing check proves a current runtime defect.
