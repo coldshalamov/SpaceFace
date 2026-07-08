@@ -2222,38 +2222,20 @@ export const stationHub = {
 
   _signalAcquire(element, finalText, opts = {}) {
     const duration = opts.duration || 400;
-    const glyphPool = '▒░▓█▐▌╍╌┄┈';
-    const len = finalText.length;
-    const perChar = duration / len;
-    let resolved = 0;
     const token = String(Date.now()) + ':' + Math.random().toString(36).slice(2);
 
     element.dataset.acquireTarget = finalText;
     element.dataset.acquireToken = token;
-    element.textContent = finalText.replace(/./g, () => glyphPool[Math.floor(Math.random() * glyphPool.length)]);
+    element.textContent = finalText;
     element.style.opacity = '1';
     element.classList.remove('acquiring');
     void element.offsetWidth;
     element.classList.add('acquiring');
-
-    const step = () => {
+    setTimeout(() => {
       if (element.dataset.acquireToken !== token) return;
-      if (resolved >= len) {
-        element.textContent = finalText;
-        delete element.dataset.acquireTarget;
-        delete element.dataset.acquireToken;
-        return;
-      }
-      let out = finalText.slice(0, resolved);
-      out += glyphPool[Math.floor(Math.random() * glyphPool.length)];
-      for (let i = resolved + 1; i < len; i++) {
-        out += finalText[i] === ' ' ? ' ' : glyphPool[Math.floor(Math.random() * glyphPool.length)];
-      }
-      element.textContent = out;
-      resolved++;
-      setTimeout(step, perChar);
-    };
-    setTimeout(step, 60);
+      delete element.dataset.acquireTarget;
+      delete element.dataset.acquireToken;
+    }, duration);
   },
 
   _refreshRailServiceStatus() {
