@@ -845,3 +845,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Related gates: `check:combat-outcome` PASS, `check:combat` PASS, `check:pirate-disengage` PASS,
   `check:scan-reveal` PASS, and `check:balance` 0 FAIL. `check:sim:compare` still fails only on the
   documented 47-A projectile-collision precondition at `sf-sim.mjs:1161`.
+
+### T5b-BARK-01 SITUATIONAL_BARK_SURFACING — claim (2026-07-07)
+- Claimed backend-safe BP-05.1 packet BARK-01 from `detail/F_comms_audio_onboarding.md`: map already-live
+  ship AI/contact state transitions to faction-specific radio barks through `ctx.helpers.voice.say`.
+- Live proof before claim: `src/systems/barkDirector.js` and `scripts/check-bark-director.mjs` are absent;
+  `package.json` has no `check:bark-director` script.
+- Scope guard: no `src/ai/*`, `src/systems/encounterDirector.js`, `src/data/barks.js`,
+  `src/ui/voiceArbiter.js`, HUD, render, or input edits. Reuses `barkFor`, `scanner.isHostileToPlayer`,
+  seeded line selection, and the existing `bark` voice channel.
