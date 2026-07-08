@@ -632,6 +632,13 @@ function missionRiskTier(m) {
   return Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
 }
 
+function firstLoopNeedsSafeWork(state) {
+  const ob = state && state.onboarding;
+  if (!ob || ob.finished === true) return false;
+  const done = ob.done || {};
+  return done.next !== true;
+}
+
 function missionRiskCopy(riskValue) {
   const risk = Math.max(0, Math.round(Number(riskValue) || 0));
   const band = risk >= 4 ? 'severe'
@@ -667,7 +674,8 @@ function missionRecommendationReason(m, preflight, readiness, consequences) {
 }
 
 export function recommendMissionBoardOffer(slots = [], state = {}) {
-  const candidates = (Array.isArray(slots) ? slots : [])
+  const firstLoopSafeWork = firstLoopNeedsSafeWork(state);
+  let candidates = (Array.isArray(slots) ? slots : [])
     .map((mission, index) => {
       if (!mission) return null;
       const id = missionOfferId(mission);
@@ -686,20 +694,28 @@ export function recommendMissionBoardOffer(slots = [], state = {}) {
         (preflight.warning ? 250 : 0);
       return { mission, missionId: id, index, preflight, readiness, consequences, risk, score };
     })
-    .filter(Boolean)
-    .sort((a, b) => (b.score - a.score) || (a.risk - b.risk) || (a.index - b.index));
+    .filter(Boolean);
+  if (firstLoopSafeWork) {
+    const safeReady = candidates.filter((c) => c.risk <= 1 && c.readiness.state !== 'blocked');
+    if (safeReady.length) candidates = safeReady;
+  }
+  candidates.sort((a, b) => (b.score - a.score) || (a.risk - b.risk) || (a.index - b.index));
 
   const best = candidates[0];
   if (!best) return null;
-  const blocked = best.readiness.state === 'blocked';
+  const firstLoopRiskBlocked = firstLoopSafeWork && best.risk >= 2;
+  const blocked = best.readiness.state === 'blocked' || firstLoopRiskBlocked;
+  const reason = firstLoopRiskBlocked
+    ? 'Prep first: take a Risk 0-1 contract before elevated work. Risk ' + best.risk + ' stays on the board.'
+    : missionRecommendationReason(best.mission, best.preflight, best.readiness, best.consequences);
   return {
     mission: best.mission,
     missionId: best.missionId,
-    kind: best.readiness.kind,
-    state: best.readiness.state,
+    kind: firstLoopRiskBlocked ? 'warn' : best.readiness.kind,
+    state: firstLoopRiskBlocked ? 'blocked' : best.readiness.state,
     label: blocked ? 'PREP FIRST' : (best.readiness.state === 'caution' ? 'RECOMMENDED - CHECK' : 'RECOMMENDED'),
     title: best.mission.title || prettyType(best.mission.type),
-    reason: missionRecommendationReason(best.mission, best.preflight, best.readiness, best.consequences),
+    reason,
     actionLabel: blocked ? 'Resolve Prep' : 'Accept Recommended',
     disabled: blocked,
   };

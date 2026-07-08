@@ -388,6 +388,7 @@ async function sample(page, label, note) {
           selected: tab.getAttribute('aria-selected') === 'true',
         })),
         departureChips: [...root.querySelectorAll('.st-departure-chip')].map((chip) => shortText(chip.textContent, 120)),
+        missionRecommendText: shortText(root.querySelector('.st-mission-recommend')?.textContent, 700),
         panelText: shortText(root.querySelector('[role="tabpanel"]:not([hidden])')?.textContent || root.textContent, 1400),
       };
     }
@@ -630,9 +631,9 @@ function gradeExperience(report) {
     }
   }
 
-  const missionText = (byLabel.get('station-missions') && byLabel.get('station-missions').station &&
-    byLabel.get('station-missions').station.panelText) || '';
-  if (/recommended/i.test(missionText) && /risk\s*[234]/i.test(missionText)) {
+  const missionRecommendText = (byLabel.get('station-missions') && byLabel.get('station-missions').station &&
+    byLabel.get('station-missions').station.missionRecommendText) || '';
+  if (/recommended/i.test(missionRecommendText) && /risk\s*[234]/i.test(missionRecommendText)) {
     warnings.push('recommended-risk-2-plus-visible-on-first-dock');
   }
 

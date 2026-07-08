@@ -23,7 +23,7 @@ function mission(overrides = {}) {
   };
 }
 
-function state({ capVolume = 20, usedVolume = 0, credits = 1000 } = {}) {
+function state({ capVolume = 20, usedVolume = 0, credits = 1000, onboarding = null } = {}) {
   return {
     simTime: 0,
     world: { currentSectorId: 'sector_helios_prime' },
@@ -35,6 +35,7 @@ function state({ capVolume = 20, usedVolume = 0, credits = 1000 } = {}) {
       active: [],
       config: { maxActive: 8, cruiseSpeedRef: 140 },
     },
+    onboarding,
   };
 }
 
@@ -61,6 +62,25 @@ assert.equal(rec.state, 'ready');
 assert.equal(rec.disabled, false);
 assert.match(rec.reason, /ready now/i);
 assert.match(rec.reason, /Risk 0/);
+
+rec = recommendMissionBoardOffer([
+  mission({ id: 'early_risk2', type: 'bounty_hunt', title: 'Early Risk 2', reward_cr: 5200, riskTier: 2, params: {} }),
+  mission({ id: 'early_safe', title: 'Early Safe', reward_cr: 650, riskTier: 1 }),
+], state({ onboarding: { active: true, finished: false, done: {} } }));
+assert.equal(rec.missionId, 'early_safe',
+  'first-loop recommendation should prefer Risk 0-1 work before elevated combat is taught');
+assert.equal(rec.disabled, false);
+assert.doesNotMatch(rec.reason, /Risk 2/);
+
+rec = recommendMissionBoardOffer([
+  mission({ id: 'only_risk2', type: 'bounty_hunt', title: 'Only Risk 2', reward_cr: 5200, riskTier: 2, params: {} }),
+], state({ onboarding: { active: true, finished: false, done: {} } }));
+assert.equal(rec.missionId, 'only_risk2',
+  'first-loop recommendation should still surface the best available prep target');
+assert.equal(rec.disabled, true,
+  'first-loop elevated work should be prep-gated instead of recommended when no safe work exists');
+assert.equal(rec.label, 'PREP FIRST');
+assert.match(rec.reason, /Risk 0-1/);
 
 rec = recommendMissionBoardOffer([
   mission({ id: 'blocked_bulk', title: 'Blocked Bulk', params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 3 } }),
