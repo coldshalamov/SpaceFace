@@ -71,6 +71,9 @@ try {
   await runFlightInputSequence(page);
   await sample(page, 'flight-after-inputs', 'After W/Shift/Tab/fire/mine input sampling in live flight.');
 
+  await exerciseMechanicsProbe(page);
+  await sample(page, 'flight-mechanics-probe', 'Assisted live tether attachment and combat damage route through runtime systems.');
+
   const dockTarget = await dockAtFirstStation(page);
   await waitForVisible(page, '[data-screen="station"]', 15000, 'station hub');
   await page.waitForTimeout(500);
@@ -156,6 +159,151 @@ async function runFlightInputSequence(page) {
   await page.waitForTimeout(700);
   await page.mouse.up({ button: 'right' });
   await page.waitForTimeout(1400);
+}
+
+async function exerciseMechanicsProbe(page) {
+  const tetherTarget = await page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const helpers = sf && sf.helpers;
+    if (!state || !player || !helpers || typeof helpers.spawnEntity !== 'function') {
+      throw new Error('Mechanics probe could not access runtime spawn helpers');
+    }
+    const pos = { x: player.pos.x + 100, z: player.pos.z };
+    const target = helpers.spawnEntity({
+      type: 'wreck',
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: 18,
+      mass: 800,
+      hull: 120,
+      hullMax: 120,
+      collides: true,
+      data: { probe: 'experience-tether', parentType: 'ship' },
+    });
+    state.input = state.input || {};
+    state.input.tetherMode = 'nearest';
+    state.input.aimWorld = { x: pos.x, z: pos.z };
+    state.input.aimAngle = Math.atan2(pos.z - player.pos.z, pos.x - player.pos.x);
+    const screen = helpers.worldToScreen ? helpers.worldToScreen({ x: pos.x, y: 0, z: pos.z }) : null;
+    return { id: target.id, screen, pos };
+  });
+  await moveMouseToWorldScreen(page, tetherTarget.screen, tetherTarget.pos);
+  await page.evaluate((targetId) => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const target = state && state.entities && state.entities.get(targetId);
+    const combat = sf && sf.registry && typeof sf.registry.get === 'function'
+      ? sf.registry.get('combat')
+      : null;
+    const kernel = combat && (combat.kernel || (typeof combat.ensureKernel === 'function' ? combat.ensureKernel() : null));
+    if (!state || !player || !target || !kernel || !kernel.attachments || typeof kernel.attachments.create !== 'function') {
+      throw new Error('Mechanics probe could not access live attachment service');
+    }
+    const result = kernel.attachments.create({
+      defId: 'tether_standard',
+      ownerId: player.id,
+      targetId: target.id,
+      targetWorld: { x: target.pos.x, z: target.pos.z },
+    });
+    if (!result || !result.ok) throw new Error('Mechanics probe attachment create failed: ' + (result && result.reason || 'unknown'));
+  }, tetherTarget.id);
+  await waitForTrace(page, ['tether:attached'], 5000, 'tether attachment');
+  await page.waitForTimeout(800);
+
+  const combatTarget = await page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const helpers = sf && sf.helpers;
+    if (!state || !player || !helpers || typeof helpers.spawnEntity !== 'function') {
+      throw new Error('Mechanics probe could not access combat spawn helpers');
+    }
+    const pos = { x: player.pos.x + 180, z: player.pos.z };
+    const target = helpers.spawnEntity({
+      type: 'ship',
+      factionId: 'faction_pirates',
+      team: 2,
+      pos,
+      vel: { x: 0, z: 0 },
+      rot: Math.PI,
+      radius: 16,
+      mass: 900,
+      hull: 80,
+      hullMax: 80,
+      shield: 0,
+      shieldMax: 0,
+      armorHp: 0,
+      armorMax: 0,
+      cap: 0,
+      capMax: 0,
+      collides: true,
+      data: {
+        probe: 'experience-combat',
+        shipDefId: 'ship_probe_target',
+        ai: { archetype: 'probe_target', passive: true },
+        combat: {},
+      },
+    });
+    state.player.targetId = target.id;
+    state.input = state.input || {};
+    state.input.aimWorld = { x: pos.x, z: pos.z };
+    state.input.aimAngle = Math.atan2(pos.z - player.pos.z, pos.x - player.pos.x);
+    const screen = helpers.worldToScreen ? helpers.worldToScreen({ x: pos.x, y: 0, z: pos.z }) : null;
+    return { id: target.id, screen, pos };
+  });
+  await moveMouseToWorldScreen(page, combatTarget.screen, combatTarget.pos);
+  await page.mouse.down({ button: 'left' });
+  await page.waitForTimeout(350);
+  await page.mouse.up({ button: 'left' });
+  await waitForTrace(page, ['combat:fire'], 5000, 'combat fire');
+  await page.evaluate((targetId) => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const target = state && state.entities && state.entities.get(targetId);
+    if (!sf || !sf.bus || !state || !target) throw new Error('Mechanics probe combat target missing');
+    sf.bus.emit('projectile:hit', {
+      ownerId: state.playerId,
+      targetId,
+      damage: 18,
+      damageType: 'energy',
+      pos: { x: target.pos.x, z: target.pos.z },
+      weaponId: 'experience_probe_projectile',
+      origin: { x: target.pos.x - 80, z: target.pos.z },
+    });
+  }, combatTarget.id);
+  await waitForTrace(page, ['combat:damage'], 5000, 'combat damage');
+}
+
+async function moveMouseToWorldScreen(page, screen, fallbackWorld) {
+  if (screen && Number.isFinite(screen.x) && Number.isFinite(screen.y) && screen.onScreen !== false) {
+    await page.mouse.move(Math.round(screen.x), Math.round(screen.y));
+    return;
+  }
+  await page.evaluate((world) => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    if (!state || !player || !world) return;
+    state.input = state.input || {};
+    state.input.aimWorld = { x: world.x, z: world.z };
+    state.input.aimAngle = Math.atan2(world.z - player.pos.z, world.x - player.pos.x);
+  }, fallbackWorld);
+  await page.mouse.move(Math.round(WIDTH * 0.58), Math.round(HEIGHT * 0.46));
+}
+
+async function waitForTrace(page, types, timeoutMs, label) {
+  await page.waitForFunction((wanted) => {
+    const sf = window.SF;
+    const trace = sf && sf.eventTrace && typeof sf.eventTrace.snapshot === 'function'
+      ? sf.eventTrace.snapshot()
+      : [];
+    return trace.some((entry) => entry && wanted.includes(entry.type));
+  }, types, { timeout: timeoutMs }).catch((err) => {
+    throw new Error('Timed out waiting for ' + label + ': ' + err.message);
+  });
 }
 
 async function dockAtFirstStation(page) {
@@ -563,6 +711,7 @@ function gradeExperience(report) {
     'new-game-setup',
     'flight-start',
     'flight-after-inputs',
+    'flight-mechanics-probe',
     'station-hub',
     'station-market',
     'station-missions',
