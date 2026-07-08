@@ -138,8 +138,8 @@
 | T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-07 (T5a-C3/T5a-C9 DONE) | T4 (combat lane) | — |
 | T5a-C3 | BP-02.1 C3 Scan-Reveals-Loadout | DONE 2026-07-07 | T4 (combat lane) | `npm run check:scan-reveal` PASS |
 | T5a-C9 | BP-02.1 C9 Kills-Less-Central Outcomes | DONE 2026-07-07 | T4 (combat lane) | `npm run check:combat-outcome` PASS |
-| T5b | BP-05.1 story/comms (7 packets) | IN-PROGRESS 2026-07-07 (BARK-01 claimed) | T4 | — |
-| T5b-BARK-01 | BP-05.1 BARK-01 Situational Bark Surfacing | IN-FLIGHT 2026-07-07 | T4 | `npm run check:bark-director` |
+| T5b | BP-05.1 story/comms (7 packets) | IN-PROGRESS 2026-07-07 (BARK-01 DONE) | T4 | — |
+| T5b-BARK-01 | BP-05.1 BARK-01 Situational Bark Surfacing | DONE 2026-07-07 | T4 | `npm run check:bark-director` PASS |
 | T5c | BP-07.1 flight/ship-mass (5 packets) | NEXT | T4 | — |
 | T5d | BP-10.1 audio (7 packets) | NEXT | T4 | — |
 | T5e | BP-09.1 builds/synergies (4 packets) | NEXT | T4 | — |

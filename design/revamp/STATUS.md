@@ -854,3 +854,18 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Scope guard: no `src/ai/*`, `src/systems/encounterDirector.js`, `src/data/barks.js`,
   `src/ui/voiceArbiter.js`, HUD, render, or input edits. Reuses `barkFor`, `scanner.isHostileToPlayer`,
   seeded line selection, and the existing `bark` voice channel.
+
+### T5b-BARK-01 SITUATIONAL_BARK_SURFACING — DONE (2026-07-07)
+- NEW observer `src/systems/barkDirector.js` plus `npm run check:bark-director`. It registers after the
+  tactical AI slot, reads already-live ship/contact state and `ai:flee`/`ai:reinforcementScheduled`
+  events, and routes faction-specific `scan`/`attack`/`flee`/`reinforce` bark lines through
+  `ctx.helpers.voice.say({channel:'bark'})`.
+- Behavior pinned: a Concord patrol intercept speaks a Concord scan line; the same ship escalating to
+  fire speaks a Concord attack line; simultaneous barks enqueue through voiceArbiter so only one takes
+  the floor; line picks are deterministic from `state.meta.seed`, entity id, and situation.
+- Non-vacuous control: temporarily removed the `pursue` scan edge plus the targeting scan fallback, and
+  `check:bark-director` failed on the lawful-intercept scan assertion; restored GREEN.
+- Related gates: `check:bark-director` PASS, `check:one-voice` PASS, `check:encounter-voice` PASS,
+  `check:encounter-director` PASS, `check:pirate-disengage` PASS, and `check:balance` 0 FAIL.
+  `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
+  `sf-sim.mjs:1161`.

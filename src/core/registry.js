@@ -10,6 +10,7 @@ import { pirateDisguise } from '../systems/pirateDisguise.js';
 import { pirateParley } from '../systems/pirateParley.js';
 import { pirateDisengage } from '../systems/pirateDisengage.js';
 import { aceMemory } from '../systems/aceMemory.js';
+import { barkDirector } from '../systems/barkDirector.js';
 import { aiPorts } from '../systems/aiPorts.js';
 import { ai } from '../systems/ai.js';
 import { createTacticalAISystem } from '../systems/tacticalAI.js';
@@ -97,7 +98,7 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, scanner, scanReveal, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, economy,
+    core, voiceArbiter, input, autoTargetAssist, scanner, scanReveal, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, economy,
     automation, wingmen, intervention, lossLedger, spawnBudget, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -112,6 +113,8 @@ export function createRegistry(ctx) {
   // intent before tactical AI/weapons keep pursuing the player.
   // aceMemory runs at a throttled cadence: B10 listens for named-ace/encounter receipts, and B11
   // consumes due ace-return schedules into spawnBudget-backed promoted crews before AI ticks.
+  // barkDirector runs after the tactical AI slot so state/intent transitions can enqueue one
+  // faction-specific bark through voiceArbiter; it writes only state.barkDirector receipts.
   // combatOutcome runs after combat: it is observer-only receipt state over kill/flee/disable/surrender
   // events and live forceFlee flags; it never mutates combat, AI, economy, cargo, or reputation.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
@@ -137,7 +140,7 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, autoTargetAssist, scanner, scanReveal, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, combatOutcome, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, automation, wingmen, crafting,
+    input, autoTargetAssist, scanner, scanReveal, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, barkDirector, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, combatOutcome, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, automation, wingmen, crafting,
     economy, intervention, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
