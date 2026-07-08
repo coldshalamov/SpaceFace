@@ -1190,3 +1190,17 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Backend-safe scope: expose/augment a real check for the shipped `player.marketMemory` economy/starmap seam and
   ledger it honestly. No-touch remains `galaxyMap.js`, `sectorSim.js`, `economy.js`, map UI wiring, render, and
   assets unless the existing check proves a current runtime defect.
+
+### T5f-PRICE-MEMORY — DONE (2026-07-08)
+- Added `scripts/check-known-vs-live-prices.mjs` plus `npm run check:known-vs-live-prices`. The check exercises the
+  shipped runtime seam: `economy.recordMarketMemory()` records only dock-visited station quotes under
+  `state.player.marketMemory`, `marketMemoryStationOverlays()` reads the saved player memory, warmed live markets do
+  not appear as known prices, saved memory survives a JSON round trip, old visited quotes show the stale tint bucket,
+  and the packet stays out of `galaxyMap.js` / `sectorSim.js` feedback loops.
+- Non-vacuous control: temporarily returned early from the live `recordMarketMemory()` writer in
+  `src/systems/economy.js`; `npm run check:known-vs-live-prices` failed on the missing Helios visited quote. Restored
+  the writer; `git diff -- src/systems/economy.js` was empty and the check passed again.
+- No-regression floor: `node --check scripts/check-known-vs-live-prices.mjs`,
+  `npm run check:known-vs-live-prices`, `node scripts/check-price-memory.mjs`, `node scripts/check-data-refs.mjs`,
+  and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on
+  the documented 47-A projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
