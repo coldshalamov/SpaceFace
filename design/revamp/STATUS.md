@@ -892,3 +892,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `check:encounter-voice` PASS, `check:pirate-disengage` PASS, and `check:balance` 0 FAIL.
   `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
   `sf-sim.mjs:1161`.
+
+### T8a CAREER_PROFILE — claim (2026-07-07)
+- Claimed verification-only story/narrative check row T8a: prove existing career/profile aggregates surface
+  economy, mining, mission, combat, and first-hour milestone data without adding gameplay machinery.
+- Live proof before claim: `scripts/check-career-profile.mjs` is absent and `package.json` has no
+  `check:career-profile` script. Runtime code already has `src/systems/telemetry.js` and economy
+  `state.player.stats` bookkeeping; this row should pin those shipped contracts, not rebuild them.
+- Scope guard: no UI/render/input/gameplay edits. Expected files are the new check script, `package.json`,
+  and ledger notes only unless the check exposes a real already-shipped contract mismatch.
