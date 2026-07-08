@@ -1443,3 +1443,10 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed
   (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
+
+### T5d-AUD-07 — claim (2026-07-08)
+- Claimed BP-10.1 `PKT-AUD-07` from `detail/F_comms_audio_onboarding.md`.
+- Backend-safe scope: add signature-caption parity/audit helpers beside `SIGNATURE_CAPTIONS`, gate caption emission
+  by the same `0.8` importance threshold used by `cuePriorityBus`, and verify every AUD-02..06 signature id has one
+  short caption line.
+- No-touch remains `src/systems/presentationAdapters.js`.
