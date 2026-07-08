@@ -1147,3 +1147,15 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   explicit missing deltas without rebuilding the tutorial.
 - `src/systems/onboarding.js` remains frozen by the packet's `noTouch`; BARK-03 is presentation/UI work and is
   intentionally skipped by this backend lane.
+
+### T5b-PKT-RITUAL — BLOCKED (2026-07-08)
+- Attempted to add a non-vacuous proof guard that source-pins `BEATS`/`SILENCE_S` and exercises the B3
+  tutorial pirate flee path with a small harness. The source/doc portions passed, but the runtime harness could
+  not spawn the B3 pirate because `onboarding._spawnPirate()` requires `this.helpers.spawnEntity`.
+- Live code evidence: `src/systems/onboarding.js` uses `this.helpers.spawnEntity` in B1/B3 spawn/drop helpers, but
+  `onboarding.init(ctx)` stores `state`, `bus`, `gamepad`, and `touch` only; it never stores `ctx.helpers`.
+  `src/core/registry.js` only calls `s.init(ctx)` and does not assign helpers generically.
+- Because this packet explicitly marks `src/systems/onboarding.js` as `noTouch` / frozen, the proof ritual cannot
+  honestly be stamped DONE from this backend lane. Unblock by a lead/onboarding owner either assigning
+  `this.helpers = ctx.helpers` in `onboarding.init(ctx)` or sanctioning an alternate helper seam, then re-run the
+  proof doc/check packet.

@@ -144,10 +144,10 @@
 | T5a-SPIN-DRIFT | BP-02 mining fold SPIN-AND-DRIFT | DONE 2026-07-08 | T4 (combat lane) | `npm run check:asteroid-motion` PASS |
 | T5a-FIELD-MEMORY | BP-02 mining fold FIELD-MEMORY backend | DONE 2026-07-08 | T4 (combat lane) | `npm run check:field-depletion` PASS |
 | T5a-FRAGILE-ORE | BP-02 mining fold FRAGILE-ORE backend | BLOCKED 2026-07-08 | T4 (combat lane) | Needs a sanctioned hard-impact/ram impulse event or cargo-owner loss seam; no-touch files are `combat.js`, `cargo.js`, `mining.js`. |
-| T5b | BP-05.1 story/comms (7 packets) | IN-PROGRESS 2026-07-08 (BARK-01/BARK-02 DONE; PKT-RITUAL CLAIMED) | T4 | — |
+| T5b | BP-05.1 story/comms (7 packets) | IN-PROGRESS 2026-07-08 (BARK-01/BARK-02 DONE; PKT-RITUAL BLOCKED) | T4 | — |
 | T5b-BARK-01 | BP-05.1 BARK-01 Situational Bark Surfacing | DONE 2026-07-07 | T4 | `npm run check:bark-director` PASS |
 | T5b-BARK-02 | BP-05.1 BARK-02 Ambient Bark Decay + Post-Combat Silence | DONE 2026-07-07 | T4 | `npm run check:bark-silence` PASS |
-| T5b-PKT-RITUAL | REVAMP_MASTER first-15 proof ritual naming/check | CLAIMED 2026-07-08 | T4 | Backend-safe doc/check packet; `onboarding.js` frozen by spec. |
+| T5b-PKT-RITUAL | REVAMP_MASTER first-15 proof ritual naming/check | BLOCKED 2026-07-08 | T4 | Runtime B1/B3 spawns depend on `onboarding.helpers`, but `onboarding.init(ctx)` does not store `ctx.helpers`; packet marks `onboarding.js` no-touch. |
 | T5c | BP-07.1 flight/ship-mass (5 packets) | NEXT | T4 | — |
 | T5d | BP-10.1 audio (7 packets) | NEXT | T4 | — |
 | T5e | BP-09.1 builds/synergies (4 packets) | IN-PROGRESS 2026-07-08 (BUILD-ID + SYNERGY-TELLS DONE) | T4 | — |
