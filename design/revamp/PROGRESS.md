@@ -84,7 +84,7 @@
 | T3-21 | 21 | 47-A recovery contested | `47aLiveScene.js` | DONE 2026-07-06 | — | `npm run check:47a:recovery-contested` PASS | T3-20 | T3-22 |
 | T3-22 | 22 | 47-A civilian priority | `47aLiveScene.js` | DONE 2026-07-06 | — | `npm run check:47a:civilian-priority` PASS | T3-21 | T3-23 |
 | T3-23 | 23 | 47-A physical branch resolution | `47aLiveScene.js` | DONE 2026-07-06 | — | `npm run check:47a:physical-branches` PASS | T3-22 | T3-24 |
-| T3-24 | 24 | consolidated `check:massline` aggregate + `docs/MASSLINE_MECHANICS.md` | `package.json`, `docs/MASSLINE_MECHANICS.md` | IN-FLIGHT 2026-07-08 | Unblocking the missing advertised 47-A child check files first, then the aggregate/doc gate. | `check:massline` | T3-23 | — |
+| T3-24 | 24 | consolidated `check:massline` aggregate + `docs/MASSLINE_MECHANICS.md` | `package.json`, `docs/MASSLINE_MECHANICS.md`, `scripts/check-massline-aggregate.mjs` | DONE 2026-07-08 | `npm run check:massline` PASS (23 child checks); missing 47-A child scripts restored; doc coverage control failed/restored/passed. | `npm run check:massline` PASS | T3-23 | — |
 
 ## T4 — WAVE 3 NEW BPs (after T3 lands; per `DETAIL_PACKETS §5` dependency order)
 

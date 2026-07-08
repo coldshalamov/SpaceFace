@@ -71,6 +71,7 @@
     "check:sg02:production-combat": "node scripts/check-sg02-production-combat-port.mjs",
     "check:sg02:tether": "node scripts/check-sg02-tether.mjs",
     "check:sg02:tether-break": "node scripts/check-sg02-tether-break.mjs",
+    "check:massline": "node scripts/check-massline-aggregate.mjs",
     "check:massline:telemetry": "node scripts/check-massline-telemetry.mjs",
     "check:massline:release": "node scripts/check-massline-release-rating.mjs",
     "check:massline:release-feedback": "node scripts/check-massline-release-feedback.mjs",

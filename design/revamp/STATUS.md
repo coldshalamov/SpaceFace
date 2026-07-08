@@ -1511,3 +1511,15 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   spindle Massline attachment/false mass, scavenger hostile-fire timing and damage, sling `physics.impulse`,
   recovery-tug activation, civilian-pod priority data, and all four resolution branches mutating world facts.
 - Validation: all seven new files pass `node --check`; all six `npm run check:47a:*` child commands above pass.
+
+### T3-24 MASSLINE_AGGREGATE — DONE (2026-07-08)
+- Added `scripts/check-massline-aggregate.mjs`, `npm run check:massline`, and `docs/MASSLINE_MECHANICS.md`.
+- The aggregate verifies package wiring, script-file existence, required mechanics-doc coverage, then runs 23 child
+  gates: Massline telemetry/release/load/snap-catch/reel-pump/targeting/threat/arc/whip, impulse authority/combo,
+  mining bulk-haul guidance, and the six restored 47-A child checks.
+- Non-vacuous control: temporarily changed the aggregate's required doc term to
+  `CONTROL_ONLY_MISSING_MASSLINE_TERM`; `npm run check:massline` failed before children on the missing doc term.
+  Restored `47-A`; `npm run check:massline` passed (`[check-massline] PASS - 23 child checks green`).
+- No-regression floor: `git diff --check` passed, `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`),
+  and `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
+  `scripts/sf-sim.mjs:1161`.
