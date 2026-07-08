@@ -135,7 +135,7 @@
 
 | id | addendum | status | depends-on | next |
 |---|---|---|---|---|
-| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-08 (T5a-C3/T5a-C4/T5a-C9/T5a-C11/T5a-C12/T5a-SPIN-DRIFT/T5a-FIELD-MEMORY DONE; T5a-FRAGILE-ORE BLOCKED) | T4 (combat lane) | — |
+| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | BLOCKED 2026-07-08 (backend lane; only FRAGILE-ORE remains) | T4 (combat lane) | Completed backend-safe packets are green; FRAGILE-ORE needs a sanctioned hard-impact/ram impulse event or cargo-owner loss seam while `combat.js`, `cargo.js`, and `mining.js` are no-touch. |
 | T5a-C3 | BP-02.1 C3 Scan-Reveals-Loadout | DONE 2026-07-07 | T4 (combat lane) | `npm run check:scan-reveal` PASS |
 | T5a-C4 | BP-02.1 C4 Silhouette Threat Language | DONE 2026-07-08 | T4 (combat lane) | `npm run check:silhouette-roles` PASS |
 | T5a-C9 | BP-02.1 C9 Kills-Less-Central Outcomes | DONE 2026-07-07 | T4 (combat lane) | `npm run check:combat-outcome` PASS |
@@ -144,7 +144,7 @@
 | T5a-SPIN-DRIFT | BP-02 mining fold SPIN-AND-DRIFT | DONE 2026-07-08 | T4 (combat lane) | `npm run check:asteroid-motion` PASS |
 | T5a-FIELD-MEMORY | BP-02 mining fold FIELD-MEMORY backend | DONE 2026-07-08 | T4 (combat lane) | `npm run check:field-depletion` PASS |
 | T5a-FRAGILE-ORE | BP-02 mining fold FRAGILE-ORE backend | BLOCKED 2026-07-08 | T4 (combat lane) | Needs a sanctioned hard-impact/ram impulse event or cargo-owner loss seam; no-touch files are `combat.js`, `cargo.js`, `mining.js`. |
-| T5b | BP-05.1 story/comms (7 packets) | IN-PROGRESS 2026-07-08 (BARK-01/BARK-02 DONE; PKT-RITUAL BLOCKED) | T4 | — |
+| T5b | BP-05.1 story/comms (7 packets) | BLOCKED 2026-07-08 (backend lane; only PKT-RITUAL remains) | T4 | Completed backend-safe bark packets are green; PKT-RITUAL runtime proof needs an onboarding helper seam because `onboarding.init(ctx)` does not store `ctx.helpers` and `onboarding.js` is no-touch. |
 | T5b-BARK-01 | BP-05.1 BARK-01 Situational Bark Surfacing | DONE 2026-07-07 | T4 | `npm run check:bark-director` PASS |
 | T5b-BARK-02 | BP-05.1 BARK-02 Ambient Bark Decay + Post-Combat Silence | DONE 2026-07-07 | T4 | `npm run check:bark-silence` PASS |
 | T5b-PKT-RITUAL | REVAMP_MASTER first-15 proof ritual naming/check | BLOCKED 2026-07-08 | T4 | Runtime B1/B3 spawns depend on `onboarding.helpers`, but `onboarding.init(ctx)` does not store `ctx.helpers`; packet marks `onboarding.js` no-touch. |
@@ -163,7 +163,7 @@
 | T5e-BUILD-ID | BP-09.1 BUILD-ID archetype badge backend | DONE 2026-07-08 | T4 | `npm run check:build-identity` PASS |
 | T5e-SYNERGY-TELLS | BP-09.1 SYNERGY-TELLS backend data | DONE 2026-07-08 | T4 | `npm run check:synergy-tells` PASS |
 | T5e-MODULE-RISK | BP-09.1 MODULE-DRAWBACK-GLYPHS backend readout | DONE 2026-07-08 | T4 | `npm run check:module-risk` PASS; contraband-gate control failed/restored/passed. |
-| T5f | BP-03.1 map (3 packets) | IN-PROGRESS 2026-07-08 (INTENT-STRIP DONE; PRICE-MEMORY DONE; MAP-CONFIDENCE BLOCKED) | T4 | — |
+| T5f | BP-03.1 map (3 packets) | BLOCKED 2026-07-08 (backend lane; only MAP-CONFIDENCE remains) | T4 | INTENT-STRIP and PRICE-MEMORY are green; MAP-CONFIDENCE requires shipped `buildGalaxyModel`/`buildSystemModel` confidence output while the packet declares `galaxyMap.js` no-touch and `newFiles:none`. |
 | T5f-INTENT-STRIP | BP-03.1 `overview_intent_strip` data/check backend half | DONE 2026-07-08 | T4 | `npm run check:intent-glyphs` PASS |
 | T5f-PRICE-MEMORY | BP-03.1 `known_vs_live_prices` shipped runtime/check | DONE 2026-07-08 | T4 | `npm run check:known-vs-live-prices` PASS; runtime writer control failed/restored/passed. |
 | T5f-MAP-CONFIDENCE | BP-03.1 `map_confidence_not_fog` confidence field | BLOCKED 2026-07-08 | T4/maps lane | Packet requires `buildGalaxyModel`/`buildSystemModel` confidence output while declaring `galaxyMap.js` no-touch and `newFiles:none`; not safe for backend lane. |
@@ -224,10 +224,11 @@
    **dependency DAG** (WAVE4_PROMPT §0.0): you may work any row whose real `depends-on` are met AND
    whose `files` are disjoint from any `IN-FLIGHT` row, in any order. Numeric order is the fallback.
 2. Find a `NEXT` row — either the lowest-numbered one (fallback) or any row the DAG says is
-   unblocked (see `design/revamp/EXECUTION_LANES.md` for the backend/frontend/both lane split).
+   unblocked. If `design/revamp/EXECUTION_LANES.md` is present, use it for the backend/frontend/both lane
+   split; otherwise use the row notes in this ledger and `STATUS.md`.
 3. Check its `depends-on` — all must be `DONE` or `DONE-VALIDATED` (re-verify against the tree).
 4. **Lane-match your tool:** a backend-only tool should avoid rows touching `src/render/**`,
-   `assets/**`, or screenshot rituals; a frontend/vision tool should take those. See EXECUTION_LANES.md.
+   `assets/**`, or screenshot rituals; a frontend/vision tool should take those.
 5. Claim it: set `status` → `IN-FLIGHT`, set `branch` → your git branch name (currently unused — leave `—`).
 6. Commit that ledger edit immediately so no other session picks the same row.
 

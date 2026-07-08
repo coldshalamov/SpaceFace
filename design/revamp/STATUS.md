@@ -1484,3 +1484,15 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Routing note: `design/revamp/EXECUTION_LANES.md` is absent in the live tree, so this audit follows the goal
   objective order plus `PROGRESS.md` and the packet detail specs.
 - No gameplay/runtime code changed in this pass; this is ledger/status alignment only.
+
+### T5 parent blocker audit - BLOCKED (2026-07-08)
+- Updated T5a, T5b, and T5f parent rows from `IN-PROGRESS` to `BLOCKED` because their backend-safe completed
+  sub-packets are already green and the only remaining sub-packets are the named blockers below.
+- T5a is blocked only on FRAGILE-ORE: it needs a sanctioned hard-impact/ram impulse event or cargo-owner loss
+  seam, while the packet keeps `combat.js`, `cargo.js`, and `mining.js` no-touch.
+- T5b is blocked only on PKT-RITUAL: runtime proof of B1/B3 onboarding spawns needs an onboarding helper seam,
+  but `onboarding.init(ctx)` does not store `ctx.helpers` and the packet marks `onboarding.js` no-touch.
+- T5f is blocked only on MAP-CONFIDENCE: acceptance requires shipped `buildGalaxyModel`/`buildSystemModel`
+  confidence output while the packet declares `galaxyMap.js` no-touch and `newFiles:none`.
+- Backend sequence state after this audit: T4c/T4b/T4d, T8, T1, T3-17, and all backend-safe T5 completed halves
+  are green; T3-24 and T7a remain separately blocked; T6/T9 and render/HUD/frontend work remain out of lane.
