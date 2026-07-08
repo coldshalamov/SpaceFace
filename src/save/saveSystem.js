@@ -121,6 +121,7 @@ export const save = {
     data.aceMemory = this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {});
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     data.aftermathWrecks = this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {});
+    data.fieldDepletion = this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {});
     // Campaign-director DURABLE subset only (named captains / receipts / cooldowns / stats).
     // Live encounters, squads, and pressure are transient by contract — never persisted.
     data.encounterDirector = this._serializeEncounterDirector();
@@ -582,6 +583,7 @@ export const save = {
       this._callDeserialize('aceMemory', data.aceMemory);
       this._callDeserialize('lossLedger', data.lossLedger);
       this._callDeserialize('aftermathWrecks', data.aftermathWrecks);
+      this._callDeserialize('fieldDepletion', data.fieldDepletion);
       // Campaign-director durable state. Staged here so the director's save:loaded handler can
       // durable-merge it (named captains persist; transients rebuild). Absent in old saves → null
       // → the director starts fresh (migration-safe absence handling).

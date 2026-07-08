@@ -1103,3 +1103,25 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   in `state.world.discovery[currentSectorId].fieldsDepleted[fieldId]`, which its respawn budget already reads.
 - Scope guard: no `mining.js`, `world.js`, `data/mining.js`, map UI, HUD, render, assets, input, economy, cargo,
   or combat edits. Expected files are the new backend system, registry/package/check wiring, and progress notes.
+
+### T5a-FIELD-MEMORY — DONE (2026-07-08)
+- Added `src/systems/fieldDepletion.js`: a deterministic backend ledger that observes `asteroid:destroyed`,
+  reads the still-live asteroid entity's `data.fieldId`/`yieldU`, raises a durable per-field depletion scalar,
+  and emits the existing `field:depletedChanged` seam for `world.js` to persist in discovery.
+- Field memory is monotone while mining (`depletionDeltaForYield(20u) = 0.05`, single-asteroid delta capped
+  at `0.08`) and recoverable over time via a fixed 5s recovery tick. The readout helper exposes rich/worked/
+  thin/depleted bands and a richness multiplier floor without touching map UI.
+- Wired `fieldDepletion` into the live registry immediately after `mining` and before `cargo`, plus
+  `saveSystem.js` serialize/deserialize keys so belts remember across save/load. Regenerated
+  `docs/EVENT_ROUTING.md` and `docs/SYSTEM_REGISTRY.md` with `npm run build:indexes`.
+- Added `npm run check:field-depletion`, which proves entity-sourced `fieldId` works, `world.discovery`
+  consumes the existing depletion event, recovery is monotone, serialization/deserialization preserves the
+  ledger, and the packet stays out of `mining.js`, `world.js`, `data/mining.js`, map UI, HUD, render, assets,
+  economy, cargo, reputation, and combat writers.
+- Non-vacuous control: temporarily changed `FIELD_DEPLETION_PER_YIELD_U` from `0.0025` to `0.004`; the check
+  failed on `yield-unit depletion constant is pinned`. Restored to `0.0025`; `npm run check:field-depletion`
+  passed again.
+- No-regression floor: `node --check src/systems/fieldDepletion.js`, `node --check scripts/check-field-depletion.mjs`,
+  `node scripts/check-data-refs.mjs`, `npm run check:mining:bulk-guidance`, `npm run check:save-resume-confidence`,
+  `npm run check:balance`, and `npm run build:indexes` passed. `npm run check:sim:compare` still fails only on
+  the documented 47-A projectile-collision precondition in `scripts/sf-sim.mjs:1161`.

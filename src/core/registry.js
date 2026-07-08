@@ -32,6 +32,7 @@ import { masslineThreats } from '../systems/masslineThreats.js';
 import { masslineImpacts } from '../systems/masslineImpacts.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
 import { mining } from '../systems/mining.js';
+import { fieldDepletion } from '../systems/fieldDepletion.js';
 import { cargo } from '../systems/cargo.js';
 import { economy } from '../systems/economy.js';
 import { automation } from '../systems/automation.js';
@@ -101,7 +102,7 @@ export function createRegistry(ctx) {
   const flightSlot = selectFlightSystem(ctx);
   // init / registration order
   const SYSTEMS = [
-    core, voiceArbiter, input, autoTargetAssist, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, economy,
+    core, voiceArbiter, input, autoTargetAssist, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, barkDirector, aiSlot, physics, aiPorts, aiEncounter, actions, flightSlot, cruise, weapons, countermeasures, impulseCharges, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, fieldDepletion, cargo, economy,
     automation, wingmen, intervention, lossLedger, spawnBudget, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, presentationOrchestrator, presentationAdapters, ships, crafting, heat, traffic, drill, claims, beacons, onboarding, sectorPostcard, dockDenyBanner, stationBroadcast, hazardHints, bulkHaulTag, dangerGradient, causeLedger, customsPrompt, cargoConscience, securityReadoutSystem, priceForecastSystem, contractClausesSystem, moralTrapSystem, render, vfx, feel, audio, ui, save,
   ];
   // sim step order (AI submits commands, actions resolve before flight, weapons before physics) — render-phase systems excluded.
@@ -125,6 +126,8 @@ export function createRegistry(ctx) {
   // named-zone wreck markers, and materializes them as salvageable wreck entities on sector entry.
   // wingMorale is the squad-cohesion observer: leader loss marks surviving squadmates to flee,
   // escort loss enrages a ward, and comms/sensor disable blocks that squad's reinforcement hook.
+  // fieldDepletion runs immediately after mining: asteroid:destroyed still points at an entity with
+  // data.fieldId, so it can emit the existing world field:depletedChanged seam without mining/world edits.
   // onboarding runs last: it only reads state (proximity checks) and drives tutorial UI.
   // heat runs late so piracy events from combat/factions this tick have landed before decay.
   // traffic runs after world (sector:enter has spawned stations) and after heat (so piracy on a
@@ -148,7 +151,7 @@ export function createRegistry(ctx) {
   // automation.offscreenRiskPass). It does NO per-frame work — all simulation is on day:tick /
   // sector transitions / save:loaded. A bug here can never freeze the loop (try/catch in init subs).
   const UPDATE_ORDER = [
-    input, autoTargetAssist, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, barkDirector, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, cargo, automation, wingmen, crafting,
+    input, autoTargetAssist, scanner, scanReveal, buildIdentity, pirateDisguise, pirateParley, pirateDisengage, aceMemory, aiSlot, barkDirector, aiEncounter, actions, beacons, flightSlot, cruise, aiPorts, weapons, countermeasures, impulseCharges, physics, combat, combatOutcome, aftermathWrecks, wingMorale, tetherGameplay, masslineTelemetry, masslineThreats, masslineImpacts, mining, fieldDepletion, cargo, automation, wingmen, crafting,
     economy, intervention, world, encounterDirector, pirateRumor, ambushSignatures, bountyHunt, stationSideEventDirector, gateControlDirector, salvage, lossInvestigation, salvageActions, survivorPod, factions, sectorSim, missions, story, scenarioRuntime, heat, traffic, drill, claims, onboarding, voiceArbiter,
   ];
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
