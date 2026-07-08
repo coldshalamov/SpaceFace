@@ -151,9 +151,10 @@
 | T5c | BP-07.1 flight/ship-mass (5 packets) | IN-PROGRESS 2026-07-08 (MASS-PERSONALITY + MASS-FEEL DONE) | T4 | — |
 | T5c-MASS-FEEL | BP-07.1 loadout-to-handling delta backend readout | DONE 2026-07-08 | T4 | `npm run check:mass-delta` PASS; wrong-stat control failed/restored/passed. |
 | T5c-MASS-PERSONALITY | BP-07.1 per-hull handling fingerprint backend readout | DONE 2026-07-08 | T4 | `npm run check:handling-profile` PASS; wrong-field control failed/restored/passed. |
-| T5d | BP-10.1 audio (7 packets) | IN-PROGRESS 2026-07-08 (AUD-01/AUD-02 DONE) | T4 | — |
+| T5d | BP-10.1 audio (7 packets) | IN-PROGRESS 2026-07-08 (AUD-01/AUD-02 DONE; AUD-03 CLAIMED) | T4 | — |
 | T5d-AUD-01 | BP-10.1 mask-proof cue priority bus | DONE 2026-07-08 | T4 | `npm run check:cue-priority-bus` PASS; threshold/target control failed/restored/passed. Pure pre-mix duck arbiter; no `audioSystem.js`, `presentationAdapters.js`, or `cueSchema.js` edits. |
 | T5d-AUD-02 | BP-10.1 tether-strain rising whine backend signature | DONE 2026-07-08 | T4 | `npm run check:tether-strain-signature` PASS; bucket monotonicity control failed/restored/passed. Pure signature recipe/bucket helper; no `src/combat/attachments.js`, `src/audio/audioSystem.js`, or `src/presentation/cueRecipes.js` edits. |
+| T5d-AUD-03 | BP-10.1 hostile-lock vs scan-tone backend signature | CLAIMED 2026-07-08 | T4 | Additive `sensor.scan`/`sensor.lock` signature data + adapter/check; no `src/audio/audioSystem.js`, `src/systems/scanner.js`, or shipped presentation adapter edits. |
 | T5e | BP-09.1 builds/synergies (4 packets) | IN-PROGRESS 2026-07-08 (BUILD-ID + SYNERGY-TELLS + MODULE-RISK DONE) | T4 | — |
 | T5e-BUILD-ID | BP-09.1 BUILD-ID archetype badge backend | DONE 2026-07-08 | T4 | `npm run check:build-identity` PASS |
 | T5e-SYNERGY-TELLS | BP-09.1 SYNERGY-TELLS backend data | DONE 2026-07-08 | T4 | `npm run check:synergy-tells` PASS |
