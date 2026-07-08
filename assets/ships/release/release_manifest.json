@@ -736,6 +736,48 @@
       "contractNodeCount": 3
     },
     {
+      "id": "place_dock_interior",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_dock_interior.glb",
+      "release": "assets/ships/release/parts/places/place_dock_interior.glb",
+      "sourceSha256": "33cbf242b8ffcc3d934c0403fa9cfc49a1b604e87c15c239d3a97e41f2a2d262",
+      "releaseSha256": "aa2165aadad6dff89c7958b714c0157bf3cd42eeaad2b0f8b053b1dc6bd8b8f1",
+      "sourceBytes": 68384,
+      "releaseBytes": 58284,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 46,
+      "contractNodeCount": 2
+    },
+    {
+      "id": "place_dock_interior_military",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_dock_interior_military.glb",
+      "release": "assets/ships/release/parts/places/place_dock_interior_military.glb",
+      "sourceSha256": "856db04adc4a5e3339e847e602152ec8fa472f3055a8aba7159a67f67084ddee",
+      "releaseSha256": "9cfc2ab796038864f321762a68b011f14861e1a08a7092600e1c7341edb7c720",
+      "sourceBytes": 68332,
+      "releaseBytes": 57648,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 46,
+      "contractNodeCount": 2
+    },
+    {
+      "id": "place_dock_interior_grit",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_dock_interior_grit.glb",
+      "release": "assets/ships/release/parts/places/place_dock_interior_grit.glb",
+      "sourceSha256": "d902bcbddca3201060ec8cb46e3268a824dfe3e0ff9cbda009c177b6e405578b",
+      "releaseSha256": "a448e311ac193bc179f8621fe3fbc608cfd784f97669f71268fe12fae0395af6",
+      "sourceBytes": 68424,
+      "releaseBytes": 59380,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 46,
+      "contractNodeCount": 2
+    },
+    {
       "id": "place_mining_drone",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_mining_drone.glb",

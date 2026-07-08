@@ -6,11 +6,25 @@ export function collectPageIssues(page, options = {}) {
 
   page.on('console', (msg) => {
     const issue = { type: msg.type(), text: msg.text() };
+    if (isGenericResourceLoadConsoleError(issue)) return;
     if (isIgnorableWebglValidation(issue) || (ignoreProbeWarnings && isProbeInducedWarning(issue))) {
       ignoredIssues.push(issue);
       return;
     }
     if (issue.type === 'error' || (includeWarnings && issue.type === 'warning')) issues.push(issue);
+  });
+  page.on('response', (response) => {
+    const status = response.status();
+    if (status >= 400) {
+      issues.push({ type: 'error', text: `HTTP ${status} ${response.url()}` });
+    }
+  });
+  page.on('requestfailed', (request) => {
+    const failure = request.failure();
+    issues.push({
+      type: 'error',
+      text: `Request failed ${request.url()}${failure && failure.errorText ? `: ${failure.errorText}` : ''}`,
+    });
   });
   page.on('pageerror', (err) => {
     issues.push({ type: 'pageerror', text: String(err && err.message || err) });
@@ -26,6 +40,12 @@ export function collectPageIssues(page, options = {}) {
       return issues.filter((issue) => issue.type === 'warning');
     },
   };
+}
+
+export function isGenericResourceLoadConsoleError(issue) {
+  if (!issue || issue.type !== 'error') return false;
+  return /^Failed to load resource: the server responded with a status of \d+ \([^)]+\)$/i
+    .test(String(issue.text || '').trim());
 }
 
 export function isIgnorableWebglValidation(issue) {
