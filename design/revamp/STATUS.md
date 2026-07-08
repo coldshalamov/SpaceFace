@@ -926,3 +926,19 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Scope guard: no `assets/**`, `src/render/**`, HUD, input, mining, combat, or salvage.js edits. Expected
   files are the new check script, `package.json`, and ledger notes only unless a shipped contract mismatch
   is exposed.
+
+### T8c SALVAGE_ANATOMY — DONE (2026-07-08)
+- NEW verification-only `scripts/check-salvage-anatomy.mjs` plus `npm run check:salvage-anatomy`. It drives
+  the shipped salvage action catalog/system and survivor-pod system headless, asserting readable typed
+  anatomy for black-box decode, module extraction, reactor venting/counterplay, and survivor-pod tow/rescue
+  without touching asset/render work.
+- The check pins that black-box/module/reactor wrecks get distinct verbs, labels, glyphs, and deterministic
+  pools; reactor wrecks arm an instability timer with vent/tether-away counterplay; survivor-pod promotion
+  reuses one existing wreck entity and stamps `parentType:'survivor_pod'`, oxygen metadata, the shipped
+  `wm_survivor_pod` template, and passenger-transport rescue routing.
+- Non-vacuous control: temporarily changed `decode_blackbox` label to `Decode Flight Log`; the new check
+  failed on the black-box anatomy assertion, then restored GREEN.
+- Related gates: `check:salvage-anatomy`, `check:salvage-actions`, `check:survivor-pod`,
+  `check:wreck-provenance`, `check:salvage-legality`, `check:ghost-convoy-rumor`, and
+  `check:causal-economy` all PASS. `check:balance` stays at 0 FAIL. `check:sim:compare` still fails only
+  on the documented 47-A projectile-collision precondition at `sf-sim.mjs:1161`.

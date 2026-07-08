@@ -113,6 +113,7 @@
     "check:convoy-loss-investigation": "node scripts/check-convoy-loss-investigation.mjs",
     "check:salvage-actions": "node scripts/check-salvage-actions.mjs",
     "check:survivor-pod": "node scripts/check-survivor-pod.mjs",
+    "check:salvage-anatomy": "node scripts/check-salvage-anatomy.mjs",
     "check:ghost-convoy-rumor": "node scripts/check-ghost-convoy-rumor.mjs",
     "check:salvage-legality": "node scripts/check-salvage-legality.mjs",
     "check:pirate-doctrines": "node scripts/check-pirate-doctrines.mjs",
