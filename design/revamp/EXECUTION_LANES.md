@@ -74,7 +74,7 @@ Current ledger state shows no unblocked backend implementation row remaining.
 | T4b | Backend economy | DONE. `check:causal-economy` owns the umbrella. |
 | T4c | Backend salvage/loss ledger | DONE. Salvage anatomy check is in T8c. |
 | T4d | Backend pirate ecology | DONE. `check:pirate-ecology` owns the umbrella. |
-| T5a | Backend-shaped but blocked | Only `T5a-FRAGILE-ORE` remains; blocked on a sanctioned hard-impact/ram impulse event or cargo-owner loss seam while `combat.js`, `cargo.js`, and `mining.js` are no-touch for the packet. |
+| T5a | Backend combat/mining packets | DONE. FRAGILE-ORE now uses the shipped `physics:impact` seam and cargo owner helper. |
 | T5b | Backend proof ritual | DONE. BARK-01, BARK-02, and PKT-RITUAL backend proof checks are green. |
 | T5c | Mixed | Backend halves DONE. DRIVE-VOICE, OVERLOAD-HANDLING, and HULL-SCARS are render/HUD/frontend remainders. Backend skips. |
 | T5d | Backend audio-signature checks | DONE. |
@@ -136,6 +136,4 @@ For each backend-safe row:
 - `npm run check:sim:compare` currently stops on the documented 47-A
   projectile-collision precondition at `scripts/sf-sim.mjs:1161`; this is the
   accepted baseline failure for backend floor checks.
-- T5a-FRAGILE-ORE is not greenable by a backend agent without either a packet
-  re-scope or an approved ownership change to its no-touch seams.
 - T6 and T9 are not backend-lane work for this objective.

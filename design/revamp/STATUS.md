@@ -1126,7 +1126,7 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `npm run check:balance`, and `npm run build:indexes` passed. `npm run check:sim:compare` still fails only on
   the documented 47-A projectile-collision precondition in `scripts/sf-sim.mjs:1161`.
 
-### T5a-FRAGILE-ORE — BLOCKED (2026-07-08)
+### T5a-FRAGILE-ORE — BLOCKED (2026-07-08; superseded by DONE below)
 - Investigated BP-02 mining-fold FRAGILE-ORE from `detail/D_flight_ships_mining.md`. The packet requires a
   deterministic hard-collision/ram impulse input and a cargo quantity/value haircut while `cargo.js`,
   `combat.js`, and `mining.js` are explicit no-touch files.
@@ -1489,8 +1489,8 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Originally updated T5a, T5b, and T5f parent rows from `IN-PROGRESS` to `BLOCKED` because their backend-safe
   completed sub-packets were already green and the only remaining sub-packets were the named blockers below.
   Superseded for T5f by the later MAP-CONFIDENCE completion.
-- T5a is blocked only on FRAGILE-ORE: it needs a sanctioned hard-impact/ram impulse event or cargo-owner loss
-  seam, while the packet keeps `combat.js`, `cargo.js`, and `mining.js` no-touch.
+- T5a was blocked only on FRAGILE-ORE; the later T5a-FRAGILE-ORE completion clears it through the existing
+  `physics:impact` seam and cargo owner helper.
 - T5b was blocked only on PKT-RITUAL: runtime proof of B1/B3 onboarding spawns needed an onboarding helper seam,
   but `onboarding.init(ctx)` did not store `ctx.helpers` and the packet marked `onboarding.js` no-touch. This
   blocker is now cleared by the later T5b-PKT-RITUAL completion.
@@ -1532,8 +1532,8 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   audit followed the goal objective order, `PROGRESS.md`, `STATUS.md`, and live checks.
 - No unblocked backend row remains in the current ledger: T4c/T4b/T4d, T8, T1, T3-17, T3-24, and the
   backend-safe T5 packets are green; T6/T9 and render/HUD/frontend lanes remain intentionally out of scope.
-- T5a is blocked only on FRAGILE-ORE: it needs a sanctioned hard-impact/ram impulse event or cargo-owner loss
-  seam, while the packet keeps `combat.js`, `cargo.js`, and `mining.js` no-touch.
+- T5a was blocked only on FRAGILE-ORE; the later T5a-FRAGILE-ORE completion clears it through the existing
+  `physics:impact` seam and cargo owner helper.
 - T7a remains blocked before package-chain integration: `node --check src/render/bloom.js` fails at
   `src/render/bloom.js:344` with `SyntaxError: Unexpected token '.'`. Because the render lane does not parse,
   folding `check:perf`, `check:hitch-budget`, and `check:gpu-path` into default `check`/`check:ci` would make
@@ -1544,8 +1544,8 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   routing doc, but it was absent in the live tree.
 - The restored doc records the three serialization points, backend-agent contract, current remaining-row
   classification, backend sequence, iterate-to-green protocol, and known non-backend blockers.
-- It preserved the then-current backend conclusion; T5f-MAP-CONFIDENCE and T5b-PKT-RITUAL were later cleared by
-  focused backend passes. T5a-FRAGILE-ORE and T7a remain blocked for the specific no-touch/render-lane reasons
+- It preserved the then-current backend conclusion; T5f-MAP-CONFIDENCE, T5b-PKT-RITUAL, and T5a-FRAGILE-ORE were later cleared by
+  focused backend passes. T7a remains blocked for the specific render-lane reason
   already recorded above.
 
 ### T5f-MAP-CONFIDENCE — DONE (2026-07-08)
@@ -1564,3 +1564,13 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Added `scripts/check-proof-ritual.mjs` and `npm run check:proof-ritual` to assert helper-backed B1 derelict
   spawn, helper-backed B3 pirate spawn, low-hull mercy flee, cargo lesson drop, snare completion, package wiring,
   and proof doc coverage.
+
+### T5a-FRAGILE-ORE — DONE (2026-07-08)
+- Cleared BP-02 `FRAGILE-ORE` by adding event-driven `src/systems/fragileCargo.js`, registered immediately after
+  `cargo`. It listens only to player-involved `physics:impact` payloads, computes a deterministic hard-impact
+  loss fraction from `playerDeltaV`, and removes fragile tagged ore through `cargo.removeCargo`.
+- The backend readout exposes a `fragile` glyph token/hint for fragile stacks; impact receipts carry the same
+  glyph and a one-line alert via `ctx.helpers.voice.say` with toast fallback.
+- Added `scripts/check-fragile-cargo.mjs` and `npm run check:fragile-cargo` to assert the shipped impact seam,
+  deterministic loss curve, crystal/gem/exotic tagging, non-fragile cargo safety, low-impact/non-player guards,
+  cooldown, registry/package wiring, and no RNG/wall-clock use.

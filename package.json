@@ -43,6 +43,7 @@
     "check:wing-morale": "node scripts/check-wing-morale.mjs",
     "check:asteroid-motion": "node scripts/check-asteroid-motion.mjs",
     "check:field-depletion": "node scripts/check-field-depletion.mjs",
+    "check:fragile-cargo": "node scripts/check-fragile-cargo.mjs",
     "check:bark-director": "node scripts/check-bark-director.mjs",
     "check:bark-silence": "node scripts/check-bark-silence.mjs",
     "check:proof-ritual": "node scripts/check-proof-ritual.mjs",
