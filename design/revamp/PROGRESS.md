@@ -153,7 +153,8 @@
 | T5e | BP-09.1 builds/synergies (4 packets) | IN-PROGRESS 2026-07-08 (BUILD-ID + SYNERGY-TELLS DONE) | T4 | — |
 | T5e-BUILD-ID | BP-09.1 BUILD-ID archetype badge backend | DONE 2026-07-08 | T4 | `npm run check:build-identity` PASS |
 | T5e-SYNERGY-TELLS | BP-09.1 SYNERGY-TELLS backend data | DONE 2026-07-08 | T4 | `npm run check:synergy-tells` PASS |
-| T5f | BP-03.1 map (3 packets) | NEXT | T4 | — |
+| T5f | BP-03.1 map (3 packets) | IN-PROGRESS 2026-07-08 (INTENT-STRIP CLAIMED) | T4 | — |
+| T5f-INTENT-STRIP | BP-03.1 `overview_intent_strip` data/check backend half | CLAIMED 2026-07-08 | T4 | Pure `src/data/intentGlyphs.js` + check; HUD/AI/scanner/map UI remain no-touch. |
 
 ## T6 — ASSET MANIFEST SYNC + QUEUED ASSET AUTHORING (coordinate with graphics lane)
 

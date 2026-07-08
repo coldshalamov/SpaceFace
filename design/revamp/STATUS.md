@@ -1159,3 +1159,11 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   honestly be stamped DONE from this backend lane. Unblock by a lead/onboarding owner either assigning
   `this.helpers = ctx.helpers` in `onboarding.init(ctx)` or sanctioning an alternate helper seam, then re-run the
   proof doc/check packet.
+
+### T5f-INTENT-STRIP — claim (2026-07-08)
+- Claimed BP-03.1 `overview_intent_strip` from `detail/G_story_evidence_map.md`.
+- Backend-safe scope: add pure `src/data/intentGlyphs.js` plus `scripts/check-intent-glyphs.mjs` and a package
+  script. The data table maps canonical AI/contact states to exactly seven strip verbs/glyph ids; later UI can read
+  it without inventing labels.
+- No-touch for this packet: `src/ui/hud.js`, `src/systems/aiPorts.js`, `src/systems/scanner.js`, map UI, render,
+  assets, and SG-06 behavior.
