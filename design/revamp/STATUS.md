@@ -1502,3 +1502,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   already advertises the six 47-A child checks, but their `scripts/check-47a-*.mjs` files are absent.
 - Scope: add honest 47-A child checks over shipped scenario contract/runtime evidence first, then add the
   `check:massline` aggregate and `docs/MASSLINE_MECHANICS.md`.
+
+### T3-24 47-A child checks — DONE (2026-07-08)
+- Added the six missing package-advertised 47-A check files plus a shared helper:
+  `check-47a-spindle`, `check-47a-scavenger-threat`, `check-47a-debris-sling`,
+  `check-47a-recovery-contested`, `check-47a-civilian-priority`, and `check-47a-physical-branches`.
+- These checks assert shipped scenario contract fields and live `sf-sim` inspect/trace evidence rather than grepping:
+  spindle Massline attachment/false mass, scavenger hostile-fire timing and damage, sling `physics.impulse`,
+  recovery-tug activation, civilian-pod priority data, and all four resolution branches mutating world facts.
+- Validation: all seven new files pass `node --check`; all six `npm run check:47a:*` child commands above pass.
