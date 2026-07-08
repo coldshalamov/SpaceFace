@@ -5,6 +5,8 @@ export const SIGNATURE_RECIPE_VERSION = 1;
 
 export const SIGNATURE_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.strain': 'presentation.tether.strain',
+  'tether.cut_whipcrack': 'presentation.tether.cut_whipcrack',
+  'mass.groan': 'presentation.mass.groan',
   'sensor.scan': 'presentation.sensor.scan',
   'sensor.lock': 'presentation.sensor.lock',
   'customs.scan': 'presentation.customs.scan',
@@ -50,6 +52,45 @@ export const SIGNATURE_RECIPES = Object.freeze({
     tags: ['tether', 'strain', 'signature'],
     buckets: TETHER_STRAIN_BUCKETS,
     layersWith: ['tether.near_break'],
+  }),
+  'tether.cut_whipcrack': freezeSignature({
+    id: 'tether.cut_whipcrack',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['tether.cut_whipcrack'],
+    material: 'massline',
+    mode: 'one-shot',
+    sourceEvent: 'tether:released',
+    sourceEvents: ['tether:released', 'tether:broke'],
+    extends: 'tether.break',
+    importance: 0.76,
+    playerRelevance: 0.9,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['tether', 'cut', 'signature', 'warning'],
+    tensionThreshold: 0.72,
+    reuses: ['sfx.tetherSnap'],
+    tones: [
+      { offsetMs: 0, playbackRate: 1.22, gain: 0.34, shape: 'click' },
+      { offsetMs: 18, playbackRate: 1.44, gain: 0.48, shape: 'noise' },
+      { offsetMs: 78, playbackRate: 0.86, gain: 0.18, shape: 'twang' },
+    ],
+    layersWith: ['tether.break'],
+  }),
+  'mass.groan': freezeSignature({
+    id: 'mass.groan',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['mass.groan'],
+    material: 'massline',
+    mode: 'continuous',
+    sourceEvent: 'tether:strain',
+    importance: 0.58,
+    playerRelevance: 0.82,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['mass', 'groan', 'tether', 'signature'],
+    gainCurve: { minMass: 250, fullMass: 2000, minGain: 0.08, maxGain: 0.44 },
+    releaseFadeMs: 260,
+    tones: [
+      { offsetMs: 0, playbackRate: 0.54, gain: 0.16, shape: 'sub' },
+      { offsetMs: 180, playbackRate: 0.42, gain: 0.22, shape: 'groan' },
+    ],
+    layersWith: ['tether.strain'],
   }),
   'sensor.scan': freezeSignature({
     id: 'sensor.scan',
@@ -169,8 +210,34 @@ export function validateSignatureRecipes(recipes = SIGNATURE_RECIPES) {
     if (id === 'tether.strain' && (!Array.isArray(recipe.buckets) || recipe.buckets.length !== 3)) {
       issues.push(`${path}.buckets must contain exactly three derivative steps`);
     }
-    if ((id.startsWith('sensor.') || id === 'customs.scan') && (!Array.isArray(recipe.tones) || recipe.tones.length < 2)) {
+    if (
+      (id.startsWith('sensor.') || id === 'customs.scan' || id === 'tether.cut_whipcrack' || id === 'mass.groan')
+      && (!Array.isArray(recipe.tones) || recipe.tones.length < 2)
+    ) {
       issues.push(`${path}.tones must contain the scan/lock tone steps`);
+    }
+    if (id === 'tether.cut_whipcrack') {
+      if (!Array.isArray(recipe.sourceEvents) || !recipe.sourceEvents.includes('tether:released') || !recipe.sourceEvents.includes('tether:broke')) {
+        issues.push(`${path}.sourceEvents must cover tether release and break events`);
+      }
+      if (!Number.isFinite(recipe.tensionThreshold) || recipe.tensionThreshold <= 0 || recipe.tensionThreshold >= 1) {
+        issues.push(`${path}.tensionThreshold must gate only taut cuts`);
+      }
+      if (!Array.isArray(recipe.reuses) || !recipe.reuses.includes('sfx.tetherSnap')) {
+        issues.push(`${path}.reuses must include the shipped tether snap SFX`);
+      }
+    }
+    if (id === 'mass.groan') {
+      const curve = recipe.gainCurve || {};
+      if (!Number.isFinite(curve.minMass) || !Number.isFinite(curve.fullMass) || curve.fullMass <= curve.minMass) {
+        issues.push(`${path}.gainCurve must define an increasing mass range`);
+      }
+      if (!Number.isFinite(curve.minGain) || !Number.isFinite(curve.maxGain) || curve.maxGain <= curve.minGain) {
+        issues.push(`${path}.gainCurve must define an increasing gain range`);
+      }
+      if (!Number.isFinite(recipe.releaseFadeMs) || recipe.releaseFadeMs <= 0) {
+        issues.push(`${path}.releaseFadeMs must define the release fade`);
+      }
     }
   }
   return { ok: issues.length === 0, issues };
@@ -185,6 +252,9 @@ function freezeSignature(value) {
     buckets: Object.freeze([...(value.buckets || [])]),
     tones: Object.freeze([...(value.tones || [])].map((tone) => Object.freeze({ ...tone }))),
     layersWith: Object.freeze([...(value.layersWith || [])]),
+    sourceEvents: Object.freeze([...(value.sourceEvents || [])]),
+    reuses: Object.freeze([...(value.reuses || [])]),
+    gainCurve: Object.freeze({ ...(value.gainCurve || {}) }),
   });
 }
 

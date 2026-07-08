@@ -1392,3 +1392,24 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - No-touch remains `src/combat/attachments.js` and `src/audio/audioSystem.js`.
 - Routing note: `design/revamp/EXECUTION_LANES.md` is absent in the live tree, so this claim follows the goal
   objective order plus `PROGRESS.md` and the packet detail spec.
+
+### T5d-AUD-05 — DONE (2026-07-08)
+- Extended `src/presentation/cueRecipesSignatures.js` with `tether.cut_whipcrack` /
+  `presentation.tether.cut_whipcrack` and `mass.groan` / `presentation.mass.groan`, extended the pure
+  `signatureAdapters` helper, and added `scripts/check-tether-body-signature.mjs` plus
+  `npm run check:tether-body-signature`.
+- The cut helper listens only to `tether:released` / `tether:broke`, returns no cue for slack cuts or non-cut
+  events, and emits the whipcrack only at/above tension ratio `0.72`; the signature explicitly reuses shipped
+  `sfx.tetherSnap` and stays below the shipped critical `tether.break` importance.
+- The groan helper is continuous, gain-scales from live towed mass, clamps wreck-scale mass at max gain, lowers
+  pitch as mass rises, and returns no cue at zero/low mass or when the tether is inactive/released.
+- Non-vacuous control: temporarily raised `tether.cut_whipcrack.tensionThreshold` to `0.96`; the check failed on
+  the taut-cut threshold contract. Restored `0.72`; the check passed.
+- No-regression floor: `node --check src/presentation/cueRecipesSignatures.js`,
+  `node --check src/systems/signatureAdapters.js`, `node --check scripts/check-tether-body-signature.mjs`,
+  `npm run check:tether-body-signature`, `npm run check:customs-signature`,
+  `npm run check:sensor-signatures`, `npm run check:tether-strain-signature`,
+  `npm run check:cue-priority-bus`, `node scripts/check-presentation-cues.mjs`,
+  `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed
+  (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
+  projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
