@@ -901,3 +901,17 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `state.player.stats` bookkeeping; this row should pin those shipped contracts, not rebuild them.
 - Scope guard: no UI/render/input/gameplay edits. Expected files are the new check script, `package.json`,
   and ledger notes only unless the check exposes a real already-shipped contract mismatch.
+
+### T8a CAREER_PROFILE — DONE (2026-07-07)
+- NEW verification-only `scripts/check-career-profile.mjs` plus `npm run check:career-profile`. It boots the
+  shipped `createTelemetry(bus, state)` sink headless, feeds real event names, and proves the career/session
+  profile aggregates economy trade volume, sanctioned credit deltas, mining yield, mission outcomes,
+  player-only kills, navigation, progression, and first-hour milestones.
+- The check pins the no-double-count contract: `economy:tradeCompleted.total` records trade volume, while
+  money totals come only from `credits:changed`; it also pins main boot telemetry wiring and economy
+  `state.player.stats` trade/profit/smuggling bookkeeping.
+- Non-vacuous control: temporarily changed telemetry's positive-credit accumulator to add `0`; the check
+  failed on the earned-credit assertion, then restored GREEN.
+- Related gates: `check:career-profile` PASS, `check:mission-receipts` PASS, and `check:balance` 0 FAIL.
+  `check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
+  `sf-sim.mjs:1161`.
