@@ -1539,3 +1539,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `src/render/bloom.js:344` with `SyntaxError: Unexpected token '.'`. Because the render lane does not parse,
   folding `check:perf`, `check:hitch-budget`, and `check:gpu-path` into default `check`/`check:ci` would make
   the default gate fail on an out-of-lane render blocker.
+
+### EXECUTION_LANES routing doc restored - DONE (2026-07-08)
+- Added `design/revamp/EXECUTION_LANES.md` because the goal objective requires it as the backend/frontend
+  routing doc, but it was absent in the live tree.
+- The restored doc records the three serialization points, backend-agent contract, current remaining-row
+  classification, backend sequence, iterate-to-green protocol, and known non-backend blockers.
+- It preserves the current backend conclusion: no unblocked backend implementation row remains; T5a-FRAGILE-ORE,
+  T5b-PKT-RITUAL, T5f-MAP-CONFIDENCE, and T7a remain blocked for the specific no-touch/render-lane reasons
+  already recorded above.
