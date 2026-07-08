@@ -1523,3 +1523,19 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - No-regression floor: `git diff --check` passed, `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`),
   and `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
   `scripts/sf-sim.mjs:1161`.
+
+### Backend lane exhaustion audit - BLOCKED (2026-07-08)
+- Re-audited after T3-24 went green. `design/revamp/EXECUTION_LANES.md` is still absent, so this audit follows
+  the goal objective order, `PROGRESS.md`, `STATUS.md`, and live checks.
+- No unblocked backend row remains in the current ledger: T4c/T4b/T4d, T8, T1, T3-17, T3-24, and the
+  backend-safe T5 packets are green; T6/T9 and render/HUD/frontend lanes remain intentionally out of scope.
+- T5a is blocked only on FRAGILE-ORE: it needs a sanctioned hard-impact/ram impulse event or cargo-owner loss
+  seam, while the packet keeps `combat.js`, `cargo.js`, and `mining.js` no-touch.
+- T5b is blocked only on PKT-RITUAL: runtime proof of B1/B3 onboarding spawns needs an onboarding helper seam,
+  but `onboarding.init(ctx)` does not store `ctx.helpers` and the packet marks `onboarding.js` no-touch.
+- T5f is blocked only on MAP-CONFIDENCE: acceptance requires shipped `buildGalaxyModel`/`buildSystemModel`
+  confidence output while the packet declares `galaxyMap.js` no-touch and `newFiles:none`.
+- T7a remains blocked before package-chain integration: `node --check src/render/bloom.js` fails at
+  `src/render/bloom.js:344` with `SyntaxError: Unexpected token '.'`. Because the render lane does not parse,
+  folding `check:perf`, `check:hitch-budget`, and `check:gpu-path` into default `check`/`check:ci` would make
+  the default gate fail on an out-of-lane render blocker.
