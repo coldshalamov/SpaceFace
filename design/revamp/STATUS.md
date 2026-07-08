@@ -1138,3 +1138,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
 - Do not implement this by guessing from plain damage or directly writing `state.player.cargo`; that would either
   punish non-impact damage or violate the cargo single-writer contract. Unblock options: add a sanctioned cargo
   loss intent handled by `cargo.js`, or expose a hard-impact impulse event from the combat/physics owner first.
+
+### T5b-PKT-RITUAL — claim (2026-07-08)
+- Claimed the backend-safe proof-surface packet from `detail/F_comms_audio_onboarding.md`:
+  `PKT-RITUAL · The First-15 Proof Ritual`.
+- Scope is documentation plus a real guard script for the shipped first-15 ritual. The packet names
+  `onboarding.js` `BEATS` B0-B5, `SILENCE_S`, `player.hints`, the B3 toll/flee mercy beat, and the two
+  explicit missing deltas without rebuilding the tutorial.
+- `src/systems/onboarding.js` remains frozen by the packet's `noTouch`; BARK-03 is presentation/UI work and is
+  intentionally skipped by this backend lane.
