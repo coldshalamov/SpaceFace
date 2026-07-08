@@ -283,13 +283,13 @@ async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
 
 async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000) {
   const started = nowMs();
-  while (nowMs() - started < timeoutMs) {
-    const readiness = authoredVisualReadiness(state);
-    if (readiness.ready) return true;
+  let readiness = authoredVisualReadiness(state);
+  while (!readiness.ready && nowMs() - started < timeoutMs) {
     await nextFrame();
+    readiness = authoredVisualReadiness(state);
   }
-  const last = authoredVisualReadiness(state);
-  console.warn('[SpaceFace] initial authored visuals were not ready before flight start', last);
+  if (readiness.ready) return true;
+  console.warn('[SpaceFace] initial authored visuals were not ready before flight start', readiness);
   return false;
 }
 
