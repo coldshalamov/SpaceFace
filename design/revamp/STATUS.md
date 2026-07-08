@@ -1306,3 +1306,11 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-data-refs.mjs`, and `npm run check:balance` passed (`2 PASS / 2 WARN / 0 FAIL`).
   `npm run check:sim:compare` still fails only on the documented 47-A projectile-collision precondition at
   `scripts/sf-sim.mjs:1161`.
+
+### T5d-AUD-02 — claim (2026-07-08)
+- Claimed BP-10.1 `PKT-AUD-02` from `detail/F_comms_audio_onboarding.md`.
+- Backend-safe scope: add a pure signature recipe/bucket helper for `tether.strain` that maps tension derivative
+  into three stable audible steps and verifies it layers beside the shipped `tether.near_break` cue instead of
+  replacing it.
+- No-touch remains `src/combat/attachments.js`, `src/audio/audioSystem.js`, and
+  `src/presentation/cueRecipes.js`.
