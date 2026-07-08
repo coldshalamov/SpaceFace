@@ -1000,3 +1000,12 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   saves; `SAVE_SCHEMA.md` regenerated from `node scripts/generate-save-schema.mjs --write`.
 - `check:wreck-provenance` now includes a save-system integration assertion proving recorded provenance
   appears in the save payload and restores through `lossLedger.deserialize`.
+
+### T5a-C11 BATTLE_AFTERMATH_PERSISTENCE — claim (2026-07-08)
+- Claimed backend-safe BP-01/C11 from `detail/C_combat_encounters.md`: live `entity:killed` events in named
+  zones should leave bounded, persistent aftermath wreck markers with victim/killer provenance.
+- Live proof before claim: `src/systems/aftermathWrecks.js` and `scripts/check-battle-aftermath.mjs` are
+  absent; `package.json` has no `check:battle-aftermath` script. T4c-1 loss-ledger save persistence is now
+  repaired and pushed, so durable provenance has a working save path.
+- Scope guard: no `combat.js`, `salvage.js`, `sectorSim.js`, `world.js`, render, assets, HUD, or input edits.
+  Expected files are the new system/check, registry/package/save-schema wiring, and ledger notes.

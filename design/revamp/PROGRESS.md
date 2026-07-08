@@ -135,9 +135,10 @@
 
 | id | addendum | status | depends-on | next |
 |---|---|---|---|---|
-| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-07 (T5a-C3/T5a-C9 DONE) | T4 (combat lane) | — |
+| T5a | BP-02.1 combat readability (9 packets) + BP-02 mining fold (7) | IN-PROGRESS 2026-07-08 (T5a-C3/T5a-C9 DONE; T5a-C11 IN-FLIGHT) | T4 (combat lane) | — |
 | T5a-C3 | BP-02.1 C3 Scan-Reveals-Loadout | DONE 2026-07-07 | T4 (combat lane) | `npm run check:scan-reveal` PASS |
 | T5a-C9 | BP-02.1 C9 Kills-Less-Central Outcomes | DONE 2026-07-07 | T4 (combat lane) | `npm run check:combat-outcome` PASS |
+| T5a-C11 | BP-01/C11 Battle-Aftermath Persistence | IN-FLIGHT 2026-07-08 | T4 (combat lane) | `npm run check:battle-aftermath` |
 | T5b | BP-05.1 story/comms (7 packets) | IN-PROGRESS 2026-07-07 (BARK-01/BARK-02 DONE) | T4 | — |
 | T5b-BARK-01 | BP-05.1 BARK-01 Situational Bark Surfacing | DONE 2026-07-07 | T4 | `npm run check:bark-director` PASS |
 | T5b-BARK-02 | BP-05.1 BARK-02 Ambient Bark Decay + Post-Combat Silence | DONE 2026-07-07 | T4 | `npm run check:bark-silence` PASS |
