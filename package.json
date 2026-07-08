@@ -201,6 +201,7 @@
     "check:assets": "node scripts/check-runtime-asset-contract.mjs",
     "check:asset-reachability": "node scripts/check-asset-reachability.mjs",
     "check:launch-policy": "node scripts/check-launch-policy.mjs",
+    "check:electron:new-game": "node scripts/check-electron-new-game-launch.mjs",
     "check:non-graphics": "node scripts/check-non-graphics-ci.mjs",
     "check:sector-palettes": "node scripts/check-sector-palettes.mjs",
     "check:parallax": "node scripts/check-parallax-layers.mjs",
