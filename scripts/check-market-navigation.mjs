@@ -218,6 +218,15 @@ function checkMarketCargoUnitFormatting() {
     'trade planner title should format hold volume with the cargo-unit formatter');
 }
 
+function checkMarketListActionDispatchOrder() {
+  assert.match(MARKET_SOURCE, /const act = btn\.getAttribute\('data-act'\);\s+if \(act === 'expand'\)/,
+    'market row listener must read data-act before checking expand/select actions');
+  assert.doesNotMatch(MARKET_SOURCE, /if \(act === 'expand'\)[\s\S]{0,180}const act = btn\.getAttribute\('data-act'\);/,
+    'market row listener must not reference act before its declaration');
+  assert.match(MARKET_SOURCE, /if \(!btn\) \{\s+selectCommodity\(cmdtyId\);\s+return;\s+\}/,
+    'market row background click should select the inline trade-intelligence stage, not cover it with a modal');
+}
+
 function checkBestTradeExplainsBlockedLoad() {
   const { state } = makeHarness('sector_helios_prime');
   state.player.credits = 0;
@@ -258,6 +267,7 @@ checkFailedQuoteFallsBackToRolePrice();
 checkLiveActiveStationRecordUsesStationIdForRolePrice();
 checkLiveQuoteStillWins();
 checkMarketCargoUnitFormatting();
+checkMarketListActionDispatchOrder();
 checkBestTradeShowsCurrentLoadAndProfit();
 checkBestTradeExplainsBlockedLoad();
 checkBestTradeUsesWarmedMarketSnapshots();

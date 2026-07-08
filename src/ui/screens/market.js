@@ -11,6 +11,7 @@ import { drawSparkline } from '../sparkline.js';
 import { escapeHtml } from '../comms.js';
 import { getCycle } from '../../systems/economy.js';
 import { predictPriceCurve, regimeLabel } from '../../systems/economyCycles.js';
+import { createCircularGauge, createRouteBeam, createSupplyTree, createMorphLabel, createRippleField } from '../effects/index.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STEP_PRESETS = [1, 10, 100];
@@ -139,6 +140,50 @@ function stationRoleFor(def, stationType) {
   if ((def.producedBy || []).includes(stationType)) return 'produce';
   if ((def.consumedBy || []).includes(stationType)) return 'consume';
   return 'none';
+}
+
+/**
+ * Stock pressure as a 0..1 scope reading: 0 = glutted (stock far above equilibrium, cheap), 1 = scarce
+ * (stock far below equilibrium, dear). Uses the same baseEq pricing reference as the economy. 0.5 is
+ * equilibrium. This drives the row mini-gauge and the trade-inspector flooding readout.
+ */
+function stockPressure01(entry) {
+  if (!entry || !entry.baseEq || entry.baseEq <= 0) return 0.5;
+  const ratio = (entry.stock || 0) / entry.baseEq;             // 1 at equilibrium
+  // Map the economy's price-mult clamp band [0.40, 2.60] into a 0..1 scarcity gauge. log scale so the
+  // gauge is legible across the wide stock range (baseEq spans 500..2000 across station sizes).
+  // ratio=1 -> 0.5; ratio=2.6 (glut) -> ~0; ratio=0.4 (scarce) -> ~1.
+  const logR = Math.log(ratio) / Math.log(2.6);                // 0 at eq, +1 at 2.6x, negative when scarce
+  return Math.max(0, Math.min(1, 0.5 - logR * 0.5));
+}
+
+/** Compact role glyph + label for the supply/demand column of a row. */
+function roleGlyph(role) {
+  if (role === 'produce') return { glyph: '▲', label: 'SUPPLY', cls: 'st-role--produce' };
+  if (role === 'consume') return { glyph: '▼', label: 'DEMAND', cls: 'st-role--consume' };
+  return { glyph: '—', label: 'NEUTRAL', cls: 'st-role--none' };
+}
+
+/**
+ * Build supplyTree nodes for a commodity: its producedBy station-types (producers) and consumedBy
+ * station-types (consumers), with the commodity itself as the hub. `flowStationType` (the current
+ * station's type) marks the edge that is actively trading this good.
+ */
+function supplyTreeNodesFor(def, flowStationType) {
+  if (!def) return [];
+  const nodes = [{ id: 'hub', label: def.name, role: 'hub' }];
+  for (const t of (def.producedBy || [])) {
+    nodes.push({ id: 'p_' + t, label: stationTypeLabel(t), role: 'produce', flow: t === flowStationType });
+  }
+  for (const t of (def.consumedBy || [])) {
+    nodes.push({ id: 'c_' + t, label: stationTypeLabel(t), role: 'consume', flow: t === flowStationType });
+  }
+  return nodes;
+}
+
+function stationTypeLabel(t) {
+  if (!t) return '—';
+  return t.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
@@ -450,6 +495,79 @@ export function createMarketPanel(ctx) {
   list.className = 'st-list';
   centerPane.appendChild(list);
 
+  // --- Selected-commodity analysis stage (the centerpiece) ---
+  // A persistent scope readout that populates when a row is clicked: price-history sparkline, forecast
+  // cone, regime morphLabel, supply-chain spindle, and a best-margin route beam. The chart MODAL stays
+  // for fullscreen; this stage is the inline trade-intelligence view.
+  const stage = document.createElement('div');
+  stage.className = 'st-market-stage';
+  stage.setAttribute('data-centerpiece', 'trade-intel-scope');
+  stage.hidden = true;
+  stage.innerHTML =
+    '<div class="st-stage-head">' +
+      '<span class="st-stage-title">COMMODITY ANALYSIS</span>' +
+      '<button class="st-stage-close" aria-label="Close analysis">&times;</button>' +
+    '</div>' +
+    '<div class="st-stage-grid">' +
+      '<div class="st-stage-cell st-stage-cell--price">' +
+        '<div class="st-stage-lbl">PRICE / REGIME</div>' +
+        '<div class="st-stage-price-row">' +
+          '<span class="st-stage-spark-wrap"><canvas class="st-stage-spark" width="160" height="44"></canvas></span>' +
+          '<span class="st-stage-regime" >—</span>' +
+        '</div>' +
+        '<div class="st-stage-forecast-lbl">FORECAST CONE</div>' +
+        '<canvas class="st-stage-cone" width="320" height="90"></canvas>' +
+      '</div>' +
+      '<div class="st-stage-cell st-stage-cell--supply">' +
+        '<div class="st-stage-lbl">SUPPLY CHAIN</div>' +
+        '<div class="st-stage-supply-mount"></div>' +
+      '</div>' +
+      '<div class="st-stage-cell st-stage-cell--route">' +
+        '<div class="st-stage-lbl">BEST MARGIN ROUTE</div>' +
+        '<div class="st-stage-route-mount"></div>' +
+        '<div class="st-stage-route-meta"></div>' +
+      '</div>' +
+      '<div class="st-stage-cell st-stage-cell--inspector">' +
+        '<div class="st-stage-lbl">TRADE INSPECTOR</div>' +
+        '<div class="st-inspector-row"><span class="st-insp-lbl">QUOTE (max load)</span><span class="st-insp-quote mono">—</span></div>' +
+        '<div class="st-inspector-row"><span class="st-insp-lbl">FLOODING IMPACT</span><span class="st-insp-flood-mount"></span></div>' +
+        '<div class="st-inspector-row"><span class="st-insp-lbl">PROJECTED PROFIT</span><span class="st-insp-profit mono">—</span></div>' +
+        '<div class="st-inspector-actions"><button class="st-insp-route" disabled>Plot Route</button></div>' +
+      '</div>' +
+    '</div>';
+  centerPane.appendChild(stage);
+  const stageCloseBtn = stage.querySelector('.st-stage-close');
+  const stageSpark = stage.querySelector('.st-stage-spark');
+  const stageCone = stage.querySelector('.st-stage-cone');
+  const stageRegime = stage.querySelector('.st-stage-regime');
+  const stageSupplyMount = stage.querySelector('.st-stage-supply-mount');
+  const stageRouteMount = stage.querySelector('.st-stage-route-mount');
+  const stageRouteMeta = stage.querySelector('.st-stage-route-meta');
+  const stageOverlay = document.createElement('div');
+  stageOverlay.className = 'st-market-stage-overlay';
+  stage.appendChild(stageOverlay);
+
+  // Trade inspector elements
+  const inspQuote = stage.querySelector('.st-insp-quote');
+  const inspFloodMount = stage.querySelector('.st-insp-flood-mount');
+  const inspProfit = stage.querySelector('.st-insp-profit');
+  const inspRouteBtn = stage.querySelector('.st-insp-route');
+
+  // Create the effect instances ONCE (frame-sleep contract: inert until their verb fires).
+  let stageFx = null;
+  try {
+    stageFx = {
+      regime: createMorphLabel(stageRegime, { numeric: false }),
+      supply: createSupplyTree(stageSupplyMount, { width: 260, height: 130 }),
+      beam: createRouteBeam(stageRouteMount, { width: 240, height: 80 }),
+      flood: createCircularGauge(inspFloodMount, { size: 44, stroke: 5, kind: 'warn' }),
+      profit: createMorphLabel(inspProfit, { numeric: true }),
+      ripple: createRippleField(stageOverlay, { width: 320, height: 200 }),
+    };
+  } catch (e) { console.error('[market] stage effect init failed', e); }
+
+  let selectedCmdtyId = null;
+
   // Column 3: Intel Sidebar
   const sidebarPane = document.createElement('div');
   sidebarPane.className = 'st-market-sidebar';
@@ -539,6 +657,25 @@ export function createMarketPanel(ctx) {
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
   });
 
+  // Stage close clears the selection (effects park via setActive in onHide, not here).
+  stageCloseBtn.addEventListener('click', () => {
+    selectedCmdtyId = null;
+    stage.hidden = true;
+    // clear the route beam so it does not idle behind a hidden stage
+    if (stageFx && stageFx.beam) stageFx.beam.setPath([], { active: false });
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+  });
+
+  // Plot Route from the trade inspector.
+  inspRouteBtn.addEventListener('click', () => {
+    if (!selectedCmdtyId || inspRouteBtn.disabled) return;
+    const best = bestMarginRouteFor(ctx.state, panel.stationId, selectedCmdtyId);
+    if (best && best.destStation) {
+      applyTradeNavigation(ctx, best.destStation, selectedCmdtyId);
+      setFooterText(footer, 'Route plotted: ' + best.destName + '.');
+    }
+  });
+
   if (ctx.bus && typeof ctx.bus.on === 'function') {
     ctx.bus.on('economy:tradeCompleted', (p) => {
       if (!pendingLoadNav || !p || p.side !== 'buy') return;
@@ -558,6 +695,19 @@ export function createMarketPanel(ctx) {
       ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       setFooterText(footer, 'Route load failed: ' + tradeFailureText(p.reason) + '; nav unchanged.');
     });
+    // Event mode: a shortage/blockade/boom/piracy event affecting the selected commodity fires a ripple
+    // on the analysis stage and lights the route beam. ONE ripple = ONE event (never a timer).
+    ctx.bus.on('economy:eventStarted', (p) => {
+      if (!stageFx || !stageFx.ripple || stage.hidden) return;
+      if (!p) return;
+      if (p.stationId && p.stationId !== panel.stationId) return;
+      if (p.commodityId && p.commodityId !== '*' && p.commodityId !== selectedCmdtyId) return;
+      try {
+        const kind = p.type === 'shortage' || p.type === 'blockade' ? 'danger'
+          : p.type === 'boom' ? 'good' : 'warn';
+        stageFx.ripple.ping(160, 100, { kind, radius: 90, ttl: 480 });
+      } catch (_) {}
+    });
   }
 
   // ONE delegated listener for the whole list
@@ -570,13 +720,23 @@ export function createMarketPanel(ctx) {
     const stationId = panel.stationId;
     const owned = (state.player.cargo.items[cmdtyId]) || 0;
 
-    // If they clicked the card background but not a button/qty control, pull up the modal chart!
+    // Background clicks select the inline analysis stage. The explicit expand button opens the modal.
     if (!btn) {
-      openChartModal(cmdtyId);
+      selectCommodity(cmdtyId);
       return;
     }
 
     const act = btn.getAttribute('data-act');
+    if (act === 'expand') {
+      openChartModal(cmdtyId);
+      return;
+    }
+
+    if (act === 'select') {
+      selectCommodity(cmdtyId);
+      return;
+    }
+
     if (act === 'best-known') {
       applyTradeNavigation(ctx, btn.getAttribute('data-station'), cmdtyId);
       return;
@@ -650,6 +810,8 @@ export function createMarketPanel(ctx) {
     const stationId = panel.stationId;
     const def = COMMODITY_BY_ID.get(cmdtyId);
     if (!def) return;
+    // Opening the fullscreen chart also keeps the inline analysis stage in sync.
+    selectCommodity(cmdtyId);
 
     chartModal.querySelector('.st-modal-title').textContent = def.name + ' Historical Pricing & Forecast';
     chartModal.querySelector('.st-base-price').textContent = def.basePrice + ' CR';
@@ -949,9 +1111,12 @@ export function createMarketPanel(ctx) {
         <div class="st-card-header">
           <span class="c-name">${escapeHtml(c.name)}${legalTag}</span>
           <span class="st-card-cat-badge mono">${escapeHtml(c.category)}</span>
+          <button class="st-expand-btn" data-act="expand" title="Open fullscreen chart" aria-label="Open fullscreen chart">↗</button>
         </div>
         <div class="st-card-spark-wrap">
-          <canvas class="st-spark" width="120" height="40" title="Recent price trend"></canvas>
+          <svg class="st-row-gauge" width="28" height="28" role="img" aria-label="stock pressure"></svg>
+          <canvas class="st-spark" width="160" height="40" title="Recent price trend"></canvas>
+          <span class="st-row-role st-role--none" title="role"><span class="st-row-role-glyph">—</span><span class="st-row-role-lbl">NEUTRAL</span></span>
         </div>
         <span class="st-slotline st-cmdty-purpose">${escapeHtml(commodityPurpose(c))}</span>
         <span class="st-slotline st-market-mission-line"></span>
@@ -1090,7 +1255,61 @@ export function createMarketPanel(ctx) {
       sellBtn.setAttribute('title', sellTitle);
       buyBtn.setAttribute('aria-label', buyTitle);
       sellBtn.setAttribute('aria-label', sellTitle);
+
+      // row mini-gauge (stock pressure) + supply/demand glyph
+      const gaugeEl = card.querySelector('.st-row-gauge');
+      if (gaugeEl) {
+        const entry = marketEntry(state, stationId, cmdtyId);
+        const pressure = stockPressure01(entry);
+        drawRowGauge(gaugeEl, pressure, def);
+      }
+      const roleEl = card.querySelector('.st-row-role');
+      if (roleEl) {
+        const stnType = stationTypeFor(state, stationId);
+        const role = stationRoleFor(def, stnType);
+        const g = roleGlyph(role);
+        roleEl.className = 'st-row-role ' + g.cls;
+        roleEl.innerHTML = '<span class="st-row-role-glyph">' + g.glyph + '</span><span class="st-row-role-lbl">' + g.label + '</span>';
+        roleEl.title = g.label + ' role at this station';
+      }
     }
+
+    // keep the analysis stage live on each refresh
+    refreshStage();
+  }
+
+  /** Draw a tiny stock-pressure ring into a row's inline SVG gauge. */
+  function drawRowGauge(svg, pressure01, def) {
+    if (!svg) return;
+    const size = 28, stroke = 3.5;
+    const R = (size - stroke) / 2;
+    const CIRC = 2 * Math.PI * R;
+    const cx = size / 2;
+    let track = svg.querySelector('.st-row-gauge__track');
+    let arc = svg.querySelector('.st-row-gauge__arc');
+    if (!track) {
+      svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+      track = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      track.setAttribute('class', 'st-row-gauge__track');
+      track.setAttribute('cx', cx); track.setAttribute('cy', cx); track.setAttribute('r', R);
+      track.setAttribute('fill', 'none'); track.setAttribute('stroke-width', stroke);
+      svg.appendChild(track);
+      arc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      arc.setAttribute('class', 'st-row-gauge__arc');
+      arc.setAttribute('cx', cx); arc.setAttribute('cy', cx); arc.setAttribute('r', R);
+      arc.setAttribute('fill', 'none'); arc.setAttribute('stroke-width', stroke);
+      arc.setAttribute('stroke-linecap', 'round');
+      arc.setAttribute('transform', `rotate(-90 ${cx} ${cx})`);
+      svg.appendChild(arc);
+    }
+    const v = Math.max(0, Math.min(1, pressure01));
+    arc.setAttribute('stroke-dasharray', CIRC.toFixed(2));
+    arc.setAttribute('stroke-dashoffset', (CIRC * (1 - v)).toFixed(2));
+    const kind = v > 0.66 ? 'scarce' : v < 0.34 ? 'glut' : 'mid';
+    const col = kind === 'scarce' ? 'var(--warn)' : kind === 'glut' ? 'var(--accent-2)' : 'var(--ink-dim)';
+    arc.style.stroke = col;
+    svg.setAttribute('aria-label', (kind === 'scarce' ? 'scarce' : kind === 'glut' ? 'well-stocked' : 'balanced') + ' stock');
+    svg.title = 'Stock pressure: ' + Math.round(v * 100) + '% (0=glut, 100=scarce)';
   }
 
   function renderMissionCallout(info) {
@@ -1233,6 +1452,182 @@ export function createMarketPanel(ctx) {
     }
   }
 
+  /** Select a commodity into the analysis stage. */
+  function selectCommodity(cmdtyId) {
+    selectedCmdtyId = cmdtyId;
+    stage.hidden = false;
+    // mark the selected row
+    if (panel._rowEls) {
+      for (const id in panel._rowEls) panel._rowEls[id].classList.toggle('is-selected', id === cmdtyId);
+    }
+    refreshStage();
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    stage.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  /** Best known sell route for a single commodity (used by the route beam + inspector Plot Route). */
+  function bestMarginRouteFor(state, hereStationId, cmdtyId) {
+    const trades = computeBestTrades(state, hereStationId);
+    const t = trades.find((x) => x.cmdtyId === cmdtyId);
+    if (!t) return null;
+    return {
+      destStation: t.destStation,
+      destName: stationName(state, t.destStation),
+      buyHere: t.buyHere,
+      sellThere: t.sellThere,
+      margin: t.margin,
+      loadUnits: t.loadUnits,
+      loadProfit: t.loadProfit,
+    };
+  }
+
+  /** Refresh the analysis stage from current state. Called on select + each refreshValues pass. */
+  function refreshStage() {
+    if (!selectedCmdtyId || stage.hidden) return;
+    const state = ctx.state;
+    const stationId = panel.stationId;
+    const def = COMMODITY_BY_ID.get(selectedCmdtyId);
+    if (!def) return;
+
+    const cycle = getCycle(stationId, selectedCmdtyId);
+    const regimeText = cycle ? regimeLabel(cycle.regime) : 'Cyclic';
+    if (stageFx && stageFx.regime) { try { stageFx.regime.set(regimeText); } catch (_) {} }
+
+    const hist = getPriceHistory(stationId, selectedCmdtyId);
+    drawSparkline(stageSpark, hist, { upColor: '#f2a83b', downColor: '#8fb0c0' });
+
+    const pred = predictPriceCurve(state, stationId, selectedCmdtyId, 24, 5);
+    drawForecastCone(stageCone, hist, pred, def.basePrice);
+
+    // Supply chain spindle
+    const stationType = stationTypeFor(state, stationId);
+    if (stageFx && stageFx.supply) {
+      try { stageFx.supply.setNodes(supplyTreeNodesFor(def, stationType)); } catch (_) {}
+    }
+
+    // Best margin route beam
+    const route = bestMarginRouteFor(state, stationId, selectedCmdtyId);
+    if (stageFx && stageFx.beam) {
+      try {
+        if (route && route.margin > 0) {
+          // beam from left (here/buy) to right (sell destination)
+          stageFx.beam.setPath([{ x: 20, y: 40 }, { x: 120, y: 20 }, { x: 220, y: 40 }], { active: true, kind: 'route' });
+          stageRouteMeta.textContent = route.destName + ' · +' + fmtCr(route.margin) + '/u';
+          inspRouteBtn.disabled = false;
+        } else {
+          stageFx.beam.setPath([], { active: false });
+          stageRouteMeta.textContent = 'No profitable route known';
+          inspRouteBtn.disabled = true;
+        }
+      } catch (_) {}
+    }
+
+    // Trade inspector: cargo-aware quote + flooding gauge + projected profit
+    refreshInspector(state, stationId, selectedCmdtyId, def, route);
+  }
+
+  function refreshInspector(state, stationId, cmdtyId, def, route) {
+    const econ = ctx.registry && ctx.registry.get && ctx.registry.get('economy');
+    const maxBuy = maxBuyable(ctx, stationId, cmdtyId);
+    // Cargo-aware quote: what would the max affordable load cost, and how would it move the price?
+    let quoteText = '—';
+    let flood01 = 0;
+    if (econ && typeof econ.quote === 'function' && maxBuy > 0) {
+      try {
+        const q = econ.quote(stationId, cmdtyId, 'buy', maxBuy);
+        if (q && q.ok !== false) {
+          const unit = usableQuoteUnit(q) || 0;
+          const total = (q.total != null ? q.total : unit * maxBuy) || 0;
+          const impact = (typeof q.priceImpactPct === 'number') ? q.priceImpactPct : 0;
+          quoteText = formatCargoUnits(maxBuy) + 'u @ ' + fmtCr(Math.round(unit)) + ' = ' + fmtCr(Math.round(total)) + ' CR';
+          // flooding gauge: how much would buying maxBuy push the local price UP (0=none, 1=severe).
+          // priceImpactPct is fractional; map |impact|>0.25 to full.
+          flood01 = Math.max(0, Math.min(1, Math.abs(impact) / 0.25));
+        }
+      } catch (_) {}
+    }
+    inspQuote.textContent = quoteText;
+    if (stageFx && stageFx.flood) { try { stageFx.flood.setValue(flood01, { kind: flood01 > 0.66 ? 'danger' : flood01 > 0.33 ? 'warn' : 'good', label: Math.round(flood01 * 100) + '% price impact' }); } catch (_) {} }
+
+    // Projected profit: only meaningful after a transaction (a cost basis exists in tradeLots).
+    // Show the route's potential profit as a forecast; the morph fires (up/down colour) on change.
+    const profit = route && route.loadProfit ? route.loadProfit : 0;
+    const profitText = profit > 0 ? '+' + fmtCr(profit) + ' CR' : '—';
+    if (stageFx && stageFx.profit) { try { stageFx.profit.set(profitText, { dir: profit > 0 ? 'up' : undefined }); } catch (_) {} }
+    else inspProfit.textContent = profitText;
+  }
+
+  /** Draw a compact forecast cone (history line + dashed forecast + ±uncertainty band) into a canvas. */
+  function drawForecastCone(canvas, historyPoints, predictedPoints, basePrice) {
+    const c = canvas.getContext('2d');
+    if (!c) return;
+    const W = canvas.width, H = canvas.height;
+    c.clearRect(0, 0, W, H);
+    const allY = [...historyPoints.map((p) => p.mid), ...predictedPoints.map((p) => p.mid), basePrice];
+    let minVal = Math.min(...allY), maxVal = Math.max(...allY);
+    const range = (maxVal - minVal) || 1;
+    minVal = Math.max(1, minVal - range * 0.12);
+    maxVal = maxVal + range * 0.12;
+    const valRange = maxVal - minVal;
+    const total = historyPoints.length + predictedPoints.length;
+    if (total < 2) return;
+    const padL = 6, padR = 6, padT = 6, padB = 6;
+    const cw = W - padL - padR, ch = H - padT - padB;
+    const xFor = (i) => padL + (i / (total - 1)) * cw;
+    const yFor = (v) => padT + (1 - (v - minVal) / valRange) * ch;
+
+    // base-price reference line
+    c.strokeStyle = 'rgba(132,160,200,.18)';
+    c.lineWidth = 1;
+    c.setLineDash([3, 3]);
+    c.beginPath(); c.moveTo(padL, yFor(basePrice)); c.lineTo(W - padR, yFor(basePrice)); c.stroke();
+    c.setLineDash([]);
+
+    // forecast cone: a widening band around the prediction (uncertainty grows with horizon)
+    const predLen = predictedPoints.length;
+    const histLen = historyPoints.length;
+    if (predLen > 1 && histLen > 0) {
+      c.fillStyle = 'rgba(230,218,189,.18)';
+      c.beginPath();
+      const startX = xFor(histLen - 1);
+      const startY = yFor(historyPoints[histLen - 1].mid);
+      c.moveTo(startX, startY);
+      for (let i = 0; i < predLen; i++) {
+        const widening = (i / predLen) * range * 0.42; // band grows toward the right
+        c.lineTo(xFor(histLen + i), yFor(predictedPoints[i].mid + widening));
+      }
+      for (let i = predLen - 1; i >= 0; i--) {
+        const widening = (i / predLen) * range * 0.42;
+        c.lineTo(xFor(histLen + i), yFor(predictedPoints[i].mid - widening));
+      }
+      c.closePath(); c.fill();
+    }
+
+    // observed history line
+    if (histLen > 1) {
+      c.strokeStyle = '#f2a83b';
+      c.lineWidth = 2;
+      c.beginPath();
+      for (let i = 0; i < histLen; i++) {
+        const x = xFor(i), y = yFor(historyPoints[i].mid);
+        if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+      }
+      c.stroke();
+    }
+
+    // Future price prediction line — visually distinct (dashed) from observed history
+    if (predLen > 0 && histLen > 0) {
+      c.strokeStyle = 'rgba(230,218,189,.55)';
+      c.lineWidth = 1.5;
+      c.setLineDash([4, 4]);
+      c.beginPath();
+      c.moveTo(xFor(histLen - 1), yFor(historyPoints[histLen - 1].mid));
+      for (let i = 0; i < predLen; i++) c.lineTo(xFor(histLen + i), yFor(predictedPoints[i].mid));
+      c.stroke();
+      c.setLineDash([]);
+    }
+  }
+
   const panel = {
     el: root,
     stationId: null,
@@ -1241,6 +1636,11 @@ export function createMarketPanel(ctx) {
       if (panel.stationId && ctx.bus) ctx.bus.emit('economy:marketOpened', { stationId: panel.stationId });
       rebuildCategoryRail();
       rebuild();
+      if (stageFx) for (const k in stageFx) { try { stageFx[k].setActive(true); } catch (_) {} }
+      if (selectedCmdtyId) refreshStage();
+    },
+    onHide() {
+      if (stageFx) for (const k in stageFx) { try { stageFx[k].setActive(false); } catch (_) {} }
     },
     refresh() { refreshValues(); },
     rebuild,
