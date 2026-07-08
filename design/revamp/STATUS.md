@@ -1382,3 +1382,13 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   `node scripts/check-presentation-cues.mjs`, `node scripts/check-data-refs.mjs`, and `npm run check:balance`
   passed (`2 PASS / 2 WARN / 0 FAIL`). `npm run check:sim:compare` still fails only on the documented 47-A
   projectile-collision precondition at `scripts/sf-sim.mjs:1161`.
+
+### T5d-AUD-05 — claim (2026-07-08)
+- Claimed BP-10.1 `PKT-AUD-05` from `detail/F_comms_audio_onboarding.md`.
+- Backend-safe scope: add pure additive signature data/adapters/checks for `tether.cut_whipcrack`
+  (only high-tension `tether:released`/`tether:broke` edges) and `mass.groan` (gain tied to live towed mass,
+  silent at zero/release), reusing the existing `sfx.tetherSnap`/presentation cue surface rather than touching
+  runtime audio.
+- No-touch remains `src/combat/attachments.js` and `src/audio/audioSystem.js`.
+- Routing note: `design/revamp/EXECUTION_LANES.md` is absent in the live tree, so this claim follows the goal
+  objective order plus `PROGRESS.md` and the packet detail spec.
