@@ -1071,3 +1071,23 @@ projectile-collision precondition (`_BASELINE.md`) — byte-identical. `check:as
   editing those owners.
 - Scope guard: no `world.js`, `mining.js`, `data/mining.js`, render, assets, HUD, input, or combat edits.
   Expected files are the pure data helper, its check, package wiring, and progress notes.
+
+### T5a-SPIN-DRIFT — DONE (2026-07-08)
+- Added pure `src/data/asteroidMotion.js`: all 20 live asteroid field ids now map to one seeded spin/drift
+  profile, with starter-safe, belt, slag, drift, frontier, and anomaly motion rows. Unknown fields fall back
+  to `steady`; no runtime system is registered.
+- The helper uses domain-separated seeded motion (`hash32(seed, asteroidId, 'spin')` /
+  `hash32(seed, asteroidId, 'drift')`), caps angular velocity by asteroid radius, exposes deterministic
+  drift, and mirrors the live seam projection contract (`ast.rot` + 14u hit radius) so future orchestration
+  can apply motion without inventing a second mining formula.
+- Added `npm run check:asteroid-motion`, which proves the field table matches live `SECTORS`, seeded motion
+  is deterministic, large rocks are capped lower than small rocks, a moving seam still resolves the on-seam
+  multiplier, and the packet stayed out of `world.js`, `mining.js`, `data/mining.js`, registry, HUD, render,
+  and assets.
+- Non-vacuous control: temporarily raised `frontier_roll.maxAngularVelocityRadS` to `0.120`; the check failed
+  on `frontier_roll: raw spin cap stays playable`. Restored to `0.072`; `npm run check:asteroid-motion`
+  passed again.
+- No-regression floor: `node --check src/data/asteroidMotion.js`, `node --check scripts/check-asteroid-motion.mjs`,
+  `node scripts/check-data-refs.mjs`, `npm run check:mining:bulk-guidance`, and `npm run check:balance` passed
+  (balance remains 2 PASS / 2 WARN / 0 FAIL). `npm run check:sim:compare` still fails only on the documented
+  47-A projectile-collision precondition in `scripts/sf-sim.mjs:1161`.
