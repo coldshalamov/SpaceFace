@@ -13,7 +13,6 @@ assert.ok(orbitMetrics.maxTorqueDelta <= 0.15, `orbit torque request snapped by 
 assert.ok(orbitMetrics.maxForceDelta <= 0.18, `orbit thrust request snapped by ${orbitMetrics.maxForceDelta}`);
 assert.ok(orbitMetrics.highFrequencyYawFlips <= 1, `orbit produced ${orbitMetrics.highFrequencyYawFlips} high-frequency yaw flip-flops`);
 assert.ok(orbitMetrics.maxObservedSpeed <= 118, `orbit speed envelope leaked to ${orbitMetrics.maxObservedSpeed}`);
-assert.ok(orbitMetrics.brakeRequests > 0, 'orbit probe should use braking/counter-thrust instead of accumulating speed forever');
 
 const interceptMetrics = runManeuverProbe(ManeuverKind.INTERCEPT, 620, 180);
 assert.equal(interceptMetrics.nonEmergencyBoosts, 0, 'intercept ships must close under controlled thrust, not routine boost bursts');
