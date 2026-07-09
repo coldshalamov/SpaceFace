@@ -1,0 +1,25 @@
+{
+  "restored_from": "hulls/hull_starter.glb",
+  "analysis": {
+    "ok": true,
+    "coverage": 0.1123,
+    "centroid": [
+      0.484,
+      0.486
+    ],
+    "border_ratio": 0.0,
+    "accent_ratio": 0.0,
+    "bbox_aspect": 2.61,
+    "fill_ratio": 0.373,
+    "edge_complexity": 0.06,
+    "bbox_area_ratio": 0.301,
+    "bg_sample": [
+      14,
+      19,
+      25
+    ],
+    "shot_id": "lit_34_full",
+    "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_restored_lit_34_full.png"
+  },
+  "note": "island_cull_reverted_via_glb_reimport"
+}
