@@ -26,6 +26,32 @@ const DEFAULTS = Object.freeze({
   formationRejoinFraction: 0.62,
   formationPredictionTicks: 45,
   includeTrajectory: true,
+
+  // SG-06 intentional flight shaping. These are not raw speed nerfs: they make the
+  // physical request behave like a pilot with inertia, commitment, and a plan.
+  inputSlewPerTick: 0.055,
+  emergencyInputSlewPerTick: 0.12,
+  torqueSlewPerTick: 0.065,
+  emergencyTorqueSlewPerTick: 0.14,
+  yawSoftAngle: 1.15,
+  yawDeadband: 0.035,
+  turnBeforeBurnAngle: 0.82,
+  speedBrakeSlack: 8,
+  closingBrakeSlack: 10,
+  holdSpeed: 12,
+  patrolSpeed: 32,
+  formationSpeed: 48,
+  screenSpeed: 58,
+  orbitSpeed: 68,
+  approachSpeed: 62,
+  interceptSpeed: 92,
+  retreatSpeed: 132,
+  escapeSpeed: 150,
+  clearDeadlockSpeed: 82,
+  maxOrbitClosingSpeed: 24,
+  maxApproachClosingSpeed: 34,
+  friendlySeparationRadius: 118,
+  friendlySeparationWeight: 0.82,
 });
 const EMPTY_TRAJECTORY = Object.freeze([]);
 
@@ -44,7 +70,16 @@ export class ManeuverPlanner {
     if (!self) throw new Error(`maneuver planner lacks self sensor frame for ${entityId}`);
     let runtime = this.byEntity.get(entityId);
     if (!runtime) {
-      runtime = { stationaryTicks: 0, clearUntilTick: -1, lastKind: ManeuverKind.HOLD, lastRequest: null };
+      runtime = {
+        stationaryTicks: 0,
+        clearUntilTick: -1,
+        lastKind: ManeuverKind.HOLD,
+        lastRequest: null,
+        lastTick: tick,
+        smoothedForward: 0,
+        smoothedRight: 0,
+        smoothedTorqueYaw: 0,
+      };
       this.byEntity.set(entityId, runtime);
     }
 
@@ -67,6 +102,7 @@ export class ManeuverPlanner {
       ? seekPoint(self, predictedFormationSlot, 1)
       : desiredForIntent(intent, self, target, perception.contacts, this.seed, entityId, this.config);
 
+    desired = applyFriendlySeparation(desired, self, perception.contacts, this.config);
     desired = applyObstacleAvoidance(desired, self, perception.contacts, this.config);
     const speed = Math.hypot(self.vel.x, self.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
@@ -88,24 +124,56 @@ export class ManeuverPlanner {
     const desiredUnit = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
     const heading = Math.atan2(desiredUnit.z, desiredUnit.x);
     const angleError = wrapAngle(heading - self.rot);
-    const forward = Math.cos(self.rot) * desiredUnit.x + Math.sin(self.rot) * desiredUnit.z;
-    const right = -Math.sin(self.rot) * desiredUnit.x + Math.cos(self.rot) * desiredUnit.z;
+    const forwardDot = Math.cos(self.rot) * desiredUnit.x + Math.sin(self.rot) * desiredUnit.z;
+    const rightDot = -Math.sin(self.rot) * desiredUnit.x + Math.cos(self.rot) * desiredUnit.z;
     const arrival = desired.arrivalDistance == null ? Infinity : desired.arrivalDistance;
     const slowRadius = approachSlowRadius(kind, formationBound, this.config);
-    const throttle = arrival < slowRadius ? saturate(arrival / slowRadius) : 1;
-    const boostWanted = kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK ||
-      (kind === ManeuverKind.INTERCEPT && arrival > 500) ||
-      (kind === ManeuverKind.FORMATION && formationDistance > formationBound * 1.5);
+    const envelope = motionEnvelope(kind, intent, arrival, formationDistance, formationBound, this.config);
+    const closing = target ? closingSpeed(self, target) : 0;
+    const velocityAlongDesired = self.vel.x * desiredUnit.x + self.vel.z * desiredUnit.z;
+    const speedLimited = speed > envelope.maxSpeed + this.config.speedBrakeSlack;
+    const closingLimited = target && closing > envelope.maxClosingSpeed + this.config.closingBrakeSlack;
+    let throttle = arrival < slowRadius ? saturate(arrival / slowRadius) : 1;
+
+    if (envelope.maxSpeed > 0 && speed > envelope.maxSpeed) {
+      const over = speed - envelope.maxSpeed;
+      throttle *= clamp(1 - over / Math.max(envelope.maxSpeed, 1), 0, 1);
+    }
+    if (Math.abs(angleError) > this.config.turnBeforeBurnAngle) throttle *= 0.35;
+    if (velocityAlongDesired > envelope.maxSpeed) throttle *= 0.25;
+
+    const allowReverse = kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION || speedLimited;
+    let rawForward = (allowReverse ? forwardDot : Math.max(0, forwardDot)) * throttle;
+    let rawRight = rightDot * throttle * strafeAuthorityForKind(kind);
+    if (speedLimited || closingLimited) {
+      rawForward = Math.min(rawForward, speedLimited ? 0.04 : 0.18);
+      rawRight *= 0.35;
+    }
+    if (intentionalHold) {
+      rawForward = 0;
+      rawRight = 0;
+    }
+
+    const rawTorqueYaw = yawRequestFor(angleError, kind, this.config);
+    const emergencyManeuver = kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
+    const smooth = smoothControls(runtime, tick, {
+      forward: rawForward,
+      right: rawRight,
+      torqueYaw: rawTorqueYaw,
+    }, this.config, { emergency: emergencyManeuver });
+
+    const boostWanted = (kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
+      speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78;
     const boost = boostWanted && self.energyFraction >= this.config.minBoostEnergyFraction && self.heatFraction <= this.config.maxBoostHeatFraction;
-    const brake = (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
-      arrival < slowRadius && speed > Math.max(4, arrival / 2);
+    const brake = speedLimited || closingLimited || ((kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
+      arrival < slowRadius && speed > Math.max(4, arrival / 2));
     const trajectory = this.includeTrajectory
-      ? buildTrajectory(self, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks)
+      ? buildTrajectory(self, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks, envelope.maxSpeed)
       : EMPTY_TRAJECTORY;
     const request = makeThrusterRequest(entityId, tick, {
       kind,
-      forceLocal: { forward: forward * throttle, right: right * throttle },
-      torqueYaw: clamp(angleError / 0.65, -1, 1),
+      forceLocal: { forward: smooth.forward, right: smooth.right },
+      torqueYaw: smooth.torqueYaw,
       boost,
       brake,
       targetHeading: heading,
@@ -132,7 +200,14 @@ export class ManeuverPlanner {
         context: {
           targetId: target && target.id,
           speed,
+          speedBudget: envelope.maxSpeed,
+          closingSpeed: closing,
+          speedLimited,
+          closingLimited,
           angleError,
+          rawForward,
+          rawRight,
+          rawTorqueYaw,
           energyFraction: self.energyFraction,
           heatFraction: self.heatFraction,
           breakFormation: intent.breakFormation,
@@ -157,6 +232,8 @@ export class ManeuverPlanner {
 function approachSlowRadius(kind, formationBound, config) {
   if (kind === ManeuverKind.FORMATION) return Math.max(config.arrivalRadius * 2, formationBound * 0.85);
   if (kind === ManeuverKind.HOLD) return Math.max(config.arrivalRadius * 1.5, formationBound * 0.35);
+  if (kind === ManeuverKind.ORBIT) return Math.max(config.arrivalRadius * 3, config.orbitRadius * 0.35);
+  if (kind === ManeuverKind.INTERCEPT || kind === ManeuverKind.APPROACH_SOCKET || kind === ManeuverKind.CUT_TETHER) return Math.max(config.arrivalRadius * 3, formationBound * 0.55);
   return config.arrivalRadius;
 }
 
@@ -259,6 +336,22 @@ function nearestTether(contacts, self) {
   return best;
 }
 
+function applyFriendlySeparation(desired, self, contacts, config) {
+  let x = desired.x, z = desired.z;
+  for (const contact of contacts) {
+    if (contact.kind !== ContactKind.SHIP || contact.team !== self.team || contact.id === self.id) continue;
+    const dx = self.pos.x - contact.pos.x;
+    const dz = self.pos.z - contact.pos.z;
+    const dist = Math.hypot(dx, dz) || 1;
+    const clearance = config.friendlySeparationRadius + self.radius + contact.radius;
+    if (dist >= clearance) continue;
+    const strength = saturate(1 - dist / clearance) * config.friendlySeparationWeight;
+    x += dx / dist * strength;
+    z += dz / dist * strength;
+  }
+  return { x, z, arrivalDistance: desired.arrivalDistance };
+}
+
 function applyObstacleAvoidance(desired, self, contacts, config) {
   let x = desired.x, z = desired.z;
   const dir = unit2(x, z, Math.cos(self.rot), Math.sin(self.rot));
@@ -276,9 +369,93 @@ function applyObstacleAvoidance(desired, self, contacts, config) {
   return { x, z, arrivalDistance: desired.arrivalDistance };
 }
 
-function buildTrajectory(self, direction, speed, tick, horizonTicks) {
+function motionEnvelope(kind, intent, arrival, formationDistance, formationBound, config) {
+  switch (kind) {
+    case ManeuverKind.HOLD:
+      return { maxSpeed: arrival <= config.arrivalRadius ? 0 : config.holdSpeed, maxClosingSpeed: config.maxApproachClosingSpeed };
+    case ManeuverKind.FORMATION:
+      return { maxSpeed: clamp(Math.max(config.patrolSpeed, formationDistance * 0.42), config.patrolSpeed, config.formationSpeed), maxClosingSpeed: config.maxApproachClosingSpeed };
+    case ManeuverKind.SCREEN:
+      return { maxSpeed: config.screenSpeed, maxClosingSpeed: config.maxApproachClosingSpeed };
+    case ManeuverKind.ORBIT:
+      return { maxSpeed: config.orbitSpeed, maxClosingSpeed: config.maxOrbitClosingSpeed };
+    case ManeuverKind.APPROACH_SOCKET:
+    case ManeuverKind.CUT_TETHER:
+      return { maxSpeed: Math.min(config.approachSpeed, Math.max(config.patrolSpeed, arrival * 0.45)), maxClosingSpeed: config.maxApproachClosingSpeed };
+    case ManeuverKind.INTERCEPT:
+      return { maxSpeed: config.interceptSpeed, maxClosingSpeed: Math.max(config.maxApproachClosingSpeed, (intent.preferredRange || formationBound) * 0.12) };
+    case ManeuverKind.RETREAT:
+      return { maxSpeed: config.retreatSpeed, maxClosingSpeed: Infinity };
+    case ManeuverKind.ESCAPE_TETHER:
+      return { maxSpeed: config.escapeSpeed, maxClosingSpeed: Infinity };
+    case ManeuverKind.CLEAR_DEADLOCK:
+      return { maxSpeed: config.clearDeadlockSpeed, maxClosingSpeed: Infinity };
+    default:
+      return { maxSpeed: config.patrolSpeed, maxClosingSpeed: config.maxApproachClosingSpeed };
+  }
+}
+
+function strafeAuthorityForKind(kind) {
+  switch (kind) {
+    case ManeuverKind.ORBIT: return 0.48;
+    case ManeuverKind.FORMATION: return 0.42;
+    case ManeuverKind.HOLD: return 0.32;
+    case ManeuverKind.SCREEN: return 0.36;
+    case ManeuverKind.APPROACH_SOCKET:
+    case ManeuverKind.CUT_TETHER: return 0.3;
+    case ManeuverKind.INTERCEPT: return 0.24;
+    case ManeuverKind.RETREAT:
+    case ManeuverKind.ESCAPE_TETHER:
+    case ManeuverKind.CLEAR_DEADLOCK: return 0.22;
+    default: return 0.3;
+  }
+}
+
+function yawRequestFor(angleError, kind, config) {
+  if (Math.abs(angleError) < config.yawDeadband) return 0;
+  return clamp(angleError / config.yawSoftAngle, -yawLimitForKind(kind), yawLimitForKind(kind));
+}
+
+function yawLimitForKind(kind) {
+  switch (kind) {
+    case ManeuverKind.HOLD: return 0.32;
+    case ManeuverKind.FORMATION: return 0.42;
+    case ManeuverKind.ORBIT: return 0.52;
+    case ManeuverKind.SCREEN: return 0.46;
+    case ManeuverKind.APPROACH_SOCKET:
+    case ManeuverKind.CUT_TETHER: return 0.5;
+    case ManeuverKind.INTERCEPT: return 0.56;
+    case ManeuverKind.RETREAT:
+    case ManeuverKind.ESCAPE_TETHER:
+    case ManeuverKind.CLEAR_DEADLOCK: return 0.82;
+    default: return 0.5;
+  }
+}
+
+function smoothControls(runtime, tick, raw, config, options = {}) {
+  const ticks = Math.max(1, Number.isInteger(runtime.lastTick) ? tick - runtime.lastTick : 1);
+  const inputStep = (options.emergency ? config.emergencyInputSlewPerTick : config.inputSlewPerTick) * ticks;
+  const torqueStep = (options.emergency ? config.emergencyTorqueSlewPerTick : config.torqueSlewPerTick) * ticks;
+  const forward = approach(runtime.smoothedForward || 0, raw.forward, inputStep);
+  const right = approach(runtime.smoothedRight || 0, raw.right, inputStep);
+  const torqueYaw = approach(runtime.smoothedTorqueYaw || 0, raw.torqueYaw, torqueStep);
+  runtime.lastTick = tick;
+  runtime.smoothedForward = forward;
+  runtime.smoothedRight = right;
+  runtime.smoothedTorqueYaw = torqueYaw;
+  return { forward, right, torqueYaw };
+}
+
+function closingSpeed(self, target) {
+  const dx = target.pos.x - self.pos.x;
+  const dz = target.pos.z - self.pos.z;
+  const dist = Math.hypot(dx, dz) || 1;
+  return ((self.vel.x - target.vel.x) * dx + (self.vel.z - target.vel.z) * dz) / dist;
+}
+
+function buildTrajectory(self, direction, speed, tick, horizonTicks, speedBudget = Infinity) {
   const out = [];
-  const projectedSpeed = Math.max(12, speed + 18);
+  const projectedSpeed = Math.max(8, Math.min(speed + 14, Number.isFinite(speedBudget) ? Math.max(8, speedBudget) : speed + 14));
   for (const fraction of [0.25, 0.5, 1]) {
     const ticks = Math.round(horizonTicks * fraction);
     const seconds = ticks / 60;
@@ -289,6 +466,12 @@ function buildTrajectory(self, direction, speed, tick, horizonTicks) {
     });
   }
   return out;
+}
+
+function approach(current, target, maxDelta) {
+  const delta = target - current;
+  if (Math.abs(delta) <= maxDelta) return target;
+  return current + Math.sign(delta) * maxDelta;
 }
 
 function freezeRuntime(runtime) {
