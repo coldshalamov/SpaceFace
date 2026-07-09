@@ -1,0 +1,2976 @@
+{
+  "part_id": "place_gate_jump_ring",
+  "story": "Helios jump gate ring \u2014 Meridian transit monument. Massive torus aperture, paired pylons, charge rails, and cyan energy emitters. Chase-readable silhouette and transit-fantasy scale for undock\u2192gate course stills.",
+  "iterations": [
+    {
+      "iter": 1,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "torus_aperture_macro",
+        "paired_pylons",
+        "charge_rail",
+        "emitter_ring"
+      ],
+      "deficiencies_addressed_next": [
+        "torus_aperture_macro",
+        "paired_pylons",
+        "charge_rail",
+        "emitter_ring"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter1_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter1_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter1_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter1_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter1_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.8,
+        "bevel_language": 4.0,
+        "material_zones": 3.7,
+        "wear_story": 3.4,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.1,
+        "contract_readiness": 4.0,
+        "weighted": 4.145,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0661,
+          "centroid": [
+            0.529,
+            0.443
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.779,
+          "fill_ratio": 0.207,
+          "edge_complexity": 0.059,
+          "bbox_area_ratio": 0.3196,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter1_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0961,
+          "centroid": [
+            0.527,
+            0.455
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.202,
+          "fill_ratio": 0.202,
+          "edge_complexity": 0.053,
+          "bbox_area_ratio": 0.4758,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter1_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0512,
+          "centroid": [
+            0.476,
+            0.428
+          ],
+          "border_ratio": 0.002,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.441,
+          "fill_ratio": 0.281,
+          "edge_complexity": 0.056,
+          "bbox_area_ratio": 0.1821,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter1_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0631,
+          "centroid": [
+            0.53,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.048,
+          "bbox_aspect": 0.779,
+          "fill_ratio": 0.198,
+          "edge_complexity": 0.11,
+          "bbox_area_ratio": 0.3185,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter1_lit_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1678,
+          "centroid": [
+            0.51,
+            0.55
+          ],
+          "border_ratio": 0.003,
+          "accent_ratio": 0.167,
+          "bbox_aspect": 1.835,
+          "fill_ratio": 0.203,
+          "edge_complexity": 0.05,
+          "bbox_area_ratio": 0.826,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter1_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "ring_panel_belts",
+        "meso_circumference",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "ring_panel_belts",
+        "meso_circumference",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter2_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter2_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter2_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter2_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter2_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.8210526315789473,
+        "bevel_language": 4.021052631578947,
+        "material_zones": 3.7210526315789476,
+        "wear_story": 3.4210526315789473,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.121052631578947,
+        "contract_readiness": 4.021052631578947,
+        "weighted": 4.16,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0724,
+          "centroid": [
+            0.53,
+            0.503
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.795,
+          "fill_ratio": 0.221,
+          "edge_complexity": 0.064,
+          "bbox_area_ratio": 0.3275,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter2_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0996,
+          "centroid": [
+            0.526,
+            0.521
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.212,
+          "fill_ratio": 0.215,
+          "edge_complexity": 0.058,
+          "bbox_area_ratio": 0.4641,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter2_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.054,
+          "centroid": [
+            0.476,
+            0.493
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.45,
+          "fill_ratio": 0.301,
+          "edge_complexity": 0.062,
+          "bbox_area_ratio": 0.1795,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter2_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0672,
+          "centroid": [
+            0.533,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.036,
+          "bbox_aspect": 0.793,
+          "fill_ratio": 0.206,
+          "edge_complexity": 0.116,
+          "bbox_area_ratio": 0.3257,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter2_lit_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1792,
+          "centroid": [
+            0.519,
+            0.549
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.051,
+          "bbox_aspect": 1.803,
+          "fill_ratio": 0.182,
+          "edge_complexity": 0.053,
+          "bbox_area_ratio": 0.9861,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter2_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "pylon_vent_stacks",
+        "mechanical_zones",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "pylon_vent_stacks",
+        "mechanical_zones",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter3_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter3_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter3_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter3_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter3_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.8421052631578947,
+        "bevel_language": 4.042105263157895,
+        "material_zones": 3.742105263157895,
+        "wear_story": 3.442105263157895,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.1421052631578945,
+        "contract_readiness": 4.042105263157895,
+        "weighted": 4.174,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0729,
+          "centroid": [
+            0.534,
+            0.505
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.797,
+          "fill_ratio": 0.223,
+          "edge_complexity": 0.066,
+          "bbox_area_ratio": 0.327,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter3_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1008,
+          "centroid": [
+            0.524,
+            0.517
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.216,
+          "edge_complexity": 0.058,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter3_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0544,
+          "centroid": [
+            0.48,
+            0.491
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.445,
+          "fill_ratio": 0.306,
+          "edge_complexity": 0.064,
+          "bbox_area_ratio": 0.1778,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter3_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0676,
+          "centroid": [
+            0.537,
+            0.499
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.017,
+          "bbox_aspect": 0.796,
+          "fill_ratio": 0.207,
+          "edge_complexity": 0.121,
+          "bbox_area_ratio": 0.3258,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter3_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.1792,
+          "centroid": [
+            0.519,
+            0.549
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.008,
+          "bbox_aspect": 1.803,
+          "fill_ratio": 0.182,
+          "edge_complexity": 0.053,
+          "bbox_area_ratio": 0.9861,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter3_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "coolant_pipes",
+        "industrial_read",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "coolant_pipes",
+        "industrial_read",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter4_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter4_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter4_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter4_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter4_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.863157894736842,
+        "bevel_language": 4.063157894736842,
+        "material_zones": 3.7631578947368425,
+        "wear_story": 3.463157894736842,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.163157894736842,
+        "contract_readiness": 4.063157894736842,
+        "weighted": 4.189,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0735,
+          "centroid": [
+            0.534,
+            0.505
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.797,
+          "fill_ratio": 0.225,
+          "edge_complexity": 0.069,
+          "bbox_area_ratio": 0.327,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter4_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1014,
+          "centroid": [
+            0.524,
+            0.517
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.217,
+          "edge_complexity": 0.06,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter4_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0548,
+          "centroid": [
+            0.48,
+            0.491
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.445,
+          "fill_ratio": 0.308,
+          "edge_complexity": 0.067,
+          "bbox_area_ratio": 0.1778,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter4_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.068,
+          "centroid": [
+            0.537,
+            0.499
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.015,
+          "bbox_aspect": 0.796,
+          "fill_ratio": 0.209,
+          "edge_complexity": 0.124,
+          "bbox_area_ratio": 0.3258,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter4_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.183,
+          "centroid": [
+            0.524,
+            0.55
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.007,
+          "bbox_aspect": 1.803,
+          "fill_ratio": 0.186,
+          "edge_complexity": 0.055,
+          "bbox_area_ratio": 0.9861,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter4_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 5,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "control_booths",
+        "crew_scale",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "control_booths",
+        "crew_scale",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter5_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter5_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter5_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter5_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter5_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.884210526315789,
+        "bevel_language": 4.08421052631579,
+        "material_zones": 3.7842105263157895,
+        "wear_story": 3.484210526315789,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.184210526315789,
+        "contract_readiness": 4.08421052631579,
+        "weighted": 4.204,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0772,
+          "centroid": [
+            0.533,
+            0.512
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.228,
+          "edge_complexity": 0.069,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter5_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1055,
+          "centroid": [
+            0.526,
+            0.527
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.226,
+          "edge_complexity": 0.061,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter5_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0578,
+          "centroid": [
+            0.476,
+            0.502
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.289,
+          "edge_complexity": 0.067,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter5_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0713,
+          "centroid": [
+            0.537,
+            0.506
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.014,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.211,
+          "edge_complexity": 0.126,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter5_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.183,
+          "centroid": [
+            0.524,
+            0.55
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.803,
+          "fill_ratio": 0.186,
+          "edge_complexity": 0.055,
+          "bbox_area_ratio": 0.9861,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter5_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 6,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "outer_truss_rail",
+        "layered_ring_silhouette",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "outer_truss_rail",
+        "layered_ring_silhouette",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter6_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter6_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter6_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter6_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter6_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.9052631578947365,
+        "bevel_language": 4.105263157894737,
+        "material_zones": 3.805263157894737,
+        "wear_story": 3.5052631578947366,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.205263157894737,
+        "contract_readiness": 4.105263157894737,
+        "weighted": 4.219,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.079,
+          "centroid": [
+            0.533,
+            0.512
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.233,
+          "edge_complexity": 0.066,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter6_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1105,
+          "centroid": [
+            0.526,
+            0.527
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.237,
+          "edge_complexity": 0.056,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter6_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0582,
+          "centroid": [
+            0.476,
+            0.501
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.291,
+          "edge_complexity": 0.067,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter6_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0742,
+          "centroid": [
+            0.536,
+            0.506
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.021,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.219,
+          "edge_complexity": 0.126,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter6_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.1872,
+          "centroid": [
+            0.523,
+            0.552
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.009,
+          "bbox_aspect": 1.805,
+          "fill_ratio": 0.19,
+          "edge_complexity": 0.057,
+          "bbox_area_ratio": 0.9847,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter6_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 7,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "ring_clamps",
+        "assembly_language",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "ring_clamps",
+        "assembly_language",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter7_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter7_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter7_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter7_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter7_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.926315789473684,
+        "bevel_language": 4.126315789473685,
+        "material_zones": 3.8263157894736843,
+        "wear_story": 3.526315789473684,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.226315789473684,
+        "contract_readiness": 4.126315789473685,
+        "weighted": 4.233,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0804,
+          "centroid": [
+            0.533,
+            0.512
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.237,
+          "edge_complexity": 0.068,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter7_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1123,
+          "centroid": [
+            0.526,
+            0.527
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.24,
+          "edge_complexity": 0.058,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter7_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0594,
+          "centroid": [
+            0.476,
+            0.501
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.297,
+          "edge_complexity": 0.069,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter7_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0753,
+          "centroid": [
+            0.537,
+            0.505
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.02,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.222,
+          "edge_complexity": 0.129,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter7_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.1887,
+          "centroid": [
+            0.521,
+            0.554
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.008,
+          "bbox_aspect": 1.805,
+          "fill_ratio": 0.192,
+          "edge_complexity": 0.058,
+          "bbox_area_ratio": 0.9847,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter7_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 8,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "service_catwalks",
+        "approach_mass",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "service_catwalks",
+        "approach_mass",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter8_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter8_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter8_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter8_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter8_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.9473684210526314,
+        "bevel_language": 4.147368421052631,
+        "material_zones": 3.8473684210526318,
+        "wear_story": 3.5473684210526315,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.247368421052631,
+        "contract_readiness": 4.147368421052631,
+        "weighted": 4.248,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0823,
+          "centroid": [
+            0.533,
+            0.513
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.243,
+          "edge_complexity": 0.07,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter8_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1145,
+          "centroid": [
+            0.526,
+            0.528
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.245,
+          "edge_complexity": 0.059,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter8_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0608,
+          "centroid": [
+            0.476,
+            0.502
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.303,
+          "edge_complexity": 0.069,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter8_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0767,
+          "centroid": [
+            0.537,
+            0.506
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.019,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.227,
+          "edge_complexity": 0.133,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter8_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8897,
+          "centroid": [
+            0.493,
+            0.501
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.002,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.89,
+          "edge_complexity": 0.029,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter8_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 9,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "meridian_gate_palette",
+        "charge_emissive_boost"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_gate_palette",
+        "charge_emissive_boost"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter9_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter9_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter9_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter9_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter9_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.468421052631578,
+        "bevel_language": 4.468421052631578,
+        "material_zones": 4.668421052631579,
+        "wear_story": 4.468421052631578,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.568421052631579,
+        "contract_readiness": 4.568421052631579,
+        "weighted": 4.673,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0823,
+          "centroid": [
+            0.533,
+            0.513
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.243,
+          "edge_complexity": 0.07,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter9_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1145,
+          "centroid": [
+            0.526,
+            0.528
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.245,
+          "edge_complexity": 0.059,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter9_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0608,
+          "centroid": [
+            0.476,
+            0.502
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.303,
+          "edge_complexity": 0.069,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter9_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0767,
+          "centroid": [
+            0.537,
+            0.506
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.019,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.227,
+          "edge_complexity": 0.133,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter9_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8897,
+          "centroid": [
+            0.493,
+            0.501
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.002,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.89,
+          "edge_complexity": 0.029,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter9_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 10,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "meridian_gate_palette",
+        "wear_plates",
+        "frontier_grit"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_gate_palette",
+        "wear_plates",
+        "frontier_grit"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter10_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter10_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter10_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter10_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter10_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.489473684210526,
+        "bevel_language": 4.489473684210526,
+        "material_zones": 4.689473684210526,
+        "wear_story": 4.489473684210526,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.589473684210526,
+        "contract_readiness": 4.589473684210526,
+        "weighted": 4.688,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0827,
+          "centroid": [
+            0.533,
+            0.513
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.244,
+          "edge_complexity": 0.071,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter10_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1148,
+          "centroid": [
+            0.526,
+            0.528
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.246,
+          "edge_complexity": 0.06,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter10_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0611,
+          "centroid": [
+            0.476,
+            0.502
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.305,
+          "edge_complexity": 0.071,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter10_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0769,
+          "centroid": [
+            0.537,
+            0.506
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.018,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.227,
+          "edge_complexity": 0.134,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter10_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8897,
+          "centroid": [
+            0.493,
+            0.501
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.002,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.89,
+          "edge_complexity": 0.029,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter10_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 11,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "meridian_gate_palette",
+        "cool_hull_transit"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_gate_palette",
+        "cool_hull_transit"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter11_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter11_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter11_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter11_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter11_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.510526315789473,
+        "bevel_language": 4.510526315789473,
+        "material_zones": 4.7105263157894735,
+        "wear_story": 4.510526315789473,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.610526315789474,
+        "contract_readiness": 4.610526315789474,
+        "weighted": 4.702,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0827,
+          "centroid": [
+            0.533,
+            0.513
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.244,
+          "edge_complexity": 0.071,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter11_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1148,
+          "centroid": [
+            0.526,
+            0.528
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.246,
+          "edge_complexity": 0.06,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter11_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0611,
+          "centroid": [
+            0.476,
+            0.502
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.305,
+          "edge_complexity": 0.071,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter11_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.077,
+          "centroid": [
+            0.537,
+            0.506
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.017,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.227,
+          "edge_complexity": 0.135,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter11_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8897,
+          "centroid": [
+            0.493,
+            0.501
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.89,
+          "edge_complexity": 0.029,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter11_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 12,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "meridian_gate_palette",
+        "hazard_stripes"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_gate_palette",
+        "hazard_stripes"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter12_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter12_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter12_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter12_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter12_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.531578947368421,
+        "bevel_language": 4.531578947368421,
+        "material_zones": 4.731578947368421,
+        "wear_story": 4.531578947368421,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.631578947368421,
+        "contract_readiness": 4.631578947368421,
+        "weighted": 4.717,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0833,
+          "centroid": [
+            0.533,
+            0.514
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.246,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter12_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1155,
+          "centroid": [
+            0.526,
+            0.529
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.247,
+          "edge_complexity": 0.06,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter12_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0616,
+          "centroid": [
+            0.475,
+            0.503
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.308,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter12_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0776,
+          "centroid": [
+            0.538,
+            0.507
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.017,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.229,
+          "edge_complexity": 0.135,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter12_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8897,
+          "centroid": [
+            0.493,
+            0.501
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.89,
+          "edge_complexity": 0.029,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter12_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 13,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "meridian_gate_palette",
+        "mech_rough_contrast"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_gate_palette",
+        "mech_rough_contrast"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter13_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter13_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter13_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter13_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter13_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.552631578947368,
+        "bevel_language": 4.552631578947368,
+        "material_zones": 4.752631578947368,
+        "wear_story": 4.552631578947368,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.652631578947369,
+        "contract_readiness": 4.652631578947369,
+        "weighted": 4.732,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0833,
+          "centroid": [
+            0.533,
+            0.514
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.246,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter13_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1155,
+          "centroid": [
+            0.526,
+            0.529
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.247,
+          "edge_complexity": 0.06,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter13_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0616,
+          "centroid": [
+            0.475,
+            0.503
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.308,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter13_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0776,
+          "centroid": [
+            0.538,
+            0.507
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.017,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.229,
+          "edge_complexity": 0.135,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter13_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8898,
+          "centroid": [
+            0.493,
+            0.501
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.89,
+          "edge_complexity": 0.029,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter13_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 14,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "meridian_gate_palette",
+        "identity_plate"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_gate_palette",
+        "identity_plate"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter14_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter14_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter14_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter14_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter14_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.573684210526316,
+        "bevel_language": 4.573684210526316,
+        "material_zones": 4.773684210526316,
+        "wear_story": 4.573684210526316,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.673684210526316,
+        "contract_readiness": 4.673684210526316,
+        "weighted": 4.747,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0836,
+          "centroid": [
+            0.533,
+            0.515
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.247,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter14_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.116,
+          "centroid": [
+            0.526,
+            0.53
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.248,
+          "edge_complexity": 0.061,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter14_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0616,
+          "centroid": [
+            0.475,
+            0.503
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.308,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter14_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0778,
+          "centroid": [
+            0.537,
+            0.507
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.016,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.23,
+          "edge_complexity": 0.136,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter14_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8862,
+          "centroid": [
+            0.492,
+            0.499
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.886,
+          "edge_complexity": 0.03,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter14_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 15,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "status_led_ring"
+      ],
+      "deficiencies_addressed_next": [
+        "status_led_ring"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter15_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter15_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter15_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter15_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter15_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.894736842105263,
+        "bevel_language": 4.794736842105263,
+        "material_zones": 5.0,
+        "wear_story": 4.894736842105263,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.994736842105263,
+        "contract_readiness": 4.994736842105263,
+        "weighted": 4.947,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0837,
+          "centroid": [
+            0.533,
+            0.515
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.826,
+          "fill_ratio": 0.247,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.339,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter15_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.116,
+          "centroid": [
+            0.526,
+            0.53
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.211,
+          "fill_ratio": 0.248,
+          "edge_complexity": 0.061,
+          "bbox_area_ratio": 0.4669,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter15_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0617,
+          "centroid": [
+            0.475,
+            0.503
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.501,
+          "fill_ratio": 0.308,
+          "edge_complexity": 0.073,
+          "bbox_area_ratio": 0.2002,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter15_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0778,
+          "centroid": [
+            0.537,
+            0.507
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.016,
+          "bbox_aspect": 0.827,
+          "fill_ratio": 0.23,
+          "edge_complexity": 0.137,
+          "bbox_area_ratio": 0.3384,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter15_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8862,
+          "centroid": [
+            0.492,
+            0.499
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.886,
+          "edge_complexity": 0.03,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter15_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 16,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "pylon_antennas"
+      ],
+      "deficiencies_addressed_next": [
+        "pylon_antennas"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter16_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter16_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter16_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter16_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter16_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.91578947368421,
+        "bevel_language": 4.815789473684211,
+        "material_zones": 5.0,
+        "wear_story": 4.91578947368421,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.956,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0838,
+          "centroid": [
+            0.533,
+            0.514
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.814,
+          "fill_ratio": 0.244,
+          "edge_complexity": 0.073,
+          "bbox_area_ratio": 0.344,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter16_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1162,
+          "centroid": [
+            0.526,
+            0.53
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.184,
+          "fill_ratio": 0.243,
+          "edge_complexity": 0.062,
+          "bbox_area_ratio": 0.4779,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter16_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0618,
+          "centroid": [
+            0.475,
+            0.502
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.484,
+          "fill_ratio": 0.299,
+          "edge_complexity": 0.074,
+          "bbox_area_ratio": 0.2072,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter16_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0778,
+          "centroid": [
+            0.537,
+            0.507
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.016,
+          "bbox_aspect": 0.817,
+          "fill_ratio": 0.227,
+          "edge_complexity": 0.138,
+          "bbox_area_ratio": 0.3429,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter16_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8862,
+          "centroid": [
+            0.492,
+            0.499
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.886,
+          "edge_complexity": 0.03,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter16_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 17,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "cable_bundles"
+      ],
+      "deficiencies_addressed_next": [
+        "cable_bundles"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter17_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter17_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter17_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter17_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter17_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.936842105263158,
+        "bevel_language": 4.836842105263158,
+        "material_zones": 5.0,
+        "wear_story": 4.936842105263158,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.965,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0842,
+          "centroid": [
+            0.533,
+            0.515
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.814,
+          "fill_ratio": 0.245,
+          "edge_complexity": 0.075,
+          "bbox_area_ratio": 0.344,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter17_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1171,
+          "centroid": [
+            0.526,
+            0.53
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.184,
+          "fill_ratio": 0.245,
+          "edge_complexity": 0.064,
+          "bbox_area_ratio": 0.4779,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter17_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0622,
+          "centroid": [
+            0.475,
+            0.502
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.484,
+          "fill_ratio": 0.3,
+          "edge_complexity": 0.076,
+          "bbox_area_ratio": 0.2072,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter17_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0778,
+          "centroid": [
+            0.537,
+            0.507
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.015,
+          "bbox_aspect": 0.817,
+          "fill_ratio": 0.227,
+          "edge_complexity": 0.143,
+          "bbox_area_ratio": 0.3429,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter17_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8861,
+          "centroid": [
+            0.492,
+            0.499
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.886,
+          "edge_complexity": 0.03,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter17_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 18,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "flood_array"
+      ],
+      "deficiencies_addressed_next": [
+        "flood_array"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter18_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter18_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter18_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter18_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter18_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.957894736842105,
+        "bevel_language": 4.8578947368421055,
+        "material_zones": 5.0,
+        "wear_story": 4.957894736842105,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.973,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0844,
+          "centroid": [
+            0.533,
+            0.515
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.814,
+          "fill_ratio": 0.245,
+          "edge_complexity": 0.076,
+          "bbox_area_ratio": 0.344,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter18_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1172,
+          "centroid": [
+            0.526,
+            0.53
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.184,
+          "fill_ratio": 0.245,
+          "edge_complexity": 0.065,
+          "bbox_area_ratio": 0.4779,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter18_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0623,
+          "centroid": [
+            0.475,
+            0.502
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.484,
+          "fill_ratio": 0.301,
+          "edge_complexity": 0.076,
+          "bbox_area_ratio": 0.2072,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter18_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0778,
+          "centroid": [
+            0.537,
+            0.507
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.015,
+          "bbox_aspect": 0.817,
+          "fill_ratio": 0.227,
+          "edge_complexity": 0.145,
+          "bbox_area_ratio": 0.3429,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter18_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8861,
+          "centroid": [
+            0.492,
+            0.499
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.886,
+          "edge_complexity": 0.03,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter18_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 19,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "approach_guide_lights"
+      ],
+      "deficiencies_addressed_next": [
+        "approach_guide_lights"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter19_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter19_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter19_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter19_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter19_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.978947368421053,
+        "bevel_language": 4.878947368421053,
+        "material_zones": 5.0,
+        "wear_story": 4.978947368421053,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.982,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0846,
+          "centroid": [
+            0.532,
+            0.515
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.814,
+          "fill_ratio": 0.246,
+          "edge_complexity": 0.076,
+          "bbox_area_ratio": 0.344,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter19_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1176,
+          "centroid": [
+            0.526,
+            0.531
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.184,
+          "fill_ratio": 0.246,
+          "edge_complexity": 0.065,
+          "bbox_area_ratio": 0.4779,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter19_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0625,
+          "centroid": [
+            0.475,
+            0.503
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.484,
+          "fill_ratio": 0.302,
+          "edge_complexity": 0.077,
+          "bbox_area_ratio": 0.2072,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter19_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.078,
+          "centroid": [
+            0.537,
+            0.508
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.015,
+          "bbox_aspect": 0.817,
+          "fill_ratio": 0.227,
+          "edge_complexity": 0.145,
+          "bbox_area_ratio": 0.3429,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter19_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8861,
+          "centroid": [
+            0.492,
+            0.499
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.886,
+          "edge_complexity": 0.03,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            18,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter19_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 20,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_torus_silhouette",
+        "need_pylon_mass",
+        "need_charge_rail_read",
+        "need_emitter_cyan_life",
+        "need_brace_structure",
+        "need_wear_under_transit_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "final_chamfer_stamp",
+        "life_polish_pass"
+      ],
+      "deficiencies_addressed_next": [
+        "final_chamfer_stamp",
+        "life_polish_pass"
+      ],
+      "shots": [
+        "2026-07-09_place_gate_jump_ring_iter20_clay_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter20_clay_front.png",
+        "2026-07-09_place_gate_jump_ring_iter20_clay_side.png",
+        "2026-07-09_place_gate_jump_ring_iter20_lit_34_full.png",
+        "2026-07-09_place_gate_jump_ring_iter20_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 5.0,
+        "bevel_language": 4.9,
+        "material_zones": 5.0,
+        "wear_story": 5.0,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.99,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0846,
+          "centroid": [
+            0.532,
+            0.515
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.814,
+          "fill_ratio": 0.246,
+          "edge_complexity": 0.076,
+          "bbox_area_ratio": 0.344,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter20_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1176,
+          "centroid": [
+            0.526,
+            0.531
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.184,
+          "fill_ratio": 0.246,
+          "edge_complexity": 0.065,
+          "bbox_area_ratio": 0.4779,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter20_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0625,
+          "centroid": [
+            0.475,
+            0.503
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.484,
+          "fill_ratio": 0.302,
+          "edge_complexity": 0.077,
+          "bbox_area_ratio": 0.2072,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter20_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0779,
+          "centroid": [
+            0.537,
+            0.508
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.015,
+          "bbox_aspect": 0.817,
+          "fill_ratio": 0.227,
+          "edge_complexity": 0.145,
+          "bbox_area_ratio": 0.3429,
+          "bg_sample": [
+            32,
+            36,
+            47
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter20_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8861,
+          "centroid": [
+            0.492,
+            0.499
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.886,
+          "edge_complexity": 0.03,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            19,
+            21,
+            30
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-09_place_gate_jump_ring_iter20_lit_close_detail.png"
+        }
+      ]
+    }
+  ]
+}
