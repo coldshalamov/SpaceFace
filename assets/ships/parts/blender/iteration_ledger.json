@@ -3,16 +3,17 @@
   "promotions": {
     "place_station_trade_hub": {
       "concept_sha256": "1203fc66395b42cf6e24629d587ef6d6cb35464bc8406c2d83b8e2301561b9e3",
-      "glb_sha256": "b1b3ebe52371d03d1d5294e96f506146097870002ffe37665222b685d0d1bebf",
+      "glb_sha256": "00ac855c87afa98b20a1827414ad05c8ead5f646e5eab21020c386255bb82439",
       "blend_mtime": 1783201479207.8557,
-      "silhouette_iou": 0.6107,
+      "silhouette_iou": 0.4539,
       "align": {
-        "dx": 1,
-        "dy": 0,
-        "flip": true
+        "dx": 6,
+        "dy": -6,
+        "flip": false
       },
-      "promoted_at": "2026-07-05T01:01:17.379Z",
-      "min_iou_gate": 0.12
+      "promoted_at": "2026-07-09T16:47:29.376Z",
+      "min_iou_gate": 0.12,
+      "note": "re-promoted after TOP50 wonder campaign 2026-07-09 (geometry densify)"
     },
     "place_station_refinery": {
       "concept_sha256": "53f31286e35a7f0e76c120169938713d560be1c1c807798ea017e7647d2b9d56",

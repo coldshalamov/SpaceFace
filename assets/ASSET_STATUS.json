@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "description": "Lifecycle + wiring truth for graphics sprint threads. Updated by Integrator (RELEASE_BUILT) and Thread C (wired).",
+  "description": "Lifecycle + wiring truth. STRICT G4 populate 2026-07-09.",
   "lifecycle_enum": [
     "CONCEPT",
     "SOURCE_GLB",
@@ -10,5 +10,191 @@
     "VISIBLE_IN_PLAY",
     "BLOCKED"
   ],
-  "assets": {}
+  "updated": "2026-07-09",
+  "assets": {
+    "place_asteroid_graffiti": {
+      "id": "place_asteroid_graffiti",
+      "kind": "asteroid",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_asteroid_graffiti.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_asteroid_rock_a": {
+      "id": "place_asteroid_rock_a",
+      "kind": "asteroid",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_asteroid_rock_a.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_asteroid_rock_b": {
+      "id": "place_asteroid_rock_b",
+      "kind": "asteroid",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_asteroid_rock_b.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_asteroid_rock_c": {
+      "id": "place_asteroid_rock_c",
+      "kind": "asteroid",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_asteroid_rock_c.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_asteroid_seamed": {
+      "id": "place_asteroid_seamed",
+      "kind": "asteroid",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_asteroid_seamed.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_conveyor_barge": {
+      "id": "place_conveyor_barge",
+      "kind": "prop",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_conveyor_barge.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_dead_hulk": {
+      "id": "place_dead_hulk",
+      "kind": "prop",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_dead_hulk.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_debris_chunk": {
+      "id": "place_debris_chunk",
+      "kind": "prop",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_debris_chunk.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_dock_interior": {
+      "id": "place_dock_interior",
+      "kind": "prop",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_dock_interior.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_dock_interior_grit": {
+      "id": "place_dock_interior_grit",
+      "kind": "prop",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_dock_interior_grit.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_dock_interior_military": {
+      "id": "place_dock_interior_military",
+      "kind": "prop",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_dock_interior_military.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_gate_jump_ring": {
+      "id": "place_gate_jump_ring",
+      "kind": "gate",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_lane_beacon": {
+      "id": "place_lane_beacon",
+      "kind": "prop",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_lane_beacon.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_mining_drone": {
+      "id": "place_mining_drone",
+      "kind": "prop",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_mining_drone.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_nav_buoy": {
+      "id": "place_nav_buoy",
+      "kind": "prop",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_nav_buoy.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_station_billboard": {
+      "id": "place_station_billboard",
+      "kind": "station",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_station_billboard.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_station_blackmarket": {
+      "id": "place_station_blackmarket",
+      "kind": "station",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_station_blackmarket.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_station_fab": {
+      "id": "place_station_fab",
+      "kind": "station",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_station_fab.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_station_military": {
+      "id": "place_station_military",
+      "kind": "station",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_station_military.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_station_mining": {
+      "id": "place_station_mining",
+      "kind": "station",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_station_mining.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_station_refinery": {
+      "id": "place_station_refinery",
+      "kind": "station",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_station_refinery.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_station_research": {
+      "id": "place_station_research",
+      "kind": "station",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_station_research.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_station_trade_hub": {
+      "id": "place_station_trade_hub",
+      "kind": "station",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    }
+  }
 }
