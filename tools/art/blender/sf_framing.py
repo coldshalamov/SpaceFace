@@ -45,7 +45,20 @@ BG_LIT_255 = (8, 10, 15)
 
 
 def is_lod0_box(obj) -> bool:
-    return 'LOD0_' in obj.name.upper()
+    """True only for *placeholder* LOD0 boxes — not real hull/part bodies.
+
+    Hulls/engines often name the primary mesh LOD0_<PART>_MAIN. Hiding those
+    produces DET-only 'floating greeble' frames (hull_starter campaign bug).
+    """
+    nu = obj.name.upper()
+    if 'LOD0_' not in nu:
+        return False
+    # Primary body meshes must render
+    if nu.endswith('_MAIN') or '_MAIN' in nu:
+        return False
+    if 'HULL' in nu:
+        return False
+    return True
 
 
 def is_hook(obj) -> bool:
