@@ -1,0 +1,30 @@
+{
+  "scores": {
+    "silhouette": 4.2,
+    "macro_meso_micro": 4.6,
+    "bevel_language": 4.5,
+    "material_zones": 4.7,
+    "wear_story": 4.6,
+    "scale_truth": 4.2,
+    "lighting_readability": 4.6,
+    "contract_readiness": 4.5,
+    "weighted": 4.48,
+    "export_bar_ok": false
+  },
+  "export_err": null,
+  "export_bytes": 2851352,
+  "shots": [
+    "2026-07-09_hull_starter_fuse_clay_34_full.png",
+    "2026-07-09_hull_starter_fuse_clay_front.png",
+    "2026-07-09_hull_starter_fuse_clay_side.png",
+    "2026-07-09_hull_starter_fuse_lit_34_full.png",
+    "2026-07-09_hull_starter_fuse_lit_close_detail.png"
+  ],
+  "analyses_ok": [
+    true,
+    false,
+    true,
+    true,
+    false
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "silhouette": 4.5,
+  "macro_meso_micro": 4.5,
+  "bevel_language": 4.5,
+  "material_zones": 4.5,
+  "wear_story": 4.2,
+  "scale_truth": 4.0,
+  "lighting_readability": 4.6,
+  "contract_readiness": 4.5,
+  "weighted": 4.415,
+  "export_bar_ok": false,
+  "islands": 1,
+  "largest_island": 391,
+  "tris": 874,
+  "shots": [
+    "2026-07-09_hull_starter_clean_clay_34_full.png",
+    "2026-07-09_hull_starter_clean_clay_front.png",
+    "2026-07-09_hull_starter_clean_clay_side.png",
+    "2026-07-09_hull_starter_clean_lit_34_full.png",
+    "2026-07-09_hull_starter_clean_lit_close_detail.png"
+  ],
+  "analyses_ok": [
+    false,
+    true,
+    false,
+    true,
+    false
+  ],
+  "pass": "clean_connected_rebuild",
+  "techniques": [
+    "profile_ring_loft_wedge",
+    "connected_face_extrude_meso",
+    "bmesh_bevel_sharp_edges",
+    "single_mesh_zero_DET_objects",
+    "material_role_by_face_normal",
+    "smart_uv_project"
+  ],
+  "story": "Wren's repossessed Pit tug \u2014 rugged industrial starter wedge. Connected hard-surface only: dorsal spine, port weld bulge, aft reactor collar, dorsal hatch \u2014 no floating DET islands. Game-chase readable silhouette."
+}

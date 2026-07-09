@@ -1,15 +1,15 @@
 {
   "partId": "hull_starter",
   "file": "hulls/hull_starter.glb",
-  "tris": 1612,
-  "bytes": 664636,
-  "dims": [11.3052, 1.6242, 6.4043],
-  "images": 5,
-  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
-  "method": "blender_mcp",
-  "date": "2026-07-06",
-  "surfacing": "trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO_bake+clearcoat+roughness_variation",
-  "skin_pass": "DEBT_stencil+port_weld_scar+reactor_soot+repossession_tag+3owner_wear",
-  "screenshots": 27,
-  "full_finish": true
+  "tris": 9520,
+  "bytes": 559896,
+  "dims": [10.907, 1.5945, 3.1162],
+  "images": 1,
+  "materials": "Material_Hull,Material_Accent",
+  "source": "hull_starter_weld_export.py iter28 + finalize_part.mjs",
+  "date": "2026-07-09",
+  "weighted": 4.73,
+  "export_bar_ok": true,
+  "islands": 1,
+  "note": "TOP50 Slice A rank1 — single-island weld + ritual frame; export_bar green"
 }

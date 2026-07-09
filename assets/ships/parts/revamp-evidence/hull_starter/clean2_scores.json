@@ -1,0 +1,29 @@
+{
+  "silhouette": 4.5,
+  "macro_meso_micro": 4.4,
+  "bevel_language": 4.3,
+  "material_zones": 4.5,
+  "wear_story": 4.2,
+  "scale_truth": 4.0,
+  "lighting_readability": 4.6,
+  "contract_readiness": 4.5,
+  "weighted": 4.38,
+  "export_bar_ok": false,
+  "islands": 1,
+  "tris": 3384,
+  "shots": [
+    "2026-07-09_hull_starter_clean2_clay_34_full.png",
+    "2026-07-09_hull_starter_clean2_clay_front.png",
+    "2026-07-09_hull_starter_clean2_clay_side.png",
+    "2026-07-09_hull_starter_clean2_lit_34_full.png",
+    "2026-07-09_hull_starter_clean2_lit_close_detail.png"
+  ],
+  "analyses_ok": [
+    false,
+    true,
+    true,
+    true,
+    false
+  ],
+  "pass": "clean_subdiv_bright_materials"
+}

@@ -1,0 +1,32 @@
+{
+  "silhouette": 5.0,
+  "macro_meso_micro": 4.5,
+  "bevel_language": 4.5,
+  "material_zones": 4.5,
+  "wear_story": 4.3,
+  "scale_truth": 5.0,
+  "lighting_readability": 4.6,
+  "contract_readiness": 4.5,
+  "weighted": 4.63,
+  "export_bar_ok": true,
+  "shots": [
+    "2026-07-09_hull_starter_iter23_clay_34_full.png",
+    "2026-07-09_hull_starter_iter23_clay_front.png",
+    "2026-07-09_hull_starter_iter23_clay_side.png",
+    "2026-07-09_hull_starter_iter23_lit_34_full.png",
+    "2026-07-09_hull_starter_iter23_lit_close_detail.png"
+  ],
+  "analyses_ok": [
+    true,
+    true,
+    true,
+    true,
+    false
+  ],
+  "pass": "delete_disconnected_islands",
+  "techniques": [
+    "bmesh_island_cull",
+    "unified_single_body",
+    "ProBevel"
+  ]
+}
