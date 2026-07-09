@@ -3,7 +3,7 @@ pid: 40156
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && npm run check:visual-stability 2>&1"
 started_at: 2026-07-08T13:34:30.506Z
-running_for_ms: 47885035 
+running_for_ms: 86400006 
 ---
 
 > spaceface@0.1.0 check:visual-stability
@@ -633,3 +633,9 @@ running_for_ms: 47885035
   },
   "pageErrors": []
 }
+
+---
+exit_code: -1
+elapsed_ms: 86400006
+ended_at: 2026-07-09T13:34:50.372Z
+---

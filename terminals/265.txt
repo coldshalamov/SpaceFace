@@ -3,7 +3,7 @@ pid: 19452
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "$blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"; Set-Location \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; foreach ($p in @('engine_vector','engine_resonator','engine_plasma_ring')) { Write-Host \"VALIDATE $p\"; & $blender --background --python tools/blender/spaceface_export.py -- --validate-only \"assets/ships/parts/engines/$p.glb\" --kind part --id $p 2>&1 | Select-Object -Last 2 }"
 started_at: 2026-07-08T17:27:12.336Z
-running_for_ms: 38670008 
+running_for_ms: 91271278 
 ---
 VALIDATE engine_vector
 Reloading external metarigs...
@@ -14,3 +14,9 @@ Reloading external metarigs...
 VALIDATE engine_plasma_ring
 Reloading external metarigs...
 {"schema": "spaceface.export.v1", "ok": true, "path": "assets/ships/parts/engines/engine_plasma_ring.glb"}
+
+---
+exit_code: -1
+elapsed_ms: 91271278
+ended_at: 2026-07-09T18:48:39.889Z
+---

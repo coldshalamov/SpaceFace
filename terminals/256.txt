@@ -3,7 +3,7 @@ pid: 30764
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "npm run check:assets:live 2>&1"
 started_at: 2026-07-08T16:38:37.660Z
-running_for_ms: 41600006 
+running_for_ms: 86400014 
 ---
 
 > spaceface@0.1.0 check:assets:live
@@ -2499,3 +2499,9 @@ Error: timeout waiting for authored GLB ships before playable flight; last={
     at async file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/probe-authored-assets-live.mjs:66:18
 
 Node.js v24.15.0
+
+---
+exit_code: -1
+elapsed_ms: 86400014
+ended_at: 2026-07-09T16:38:39.028Z
+---

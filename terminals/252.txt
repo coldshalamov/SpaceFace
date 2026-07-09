@@ -46,8 +46,14 @@ const json = JSON.parse(buf.slice(20, 20+buf.readUInt32LE(12)).toString());
 for (const m of json.materials) console.log(m.name, 'base', m.pbrMetallicRoughness?.baseColorTexture?.index, 'normal', m.normalTexture?.index, 'same', m.pbrMetallicRoughness?.baseColorTexture?.index === m.normalTexture?.index);
 \""
 started_at: 2026-07-08T15:19:17.839Z
-running_for_ms: 41600004 
+running_for_ms: 86400007 
 ---
 Material_Hull base 0 normal 1 same false
 Material_Mechanical base 0 normal 3 same false
 Material_Accent base 0 normal 4 same false
+
+---
+exit_code: -1
+elapsed_ms: 86400007
+ended_at: 2026-07-09T15:19:35.832Z
+---

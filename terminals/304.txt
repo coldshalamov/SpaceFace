@@ -8,7 +8,7 @@ $env:SF_ROOT = $root; $env:SF_PART_ID = \"engine_vector\"; $env:SF_SCRATCH = $sc
 & $blender --background --python \"$root\\tools\\art\\blender\\framing_gate.py\" 2>&1 | Tee-Object \"$scratch\\framing-gate-vector-r2.log\"
 $ec = $LASTEXITCODE; \"EXIT_CODE=$ec\" | Add-Content \"$scratch\\framing-gate-vector-r2.log\"; exit $ec"
 started_at: 2026-07-09T01:59:20.432Z
-running_for_ms: 7939983  
+running_for_ms: 63774991 
 ---
 00:03.891  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_vector_authored.blend"
 C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\framing_gate.py:67: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0

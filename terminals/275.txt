@@ -20,7 +20,7 @@ foreach ($part in @('engine_vector','engine_resonator','engine_plasma_ring')) {
 }
 \"EXPORTS_DONE\" | Add-Content \"$scratch\\finalize-all.log\""
 started_at: 2026-07-08T19:53:17.635Z
-running_for_ms: 29904999 
+running_for_ms: 85734988 
 ---
 {
   "partId": "engine_vector",

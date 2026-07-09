@@ -3,7 +3,7 @@ pid: 34780
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "$blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"; $root = \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; $env:SF_ROOT=$root; $env:SF_PART_ID='engine_resonator'; & $blender --background --python \"$root\\tools\\art\\blender\\prep_export_contract.py\"; & $blender --background --python \"$root\\tools\\art\\blender\\export_sprint_part.py\"; node \"$root\\tools\\art\\finalize_part.mjs\" \"$root\\assets\\ships\\parts\\revamp-evidence\\engine_resonator\\_export_tmp.glb\" engine_resonator --method=blender_mcp; & $blender --background --python \"$root\\tools\\blender\\spaceface_export.py\" -- --validate-only \"$root\\assets\\ships\\parts\\engines\\engine_resonator.glb\" --kind part --id engine_resonator 2>&1 | Select-Object -Last 2"
 started_at: 2026-07-08T17:37:35.123Z
-running_for_ms: 33305044 
+running_for_ms: 90648391 
 ---
 00:05.968  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_resonator_authored.blend"
 C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\prep_export_contract.py:45: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
@@ -84,3 +84,9 @@ Blender quit
 }
 Reloading external metarigs...
 {"schema": "spaceface.export.v1", "ok": true, "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\engines\\engine_resonator.glb"}
+
+---
+exit_code: -1
+elapsed_ms: 90648391
+ended_at: 2026-07-09T18:48:39.916Z
+---

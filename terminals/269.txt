@@ -3,7 +3,7 @@ pid: 3368
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "Set-Location \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; $env:SF_ASSETS_LIVE_TIMEOUT_MS='120000'; npm run check:assets:live 2>&1 | Tee-Object -FilePath \"$env:TEMP\\check-assets-live.log\""
 started_at: 2026-07-08T18:55:27.840Z
-running_for_ms: 33390001 
+running_for_ms: 86400002 
 ---
 
 > spaceface@0.1.0 check:assets:live
@@ -2499,3 +2499,9 @@ Error: timeout waiting for authored GLB ships before playable flight; last={
     at async file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/probe-authored-assets-live.mjs:66:18
 
 Node.js v24.15.0
+
+---
+exit_code: -1
+elapsed_ms: 86400002
+ended_at: 2026-07-09T18:55:29.522Z
+---

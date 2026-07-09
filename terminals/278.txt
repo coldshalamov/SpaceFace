@@ -11,7 +11,7 @@ $ec = $LASTEXITCODE
 \"EXIT_CODE_RUN2_SOLO=$ec\" | Add-Content \"$scratch\\build-sg04-release-assets.log\"
 Write-Host \"RUN2_SOLO_EXIT=$ec\""
 started_at: 2026-07-08T21:42:11.261Z
-running_for_ms: 18645002 
+running_for_ms: 79214997 
 ---
 
 > spaceface@0.1.0 build:sg04:release-assets

@@ -3,7 +3,7 @@ pid: 15048
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "$blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"; $root = \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; $runner = \"$root\\tools\\art\\blender\\quality_render_runner.py\"; foreach ($part in @('engine_vector','engine_plasma_ring')) { $env:SF_ROOT=$root; $env:SF_PART_ID=$part; $env:SF_ITER='20'; & $blender --background --python $runner 2>&1 | Select-String \"Error|Saved|iter20\" | Select-Object -Last 6 }"
 started_at: 2026-07-08T19:50:41.990Z
-running_for_ms: 30059993 
+running_for_ms: 85889999 
 ---
 
 00:15.406  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\engi

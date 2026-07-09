@@ -13,7 +13,7 @@ $ec2 = $LASTEXITCODE
 \"EXIT_CODE_RUN2=$ec2\" | Add-Content \"$scratch\\build-sg04-release-assets.log\"
 Write-Host \"BUILD_EXIT run1=$ec1 run2=$ec2\""
 started_at: 2026-07-08T19:58:47.140Z
-running_for_ms: 24845014 
+running_for_ms: 85419992 
 ---
 
 > spaceface@0.1.0 build:sg04:release-assets

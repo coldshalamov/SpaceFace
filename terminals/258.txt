@@ -3,7 +3,7 @@ pid: 36248
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "npm run check:assets:live 2>&1"
 started_at: 2026-07-08T16:45:41.055Z
-running_for_ms: 36419990 
+running_for_ms: 86400005 
 ---
 
 > spaceface@0.1.0 check:assets:live
@@ -18,3 +18,9 @@ Error: timeout waiting for SpaceFace debug runtime; last=false
     at async file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/probe-authored-assets-live.mjs:47:3
 
 Node.js v24.15.0
+
+---
+exit_code: -1
+elapsed_ms: 86400005
+ended_at: 2026-07-09T16:45:57.911Z
+---

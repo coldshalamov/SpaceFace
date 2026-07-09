@@ -3,7 +3,7 @@ pid: 20976
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "npm run build:sg04:release-assets 2>&1"
 started_at: 2026-07-08T15:20:53.182Z
-running_for_ms: 41519996 
+running_for_ms: 86400008 
 ---
 
 > spaceface@0.1.0 build:sg04:release-assets
@@ -38,3 +38,9 @@ Error: release asset failed SG-04 validation: assets/ships/release.__building/pa
     at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/build-sg04-release-assets.mjs:197:13
 
 Node.js v24.15.0
+
+---
+exit_code: -1
+elapsed_ms: 86400008
+ended_at: 2026-07-09T15:20:54.471Z
+---

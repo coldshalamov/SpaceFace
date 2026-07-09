@@ -3,7 +3,7 @@ pid: 21996
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "$root = \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; $blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"; $env:SF_ROOT = $root; $env:SF_PART_ID = 'engine_vector'; $env:SF_ITER = '20'; & $blender --background --python \"$root\\tools\\art\\blender\\quality_render_runner.py\" 2>&1 | Select-Object -Last 2"
 started_at: 2026-07-09T00:37:38.211Z
-running_for_ms: 8099991  
+running_for_ms: 68674993 
 ---
 
 Blender quit
