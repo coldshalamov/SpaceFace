@@ -40,6 +40,19 @@ const FAKE_REPORT = {
         renderCallsPeak: 253,
         trianglesPeak: 17644,
         callback: { callback: 10.7, untracked: 0.2 },
+        autosave: {
+          requested: true,
+          completedCount: 1,
+          requestCallMs: 2.4,
+          durationMs: { max: 2.4, p95: 2.4 },
+          perf: { write: { p95: 1.1 }, bytes: { p95: 18000 } },
+        },
+        entityScaleSweeps: {
+          rows: [
+            { variant: 'visible-near', count: 1000, p95: 1.6, perEntityUsP95: 1.6, transformed: 1042, fullSynced: 1042, culled: 0, totalMeshes: 1042 },
+            { variant: 'far-culled', count: 1000, p95: 0.4, perEntityUsP95: 0.4, transformed: 1042, fullSynced: 42, culled: 1000, totalMeshes: 1042 },
+          ],
+        },
         broadphase: {
           rebuildsPerSecond: 0,
           dynamicRebuildsPerSecond: 0,
@@ -92,7 +105,35 @@ const FAKE_REPORT = {
           { name: 'tacticalAI', p95: 0.6, avg: 0.18, max: 2.1 },
           { name: 'physics', p95: 0.5, avg: 0.3, max: 1.2 },
         ],
+        renderWork: {
+          entityViewSync: { p95: 0.4, avg: 0.2, max: 0.8 },
+        },
         counters: { spatialHash: { rebuilds: 0, dynamicRebuilds: 0, queries: 0, candidates: 0 } },
+      },
+      autosave: {
+        requested: true,
+        completedCount: 1,
+        requestCallMs: 2.4,
+        durationMs: { max: 2.4, p95: 2.4 },
+        perf: { write: { p95: 1.1 }, bytes: { p95: 18000 } },
+      },
+      entityScaleSweeps: {
+        rows: [
+          {
+            variant: 'visible-near',
+            count: 1000,
+            durationMs: { p95: 1.6 },
+            perEntityUsP95: 1.6,
+            sync: { transformed: 1042, fullSynced: 1042, culled: 0, totalMeshes: 1042 },
+          },
+          {
+            variant: 'far-culled',
+            count: 1000,
+            durationMs: { p95: 0.4 },
+            perEntityUsP95: 0.4,
+            sync: { transformed: 1042, fullSynced: 42, culled: 1000, totalMeshes: 1042 },
+          },
+        ],
       },
       budgets: [
         { name: 'ui.hiddenBackdropActive.max', value: 0, pass: true, severity: 'required' },
@@ -143,11 +184,14 @@ const required = [
   'rAF p95 (ms)',
   'Phase p95',
   'Frame callback',
+  'Autosave probe',
   'draw calls',
   'material keys',
   'Post-processing',
   'UI compositor shell flags',
   'Spatial hash rates',
+  'Render work p95',
+  'Entity view-sync scale sweeps',
   'Top systems by p95',
   'Diagnostic variant deltas',
   'webgl-submit-noop-diagnostic',

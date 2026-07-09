@@ -47,7 +47,7 @@ const CHUNK_BIN = 0x004e4942;
 
 const SLOT_BY_CATEGORY = {
   hulls: 'hull', cockpits: 'cockpit', engines: 'engine', weapons: 'weapon',
-  fins: 'fin', greebles: 'greeble', gear: 'gear', pods: 'pod',
+  fins: 'fin', greebles: 'greeble', gear: 'gear', pods: 'pod', places: 'place',
 };
 
 function parseGlb(bytes) {

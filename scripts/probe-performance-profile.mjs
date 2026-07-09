@@ -30,6 +30,11 @@ const DURATION_MS = Number(argv.duration || 9000);
 // flight. Keep the probe wait above that so profiling fails on measured budgets, not a startup race.
 const PLAYABLE_TIMEOUT_MS = Number(argv.playableTimeoutMs || argv['playable-timeout-ms'] || 90000);
 const RUNTIME_SAMPLE_MS = Number(argv.runtimeSampleMs || argv['runtime-sample-ms'] || 250);
+const AUTOSAVE_PROBE = argv.autosaveProbe !== 'false' && argv['autosave-probe'] !== 'false' && !argv.noAutosaveProbe && !argv['no-autosave-probe'];
+const AUTOSAVE_PROBE_AT_MS = Number(argv.autosaveProbeAtMs || argv['autosave-probe-at-ms'] || 1000);
+const AUTOSAVE_DURATION_BUDGET_MS = Number(argv.autosaveDurationMs || argv['autosave-duration-ms'] || 32);
+const ENTITY_SCALE_SWEEPS = argv.entityScaleSweeps !== 'false' && argv['entity-scale-sweeps'] !== 'false' && !argv.noEntityScaleSweeps && !argv['no-entity-scale-sweeps'];
+const ENTITY_SCALE_COUNTS = parseNumberList(argv.entityScaleCounts || argv['entity-scale-counts'] || '0,50,100,250,500,1000');
 const OUT = argv.out || '.devshots/perf/performance-profile.json';
 const SHOT = argv.shot || '.devshots/perf/performance-profile-crowded-flight.jpg';
 const STRICT = !!argv.strict;
@@ -83,6 +88,11 @@ const report = {
     diagnosticMinRafSamples: DIAGNOSTIC_MIN_RAF_SAMPLES,
     hitchFrameMs: HITCH_FRAME_MS,
     hitchFrameMax: HITCH_FRAME_MAX,
+    autosaveProbe: AUTOSAVE_PROBE,
+    autosaveProbeAtMs: AUTOSAVE_PROBE_AT_MS,
+    autosaveDurationBudgetMs: AUTOSAVE_DURATION_BUDGET_MS,
+    entityScaleSweeps: ENTITY_SCALE_SWEEPS,
+    entityScaleCounts: ENTITY_SCALE_COUNTS,
     headless: !HEADED,
     angle: ANGLE || null,
     extraBrowserArgs: EXTRA_BROWSER_ARGS,
@@ -182,6 +192,7 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
       'diagnostic performance variants',
     )
     : [];
+  const entityScaleSweeps = ENTITY_SCALE_SWEEPS ? await runEntityScaleSweeps(cdp) : null;
 
   const samples = sampled.samples.filter((sample) => sample.ready);
   assert.ok(samples.length >= 2, `expected at least 2 runtime samples; got ${samples.length}`);
@@ -195,6 +206,7 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
   const heapGrowthMB = heapGrowthFrom(sampled.heap, chromeStart, chromeEnd);
   const phaseP95 = phaseP95s(finalSample.perf);
   const sceneStats = sampled.sceneStats;
+  const autosave = autosaveSummary(sampled.autosaveProbe, finalSample.perf);
   const settingsChanged = JSON.stringify(baselineState.settingsVideo) !== JSON.stringify(finalState.settingsVideo);
   const callbackP95 = callbackP95s(finalSample.perf);
   const diagnosticSamples = Math.max(
@@ -216,6 +228,8 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
     diagnosticSamples,
     rafSamples: sampled.raf.frames.length,
     diagnosticVariants,
+    autosave,
+    entityScaleSweeps,
   });
   const bottleneck = classifyBottleneck({
     rafFrameP95: raf.p95,
@@ -269,8 +283,13 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
       counters: finalSample.perf && finalSample.perf.counters || null,
       entities: finalSample.perf && finalSample.perf.entities || null,
       settings: finalSample.perf && finalSample.perf.settings || null,
+      saves: finalSample.perf && finalSample.perf.saves || null,
+      renderWork: finalSample.perf && finalSample.perf.renderWork || null,
       topSystems: topSystemStats(finalSample.perf),
+      busySectorSystemP95: topSystemStats(finalSample.perf, 40),
     },
+    autosave,
+    entityScaleSweeps,
     counts: finalSample.counts,
     sceneStats,
     bottleneck,
@@ -298,10 +317,31 @@ async function sampleRuntime(cdp, durationMs) {
     const rafFrames = [];
     const samples = [];
     const heapSamples = [];
+    const autosaveProbe = {
+      enabled: ${JSON.stringify(AUTOSAVE_PROBE)},
+      triggerAtMs: ${JSON.stringify(AUTOSAVE_PROBE_AT_MS)},
+      requested: false,
+      requestAtMs: null,
+      requestReturned: null,
+      requestCallMs: null,
+      events: [],
+      errors: [],
+    };
     let lastRaf = null;
     let settled = false;
     let intervalId = null;
     let lastDiagAt = -Infinity;
+    let unsubSaveCompleted = null;
+    let unsubSaveError = null;
+
+    if (autosaveProbe.enabled && window.SF && window.SF.bus && typeof window.SF.bus.on === 'function') {
+      unsubSaveCompleted = window.SF.bus.on('save:completed', (payload = {}) => {
+        autosaveProbe.events.push({ event: 'save:completed', atMs: performance.now() - started, ...payload });
+      });
+      unsubSaveError = window.SF.bus.on('save:error', (payload = {}) => {
+        autosaveProbe.errors.push({ event: 'save:error', atMs: performance.now() - started, ...payload });
+      });
+    }
 
     const readHeap = () => {
       const mem = performance && performance.memory ? performance.memory : null;
@@ -386,6 +426,26 @@ async function sampleRuntime(cdp, durationMs) {
       const sample = readDiag();
       samples.push(sample);
       if (sample.heap) heapSamples.push({ atMs: elapsed, ...sample.heap });
+    };
+
+    const maybeTriggerAutosave = (elapsed) => {
+      if (!autosaveProbe.enabled || autosaveProbe.requested || elapsed < autosaveProbe.triggerAtMs) return;
+      autosaveProbe.requested = true;
+      autosaveProbe.requestAtMs = elapsed;
+      const callStarted = performance.now();
+      try {
+        const sf = window.SF || null;
+        const saveSystem = sf && sf.registry && typeof sf.registry.get === 'function' ? sf.registry.get('save') : null;
+        if (!saveSystem || typeof saveSystem.requestAutosave !== 'function') {
+          autosaveProbe.errors.push({ event: 'probe:error', atMs: elapsed, reason: 'save_system_unavailable' });
+          return;
+        }
+        autosaveProbe.requestReturned = !!saveSystem.requestAutosave('perf_profile_probe', { force: true });
+      } catch (err) {
+        autosaveProbe.errors.push({ event: 'probe:error', atMs: elapsed, reason: err && err.message || String(err) });
+      } finally {
+        autosaveProbe.requestCallMs = performance.now() - callStarted;
+      }
     };
 
     const sceneBreakdown = () => {
@@ -592,12 +652,15 @@ async function sampleRuntime(cdp, durationMs) {
       if (settled) return;
       settled = true;
       if (intervalId != null) clearInterval(intervalId);
+      if (typeof unsubSaveCompleted === 'function') unsubSaveCompleted();
+      if (typeof unsubSaveError === 'function') unsubSaveError();
       pushDiag(true);
       resolve({
         raf: { frames: rafFrames },
         samples,
         heap: heapSamples,
         sceneStats: sceneBreakdown(),
+        autosaveProbe,
       });
     };
 
@@ -606,6 +669,7 @@ async function sampleRuntime(cdp, durationMs) {
       if (lastRaf != null) rafFrames.push(now - lastRaf);
       lastRaf = now;
       const elapsed = performance.now() - started;
+      maybeTriggerAutosave(elapsed);
       pushDiag();
       if (elapsed >= ${JSON.stringify(durationMs)}) {
         finish();
@@ -618,6 +682,120 @@ async function sampleRuntime(cdp, durationMs) {
     setTimeout(finish, ${JSON.stringify(durationMs)} + 100);
     requestAnimationFrame(step);
   })`);
+}
+
+async function runEntityScaleSweeps(cdp) {
+  return evalJson(cdp, `(() => {
+    const sf = window.SF || null;
+    const state = sf && sf.state || null;
+    const registry = sf && sf.registry || null;
+    const render = registry && typeof registry.get === 'function' ? registry.get('render') : null;
+    const THREE_NS = sf && sf.THREE || window.THREE;
+    const counts = ${JSON.stringify(ENTITY_SCALE_COUNTS)};
+    const iterations = 24;
+    const warmups = 4;
+    if (!state || !state.entities || !Array.isArray(state.entityList) || !render || !render._meshes || typeof render.syncEntityViews !== 'function' || !THREE_NS) {
+      return { ready: false, reason: 'render_sync_unavailable', counts, rows: [] };
+    }
+    const rows = [];
+    const created = [];
+    const variants = [
+      { name: 'visible-near', far: false },
+      { name: 'far-culled', far: true },
+    ];
+
+    function clearCreated() {
+      for (const rec of created) {
+        render._meshes.delete(rec.id);
+        state.entities.delete(rec.id);
+        const idx = state.entityList.indexOf(rec.entity);
+        if (idx >= 0) state.entityList.splice(idx, 1);
+      }
+      created.length = 0;
+    }
+
+    function sampleStats(values) {
+      const nums = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+      if (!nums.length) return { samples: 0, avg: null, min: null, max: null, p95: null };
+      const sum = nums.reduce((acc, value) => acc + value, 0);
+      const p95 = nums[Math.min(nums.length - 1, Math.floor(0.95 * (nums.length - 1)))];
+      const round = (value) => Math.round(value * 1000) / 1000;
+      return { samples: nums.length, avg: round(sum / nums.length), min: round(nums[0]), max: round(nums[nums.length - 1]), p95: round(p95) };
+    }
+
+    function addProbeEntities(count, far) {
+      const focus = state.camera && state.camera.focus || { x: 0, z: 0 };
+      const baseId = far ? -930000 : -920000;
+      for (let i = 0; i < count; i++) {
+        const root = new THREE_NS.Object3D();
+        root.name = far ? 'PerfProbeFarCulled' : 'PerfProbeVisibleNear';
+        root.userData.updateDamageState = () => {};
+        root.userData.updateDriveState = () => {};
+        root.userData.lod = { resolve: () => 'lod0' };
+        root.userData.updateLod = () => {};
+        const gridX = (i % 32) - 16;
+        const gridZ = Math.floor(i / 32) - 8;
+        const pos = far
+          ? { x: focus.x + 5000 + i * 11, z: focus.z + 4600 + i * 7 }
+          : { x: focus.x + gridX * 7, z: focus.z + gridZ * 7 };
+        const entity = {
+          id: baseId - i,
+          type: 'perf_probe',
+          alive: true,
+          pos: { x: pos.x, z: pos.z },
+          prevPos: { x: pos.x, z: pos.z },
+          rot: 0,
+          prevRot: 0,
+          radius: 8,
+          flags: {},
+          data: {},
+          mesh: root,
+          view: { root },
+        };
+        state.entities.set(entity.id, entity);
+        state.entityList.push(entity);
+        render._meshes.set(entity.id, root);
+        created.push({ id: entity.id, entity });
+      }
+    }
+
+    try {
+      for (const variant of variants) {
+        for (const count of counts) {
+          clearCreated();
+          addProbeEntities(count, variant.far);
+          for (let i = 0; i < warmups; i++) render.syncEntityViews(1);
+          const durations = [];
+          for (let i = 0; i < iterations; i++) {
+            const started = performance.now();
+            render.syncEntityViews(1);
+            durations.push(performance.now() - started);
+          }
+          const durationMs = sampleStats(durations);
+          const sync = state.render && state.render.entityViewSync || {};
+          rows.push({
+            variant: variant.name,
+            count,
+            iterations,
+            durationMs,
+            perEntityUsP95: count > 0 && durationMs.p95 != null ? Math.round((durationMs.p95 * 1000 / count) * 1000) / 1000 : null,
+            sync: {
+              totalMeshes: sync.totalMeshes || 0,
+              transformed: sync.transformed || 0,
+              fullSynced: sync.fullSynced || sync.synced || 0,
+              culled: sync.culled || 0,
+              lodChecked: sync.lodChecked || 0,
+              cullHalfX: sync.cullHalfX || 0,
+              cullHalfZ: sync.cullHalfZ || 0,
+            },
+          });
+        }
+      }
+    } finally {
+      clearCreated();
+    }
+    return { ready: true, counts, iterations, rows };
+  })()`);
 }
 
 async function runDiagnosticVariants(cdp) {
@@ -1309,7 +1487,7 @@ async function readChromeMetrics(cdp) {
   return metrics;
 }
 
-function evaluateBudgets({ rafFrameP95, rafHitchCount, diagnosticFrameP95, renderCallsPeak, heapGrowthMB, phaseP95, callbackP95, sceneStats, finalSample, diagnosticSamples, rafSamples, diagnosticVariants }) {
+function evaluateBudgets({ rafFrameP95, rafHitchCount, diagnosticFrameP95, renderCallsPeak, heapGrowthMB, phaseP95, callbackP95, sceneStats, finalSample, diagnosticSamples, rafSamples, diagnosticVariants, autosave, entityScaleSweeps }) {
   const budgets = [
     budget('sample.raf.count.min', rafSamples, '>=', 60, 'enough rAF samples for stable frame evidence'),
     budget('sample.runtime.count.min', diagnosticSamples, '>=', 20, 'enough diagnostics samples for stable phase/render evidence'),
@@ -1372,6 +1550,22 @@ function evaluateBudgets({ rafFrameP95, rafHitchCount, diagnosticFrameP95, rende
     budget('ui.inactiveFullscreenShellsDisplayed.max', compositorDiagnostic(finalSample, 'inactiveFullscreenShellsDisplayed'), '<=', 0,
       'inactive fullscreen transition shells should not stay displayed during normal flight'),
   ];
+  if (AUTOSAVE_PROBE) {
+    budgets.push(
+      budget('autosave.completed.min', autosave && autosave.completedCount, '>=', 1,
+        'crowded-flight sample should include a forced live autosave measurement'),
+      budget('autosave.duration.max', autosave && autosave.durationMs && autosave.durationMs.max, '<=', AUTOSAVE_DURATION_BUDGET_MS,
+        'forced autosave should not block the main thread past the hitch threshold'),
+      budget('autosave.requestCall.max', autosave && autosave.requestCallMs, '<=', AUTOSAVE_DURATION_BUDGET_MS,
+        'autosave request call should return inside the hitch threshold'),
+    );
+  }
+  if (ENTITY_SCALE_SWEEPS) {
+    budgets.push(
+      budget('entityScaleSweeps.rows.min', entityScaleSweeps && entityScaleSweeps.rows && entityScaleSweeps.rows.length, '>=', Math.max(1, ENTITY_SCALE_COUNTS.length * 2),
+        'entity-count scale sweeps should cover visible and culled view-sync paths'),
+    );
+  }
   const environmentFloor = rafEnvironmentFloorBudget(rafFrameP95, diagnosticVariants);
   budgets.push({
     name: 'raf.frame.p95.target',
@@ -1512,6 +1706,8 @@ function summarizeReport(scenarios) {
       trianglesPeak: scenario.render.triangles.max,
       heapGrowthMB: scenario.memory.heapGrowthMB,
       callback: scenario.callback || null,
+      autosave: scenario.autosave || null,
+      entityScaleSweeps: summarizeEntityScaleSweeps(scenario.entityScaleSweeps),
       loop: scenario.perf && scenario.perf.loop,
       broadphase: scenario.perf && scenario.perf.counters && scenario.perf.counters.spatialHash ? {
         ...scenario.perf.counters.spatialHash,
@@ -1853,6 +2049,39 @@ function callbackP95s(perf) {
   };
 }
 
+function autosaveSummary(probe, perf) {
+  const events = Array.isArray(probe && probe.events) ? probe.events : [];
+  const errors = Array.isArray(probe && probe.errors) ? probe.errors : [];
+  const completed = events.filter((event) => event && event.event === 'save:completed' && (event.autosave || event.slot === 'auto'));
+  const durations = completed.map((event) => Number(event.durationMs ?? event.totalMs)).filter(Number.isFinite);
+  const perfSaves = perf && perf.saves || null;
+  return {
+    enabled: !!(probe && probe.enabled),
+    requested: !!(probe && probe.requested),
+    requestAtMs: round(probe && probe.requestAtMs),
+    requestReturned: probe ? probe.requestReturned : null,
+    requestCallMs: round(probe && probe.requestCallMs),
+    completedCount: completed.length,
+    errorCount: errors.length,
+    durationMs: seriesStats(durations),
+    events: completed.slice(-4),
+    errors: errors.slice(-4),
+    perf: perfSaves ? {
+      count: perfSaves.count,
+      autosaveCount: perfSaves.autosaveCount,
+      errorCount: perfSaves.errorCount,
+      autosave: perfSaves.autosave,
+      serialize: perfSaves.serialize,
+      write: perfSaves.write,
+      stringify: perfSaves.stringify,
+      storage: perfSaves.storage,
+      index: perfSaves.index,
+      bytes: perfSaves.bytes,
+      autosaveLast: perfSaves.autosaveLast,
+    } : null,
+  };
+}
+
 function topSystemStats(perf, limit = 12) {
   const systems = perf && perf.systems || {};
   return Object.entries(systems)
@@ -1866,6 +2095,32 @@ function topSystemStats(perf, limit = 12) {
     .filter((entry) => Number.isFinite(entry.p95) || Number.isFinite(entry.max))
     .sort((a, b) => (b.p95 - a.p95) || (b.max - a.max))
     .slice(0, limit);
+}
+
+function summarizeEntityScaleSweeps(sweeps) {
+  const rows = Array.isArray(sweeps && sweeps.rows) ? sweeps.rows : [];
+  if (!rows.length) return sweeps ? { ready: !!sweeps.ready, rows: [] } : null;
+  const byVariant = new Map();
+  for (const row of rows) {
+    if (!row || !row.variant) continue;
+    const current = byVariant.get(row.variant);
+    if (!current || Number(row.count) > Number(current.count)) byVariant.set(row.variant, row);
+  }
+  return {
+    ready: !!sweeps.ready,
+    counts: sweeps.counts || [],
+    rows: Array.from(byVariant.values()).map((row) => ({
+      variant: row.variant,
+      count: row.count,
+      p95: row.durationMs && row.durationMs.p95,
+      perEntityUsP95: row.perEntityUsP95,
+      synced: row.sync && row.sync.synced,
+      transformed: row.sync && row.sync.transformed,
+      fullSynced: row.sync && (row.sync.fullSynced || row.sync.synced),
+      culled: row.sync && row.sync.culled,
+      totalMeshes: row.sync && row.sync.totalMeshes,
+    })),
+  };
 }
 
 function detectExternalPerfEnvironment() {
@@ -2357,6 +2612,15 @@ function parseArgs(args) {
     }
   }
   return out;
+}
+
+function parseNumberList(value) {
+  const nums = String(value || '')
+    .split(',')
+    .map((part) => Number(part.trim()))
+    .filter((n) => Number.isFinite(n) && n >= 0)
+    .map((n) => Math.floor(n));
+  return nums.length ? Array.from(new Set(nums)) : [0, 50, 100, 250, 500, 1000];
 }
 
 function percentile(values, p) {

@@ -1,12 +1,87 @@
+=== PREP+EXPORT engine_resonator 2026-07-08T15:53:41.2129027-04:00 ===
+00:04.531  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_resonator_authored.blend"
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\prep_export_contract.py:45: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved as "engine_resonator_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+00:04.532  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_resonator_authored.blend"
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+15:53:52 | INFO: Starting glTF 2.0 export
+15:53:52 | INFO: Extracting primitive: Cube.001
+15:53:52 | WARNING: Cube.001: Could not calculate tangents. Please try to triangulate the mesh first.
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: Cube.002
+15:53:52 | WARNING: Cube.002: Could not calculate tangents. Please try to triangulate the mesh first.
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: Cube.007
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: Cube.005
+15:53:52 | WARNING: Cube.005: Could not calculate tangents. Please try to triangulate the mesh first.
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: Cube.006
+15:53:52 | WARNING: Cube.006: Could not calculate tangents. Please try to triangulate the mesh first.
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: Cube.009
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: Cube.004
+15:53:52 | WARNING: Cube.004: Could not calculate tangents. Please try to triangulate the mesh first.
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: Cube.003
+15:53:52 | WARNING: Cube.003: Could not calculate tangents. Please try to triangulate the mesh first.
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: Cube
+15:53:52 | WARNING: Cube: Could not calculate tangents. Please try to triangulate the mesh first.
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: Cube.008
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: engine_resonator_Material_Mechanical_Merged
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: HOOK_DRIVE_CORE
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: HOOK_DRIVE_FAN
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: HOOK_DRIVE_PLUME
+15:53:52 | INFO: Primitives created: 1
+15:53:52 | INFO: Extracting primitive: LOD0_ENGINE_RESONATOR_MAIN
+15:53:52 | WARNING: LOD0_ENGINE_RESONATOR_MAIN: Could not calculate tangents. Please try to triangulate the mesh first.
+15:53:53 | INFO: Primitives created: 1
+15:53:53 | INFO: Finished glTF 2.0 export in 0.3037428855895996 s
+
+Warning: Cube.001: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cube.002: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cube.005: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cube.006: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cube.004: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cube.003: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cube: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: LOD0_ENGINE_RESONATOR_MAIN: Could not calculate tangents. Please try to triangulate the mesh first.
+Info: Saved as "engine_resonator_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
 {
   "partId": "engine_resonator",
   "file": "engines/engine_resonator.glb",
-  "tris": 12640,
-  "bytes": 734112,
-  "dims": [3.16, 2.5935, 2.5935],
+  "tris": 9640,
+  "bytes": 519816,
+  "dims": [
+    3.23,
+    2.5935,
+    2.5935
+  ],
   "images": 1,
-  "materials": "Material_Hull,Material_Mechanical,Material_Accent",
-  "source": "blender_mcp",
-  "date": "2026-07-08",
-  "note": "PRO sprint 2026-07-08 — 20 QUALITY_RITUAL iterations, Anomaly violet bleed/oxidized hull, spaceface_export + finalize green."
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull"
+}
+
+--- spaceface_export ---
+{
+  "part_id": "engine_resonator",
+  "export_path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_resonator\\_export_tmp.glb",
+  "bytes": 1111732
 }

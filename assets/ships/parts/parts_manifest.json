@@ -635,7 +635,7 @@
       "priority": "P0",
       "file": "cockpits/cockpit_dome.glb",
       "tris": 3214,
-      "bytes": 288048,
+      "bytes": 287036,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -689,7 +689,7 @@
       "priority": "P0",
       "file": "cockpits/cockpit_slab.glb",
       "tris": 2644,
-      "bytes": 699892,
+      "bytes": 698884,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -797,7 +797,7 @@
       "priority": "P0",
       "file": "engines/engine_ion_small.glb",
       "tris": 13564,
-      "bytes": 821340,
+      "bytes": 820332,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -968,8 +968,8 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_resonator.glb",
-      "tris": 15690,
-      "bytes": 889008,
+      "tris": 36126,
+      "bytes": 1112280,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1024,8 +1024,8 @@
       "category": "engines",
       "priority": "P1",
       "file": "engines/engine_vector.glb",
-      "tris": 1368,
-      "bytes": 153388,
+      "tris": 1292,
+      "bytes": 105100,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1059,7 +1059,7 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.7,
+          -0.712,
           -0.8592,
           -0.8
         ],
@@ -1069,7 +1069,7 @@
           0.8
         ],
         "dimensionsM": [
-          3.3,
+          3.312,
           1.7184,
           1.6
         ]
@@ -1080,8 +1080,8 @@
       "category": "engines",
       "priority": "P1",
       "file": "engines/engine_plasma_ring.glb",
-      "tris": 9698,
-      "bytes": 486772,
+      "tris": 3300,
+      "bytes": 179172,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2168,8 +2168,8 @@
       "category": "gear",
       "priority": "P2",
       "file": "gear/skid_trio.glb",
-      "tris": 1040,
-      "bytes": 214564,
+      "tris": 3280,
+      "bytes": 317524,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2205,12 +2205,12 @@
         ],
         "max": [
           3.75,
-          1.2728,
+          1.2845,
           1.4
         ],
         "dimensionsM": [
           4.4,
-          1.2928,
+          1.3045,
           2.8
         ]
       }
@@ -2220,8 +2220,8 @@
       "category": "gear",
       "priority": "P2",
       "file": "gear/skid_quad.glb",
-      "tris": 1532,
-      "bytes": 226208,
+      "tris": 3516,
+      "bytes": 338044,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2257,12 +2257,12 @@
         ],
         "max": [
           3.775,
-          1.82,
+          1.8195,
           1.8
         ],
         "dimensionsM": [
           4.35,
-          1.86,
+          1.8595,
           3.6
         ]
       }
@@ -2272,8 +2272,8 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_utility.glb",
-      "tris": 952,
-      "bytes": 230524,
+      "tris": 2552,
+      "bytes": 300056,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2327,8 +2327,8 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
-      "tris": 1216,
-      "bytes": 237948,
+      "tris": 3776,
+      "bytes": 334228,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2381,8 +2381,8 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_repair_patch.glb",
-      "tris": 1688,
-      "bytes": 241076,
+      "tris": 8776,
+      "bytes": 671116,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2412,19 +2412,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.25,
-          -0.06,
-          -1.5694
+          -0.2695,
+          -0.0778,
+          -1.5753
         ],
         "max": [
-          4.6,
+          4.6196,
           0.23,
-          1.55
+          1.5687
         ],
         "dimensionsM": [
-          4.85,
-          0.29,
-          3.1194
+          4.8891,
+          0.3078,
+          3.1439
         ]
       }
     },
@@ -2545,8 +2545,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
-      "tris": 1232,
-      "bytes": 201596,
+      "tris": 2585,
+      "bytes": 209200,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2601,8 +2601,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
-      "tris": 524,
-      "bytes": 187196,
+      "tris": 1124,
+      "bytes": 182380,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2639,12 +2639,12 @@
           -4.8696
         ],
         "max": [
-          24.2,
+          24.2112,
           4.1193,
           5.5846
         ],
         "dimensionsM": [
-          24.2,
+          24.2112,
           7.331,
           10.4541
         ]
@@ -3095,7 +3095,7 @@
       "priority": "P0",
       "file": "places/place_station_trade_hub.glb",
       "tris": 6392,
-      "bytes": 2050056,
+      "bytes": 2049596,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

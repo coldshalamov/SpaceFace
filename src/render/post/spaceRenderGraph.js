@@ -12,6 +12,8 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from '../postTelemetry.js';
 
+const DEFAULT_BLOOM_STRENGTH = 0.35;
+
 const FULLSCREEN_VERT = /* glsl */`
   varying vec2 vUv;
   void main() {
@@ -248,6 +250,7 @@ export class SpaceRenderGraph {
       uExposure:this.options.exposure, uGrade:this.options.grade,
       uVignette:this.options.vignette, uGrain:this.options.grain, uTime:0,
     });
+    this.setOptions({});
     this._allocate();
   }
 
@@ -265,12 +268,12 @@ export class SpaceRenderGraph {
     this.options.renderScale = clamp(finite(this.options.renderScale, 1), 0.5, 1);
     this.options.aoScale = clamp(finite(this.options.aoScale, 0.5), 0.25, 1);
     const u = this.compositeMaterial.uniforms;
-    u.uBloomStrength.value = finite(this.options.bloomStrength, 0.35);
+    u.uBloomStrength.value = this._effectiveBloomStrength();
     u.uAoStrength.value = finite(this.options.aoStrength, 0.72);
     u.uExposure.value = finite(this.options.exposure, 1);
-    u.uGrade.value = finite(this.options.grade, 0.62);
-    u.uVignette.value = finite(this.options.vignette, 0.18);
-    u.uGrain.value = finite(this.options.grain, 0.025);
+    u.uGrade.value = finite(this.options.grade, 0.62) * this._postStyleScale();
+    u.uVignette.value = finite(this.options.vignette, 0.18) * this._postStyleScale();
+    u.uGrain.value = finite(this.options.grain, 0.025) * this._postStyleScale();
     this.bloomMaterial.uniforms.uThreshold.value = finite(this.options.bloomThreshold, 0.72);
     this.bloomMaterial.uniforms.uKnee.value = finite(this.options.bloomKnee, 0.18);
   }
@@ -301,7 +304,7 @@ export class SpaceRenderGraph {
       scene.overrideMaterial = previousOverride;
 
       this._renderAo(camera);
-      this._renderBloom();
+      if (this._bloomActive()) this._renderBloom();
       this._renderComposite(frame.outputTarget || null);
     } finally {
       scene.overrideMaterial = previousOverride;
@@ -322,7 +325,13 @@ export class SpaceRenderGraph {
       aoScale: this.options.aoScale,
       ao: !!this.options.ao,
       bloom: !!this.options.bloom,
+      bloomStrength: finite(this.options.bloomStrength, 0.35),
+      effectiveBloomStrength: this._effectiveBloomStrength(),
+      postStyleScale: this._postStyleScale(),
       bloomLevels: this.bloomTargets.length,
+      fullFramePasses: 2,
+      bloomPasses: this._bloomActive() ? this.bloomTargets.length : 0,
+      renderTargetCount: 4 + this.bloomTargets.length,
       temporal: false,
       capabilities: this.capabilities,
     };
@@ -394,8 +403,21 @@ export class SpaceRenderGraph {
     u.tBloom1.value = this.bloomTargets[1].texture;
     u.tBloom2.value = this.bloomTargets[2].texture;
     u.tBloom3.value = this.bloomTargets[3].texture;
+    u.uBloomStrength.value = this._effectiveBloomStrength();
     u.uTime.value = this.time;
     this.quad.render(this.renderer, this.compositeMaterial, outputTarget);
+  }
+
+  _effectiveBloomStrength() {
+    return this.options.bloom === false ? 0 : Math.max(0, finite(this.options.bloomStrength, 0.35));
+  }
+
+  _bloomActive() {
+    return this._effectiveBloomStrength() > 0.0001;
+  }
+
+  _postStyleScale() {
+    return Math.max(0, Math.min(1, this._effectiveBloomStrength() / DEFAULT_BLOOM_STRENGTH));
   }
 
   _allocate() {

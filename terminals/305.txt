@@ -1,0 +1,23 @@
+---
+pid: 26276
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$scratch = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\"
+$root = \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"
+$blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"
+$env:SF_ROOT = $root
+$ev = \"$root\\assets\\ships\\parts\\revamp-evidence\\engine_vector\"
+Remove-Item \"$ev\\renders\\*.png\" -Force
+'{\"part_id\":\"engine_vector\",\"story\":\"Fighter maneuvering drive — Fringe red heat discoloration on fan/nozzle\",\"iterations\":[]}' | Set-Content \"$ev\\iteration_ledger.json\"
+$log = \"$scratch\\render-vector-20iters.log\"
+\"=== VECTOR RERUN $(Get-Date -Format o) ===\" | Set-Content $log
+$env:SF_PART_ID = 'engine_vector'
+1..20 | ForEach-Object {
+  $env:SF_ITER = \"$_\"
+  \"iter $_ start\" | Add-Content $log
+  & $blender --background --python \"$root\\tools\\art\\blender\\quality_render_runner.py\" 2>&1 | Out-Null
+  if ($LASTEXITCODE -ne 0) { \"iter $_ FAIL\" | Add-Content $log }
+}
+\"DONE $(Get-Date -Format o)\" | Add-Content $log"
+started_at: 2026-07-09T02:03:07.456Z
+running_for_ms: 2985000  
+---

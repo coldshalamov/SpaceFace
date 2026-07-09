@@ -23,6 +23,8 @@ import { SHIPS } from '../data/ships.js';
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
 const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
+const ENTITY_VIEW_CULL_MIN_MARGIN = 900;
+const ENTITY_VIEW_CULL_ZOOM_MARGIN = 8;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -947,11 +949,56 @@ export const render = {
   },
 
 
+  _entityViewCullBounds() {
+    const camObj = this.cam && this.cam.obj;
+    const cameraState = this.state && this.state.camera || {};
+    const focus = cameraState.focus || (camObj && camObj.position) || { x: 0, z: 0 };
+    const zoom = Number.isFinite(cameraState.zoom)
+      ? cameraState.zoom
+      : Math.max(80, camObj && Number.isFinite(camObj.position && camObj.position.y) ? Math.abs(camObj.position.y) : 88);
+    const fov = camObj && Number.isFinite(camObj.fov)
+      ? camObj.fov
+      : (this.state.settings && this.state.settings.video && this.state.settings.video.fov) || 50;
+    const aspect = Math.max(0.45, camObj && Number.isFinite(camObj.aspect)
+      ? camObj.aspect
+      : (this.viewport && this.viewport.height ? this.viewport.width / this.viewport.height : 16 / 9));
+    const halfV = Math.tan((fov * Math.PI / 180) * 0.5) * zoom * 0.72;
+    const halfH = halfV * aspect;
+    const margin = Math.max(ENTITY_VIEW_CULL_MIN_MARGIN, zoom * ENTITY_VIEW_CULL_ZOOM_MARGIN);
+    return {
+      x: Number.isFinite(focus.x) ? focus.x : 0,
+      z: Number.isFinite(focus.z) ? focus.z : 0,
+      halfX: halfH + margin,
+      halfZ: halfV + margin,
+      margin,
+    };
+  },
+
+  _isEntityViewCulled(e, bounds) {
+    if (!e || !bounds || e.id === this.state.playerId) return false;
+    if (e.flags && (e.flags.forceRender || e.flags.neverCull)) return false;
+    if (!e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) return false;
+    const radius = Math.max(0, Number(e.radius) || 0);
+    return Math.abs(e.pos.x - bounds.x) > bounds.halfX + radius
+      || Math.abs(e.pos.z - bounds.z) > bounds.halfZ + radius;
+  },
+
   syncEntityViews(alpha) {
+    const started = typeof performance !== 'undefined' ? performance.now() : 0;
     const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
-    for (const e of this.state.entityList) {
-      const m = e.mesh; if (!m) continue;
+    const bounds = this._entityViewCullBounds();
+    let totalMeshes = 0;
+    let transformed = 0;
+    let fullSynced = 0;
+    let culled = 0;
+    let lodChecked = 0;
+    for (const [id, m] of this._meshes) {
+      totalMeshes++;
+      const e = this.state.entities.get(id);
+      if (!e || e.alive === false || !m) continue;
       if (this.collisionDebug && this.collisionDebug.on) m.userData.__lastEntity = e; // read-only debug overlay
+      const viewCulled = this._isEntityViewCulled(e, bounds);
+      if (viewCulled) culled++;
       const hull = m.userData && m.userData.hull;   // bankable inner group (ships only)
       if (e.flags.noInterp) {
         m.position.set(e.pos.x, 0, e.pos.z); m.rotation.y = -e.rot;
@@ -975,6 +1022,22 @@ export const render = {
           hull.rotation.z = pp + (e.pitch - pp) * alpha;
         }
       }
+      transformed++;
+      // Projected-screen-size LOD (spec §12.4): resolve each entity's detail level from its projected
+      // pixel width with hysteresis, so assets can drop detail at distance. The selector owns no
+      // geometry; per-asset hooks read m.userData.lod.level and decide what to show. Cheap for entities
+      // without a lod state (no closure attached).
+      if (m.userData.lod && m.userData.updateLod) {
+        lodChecked++;
+        const px = projectedWidthPx(e.pos, e.radius, this.cam.obj, this.viewport);
+        // The player ship is a focal, readable object at normal flight scale. Authored LOD1 can hide
+        // too much silhouette detail, so keep player control on LOD0 and reserve reduction for NPCs.
+        const level = e.id === this.state.playerId ? 'lod0' : m.userData.lod.resolve(px);
+        m.userData.updateLod(level);
+        if (m.userData.hlod) configureShadowCasters(m);
+      }
+      if (viewCulled) continue;
+      fullSynced++;
       // Hero-asset damage states (spec §9.11): hero meshes carry an updateDamageState closure that
       // modulates light groups / armor / drive from the live hull fraction so damage reads without the
       // HUD bar. Cheap no-op for non-hero meshes (no closure). Called once per frame per entity.
@@ -999,18 +1062,19 @@ export const render = {
           u.uFlash.value *= Math.pow(0.05, dt);
         }
       }
-      // Projected-screen-size LOD (spec §12.4): resolve each entity's detail level from its projected
-      // pixel width with hysteresis, so assets can drop detail at distance. The selector owns no
-      // geometry; per-asset hooks read m.userData.lod.level and decide what to show. Cheap for entities
-      // without a lod state (no closure attached).
-      if (m.userData.lod && m.userData.updateLod) {
-        const px = projectedWidthPx(e.pos, e.radius, this.cam.obj, this.viewport);
-        // The player ship is a focal, readable object at normal flight scale. Authored LOD1 can hide
-        // too much silhouette detail, so keep player control on LOD0 and reserve reduction for NPCs.
-        const level = e.id === this.state.playerId ? 'lod0' : m.userData.lod.resolve(px);
-        m.userData.updateLod(level);
-        if (m.userData.hlod) configureShadowCasters(m);
-      }
+    }
+    this.state.render.entityViewSync = {
+      totalMeshes,
+      transformed,
+      fullSynced,
+      culled,
+      lodChecked,
+      cullHalfX: Math.round(bounds.halfX),
+      cullHalfZ: Math.round(bounds.halfZ),
+    };
+    const perf = this.state.perfRuntime;
+    if (perf && typeof perf.recordRenderWork === 'function' && started) {
+      perf.recordRenderWork('entityViewSync', performance.now() - started);
     }
     this._publishHlodDiagnostics();
   },

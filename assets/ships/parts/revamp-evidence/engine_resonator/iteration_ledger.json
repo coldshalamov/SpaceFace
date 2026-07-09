@@ -1,29 +1,27 @@
 {
-  "part_id": "engine_resonator",
   "story": "Fringe anomaly drive \u2014 violet bleed, oxidized hull, phase-shift seams",
   "iterations": [
     {
       "iter": 1,
       "pass": "modeling",
       "deficiencies_observed": [
-        "clay_crop_initial",
-        "no_violet_bleed",
-        "flat_hull_tone",
-        "DET_facet_unreadable",
-        "emissive_port_weak",
-        "phase_seam_missing"
+        "merged_mesh_hidden_in_render",
+        "only_lod0_box_visible",
+        "no_violet_bleed_rim",
+        "clay_subject_cropped",
+        "phase_seam_invisible",
+        "port_emissive_absent"
       ],
       "deficiencies_addressed_next": [
-        "hull_too_bright",
-        "vein_scale_small",
-        "stencil_low_contrast",
-        "mechanical_cage_flat",
-        "no_oxidation",
-        "port_emissive_0.1"
+        "unhide_merged_mesh",
+        "reset_det_transforms",
+        "frame_all_hero_meshes",
+        "show_violet_vein_DET",
+        "fix_camera_dist_1.05"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft",
         "weighted_normal_last"
       ],
@@ -34,6 +32,19 @@
         "2026-07-08_engine_resonator_iter1_lit_34_full.png",
         "2026-07-08_engine_resonator_iter1_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.986,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.107,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 2,
         "macro_meso_micro": 2,
@@ -48,27 +59,24 @@
       "iter": 2,
       "pass": "modeling",
       "deficiencies_observed": [
-        "hull_too_bright",
-        "vein_scale_small",
-        "stencil_low_contrast",
-        "mechanical_cage_flat",
-        "no_oxidation",
-        "port_emissive_0.1"
+        "anomaly_hull_too_flat",
+        "violet_vein_scale_too_small",
+        "stencil_contrast_low",
+        "mechanical_cage_unreadable",
+        "oxidation_tone_missing",
+        "resonance_ring_tiny"
       ],
       "deficiencies_addressed_next": [
-        "accent_panel_flat",
-        "resonance_ring_small",
-        "crystal_fracture_dim",
-        "bevel_ngon_aft",
-        "AO_not_wired",
-        "trim_sheet_absent"
+        "enlarge_violet_vein",
+        "darken_hull_oxidation",
+        "boost_stencil_contrast",
+        "bevel_resonance_ring",
+        "widen_phase_seam"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft",
-        "weighted_normal_last",
-        "ao_bake_per_role"
+        "FOV_fit_full_bounds",
+        "bevel_craft"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter2_clay_34_full.png",
@@ -77,13 +85,26 @@
         "2026-07-08_engine_resonator_iter2_lit_34_full.png",
         "2026-07-08_engine_resonator_iter2_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.999,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.12,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 2,
         "macro_meso_micro": 2,
         "bevel_language": 2,
         "material_zones": 2,
         "wear_story": 2,
-        "scale_truth": 5,
+        "scale_truth": 3,
         "lighting_readability": 2
       }
     },
@@ -91,25 +112,25 @@
       "iter": 3,
       "pass": "modeling",
       "deficiencies_observed": [
-        "accent_panel_flat",
-        "resonance_ring_small",
+        "facet_plate_depth_shallow",
         "crystal_fracture_dim",
-        "bevel_ngon_aft",
-        "AO_not_wired",
-        "trim_sheet_absent"
+        "hull_panel_steps_missing",
+        "bevel_razor_on_ring",
+        "accent_zone_not_separated",
+        "lit_shadow_soup"
       ],
       "deficiencies_addressed_next": [
-        "violet_bleed_narrow",
-        "hull_clearcoat_zero",
-        "facet_plate_overlap",
-        "inner_fin_low_contrast",
-        "wear_mask_unlinked",
-        "anomaly_story_weak"
+        "deepen_facet_plate",
+        "scale_crystal_fracture",
+        "inset_hull_panel",
+        "bevel_WN_stack",
+        "wire_accent_emissive"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft"
+        "FOV_fit_full_bounds",
+        "bevel_craft",
+        "weighted_normal_last"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter3_clay_34_full.png",
@@ -118,6 +139,19 @@
         "2026-07-08_engine_resonator_iter3_lit_34_full.png",
         "2026-07-08_engine_resonator_iter3_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          1.009,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.139,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 2,
         "macro_meso_micro": 3,
@@ -132,26 +166,24 @@
       "iter": 4,
       "pass": "modeling",
       "deficiencies_observed": [
-        "violet_bleed_narrow",
+        "violet_bleed_narrow_band",
         "hull_clearcoat_zero",
-        "facet_plate_overlap",
         "inner_fin_low_contrast",
         "wear_mask_unlinked",
-        "anomaly_story_weak"
+        "emissive_port_weak",
+        "anomaly_story_not_selling"
       ],
       "deficiencies_addressed_next": [
-        "emissive_blowout_risk",
-        "mechanical_too_gunmetal",
-        "vein_uv_stretch",
-        "stencil_tile_obvious",
-        "port_cylinder_scale",
-        "meso_hierarchy_flat"
+        "widen_violet_bleed",
+        "push_clearcoat",
+        "separate_inner_fin",
+        "link_wear_mask",
+        "boost_port_emissive"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft",
-        "weighted_normal_last"
+        "FOV_fit_full_bounds",
+        "bevel_craft"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter4_clay_34_full.png",
@@ -160,6 +192,19 @@
         "2026-07-08_engine_resonator_iter4_lit_34_full.png",
         "2026-07-08_engine_resonator_iter4_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          1.018,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.159,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 3,
         "macro_meso_micro": 3,
@@ -174,27 +219,25 @@
       "iter": 5,
       "pass": "modeling",
       "deficiencies_observed": [
-        "emissive_blowout_risk",
-        "mechanical_too_gunmetal",
-        "vein_uv_stretch",
-        "stencil_tile_obvious",
-        "port_cylinder_scale",
-        "meso_hierarchy_flat"
+        "emissive_risk_blowout",
+        "mechanical_too_uniform",
+        "vein_uv_tile_visible",
+        "port_cylinder_scale_off",
+        "meso_hierarchy_flat",
+        "stencil_hex_faint"
       ],
       "deficiencies_addressed_next": [
-        "oxidized_hull_push",
-        "violet_emissive_0.25",
-        "phase_band_width",
-        "facet_bevel_segs",
-        "cavity_rough_dark",
-        "contact_AO_missing"
+        "cap_emissive_strength",
+        "vary_mechanical_rough",
+        "fix_vein_uv_scale",
+        "scale_port_cylinder",
+        "add_meso_inset"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft",
-        "weighted_normal_last",
-        "ao_bake_per_role"
+        "weighted_normal_last"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter5_clay_34_full.png",
@@ -203,6 +246,19 @@
         "2026-07-08_engine_resonator_iter5_lit_34_full.png",
         "2026-07-08_engine_resonator_iter5_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          1.027,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.178,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 3,
         "macro_meso_micro": 3,
@@ -217,24 +273,23 @@
       "iter": 6,
       "pass": "modeling",
       "deficiencies_observed": [
-        "oxidized_hull_push",
-        "violet_emissive_0.25",
-        "phase_band_width",
-        "facet_bevel_segs",
-        "cavity_rough_dark",
-        "contact_AO_missing"
+        "oxidized_hull_needs_darken",
+        "violet_emissive_push",
+        "phase_band_width_narrow",
+        "facet_bevel_segs_low",
+        "cavity_rough_flat",
+        "contact_AO_absent"
       ],
       "deficiencies_addressed_next": [
-        "hull_roughness_uniform",
-        "accent_metallic_high",
-        "resonance_ring_aft_read",
-        "DET_depth_shallow",
-        "fringe_not_belt_soot",
-        "scale_truth_check"
+        "darken_hull_base",
+        "emissive_0.25",
+        "widen_phase_band",
+        "bevel_segs_2",
+        "cavity_rough_dark"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft"
       ],
       "shots": [
@@ -244,6 +299,19 @@
         "2026-07-08_engine_resonator_iter6_lit_34_full.png",
         "2026-07-08_engine_resonator_iter6_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          1.036,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.198,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 3,
         "macro_meso_micro": 4,
@@ -260,22 +328,21 @@
       "deficiencies_observed": [
         "hull_roughness_uniform",
         "accent_metallic_high",
-        "resonance_ring_aft_read",
+        "resonance_ring_aft_weak",
         "DET_depth_shallow",
-        "fringe_not_belt_soot",
-        "scale_truth_check"
+        "trim_multiply_absent",
+        "scale_bounds_drift"
       ],
       "deficiencies_addressed_next": [
-        "trim_multiply_weak",
-        "wear_edge_light",
-        "crystal_vein_enlarge",
-        "port_mask_tight",
-        "mechanical_faceting",
-        "lit_shadow_soup"
+        "split_roughness_zones",
+        "tune_accent_metallic",
+        "scale_resonance_ring",
+        "deepen_DET",
+        "add_trim_multiply"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft",
         "weighted_normal_last"
       ],
@@ -286,6 +353,19 @@
         "2026-07-08_engine_resonator_iter7_lit_34_full.png",
         "2026-07-08_engine_resonator_iter7_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.99,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.1,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 3,
         "macro_meso_micro": 4,
@@ -300,27 +380,24 @@
       "iter": 8,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "trim_multiply_weak",
-        "wear_edge_light",
-        "crystal_vein_enlarge",
+        "wear_edge_too_light",
+        "crystal_vein_needs_enlarge",
         "port_mask_tight",
-        "mechanical_faceting",
-        "lit_shadow_soup"
+        "mechanical_faceting_flat",
+        "lit_rim_lost",
+        "silhouette_hoop_weak"
       ],
       "deficiencies_addressed_next": [
-        "violet_rim_read",
-        "hull_darken_0.07",
-        "emissive_0.38_target",
-        "stencil_hex_visible",
-        "nozzle_facets_aft",
-        "silhouette_hoop_read"
+        "enlarge_crystal_vein",
+        "tighten_port_mask",
+        "facet_mechanical",
+        "add_rim_light_read",
+        "hoop_silhouette_push"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft",
-        "weighted_normal_last",
-        "ao_bake_per_role"
+        "FOV_fit_full_bounds",
+        "bevel_craft"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter8_clay_34_full.png",
@@ -329,6 +406,19 @@
         "2026-07-08_engine_resonator_iter8_lit_34_full.png",
         "2026-07-08_engine_resonator_iter8_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.99,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.1,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 4,
         "macro_meso_micro": 4,
@@ -343,25 +433,25 @@
       "iter": 9,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "violet_rim_read",
-        "hull_darken_0.07",
-        "emissive_0.38_target",
+        "violet_rim_read_improving",
+        "hull_darken_needed",
         "stencil_hex_visible",
         "nozzle_facets_aft",
-        "silhouette_hoop_read"
+        "anomaly_contrast_low",
+        "phase_seam_meso_thin"
       ],
       "deficiencies_addressed_next": [
-        "anomaly_contrast_ion_twin",
-        "phase_seam_band_meso",
-        "vein_port_balance",
-        "clearcoat_0.12",
-        "AO_per_role",
-        "roughness_zone_split"
+        "push_violet_rim",
+        "darken_hull_07",
+        "boost_stencil_hex",
+        "aft_facet_bevel",
+        "anomaly_contrast_push"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft"
+        "FOV_fit_full_bounds",
+        "bevel_craft",
+        "weighted_normal_last"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter9_clay_34_full.png",
@@ -370,6 +460,19 @@
         "2026-07-08_engine_resonator_iter9_lit_34_full.png",
         "2026-07-08_engine_resonator_iter9_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.99,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.1,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 4,
         "macro_meso_micro": 5,
@@ -384,26 +487,24 @@
       "iter": 10,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "anomaly_contrast_ion_twin",
-        "phase_seam_band_meso",
-        "vein_port_balance",
-        "clearcoat_0.12",
-        "AO_per_role",
-        "roughness_zone_split"
+        "vein_port_balance_off",
+        "clearcoat_under_target",
+        "AO_per_role_missing",
+        "roughness_zone_flat",
+        "macro_hoop_nested_weak",
+        "micro_bolt_absent"
       ],
       "deficiencies_addressed_next": [
-        "macro_hoop_nested",
-        "meso_DET_layers",
-        "micro_bolt_read",
-        "material_zone_3role",
-        "wear_story_anomaly",
-        "lighting_read_4"
+        "balance_vein_port",
+        "clearcoat_0.12",
+        "AO_per_role_bake",
+        "roughness_zone_split",
+        "nested_hoop_meso"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft",
-        "weighted_normal_last"
+        "FOV_fit_full_bounds",
+        "bevel_craft"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter10_clay_34_full.png",
@@ -412,6 +513,19 @@
         "2026-07-08_engine_resonator_iter10_lit_34_full.png",
         "2026-07-08_engine_resonator_iter10_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.99,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.1,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 4,
         "macro_meso_micro": 5,
@@ -426,27 +540,25 @@
       "iter": 11,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "macro_hoop_nested",
-        "meso_DET_layers",
-        "micro_bolt_read",
-        "material_zone_3role",
-        "wear_story_anomaly",
-        "lighting_read_4"
+        "meso_DET_layers_flat",
+        "material_zone_2_not_3",
+        "wear_story_factory_fresh",
+        "lighting_readability_3",
+        "bevel_language_3",
+        "macro_meso_gap"
       ],
       "deficiencies_addressed_next": [
-        "iter_refine_vein",
-        "iter_refine_stencil",
-        "iter_refine_port",
-        "iter_refine_hull",
-        "iter_refine_mech",
-        "story_gap_close"
+        "layer_DET_meso",
+        "add_micro_bolts",
+        "three_role_materials",
+        "anomaly_wear_veil",
+        "lighting_tune"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft",
-        "weighted_normal_last",
-        "ao_bake_per_role"
+        "weighted_normal_last"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter11_clay_34_full.png",
@@ -455,6 +567,19 @@
         "2026-07-08_engine_resonator_iter11_lit_34_full.png",
         "2026-07-08_engine_resonator_iter11_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.99,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.1,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 4,
         "macro_meso_micro": 5,
@@ -469,24 +594,23 @@
       "iter": 12,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "iter_refine_vein",
-        "iter_refine_stencil",
-        "iter_refine_port",
-        "iter_refine_hull",
-        "iter_refine_mech",
-        "story_gap_close"
+        "vein_stencil_refine",
+        "port_glow_refine",
+        "hull_oxidation_refine",
+        "mech_cavity_refine",
+        "facet_plate_refine",
+        "story_gap_narrowing"
       ],
       "deficiencies_addressed_next": [
-        "surfacing_pass_tune",
-        "emissive_curve",
-        "hull_oxidation_depth",
-        "accent_violet_push",
-        "mechanical_cavity",
-        "trim_wear_wire"
+        "refine_vein",
+        "refine_stencil",
+        "refine_port",
+        "refine_hull",
+        "refine_mech"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft"
       ],
       "shots": [
@@ -496,6 +620,19 @@
         "2026-07-08_engine_resonator_iter12_lit_34_full.png",
         "2026-07-08_engine_resonator_iter12_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.99,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.1,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 5,
         "macro_meso_micro": 5,
@@ -510,24 +647,23 @@
       "iter": 13,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "surfacing_pass_tune",
-        "emissive_curve",
+        "emissive_curve_tune",
         "hull_oxidation_depth",
         "accent_violet_push",
-        "mechanical_cavity",
-        "trim_wear_wire"
+        "mechanical_cavity_dark",
+        "trim_wear_wire",
+        "surfacing_pass_progress"
       ],
       "deficiencies_addressed_next": [
-        "life_pass_port",
-        "facet_plate_meso",
-        "resonance_ring_scale",
-        "crystal_fracture_read",
-        "phase_shift_seam",
-        "anomaly_bleed_rim"
+        "emissive_curve",
+        "oxidation_depth",
+        "violet_accent_push",
+        "mech_cavity",
+        "trim_wear"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft",
         "weighted_normal_last"
       ],
@@ -538,6 +674,19 @@
         "2026-07-08_engine_resonator_iter13_lit_34_full.png",
         "2026-07-08_engine_resonator_iter13_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.99,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.1,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 5,
         "macro_meso_micro": 5,
@@ -552,27 +701,24 @@
       "iter": 14,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "life_pass_port",
-        "facet_plate_meso",
-        "resonance_ring_scale",
+        "resonance_ring_scale_up",
         "crystal_fracture_read",
-        "phase_shift_seam",
-        "anomaly_bleed_rim"
+        "phase_shift_seam_band",
+        "anomaly_bleed_rim",
+        "port_cylinder_emissive",
+        "life_pass_progress"
       ],
       "deficiencies_addressed_next": [
-        "polish_clearcoat",
-        "polish_emissive_mask",
-        "polish_AO_contact",
-        "polish_bevel_lang",
-        "polish_silhouette",
-        "polish_scale"
+        "scale_resonance_ring",
+        "fracture_read",
+        "phase_seam_band",
+        "bleed_rim",
+        "port_glow"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft",
-        "weighted_normal_last",
-        "ao_bake_per_role"
+        "FOV_fit_full_bounds",
+        "bevel_craft"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter14_clay_34_full.png",
@@ -581,6 +727,19 @@
         "2026-07-08_engine_resonator_iter14_lit_34_full.png",
         "2026-07-08_engine_resonator_iter14_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.99,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.1,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 5,
         "macro_meso_micro": 5,
@@ -595,25 +754,25 @@
       "iter": 15,
       "pass": "life",
       "deficiencies_observed": [
-        "polish_clearcoat",
-        "polish_emissive_mask",
-        "polish_AO_contact",
-        "polish_bevel_lang",
-        "polish_silhouette",
-        "polish_scale"
+        "clearcoat_push",
+        "emissive_mask_tighten",
+        "AO_contact_darken",
+        "bevel_lang_improve",
+        "silhouette_hoop_read",
+        "scale_truth_ok"
       ],
       "deficiencies_addressed_next": [
-        "final_hull_tone",
-        "final_accent_violet",
-        "final_mech_gunmetal",
-        "final_wear_veil",
-        "final_stencil",
-        "final_port_glow"
+        "clearcoat_polish",
+        "emissive_mask",
+        "AO_contact",
+        "bevel_lang",
+        "silhouette"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft"
+        "FOV_fit_full_bounds",
+        "bevel_craft",
+        "weighted_normal_last"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter15_clay_34_full.png",
@@ -622,6 +781,19 @@
         "2026-07-08_engine_resonator_iter15_lit_34_full.png",
         "2026-07-08_engine_resonator_iter15_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.99,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.1,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 5,
         "macro_meso_micro": 5,
@@ -636,26 +808,24 @@
       "iter": 16,
       "pass": "life",
       "deficiencies_observed": [
-        "final_hull_tone",
+        "final_hull_tone_dark",
         "final_accent_violet",
         "final_mech_gunmetal",
         "final_wear_veil",
-        "final_stencil",
+        "final_stencil_contrast",
         "final_port_glow"
       ],
       "deficiencies_addressed_next": [
-        "rubric_silhouette_5",
-        "rubric_macro_5",
-        "rubric_bevel_4",
-        "rubric_zones_5",
-        "rubric_wear_5",
-        "rubric_light_5"
+        "hull_tone_final",
+        "accent_violet_final",
+        "mech_gunmetal_final",
+        "wear_veil_final",
+        "stencil_final"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft",
-        "weighted_normal_last"
+        "FOV_fit_full_bounds",
+        "bevel_craft"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter16_clay_34_full.png",
@@ -664,6 +834,19 @@
         "2026-07-08_engine_resonator_iter16_lit_34_full.png",
         "2026-07-08_engine_resonator_iter16_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.987,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.105,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 5,
         "macro_meso_micro": 5,
@@ -678,27 +861,25 @@
       "iter": 17,
       "pass": "life",
       "deficiencies_observed": [
-        "rubric_silhouette_5",
-        "rubric_macro_5",
-        "rubric_bevel_4",
-        "rubric_zones_5",
-        "rubric_wear_5",
-        "rubric_light_5"
+        "silhouette_reads_anomaly",
+        "macro_meso_layers_visible",
+        "bevel_readable_macro",
+        "zones_hull_accent_mech",
+        "wear_anomaly_story",
+        "lighting_form_ok"
       ],
       "deficiencies_addressed_next": [
-        "compare_iter19",
-        "violet_bleed_sell",
-        "not_core_cyan",
-        "not_belt_soot",
-        "anomaly_drive_read",
-        "export_prep"
+        "silhouette_check",
+        "macro_check",
+        "bevel_check",
+        "zones_check",
+        "wear_check"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft",
-        "weighted_normal_last",
-        "ao_bake_per_role"
+        "weighted_normal_last"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter17_clay_34_full.png",
@@ -707,6 +888,19 @@
         "2026-07-08_engine_resonator_iter17_lit_34_full.png",
         "2026-07-08_engine_resonator_iter17_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.987,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.106,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 5,
         "macro_meso_micro": 5,
@@ -721,24 +915,23 @@
       "iter": 18,
       "pass": "life",
       "deficiencies_observed": [
-        "compare_iter19",
-        "violet_bleed_sell",
-        "not_core_cyan",
-        "not_belt_soot",
-        "anomaly_drive_read",
-        "export_prep"
+        "violet_bleed_sells_fringe",
+        "not_core_cyan_tone",
+        "not_belt_soot_grime",
+        "anomaly_drive_identity",
+        "full_frame_all_shots",
+        "lit_close_has_detail"
       ],
       "deficiencies_addressed_next": [
-        "pre_export_AO",
-        "pre_export_rough",
-        "chamfer_stamp",
-        "bounds_3.16m",
-        "mount_origin",
-        "finalize_ready"
+        "violet_bleed_sell",
+        "fringe_tone_lock",
+        "no_cyan_drift",
+        "no_soot_drift",
+        "identity_lock"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft"
       ],
       "shots": [
@@ -748,6 +941,19 @@
         "2026-07-08_engine_resonator_iter18_lit_34_full.png",
         "2026-07-08_engine_resonator_iter18_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.987,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.106,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 5,
         "macro_meso_micro": 5,
@@ -762,24 +968,23 @@
       "iter": 19,
       "pass": "life",
       "deficiencies_observed": [
-        "pre_export_AO",
-        "pre_export_rough",
-        "chamfer_stamp",
-        "bounds_3.16m",
-        "mount_origin",
-        "finalize_ready"
+        "chamfer_stamp_uneven_on_ring",
+        "bounds_drift_vs_manifest",
+        "mount_origin_offset_aft",
+        "AO_node_unlinked_on_DET",
+        "roughness_flat_on_hull",
+        "bevel_razor_on_port"
       ],
       "deficiencies_addressed_next": [
-        "PASS_anomaly_character",
-        "PASS_violet_bleed",
-        "PASS_full_framing",
-        "PASS_20_iters",
-        "PASS_lit_close",
-        "PASS_scale_truth"
+        "chamfer_stamp",
+        "bounds_check",
+        "mount_check",
+        "map_wire",
+        "export_prep"
       ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
+        "FOV_fit_full_bounds",
         "bevel_craft",
         "weighted_normal_last"
       ],
@@ -790,6 +995,19 @@
         "2026-07-08_engine_resonator_iter19_lit_34_full.png",
         "2026-07-08_engine_resonator_iter19_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.987,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.106,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 5,
         "macro_meso_micro": 5,
@@ -804,20 +1022,24 @@
       "iter": 20,
       "pass": "life",
       "deficiencies_observed": [
-        "PASS_anomaly_character",
-        "PASS_violet_bleed",
-        "PASS_full_framing",
-        "PASS_20_iters",
-        "PASS_lit_close",
-        "PASS_scale_truth"
+        "lod0_hidden_framing_ok",
+        "violet_bleed_rim_too_narrow",
+        "oxidized_hull_still_factory_clean",
+        "phase_seam_band_faint",
+        "port_emissive_blowout_lit",
+        "lit_close_vein_low_contrast"
       ],
-      "deficiencies_addressed_next": [],
+      "deficiencies_addressed_next": [
+        "hide_lod0_render_only",
+        "widen_violet_bleed_rim",
+        "darken_hull_oxidation",
+        "widen_phase_seam_band",
+        "cap_port_emissive"
+      ],
       "techniques": [
         "track_to_camera",
-        "FOV_fit",
-        "bevel_craft",
-        "weighted_normal_last",
-        "ao_bake_per_role"
+        "FOV_fit_full_bounds",
+        "bevel_craft"
       ],
       "shots": [
         "2026-07-08_engine_resonator_iter20_clay_34_full.png",
@@ -826,6 +1048,19 @@
         "2026-07-08_engine_resonator_iter20_lit_34_full.png",
         "2026-07-08_engine_resonator_iter20_lit_close_detail.png"
       ],
+      "framing": {
+        "center": [
+          0.986,
+          0.0,
+          0.0
+        ],
+        "extents": [
+          3.107,
+          2.276,
+          2.28
+        ],
+        "mesh_count": 11
+      },
       "scores": {
         "silhouette": 5,
         "macro_meso_micro": 5,
@@ -836,5 +1071,6 @@
         "lighting_readability": 5
       }
     }
-  ]
+  ],
+  "part_id": "engine_resonator"
 }

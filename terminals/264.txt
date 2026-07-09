@@ -1,0 +1,22 @@
+---
+pid: 24908
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && npm run build:sg04:release-assets 2>&1 | Tee-Object -FilePath \"$env:TEMP\\build-sg04-run1.log\" | Select-Object -Last 15"
+started_at: 2026-07-08T17:26:53.053Z
+running_for_ms: 33945015 
+---
+prune: Removed types... Accessor (106)
+[sg04] 67/70 place_dock_interior_grit: 105716 -> 72816 bytes
+[sg04] 68/70 wholeship_kestrel: build-start assets/ships/parts/wholeships/kestrel.glb -> assets/ships/release.__building/parts/wholeships/kestrel.glb
+prune: Removed types... Accessor (20)
+prune: Removed types... Accessor (8)
+[sg04] 68/70 wholeship_kestrel: 14226032 -> 6860920 bytes
+[sg04] 69/70 wholeship_pelican: build-start assets/ships/parts/wholeships/pelican.glb -> assets/ships/release.__building/parts/wholeships/pelican.glb
+prune: Removed types... Accessor (15)
+prune: Removed types... Accessor (6)
+[sg04] 69/70 wholeship_pelican: 10840940 -> 5123204 bytes
+[sg04] 70/70 wholeship_wasp: build-start assets/ships/parts/wholeships/wasp.glb -> assets/ships/release.__building/parts/wholeships/wasp.glb
+prune: Removed types... Accessor (15)
+prune: Removed types... Accessor (6)
+[sg04] 70/70 wholeship_wasp: 10622364 -> 5068880 bytes
+[sg04] release manifest wrote assets/ships/release/release_manifest.json (70 assets)

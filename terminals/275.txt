@@ -1,0 +1,66 @@
+---
+pid: 37408
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"
+$root = \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"
+$scratch = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\"
+$prep = \"$root\\tools\\art\\blender\\prep_export_contract.py\"
+$exportPy = \"$root\\tools\\art\\blender\\export_sprint_part.py\"
+foreach ($part in @('engine_vector','engine_resonator','engine_plasma_ring')) {
+  $log = \"$scratch\\finalize-$part.log\"
+  $evLog = \"$root\\assets\\ships\\parts\\revamp-evidence\\$part\\finalize.log\"
+  \"=== PREP+EXPORT $part $(Get-Date -Format o) ===\" | Set-Content $log
+  $env:SF_ROOT=$root; $env:SF_PART_ID=$part
+  & $blender --background --python $prep 2>&1 | Tee-Object -Append $log | Out-Null
+  & $blender --background --python $exportPy 2>&1 | Tee-Object -Append $log | Out-Null
+  $tmp = \"$root\\assets\\ships\\parts\\revamp-evidence\\$part\\_export_tmp.glb\"
+  node \"$root\\tools\\art\\finalize_part.mjs\" $tmp $part --method=blender_mcp 2>&1 | Tee-Object -Append $log
+  Copy-Item $log $evLog -Force
+  & $blender --background --python \"$root\\tools\\blender\\spaceface_export.py\" -- --validate-only \"$root\\assets\\ships\\parts\\engines\\$part.glb\" --kind part --id $part 2>&1 | Tee-Object -Append $log | Select-Object -Last 1
+}
+\"EXPORTS_DONE\" | Add-Content \"$scratch\\finalize-all.log\""
+started_at: 2026-07-08T19:53:17.635Z
+running_for_ms: 25159997 
+---
+{
+  "partId": "engine_vector",
+  "file": "engines/engine_vector.glb",
+  "tris": 1292,
+  "bytes": 104964,
+  "dims": [
+    3.3,
+    1.7184,
+    1.6
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull"
+}
+{"schema": "spaceface.export.v1", "ok": true, "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\engines\\engine_vector.glb"}
+{
+  "partId": "engine_resonator",
+  "file": "engines/engine_resonator.glb",
+  "tris": 9640,
+  "bytes": 519816,
+  "dims": [
+    3.23,
+    2.5935,
+    2.5935
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull"
+}
+{"schema": "spaceface.export.v1", "ok": true, "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\engines\\engine_resonator.glb"}
+{
+  "partId": "engine_plasma_ring",
+  "file": "engines/engine_plasma_ring.glb",
+  "tris": 3300,
+  "bytes": 179104,
+  "dims": [
+    2.77,
+    2.08,
+    2.0772
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Hull"
+}
+{"schema": "spaceface.export.v1", "ok": true, "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\engines\\engine_plasma_ring.glb"}

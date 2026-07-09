@@ -78,6 +78,16 @@ function entityCounts(state) {
   return counts;
 }
 
+function plainTiming(input) {
+  const out = {};
+  if (!input || typeof input !== 'object') return out;
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value === 'number') out[key] = Number.isFinite(value) ? value : 0;
+    else if (typeof value === 'string' || typeof value === 'boolean' || value == null) out[key] = value;
+  }
+  return out;
+}
+
 function videoSettings(state) {
   const v = state && state.settings && state.settings.video ? state.settings.video : {};
   return {
@@ -143,10 +153,31 @@ export function ensurePerfRuntime(state) {
       eventLights: 0,
     },
   };
+  const saveStats = {
+    all: createStat(),
+    autosave: createStat(),
+    serialize: createStat(),
+    write: createStat(),
+    stringify: createStat(),
+    storage: createStat(),
+    index: createStat(),
+    bytes: createStat(),
+    count: 0,
+    autosaveCount: 0,
+    errorCount: 0,
+    last: null,
+    autosaveLast: null,
+  };
+  const renderWorkStats = Object.create(null);
 
   function statForSystem(name) {
     const key = name || 'unknown';
     return systemStats[key] || (systemStats[key] = createStat());
+  }
+
+  function statForRenderWork(name) {
+    const key = name || 'unknown';
+    return renderWorkStats[key] || (renderWorkStats[key] = createStat());
   }
 
   const api = {
@@ -173,6 +204,9 @@ export function ensurePerfRuntime(state) {
     },
     recordSystem(name, ms) {
       sample(statForSystem(name), ms);
+    },
+    recordRenderWork(name, ms) {
+      sample(statForRenderWork(name), ms);
     },
     recordPhase(name, ms) {
       const stat = phaseStats[name];
@@ -211,12 +245,39 @@ export function ensurePerfRuntime(state) {
       dst.sprites = Number(stats.sprites) || 0;
       dst.eventLights = Number(stats.eventLights) || 0;
     },
+    recordSave(timing = {}) {
+      const totalMs = Number(timing.totalMs);
+      const autosave = !!timing.autosave;
+      const ok = timing.ok !== false;
+      saveStats.count++;
+      if (autosave) saveStats.autosaveCount++;
+      if (!ok) saveStats.errorCount++;
+      if (Number.isFinite(totalMs) && totalMs >= 0) {
+        sample(saveStats.all, totalMs);
+        if (autosave) sample(saveStats.autosave, totalMs);
+      }
+      for (const [field, stat] of [
+        ['serializeMs', saveStats.serialize],
+        ['writeMs', saveStats.write],
+        ['stringifyMs', saveStats.stringify],
+        ['storageMs', saveStats.storage],
+        ['indexMs', saveStats.index],
+        ['bytes', saveStats.bytes],
+      ]) {
+        const value = Number(timing[field]);
+        if (Number.isFinite(value) && value >= 0) sample(stat, value);
+      }
+      const plain = plainTiming(timing);
+      saveStats.last = plain;
+      if (autosave) saveStats.autosaveLast = plain;
+    },
     reset() {
       resetStat(frameStats);
       resetStat(frameCallbackStats);
       resetStat(frameUntrackedStats);
       for (const stat of Object.values(phaseStats)) resetStat(stat);
       for (const stat of Object.values(systemStats)) resetStat(stat);
+      for (const stat of Object.values(renderWorkStats)) resetStat(stat);
       frameAccountedMs = 0;
       loop.stepsThisFrame = 0;
       loop.maxStepsThisFrame = 0;
@@ -243,10 +304,27 @@ export function ensurePerfRuntime(state) {
       counters.vfxSubsystems.particles = 0;
       counters.vfxSubsystems.sprites = 0;
       counters.vfxSubsystems.eventLights = 0;
+      for (const stat of [
+        saveStats.all,
+        saveStats.autosave,
+        saveStats.serialize,
+        saveStats.write,
+        saveStats.stringify,
+        saveStats.storage,
+        saveStats.index,
+        saveStats.bytes,
+      ]) resetStat(stat);
+      saveStats.count = 0;
+      saveStats.autosaveCount = 0;
+      saveStats.errorCount = 0;
+      saveStats.last = null;
+      saveStats.autosaveLast = null;
     },
     getReport() {
       const systems = {};
       for (const name of Object.keys(systemStats)) systems[name] = reportStat(systemStats[name]);
+      const renderWork = {};
+      for (const name of Object.keys(renderWorkStats)) renderWork[name] = reportStat(renderWorkStats[name]);
       return {
         frame: reportStat(frameStats),
         frameCallback: reportStat(frameCallbackStats),
@@ -261,6 +339,22 @@ export function ensurePerfRuntime(state) {
           ui: reportStat(phaseStats.ui),
         },
         systems,
+        renderWork,
+        saves: {
+          count: saveStats.count,
+          autosaveCount: saveStats.autosaveCount,
+          errorCount: saveStats.errorCount,
+          all: reportStat(saveStats.all),
+          autosave: reportStat(saveStats.autosave),
+          serialize: reportStat(saveStats.serialize),
+          write: reportStat(saveStats.write),
+          stringify: reportStat(saveStats.stringify),
+          storage: reportStat(saveStats.storage),
+          index: reportStat(saveStats.index),
+          bytes: reportStat(saveStats.bytes),
+          last: saveStats.last,
+          autosaveLast: saveStats.autosaveLast,
+        },
         counters: {
           spatialHash: { ...counters.spatialHash },
           vfxTrails: { ...counters.vfxTrails },

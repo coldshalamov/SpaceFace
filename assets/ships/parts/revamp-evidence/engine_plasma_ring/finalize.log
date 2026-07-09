@@ -1,18 +1,59 @@
-=== spaceface_export (Blender MCP 2026-07-08) ===
-part: engine_plasma_ring
-export_tmp: assets/ships/parts/revamp-evidence/engine_plasma_ring/_export_tmp.glb
-pre-export: removed scene contamination (engine_resonator, cockpit_slab, engine_ion_small, hull roots, MOUNT_*)
-export bytes (tmp): 486068
-nodes: DET_corporate_polish_band, DET_fusion_coil_ring, DET_lattice_strut_a, engine_plasma_ring_Material_Mechanical_Merged, HOOK_DRIVE_CORE, HOOK_DRIVE_FAN, HOOK_DRIVE_PLUME, LOD0_ENGINE_PLASMA_RING_MAIN, Plasma_Ring_Outer, engine_plasma_ring
-mounts: 0
+=== PREP+EXPORT engine_plasma_ring 2026-07-08T15:53:58.9388997-04:00 ===
+00:02.984  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_plasma_ring_authored.blend"
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\prep_export_contract.py:45: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+Reloading external rigs...
+Reloading external metarigs...
+Info: Saved as "engine_plasma_ring_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
 
-=== finalize_part.mjs ===
+Blender quit
+00:04.594  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_plasma_ring_authored.blend"
+Reloading external rigs...
+Reloading external metarigs...
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+15:54:08 | INFO: Starting glTF 2.0 export
+15:54:08 | INFO: Extracting primitive: Cube
+15:54:08 | INFO: Primitives created: 1
+15:54:08 | INFO: Extracting primitive: Cube.001
+15:54:08 | INFO: Primitives created: 1
+15:54:08 | INFO: Extracting primitive: Cube.002
+15:54:08 | INFO: Primitives created: 1
+15:54:08 | INFO: Extracting primitive: engine_plasma_ring_Material_Mechanical_Merged
+15:54:08 | INFO: Primitives created: 1
+15:54:08 | INFO: Extracting primitive: HOOK_DRIVE_CORE.001
+15:54:08 | INFO: Primitives created: 1
+15:54:08 | INFO: Extracting primitive: HOOK_DRIVE_FAN.001
+15:54:08 | INFO: Primitives created: 1
+15:54:08 | INFO: Extracting primitive: HOOK_DRIVE_PLUME.001
+15:54:08 | INFO: Primitives created: 1
+15:54:08 | INFO: Extracting primitive: LOD0_ENGINE_PLASMA_RING_MAIN
+15:54:08 | INFO: Primitives created: 1
+15:54:08 | INFO: Extracting primitive: Plasma_Ring_Outer
+15:54:08 | INFO: Primitives created: 1
+15:54:08 | INFO: Finished glTF 2.0 export in 0.23870158195495605 s
+
+Info: Saved as "engine_plasma_ring_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
 {
   "partId": "engine_plasma_ring",
   "file": "engines/engine_plasma_ring.glb",
-  "tris": 9698,
-  "bytes": 486772,
-  "dims": [2.77, 2.08, 2.0772],
-  "images": 0,
-  "materials": "Material_Accent,Material_Mechanical,Material_Hull"
+  "tris": 3300,
+  "bytes": 179104,
+  "dims": [
+    2.77,
+    2.08,
+    2.0772
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Hull"
+}
+
+--- spaceface_export ---
+{
+  "part_id": "engine_plasma_ring",
+  "export_path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_plasma_ring\\_export_tmp.glb",
+  "bytes": 178464
 }

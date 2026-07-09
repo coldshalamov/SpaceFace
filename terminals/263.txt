@@ -1,0 +1,89 @@
+---
+pid: 28140
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "git add -N \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\tools\\art\\blender\\prep_export_contract.py\"
+$blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"
+$root = \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"
+$prep = \"$root\\tools\\art\\blender\\prep_export_contract.py\"
+$exportPy = \"$root\\tools\\art\\blender\\export_sprint_part.py\"
+foreach ($part in @('engine_vector','engine_resonator','engine_plasma_ring')) {
+  Write-Host \"=== PREP+EXPORT $part ===\"
+  $env:SF_ROOT = $root
+  $env:SF_PART_ID = $part
+  \"\" | Set-Content \"$root\\assets\\ships\\parts\\revamp-evidence\\$part\\finalize.log\" -Encoding utf8
+  & $blender --background --python $prep 2>&1 | Tee-Object -Append \"$root\\assets\\ships\\parts\\revamp-evidence\\$part\\finalize.log\" | Select-Object -Last 3
+  & $blender --background --python $exportPy 2>&1 | Tee-Object -Append \"$root\\assets\\ships\\parts\\revamp-evidence\\$part\\finalize.log\" | Select-Object -Last 5
+  $tmp = \"$root\\assets\\ships\\parts\\revamp-evidence\\$part\\_export_tmp.glb\"
+  node \"$root\\tools\\art\\finalize_part.mjs\" $tmp $part --method=blender_mcp 2>&1 | Tee-Object -Append \"$root\\assets\\ships\\parts\\revamp-evidence\\$part\\finalize.log\"
+}
+Write-Host \"EXPORTS COMPLETE\""
+started_at: 2026-07-08T17:26:04.796Z
+running_for_ms: 33995034 
+---
+=== PREP+EXPORT engine_vector ===
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+
+Info: Saved as "engine_vector_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+{
+  "partId": "engine_vector",
+  "file": "engines/engine_vector.glb",
+  "tris": 1368,
+  "bytes": 108308,
+  "dims": [
+    3.3168,
+    1.7184,
+    1.6
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull"
+}
+=== PREP+EXPORT engine_resonator ===
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+Warning: HOOK_DRIVE_PLUME: Could not calculate tangents. Please try to triangulate the mesh first.
+Info: Saved as "engine_resonator_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+{
+  "partId": "engine_resonator",
+  "file": "engines/engine_resonator.glb",
+  "tris": 15690,
+  "bytes": 792308,
+  "dims": [
+    3.5967,
+    2.5935,
+    2.5935
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Mechanical,Material_Hull"
+}
+=== PREP+EXPORT engine_plasma_ring ===
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+
+Info: Saved as "engine_plasma_ring_authored.blend"
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+{
+  "partId": "engine_plasma_ring",
+  "file": "engines/engine_plasma_ring.glb",
+  "tris": 9698,
+  "bytes": 488172,
+  "dims": [
+    2.77,
+    2.08,
+    2.0772
+  ],
+  "images": 1,
+  "materials": "Material_Accent,Material_Hull"
+}
+EXPORTS COMPLETE

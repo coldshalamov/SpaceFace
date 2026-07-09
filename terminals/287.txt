@@ -1,0 +1,7 @@
+---
+pid: 13244
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "Start-Sleep -Seconds 300"
+started_at: 2026-07-08T22:28:26.456Z
+running_for_ms: 190015   
+---

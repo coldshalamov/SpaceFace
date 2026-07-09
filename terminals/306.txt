@@ -1,0 +1,79 @@
+---
+pid: 15264
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$scratch = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\"
+$root = \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"
+Set-Location $root
+if (Test-Path \"assets\\ships\\release.__lock\") { Remove-Item \"assets\\ships\\release.__lock\" -Force -ErrorAction SilentlyContinue }
+\"=== BUILD RUN1 $(Get-Date -Format o) ===\" | Set-Content \"$scratch\\build-sg04-release-assets.log\"
+npm run build:sg04:release-assets 2>&1 | Tee-Object -Append \"$scratch\\build-sg04-release-assets.log\"
+$ec1 = $LASTEXITCODE
+\"EXIT_CODE_RUN1=$ec1\" | Add-Content \"$scratch\\build-sg04-release-assets.log\"
+Start-Sleep -Seconds 8
+if (Test-Path \"assets\\ships\\release.__lock\") { Remove-Item \"assets\\ships\\release.__lock\" -Force -ErrorAction SilentlyContinue }
+\"=== BUILD RUN2 $(Get-Date -Format o) ===\" | Add-Content \"$scratch\\build-sg04-release-assets.log\"
+npm run build:sg04:release-assets 2>&1 | Tee-Object -Append \"$scratch\\build-sg04-release-assets.log\"
+$ec2 = $LASTEXITCODE
+\"EXIT_CODE_RUN2=$ec2\" | Add-Content \"$scratch\\build-sg04-release-assets.log\""
+started_at: 2026-07-09T02:16:58.531Z
+running_for_ms: 2155059  
+---
+
+> spaceface@0.1.0 build:sg04:release-assets
+> node scripts/build-sg04-release-assets.mjs
+
+[sg04] acquired release build lock: assets/ships/release.__lock
+[sg04] 1/70 ship_kestrel_reference: build-start assets/ships/kestrel/kestrel_reference.glb -> assets/ships/release.__building/kestrel/kestrel_reference.glb
+prune: Removed types... Accessor (12)
+prune: Removed types... Accessor (4)
+[sg04] 1/70 ship_kestrel_reference: 148372 -> 36584 bytes
+[sg04] 2/70 hull_starter: build-start assets/ships/parts/hulls/hull_starter.glb -> assets/ships/release.__building/parts/hulls/hull_starter.glb
+prune: Removed types... Accessor (67)
+prune: Removed types... Accessor (30)
+[sg04] 2/70 hull_starter: 664636 -> 1607028 bytes
+[sg04] 3/70 hull_fighter: build-start assets/ships/parts/hulls/hull_fighter.glb -> assets/ships/release.__building/parts/hulls/hull_fighter.glb
+prune: Removed types... Accessor (38)
+prune: Removed types... Accessor (18)
+[sg04] 3/70 hull_fighter: 1708364 -> 5681184 bytes
+[sg04] 4/70 hull_miner: build-start assets/ships/parts/hulls/hull_miner.glb -> assets/ships/release.__building/parts/hulls/hull_miner.glb
+prune: Removed types... Accessor (38)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (17)
+[sg04] 4/70 hull_miner: 3352340 -> 6759792 bytes
+[sg04] 5/70 hull_freighter: build-start assets/ships/parts/hulls/hull_freighter.glb -> assets/ships/release.__building/parts/hulls/hull_freighter.glb
+prune: Removed types... Accessor (43)
+prune: Removed types... Accessor (18)
+[sg04] 5/70 hull_freighter: 1781788 -> 5833452 bytes
+[sg04] 6/70 hull_interceptor: build-start assets/ships/parts/hulls/hull_interceptor.glb -> assets/ships/release.__building/parts/hulls/hull_interceptor.glb
+prune: Removed types... Accessor (41)
+prune: Removed types... Accessor (18)
+[sg04] 6/70 hull_interceptor: 1429832 -> 5831288 bytes
+[sg04] 7/70 hull_corvette: build-start assets/ships/parts/hulls/hull_corvette.glb -> assets/ships/release.__building/parts/hulls/hull_corvette.glb
+prune: Removed types... Accessor (42)
+prune: Removed types... Accessor (18)
+[sg04] 7/70 hull_corvette: 1558760 -> 5426712 bytes
+[sg04] 8/70 hull_frigate: build-start assets/ships/parts/hulls/hull_frigate.glb -> assets/ships/release.__building/parts/hulls/hull_frigate.glb
+prune: Removed types... Accessor (39)
+prune: Removed types... Accessor (18)
+[sg04] 8/70 hull_frigate: 841536 -> 1567180 bytes
+[sg04] 9/70 hull_capital: build-start assets/ships/parts/hulls/hull_capital.glb -> assets/ships/release.__building/parts/hulls/hull_capital.glb
+prune: Removed types... Accessor (43)
+prune: Removed types... Accessor (20)
+[sg04] 9/70 hull_capital: 930292 -> 1498448 bytes
+[sg04] 10/70 hull_multirole: build-start assets/ships/parts/hulls/hull_multirole.glb -> assets/ships/release.__building/parts/hulls/hull_multirole.glb
+prune: Removed types... Accessor (39)
+prune: Removed types... Accessor (18)
+[sg04] 10/70 hull_multirole: 774824 -> 1657360 bytes
+[sg04] 11/70 hull_gunship: build-start assets/ships/parts/hulls/hull_gunship.glb -> assets/ships/release.__building/parts/hulls/hull_gunship.glb
+prune: Removed types... Accessor (42)
+prune: Removed types... Accessor (18)
+[sg04] 11/70 hull_gunship: 914176 -> 1812656 bytes
+[sg04] 12/70 cockpit_dome: build-start assets/ships/parts/cockpits/cockpit_dome.glb -> assets/ships/release.__building/parts/cockpits/cockpit_dome.glb
+prune: Removed types... Accessor (57)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (22)
+[sg04] 12/70 cockpit_dome: 288048 -> 145136 bytes
+[sg04] 13/70 cockpit_slab: build-start assets/ships/parts/cockpits/cockpit_slab.glb -> assets/ships/release.__building/parts/cockpits/cockpit_slab.glb

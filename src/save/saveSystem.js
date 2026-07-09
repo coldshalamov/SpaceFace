@@ -65,7 +65,7 @@ export const save = {
     const bus = this.bus;
     this._loadProfileSettings();
     // UI / input route F5/F9 and menu buttons through these (§4.4).
-    bus.on('game:save', (p) => this.save((p && p.slot) || 'quick'));
+    bus.on('game:save', (p) => this.save((p && p.slot) || 'quick', { reason: 'manual' }));
     bus.on('game:load', (p) => this.load((p && p.slot) || 'latest'));
     bus.on('settings:changed', () => this._writeProfileSettings());
 
@@ -285,49 +285,112 @@ export const save = {
   // ── save (write a slot) ─────────────────────────────────────────────────────────────────────
 
   /** Serialize the current state and persist it to localStorage under `slot`. */
-  save(slot) {
+  save(slot, options = {}) {
     slot = slot || 'quick';
+    const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
+    const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
+    const started = nowMs();
     if (!this._hasPlayerEntity()) {
-      this.bus.emit('save:error', { slot, reason: 'no_player' });
+      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
+      this._recordSaveTiming(timing);
+      this.bus.emit('save:error', timing);
       return false;
     }
-    this.bus.emit('save:started', { slot });
+    this.bus.emit('save:started', { slot, reason, autosave });
     let envelope;
+    let serializeMs = 0;
     try {
+      const t = nowMs();
       envelope = this.serialize(slot);
+      serializeMs = nowMs() - t;
     } catch (err) {
       console.error('[save] serialize failed', err);
-      this.bus.emit('save:error', { slot, reason: 'serialize_failed' });
+      const timing = this._saveTiming({ slot, reason, autosave, started, serializeMs, ok: false, failure: 'serialize_failed' });
+      this._recordSaveTiming(timing);
+      this.bus.emit('save:error', timing);
       return false;
     }
-    const ok = this._writeSlot(slot, envelope);
-    if (ok) {
+    const t = nowMs();
+    const write = this._writeSlot(slot, envelope);
+    const writeMs = nowMs() - t;
+    const timing = this._saveTiming({
+      slot,
+      reason,
+      autosave,
+      started,
+      serializeMs,
+      writeMs,
+      stringifyMs: write.stringifyMs,
+      storageMs: write.storageMs,
+      indexMs: write.indexMs,
+      bytes: write.bytes,
+      ok: !!write.ok,
+      failure: write.reason || null,
+    });
+    this._recordSaveTiming(timing);
+    if (write.ok) {
       this.state.save.currentSlot = slot;
       this.state.meta.lastSavedAt = envelope.savedAt;
-      this.bus.emit('save:completed', { slot });
+      this.bus.emit('save:completed', timing);
+    } else {
+      this.bus.emit('save:error', timing);
     }
-    return ok;
+    return !!write.ok;
   },
 
   _writeSlot(slot, envelope) {
     if (typeof localStorage === 'undefined') {
-      this.bus.emit('save:error', { slot, reason: 'no_storage' });
-      return false;
+      return { ok: false, reason: 'no_storage', bytes: 0, stringifyMs: 0, storageMs: 0, indexMs: 0 };
     }
     let json;
-    try { json = JSON.stringify(envelope); }
-    catch (err) { this.bus.emit('save:error', { slot, reason: 'stringify_failed' }); return false; }
+    let stringifyMs = 0;
+    let storageMs = 0;
+    let indexMs = 0;
     try {
+      const t = nowMs();
+      json = JSON.stringify(envelope);
+      stringifyMs = nowMs() - t;
+    }
+    catch (err) { return { ok: false, reason: 'stringify_failed', bytes: 0, stringifyMs, storageMs, indexMs }; }
+    try {
+      const t = nowMs();
       localStorage.setItem(LS_PREFIX + slot, json);
+      storageMs = nowMs() - t;
     } catch (err) {
       // QuotaExceeded or storage disabled — suggest export-to-file fallback.
       const reason = (err && err.name === 'QuotaExceededError') ? 'quota' : 'write_failed';
       console.error('[save] write failed', err);
-      this.bus.emit('save:error', { slot, reason });
-      return false;
+      return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
     }
+    const t = nowMs();
     this._updateIndex(slot, envelope);
-    return true;
+    indexMs = nowMs() - t;
+    return { ok: true, bytes: json.length, stringifyMs, storageMs, indexMs };
+  },
+
+  _saveTiming({ slot, reason, autosave, started, serializeMs = 0, writeMs = 0, stringifyMs = 0, storageMs = 0, indexMs = 0, bytes = 0, ok = true, failure = null }) {
+    const totalMs = roundSaveMs(nowMs() - started);
+    return {
+      slot,
+      reason: ok ? reason : (failure || reason),
+      trigger: reason,
+      autosave: !!autosave,
+      ok: !!ok,
+      failure,
+      durationMs: totalMs,
+      totalMs,
+      serializeMs: roundSaveMs(serializeMs),
+      writeMs: roundSaveMs(writeMs),
+      stringifyMs: roundSaveMs(stringifyMs),
+      storageMs: roundSaveMs(storageMs),
+      indexMs: roundSaveMs(indexMs),
+      bytes: Math.max(0, bytes | 0),
+    };
+  },
+
+  _recordSaveTiming(timing) {
+    const perf = this.state && this.state.perfRuntime;
+    if (perf && typeof perf.recordSave === 'function') perf.recordSave(timing);
   },
 
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
@@ -432,7 +495,7 @@ export const save = {
     this._lastAutosaveAt = now;
     this._lastAutosavePlaytime = state.meta.playtimeS;
     state.save.lastAutosaveAt = now;
-    return this.save(AUTOSAVE_SLOT);
+    return this.save(AUTOSAVE_SLOT, { reason: _reason || 'autosave', autosave: true });
   },
 
   // ── load (read a slot) ──────────────────────────────────────────────────────────────────────
@@ -951,6 +1014,10 @@ export const save = {
 
 function nowMs() {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+}
+
+function roundSaveMs(value) {
+  return Number.isFinite(value) ? Math.round(value * 1000) / 1000 : 0;
 }
 
 // Run the ordered migration chain from `fromVer` up to CURRENT_VERSION, mutating `data` in place.

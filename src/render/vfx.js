@@ -2633,7 +2633,16 @@ export const vfx = {
 
   _energyMaterialsEnabled() {
     const video = this.state.settings && this.state.settings.video;
-    return !!(video && video.energyMaterials && video.bloom !== false);
+    return !!(video && video.energyMaterials && this._bloomRadianceScale() > 0.0001);
+  },
+
+  _bloomRadianceScale() {
+    const video = this.state.settings && this.state.settings.video;
+    if (!video || video.bloom === false) return 0;
+    let strength = typeof video.bloomStrength === 'number' ? video.bloomStrength : 0.35;
+    if (strength > 1) strength *= 0.5;
+    strength = Math.max(0, Math.min(1, strength));
+    return Math.max(0, Math.min(1, strength / 0.35));
   },
 
   _energyPlumeRelevant() {
@@ -2780,6 +2789,8 @@ export const vfx = {
     // Slightly longer/wider gaseous volume + stronger intensity so the volumetric plume reads as the
     // primary "engine flame" that the point+ sprite particles augment rather than dominate.
     const prof = this._engineProfile(player);
+    const radianceScale = this._bloomRadianceScale();
+    const opacityScale = Math.sqrt(radianceScale);
     const widthMul = prof.plumeWidthMul || 1;
     const lengthMul = prof.plumeLengthMul || 1;
     const width = (0.28 + drive * 0.36 + boostBlend * 0.26) * widthMul;
@@ -2800,13 +2811,13 @@ export const vfx = {
       const haloIntensity = prof.haloIntensity || 2.6;
       if (core) updateEnergyMaterial(core.material, {
         time: this._t, colorA: coreColor, colorB: haloColor,
-        intensity: (coreIntensity * 0.68) + drive * 3.6 + boostBlend * 2.8,
-        opacity: (0.22 + drive * 0.30 + boostBlend * 0.16) * fade,
+        intensity: ((coreIntensity * 0.68) + drive * 3.6 + boostBlend * 2.8) * radianceScale,
+        opacity: (0.22 + drive * 0.30 + boostBlend * 0.16) * fade * opacityScale,
       });
       if (halo) updateEnergyMaterial(halo.material, {
         time: this._t, colorA: haloColor, colorB: coreColor,
-        intensity: (haloIntensity * 0.46) + drive * 1.3 + boostBlend * 1.4,
-        opacity: (0.05 + drive * 0.10 + boostBlend * 0.07) * fade,
+        intensity: ((haloIntensity * 0.46) + drive * 1.3 + boostBlend * 1.4) * radianceScale,
+        opacity: (0.05 + drive * 0.10 + boostBlend * 0.07) * fade * opacityScale,
       });
     }
     this._hideEnergyPlumes(count);
@@ -2912,8 +2923,10 @@ export const vfx = {
     const core = ribbon.userData.energyCore;
     const halo = ribbon.userData.energyHalo;
     const intensity = 2.2 + tension * 2.4 + (overload ? 1.8 : 0);
-    if (core) updateEnergyMaterial(core.material, { time: this._t, intensity, opacity: 0.42, pulse: 1.0 + tension * 0.9 });
-    if (halo) updateEnergyMaterial(halo.material, { time: this._t, intensity: intensity * 0.35, opacity: 0.11, pulse: 1.0 + tension * 0.6 });
+    const radianceScale = this._bloomRadianceScale();
+    const opacityScale = Math.sqrt(radianceScale);
+    if (core) updateEnergyMaterial(core.material, { time: this._t, intensity: intensity * radianceScale, opacity: 0.42 * opacityScale, pulse: 1.0 + tension * 0.9 });
+    if (halo) updateEnergyMaterial(halo.material, { time: this._t, intensity: intensity * 0.35 * radianceScale, opacity: 0.11 * opacityScale, pulse: 1.0 + tension * 0.6 });
   },
 
   _disposeEnergy() {

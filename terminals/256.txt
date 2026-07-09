@@ -3,5 +3,2499 @@ pid: 30764
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "npm run check:assets:live 2>&1"
 started_at: 2026-07-08T16:38:37.660Z
-running_for_ms: 56387    
+running_for_ms: 36854998 
 ---
+
+> spaceface@0.1.0 check:assets:live
+> node scripts/probe-authored-assets-live.mjs
+
+file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/probe-authored-assets-live.mjs:172
+  throw new Error(`timeout waiting for authored GLB ships before playable flight; last=${JSON.stringify(last, null, 2)}`);
+        ^
+
+Error: timeout waiting for authored GLB ships before playable flight; last={
+  "mode": "flight",
+  "tick": 1160,
+  "playerId": 1,
+  "shipCount": 10,
+  "authoredShipCount": 10,
+  "instancePoolCount": 0,
+  "instancePoolLiveCount": 0,
+  "staticBatchCount": 32,
+  "loaderDiagnostics": {
+    "available": true,
+    "runtime": {
+      "schema": "spaceface.authoredAssetRuntimeInfo.v1",
+      "source": "three/addons/loaders/GLTFLoader.js",
+      "decoders": {
+        "gltf": true,
+        "ktx2": true,
+        "draco": true,
+        "meshopt": true
+      },
+      "paths": {
+        "schema": "spaceface.sg04AssetRuntimeDecoders.v1",
+        "gltfLoader": "vendor/addons/loaders/GLTFLoader.js",
+        "ktx2Loader": "vendor/addons/loaders/KTX2Loader.js",
+        "dracoLoader": "vendor/addons/loaders/DRACOLoader.js",
+        "meshoptDecoder": "vendor/addons/libs/meshopt_decoder.module.js",
+        "ktx2TranscoderPath": "vendor/addons/libs/basis/",
+        "dracoDecoderPath": "vendor/addons/libs/draco/gltf/",
+        "compressedTextureExtension": "KHR_texture_basisu",
+        "meshCompressionExtensions": [
+          "KHR_draco_mesh_compression",
+          "EXT_meshopt_compression",
+          "KHR_meshopt_compression"
+        ]
+      }
+    },
+    "release": true,
+    "partRoot": "assets/ships/release/parts/",
+    "declaredCount": 63,
+    "declaredPartCount": 63,
+    "loadedCount": 52,
+    "loadedSlots": {
+      "hull": 10,
+      "cockpit": 1,
+      "engine": 5,
+      "fin": 6,
+      "weapon": 6,
+      "greeble": 7,
+      "place": 17
+    },
+    "wholeShipDeclaredCount": 0,
+    "wholeShipLoadedCount": 0,
+    "wholeShipFailureCount": 0,
+    "failureCount": 11,
+    "failures": [
+      {
+        "slot": "cockpit",
+        "url": "assets/ships/release/parts/cockpits/cockpit_dome.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/cockpits/cockpit_dome.glb violates the authored-part contract:\n- MOUNT_* assembly markers are valid only in hull parts"
+      },
+      {
+        "slot": "cockpit",
+        "url": "assets/ships/release/parts/cockpits/cockpit_slab.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/cockpits/cockpit_slab.glb violates the authored-part contract:\n- MOUNT_* assembly markers are valid only in hull parts"
+      },
+      {
+        "slot": "engine",
+        "url": "assets/ships/release/parts/engines/engine_ion_small.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/engines/engine_ion_small.glb violates the authored-part contract:\n- MOUNT_* assembly markers are valid only in hull parts"
+      },
+      {
+        "slot": "gear",
+        "url": "assets/ships/release/parts/gear/skid_trio.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/gear/skid_trio.glb violates the authored-part contract:\n- spacefaceAsset.slot must equal requested slot \"gear\"\n- mesh \"Skid_Replacement_Foot\" is missing baseColor map\n- mesh \"Skid_Replacement_Foot\" is missing tangent-space normal map\n- mesh \"Skid_Replacement_Foot\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- mesh \"skid_trio_Material_Mechanical_Merged\" is missing baseColor map\n- mesh \"skid_trio_Material_Mechanical_Merged\" is missing tangent-space normal map\n- mesh \"skid_trio_Material_Mechanical_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- part mesh primitives expose no LOD0_* node or spaceface.lod=\"lod0\" tag"
+      },
+      {
+        "slot": "gear",
+        "url": "assets/ships/release/parts/gear/skid_quad.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/gear/skid_quad.glb violates the authored-part contract:\n- spacefaceAsset.slot must equal requested slot \"gear\"\n- mesh \"skid_quad_Material_Accent_Merged\" is missing baseColor map\n- mesh \"skid_quad_Material_Accent_Merged\" is missing tangent-space normal map\n- mesh \"skid_quad_Material_Accent_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- mesh \"skid_quad_Material_Mechanical_Merged\" is missing baseColor map\n- mesh \"skid_quad_Material_Mechanical_Merged\" is missing tangent-space normal map\n- mesh \"skid_quad_Material_Mechanical_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- part mesh primitives expose no LOD0_* node or spaceface.lod=\"lod0\" tag"
+      },
+      {
+        "slot": "pod",
+        "url": "assets/ships/release/parts/pods/pod_utility.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/pods/pod_utility.glb violates the authored-part contract:\n- spacefaceAsset.slot must equal requested slot \"pod\"\n- mesh \"HOOK_Emissive\" uses an unknown HOOK_* name\n- mesh \"pod_utility_Material_Accent_Merged\" is missing baseColor map\n- mesh \"pod_utility_Material_Accent_Merged\" is missing tangent-space normal map\n- mesh \"pod_utility_Material_Accent_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- mesh \"pod_utility_Material_Mechanical_Merged\" is missing baseColor map\n- mesh \"pod_utility_Material_Mechanical_Merged\" is missing tangent-space normal map\n- mesh \"pod_utility_Material_Mechanical_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- mesh \"Utility_Band\" is missing baseColor map\n- mesh \"Utility_Band\" is missing tangent-space normal map\n- mesh \"Utility_Band\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- part mesh primitives expose no LOD0_* node or spaceface.lod=\"lod0\" tag"
+      },
+      {
+        "slot": "pod",
+        "url": "assets/ships/release/parts/pods/pod_cargo_container.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/pods/pod_cargo_container.glb violates the authored-part contract:\n- spacefaceAsset.slot must equal requested slot \"pod\"\n- mesh \"Cargo_ID_Plate\" is missing baseColor map\n- mesh \"Cargo_ID_Plate\" is missing tangent-space normal map\n- mesh \"Cargo_ID_Plate\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- mesh \"pod_cargo_container_Material_Mechanical_Merged\" is missing baseColor map\n- mesh \"pod_cargo_container_Material_Mechanical_Merged\" is missing tangent-space normal map\n- mesh \"pod_cargo_container_Material_Mechanical_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- part mesh primitives expose no LOD0_* node or spaceface.lod=\"lod0\" tag"
+      },
+      {
+        "slot": "pod",
+        "url": "assets/ships/release/parts/pods/pod_repair_patch.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/pods/pod_repair_patch.glb violates the authored-part contract:\n- spacefaceAsset.slot must equal requested slot \"pod\"\n- mesh \"pod_repair_patch_Material_Accent_Merged\" is missing baseColor map\n- mesh \"pod_repair_patch_Material_Accent_Merged\" is missing tangent-space normal map\n- mesh \"pod_repair_patch_Material_Accent_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- mesh \"pod_repair_patch_Material_Mechanical_Merged\" is missing baseColor map\n- mesh \"pod_repair_patch_Material_Mechanical_Merged\" is missing tangent-space normal map\n- mesh \"pod_repair_patch_Material_Mechanical_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- part mesh primitives expose no LOD0_* node or spaceface.lod=\"lod0\" tag"
+      },
+      {
+        "slot": "place",
+        "url": "assets/ships/release/parts/places/place_asteroid_seamed.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/places/place_asteroid_seamed.glb violates the authored-part contract:\n- spacefaceAsset.slot must equal requested slot \"place\"\n- mesh \"HOOK_Seam\" uses an unknown HOOK_* name\n- mesh \"place_asteroid_seamed_Material_Accent_Merged\" is missing baseColor map\n- mesh \"place_asteroid_seamed_Material_Accent_Merged\" is missing tangent-space normal map\n- mesh \"place_asteroid_seamed_Material_Accent_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- mesh \"place_asteroid_seamed_Material_Hull_Merged\" has a normal map but no authored tangent attribute\n- mesh \"place_asteroid_seamed_Material_Hull_Merged\" normal map is DirectX green-down; export OpenGL green-up\n- part mesh primitives expose no LOD0_* node or spaceface.lod=\"lod0\" tag"
+      },
+      {
+        "slot": "place",
+        "url": "assets/ships/release/parts/places/place_debris_chunk.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/places/place_debris_chunk.glb violates the authored-part contract:\n- spacefaceAsset.slot must equal requested slot \"place\"\n- mesh \"place_debris_chunk_Material_Mechanical_Merged\" is missing baseColor map\n- mesh \"place_debris_chunk_Material_Mechanical_Merged\" is missing tangent-space normal map\n- mesh \"place_debris_chunk_Material_Mechanical_Merged\" is missing packed ORM assignments (aoMap + roughnessMap + metalnessMap)\n- part mesh primitives expose no LOD0_* node or spaceface.lod=\"lod0\" tag"
+      },
+      {
+        "slot": "place",
+        "url": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+        "name": "AssetContractError",
+        "message": "[assetLoader] assets/ships/release/parts/places/place_station_trade_hub.glb violates the authored-part contract:\n- MOUNT_* assembly markers are valid only in hull parts"
+      }
+    ]
+  },
+  "nonReleasePartUrls": [],
+  "player": {
+    "id": 1,
+    "defId": "ship_kestrel",
+    "scenarioActorId": "player_kestrel",
+    "team": 0,
+    "factionId": "faction_free",
+    "state": "authored",
+    "mode": "release",
+    "compositionId": "GLTFKIT_ship_kestrel_deb0ac72",
+    "childNames": [
+      "SF_K0_Kestrel_Borrowed_Time",
+      "GLTFKit_ship_kestrel"
+    ],
+    "slots": {
+      "hull": [
+        "assets/ships/release/parts/hulls/hull_starter.glb"
+      ],
+      "cockpit": [
+        "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+      ],
+      "engine": [
+        "assets/ships/release/parts/engines/engine_vector.glb"
+      ],
+      "fin": [
+        "assets/ships/release/parts/fins/fin_wedge.glb"
+      ],
+      "weapon": [
+        "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+      ],
+      "greeble": [
+        "assets/ships/release/parts/greebles/greeble_hatches.glb",
+        "assets/ships/release/parts/greebles/greeble_antennas.glb"
+      ]
+    },
+    "graphSlots": {
+      "unknown": [
+        "hero/kestrel_borrowed_time",
+        "readability/pressure_shell"
+      ],
+      "cockpit": [
+        "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+      ],
+      "engine": [
+        "assets/ships/release/parts/engines/engine_vector.glb"
+      ],
+      "hull": [
+        "assets/ships/release/parts/hulls/hull_starter.glb"
+      ],
+      "fin": [
+        "assets/ships/release/parts/fins/fin_wedge.glb"
+      ],
+      "weapon": [
+        "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+      ],
+      "greeble": [
+        "assets/ships/release/parts/greebles/greeble_hatches.glb",
+        "assets/ships/release/parts/greebles/greeble_antennas.glb"
+      ]
+    },
+    "requiredSlotMode": "modular",
+    "requiredPlayerSlots": [
+      "hull",
+      "cockpit",
+      "engine",
+      "weapon",
+      "pod",
+      "gear",
+      "greeble"
+    ],
+    "wholeShipBodyUrls": [],
+    "missingRequiredSlots": [
+      "pod",
+      "gear"
+    ],
+    "slotUrlsMissingFromGraph": [],
+    "fallbackParts": [
+      "pod",
+      "gear"
+    ],
+    "partObjectCount": 29,
+    "meshCount": 32,
+    "instanceProxyCount": 0,
+    "staticBatchCount": 2,
+    "authoredBodyProof": {
+      "ok": true,
+      "failures": [],
+      "thresholds": {
+        "minSurfaceCount": 1,
+        "minRadiusRatio": 0.2,
+        "minDiagonalRatio": 0.5,
+        "minBodyToReadabilityDiagonalRatio": 0.35
+      },
+      "entityRadius": 14,
+      "bodySurfaceCount": 20,
+      "visibleBodySurfaceCount": 19,
+      "bodyTriangleCount": 15908,
+      "bodyBounds": {
+        "size": [
+          27.72,
+          7.094,
+          13.6
+        ],
+        "diagonal": 31.681,
+        "radius": 15.84,
+        "maxAxis": 27.72
+      },
+      "readabilitySurfaceCount": 1,
+      "visibleReadabilitySurfaceCount": 0,
+      "readabilityBounds": {
+        "size": [
+          24.797,
+          7.509,
+          11.491
+        ],
+        "diagonal": 28.343,
+        "radius": 14.171,
+        "maxAxis": 24.797
+      },
+      "bodyRadiusRatio": 1.131,
+      "bodyDiagonalRatio": 2.263,
+      "bodyToReadabilityDiagonalRatio": 1.118
+    }
+  },
+  "authoredShips": [
+    {
+      "id": 1,
+      "defId": "ship_kestrel",
+      "scenarioActorId": "player_kestrel",
+      "team": 0,
+      "factionId": "faction_free",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_kestrel_deb0ac72",
+      "childNames": [
+        "SF_K0_Kestrel_Borrowed_Time",
+        "GLTFKit_ship_kestrel"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_starter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "hero/kestrel_borrowed_time",
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_starter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [
+        "hull",
+        "cockpit",
+        "engine",
+        "weapon",
+        "pod",
+        "gear",
+        "greeble"
+      ],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [
+        "pod",
+        "gear"
+      ],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 29,
+      "meshCount": 32,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 14,
+        "bodySurfaceCount": 20,
+        "visibleBodySurfaceCount": 19,
+        "bodyTriangleCount": 15908,
+        "bodyBounds": {
+          "size": [
+            27.72,
+            7.094,
+            13.6
+          ],
+          "diagonal": 31.681,
+          "radius": 15.84,
+          "maxAxis": 27.72
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            24.797,
+            7.509,
+            11.491
+          ],
+          "diagonal": 28.343,
+          "radius": 14.171,
+          "maxAxis": 24.797
+        },
+        "bodyRadiusRatio": 1.131,
+        "bodyDiagonalRatio": 2.263,
+        "bodyToReadabilityDiagonalRatio": 1.118
+      }
+    },
+    {
+      "id": 33,
+      "defId": "ship_hornet",
+      "scenarioActorId": null,
+      "team": 1,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_hornet_9589007b",
+      "childNames": [
+        "GLTFKit_ship_hornet"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_interceptor.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb",
+          "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_nav_lights.glb",
+          "assets/ships/release/parts/greebles/greeble_rcs.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_interceptor.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb",
+          "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_rcs.glb",
+          "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 15704,
+        "bodyBounds": {
+          "size": [
+            29.442,
+            8.902,
+            18.143
+          ],
+          "diagonal": 35.71,
+          "radius": 17.855,
+          "maxAxis": 29.442
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            31.882,
+            9.654,
+            14.774
+          ],
+          "diagonal": 36.441,
+          "radius": 18.22,
+          "maxAxis": 31.882
+        },
+        "bodyRadiusRatio": 0.992,
+        "bodyDiagonalRatio": 1.984,
+        "bodyToReadabilityDiagonalRatio": 0.98
+      }
+    },
+    {
+      "id": 34,
+      "defId": "ship_kestrel",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_kestrel_ca45bd0a",
+      "childNames": [
+        "GLTFKit_ship_kestrel"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_starter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_ion_twin.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_ion_twin.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_starter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 16,
+      "meshCount": 19,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 14,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 17878,
+        "bodyBounds": {
+          "size": [
+            24.148,
+            6.903,
+            17.268
+          ],
+          "diagonal": 30.479,
+          "radius": 15.24,
+          "maxAxis": 24.148
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            27.241,
+            7.818,
+            19.056
+          ],
+          "diagonal": 34.151,
+          "radius": 17.076,
+          "maxAxis": 27.241
+        },
+        "bodyRadiusRatio": 1.089,
+        "bodyDiagonalRatio": 2.177,
+        "bodyToReadabilityDiagonalRatio": 0.892
+      }
+    },
+    {
+      "id": 35,
+      "defId": "ship_mule",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_mule_d4ccc804",
+      "childNames": [
+        "GLTFKit_ship_mule"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 56940,
+        "bodyBounds": {
+          "size": [
+            24.83,
+            9.493,
+            27.95
+          ],
+          "diagonal": 38.572,
+          "radius": 19.286,
+          "maxAxis": 27.95
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            28.26,
+            10.765,
+            35.164
+          ],
+          "diagonal": 46.379,
+          "radius": 23.19,
+          "maxAxis": 35.164
+        },
+        "bodyRadiusRatio": 1.071,
+        "bodyDiagonalRatio": 2.143,
+        "bodyToReadabilityDiagonalRatio": 0.832
+      }
+    },
+    {
+      "id": 36,
+      "defId": "ship_mule",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_mule_91c4a591",
+      "childNames": [
+        "GLTFKit_ship_mule"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 54848,
+        "bodyBounds": {
+          "size": [
+            27.449,
+            8.569,
+            24.862
+          ],
+          "diagonal": 38.013,
+          "radius": 19.007,
+          "maxAxis": 27.449
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            34.764,
+            9.667,
+            29.854
+          ],
+          "diagonal": 46.833,
+          "radius": 23.416,
+          "maxAxis": 34.764
+        },
+        "bodyRadiusRatio": 1.056,
+        "bodyDiagonalRatio": 2.112,
+        "bodyToReadabilityDiagonalRatio": 0.812
+      }
+    },
+    {
+      "id": 37,
+      "defId": "ship_drifter",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_drifter_8da7cdb7",
+      "childNames": [
+        "GLTFKit_ship_drifter"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_multirole.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_resonator.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_resonator.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_multirole.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 38632,
+        "bodyBounds": {
+          "size": [
+            30.644,
+            12.605,
+            18.389
+          ],
+          "diagonal": 37.896,
+          "radius": 18.948,
+          "maxAxis": 30.644
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            34.869,
+            11.894,
+            21.634
+          ],
+          "diagonal": 42.724,
+          "radius": 21.362,
+          "maxAxis": 34.869
+        },
+        "bodyRadiusRatio": 1.053,
+        "bodyDiagonalRatio": 2.105,
+        "bodyToReadabilityDiagonalRatio": 0.887
+      }
+    },
+    {
+      "id": 38,
+      "defId": "ship_drifter",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_drifter_169739c8",
+      "childNames": [
+        "GLTFKit_ship_drifter"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_multirole.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_resonator.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_delta.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_resonator.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_multirole.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_delta.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 38760,
+        "bodyBounds": {
+          "size": [
+            29.583,
+            11.447,
+            28.316
+          ],
+          "diagonal": 42.52,
+          "radius": 21.26,
+          "maxAxis": 29.583
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            34.058,
+            10.619,
+            32.67
+          ],
+          "diagonal": 48.374,
+          "radius": 24.187,
+          "maxAxis": 34.058
+        },
+        "bodyRadiusRatio": 1.181,
+        "bodyDiagonalRatio": 2.362,
+        "bodyToReadabilityDiagonalRatio": 0.879
+      }
+    },
+    {
+      "id": 41,
+      "defId": "ship_wasp",
+      "scenarioActorId": "scavenger_harasser",
+      "team": 0,
+      "factionId": "faction_free",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_wasp_b87c5d69",
+      "childNames": [
+        "GLTFKit_ship_wasp"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_fighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_crystalline.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_nav_lights.glb",
+          "assets/ships/release/parts/greebles/greeble_rcs.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_fighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_crystalline.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_rcs.glb",
+          "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 14,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 14168,
+        "bodyBounds": {
+          "size": [
+            22.231,
+            6.342,
+            15.972
+          ],
+          "diagonal": 28.099,
+          "radius": 14.05,
+          "maxAxis": 22.231
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            24.797,
+            7.509,
+            11.491
+          ],
+          "diagonal": 28.343,
+          "radius": 14.171,
+          "maxAxis": 24.797
+        },
+        "bodyRadiusRatio": 1.004,
+        "bodyDiagonalRatio": 2.007,
+        "bodyToReadabilityDiagonalRatio": 0.991
+      }
+    },
+    {
+      "id": 42,
+      "defId": "ship_mule",
+      "scenarioActorId": "scavenger_thief",
+      "team": 0,
+      "factionId": "faction_free",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_mule_ff42a18",
+      "childNames": [
+        "GLTFKit_ship_mule"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 56940,
+        "bodyBounds": {
+          "size": [
+            23.393,
+            8.556,
+            15.416
+          ],
+          "diagonal": 29.293,
+          "radius": 14.647,
+          "maxAxis": 23.393
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            31.882,
+            9.654,
+            14.774
+          ],
+          "diagonal": 36.441,
+          "radius": 18.22,
+          "maxAxis": 31.882
+        },
+        "bodyRadiusRatio": 0.814,
+        "bodyDiagonalRatio": 1.627,
+        "bodyToReadabilityDiagonalRatio": 0.804
+      }
+    },
+    {
+      "id": 43,
+      "defId": "ship_mule",
+      "scenarioActorId": "official_recovery_tug",
+      "team": 0,
+      "factionId": "faction_free",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_mule_4dda7251",
+      "childNames": [
+        "GLTFKit_ship_mule"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 54848,
+        "bodyBounds": {
+          "size": [
+            26.904,
+            8.556,
+            21.526
+          ],
+          "diagonal": 35.502,
+          "radius": 17.751,
+          "maxAxis": 26.904
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            35.015,
+            9.654,
+            24.811
+          ],
+          "diagonal": 43.986,
+          "radius": 21.993,
+          "maxAxis": 35.015
+        },
+        "bodyRadiusRatio": 0.986,
+        "bodyDiagonalRatio": 1.972,
+        "bodyToReadabilityDiagonalRatio": 0.807
+      }
+    }
+  ],
+  "ships": [
+    {
+      "id": 1,
+      "defId": "ship_kestrel",
+      "scenarioActorId": "player_kestrel",
+      "team": 0,
+      "factionId": "faction_free",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_kestrel_deb0ac72",
+      "childNames": [
+        "SF_K0_Kestrel_Borrowed_Time",
+        "GLTFKit_ship_kestrel"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_starter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "hero/kestrel_borrowed_time",
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_starter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [
+        "hull",
+        "cockpit",
+        "engine",
+        "weapon",
+        "pod",
+        "gear",
+        "greeble"
+      ],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [
+        "pod",
+        "gear"
+      ],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 29,
+      "meshCount": 32,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 14,
+        "bodySurfaceCount": 20,
+        "visibleBodySurfaceCount": 19,
+        "bodyTriangleCount": 15908,
+        "bodyBounds": {
+          "size": [
+            27.72,
+            7.094,
+            13.6
+          ],
+          "diagonal": 31.681,
+          "radius": 15.84,
+          "maxAxis": 27.72
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            24.797,
+            7.509,
+            11.491
+          ],
+          "diagonal": 28.343,
+          "radius": 14.171,
+          "maxAxis": 24.797
+        },
+        "bodyRadiusRatio": 1.131,
+        "bodyDiagonalRatio": 2.263,
+        "bodyToReadabilityDiagonalRatio": 1.118
+      }
+    },
+    {
+      "id": 33,
+      "defId": "ship_hornet",
+      "scenarioActorId": null,
+      "team": 1,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_hornet_9589007b",
+      "childNames": [
+        "GLTFKit_ship_hornet"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_interceptor.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb",
+          "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_nav_lights.glb",
+          "assets/ships/release/parts/greebles/greeble_rcs.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_interceptor.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb",
+          "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_rcs.glb",
+          "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 15704,
+        "bodyBounds": {
+          "size": [
+            29.442,
+            8.902,
+            18.143
+          ],
+          "diagonal": 35.71,
+          "radius": 17.855,
+          "maxAxis": 29.442
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            31.882,
+            9.654,
+            14.774
+          ],
+          "diagonal": 36.441,
+          "radius": 18.22,
+          "maxAxis": 31.882
+        },
+        "bodyRadiusRatio": 0.992,
+        "bodyDiagonalRatio": 1.984,
+        "bodyToReadabilityDiagonalRatio": 0.98
+      }
+    },
+    {
+      "id": 34,
+      "defId": "ship_kestrel",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_kestrel_ca45bd0a",
+      "childNames": [
+        "GLTFKit_ship_kestrel"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_starter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_ion_twin.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_ion_twin.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_starter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 16,
+      "meshCount": 19,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 14,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 17878,
+        "bodyBounds": {
+          "size": [
+            24.148,
+            6.903,
+            17.268
+          ],
+          "diagonal": 30.479,
+          "radius": 15.24,
+          "maxAxis": 24.148
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            27.241,
+            7.818,
+            19.056
+          ],
+          "diagonal": 34.151,
+          "radius": 17.076,
+          "maxAxis": 27.241
+        },
+        "bodyRadiusRatio": 1.089,
+        "bodyDiagonalRatio": 2.177,
+        "bodyToReadabilityDiagonalRatio": 0.892
+      }
+    },
+    {
+      "id": 35,
+      "defId": "ship_mule",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_mule_d4ccc804",
+      "childNames": [
+        "GLTFKit_ship_mule"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 56940,
+        "bodyBounds": {
+          "size": [
+            24.83,
+            9.493,
+            27.95
+          ],
+          "diagonal": 38.572,
+          "radius": 19.286,
+          "maxAxis": 27.95
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            28.26,
+            10.765,
+            35.164
+          ],
+          "diagonal": 46.379,
+          "radius": 23.19,
+          "maxAxis": 35.164
+        },
+        "bodyRadiusRatio": 1.071,
+        "bodyDiagonalRatio": 2.143,
+        "bodyToReadabilityDiagonalRatio": 0.832
+      }
+    },
+    {
+      "id": 36,
+      "defId": "ship_mule",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_mule_91c4a591",
+      "childNames": [
+        "GLTFKit_ship_mule"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 54848,
+        "bodyBounds": {
+          "size": [
+            27.449,
+            8.569,
+            24.862
+          ],
+          "diagonal": 38.013,
+          "radius": 19.007,
+          "maxAxis": 27.449
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            34.764,
+            9.667,
+            29.854
+          ],
+          "diagonal": 46.833,
+          "radius": 23.416,
+          "maxAxis": 34.764
+        },
+        "bodyRadiusRatio": 1.056,
+        "bodyDiagonalRatio": 2.112,
+        "bodyToReadabilityDiagonalRatio": 0.812
+      }
+    },
+    {
+      "id": 37,
+      "defId": "ship_drifter",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_drifter_8da7cdb7",
+      "childNames": [
+        "GLTFKit_ship_drifter"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_multirole.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_resonator.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_resonator.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_multirole.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 38632,
+        "bodyBounds": {
+          "size": [
+            30.644,
+            12.605,
+            18.389
+          ],
+          "diagonal": 37.896,
+          "radius": 18.948,
+          "maxAxis": 30.644
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            34.869,
+            11.894,
+            21.634
+          ],
+          "diagonal": 42.724,
+          "radius": 21.362,
+          "maxAxis": 34.869
+        },
+        "bodyRadiusRatio": 1.053,
+        "bodyDiagonalRatio": 2.105,
+        "bodyToReadabilityDiagonalRatio": 0.887
+      }
+    },
+    {
+      "id": 38,
+      "defId": "ship_drifter",
+      "scenarioActorId": null,
+      "team": 2,
+      "factionId": "faction_scn",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_drifter_169739c8",
+      "childNames": [
+        "GLTFKit_ship_drifter"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_multirole.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_resonator.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_delta.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_resonator.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_multirole.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_delta.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_hatches.glb",
+          "assets/ships/release/parts/greebles/greeble_antennas.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 38760,
+        "bodyBounds": {
+          "size": [
+            29.583,
+            11.447,
+            28.316
+          ],
+          "diagonal": 42.52,
+          "radius": 21.26,
+          "maxAxis": 29.583
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            34.058,
+            10.619,
+            32.67
+          ],
+          "diagonal": 48.374,
+          "radius": 24.187,
+          "maxAxis": 34.058
+        },
+        "bodyRadiusRatio": 1.181,
+        "bodyDiagonalRatio": 2.362,
+        "bodyToReadabilityDiagonalRatio": 0.879
+      }
+    },
+    {
+      "id": 41,
+      "defId": "ship_wasp",
+      "scenarioActorId": "scavenger_harasser",
+      "team": 0,
+      "factionId": "faction_free",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_wasp_b87c5d69",
+      "childNames": [
+        "GLTFKit_ship_wasp"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_fighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_crystalline.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_nav_lights.glb",
+          "assets/ships/release/parts/greebles/greeble_rcs.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_vector.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_fighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_crystalline.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_rcs.glb",
+          "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 14,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 14168,
+        "bodyBounds": {
+          "size": [
+            22.231,
+            6.342,
+            15.972
+          ],
+          "diagonal": 28.099,
+          "radius": 14.05,
+          "maxAxis": 22.231
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            24.797,
+            7.509,
+            11.491
+          ],
+          "diagonal": 28.343,
+          "radius": 14.171,
+          "maxAxis": 24.797
+        },
+        "bodyRadiusRatio": 1.004,
+        "bodyDiagonalRatio": 2.007,
+        "bodyToReadabilityDiagonalRatio": 0.991
+      }
+    },
+    {
+      "id": 42,
+      "defId": "ship_mule",
+      "scenarioActorId": "scavenger_thief",
+      "team": 0,
+      "factionId": "faction_free",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_mule_ff42a18",
+      "childNames": [
+        "GLTFKit_ship_mule"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_wedge.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 56940,
+        "bodyBounds": {
+          "size": [
+            23.393,
+            8.556,
+            15.416
+          ],
+          "diagonal": 29.293,
+          "radius": 14.647,
+          "maxAxis": 23.393
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            31.882,
+            9.654,
+            14.774
+          ],
+          "diagonal": 36.441,
+          "radius": 18.22,
+          "maxAxis": 31.882
+        },
+        "bodyRadiusRatio": 0.814,
+        "bodyDiagonalRatio": 1.627,
+        "bodyToReadabilityDiagonalRatio": 0.804
+      }
+    },
+    {
+      "id": 43,
+      "defId": "ship_mule",
+      "scenarioActorId": "official_recovery_tug",
+      "team": 0,
+      "factionId": "faction_free",
+      "state": "authored",
+      "mode": "release",
+      "compositionId": "GLTFKIT_ship_mule_4dda7251",
+      "childNames": [
+        "GLTFKit_ship_mule"
+      ],
+      "slots": {
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "graphSlots": {
+        "unknown": [
+          "readability/pressure_shell"
+        ],
+        "cockpit": [
+          "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+        ],
+        "engine": [
+          "assets/ships/release/parts/engines/engine_industrial.glb"
+        ],
+        "hull": [
+          "assets/ships/release/parts/hulls/hull_freighter.glb"
+        ],
+        "fin": [
+          "assets/ships/release/parts/fins/fin_stabilator.glb"
+        ],
+        "weapon": [
+          "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
+        ],
+        "greeble": [
+          "assets/ships/release/parts/greebles/greeble_pipes.glb",
+          "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+        ]
+      },
+      "requiredSlotMode": "modular",
+      "requiredPlayerSlots": [],
+      "wholeShipBodyUrls": [],
+      "missingRequiredSlots": [],
+      "slotUrlsMissingFromGraph": [],
+      "fallbackParts": [
+        "pod",
+        "gear"
+      ],
+      "partObjectCount": 10,
+      "meshCount": 13,
+      "instanceProxyCount": 0,
+      "staticBatchCount": 2,
+      "authoredBodyProof": {
+        "ok": true,
+        "failures": [],
+        "thresholds": {
+          "minSurfaceCount": 1,
+          "minRadiusRatio": 0.2,
+          "minDiagonalRatio": 0.5,
+          "minBodyToReadabilityDiagonalRatio": 0.35
+        },
+        "entityRadius": 18,
+        "bodySurfaceCount": 1,
+        "visibleBodySurfaceCount": 1,
+        "bodyTriangleCount": 54848,
+        "bodyBounds": {
+          "size": [
+            26.904,
+            8.556,
+            21.526
+          ],
+          "diagonal": 35.502,
+          "radius": 17.751,
+          "maxAxis": 26.904
+        },
+        "readabilitySurfaceCount": 1,
+        "visibleReadabilitySurfaceCount": 0,
+        "readabilityBounds": {
+          "size": [
+            35.015,
+            9.654,
+            24.811
+          ],
+          "diagonal": 43.986,
+          "radius": 21.993,
+          "maxAxis": 35.015
+        },
+        "bodyRadiusRatio": 0.986,
+        "bodyDiagonalRatio": 1.972,
+        "bodyToReadabilityDiagonalRatio": 0.807
+      }
+    }
+  ]
+}
+    at waitForAuthoredShips (file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/probe-authored-assets-live.mjs:172:9)
+    at async file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/probe-authored-assets-live.mjs:66:18
+
+Node.js v24.15.0

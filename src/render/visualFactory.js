@@ -30,6 +30,7 @@ import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
+import { attachLodState } from './lod.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -1778,11 +1779,13 @@ function buildAsteroid(e) {
 
   const g = new THREE.Group();
   g.add(mesh);
+  const lod2Details = [];
 
   // crystal / exotic / ice get an inner-glow halo for value cue
   if (def.variant === 'crystal' || def.variant === 'exotic') {
     const halo = makeHalo(def.variant === 'crystal' ? '#c060ff' : '#a050ff', R * 1.9);
     g.add(halo);
+    lod2Details.push(halo);
     // a few protruding crystal shards for crystalline rocks (more shards = richer cluster)
     if (def.variant === 'crystal') {
       const rnd = mulberryLite(hashId(e.id));
@@ -1794,16 +1797,20 @@ function buildAsteroid(e) {
         shard.scale.setScalar(R * (0.5 + rnd() * 0.6));
         shard.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
         g.add(shard);
+        lod2Details.push(shard);
       }
     }
   } else if (def.variant === 'ice') {
-    g.add(makeHalo('#5fe0ff', R * 1.7));
+    const halo = makeHalo('#5fe0ff', R * 1.7);
+    g.add(halo);
+    lod2Details.push(halo);
   } else if (def.variant === 'gas') {
     // gas: small core rock already added; wrap in a soft additive cloud sprite
     const cloud = makeHalo('#56ffa0', R * 3.2);
     cloud.material = cloud.material.clone();
     cloud.material.opacity = 0.45;
     g.add(cloud);
+    lod2Details.push(cloud);
   }
 
   // GLOWING ORE VEINS — emissive streaks scattered across the surface for valuable ore types, so a
@@ -1821,9 +1828,17 @@ function buildAsteroid(e) {
       vein.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
       vein.scale.setScalar(R * (0.6 + rnd() * 0.8));
       g.add(vein);
+      lod2Details.push(vein);
     }
   }
   g.userData.kind = 'asteroid';
+  g.userData.updateLod = function updateAsteroidLod(level) {
+    const showDetail = level !== 'lod2';
+    for (const detail of lod2Details) {
+      if (detail.visible !== showDetail) detail.visible = showDetail;
+    }
+  };
+  attachLodState(g);
   return g;
 }
 

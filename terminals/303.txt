@@ -1,0 +1,31 @@
+---
+pid: 37128
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$scratch = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\"
+$root = \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"
+$blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"
+$env:SF_ROOT = $root
+$env:SF_PART_ID = \"engine_vector\"
+$env:SF_SCRATCH = $scratch
+Remove-Item \"$root\\assets\\ships\\parts\\revamp-evidence\\cockpit_dome\" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item \"$root\\assets\\ships\\parts\\revamp-evidence\\cockpit_slab\" -Recurse -Force -ErrorAction SilentlyContinue
+& $blender --background --python \"$root\\tools\\art\\blender\\framing_gate.py\" 2>&1 | Tee-Object \"$scratch\\framing-gate-vector.log\"
+$ec = $LASTEXITCODE
+\"EXIT_CODE=$ec\" | Add-Content \"$scratch\\framing-gate-vector.log\"
+exit $ec"
+started_at: 2026-07-09T01:53:27.636Z
+running_for_ms: 3550007  
+---
+00:04.282  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_vector_authored.blend"
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\framing_gate.py:67: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\framing_gate.py:83: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:10.657  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_clay_34_full.png'
+00:16.235  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_clay_front.png'
+00:21.954  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_clay_side.png'
+00:26.641  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_lit_34_full.png'
+00:32.860  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_lit_close_detail.png'
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+Reloading external rigs...
+Reloading external metarigs...

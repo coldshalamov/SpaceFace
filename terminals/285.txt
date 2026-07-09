@@ -1,0 +1,97 @@
+---
+pid: 36780
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && node tools/art/build_release_parts.mjs cockpit_dome cockpit_slab engine_ion_small place_station_trade_hub skid_trio skid_quad pod_utility pod_cargo_container pod_repair_patch place_asteroid_seamed place_debris_chunk"
+started_at: 2026-07-08T22:27:40.024Z
+running_for_ms: 234992   
+---
+[release] cockpit_dome: assets/ships/parts/cockpits/cockpit_dome.glb -> assets/ships/release/parts/cockpits/cockpit_dome.glb
+prune: Removed types... Accessor (57)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (22)
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+[release] cockpit_dome: ok 287036 -> 144124 bytes
+[release] cockpit_slab: assets/ships/parts/cockpits/cockpit_slab.glb -> assets/ships/release/parts/cockpits/cockpit_slab.glb
+prune: Removed types... Accessor (66)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (25)
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+[release] cockpit_slab: ok 698884 -> 525952 bytes
+[release] engine_ion_small: assets/ships/parts/engines/engine_ion_small.glb -> assets/ships/release/parts/engines/engine_ion_small.glb
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (43)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (18)
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+[release] engine_ion_small: ok 820332 -> 361088 bytes
+[release] place_station_trade_hub: assets/ships/parts/places/place_station_trade_hub.glb -> assets/ships/release/parts/places/place_station_trade_hub.glb
+prune: Removed types... Accessor (63)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (24)
+[release] place_station_trade_hub: ok 2049596 -> 3277080 bytes
+[release] skid_trio: assets/ships/parts/gear/skid_trio.glb -> assets/ships/release/parts/gear/skid_trio.glb
+prune: Removed types... Accessor (18)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (5)
+[release] skid_trio: ok 317524 -> 244652 bytes
+[release] skid_quad: assets/ships/parts/gear/skid_quad.glb -> assets/ships/release/parts/gear/skid_quad.glb
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (18)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (3)
+[release] skid_quad: ok 338044 -> 252080 bytes
+[release] pod_utility: assets/ships/parts/pods/pod_utility.glb -> assets/ships/release/parts/pods/pod_utility.glb
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (24)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (8)
+[release] pod_utility: ok 300056 -> 253972 bytes
+[release] pod_cargo_container: assets/ships/parts/pods/pod_cargo_container.glb -> assets/ships/release/parts/pods/pod_cargo_container.glb
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (18)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (7)
+[release] pod_cargo_container: ok 334228 -> 258868 bytes
+[release] pod_repair_patch: assets/ships/parts/pods/pod_repair_patch.glb -> assets/ships/release/parts/pods/pod_repair_patch.glb
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (18)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (3)
+[release] pod_repair_patch: ok 671116 -> 340908 bytes
+[release] place_asteroid_seamed: assets/ships/parts/places/place_asteroid_seamed.glb -> assets/ships/release/parts/places/place_asteroid_seamed.glb
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (11)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (2)
+[release] place_asteroid_seamed: ok 209200 -> 220764 bytes
+[release] place_debris_chunk: assets/ships/parts/places/place_debris_chunk.glb -> assets/ships/release/parts/places/place_debris_chunk.glb
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... Accessor (12)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_1; out of [0,1] range.
+prune: Removed types... TextureInfo (5), Material (1), Accessor (2)
+[release] place_debris_chunk: ok 182380 -> 210524 bytes

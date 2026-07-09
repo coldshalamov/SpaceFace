@@ -40,6 +40,10 @@ import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
 const FILM_GRAIN_FPS = 12;
+const DEFAULT_BLOOM_STRENGTH = 0.35;
+const DEFAULT_FILM_GRAIN = 0.35;
+const DEFAULT_VIGNETTE = 0.85;
+const DEFAULT_COLOR_GRADE = 0.55;
 // Upsample chain is additive and runs hotter than a single separable blur; composite multiplies by
 // this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.40 ≈ default).
 const BLOOM_PYRAMID_NORM = 1.5;
@@ -236,11 +240,14 @@ export function createBloom(renderer, width, height) {
 
   // tunables (overridable via setOptions; defaults match settings.video.*)
   let enabled = true;
-  let strength = 0.35;
+  let strength = DEFAULT_BLOOM_STRENGTH;
   let threshold = 0.72;
   const knee = 0.12;
   let exposure = 1.0;
   let aces = 1.0; // 1 = ACES filmic by default
+  let grain = DEFAULT_FILM_GRAIN;
+  let vignette = DEFAULT_VIGNETTE;
+  let grade = DEFAULT_COLOR_GRADE;
 
   // ---- render targets ----
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
@@ -341,11 +348,24 @@ export function createBloom(renderer, width, height) {
     uBloomNorm: { value: BLOOM_PYRAMID_NORM },
     uExposure:  { value: exposure },
     uAces:      { value: aces },
-    uGrain:     { value: 0.35 },   // film grain (cyberpunk-noir mood)
-    uVignette:  { value: 0.85 },   // atmospheric corner fall-off
-    uGrade:     { value: 0.55 },   // teal-shadow/amber-highlight color grade
+    uGrain:     { value: grain },     // film grain (cyberpunk-noir mood)
+    uVignette:  { value: vignette },  // atmospheric corner fall-off
+    uGrade:     { value: grade },     // teal-shadow/amber-highlight color grade
     uGrainFrame: { value: 0 },
   });
+
+  function postStyleScale() {
+    if (!enabled || strength <= 0.0001) return 0;
+    return Math.max(0, Math.min(1, strength / DEFAULT_BLOOM_STRENGTH));
+  }
+
+  function applyPostStyleUniforms() {
+    const s = postStyleScale();
+    compositeMat.uniforms.uGrain.value = grain * s;
+    compositeMat.uniforms.uVignette.value = vignette * s;
+    compositeMat.uniforms.uGrade.value = grade * s;
+  }
+  applyPostStyleUniforms();
 
   // draw the shared quad with a given material into a given target (null = screen)
   function blit(material, target) {
@@ -500,9 +520,10 @@ export function createBloom(renderer, width, height) {
       compositeMat.uniforms.uAces.value = aces;
     }
     // cinematic post grade (cyberpunk-noir) — adjustable via settings.video.*
-    if (typeof o.grain === 'number') compositeMat.uniforms.uGrain.value = Math.max(0, Math.min(1, o.grain));
-    if (typeof o.vignette === 'number') compositeMat.uniforms.uVignette.value = Math.max(0, Math.min(1, o.vignette));
-    if (typeof o.grade === 'number') compositeMat.uniforms.uGrade.value = Math.max(0, Math.min(1, o.grade));
+    if (typeof o.grain === 'number') grain = Math.max(0, Math.min(1, o.grain));
+    if (typeof o.vignette === 'number') vignette = Math.max(0, Math.min(1, o.vignette));
+    if (typeof o.grade === 'number') grade = Math.max(0, Math.min(1, o.grade));
+    applyPostStyleUniforms();
   }
 
   function diagnostics() {
@@ -518,6 +539,10 @@ export function createBloom(renderer, width, height) {
       strength,
       threshold,
       exposure,
+      postStyleScale: postStyleScale(),
+      grain: compositeMat.uniforms.uGrain.value,
+      vignette: compositeMat.uniforms.uVignette.value,
+      grade: compositeMat.uniforms.uGrade.value,
       grainSource: 'quantized-interleaved-gradient',
       grainFps: FILM_GRAIN_FPS,
       targets: 1 + down.length + upsampleTargets.length,
@@ -545,9 +570,13 @@ export function createBloom(renderer, width, height) {
     dispose,
     rebuild,
     get enabled() { return enabled; },
-    set enabled(v) { enabled = !!v; },
+    set enabled(v) { enabled = !!v; applyPostStyleUniforms(); },
     get strength() { return strength; },
-    set strength(v) { strength = Math.max(0, +v || 0); },
+    set strength(v) {
+      strength = Math.max(0, +v || 0);
+      compositeMat.uniforms.uStrength.value = strength;
+      applyPostStyleUniforms();
+    },
     get threshold() { return threshold; },
     set threshold(v) { threshold = +v; },
   };

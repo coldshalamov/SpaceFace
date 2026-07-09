@@ -168,6 +168,22 @@ function appendScenarioSection(lines, condensed, full, qualityPreserving) {
     lines.push('');
   }
 
+  const autosave = full?.autosave || condensed?.autosave || null;
+  if (autosave) {
+    lines.push('### Autosave probe');
+    lines.push('');
+    lines.push('| Metric | Value |');
+    lines.push('| --- | ---: |');
+    lines.push(`| requested | ${autosave.requested ? 'yes' : 'no'} |`);
+    lines.push(`| completed autosaves | ${fmt(autosave.completedCount)} |`);
+    lines.push(`| request call ms | ${fmt(autosave.requestCallMs)} |`);
+    lines.push(`| duration max ms | ${fmt(autosave.durationMs?.max)} |`);
+    lines.push(`| duration p95 ms | ${fmt(autosave.durationMs?.p95)} |`);
+    lines.push(`| write p95 ms | ${fmt(autosave.perf?.write?.p95)} |`);
+    lines.push(`| bytes p95 | ${fmt(autosave.perf?.bytes?.p95)} |`);
+    lines.push('');
+  }
+
   lines.push('### Render load');
   lines.push('');
   lines.push('| Metric | Peak |');
@@ -241,6 +257,29 @@ function appendScenarioSection(lines, condensed, full, qualityPreserving) {
     lines.push(`| dynamic rebuilds | ${fmt(broadphase.dynamicRebuildsPerSecond)} |`);
     lines.push(`| queries | ${fmt(broadphase.queriesPerSecond)} |`);
     lines.push(`| candidates | ${fmt(broadphase.candidatesPerSecond)} |`);
+    lines.push('');
+  }
+
+  const renderWork = full?.perf?.renderWork || null;
+  if (renderWork?.entityViewSync) {
+    const sync = renderWork.entityViewSync;
+    lines.push('### Render work p95 (ms)');
+    lines.push('');
+    lines.push('| Work | p95 | avg | max |');
+    lines.push('| --- | ---: | ---: | ---: |');
+    lines.push(`| entityViewSync | ${fmt(sync.p95)} | ${fmt(sync.avg)} | ${fmt(sync.max)} |`);
+    lines.push('');
+  }
+
+  const sweeps = full?.entityScaleSweeps || condensed?.entityScaleSweeps || null;
+  if (sweeps?.rows?.length) {
+    lines.push('### Entity view-sync scale sweeps');
+    lines.push('');
+    lines.push('| Variant | Added entities | p95 ms | p95 us/entity | transformed | full synced | culled | total meshes |');
+    lines.push('| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |');
+    for (const row of sweeps.rows) {
+      lines.push(`| ${row.variant} | ${fmt(row.count)} | ${fmt(row.p95 ?? row.durationMs?.p95)} | ${fmt(row.perEntityUsP95)} | ${fmt(row.transformed ?? row.sync?.transformed)} | ${fmt(row.fullSynced ?? row.sync?.fullSynced ?? row.synced ?? row.sync?.synced)} | ${fmt(row.culled ?? row.sync?.culled)} | ${fmt(row.totalMeshes ?? row.sync?.totalMeshes)} |`);
+    }
     lines.push('');
   }
 
@@ -321,6 +360,31 @@ function summarizeFromScenarios(scenarios) {
       } : null,
       broadphase: spatialRatesFromScenario(scenario),
       callback: scenario.callback || null,
+      autosave: scenario.autosave || null,
+      entityScaleSweeps: summarizeEntityScaleSweeps(scenario.entityScaleSweeps),
+    })),
+  };
+}
+
+function summarizeEntityScaleSweeps(sweeps) {
+  const rows = Array.isArray(sweeps?.rows) ? sweeps.rows : [];
+  if (!rows.length) return sweeps ? { rows: [] } : null;
+  const byVariant = new Map();
+  for (const row of rows) {
+    if (!row?.variant) continue;
+    const current = byVariant.get(row.variant);
+    if (!current || Number(row.count) > Number(current.count)) byVariant.set(row.variant, row);
+  }
+  return {
+    rows: Array.from(byVariant.values()).map((row) => ({
+      variant: row.variant,
+      count: row.count,
+      p95: row.durationMs?.p95,
+      perEntityUsP95: row.perEntityUsP95,
+      transformed: row.sync?.transformed,
+      fullSynced: row.sync?.fullSynced ?? row.sync?.synced,
+      culled: row.sync?.culled,
+      totalMeshes: row.sync?.totalMeshes,
     })),
   };
 }

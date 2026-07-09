@@ -1,0 +1,27 @@
+---
+pid: 18476
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "$scratch = \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\"
+$root = \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"
+$blender = \"C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe\"
+$env:SF_ROOT = $root; $env:SF_PART_ID = \"engine_vector\"; $env:SF_SCRATCH = $scratch
+& $blender --background --python \"$root\\tools\\art\\blender\\framing_gate.py\" 2>&1 | Tee-Object \"$scratch\\framing-gate-vector-r2.log\"
+$ec = $LASTEXITCODE; \"EXIT_CODE=$ec\" | Add-Content \"$scratch\\framing-gate-vector-r2.log\"; exit $ec"
+started_at: 2026-07-09T01:59:20.432Z
+running_for_ms: 3200036  
+---
+00:03.891  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_vector_authored.blend"
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\framing_gate.py:67: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\framing_gate.py:83: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:09.281  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_clay_34_full.png'
+00:14.297  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_clay_front.png'
+00:18.844  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_clay_side.png'
+00:23.016  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_lit_34_full.png'
+00:28.344  render           | Saved: 'C:\Users\93rob\AppData\Local\Temp\grok-goal-f430c013f663\implementer\framing-gate\engine_vector\2026-07-08_engine_vector_gate_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
