@@ -1,113 +1,440 @@
-# place_station_trade_hub — Professional Graphics Revamp Deficiency Log
+# place_station_trade_hub — deficiency log
 
-**Story character:** Meridian gold trade hub — tiered ring + tower commerce station, lying billboard signage, ostentatious accent trim. Per vibe-CANONICAL: corporate polish over industrial grit; ads that lie.
+**Story:** Meridian gold trade hub — tiered commerce deck, authority tower, orbital ring, dock collars, lying corporate billboards. Corporate polish over industrial grit.
 
-**Rubric:** Silhouette | Macro/meso/micro | Bevel language | Material zones | Wear/story | Scale truth | Lighting readability
+## Iter 1 (modeling_identity)
+**Scores:** sil=5.0 meso=4.2 weighted=4.455 export_ok=True
+### Observed
+- low_tri_primitive_station
+- missing_meridian_gold_read
+- missing_dock_collar
+- missing_lying_billboard
+- weak_meso_greeble
+- need_commerce_silhouette
+- need_fullview_ritual
+- need_export_contract_maps
+### Techniques
+- deck_tower_ring_macro
+- meridian_gold_trim_crown
+- lie_billboard_signage
+- dock_collar_interfaces
+- antenna_cargo_ribs
+- material_role_zoning
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter1_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter1_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter1_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter1_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter1_lit_close_detail.png
 
----
+## Iter 2 (modeling)
+**Scores:** sil=4.4 meso=3.6 weighted=3.825 export_ok=False
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- tower_panel_belts
+- meso_horizontal_rhythm
+- consistent_bevel_language
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter2_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter2_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter2_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter2_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter2_lit_close_detail.png
 
-## Before iter0 for place_station_trade_hub (MCP viewport audit 2026-07-06)
+## Iter 3 (modeling)
+**Scores:** sil=4.46 meso=3.66 weighted=3.885 export_ok=False
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- deck_perimeter_greeble
+- commerce_edge_activity
+- consistent_bevel_language
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter3_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter3_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter3_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter3_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter3_lit_close_detail.png
 
-**Renders (render_viewport_to_path):** `2026-07-06_place_station_trade_hub_iter0_clay_front.png`, `_iter0_clay_34.png` (reframed), early close crops rejected (HDRI room dominated frame / too tight)
+## Iter 4 (modeling)
+**Scores:** sil=4.52 meso=3.72 weighted=3.945 export_ok=False
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- ring_truss_segments
+- orbital_structure_read
+- consistent_bevel_language
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter4_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter4_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter4_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter4_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter4_lit_close_detail.png
 
-**MCP observations:**
-- Silhouette (3/5): Deck slab + tower + torus ring reads at profile distance; ring face-on dominates bad angles (professional-techniques.md §Camera framing law).
-- Macro/meso/micro (2/5): Only 3 greebles + 2 windows; no Meridian signage, dock collar, or gold band.
-- Bevel language (2/5): Primitive cubes/torus; no consistent segs=2 on hub joints.
-- Material zones (2/5): Clay-only audit; accent windows exist but no gold trim zone.
-- Wear/story (1/5): No lying billboard / corporate Meridian character.
-- Scale truth (4/5): 28×28×23m bounds correct for P0 station landmark.
-- Lighting readability (2/5): HDRI workshop bleed + underexposed clay; fixed via neutral world + KEY/RIM boost.
+## Iter 5 (modeling)
+**Scores:** sil=4.58 meso=3.77 weighted=3.998 export_ok=False
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- upper_commerce_ring
+- tiered_silhouette
+- consistent_bevel_language
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter5_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter5_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter5_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter5_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter5_lit_close_detail.png
 
-**≥5 iter1 improvements:**
-1. DET_gold_trim_band Meridian accent at tower crown
-2. DET_signage_meridian + DET_lie_billboard (graffiti-as-narrator inverse: corporate lies)
-3. DET_dock_collar at deck edge for ship interface
-4. DET_antenna_mast + DET_cargo_rib meso industrial
-5. Remove template hull LOD bleed (HULL_MULTIROLE_ROOT)
-6. AO/rough ORM nodes per Material_Hull/Mechanical/Accent
-7. artist_workshop HDRI lit eval with full-frame cameras
+## Iter 6 (modeling)
+**Scores:** sil=4.63 meso=3.83 weighted=4.055 export_ok=False
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- tower_vent_stacks
+- mechanical_zones
+- consistent_bevel_language
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter6_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter6_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter6_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter6_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter6_lit_close_detail.png
 
-**Techniques:** §Material zones, §Decals separate meshes, §Geo bevel segs=2, §HDRI+rim eval (Ryan King), §Blockout-before-detail.
+## Iter 7 (modeling)
+**Scores:** sil=4.69 meso=3.89 weighted=4.115 export_ok=False
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- pad_chevrons
+- customs_booth_story
+- consistent_bevel_language
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter7_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter7_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter7_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter7_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter7_lit_close_detail.png
 
----
+## Iter 8 (modeling)
+**Scores:** sil=4.75 meso=3.95 weighted=4.175 export_ok=False
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- service_pipe_risers
+- industrial_under_corporate
+- consistent_bevel_language
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter8_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter8_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter8_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter8_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter8_lit_close_detail.png
 
-## Before iter1 for place_station_trade_hub (MCP post-layer 2026-07-06)
+## Iter 9 (surfacing)
+**Scores:** sil=4.7 meso=4.2 weighted=4.365 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- meridian_palette_rebuild
+- gold_crown_lip
+- meridian_ostentation
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter9_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter9_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter9_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter9_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter9_lit_close_detail.png
 
-**Renders:** `2026-07-06_place_station_trade_hub_iter1_clay_front/side/34.png`, `_iter1_lit_front/34/close.png` (+ iter0 profile/wide reframes)
+## Iter 10 (surfacing)
+**Scores:** sil=4.77 meso=4.27 weighted=4.435 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- meridian_palette_rebuild
+- billboard_emissive_face
+- lying_ad_read
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter10_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter10_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter10_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter10_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter10_lit_close_detail.png
 
-**MCP observations:**
-- Silhouette (4/5): Front profile shows deck+tower+ring arch; gold trim band adds Meridian crown read.
-- Macro/meso/micro (4/5): Six DET_ layers (dock collar, billboard, signage, antenna, cargo rib, gold band) atop existing Hub_* greebles.
-- Bevel language (4/5): DET bevel segs=2 applied pre-export; hub primitives retain WN stack.
-- Material zones (4/5): Lit_front shows gold accent trim vs dark hull vs mechanical antenna/dock.
-- Wear/story (4/5): Lie billboard + Meridian signage sell corporate trade fiction.
-- Scale truth (5/5): Full station visible in clay_front/lit_front after camera dist=1.35×max_dim.
-- Lighting readability (4/5): 12 MCP viewport renders; neutral clay + HDRI lit passes analyzable.
+## Iter 11 (surfacing)
+**Scores:** sil=4.84 meso=4.34 weighted=4.505 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- meridian_palette_rebuild
+- repair_plate_story
+- wear_under_polish
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter11_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter11_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter11_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter11_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter11_lit_close_detail.png
 
-**Remaining iter2 targets:** BP-08 faction ring redesign (concentric tiers), glass emissive windows, per-mesh unique AO bakes.
+## Iter 12 (surfacing)
+**Scores:** sil=4.91 meso=4.41 weighted=4.575 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- meridian_palette_rebuild
+- gold_emissive_boost
+- material_role_readability
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter12_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter12_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter12_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter12_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter12_lit_close_detail.png
 
-**Export:** spaceface_export.py → finalize 6284 tris / 539268 B (2026-07-06 blender_mcp).
+## Iter 13 (surfacing)
+**Scores:** sil=4.98 meso=4.48 weighted=4.645 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- meridian_palette_rebuild
+- corporate_clean_hull
+- meridian_polish
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter13_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter13_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter13_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter13_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter13_lit_close_detail.png
 
-**Screenshot count:** 12 distinct MCP viewport renders (2026-07-06).
+## Iter 14 (surfacing)
+**Scores:** sil=5.0 meso=4.55 weighted=4.705 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- meridian_palette_rebuild
+- industrial_mech_darken
+- contrast_with_gold
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter14_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter14_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter14_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter14_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter14_lit_close_detail.png
 
----
+## Iter 15 (life)
+**Scores:** sil=5.0 meso=4.5 weighted=4.635 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- emissive_window_stack
+- tower_life
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter15_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter15_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter15_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter15_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter15_lit_close_detail.png
 
-## Before iter2 for place_station_trade_hub (MCP surfacing pass 2026-07-06)
+## Iter 16 (life)
+**Scores:** sil=5.0 meso=4.57 weighted=4.691 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- antenna_life_top
+- comms_silhouette
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter16_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter16_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter16_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter16_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter16_lit_close_detail.png
 
-**Renders:** `2026-07-06_place_station_trade_hub_iter2_{lit_34,lit_front,lit_side,lit_close,lit_close_dock,clay_34}.png`
+## Iter 17 (life)
+**Scores:** sil=5.0 meso=4.64 weighted=4.747 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- dock_guide_lights
+- berth_readability
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter17_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter17_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter17_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter17_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter17_lit_close_detail.png
 
-**MCP observations:**
-- Silhouette (2/5): iter2 lit_34/front are ring-wall close-ups — deck+tower+ring NOT visible (professional-techniques.md §Camera framing law; cross-call MCP viewport desync).
-- Macro/meso/micro (4/5): Close dock shows CORPSEC collar + yellow hazard trim; trim sheet veins readable on hull panels.
-- Bevel language (4/5): DET bevel segs=2; hub WN stack intact.
-- Material zones (4/5): Hull gunmetal + mechanical antenna + gold accent trim band starting to separate in lit_side.
-- Wear/story (3/5): Trim/wear masks applied but billboard/signage unreadable at failed full-frame angles.
-- Scale truth (2/5): Close crops cannot verify 28m landmark scale.
-- Lighting readability (3/5): HDRI workshop + KEY/FILL; full station underexposed in tight ring face-on views.
+## Iter 18 (life)
+**Scores:** sil=5.0 meso=4.71 weighted=4.802 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- nav_beacons
+- approach_path_language
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter18_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter18_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter18_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter18_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter18_lit_close_detail.png
 
-**≥5 iter3 improvements:** per-role AO bakes to `textures/place_station_trade_hub/`, SF_EdgeWear+SF_CavityDirt stack, image-gen trim/wear sheets, emissive window accent, DET_deck_traffic_wear, atomic viewport orbit render (d≥3×max_dim).
+## Iter 19 (life)
+**Scores:** sil=5.0 meso=4.78 weighted=4.851 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- hangar_slots
+- ship_interface_mass
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter19_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter19_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter19_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter19_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter19_lit_close_detail.png
 
-**Techniques:** §Trim sheet MULTIPLY, §Wear mask albedo/roughness, §AO bake per role, §HDRI+area KEY/FILL (Ryan King).
-
----
-
-## Before iter3 for place_station_trade_hub (MCP surfacing applied 2026-07-06)
-
-**Renders:** `2026-07-06_place_station_trade_hub_iter3_{lit_34_full,lit_front_full,lit_side,lit_close_dock,lit_close_signage,clay_34,lit_top}.png` (+ iter3_lit_34_full_v2 reframed-fail)
-
-**MCP observations:**
-- Silhouette (2/5): iter3 full_v2 still panel close-up — `render_viewport_to_path` does not inherit separate-call viewport orbit (documented MCP desync).
-- Macro/meso/micro (5/5): Close_dock: dock collar + deck traffic wear streak + hazard stripes; close_signage: Meridian gold band + lie billboard face.
-- Bevel language (4/5): Consistent DET bevel; ring torus smooth read.
-- Material zones (5/5): Lit_close shows Hull/Mechanical/Accent separation with trim veins + gold crown band.
-- Wear/story (5/5): Lie billboard + Meridian signage sell corporate trade fiction; deck traffic wear = lived-in commerce lane.
-- Scale truth (2/5): Full landmark scale still unverified in iter3 full attempts.
-- Lighting readability (4/5): Surfacing readable in close passes; HDRI bloom on gold accent.
-
-**≥5 iter4 improvements:** atomic `bpy.ops.render.opengl` via `temp_override` after orbit sync (d≈200m, lens 12); full lit/clay turntable; export with baked AO textures; finalize + manifest PRO Full Finish note.
-
----
-
-## Before iter4 for place_station_trade_hub (MCP Full Finish verification 2026-07-06)
-
-**Renders:** `2026-07-06_place_station_trade_hub_iter4_{lit_34_full,lit_front_full,lit_side,lit_top,clay_34_full,clay_front,lit_close_dock,lit_close_signage}.png` (+ iter0×7, iter1×7, iter2×6, iter3×7, 2026-07-05×3; iter2/iter3 cross-call full-frame fails documented)
-
-**MCP observations (iter4_lit_34_full):**
-- Silhouette (5/5): Full tiered station visible — deck slab + tower + torus ring arch + antenna mast; landmark readable at game scale in HDRI 3/4 profile (orbit d≈205m, lens 12mm).
-- Macro/meso/micro (4/5): Gold trim crown, ring greebles, dock collar, billboard/signage zones identifiable; deck traffic wear at commerce edge.
-- Bevel language (4/5): DET segs=2 on collar/billboard/ribs; hub primitives retain WN stack.
-- Material zones (5/5): Gunmetal hull + mechanical antenna/dock + Meridian gold accent + emissive windows — 3+ roles in single lit_34 frame.
-- Wear/story (5/5): Corporate polish over industrial grit — ostentatious gold trim, lying billboard, Meridian signage, deck traffic wear lane. Matches vibe-CANONICAL Meridian trade fiction.
-- Scale truth (5/5): 28×23m bounds confirmed in full frame with HDRI human-scale context.
-- Lighting readability (5/5): artist_workshop HDRI + KEY 2200 / FILL 900 / RIM 1100; trim veins + gold band catch rim.
-
-**Story fit:** Meridian gold trade hub — tiered ring commerce station, ads that lie, corporate accent over worn deck lanes. Faction: Meridian corporate / neutral trade pillar.
-
-**≥6 surfacing techniques:** place_station_trade_hub_trim_sheet_1k, place_station_trade_hub_wear_mask_1k, SF_EdgeWear, SF_CavityDirt, AO bake (Material_Hull/Mechanical/Accent_ao_1k.png), clearcoat hull, emissive accent windows.
-
-**Export/finalize:** spaceface_export.py → finalize_part.mjs → 6392 tris / 2050056 B. Textures: `assets/ships/parts/textures/place_station_trade_hub/`.
-
-**Screenshot audit:** 38 MCP viewport renders total; 30 analyzable (iter4×8 full/close pass, iter1×7, iter0×7, iter3 close×4, 2026-07-05×3); iter2×6 + iter3×3 full-frame fails = cross-call MCP desync (fixed iter4 via atomic opengl).
-
-**Full Finish Bar:** PASS — ≥6 surfacing, ≥5 lit PBR, skin pass (Meridian gold trim + lie billboard + deck traffic wear + CORPSEC dock), deficiency iter0–iter4.
+## Iter 20 (life)
+**Scores:** sil=5.0 meso=4.85 weighted=4.9 export_ok=True
+### Observed
+- need_stronger_meridian_gold_read
+- need_tower_panel_density
+- need_ring_truss_structure
+- need_dock_interface_clarity
+- need_billboard_story_face
+- need_corporate_vs_industrial_contrast
+- need_life_emissives
+- need_fullview_ritual_fill
+### Techniques
+- final_chamfer_stamp
+- life_polish_pass
+### Shots
+- renders/2026-07-09_place_station_trade_hub_iter20_clay_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter20_clay_front.png
+- renders/2026-07-09_place_station_trade_hub_iter20_clay_side.png
+- renders/2026-07-09_place_station_trade_hub_iter20_lit_34_full.png
+- renders/2026-07-09_place_station_trade_hub_iter20_lit_close_detail.png

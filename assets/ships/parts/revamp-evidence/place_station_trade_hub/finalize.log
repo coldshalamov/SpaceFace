@@ -1,12 +1,14 @@
 {
   "partId": "place_station_trade_hub",
   "file": "places/place_station_trade_hub.glb",
-  "tris": 6392,
-  "bytes": 2050056,
-  "dims": [28, 28, 23.3],
-  "images": 3,
+  "tris": 21372,
+  "bytes": 1835976,
+  "dims": [51.2015, 51, 49.2],
+  "images": 1,
   "materials": "Material_Accent,Material_Mechanical,Material_Hull",
-  "source": "blender_mcp",
-  "date": "2026-07-06",
-  "note": "PRO Full Finish — trim/wear sheets, SF_EdgeWear+SF_CavityDirt, per-role AO bakes, 38 MCP viewport renders"
+  "source": "place_station_trade_hub_campaign.py iters2-20 + finalize_part.mjs",
+  "date": "2026-07-09",
+  "weighted": 4.9,
+  "export_bar_ok": true,
+  "note": "TOP50 Slice A rank6 — Meridian gold trade hub full finish campaign"
 }

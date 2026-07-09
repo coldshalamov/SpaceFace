@@ -1,0 +1,3000 @@
+{
+  "part_id": "place_station_trade_hub",
+  "story": "Meridian gold trade hub \u2014 tiered commerce deck, authority tower, orbital ring, dock collars, lying corporate billboards. Corporate polish over industrial grit.",
+  "iterations": [
+    {
+      "iter": 1,
+      "pass": "modeling_identity",
+      "deficiencies_observed": [
+        "low_tri_primitive_station",
+        "missing_meridian_gold_read",
+        "missing_dock_collar",
+        "missing_lying_billboard",
+        "weak_meso_greeble",
+        "need_commerce_silhouette",
+        "need_fullview_ritual",
+        "need_export_contract_maps"
+      ],
+      "techniques": [
+        "deck_tower_ring_macro",
+        "meridian_gold_trim_crown",
+        "lie_billboard_signage",
+        "dock_collar_interfaces",
+        "antenna_cargo_ribs",
+        "material_role_zoning"
+      ],
+      "deficiencies_addressed_next": [
+        "deck_tower_ring_macro",
+        "meridian_gold_trim_crown",
+        "lie_billboard_signage",
+        "dock_collar_interfaces",
+        "antenna_cargo_ribs",
+        "material_role_zoning"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter1_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter1_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter1_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter1_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter1_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.2,
+        "bevel_language": 4.0,
+        "material_zones": 4.5,
+        "wear_story": 4.3,
+        "scale_truth": 4.5,
+        "lighting_readability": 4.4,
+        "contract_readiness": 4.3,
+        "weighted": 4.455,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.045,
+          "centroid": [
+            0.476,
+            0.514
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.252,
+          "fill_ratio": 0.128,
+          "edge_complexity": 0.096,
+          "bbox_area_ratio": 0.3506,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter1_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0494,
+          "centroid": [
+            0.556,
+            0.596
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.721,
+          "fill_ratio": 0.282,
+          "edge_complexity": 0.073,
+          "bbox_area_ratio": 0.175,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter1_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0613,
+          "centroid": [
+            0.44,
+            0.564
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.658,
+          "fill_ratio": 0.205,
+          "edge_complexity": 0.071,
+          "bbox_area_ratio": 0.2981,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter1_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0574,
+          "centroid": [
+            0.468,
+            0.541
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.237,
+          "fill_ratio": 0.162,
+          "edge_complexity": 0.093,
+          "bbox_area_ratio": 0.3547,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter1_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0709,
+          "centroid": [
+            0.646,
+            0.645
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.544,
+          "fill_ratio": 0.082,
+          "edge_complexity": 0.105,
+          "bbox_area_ratio": 0.8688,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter1_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "tower_panel_belts",
+        "meso_horizontal_rhythm",
+        "consistent_bevel_language"
+      ],
+      "techniques": [
+        "tower_panel_belts",
+        "meso_horizontal_rhythm",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter2_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter2_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter2_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter2_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter2_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 3.6,
+        "bevel_language": 3.8,
+        "material_zones": 3.5,
+        "wear_story": 3.2,
+        "scale_truth": 4.3,
+        "lighting_readability": 4.0,
+        "contract_readiness": 3.8,
+        "weighted": 3.825,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.1276,
+          "centroid": [
+            0.365,
+            0.476
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.273,
+          "fill_ratio": 0.327,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.3908,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter2_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0435,
+          "centroid": [
+            0.535,
+            0.567
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.662,
+          "fill_ratio": 0.261,
+          "edge_complexity": 0.09,
+          "bbox_area_ratio": 0.1668,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter2_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0858,
+          "centroid": [
+            0.436,
+            0.548
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.243,
+          "fill_ratio": 0.275,
+          "edge_complexity": 0.064,
+          "bbox_area_ratio": 0.3121,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter2_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1597,
+          "centroid": [
+            0.387,
+            0.491
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.25,
+          "fill_ratio": 0.487,
+          "edge_complexity": 0.068,
+          "bbox_area_ratio": 0.3283,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter2_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3238,
+          "centroid": [
+            0.553,
+            0.508
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.576,
+          "fill_ratio": 0.365,
+          "edge_complexity": 0.046,
+          "bbox_area_ratio": 0.8867,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter2_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "deck_perimeter_greeble",
+        "commerce_edge_activity",
+        "consistent_bevel_language"
+      ],
+      "techniques": [
+        "deck_perimeter_greeble",
+        "commerce_edge_activity",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter3_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter3_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter3_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter3_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter3_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.46,
+        "macro_meso_micro": 3.66,
+        "bevel_language": 3.86,
+        "material_zones": 3.56,
+        "wear_story": 3.26,
+        "scale_truth": 4.36,
+        "lighting_readability": 4.06,
+        "contract_readiness": 3.86,
+        "weighted": 3.885,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.1157,
+          "centroid": [
+            0.395,
+            0.508
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.333,
+          "fill_ratio": 0.311,
+          "edge_complexity": 0.055,
+          "bbox_area_ratio": 0.3719,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter3_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.046,
+          "centroid": [
+            0.515,
+            0.616
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.842,
+          "fill_ratio": 0.218,
+          "edge_complexity": 0.091,
+          "bbox_area_ratio": 0.2114,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter3_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0936,
+          "centroid": [
+            0.425,
+            0.579
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.242,
+          "fill_ratio": 0.277,
+          "edge_complexity": 0.063,
+          "bbox_area_ratio": 0.3381,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter3_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1729,
+          "centroid": [
+            0.403,
+            0.522
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.315,
+          "fill_ratio": 0.459,
+          "edge_complexity": 0.074,
+          "bbox_area_ratio": 0.377,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter3_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.329,
+          "centroid": [
+            0.491,
+            0.536
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.544,
+          "fill_ratio": 0.379,
+          "edge_complexity": 0.046,
+          "bbox_area_ratio": 0.8688,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter3_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "ring_truss_segments",
+        "orbital_structure_read",
+        "consistent_bevel_language"
+      ],
+      "techniques": [
+        "ring_truss_segments",
+        "orbital_structure_read",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter4_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter4_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter4_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter4_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter4_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.52,
+        "macro_meso_micro": 3.72,
+        "bevel_language": 3.92,
+        "material_zones": 3.62,
+        "wear_story": 3.32,
+        "scale_truth": 4.42,
+        "lighting_readability": 4.12,
+        "contract_readiness": 3.92,
+        "weighted": 3.945,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.1183,
+          "centroid": [
+            0.389,
+            0.502
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.31,
+          "fill_ratio": 0.279,
+          "edge_complexity": 0.061,
+          "bbox_area_ratio": 0.4236,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter4_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0466,
+          "centroid": [
+            0.517,
+            0.613
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.927,
+          "fill_ratio": 0.18,
+          "edge_complexity": 0.1,
+          "bbox_area_ratio": 0.2596,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter4_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0942,
+          "centroid": [
+            0.421,
+            0.577
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.248,
+          "fill_ratio": 0.278,
+          "edge_complexity": 0.068,
+          "bbox_area_ratio": 0.3385,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter4_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1757,
+          "centroid": [
+            0.396,
+            0.518
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.3,
+          "fill_ratio": 0.412,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.4267,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter4_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.4268,
+          "centroid": [
+            0.652,
+            0.6
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.769,
+          "fill_ratio": 0.429,
+          "edge_complexity": 0.04,
+          "bbox_area_ratio": 0.9953,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter4_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 5,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "upper_commerce_ring",
+        "tiered_silhouette",
+        "consistent_bevel_language"
+      ],
+      "techniques": [
+        "upper_commerce_ring",
+        "tiered_silhouette",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter5_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter5_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter5_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter5_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter5_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.58,
+        "macro_meso_micro": 3.77,
+        "bevel_language": 3.97,
+        "material_zones": 3.67,
+        "wear_story": 3.38,
+        "scale_truth": 4.47,
+        "lighting_readability": 4.17,
+        "contract_readiness": 3.97,
+        "weighted": 3.998,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.118,
+          "centroid": [
+            0.39,
+            0.499
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.31,
+          "fill_ratio": 0.278,
+          "edge_complexity": 0.063,
+          "bbox_area_ratio": 0.4236,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter5_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0469,
+          "centroid": [
+            0.517,
+            0.61
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.927,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.108,
+          "bbox_area_ratio": 0.2596,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter5_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0927,
+          "centroid": [
+            0.422,
+            0.575
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.248,
+          "fill_ratio": 0.274,
+          "edge_complexity": 0.077,
+          "bbox_area_ratio": 0.3385,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter5_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1778,
+          "centroid": [
+            0.398,
+            0.517
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.3,
+          "fill_ratio": 0.417,
+          "edge_complexity": 0.071,
+          "bbox_area_ratio": 0.4267,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter5_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.4287,
+          "centroid": [
+            0.65,
+            0.597
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.769,
+          "fill_ratio": 0.431,
+          "edge_complexity": 0.044,
+          "bbox_area_ratio": 0.9953,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter5_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 6,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "tower_vent_stacks",
+        "mechanical_zones",
+        "consistent_bevel_language"
+      ],
+      "techniques": [
+        "tower_vent_stacks",
+        "mechanical_zones",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter6_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter6_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter6_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter6_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter6_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.63,
+        "macro_meso_micro": 3.83,
+        "bevel_language": 4.03,
+        "material_zones": 3.73,
+        "wear_story": 3.43,
+        "scale_truth": 4.53,
+        "lighting_readability": 4.23,
+        "contract_readiness": 4.03,
+        "weighted": 4.055,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.1181,
+          "centroid": [
+            0.39,
+            0.499
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.31,
+          "fill_ratio": 0.279,
+          "edge_complexity": 0.064,
+          "bbox_area_ratio": 0.4236,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter6_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.047,
+          "centroid": [
+            0.517,
+            0.609
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.927,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.109,
+          "bbox_area_ratio": 0.2596,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter6_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0928,
+          "centroid": [
+            0.422,
+            0.575
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.248,
+          "fill_ratio": 0.274,
+          "edge_complexity": 0.077,
+          "bbox_area_ratio": 0.3385,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter6_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.178,
+          "centroid": [
+            0.398,
+            0.517
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.3,
+          "fill_ratio": 0.417,
+          "edge_complexity": 0.068,
+          "bbox_area_ratio": 0.4267,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter6_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.4293,
+          "centroid": [
+            0.65,
+            0.597
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.769,
+          "fill_ratio": 0.431,
+          "edge_complexity": 0.044,
+          "bbox_area_ratio": 0.9953,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter6_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 7,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "pad_chevrons",
+        "customs_booth_story",
+        "consistent_bevel_language"
+      ],
+      "techniques": [
+        "pad_chevrons",
+        "customs_booth_story",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter7_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter7_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter7_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter7_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter7_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.69,
+        "macro_meso_micro": 3.89,
+        "bevel_language": 4.09,
+        "material_zones": 3.79,
+        "wear_story": 3.49,
+        "scale_truth": 4.59,
+        "lighting_readability": 4.29,
+        "contract_readiness": 4.09,
+        "weighted": 4.115,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.1181,
+          "centroid": [
+            0.39,
+            0.499
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.31,
+          "fill_ratio": 0.279,
+          "edge_complexity": 0.065,
+          "bbox_area_ratio": 0.4236,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter7_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0471,
+          "centroid": [
+            0.516,
+            0.609
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.927,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.111,
+          "bbox_area_ratio": 0.2596,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter7_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0927,
+          "centroid": [
+            0.422,
+            0.575
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.248,
+          "fill_ratio": 0.274,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.3385,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter7_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1785,
+          "centroid": [
+            0.399,
+            0.516
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.3,
+          "fill_ratio": 0.418,
+          "edge_complexity": 0.068,
+          "bbox_area_ratio": 0.4267,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter7_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.4298,
+          "centroid": [
+            0.65,
+            0.597
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.769,
+          "fill_ratio": 0.432,
+          "edge_complexity": 0.044,
+          "bbox_area_ratio": 0.9953,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter7_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 8,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "service_pipe_risers",
+        "industrial_under_corporate",
+        "consistent_bevel_language"
+      ],
+      "techniques": [
+        "service_pipe_risers",
+        "industrial_under_corporate",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter8_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter8_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter8_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter8_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter8_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.75,
+        "macro_meso_micro": 3.95,
+        "bevel_language": 4.15,
+        "material_zones": 3.85,
+        "wear_story": 3.55,
+        "scale_truth": 4.65,
+        "lighting_readability": 4.35,
+        "contract_readiness": 4.15,
+        "weighted": 4.175,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.1185,
+          "centroid": [
+            0.391,
+            0.499
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.31,
+          "fill_ratio": 0.28,
+          "edge_complexity": 0.066,
+          "bbox_area_ratio": 0.4236,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter8_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0473,
+          "centroid": [
+            0.516,
+            0.608
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.927,
+          "fill_ratio": 0.182,
+          "edge_complexity": 0.112,
+          "bbox_area_ratio": 0.2596,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter8_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0932,
+          "centroid": [
+            0.423,
+            0.574
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.248,
+          "fill_ratio": 0.275,
+          "edge_complexity": 0.08,
+          "bbox_area_ratio": 0.3385,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter8_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1786,
+          "centroid": [
+            0.399,
+            0.516
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.3,
+          "fill_ratio": 0.419,
+          "edge_complexity": 0.066,
+          "bbox_area_ratio": 0.4267,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter8_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.4321,
+          "centroid": [
+            0.648,
+            0.596
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.769,
+          "fill_ratio": 0.434,
+          "edge_complexity": 0.046,
+          "bbox_area_ratio": 0.9953,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter8_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 9,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_palette_rebuild",
+        "gold_crown_lip",
+        "meridian_ostentation"
+      ],
+      "techniques": [
+        "meridian_palette_rebuild",
+        "gold_crown_lip",
+        "meridian_ostentation"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter9_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter9_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter9_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter9_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter9_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.7,
+        "macro_meso_micro": 4.2,
+        "bevel_language": 4.2,
+        "material_zones": 4.4,
+        "wear_story": 4.1,
+        "scale_truth": 4.6,
+        "lighting_readability": 4.3,
+        "contract_readiness": 4.2,
+        "weighted": 4.365,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.1186,
+          "centroid": [
+            0.391,
+            0.498
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.272,
+          "fill_ratio": 0.272,
+          "edge_complexity": 0.067,
+          "bbox_area_ratio": 0.436,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter9_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0399,
+          "centroid": [
+            0.516,
+            0.597
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.896,
+          "fill_ratio": 0.179,
+          "edge_complexity": 0.122,
+          "bbox_area_ratio": 0.223,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter9_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0747,
+          "centroid": [
+            0.431,
+            0.564
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.117,
+          "fill_ratio": 0.25,
+          "edge_complexity": 0.088,
+          "bbox_area_ratio": 0.2982,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter9_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1367,
+          "centroid": [
+            0.416,
+            0.508
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.227,
+          "fill_ratio": 0.408,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.3355,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter9_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2719,
+          "centroid": [
+            0.511,
+            0.567
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.419,
+          "fill_ratio": 0.358,
+          "edge_complexity": 0.054,
+          "bbox_area_ratio": 0.7587,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter9_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 10,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_palette_rebuild",
+        "billboard_emissive_face",
+        "lying_ad_read"
+      ],
+      "techniques": [
+        "meridian_palette_rebuild",
+        "billboard_emissive_face",
+        "lying_ad_read"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter10_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter10_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter10_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter10_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter10_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.77,
+        "macro_meso_micro": 4.27,
+        "bevel_language": 4.27,
+        "material_zones": 4.47,
+        "wear_story": 4.17,
+        "scale_truth": 4.67,
+        "lighting_readability": 4.37,
+        "contract_readiness": 4.27,
+        "weighted": 4.435,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0946,
+          "centroid": [
+            0.409,
+            0.539
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.234,
+          "fill_ratio": 0.274,
+          "edge_complexity": 0.075,
+          "bbox_area_ratio": 0.3456,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter10_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0413,
+          "centroid": [
+            0.515,
+            0.628
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.895,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.121,
+          "bbox_area_ratio": 0.2274,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter10_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0776,
+          "centroid": [
+            0.43,
+            0.602
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.116,
+          "fill_ratio": 0.255,
+          "edge_complexity": 0.086,
+          "bbox_area_ratio": 0.305,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter10_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.141,
+          "centroid": [
+            0.415,
+            0.55
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.218,
+          "fill_ratio": 0.404,
+          "edge_complexity": 0.073,
+          "bbox_area_ratio": 0.3491,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter10_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2874,
+          "centroid": [
+            0.503,
+            0.564
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.442,
+          "fill_ratio": 0.364,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.7889,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter10_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 11,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_palette_rebuild",
+        "repair_plate_story",
+        "wear_under_polish"
+      ],
+      "techniques": [
+        "meridian_palette_rebuild",
+        "repair_plate_story",
+        "wear_under_polish"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter11_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter11_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter11_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter11_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter11_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.84,
+        "macro_meso_micro": 4.34,
+        "bevel_language": 4.34,
+        "material_zones": 4.54,
+        "wear_story": 4.24,
+        "scale_truth": 4.74,
+        "lighting_readability": 4.44,
+        "contract_readiness": 4.34,
+        "weighted": 4.505,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0946,
+          "centroid": [
+            0.409,
+            0.539
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.234,
+          "fill_ratio": 0.274,
+          "edge_complexity": 0.075,
+          "bbox_area_ratio": 0.3456,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter11_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0412,
+          "centroid": [
+            0.516,
+            0.628
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.895,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.123,
+          "bbox_area_ratio": 0.2274,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter11_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0776,
+          "centroid": [
+            0.43,
+            0.602
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.116,
+          "fill_ratio": 0.254,
+          "edge_complexity": 0.087,
+          "bbox_area_ratio": 0.305,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter11_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.141,
+          "centroid": [
+            0.415,
+            0.55
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.218,
+          "fill_ratio": 0.404,
+          "edge_complexity": 0.072,
+          "bbox_area_ratio": 0.3491,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter11_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2889,
+          "centroid": [
+            0.504,
+            0.562
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.442,
+          "fill_ratio": 0.366,
+          "edge_complexity": 0.053,
+          "bbox_area_ratio": 0.7889,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter11_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 12,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_palette_rebuild",
+        "gold_emissive_boost",
+        "material_role_readability"
+      ],
+      "techniques": [
+        "meridian_palette_rebuild",
+        "gold_emissive_boost",
+        "material_role_readability"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter12_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter12_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter12_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter12_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter12_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.91,
+        "macro_meso_micro": 4.41,
+        "bevel_language": 4.41,
+        "material_zones": 4.61,
+        "wear_story": 4.31,
+        "scale_truth": 4.81,
+        "lighting_readability": 4.51,
+        "contract_readiness": 4.41,
+        "weighted": 4.575,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0946,
+          "centroid": [
+            0.409,
+            0.539
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.234,
+          "fill_ratio": 0.274,
+          "edge_complexity": 0.075,
+          "bbox_area_ratio": 0.3456,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter12_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0412,
+          "centroid": [
+            0.516,
+            0.628
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.895,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.123,
+          "bbox_area_ratio": 0.2274,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter12_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0776,
+          "centroid": [
+            0.43,
+            0.602
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.116,
+          "fill_ratio": 0.254,
+          "edge_complexity": 0.087,
+          "bbox_area_ratio": 0.305,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter12_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.141,
+          "centroid": [
+            0.415,
+            0.55
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.218,
+          "fill_ratio": 0.404,
+          "edge_complexity": 0.07,
+          "bbox_area_ratio": 0.3491,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter12_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2889,
+          "centroid": [
+            0.503,
+            0.562
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.442,
+          "fill_ratio": 0.366,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.7889,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter12_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 13,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_palette_rebuild",
+        "corporate_clean_hull",
+        "meridian_polish"
+      ],
+      "techniques": [
+        "meridian_palette_rebuild",
+        "corporate_clean_hull",
+        "meridian_polish"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter13_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter13_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter13_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter13_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter13_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.98,
+        "macro_meso_micro": 4.48,
+        "bevel_language": 4.48,
+        "material_zones": 4.68,
+        "wear_story": 4.38,
+        "scale_truth": 4.88,
+        "lighting_readability": 4.58,
+        "contract_readiness": 4.48,
+        "weighted": 4.645,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0946,
+          "centroid": [
+            0.409,
+            0.539
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.234,
+          "fill_ratio": 0.274,
+          "edge_complexity": 0.075,
+          "bbox_area_ratio": 0.3456,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter13_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0412,
+          "centroid": [
+            0.516,
+            0.628
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.895,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.123,
+          "bbox_area_ratio": 0.2274,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter13_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0776,
+          "centroid": [
+            0.43,
+            0.602
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.116,
+          "fill_ratio": 0.254,
+          "edge_complexity": 0.087,
+          "bbox_area_ratio": 0.305,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter13_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.141,
+          "centroid": [
+            0.415,
+            0.55
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.218,
+          "fill_ratio": 0.404,
+          "edge_complexity": 0.069,
+          "bbox_area_ratio": 0.3491,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter13_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2888,
+          "centroid": [
+            0.503,
+            0.562
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.442,
+          "fill_ratio": 0.366,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.7889,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter13_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 14,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "meridian_palette_rebuild",
+        "industrial_mech_darken",
+        "contrast_with_gold"
+      ],
+      "techniques": [
+        "meridian_palette_rebuild",
+        "industrial_mech_darken",
+        "contrast_with_gold"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter14_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter14_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter14_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter14_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter14_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.55,
+        "bevel_language": 4.55,
+        "material_zones": 4.75,
+        "wear_story": 4.45,
+        "scale_truth": 4.95,
+        "lighting_readability": 4.65,
+        "contract_readiness": 4.55,
+        "weighted": 4.705,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0946,
+          "centroid": [
+            0.409,
+            0.539
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.234,
+          "fill_ratio": 0.274,
+          "edge_complexity": 0.075,
+          "bbox_area_ratio": 0.3456,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter14_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0412,
+          "centroid": [
+            0.516,
+            0.628
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.895,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.123,
+          "bbox_area_ratio": 0.2274,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter14_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0776,
+          "centroid": [
+            0.43,
+            0.602
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.116,
+          "fill_ratio": 0.254,
+          "edge_complexity": 0.087,
+          "bbox_area_ratio": 0.305,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter14_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.141,
+          "centroid": [
+            0.415,
+            0.55
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.218,
+          "fill_ratio": 0.404,
+          "edge_complexity": 0.069,
+          "bbox_area_ratio": 0.3491,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter14_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2888,
+          "centroid": [
+            0.503,
+            0.562
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.442,
+          "fill_ratio": 0.366,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.7889,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter14_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 15,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "emissive_window_stack",
+        "tower_life"
+      ],
+      "techniques": [
+        "emissive_window_stack",
+        "tower_life"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter15_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter15_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter15_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter15_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter15_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.5,
+        "bevel_language": 4.4,
+        "material_zones": 4.6,
+        "wear_story": 4.5,
+        "scale_truth": 4.8,
+        "lighting_readability": 4.5,
+        "contract_readiness": 4.5,
+        "weighted": 4.635,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0948,
+          "centroid": [
+            0.409,
+            0.538
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.234,
+          "fill_ratio": 0.274,
+          "edge_complexity": 0.075,
+          "bbox_area_ratio": 0.3456,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter15_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0412,
+          "centroid": [
+            0.516,
+            0.628
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.895,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.123,
+          "bbox_area_ratio": 0.2274,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter15_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0776,
+          "centroid": [
+            0.43,
+            0.602
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.116,
+          "fill_ratio": 0.254,
+          "edge_complexity": 0.087,
+          "bbox_area_ratio": 0.305,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter15_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1412,
+          "centroid": [
+            0.415,
+            0.55
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.218,
+          "fill_ratio": 0.404,
+          "edge_complexity": 0.068,
+          "bbox_area_ratio": 0.3491,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter15_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2887,
+          "centroid": [
+            0.503,
+            0.562
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.442,
+          "fill_ratio": 0.366,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.7889,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter15_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 16,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "antenna_life_top",
+        "comms_silhouette"
+      ],
+      "techniques": [
+        "antenna_life_top",
+        "comms_silhouette"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter16_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter16_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter16_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter16_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter16_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.57,
+        "bevel_language": 4.47,
+        "material_zones": 4.67,
+        "wear_story": 4.57,
+        "scale_truth": 4.87,
+        "lighting_readability": 4.57,
+        "contract_readiness": 4.57,
+        "weighted": 4.691,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0692,
+          "centroid": [
+            0.426,
+            0.571
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.029,
+          "fill_ratio": 0.236,
+          "edge_complexity": 0.085,
+          "bbox_area_ratio": 0.2939,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter16_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0426,
+          "centroid": [
+            0.516,
+            0.662
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.895,
+          "fill_ratio": 0.184,
+          "edge_complexity": 0.121,
+          "bbox_area_ratio": 0.2314,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter16_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0639,
+          "centroid": [
+            0.437,
+            0.627
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.994,
+          "fill_ratio": 0.233,
+          "edge_complexity": 0.091,
+          "bbox_area_ratio": 0.274,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter16_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.101,
+          "centroid": [
+            0.43,
+            0.581
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.015,
+          "fill_ratio": 0.34,
+          "edge_complexity": 0.08,
+          "bbox_area_ratio": 0.2968,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter16_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.1255,
+          "centroid": [
+            0.467,
+            0.642
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.292,
+          "fill_ratio": 0.173,
+          "edge_complexity": 0.121,
+          "bbox_area_ratio": 0.7266,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter16_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 17,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "dock_guide_lights",
+        "berth_readability"
+      ],
+      "techniques": [
+        "dock_guide_lights",
+        "berth_readability"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter17_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter17_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter17_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter17_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter17_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.64,
+        "bevel_language": 4.54,
+        "material_zones": 4.74,
+        "wear_story": 4.64,
+        "scale_truth": 4.94,
+        "lighting_readability": 4.64,
+        "contract_readiness": 4.64,
+        "weighted": 4.747,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0692,
+          "centroid": [
+            0.426,
+            0.571
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.029,
+          "fill_ratio": 0.236,
+          "edge_complexity": 0.085,
+          "bbox_area_ratio": 0.2939,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter17_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0426,
+          "centroid": [
+            0.516,
+            0.662
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.895,
+          "fill_ratio": 0.184,
+          "edge_complexity": 0.121,
+          "bbox_area_ratio": 0.2314,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter17_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0639,
+          "centroid": [
+            0.437,
+            0.627
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.994,
+          "fill_ratio": 0.233,
+          "edge_complexity": 0.091,
+          "bbox_area_ratio": 0.274,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter17_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.101,
+          "centroid": [
+            0.43,
+            0.581
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.015,
+          "fill_ratio": 0.34,
+          "edge_complexity": 0.08,
+          "bbox_area_ratio": 0.2968,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter17_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.1255,
+          "centroid": [
+            0.467,
+            0.642
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.292,
+          "fill_ratio": 0.173,
+          "edge_complexity": 0.121,
+          "bbox_area_ratio": 0.7266,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter17_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 18,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "nav_beacons",
+        "approach_path_language"
+      ],
+      "techniques": [
+        "nav_beacons",
+        "approach_path_language"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter18_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter18_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter18_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter18_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter18_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.71,
+        "bevel_language": 4.61,
+        "material_zones": 4.81,
+        "wear_story": 4.71,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.71,
+        "contract_readiness": 4.71,
+        "weighted": 4.802,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0697,
+          "centroid": [
+            0.42,
+            0.572
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.099,
+          "fill_ratio": 0.221,
+          "edge_complexity": 0.086,
+          "bbox_area_ratio": 0.3151,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter18_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0424,
+          "centroid": [
+            0.52,
+            0.662
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.039,
+          "fill_ratio": 0.158,
+          "edge_complexity": 0.125,
+          "bbox_area_ratio": 0.2685,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter18_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0635,
+          "centroid": [
+            0.435,
+            0.63
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.054,
+          "fill_ratio": 0.22,
+          "edge_complexity": 0.092,
+          "bbox_area_ratio": 0.2881,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter18_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1013,
+          "centroid": [
+            0.423,
+            0.582
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.091,
+          "fill_ratio": 0.319,
+          "edge_complexity": 0.081,
+          "bbox_area_ratio": 0.3176,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter18_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3076,
+          "centroid": [
+            0.508,
+            0.554
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.488,
+          "fill_ratio": 0.368,
+          "edge_complexity": 0.05,
+          "bbox_area_ratio": 0.8367,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter18_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 19,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "hangar_slots",
+        "ship_interface_mass"
+      ],
+      "techniques": [
+        "hangar_slots",
+        "ship_interface_mass"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter19_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter19_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter19_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter19_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter19_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.78,
+        "bevel_language": 4.68,
+        "material_zones": 4.88,
+        "wear_story": 4.78,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.78,
+        "contract_readiness": 4.78,
+        "weighted": 4.851,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.071,
+          "centroid": [
+            0.424,
+            0.571
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.097,
+          "fill_ratio": 0.226,
+          "edge_complexity": 0.087,
+          "bbox_area_ratio": 0.3146,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter19_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0439,
+          "centroid": [
+            0.521,
+            0.657
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.041,
+          "fill_ratio": 0.163,
+          "edge_complexity": 0.124,
+          "bbox_area_ratio": 0.269,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter19_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0651,
+          "centroid": [
+            0.436,
+            0.627
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.052,
+          "fill_ratio": 0.226,
+          "edge_complexity": 0.093,
+          "bbox_area_ratio": 0.2876,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter19_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1028,
+          "centroid": [
+            0.426,
+            0.581
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.089,
+          "fill_ratio": 0.324,
+          "edge_complexity": 0.082,
+          "bbox_area_ratio": 0.317,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter19_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3093,
+          "centroid": [
+            0.511,
+            0.551
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.492,
+          "fill_ratio": 0.369,
+          "edge_complexity": 0.05,
+          "bbox_area_ratio": 0.8391,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter19_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 20,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_stronger_meridian_gold_read",
+        "need_tower_panel_density",
+        "need_ring_truss_structure",
+        "need_dock_interface_clarity",
+        "need_billboard_story_face",
+        "need_corporate_vs_industrial_contrast",
+        "need_life_emissives",
+        "need_fullview_ritual_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "final_chamfer_stamp",
+        "life_polish_pass"
+      ],
+      "techniques": [
+        "final_chamfer_stamp",
+        "life_polish_pass"
+      ],
+      "shots": [
+        "2026-07-09_place_station_trade_hub_iter20_clay_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter20_clay_front.png",
+        "2026-07-09_place_station_trade_hub_iter20_clay_side.png",
+        "2026-07-09_place_station_trade_hub_iter20_lit_34_full.png",
+        "2026-07-09_place_station_trade_hub_iter20_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.85,
+        "bevel_language": 4.75,
+        "material_zones": 4.95,
+        "wear_story": 4.85,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.85,
+        "contract_readiness": 4.85,
+        "weighted": 4.9,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0713,
+          "centroid": [
+            0.427,
+            0.567
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.103,
+          "fill_ratio": 0.226,
+          "edge_complexity": 0.086,
+          "bbox_area_ratio": 0.3162,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter20_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.044,
+          "centroid": [
+            0.517,
+            0.66
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.039,
+          "fill_ratio": 0.165,
+          "edge_complexity": 0.124,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter20_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0656,
+          "centroid": [
+            0.434,
+            0.624
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.054,
+          "fill_ratio": 0.226,
+          "edge_complexity": 0.093,
+          "bbox_area_ratio": 0.2904,
+          "bg_sample": [
+            106,
+            107,
+            116
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter20_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1036,
+          "centroid": [
+            0.43,
+            0.577
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.088,
+          "fill_ratio": 0.324,
+          "edge_complexity": 0.081,
+          "bbox_area_ratio": 0.3194,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter20_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3023,
+          "centroid": [
+            0.5,
+            0.561
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.503,
+          "fill_ratio": 0.358,
+          "edge_complexity": 0.051,
+          "bbox_area_ratio": 0.8453,
+          "bg_sample": [
+            21,
+            28,
+            36
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_station_trade_hub\\renders\\2026-07-09_place_station_trade_hub_iter20_lit_close_detail.png"
+        }
+      ]
+    }
+  ]
+}
