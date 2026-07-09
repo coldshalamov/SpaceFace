@@ -8,8 +8,9 @@
 1. `Agents.md` §3 (uncommitted tree) + §10 (lane ownership)
 2. `design/spec2/00_MASTER_TASTE.md` (taste constitution — Forbidden list rejects diffs)
 3. This folder (`design/graphics-sprints/`)
-4. `FULL_GRAPHICS_REVAMP_GOAL.md` (quality bar for 3D)
-5. `design/revamp/EXECUTION_LANES.md` (backend vs graphics split)
+4. **`TOP50_WONDER_BUILD_PLAN.md`** — Top-50 order, slice exits, weighted gates, **anti-lazy master goal** (§9)
+5. `FULL_GRAPHICS_REVAMP_GOAL.md` (full-kit quality + process — never lower)
+6. `design/revamp/EXECUTION_LANES.md` (backend vs graphics split)
 
 ## The five threads (never merge domains)
 
@@ -63,6 +64,7 @@ Once per day (or after any graphics handoff), **one integrator agent** runs:
 - **3D hero assets:** minimum **20 screenshot-driven iterations** per asset (see `QUALITY_RITUAL.md`).
 - **Simple parts / props:** minimum **10 iterations**.
 - **Code / wiring:** minimum **10 verification cycles** (check run → fix → re-run); no screenshot bar unless visual.
+- **Top-50 / M3 wonder:** follow `TOP50_WONDER_BUILD_PLAN.md` — full-view law, weighted rubric, ≥50% rebuild per iter, slice exit shots. Copy-paste goals live in that file §9.
 
 **Transcripts are not proof — checks and screenshots are.**
 

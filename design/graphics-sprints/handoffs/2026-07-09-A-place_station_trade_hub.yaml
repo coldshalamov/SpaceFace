@@ -1,0 +1,37 @@
+handoff_version: 1
+thread: A
+sprint_id: 2026-07-09-top50-sliceA-trade-hub
+agent: top50-wonder-goal-session
+completed_at: 2026-07-09T16:30:00Z
+assets:
+  - id: place_station_trade_hub
+    source_glb: assets/ships/parts/places/place_station_trade_hub.glb
+    blend_path: assets/ships/parts/blender/place_station_trade_hub_authored.blend
+    art_status: full_finish
+    iteration_count: 20
+    weighted_score: 4.9
+    evidence: assets/ships/parts/revamp-evidence/place_station_trade_hub/
+    lifecycle: RELEASE_BUILT
+    manifest_row: exists
+    runtimeSlots: place
+    blocked: false
+    notes: >
+      Meridian gold trade hub — deck+tower+ring+dock collars+lie billboards.
+      Campaign iters 2–20 (modeling→surfacing→life). finalize_part OK: 21372 tris,
+      1.84MB, dims ~51×51×49. Weighted 4.9, silhouette 5, scale 5, export_bar_ok true.
+      Release build 2026-07-09: 1835976 -> 454276 bytes (KTX2/prune).
+integrator_actions:
+  - finalize_part.mjs DONE (2026-07-09)
+  - npm run build:sg04:release-assets DONE (2026-07-09 exit 0)
+  - npm run check:asset-reachability
+  - npm run check:station-archetype-glb-load
+thread_c_actions: []
+checks_required:
+  - check:asset-reachability
+  - check:station-archetype-glb-load
+  - check:assets:live
+screenshots_proven:
+  - assets/ships/parts/revamp-evidence/place_station_trade_hub/renders/2026-07-09_place_station_trade_hub_iter20_lit_34_full.png
+  - assets/ships/parts/revamp-evidence/place_station_trade_hub/renders/2026-07-09_place_station_trade_hub_iter20_lit_close_detail.png
+  - .devshots/slice-A/station-approach.png
+  - .devshots/slice-A/station-approach-close.png

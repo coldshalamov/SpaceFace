@@ -1,13 +1,16 @@
-# PROGRESS LEDGER — the single source of truth for what's done / in-flight / next
+# PROGRESS LEDGER — revamp task ledger (check-level DONE)
 
-> **Read this FIRST, every session.** It is more authoritative than `STATUS.md`, memory, or any status doc for
-> task state. If a task is marked `DONE` here, do not redo it; if `IN-FLIGHT`, check its branch before touching its
-> files; if `NEXT`, that's your pick. **Every task updates this file as its FIRST and LAST action** (see
-> `WAVE4_PROMPT.md` §0 for the exact update protocol).
+> **2026-07-09:** Product / overnight execution authority is **`design/vision/`**  
+> (`OVERNIGHT_GOAL.md`, `07_AUTONOMOUS_PIPELINE.md`, `01_CURRENT_STATE.md`).  
+> This ledger remains the best map of **which revamp packets were CODE-DONE** — but  
+> **CODE-DONE ≠ PLAY-DONE**. Overnight runs harvest T6–T9 / presentation remainders from here;  
+> they do not treat green checks as “game is fun.”
 >
-> **Authority chain:** `ARCHITECTURE.md` > `design/GDD_2_0.md` > `design/revamp/REVAMP_MASTER.md` (§1–§15) > this
-> ledger (task state) > `STATUS.md` (wave narrative) > memory. When this ledger and `STATUS.md` disagree on task
-> state, **this ledger wins** — update `STATUS.md` to match.
+> **Read this for packet history.** For “what do we build next / go to bed,” read vision pack first.
+> If a task is marked `DONE` here, do not rebuild the same check-theater; **do** re-verify play if relevant.
+>
+> **Authority chain:** `ARCHITECTURE.md` > `design/vision/*` (product) > `design/GDD_2_0.md` >
+> `design/revamp/REVAMP_MASTER.md` > this ledger (task state) > `STATUS.md`.
 >
 > **Snapshot basis:** working tree as of 2026-07-06 (~17k lines ahead of HEAD; trust the tree over HEAD per
 > `AGENTS.md §3`). Re-verify any `DONE` row's claim before building on top of it — grep the file, run the check.

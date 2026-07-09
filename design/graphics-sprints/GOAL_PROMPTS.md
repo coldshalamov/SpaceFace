@@ -6,6 +6,20 @@ Paste **one** prompt below as the opening message for a new Cursor/Grok thread. 
 
 ---
 
+## Master campaign (Top-50 wonder / anti-lazy)
+
+For a **full slice or multi-asset campaign** that must not stop early, **do not use the thin prompts below alone**.
+
+Copy the fenced goal from:
+
+**`design/graphics-sprints/TOP50_WONDER_BUILD_PLAN.md` §9.1** (campaign) or **§9.2** (single hero)
+
+Fill: `<SLICE_LETTER>`, `<ASSET_OR_PACK_IDS>`, `<A|B|C|D|E|…>`.
+
+That goal enforces: 10–20× effort, 20 full-view iterations, ≥50% rebuild per iter, weighted rubric, exporter + in-game proof, continuation files instead of silent quit.
+
+---
+
 ## Integrator (run daily or after handoffs)
 
 ```

@@ -1,12 +1,18 @@
 # SPACEFACE 2.0 — Build Plan & Agent Orchestration
 
-**Companion to `design/GDD_2_0.md` (authoritative design).** This file is the execution contract:
+> **2026-07-09:** Live product execution moved to **`design/vision/`**.  
+> Front door: `design/vision/README.md`. Full overnight run: `design/vision/OVERNIGHT_GOAL.md`.  
+> Morning handoff: `design/vision/WAKE_REPORT.md`. This file is historical ownership / older acceptance notes.
+
+**Companion to `design/GDD_2_0.md` (authoritative design).** This file was the execution contract:
 if the current session dies, a fresh agent reads GDD → this file → picks the next unclaimed item.
+**Prefer vision pack over this for “what to build next.”**
 
 **Current-state reconciliation (2026-07-04):** `design/CURRENT_BUILD_STATUS.md` is the quick status
 map for what is built, what needs proof/cleanup, and what remains. Use it with this file. Older rows
 below were synchronized on 2026-07-04 where live checks gave clear evidence; if a row and a named
-check disagree later, trust the live check and update both docs in the same pass.
+check disagree later, trust the live check and update both docs in the same pass. Prefer
+`design/vision/01_CURRENT_STATE.md` for play-truth.
 
 **Target platform:** PC/browser. Electron/packaged desktop is an optional distribution shell for the
 same player route. Handheld-specific readiness is not a target or release blocker.

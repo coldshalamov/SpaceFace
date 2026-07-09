@@ -17,7 +17,9 @@
 
 | You are… | Read these in order, then stop reading and do the work |
 |---|---|
-| **Implementing a feature or fix** | (1) this file §3 + §5 + §7 · (2) `design/CURRENT_BUILD_STATUS.md` · (3) the spec your brief names · (4) `docs/MODULE_MAP.md` for the file you're touching · (5) `ARCHITECTURE.md` only the section your work touches |
+| **Product sprints / “what do we build?” / goal prompts** | (1) **`design/vision/README.md`** · (2) `design/vision/00_CONSTITUTION.md` · (3) `design/vision/03_MASTER_BUILD_PLAN.md` · (4) `design/vision/01_CURRENT_STATE.md` · (5) wave goal prompt in `design/vision/05_GOAL_PROMPTS.md` |
+| **Overnight / full autonomous pipeline (go to bed)** | Soft (allows partial): `design/vision/OVERNIGHT_GOAL.md`. **Strict (no early stop):** `design/vision/OVERNIGHT_GOAL_STRICT.md`. Morning: `design/vision/WAKE_REPORT.md` |
+| **Implementing a feature or fix** | (1) this file §3 + §5 + §7 · (2) `design/vision/01_CURRENT_STATE.md` (or `design/CURRENT_BUILD_STATUS.md` as secondary) · (3) the spec / vision wave your brief names · (4) `docs/MODULE_MAP.md` for the file you're touching · (5) `ARCHITECTURE.md` only the section your work touches |
 | **Adding or fixing a ship/station/place model** | `assets/AGENTS.md` (visual asset catalog + ship pipeline), then `design/spec3/SPEC3-F9-asset-pipeline.md` |
 | **Running parallel graphics sprint threads** | `design/graphics-sprints/GOAL_PROMPTS.md` (copy-paste thread prompts) → `00_ORCHESTRATION.md` |
 | **Wiring portraits, cinematics, or "what assets exist?"** | `assets/AGENTS.md` §1 master catalog · `assets/portraits/AGENTS.md` · `assets/concept/AGENTS.md` (reference-only) |

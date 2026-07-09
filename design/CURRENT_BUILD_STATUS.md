@@ -1,6 +1,10 @@
 # SpaceFace Current Build Status
 
-Updated: 2026-07-04
+Updated: 2026-07-04 · **Superseded for product priority 2026-07-09**
+
+> **Unified product truth now lives in `design/vision/`.**  
+> Read `design/vision/README.md` → `01_CURRENT_STATE.md` (done/play truth) → `03_MASTER_BUILD_PLAN.md` (what to build).  
+> This file remains a historical Spec2 check map; it **drifts** and does not encode play-fun or the 2026-07-09 constitution.
 
 This is the repo-facing status map for SpaceFace 2.0. It reconciles `design/GDD_2_0.md`,
 `design/BUILD_PLAN_2_0.md`, `design/spec2/*`, live source files, and the named check scripts.

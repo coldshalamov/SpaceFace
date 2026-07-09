@@ -1,16 +1,23 @@
 # design/ — Agent Notes
 
 > The design authority stack. **Do not read the whole folder** — it's 5,400+ lines across three
-> spec suites plus 21 loose files, much of it historical. Use the dispatch map in root `AGENTS.md` §1 + §4.
-> **All claims verified first-hand 2026-07-05.**
+> spec suites plus 21 loose files, much of it historical.
+>
+> **START HERE for product direction & what to build next (2026-07-09):**
+> **`design/vision/README.md`** — unified constitution, current state, asset truth, master build plan, goal prompts.
+>
+> **All claims in older paragraphs below were verified first-hand 2026-07-05; the vision pack supersedes them on product priority and PLAY-truth.**
 
 ## Authority chain (when docs disagree)
 
 1. `ARCHITECTURE.md` (at repo root) — the technical contract. (The old `design/ARCHITECTURE.md` handoff blurb that collided with it has been archived to `design/_ARCHIVE/handoff_architecture.md`.)
 2. `design/GDD_2_0.md` — the design authority (vision, pillars, all system designs).
-3. `design/spec2/00_MASTER_TASTE.md` — the taste constitution inherited by ALL work (including spec3). Its Forbidden list (§6) rejects diffs.
-4. The specific `design/spec2/` or `design/spec3/` spec you are implementing.
-5. `design/CURRENT_BUILD_STATUS.md` — the "what's built / what's red" map — **but it drifts**; trust live `check:*` output over it (root `AGENTS.md` §11).
+3. `design/spec2/00_MASTER_TASTE.md` — the inherited taste constitution for ALL work, including vision/spec3/revamp work. Its Forbidden list rejects diffs; the clean non-diegetic HUD rule remains standing policy.
+4. **`design/vision/00_CONSTITUTION.md`** — product sprint law for what to build next, interpreted within the technical + taste contracts above.
+5. **`design/vision/03_MASTER_BUILD_PLAN.md`** — wave order / goal prompts.
+6. **`design/vision/01_CURRENT_STATE.md`** — done/partial/missing with **PLAY** column (checks alone != done).
+7. The specific `design/spec2/` / `design/spec3/` / `design/revamp/BP-*` slice a wave cites for implementation detail.
+8. `design/CURRENT_BUILD_STATUS.md` / `design/revamp/PROGRESS.md` — historical maps; **drift**; prefer vision pack + live `check:*`.
 
 Older docs (`V2_MASTER_PLAN.md`, `IMPROVEMENT_IDEAS.md`, `HUD_REVAMP_DESIGN.md`, `GRAPHICS_*`, `FLIGHT_*`, `SKILLS_*`, `design/specs/*`) are **legacy/reference** unless a current doc explicitly revives a section. `GDD_2_0.md` outranks all of them.
 
