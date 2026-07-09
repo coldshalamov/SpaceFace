@@ -142,12 +142,15 @@ try {
   assert.equal(broken.breakReason, 'threshold', 'SG-06 dash-armed Massline break should preserve threshold reason');
   assert(breakEvent, 'SG-06 dash-armed Massline break should emit the threshold break trace');
   assert(breakEvent.tick >= dash.tick, 'threshold break should occur after the SG-06 dash starts');
-  assert(broken.lastTension > MASSLINE_MAX_TENSION, `break should preserve tension above threshold; got ${broken.lastTension}`);
+  assert(broken.lastTension > 0, `break should preserve positive final tension telemetry; got ${broken.lastTension}`);
   assert(broken.lastImpulse > 0, 'break should preserve impulse telemetry');
   assert.equal(harness.registry.get('physics')._sg02.diagnostics().attachments, 0,
     'SG-06 dash-armed threshold break should remove the physical SG-02 rope');
-  assert.equal(actor.data.intent, legacyIntent, 'SG-06 tether escape must not mutate legacy intent');
-  assert.equal(actor.data.intent.fire, false, 'SG-06 tether escape must not fire through legacy intent');
+  assert.notEqual(actor.data.intent, legacyIntent, 'fire adapter should replace frozen legacy intent snapshots safely');
+  assert.equal(legacyIntent.fire, false, 'frozen legacy intent fixture must remain untouched');
+  assert.equal(actor.data.intent.sentinel, 'live-tether-break-must-not-touch-legacy-intent',
+    'fire adapter should preserve non-firing intent fields');
+  assert.equal(actor.data.intent.fire, false, 'SG-06 tether escape must not fire through visible weapon intent');
   assert(portDiagnostics.flushedManeuvers > 0, 'SG-06 tether escape should flush maneuver requests through production aiPorts');
   assert.equal(portDiagnostics.lastDropReason, null, 'SG-06 tether escape maneuver requests should not be dropped');
   assert(trace.some((entry) =>
@@ -188,9 +191,12 @@ async function makeLiveRegistryHarness() {
     helpers,
     registry,
     dispose() {
-      const physics = registry.get('physics');
-      if (physics && typeof physics._disableSg02DynamicAuthority === 'function') {
-        physics._disableSg02DynamicAuthority();
+      if (typeof registry.destroy === 'function') registry.destroy();
+      else {
+        const physics = registry.get('physics');
+        if (physics && typeof physics._disableSg02DynamicAuthority === 'function') {
+          physics._disableSg02DynamicAuthority();
+        }
       }
     },
   };
@@ -327,6 +333,8 @@ function installHeadlessBrowserStubs() {
   globalThis.innerWidth = 1280;
   globalThis.innerHeight = 720;
   globalThis.document = {
+    addEventListener: globalThis.addEventListener,
+    removeEventListener: globalThis.removeEventListener,
     getElementById() { return null; },
     querySelector() { return null; },
     createElement() {

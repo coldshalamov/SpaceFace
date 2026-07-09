@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { core } from '../src/core/coreSystem.js';
 import { createGameState } from '../src/core/gameState.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
 import { actions } from '../src/systems/actions.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
@@ -20,12 +21,20 @@ const player = helpers.spawnEntity(makeShipSpec({
 const actor = helpers.spawnEntity(makeShipSpec({
   team: 1,
   x: 0,
-  factionId: 'faction_scn',
+  factionId: 'faction_vael',
   ai: {
     squadId: 'sg06_shadow_wing',
-    doctrine: 'official',
+    archetype: 'pirate',
+    doctrine: 'scavenger',
     preferredRole: 'leader',
-    capabilities: ['ranged'],
+    capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
+    activity: normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: 'live_shadow:attack_probe',
+      anchor: { x: 0, z: 0 },
+      leashRadius: 1200,
+    }),
+    roe: RulesOfEngagement.WEAPONS_FREE,
   },
 }));
 
@@ -79,8 +88,10 @@ assert.equal(aiRequests.length, 1, 'SG-06 should submit exactly one canonical SG
 assert.equal(aiStarts.length, 1, 'SG-03 should start the AI action through the same ActionDef queue');
 assert(aiEffects.length >= 1, 'SG-03 should own the action effect after the AI request starts');
 assert.equal(aiRequests[0].target.entityId, player.id, 'AI action request should target the hostile ship through SG-03');
-assert.equal(actor.data.intent, legacyIntent, 'SG-06 must not mutate the legacy AI intent contract');
-assert.equal(actor.data.intent.fire, false, 'SG-06 must not request combat through legacy intent.fire');
+assert.notEqual(actor.data.intent, legacyIntent, 'doctrine-gated fire adapter should replace frozen legacy intent snapshots');
+assert.equal(legacyIntent.fire, false, 'frozen legacy intent fixture must remain untouched');
+assert.equal(actor.data.intent.sentinel, 'legacy-fsm-must-not-be-touched', 'fire adapter should preserve non-firing intent fields');
+assert.equal(actor.data.intent.fire, true, 'visible weapon intent should be armed only after doctrine permits it');
 assert.equal(maneuverRequests.length > 0, true, 'SG-06 should still emit maneuver requests through its port boundary');
 assert.equal(maneuverRequests.every((request) => request.entityId === actor.id), true,
   'shadow maneuver capture should only observe the tactical AI actor');

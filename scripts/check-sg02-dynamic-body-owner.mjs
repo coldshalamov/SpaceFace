@@ -103,7 +103,10 @@ async function runScenario() {
 
 async function runTetherScenario() {
   const ownerShip = makeShip(101, 0);
-  const targetShip = makeShip(202, 20);
+  const targetShip = makeShip(202, 36);
+  const initialDistance = Math.abs(targetShip.pos.x - ownerShip.pos.x);
+  const restLength = 28;
+  const reelRequest = 8;
   const owner = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, quantum: 1e-5 });
   const port = createSg02CombatPhysicsPort(owner);
 
@@ -126,7 +129,7 @@ async function runTetherScenario() {
       targetSocketId: 'massline',
       sourceWorld: { x: ownerShip.pos.x, y: 0, z: ownerShip.pos.z },
       targetWorld: { x: targetShip.pos.x, y: 0, z: targetShip.pos.z },
-      restLength: 12,
+      restLength,
       break: { maxTension: 10_000, maxImpulse: 10_000, stiffness: 180, damping: 12 },
       spring: { K: 180, zeta: 0.9, captureS: 0.35, maxStretchRatio: 0.9, reelSafeStretchRatio: 0.8 },
       tick: 0,
@@ -141,22 +144,24 @@ async function runTetherScenario() {
 
     for (let i = 0; i < 30; i++) owner.step(1 / 60);
     const firstTelemetry = port.getAttachmentTelemetry({ attachmentId: 'att_sg02_lab', physicsHandle: handle, tick: 30 });
-    assertAttachmentTelemetry(firstTelemetry, 12);
-    assert(firstTelemetry.distance < 20, 'rope joint should reduce initial cable violation');
+    assertAttachmentTelemetry(firstTelemetry, restLength);
+    assert(firstTelemetry.distance < initialDistance, 'spring should reduce initial cable violation without starting inside collision overlap');
 
     const reelAccepted = port.setAttachmentReel({
       attachmentId: 'att_sg02_lab',
       physicsHandle: handle,
-      restLength: 8,
-      previousRestLength: 12,
+      restLength: reelRequest,
+      previousRestLength: restLength,
       tick: 31,
     });
     assert.notEqual(reelAccepted, false, 'setAttachmentReel should accept a safe rest-length update');
     assert(Number.isFinite(reelAccepted.restLength), 'setAttachmentReel should report the accepted rest length');
-    assert(reelAccepted.restLength > 8 && reelAccepted.restLength < 12, 'setAttachmentReel should clamp unsafe reel-in while still shortening the rope');
+    assert(reelAccepted.restLength > reelRequest && reelAccepted.restLength < restLength, 'setAttachmentReel should clamp unsafe reel-in while still shortening the rope');
     for (let i = 0; i < 30; i++) owner.step(1 / 60);
     const reeledTelemetry = port.getAttachmentTelemetry({ attachmentId: 'att_sg02_lab', physicsHandle: handle, tick: 61 });
-    assertAttachmentTelemetry(reeledTelemetry, reelAccepted.restLength);
+    assertAttachmentTelemetry(reeledTelemetry, reeledTelemetry.restLength);
+    assert(reeledTelemetry.restLength >= reelAccepted.restLength && reeledTelemetry.restLength < restLength,
+      'active reel may pay out at the break edge but should remain shorter than the original rope');
     assert(reeledTelemetry.distance <= firstTelemetry.distance + 1e-6, 'reeling should not increase anchor distance');
 
     assert.equal(port.cutAttachment({

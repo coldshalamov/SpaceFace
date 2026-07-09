@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
@@ -23,12 +24,20 @@ try {
   const actor = helpers.spawnEntity(makeShipSpec({
     team: 1,
     x: 0,
-    factionId: 'faction_scn',
+    factionId: 'faction_vael',
     ai: {
       squadId: 'sg06_live_registry_wing',
-      doctrine: 'official',
+      archetype: 'pirate',
+      doctrine: 'scavenger',
       preferredRole: 'leader',
-      capabilities: ['ranged'],
+      capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
+      activity: normalizeActivity({
+        kind: ActivityKind.ATTACK_RUN,
+        reason: 'live_registry:attack_probe',
+        anchor: { x: 0, z: 0 },
+        leashRadius: 1200,
+      }),
+      roe: RulesOfEngagement.WEAPONS_FREE,
     },
   }));
   state.playerId = player.id;
@@ -68,8 +77,11 @@ try {
   assert(aiStart, 'SG-03 should start the live-registry AI action through the canonical queue');
   assert(aiEffect, 'SG-03 should own the live-registry AI action effect');
   assert.equal(aiRequest.target.entityId, player.id, 'live registry AI action should target the hostile ship through SG-03');
-  assert.equal(actor.data.intent, legacyIntent, 'live registry tacticalAI must not mutate the legacy AI intent contract');
-  assert.equal(actor.data.intent.fire, false, 'live registry tacticalAI must not request combat through legacy intent.fire');
+  assert.notEqual(actor.data.intent, legacyIntent, 'fire adapter should replace frozen legacy intent snapshots after doctrine permits fire');
+  assert.equal(legacyIntent.fire, false, 'frozen legacy intent fixture must remain untouched');
+  assert.equal(actor.data.intent.sentinel, 'live-registry-must-not-touch-legacy-intent',
+    'fire adapter should preserve non-firing intent fields');
+  assert.equal(actor.data.intent.fire, true, 'visible weapon intent should be armed through the doctrine-gated adapter');
   assert(portDiagnostics.acceptedManeuvers > 0, 'live registry tacticalAI should bind the production maneuver port');
   assert(portDiagnostics.flushedManeuvers > 0, 'production registry aiPorts should flush SG-06 maneuvers into SG-02');
   assert.equal(portDiagnostics.lastDropReason, null, 'live registry SG-06 maneuvers should not be dropped after SG-02 is ready');
@@ -124,9 +136,12 @@ async function makeLiveRegistryHarness() {
     helpers,
     registry,
     dispose() {
-      const physics = registry.get('physics');
-      if (physics && typeof physics._disableSg02DynamicAuthority === 'function') {
-        physics._disableSg02DynamicAuthority();
+      if (typeof registry.destroy === 'function') registry.destroy();
+      else {
+        const physics = registry.get('physics');
+        if (physics && typeof physics._disableSg02DynamicAuthority === 'function') {
+          physics._disableSg02DynamicAuthority();
+        }
       }
     },
   };
@@ -201,6 +216,8 @@ function installHeadlessBrowserStubs() {
   globalThis.innerWidth = 1280;
   globalThis.innerHeight = 720;
   globalThis.document = {
+    addEventListener: globalThis.addEventListener,
+    removeEventListener: globalThis.removeEventListener,
     getElementById() { return null; },
     querySelector() { return null; },
     createElement() {

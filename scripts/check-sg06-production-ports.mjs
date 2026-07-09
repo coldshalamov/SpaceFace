@@ -335,15 +335,22 @@ function poisonHiddenState(state, entity) {
 function assertFrameWhitelist(frame) {
   assertExactKeys(frame, ['contacts', 'events', 'self', 'tick'], 'SensorFrame');
   assertExactKeys(frame.self, [
-    'capabilities', 'disabled', 'energyFraction', 'heatFraction', 'hullFraction', 'id',
-    'pos', 'radius', 'rot', 'subsystemFractions', 'team', 'tethered', 'vel',
+    'activity', 'capabilities', 'disabled', 'energyFraction', 'heatFraction', 'hullFraction', 'id',
+    'pos', 'radius', 'roe', 'rot', 'subsystemFractions', 'team', 'tethered', 'vel',
   ], 'SensorFrame.self');
   assertExactKeys(frame.self.pos, ['x', 'z'], 'SensorFrame.self.pos');
   assertExactKeys(frame.self.vel, ['x', 'z'], 'SensorFrame.self.vel');
+  if (frame.self.activity) {
+    assertExactKeys(frame.self.activity, [
+      'anchor', 'deadlineTick', 'encounterId', 'kind', 'leashRadius', 'preferredRange',
+      'reason', 'routeId', 'startedTick', 'targetId',
+    ], 'SensorFrame.self.activity');
+    if (frame.self.activity.anchor) assertExactKeys(frame.self.activity.anchor, ['x', 'z'], 'SensorFrame.self.activity.anchor');
+  }
   for (const contact of frame.contacts) {
     assertExactKeys(contact, [
       'attachmentId', 'classification', 'confidence', 'disabled', 'exposed', 'id', 'kind',
-      'massClass', 'objectiveValue', 'ownedBySelf', 'ownerId', 'pos', 'radius', 'sourceSocketId',
+      'hostile', 'massClass', 'objectiveValue', 'ownedBySelf', 'ownerId', 'pos', 'radius', 'sourceSocketId',
       'tags', 'targetId', 'targetSocketId', 'team', 'tethered', 'threat', 'vel',
     ], 'SensorFrame.contact');
     assertExactKeys(contact.pos, ['x', 'z'], 'SensorFrame.contact.pos');

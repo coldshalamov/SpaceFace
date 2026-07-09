@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { core } from '../src/core/coreSystem.js';
 import { createGameState } from '../src/core/gameState.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
 import { physics } from '../src/core/physics.js';
 import { actions } from '../src/systems/actions.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
@@ -22,12 +23,20 @@ const player = helpers.spawnEntity(makeShipSpec({
 const actor = helpers.spawnEntity(makeShipSpec({
   team: 1,
   x: 0,
-  factionId: 'faction_scn',
+  factionId: 'faction_vael',
   ai: {
     squadId: 'sg06_registry_wing',
-    doctrine: 'official',
+    archetype: 'pirate',
+    doctrine: 'scavenger',
     preferredRole: 'leader',
-    capabilities: ['ranged'],
+    capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
+    activity: normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: 'registry_init:attack_probe',
+      anchor: { x: 0, z: 0 },
+      leashRadius: 1200,
+    }),
+    roe: RulesOfEngagement.WEAPONS_FREE,
   },
 }));
 state.playerId = player.id;
@@ -65,8 +74,11 @@ assert(aiRequest, 'lazy registry-slot tacticalAI should submit canonical action_
 assert(aiStart, 'SG-03 should start the lazy-bound AI action through the canonical queue');
 assert(aiEffect, 'SG-03 should own the action effect after lazy tacticalAI starts it');
 assert.equal(aiRequest.target.entityId, player.id, 'AI action request should target the hostile ship through SG-03');
-assert.equal(actor.data.intent, legacyIntent, 'lazy tacticalAI must not mutate the legacy AI intent contract');
-assert.equal(actor.data.intent.fire, false, 'lazy tacticalAI must not request combat through legacy intent.fire');
+assert.notEqual(actor.data.intent, legacyIntent, 'fire adapter should replace frozen legacy intent snapshots after doctrine permits fire');
+assert.equal(legacyIntent.fire, false, 'frozen legacy intent fixture must remain untouched');
+assert.equal(actor.data.intent.sentinel, 'registry-init-must-not-touch-legacy-intent',
+  'fire adapter should preserve non-firing intent fields');
+assert.equal(actor.data.intent.fire, true, 'visible weapon intent should be armed through the doctrine-gated adapter');
 assert(portDiagnostics.acceptedManeuvers > 0, 'lazy tacticalAI should bind the production SG-06 maneuver port');
 assert(portDiagnostics.flushedManeuvers > 0, 'aiPorts should flush lazy tacticalAI maneuver requests into SG-02');
 assert.equal(portDiagnostics.lastDropReason, null, 'lazy tacticalAI maneuver requests should not be dropped');

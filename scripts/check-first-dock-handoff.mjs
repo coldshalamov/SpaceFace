@@ -37,6 +37,8 @@ assert.ok(
   'handoff rail must end by reinforcing Departure Check / undock readiness');
 assert.ok(stationSource.includes('data-handoff-tab'),
   'handoff rail steps must be clickable tab actions');
+assert.ok(stationSource.includes('data-handoff-dismiss') || stationSource.includes('st-handoff-dismiss'),
+  'first dock handoff must be dismissible (single strip, not permanent chrome)');
 assert.match(stationSource, /target\.getAttribute\('data-handoff-tab'\)[\s\S]*this\.setTab\(tabId, \{ focusRail: true \}\)/,
   'handoff clicks must route through the same focus-aware station tab path as the rail');
 assert.ok(stationSource.includes("targetTab: hasCargo || marketDone ? 'hold' : 'market'")

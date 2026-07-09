@@ -86,6 +86,22 @@ async function check(name, fn) {
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 function approx(a, b, eps = 0.0001, msg) { if (Math.abs(a - b) > eps) throw new Error(msg || `${a} ≉ ${b}`); }
 
+function methodBody(source, name) {
+  const start = source.indexOf(`${name}(dt) {`);
+  assert(start >= 0, `vfx method ${name} should exist`);
+  const open = source.indexOf('{', start);
+  let depth = 0;
+  for (let i = open; i < source.length; i++) {
+    const ch = source[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return source.slice(open + 1, i);
+    }
+  }
+  throw new Error(`vfx method ${name} should have a balanced body`);
+}
+
 // §3 juice-stack table: event -> expected cue id (and handler name for source checks).
 const JUICE_EVENTS = [
   { event: 'combat:damage', cue: 'combat.damage.shield', predicate: 'shieldAbsorbed', sourceToken: "_emitJuiceCue('combat.damage.shield'" },
@@ -305,11 +321,9 @@ await check('§5.5: VFX update clamps dt and uses pooled allocation', () => {
 
 await check('§5.5: No unbounded loops or per-frame allocations in vfx hot paths', () => {
   // Basic AST-free sanity: no array growth via push without cap check in update/_integrate functions.
-  const integrate = vfxSrc.slice(vfxSrc.indexOf('_integrateParticles'), vfxSrc.indexOf('_integrateSprites'));
+  const integrate = methodBody(vfxSrc, '_integrateParticles');
   assert(!integrate.includes('.push('), 'particle integration does not allocate');
-  const spriteIntStart = vfxSrc.indexOf('_integrateSprites(dt) {');
-  const spriteIntEnd = vfxSrc.indexOf('export function createVfxPrecompileSalvo');
-  const spriteInt = vfxSrc.slice(spriteIntStart, spriteIntEnd);
+  const spriteInt = methodBody(vfxSrc, '_integrateSprites');
   assert(!spriteInt.includes('.push('), 'sprite integration does not allocate');
   assert(!integrate.includes('new THREE.Vector3'), 'particle integration does not allocate Vector3');
   assert(!spriteInt.includes('new THREE.Vector3'), 'sprite integration does not allocate Vector3');

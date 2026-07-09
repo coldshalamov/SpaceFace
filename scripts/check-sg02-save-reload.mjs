@@ -76,12 +76,16 @@ physicsRuntime.init({ state: restored.state, bus: restored.bus, helpers: physics
 physicsRuntime.update(DT, restored.state);
 await physicsRuntime._sg02Init;
 assert(physicsRuntime._sg02, 'loaded rapier-dynamic state should initialize the SG-02 body owner');
+physicsRuntime.update(0, restored.state);
+const restoredBodyRecord = physicsRuntime._sg02.records.get(restoredPlayer.id);
+assert(restoredBodyRecord, 'SG-02 body owner should create a body for the restored player');
+assert(Math.abs(restoredBodyRecord.body.angvel().y - 0.73) < 1e-6, 'SG-02 body owner should seed from saved yaw-rate');
 
 const rotBeforeStep = restoredPlayer.rot;
 physicsRuntime.update(DT, restored.state);
 assert.equal(restored.state.physicsRuntime.diagnostics.backend, 'rapier-dynamic', 'physics diagnostics should stay on SG-02 dynamic backend');
 assert.equal(restored.state.physicsRuntime.diagnostics.sg02Ready, true, 'physics diagnostics should report SG-02 ready after reload');
-assert(Math.abs(restoredPlayer.angVel - 0.73) < 1e-6, 'SG-02 body owner should seed from saved yaw-rate');
+assert(restoredPlayer.angVel > 0 && restoredPlayer.angVel <= 0.73 + 1e-6, 'SG-02 body owner should preserve yaw-rate direction after damping');
 assert(restoredPlayer.rot > rotBeforeStep, 'SG-02 body owner should advance heading from saved yaw-rate');
 
 physicsRuntime._disableSg02DynamicAuthority();
