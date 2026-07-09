@@ -1015,6 +1015,7 @@ function getSearchTargets(state, level, curSecId) {
 
 export const galaxyMapScreen = {
   id: 'galaxyMap',
+  data: { autoFocus: false },
   _ctx: null,
   _root: null,
   _body: null,
@@ -1590,6 +1591,31 @@ export const galaxyMapScreen = {
 
         <button class="gm-ins-btn" id="gm-set-course-btn" type="button">Align Autopilot</button>
       `;
+    } else if (t.kind === 'waypoint') {
+      const player = playerEntity(state);
+      const dist = player && Number.isFinite(t.x) && Number.isFinite(t.z)
+        ? Math.round(Math.hypot(t.x - player.pos.x, t.z - player.pos.z))
+        : null;
+      html += `
+        <div class="gm-ins-section">
+          <div class="gm-title" style="color:#ffd24a; font-size: 0.95rem; margin-bottom: 4px; text-shadow:none;">${t.name}</div>
+          <div style="color:var(--ink-dim); font-size: 0.65rem;">ACTIVE WAYPOINT</div>
+        </div>
+
+        <div class="gm-ins-section">
+          <div class="gm-ins-title">Navigation</div>
+          <div class="gm-ins-row">
+            <span>Reason</span>
+            <span class="gm-ins-row-val">${t.detail || 'Tracked objective'}</span>
+          </div>
+          <div class="gm-ins-row">
+            <span>Range</span>
+            <span class="gm-ins-row-val">${dist != null ? dist + ' u' : 'Unknown'}</span>
+          </div>
+        </div>
+
+        <button class="gm-ins-btn" id="gm-set-course-btn" type="button">Track Waypoint</button>
+      `;
     } else {
       // General contact
       html += `
@@ -2049,10 +2075,12 @@ export const galaxyMapScreen = {
   // --- SYSTEM DRAW ---
   _drawSystem(g, state, w, h) {
     const model = buildSystemModel(state);
+    const wp = state.nav && state.nav.waypoint;
     let span = 3000;
     const pts = [];
     for (const z of model.zones) pts.push({ x: z.x, z: z.z, r: z.radius });
     for (const p of model.points) if (Number.isFinite(p.x) && Number.isFinite(p.z)) pts.push({ x: p.x, z: p.z, r: 0 });
+    if (wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)) pts.push({ x: wp.pos.x, z: wp.pos.z, r: 180 });
     if (pts.length) {
       let m = 0;
       for (const p of pts) m = Math.max(m, Math.hypot(p.x, p.z) + (p.r || 0));
@@ -2071,7 +2099,6 @@ export const galaxyMapScreen = {
     g.fillText(model.sectorName, 16, 16);
 
     // Draw active system waypoint (tether path)
-    const wp = state.nav && state.nav.waypoint;
     if (wp && wp.pos && this._layers.route) {
       const player = playerEntity(state);
       if (player) {
@@ -2080,6 +2107,13 @@ export const galaxyMapScreen = {
         g.beginPath(); g.moveTo(sx(player.pos.x), sz(player.pos.z)); g.lineTo(sx(wp.pos.x), sz(wp.pos.z)); g.stroke();
         g.restore();
       }
+    }
+    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
+      const wx = sx(wp.pos.x);
+      const wy = sz(wp.pos.z);
+      drawWaypointPin(g, wx, wy, waypointMapLabel(wp));
+      const target = waypointClickTarget(wp, wx, wy);
+      if (target) this._clickTargets.push(target);
     }
 
     // Zones
@@ -2193,6 +2227,7 @@ export const galaxyMapScreen = {
   _drawLocal(g, state, w, h) {
     const model = buildLocalModel(state, this._isHostile);
     const cam = this._cams.local;
+    const wp = state.nav && state.nav.waypoint;
 
     const player = playerEntity(state);
     const px = player ? player.pos.x : 0;
@@ -2201,6 +2236,9 @@ export const galaxyMapScreen = {
     let span = 1600;
     let m = 0;
     for (const c of model.contacts) m = Math.max(m, Math.hypot(c.x - px, c.z - pz));
+    if (wp && wp.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)) {
+      m = Math.max(m, Math.hypot(wp.pos.x - px, wp.pos.z - pz));
+    }
     if (m > 0) span = Math.max(600, m * 2.2);
 
     const baseScale = (Math.min(w, h) * 0.85) / span;
@@ -2216,12 +2254,18 @@ export const galaxyMapScreen = {
     g.setLineDash([]);
 
     // Draw active waypoint line
-    const wp = state.nav && state.nav.waypoint;
     if (wp && wp.pos && this._layers.route) {
       g.save();
       g.strokeStyle = '#ffd24a'; g.lineWidth = 2; g.setLineDash([6, 5]);
       g.beginPath(); g.moveTo(sx(px), sz(pz)); g.lineTo(sx(wp.pos.x), sz(wp.pos.z)); g.stroke();
       g.restore();
+    }
+    if (wp && wp.pos && (this._layers.route || this._layers.mission)) {
+      const wx = sx(wp.pos.x);
+      const wy = sz(wp.pos.z);
+      drawWaypointPin(g, wx, wy, waypointMapLabel(wp));
+      const target = waypointClickTarget(wp, wx, wy);
+      if (target) this._clickTargets.push(target);
     }
 
     // Contacts
@@ -2287,6 +2331,61 @@ function hexToRgba(hex, alpha) {
   const r = parseInt(s.slice(0, 2), 16), gg = parseInt(s.slice(2, 4), 16), b = parseInt(s.slice(4, 6), 16);
   if (![r, gg, b].every(Number.isFinite)) return 'rgba(136,153,170,' + alpha + ')';
   return 'rgba(' + r + ',' + gg + ',' + b + ',' + alpha + ')';
+}
+
+function waypointMapLabel(wp) {
+  const raw = wp && (wp.mapLabel || wp.label || wp.reason || wp.sectorName || 'Waypoint');
+  const label = String(raw || 'Waypoint').replace(/\s+/g, ' ').trim();
+  return (label || 'Waypoint').slice(0, 28);
+}
+
+function drawWaypointPin(g, x, y, label) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+  g.save();
+  g.strokeStyle = '#ffd24a';
+  g.fillStyle = 'rgba(255,210,74,0.18)';
+  g.shadowColor = '#ffd24a';
+  g.shadowBlur = 8;
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(x, y - 8);
+  g.lineTo(x + 8, y);
+  g.lineTo(x, y + 8);
+  g.lineTo(x - 8, y);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.shadowBlur = 0;
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 1;
+  g.stroke();
+  g.fillStyle = '#ffd24a';
+  g.font = 'bold 10px monospace';
+  g.textAlign = 'left';
+  g.textBaseline = 'middle';
+  g.strokeStyle = 'rgba(4,8,16,0.9)';
+  g.lineWidth = 3;
+  g.strokeText(label, x + 12, y);
+  g.fillText(label, x + 12, y);
+  g.restore();
+}
+
+function waypointClickTarget(wp, sx, sy) {
+  if (!wp || !wp.pos || !Number.isFinite(wp.pos.x) || !Number.isFinite(wp.pos.z)) return null;
+  const label = waypointMapLabel(wp);
+  return {
+    sx,
+    sy,
+    radiusPx: 22,
+    kind: 'waypoint',
+    id: 'active-waypoint',
+    x: wp.pos.x,
+    z: wp.pos.z,
+    name: label,
+    detail: wp.reason || wp.label || wp.mapLabel || 'Active navigation waypoint',
+    targetEntityId: wp.targetEntityId,
+    stationId: wp.stationId,
+  };
 }
 
 export default galaxyMapScreen;

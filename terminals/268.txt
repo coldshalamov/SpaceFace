@@ -3,7 +3,7 @@ pid: 40388
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "Set-Location \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\"; npm run build:sg04:release-assets 2>&1 | Tee-Object -FilePath \"$env:TEMP\\build-sg04-run3.log\" | Select-Object -Last 5"
 started_at: 2026-07-08T18:24:15.259Z
-running_for_ms: 30520088 
+running_for_ms: 35259999 
 ---
 [sg04] 70/70 wholeship_wasp: build-start assets/ships/parts/wholeships/wasp.glb -> assets/ships/release.__building/parts/wholeships/wasp.glb
 prune: Removed types... Accessor (15)

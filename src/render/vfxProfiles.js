@@ -26,6 +26,11 @@ const DEFAULT_ENGINE = Object.freeze({
   noiseScale: 1.6,
   coreIntensity: 6.5,
   haloIntensity: 2.6,
+  // Liquid-fire plume character (see energyMaterials.PLUME_FRAGMENT): plumeSwirl = domain-warp /
+  // spiral of the flame, plumeFork = raggedness of the flickering tongues. Distinct per engine
+  // family so the fleet's thruster trails read as different drives, not one recoloured tube.
+  plumeSwirl: 0.5,
+  plumeFork: 0.5,
 });
 
 export const ENGINE_PROFILES = Object.freeze({
@@ -42,6 +47,8 @@ export const ENGINE_PROFILES = Object.freeze({
     plumeHalo: '#5a78ff',
     flowSpeed: 2.6,
     noiseScale: 1.5,
+    plumeSwirl: 0.45,
+    plumeFork: 0.40,
   }),
   engine_ion_twin: Object.freeze({
     ...DEFAULT_ENGINE,
@@ -58,6 +65,8 @@ export const ENGINE_PROFILES = Object.freeze({
     plumeCore: '#42d4ff',
     plumeHalo: '#6888ff',
     flowSpeed: 2.8,
+    plumeSwirl: 0.5,
+    plumeFork: 0.45,
   }),
   engine_industrial: Object.freeze({
     ...DEFAULT_ENGINE,
@@ -79,6 +88,8 @@ export const ENGINE_PROFILES = Object.freeze({
     noiseScale: 2.1,
     coreIntensity: 5.8,
     haloIntensity: 2.0,
+    plumeSwirl: 0.7,
+    plumeFork: 0.85,
   }),
   engine_resonator: Object.freeze({
     ...DEFAULT_ENGINE,
@@ -99,6 +110,8 @@ export const ENGINE_PROFILES = Object.freeze({
     noiseScale: 2.8,
     coreIntensity: 7.2,
     haloIntensity: 2.8,
+    plumeSwirl: 1.15,
+    plumeFork: 0.55,
   }),
   engine_vector: Object.freeze({
     ...DEFAULT_ENGINE,
@@ -120,6 +133,8 @@ export const ENGINE_PROFILES = Object.freeze({
     noiseScale: 1.2,
     coreIntensity: 7.8,
     haloIntensity: 2.4,
+    plumeSwirl: 0.30,
+    plumeFork: 0.30,
   }),
   engine_plasma_ring: Object.freeze({
     ...DEFAULT_ENGINE,
@@ -141,6 +156,8 @@ export const ENGINE_PROFILES = Object.freeze({
     noiseScale: 2.4,
     coreIntensity: 8.2,
     haloIntensity: 3.2,
+    plumeSwirl: 1.0,
+    plumeFork: 0.9,
   }),
 });
 

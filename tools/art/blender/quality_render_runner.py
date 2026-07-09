@@ -123,10 +123,10 @@ def setup_world(clay=False):
     out = nodes.new('ShaderNodeOutputWorld')
     bg = nodes.new('ShaderNodeBackground')
     if clay:
-        bg.inputs['Color'].default_value = (0.12, 0.12, 0.14, 1)
+        bg.inputs['Color'].default_value = (0.045, 0.045, 0.055, 1)
         bg.inputs['Strength'].default_value = 1.0
     else:
-        bg.inputs['Color'].default_value = (0.03, 0.04, 0.06, 1)
+        bg.inputs['Color'].default_value = (0.02, 0.025, 0.035, 1)
         bg.inputs['Strength'].default_value = 0.55
     links.new(bg.outputs['Background'], out.inputs['Surface'])
 
@@ -135,11 +135,22 @@ def setup_lights(center, lit=True):
     from mathutils import Vector
     import math
 
-    for n in ('SF_SUN', 'SF_FILL'):
+    for n in ('SF_SUN', 'SF_FILL', 'SF_CLAY_KEY', 'SF_CLAY_FILL'):
         o = bpy.data.objects.get(n)
         if o:
             bpy.data.objects.remove(o, do_unlink=True)
     if not lit:
+        # Soft clay key so silhouettes segment vs dark clay BG
+        key = bpy.data.lights.new('SF_CLAY_KEY', 'SUN')
+        key.energy = 2.2
+        ko = bpy.data.objects.new('SF_CLAY_KEY', key)
+        bpy.context.scene.collection.objects.link(ko)
+        ko.rotation_euler = (math.radians(50), 0, math.radians(35))
+        fill = bpy.data.lights.new('SF_CLAY_FILL', 'SUN')
+        fill.energy = 0.55
+        fo = bpy.data.objects.new('SF_CLAY_FILL', fill)
+        bpy.context.scene.collection.objects.link(fo)
+        fo.rotation_euler = (math.radians(25), 0, math.radians(-120))
         return
     sun = bpy.data.lights.new('SF_SUN', 'SUN')
     sun.energy = 3.5
@@ -179,7 +190,7 @@ def ensure_mat(name, rgba, emi=None, emi_str=0.0, clearcoat=0.0, rough=0.38, cla
 def assign_materials(meshes, clay=False):
     ch = CHARACTER[PART_ID]
     if clay:
-        clay_mat = ensure_mat('SF_CLAY', (0.78, 0.78, 0.82, 1), clay=True)
+        clay_mat = ensure_mat('SF_CLAY', (0.88, 0.88, 0.90, 1), clay=True)
         for obj in meshes:
             if 'HOOK_DRIVE' in obj.name.upper():
                 continue

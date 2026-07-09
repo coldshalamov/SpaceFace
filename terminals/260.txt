@@ -3,7 +3,7 @@ pid: 5548
 cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
 command: "cd \"C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\" && npm run check:assets:live 2>&1 | Select-Object -Last 40"
 started_at: 2026-07-08T16:54:02.876Z
-running_for_ms: 35915051 
+running_for_ms: 40660000 
 ---
 
 > spaceface@0.1.0 check:assets:live

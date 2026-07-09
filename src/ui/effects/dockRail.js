@@ -2,11 +2,15 @@
 // SpaceFace meaning: a rail of station/tool services (refuel, repair, ammo, market, missions…) read
 // as a physical berth control strip. The focused service magnifies + reveals its readiness.
 //
-// Keyboard parity is a hard requirement: focus is treated identically to hover (both magnify the item
-// and its neighbours). Magnify is transform:scale ONLY (never width/margin — that thrashes layout).
-// Reduced motion drops the scale but KEEPS the :focus-visible outline. No `:has()` (JS sets neighbour
-// classes). No rAF — pure CSS + delegated pointer/focus state.
-import { ensureFxCss } from './effectRuntime.js';
+// Magnification is Mac-like: continuous falloff from the pointer (or focused item), not a binary
+// "self + one neighbour" step. Tunables (MAX_SCALE, INFLUENCE_ICONS, LIFT_PX, PEAK_SHARPNESS) mirror
+// the classic dock curve — peak at the hot icon, smooth cosine falloff across ~2–3 icon widths.
+//
+// Keyboard parity is a hard requirement: focus is treated identically to hover (both drive the same
+// continuous curve). Magnify is transform:scale + translateY ONLY (never width/margin — that thrashes
+// layout). Reduced motion drops the scale but KEEPS the :focus-visible outline. No `:has()` (JS sets
+// emphasis classes). No rAF — pure CSS transitions + pointer/focus state.
+import { ensureFxCss, prefersReducedMotion } from './effectRuntime.js';
 
 export const CUE = Object.freeze({
   effect: 'dockRail',
@@ -16,46 +20,155 @@ export const CUE = Object.freeze({
   loop: false,
 });
 
+// ── Mac-like magnification variables ─────────────────────────────────────────
+// MAX_SCALE: peak scale of the hot icon (macOS ~1.5–1.8; keep modest for dense berth chips).
+// INFLUENCE_ICONS: how many icon-widths the curve reaches (2.4 ≈ self + one neighbour each side).
+// LIFT_PX: max upward translate at full peak (icons "pop" out of the berth strip).
+// PEAK_SHARPNESS: 1 = pure cosine; >1 sharpens the center peak (macOS feels slightly peaked).
+// TRANSITION_MS: must stay ≤ CUE.maxMs / bible §1.10 (magnify ≤150 ms).
+const MAX_SCALE = 1.48;
+const MIN_SCALE = 1;
+const INFLUENCE_ICONS = 2.55;
+const LIFT_PX = 14;
+const PEAK_SHARPNESS = 1.35;
+const TRANSITION_MS = 140;
+
 const CSS_ID = 'sf-fx-dock-css';
 const CSS = `
-.sf-fx-dock { display:flex; gap: var(--sp-2, 8px); align-items:flex-end; }
+.sf-fx-dock {
+  /* Room for MAX_SCALE + LIFT_PX above the berth baseline (keeps overflow-x scroll from clipping Y). */
+  --sf-fx-dock-pad-top: 40px;
+  position: relative;
+  display: flex;
+  gap: var(--sp-2, 8px);
+  align-items: flex-end;
+  justify-content: center;
+  /* Headroom lives INSIDE the scrollport so overflow-x cannot clip the upward scale/lift. */
+  padding: var(--sf-fx-dock-pad-top) 10px 6px;
+  box-sizing: border-box;
+}
 .sf-fx-dock__item {
-  display:inline-flex; flex-direction:column; align-items:center; gap:2px;
-  background: color-mix(in srgb, var(--ink-mute) 12%, transparent);
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  /* Glass plate without backdrop-filter (forbidden in the effect layer): stacked washes + inset rim. */
+  background:
+    linear-gradient(165deg,
+      color-mix(in srgb, var(--ink) 16%, transparent) 0%,
+      color-mix(in srgb, var(--ink-mute) 8%, transparent) 42%,
+      color-mix(in srgb, var(--ink-mute) 14%, transparent) 100%);
   color: var(--ink);
-  border: 1px solid color-mix(in srgb, var(--ink-mute) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
   border-radius: var(--r-2, 8px);
   padding: var(--sp-2, 8px);
-  font: inherit; cursor: pointer;
+  font: inherit;
+  cursor: pointer;
   transform-origin: bottom center;
-  transition: transform 140ms var(--ease, ease-out);
+  transform: translateY(0) scale(1);
+  will-change: transform;
+  transition:
+    transform ${TRANSITION_MS}ms var(--ease, ease-out),
+    border-color ${TRANSITION_MS}ms var(--ease, ease-out),
+    box-shadow ${TRANSITION_MS}ms var(--ease, ease-out),
+    background ${TRANSITION_MS}ms var(--ease, ease-out);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ink) 22%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--ink-mute) 28%, transparent),
+    0 1px 2px color-mix(in srgb, var(--ink-mute) 35%, transparent),
+    0 8px 18px -12px color-mix(in srgb, var(--ink-mute) 70%, transparent);
+  z-index: 1;
 }
-.sf-fx-dock__item:hover,
-.sf-fx-dock__item:focus-visible,
-.sf-fx-dock__item.is-focus { transform: scale(1.18); }
-.sf-fx-dock__item.is-adjacent { transform: scale(1.08); }
-.sf-fx-dock__item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sf-fx-dock__icon { font-size: 1.25em; line-height: 1; }
-.sf-fx-dock__label { font-size: 0.8em; color: var(--ink-dim); }
-.sf-fx-dock__badge { font-size: 0.7em; color: var(--ink-mute); }
+.sf-fx-dock__item::before {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 1px;
+  height: 42%;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ink) 18%, transparent),
+    transparent);
+  opacity: 0.85;
+}
+.sf-fx-dock__item.is-focus {
+  z-index: 4;
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ink) 28%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--accent) 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 10px 24px -10px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 4px 10px color-mix(in srgb, var(--ink-mute) 40%, transparent);
+}
+.sf-fx-dock__item.is-adjacent {
+  z-index: 3;
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ink) 22%, transparent),
+    0 8px 18px -12px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 2px 6px color-mix(in srgb, var(--ink-mute) 35%, transparent);
+}
+.sf-fx-dock__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.sf-fx-dock__icon {
+  position: relative;
+  font-size: 1.28em;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--ink-mute) 55%, transparent));
+}
+.sf-fx-dock__label {
+  position: relative;
+  font-size: 0.78em;
+  color: var(--ink-dim);
+  letter-spacing: 0.02em;
+}
+.sf-fx-dock__badge {
+  position: relative;
+  font-size: 0.7em;
+  color: var(--ink-mute);
+}
 .sf-fx-dock__badge--good { color: var(--good); }
 .sf-fx-dock__badge--warn { color: var(--warn); }
 .sf-fx-dock__badge--danger { color: var(--danger); }
 @media (prefers-reduced-motion: reduce) {
-  .sf-fx-dock__item { transition: none; }
-  .sf-fx-dock__item:hover,
-  .sf-fx-dock__item:focus-visible,
+  .sf-fx-dock__item { transition: border-color 120ms var(--ease, ease-out), box-shadow 120ms var(--ease, ease-out); }
   .sf-fx-dock__item.is-focus,
-  .sf-fx-dock__item.is-adjacent { transform: none; }
+  .sf-fx-dock__item.is-adjacent { transform: none !important; }
 }
-html.sf-reduce-motion .sf-fx-dock__item { transition: none; }
-html.sf-reduce-motion .sf-fx-dock__item:hover,
-html.sf-reduce-motion .sf-fx-dock__item:focus-visible,
+html.sf-reduce-motion .sf-fx-dock__item {
+  transition: border-color 120ms var(--ease, ease-out), box-shadow 120ms var(--ease, ease-out);
+}
 html.sf-reduce-motion .sf-fx-dock__item.is-focus,
-html.sf-reduce-motion .sf-fx-dock__item.is-adjacent { transform: none; }
+html.sf-reduce-motion .sf-fx-dock__item.is-adjacent { transform: none !important; }
 `;
 
-const READY_CLASS = { good: 'sf-fx-dock__badge--good', warn: 'sf-fx-dock__badge--warn', danger: 'sf-fx-dock__badge--danger' };
+const READY_CLASS = {
+  good: 'sf-fx-dock__badge--good',
+  warn: 'sf-fx-dock__badge--warn',
+  danger: 'sf-fx-dock__badge--danger',
+};
+
+/**
+ * Cosine falloff → Mac-like dock scale at distance `distPx` from the hot X.
+ * @param {number} distPx
+ * @param {number} iconW  base (untransformed) icon width
+ */
+function scaleAtDistance(distPx, iconW) {
+  const w = iconW > 4 ? iconW : 64;
+  const radius = w * INFLUENCE_ICONS;
+  if (!(radius > 0) || distPx >= radius) return MIN_SCALE;
+  const t = distPx / radius; // 0 at peak … 1 at edge
+  // Cosine lobe: 1 at center, 0 at edge. Raise to PEAK_SHARPNESS for a tighter macOS-like peak.
+  const lobe = 0.5 * (1 + Math.cos(Math.PI * t));
+  const k = Math.pow(lobe, PEAK_SHARPNESS);
+  return MIN_SCALE + (MAX_SCALE - MIN_SCALE) * k;
+}
 
 /**
  * @param {HTMLElement} mountEl
@@ -72,28 +185,95 @@ export function createDockRail(mountEl, opts = {}) {
 
   let items = [];       // { id, el, badgeEl }
   let active = true;
+  let pointerInside = false;
   const bound = [];     // { el, type, fn } for teardown
 
   function on(el, type, fn) { el.addEventListener(type, fn); bound.push({ el, type, fn }); }
 
   function clearItems() {
-    for (const b of bound) { if (b.el.removeEventListener) b.el.removeEventListener(b.type, b.fn); }
+    for (const b of bound) {
+      // Keep root-level listeners; only drop per-item ones when rebuilding the list.
+      if (b.el === root) continue;
+      if (b.el.removeEventListener) b.el.removeEventListener(b.type, b.fn);
+    }
+    // Rebuild bound list with root listeners only.
+    const keep = bound.filter((b) => b.el === root);
     bound.length = 0;
+    for (const b of keep) bound.push(b);
     while (root.children && root.children.length) root.removeChild(root.children[root.children.length - 1]);
     items = [];
   }
 
-  function magnify(idx) {
-    demagnify();
-    if (!active) return;
+  function clearTransforms() {
+    for (const it of items) {
+      it.el.style.transform = '';
+      it.el.classList.remove('is-focus', 'is-adjacent');
+    }
+  }
+
+  /**
+   * Drive continuous magnification from a client-X (pointer) or from a focused index.
+   * Uses offsetLeft/offsetWidth so transform does not feed back into the distance metric.
+   */
+  function applyMagnifyFromX(clientX) {
+    if (!active || !items.length) return;
+    if (prefersReducedMotion()) {
+      // Emphasis without scale (bible §1.10 reduced-motion path).
+      let best = 0;
+      let bestDist = Infinity;
+      const rootRect = root.getBoundingClientRect();
+      const scrollLeft = root.scrollLeft || 0;
+      const localX = clientX - rootRect.left + scrollLeft;
+      for (let i = 0; i < items.length; i++) {
+        const el = items[i].el;
+        const cx = el.offsetLeft + el.offsetWidth / 2;
+        const d = Math.abs(localX - cx);
+        if (d < bestDist) { bestDist = d; best = i; }
+      }
+      for (let i = 0; i < items.length; i++) {
+        items[i].el.style.transform = '';
+        items[i].el.classList.toggle('is-focus', i === best);
+        items[i].el.classList.toggle('is-adjacent', Math.abs(i - best) === 1);
+      }
+      return;
+    }
+
+    const rootRect = root.getBoundingClientRect();
+    const scrollLeft = root.scrollLeft || 0;
+    const localX = clientX - rootRect.left + scrollLeft;
+    const range = MAX_SCALE - MIN_SCALE;
+
+    for (let i = 0; i < items.length; i++) {
+      const el = items[i].el;
+      const w = el.offsetWidth || 64;
+      const cx = el.offsetLeft + w / 2;
+      const dist = Math.abs(localX - cx);
+      const s = scaleAtDistance(dist, w);
+      const lift = range > 0 ? -LIFT_PX * ((s - MIN_SCALE) / range) : 0;
+      el.style.transform = 'translateY(' + lift.toFixed(2) + 'px) scale(' + s.toFixed(4) + ')';
+      // Class thresholds for glass emphasis (not the scale source of truth).
+      el.classList.toggle('is-focus', s >= MIN_SCALE + range * 0.72);
+      el.classList.toggle('is-adjacent', s > MIN_SCALE + range * 0.18 && s < MIN_SCALE + range * 0.72);
+    }
+  }
+
+  function magnifyIndex(idx) {
     const it = items[idx];
     if (!it) return;
-    it.el.classList.add('is-focus');
-    if (items[idx - 1]) items[idx - 1].el.classList.add('is-adjacent');
-    if (items[idx + 1]) items[idx + 1].el.classList.add('is-adjacent');
+    const rootRect = root.getBoundingClientRect();
+    const scrollLeft = root.scrollLeft || 0;
+    const cx = it.el.offsetLeft + it.el.offsetWidth / 2 - scrollLeft;
+    applyMagnifyFromX(rootRect.left + cx);
   }
+
   function demagnify() {
-    for (const it of items) { it.el.classList.remove('is-focus'); it.el.classList.remove('is-adjacent'); }
+    clearTransforms();
+  }
+
+  function focusedItemIndex() {
+    const ae = typeof document !== 'undefined' ? document.activeElement : null;
+    if (!ae) return -1;
+    return items.findIndex((it) => it.el === ae || (it.el.contains && it.el.contains(ae)));
   }
 
   /**
@@ -123,11 +303,9 @@ export function createDockRail(mountEl, opts = {}) {
       btn.appendChild(badge);
       btn.setAttribute('aria-label', String(svc.label || svc.id || 'service'));
 
-      // keyboard focus is treated identically to hover (the a11y parity requirement)
-      on(btn, 'mouseover', () => magnify(idx));
-      on(btn, 'mouseout', () => demagnify());
-      on(btn, 'focus', () => magnify(idx));
-      on(btn, 'blur', () => demagnify());
+      // Per-item focus still magnifies (keyboard parity). Pointer is handled on the root so the
+      // continuous curve follows the cursor across the whole berth strip without mouseout flicker.
+      on(btn, 'focus', () => magnifyIndex(idx));
       on(btn, 'click', () => { if (onSelect) onSelect(svc.id); });
 
       root.appendChild(btn);
@@ -154,7 +332,10 @@ export function createDockRail(mountEl, opts = {}) {
   /** Programmatically focus + magnify a service. */
   function setFocus(id) {
     const idx = items.findIndex((x) => String(x.id) === String(id));
-    if (idx >= 0) { if (items[idx].el.focus) items[idx].el.focus(); magnify(idx); }
+    if (idx >= 0) {
+      if (items[idx].el.focus) items[idx].el.focus();
+      magnifyIndex(idx);
+    }
   }
 
   function update(state) {
@@ -169,9 +350,39 @@ export function createDockRail(mountEl, opts = {}) {
   }
 
   function dispose() {
-    clearItems();
+    for (const b of bound) {
+      if (b.el.removeEventListener) b.el.removeEventListener(b.type, b.fn);
+    }
+    bound.length = 0;
+    items = [];
     if (root.parentNode) root.parentNode.removeChild(root);
   }
+
+  // Continuous pointer tracking on the rail (Mac dock curve). No rAF — style writes on the event.
+  on(root, 'pointermove', (e) => {
+    if (!active) return;
+    pointerInside = true;
+    if (e && typeof e.clientX === 'number') applyMagnifyFromX(e.clientX);
+  });
+  on(root, 'pointerenter', (e) => {
+    if (!active) return;
+    pointerInside = true;
+    if (e && typeof e.clientX === 'number') applyMagnifyFromX(e.clientX);
+  });
+  on(root, 'pointerleave', () => {
+    pointerInside = false;
+    // Keep magnify if keyboard focus is still on a dock item.
+    const fi = focusedItemIndex();
+    if (fi >= 0) magnifyIndex(fi);
+    else demagnify();
+  });
+  on(root, 'focusout', (e) => {
+    // Defer to next task so focusin on a sibling item can cancel demagnify.
+    const related = e && e.relatedTarget;
+    if (related && root.contains(related)) return;
+    if (pointerInside) return;
+    demagnify();
+  });
 
   return { setItems, setReadiness, setFocus, update, setActive, dispose, root, cue: CUE };
 }

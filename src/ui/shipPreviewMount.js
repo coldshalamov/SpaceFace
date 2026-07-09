@@ -23,6 +23,8 @@ import { installVisualOverrides } from '../render/visualOverrides.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
+const SHIP_PREVIEW_CACHE_LIMIT = 16;
+const FAST_PREVIEW_MATERIALS = new Map();
 
 /** Station archetype → shipyard preview dock interior (shaded hangar shell). */
 export const DOCK_INTERIOR_BY_ARCHETYPE = Object.freeze({
@@ -64,6 +66,144 @@ function groupFromBlueprint(record) {
 const WPN_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+
+function fastPreviewMaterial(key, color, opts = {}) {
+  let material = FAST_PREVIEW_MATERIALS.get(key);
+  if (!material) {
+    material = new THREE.MeshStandardMaterial({
+      color,
+      roughness: opts.roughness == null ? 0.52 : opts.roughness,
+      metalness: opts.metalness == null ? 0.34 : opts.metalness,
+      emissive: opts.emissive || 0x000000,
+      emissiveIntensity: opts.emissiveIntensity || 0,
+      transparent: !!opts.transparent,
+      opacity: opts.opacity == null ? 1 : opts.opacity,
+      depthWrite: opts.depthWrite !== false,
+    });
+    FAST_PREVIEW_MATERIALS.set(key, material);
+  }
+  return material;
+}
+
+function addFastMesh(parent, geometry, material, name, position, rotation, scale) {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = name;
+  if (position) mesh.position.set(position[0], position[1], position[2]);
+  if (rotation) mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
+  if (scale) mesh.scale.set(scale[0], scale[1], scale[2]);
+  parent.add(mesh);
+  return mesh;
+}
+
+function addFastEngine(root, x, y, z, size, materials) {
+  addFastMesh(
+    root,
+    new THREE.CylinderGeometry(size * 0.26, size * 0.34, size * 0.5, 10),
+    materials.dark,
+    'PreviewEngineNozzle',
+    [x, y, z],
+    [0, 0, Math.PI / 2],
+  );
+  addFastMesh(
+    root,
+    new THREE.ConeGeometry(size * 0.34, size * 0.9, 14),
+    materials.glow,
+    'PreviewEnginePlume',
+    [x - size * 0.45, y, z],
+    [0, 0, Math.PI / 2],
+  );
+}
+
+function buildFastPreviewMesh(defId) {
+  const def = SHIP_BY_ID.get(defId);
+  if (!def) return null;
+  const root = new THREE.Group();
+  root.name = `FastPreview_${defId}`;
+  root.userData.kind = 'ship';
+
+  const radius = def.collisionRadius || 14;
+  const visuals = def.visuals || {};
+  const props = visuals.proportions || {};
+  const role = String(def.role || '').toLowerCase();
+  const length = Math.max(1.05, props.length || (role.includes('capital') ? 2.1 : role.includes('freighter') ? 1.75 : 1.35)) * radius;
+  const halfWidth = Math.max(0.32, props.halfWidth || (role.includes('capital') ? 0.82 : role.includes('freighter') ? 0.72 : 0.48)) * radius;
+  const height = Math.max(0.18, props.height || 0.32) * radius;
+  const isCargo = role.includes('freighter') || role.includes('hauler') || role.includes('barge');
+  const isCapital = role.includes('capital') || role.includes('battle') || role.includes('corvette') || role.includes('gunship');
+  const isMiner = role.includes('mining') || role.includes('miner');
+
+  const materials = {
+    hull: fastPreviewMaterial('fast:hull', 0x8fa3bb, { metalness: 0.28, roughness: 0.56 }),
+    trim: fastPreviewMaterial('fast:trim', 0x263246, { metalness: 0.48, roughness: 0.44 }),
+    dark: fastPreviewMaterial('fast:dark', 0x101722, { metalness: 0.72, roughness: 0.38 }),
+    glass: fastPreviewMaterial('fast:glass', 0x73d8ff, {
+      metalness: 0.05, roughness: 0.18, emissive: 0x39d0ff, emissiveIntensity: 0.16,
+      transparent: true, opacity: 0.82, depthWrite: false,
+    }),
+    glow: fastPreviewMaterial('fast:glow', 0x57dfff, {
+      metalness: 0.02, roughness: 0.22, emissive: 0x39d0ff, emissiveIntensity: 1.25,
+      transparent: true, opacity: 0.72, depthWrite: false,
+    }),
+  };
+
+  addFastMesh(
+    root,
+    new THREE.BoxGeometry(length * (isCargo ? 0.78 : 0.62), height, halfWidth * 1.35),
+    materials.hull,
+    'PreviewHullCore',
+    [-length * 0.06, 0, 0],
+  );
+  addFastMesh(
+    root,
+    new THREE.ConeGeometry(halfWidth * (isCapital ? 0.75 : 0.58), length * 0.42, isCapital ? 6 : 4),
+    materials.hull,
+    'PreviewProw',
+    [length * 0.42, 0, 0],
+    [0, 0, -Math.PI / 2],
+  );
+  addFastMesh(
+    root,
+    new THREE.BoxGeometry(length * 0.32, height * 0.58, Math.max(halfWidth * 0.2, 1.4)),
+    materials.trim,
+    'PreviewKeel',
+    [-length * 0.18, -height * 0.08, 0],
+  );
+
+  if (isCargo || isCapital) {
+    const podCount = isCapital ? 4 : 3;
+    for (let i = 0; i < podCount; i++) {
+      const x = -length * 0.25 + (i - (podCount - 1) / 2) * length * 0.16;
+      addFastMesh(root, new THREE.BoxGeometry(length * 0.14, height * 0.85, halfWidth * 0.34), materials.trim, 'PreviewCargoPodPort', [x, 0, -halfWidth * 0.98]);
+      addFastMesh(root, new THREE.BoxGeometry(length * 0.14, height * 0.85, halfWidth * 0.34), materials.trim, 'PreviewCargoPodStarboard', [x, 0, halfWidth * 0.98]);
+    }
+  } else {
+    addFastMesh(root, new THREE.BoxGeometry(length * 0.42, height * 0.32, halfWidth * 1.1), materials.trim, 'PreviewWingPort', [-length * 0.05, -height * 0.18, -halfWidth * 0.72]);
+    addFastMesh(root, new THREE.BoxGeometry(length * 0.42, height * 0.32, halfWidth * 1.1), materials.trim, 'PreviewWingStarboard', [-length * 0.05, -height * 0.18, halfWidth * 0.72]);
+  }
+
+  if (isMiner) {
+    addFastMesh(root, new THREE.CylinderGeometry(height * 0.18, height * 0.24, length * 0.28, 8), materials.dark, 'PreviewMiningDrill', [length * 0.64, -height * 0.1, 0], [0, 0, Math.PI / 2]);
+    addFastMesh(root, new THREE.ConeGeometry(height * 0.28, length * 0.16, 8), materials.glow, 'PreviewMiningTip', [length * 0.82, -height * 0.1, 0], [0, 0, -Math.PI / 2]);
+  }
+
+  addFastMesh(root, new THREE.SphereGeometry(Math.max(height * 0.32, 1.4), 16, 8), materials.glass, 'PreviewCanopy', [length * 0.12, height * 0.58, 0], [0, 0, 0], [1.4, 0.65, 0.9]);
+  const mounts = visuals.engineMounts && visuals.engineMounts.length
+    ? visuals.engineMounts
+    : [{ pos: [-0.68, 0, -0.24], scaleK: 1 }, { pos: [-0.68, 0, 0.24], scaleK: 1 }];
+  for (const mount of mounts.slice(0, 6)) {
+    const p = mount.pos || [-0.68, 0, 0];
+    addFastEngine(root, p[0] * radius, p[1] * radius, p[2] * radius, Math.max(1.5, radius * 0.18 * (mount.scaleK || 1)), materials);
+  }
+
+  const hardpoints = visuals.hardpoints || [];
+  for (const hp of hardpoints.slice(0, 8)) {
+    const p = hp.pos || [0, 0, 0];
+    addFastMesh(root, new THREE.CylinderGeometry(radius * 0.035, radius * 0.045, radius * 0.28, 8), materials.dark, 'PreviewHardpoint', [p[0] * radius, p[1] * radius + height * 0.15, p[2] * radius], [0, 0, Math.PI / 2]);
+  }
+
+  root.userData.previewFastLod = true;
+  return root;
+}
 
 // Build a minimal ship entity the visual factory can consume (same shape shipPreview.makePreviewEntity
 // makes). Starter-fittings so the mesh includes hardpoints + a basic drive glow.
@@ -109,9 +249,11 @@ export function createShipPreviewMount(canvas, opts) {
   let H = canvas.clientHeight || canvas.height || 200;
   const useDock = typeof opts.dockId === 'string' && opts.dockId.length > 0;
   const onFirstFrame = typeof opts.onFirstFrame === 'function' ? opts.onFirstFrame : null;
+  const authoredShips = opts.authoredShips !== false && opts.authoredWarmup !== false;
+  const fastPreview = opts.fastPreview === true;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: !useDock, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !fastPreview, alpha: !useDock, powerPreference: fastPreview ? 'default' : 'low-power' });
+  renderer.setPixelRatio(fastPreview ? 1 : Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(W, H, false);
   renderer.setClearColor(useDock ? 0x05070d : 0x000000, useDock ? 1 : 0);
 
@@ -135,10 +277,13 @@ export function createShipPreviewMount(canvas, opts) {
 
   // hand the main scene's envMap to the factory so chrome/authority hulls mirror the nebula
   if (opts.envMap) setEnvMapForShips(opts.envMap);
-  const vf = createVisualFactory();
-  installVisualOverrides(vf, {
-    onWarning: (message, error) => console.warn(message, error),
-  });
+  const vf = fastPreview ? null : createVisualFactory();
+  if (vf) {
+    installVisualOverrides(vf, {
+      authoredShips,
+      onWarning: (message, error) => console.warn(message, error),
+    });
+  }
 
   let current = null;     // the displayed THREE.Object3D
   let dockRoot = null;
@@ -151,6 +296,55 @@ export function createShipPreviewMount(canvas, opts) {
   let disposed = false;
   let renderedDefId = null;
   let warmupPromise = null;
+  const meshCache = new Map(); // defId -> THREE.Object3D, retained to avoid rebuilding on hover.
+  const meshCacheOrder = [];
+
+  function disposePreviewMesh(mesh) {
+    if (!mesh) return;
+    mesh.traverse((c) => { if (c.geometry) c.geometry.dispose(); });
+  }
+
+  function touchCachedMesh(defId, mesh) {
+    if (!defId || !mesh) return;
+    if (!meshCache.has(defId)) meshCache.set(defId, mesh);
+    const idx = meshCacheOrder.indexOf(defId);
+    if (idx >= 0) meshCacheOrder.splice(idx, 1);
+    meshCacheOrder.push(defId);
+    while (meshCacheOrder.length > SHIP_PREVIEW_CACHE_LIMIT) {
+      const evictId = meshCacheOrder.shift();
+      if (!evictId || evictId === defId) continue;
+      const evicted = meshCache.get(evictId);
+      meshCache.delete(evictId);
+      if (evicted && evicted !== current) disposePreviewMesh(evicted);
+    }
+  }
+
+  function buildPreviewMesh(defId) {
+    if (fastPreview) {
+      const fastMesh = buildFastPreviewMesh(defId);
+      if (!fastMesh) return null;
+      fastMesh.userData.previewDefId = defId;
+      touchCachedMesh(defId, fastMesh);
+      return fastMesh;
+    }
+    const ent = makeEntity(defId, 1);
+    if (!ent || !vf) return null;
+    let mesh = null;
+    try { mesh = vf.build(ent); } catch (e) { mesh = null; }
+    if (!mesh) return null;
+    mesh.userData.previewDefId = defId;
+    // Warm up procedural canvas textures (force upload) so the first frame isn't black.
+    mesh.traverse((c) => {
+      const m = c.material;
+      if (!m) return;
+      for (const k in m) {
+        const v = m[k];
+        if (v && v.isTexture && v.image && typeof v.needsUpdate !== 'undefined') v.needsUpdate = true;
+      }
+    });
+    touchCachedMesh(defId, mesh);
+    return mesh;
+  }
 
   function resize() {
     const nextW = Math.max(1, Math.floor(canvas.clientWidth || canvas.width || W || 320));
@@ -179,24 +373,26 @@ export function createShipPreviewMount(canvas, opts) {
     dockRoot.position.y = 1.5;
     scene.add(dockRoot);
     renderNow();
-    if (active && !rafId) requestLoop();
+    if (active && rotating && !rafId) requestLoop();
   }
 
   if (dockId) loadDockBackdrop(dockId).catch(() => {});
 
   function requestCurrentAuthoredUpgrade() {
+    if (!authoredShips) return;
     const request = current && current.userData && current.userData.requestAuthoredUpgrade;
     if (typeof request === 'function') request(renderer, scene);
   }
 
   function warmAssets() {
+    if (!authoredShips) return Promise.resolve(false);
     if (!warmupPromise) {
       warmupPromise = preloadAuthoredPartLibrary(renderer)
         .then(() => {
           if (disposed) return false;
           requestCurrentAuthoredUpgrade();
           renderNow();
-          if (active && !rafId) requestLoop();
+          if (active && rotating && !rafId) requestLoop();
           return true;
         })
         .catch((error) => {
@@ -265,28 +461,15 @@ export function createShipPreviewMount(canvas, opts) {
    */
   function show(defId, o) {
     o = o || {};
-    // remove previous mesh (geometry only — materials are factory-shared, not disposed here)
     if (current) {
       scene.remove(current);
-      current.traverse((c) => { if (c.geometry) c.geometry.dispose(); });
       current = null;
     }
     if (o.rotating != null) rotating = !!o.rotating;
-    const ent = makeEntity(defId, 1);
-    if (!ent) return;
-    let mesh = null;
-    try { mesh = vf.build(ent); } catch (e) { mesh = null; }
+    let mesh = meshCache.get(defId) || null;
+    if (mesh) touchCachedMesh(defId, mesh);
+    else mesh = buildPreviewMesh(defId);
     if (!mesh) return;
-    mesh.userData.previewDefId = defId;
-    // warm up procedural canvas textures (force upload) so the first frame isn't black
-    mesh.traverse((c) => {
-      const m = c.material;
-      if (!m) return;
-      for (const k in m) {
-        const v = m[k];
-        if (v && v.isTexture && v.image && typeof v.needsUpdate !== 'undefined') v.needsUpdate = true;
-      }
-    });
     current = mesh;
     yaw = 0;
     mesh.rotation.y = 0;
@@ -303,10 +486,18 @@ export function createShipPreviewMount(canvas, opts) {
     renderNow();
     requestCurrentAuthoredUpgrade();
     warmAssets();
-    requestLoop();
+    if (rotating) requestLoop();
   }
 
-  function setRotating(v) { rotating = !!v; }
+  function setRotating(v) {
+    rotating = !!v;
+    if (rotating) {
+      requestLoop();
+    } else if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+  }
   function setDockId(id) {
     const next = typeof id === 'string' && id.length > 0 ? id : null;
     if (next === dockId) return;
@@ -329,7 +520,7 @@ export function createShipPreviewMount(canvas, opts) {
     }
     if (current) {
       renderNow();
-      requestLoop();
+      if (rotating) requestLoop();
     }
   }
 
@@ -339,7 +530,10 @@ export function createShipPreviewMount(canvas, opts) {
     rafId = 0;
     dockLoadGen++;
     if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
-    if (current) { scene.remove(current); current.traverse((c) => { if (c.geometry) c.geometry.dispose(); }); current = null; }
+    if (current) { scene.remove(current); current = null; }
+    for (const mesh of meshCache.values()) disposePreviewMesh(mesh);
+    meshCache.clear();
+    meshCacheOrder.length = 0;
     disposeAuthoredAssetRuntime(renderer);
     renderer.dispose();
   }

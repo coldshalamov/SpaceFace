@@ -55,10 +55,23 @@ export function createUiInput(ctx, screenManager) {
     return !!def && (def.id === 'station' || def.id === 'pause');
   }
 
+  function isTextEntryTarget(t) {
+    return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable));
+  }
+
+  function closeActiveModal(def) {
+    const locked = (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked);
+    if (locked) return false; // root title / mid-transaction screens trap ESC
+    if (def && def.id === 'station') undock();
+    else screenManager.popScreen();
+    bus.emit('audio:cue', { id: 'ui_back' });
+    return true;
+  }
+
   function onKeyDown(ev) {
-    // never intercept typing into inputs/textareas
+    // Let text fields keep ordinary typing, but still honor universal modal escape below.
     const t = ev.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    const textEntry = isTextEntryTarget(t);
 
     const key = ev.key;
     const code = ev.code;
@@ -74,14 +87,10 @@ export function createUiInput(ctx, screenManager) {
       const def = screenManager.getActiveScreenDef();
       if (key === 'Escape') {
         ev.preventDefault();
-        const locked = (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked);
-        if (locked) return; // root title / mid-transaction screens trap ESC
-        // Undock if leaving the station hub
-        if (def && def.id === 'station') undock();
-        else screenManager.popScreen();
-        bus.emit('audio:cue', { id: 'ui_back' });
+        closeActiveModal(def);
         return;
       }
+      if (textEntry) return;
       // Mirror the live interact binding while docked: E docks from flight and undocks from the
       // station hub, preserving one airlock muscle-memory action. Leave Enter alone here so focused
       // station buttons and rail tabs keep normal keyboard activation.
@@ -114,6 +123,8 @@ export function createUiInput(ctx, screenManager) {
       if (key === 'F9') { ev.preventDefault(); bus.emit('game:load', { slot: 'quick' }); return; }
       return;
     }
+
+    if (textEntry) return;
 
     // --- pure flight: UI-owned global keys only (mode must be flight) ---
     if (state.mode !== 'flight') return;

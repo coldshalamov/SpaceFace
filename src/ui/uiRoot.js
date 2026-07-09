@@ -951,7 +951,7 @@ function injectHudCss() {
 
   /* off-screen objective arrow */
   .sf-objarrow { position:absolute; left:0; top:0; width:0; height:0; border-style:solid; border-width:8px 0 8px 14px;
-    border-color:transparent transparent transparent var(--visor-cyan); filter:none; z-index:11;
+    border-color:transparent transparent transparent var(--visor-amber); filter:drop-shadow(0 0 5px rgba(255,179,92,.5)); z-index:11;
     will-change:transform; }
 
   /* ===== toasts ===== */

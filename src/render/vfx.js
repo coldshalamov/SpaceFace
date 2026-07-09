@@ -23,7 +23,7 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
-import { createEnergyVolume, createMasslineRibbonMaterial, updateEnergyMaterial } from './energy/energyMaterials.js';
+import { createEnergyVolume, createPlumeVolume, createMasslineRibbonMaterial, updateEnergyMaterial } from './energy/energyMaterials.js';
 import {
   buildParticleTrailMaterial,
   createPrecompileTrailSurfaces,
@@ -2738,10 +2738,10 @@ export const vfx = {
     if (!this._scene) return;
     // Thruster plume: a small elongated cylinder energy volume positioned at the player's trail
     // socket each frame. Two meshes (core + halo) share the geometry.
-    const plumeGeo = new THREE.CylinderGeometry(0.5, 1.6, 4.0, 12, 1, true);
+    const plumeGeo = new THREE.CylinderGeometry(0.5, 1.6, 4.0, 24, 3, true);
     plumeGeo.rotateZ(Math.PI / 2);
     plumeGeo.translate(-2, 0, 0); // nozzle pivot at local origin; volume extends toward ship -X/rear
-    const plume = createEnergyVolume(plumeGeo, {
+    const plume = createPlumeVolume(plumeGeo, {
       name: 'sf-energy-plume',
       colorA: 0x36c8ff, colorB: 0x6a4cff,
       coreIntensity: 6.5, haloIntensity: 2.6, noiseScale: 1.6, flowSpeed: 2.4,
@@ -2795,8 +2795,11 @@ export const vfx = {
     const lengthMul = prof.plumeLengthMul || 1;
     const width = (0.28 + drive * 0.36 + boostBlend * 0.26) * widthMul;
     const length = (0.28 + drive * 1.55 + boostBlend * 1.85) * lengthMul;
-    const coreColor = this._c0.set(prof.plumeCore || '#36c8ff').lerp(this._c1.set('#fff4dd'), boostBlend);
-    const haloColor = this._ctmp.set(prof.plumeHalo || '#6a4cff').lerp(this._c1.set('#c98cff'), boostBlend);
+    // Cap the boost white-out at ~0.7 so each engine keeps a hint of its own hue at full afterburner
+    // (otherwise every drive collapses to the same white and the fleet's variety is lost at the top end).
+    const boostTint = Math.min(0.7, boostBlend);
+    const coreColor = this._c0.set(prof.plumeCore || '#36c8ff').lerp(this._c1.set('#fff4dd'), boostTint);
+    const haloColor = this._ctmp.set(prof.plumeHalo || '#6a4cff').lerp(this._c1.set('#c98cff'), boostTint);
     const sockets = this._trailSocketObjects(player);
     const count = Math.max(1, sockets.length);
     for (let i = 0; i < count; i++) {
@@ -2809,13 +2812,20 @@ export const vfx = {
       const halo = plume.userData.energyHalo;
       const coreIntensity = prof.coreIntensity || 6.5;
       const haloIntensity = prof.haloIntensity || 2.6;
+      // Liquid-fire character: engine family sets swirl/fork/flow, boost heats + lengthens the fire.
+      const plumeSwirl = prof.plumeSwirl != null ? prof.plumeSwirl : 0.5;
+      const plumeFork = prof.plumeFork != null ? prof.plumeFork : 0.5;
+      const plumeFlow = prof.flowSpeed || 2.4;
+      const plumeNoise = prof.noiseScale || 1.6;
       if (core) updateEnergyMaterial(core.material, {
         time: this._t, colorA: coreColor, colorB: haloColor,
+        boost: boostBlend, swirl: plumeSwirl, fork: plumeFork, flowSpeed: plumeFlow, noiseScale: plumeNoise,
         intensity: ((coreIntensity * 0.68) + drive * 3.6 + boostBlend * 2.8) * radianceScale,
         opacity: (0.22 + drive * 0.30 + boostBlend * 0.16) * fade * opacityScale,
       });
       if (halo) updateEnergyMaterial(halo.material, {
         time: this._t, colorA: haloColor, colorB: coreColor,
+        boost: boostBlend, swirl: plumeSwirl, fork: plumeFork, flowSpeed: plumeFlow * 0.9, noiseScale: plumeNoise * 0.8,
         intensity: ((haloIntensity * 0.46) + drive * 1.3 + boostBlend * 1.4) * radianceScale,
         opacity: (0.05 + drive * 0.10 + boostBlend * 0.07) * fade * opacityScale,
       });
@@ -2826,7 +2836,7 @@ export const vfx = {
   _ensureEnergyPlume(index) {
     const energy = this._energy;
     while (energy.plumes.length <= index) {
-      const plume = createEnergyVolume(energy.plumeGeo, {
+      const plume = createPlumeVolume(energy.plumeGeo, {
         name: `sf-energy-plume-${energy.plumes.length}`,
         colorA: 0x36c8ff, colorB: 0x6a4cff,
         coreIntensity: 6.5, haloIntensity: 2.6, noiseScale: 1.6, flowSpeed: 2.4,

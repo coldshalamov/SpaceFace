@@ -400,6 +400,34 @@ export function createShipyardPanel(ctx) {
   let activeStationId = null;
   let selectedDefId = null;
   let previewDefId = null;
+  let previewTimer = 0;
+  let pendingPreviewDefId = null;
+
+  function clearPreviewTimer() {
+    if (previewTimer) {
+      clearTimeout(previewTimer);
+      previewTimer = 0;
+    }
+    pendingPreviewDefId = null;
+  }
+
+  function schedulePreview(defId) {
+    if (!defId || defId === selectedDefId) return;
+    pendingPreviewDefId = defId;
+    if (previewTimer) return;
+    previewTimer = setTimeout(() => {
+      previewTimer = 0;
+      const next = pendingPreviewDefId;
+      pendingPreviewDefId = null;
+      if (!next || next === selectedDefId) return;
+      previewDefId = next;
+      if (stage) {
+        stage.setShip(next);
+        const def = SHIP_BY_ID.get(next);
+        stage.setLabel('Preview: ' + escapeHtml(def ? def.name : next));
+      }
+    }, 220);
+  }
 
   // Morph label for credits
   const creditsMount = document.createElement('span');
@@ -452,6 +480,8 @@ export function createShipyardPanel(ctx) {
   }
 
   function selectHull(defId, options = {}) {
+    clearPreviewTimer();
+    previewDefId = null;
     selectedDefId = defId;
     ensureStage();
     stage.setShip(defId);
@@ -733,14 +763,11 @@ export function createShipyardPanel(ctx) {
   railList.addEventListener('mouseover', (ev) => {
     const card = ev.target.closest('[data-ship]');
     if (!card) return;
-    previewDefId = card.getAttribute('data-ship');
-    if (stage && previewDefId !== selectedDefId) {
-      stage.setShip(previewDefId);
-      stage.setLabel('Preview: ' + escapeHtml(SHIP_BY_ID.get(previewDefId).name));
-    }
+    schedulePreview(card.getAttribute('data-ship'));
   });
 
   railList.addEventListener('mouseleave', () => {
+    clearPreviewTimer();
     if (previewDefId && previewDefId !== selectedDefId) {
       if (stage) stage.setShip(selectedDefId);
       previewDefId = null;
@@ -773,6 +800,7 @@ export function createShipyardPanel(ctx) {
       requestAnimationFrame(() => { try { stg.resize(); } catch (_) {} });
     },
     onHide() {
+      clearPreviewTimer();
       if (stage) stage.setActive(false);
       cmpPanel.style.display = 'none';
     },

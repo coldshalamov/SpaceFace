@@ -1,6 +1,6 @@
 // Guards the first dock handoff rail.
 // The rail is non-blocking UI, but it must keep the opening station loop explicit:
-// audit/sell cargo, accept one safe job, then leave when Departure Check is clean.
+// sell cargo (Hold), take one safe job (Missions), then fix launch risks / undock.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -17,20 +17,31 @@ assert.match(stationSource, /export function firstDockHandoffSteps\(state = \{\}
   'station hub must keep first dock handoff step planning directly testable');
 assert.ok(stationSource.includes("handoff.className = 'st-handoff'"),
   'station hub must render a visible first dock handoff container');
-assert.ok(stationSource.includes('First Dock Handoff'),
+assert.ok(stationSource.includes('First dock — do these three') || stationSource.includes('First Dock Handoff'),
   'handoff rail must have a player-facing title');
-assert.ok(stationSource.includes('Audit hold / sell cargo'),
-  'handoff rail must start with a truthful Market hold/audit step');
+assert.ok(
+  stationSource.includes('Sell what you hauled')
+    || stationSource.includes('Open your hold')
+    || stationSource.includes('Audit hold / sell cargo'),
+  'handoff rail must start with a truthful sell/hold step');
 assert.doesNotMatch(stationSource, /Sell the sample|Sample cleared|Sell mined cargo/i,
   'first dock handoff must not claim a sample or mined cargo exists when the hold can be empty');
-assert.ok(stationSource.includes('Accept one low-risk job'),
+assert.ok(
+  stationSource.includes('Take one easy job')
+    || stationSource.includes('Accept one low-risk job'),
   'handoff rail must send players to a safe first contract');
-assert.ok(stationSource.includes('Launch when safe'),
-  'handoff rail must end by reinforcing Departure Check');
+assert.ok(
+  stationSource.includes('Safe to undock')
+    || stationSource.includes('Fix launch risks')
+    || stationSource.includes('Launch when safe'),
+  'handoff rail must end by reinforcing Departure Check / undock readiness');
 assert.ok(stationSource.includes('data-handoff-tab'),
   'handoff rail steps must be clickable tab actions');
 assert.match(stationSource, /target\.getAttribute\('data-handoff-tab'\)[\s\S]*this\.setTab\(tabId, \{ focusRail: true \}\)/,
   'handoff clicks must route through the same focus-aware station tab path as the rail');
+assert.ok(stationSource.includes("targetTab: hasCargo || marketDone ? 'hold' : 'market'")
+  || stationSource.includes("targetTab: 'hold'"),
+  'cargo handoff step should prefer Hold when the player has cargo to sell');
 assert.match(stationSource, /ctx\.bus\.emit\('audio:cue', \{ id: 'ui_tab' \}\)/,
   'handoff clicks should use the existing tab audio cue');
 assert.match(stationSource, /function firstDockDepartureTarget\(chips\)/,

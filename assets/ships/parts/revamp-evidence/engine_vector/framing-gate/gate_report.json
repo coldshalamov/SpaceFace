@@ -1,0 +1,111 @@
+{
+  "part_id": "engine_vector",
+  "analyses": [
+    {
+      "ok": true,
+      "coverage": 0.0567,
+      "centroid": [
+        0.514,
+        0.466
+      ],
+      "border_ratio": 0.0,
+      "accent_ratio": 0.0,
+      "bbox_aspect": 1.29,
+      "fill_ratio": 0.472,
+      "edge_complexity": 0.034,
+      "bbox_area_ratio": 0.1202,
+      "bg_sample": [
+        54,
+        55,
+        61
+      ],
+      "shot_id": "clay_34_full",
+      "path": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\\framing-gate\\engine_vector\\2026-07-08_engine_vector_gate_clay_34_full.png"
+    },
+    {
+      "ok": true,
+      "coverage": 0.0575,
+      "centroid": [
+        0.486,
+        0.434
+      ],
+      "border_ratio": 0.0,
+      "accent_ratio": 0.0,
+      "bbox_aspect": 1.028,
+      "fill_ratio": 0.396,
+      "edge_complexity": 0.022,
+      "bbox_area_ratio": 0.1453,
+      "bg_sample": [
+        54,
+        55,
+        61
+      ],
+      "shot_id": "clay_front",
+      "path": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\\framing-gate\\engine_vector\\2026-07-08_engine_vector_gate_clay_front.png"
+    },
+    {
+      "ok": true,
+      "coverage": 0.0712,
+      "centroid": [
+        0.508,
+        0.45
+      ],
+      "border_ratio": 0.0,
+      "accent_ratio": 0.0,
+      "bbox_aspect": 1.181,
+      "fill_ratio": 0.507,
+      "edge_complexity": 0.028,
+      "bbox_area_ratio": 0.1404,
+      "bg_sample": [
+        54,
+        55,
+        61
+      ],
+      "shot_id": "clay_side",
+      "path": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\\framing-gate\\engine_vector\\2026-07-08_engine_vector_gate_clay_side.png"
+    },
+    {
+      "ok": true,
+      "coverage": 0.0559,
+      "centroid": [
+        0.534,
+        0.479
+      ],
+      "border_ratio": 0.0,
+      "accent_ratio": 0.072,
+      "bbox_aspect": 1.174,
+      "fill_ratio": 0.426,
+      "edge_complexity": 0.04,
+      "bbox_area_ratio": 0.1313,
+      "bg_sample": [
+        32,
+        38,
+        46
+      ],
+      "shot_id": "lit_34_full",
+      "path": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\\framing-gate\\engine_vector\\2026-07-08_engine_vector_gate_lit_34_full.png"
+    },
+    {
+      "ok": true,
+      "coverage": 0.0698,
+      "centroid": [
+        0.494,
+        0.518
+      ],
+      "border_ratio": 0.007,
+      "accent_ratio": 0.834,
+      "bbox_aspect": 0.135,
+      "fill_ratio": 0.921,
+      "edge_complexity": 0.025,
+      "bbox_area_ratio": 0.0758,
+      "bg_sample": [
+        32,
+        38,
+        46
+      ],
+      "shot_id": "lit_close_detail",
+      "path": "C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\\framing-gate\\engine_vector\\2026-07-08_engine_vector_gate_lit_close_detail.png"
+    }
+  ],
+  "pass": true
+}

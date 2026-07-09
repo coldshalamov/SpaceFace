@@ -19,5 +19,5 @@ foreach ($part in @('engine_vector','engine_resonator','engine_plasma_ring')) {
 }
 \"=== RERUN END $(Get-Date -Format o) ===\" | Add-Content $log"
 started_at: 2026-07-09T00:02:54.103Z
-running_for_ms: 10200005 
+running_for_ms: 14944996 
 ---

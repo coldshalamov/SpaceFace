@@ -171,6 +171,229 @@ const RIBBON_FRAGMENT = /* glsl */`
   }
 `;
 
+// ---------------------------------------------------------------------------------------------
+// Thruster plume — "liquid blue fire" volume.
+//
+// A dedicated shader (NOT createEnergyMaterial, which is shared by weapon bolts + the massline
+// tether and must stay geometry-agnostic). The plume geometry is a tapered open cylinder whose
+// axis runs along local -X: the wide hot mouth sits at x=0 (the nozzle) and the volume tapers to a
+// narrow tail at x=-4. We paint flowing, domain-warped fire onto that shell so it reads as a
+// living liquid flame rather than a solid neon tube: a hot core that streams out the back, ragged
+// flickering tongues at the tip, and a white-hot mouth broken up by noise so the base never looks
+// like a machined perfect circle. Purely cosmetic, player-only, ≤ a few mounts — so it can be lush.
+const PLUME_NOISE = /* glsl */`
+  float pl_hash31(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+  }
+  float pl_noise3(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float n000 = pl_hash31(i + vec3(0.0,0.0,0.0));
+    float n100 = pl_hash31(i + vec3(1.0,0.0,0.0));
+    float n010 = pl_hash31(i + vec3(0.0,1.0,0.0));
+    float n110 = pl_hash31(i + vec3(1.0,1.0,0.0));
+    float n001 = pl_hash31(i + vec3(0.0,0.0,1.0));
+    float n101 = pl_hash31(i + vec3(1.0,0.0,1.0));
+    float n011 = pl_hash31(i + vec3(0.0,1.0,1.0));
+    float n111 = pl_hash31(i + vec3(1.0,1.0,1.0));
+    float x00 = mix(n000, n100, f.x);
+    float x10 = mix(n010, n110, f.x);
+    float x01 = mix(n001, n101, f.x);
+    float x11 = mix(n011, n111, f.x);
+    return mix(mix(x00, x10, f.y), mix(x01, x11, f.y), f.z);
+  }
+  float pl_fbm(vec3 p) {
+    float sum = 0.0;
+    float amp = 0.58;
+    for (int i = 0; i < 5; i++) {
+      sum += pl_noise3(p) * amp;
+      p = p * 2.02 + vec3(19.1, 7.7, 13.3);
+      amp *= 0.5;
+    }
+    return sum;
+  }
+`;
+
+const PLUME_FRAGMENT = /* glsl */`
+  precision highp float;
+  varying vec2 vUv;
+  varying vec3 vLocal;
+  varying vec3 vWorld;
+  varying vec3 vNormalW;
+  varying vec3 vViewDirW;
+
+  uniform float uTime;
+  uniform vec3 uColorA;      // electric mid tone (profile plumeCore)
+  uniform vec3 uColorB;      // cool tail tone (profile plumeHalo)
+  uniform float uIntensity;
+  uniform float uOpacity;
+  uniform float uFresnelPower;
+  uniform float uNoiseScale;
+  uniform float uFlowSpeed;
+  uniform float uPulse;
+  uniform float uCore;       // ~1 solid-body layer, ~0.18 rim/halo layer
+  uniform float uBoost;      // 0..1 heat / afterburner
+  uniform float uSwirl;      // domain-warp + spiral character (per engine profile)
+  uniform float uFork;       // raggedness of the flame tongues (per engine profile)
+  uniform sampler2D uSceneDepth;
+  uniform vec2 uResolution;
+  uniform float uCameraNear;
+  uniform float uCameraFar;
+  uniform float uSoftDistance;
+  uniform float uDepthEnabled;
+
+  ${PLUME_NOISE}
+
+  float linearDepth(float depth01) {
+    float z = depth01 * 2.0 - 1.0;
+    return (2.0 * uCameraNear * uCameraFar) /
+      max(uCameraFar + uCameraNear - z * (uCameraFar - uCameraNear), 1e-5);
+  }
+
+  void main() {
+    // Axis param: 0 at the nozzle mouth (wide, hot), 1 at the tail tip. vLocal.x in [-4, 0].
+    float a = clamp(-vLocal.x * 0.25, 0.0, 1.0);
+    float theta = atan(vLocal.z, vLocal.y);
+
+    // Liquid flow field: fbm that streams toward the tail (out the back) and is domain-warped by a
+    // second noise so the fire licks and folds like a fluid instead of scrolling as a rigid band.
+    float flow = uTime * uFlowSpeed;
+    // Anisotropic sampling: low frequency ALONG the axis, higher AROUND it, so the fbm resolves into
+    // filaments that run lengthwise with the flow — streaky liquid fire rather than round blobs.
+    vec3 sp = vec3(a * 2.3 - flow, theta * 2.7 + a * uSwirl * 2.4, flow * 0.15);
+    float wx = pl_fbm(sp * 1.3 + vec3(0.0, 0.0, uTime * 0.6));
+    float wy = pl_fbm(sp * 1.6 + vec3(5.2, 1.7, 0.0));
+    vec3 wp = sp + vec3(wx - 0.5, wy - 0.5, 0.0) * (0.55 + uSwirl * 0.9);
+    float flame = pl_fbm(wp * (0.85 + uNoiseScale * 0.5));
+    float fine = pl_noise3(wp * 3.4 + vec3(0.0, -uTime * 2.6, 0.0));
+
+    // Longitudinal envelope: a bright body near the mouth that dissolves into ragged, flickering
+    // tongues toward the tail. The leading edge is perturbed by noise so the tip is never a clean cut.
+    float reach = 0.60 + uBoost * 0.52;
+    float edge = a - (flame - 0.4) * uFork;
+    float body = 1.0 - smoothstep(reach * 0.35, reach, edge);
+    // Break up the machined "perfect circle" mouth with a noise notch right at the base.
+    float baseBreak = 1.0 - (0.5 * fine) * smoothstep(0.35, 0.0, a);
+    body *= baseBreak;
+
+    // Volume on the hollow shell: fresnel lifts the silhouette so the tube reads as a gaseous volume.
+    float fres = pow(1.0 - clamp(abs(dot(normalize(vNormalW), normalize(vViewDirW))), 0.0, 1.0), uFresnelPower);
+
+    // Density: a hot, near-solid root at the mouth that breaks into flowing bright veins and
+    // flickering tongues downstream — the way a real flame is dense at its base and turbulent at
+    // its tip. veins carve dark channels so the body reads as liquid fire, not a filled neon tube.
+    float veins = smoothstep(0.28, 0.82, flame);
+    float root = pow(1.0 - a, 2.2);
+    float filled = body * clamp(root * 0.85 + veins * (0.85 - root * 0.35), 0.0, 1.0);
+    // Soften the hard cylinder silhouette on the solid core so its clean edge dissolves into the
+    // feathered halo instead of reading as a machined tube boundary.
+    filled *= 1.0 - fres * 0.4;
+    float rim = body * fres * 1.5;
+    float density = mix(rim, filled, uCore) + (fine - 0.5) * 0.12 * body;
+    float tongue = smoothstep(0.6, 0.97, flame) * body * (0.35 + uBoost * 0.5) * (0.35 + a);
+    density = clamp(density + tongue * uCore, 0.0, 1.0);
+
+    // Liquid blue-fire heat gradient: hot at the mouth/core, cooling toward the tail and tips.
+    float heat = clamp((1.0 - a * 0.75) * (0.45 + flame * 0.9) + uBoost * 0.45, 0.0, 1.4);
+    vec3 col = mix(uColorB, uColorA, smoothstep(0.12, 0.62, heat));
+    vec3 hot = vec3(0.82, 0.94, 1.0);
+    col = mix(col, hot, smoothstep(0.72, 1.15, heat));
+    col += hot * pow(1.0 - a, 7.0) * (0.5 + uBoost * 0.9);           // tight white-hot mouth
+    col += vec3(0.55, 0.35, 0.95) * tongue * uBoost * 0.7;           // violet tip flare under boost
+
+    float pulse = 1.0 + sin(uTime * 7.0 + a * 12.0) * 0.05 * uPulse;
+    float radiance = uIntensity * pulse * (0.28 + density * 1.9 + heat * 0.28);
+    float alpha = density * uOpacity;
+
+    if (uDepthEnabled > 0.5) {
+      vec2 screenUv = gl_FragCoord.xy / max(uResolution, vec2(1.0));
+      float sceneZ = linearDepth(texture2D(uSceneDepth, screenUv).x);
+      float fragZ = linearDepth(gl_FragCoord.z);
+      float soft = clamp((sceneZ - fragZ) / max(uSoftDistance, 1e-4), 0.0, 1.0);
+      alpha *= soft;
+      radiance *= mix(0.5, 1.0, soft);
+    }
+
+    if (alpha < 0.003) discard;
+    gl_FragColor = vec4(col * radiance, alpha);
+  }
+`;
+
+export function createPlumeMaterial(options = {}) {
+  const uniforms = {
+    uTime: { value: 0 },
+    uColorA: { value: new THREE.Color(options.colorA ?? 0x36c8ff) },
+    uColorB: { value: new THREE.Color(options.colorB ?? 0x6a4cff) },
+    uIntensity: { value: finite(options.intensity, 6.5) },
+    uOpacity: { value: finite(options.opacity, 0.8) },
+    uFresnelPower: { value: finite(options.fresnelPower, 2.6) },
+    uNoiseScale: { value: finite(options.noiseScale, 1.6) },
+    uFlowSpeed: { value: finite(options.flowSpeed, 2.4) },
+    uPulse: { value: finite(options.pulse, 1) },
+    uCore: { value: finite(options.core, 0.82) },
+    uBoost: { value: finite(options.boost, 0) },
+    uSwirl: { value: finite(options.swirl, 0.6) },
+    uFork: { value: finite(options.fork, 0.5) },
+    uSceneDepth: { value: options.depthTexture || null },
+    uResolution: { value: new THREE.Vector2(options.width || 1, options.height || 1) },
+    uCameraNear: { value: finite(options.cameraNear, 0.1) },
+    uCameraFar: { value: finite(options.cameraFar, 4000) },
+    uSoftDistance: { value: finite(options.softDistance, 8) },
+    uDepthEnabled: { value: options.depthTexture ? 1 : 0 },
+  };
+  const material = new THREE.ShaderMaterial({
+    name: options.name || 'SpaceFacePlumeMaterial',
+    uniforms,
+    vertexShader: ENERGY_VERTEX,
+    fragmentShader: PLUME_FRAGMENT,
+    transparent: true,
+    depthWrite: false,
+    depthTest: options.depthTest !== false,
+    blending: THREE.AdditiveBlending,
+    side: options.side ?? THREE.DoubleSide,
+    toneMapped: false,
+    premultipliedAlpha: false,
+  });
+  material.userData.energyMaterial = true;
+  material.userData.plumeMaterial = true;
+  return material;
+}
+
+/** Two-layer liquid-fire thruster plume (hot body + soft rim halo); geometry is caller-owned. */
+export function createPlumeVolume(geometry, options = {}) {
+  if (!geometry || !geometry.isBufferGeometry) throw new TypeError('createPlumeVolume requires a BufferGeometry');
+  const group = new THREE.Group();
+  group.name = options.name || 'plume-volume';
+  const core = new THREE.Mesh(geometry, createPlumeMaterial({
+    ...options,
+    name: `${group.name}:core`,
+    intensity: finite(options.coreIntensity, finite(options.intensity, 6.5)),
+    opacity: finite(options.coreOpacity, 0.82),
+    core: finite(options.coreMix, 0.86),
+    fresnelPower: 3.0,
+  }));
+  const halo = new THREE.Mesh(geometry, createPlumeMaterial({
+    ...options,
+    name: `${group.name}:halo`,
+    intensity: finite(options.haloIntensity, 2.6),
+    opacity: finite(options.haloOpacity, 0.34),
+    core: 0.16,
+    fresnelPower: 1.5,
+    noiseScale: finite(options.noiseScale, 1.6) * 0.8,
+  }));
+  halo.scale.setScalar(finite(options.haloScale, 1.34));
+  halo.renderOrder = finite(options.renderOrder, 20);
+  core.renderOrder = halo.renderOrder + 1;
+  group.add(halo, core);
+  group.userData.energyCore = core;
+  group.userData.energyHalo = halo;
+  group.userData.plumeVolume = true;
+  return group;
+}
+
 export function createEnergyMaterial(options = {}) {
   const uniforms = {
     uTime: { value: 0 },
@@ -275,6 +498,11 @@ export function updateEnergyMaterial(material, frame = {}) {
   if (u.uIntensity && Number.isFinite(frame.intensity)) u.uIntensity.value = frame.intensity;
   if (u.uOpacity && Number.isFinite(frame.opacity)) u.uOpacity.value = frame.opacity;
   if (u.uPulse && Number.isFinite(frame.pulse)) u.uPulse.value = frame.pulse;
+  if (u.uBoost && Number.isFinite(frame.boost)) u.uBoost.value = frame.boost;
+  if (u.uSwirl && Number.isFinite(frame.swirl)) u.uSwirl.value = frame.swirl;
+  if (u.uFork && Number.isFinite(frame.fork)) u.uFork.value = frame.fork;
+  if (u.uFlowSpeed && Number.isFinite(frame.flowSpeed)) u.uFlowSpeed.value = frame.flowSpeed;
+  if (u.uNoiseScale && Number.isFinite(frame.noiseScale)) u.uNoiseScale.value = frame.noiseScale;
   if (u.uSceneDepth && frame.depthTexture !== undefined) {
     u.uSceneDepth.value = frame.depthTexture;
     if (u.uDepthEnabled) u.uDepthEnabled.value = frame.depthTexture ? 1 : 0;

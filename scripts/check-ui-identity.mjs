@@ -66,6 +66,18 @@ const checks = [
       'gimmick',
     ],
   },
+  {
+    path: 'src/ui/marketNews.js',
+    label: 'One-voice news — no raw multi-headline ticker fallback into HUD/body',
+    needs: [
+      "document.getElementById('news-ticker')",
+      "createMarketNews",
+    ],
+    forbids: [
+      "document.getElementById('hud')",
+      'document.body',
+    ],
+  },
 
   // ---- Wave 2: contact identity + damage triangle on target panel ----------
   {
@@ -123,10 +135,25 @@ const checks = [
       "'wreck'",
       // Objective diamond 1-px white outline
       "strokeStyle = '#ffffff'",
+      'drawWaypointDiamond',
+      'drawWaypointEdgeArrow',
+      'waypointLabel',
+      'rgba(4,28,38,0.54)',
       // Scan pings as hollow '?'
       "strokeText('?'",
       // Nearest off-screen hostile bezel arrow only (max 2: objective + hostile)
       'nearestOffScreenHostile',
+    ],
+  },
+  {
+    path: 'src/ui/galaxyMap.js',
+    label: 'Command map waypoint — active route has labeled endpoint pin and click target',
+    needs: [
+      'drawWaypointPin',
+      'waypointMapLabel',
+      'waypointClickTarget',
+      "kind: 'waypoint'",
+      'ACTIVE WAYPOINT',
     ],
   },
 

@@ -22,6 +22,7 @@
 //    each layer's visual repeat distance is >= ~25 screens of flight.
 import * as THREE from 'three';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { CAMERA_ZOOM_MAX, CONTEXT_ZOOM_MAX, SPEED_ZOOM_MAX } from './camera.js';
 
 // ----------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + string hash — ~15 lines, no deps.
@@ -760,10 +761,10 @@ export class SpaceBackground {
     this.heroSizeK = this.heroDist / Math.max(1, distPlay);   // screen-fraction -> world multiplier
 
     // footprint on the deepest plane: cast the 4 screen corners, take the max extent.
-    // zoomHeadroom covers dynamic zoom (up to 220*1.18 wu chase distance) + shake + lookahead.
+    // zoomHeadroom covers max manual zoom plus dynamic speed/context zoom, shake, and lookahead.
     const camState = this.state && this.state.camera;
     const zoomNow = Math.max(45, (camState && Number.isFinite(camState.zoom)) ? camState.zoom : 88);
-    const zoomHeadroom = (220 * 1.18) / zoomNow;
+    const zoomHeadroom = (CAMERA_ZOOM_MAX * SPEED_ZOOM_MAX * (1 + CONTEXT_ZOOM_MAX)) / zoomNow;
     let ext = 0;
     const deepY = this.bgY + LAYER_DEFS[0].depth;
     for (const [nx, ny] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {

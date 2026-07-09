@@ -69,6 +69,9 @@ export function createShipEngineeringStage(container, opts = {}) {
       <canvas class="st-eng-stage__canvas" aria-label="Ship preview"></canvas>
       <div class="st-eng-stage__overlay" aria-hidden="true"></div>
       <div class="st-eng-stage__gauges" aria-hidden="true"></div>
+      <div class="st-eng-stage__loading" aria-live="polite">
+        <span class="st-eng-stage__spinner" aria-hidden="true"></span>
+      </div>
     </div>
     <div class="st-eng-stage__label"></div>
   `;
@@ -83,8 +86,11 @@ export function createShipEngineeringStage(container, opts = {}) {
   const preview = createShipPreviewMount(canvas, {
     envMap: opts.envMap,
     dockId: opts.dockId,
+    authoredWarmup: false,
+    fastPreview: true,
     onFirstFrame: () => {
       stage.classList.add('is-ready');
+      stage.classList.remove('is-loading');
       if (typeof opts.onReady === 'function') opts.onReady();
       syncBeams();
     },
@@ -173,10 +179,12 @@ export function createShipEngineeringStage(container, opts = {}) {
     const counts = {};
     currentTypeIndices = currentSlots.map((s) => { counts[s.type] = (counts[s.type] || 0) + 1; return counts[s.type] - 1; });
     stage.classList.remove('is-ready');
+    stage.classList.add('is-loading');
     highlightedSlot = null;
-    preview.show(defId, { rotating: true });
+    preview.show(defId, { rotating: false });
     if (preview.getDefId() === defId) {
       stage.classList.add('is-ready');
+      stage.classList.remove('is-loading');
       syncBeams();
     }
     labelEl.textContent = shipDef ? shipDef.name : '';

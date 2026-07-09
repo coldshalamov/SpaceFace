@@ -96,6 +96,8 @@ try {
     captures.push(result);
     console.log(`${c.name}: path=${result.post.activePath} mean=${result.image.mean.toFixed(2)} max=${result.image.max} strength=${result.post.bloom?.strength ?? result.post.renderGraphDetails?.bloomStrength ?? 'n/a'}`);
   }
+  const energy = await probeEnergyRadiance(page);
+  const uiSlider = await probeSettingsSlider(page);
 
   const byName = new Map(captures.map((c) => [c.name, c]));
   const comparisons = {
@@ -105,10 +107,18 @@ try {
     graph_0_vs_off: compareImages(byName.get('graph_strength_0'), byName.get('graph_bloom_off')),
   };
 
-  const report = { generatedAt: new Date().toISOString(), port, pageErrors, captures, comparisons };
+  const report = { generatedAt: new Date().toISOString(), port, pageErrors, captures, comparisons, energy, uiSlider };
+  const verdict = evaluateVerdict(report);
+  report.verdict = verdict;
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(report, null, 2));
   console.log(`report: ${OUT}`);
+  if (!verdict.pass) {
+    console.error('FAIL:', JSON.stringify(verdict.failures, null, 2));
+    process.exitCode = 1;
+  } else {
+    console.log('PASS: bloom slider visibly attenuates both post paths, and zero/off match.');
+  }
 } finally {
   try { if (browser) await browser.close(); } catch (_) {}
   try { if (serverChild) serverChild.kill(); } catch (_) {}
@@ -192,6 +202,150 @@ function compareImages(a, b) {
     if (d / 3 > max) max = d / 3;
   }
   return { meanAbsDiff: total / pixels, maxAbsDiff: max };
+}
+
+function evaluateVerdict(report) {
+  const failures = [];
+  const cmp = report.comparisons || {};
+  const get = (name) => cmp[name] && Number(cmp[name].meanAbsDiff);
+  if (!(get('wrapper_1_vs_0_1') >= 10)) failures.push({ check: 'wrapper slider response', value: get('wrapper_1_vs_0_1') });
+  if (!(get('graph_1_vs_0_1') >= 10)) failures.push({ check: 'render graph slider response', value: get('graph_1_vs_0_1') });
+  if (!(get('wrapper_0_vs_off') <= 5)) failures.push({ check: 'wrapper zero matches off', value: get('wrapper_0_vs_off') });
+  if (!(get('graph_0_vs_off') <= 5)) failures.push({ check: 'render graph zero matches off', value: get('graph_0_vs_off') });
+  const graphOff = report.captures.find((c) => c.name === 'graph_bloom_off');
+  const graphLow = report.captures.find((c) => c.name === 'graph_strength_0_1');
+  const wrapperLow = report.captures.find((c) => c.name === 'wrapper_strength_0_1');
+  if (graphOff && graphOff.post && graphOff.post.renderGraphDetails && graphOff.post.renderGraphDetails.effectiveBloomStrength !== 0) {
+    failures.push({ check: 'render graph bloom off effective strength', value: graphOff.post.renderGraphDetails.effectiveBloomStrength });
+  }
+  if (!(graphLow && graphLow.post && graphLow.post.renderGraphDetails && graphLow.post.renderGraphDetails.postStyleScale < 1)) {
+    failures.push({ check: 'render graph low post style scale', value: graphLow && graphLow.post && graphLow.post.renderGraphDetails });
+  }
+  if (!(wrapperLow && wrapperLow.post && wrapperLow.post.bloom && wrapperLow.post.bloom.postStyleScale < 1)) {
+    failures.push({ check: 'wrapper low post style scale', value: wrapperLow && wrapperLow.post && wrapperLow.post.bloom });
+  }
+  const energy = report.energy || {};
+  if (!(energy.default && energy.default.active)) failures.push({ check: 'energy plume active at default', value: energy.default });
+  if (!(energy.low && energy.default && energy.low.coreIntensity < energy.default.coreIntensity * 0.5)) {
+    failures.push({ check: 'energy plume low strength attenuates', value: energy });
+  }
+  if (!(energy.zero && energy.zero.active === false)) failures.push({ check: 'energy plume disabled at zero', value: energy.zero });
+  const uiSlider = report.uiSlider || {};
+  if (!(uiSlider.found === true)) failures.push({ check: 'settings bloom strength slider found', value: uiSlider });
+  if (!(uiSlider.stateBloomStrength === 0.14)) failures.push({ check: 'settings slider writes bloomStrength', value: uiSlider });
+  if (!(uiSlider.postBloomStrength === 0.14 || uiSlider.renderGraphBloomStrength === 0.14)) {
+    failures.push({ check: 'settings slider reaches renderer diagnostics', value: uiSlider });
+  }
+  return { pass: failures.length === 0, failures };
+}
+
+async function probeSettingsSlider(page) {
+  const result = await page.evaluate(async () => {
+    const sf = window.SF;
+    const ui = sf.registry && sf.registry.get && sf.registry.get('ui');
+    const sm = ui && ui.screenManager;
+    if (!sm) return { found: false, reason: 'screen manager missing' };
+    const waitFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    for (let i = 0; i < 60 && !sm.hasScreen('settings'); i++) await waitFrame();
+    if (!sm.hasScreen('settings')) return { found: false, reason: 'settings screen not registered' };
+    sm.closeAll();
+    sm.pushScreen('settings');
+    const settingsScreen = document.querySelector('.screen[data-screen="settings"]');
+    if (!settingsScreen) return { found: false, reason: 'settings screen not mounted' };
+    const videoButton = Array.from(settingsScreen.querySelectorAll('button')).find((b) => (b.textContent || '').trim() === 'Video');
+    if (videoButton) videoButton.click();
+    await waitFrame();
+    const row = Array.from(settingsScreen.querySelectorAll('.sf-row')).find((el) => {
+      const label = el.querySelector('label');
+      return label && (label.textContent || '').trim() === 'Bloom strength';
+    });
+    const slider = row && row.querySelector('input[type="range"]');
+    if (!slider) return { found: false, reason: 'bloom strength range missing' };
+    sf.state.settings.video.renderGraph = false;
+    sf.state.settings.video.bloom = true;
+    slider.value = '0.14';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitFrame();
+    await waitFrame();
+    const render = sf.registry && sf.registry.get && sf.registry.get('render');
+    const post = render && render.diag && typeof render.diag.post === 'function'
+      ? render.diag.post()
+      : (render && render._getPostDiagnostics ? render._getPostDiagnostics() : null);
+    sm.closeAll();
+    return {
+      found: true,
+      sliderValue: Number(slider.value),
+      stateBloomStrength: sf.state.settings.video.bloomStrength,
+      postBloomStrength: post && post.bloom && post.bloom.strength,
+      renderGraphBloomStrength: post && post.renderGraphDetails && post.renderGraphDetails.bloomStrength,
+      activePath: post && post.activePath,
+    };
+  });
+  console.log(`ui-slider: found=${result.found} state=${result.stateBloomStrength} post=${result.postBloomStrength ?? result.renderGraphBloomStrength ?? 'n/a'}`);
+  return result;
+}
+
+async function probeEnergyRadiance(page) {
+  const sample = async (bloomStrength, moveZ = 1) => {
+    await page.evaluate(({ bloomStrength: strength, moveZ: z }) => {
+      const sf = window.SF;
+      const video = sf.state.settings.video;
+      video.renderGraph = false;
+      video.bloom = true;
+      video.bloomStrength = strength;
+      video.energyMaterials = true;
+      if (window.__SF_BLOOM_PROBE_DRIVE__) clearInterval(window.__SF_BLOOM_PROBE_DRIVE__);
+      const applyDrive = () => {
+        const state = sf.state;
+        const player = state.entities && state.entities.get(state.playerId);
+        if (state.input) state.input.moveZ = z;
+        if (player) {
+          player._flightFrame = {
+            ...(player._flightFrame || {}),
+            throttle: z,
+            commandedThrottle: z,
+            forwardSpeed: z > 0 ? 90 : 0,
+            maxSpeed: 140,
+          };
+        }
+      };
+      applyDrive();
+      window.__SF_BLOOM_PROBE_DRIVE__ = setInterval(applyDrive, 16);
+      sf.bus.emit('settings:changed', { section: 'video', key: null });
+    }, { bloomStrength, moveZ });
+    await page.waitForTimeout(900);
+    return page.evaluate(() => {
+      const sf = window.SF;
+      const vfx = sf.registry && sf.registry.get && sf.registry.get('vfx');
+      const energy = vfx && vfx._energy;
+      const plume = energy && energy.plumes && energy.plumes.find((p) => p && p.visible) || energy && energy.plume;
+      const core = plume && plume.userData && plume.userData.energyCore;
+      const halo = plume && plume.userData && plume.userData.energyHalo;
+      return {
+        active: !!(energy && plume && plume.visible && plume.parent),
+        coreIntensity: core && core.material && core.material.uniforms && core.material.uniforms.uIntensity
+          ? core.material.uniforms.uIntensity.value
+          : 0,
+        coreOpacity: core && core.material && core.material.uniforms && core.material.uniforms.uOpacity
+          ? core.material.uniforms.uOpacity.value
+          : 0,
+        haloIntensity: halo && halo.material && halo.material.uniforms && halo.material.uniforms.uIntensity
+          ? halo.material.uniforms.uIntensity.value
+          : 0,
+        scale: vfx && typeof vfx._bloomRadianceScale === 'function' ? vfx._bloomRadianceScale() : null,
+      };
+    });
+  };
+  const defaultSample = await sample(0.35);
+  const lowSample = await sample(0.1);
+  const zeroSample = await sample(0);
+  await page.evaluate(() => {
+    if (window.__SF_BLOOM_PROBE_DRIVE__) clearInterval(window.__SF_BLOOM_PROBE_DRIVE__);
+    window.__SF_BLOOM_PROBE_DRIVE__ = null;
+    if (window.SF && window.SF.state && window.SF.state.input) window.SF.state.input.moveZ = 0;
+  });
+  console.log(`energy: default=${defaultSample.coreIntensity.toFixed(3)} low=${lowSample.coreIntensity.toFixed(3)} zeroActive=${zeroSample.active}`);
+  return { default: defaultSample, low: lowSample, zero: zeroSample };
 }
 
 function requireBuffer(path) {

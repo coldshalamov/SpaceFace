@@ -150,6 +150,71 @@ function drawTargetRing(g, bx, by, C) {
   noGlow(g);
 }
 
+function waypointLabel(wp) {
+  const raw = wp && (wp.mapLabel || wp.label || wp.reason || wp.sectorName || 'Goal');
+  const text = String(raw || 'Goal').replace(/\s+/g, ' ').trim();
+  return (text || 'Goal').toUpperCase().slice(0, 18);
+}
+
+function drawWaypointLabel(g, label, x, y, opts = {}) {
+  g.save();
+  g.font = 'bold 7px monospace';
+  g.textAlign = opts.align || 'center';
+  g.textBaseline = opts.baseline || 'top';
+  g.fillStyle = 'rgba(255,227,107,0.95)';
+  g.strokeStyle = 'rgba(4,8,16,0.9)';
+  g.lineWidth = 3;
+  g.strokeText(label, x, y);
+  g.fillText(label, x, y);
+  g.restore();
+}
+
+function drawWaypointDiamond(g, x, y, label) {
+  g.save();
+  glow(g, COL.objective, 12);
+  g.strokeStyle = COL.objective;
+  g.fillStyle = 'rgba(255,227,107,0.16)';
+  g.lineWidth = 1.6;
+  g.beginPath();
+  g.moveTo(x, y - 6);
+  g.lineTo(x + 6, y);
+  g.lineTo(x, y + 6);
+  g.lineTo(x - 6, y);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 1.0;
+  g.stroke();
+  noGlow(g);
+  g.globalAlpha = 0.2;
+  g.beginPath();
+  g.arc(x, y, 11, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
+  drawWaypointLabel(g, label, x, y + 9);
+}
+
+function drawWaypointEdgeArrow(g, x, y, angle, label) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(angle);
+  glow(g, COL.objective, 9);
+  g.fillStyle = COL.objective;
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(-7, -6);
+  g.lineTo(7, 0);
+  g.lineTo(-7, 6);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  noGlow(g);
+  g.restore();
+  drawWaypointLabel(g, label, x - Math.cos(angle) * 18, y - Math.sin(angle) * 18);
+}
+
 function drawHeatZone(g, zone, px, pz, scale, C, R) {
   if (!zone || !zone.active || !(zone.radius > 0) || !(zone.level > 0)) return;
   const cx = Number.isFinite(zone.center && zone.center.x) ? zone.center.x : 0;
@@ -638,6 +703,7 @@ export function createRadar(ctx) {
     // ── waypoint / objective marker ───────────────────────────────────────────────────────
     const wp  = state.nav && state.nav.waypoint;
     const pos = wp && wp.pos;
+    const wpLabel = waypointLabel(wp);
     if (wp && !pos) {
       g.save();
       const x = C, y = C - R + 18;
@@ -652,7 +718,7 @@ export function createRadar(ctx) {
       g.textAlign = 'center';
       g.textBaseline = 'top';
       g.globalAlpha = 0.82;
-      g.fillText(wp.sectorName || 'NAV', x, y + 8);
+      g.fillText(wpLabel, x, y + 8);
       g.restore();
     } else if (pos) {
       const dx = pos.x - px, dz = pos.z - pz;
@@ -662,31 +728,10 @@ export function createRadar(ctx) {
       if (off) {
         const a = Math.atan2(-dz, -dx);
         bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
-        g.save();
-        g.translate(bx, by);
-        g.rotate(a);
-        g.fillStyle = COL.objective;
-        g.strokeStyle = COL.objective;
-        g.lineWidth = 1.5;
-        g.beginPath();
-        g.moveTo(-5, -5); g.lineTo(4, 0); g.lineTo(-5, 5); g.closePath();
-        g.fill();
-        g.strokeStyle = '#ffffff';
-        g.lineWidth = 1.0;
-        g.stroke();
-        g.restore();
+        drawWaypointEdgeArrow(g, bx, by, a, wpLabel);
       } else {
         bx = C - dx * radarScale; by = C - dz * radarScale;
-        g.save();
-        glow(g, COL.objective, 12);
-        g.strokeStyle = COL.objective; g.fillStyle = COL.objective; g.lineWidth = 1.6;
-        g.beginPath(); g.moveTo(bx, by - 5.5); g.lineTo(bx + 5.5, by); g.lineTo(bx, by + 5.5); g.lineTo(bx - 5.5, by); g.closePath(); g.stroke();
-        g.strokeStyle = '#ffffff';
-        g.lineWidth = 1.0;
-        g.stroke();
-        noGlow(g);
-        g.globalAlpha = 0.2; g.beginPath(); g.arc(bx, by, 10, 0, Math.PI * 2); g.fill();
-        g.restore();
+        drawWaypointDiamond(g, bx, by, wpLabel);
       }
     }
 
@@ -740,9 +785,9 @@ function drawBackground(g, C, R) {
   // Soft central wash (legibility against bright backgrounds) — much lighter than a panel fill,
   // fading fully to transparent before the edge so there is no visible disc rim.
   const grad = g.createRadialGradient(C, C, 0, C, C, R);
-  grad.addColorStop(0,   'rgba(4,8,18,0.42)');
-  grad.addColorStop(0.7, 'rgba(4,8,18,0.16)');
-  grad.addColorStop(1,   'rgba(4,8,18,0)');
+  grad.addColorStop(0,   'rgba(4,28,38,0.54)');
+  grad.addColorStop(0.72, 'rgba(5,23,36,0.22)');
+  grad.addColorStop(1,   'rgba(18,90,96,0.08)');
   g.fillStyle = grad;
   g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.fill();
 
@@ -751,7 +796,7 @@ function drawBackground(g, C, R) {
   g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.clip();
 
   // faint Cartesian grid (every R/3)
-  g.strokeStyle = 'rgba(0,240,255,0.05)';
+  g.strokeStyle = 'rgba(57,208,255,0.08)';
   g.lineWidth   = 1;
   const step = R / 3;
   for (let d = step; d <= R; d += step) {

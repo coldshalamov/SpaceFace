@@ -62,6 +62,9 @@ def setup_render():
 
 
 def setup_world(clay=False):
+    import math
+    from mathutils import Vector
+
     world = bpy.context.scene.world or bpy.data.worlds.new('SF_World')
     bpy.context.scene.world = world
     world.use_nodes = True
@@ -71,11 +74,29 @@ def setup_world(clay=False):
     out = nodes.new('ShaderNodeOutputWorld')
     bg = nodes.new('ShaderNodeBackground')
     if clay:
-        bg.inputs['Color'].default_value = (0.12, 0.12, 0.14, 1)
+        # Darker clay BG so subject (light clay mat) segments cleanly in PNG analysis
+        bg.inputs['Color'].default_value = (0.045, 0.045, 0.055, 1)
     else:
-        bg.inputs['Color'].default_value = (0.03, 0.04, 0.06, 1)
+        bg.inputs['Color'].default_value = (0.02, 0.025, 0.035, 1)
     bg.inputs['Strength'].default_value = 1.0
     links.new(bg.outputs['Background'], out.inputs['Surface'])
+
+    # Soft key so clay faces read (dead orthos otherwise go near-BG luminance)
+    for n in ('SF_CLAY_KEY', 'SF_CLAY_FILL'):
+        o = bpy.data.objects.get(n)
+        if o:
+            bpy.data.objects.remove(o, do_unlink=True)
+    if clay:
+        key = bpy.data.lights.new('SF_CLAY_KEY', 'SUN')
+        key.energy = 2.2
+        ko = bpy.data.objects.new('SF_CLAY_KEY', key)
+        bpy.context.scene.collection.objects.link(ko)
+        ko.rotation_euler = (math.radians(50), 0, math.radians(35))
+        fill = bpy.data.lights.new('SF_CLAY_FILL', 'SUN')
+        fill.energy = 0.55
+        fo = bpy.data.objects.new('SF_CLAY_FILL', fill)
+        bpy.context.scene.collection.objects.link(fo)
+        fo.rotation_euler = (math.radians(25), 0, math.radians(-120))
 
 
 def ensure_mat(name, rgba, clay=False, emi=None, emi_str=0.0):
@@ -97,7 +118,7 @@ def ensure_mat(name, rgba, clay=False, emi=None, emi_str=0.0):
 
 
 def assign_materials(meshes, clay=False):
-    clay_mat = ensure_mat('SF_CLAY', (0.78, 0.78, 0.82, 1), clay=True)
+    clay_mat = ensure_mat('SF_CLAY', (0.88, 0.88, 0.90, 1), clay=True)
     accent = ensure_mat('Material_Accent', (0.85, 0.22, 0.18, 1), emi=(1.0, 0.35, 0.25, 1), emi_str=0.32)
     mech = ensure_mat('Material_Mechanical', (0.14, 0.12, 0.11, 1))
     for obj in meshes:

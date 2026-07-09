@@ -209,6 +209,17 @@ export function createRegistry(ctx) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
       try {
+        if (state.ui && state.ui.docked === true) {
+          perf.recordPhase('render', 0);
+          perf.recordPhase('vfx', 0);
+          perf.recordPhase('feel', 0);
+          if (ui.frame) {
+            const t = perfNow();
+            try { ui.frame(frameDt, state); }
+            finally { perf.recordPhase('ui', perfNow() - t); }
+          }
+          return;
+        }
         let t = perfNow();
         let renderMs = 0;
         let renderedPreparedScene = false;

@@ -706,7 +706,24 @@ export function createOutfittingPanel(ctx) {
   return {
     el: root,
     stationId: null,
-    onShow(c) { if (c && c.stationId) panel.stationId = c.stationId; selectedSlot = null; previewFit = null; refresh(); },
+    onShow(c) {
+      if (c && c.stationId) panel.stationId = c.stationId;
+      selectedSlot = null;
+      previewFit = null;
+      refresh();
+      // Stage often mounts while the tab is display:none (0×0). Re-fit after layout paint.
+      const refit = () => {
+        try {
+          if (stage && typeof stage.resize === 'function') stage.resize();
+          else refreshStage();
+        } catch (_) { /* best-effort */ }
+      };
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => requestAnimationFrame(refit));
+      } else {
+        setTimeout(refit, 32);
+      }
+    },
     refresh,
     dispose() { if (stage) { try { stage.dispose(); } catch (e) {} stage = null; } if (fitTree) fitTree.dispose(); },
   };

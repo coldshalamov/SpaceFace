@@ -10,7 +10,7 @@ $ec = $LASTEXITCODE
 \"EXIT_CODE=$ec\" | Add-Content \"$scratch\\check-assets-live.log\"
 Write-Host \"CHECK_EXIT=$ec\""
 started_at: 2026-07-08T22:08:53.286Z
-running_for_ms: 17040010 
+running_for_ms: 21785003 
 ---
 
 > spaceface@0.1.0 check:assets:live

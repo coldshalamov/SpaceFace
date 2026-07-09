@@ -10,7 +10,7 @@ const THREAT_COMPOSE_MAX_BIAS = 42;
 const THREAT_COMPOSE_FRACTION = 0.08;
 const TETHER_COMPOSE_MAX_BIAS = 64;
 const TETHER_COMPOSE_FRACTION = 0.12;
-const CONTEXT_ZOOM_MAX = 0.14;
+export const CONTEXT_ZOOM_MAX = 0.14;
 const THREAT_ZOOM_BASE = 0.04;
 const THREAT_ZOOM_RANGE = 0.08;
 const TETHER_ZOOM_BASE = 0.03;
@@ -29,8 +29,11 @@ const SHAKE_POS_MAX = 1.55;
 const MOTION_REDUCE_SHAKE_SCALE = 0.25;
 const TRAUMA_DECAY_PER_S = 1.8;
 const MAX_MOMENTUM_TRAUMA = 0.5;
-const SPEED_ZOOM_MIN = 0.88;        // slowest / idle factor (spec2/02 §2)
-const SPEED_ZOOM_MAX = 1.18;        // cruise-speed factor
+export const CAMERA_ZOOM_MIN = 45;
+export const CAMERA_ZOOM_MAX = 330; // 50% more manual zoom-out than the previous 220 wu ceiling.
+export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // seconds — 8 Hz target updates, smoothed per-frame.
+export const SPEED_ZOOM_MIN = 0.88;  // slowest / idle factor (spec2/02 §2)
+export const SPEED_ZOOM_MAX = 1.18;  // high-speed factor
 const ZOOM_LERP = 1.4;              // /s — speed-zoom ease (spec2/02 §2)
 const DEFAULT_ZOOM = 88;            // wu — default chase distance (spec2/02 §2)
 
@@ -131,6 +134,12 @@ export function clampFocusToPlayerSafeRect(focus, player, options = {}) {
   if (dz > safeZ) { z = playerZ + safeZ; clamped = true; }
   else if (dz < -safeZ) { z = playerZ - safeZ; clamped = true; }
   return { x, z, clamped, safeX, safeZ };
+}
+
+export function resolveSpeedZoomFactor(speed, maxSpeed) {
+  const shipMax = Math.max(1, finiteOr(maxSpeed, 120));
+  const speedRatio = clamp01(finiteOr(speed, 0) / shipMax);
+  return SPEED_ZOOM_MIN + (SPEED_ZOOM_MAX - SPEED_ZOOM_MIN) * speedRatio;
 }
 
 export function resolveChaseComposition(state, player, focus) {
@@ -254,6 +263,8 @@ export function createChaseCamera(state) {
 
   // dynamic zoom — smoothly adapts camera distance to gameplay context
   let _dynamicZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
+  let _speedZoomFactor = SPEED_ZOOM_MIN;
+  let _speedZoomSampleT = 0;
 
   // Push-zoom: a transient multiplicative nudge to the camera distance for scripted moments (docking
   // fly-in, jump, cutscenes). set with pushZoom(factor, duration): the factor eases in then back out
@@ -278,6 +289,8 @@ export function createChaseCamera(state) {
     const pz = finiteOr(p.pos.z, 0);
     c.focus.set(px, 0, pz);
     _dynamicZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
+    _speedZoomFactor = SPEED_ZOOM_MIN;
+    _speedZoomSampleT = 0;
     computeOffset(_dynamicZoom);
     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
     cam.lookAt(c.focus.x, 0, c.focus.z);
@@ -294,7 +307,7 @@ export function createChaseCamera(state) {
       const scale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
       c.trauma = Math.min(1, Math.max(0, c.trauma || 0) + a * scale);
     },
-    setZoom(z) { c.zoom = Math.max(45, Math.min(220, finiteOr(z, c.zoom || DEFAULT_ZOOM))); },
+    setZoom(z) { c.zoom = Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, finiteOr(z, c.zoom || DEFAULT_ZOOM))); },
     snapToPlayer() {
       const p = state.entities.get(state.playerId);
       return snapToEntity(p);
@@ -385,13 +398,14 @@ export function createChaseCamera(state) {
       const baseZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
       let targetZoom = baseZoom;
       if (p && p.pos) {
-        // Speed zoom band: 0.88× at rest → 1.18× at cruise max speed (spec2/02 §2).
-        // Cruise ceiling = base maxSpeed × 4. Below cruise the factor stays near the tight end so
-        // combat reads big; at cruise it widens for speed feel.
-        const cruiseSpeed = Math.max(1, (p.maxSpeed || 120) * 4);
-        const speedRatio = Math.min(1, playerSpeed / cruiseSpeed);
-        const zoomFactor = SPEED_ZOOM_MIN + (SPEED_ZOOM_MAX - SPEED_ZOOM_MIN) * speedRatio;
-        targetZoom = baseZoom * zoomFactor;
+        // Speed zoom target is sampled at a low cadence so the camera does not retarget every frame
+        // from raw velocity noise. The actual distance still eases every frame through _dynamicZoom.
+        _speedZoomSampleT -= frameDt;
+        if (_speedZoomSampleT <= 0) {
+          _speedZoomFactor = resolveSpeedZoomFactor(playerSpeed, p.maxSpeed || 120);
+          _speedZoomSampleT = SPEED_ZOOM_SAMPLE_INTERVAL;
+        }
+        targetZoom = baseZoom * _speedZoomFactor;
         targetZoom *= (1 + _contextZoomBias);
       }
       // scripted push-zoom (dock fly-in / jump / kill-cam): multiplies the view while active, then

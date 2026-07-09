@@ -25,6 +25,6 @@ foreach ($part in @('engine_vector','engine_resonator','engine_plasma_ring')) {
 \"DONE_ALL_20_ITERS\" | Add-Content $log
 Write-Host \"DONE_ALL_20_ITERS\""
 started_at: 2026-07-08T19:14:45.152Z
-running_for_ms: 27490001 
+running_for_ms: 32229999 
 ---
 DONE_ALL_20_ITERS

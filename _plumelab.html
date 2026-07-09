@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Plume Lab</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#hud{position:fixed;left:8px;top:8px;color:#8fdfff;font:12px monospace;white-space:pre;pointer-events:none;text-shadow:0 0 4px #000}</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<div id="hud"></div>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { createPlumeVolume, updateEnergyMaterial } from './src/render/energy/energyMaterials.js';
+
+// ---- engine profiles (mirror of src/render/vfxProfiles.js plume fields + new swirl/fork) ----
+const PROFILES = {
+  engine_ion_small:  { plumeCore:'#36c8ff', plumeHalo:'#5a78ff', widthMul:1.0,  lengthMul:1.0,  coreI:6.5, haloI:2.6, flow:2.6, noise:1.5, swirl:0.45, fork:0.40 },
+  engine_ion_twin:   { plumeCore:'#42d4ff', plumeHalo:'#6888ff', widthMul:0.92, lengthMul:1.08, coreI:6.5, haloI:2.6, flow:2.8, noise:1.6, swirl:0.5,  fork:0.45 },
+  engine_industrial: { plumeCore:'#ff9a44', plumeHalo:'#5c3018', widthMul:1.22, lengthMul:1.18, coreI:5.8, haloI:2.0, flow:1.9, noise:2.1, swirl:0.7,  fork:0.85 },
+  engine_resonator:  { plumeCore:'#7a58ff', plumeHalo:'#2ad4aa', widthMul:1.05, lengthMul:1.12, coreI:7.2, haloI:2.8, flow:3.1, noise:2.8, swirl:1.15, fork:0.55 },
+  engine_vector:     { plumeCore:'#28b8ff', plumeHalo:'#1848a8', widthMul:0.78, lengthMul:1.35, coreI:7.8, haloI:2.4, flow:3.4, noise:1.2, swirl:0.30, fork:0.30 },
+  engine_plasma_ring:{ plumeCore:'#b060ff', plumeHalo:'#ff6090', widthMul:1.35, lengthMul:1.42, coreI:8.2, haloI:3.2, flow:2.2, noise:2.4, swirl:1.0,  fork:0.9 },
+};
+
+const q = new URLSearchParams(location.search);
+const drive = parseFloat(q.get('drive') ?? '0.6');
+const boost = parseFloat(q.get('boost') ?? '0');
+const profId = q.get('prof') || 'engine_ion_small';
+const az = parseFloat(q.get('az') ?? '0.9');   // camera azimuth (rad)
+const el = parseFloat(q.get('el') ?? '0.35');  // camera elevation (rad)
+const camR = parseFloat(q.get('r') ?? '13');   // camera distance
+const exposure = parseFloat(q.get('exp') ?? '0.62');
+const bloomS = parseFloat(q.get('bloom') ?? '0.35');
+const prof = PROFILES[profId] || PROFILES.engine_ion_small;
+
+const W = 900, H = 640;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = exposure;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x02040a);
+const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 4000);
+
+// exact in-game plume geometry
+const plumeGeo = new THREE.CylinderGeometry(0.5, 1.6, 4.0, 24, 3, true);
+plumeGeo.rotateZ(Math.PI / 2);
+plumeGeo.translate(-2, 0, 0);
+const plume = createPlumeVolume(plumeGeo, {
+  name: 'lab-plume', colorA: prof.plumeCore, colorB: prof.plumeHalo,
+  coreIntensity: prof.coreI, haloIntensity: prof.haloI, noiseScale: prof.noise, flowSpeed: prof.flow,
+});
+scene.add(plume);
+
+// optional stand-in hull disc behind the mouth (q=hull to enable), otherwise judge the bare plume
+if (q.get('hull')) {
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(1.1, 32), new THREE.MeshBasicMaterial({ color: 0x0a0e18 }));
+  disc.rotation.y = -Math.PI / 2;
+  disc.position.x = 0.05;
+  scene.add(disc);
+}
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), bloomS, 0.6, 0.0);
+composer.addPass(bloom);
+
+const cA = new THREE.Color(), cB = new THREE.Color(), hotCore = new THREE.Color('#fff4dd'), hotHalo = new THREE.Color('#c98cff');
+function frame(t) {
+  const time = t * 0.001;
+  const fade = Math.max(0, Math.min(1, (drive - 0.012) / 0.10 + boost * 0.4));
+  const width = (0.28 + drive * 0.36 + boost * 0.26) * prof.widthMul;
+  const length = (0.28 + drive * 1.55 + boost * 1.85) * prof.lengthMul;
+
+  // frame the whole plume: geometry is 4 units, scaled by `length`; tail reaches x = -4*length
+  const worldLen = 4 * length;
+  const mid = -worldLen * 0.5;
+  const R = Math.max(camR, 5 + worldLen * 0.95);
+  camera.position.set(mid + Math.cos(az) * R * Math.cos(el), Math.sin(el) * R, Math.sin(az) * R * Math.cos(el));
+  camera.lookAt(mid, 0, 0);
+  cA.set(prof.plumeCore).lerp(hotCore, boost);
+  cB.set(prof.plumeHalo).lerp(hotHalo, boost);
+  plume.scale.set(length, width, width);
+  const core = plume.userData.energyCore, halo = plume.userData.energyHalo;
+  updateEnergyMaterial(core.material, {
+    time, colorA: cA, colorB: cB, boost, swirl: prof.swirl, fork: prof.fork,
+    intensity: prof.coreI * 0.68 + drive * 3.6 + boost * 2.8,
+    opacity: (0.22 + drive * 0.30 + boost * 0.16) * fade,
+  });
+  updateEnergyMaterial(halo.material, {
+    time, colorA: cB, colorB: cA, boost, swirl: prof.swirl, fork: prof.fork,
+    intensity: prof.haloI * 0.46 + drive * 1.3 + boost * 1.4,
+    opacity: (0.05 + drive * 0.10 + boost * 0.07) * fade,
+  });
+  composer.render();
+  document.getElementById('hud').textContent =
+    `prof=${profId}\ndrive=${drive.toFixed(2)} boost=${boost.toFixed(2)}\nlen=${length.toFixed(2)} wid=${width.toFixed(2)}`;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// capture: after warmup, POST the canvas to the dev server's /__shot sink
+if (q.get('cap')) {
+  const name = q.get('cap');
+  setTimeout(async () => {
+    const url = renderer.domElement.toDataURL('image/jpeg', 0.9);
+    try { await fetch('/__shot?name=' + encodeURIComponent(name), { method: 'POST', body: url }); } catch (e) {}
+    window.__captured = true;
+  }, 1200);
+}
+</script>
+</body>
+</html>

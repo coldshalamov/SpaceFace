@@ -2881,6 +2881,7 @@ export function createHud(ctx, alerts) {
     // Live in-range fix: this is the real "[ TARGET LOCK: <label> ]" + "[ NNN u ]" case (§3E).
     setClass(elNavReadout, 'sf-nav--lock', true);
     const label = wpLabel || '—';
+    arrow.title = label;
     if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
     if (slow || !lastNavDist) {
       const distText = Math.round(dist) + ' u';
@@ -2895,8 +2896,13 @@ export function createHud(ctx, alerts) {
     // worldToScreen returns mirrored coords for behind-camera points; normalize direction
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
-    const mx = w * 0.42, my = h * 0.42;
-    const ex = w / 2 + dx * mx, ey = h / 2 + dy * my;
+    const margin = 34;
+    const mx = Math.max(24, w / 2 - margin);
+    const my = Math.max(24, h / 2 - margin);
+    const tx = Math.abs(dx) > 0.001 ? mx / Math.abs(dx) : Infinity;
+    const ty = Math.abs(dy) > 0.001 ? my / Math.abs(dy) : Infinity;
+    const edgeT = Math.min(tx, ty);
+    const ex = w / 2 + dx * edgeT, ey = h / 2 + dy * edgeT;
     setDisplay(arrow, true);
     arrow.style.transform = `translate3d(${ex}px,${ey}px,0) translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`;
   }

@@ -80,6 +80,7 @@ export function installVisualOverrides(factory, options = {}) {
 
   const fallbackBuild = factory.build.bind(factory);
   const releaseMode = isReleaseAssetMode(options);
+  const authoredShips = options.authoredShips !== false;
   const kestrelBuilder = typeof options.kestrelBuilder === 'function' ? options.kestrelBuilder : buildKestrelHero;
   factory.build = (entity) => {
     let visual = null;
@@ -114,6 +115,7 @@ export function installVisualOverrides(factory, options = {}) {
     if (!visual) visual = fallbackBuild(entity);
     assertReleaseHeroVisual(entity, visual, releaseMode);
     if (!visual || !entity || entity.type !== 'ship') return visual;
+    if (!authoredShips) return visual;
 
     // The wrapper is synchronous. Any later transport, validation, or composition failure leaves
     // the selected procedural/bespoke visual mounted and alive.

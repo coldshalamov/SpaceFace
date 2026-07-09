@@ -73,8 +73,12 @@ export function createScreenManager(ctx) {
     const topId = stack[stack.length - 1];
     const rec = topId && registry.get(topId);
     if (!rec || !rec.el) return;
+    if (!_autoFocusEnabled(rec)) return;
     const items = _focusableInside(rec.el);
     if (items.length) { try { items[0].focus(); } catch (e) {} }
+  }
+  function _autoFocusEnabled(rec) {
+    return !(rec && rec.def && rec.def.data && rec.def.data.autoFocus === false);
   }
   function _restoreFocus(el, visibleRoot) {
     if (!el || !el.isConnected || typeof el.focus !== 'function') return false;
@@ -83,6 +87,7 @@ export function createScreenManager(ctx) {
   }
   function _ensureFocusIn(rec) {
     if (!rec || !rec.el) return;
+    if (!_autoFocusEnabled(rec)) return;
     const active = document.activeElement;
     if (!active || !rec.el.contains(active)) _focusFirst();
   }

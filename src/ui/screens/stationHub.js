@@ -43,6 +43,26 @@ import {
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+
+/** Station pays this unit price when the player sells cmdtyId (live market → memory → base). */
+export function holdUnitSellPrice(state, stationId, cmdtyId) {
+  if (!state || !stationId || !cmdtyId) return null;
+  const markets = state.economy && state.economy.markets;
+  const live = markets && markets[stationId] && markets[stationId][cmdtyId];
+  if (live) {
+    const v = live.lastSell != null ? live.lastSell : live.sell;
+    if (Number.isFinite(Number(v))) return Math.round(Number(v));
+  }
+  const memRoot = state.player && state.player.marketMemory;
+  const mem = memRoot && memRoot[stationId] && memRoot[stationId][cmdtyId];
+  if (mem) {
+    const v = mem.sell != null ? mem.sell : mem.lastSell;
+    if (Number.isFinite(Number(v))) return Math.round(Number(v));
+  }
+  const def = COMMODITY_BY_ID.get(cmdtyId);
+  if (def && Number.isFinite(Number(def.basePrice))) return Math.round(Number(def.basePrice));
+  return null;
+}
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const STATION_BY_ID = new Map();
 for (const sec of SECTORS) {
@@ -543,38 +563,44 @@ export function firstDockHandoffSteps(state = {}) {
   const departure = departureReadinessSummary(departureChips);
   const marketDone = done.sell === true;
   const hasCargo = cargoUsedUnits(state) > 0;
+  // Verbs that match what the button does (open Hold to sell / Missions to accept / Services to fix).
   return [
     {
-      key: 'market',
-      label: 'Market',
-      title: hasCargo || marketDone ? 'Audit hold / sell cargo' : 'Audit empty hold',
+      key: 'hold',
+      label: 'Cargo',
+      title: marketDone
+        ? 'Cargo sold — hold is ready'
+        : (hasCargo ? 'Sell what you hauled' : 'Open your hold'),
       text: marketDone
-        ? 'Market checked; credits and hold space are ready.'
+        ? 'Credits banked and space free for the next run.'
         : (hasCargo
-            ? 'Sell cargo, free hold space, and confirm the manifest.'
-            : 'Hold is empty; open Market to confirm prices and route options.'),
+            ? 'Opens Hold. Sell 1 or Sell all at the station price, then free capacity for new cargo.'
+            : 'Opens Hold / Market. Nothing to sell yet — check prices or undock to mine.'),
       kind: marketDone ? 'ok' : 'warn',
       done: marketDone,
-      targetTab: 'market',
+      targetTab: hasCargo || marketDone ? 'hold' : 'market',
     },
     {
       key: 'missions',
-      label: 'Missions',
-      title: 'Accept one low-risk job',
+      label: 'Jobs',
+      title: missionDone ? 'Job on the board' : 'Take one easy job',
       text: missionDone
-        ? (activeJobs === 1 ? 'One job is active; Mission Log carries the route.' : activeJobs + ' jobs active; track the one you want next.')
-        : 'Pick a nearby R0-R1 contract; Accept + Track feeds nav.',
+        ? (activeJobs === 1
+            ? 'Opens Missions. One active job — Accept+Track already feeds nav.'
+            : 'Opens Missions. ' + activeJobs + ' jobs active; track the one you want next.')
+        : 'Opens Missions. Accept a nearby low-risk contract; Track puts the route on your nav.',
       kind: missionDone ? 'ok' : 'warn',
       done: missionDone,
       targetTab: 'missions',
     },
     {
       key: 'departure',
-      label: 'Departure Check',
-      title: 'Launch when safe',
+      label: 'Launch',
+      title: departure.state === 'ready' ? 'Safe to undock' : 'Fix launch risks',
       text: departure.state === 'ready'
-        ? 'Fuel, hull, cargo, and tracked work look serviceable.'
-        : departure.status + ': fix the highlighted launch concern.',
+        ? 'Opens Services / Departure. Fuel, hull, and tracked work look good — undock when ready.'
+        : 'Opens ' + tabLabel(firstDockDepartureTarget(departureChips))
+          + '. ' + departure.status + ' — repair, refuel, or resolve the red departure chip before undock.',
       kind: departure.state === 'risk' ? 'bad' : (departure.state === 'check' ? 'warn' : 'ok'),
       done: departure.state === 'ready' && missionDone,
       targetTab: firstDockDepartureTarget(departureChips),
@@ -721,14 +747,16 @@ export function recommendMissionBoardOffer(slots = [], state = {}) {
   };
 }
 
-let cssInjected = false;
+/** Always refresh station CSS so layout reboots land without a full module cache mystery. */
 function injectCss() {
-  if (cssInjected || typeof document === 'undefined') return;
-  cssInjected = true;
-  const style = document.createElement('style');
-  style.id = 'ui-station-styles';
+  if (typeof document === 'undefined') return;
+  let style = document.getElementById('ui-station-styles');
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'ui-station-styles';
+    document.head.appendChild(style);
+  }
   style.textContent = STATION_CSS;
-  document.head.appendChild(style);
 }
 
 const STATION_RISKS = {
@@ -889,11 +917,16 @@ function stationSchematicSvg(type) {
 
 export const stationHub = {
   id: 'station',
+  data: { autoFocus: false },
   _ctx: null,
   _panels: null,        // { market, shipyard, outfit, services, factions, bar } panel objects
   _missionEls: null,
   _stationId: null,
   _subbed: false,
+  _busyEl: null,
+  _activeRefreshJob: null,
+  _activeRefreshRaf: 0,
+  _activeRefreshTimer: 0,
 
   /** Build the screen DOM once and cache it. Called by uiRoot/screenManager. */
   mount(rootEl, ctx) {
@@ -901,58 +934,69 @@ export const stationHub = {
     injectCss();
 
     const screen = document.createElement('div');
-    screen.className = 'st-hub panel';
+    // Station OS: full-viewport tool shell (see design/STATION_SHELL_CONTRACT.md).
+    screen.className = 'st-hub st-hub--desk st-hub--os panel';
+    screen.setAttribute('data-station-os', '1');
 
-    // top bar: station name / faction / services
+    // Top strip only: name · credits · cargo · Briefing (Meta) · Undock (Meta)
     const topbar = document.createElement('div');
     topbar.className = 'st-topbar';
     topbar.innerHTML =
-      '<div class="st-topbar-l"><span class="st-station-name">Station</span>' +
-      '<span class="st-station-fac mono"></span></div>' +
-      '<button class="st-undock">⏏ UNDOCK</button>';
+      '<div class="st-topbar-l">' +
+        '<span class="st-station-name">Station</span>' +
+        '<span class="st-station-fac mono"></span>' +
+      '</div>' +
+      '<div class="st-topbar-m">' +
+        '<span class="st-top-stat"><span class="st-top-stat-l mono">Credits</span><span class="mono st-top-credits">0</span></span>' +
+        '<span class="st-top-stat"><span class="st-top-stat-l mono">Cargo</span><span class="mono st-top-cargo">0 / 0</span></span>' +
+        '<span class="st-top-stat st-top-departure"><span class="st-top-stat-l mono">Launch</span><span class="mono st-readiness-summary">—</span></span>' +
+      '</div>' +
+      '<div class="st-topbar-r">' +
+        '<button type="button" class="st-inspector-toggle st-meta-btn" aria-expanded="false" title="Open station briefing">Briefing</button>' +
+        '<button type="button" class="st-undock st-meta-btn">Undock</button>' +
+      '</div>';
     screen.appendChild(topbar);
+    this._topCreditsEl = topbar.querySelector('.st-top-credits');
+    this._topCargoEl = topbar.querySelector('.st-top-cargo');
+    this._readinessSummary = topbar.querySelector('.st-readiness-summary');
 
-    // airlock graffiti strip
+    // Airlock graffiti kept for flavor but out of the layout budget (visually one line under top).
     const airlock = document.createElement('div');
     airlock.className = 'st-airlock';
-    airlock.innerHTML = '<div class="st-airlock__label mono">AIRLOCK</div><div class="st-airlock__graffiti"></div>';
+    airlock.innerHTML = '<div class="st-airlock__label mono">Airlock</div><div class="st-airlock__graffiti"></div>';
     screen.appendChild(airlock);
     this._airlockEl = airlock.querySelector('.st-airlock__graffiti');
 
-    // main body: rail + workspace + inspector
+    // Body: Nav rail + full-height workspace (+ opt-in briefing drawer)
     const body = document.createElement('div');
     body.className = 'st-body';
 
     const rail = document.createElement('div');
     rail.className = 'st-rail';
     rail.setAttribute('role', 'tablist');
-    rail.setAttribute('aria-label', 'Station sections');
+    rail.setAttribute('aria-label', 'Station tools');
 
     const workspaceWrapper = document.createElement('div');
     workspaceWrapper.className = 'st-workspace-wrapper';
 
-    // Center Stage
     const centerStage = document.createElement('div');
     centerStage.className = 'st-center-stage';
 
-    // Faction stripe
     const factionStripe = document.createElement('div');
     factionStripe.className = 'st-faction-stripe';
     centerStage.appendChild(factionStripe);
 
-    // Console Center Stage: schematic (with scanner-grid backdrop) + Service Dock + effect overlay.
-    // The scan layer hosts flickerGrid (console acquisition on dock); the fx overlay hosts the ripple
-    // field (service-select ping). The route beam lives on the workspace wrapper so it can reach the
-    // inspector column. Effects are view-only and parked when the screen hides.
+    // Hidden effect mounts only (no layout). Keeps command-deck effect factories parkable.
+    // NOT a permanent service dock / bullseye — Services tool owns verbs.
     const consoleConsole = document.createElement('div');
-    consoleConsole.className = 'st-console-deck';
-    consoleConsole.setAttribute('data-centerpiece', 'station-service-console');
+    consoleConsole.className = 'st-console-deck st-console-deck--effects-only';
+    consoleConsole.setAttribute('aria-hidden', 'true');
     consoleConsole.innerHTML = `
-      <div class="st-schematic-pane">
+      <div class="st-schematic-pane" hidden>
         <div class="st-fx-scan" aria-hidden="true"></div>
         <div class="st-schematic-art"></div>
       </div>
-      <div class="st-service-nodes-pane" role="group" aria-label="Berth services"></div>
+      <div class="st-service-nodes-pane" hidden></div>
       <div class="st-fx-overlay" aria-hidden="true"></div>
     `;
     centerStage.appendChild(consoleConsole);
@@ -961,44 +1005,57 @@ export const stationHub = {
     this._scanLayer = consoleConsole.querySelector('.st-fx-scan');
     this._fxOverlay = consoleConsole.querySelector('.st-fx-overlay');
 
-    // Badges / status row. The econ badge carries a morphLabel mount so station state/event changes
-    // animate the readout (morphLabel fires on value change only).
+    // Morph mount for status (parked; one-line only when needed via top strip readiness).
     const statusRow = document.createElement('div');
-    statusRow.className = 'st-status-row';
-    statusRow.innerHTML = `
-      <div class="st-econ-badge mono"><span class="st-econ-mount"></span></div>
-      <div class="st-readiness-summary mono"></div>
-    `;
+    statusRow.className = 'st-status-row st-status-row--sr';
+    statusRow.innerHTML = '<div class="st-econ-badge mono"><span class="st-econ-mount"></span></div>';
+    statusRow.setAttribute('aria-hidden', 'true');
     centerStage.appendChild(statusRow);
     this._econBadge = statusRow.querySelector('.st-econ-badge');
     this._econMorphMount = statusRow.querySelector('.st-econ-mount');
-    this._readinessSummary = statusRow.querySelector('.st-readiness-summary');
 
-    // Handoff panel
+    // Disposable first-dock checklist (single strip, dismissible — never permanent multi-card chrome).
     const handoff = document.createElement('div');
-    handoff.className = 'st-handoff';
+    handoff.className = 'st-handoff st-handoff--strip';
     handoff.hidden = true;
     handoff.innerHTML =
       '<div class="st-handoff-head">' +
-        '<span class="st-handoff-label mono">First Dock Handoff</span>' +
-        '<span class="st-handoff-copy">Audit the hold, take one safe job, then launch only when Departure Check reads clean.</span>' +
+        '<span class="st-handoff-label mono">First dock</span>' +
+        '<span class="st-handoff-copy">Sell cargo · take a job · fix fuel/hull · undock.</span>' +
+        '<button type="button" class="st-handoff-dismiss st-meta-btn" data-handoff-dismiss="1" title="Dismiss checklist">Dismiss</button>' +
       '</div>' +
       '<div class="st-handoff-steps"></div>';
     centerStage.appendChild(handoff);
     this._handoffEl = handoff;
+    this._handoffDismissed = false;
     handoff.addEventListener('click', (ev) => {
+      if (ev.target.closest('[data-handoff-dismiss]')) {
+        this._handoffDismissed = true;
+        handoff.hidden = true;
+        try {
+          if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('sf-station-handoff-dismissed', '1');
+        } catch (_) { /* ignore */ }
+        ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+        return;
+      }
       const target = ev.target.closest('[data-handoff-tab]');
       if (!target || !this._handoffEl || !this._handoffEl.contains(target)) return;
       const tabId = target.getAttribute('data-handoff-tab');
-      if (!TABS.some((t) => t.id === tabId)) return;
+      if (!TABS.some((t) => t.id === tabId) && tabId !== 'hold') return;
       this.setTab(tabId, { focusRail: true });
       ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     });
+    try {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sf-station-handoff-dismissed') === '1') {
+        this._handoffDismissed = true;
+      }
+    } catch (_) { /* ignore */ }
 
+    // Departure chips: compact one-line under handoff (not a second sidebar).
     const departure = document.createElement('div');
-    departure.className = 'st-departure';
+    departure.className = 'st-departure st-departure--compact';
     departure.innerHTML =
-      '<div class="st-departure-label mono">Departure Check</div>' +
+      '<div class="st-departure-label mono">Departure</div>' +
       '<div class="st-departure-chips"></div>';
     centerStage.appendChild(departure);
     this._departureEl = departure.querySelector('.st-departure-chips');
@@ -1017,26 +1074,38 @@ export const stationHub = {
       ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     });
 
+    // Workspace = the active tool (centerpiece of Station OS).
     const content = document.createElement('div');
     content.className = 'st-content';
+    content.setAttribute('data-centerpiece', 'station-service-console');
+    const busy = document.createElement('div');
+    busy.className = 'st-content-busy';
+    busy.hidden = true;
+    busy.setAttribute('role', 'status');
+    busy.setAttribute('aria-live', 'polite');
+    busy.innerHTML =
+      '<span class="st-content-spinner" aria-hidden="true"></span>' +
+      '<span class="st-content-busy-text mono">Loading tool</span>';
+    content.appendChild(busy);
+    this._busyEl = busy;
     centerStage.appendChild(content);
 
     workspaceWrapper.appendChild(centerStage);
 
-    // Right Inspector Column
-    const inspector = document.createElement('div');
-    inspector.className = 'st-inspector';
+    // Briefing drawer — Meta only, collapsed by default (no permanent essay column).
+    const inspector = document.createElement('aside');
+    inspector.className = 'st-inspector is-collapsed';
+    inspector.setAttribute('aria-hidden', 'true');
 
     const inspectorHead = document.createElement('div');
     inspectorHead.className = 'st-inspector-header mono';
-    inspectorHead.textContent = 'System Diagnostics';
+    inspectorHead.innerHTML = '<span>Station briefing</span><button type="button" class="st-inspector-close" aria-label="Close briefing">×</button>';
     inspector.appendChild(inspectorHead);
 
     const inspectorContent = document.createElement('div');
     inspectorContent.className = 'st-inspector-content';
     inspector.appendChild(inspectorContent);
 
-    // Keep the .st-purpose elements inside the inspector so they are read by checks
     const purpose = document.createElement('div');
     purpose.className = 'st-purpose';
     purpose.innerHTML =
@@ -1044,11 +1113,29 @@ export const stationHub = {
       '<div class="st-purpose-sub"><span class="st-purpose-tab"></span><span class="st-purpose-services"></span></div>';
     inspector.appendChild(purpose);
     this._purposeEl = purpose;
+    this._inspectorEl = inspector;
+
+    const setInspectorOpen = (open) => {
+      inspector.classList.toggle('is-collapsed', !open);
+      inspector.setAttribute('aria-hidden', open ? 'false' : 'true');
+      const toggle = topbar.querySelector('.st-inspector-toggle');
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        toggle.classList.toggle('is-active', open);
+      }
+    };
+    topbar.querySelector('.st-inspector-toggle').addEventListener('click', () => {
+      setInspectorOpen(inspector.classList.contains('is-collapsed'));
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    });
+    inspectorHead.querySelector('.st-inspector-close').addEventListener('click', () => {
+      setInspectorOpen(false);
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    });
 
     workspaceWrapper.appendChild(inspector);
 
-    // Route-beam overlay spans the whole workspace (center stage → inspector) so a selected service
-    // can draw a routing beam toward the diagnostics column. pointer-events:none; parked when hidden.
+    // Beam layer kept for mission effects only; never layout-visible across the desk.
     const fxBeamLayer = document.createElement('div');
     fxBeamLayer.className = 'st-fx-beamlayer';
     fxBeamLayer.setAttribute('aria-hidden', 'true');
@@ -1102,10 +1189,10 @@ export const stationHub = {
       b.setAttribute('tabindex', '-1');
       b.title = t.help;
       b.setAttribute('aria-label', t.label + ': ' + t.help);
+      // Nav only — full tool names, no status essays on the rail (Station Shell Contract §2–3).
       b.innerHTML =
         '<span class="st-tab-icon sf-glyph" aria-hidden="true">' + (glyphSvg(t.id) || t.icon) + '</span>' +
-        '<span class="st-tab-label">' + t.label + '</span>' +
-        '<span class="st-tab-service mono" aria-hidden="true"></span>';
+        '<span class="st-tab-label">' + t.label + '</span>';
       railFrag.appendChild(b);
 
       if (t.id === 'market') {
@@ -1118,12 +1205,11 @@ export const stationHub = {
         holdBtn.setAttribute('aria-controls', 'st-panel-hold');
         holdBtn.setAttribute('aria-selected', 'false');
         holdBtn.setAttribute('tabindex', '-1');
-        holdBtn.title = 'View cargo hold manifest, capacity, and item values.';
-        holdBtn.setAttribute('aria-label', 'Hold: View cargo hold manifest, capacity, and item values.');
+        holdBtn.title = 'Cargo hold: sell cargo at station prices.';
+        holdBtn.setAttribute('aria-label', 'Hold: sell cargo at station prices.');
         holdBtn.innerHTML =
           '<span class="st-tab-icon sf-glyph" aria-hidden="true">' + (glyphSvg('hold') || '■') + '</span>' +
-          '<span class="st-tab-label">Hold</span>' +
-          '<span class="st-tab-service mono" aria-hidden="true"></span>';
+          '<span class="st-tab-label">Hold</span>';
         railFrag.appendChild(holdBtn);
       }
     }
@@ -1258,18 +1344,23 @@ export const stationHub = {
 
     content.appendChild(el);
 
+    const qtyDraft = Object.create(null);
+
     const refresh = () => {
       const state = ctx.state;
       const cargo = state && state.player && state.player.cargo || {};
       const cap = Number(cargo.capVolume) || 40;
       const used = Number(cargo.usedVolume) || 0;
-      const free = Math.max(0, cap - used);
-      const percent = Math.round((used / cap) * 100);
+      const percent = cap > 0 ? Math.round((used / cap) * 100) : 0;
+      const stationId = this._stationId || (state.ui && state.ui.dockedStationId) || null;
 
       let html = `
-        <div class="st-sub-h">Cargo Hold Manifest</div>
+        <div class="st-tool-head">
+          <div class="st-sub-h">Hold</div>
+          <p class="st-hold-hint">Sell cargo at this station's pay price. Use Market to buy.</p>
+        </div>
         <div class="st-hold-header">
-          <div class="st-hold-meter-label mono">HOLD STORAGE: ${used}/${cap} units (${percent}%)</div>
+          <div class="st-hold-meter-label mono">Storage ${used}/${cap} u (${percent}%)</div>
           <div class="st-hold-meter">
             <div class="st-hold-meter-fill" style="width: ${percent}%"></div>
           </div>
@@ -1277,44 +1368,50 @@ export const stationHub = {
       `;
 
       const items = cargo.items || {};
-      const list = Object.entries(items).filter(([id, qty]) => Number(qty) > 0);
+      const list = Object.entries(items)
+        .filter(([, qty]) => Number(qty) > 0)
+        .map(([id, rawQty]) => {
+          const qty = Math.max(0, Math.floor(Number(rawQty) || 0));
+          const unit = stationId ? holdUnitSellPrice(state, stationId, id) : null;
+          return { id, qty, unit, value: unit != null ? unit * qty : 0 };
+        })
+        .sort((a, b) => b.value - a.value || a.id.localeCompare(b.id));
 
       if (list.length === 0) {
-        html += `<div class="st-empty">Cargo hold is currently empty.</div>`;
+        html += `<div class="st-empty">Hold is empty. Mine, salvage, or buy goods, then sell here.</div>`;
       } else {
         html += `
           <div class="st-hold-grid">
-            <div class="st-row st-row-head">
+            <div class="st-row st-row-head st-hold-row">
               <span>Commodity</span>
               <span class="c-num">Qty</span>
-              <span class="c-num">Vol</span>
-              <span class="c-num">Local Price</span>
-              <span></span>
+              <span class="c-num">Pays</span>
+              <span class="c-num">Total</span>
+              <span class="c-act">Sell</span>
             </div>
         `;
 
-        const getMarketMemoryForStation = (s, stationId, cmdtyId) => {
-          const markets = s.economy && s.economy.markets;
-          const m = markets && markets[stationId];
-          return (m && m[cmdtyId]) || null;
-        };
-
-        for (const [id, qty] of list) {
-          const com = COMMODITY_BY_ID.get(id) || { name: prettyId(id), volume: 1 };
-          const vol = (com.volume || 1) * qty;
-
-          const stn = this._stationDef();
-          const marketData = stn ? getMarketMemoryForStation(state, stn.id, id) : null;
-          const priceText = marketData ? `${marketData.sell} cr` : 'no memory';
+        for (const row of list) {
+          const com = COMMODITY_BY_ID.get(row.id) || { name: prettyId(row.id) };
+          const priceText = row.unit != null ? (row.unit.toLocaleString() + ' cr') : '—';
+          const totalText = row.unit != null ? (row.value.toLocaleString() + ' cr') : '—';
+          const draft = Math.min(row.qty, Math.max(1, Number(qtyDraft[row.id]) || row.qty));
+          qtyDraft[row.id] = draft;
 
           html += `
-            <div class="st-row">
-              <span style="font-weight:700; color:#fff;">${com.name}</span>
-              <span class="c-num">${qty}</span>
-              <span class="c-num">${vol}</span>
-              <span class="c-num">${priceText}</span>
-              <span class="c-act">
-                <button type="button" class="st-sell-btn" data-sell-cmdty="${id}" style="padding: 2px 8px; font-size:0.7rem;">Sell One</button>
+            <div class="st-row st-hold-row" data-hold-row="${row.id}">
+              <span class="st-hold-name">${escapeHtml(com.name || prettyId(row.id))}</span>
+              <span class="c-num mono">${row.qty}</span>
+              <span class="c-num mono">${priceText}</span>
+              <span class="c-num mono">${totalText}</span>
+              <span class="c-act st-hold-actions">
+                <span class="st-qty-param" data-cmdty="${row.id}">
+                  <button type="button" class="st-qty-btn" data-qty-delta="-1" aria-label="Decrease quantity">−</button>
+                  <input class="st-qty-input mono" type="number" min="1" max="${row.qty}" value="${draft}" data-qty-input="1" aria-label="Sell quantity" />
+                  <button type="button" class="st-qty-btn" data-qty-delta="1" aria-label="Increase quantity">+</button>
+                </span>
+                <button type="button" class="st-sell-btn st-verb-btn" data-sell-cmdty="${row.id}" data-sell-mode="draft">Sell</button>
+                <button type="button" class="st-sell-btn st-sell-btn--all st-verb-btn" data-sell-cmdty="${row.id}" data-sell-qty="${row.qty}">Sell all</button>
               </span>
             </div>
           `;
@@ -1325,15 +1422,45 @@ export const stationHub = {
 
       el.innerHTML = html;
 
-      el.querySelectorAll('[data-sell-cmdty]').forEach(btn => {
+      el.querySelectorAll('[data-qty-delta]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const wrap = btn.closest('[data-cmdty]');
+          const id = wrap && wrap.getAttribute('data-cmdty');
+          const input = wrap && wrap.querySelector('[data-qty-input]');
+          if (!id || !input) return;
+          const max = Math.max(1, Math.floor(Number(input.getAttribute('max')) || 1));
+          let v = Math.floor(Number(input.value) || 1) + Number(btn.getAttribute('data-qty-delta') || 0);
+          v = Math.max(1, Math.min(max, v));
+          input.value = String(v);
+          qtyDraft[id] = v;
+        });
+      });
+      el.querySelectorAll('[data-qty-input]').forEach((input) => {
+        input.addEventListener('change', () => {
+          const wrap = input.closest('[data-cmdty]');
+          const id = wrap && wrap.getAttribute('data-cmdty');
+          if (!id) return;
+          const max = Math.max(1, Math.floor(Number(input.getAttribute('max')) || 1));
+          let v = Math.floor(Number(input.value) || 1);
+          v = Math.max(1, Math.min(max, v));
+          input.value = String(v);
+          qtyDraft[id] = v;
+        });
+      });
+
+      el.querySelectorAll('[data-sell-cmdty]').forEach((btn) => {
         btn.addEventListener('click', () => {
           const cmdtyId = btn.getAttribute('data-sell-cmdty');
-          ctx.bus.emit('ui:trade', {
-            stationId: this._stationId,
-            commodityId: cmdtyId,
-            qty: -1,
-          });
+          let qty;
+          if (btn.getAttribute('data-sell-mode') === 'draft') {
+            qty = Math.max(1, Math.floor(Number(qtyDraft[cmdtyId]) || 1));
+          } else {
+            qty = Math.max(1, Math.floor(Number(btn.getAttribute('data-sell-qty')) || 1));
+          }
+          ctx.bus.emit('ui:sell', { commodityId: cmdtyId, qty });
           ctx.bus.emit('audio:cue', { id: 'ui_click' });
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => { refresh(); if (this._refreshTopbar) this._refreshTopbar(); });
+          else setTimeout(() => { refresh(); if (this._refreshTopbar) this._refreshTopbar(); }, 0);
         });
       });
     };
@@ -1413,19 +1540,65 @@ export const stationHub = {
     return !!(stn && Array.isArray(stn.services) && stn.services.includes(svc));
   },
 
-  /** A Service Dock node was chosen: focus the inspector on it, ping it, and beam it to diagnostics.
-   *  Select ≠ open — the bottom command strip's "Open" action switches the section panel. */
+  /**
+   * Quick-service bar: click must DO something useful for the economy desk.
+   * - refuel / repair → execute immediately (ui:service) when offered
+   * - trade / shipyard / missions / etc → open the real section tab
+   * - offline services → toast + short reason (no decorative beam across content)
+   */
   _selectService(svc) {
     if (!svc) return;
+    const bus = this._ctx && this._ctx.bus;
+    const offered = this._serviceOffered(svc);
     this._selectedService = svc;
     if (this._fx && this._fx.dock) this._fx.dock.setFocus(svc);
-    if (this._visible()) {
-      this._pingServiceNode(svc);
-      this._plotServiceBeam(svc);
+    // Kill the old "draw a line to trivia" default — content stays readable.
+    if (this._fx && this._fx.beam) this._fx.beam.setPath([], { active: false });
+
+    if (!offered) {
+      const stn = this._stationDef();
+      const near = nearestStationOffering(svc, stn && stn.id);
+      const label = stationServiceLabel(svc);
+      const hint = near
+        ? label + ' offline here. Nearest: ' + near.name + ' (' + near.sector + ').'
+        : label + ' is not offered at this berth.';
+      if (bus) bus.emit('toast', { text: hint, kind: 'warn', ttl: 3.5 });
+      this._updateInspector();
+      if (bus) bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
     }
+
+    // Instant berth actions (the thing players expect from a "Refuel" chip).
+    if (svc === 'refuel' || svc === 'repair') {
+      if (bus) {
+        bus.emit('ui:service', { type: svc });
+        bus.emit('audio:cue', { id: 'ui_confirm' });
+      }
+      // Refresh readiness badges after economy applies the service.
+      const self = this;
+      const kick = () => {
+        const stn = self._stationDef();
+        if (stn && self._fx && self._fx.dock) self._fx.dock.setItems(self._berthServiceItems(stn));
+        if (typeof self._refreshEconAndReadiness === 'function') self._refreshEconAndReadiness();
+        self._updateInspector();
+      };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(kick);
+      else setTimeout(kick, 0);
+      return;
+    }
+
+    // Navigation services → the real economy screen (not a diagnostics essay).
+    const tab = tabForService(svc);
+    // ore_buy is trade-desk sell pressure; land on Hold if the player has cargo, else Market.
+    if (svc === 'ore_buy') {
+      const hasCargo = cargoUsedUnits(this._ctx && this._ctx.state) > 0;
+      this.setTab(hasCargo ? 'hold' : 'market', { focusRail: true });
+    } else {
+      this.setTab(tab, { focusRail: true });
+    }
+    if (bus) bus.emit('audio:cue', { id: 'ui_tab' });
     this._updateInspector();
     if (typeof this._updateCommandStrip === 'function') this._updateCommandStrip();
-    if (this._ctx && this._ctx.bus) this._ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   },
 
   /** One ripple from the selected node (one event = one ripple; never on hover or a timer). */
@@ -1523,8 +1696,10 @@ export const stationHub = {
 
     const chips = departureReadinessChips(state);
     const summary = departureReadinessSummary(chips);
-    this._readinessSummary.className = `st-readiness-summary st-readiness--${summary.state} mono`;
-    this._readinessSummary.innerHTML = `DEPARTURE SYSTEM: ${summary.status}`;
+    if (this._readinessSummary) {
+      this._readinessSummary.className = `st-readiness-summary st-readiness--${summary.state} mono`;
+      this._readinessSummary.textContent = summary.status || '—';
+    }
   },
 
   _updateInspector() {
@@ -2134,7 +2309,7 @@ export const stationHub = {
       activeButton.focus({ preventScroll: true });
     }
     // refresh the now-visible panel
-    this._refreshActive(true);
+    this._scheduleActiveRefresh(true);
   },
 
   _onRailKeydown(ev) {
@@ -2163,6 +2338,92 @@ export const stationHub = {
   },
 
   _activePanelId() { return (this._ctx.state.ui && this._ctx.state.ui.activeStationTab) || 'market'; },
+
+  _activePanelIsHeavy(tabId = this._activePanelId()) {
+    return tabId === 'shipyard' || tabId === 'outfit';
+  },
+
+  _setContentBusy(on, tabId = this._activePanelId()) {
+    const el = this._busyEl;
+    if (!el) return;
+    if (!on) {
+      el.classList.remove('is-visible');
+      el.hidden = true;
+      return;
+    }
+    const label = tabId === 'shipyard'
+      ? 'Loading shipyard'
+      : tabId === 'outfit'
+        ? 'Loading outfitting'
+        : 'Loading station deck';
+    const text = el.querySelector('.st-content-busy-text');
+    if (text) text.textContent = label;
+    el.hidden = false;
+    el.classList.add('is-visible');
+  },
+
+  _clearScheduledActiveRefresh() {
+    const win = typeof window !== 'undefined' ? window : globalThis;
+    if (this._activeRefreshRaf && win && typeof win.cancelAnimationFrame === 'function') {
+      win.cancelAnimationFrame(this._activeRefreshRaf);
+    }
+    if (this._activeRefreshTimer && win && typeof win.clearTimeout === 'function') {
+      win.clearTimeout(this._activeRefreshTimer);
+    }
+    this._activeRefreshRaf = 0;
+    this._activeRefreshTimer = 0;
+    this._activeRefreshJob = null;
+  },
+
+  _afterNextPaint(fn) {
+    const win = typeof window !== 'undefined' ? window : globalThis;
+    const raf = win && typeof win.requestAnimationFrame === 'function'
+      ? win.requestAnimationFrame.bind(win)
+      : null;
+    const setTimer = win && typeof win.setTimeout === 'function'
+      ? win.setTimeout.bind(win)
+      : setTimeout;
+    if (!raf) {
+      this._activeRefreshTimer = setTimer(() => {
+        this._activeRefreshTimer = 0;
+        fn();
+      }, 0);
+      return;
+    }
+    this._activeRefreshRaf = raf(() => {
+      this._activeRefreshRaf = 0;
+      this._activeRefreshTimer = setTimer(() => {
+        this._activeRefreshTimer = 0;
+        fn();
+      }, 0);
+    });
+  },
+
+  _scheduleActiveRefresh(isShow) {
+    const tabId = this._activePanelId();
+    const shouldDefer = !!isShow || this._activePanelIsHeavy(tabId);
+    if (!shouldDefer) {
+      this._refreshActive(!!isShow);
+      return;
+    }
+    if (this._activeRefreshJob && this._activeRefreshJob.tabId === tabId) {
+      this._activeRefreshJob.isShow = this._activeRefreshJob.isShow || !!isShow;
+      return;
+    }
+    this._clearScheduledActiveRefresh();
+    const job = { tabId, isShow: !!isShow };
+    this._activeRefreshJob = job;
+    this._setContentBusy(true, tabId);
+    this._afterNextPaint(() => {
+      if (this._activeRefreshJob !== job || this._activePanelId() !== job.tabId) return;
+      this._activeRefreshJob = null;
+      try {
+        this._refreshActive(job.isShow);
+      } finally {
+        this._setContentBusy(false);
+      }
+    });
+  },
 
   _refreshActive(isShow) {
     const id = this._activePanelId();
@@ -2230,21 +2491,32 @@ export const stationHub = {
   },
 
   _refreshTopbar() {
+    if (!this._topbar) return;
     const stn = this._stationDef();
     const nameEl = this._topbar.querySelector('.st-station-name');
     const facEl = this._topbar.querySelector('.st-station-fac');
     if (stn) {
       const targetName = stn.name || stn.id;
-      if (nameEl.textContent !== targetName && nameEl.dataset.acquireTarget !== targetName) {
+      if (nameEl && nameEl.textContent !== targetName && nameEl.dataset.acquireTarget !== targetName) {
         this._signalAcquire(nameEl, targetName, { duration: 400 });
       }
-      const fac = stn.factionId ? FACTION_BY_ID.get(stn.factionId) : null;
-      facEl.textContent = (fac ? (fac.short || fac.name) : '') + '  ·  ' + (stn.type || '').replace('_', ' ');
-      if (fac) facEl.style.color = fac.color || '';
+      if (facEl) {
+        const fac = stn.factionId ? FACTION_BY_ID.get(stn.factionId) : null;
+        facEl.textContent = (fac ? (fac.short || fac.name) : '') + '  ·  ' + (stn.type || '').replace('_', ' ');
+        if (fac) facEl.style.color = fac.color || '';
+      }
     } else {
-      nameEl.textContent = 'Station';
-      facEl.textContent = '';
+      if (nameEl) nameEl.textContent = 'Station';
+      if (facEl) facEl.textContent = '';
     }
+    // Live money + cargo on the top strip (Station OS contract).
+    const state = this._ctx && this._ctx.state;
+    const credits = state && state.player ? (state.player.credits | 0) : 0;
+    const cargo = state && state.player && state.player.cargo || {};
+    const used = Number(cargo.usedVolume) || 0;
+    const cap = Number(cargo.capVolume) || 0;
+    if (this._topCreditsEl) this._topCreditsEl.textContent = credits.toLocaleString('en-US');
+    if (this._topCargoEl) this._topCargoEl.textContent = used + ' / ' + cap;
   },
 
   _signalAcquire(element, finalText, opts = {}) {
@@ -2268,6 +2540,7 @@ export const stationHub = {
   _refreshRailServiceStatus() {
     if (!this._rail) return;
     const stn = this._stationDef();
+    // Nav rows stay names-only. Status lives in aria/title for a11y, not visual essay chips.
     this._rail.querySelectorAll('[data-tab]').forEach((b) => {
       const tabId = b.getAttribute('data-tab');
       const status = stationTabServiceStatus(tabId, stn);
@@ -2275,12 +2548,6 @@ export const stationHub = {
       b.classList.toggle('st-tab--service-unavailable', status.state === 'unavailable');
       b.title = status.title;
       b.setAttribute('aria-label', tabLabel(tabId) + ': ' + status.label + '. ' + tabPurpose(tabId));
-      const badge = b.querySelector('.st-tab-service');
-      if (badge) {
-        const showBadge = status.state === 'available' || status.state === 'unavailable';
-        badge.hidden = !showBadge;
-        badge.textContent = showBadge ? status.label : '';
-      }
     });
   },
 
@@ -2318,7 +2585,7 @@ export const stationHub = {
   _refreshHandoff() {
     if (!this._handoffEl) return;
     const state = this._ctx && this._ctx.state;
-    const visible = firstDockHandoffVisible(state, this._stationId);
+    const visible = !this._handoffDismissed && firstDockHandoffVisible(state, this._stationId);
     this._handoffEl.hidden = !visible;
     if (!visible) return;
     const stepsEl = this._handoffEl.querySelector('.st-handoff-steps');
@@ -2351,12 +2618,14 @@ export const stationHub = {
     }
     // restore the last active tab (or default 'market')
     const tab = this._activePanelId();
-    this.setTab(tab); // also refreshes the active panel via onShow
+    this.setTab(tab, { focusRail: true }); // also refreshes the active panel via onShow
   },
 
   onHide() {
     // Park every effect's rAF while the screen is hidden (frame-sleep contract).
     this._setEffectsActive(false);
+    this._clearScheduledActiveRefresh();
+    this._setContentBusy(false);
     const p = this._panels && this._panels[this._activePanelId()];
     if (p && typeof p.onHide === 'function') {
       try { p.onHide(); } catch (e) { console.error(e); }
@@ -2367,6 +2636,11 @@ export const stationHub = {
   refresh(ctx, options = {}) {
     if (ctx) this._ctx = ctx;
     if (!this._el) return;
+    if (options.periodic) {
+      this._refreshDeparture();
+      this._refreshEconAndReadiness();
+      return;
+    }
     this._refreshTopbar();
     this._refreshGraffiti();
     this._refreshRailServiceStatus();
@@ -2376,7 +2650,7 @@ export const stationHub = {
     this._refreshSchematicAndNodes();
     this._refreshEconAndReadiness();
     this._updateInspector();
-    if (!(options.periodic && this._activePanelId() === 'bar')) this._refreshActive(false);
+    this._scheduleActiveRefresh(false);
   },
 
   /** Render the airlock graffiti from state.ui.graffiti (stashed by the narrative overlay).
@@ -2678,6 +2952,7 @@ const STATION_CSS = `
   --st-glow: rgba(141, 102, 255, 0.15);
 }
 
+/* Default framed panel (legacy). Desk mode below takes the full play surface. */
 .st-hub { width: min(1560px, 96vw); height: min(920px, 95vh); display: flex; flex-direction: column;
   pointer-events: auto; overflow: hidden; animation: sf-fadein .3s var(--ease) both;
   background:
@@ -2686,15 +2961,30 @@ const STATION_CSS = `
   border: 1px solid var(--st-line);
   border-radius: 18px;
   box-shadow: 0 44px 130px -36px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.02) inset; }
-.st-topbar { display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px; border-bottom: 1px solid var(--panel-edge);
+/* Economy desk: own the viewport. Content is the game; chrome is secondary. */
+.st-hub.st-hub--desk {
+  width: 100%; height: 100%; max-width: none; max-height: none;
+  border-radius: 0; border: none;
+  box-shadow: none;
+}
+.st-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 16px; border-bottom: 1px solid var(--panel-edge); flex: none;
   background: linear-gradient(180deg, rgba(14,24,42,.7), rgba(8,14,26,.5)); }
-.st-station-name { font-size: var(--t-xl); letter-spacing: .04em; color: #fff; font-weight: 600;
+.st-topbar-l { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.st-topbar-r { display: flex; align-items: center; gap: 8px; flex: none; }
+.st-station-name { font-size: var(--t-xl); letter-spacing: .02em; color: #fff; font-weight: 600;
   text-shadow: 0 0 16px var(--st-glow); }
-.st-station-fac { margin-left: 14px; color: var(--st-accent); font-size: var(--t-xs);
-  letter-spacing: .14em; text-transform: uppercase; padding: 2px 10px; border-radius: var(--r-pill);
-  border: 1px solid rgba(57,208,255,.3); background: rgba(57,208,255,.08); }
-.st-undock { border-color: var(--st-accent); color: var(--st-accent); letter-spacing: .08em; font-weight: 600; }
+.st-station-fac { color: var(--st-accent); font-size: var(--t-xs);
+  letter-spacing: .1em; text-transform: uppercase; padding: 2px 10px; border-radius: var(--r-pill);
+  border: 1px solid rgba(57,208,255,.3); background: rgba(57,208,255,.08); white-space: nowrap; }
+.st-inspector-toggle { font: inherit; font-size: .72rem; font-weight: 600; letter-spacing: .04em;
+  padding: 7px 12px; border-radius: 8px; cursor: pointer; color: var(--ink-dim);
+  border: 1px solid var(--st-line); background: rgba(255,255,255,.03); }
+.st-inspector-toggle:hover, .st-inspector-toggle.is-active {
+  color: var(--ink); border-color: color-mix(in srgb, var(--st-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--st-accent) 12%, transparent); }
+.st-undock { border-color: var(--st-accent); color: var(--st-accent); letter-spacing: .04em; font-weight: 600;
+  text-transform: none; }
 .st-undock[data-readiness="ready"] { border-color: var(--good); color: var(--good); }
 .st-undock[data-readiness="check"] { border-color: var(--warn); color: var(--warn); }
 .st-undock[data-readiness="risk"] { border-color: var(--danger); color: var(--danger); }
@@ -2762,30 +3052,57 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-departure-chip--bad { color: var(--danger); border-color: rgba(255,84,112,.34); }
 .st-departure-chip--info { color: var(--accent); border-color: rgba(57,208,255,.28); }
 .st-body { display: flex; flex: 1; min-height: 0; }
-.st-rail { width: 176px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-3) var(--sp-2);
-  border-right: 1px solid var(--panel-edge); background: rgba(6,10,20,.55); }
-.st-tab { display: flex; align-items: center; gap: 10px; text-align: left; background: transparent;
-  border: 1px solid transparent; border-radius: var(--r-md); padding: 9px 12px; color: var(--ink-dim);
-  transition: all var(--dur) var(--ease); }
+/* Left rail: full tab names + full service status always readable (this is a permanent nav, not a
+   tooltip-dependent chrome strip). Two-line stack; no ellipsis on label or service copy. */
+.st-rail { width: 220px; flex: none; display: flex; flex-direction: column; gap: 3px; padding: var(--sp-3) var(--sp-2);
+  border-right: 1px solid var(--panel-edge); background: rgba(6,10,20,.55); overflow-x: hidden; overflow-y: auto; }
+.st-tab { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; column-gap: 10px; row-gap: 0;
+  text-align: left; background: transparent; border: 1px solid transparent; border-radius: var(--r-md);
+  padding: 9px 12px; color: var(--ink-dim); transition: all var(--dur) var(--ease); width: 100%; box-sizing: border-box; }
 .st-tab:hover { color: var(--ink); background: rgba(57,208,255,.06); }
 .st-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; color: var(--ink);
   background: rgba(57,208,255,.08); }
 .st-tab.active { color: #fff; background: linear-gradient(90deg, rgba(57,208,255,.18), rgba(57,208,255,.04));
   border-color: rgba(57,208,255,.35); box-shadow: inset 3px 0 0 var(--accent), 0 0 12px rgba(57,208,255,.12); }
-.st-tab-icon { width: 18px; height: 18px; opacity: .85; }
-.st-tab-label { letter-spacing: .04em; font-size: .92rem; text-transform: uppercase; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.st-tab-service { margin-left: auto; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: .5rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); opacity: .78; }
+.st-tab-icon { width: 18px; height: 18px; margin-top: 2px; opacity: .85; flex: none; }
+.st-tab-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.st-tab-label { letter-spacing: .04em; font-size: .92rem; text-transform: uppercase;
+  white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.2; }
+.st-tab-service { margin-left: 0; max-width: none; width: 100%;
+  overflow: visible; text-overflow: clip; white-space: normal;
+  font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-mute);
+  opacity: .9; line-height: 1.3; }
 .st-tab-service[hidden] { display: none; }
 .st-tab[data-service-status="available"] .st-tab-service { color: var(--accent-2); }
-.st-tab[data-service-status="unavailable"] { opacity: .72; }
+.st-tab[data-service-status="unavailable"] { opacity: .88; }
 .st-tab[data-service-status="unavailable"] .st-tab-service { color: var(--warn); }
 .st-tab[data-service-status="unavailable"].active { opacity: 1; border-color: rgba(255,198,77,.35);
   box-shadow: inset 3px 0 0 var(--warn), 0 0 12px rgba(255,198,77,.10); }
 /* ===== Docked service console: center stage · Service Dock · inspector · effect layers ========== */
 .st-workspace-wrapper { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; }
 .st-center-stage { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; position: relative; }
-.st-content { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
+/* Content is the economy desk surface — must claim remaining height and scroll its panels. */
+.st-content { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; }
+.st-hub--desk .st-content { flex: 1 1 0; }
+.st-hub--desk .st-tabpanel { padding: 16px 18px 24px; }
+.st-content-busy {
+  position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; align-content: center; gap: 9px;
+  pointer-events: none; color: var(--accent);
+  background: linear-gradient(180deg, rgba(5,9,18,.84), rgba(5,9,18,.68));
+  opacity: 0; transition: opacity 120ms var(--ease, ease-out);
+}
+.st-content-busy[hidden] { display: none; }
+.st-content-busy.is-visible { opacity: 1; }
+.st-content-spinner {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid rgba(57,208,255,.18); border-top-color: var(--accent);
+  box-shadow: 0 0 14px rgba(57,208,255,.18);
+  animation: st-spinner-rotate 760ms linear infinite;
+}
+.st-content-busy-text {
+  font-size: .62rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-dim);
+}
+@keyframes st-spinner-rotate { to { transform: rotate(360deg); } }
 .st-faction-stripe { height: 3px; flex: none; opacity: .85; }
 .st-hub--engineering .st-console-deck,
 .st-hub--engineering .st-status-row,
@@ -2794,28 +3111,41 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   display: none;
 }
 
-/* Console deck: station schematic (with scanner-grid backdrop) above the Service Dock berth strip.
-   Column layout so the dock is always a horizontal berth strip that uses the full stage width. */
-.st-console-deck { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 10px 16px; flex: none; border-bottom: 1px solid var(--panel-edge);
-  background: radial-gradient(120% 100% at 50% 0%, rgba(57,208,255,.07), transparent 60%); }
-.st-schematic-pane { position: relative; width: 100%; height: 100px; display: flex; align-items: center; justify-content: center; }
+/* Console deck: compact quick-service bar (desk mode kills the decorative bullseye). */
+.st-console-deck { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+  padding: 8px 14px 6px; flex: none; border-bottom: 1px solid var(--panel-edge); overflow: visible;
+  background: linear-gradient(180deg, rgba(12,20,36,.55), rgba(8,14,24,.35)); }
+.st-hub--desk .st-schematic-pane,
+.st-schematic-pane[hidden] { display: none !important; }
+.st-schematic-pane { position: relative; width: 100%; height: 100px; display: flex; align-items: center; justify-content: center; z-index: 0; }
 .st-fx-scan { position: absolute; inset: 0; overflow: hidden; opacity: .45; pointer-events: none; z-index: 0; }
 .st-fx-scan canvas { width: 100%; height: 100%; display: block; }
 .st-schematic-art { position: relative; z-index: 1; filter: drop-shadow(0 0 9px var(--st-glow)); }
 .st-schematic-art svg { display: block; width: 92px; height: 92px; }
-.st-service-nodes-pane { position: relative; z-index: 1; width: 100%; }
+.st-service-bar-label { font-size: .58rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-mute); padding: 0 2px; }
+.st-service-nodes-pane { position: relative; z-index: 5; width: 100%; overflow: visible; }
 .st-fx-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 
-/* Service Dock — the dockRail effect provides base styling; these are hub-scoped accents. */
-.st-hub .sf-fx-dock { flex-wrap: nowrap; gap: 6px; align-items: stretch; justify-content: center;
-  max-width: 100%; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
-.st-hub .sf-fx-dock__item { min-width: 58px; padding: 6px 7px; background: rgba(10,18,32,.55);
+/* Service Dock — dockRail owns magnify curve + glass plate; hub adds accent + scroll headroom.
+   overflow-x:auto would force overflow-y to clip (CSS overflow pairing) — headroom is padding-top
+   inside .sf-fx-dock so the scale/lift stays inside the scrollport. */
+.st-hub .sf-fx-dock { flex-wrap: nowrap; gap: 7px; align-items: flex-end; justify-content: center;
+  max-width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+  --sf-fx-dock-pad-top: 48px; }
+.st-hub .sf-fx-dock__item { min-width: 62px; padding: 8px 9px;
+  background:
+    linear-gradient(165deg, color-mix(in srgb, var(--st-accent) 10%, transparent), transparent 55%),
+    linear-gradient(180deg, rgba(18,28,48,.72), rgba(8,14,26,.78));
   border-color: color-mix(in srgb, var(--st-accent) 34%, transparent); }
 .st-hub .sf-fx-dock__item:focus-visible { outline-color: var(--st-accent); }
-.st-hub .sf-fx-dock__item.is-focus { border-color: var(--st-accent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--st-accent) 26%, transparent); }
-.st-hub .sf-fx-dock__icon { color: var(--st-accent); font-size: 1.05em; }
+.st-hub .sf-fx-dock__item.is-focus { border-color: color-mix(in srgb, var(--st-accent) 70%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    0 0 0 1px color-mix(in srgb, var(--st-accent) 28%, transparent),
+    0 12px 28px -12px color-mix(in srgb, var(--st-accent) 48%, transparent); }
+.st-hub .sf-fx-dock__item.is-adjacent { border-color: color-mix(in srgb, var(--st-accent) 42%, transparent); }
+.st-hub .sf-fx-dock__icon { color: var(--st-accent); font-size: 1.12em; }
 .st-hub .sf-fx-dock__label { font-size: .62rem; letter-spacing: .04em; }
 .st-hub .sf-fx-dock__badge { font-size: .58rem; }
 
@@ -2834,11 +3164,17 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 /* .st-content occupies the remaining center-stage flex space below the station console/status strips;
    the absolute tabpanels inside it fill that scoped area instead of covering the station chrome. */
 
-/* Right inspector column (diagnostics for the selected service / section). */
-.st-inspector { position: relative; z-index: 1; flex: none; width: 244px; display: flex; flex-direction: column;
-  min-height: 0; border-left: 1px solid var(--panel-edge); background: rgba(6,11,22,.5); }
-.st-inspector-header { flex: none; padding: 9px 14px; border-bottom: 1px solid var(--panel-edge);
-  color: var(--st-accent); font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; }
+/* Briefing drawer — collapsed by default in desk mode so Market/Hold own the width. */
+.st-inspector { position: relative; z-index: 6; flex: none; width: 280px; display: flex; flex-direction: column;
+  min-height: 0; border-left: 1px solid var(--panel-edge); background: rgba(6,11,22,.92);
+  transition: width .18s var(--ease, ease-out), opacity .18s var(--ease, ease-out), border-color .18s ease; }
+.st-inspector.is-collapsed { width: 0; opacity: 0; border-left-color: transparent; overflow: hidden; pointer-events: none; }
+.st-inspector-header { flex: none; padding: 10px 14px; border-bottom: 1px solid var(--panel-edge);
+  color: var(--st-accent); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.st-inspector-close { font: inherit; font-size: 1.1rem; line-height: 1; width: 28px; height: 28px;
+  border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--ink-dim); cursor: pointer; }
+.st-inspector-close:hover { color: var(--ink); background: rgba(255,255,255,.06); }
 .st-inspector-content { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px;
   display: flex; flex-direction: column; gap: 14px; }
 .st-inspector-empty { color: var(--ink-mute); font-style: italic; padding: 10px 2px; }
@@ -2872,6 +3208,22 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-tag-restricted { color: var(--warn); border: 1px solid var(--warn); }
 .st-tag-contraband { color: var(--danger); border: 1px solid var(--danger); }
 .st-tag-owned, .st-tag-active { color: var(--accent-2); border: 1px solid var(--accent-2); }
+
+/* Hold manifest — real sell actions, readable prices (not a 1-button dead stub). */
+.st-hold-header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.st-hold-meter-label { font-size: .78rem; color: var(--ink-dim); letter-spacing: .04em; }
+.st-hold-meter { height: 8px; border-radius: 999px; background: rgba(255,255,255,.06); overflow: hidden; }
+.st-hold-meter-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--good)); border-radius: inherit; }
+.st-hold-hint { margin: 0; font-size: .78rem; line-height: 1.4; color: var(--ink-mute); max-width: 52ch; }
+.st-hold-row { grid-template-columns: minmax(8rem, 1.6fr) 4.5rem 4.5rem minmax(5.5rem, 0.9fr) minmax(11rem, 1.3fr) !important; }
+.st-hold-name { font-weight: 650; color: var(--ink); }
+.st-hold-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.st-sell-btn { font: inherit; font-size: .72rem; font-weight: 600; padding: 6px 10px; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 12%, transparent); cursor: pointer; }
+.st-sell-btn:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.st-sell-btn--all { border-color: color-mix(in srgb, var(--good) 42%, transparent);
+  background: color-mix(in srgb, var(--good) 12%, transparent); }
 
 /* generic rows */
 .st-row { display: grid; grid-template-columns: 2.4fr .8fr 1fr 1fr 2.2fr 1.6fr; align-items: center;
@@ -3191,6 +3543,17 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   display: flex; flex-wrap: wrap; gap: 8px; max-width: 180px;
   pointer-events: none;
 }
+.st-eng-stage__loading {
+  position: absolute; inset: 0; z-index: 4; display: grid; place-items: center;
+  opacity: 1; pointer-events: none; transition: opacity .16s var(--ease, ease-out);
+}
+.st-eng-stage.is-ready .st-eng-stage__loading { opacity: 0; }
+.st-eng-stage__spinner {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid rgba(57,208,255,.18); border-top-color: var(--accent);
+  box-shadow: 0 0 14px rgba(57,208,255,.18);
+  animation: st-spinner-rotate 760ms linear infinite;
+}
 .st-eng-gauge { background: rgba(5,7,13,.55); border-radius: 50%; padding: 2px; }
 .st-eng-stage__label {
   margin-top: 8px; text-align: center; font-size: .78rem; color: var(--ink-dim);
@@ -3282,10 +3645,33 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
 .st-sy-buy-btn { width: 100%; }
 
 /* ===== Outfitting premium layout ===== */
-.st-outfit-engineering { display: grid; grid-template-columns: 260px 1fr 280px; gap: 16px; min-height: 480px; }
+.st-outfit-engineering { display: grid; grid-template-columns: minmax(200px, 260px) minmax(280px, 1fr) minmax(220px, 300px); gap: 16px; min-height: 480px; height: 100%; }
 .st-outfit-tree-wrap { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
-.st-outfit-stage-wrap { min-height: 260px; }
+.st-outfit-stage-wrap {
+  min-height: 320px; height: 100%;
+  background: radial-gradient(ellipse at 50% 70%, #0a1426, #05070d 80%);
+  border-radius: 8px;
+}
 .st-outfit-right { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
+.st-hub--desk .st-outfit { display: flex; flex-direction: column; min-height: 100%; height: 100%; }
+.st-hub--desk .st-outfit-engineering { flex: 1; min-height: min(560px, calc(100vh - 240px)); }
+.st-hub--desk .st-eng-stage__frame { min-height: 360px; }
+.st-hub--desk .st-hold,
+.st-hub--desk .st-market,
+.st-hub--desk .st-missions { min-height: 100%; }
+/* Market: fill the desk instead of living in a half-inch strip under dead chrome. */
+.st-hub--desk .st-market { display: flex; flex-direction: column; gap: 10px; height: 100%; box-sizing: border-box; }
+.st-hub--desk .st-market-layout { display: grid; grid-template-columns: minmax(120px, 148px) minmax(0, 1fr) minmax(200px, 260px);
+  gap: 12px; flex: 1; min-height: 0; align-items: stretch; }
+.st-hub--desk .st-market-category-rail { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0; }
+.st-hub--desk .st-market-center { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.st-hub--desk .st-market-center .st-list { flex: 1; min-height: 0; overflow-y: auto; }
+.st-hub--desk .st-market-sidebar { min-height: 0; overflow-y: auto; }
+.st-hub--desk .st-market-cat-tab { text-align: left; white-space: normal; }
+.st-hub--desk .st-airlock { min-height: 0; padding: 2px 12px; font-size: .68rem; }
+.st-hub--desk .st-airlock__label { font-size: .55rem; letter-spacing: .1em; text-transform: none; opacity: .7; }
+/* Hide the decorative route beam layer in desk mode — it crossed readable content. */
+.st-hub--desk .st-fx-beamlayer { display: none; }
 
 /* services */
 .st-svc-list { display: flex; flex-direction: column; gap: 8px; }
@@ -3592,6 +3978,9 @@ html.sf-reduce-motion .st-mission-accepted.trace-run::after { animation: none; }
   font-weight: 600;
   letter-spacing: 0.01em;
   text-transform: none;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 .c-name, .st-sy-name, .st-svc-name, .st-inv-name, .st-mission-title, .st-bar-name {
   font-family: var(--font-body);
@@ -3731,10 +4120,10 @@ html.sf-reduce-motion .st-mission-accepted.trace-run::after { animation: none; }
   letter-spacing: .07em; padding: 3px 11px; }
 .st-airlock { border-bottom: 1px solid var(--st-line); background: rgba(255,255,255,0.012); }
 
-/* Left rail */
-.st-rail { width: 202px; padding: 12px 10px; gap: 2px; border-right: 1px solid var(--st-line);
+/* Left rail — full words always (no Mark… / TRADE DESK H…) */
+.st-rail { width: 228px; padding: 12px 10px; gap: 2px; border-right: 1px solid var(--st-line);
   background: linear-gradient(180deg, rgba(255,255,255,0.014), transparent); }
-.st-tab { padding: 10px 12px; gap: 11px; color: var(--ink-dim); border: 1px solid transparent;
+.st-tab { padding: 10px 12px; column-gap: 11px; color: var(--ink-dim); border: 1px solid transparent;
   transition: background .16s ease, color .16s ease, border-color .16s ease; }
 .st-tab:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
 .st-tab:focus-visible { outline: 2px solid var(--st-accent); outline-offset: 2px; }
@@ -3745,22 +4134,48 @@ html.sf-reduce-motion .st-mission-accepted.trace-run::after { animation: none; }
   box-shadow: inset 2px 0 0 var(--warn); }
 .st-tab-icon { color: var(--ink-mute); }
 .st-tab.active .st-tab-icon { color: var(--st-accent); }
-.st-tab-service { font-size: .56rem; letter-spacing: .05em; }
+.st-tab-service { font-size: .6rem; letter-spacing: .06em; line-height: 1.3; }
 
-/* Console deck + status row */
-.st-console-deck { padding: 18px 24px 14px; gap: 12px; border-bottom: 1px solid var(--st-line);
-  background: radial-gradient(130% 130% at 50% -30%, var(--st-accent-soft), transparent 58%); }
-.st-status-row { padding: 10px 24px; border-bottom: 1px solid var(--st-line); font-size: .72rem; }
-.st-econ-badge, .st-readiness-summary { letter-spacing: .06em; }
+/* Console deck + status row — compact under desk mode */
+.st-console-deck { padding: 8px 16px 6px; gap: 4px; border-bottom: 1px solid var(--st-line);
+  overflow: visible;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--st-accent) 6%, transparent), transparent 80%); }
+.st-hub--desk .st-console-deck { padding: 6px 14px 4px; }
+.st-status-row { padding: 6px 16px; border-bottom: 1px solid var(--st-line); font-size: .72rem; }
+.st-econ-badge, .st-readiness-summary { letter-spacing: .04em; text-transform: none; }
+.st-hub--desk .st-handoff { padding: 8px 14px; }
+.st-hub--desk .st-handoff-step-title { white-space: normal; overflow: visible; text-overflow: clip; }
+.st-hub--desk .st-departure { padding: 6px 14px; min-height: 0; }
 
-/* Service Dock nodes → soft raised chips */
-.st-hub .sf-fx-dock { gap: 9px; }
-.st-hub .sf-fx-dock__item { min-width: 80px; padding: 10px 12px; border-radius: var(--st-r-sm);
-  background: var(--st-raised); border: 1px solid var(--st-line); box-shadow: 0 6px 16px -12px rgba(0,0,0,0.8);
-  transition: transform .14s ease, border-color .14s ease, background .14s ease; }
-.st-hub .sf-fx-dock__item:hover { background: color-mix(in srgb, var(--st-accent) 9%, var(--st-raised)); }
-.st-hub .sf-fx-dock__item.is-focus { border-color: color-mix(in srgb, var(--st-accent) 55%, transparent);
-  box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--st-accent) 42%, transparent); }
+/* Service Dock nodes → glass berth chips (scale/lift owned by dockRail; keep transform free). */
+.st-hub .sf-fx-dock { gap: 10px; --sf-fx-dock-pad-top: 48px; }
+.st-hub .sf-fx-dock__item { min-width: 78px; padding: 10px 12px; border-radius: var(--st-r-sm);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--st-accent) 12%, transparent), transparent 50%),
+    linear-gradient(180deg, rgba(255,255,255,.06), transparent 40%),
+    var(--st-raised);
+  border: 1px solid color-mix(in srgb, var(--st-accent) 28%, var(--st-line));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 -1px 0 rgba(0,0,0,.25),
+    0 8px 20px -12px rgba(0,0,0,0.75);
+  transition: border-color .14s var(--ease, ease-out), box-shadow .14s var(--ease, ease-out), background .14s var(--ease, ease-out); }
+.st-hub .sf-fx-dock__item:hover {
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--st-accent) 16%, transparent), transparent 52%),
+    linear-gradient(180deg, rgba(255,255,255,.08), transparent 42%),
+    color-mix(in srgb, var(--st-accent) 7%, var(--st-raised)); }
+.st-hub .sf-fx-dock__item.is-focus {
+  border-color: color-mix(in srgb, var(--st-accent) 62%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.14),
+    0 0 0 1px color-mix(in srgb, var(--st-accent) 26%, transparent),
+    0 12px 28px -10px color-mix(in srgb, var(--st-accent) 46%, transparent); }
+.st-hub .sf-fx-dock__item.is-adjacent {
+  border-color: color-mix(in srgb, var(--st-accent) 40%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 8px 20px -12px color-mix(in srgb, var(--st-accent) 28%, transparent); }
 .st-hub .sf-fx-dock__label { font-size: .68rem; letter-spacing: .01em; color: var(--ink-dim); }
 .st-hub .sf-fx-dock__icon { color: var(--st-accent); font-size: 1.22em; }
 .st-hub .sf-fx-dock__badge { font-size: .62rem; letter-spacing: .04em; }
@@ -3784,11 +4199,12 @@ button.st-departure-chip:hover { background: rgba(255,255,255,0.055); }
 .st-tabpanel { padding: 22px 26px; }
 .st-empty { font-size: .9rem; }
 
-/* Inspector */
-.st-inspector { width: 292px; border-left: 1px solid var(--st-line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), rgba(12,17,28,0.45); }
-.st-inspector-header { padding: 13px 20px; font-size: .62rem; letter-spacing: .16em; border-bottom: 1px solid var(--st-line); }
-.st-inspector-content { padding: 18px 20px; gap: 20px; }
+/* Inspector / briefing drawer */
+.st-inspector { width: 300px; border-left: 1px solid var(--st-line);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), rgba(12,17,28,0.94); }
+.st-inspector.is-collapsed { width: 0; }
+.st-inspector-header { padding: 12px 16px; font-size: .62rem; letter-spacing: .12em; border-bottom: 1px solid var(--st-line); }
+.st-inspector-content { padding: 14px 16px; gap: 16px; }
 .st-ins-section { gap: 6px; padding-bottom: 18px; border-bottom: 1px solid var(--st-line); }
 .st-ins-section:last-child { border-bottom: none; padding-bottom: 0; }
 .st-ins-title { font-size: .6rem; letter-spacing: .14em; color: var(--ink-mute); }
@@ -3828,5 +4244,6 @@ button.st-departure-chip:hover { background: rgba(255,255,255,0.055); }
   .st-station-name.acquiring::after { animation: none; }
   .st-undock::before { transition: none; }
   .st-content::after { animation: none; }
+  .st-content-spinner, .st-eng-stage__spinner { animation: none; }
 }
 `;

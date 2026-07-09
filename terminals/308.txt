@@ -1,0 +1,20 @@
+---
+pid: 15732
+cwd: "C:\Users\93rob\Documents\GitHub\SpaceFace"
+command: "Start-Sleep -Seconds 30; Get-Content \"C:\\Users\\93rob\\AppData\\Local\\Temp\\grok-goal-f430c013f663\\implementer\\build-sg04-solo.log\" -Tail 8; Get-Process -Id 6672 -ErrorAction SilentlyContinue | Select-Object Id, CPU"
+started_at: 2026-07-09T02:59:18.744Z
+running_for_ms: 4345014  
+---
+prune: Removed types... Accessor (12)
+prune: Removed types... Accessor (4)
+[sg04] 1/70 ship_kestrel_reference: 148372 -> 36584 bytes
+[sg04] 2/70 hull_starter: build-start assets/ships/parts/hulls/hull_starter.glb -> assets/ships/release.__building/parts/hulls/hull_starter.glb
+prune: Removed types... Accessor (67)
+prune: Removed types... Accessor (30)
+[sg04] 2/70 hull_starter: 664636 -> 1607028 bytes
+[sg04] 3/70 hull_fighter: build-start assets/ships/parts/hulls/hull_fighter.glb -> assets/ships/release.__building/parts/hulls/hull_fighter.glb
+
+  Id   CPU
+  --   ---
+6672 49.58
+

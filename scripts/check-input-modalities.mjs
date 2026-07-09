@@ -147,6 +147,7 @@ const helpSrc = read('src/ui/screens/help.js');
 const promptSrc = read('src/ui/controlPrompts.js');
 const screenManagerSrc = read('src/ui/screenManager.js');
 const localmapSrc = read('src/ui/screens/localmap.js');
+const galaxyMapSrc = read('src/ui/galaxyMap.js');
 assert.match(uiRootSrc, /function targetNearestHostileToPlayer/,
   'UI root must implement player-nearest hostile selection for auto-target');
 assert.match(uiRootSrc, /ui:targetNearestHostileToPlayer[\s\S]*quiet[\s\S]*targetNearestHostileToPlayer/,
@@ -228,6 +229,16 @@ assert.match(localmapSrc, /press \$\{localMapKey\} or Esc to close/,
   'Local Map header must keep teaching keyboard close recovery');
 assert.match(localmapSrc, /key === BINDINGS\.localmap\.key/,
   'Local Map key close handler must keep reading the shared binding registry');
+assert.match(galaxyMapSrc, /id:\s*'galaxyMap'[\s\S]*data:\s*\{\s*autoFocus:\s*false\s*\}/,
+  'Galaxy Map must opt out of automatic focus so M/N can close it instead of typing into search');
+assert.match(screenManagerSrc, /function _autoFocusEnabled\(rec\)[\s\S]*autoFocus === false/,
+  'ScreenManager must honor per-screen autoFocus=false metadata');
+assert.match(screenManagerSrc, /function _ensureFocusIn\(rec\)[\s\S]*_autoFocusEnabled\(rec\)/,
+  'ScreenManager must skip initial focus movement for screens that disable auto-focus');
+assert.match(uiInputSrc, /function isTextEntryTarget\(t\)[\s\S]*isContentEditable/,
+  'UI input must classify focused text-entry targets explicitly');
+assert.match(uiInputSrc, /if \(modalOpen\)[\s\S]*if \(key === 'Escape'\)[\s\S]*closeActiveModal\(def\)[\s\S]*if \(textEntry\) return;[\s\S]*def && typeof def\.onKey === 'function'/,
+  'Keyboard Escape must close a modal before text-entry targets keep ordinary typing');
 assert.match(promptSrc, /Dock\/Map\/Log\/Star\/Pause buttons/, 'Touch flight hints must match the actual touch menu buttons');
 assert.match(promptSrc, /Tap Dock when the station prompt appears/, 'Touch tutorial docking copy must teach the touch Dock button');
 assert.match(promptSrc, /Log opens the Mission Log/, 'Touch first-flight hint must teach the objective-home button');
@@ -242,7 +253,7 @@ assert.match(uiInputSrc, /top === 'starmap'[\s\S]*gp\.actions\.map[\s\S]*screenM
   'UI input must let gamepad View/Select close the Star Map after opening it');
 assert.match(screenManagerSrc, /state\.mode === 'menu' && stack\.length === 1 && top\(\) === 'mainMenu'/,
   'ScreenManager must treat the root title menu as a locked modal route');
-assert.match(uiInputSrc, /key === 'Escape'[\s\S]*screenManager\.locked[\s\S]*if \(locked\) return;[\s\S]*def && def\.id === 'station'[\s\S]*undock\(\)/,
+assert.match(uiInputSrc, /function closeActiveModal\(def\)[\s\S]*screenManager\.locked[\s\S]*if \(locked\) return false;[\s\S]*def && def\.id === 'station'[\s\S]*undock\(\)/,
   'Keyboard Escape must honor ScreenManager.locked() before popping so the root title menu cannot vanish');
 
 // 6. Controller parity for the docked station rail: LB/RB should cycle the same authored tablist

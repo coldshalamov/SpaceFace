@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 
-import { clampFocusToPlayerSafeRect, recenterBiasScale, resolveChaseComposition } from '../src/render/camera.js';
+import {
+  CAMERA_ZOOM_MAX,
+  SPEED_ZOOM_MAX,
+  SPEED_ZOOM_MIN,
+  SPEED_ZOOM_SAMPLE_INTERVAL,
+  clampFocusToPlayerSafeRect,
+  recenterBiasScale,
+  resolveChaseComposition,
+  resolveSpeedZoomFactor,
+} from '../src/render/camera.js';
 
 function ship(id, x, z, team = 'enemy') {
   return {
@@ -100,5 +109,12 @@ near(missingFocus.z, player.pos.z, 'missing focus should fall back to the player
 near(recenterBiasScale(0.4, 0.4), 1, 'recenter should start with the current bias instead of snapping to center');
 assert.ok(recenterBiasScale(0.383, 0.4) > 0.99, 'recenter should barely move on its first frame');
 near(recenterBiasScale(0, 0.4), 0, 'recenter should end fully player-centered');
+
+near(CAMERA_ZOOM_MAX, 330, 'manual camera zoom-out should extend 50 percent beyond the previous 220 ceiling');
+assert.ok(SPEED_ZOOM_SAMPLE_INTERVAL >= 0.1, 'speed zoom target should sample at low cadence, not retarget every render frame');
+near(resolveSpeedZoomFactor(0, 120), SPEED_ZOOM_MIN, 'idle speed zoom should keep the tight low-speed factor');
+assert.ok(resolveSpeedZoomFactor(60, 120) > 1, 'mid/high speed should naturally widen past base zoom');
+near(resolveSpeedZoomFactor(120, 120), SPEED_ZOOM_MAX, 'ship max speed should reach the speed zoom-out cap');
+near(resolveSpeedZoomFactor(480, 120), SPEED_ZOOM_MAX, 'boost/cruise speeds should stay capped instead of over-zooming');
 
 console.log('Camera composition checks OK');

@@ -208,7 +208,9 @@ export function createMarketNews(ctx) {
   function ensureTicker() {
     if (typeof document === 'undefined') return null;
     if (tickerEl && tickerEl.isConnected) return tickerEl;
-    const host = document.getElementById('news-ticker') || document.getElementById('hud') || document.body;
+    // Flight already surfaces news through the one-voice alert floor. A scrolling multi-headline
+    // ticker is only allowed on screens that deliberately provide this host.
+    const host = document.getElementById('news-ticker');
     if (!host) return null;
     let el = document.getElementById('sf-news-ticker');
     if (!el) {
