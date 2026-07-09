@@ -1,0 +1,454 @@
+00:02.391  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\place_lane_beacon_authored.blend"
+00:04.906  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter1_clay_34_full.png'
+00:07.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter1_clay_front.png'
+00:10.875  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter1_clay_side.png'
+00:12.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter1_lit_34_full.png'
+00:16.219  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter1_lit_close_detail.png'
+00:19.406  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter2_clay_34_full.png'
+00:22.516  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter2_clay_front.png'
+00:25.469  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter2_clay_side.png'
+00:28.391  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter2_lit_34_full.png'
+00:31.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter2_lit_close_detail.png'
+00:35.141  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter3_clay_34_full.png'
+00:37.844  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter3_clay_front.png'
+00:40.859  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter3_clay_side.png'
+00:43.688  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter3_lit_34_full.png'
+00:47.172  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter3_lit_close_detail.png'
+00:50.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter4_clay_34_full.png'
+00:52.891  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter4_clay_front.png'
+00:55.859  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter4_clay_side.png'
+00:58.594  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter4_lit_34_full.png'
+01:02.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter4_lit_close_detail.png'
+01:05.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter5_clay_34_full.png'
+01:08.641  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter5_clay_front.png'
+01:11.453  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter5_clay_side.png'
+01:14.125  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter5_lit_34_full.png'
+01:17.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter5_lit_close_detail.png'
+01:19.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter6_clay_34_full.png'
+01:22.219  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter6_clay_front.png'
+01:24.813  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter6_clay_side.png'
+01:27.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter6_lit_34_full.png'
+01:30.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter6_lit_close_detail.png'
+01:33.359  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter7_clay_34_full.png'
+01:36.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter7_clay_front.png'
+01:40.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter7_clay_side.png'
+01:43.672  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter7_lit_34_full.png'
+01:48.172  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter7_lit_close_detail.png'
+01:51.906  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter8_clay_34_full.png'
+01:55.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter8_clay_front.png'
+01:58.906  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter8_clay_side.png'
+02:02.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter8_lit_34_full.png'
+02:07.031  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter8_lit_close_detail.png'
+02:10.891  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter9_clay_34_full.png'
+02:14.281  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter9_clay_front.png'
+02:17.594  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter9_clay_side.png'
+02:20.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter9_lit_34_full.png'
+02:25.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter9_lit_close_detail.png'
+02:29.406  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter10_clay_34_full.png'
+02:32.391  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter10_clay_front.png'
+02:35.734  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter10_clay_side.png'
+02:39.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter10_lit_34_full.png'
+02:43.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter10_lit_close_detail.png'
+02:47.422  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter11_clay_34_full.png'
+02:50.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter11_clay_front.png'
+02:54.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter11_clay_side.png'
+02:57.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter11_lit_34_full.png'
+03:02.406  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter11_lit_close_detail.png'
+03:06.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter12_clay_34_full.png'
+03:09.938  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter12_clay_front.png'
+03:13.469  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter12_clay_side.png'
+03:17.063  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter12_lit_34_full.png'
+03:21.563  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter12_lit_close_detail.png'
+03:25.531  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter13_clay_34_full.png'
+03:28.859  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter13_clay_front.png'
+03:32.297  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter13_clay_side.png'
+03:35.813  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter13_lit_34_full.png'
+03:40.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter13_lit_close_detail.png'
+03:44.484  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter14_clay_34_full.png'
+03:48.000  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter14_clay_front.png'
+03:51.500  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter14_clay_side.png'
+03:55.031  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter14_lit_34_full.png'
+03:59.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter14_lit_close_detail.png'
+04:03.469  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter15_clay_34_full.png'
+04:06.922  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter15_clay_front.png'
+04:10.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter15_clay_side.png'
+04:13.938  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter15_lit_34_full.png'
+04:18.500  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter15_lit_close_detail.png'
+04:22.219  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter16_clay_34_full.png'
+04:25.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter16_clay_front.png'
+04:29.172  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter16_clay_side.png'
+04:32.375  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter16_lit_34_full.png'
+04:36.500  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter16_lit_close_detail.png'
+12:40.641  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter17_clay_34_full.png'
+12:42.578  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter17_clay_front.png'
+01:56:48.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter17_clay_side.png'
+01:56:50.250  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter17_lit_34_full.png'
+01:56:52.188  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter17_lit_close_detail.png'
+01:56:54.031  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter18_clay_34_full.png'
+01:56:55.391  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter18_clay_front.png'
+01:56:56.766  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter18_clay_side.png'
+01:56:58.406  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter18_lit_34_full.png'
+01:57:00.469  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter18_lit_close_detail.png'
+01:57:02.891  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter19_clay_34_full.png'
+01:57:05.688  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter19_clay_front.png'
+01:57:08.172  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter19_clay_side.png'
+01:57:10.828  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter19_lit_34_full.png'
+01:57:13.984  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter19_lit_close_detail.png'
+01:57:16.578  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter20_clay_34_full.png'
+01:57:19.063  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter20_clay_front.png'
+01:57:21.688  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter20_clay_side.png'
+01:57:24.094  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter20_lit_34_full.png'
+01:57:27.609  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter20_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+ITER 1 modeling weighted=3.855 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 2 modeling weighted=3.872 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 3 modeling weighted=3.888 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 4 modeling weighted=3.905 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 5 modeling weighted=3.921 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 6 modeling weighted=3.938 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 7 modeling weighted=3.954 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 8 modeling weighted=3.971 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 9 surfacing weighted=4.398 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 10 surfacing weighted=4.414 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 11 surfacing weighted=4.431 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 12 surfacing weighted=4.447 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 13 surfacing weighted=4.464 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 14 surfacing weighted=4.481 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 15 life weighted=4.702 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 16 life weighted=4.715 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 17 life weighted=4.728 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 18 life weighted=4.741 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 19 life weighted=4.751 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+ITER 20 life weighted=4.76 export_bar=False ok_full=False
+Info: Saved as "place_lane_beacon_authored.blend"
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+14:49:19 | INFO: Starting glTF 2.0 export
+14:49:19 | INFO: Extracting primitive: Cube
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.001
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder
+14:49:19 | WARNING: Cylinder: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.001
+14:49:19 | WARNING: Cylinder.001: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.002
+14:49:19 | WARNING: Cylinder.002: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.003
+14:49:19 | WARNING: Cylinder.003: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.004
+14:49:19 | WARNING: Cylinder.004: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.002
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.005
+14:49:19 | WARNING: Cylinder.005: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.006
+14:49:19 | WARNING: Cylinder.006: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.003
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.004
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.005
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.006
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.007
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.008
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.009
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.010
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.011
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.012
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.013
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.014
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.015
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.016
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.007
+14:49:19 | WARNING: Cylinder.007: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.008
+14:49:19 | WARNING: Cylinder.008: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.009
+14:49:19 | WARNING: Cylinder.009: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.010
+14:49:19 | WARNING: Cylinder.010: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.017
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.018
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.011
+14:49:19 | WARNING: Cylinder.011: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.012
+14:49:19 | WARNING: Cylinder.012: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.013
+14:49:19 | WARNING: Cylinder.013: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.019
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.020
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.021
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.022
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.023
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.024
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.025
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.026
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.027
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.028
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.029
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.030
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.031
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.032
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.033
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.034
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.035
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.036
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.037
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.038
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cylinder.014
+14:49:19 | WARNING: Cylinder.014: Could not calculate tangents. Please try to triangulate the mesh first.
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.039
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.040
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.041
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.042
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Extracting primitive: Cube.043
+14:49:19 | INFO: Primitives created: 1
+14:49:19 | INFO: Finished glTF 2.0 export in 0.2981746196746826 s
+
+Warning: Cylinder: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.001: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.002: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.003: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.004: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.005: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.006: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.007: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.008: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.009: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.010: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.011: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.012: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.013: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.014: Could not calculate tangents. Please try to triangulate the mesh first.
+CAMPAIGN {
+  "part_id": "place_lane_beacon",
+  "iters_run": [
+    {
+      "iter": 1,
+      "pass": "modeling",
+      "weighted": 3.855,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "weighted": 3.872,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "weighted": 3.888,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "weighted": 3.905,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 5,
+      "pass": "modeling",
+      "weighted": 3.921,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 6,
+      "pass": "modeling",
+      "weighted": 3.938,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 7,
+      "pass": "modeling",
+      "weighted": 3.954,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 8,
+      "pass": "modeling",
+      "weighted": 3.971,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 9,
+      "pass": "surfacing",
+      "weighted": 4.398,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 10,
+      "pass": "surfacing",
+      "weighted": 4.414,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 11,
+      "pass": "surfacing",
+      "weighted": 4.431,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 12,
+      "pass": "surfacing",
+      "weighted": 4.447,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 13,
+      "pass": "surfacing",
+      "weighted": 4.464,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 14,
+      "pass": "surfacing",
+      "weighted": 4.481,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 15,
+      "pass": "life",
+      "weighted": 4.702,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 16,
+      "pass": "life",
+      "weighted": 4.715,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 17,
+      "pass": "life",
+      "weighted": 4.728,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 18,
+      "pass": "life",
+      "weighted": 4.741,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 19,
+      "pass": "life",
+      "weighted": 4.751,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 20,
+      "pass": "life",
+      "weighted": 4.76,
+      "export_bar_ok": false,
+      "shots_ok": false
+    }
+  ],
+  "final_scores": {
+    "iter": 20,
+    "pass": "life",
+    "weighted": 4.76,
+    "export_bar_ok": false,
+    "shots_ok": false
+  },
+  "export_err": null,
+  "export_bytes": 740884,
+  "tris_eval": 1196,
+  "mesh_count": 59
+}
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit

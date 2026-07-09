@@ -1,5 +1,1 @@
-{
-  "partId": "place_lane_beacon",
-  "tris": 700,
-  "bytes": 189604
-}
+{"partId":"place_lane_beacon","file":"places/place_lane_beacon.glb","tris":8124,"bytes":741504,"dims":[6.059,30.55,6.0755],"materials":"Material_Mechanical,Material_Hull,Material_Accent","weighted":4.79,"export_bar_ok":true,"date":"2026-07-09","source":"campaign1-20+reframe21+finalize"}

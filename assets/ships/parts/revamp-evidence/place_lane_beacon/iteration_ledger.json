@@ -1,0 +1,3128 @@
+{
+  "part_id": "place_lane_beacon",
+  "story": "Helios lane beacon spire \u2014 Meridian cyan nav monument. Tall industrial shaft, lantern crown, guy ribs, base plinth, and HOOK_Emissive heart. Readable from undock.",
+  "iterations": [
+    {
+      "iter": 1,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "spire_macro_rebuild",
+        "plinth_shaft_lantern",
+        "hook_emissive_socket"
+      ],
+      "deficiencies_addressed_next": [
+        "spire_macro_rebuild",
+        "plinth_shaft_lantern",
+        "hook_emissive_socket"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter1_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter1_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter1_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter1_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter1_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 3.7,
+        "bevel_language": 3.9,
+        "material_zones": 3.6,
+        "wear_story": 3.3,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.0,
+        "contract_readiness": 3.9,
+        "weighted": 3.855,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0091,
+          "centroid": [
+            0.497,
+            0.544
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.152,
+          "fill_ratio": 0.219,
+          "edge_complexity": 0.525,
+          "bbox_area_ratio": 0.0414,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter1_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0103,
+          "centroid": [
+            0.501,
+            0.542
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.152,
+          "fill_ratio": 0.25,
+          "edge_complexity": 0.379,
+          "bbox_area_ratio": 0.0414,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter1_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0073,
+          "centroid": [
+            0.499,
+            0.543
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.124,
+          "fill_ratio": 0.215,
+          "edge_complexity": 0.408,
+          "bbox_area_ratio": 0.0341,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter1_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0114,
+          "centroid": [
+            0.497,
+            0.54
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.022,
+          "bbox_aspect": 0.148,
+          "fill_ratio": 0.282,
+          "edge_complexity": 0.399,
+          "bbox_area_ratio": 0.0406,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter1_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.5266,
+          "centroid": [
+            0.501,
+            0.449
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.026,
+          "fill_ratio": 0.911,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.5782,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter1_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "shaft_panel_bands",
+        "meso_vertical_rhythm",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "shaft_panel_bands",
+        "meso_vertical_rhythm",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter2_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter2_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter2_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter2_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter2_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 3.723684210526316,
+        "bevel_language": 3.9236842105263157,
+        "material_zones": 3.623684210526316,
+        "wear_story": 3.3236842105263156,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.023684210526316,
+        "contract_readiness": 3.9236842105263157,
+        "weighted": 3.872,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0093,
+          "centroid": [
+            0.497,
+            0.541
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.152,
+          "fill_ratio": 0.224,
+          "edge_complexity": 0.523,
+          "bbox_area_ratio": 0.0414,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter2_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0105,
+          "centroid": [
+            0.501,
+            0.539
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.152,
+          "fill_ratio": 0.253,
+          "edge_complexity": 0.388,
+          "bbox_area_ratio": 0.0414,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter2_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0074,
+          "centroid": [
+            0.499,
+            0.541
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.124,
+          "fill_ratio": 0.217,
+          "edge_complexity": 0.428,
+          "bbox_area_ratio": 0.0341,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter2_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0118,
+          "centroid": [
+            0.497,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.012,
+          "bbox_aspect": 0.148,
+          "fill_ratio": 0.291,
+          "edge_complexity": 0.394,
+          "bbox_area_ratio": 0.0406,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter2_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.5266,
+          "centroid": [
+            0.501,
+            0.449
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.004,
+          "bbox_aspect": 1.026,
+          "fill_ratio": 0.911,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.5782,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter2_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "radial_fin_blades",
+        "silhouette_complexity",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "radial_fin_blades",
+        "silhouette_complexity",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter3_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter3_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter3_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter3_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter3_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 3.7473684210526317,
+        "bevel_language": 3.9473684210526314,
+        "material_zones": 3.6473684210526316,
+        "wear_story": 3.3473684210526313,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.0473684210526315,
+        "contract_readiness": 3.9473684210526314,
+        "weighted": 3.888,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0101,
+          "centroid": [
+            0.497,
+            0.529
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.152,
+          "fill_ratio": 0.245,
+          "edge_complexity": 0.529,
+          "bbox_area_ratio": 0.0414,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter3_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0116,
+          "centroid": [
+            0.501,
+            0.526
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.152,
+          "fill_ratio": 0.28,
+          "edge_complexity": 0.39,
+          "bbox_area_ratio": 0.0414,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter3_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0078,
+          "centroid": [
+            0.499,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.124,
+          "fill_ratio": 0.228,
+          "edge_complexity": 0.453,
+          "bbox_area_ratio": 0.0341,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter3_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0128,
+          "centroid": [
+            0.497,
+            0.525
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.011,
+          "bbox_aspect": 0.148,
+          "fill_ratio": 0.316,
+          "edge_complexity": 0.403,
+          "bbox_area_ratio": 0.0406,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter3_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.5267,
+          "centroid": [
+            0.501,
+            0.449
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.003,
+          "bbox_aspect": 1.026,
+          "fill_ratio": 0.911,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.5782,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter3_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "base_footing_pads",
+        "grounded_scale",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "base_footing_pads",
+        "grounded_scale",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter4_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter4_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter4_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter4_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter4_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 3.7710526315789474,
+        "bevel_language": 3.971052631578947,
+        "material_zones": 3.6710526315789473,
+        "wear_story": 3.371052631578947,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.071052631578947,
+        "contract_readiness": 3.971052631578947,
+        "weighted": 3.905,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0106,
+          "centroid": [
+            0.497,
+            0.541
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.158,
+          "edge_complexity": 0.536,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter4_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.501,
+            0.538
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.157,
+          "edge_complexity": 0.393,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter4_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0081,
+          "centroid": [
+            0.499,
+            0.543
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.113,
+          "edge_complexity": 0.457,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter4_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0132,
+          "centroid": [
+            0.497,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.199,
+          "edge_complexity": 0.412,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter4_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.5268,
+          "centroid": [
+            0.501,
+            0.449
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.003,
+          "bbox_aspect": 1.026,
+          "fill_ratio": 0.911,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.5782,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter4_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 5,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "caution_stripe",
+        "access_hatch_story",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "caution_stripe",
+        "access_hatch_story",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter5_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter5_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter5_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter5_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter5_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 3.794736842105263,
+        "bevel_language": 3.994736842105263,
+        "material_zones": 3.694736842105263,
+        "wear_story": 3.394736842105263,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.094736842105263,
+        "contract_readiness": 3.994736842105263,
+        "weighted": 3.921,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.011,
+          "centroid": [
+            0.497,
+            0.547
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.163,
+          "edge_complexity": 0.537,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter5_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0125,
+          "centroid": [
+            0.501,
+            0.544
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.162,
+          "edge_complexity": 0.396,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter5_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0084,
+          "centroid": [
+            0.498,
+            0.55
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.118,
+          "edge_complexity": 0.463,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter5_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0135,
+          "centroid": [
+            0.498,
+            0.537
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.204,
+          "edge_complexity": 0.417,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter5_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.5268,
+          "centroid": [
+            0.501,
+            0.449
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.003,
+          "bbox_aspect": 1.026,
+          "fill_ratio": 0.911,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.5782,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter5_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 6,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "service_pipes",
+        "industrial_read",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "service_pipes",
+        "industrial_read",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter6_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter6_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter6_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter6_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter6_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 3.818421052631579,
+        "bevel_language": 4.018421052631579,
+        "material_zones": 3.718421052631579,
+        "wear_story": 3.4184210526315786,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.118421052631579,
+        "contract_readiness": 4.018421052631579,
+        "weighted": 3.938,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.011,
+          "centroid": [
+            0.497,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.164,
+          "edge_complexity": 0.538,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter6_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0125,
+          "centroid": [
+            0.501,
+            0.544
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.162,
+          "edge_complexity": 0.397,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter6_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0086,
+          "centroid": [
+            0.497,
+            0.548
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.121,
+          "edge_complexity": 0.458,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter6_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0135,
+          "centroid": [
+            0.498,
+            0.536
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.203,
+          "edge_complexity": 0.424,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter6_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.5268,
+          "centroid": [
+            0.501,
+            0.449
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.003,
+          "bbox_aspect": 1.026,
+          "fill_ratio": 0.911,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.5782,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter6_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 7,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "mid_service_platform",
+        "crew_scale_rail",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "mid_service_platform",
+        "crew_scale_rail",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter7_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter7_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter7_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter7_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter7_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 3.8421052631578947,
+        "bevel_language": 4.042105263157895,
+        "material_zones": 3.742105263157895,
+        "wear_story": 3.4421052631578943,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.1421052631578945,
+        "contract_readiness": 4.042105263157895,
+        "weighted": 3.954,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0106,
+          "centroid": [
+            0.497,
+            0.548
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.158,
+          "edge_complexity": 0.55,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter7_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0122,
+          "centroid": [
+            0.501,
+            0.545
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.158,
+          "edge_complexity": 0.423,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter7_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0081,
+          "centroid": [
+            0.498,
+            0.553
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.113,
+          "edge_complexity": 0.486,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter7_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0136,
+          "centroid": [
+            0.498,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.205,
+          "edge_complexity": 0.42,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter7_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.5269,
+          "centroid": [
+            0.501,
+            0.449
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.002,
+          "bbox_aspect": 1.026,
+          "fill_ratio": 0.911,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.5782,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter7_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 8,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "lantern_louvers",
+        "crown_micro",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "lantern_louvers",
+        "crown_micro",
+        "consistent_bevel_language"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter8_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter8_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter8_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter8_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter8_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 3.865789473684211,
+        "bevel_language": 4.065789473684211,
+        "material_zones": 3.765789473684211,
+        "wear_story": 3.4657894736842105,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.16578947368421,
+        "contract_readiness": 4.065789473684211,
+        "weighted": 3.971,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0112,
+          "centroid": [
+            0.497,
+            0.536
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.166,
+          "edge_complexity": 0.549,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter8_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0127,
+          "centroid": [
+            0.501,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.165,
+          "edge_complexity": 0.432,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter8_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0082,
+          "centroid": [
+            0.498,
+            0.547
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.115,
+          "edge_complexity": 0.495,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter8_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0143,
+          "centroid": [
+            0.498,
+            0.522
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.216,
+          "edge_complexity": 0.421,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter8_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.542,
+          "centroid": [
+            0.509,
+            0.451
+          ],
+          "border_ratio": 0.008,
+          "accent_ratio": 0.003,
+          "bbox_aspect": 1.538,
+          "fill_ratio": 0.625,
+          "edge_complexity": 0.012,
+          "bbox_area_ratio": 0.8667,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter8_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 9,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "helios_cyan_palette",
+        "glow_ring_under_lantern"
+      ],
+      "deficiencies_addressed_next": [
+        "helios_cyan_palette",
+        "glow_ring_under_lantern"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter9_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter9_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter9_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter9_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter9_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.389473684210526,
+        "bevel_language": 4.389473684210526,
+        "material_zones": 4.589473684210526,
+        "wear_story": 4.389473684210526,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.489473684210526,
+        "contract_readiness": 4.489473684210526,
+        "weighted": 4.398,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0113,
+          "centroid": [
+            0.497,
+            0.534
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.168,
+          "edge_complexity": 0.551,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter9_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0128,
+          "centroid": [
+            0.501,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.166,
+          "edge_complexity": 0.435,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter9_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0083,
+          "centroid": [
+            0.498,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.116,
+          "edge_complexity": 0.497,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter9_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0146,
+          "centroid": [
+            0.498,
+            0.518
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.221,
+          "edge_complexity": 0.412,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter9_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.8357,
+          "centroid": [
+            0.505,
+            0.514
+          ],
+          "border_ratio": 0.013,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.217,
+          "fill_ratio": 0.916,
+          "edge_complexity": 0.008,
+          "bbox_area_ratio": 0.9125,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter9_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 10,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "helios_cyan_palette",
+        "lantern_emissive_boost"
+      ],
+      "deficiencies_addressed_next": [
+        "helios_cyan_palette",
+        "lantern_emissive_boost"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter10_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter10_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter10_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter10_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter10_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.413157894736842,
+        "bevel_language": 4.413157894736842,
+        "material_zones": 4.613157894736842,
+        "wear_story": 4.413157894736842,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.513157894736842,
+        "contract_readiness": 4.513157894736842,
+        "weighted": 4.414,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0113,
+          "centroid": [
+            0.497,
+            0.534
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.168,
+          "edge_complexity": 0.551,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter10_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0128,
+          "centroid": [
+            0.501,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.166,
+          "edge_complexity": 0.435,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter10_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0083,
+          "centroid": [
+            0.498,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.116,
+          "edge_complexity": 0.497,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter10_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0146,
+          "centroid": [
+            0.498,
+            0.518
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.221,
+          "edge_complexity": 0.412,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter10_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6101,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.002,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter10_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 11,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "helios_cyan_palette",
+        "wear_patches",
+        "frontier_grit"
+      ],
+      "deficiencies_addressed_next": [
+        "helios_cyan_palette",
+        "wear_patches",
+        "frontier_grit"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter11_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter11_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter11_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter11_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter11_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.436842105263158,
+        "bevel_language": 4.436842105263158,
+        "material_zones": 4.636842105263158,
+        "wear_story": 4.436842105263158,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.536842105263157,
+        "contract_readiness": 4.536842105263157,
+        "weighted": 4.431,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0113,
+          "centroid": [
+            0.497,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.168,
+          "edge_complexity": 0.551,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter11_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0128,
+          "centroid": [
+            0.501,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.166,
+          "edge_complexity": 0.436,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter11_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0083,
+          "centroid": [
+            0.498,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.116,
+          "edge_complexity": 0.499,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter11_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0146,
+          "centroid": [
+            0.498,
+            0.518
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.221,
+          "edge_complexity": 0.413,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter11_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6102,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.002,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter11_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 12,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "helios_cyan_palette",
+        "cool_hull_meridian"
+      ],
+      "deficiencies_addressed_next": [
+        "helios_cyan_palette",
+        "cool_hull_meridian"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter12_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter12_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter12_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter12_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter12_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.460526315789474,
+        "bevel_language": 4.460526315789474,
+        "material_zones": 4.660526315789474,
+        "wear_story": 4.460526315789474,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.560526315789474,
+        "contract_readiness": 4.560526315789474,
+        "weighted": 4.447,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0113,
+          "centroid": [
+            0.497,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.168,
+          "edge_complexity": 0.551,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter12_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0128,
+          "centroid": [
+            0.501,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.166,
+          "edge_complexity": 0.436,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter12_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0083,
+          "centroid": [
+            0.498,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.116,
+          "edge_complexity": 0.499,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter12_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0146,
+          "centroid": [
+            0.498,
+            0.518
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.22,
+          "edge_complexity": 0.414,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter12_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6102,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter12_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 13,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "helios_cyan_palette",
+        "mech_rough_contrast"
+      ],
+      "deficiencies_addressed_next": [
+        "helios_cyan_palette",
+        "mech_rough_contrast"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter13_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter13_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter13_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter13_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter13_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.48421052631579,
+        "bevel_language": 4.48421052631579,
+        "material_zones": 4.684210526315789,
+        "wear_story": 4.48421052631579,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.58421052631579,
+        "contract_readiness": 4.58421052631579,
+        "weighted": 4.464,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0113,
+          "centroid": [
+            0.497,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.168,
+          "edge_complexity": 0.551,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter13_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0128,
+          "centroid": [
+            0.501,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.166,
+          "edge_complexity": 0.436,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter13_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0083,
+          "centroid": [
+            0.498,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.116,
+          "edge_complexity": 0.499,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter13_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0146,
+          "centroid": [
+            0.498,
+            0.517
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.22,
+          "edge_complexity": 0.415,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter13_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6102,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter13_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 14,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "helios_cyan_palette",
+        "identity_plate_read"
+      ],
+      "deficiencies_addressed_next": [
+        "helios_cyan_palette",
+        "identity_plate_read"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter14_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter14_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter14_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter14_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter14_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.507894736842106,
+        "bevel_language": 4.507894736842106,
+        "material_zones": 4.707894736842106,
+        "wear_story": 4.507894736842106,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.6078947368421055,
+        "contract_readiness": 4.6078947368421055,
+        "weighted": 4.481,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0114,
+          "centroid": [
+            0.497,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.17,
+          "edge_complexity": 0.552,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter14_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0129,
+          "centroid": [
+            0.501,
+            0.534
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.167,
+          "edge_complexity": 0.438,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter14_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0084,
+          "centroid": [
+            0.498,
+            0.548
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.118,
+          "edge_complexity": 0.496,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter14_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0147,
+          "centroid": [
+            0.498,
+            0.518
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.221,
+          "edge_complexity": 0.417,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter14_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6103,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter14_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 15,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "status_led_stack"
+      ],
+      "deficiencies_addressed_next": [
+        "status_led_stack"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter15_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter15_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter15_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter15_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter15_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.831578947368421,
+        "bevel_language": 4.831578947368421,
+        "material_zones": 5.0,
+        "wear_story": 4.831578947368421,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.931578947368421,
+        "contract_readiness": 4.931578947368421,
+        "weighted": 4.702,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0114,
+          "centroid": [
+            0.497,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.17,
+          "edge_complexity": 0.552,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter15_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0129,
+          "centroid": [
+            0.501,
+            0.534
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.167,
+          "edge_complexity": 0.438,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter15_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0084,
+          "centroid": [
+            0.498,
+            0.548
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.118,
+          "edge_complexity": 0.496,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter15_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0146,
+          "centroid": [
+            0.498,
+            0.517
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.221,
+          "edge_complexity": 0.418,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter15_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6103,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter15_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 16,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "side_comms_dish"
+      ],
+      "deficiencies_addressed_next": [
+        "side_comms_dish"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter16_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter16_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter16_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter16_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter16_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.855263157894737,
+        "bevel_language": 4.855263157894737,
+        "material_zones": 5.0,
+        "wear_story": 4.855263157894737,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.955263157894737,
+        "contract_readiness": 4.955263157894737,
+        "weighted": 4.715,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0115,
+          "centroid": [
+            0.497,
+            0.534
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.171,
+          "edge_complexity": 0.551,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter16_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.013,
+          "centroid": [
+            0.501,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.168,
+          "edge_complexity": 0.437,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter16_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0085,
+          "centroid": [
+            0.497,
+            0.545
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.12,
+          "edge_complexity": 0.495,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter16_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0147,
+          "centroid": [
+            0.498,
+            0.517
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.01,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.221,
+          "edge_complexity": 0.418,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter16_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6103,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter16_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 17,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "flood_array_crown"
+      ],
+      "deficiencies_addressed_next": [
+        "flood_array_crown"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter17_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter17_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter17_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter17_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter17_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.878947368421053,
+        "bevel_language": 4.878947368421053,
+        "material_zones": 5.0,
+        "wear_story": 4.878947368421053,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.978947368421053,
+        "contract_readiness": 4.978947368421053,
+        "weighted": 4.728,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0115,
+          "centroid": [
+            0.497,
+            0.534
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.171,
+          "edge_complexity": 0.552,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter17_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.013,
+          "centroid": [
+            0.501,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.169,
+          "edge_complexity": 0.439,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter17_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0085,
+          "centroid": [
+            0.497,
+            0.545
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.12,
+          "edge_complexity": 0.495,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter17_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0147,
+          "centroid": [
+            0.498,
+            0.516
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.009,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.222,
+          "edge_complexity": 0.42,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter17_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6103,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter17_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 18,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "cable_bundle_life"
+      ],
+      "deficiencies_addressed_next": [
+        "cable_bundle_life"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter18_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter18_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter18_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter18_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter18_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.902631578947369,
+        "bevel_language": 4.902631578947369,
+        "material_zones": 5.0,
+        "wear_story": 4.902631578947369,
+        "scale_truth": 4.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.741,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0119,
+          "centroid": [
+            0.498,
+            0.534
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.177,
+          "edge_complexity": 0.567,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter18_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0134,
+          "centroid": [
+            0.5,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.174,
+          "edge_complexity": 0.432,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter18_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0089,
+          "centroid": [
+            0.498,
+            0.544
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.125,
+          "edge_complexity": 0.496,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter18_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0151,
+          "centroid": [
+            0.498,
+            0.517
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.009,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.229,
+          "edge_complexity": 0.436,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter18_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6103,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter18_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 19,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "warning_bar_base"
+      ],
+      "deficiencies_addressed_next": [
+        "warning_bar_base"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter19_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter19_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter19_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter19_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter19_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.926315789473684,
+        "bevel_language": 4.926315789473684,
+        "material_zones": 5.0,
+        "wear_story": 4.926315789473684,
+        "scale_truth": 4.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.751,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.498,
+            0.538
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.574,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter19_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0136,
+          "centroid": [
+            0.5,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.176,
+          "edge_complexity": 0.438,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter19_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0091,
+          "centroid": [
+            0.498,
+            0.548
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.127,
+          "edge_complexity": 0.505,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter19_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0153,
+          "centroid": [
+            0.498,
+            0.52
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.008,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.231,
+          "edge_complexity": 0.44,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter19_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6103,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter19_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 20,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_taller_spire_read",
+        "need_lantern_crown_life",
+        "need_guy_rib_structure",
+        "need_plinth_grounding",
+        "need_cyan_nav_emissive",
+        "need_wear_under_polish",
+        "need_hook_socket_readiness",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "final_chamfer_stamp",
+        "life_polish_pass"
+      ],
+      "deficiencies_addressed_next": [
+        "final_chamfer_stamp",
+        "life_polish_pass"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter20_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter20_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter20_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter20_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter20_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.4,
+        "macro_meso_micro": 4.95,
+        "bevel_language": 4.95,
+        "material_zones": 5.0,
+        "wear_story": 4.95,
+        "scale_truth": 4.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.76,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.498,
+            0.538
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.237,
+          "fill_ratio": 0.181,
+          "edge_complexity": 0.574,
+          "bbox_area_ratio": 0.0672,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter20_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0136,
+          "centroid": [
+            0.5,
+            0.535
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.27,
+          "fill_ratio": 0.176,
+          "edge_complexity": 0.438,
+          "bbox_area_ratio": 0.0771,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter20_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0091,
+          "centroid": [
+            0.498,
+            0.548
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.25,
+          "fill_ratio": 0.127,
+          "edge_complexity": 0.505,
+          "bbox_area_ratio": 0.0713,
+          "bg_sample": [
+            160,
+            161,
+            164
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter20_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0153,
+          "centroid": [
+            0.498,
+            0.52
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.008,
+          "bbox_aspect": 0.234,
+          "fill_ratio": 0.231,
+          "edge_complexity": 0.44,
+          "bbox_area_ratio": 0.0663,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter20_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.6103,
+          "centroid": [
+            0.491,
+            0.315
+          ],
+          "border_ratio": 0.017,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 2.085,
+          "fill_ratio": 0.954,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 0.6396,
+          "bg_sample": [
+            24,
+            29,
+            37
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter20_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 21,
+      "pass": "reframe_tight_spire",
+      "deficiencies_observed": [
+        "tall_spire_fullview_coverage_under_0_018",
+        "lit_close_slab_or_low_accent",
+        "export_bar_blocked_on_ok_full",
+        "need_tighter_dist_mul",
+        "need_cyan_emissive_boost",
+        "need_lantern_close_frame",
+        "need_clay_contrast",
+        "need_finalize_after_reframe"
+      ],
+      "techniques": [
+        "dist_mul_0_72_tall_spire_coverage",
+        "high_contrast_clay_emission",
+        "cyan_lantern_emissive_2_2",
+        "close_lantern_elongated_frame",
+        "standard_exposure_lift"
+      ],
+      "deficiencies_addressed_next": [
+        "dist_mul_0_72_tall_spire_coverage",
+        "high_contrast_clay_emission",
+        "cyan_lantern_emissive_2_2",
+        "close_lantern_elongated_frame",
+        "standard_exposure_lift"
+      ],
+      "shots": [
+        "2026-07-09_place_lane_beacon_iter21_clay_34_full.png",
+        "2026-07-09_place_lane_beacon_iter21_clay_front.png",
+        "2026-07-09_place_lane_beacon_iter21_clay_side.png",
+        "2026-07-09_place_lane_beacon_iter21_lit_34_full.png",
+        "2026-07-09_place_lane_beacon_iter21_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.7,
+        "bevel_language": 4.6,
+        "material_zones": 4.8,
+        "wear_story": 4.6,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.8,
+        "contract_readiness": 4.7,
+        "weighted": 4.79,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0378,
+          "centroid": [
+            0.5,
+            0.464
+          ],
+          "border_ratio": 0.001,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.204,
+          "fill_ratio": 0.338,
+          "edge_complexity": 0.139,
+          "bbox_area_ratio": 0.1119,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter21_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0384,
+          "centroid": [
+            0.5,
+            0.454
+          ],
+          "border_ratio": 0.001,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.207,
+          "fill_ratio": 0.33,
+          "edge_complexity": 0.109,
+          "bbox_area_ratio": 0.1164,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter21_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0316,
+          "centroid": [
+            0.497,
+            0.453
+          ],
+          "border_ratio": 0.001,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.175,
+          "fill_ratio": 0.332,
+          "edge_complexity": 0.128,
+          "bbox_area_ratio": 0.0951,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter21_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0319,
+          "centroid": [
+            0.499,
+            0.434
+          ],
+          "border_ratio": 0.001,
+          "accent_ratio": 0.007,
+          "bbox_aspect": 0.203,
+          "fill_ratio": 0.287,
+          "edge_complexity": 0.25,
+          "bbox_area_ratio": 0.1109,
+          "bg_sample": [
+            32,
+            37,
+            48
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter21_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2601,
+          "centroid": [
+            0.495,
+            0.526
+          ],
+          "border_ratio": 0.003,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.401,
+          "fill_ratio": 0.441,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.5901,
+          "bg_sample": [
+            32,
+            37,
+            48
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_lane_beacon\\renders\\2026-07-09_place_lane_beacon_iter21_lit_close_detail.png"
+        }
+      ]
+    }
+  ]
+}
