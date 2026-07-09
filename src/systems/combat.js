@@ -13,6 +13,7 @@ import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/dama
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
+import { normalizeActivity, normalizeRoe, roeForActivity } from '../ai/doctrine.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -25,6 +26,8 @@ const CARGO_LOSS_RATE = 0.5;
 const WHIP_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
 const WHIP_DAMAGE_MOMENTUM_SCALE = 1 / 1600; // 640-mass rock at 60 wu/s (solid) -> 24 damage
 const WHIP_DAMAGE_MAX = 45;                  // ceiling for the heaviest slings
+/** Seconds of invulnerability after undock / soft respawn window extension (overnight B1). */
+export const UNDOCK_INVULN_S = 8;
 const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
 const BEAM_QUERY_RADIUS_PAD = 256;
 const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
@@ -127,6 +130,9 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     lawful: !!def.factionLawful,
     capabilities: tacticalCapabilitiesFor(def),
   };
+  const doctrine = defaultDoctrineFor(def, pos);
+  spec.data.ai.activity = doctrine.activity;
+  spec.data.ai.roe = doctrine.roe;
   spec.data.bountyCr = def.bountyCr || 0;
   spec.data.loot = def.loot || null;
   spec.data.lootTableId = def.id;
@@ -152,6 +158,22 @@ function tacticalCapabilitiesFor(def) {
     caps.add('screen');
   }
   return [...caps].sort();
+}
+
+function defaultDoctrineFor(def, pos) {
+  const profile = def.aiDoctrine || {};
+  const activity = normalizeActivity({
+    kind: profile.defaultActivity || (def.factionLawful ? 'patrol_route' : 'attack_run'),
+    reason: `archetype:${def.id}`,
+    anchor: pos || { x: 0, z: 0 },
+    leashRadius: profile.leashRadius || 2600,
+    preferredRange: profile.preferredRange || 0,
+    startedTick: 0,
+  });
+  return {
+    activity,
+    roe: normalizeRoe(profile.roe, roeForActivity(activity)),
+  };
 }
 
 function qrange(range, r) { if (!range) return 1; const [lo, hi] = range; return Math.round(lo + (hi - lo) * r()); }
@@ -395,7 +417,7 @@ export const combat = {
     setVecXZ(t.vel, 0, 0);
     if (t.prevPos && typeof t.prevPos.copy === 'function') t.prevPos.copy(t.pos);
     else setVecXZ(t.prevPos, respawnPos.x, respawnPos.z);
-    t.flags.invuln = true; t._invulnUntil = state.simTime + 3;
+    t.flags.invuln = true; t._invulnUntil = state.simTime + UNDOCK_INVULN_S;
     bus.emit('player:respawn', {
       stationId,
       shipId: t.data && t.data.defId,
@@ -426,8 +448,9 @@ export const combat = {
       player._invulnUntil = Infinity;
       setVecXZ(player.vel, 0, 0);
     } else {
+      // Overnight B1: longer undock grace so early pirates can't delete the player at the pad.
       player.flags.invuln = true;
-      player._invulnUntil = (this.state.simTime || 0) + 4;
+      player._invulnUntil = (this.state.simTime || 0) + UNDOCK_INVULN_S;
     }
   },
 

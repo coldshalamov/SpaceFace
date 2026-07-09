@@ -247,10 +247,9 @@ export const COMBAT_PROFILES = Object.freeze([
       // attachment_massline and depends on this fixture-era lever arm; keep player tether tuning on
       // socket_tether_spool so SPEC3-F3 can evolve without rewriting the 47-A expected envelope.
       { id: 'socket_massline', tags: ['massline'], localPos: [-0.25, 0.42], maxAttachments: 1 },
-      // Forward spool mount (localPos is radius-normalized, +X = facing). It sits forward of center
-      // mass, not at the nose tip: enough lever to bias nose-in, not enough to turn line capture
-      // into a top-spin generator when the player slowly backs into the massline edge.
-      { id: 'socket_tether_spool', tags: ['tether_spool'], localPos: [0.38, 0], maxAttachments: 1 },
+      // Forward spool (radius-normalized, +X = facing). Overnight B1: 0.38→0.50 nose bias.
+      // ≥0.72 broke slingshot release energy (check-tether-gameplay); 0.50 is the safe lever.
+      { id: 'socket_tether_spool', tags: ['tether_spool'], localPos: [0.50, 0], maxAttachments: 1 },
       { id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 },
     ],
     capabilities: { drive: true, weapon: true, sensor: true, tether: true, power: true },

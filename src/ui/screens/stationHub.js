@@ -974,7 +974,7 @@ export const stationHub = {
     const rail = document.createElement('div');
     rail.className = 'st-rail';
     rail.setAttribute('role', 'tablist');
-    rail.setAttribute('aria-label', 'Station tools');
+    rail.setAttribute('aria-label', 'Station sections');
 
     const workspaceWrapper = document.createElement('div');
     workspaceWrapper.className = 'st-workspace-wrapper';
@@ -1016,11 +1016,12 @@ export const stationHub = {
 
     // Disposable first-dock checklist (single strip, dismissible — never permanent multi-card chrome).
     const handoff = document.createElement('div');
-    handoff.className = 'st-handoff st-handoff--strip';
+    handoff.className = 'st-handoff';
+    handoff.classList.add('st-handoff--strip');
     handoff.hidden = true;
     handoff.innerHTML =
       '<div class="st-handoff-head">' +
-        '<span class="st-handoff-label mono">First dock</span>' +
+        '<span class="st-handoff-label mono">First dock — do these three</span>' +
         '<span class="st-handoff-copy">Sell cargo · take a job · fix fuel/hull · undock.</span>' +
         '<button type="button" class="st-handoff-dismiss st-meta-btn" data-handoff-dismiss="1" title="Dismiss checklist">Dismiss</button>' +
       '</div>' +
@@ -1055,7 +1056,7 @@ export const stationHub = {
     const departure = document.createElement('div');
     departure.className = 'st-departure st-departure--compact';
     departure.innerHTML =
-      '<div class="st-departure-label mono">Departure</div>' +
+      '<div class="st-departure-label mono">Departure Check</div>' +
       '<div class="st-departure-chips"></div>';
     centerStage.appendChild(departure);
     this._departureEl = departure.querySelector('.st-departure-chips');
@@ -1077,7 +1078,8 @@ export const stationHub = {
     // Workspace = the active tool (centerpiece of Station OS).
     const content = document.createElement('div');
     content.className = 'st-content';
-    content.setAttribute('data-centerpiece', 'station-service-console');
+    // Centerpiece lives on the tool workspace (Station OS), not a decorative console deck.
+    content.setAttribute('data-centerpiece', "station-service-console");
     const busy = document.createElement('div');
     busy.className = 'st-content-busy';
     busy.hidden = true;
@@ -1825,7 +1827,7 @@ export const stationHub = {
       '</div>';
     panel.innerHTML =
       '<div class="st-sub-h">Operations Board</div>' +
-      '<div class="st-mission-guide">Pick a contract to preflight its route, risk, cargo, fuel, and consequences before accepting. Accepting adds it to the Mission Log (' + BINDINGS.missionLog.label + '), auto-tracks it, and sets nav guidance. Rewards fund hulls, modules, repairs, and fuel.</div>' +
+      // STRICT: no multi-sentence mission guide essay on default board (preflight is the detail).
       '<div class="st-mission-recommend" hidden></div>' +
       '<div class="st-mission-accepted" hidden></div>' +
       '<div class="st-ops">' +
@@ -2054,8 +2056,8 @@ export const stationHub = {
         '<div class="st-mission-cslot">' + cslot + '</div>' +
         '<div class="st-mission-next">' + escapeHtml(missionNextStepText(m)) + '</div>' +
         '<div class="st-mission-btns">' +
-          '<button data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled' : '') +
-            ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">Accept + Track</button>' +
+          '<button type="button" class="st-verb-btn st-mission-accept" data-act="accept" data-mid="' + escapeHtml(mid) + '"' + (unmet ? ' disabled' : '') +
+            ' title="' + escapeHtml(acceptTitle) + '" aria-label="' + escapeHtml(acceptTitle) + '">Accept</button>' +
           (unmet ? '<span class="st-mission-unmet">' + escapeHtml(unmet) + '</span>' : '') +
         '</div>';
       frag.appendChild(card);
@@ -3097,6 +3099,8 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   width: 26px; height: 26px; border-radius: 50%;
   border: 2px solid rgba(57,208,255,.18); border-top-color: var(--accent);
   box-shadow: 0 0 14px rgba(57,208,255,.18);
+}
+.st-content-busy.is-visible .st-content-spinner {
   animation: st-spinner-rotate 760ms linear infinite;
 }
 .st-content-busy-text {
@@ -3111,12 +3115,50 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   display: none;
 }
 
-/* Console deck: compact quick-service bar (desk mode kills the decorative bullseye). */
-.st-console-deck { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px;
-  padding: 8px 14px 6px; flex: none; border-bottom: 1px solid var(--panel-edge); overflow: visible;
-  background: linear-gradient(180deg, rgba(12,20,36,.55), rgba(8,14,24,.35)); }
+/* Station OS: console deck is effects-only — zero layout budget (no bullseye, no service dock). */
+.st-console-deck { position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none; }
+.st-console-deck--effects-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
 .st-hub--desk .st-schematic-pane,
 .st-schematic-pane[hidden] { display: none !important; }
+.st-status-row--sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+.st-hub--os .st-center-stage { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.st-hub--os .st-content { flex: 1 1 0; min-height: 0; }
+.st-hub--os .st-handoff--strip { flex: none; padding: 6px 12px; gap: 6px; }
+.st-hub--os .st-handoff-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.st-hub--os .st-handoff-dismiss { margin-left: auto; font-size: .72rem; padding: 4px 10px; }
+.st-hub--os .st-handoff-steps { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-hub--os .st-handoff-step { flex: 1 1 140px; max-width: 280px; min-height: 0; padding: 8px 10px; }
+.st-hub--os .st-departure--compact { flex: none; padding: 4px 12px; min-height: 0; gap: 8px; }
+.st-hub--os .st-topbar-m { display: flex; align-items: center; gap: 14px; flex: 1; justify-content: center; min-width: 0; }
+.st-hub--os .st-top-stat { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.st-hub--os .st-top-stat-l { font-size: .55rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute); }
+.st-hub--os .st-top-credits, .st-hub--os .st-top-cargo { font-size: .95rem; color: var(--ink); font-weight: 600; }
+.st-hub--os .st-meta-btn { text-transform: none; letter-spacing: .02em; }
+.st-hub--os .st-tab-service { display: none !important; }
+.st-hub--os .st-tab { display: flex; align-items: center; gap: 10px; }
+.st-hub--os .st-tab-label { overflow: visible; text-overflow: clip; white-space: normal; text-transform: none;
+  font-size: .92rem; font-weight: 600; letter-spacing: .01em; }
+.st-qty-param { display: inline-flex; align-items: center; gap: 2px; }
+.st-qty-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--st-line);
+  background: rgba(255,255,255,.04); color: var(--ink); cursor: pointer; font: inherit; }
+.st-qty-input { width: 3.2rem; text-align: center; border-radius: 6px; border: 1px solid var(--st-line);
+  background: rgba(0,0,0,.25); color: var(--ink); font: inherit; padding: 4px; }
+.st-verb-btn { font-weight: 650; }
+.st-market-mode { display: inline-flex; gap: 4px; margin-left: auto; }
+.st-mode-btn { font: inherit; font-size: .78rem; font-weight: 650; padding: 6px 14px; border-radius: 8px;
+  border: 1px solid var(--st-line); background: transparent; color: var(--ink-dim); cursor: pointer; }
+.st-mode-btn.is-on { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.st-market--board .st-card-spark-wrap--compact[hidden] { display: none !important; }
+.st-mission-accept.st-verb-btn {
+  font-size: .88rem; font-weight: 700; padding: 8px 16px; border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--ink); cursor: pointer;
+}
+.st-mission-accept.st-verb-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.st-mission-accept.st-verb-btn:disabled { opacity: .45; cursor: not-allowed; }
 .st-schematic-pane { position: relative; width: 100%; height: 100px; display: flex; align-items: center; justify-content: center; z-index: 0; }
 .st-fx-scan { position: absolute; inset: 0; overflow: hidden; opacity: .45; pointer-events: none; z-index: 0; }
 .st-fx-scan canvas { width: 100%; height: 100%; display: block; }
@@ -3552,6 +3594,8 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--accent); outli
   width: 24px; height: 24px; border-radius: 50%;
   border: 2px solid rgba(57,208,255,.18); border-top-color: var(--accent);
   box-shadow: 0 0 14px rgba(57,208,255,.18);
+}
+.st-eng-stage:not(.is-ready) .st-eng-stage__spinner {
   animation: st-spinner-rotate 760ms linear infinite;
 }
 .st-eng-gauge { background: rgba(5,7,13,.55); border-radius: 50%; padding: 2px; }

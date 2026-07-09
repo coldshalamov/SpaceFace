@@ -39,6 +39,53 @@ const DRILL_DPS = 8;    // ore-units/sec the player's drill clears (tier 0 basel
 const GAS_DAMAGE = 18;  // hull % lost if you drill into a gas pocket (the lesson)
 const GAS_TELL_RADIUS = 2; // tiles — gas is hinted (discolored) within this radius of a cleared tile
 
+// Empty-tile move cadence. Base 0.06s (~2× the prior 0.12s) so held travel samples twice as often;
+// cargo load still slows movement proportionally (up to +0.05s when holds are full).
+export const MOVE_COOLDOWN_BASE = 0.06;
+export const MOVE_COOLDOWN_CARGO = 0.05;
+
+/** Cargo-weighted move interval (seconds). loadFactor is usedVolume/capVolume in [0,1]. */
+export function moveCooldownForLoad(loadFactor) {
+  const lf = Math.max(0, Math.min(1, Number(loadFactor) || 0));
+  return MOVE_COOLDOWN_BASE + Math.max(0, Math.min(MOVE_COOLDOWN_CARGO, lf * MOVE_COOLDOWN_CARGO));
+}
+
+/** Linear progress of the current visual step (0..1). 1 when idle / snap. */
+export function avatarMoveProgress(avatar) {
+  if (!avatar) return 1;
+  const dur = avatar.moveDuration;
+  if (!Number.isFinite(dur) || dur <= 0) return 1;
+  const elapsed = Number.isFinite(avatar.moveElapsed) ? avatar.moveElapsed : 0;
+  return Math.min(1, Math.max(0, elapsed / dur));
+}
+
+/** Pixel draw position for the rover (tile-space, not yet camera-scrolled). Time-interpolated. */
+export function avatarDrawPos(avatar, tileSize = TILE) {
+  const col = avatar?.col ?? 0;
+  const row = avatar?.row ?? 0;
+  const t = avatarMoveProgress(avatar);
+  const fromCol = Number.isFinite(avatar?.fromCol) ? avatar.fromCol : col;
+  const fromRow = Number.isFinite(avatar?.fromRow) ? avatar.fromRow : row;
+  return {
+    x: (fromCol + (col - fromCol) * t) * tileSize,
+    y: (fromRow + (row - fromRow) * t) * tileSize,
+    t,
+  };
+}
+
+function commitAvatarMove(d, nc, nr, cooldownVal) {
+  const prevCol = d.avatar.col;
+  const prevRow = d.avatar.row;
+  d.avatar.fromCol = prevCol;
+  d.avatar.fromRow = prevRow;
+  d.avatar.col = nc;
+  d.avatar.row = nr;
+  d.avatar.moveDuration = cooldownVal;
+  d.avatar.moveElapsed = 0;
+  d.moveCooldown = cooldownVal;
+  updateCableTrail(d, nc, nr);
+}
+
 // Tile archetypes by depth band. Deeper = harder rock + rarer ore + more gas. Surface is soft dirt.
 function tileFor(col, row, rng) {
   const depth = row / ROWS; // 0 at surface, 1 at bottom
@@ -130,7 +177,17 @@ export const drill = {
     this.state.drill = {
       asteroidId,
       field,
-      avatar: { col: startCol, row: 0, faceDir: 'down', isDrilling: false, drillTarget: null },
+      avatar: {
+        col: startCol,
+        row: 0,
+        fromCol: startCol,
+        fromRow: 0,
+        moveDuration: 0,
+        moveElapsed: 0,
+        faceDir: 'down',
+        isDrilling: false,
+        drillTarget: null,
+      },
       drillDir: null,         // kept for compatibility
       moveCooldown: 0,
       drillTemp: 0,           // drill head temperature (0 to 100)
@@ -209,8 +266,19 @@ export const drill = {
     const d = this.state.drill;
     if (!d || !d.active) return;
 
+    if (!Number.isFinite(d.moveCooldown)) d.moveCooldown = 0;
+    if (!Number.isFinite(d.avatar.moveElapsed)) d.avatar.moveElapsed = 0;
+    if (!Number.isFinite(d.avatar.moveDuration)) d.avatar.moveDuration = 0;
+    if (!Number.isFinite(d.avatar.fromCol)) d.avatar.fromCol = d.avatar.col;
+    if (!Number.isFinite(d.avatar.fromRow)) d.avatar.fromRow = d.avatar.row;
+
     if (d.moveCooldown > 0) {
       d.moveCooldown -= dt;
+    }
+
+    // Advance visual move window so presentation can lerp for the full step duration.
+    if (d.avatar.moveDuration > 0 && d.avatar.moveElapsed < d.avatar.moveDuration) {
+      d.avatar.moveElapsed = Math.min(d.avatar.moveDuration, d.avatar.moveElapsed + dt);
     }
 
     // --- 1. Drill heat tracking ---
@@ -258,18 +326,16 @@ export const drill = {
     // --- 2. Calculate cargo-load movement speed (inertia) ---
     const cargo = this.state.player.cargo;
     const loadFactor = cargo && cargo.capVolume > 0 ? (cargo.usedVolume / cargo.capVolume) : 0;
-    // Base move cooldown is 0.12s. Moves up to 0.22s when completely full.
-    const cooldownVal = 0.12 + Math.max(0, Math.min(0.10, loadFactor * 0.10));
+    // Base move cooldown is 0.06s (~2× prior 0.12s). Moves up to 0.11s when completely full.
+    const cooldownVal = moveCooldownForLoad(loadFactor);
 
     const target = d.field[nc][nr];
     if (target.type === 'empty') {
       d.avatar.isDrilling = false;
       d.avatar.drillTarget = null;
+      d.avatar.drillBlocked = false;
       if (d.moveCooldown <= 0) {
-        d.avatar.col = nc;
-        d.avatar.row = nr;
-        d.moveCooldown = cooldownVal; // apply cargo-weighted cooldown
-        updateCableTrail(d, nc, nr);
+        commitAvatarMove(d, nc, nr, cooldownVal);
       }
     } else {
       // Solid tile! Cannot drill UP or if overheated
@@ -307,27 +373,41 @@ export const drill = {
       // Active drilling
       d.avatar.isDrilling = true;
       d.avatar.drillTarget = { col: nc, row: nr };
+      d.avatar.drillBlocked = false;
 
       const dps = this.getDrillDPS();
       target.hp -= dps * dt;
 
       // Emit spark particles request
-      this.bus.emit('drill:spark', { col: nc, row: nr, type: target.type, ore: target.ore });
+      this.bus.emit('drill:spark', {
+        col: nc,
+        row: nr,
+        type: target.type,
+        ore: target.ore,
+        hpFrac: target.maxHp > 0 ? Math.max(0, target.hp / target.maxHp) : 0,
+      });
 
       if (target.hp <= 0) {
         // Cleared!
         const wasVein = target.type === 'vein';
         const wasGas = target.type === 'gas';
+        const wasType = target.type;
         const ore = target.ore;
         const yieldU = target.yieldU || 0;
 
         d.field[nc][nr] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false };
-        d.avatar.col = nc;
-        d.avatar.row = nr;
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = null;
-        d.moveCooldown = cooldownVal;
-        updateCableTrail(d, nc, nr);
+        commitAvatarMove(d, nc, nr, cooldownVal);
+
+        this.bus.emit('drill:break', {
+          col: nc,
+          row: nr,
+          type: wasType,
+          ore: ore || null,
+          wasVein,
+          wasGas,
+        });
 
         if (wasVein && ore) {
           const added = addCargo(this.state, ore, yieldU);
@@ -385,4 +465,10 @@ export const drill = {
   },
 };
 
-export const DRILL_CONST = { COLS, ROWS, TILE };
+export const DRILL_CONST = {
+  COLS,
+  ROWS,
+  TILE,
+  MOVE_COOLDOWN_BASE,
+  MOVE_COOLDOWN_CARGO,
+};

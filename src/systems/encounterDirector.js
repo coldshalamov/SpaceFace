@@ -42,6 +42,7 @@ import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { removeCargo } from './cargo.js';
+import { activityForEncounterSpawn, roeForActivity, setEntityDoctrine } from '../ai/doctrine.js';
 
 // ── schedule budget (per sector-day) ─────────────────────────────────────────────────────────────
 const MAX_MAJOR_PER_DAY = 1;
@@ -468,6 +469,8 @@ export const encounterDirector = {
       ai.encounterKind = live.shapeId;
       if (sh.role) ai.encounterRole = sh.role;
       if (sh.passive) ai.passive = true;
+      ai.activity = activityForEncounterSpawn(live, sh, { now: this.now() });
+      ai.roe = roeForActivity(ai.activity, sh.roe);
       if (sh.bossName) { ai.name = sh.bossName; spec.data.encounterBoss = true; }
       if (sh.bountyCr != null) spec.data.bountyCr = sh.bountyCr;
       if (sh.scanLabel) spec.data.scanLabel = sh.scanLabel;
@@ -544,6 +547,13 @@ export const encounterDirector = {
       const ai = e.data && e.data.ai;
       if (!ai) continue;
       ai.passive = !!passive;
+      setEntityDoctrine(e, {
+        activity: activityForEncounterSpawn(live, {
+          role: live.roles && live.roles[e.id],
+          pos: e.pos,
+          passive: !!passive,
+        }, { now: this.now(), passive: !!passive }),
+      });
       if (!passive && e.data.intent) { e.data.intent.moveX = 0; e.data.intent.moveZ = 0; e.data.intent.fire = false; }
     }
   },

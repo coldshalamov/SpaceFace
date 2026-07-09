@@ -446,9 +446,9 @@ export const render = {
     const shadowsOn = !(state.settings && state.settings.video && state.settings.video.shadows === false);
     if (shadowsOn) {
       renderer.shadowMap.enabled = false;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = THREE.PCFShadowMap; // hard PCF, ~half the sample cost of PCFSoft
       key.castShadow = true;
-      key.shadow.mapSize.set(2048, 2048);
+      key.shadow.mapSize.set(1024, 1024); // was 2048 — quarters shadow-pass VRAM + render cost; a top-down game reads shadows as groundedness, not focal detail
       // Orthographic frustum sized to the local play area around the player (updated per frame in
       // renderFrame to follow the player). Tight bounds = crisp shadows at usable resolution.
       const SC = key.shadow.camera;

@@ -986,55 +986,62 @@ export const vfx = {
       const cx = tgt ? tgt.pos.x : pos.x, cz = tgt ? tgt.pos.z : pos.z;
 
       if (p.brokeShield) {
-        // Shield break (spec2/02 §3): full-ring cyan flash on target, 320 ms.
-        this._spawnSprite(SPR_RING, cx, 0, cz, 0.32, r * 0.8, r * 5.0, 1.0, 0.0, '#39d0ff', 0, 0);
-        this._spawnSprite(SPR_FRESNEL, cx, 0, cz, 0.40, r * 2.2, r * 3.2, 0.85, 0.0, col, 0, 0);
-        this._flashLight({ x: cx, z: cz }, '#39d0ff', 6.0, 8, 220);
+        // Shield break (spec2/02 §3 + Top-50 rank-5): full-ring cyan flash, denser pop.
+        this._spawnSprite(SPR_RING, cx, 0, cz, 0.36, r * 0.8, r * 5.4, 1.0, 0.0, '#39d0ff', 0, 0);
+        this._spawnSprite(SPR_FRESNEL, cx, 0, cz, 0.44, r * 2.2, r * 3.4, 0.9, 0.0, col, 0, 0);
+        this._flashLight({ x: cx, z: cz }, '#39d0ff', 7.2, 9, 240);
         this._c0.set(col); this._c1.set('#102040');
-        const bn = Math.max(8, Math.round(16 * (this._burst || 1)));
+        const bn = Math.max(14, Math.round(24 * (this._burst || 1)));
         for (let k = 0; k < bn; k++) {
           const a = Math.random() * Math.PI * 2;
           const dist = r * (0.8 + Math.random() * 0.5);
-          const sp = 30 + Math.random() * 40;
+          const sp = 36 + Math.random() * 52;
           this._spawnParticle(cx + Math.cos(a) * dist, cz + Math.sin(a) * dist,
-            Math.cos(a) * sp, Math.sin(a) * sp, 0.32, 1.8, 0.0, this._c0, this._c1, 2.2, 0, 0);
+            Math.cos(a) * sp, Math.sin(a) * sp, 0.36, 2.0, 0.0, this._c0, this._c1, 2.0, 0, 0);
         }
       } else {
-        // Shield hit (spec2/02 §3): hex-ripple decal at impact point, 220 ms fade, shield-color.
-        this._spawnSprite(SPR_FRESNEL, pos.x, 0, pos.z, 0.22, r * 0.35, r * 2.6, 0.9, 0.0, col, 0, 0);
-        this._flashLight({ x: pos.x, z: pos.z }, col, 2.0, 10, 90);
+        // Shield hit: stronger hex-ripple + flash so energy hits read at chase distance.
+        this._spawnSprite(SPR_FRESNEL, pos.x, 0, pos.z, 0.26, r * 0.4, r * 2.9, 0.95, 0.0, col, 0, 0);
+        this._flashLight({ x: pos.x, z: pos.z }, col, 2.8, 11, 110);
+        this._c0.set('#ffffff'); this._c1.set(col);
+        const sn = Math.max(4, Math.round(8 * (this._burst || 1)));
+        for (let k = 0; k < sn; k++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = 18 + Math.random() * 28;
+          this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+            0.18, 1.4, 0.0, this._c0, this._c1, 3.0, 0, 0);
+        }
       }
     } else if (p.armorHit) {
       this._emitJuiceCue('combat.damage.armor', p, 1);
-      // Armor hit (spec2/02 §3): 6–10 spark particles + 1 chunk sprite; metallic clank.
+      // Armor hit (Top-50 rank-5): 10–16 spark particles + chunk sprite; metallic clank.
       const col = this._engineColor(tgt);
       this._c0.set('#ffffff'); this._c1.set(col);
-      const count = Math.max(6, Math.min(10, Math.round(8 * (this._burst || 1))));
+      const count = Math.max(10, Math.min(16, Math.round(13 * (this._burst || 1))));
       const base = p.normal ? Math.atan2(p.normal.z, p.normal.x) + Math.PI : Math.random() * Math.PI * 2;
       for (let k = 0; k < count; k++) {
         const a = base + (Math.random() - 0.5) * 1.2;
-        const sp = 22 + Math.random() * 38;
+        const sp = 26 + Math.random() * 48;
         this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-          0.22, 1.6, 0.0, this._c0, this._c1, 2.8, 0, 0);
+          0.24, 1.8, 0.0, this._c0, this._c1, 2.6, 0, 0);
       }
-      // one tumbling chunk sprite
-      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.28, 1.2, 2.4, 0.7, 0.0, '#c0a080',
+      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.32, 1.4, 2.8, 0.75, 0.0, '#c0a080',
         (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
-      this._flashLight({ x: pos.x, z: pos.z }, col, 2.0, 12, 80);
+      this._flashLight({ x: pos.x, z: pos.z }, col, 2.6, 13, 100);
     } else if (p.hullHit) {
       this._emitJuiceCue('combat.damage.hull', p, 1);
-      // Hull hit (spec2/02 §3): dark smoke puff + ember; dull thud.
+      // Hull hit (Top-50 rank-5): denser smoke + more embers so hull damage is obvious.
       const col = this._engineColor(tgt);
-      this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.45, 1.6, 3.8, 0.55, 0.0, '#2a2520',
+      this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.52, 1.8, 4.2, 0.62, 0.0, '#2a2520',
         (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
       this._c0.set('#ff8040'); this._c1.set('#401008');
-      for (let k = 0; k < 3; k++) {
+      for (let k = 0; k < 7; k++) {
         const a = Math.random() * Math.PI * 2;
-        const sp = 6 + Math.random() * 10;
+        const sp = 8 + Math.random() * 14;
         this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-          0.5, 1.0, 0.15, this._c0, this._c1, 1.2, 1.0 + Math.random() * 1.5, 4.0 + Math.random() * 3.0);
+          0.55, 1.15, 0.18, this._c0, this._c1, 1.1, 1.0 + Math.random() * 1.5, 4.0 + Math.random() * 3.0);
       }
-      this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 1.8, 10, 70);
+      this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
     }
     // player hits get a camera kick — STRONGER, proportional to damage
     if (p.isPlayer && (p.amount || 0) > 0) this.bus.emit('camera:shake', { amount: Math.min(0.5, 0.08 + (p.amount || 0) * 0.015) });
@@ -1783,10 +1790,10 @@ export const vfx = {
     if (Math.abs(tangential) > 4) cable.bowSide = tangential > 0 ? -1 : 1;
     const slackBow = Math.min(slack * 0.42, 24) * Math.max(0.15, 1 - cable.strainSmooth) * cable.bowSide;
 
-    // Whip wave: decaying traveling sine for ~0.45 s after latch.
+    // Whip wave: decaying traveling sine for ~0.55 s after latch (Top-50 rank-2: stronger read).
     const whipT = cable.latchAge;
-    const whipEnv = Math.max(0, 1 - whipT / 0.45);
-    const whipAmp = whipEnv * whipEnv * Math.min(chord * 0.22, 18);
+    const whipEnv = Math.max(0, 1 - whipT / 0.55);
+    const whipAmp = whipEnv * whipEnv * Math.min(chord * 0.28, 26);
 
     // Load color: cool cyan → amber → hot red with presentation load (rung 04) — a loaded line
     // reads loaded even at low strain. Winch-active reel ramps a separate HDR glow read; the
@@ -1975,6 +1982,7 @@ export const vfx = {
   },
 
   // Snap burst at both cable ends when the line breaks under load (tether:broken).
+  // Top-50 rank-2 massline pack: louder break — dual-end sparks + white-hot flash + longer scatter.
   _onTetherSnap(p) {
     this._emitJuiceCue('presentation.tether.break', p, 1.5);
     const cable = this._tetherCable;
@@ -1986,34 +1994,45 @@ export const vfx = {
     this._c0.set('#ffffff'); this._c1.set('#ff5c5c');
     for (const ent of [player, target]) {
       if (!ent || !ent.pos) continue;
-      const n = Math.max(6, Math.round(10 * (this._burst || 1)));
+      const n = Math.max(14, Math.round(22 * (this._burst || 1)));
       for (let k = 0; k < n; k++) {
         const a = Math.random() * Math.PI * 2;
-        const v = 20 + Math.random() * 45;
+        const v = 28 + Math.random() * 70;
         this._spawnParticle(ent.pos.x, ent.pos.z, Math.cos(a) * v, Math.sin(a) * v,
-          0.2 + Math.random() * 0.2, 1.0, 0.0, this._c0, this._c1, 3.5, 0, 0);
+          0.22 + Math.random() * 0.28, 1.15, 0.0, this._c0, this._c1, 4.2, 0, 0);
       }
+      this._spawnSprite(SPR_FLASH, ent.pos.x, 0, ent.pos.z, 0.08, 3.4, 6.5, 0.95, 0.0, '#ff8a6a', 0, 0);
+      this._flashLight({ x: ent.pos.x, z: ent.pos.z }, '#ff5c5c', 3.6, 14, 160);
     }
   },
 
-  // Latch spark at the target end when a tether attaches (tether:attached).
+  // Latch spark at BOTH ends when a tether attaches (tether:attached).
+  // Top-50 rank-2: nose + target cyan ring, denser sparks, punchier light (Steam still readable).
   _onTetherLatch(p) {
     this._emitJuiceCue('presentation.tether.attach', p, 1);
     if (!this._scene) return;
     const target = p && p.targetId != null ? this._ent(p.targetId) : null;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
-    const pos = target && target.pos ? target.pos : (player && player.pos);
-    if (!pos) return;
     this._c0.set('#a6f0ff'); this._c1.set('#39d0ff');
-    const n = Math.max(8, Math.round(14 * (this._burst || 1)));
-    for (let k = 0; k < n; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const v = 16 + Math.random() * 30;
-      this._spawnParticle(pos.x, pos.z, Math.cos(a) * v, Math.sin(a) * v,
-        0.25 + Math.random() * 0.2, 1.4, 0.0, this._c0, this._c1, 3.0, 0, 0);
+    const ends = [];
+    if (player && player.pos) {
+      const cf = Math.cos(player.rot || 0), sf = Math.sin(player.rot || 0);
+      const noseR = (player.radius || 6);
+      ends.push({ x: player.pos.x + cf * noseR, z: player.pos.z + sf * noseR });
     }
-    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.06, 2.5, 5.0, 0.8, 0.0, '#a6f0ff', 0, 0);
-    this._flashLight({ x: pos.x, z: pos.z }, '#a6f0ff', 2.5, 10, 120);
+    if (target && target.pos) ends.push({ x: target.pos.x, z: target.pos.z });
+    if (!ends.length) return;
+    for (const pos of ends) {
+      const n = Math.max(12, Math.round(20 * (this._burst || 1)));
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const v = 18 + Math.random() * 42;
+        this._spawnParticle(pos.x, pos.z, Math.cos(a) * v, Math.sin(a) * v,
+          0.28 + Math.random() * 0.24, 1.55, 0.0, this._c0, this._c1, 3.4, 0, 0);
+      }
+      this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.07, 3.0, 5.8, 0.9, 0.0, '#a6f0ff', 0, 0);
+      this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 3.2, 12, 140);
+    }
   },
 
   // Cruise state juice (spec2/02 §1 + §3). Charging = warm spool glow; engaged = cool wide
@@ -2793,8 +2812,9 @@ export const vfx = {
     const opacityScale = Math.sqrt(radianceScale);
     const widthMul = prof.plumeWidthMul || 1;
     const lengthMul = prof.plumeLengthMul || 1;
-    const width = (0.28 + drive * 0.36 + boostBlend * 0.26) * widthMul;
-    const length = (0.28 + drive * 1.55 + boostBlend * 1.85) * lengthMul;
+    // Top-50 rank-3 thruster pack: slightly longer/hotter plumes so boost reads at chase distance.
+    const width = (0.32 + drive * 0.42 + boostBlend * 0.32) * widthMul;
+    const length = (0.34 + drive * 1.75 + boostBlend * 2.15) * lengthMul;
     // Cap the boost white-out at ~0.7 so each engine keeps a hint of its own hue at full afterburner
     // (otherwise every drive collapses to the same white and the fleet's variety is lost at the top end).
     const boostTint = Math.min(0.7, boostBlend);
@@ -2820,14 +2840,14 @@ export const vfx = {
       if (core) updateEnergyMaterial(core.material, {
         time: this._t, colorA: coreColor, colorB: haloColor,
         boost: boostBlend, swirl: plumeSwirl, fork: plumeFork, flowSpeed: plumeFlow, noiseScale: plumeNoise,
-        intensity: ((coreIntensity * 0.68) + drive * 3.6 + boostBlend * 2.8) * radianceScale,
-        opacity: (0.22 + drive * 0.30 + boostBlend * 0.16) * fade * opacityScale,
+        intensity: ((coreIntensity * 0.78) + drive * 4.2 + boostBlend * 3.4) * radianceScale,
+        opacity: (0.26 + drive * 0.34 + boostBlend * 0.20) * fade * opacityScale,
       });
       if (halo) updateEnergyMaterial(halo.material, {
         time: this._t, colorA: haloColor, colorB: coreColor,
         boost: boostBlend, swirl: plumeSwirl, fork: plumeFork, flowSpeed: plumeFlow * 0.9, noiseScale: plumeNoise * 0.8,
-        intensity: ((haloIntensity * 0.46) + drive * 1.3 + boostBlend * 1.4) * radianceScale,
-        opacity: (0.05 + drive * 0.10 + boostBlend * 0.07) * fade * opacityScale,
+        intensity: ((haloIntensity * 0.55) + drive * 1.6 + boostBlend * 1.75) * radianceScale,
+        opacity: (0.07 + drive * 0.12 + boostBlend * 0.09) * fade * opacityScale,
       });
     }
     this._hideEnergyPlumes(count);

@@ -9,6 +9,7 @@ import {
   stableId,
   wrapAngle,
 } from '../ai/contracts.js';
+import { normalizeActivity, normalizeRoe } from '../ai/doctrine.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { isPlayerWanted } from './heat.js';
@@ -473,10 +474,12 @@ function addBrakeForce(force, entity, profile, dt) {
 
 function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity), attachmentIndex = null, freeze = Object.freeze, cacheOwner = null) {
   const runtime = combatRuntimeFor(state, entity.id);
+  const ai = entity.data && entity.data.ai || {};
   const heatMax = positive(runtime && runtime.heatMax, 100);
   const subsystemFractionView = cacheOwner && typeof cacheOwner._subsystemFractionsFor === 'function'
     ? cacheOwner._subsystemFractionsFor(entity, runtime)
     : freeze(subsystemFractions(runtime));
+  const activity = normalizeActivity(ai.activity);
   return freeze({
     id: entity.id,
     team: entity.team == null ? null : entity.team,
@@ -491,6 +494,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     tethered: attachmentsFor(attachmentIndex, entity.id).length > 0,
     capabilities,
     subsystemFractions: subsystemFractionView,
+    activity,
+    roe: normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free'),
   });
 }
 

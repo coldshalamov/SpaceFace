@@ -1,4 +1,5 @@
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { hash32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
@@ -129,6 +130,8 @@ export const aiEncounter = {
         level: pkg.level,
         dueTick,
         pos,
+        anchor,
+        leashRadius: finite(pkg.leashRadius, 2600),
         doctrine: pkg.doctrine,
         factionId: pkg.factionId,
         squadId,
@@ -170,6 +173,19 @@ export const aiEncounter = {
         doctrine: pending.doctrine,
         preferredRole: 'attack',
         capabilities: mergeCapabilities(baseAI.capabilities, ['drive', 'sensor', 'weapon']),
+        spawnContext: 'sg06_reinforcement',
+        encounterId: `sg06:${pending.commandSeq}`,
+        encounterKind: 'sg06_reinforcement',
+        encounterRole: 'reinforcement',
+        activity: normalizeActivity({
+          kind: ActivityKind.ATTACK_RUN,
+          reason: `sg06_reinforcement:${pending.packageId}`,
+          anchor: pending.anchor,
+          leashRadius: pending.leashRadius,
+          startedTick: finiteInt(state.tick),
+          encounterId: `sg06:${pending.commandSeq}`,
+        }),
+        roe: RulesOfEngagement.WEAPONS_FREE,
       };
       spec.data.reinforcements = null;
       spec.data.encounter = {

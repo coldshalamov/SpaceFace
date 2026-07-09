@@ -56,6 +56,21 @@ export const ContactKind = Object.freeze({
   WAYPOINT: 'waypoint',
 });
 
+const ROE_VALUES = new Set(['hold_fire', 'defensive', 'lawful_wanted_only', 'weapons_free']);
+const ACTIVITY_VALUES = new Set([
+  'loiter',
+  'patrol_route',
+  'transit',
+  'scan_approach',
+  'hail_hold',
+  'attack_run',
+  'reposition',
+  'screen',
+  'disengage',
+  'return_to_anchor',
+  'flee',
+]);
+
 export const TraceLayer = Object.freeze({
   DIRECTOR: 'director',
   SQUAD: 'squad',
@@ -232,6 +247,8 @@ function neutralSelf(entityId) {
     tethered: false,
     capabilities: Object.freeze([]),
     subsystemFractions: Object.freeze({}),
+    activity: null,
+    roe: 'weapons_free',
   });
 }
 
@@ -251,6 +268,8 @@ function normalizeSelf(value, entityId) {
     tethered: !!value.tethered,
     capabilities: Object.freeze(Array.isArray(value.capabilities) ? [...new Set(value.capabilities)].sort() : []),
     subsystemFractions: Object.freeze(isPlainObject(value.subsystemFractions) ? { ...value.subsystemFractions } : {}),
+    activity: normalizeActivityView(value.activity),
+    roe: normalizeRoeView(value.roe),
   };
 }
 
@@ -295,6 +314,28 @@ function normalizeEvent(value) {
 
 function freezeVec(value) {
   return Object.freeze({ x: finite(value && value.x, 0), z: finite(value && value.z, 0) });
+}
+
+function normalizeActivityView(value) {
+  if (!value || typeof value !== 'object') return null;
+  const kind = ACTIVITY_VALUES.has(String(value.kind)) ? String(value.kind) : 'loiter';
+  return Object.freeze({
+    kind,
+    reason: String(value.reason || kind),
+    anchor: value.anchor ? freezeVec(value.anchor) : null,
+    leashRadius: Math.max(1, finite(value.leashRadius, 2600)),
+    preferredRange: Math.max(0, finite(value.preferredRange, 0)),
+    startedTick: finiteInt(value.startedTick, 0),
+    deadlineTick: Number.isInteger(value.deadlineTick) ? value.deadlineTick : null,
+    targetId: value.targetId == null ? null : value.targetId,
+    routeId: value.routeId == null ? null : String(value.routeId),
+    encounterId: value.encounterId == null ? null : String(value.encounterId),
+  });
+}
+
+function normalizeRoeView(value) {
+  const text = String(value || 'weapons_free');
+  return ROE_VALUES.has(text) ? text : 'weapons_free';
 }
 
 function freezeWithFlag(value, flag, freeze = Object.freeze) {

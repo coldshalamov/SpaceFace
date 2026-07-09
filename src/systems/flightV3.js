@@ -19,12 +19,17 @@ import { computeFlightTelemetry, solveIntercept } from '../core/flight/flightTel
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
 // at a standstill is an RCS rotation and barely rolls. Roll-in is slower than roll-out so the
 // hull reads as a mass being levered over, not a sprite flipping.
-const BANK_RESPONSE = 6.5;       // rad/s ease-in while rolling into a turn
-const BANK_RETURN = 9.0;         // rad/s ease-out back to wings-level
-const DEFAULT_BANK_MAX = 0.68;
-const BANK_SPEED_REF = 120;      // forward wu/s at which the carve gets full roll authority
-const BANK_RATE_GAIN = 0.31;     // rad of roll per rad/s of yaw at full authority
-const BANK_STANDSTILL = 0.22;    // fraction of roll authority left for standstill RCS pivots
+// Overnight B1: standstill RCS pivots barely roll (was reading as pin-spin). Carve bank is
+// smoother and caps lower so top-down reads as lean, not secondary spin axis.
+const BANK_RESPONSE = 5.2;       // rad/s ease-in while rolling into a turn
+const BANK_RETURN = 10.5;        // rad/s ease-out back to wings-level
+const DEFAULT_BANK_MAX = 0.42;
+const BANK_SPEED_REF = 100;      // forward wu/s at which the carve gets full roll authority
+const BANK_RATE_GAIN = 0.22;     // rad of roll per rad/s of yaw at full authority
+const BANK_STANDSTILL = 0.06;    // fraction of roll authority left for standstill RCS pivots
+export const FLIGHT_BANK_TUNING = Object.freeze({
+  BANK_RESPONSE, BANK_RETURN, DEFAULT_BANK_MAX, BANK_SPEED_REF, BANK_RATE_GAIN, BANK_STANDSTILL,
+});
 
 // NPC actuator lag: AI intents are desires, but throttle plates and fuel pumps take real time to
 // swing. Slewing the commanded translation inputs (~0.4 s for a full flip) is what turns the old

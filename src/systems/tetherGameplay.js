@@ -12,10 +12,12 @@ const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press gh
 const TAP_CUT_DELAY_S = 0.22;       // lets held G become reel-in instead of immediate release
 const CAPTURE_SLACK_S = 0.1;
 const STRETCH_EPSILON = 0.05;
-const CURSOR_LATCH_GRACE = 18;
-const CURSOR_LATCH_GRACE_MAX = 42;
-const AIM_RAY_GRACE = 10;
-const AIM_RAY_GRACE_MAX = 28;
+// Overnight B1: soft latch was pixel-tight at combat speed. Base grace is generous; Flyby Focus
+// multiplies further via latchGraceScale(state). Exported for check:overnight:playable.
+export const CURSOR_LATCH_GRACE = 36;
+export const CURSOR_LATCH_GRACE_MAX = 96;
+export const AIM_RAY_GRACE = 22;
+export const AIM_RAY_GRACE_MAX = 64;
 const MIN_AIM_RAY_LENGTH = 18;
 const SLINGSHOT_STATE_S = 1.0;
 const SLINGSHOT_SPEED_MULT = 1.4;
@@ -142,7 +144,8 @@ export const tetherGameplay = {
     if (now < this._noRelatchUntil) return;
     const def = attachmentDef(kernel, TETHER_DEF_ID);
     if (!def) return;
-    const latch = this._acquireTarget(player, def, state, state.input?.tetherMode === 'nearest');
+    const nearestMode = state.input?.tetherMode === 'nearest' || softNearestPreferred(state, player);
+    const latch = this._acquireTarget(player, def, state, nearestMode);
     const target = latch && latch.entity;
     if (!target) return;
 
@@ -164,6 +167,9 @@ export const tetherGameplay = {
     this._ignoreReleaseCutUntilReelIdle = true;
     this._latchGraceUntil = now + 0.55;
     this.bus.emit('tether:latched', { targetId: target.id, type: TETHER_DEF_ID });
+    // Juice: acknowledge latch within one frame (constitution input ACK).
+    this.bus.emit('audio:cue', { id: 'ui_confirm' });
+    this.bus.emit('camera:shake', { amount: 0.06 });
   },
 
   _acquireTarget(player, def, state, nearestMode = false) {
@@ -210,7 +216,7 @@ export const tetherGameplay = {
         score = Math.max(0, playerDistance - (entity.radius || 0));
         targetWorld = surfacePointToward(entity, player.pos);
       } else {
-        const hit = cursorAimScore(entity, aim, player, ux, uz, rayLength);
+        const hit = cursorAimScore(entity, aim, player, ux, uz, rayLength, state);
         score = hit.score;
         targetWorld = hit.targetWorld;
       }
@@ -531,13 +537,29 @@ function isAttachable(entity, playerId) {
   return ATTACHABLE_TYPES.has(entity.type);
 }
 
-function cursorAimScore(entity, aim, player, ux, uz, rayLength) {
+/** Presentation/play scale: Flyby Focus and future assists widen latch without changing physics. */
+export function latchGraceScale(state) {
+  const focus = state && state.player && state.player.flybyFocus;
+  if (focus && focus.active) return Math.max(1, Number(focus.latchScale) || 2.4);
+  return 1;
+}
+
+function softNearestPreferred(state, player) {
+  if (!player || !player.pos) return false;
+  // Flyby Focus is the authored high-speed assist. Ordinary fast travel keeps cursor/ray scoring
+  // so nearby stations, rocks, and pickups cannot steal an aimed massline shot.
+  const focus = state && state.player && state.player.flybyFocus;
+  return !!(focus && focus.active);
+}
+
+export function cursorAimScore(entity, aim, player, ux, uz, rayLength, state = null) {
   const radius = Math.max(0, finite(entity && entity.radius));
   const dxAim = aim.x - entity.pos.x;
   const dzAim = aim.z - entity.pos.z;
   const aimDistance = Math.hypot(dxAim, dzAim);
   const surfaceMiss = Math.max(0, aimDistance - radius);
-  const cursorGrace = Math.min(CURSOR_LATCH_GRACE_MAX, CURSOR_LATCH_GRACE + radius * 0.65);
+  const scale = latchGraceScale(state);
+  const cursorGrace = Math.min(CURSOR_LATCH_GRACE_MAX * scale, (CURSOR_LATCH_GRACE + radius * 0.85) * scale);
   if (surfaceMiss <= cursorGrace) {
     return {
       score: surfaceMiss * 2 + Math.max(0, Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z) - radius) * 0.015,
@@ -550,7 +572,7 @@ function cursorAimScore(entity, aim, player, ux, uz, rayLength) {
   const along = dx * ux + dz * uz;
   if (along < -radius || along > rayLength + radius) return { score: Infinity, targetWorld: null };
   const perp = Math.abs(dx * uz - dz * ux);
-  const rayGrace = Math.min(AIM_RAY_GRACE_MAX, AIM_RAY_GRACE + radius * 0.55);
+  const rayGrace = Math.min(AIM_RAY_GRACE_MAX * scale, (AIM_RAY_GRACE + radius * 0.7) * scale);
   if (Math.max(0, perp - radius) > rayGrace) return { score: Infinity, targetWorld: null };
   const closest = {
     x: player.pos.x + ux * clamp(along, 0, rayLength),

@@ -403,25 +403,41 @@ const CATEGORIES = [
 
 export function createMarketPanel(ctx) {
   const root = document.createElement('div');
-  root.className = 'st-panel st-market';
+  root.className = 'st-panel st-market st-market--board';
 
   const qtyState = Object.create(null);
   let pendingLoadNav = null;
   let activeCategory = 'all';
+  /** Param: Buy | Sell mode (Station OS — one verb column at a time). Default Buy so a full station board is visible on first dock. */
+  let tradeMode = 'buy';
 
   // --- header: credits + cargo summary ---
   const header = document.createElement('div');
   header.className = 'st-market-head';
   header.innerHTML =
-    '<div class="st-stat"><span class="st-stat-l">CREDITS</span><span class="mono st-credits">0</span></div>' +
-    '<div class="st-stat"><span class="st-stat-l">CARGO</span><span class="mono st-cargo">0 / 0 u</span></div>';
+    '<div class="st-stat"><span class="st-stat-l">Credits</span><span class="mono st-credits">0</span></div>' +
+    '<div class="st-stat"><span class="st-stat-l">Cargo</span><span class="mono st-cargo">0 / 0 u</span></div>' +
+    '<div class="st-market-mode" role="group" aria-label="Trade mode">' +
+      '<button type="button" class="st-mode-btn is-on" data-trade-mode="buy">Buy</button>' +
+      '<button type="button" class="st-mode-btn" data-trade-mode="sell">Sell</button>' +
+    '</div>';
   root.appendChild(header);
+  header.querySelectorAll('[data-trade-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      tradeMode = btn.getAttribute('data-trade-mode') === 'buy' ? 'buy' : 'sell';
+      header.querySelectorAll('[data-trade-mode]').forEach((b) => {
+        b.classList.toggle('is-on', b.getAttribute('data-trade-mode') === tradeMode);
+      });
+      root.dataset.tradeMode = tradeMode;
+      // Reset qty drafts so Sell mode defaults to owned stacks.
+      for (const k of Object.keys(qtyState)) delete qtyState[k];
+      rebuild();
+      ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    });
+  });
+  root.dataset.tradeMode = tradeMode;
 
-  // purpose copy rides inside the ledger strip — one compact row, not another stacked banner
-  const purpose = document.createElement('div');
-  purpose.className = 'st-market-purpose';
-  purpose.innerHTML = '<b>Market loop:</b> <span class="st-market-purpose-text"></span>';
-  header.appendChild(purpose);
+  // STRICT overnight: no purpose-essay banner on default market surface (data first).
 
   const missionCallout = document.createElement('div');
   missionCallout.className = 'st-market-mission';
@@ -786,6 +802,11 @@ export function createMarketPanel(ctx) {
       if (!stationTrades(state, stationId, c.id)) continue;
       // Category filter
       if (activeCategory !== 'all' && c.category !== activeCategory) continue;
+      // Sell mode: only stacks you can actually sell (owned > 0)
+      if (tradeMode === 'sell') {
+        const owned = Math.max(0, Math.floor(Number(state.player.cargo.items[c.id]) || 0));
+        if (owned <= 0) continue;
+      }
       if (q) {
         const hay = (c.name + ' ' + (c.category || '') + ' ' + (c.id || '')).toLowerCase();
         if (!hay.includes(q)) continue;
@@ -1106,14 +1127,19 @@ export function createMarketPanel(ctx) {
       const legalTag = c.legality !== 'legal'
         ? ' <span class="st-tag st-tag-' + escapeHtml(c.legality) + '">' + escapeHtml(c.legality) + '</span>' : '';
 
-      // We maintain the required class structure inside our custom card format
+      const ownedNow = Math.max(0, Math.floor(Number(state.player.cargo.items[c.id]) || 0));
+      if (qtyState[c.id] == null) {
+        qtyState[c.id] = tradeMode === 'sell' ? Math.max(1, ownedNow) : 1;
+      }
+      // Board row: prices + qty param + single primary Verb for active mode.
+      // Forecast/spark stays collapsed unless expanded (expand opens chart).
       card.innerHTML = `
         <div class="st-card-header">
           <span class="c-name">${escapeHtml(c.name)}${legalTag}</span>
           <span class="st-card-cat-badge mono">${escapeHtml(c.category)}</span>
-          <button class="st-expand-btn" data-act="expand" title="Open fullscreen chart" aria-label="Open fullscreen chart">↗</button>
+          <button class="st-expand-btn" data-act="expand" title="Open price history" aria-label="Open price history">↗</button>
         </div>
-        <div class="st-card-spark-wrap">
+        <div class="st-card-spark-wrap st-card-spark-wrap--compact" hidden>
           <svg class="st-row-gauge" width="28" height="28" role="img" aria-label="stock pressure"></svg>
           <canvas class="st-spark" width="160" height="40" title="Recent price trend"></canvas>
           <span class="st-row-role st-role--none" title="role"><span class="st-row-role-glyph">—</span><span class="st-row-role-lbl">NEUTRAL</span></span>
@@ -1123,34 +1149,37 @@ export function createMarketPanel(ctx) {
         <span class="st-slotline st-best-known-line"></span>
         <div class="st-card-prices">
           <div class="st-card-price-col">
-            <span class="st-price-lbl">BUY</span>
+            <span class="st-price-lbl">Station sells</span>
             <span class="st-buy mono">—</span>
           </div>
           <div class="st-card-price-col">
-            <span class="st-price-lbl">SELL</span>
+            <span class="st-price-lbl">Station pays</span>
             <span class="st-sell mono">—</span>
           </div>
           <div class="st-card-price-col">
-            <span class="st-price-lbl">OWNED</span>
+            <span class="st-price-lbl">Owned</span>
             <span class="st-owned mono">0</span>
+          </div>
+          <div class="st-card-price-col">
+            <span class="st-price-lbl">Total</span>
+            <span class="st-row-total mono">—</span>
           </div>
         </div>
         <div class="st-card-qty-row">
           <span class="c-qty">
-            ${STEP_PRESETS.map((v) => '<button data-act="step" data-v="' + v + '">' + v + '</button>').join('')}
-            <button data-act="step" data-v="max">Max</button>
+            ${STEP_PRESETS.map((v) => '<button type="button" data-act="step" data-v="' + v + '">' + v + '</button>').join('')}
+            <button type="button" data-act="step" data-v="max">Max</button>
             <span class="st-qty-val mono">1</span>
           </span>
         </div>
         <div class="c-act">
-          <button class="st-buy-btn" data-act="buy">Buy</button>
-          <button class="st-sell-btn" data-act="sell">Sell</button>
+          <button type="button" class="st-buy-btn st-verb-btn" data-act="buy"${tradeMode === 'sell' ? ' hidden' : ''}>Buy</button>
+          <button type="button" class="st-sell-btn st-verb-btn" data-act="sell"${tradeMode === 'buy' ? ' hidden' : ''}>Sell</button>
         </div>
       `;
 
       frag.appendChild(card);
       panel._rowEls[c.id] = card;
-      if (qtyState[c.id] == null) qtyState[c.id] = 1;
       updateRowQty(card, qtyState[c.id]);
     });
 
@@ -1160,6 +1189,8 @@ export function createMarketPanel(ctx) {
       empty.className = 'st-empty';
       if (_filter.q) {
         empty.textContent = 'No commodities match "' + _filter.q + '".';
+      } else if (tradeMode === 'sell') {
+        empty.textContent = 'Nothing to sell. Switch to Buy, or fill the hold and return.';
       } else {
         const type = stationTypeFor(ctx.state, stationId).replace('_', ' ');
         empty.textContent = type
@@ -1180,8 +1211,7 @@ export function createMarketPanel(ctx) {
     header.querySelector('.st-credits').textContent = fmtCr(p.credits);
     const cap = p.cargo.capVolume || 0;
     header.querySelector('.st-cargo').textContent = formatCargoUnits(p.cargo.usedVolume || 0) + ' / ' + formatCargoUnits(cap) + ' u';
-    const purposeText = purpose.querySelector('.st-market-purpose-text');
-    if (purposeText) purposeText.textContent = stationMarketPurpose(state, stationId);
+    // purpose essay banner removed (STRICT-G3); numbers stay in header + cards
     const missionInfo = trackedMarketMission(state, stationId);
     renderMissionCallout(missionInfo);
     renderRouteCallout(activeTradeRoute(state, stationId));
@@ -1214,14 +1244,13 @@ export function createMarketPanel(ctx) {
       applyPriceHeat(card.querySelector('.st-sell'), sellHeat);
       const spark = card.querySelector('.st-spark');
       const wrap = card.querySelector('.st-card-spark-wrap');
-      if (spark) {
+      // Forecast/spark only when expanded (not default chrome).
+      if (spark && wrap && !wrap.hidden) {
         const history = getPriceHistory(stationId, cmdtyId);
         drawSparkline(spark, history, { upColor: '#f2a83b', downColor: '#8fb0c0' });
-        if (wrap) {
-          wrap.classList.remove('tick');
-          void wrap.offsetWidth;
-          wrap.classList.add('tick');
-        }
+        wrap.classList.remove('tick');
+        void wrap.offsetWidth;
+        wrap.classList.add('tick');
       }
       const buyBtn = card.querySelector('.st-buy-btn');
       const sellBtn = card.querySelector('.st-sell-btn');
@@ -1233,6 +1262,14 @@ export function createMarketPanel(ctx) {
       const sellQty = selectedQtyFor(qtyState[cmdtyId] || 1, owned);
       const buyTotal = buyP * buyQty;
       const sellTotal = sellP * sellQty;
+      const totalEl = card.querySelector('.st-row-total');
+      if (totalEl) {
+        totalEl.textContent = tradeMode === 'sell'
+          ? (sellQty > 0 ? fmtCr(sellTotal) : '—')
+          : (buyQty > 0 ? fmtCr(buyTotal) : '—');
+      }
+      if (buyBtn) buyBtn.hidden = tradeMode !== 'buy';
+      if (sellBtn) sellBtn.hidden = tradeMode !== 'sell';
       const selectedFits = (buyQty * vol) <= freeVolume + 1e-6;
       const canBuySelected = buyQty > 0 && buyQty <= maxBuy && buyTotal <= (p.credits || 0) && selectedFits;
       const canSellSelected = sellQty > 0 && sellQty <= owned;

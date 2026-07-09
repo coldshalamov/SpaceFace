@@ -1,4 +1,4 @@
-// SF-K0 Kestrel / "BORROWED TIME"
+// SF-K0 Hitch / "BORROWED TIME" (internal mesh id still Kestrel for asset continuity)
 // Bespoke player-starter ship for SpaceFace. Authoring space follows the project contract:
 // +X forward, +Y up, +Z starboard, metres. The finished hull is 28 m long, ~14 m wide, ~6 m tall.
 import * as THREE from 'three';
@@ -333,10 +333,12 @@ function buildMaterials() {
       transparent: true,
       opacity: 0.92,
     }),
-    sensor: emissiveMaterial(COLOR.frontierPale, 3.2),
-    practical: emissiveMaterial(COLOR.practical, 1.8),
-    drive: emissiveMaterial(COLOR.frontier, 3.4),
-    driveCore: emissiveMaterial(COLOR.driveCore, 5.0),
+    // Overnight B1: high-intensity pale emissive on box prims read as "floating white cubes".
+    // Sensors stay readable cyan but stay subordinate to the hull silhouette.
+    sensor: emissiveMaterial(COLOR.frontier, 0.95),
+    practical: emissiveMaterial(COLOR.practical, 1.15),
+    drive: emissiveMaterial(COLOR.frontier, 2.4),
+    driveCore: emissiveMaterial(COLOR.driveCore, 3.2),
     driveGlow: glowMaterial(COLOR.frontier, 0.62),
   };
   for (const [name, material] of Object.entries(materials)) material.name = `Kestrel_${name}`;

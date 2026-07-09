@@ -407,6 +407,11 @@ export function createChaseCamera(state) {
         }
         targetZoom = baseZoom * _speedZoomFactor;
         targetZoom *= (1 + _contextZoomBias);
+        // Flyby Focus (overnight B1): pull camera in slightly so player + pass target stay framed.
+        const ff = state.player && state.player.flybyFocus;
+        if (ff && Number.isFinite(ff.zoom) && ff.zoom > 0.01) {
+          targetZoom *= (1 - Math.min(0.22, ff.zoom * 0.18));
+        }
       }
       // scripted push-zoom (dock fly-in / jump / kill-cam): multiplies the view while active, then
       // decays. Negative factors push IN (tighter). Applied to targetZoom so it eases through the

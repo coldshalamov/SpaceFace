@@ -49,20 +49,20 @@ const TOUCH_PROMPTS = Object.freeze({
 // Only keys whose copy mentions movement are overridden; everything else falls through to the
 // classic table. Keep verbs honest: don't promise mechanics that haven't shipped.
 const KBM_HELM_OVERRIDES = Object.freeze({
-  flight: `Mouse steer+aim  •  W thrust  •  S reverse  •  A D strafe  •  Space brake  •  LMB fire  •  RMB mine  •  Shift boost  •  F tether  •  X countermeasure  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} nav chart  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.cargo.label} cargo`,
-  combat: 'Steer with the mouse  •  LMB fire  •  Tab cycle hostiles  •  X countermeasure  •  G auto-target  •  Shift boost  •  Space brake to break pursuit',
-  tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Your nose follows the mouse — W thrusts toward it, Space brakes.',
-  firstFlight: `Your nose follows the mouse. W thrusts, S reverses, A/D strafe, Space brakes to a full stop, Shift boosts. LMB fires the Pulse Laser S, RMB mines marked rocks. ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.starmap.label} the nav chart, ${BINDINGS.dock.label} docks.`,
-  firstCombat: 'Hostile detected! G toggles auto-target — guns track hostiles while you steer. LMB fires. Space-brake hard to dodge.',
+  flight: `Mouse steer+aim  •  W thrust  •  S reverse  •  A D strafe  •  Space brake  •  LMB fire  •  RMB mine  •  Shift boost  •  F massline  •  MMB course/pursue  •  G combat computer  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
+  combat: 'G combat computer (guns lead)  •  MMB pursue locked ship  •  F massline (soft latch; flyby focus expands it)  •  LMB fire  •  Space brake',
+  tutorialFlight: 'Follow the yellow nav arrow. Nose follows the mouse — W thrusts, Space brakes. F is massline.',
+  firstFlight: `Nose follows the mouse. W thrust, Space brake, Shift boost. F massline, G combat computer, MMB set course/pursue when targeted. ${BINDINGS.dock.label} docks.`,
+  firstCombat: 'Hostile! G = combat computer (guns track). MMB pursues. At high speed a FLYBY FOCUS window opens — tap F to latch.',
 });
 
 // PILOT (the default scheme) — keyboard flies, mouse fights. Same override-only policy as helm.
 const KBM_PILOT_OVERRIDES = Object.freeze({
-  flight: `W thrust  •  A D turn (strafe while thrusting)  •  S retro  •  Space brake  •  Mouse aim  •  LMB fire  •  MMB pursue target  •  RMB mine  •  Shift boost  •  F tether  •  Tab target  •  ${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} nav chart  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.cargo.label} cargo`,
-  combat: 'Mouse aims, LMB fires  •  MMB pursue — the ship tails your target while you shoot  •  A/D turn while coasting, Q/E orbit-strafe  •  Any thrust/turn/brake key breaks pursuit',
-  tutorialFlight: 'Follow the yellow nav arrow. W thrusts; A/D turn the nose while coasting and strafe while thrusting; Space brakes; the mouse only aims.',
-  firstFlight: `W thrusts, S retro-burns, Space brakes to a stop. A/D (or arrows) turn while coasting and strafe while thrusting forward. The mouse aims — LMB fires, RMB mines, MMB pursues your locked target. Shift boosts, ${BINDINGS.localmap.label} opens the local map, ${BINDINGS.dock.label} docks.`,
-  firstCombat: 'Hostile detected! Lock a target, then MMB to pursue — the flight computer tails them while you fire with LMB. Touch any flight key to take back manual control.',
+  flight: `W thrust  •  A D turn  •  Space brake  •  Mouse aim  •  LMB fire  •  MMB pursue/course  •  G combat computer  •  F massline  •  Shift boost  •  Tab target  •  ${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`,
+  combat: 'MMB pursue locked ship  •  G combat computer  •  F massline (flyby focus expands latch)  •  LMB fire  •  flight keys break pursuit',
+  tutorialFlight: 'Follow the yellow nav arrow. W thrusts; A/D turn; Space brakes; mouse aims; F is massline.',
+  firstFlight: `W thrust, Space brake, A/D turn. Mouse aims. MMB pursue or set course to stations. G combat computer. F massline. ${BINDINGS.dock.label} docks.`,
+  firstCombat: 'Lock target → MMB pursue. G combat computer for gun lead. High-speed pass triggers FLYBY FOCUS — F to latch.',
 });
 
 // Active kbm scheme — uiRoot keeps this current from settings (boot + settings:changed).

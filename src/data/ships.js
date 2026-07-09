@@ -29,9 +29,10 @@
 export const SHIPS = [
   // ---------- T0 ----------
   {
-    id: 'ship_kestrel', name: 'Kestrel', role: 'starter', tier: 0,
-    hull: 120, shield: 40, baseShieldRegen: 6, cargo: 40, mass: 18, handling: 1.0,
-    bankFactor: 0.70,   // how aggressively the hull rolls into a turn (0..1.2)
+    // Display name "Hitch" — original IP (was Freelancer-adjacent "Kestrel"). id kept for saves.
+    id: 'ship_kestrel', name: 'Hitch', role: 'starter', tier: 0,
+    hull: 140, shield: 55, baseShieldRegen: 7, cargo: 40, mass: 18, handling: 1.05,
+    bankFactor: 0.55,   // how aggressively the hull rolls into a turn (0..1.2) — lower = less pin-spin
     driveId: 'drive_reaction_m',  // baseline vector reaction drive — momentum-conserving, no hidden drag
     energyCap: 80, energyRegen: 12, collisionRadius: 14, price: 0, buyback: 8000,
     // boost: {max, drainRate (while boosting), regenRate (idle), dashImpulse (units), dashCooldown (s)}

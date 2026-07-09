@@ -1,11 +1,71 @@
 // Drill lens screen (V2 §7 / cut-list #27). The 2D ant-farm mining view. Renders the vein cross-
 // section to a canvas, handles WASD / Arrow key movement and directional drilling input locally,
 // and shows yield, drill warnings, and elegant item acquisition toasts.
-import { DRILL_CONST, drillTierReqForOre } from '../../systems/drill.js';
+import { DRILL_CONST, drillTierReqForOre, avatarDrawPos } from '../../systems/drill.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { prefersReducedMotion } from '../effects/effectRuntime.js';
 
 const { COLS, ROWS, TILE } = DRILL_CONST;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+
+// Presentation palette — locked SpaceFace tokens (hex fallbacks match styles/ui.css defaults).
+const COL = {
+  accent: '#39d0ff',
+  accent2: '#7af7d0',
+  accent3: '#c08bff',
+  warn: '#ffb347',
+  danger: '#ff5470',
+  good: '#62e08a',
+  ink: '#d3e6ff',
+  inkDim: '#84a0c8',
+  inkMute: '#5a7aa0',
+  panel: '#0b1220',
+};
+
+/** Spawn a burst of state-driven particles (sparks / debris / steam). Pure helper for tests. */
+export function spawnParticleBurst(into, opts) {
+  const {
+    x, y, count = 6, color = COL.accent, life = 0.35, size = 2,
+    speed = 40, gravity = 0, kind = 'spark', vx0 = 0, vy0 = 0, cone = Math.PI * 2, angle = 0,
+  } = opts || {};
+  const out = into || [];
+  for (let i = 0; i < count; i++) {
+    const a = angle + (Math.random() - 0.5) * cone;
+    const sp = speed * (0.35 + Math.random() * 0.75);
+    const maxLife = life * (0.55 + Math.random() * 0.55);
+    out.push({
+      x: x + (Math.random() - 0.5) * 4,
+      y: y + (Math.random() - 0.5) * 4,
+      vx: vx0 + Math.cos(a) * sp,
+      vy: vy0 + Math.sin(a) * sp,
+      color,
+      size: size * (0.6 + Math.random() * 0.9),
+      life: maxLife,
+      maxLife,
+      gravity,
+      kind,
+      isSteam: kind === 'steam',
+      isDust: kind === 'dust',
+      isRing: kind === 'ring',
+      isFloater: kind === 'floater',
+      text: opts?.text || null,
+    });
+  }
+  return out;
+}
+
+/** Advance particle simulation one frame. */
+export function stepParticles(particles, dt) {
+  for (const p of particles) {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    if (p.gravity) p.vy += p.gravity * dt;
+    if (p.kind === 'ring') p.size += 80 * dt;
+    if (p.isFloater) p.vy -= 12 * dt;
+    p.life -= dt;
+  }
+  return particles.filter((p) => p.life > 0);
+}
 
 const STYLE_ID = 'sf-drill-style';
 
@@ -512,9 +572,9 @@ function injectStyle() {
 }
 .drill-side-panel .readout-row .lbl { color: var(--ink-mute); }
 .drill-side-panel .readout-row .val { color: var(--accent); }
-.drill-side-panel .readout-row .val.good { color: #22c55e; }
-.drill-side-panel .readout-row .val.warn { color: #f97316; }
-.drill-side-panel .readout-row .val.bad { color: #ef4444; }
+.drill-side-panel .readout-row .val.good { color: var(--good); }
+.drill-side-panel .readout-row .val.warn { color: var(--warn); }
+.drill-side-panel .readout-row .val.bad { color: var(--danger); }
 
 .drill-center-panel {
   flex-grow: 1; display: flex; flex-direction: column; gap: 12px; align-items: center;
@@ -535,7 +595,7 @@ function injectStyle() {
 .drill-hud { display:flex; gap:18px; font-family:var(--mono); font-size:12px; color:var(--ink-dim);
   letter-spacing:.06em; align-items:center; flex-wrap:wrap; justify-content:center; }
 .drill-hud .v { color:var(--accent); }
-.drill-hud .warn { color:#ff8a4a; }
+.drill-hud .warn { color:var(--warn); }
 .drill-legend {
   display:flex; flex-direction:column; gap:8px; width:100%; max-width:900px;
   font-family:var(--mono); color:var(--ink-mute);
@@ -553,8 +613,8 @@ function injectStyle() {
   display:inline-flex; align-items:center; gap:6px; font-size:10px; color:var(--ink-dim);
   padding:3px 6px; border-radius:4px; background:rgba(255,255,255,0.02);
 }
-.drill-legend-item.warn { color:#ffb35c; }
-.drill-legend-item.locked { color:#ff8a4a; }
+.drill-legend-item.warn { color:var(--warn); }
+.drill-legend-item.locked { color:var(--warn); }
 .drill-legend-icon {
   width:22px; height:22px; border-radius:2px; border:1px solid rgba(57,208,255,0.18);
   image-rendering:pixelated; flex-shrink:0; background:#0a0d14;
@@ -566,8 +626,14 @@ function injectStyle() {
   background:rgba(57,208,255,0.12); color:var(--accent); border:1px solid rgba(57,208,255,0.22);
 }
 .drill-legend-badge.bad {
-  background:rgba(255,92,92,0.14); color:#ff8a4a; border-color:rgba(255,92,92,0.35);
+  background:rgba(255,84,112,0.14); color:var(--danger); border-color:rgba(255,84,112,0.35);
 }
+@media (prefers-reduced-motion: reduce) {
+  .drill-item-toast, .drill-summary-box { transition: none; }
+  .drill-item-toast { transform: none; opacity: 1; }
+}
+html.sf-reduce-motion .drill-item-toast,
+html.sf-reduce-motion .drill-summary-box { transition: none; }
 .drill-legend-note {
   font-size:10px; color:var(--ink-mute); font-style:italic; letter-spacing:0.03em;
 }
@@ -576,14 +642,14 @@ function injectStyle() {
 
 /* Custom Toasts and Overlay alerts */
 .drill-toast-container { position:absolute; right:12px; top:12px; display:flex; flex-direction:column; gap:8px; pointer-events:none; z-index:100; max-width:280px; }
-.drill-item-toast { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:6px; background:rgba(10,15,26,0.94); border:1px solid rgba(57,208,255,0.25); box-shadow:0 6px 20px rgba(0,0,0,0.6); font-family:var(--mono); font-size:12px; color:#d7e6ff; transform:translateX(130%); transition:transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s; opacity:0; }
+.drill-item-toast { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:6px; background:rgba(10,15,26,0.94); border:1px solid rgba(57,208,255,0.25); box-shadow:0 6px 20px rgba(0,0,0,0.6); font-family:var(--mono); font-size:12px; color:var(--ink); transform:translateX(130%); transition:transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s; opacity:0; }
 .drill-item-toast.show { transform:translateX(0); opacity:1; }
-.drill-item-toast.warn { border-color:#ffb35c; color:#ffb35c; }
-.drill-item-toast.bad { border-color:#ff5c5c; color:#ff5c5c; }
+.drill-item-toast.warn { border-color:var(--warn); color:var(--warn); }
+.drill-item-toast.bad { border-color:var(--danger); color:var(--danger); }
 .drill-item-toast .icon { width:22px; height:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .drill-item-toast .icon img { width:100%; height:100%; object-fit:contain; }
 .drill-item-toast .details { display:flex; flex-direction:column; gap:2px; }
-.drill-item-toast .value { font-size:10px; color:#39d0ff; font-weight:bold; }
+.drill-item-toast .value { font-size:10px; color:var(--accent); font-weight:bold; letter-spacing:0.06em; text-transform:uppercase; }
 
 /* Drill Extraction Summary Modal */
 .drill-summary-modal {
@@ -931,20 +997,62 @@ export const drillScreen = {
 
     const gasHitFlash = { t: 0 };
     const yieldFlash = { t: 0, text: '' };
+    const breakFlash = { t: 0, x: 0, y: 0 };
+    let motionReduce = prefersReducedMotion({
+      motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
+    });
 
     const unsubs = [];
+
+    function sparkColorFor(type, ore) {
+      if (type === 'dirt') return '#a78262';
+      if (type === 'rock') return COL.inkMute;
+      if (type === 'gas') return COL.accent3;
+      if (type === 'vein' && ore) return ORE_SPARK_COLOR[ore] || COL.warn;
+      return COL.ink;
+    }
+
+    function faceAngle(dir) {
+      if (dir === 'left') return Math.PI;
+      if (dir === 'up') return -Math.PI / 2;
+      if (dir === 'down') return Math.PI / 2;
+      return 0; // right
+    }
 
     // Register event subscriptions
     unsubs.push(ctx.bus.on('drill:yield', (p) => {
       const name = commodityName(p.commodityId);
-      yieldFlash.t = 0.9; 
-      yieldFlash.text = '+' + p.qty + ' ' + name;
+      yieldFlash.t = 1.1;
+      yieldFlash.text = '+' + p.qty + ' ' + name.toUpperCase();
+      const px = (p.pos?.col ?? 0) * TILE + TILE / 2;
+      const py = (p.pos?.row ?? 0) * TILE + TILE / 2;
+      const color = ORE_SPARK_COLOR[p.commodityId] || COL.accent2;
+      spawnParticleBurst(particles, {
+        x: px, y: py, count: 10, color, life: 0.55, size: 2.4, speed: 55,
+        kind: 'spark', gravity: 40, cone: Math.PI * 2,
+      });
+      spawnParticleBurst(particles, {
+        x: px, y: py - 6, count: 3, color: COL.accent2, life: 0.9, size: 1.5,
+        speed: 8, kind: 'floater', text: '+' + p.qty, vy0: -18,
+      });
       triggerToast(`+${p.qty} ${name} extracted`, 'info', p.commodityId, p.qty);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'loot_collect' });
     }));
 
     unsubs.push(ctx.bus.on('drill:gasHit', (p) => {
-      gasHitFlash.t = 0.6;
+      gasHitFlash.t = motionReduce ? 0.25 : 0.75;
+      const px = (p.pos?.col ?? 0) * TILE + TILE / 2;
+      const py = (p.pos?.row ?? 0) * TILE + TILE / 2;
+      spawnParticleBurst(particles, {
+        x: px, y: py, count: motionReduce ? 4 : 14, color: COL.accent3,
+        life: 0.55, size: 3, speed: 70, kind: 'spark', cone: Math.PI * 2,
+      });
+      if (!motionReduce) {
+        spawnParticleBurst(particles, {
+          x: px, y: py, count: 2, color: 'rgba(192,139,255,0.55)',
+          life: 0.4, size: 6, speed: 0, kind: 'ring',
+        });
+      }
       triggerToast('⚠ GAS POCKET! Hull damaged', 'bad');
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'shield_break' });
     }));
@@ -954,50 +1062,50 @@ export const drillScreen = {
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'mining_core_fizzle' });
     }));
 
+    unsubs.push(ctx.bus.on('drill:break', (p) => {
+      if (!state.drill) return;
+      const cx = p.col * TILE + TILE / 2;
+      const cy = p.row * TILE + TILE / 2;
+      const color = sparkColorFor(p.type, p.ore);
+      breakFlash.t = 0.22;
+      breakFlash.x = cx;
+      breakFlash.y = cy;
+      spawnParticleBurst(particles, {
+        x: cx, y: cy, count: motionReduce ? 5 : 12, color,
+        life: 0.45, size: 2.8, speed: 60, kind: 'spark', gravity: 55, cone: Math.PI * 2,
+      });
+      spawnParticleBurst(particles, {
+        x: cx, y: cy, count: 4, color: 'rgba(167,130,98,0.4)',
+        life: 0.5, size: 3.5, speed: 18, kind: 'dust',
+      });
+    }));
+
     unsubs.push(ctx.bus.on('drill:spark', (p) => {
       if (!state.drill) return;
       const d = state.drill;
-      // Spawn particles at the drill head interface
-      const sx = p.col * TILE + TILE / 2;
-      const sy = p.row * TILE + TILE / 2;
       const dir = d.avatar.faceDir || 'down';
-      
-      let cx = sx;
-      let cy = sy;
-      let vx = 0, vy = 0;
-      
-      if (dir === 'right') {
-        cx = p.col * TILE;
-        vy = (Math.random() - 0.5) * 35;
-        vx = -15 - Math.random() * 25;
-      } else if (dir === 'left') {
-        cx = p.col * TILE + TILE;
-        vy = (Math.random() - 0.5) * 35;
-        vx = 15 + Math.random() * 25;
-      } else if (dir === 'down') {
-        cy = p.row * TILE;
-        vx = (Math.random() - 0.5) * 35;
-        vy = -15 - Math.random() * 25;
-      }
-      
-      let color = '#d7e6ff';
-      if (p.type === 'dirt') color = '#a78262';
-      else if (p.type === 'rock') color = '#64748b';
-      else if (p.type === 'gas') color = '#c084fc';
-      else if (p.type === 'vein' && p.ore) {
-        color = ORE_SPARK_COLOR[p.ore] || '#ffd700';
-      }
-      
-      particles.push({
-        x: cx,
-        y: cy,
-        vx: vx,
-        vy: vy,
-        color: color,
-        size: 1.5 + Math.random() * 2,
-        life: 0.2 + Math.random() * 0.15,
-        maxLife: 0.35
+      const ang = faceAngle(dir);
+      // Interface edge of the tile being drilled
+      let cx = p.col * TILE + TILE / 2;
+      let cy = p.row * TILE + TILE / 2;
+      if (dir === 'right') cx = p.col * TILE;
+      else if (dir === 'left') cx = p.col * TILE + TILE;
+      else if (dir === 'down') cy = p.row * TILE;
+      else if (dir === 'up') cy = p.row * TILE + TILE;
+
+      const color = sparkColorFor(p.type, p.ore);
+      const density = motionReduce ? 2 : 5;
+      spawnParticleBurst(particles, {
+        x: cx, y: cy, count: density, color,
+        life: 0.28, size: 1.8, speed: 45, kind: 'spark',
+        angle: ang + Math.PI, cone: 1.1, gravity: 20,
       });
+      if (!motionReduce && Math.random() < 0.45) {
+        spawnParticleBurst(particles, {
+          x: cx, y: cy, count: 1, color: 'rgba(167,130,98,0.35)',
+          life: 0.4, size: 2.5, speed: 12, kind: 'dust', angle: ang + Math.PI, cone: 0.8,
+        });
+      }
     }));
 
     function drawSonar(d) {
@@ -1023,29 +1131,33 @@ export const drillScreen = {
       sonarCtx.moveTo(cx, cy - 60); sonarCtx.lineTo(cx, cy + 60);
       sonarCtx.stroke();
       
-      // Draw rotating radar sweep line
-      const sweepAngle = (performance.now() * 0.0035) % (Math.PI * 2);
-      
-      // Draw sweep arc fade
-      sonarCtx.fillStyle = 'rgba(57, 208, 255, 0.03)';
-      sonarCtx.beginPath();
-      sonarCtx.moveTo(cx, cy);
-      sonarCtx.arc(cx, cy, 65, sweepAngle - 0.4, sweepAngle);
-      sonarCtx.closePath();
-      sonarCtx.fill();
-      
-      // Sweep leading line
-      sonarCtx.strokeStyle = 'rgba(57, 208, 255, 0.35)';
-      sonarCtx.beginPath();
-      sonarCtx.moveTo(cx, cy);
-      sonarCtx.lineTo(cx + Math.cos(sweepAngle) * 65, cy + Math.sin(sweepAngle) * 65);
-      sonarCtx.stroke();
-      
+      // Sweep only while crawler is active (taste: no idle animation)
+      const active = !!(d && (d.avatar?.isDrilling || held.left || held.right || held.up || held.down));
+      const sweepAngle = active
+        ? (performance.now() * 0.004) % (Math.PI * 2)
+        : (drillScreen._sonarRestAngle || 0);
+      if (active) drillScreen._sonarRestAngle = sweepAngle;
+
+      if (active) {
+        sonarCtx.fillStyle = 'rgba(57, 208, 255, 0.04)';
+        sonarCtx.beginPath();
+        sonarCtx.moveTo(cx, cy);
+        sonarCtx.arc(cx, cy, 65, sweepAngle - 0.45, sweepAngle);
+        sonarCtx.closePath();
+        sonarCtx.fill();
+
+        sonarCtx.strokeStyle = 'rgba(57, 208, 255, 0.4)';
+        sonarCtx.beginPath();
+        sonarCtx.moveTo(cx, cy);
+        sonarCtx.lineTo(cx + Math.cos(sweepAngle) * 65, cy + Math.sin(sweepAngle) * 65);
+        sonarCtx.stroke();
+      }
+
       // Draw detected ore deposits nearby (within 5-tile radius)
       if (d && d.field) {
         const ar = d.avatar.row;
         const ac = d.avatar.col;
-        
+
         for (let dc = -4; dc <= 4; dc++) {
           for (let dr = -4; dr <= 4; dr++) {
             const tc = ac + dc;
@@ -1053,27 +1165,33 @@ export const drillScreen = {
             if (tc >= 0 && tc < COLS && tr >= 0 && tr < ROWS) {
               const tile = d.field[tc][tr];
               if (tile && tile.type === 'vein' && tile.ore) {
-                // Calculate position relative to center of radar
                 const px = cx + dc * 14;
                 const py = cy + dr * 14;
-                
-                // Only show if inside radar range circle
                 const dist = Math.hypot(dc * 14, dr * 14);
                 if (dist <= 65) {
-                  // Flash blips when radar sweeps past
-                  const angleToBlip = Math.atan2(dr * 14, dc * 14);
-                  let angleDiff = sweepAngle - angleToBlip;
-                  if (angleDiff < 0) angleDiff += Math.PI * 2;
-                  
-                  if (angleDiff < 1.2) {
-                    const color = ORE_SPARK_COLOR[tile.ore] || '#ffd700';
+                  const color = ORE_SPARK_COLOR[tile.ore] || COL.warn;
+                  // While sweeping: reveal on pass. At rest: dim persistent blips (state, not idle FX).
+                  let show = !active;
+                  let bright = 1;
+                  if (active) {
+                    const angleToBlip = Math.atan2(dr * 14, dc * 14);
+                    let angleDiff = sweepAngle - angleToBlip;
+                    if (angleDiff < 0) angleDiff += Math.PI * 2;
+                    show = angleDiff < 1.35;
+                    bright = show ? Math.max(0.25, 1 - angleDiff / 1.35) : 0;
+                  } else {
+                    bright = 0.55;
+                  }
+                  if (show && bright > 0) {
+                    sonarCtx.globalAlpha = bright;
                     sonarCtx.fillStyle = color;
                     sonarCtx.shadowColor = color;
-                    sonarCtx.shadowBlur = 4;
+                    sonarCtx.shadowBlur = active ? 5 : 2;
                     sonarCtx.beginPath();
-                    sonarCtx.arc(px, py, 2.5, 0, Math.PI * 2);
+                    sonarCtx.arc(px, py, active ? 2.6 : 2.0, 0, Math.PI * 2);
                     sonarCtx.fill();
                     sonarCtx.shadowBlur = 0;
+                    sonarCtx.globalAlpha = 1;
                   }
                 }
               }
@@ -1091,83 +1209,56 @@ export const drillScreen = {
       const d = state.drill;
       if (!d) return;
 
+      motionReduce = prefersReducedMotion({
+        motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
+      });
+
       // advance drilling from held keys
       drillSys.tickInput(held, dt);
 
-      // spin drill bit if drilling
+      // spin drill bit if drilling (faster under heat for readable load)
       if (d.avatar.isDrilling) {
-        drillTheta += 38 * dt;
+        const heatBoost = 1 + (d.drillTemp || 0) / 120;
+        drillTheta += 42 * heatBoost * dt;
       }
 
-      // Spawn exhaust steam particles
-      if (Math.random() < 0.28 && (d.avatar.isDrilling || held.left || held.right || held.down || held.up)) {
+      // Exhaust steam only while moving or drilling (state-driven — no idle fog)
+      const moving = held.left || held.right || held.down || held.up;
+      if (!motionReduce && Math.random() < (d.avatar.isDrilling ? 0.55 : 0.32) && moving) {
+        const draw = avatarDrawPos(d.avatar, TILE);
         const dir = d.avatar.faceDir || 'down';
-        const rx = d.avatar.col * TILE;
-        const ry = d.avatar.row * TILE;
-        let ex = rx + TILE / 2;
-        let ey = ry + TILE / 2;
-        let evx = 0, evy = 0;
-        
-        if (dir === 'right') {
-          ex = rx;
-          evx = -15 - Math.random() * 20;
-          evy = (Math.random() - 0.5) * 8;
-        } else if (dir === 'left') {
-          ex = rx + TILE;
-          evx = 15 + Math.random() * 20;
-          evy = (Math.random() - 0.5) * 8;
-        } else if (dir === 'down') {
-          ey = ry;
-          evy = -15 - Math.random() * 20;
-          evx = (Math.random() - 0.5) * 8;
-        } else if (dir === 'up') {
-          ey = ry + TILE;
-          evy = 15 + Math.random() * 20;
-          evx = (Math.random() - 0.5) * 8;
-        }
-        
-        particles.push({
-          x: ex,
-          y: ey,
-          vx: evx,
-          vy: evy,
-          color: 'rgba(215, 230, 255, 0.45)', // soft vapor color
-          size: 1.5 + Math.random() * 2,
-          life: 0.3 + Math.random() * 0.2,
-          maxLife: 0.5,
-          isSteam: true
+        let ex = draw.x + TILE / 2;
+        let ey = draw.y + TILE / 2;
+        let angle = faceAngle(dir) + Math.PI;
+        if (dir === 'right') ex = draw.x;
+        else if (dir === 'left') ex = draw.x + TILE;
+        else if (dir === 'down') ey = draw.y;
+        else if (dir === 'up') ey = draw.y + TILE;
+        spawnParticleBurst(particles, {
+          x: ex, y: ey, count: 1,
+          color: 'rgba(215, 230, 255, 0.4)',
+          life: 0.45, size: 2.2, speed: 22, kind: 'steam', angle, cone: 0.7,
         });
       }
 
-      // Spawn drill dust clouds
-      if (d.avatar.isDrilling && Math.random() < 0.38 && d.avatar.drillTarget) {
+      // Drill contact dust denser while chewing a tile
+      if (d.avatar.isDrilling && d.avatar.drillTarget && !motionReduce && Math.random() < 0.55) {
         const tx = d.avatar.drillTarget.col * TILE + TILE / 2;
         const ty = d.avatar.drillTarget.row * TILE + TILE / 2;
-        
-        particles.push({
-          x: tx + (Math.random() - 0.5) * TILE,
-          y: ty + (Math.random() - 0.5) * TILE,
-          vx: (Math.random() - 0.5) * 15,
-          vy: -8 - Math.random() * 12, // drift upwards
-          color: 'rgba(167, 130, 98, 0.35)', // dusty brown
-          size: 2.0,
-          life: 0.4 + Math.random() * 0.3,
-          maxLife: 0.7,
-          isDust: true
+        spawnParticleBurst(particles, {
+          x: tx + (Math.random() - 0.5) * TILE * 0.6,
+          y: ty + (Math.random() - 0.5) * TILE * 0.6,
+          count: 2, color: 'rgba(167, 130, 98, 0.4)',
+          life: 0.55, size: 2.4, speed: 16, kind: 'dust',
         });
       }
 
-      // update particles
-      particles.forEach((p) => {
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.life -= dt;
-      });
-      particles = particles.filter((p) => p.life > 0);
+      particles = stepParticles(particles, dt);
 
       // flash timers
       if (gasHitFlash.t > 0) gasHitFlash.t -= dt;
       if (yieldFlash.t > 0) yieldFlash.t -= dt;
+      if (breakFlash.t > 0) breakFlash.t -= dt;
 
       drawSonar(d);
       render(dt);
@@ -1179,29 +1270,21 @@ export const drillScreen = {
       if (!d) return;
       ctx2d.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Initialize rendering positions if first frame
-      if (drillScreen._rx === undefined || isNaN(drillScreen._rx)) {
-        drillScreen._rx = d.avatar.col * TILE;
-        drillScreen._ry = d.avatar.row * TILE;
-      }
-      
-      const targetX = d.avatar.col * TILE;
-      const targetY = d.avatar.row * TILE;
-      
-      // Interpolate position smoothly based on frame tick dt
-      drillScreen._rx += (targetX - drillScreen._rx) * 16 * dt;
-      drillScreen._ry += (targetY - drillScreen._ry) * 16 * dt;
+      // Time-interpolated draw position across the full move window (sim owns from/to + elapsed).
+      const drawPos = avatarDrawPos(d.avatar, TILE);
+      drillScreen._rx = drawPos.x;
+      drillScreen._ry = drawPos.y;
 
-      // Camera view height
+      // Camera view height — follow interpolated rover so camera is continuous at 2× step rate
       const viewHeight = 18 * TILE;
       const targetViewY = drillScreen._ry - viewHeight / 2 + TILE / 2;
+      const camRate = motionReduce ? 1 : 10;
       
-      // Initialize viewY if first frame
+      // Initialize viewY if first frame (snap only on session start)
       if (viewY === undefined || isNaN(viewY)) {
         viewY = Math.max(0, Math.min(ROWS * TILE - viewHeight, targetViewY));
       } else {
-        // Smooth camera follow
-        viewY = viewY + (targetViewY - viewY) * 6 * dt;
+        viewY = viewY + (targetViewY - viewY) * Math.min(1, camRate * dt);
         viewY = Math.max(0, Math.min(ROWS * TILE - viewHeight, viewY));
       }
 
@@ -1292,26 +1375,52 @@ export const drillScreen = {
         }
       }
 
-      // Draw particles (sparks, steam, and dust)
+      // Draw particles (sparks, steam, dust, rings, floaters)
       particles.forEach((p) => {
-        ctx2d.fillStyle = p.color;
-        const alpha = p.life / p.maxLife;
+        const alpha = Math.max(0, p.life / (p.maxLife || 0.001));
         ctx2d.globalAlpha = alpha;
-        if (p.isSteam) {
-          const size = p.size * (1 + (1 - alpha) * 1.5);
+        const py = p.y - viewY;
+        if (p.isRing) {
+          ctx2d.strokeStyle = p.color;
+          ctx2d.lineWidth = 2;
           ctx2d.beginPath();
-          ctx2d.arc(p.x, p.y - viewY, size, 0, Math.PI * 2);
+          ctx2d.arc(p.x, py, p.size, 0, Math.PI * 2);
+          ctx2d.stroke();
+        } else if (p.isFloater && p.text) {
+          ctx2d.fillStyle = p.color;
+          ctx2d.font = 'bold 11px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+          ctx2d.textAlign = 'center';
+          ctx2d.fillText(p.text, p.x, py);
+        } else if (p.isSteam) {
+          ctx2d.fillStyle = p.color;
+          const size = p.size * (1 + (1 - alpha) * 1.8);
+          ctx2d.beginPath();
+          ctx2d.arc(p.x, py, size, 0, Math.PI * 2);
           ctx2d.fill();
         } else if (p.isDust) {
-          const size = p.size * (1 + (1 - alpha) * 3);
+          ctx2d.fillStyle = p.color;
+          const size = p.size * (1 + (1 - alpha) * 2.5);
           ctx2d.beginPath();
-          ctx2d.arc(p.x, p.y - viewY, size, 0, Math.PI * 2);
+          ctx2d.arc(p.x, py, size, 0, Math.PI * 2);
           ctx2d.fill();
         } else {
-          ctx2d.fillRect(p.x, p.y - viewY, p.size, p.size);
+          ctx2d.fillStyle = p.color;
+          ctx2d.shadowColor = p.color;
+          ctx2d.shadowBlur = 4;
+          ctx2d.fillRect(p.x, py, p.size, p.size);
+          ctx2d.shadowBlur = 0;
         }
       });
       ctx2d.globalAlpha = 1.0;
+
+      // Tile-break flash pulse
+      if (breakFlash.t > 0) {
+        const a = breakFlash.t / 0.22;
+        ctx2d.fillStyle = `rgba(57,208,255,${0.18 * a})`;
+        ctx2d.beginPath();
+        ctx2d.arc(breakFlash.x, breakFlash.y - viewY, TILE * (0.6 + (1 - a) * 0.8), 0, Math.PI * 2);
+        ctx2d.fill();
+      }
 
       // Draw avatar (rover & rotating drill)
       const rx = drillScreen._rx;
@@ -1379,11 +1488,12 @@ export const drillScreen = {
       
       ctx2d.save();
       
-      // Rover shake animation when drilling
+      // Rover shake when drilling — damped fully under motionReduce
       let sx = 0, sy = 0;
-      if (d.avatar.isDrilling) {
-        sx = (Math.random() - 0.5) * 1.5;
-        sy = (Math.random() - 0.5) * 1.5;
+      if (d.avatar.isDrilling && !motionReduce) {
+        const amp = 1.2 + (d.drillTemp || 0) / 80;
+        sx = (Math.random() - 0.5) * amp;
+        sy = (Math.random() - 0.5) * amp;
       }
       ctx2d.translate(rx + TILE / 2 + sx, ry + TILE / 2 + sy);
 
@@ -1401,28 +1511,30 @@ export const drillScreen = {
       const roverSize = TILE * 1.4;
       ctx2d.drawImage(IMAGES.rover, -roverSize / 2, -roverSize / 2, roverSize, roverSize);
 
-      // Draw 3D auger drill bit procedurally
-      const spinTime = performance.now() / 1000;
+      // Draw 3D auger drill bit procedurally (spin driven by session theta for smoothness)
+      const spinTime = (d.avatar.isDrilling ? drillTheta : performance.now() / 1000);
       drawAugerDrillBit(ctx2d, roverSize / 2, 4, TILE * 1.25, 0, spinTime);
 
       ctx2d.restore();
 
-      // Gas-hit red flash overlay
+      // Gas-hit danger flash overlay (token danger hue; shorter under motionReduce)
       if (gasHitFlash.t > 0) {
-        ctx2d.fillStyle = 'rgba(255,40,70,' + (gasHitFlash.t * 0.5) + ')';
+        const intensity = motionReduce ? gasHitFlash.t * 0.25 : gasHitFlash.t * 0.45;
+        ctx2d.fillStyle = `rgba(255,84,112,${intensity})`;
         ctx2d.fillRect(0, 0, canvas.width, canvas.height);
       }
 
       // Yield popup text above avatar
       if (yieldFlash.t > 0) {
         ctx2d.save();
-        ctx2d.globalAlpha = Math.min(1, yieldFlash.t * 1.5);
-        ctx2d.fillStyle = '#9af0ff';
-        ctx2d.font = 'bold 14px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
+        ctx2d.globalAlpha = Math.min(1, yieldFlash.t * 1.4);
+        ctx2d.fillStyle = COL.accent2;
+        ctx2d.font = 'bold 13px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
         ctx2d.textAlign = 'center';
         ctx2d.shadowColor = '#000000';
         ctx2d.shadowBlur = 4;
-        ctx2d.fillText(yieldFlash.text, rx + TILE / 2, ry - 8 - (1 - yieldFlash.t) * 20);
+        const floatY = motionReduce ? 10 : (1 - Math.min(1, yieldFlash.t)) * 28;
+        ctx2d.fillText(yieldFlash.text, rx + TILE / 2, ry - 10 - floatY);
         ctx2d.restore();
       }
 
@@ -1445,26 +1557,26 @@ export const drillScreen = {
         const fillHeight = (d.drillTemp / 100) * gh;
         const fy = gy + gh - fillHeight;
         
-        let fillCol = '#39d0ff'; // Cyan
+        let fillCol = COL.accent;
         if (d.overheated) {
-          fillCol = (Math.floor(Date.now() / 200) % 2 === 0) ? '#ff5c5c' : '#ffb35c';
+          fillCol = (!motionReduce && Math.floor(performance.now() / 200) % 2 === 0) ? COL.danger : COL.warn;
         } else if (d.drillTemp > 75) {
-          fillCol = '#ff5c5c';
+          fillCol = COL.danger;
         } else if (d.drillTemp > 45) {
-          fillCol = '#ffb35c';
+          fillCol = COL.warn;
         }
         
         ctx2d.fillStyle = fillCol;
         ctx2d.fillRect(gx + 1, fy + 1, gw - 2, fillHeight - 2);
         
         // Label
-        ctx2d.fillStyle = 'rgba(215, 230, 255, 0.6)';
+        ctx2d.fillStyle = 'rgba(211, 230, 255, 0.6)';
         ctx2d.font = 'bold 9px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
         ctx2d.textAlign = 'left';
         ctx2d.fillText('TEMP', gx, gy + gh + 12);
         
         if (d.overheated) {
-          ctx2d.fillStyle = '#ff5c5c';
+          ctx2d.fillStyle = COL.danger;
           ctx2d.fillText('OVERHEAT', gx + 14, gy + 12);
         }
         ctx2d.restore();
@@ -1497,9 +1609,9 @@ export const drillScreen = {
         const ty = tr * TILE - viewY;
         
         ctx2d.save();
-        // Flashing red reticle
-        const flash = Math.floor(performance.now() / 150) % 2 === 0;
-        ctx2d.strokeStyle = flash ? '#ff5c5c' : 'rgba(255, 92, 92, 0.3)';
+        // Locked reticle — danger token; no blink under motionReduce
+        const flash = motionReduce || Math.floor(performance.now() / 180) % 2 === 0;
+        ctx2d.strokeStyle = flash ? COL.danger : 'rgba(255, 84, 112, 0.3)';
         ctx2d.lineWidth = 2;
         ctx2d.strokeRect(tx + 2, ty + 2, TILE - 4, TILE - 4);
         
@@ -1514,11 +1626,11 @@ export const drillScreen = {
         // Warning text block
         ctx2d.fillStyle = 'rgba(15, 23, 42, 0.9)';
         ctx2d.fillRect(tx - 30, ty - 18, TILE + 60, 14);
-        ctx2d.strokeStyle = '#ff5c5c';
+        ctx2d.strokeStyle = COL.danger;
         ctx2d.lineWidth = 1;
         ctx2d.strokeRect(tx - 30, ty - 18, TILE + 60, 14);
         
-        ctx2d.fillStyle = '#ff5c5c';
+        ctx2d.fillStyle = COL.danger;
         ctx2d.font = 'bold 8.5px ' + (getComputedStyle(document.body).getPropertyValue('--mono') || 'monospace');
         ctx2d.textAlign = 'center';
         
@@ -1661,8 +1773,11 @@ export const drillScreen = {
       // --- Update Cockpit Left Panel Readouts ---
       const tensionEl = leftPanel.querySelector('[data-tension]');
       if (tensionEl) {
-        const baseTension = d.avatar.isDrilling ? 45 : 18;
-        const variation = Math.sin(performance.now() * 0.005) * 4;
+        // State-driven tension only — no idle wobble (taste: nothing animates at rest)
+        const baseTension = d.avatar.isDrilling ? 45 : (held.left || held.right || held.down || held.up ? 28 : 18);
+        const variation = (d.avatar.isDrilling && !motionReduce)
+          ? Math.sin(performance.now() * 0.012) * 5
+          : 0;
         tensionEl.textContent = `${Math.round(baseTension + variation)} N`;
         tensionEl.className = d.avatar.isDrilling ? 'val warn' : 'val';
       }

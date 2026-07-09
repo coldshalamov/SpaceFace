@@ -46,14 +46,22 @@ export const SECTORS = [
     ],
     // A small safe asteroid claim close to the spawn point so new pilots can learn mining before
     // the wider sector opens up (no hostiles here).
-    fields: [ {
-      id: 'f_helios_starter', type: 'ast_common_rock', countWeight: 1.0,
-      center: { x: 720, z: -260 }, clusterRadius: 240, count: 18,
-    } ],
+    // Overnight B2 density: starter belt is findable and larger; secondary field near Coalition HQ.
+    fields: [
+      {
+        id: 'f_helios_starter', type: 'ast_common_rock', countWeight: 1.0,
+        center: { x: 720, z: -260 }, clusterRadius: 380, count: 42,
+      },
+      {
+        id: 'f_helios_outer', type: 'ast_common_rock', countWeight: 0.7,
+        center: { x: -900, z: 640 }, clusterRadius: 320, count: 28,
+      },
+    ],
     hazards: [],
     pois: [
       { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },
       { id: 'poi_memorial', type: 'beacon', name: 'Memorial Array' },
+      { id: 'poi_helios_yard', type: 'derelict', name: 'Outer Yard Derelict' },
     ],
   },
   {

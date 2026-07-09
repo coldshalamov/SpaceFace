@@ -360,6 +360,23 @@ export function createServicesPanel(ctx) {
         ctx.bus.emit('audio:cue', { id: 'ui_deny' });
         return;
       }
+    } else if (type === 'refuel' || type === 'repair' || type === 'ammo') {
+      // Quote → confirm for paid berth verbs (Station OS control grammar).
+      const e = state.entities && state.entities.get(state.playerId);
+      const quote = serviceQuote(type, state, e);
+      if (quote && quote.cost > 0) {
+        const ok = await confirm({
+          title: quote.buttonLabel || (type === 'refuel' ? 'Refuel' : type === 'repair' ? 'Repair' : 'Buy munitions'),
+          body: (quote.detail || type) + ' · ' + fmtCr(quote.cost) + ' cr',
+          confirmLabel: 'Confirm · ' + fmtCr(quote.cost) + ' cr',
+          cancelLabel: 'Cancel',
+          danger: false,
+        });
+        if (!ok) {
+          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          return;
+        }
+      }
     }
     ctx.bus.emit('ui:service', { type, amount });
     ctx.bus.emit('audio:cue', { id: 'ui_click' });

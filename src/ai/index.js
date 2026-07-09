@@ -1,5 +1,6 @@
 export * from './contracts.js';
 export * from './director.js';
+export * from './doctrine.js';
 export * from './inspection.js';
 export * from './maneuver.js';
 export * from './perception.js';

@@ -7,6 +7,7 @@ import {
   saturate,
   stableId,
 } from './contracts.js';
+import { applyDoctrineToSelection } from './doctrine.js';
 
 const DEFAULTS = Object.freeze({
   minCommitTicks: 18,
@@ -69,6 +70,7 @@ export class ShipUtilitySelector {
       selected.targetContact = compactTarget(target, freeze);
     }
     if (selected) selected.maneuver = maneuverFor(selectedActionDef, directive, target, freeze);
+    if (selected) selected = applyDoctrineToSelection({ selected, perception, directive, tick, freeze });
     if (selected) stripActionMetadata(selected);
 
     if (this.trace) {
