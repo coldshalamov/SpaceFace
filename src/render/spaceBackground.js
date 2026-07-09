@@ -61,9 +61,10 @@ const PALETTES = {
     void: '#030809', haze: '#0c2622', gas: '#175146', emission: '#c8a24a',
     core: '#fff3d0', dust: '#020604', accent: '#67c9a0',
   },
+  // Helios/core sky — rank-10: deeper void, richer cyan gas, brighter emission for undock stills.
   AZURE: {
-    void: '#030710', haze: '#0d1a33', gas: '#1d3f66', emission: '#4d7fb8',
-    core: '#dcecff', dust: '#020409', accent: '#7fd4e8',
+    void: '#02060e', haze: '#0a1838', gas: '#1a4a80', emission: '#3d9ad4',
+    core: '#e8f4ff', dust: '#010308', accent: '#6ee0ff',
   },
   CRIMSON: {
     void: '#0a0507', haze: '#261014', gas: '#582026', emission: '#c24a30',

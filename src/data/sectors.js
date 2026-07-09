@@ -13,9 +13,10 @@ export const HAZARD_TYPES  = ['dense_asteroid', 'nebula', 'radiation', 'debris']
 export const POI_TYPES     = ['beacon', 'derelict', 'cache', 'colony', 'anomaly', 'wormhole', 'wreck'];
 
 export const SECTOR_PALETTE_CLASSES = {
+  // Helios / core — Top-50 rank-10 sky kit: cooler deeper void, cyan fill, readable fog depth.
   core: {
-    key: 0xcfe2ff, rim: 0x6a5cff, fill: 0x39d0ff, ambient: 0x42506f,
-    fog: 0x0a1430, fogDensity: 0.00026, nebulaTint: 0x1e3a6a, dust: 0x7ea7c7,
+    key: 0xd8e8ff, rim: 0x7a6cff, fill: 0x4ad8ff, ambient: 0x384868,
+    fog: 0x081228, fogDensity: 0.00022, nebulaTint: 0x2450a0, dust: 0x8ec0e8,
   },
   belt: {
     key: 0xffd59a, rim: 0xb56d2f, fill: 0xffb13d, ambient: 0x594a42,

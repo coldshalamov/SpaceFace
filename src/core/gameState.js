@@ -12,7 +12,7 @@ function defaultSettings() {
     showDamageNumbers: true,
     keybinds: {},
     audio: { master: 0.55, sfx: 0.7, music: 0.32, muted: false },
-    video: { renderScale: 0.85, bloom: true, bloomStrength: 0.35, bloomThreshold: 0.72, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, energyMaterials: true, renderGraph: false, dynamicResolution: false },
+    video: { renderScale: 0.85, bloom: true, bloomStrength: 0.35, bloomThreshold: 0.72, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false },
     gameplay: { autosaveIntervalS: 120, tutorialHints: true, difficulty: 'standard', physicsBackend: 'rapier-dynamic', aiBackend: 'sg06-tactical', flightBackend: 'v3', controlScheme: 'pilot', controlSchemeV2: true },
     controls: {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
@@ -85,7 +85,7 @@ export function createGameState(seed) {
     rng: mulberry32(seed),
     input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 }, pointerScreen: { x: 0, y: 0, active: false } },
     flight: { mode: 'manual', previousMode: 'manual', modeReason: 'boot', modeChangedTick: 0 },
-    camera: { obj: null, tilt: 60, zoom: 88, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 26 },
+    camera: { obj: null, tilt: 60, zoom: 72, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 26 },
     bounds: { radius: 2600, hardRadius: 3000, center: { x: 0, z: 0 } },
 
     // --- meta records ---

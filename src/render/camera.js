@@ -35,7 +35,11 @@ export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // seconds — 8 Hz target upda
 export const SPEED_ZOOM_MIN = 0.88;  // slowest / idle factor (spec2/02 §2)
 export const SPEED_ZOOM_MAX = 1.18;  // high-speed factor
 const ZOOM_LERP = 1.4;              // /s — speed-zoom ease (spec2/02 §2)
-const DEFAULT_ZOOM = 88;            // wu — default chase distance (spec2/02 §2)
+// Top-50 rank-13 chase juice: default frame sits closer so hull bank/nose read in stills.
+// Spec2/02 §2 previously used 88 wu; close chase keeps the same system with a tighter default.
+const DEFAULT_ZOOM = 72;            // wu — chase distance (readable ship at store-still scale)
+export const CHASE_ZOOM_DEFAULT = DEFAULT_ZOOM;
+export const CHASE_ZOOM_CLOSE = 58; // optional tighter profile (settings.video.chaseClose)
 
 export const CAMERA_TRAUMA_TUNING = Object.freeze({
   decayPerSecond: TRAUMA_DECAY_PER_S,
@@ -246,8 +250,8 @@ export function createChaseCamera(state) {
 
   // smoothed camera roll (visual counter-lean into the player's bank)
   let camRoll = 0;
-  const ROLL_MAX = 0.035;  // rad (~2.0 deg): readable bank feel without swimming the horizon.
-  const ROLL_LERP = 3.2;   // responsiveness
+  const ROLL_MAX = 0.052;  // rad (~3.0 deg): bank-readable, horizon still stable
+  const ROLL_LERP = 3.6;   // slightly snappier lean
   // scratch: roll is applied about the camera's local forward axis (the view direction), so the
   // image spins in-plane without changing where the camera points.
   const _rollQ = new THREE.Quaternion();
@@ -262,7 +266,12 @@ export function createChaseCamera(state) {
   const _camRight = new THREE.Vector3(1, 0, 0);
 
   // dynamic zoom — smoothly adapts camera distance to gameplay context
-  let _dynamicZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
+  function resolveBaseZoom() {
+    const video = state.settings && state.settings.video;
+    if (video && video.chaseClose) return CHASE_ZOOM_CLOSE;
+    return finiteOr(c.zoom, DEFAULT_ZOOM);
+  }
+  let _dynamicZoom = resolveBaseZoom();
   let _speedZoomFactor = SPEED_ZOOM_MIN;
   let _speedZoomSampleT = 0;
 
@@ -387,15 +396,16 @@ export function createChaseCamera(state) {
           fx = p.pos.x + (fx - p.pos.x) * biasScale;
           fz = p.pos.z + (fz - p.pos.z) * biasScale;
         }
-        // counter-lean uses the ship's bank (already smoothed); a fraction keeps it tasteful
-        bankForLean = (Number.isFinite(p.bank) ? p.bank : 0) * 0.045;
+        // counter-lean uses the ship's bank (already smoothed); fraction tuned for chase readability
+        bankForLean = (Number.isFinite(p.bank) ? p.bank : 0) * 0.068;
       }
       const followLerp = finiteOr(c.lerp, 6);
       c.focus.x = damp(c.focus.x, fx, followLerp, frameDt);
       c.focus.z = damp(c.focus.z, fz, followLerp, frameDt);
 
       // --- dynamic zoom ---
-      const baseZoom = finiteOr(c.zoom, DEFAULT_ZOOM);
+      // Rank-13: chaseClose setting forces a tighter base; otherwise honor c.zoom (default 72).
+      const baseZoom = resolveBaseZoom();
       let targetZoom = baseZoom;
       if (p && p.pos) {
         // Speed zoom target is sampled at a low cadence so the camera does not retarget every frame

@@ -11,7 +11,7 @@ $ec = $LASTEXITCODE
 \"EXIT_CODE_RUN2_SOLO=$ec\" | Add-Content \"$scratch\\build-sg04-release-assets.log\"
 Write-Host \"RUN2_SOLO_EXIT=$ec\""
 started_at: 2026-07-08T21:42:11.261Z
-running_for_ms: 79214997 
+running_for_ms: 87116456 
 ---
 
 > spaceface@0.1.0 build:sg04:release-assets
@@ -518,3 +518,9 @@ prune: Removed types... Accessor (6)
 [sg04] 70/70 wholeship_wasp: 10622364 -> 5068880 bytes
 [sg04] release manifest wrote assets/ships/release/release_manifest.json (70 assets)
 RUN2_SOLO_EXIT=0
+
+---
+exit_code: -1
+elapsed_ms: 87116456
+ended_at: 2026-07-09T21:54:11.051Z
+---

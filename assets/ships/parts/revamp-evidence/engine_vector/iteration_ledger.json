@@ -1,3024 +1,3603 @@
 {
-  "story": "Fighter maneuvering drive \u2014 Fringe red heat discoloration on fan/nozzle",
-  "framing_gate": "pass_r6_2026-07-08",
   "part_id": "engine_vector",
+  "story": "Fighter vectoring drive \u2014 Fringe red heat. JOINED hard-surface thruster: mount, body, cowl, gimbal, nozzle bell as one connected mesh; heat DET only.",
+  "campaign": "full_rebuild_2026-07-09",
+  "prior_note": "2026-07-08 20 iters left primitive cube; ledger archived by rebuild",
   "iterations": [
     {
       "iter": 1,
       "pass": "modeling",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "bevel_hero_edges"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "connected_thruster_macro",
+        "nozzle_bell_silhouette",
+        "gimbal_ring_yoke",
+        "rcs_pods_on_stubs",
+        "fringe_heat_band"
+      ],
+      "deficiencies_addressed_next": [
+        "connected_thruster_macro",
+        "nozzle_bell_silhouette",
+        "gimbal_ring_yoke",
+        "rcs_pods_on_stubs",
+        "fringe_heat_band"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter1_clay_34_full.png",
-        "2026-07-08_engine_vector_iter1_clay_front.png",
-        "2026-07-08_engine_vector_iter1_clay_side.png",
-        "2026-07-08_engine_vector_iter1_lit_34_full.png",
-        "2026-07-08_engine_vector_iter1_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter1_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter1_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter1_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter1_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter1_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter1_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.9,
+        "bevel_language": 4.0,
+        "material_zones": 3.8,
+        "wear_story": 3.5,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.1,
+        "contract_readiness": 4.0,
+        "weighted": 4.19,
+        "export_bar_ok": false
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2506,
           "centroid": [
-            0.514,
-            0.466
+            0.447,
+            0.454
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.444,
+          "fill_ratio": 0.367,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.6825,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter1_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0565,
+          "coverage": 0.2069,
           "centroid": [
-            0.485,
-            0.432
+            0.445,
+            0.428
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.033,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1445,
+          "bbox_aspect": 1.163,
+          "fill_ratio": 0.42,
+          "edge_complexity": 0.017,
+          "bbox_area_ratio": 0.493,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter1_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0713,
+          "coverage": 0.2888,
           "centroid": [
-            0.508,
+            0.514,
+            0.488
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.862,
+          "fill_ratio": 0.377,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7667,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2396,
+          "centroid": [
+            0.437,
             0.451
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.0,
-          "bbox_aspect": 1.181,
-          "fill_ratio": 0.507,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1404,
+          "accent_ratio": 0.314,
+          "bbox_aspect": 1.445,
+          "fill_ratio": 0.351,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.6832,
           "bg_sample": [
-            54,
-            55,
-            61
-          ],
-          "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter1_clay_side.png"
-        },
-        {
-          "ok": true,
-          "coverage": 0.0534,
-          "centroid": [
-            0.538,
-            0.482
-          ],
-          "border_ratio": 0.0,
-          "accent_ratio": 0.078,
-          "bbox_aspect": 1.174,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.043,
-          "bbox_area_ratio": 0.1313,
-          "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter1_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_lit_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.3687,
           "centroid": [
-            0.494,
-            0.518
+            0.568,
+            0.6
           ],
-          "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "border_ratio": 0.005,
+          "accent_ratio": 0.901,
+          "bbox_aspect": 1.589,
+          "fill_ratio": 0.413,
+          "edge_complexity": 0.008,
+          "bbox_area_ratio": 0.8938,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter1_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3687,
+          "centroid": [
+            0.568,
+            0.6
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.901,
+          "bbox_aspect": 1.589,
+          "fill_ratio": 0.413,
+          "edge_complexity": 0.008,
+          "bbox_area_ratio": 0.8938,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.067,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.558,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 2,
       "pass": "modeling",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "bevel_hero_edges"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "body_panel_rings",
+        "meso_axial_rhythm",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "body_panel_rings",
+        "meso_axial_rhythm",
+        "consistent_bevel_language"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter2_clay_34_full.png",
-        "2026-07-08_engine_vector_iter2_clay_front.png",
-        "2026-07-08_engine_vector_iter2_clay_side.png",
-        "2026-07-08_engine_vector_iter2_lit_34_full.png",
-        "2026-07-08_engine_vector_iter2_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter2_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter2_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter2_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter2_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter2_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter2_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.9210526315789473,
+        "bevel_language": 4.021052631578947,
+        "material_zones": 3.8210526315789473,
+        "wear_story": 3.5210526315789474,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.121052631578947,
+        "contract_readiness": 4.021052631578947,
+        "weighted": 4.205,
+        "export_bar_ok": false
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0565,
+          "coverage": 0.266,
           "centroid": [
-            0.514,
-            0.467
+            0.446,
+            0.454
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.447,
+          "fill_ratio": 0.391,
+          "edge_complexity": 0.018,
+          "bbox_area_ratio": 0.6797,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter2_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter2_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2101,
           "centroid": [
-            0.484,
-            0.431
+            0.446,
+            0.43
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.165,
+          "fill_ratio": 0.426,
+          "edge_complexity": 0.017,
+          "bbox_area_ratio": 0.4937,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter2_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter2_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0713,
+          "coverage": 0.3077,
           "centroid": [
-            0.509,
-            0.45
+            0.508,
+            0.489
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.507,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.859,
+          "fill_ratio": 0.402,
+          "edge_complexity": 0.022,
+          "bbox_area_ratio": 0.7653,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter2_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter2_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0535,
+          "coverage": 0.2572,
           "centroid": [
-            0.538,
-            0.482
+            0.437,
+            0.451
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.079,
-          "bbox_aspect": 1.174,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1313,
+          "accent_ratio": 0.322,
+          "bbox_aspect": 1.447,
+          "fill_ratio": 0.376,
+          "edge_complexity": 0.033,
+          "bbox_area_ratio": 0.6839,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter2_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter2_lit_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.3731,
           "centroid": [
-            0.494,
-            0.518
+            0.56,
+            0.591
           ],
-          "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "border_ratio": 0.006,
+          "accent_ratio": 0.885,
+          "bbox_aspect": 1.597,
+          "fill_ratio": 0.415,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.8984,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            49
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter2_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter2_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3731,
+          "centroid": [
+            0.56,
+            0.591
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.885,
+          "bbox_aspect": 1.597,
+          "fill_ratio": 0.415,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.8984,
+          "bg_sample": [
+            37,
+            41,
+            49
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter2_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.072,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.547,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 3,
       "pass": "modeling",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "bevel_hero_edges"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "vector_vanes",
+        "nozzle_interior_read",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "vector_vanes",
+        "nozzle_interior_read",
+        "consistent_bevel_language"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter3_clay_34_full.png",
-        "2026-07-08_engine_vector_iter3_clay_front.png",
-        "2026-07-08_engine_vector_iter3_clay_side.png",
-        "2026-07-08_engine_vector_iter3_lit_34_full.png",
-        "2026-07-08_engine_vector_iter3_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter3_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter3_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter3_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter3_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter3_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter3_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.942105263157895,
+        "bevel_language": 4.042105263157895,
+        "material_zones": 3.8421052631578947,
+        "wear_story": 3.542105263157895,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.1421052631578945,
+        "contract_readiness": 4.042105263157895,
+        "weighted": 4.219,
+        "export_bar_ok": false
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0565,
+          "coverage": 0.2705,
           "centroid": [
-            0.514,
-            0.467
+            0.444,
+            0.453
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.448,
+          "fill_ratio": 0.396,
+          "edge_complexity": 0.018,
+          "bbox_area_ratio": 0.6822,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter3_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter3_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2105,
           "centroid": [
-            0.484,
-            0.431
+            0.447,
+            0.43
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.024,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.165,
+          "fill_ratio": 0.426,
+          "edge_complexity": 0.017,
+          "bbox_area_ratio": 0.4937,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter3_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter3_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0714,
+          "coverage": 0.3093,
           "centroid": [
-            0.509,
-            0.45
+            0.507,
+            0.49
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.507,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.859,
+          "fill_ratio": 0.404,
+          "edge_complexity": 0.022,
+          "bbox_area_ratio": 0.7653,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter3_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter3_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0535,
+          "coverage": 0.2583,
           "centroid": [
-            0.538,
-            0.482
+            0.436,
+            0.451
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.079,
-          "bbox_aspect": 1.174,
-          "fill_ratio": 0.408,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1313,
+          "accent_ratio": 0.309,
+          "bbox_aspect": 1.447,
+          "fill_ratio": 0.378,
+          "edge_complexity": 0.035,
+          "bbox_area_ratio": 0.6839,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter3_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter3_lit_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.3788,
           "centroid": [
-            0.494,
-            0.518
+            0.559,
+            0.588
           ],
-          "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "border_ratio": 0.006,
+          "accent_ratio": 0.82,
+          "bbox_aspect": 1.597,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.014,
+          "bbox_area_ratio": 0.8984,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            49
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter3_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter3_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3788,
+          "centroid": [
+            0.559,
+            0.588
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.82,
+          "bbox_aspect": 1.597,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.014,
+          "bbox_area_ratio": 0.8984,
+          "bg_sample": [
+            37,
+            41,
+            49
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter3_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.072,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.548,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 4,
       "pass": "modeling",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "bevel_hero_edges"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "mount_ribs",
+        "hull_interface",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "mount_ribs",
+        "hull_interface",
+        "consistent_bevel_language"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter4_clay_34_full.png",
-        "2026-07-08_engine_vector_iter4_clay_front.png",
-        "2026-07-08_engine_vector_iter4_clay_side.png",
-        "2026-07-08_engine_vector_iter4_lit_34_full.png",
-        "2026-07-08_engine_vector_iter4_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter4_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter4_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter4_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter4_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter4_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter4_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.963157894736842,
+        "bevel_language": 4.063157894736842,
+        "material_zones": 3.863157894736842,
+        "wear_story": 3.5631578947368423,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.163157894736842,
+        "contract_readiness": 4.063157894736842,
+        "weighted": 4.234,
+        "export_bar_ok": false
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2757,
           "centroid": [
-            0.514,
-            0.467
+            0.451,
+            0.455
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.286,
-          "fill_ratio": 0.469,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1206,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.383,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.7194,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter4_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter4_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2215,
           "centroid": [
-            0.484,
-            0.431
+            0.438,
+            0.419
           ],
-          "border_ratio": 0.0,
+          "border_ratio": 0.001,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.238,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.017,
+          "bbox_area_ratio": 0.5249,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter4_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter4_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0714,
+          "coverage": 0.3002,
           "centroid": [
             0.509,
-            0.451
+            0.488
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.507,
-          "edge_complexity": 0.029,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.858,
+          "fill_ratio": 0.408,
+          "edge_complexity": 0.022,
+          "bbox_area_ratio": 0.7353,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter4_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter4_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0536,
+          "coverage": 0.2632,
           "centroid": [
-            0.538,
-            0.482
+            0.443,
+            0.453
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.081,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.409,
-          "edge_complexity": 0.043,
-          "bbox_area_ratio": 0.1309,
+          "accent_ratio": 0.3,
+          "bbox_aspect": 1.526,
+          "fill_ratio": 0.365,
+          "edge_complexity": 0.037,
+          "bbox_area_ratio": 0.7212,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter4_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter4_lit_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.3788,
           "centroid": [
-            0.494,
-            0.518
+            0.559,
+            0.588
           ],
-          "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "border_ratio": 0.006,
+          "accent_ratio": 0.819,
+          "bbox_aspect": 1.597,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8984,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            49
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter4_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter4_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3788,
+          "centroid": [
+            0.559,
+            0.588
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.819,
+          "bbox_aspect": 1.597,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8984,
+          "bg_sample": [
+            37,
+            41,
+            49
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter4_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.072,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.548,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 5,
       "pass": "modeling",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "bevel_hero_edges"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "cowl_struts",
+        "intake_structure",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "cowl_struts",
+        "intake_structure",
+        "consistent_bevel_language"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter5_clay_34_full.png",
-        "2026-07-08_engine_vector_iter5_clay_front.png",
-        "2026-07-08_engine_vector_iter5_clay_side.png",
-        "2026-07-08_engine_vector_iter5_lit_34_full.png",
-        "2026-07-08_engine_vector_iter5_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter5_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter5_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter5_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter5_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter5_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter5_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.984210526315789,
+        "bevel_language": 4.08421052631579,
+        "material_zones": 3.884210526315789,
+        "wear_story": 3.5842105263157893,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.184210526315789,
+        "contract_readiness": 4.08421052631579,
+        "weighted": 4.249,
+        "export_bar_ok": false
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2782,
           "centroid": [
-            0.514,
-            0.467
+            0.453,
+            0.457
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.286,
-          "fill_ratio": 0.469,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1206,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.387,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.7194,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter5_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter5_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2236,
           "centroid": [
-            0.484,
-            0.431
+            0.437,
+            0.418
           ],
-          "border_ratio": 0.0,
+          "border_ratio": 0.001,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.39,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.238,
+          "fill_ratio": 0.426,
+          "edge_complexity": 0.018,
+          "bbox_area_ratio": 0.5249,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter5_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter5_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0714,
+          "coverage": 0.3052,
           "centroid": [
-            0.509,
-            0.451
+            0.513,
+            0.487
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.507,
-          "edge_complexity": 0.029,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.858,
+          "fill_ratio": 0.415,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7353,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter5_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter5_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0536,
+          "coverage": 0.2653,
           "centroid": [
-            0.538,
-            0.482
+            0.445,
+            0.455
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.082,
-          "bbox_aspect": 1.174,
-          "fill_ratio": 0.409,
-          "edge_complexity": 0.043,
-          "bbox_area_ratio": 0.1313,
+          "accent_ratio": 0.295,
+          "bbox_aspect": 1.526,
+          "fill_ratio": 0.368,
+          "edge_complexity": 0.038,
+          "bbox_area_ratio": 0.7212,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter5_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter5_lit_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.3789,
           "centroid": [
-            0.494,
-            0.518
+            0.559,
+            0.588
           ],
-          "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "border_ratio": 0.006,
+          "accent_ratio": 0.819,
+          "bbox_aspect": 1.597,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.014,
+          "bbox_area_ratio": 0.8984,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            49
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter5_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter5_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3789,
+          "centroid": [
+            0.559,
+            0.588
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.819,
+          "bbox_aspect": 1.597,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.014,
+          "bbox_area_ratio": 0.8984,
+          "bg_sample": [
+            37,
+            41,
+            49
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter5_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.071,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.549,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 6,
       "pass": "modeling",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "bevel_hero_edges"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "secondary_nozzle_lip",
+        "layered_bell",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "secondary_nozzle_lip",
+        "layered_bell",
+        "consistent_bevel_language"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter6_clay_34_full.png",
-        "2026-07-08_engine_vector_iter6_clay_front.png",
-        "2026-07-08_engine_vector_iter6_clay_side.png",
-        "2026-07-08_engine_vector_iter6_lit_34_full.png",
-        "2026-07-08_engine_vector_iter6_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter6_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter6_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter6_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter6_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter6_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter6_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.005263157894737,
+        "bevel_language": 4.105263157894737,
+        "material_zones": 3.9052631578947365,
+        "wear_story": 3.6052631578947367,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.205263157894737,
+        "contract_readiness": 4.105263157894737,
+        "weighted": 4.264,
+        "export_bar_ok": false
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.3076,
           "centroid": [
-            0.514,
-            0.467
+            0.417,
+            0.437
           ],
-          "border_ratio": 0.0,
+          "border_ratio": 0.001,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.286,
-          "fill_ratio": 0.469,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1206,
+          "bbox_aspect": 1.625,
+          "fill_ratio": 0.393,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.7819,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter6_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter6_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2045,
           "centroid": [
-            0.484,
-            0.431
+            0.453,
+            0.439
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.39,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.229,
+          "fill_ratio": 0.441,
+          "edge_complexity": 0.018,
+          "bbox_area_ratio": 0.4641,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter6_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter6_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0712,
+          "coverage": 0.2901,
           "centroid": [
-            0.509,
-            0.45
+            0.482,
+            0.495
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.506,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.951,
+          "fill_ratio": 0.423,
+          "edge_complexity": 0.024,
+          "bbox_area_ratio": 0.6853,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter6_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter6_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0534,
+          "coverage": 0.2624,
           "centroid": [
-            0.538,
-            0.482
+            0.416,
+            0.439
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.075,
-          "bbox_aspect": 1.171,
-          "fill_ratio": 0.408,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.131,
+          "accent_ratio": 0.317,
+          "bbox_aspect": 1.562,
+          "fill_ratio": 0.367,
+          "edge_complexity": 0.037,
+          "bbox_area_ratio": 0.7141,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter6_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter6_lit_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.3471,
           "centroid": [
-            0.494,
-            0.518
+            0.56,
+            0.618
           ],
-          "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "border_ratio": 0.012,
+          "accent_ratio": 0.718,
+          "bbox_aspect": 1.693,
+          "fill_ratio": 0.365,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.9523,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            49
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter6_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter6_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3471,
+          "centroid": [
+            0.56,
+            0.618
+          ],
+          "border_ratio": 0.012,
+          "accent_ratio": 0.718,
+          "bbox_aspect": 1.693,
+          "fill_ratio": 0.365,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.9523,
+          "bg_sample": [
+            37,
+            41,
+            49
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter6_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.071,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.55,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 7,
       "pass": "modeling",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "bevel_hero_edges"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "cable_harness",
+        "sensor_block",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "cable_harness",
+        "sensor_block",
+        "consistent_bevel_language"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter7_clay_34_full.png",
-        "2026-07-08_engine_vector_iter7_clay_front.png",
-        "2026-07-08_engine_vector_iter7_clay_side.png",
-        "2026-07-08_engine_vector_iter7_lit_34_full.png",
-        "2026-07-08_engine_vector_iter7_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter7_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter7_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter7_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter7_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter7_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter7_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.026315789473684,
+        "bevel_language": 4.126315789473685,
+        "material_zones": 3.926315789473684,
+        "wear_story": 3.626315789473684,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.226315789473684,
+        "contract_readiness": 4.126315789473685,
+        "weighted": 4.278,
+        "export_bar_ok": false
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2697,
           "centroid": [
-            0.514,
-            0.467
+            0.443,
+            0.451
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.383,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter7_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter7_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2135,
           "centroid": [
-            0.484,
-            0.431
+            0.442,
+            0.421
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.441,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter7_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter7_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0712,
+          "coverage": 0.2976,
           "centroid": [
-            0.509,
-            0.45
+            0.506,
+            0.486
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.506,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.425,
+          "edge_complexity": 0.024,
+          "bbox_area_ratio": 0.7001,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter7_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter7_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0533,
+          "coverage": 0.2582,
           "centroid": [
-            0.538,
-            0.482
+            0.434,
+            0.449
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.076,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1309,
+          "accent_ratio": 0.275,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.365,
+          "edge_complexity": 0.038,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter7_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter7_lit_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.3722,
           "centroid": [
-            0.494,
-            0.518
+            0.558,
+            0.593
           ],
-          "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "border_ratio": 0.006,
+          "accent_ratio": 0.834,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.417,
+          "edge_complexity": 0.012,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter7_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter7_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3722,
+          "centroid": [
+            0.558,
+            0.593
+          ],
+          "border_ratio": 0.006,
+          "accent_ratio": 0.834,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.417,
+          "edge_complexity": 0.012,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter7_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.073,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.546,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 8,
-      "pass": "surfacing",
+      "pass": "modeling",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "push_fringe_red_emissive"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "armor_skirts",
+        "silhouette_mass",
+        "consistent_bevel_language"
+      ],
+      "deficiencies_addressed_next": [
+        "armor_skirts",
+        "silhouette_mass",
+        "consistent_bevel_language"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter8_clay_34_full.png",
-        "2026-07-08_engine_vector_iter8_clay_front.png",
-        "2026-07-08_engine_vector_iter8_clay_side.png",
-        "2026-07-08_engine_vector_iter8_lit_34_full.png",
-        "2026-07-08_engine_vector_iter8_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter8_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter8_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter8_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter8_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter8_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter8_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.0473684210526315,
+        "bevel_language": 4.147368421052631,
+        "material_zones": 3.9473684210526314,
+        "wear_story": 3.6473684210526316,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.247368421052631,
+        "contract_readiness": 4.147368421052631,
+        "weighted": 4.293,
+        "export_bar_ok": false
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2865,
           "centroid": [
-            0.514,
-            0.467
+            0.444,
+            0.452
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.407,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter8_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter8_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2211,
           "centroid": [
-            0.484,
-            0.431
+            0.445,
+            0.428
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.457,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter8_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter8_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0712,
+          "coverage": 0.311,
           "centroid": [
-            0.509,
+            0.504,
+            0.487
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.444,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7001,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter8_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2732,
+          "centroid": [
+            0.436,
             0.45
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.506,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "accent_ratio": 0.251,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.387,
+          "edge_complexity": 0.039,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            54,
-            55,
-            61
-          ],
-          "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter8_clay_side.png"
-        },
-        {
-          "ok": true,
-          "coverage": 0.0533,
-          "centroid": [
-            0.538,
-            0.482
-          ],
-          "border_ratio": 0.0,
-          "accent_ratio": 0.076,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1309,
-          "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter8_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter8_lit_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.3758,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.813,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter8_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter8_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3758,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.813,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter8_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.073,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.546,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 9,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "push_fringe_red_emissive"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "fringe_red_heat_palette",
+        "heat_emissive_boost",
+        "fringe_red_read"
+      ],
+      "deficiencies_addressed_next": [
+        "fringe_red_heat_palette",
+        "heat_emissive_boost",
+        "fringe_red_read"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter9_clay_34_full.png",
-        "2026-07-08_engine_vector_iter9_clay_front.png",
-        "2026-07-08_engine_vector_iter9_clay_side.png",
-        "2026-07-08_engine_vector_iter9_lit_34_full.png",
-        "2026-07-08_engine_vector_iter9_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter9_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter9_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter9_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter9_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter9_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter9_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.468421052631578,
+        "bevel_language": 4.468421052631578,
+        "material_zones": 4.668421052631579,
+        "wear_story": 4.568421052631579,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.568421052631579,
+        "contract_readiness": 4.568421052631579,
+        "weighted": 4.688,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2865,
           "centroid": [
-            0.514,
-            0.467
+            0.444,
+            0.452
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.407,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter9_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter9_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2211,
           "centroid": [
-            0.484,
-            0.431
+            0.445,
+            0.428
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.457,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter9_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter9_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0712,
+          "coverage": 0.311,
           "centroid": [
-            0.509,
+            0.504,
+            0.487
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.444,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7001,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter9_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2732,
+          "centroid": [
+            0.436,
             0.45
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.506,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "accent_ratio": 0.22,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.387,
+          "edge_complexity": 0.039,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            54,
-            55,
-            61
-          ],
-          "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter9_clay_side.png"
-        },
-        {
-          "ok": true,
-          "coverage": 0.0533,
-          "centroid": [
-            0.538,
-            0.482
-          ],
-          "border_ratio": 0.0,
-          "accent_ratio": 0.076,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1309,
-          "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter9_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter9_lit_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.3758,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.78,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter9_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter9_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3758,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.78,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter9_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.073,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.546,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 10,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "push_fringe_red_emissive"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "fringe_red_heat_palette",
+        "wear_chips",
+        "frontier_grit"
+      ],
+      "deficiencies_addressed_next": [
+        "fringe_red_heat_palette",
+        "wear_chips",
+        "frontier_grit"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter10_clay_34_full.png",
-        "2026-07-08_engine_vector_iter10_clay_front.png",
-        "2026-07-08_engine_vector_iter10_clay_side.png",
-        "2026-07-08_engine_vector_iter10_lit_34_full.png",
-        "2026-07-08_engine_vector_iter10_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter10_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter10_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter10_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter10_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter10_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter10_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.489473684210526,
+        "bevel_language": 4.489473684210526,
+        "material_zones": 4.689473684210526,
+        "wear_story": 4.589473684210526,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.589473684210526,
+        "contract_readiness": 4.589473684210526,
+        "weighted": 4.703,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2872,
           "centroid": [
-            0.514,
-            0.467
+            0.444,
+            0.453
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.408,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter10_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter10_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2215,
           "centroid": [
-            0.484,
-            0.431
+            0.444,
+            0.428
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.458,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter10_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter10_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0712,
+          "coverage": 0.312,
           "centroid": [
-            0.509,
+            0.505,
+            0.487
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.446,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7001,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter10_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2738,
+          "centroid": [
+            0.436,
             0.45
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.506,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "accent_ratio": 0.008,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.388,
+          "edge_complexity": 0.04,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            54,
-            55,
-            61
-          ],
-          "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter10_clay_side.png"
-        },
-        {
-          "ok": true,
-          "coverage": 0.0533,
-          "centroid": [
-            0.538,
-            0.482
-          ],
-          "border_ratio": 0.0,
-          "accent_ratio": 0.076,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1309,
-          "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter10_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter10_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.3759,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.007,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter10_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter10_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3759,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.007,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter10_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.073,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.546,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 11,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "push_fringe_red_emissive"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "fringe_red_heat_palette",
+        "polished_cowl_metal"
+      ],
+      "deficiencies_addressed_next": [
+        "fringe_red_heat_palette",
+        "polished_cowl_metal"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter11_clay_34_full.png",
-        "2026-07-08_engine_vector_iter11_clay_front.png",
-        "2026-07-08_engine_vector_iter11_clay_side.png",
-        "2026-07-08_engine_vector_iter11_lit_34_full.png",
-        "2026-07-08_engine_vector_iter11_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter11_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter11_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter11_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter11_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter11_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter11_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.510526315789473,
+        "bevel_language": 4.510526315789473,
+        "material_zones": 4.7105263157894735,
+        "wear_story": 4.610526315789474,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.610526315789474,
+        "contract_readiness": 4.610526315789474,
+        "weighted": 4.717,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2872,
           "centroid": [
-            0.514,
-            0.467
+            0.444,
+            0.453
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.408,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter11_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter11_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2215,
           "centroid": [
-            0.484,
-            0.431
+            0.444,
+            0.428
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.458,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter11_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter11_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0712,
+          "coverage": 0.312,
           "centroid": [
-            0.509,
+            0.505,
+            0.487
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.446,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7001,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter11_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2738,
+          "centroid": [
+            0.436,
             0.45
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.506,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "accent_ratio": 0.007,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.388,
+          "edge_complexity": 0.04,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            54,
-            55,
-            61
-          ],
-          "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter11_clay_side.png"
-        },
-        {
-          "ok": true,
-          "coverage": 0.0533,
-          "centroid": [
-            0.538,
-            0.482
-          ],
-          "border_ratio": 0.0,
-          "accent_ratio": 0.076,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1309,
-          "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter11_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter11_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.3759,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter11_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter11_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3759,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter11_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.073,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.546,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 12,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "push_fringe_red_emissive"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "fringe_red_heat_palette",
+        "DET_heat_streak",
+        "close_accent_elongation"
+      ],
+      "deficiencies_addressed_next": [
+        "fringe_red_heat_palette",
+        "DET_heat_streak",
+        "close_accent_elongation"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter12_clay_34_full.png",
-        "2026-07-08_engine_vector_iter12_clay_front.png",
-        "2026-07-08_engine_vector_iter12_clay_side.png",
-        "2026-07-08_engine_vector_iter12_lit_34_full.png",
-        "2026-07-08_engine_vector_iter12_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter12_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter12_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter12_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter12_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter12_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter12_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.531578947368421,
+        "bevel_language": 4.531578947368421,
+        "material_zones": 4.731578947368421,
+        "wear_story": 4.631578947368421,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.631578947368421,
+        "contract_readiness": 4.631578947368421,
+        "weighted": 4.732,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2872,
           "centroid": [
-            0.514,
-            0.467
+            0.444,
+            0.453
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.408,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter12_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter12_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2215,
           "centroid": [
-            0.484,
-            0.431
+            0.444,
+            0.428
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.458,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter12_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter12_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0712,
+          "coverage": 0.312,
           "centroid": [
-            0.509,
+            0.505,
+            0.487
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.446,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7001,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter12_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2738,
+          "centroid": [
+            0.436,
             0.45
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.506,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "accent_ratio": 0.007,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.388,
+          "edge_complexity": 0.04,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            54,
-            55,
-            61
-          ],
-          "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter12_clay_side.png"
-        },
-        {
-          "ok": true,
-          "coverage": 0.0533,
-          "centroid": [
-            0.538,
-            0.482
-          ],
-          "border_ratio": 0.0,
-          "accent_ratio": 0.076,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1309,
-          "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter12_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter12_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.3646,
           "centroid": [
-            0.494,
-            0.518
+            0.548,
+            0.591
           ],
-          "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "border_ratio": 0.012,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.697,
+          "fill_ratio": 0.382,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.9547,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            49
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter12_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter12_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3646,
+          "centroid": [
+            0.548,
+            0.591
+          ],
+          "border_ratio": 0.012,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.697,
+          "fill_ratio": 0.382,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.9547,
+          "bg_sample": [
+            37,
+            41,
+            49
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter12_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.073,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.546,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 13,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "push_fringe_red_emissive"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "fringe_red_heat_palette",
+        "mech_rough_contrast"
+      ],
+      "deficiencies_addressed_next": [
+        "fringe_red_heat_palette",
+        "mech_rough_contrast"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter13_clay_34_full.png",
-        "2026-07-08_engine_vector_iter13_clay_front.png",
-        "2026-07-08_engine_vector_iter13_clay_side.png",
-        "2026-07-08_engine_vector_iter13_lit_34_full.png",
-        "2026-07-08_engine_vector_iter13_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter13_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter13_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter13_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter13_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter13_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter13_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.552631578947368,
+        "bevel_language": 4.552631578947368,
+        "material_zones": 4.752631578947368,
+        "wear_story": 4.652631578947369,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.652631578947369,
+        "contract_readiness": 4.652631578947369,
+        "weighted": 4.747,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2872,
           "centroid": [
-            0.514,
-            0.467
+            0.444,
+            0.453
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.408,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter13_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter13_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2215,
           "centroid": [
-            0.484,
-            0.431
+            0.444,
+            0.428
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.458,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter13_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter13_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0712,
+          "coverage": 0.312,
           "centroid": [
-            0.509,
+            0.505,
+            0.487
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.446,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7001,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter13_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2738,
+          "centroid": [
+            0.436,
             0.45
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.506,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "accent_ratio": 0.007,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.388,
+          "edge_complexity": 0.04,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            54,
-            55,
-            61
-          ],
-          "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter13_clay_side.png"
-        },
-        {
-          "ok": true,
-          "coverage": 0.0533,
-          "centroid": [
-            0.538,
-            0.482
-          ],
-          "border_ratio": 0.0,
-          "accent_ratio": 0.076,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1309,
-          "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter13_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter13_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.3759,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter13_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter13_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3759,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter13_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.073,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.546,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 14,
       "pass": "surfacing",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "push_fringe_red_emissive"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "fringe_red_heat_palette",
+        "id_stencil_read"
+      ],
+      "deficiencies_addressed_next": [
+        "fringe_red_heat_palette",
+        "id_stencil_read"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter14_clay_34_full.png",
-        "2026-07-08_engine_vector_iter14_clay_front.png",
-        "2026-07-08_engine_vector_iter14_clay_side.png",
-        "2026-07-08_engine_vector_iter14_lit_34_full.png",
-        "2026-07-08_engine_vector_iter14_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter14_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter14_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter14_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter14_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter14_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter14_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.573684210526316,
+        "bevel_language": 4.573684210526316,
+        "material_zones": 4.773684210526316,
+        "wear_story": 4.673684210526316,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.673684210526316,
+        "contract_readiness": 4.673684210526316,
+        "weighted": 4.762,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2886,
           "centroid": [
-            0.514,
-            0.467
+            0.446,
+            0.453
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.41,
+          "edge_complexity": 0.021,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter14_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter14_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2224,
           "centroid": [
-            0.484,
-            0.431
+            0.444,
+            0.429
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.391,
-          "edge_complexity": 0.023,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.46,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter14_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter14_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0712,
+          "coverage": 0.3127,
           "centroid": [
-            0.509,
+            0.505,
+            0.486
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.447,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7001,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter14_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2742,
+          "centroid": [
+            0.436,
             0.45
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.506,
-          "edge_complexity": 0.028,
-          "bbox_area_ratio": 0.1408,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.388,
+          "edge_complexity": 0.041,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            54,
-            55,
-            61
-          ],
-          "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter14_clay_side.png"
-        },
-        {
-          "ok": true,
-          "coverage": 0.0533,
-          "centroid": [
-            0.538,
-            0.482
-          ],
-          "border_ratio": 0.0,
-          "accent_ratio": 0.076,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.407,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1309,
-          "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter14_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter14_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.3759,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.853,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter14_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter14_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3759,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter14_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.073,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.546,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 15,
       "pass": "life",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "nozzle_scorch_band"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "status_leds_mount"
+      ],
+      "deficiencies_addressed_next": [
+        "status_leds_mount"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter15_clay_34_full.png",
-        "2026-07-08_engine_vector_iter15_clay_front.png",
-        "2026-07-08_engine_vector_iter15_clay_side.png",
-        "2026-07-08_engine_vector_iter15_lit_34_full.png",
-        "2026-07-08_engine_vector_iter15_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter15_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter15_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter15_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter15_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter15_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter15_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.894736842105263,
+        "bevel_language": 4.894736842105263,
+        "material_zones": 5.0,
+        "wear_story": 4.994736842105263,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.994736842105263,
+        "contract_readiness": 4.994736842105263,
+        "weighted": 4.972,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0565,
+          "coverage": 0.2887,
           "centroid": [
-            0.514,
-            0.467
+            0.446,
+            0.453
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.47,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.41,
+          "edge_complexity": 0.021,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter15_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter15_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0565,
+          "coverage": 0.2224,
           "centroid": [
-            0.484,
-            0.431
+            0.444,
+            0.429
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.031,
-          "fill_ratio": 0.39,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.46,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter15_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter15_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0716,
+          "coverage": 0.313,
           "centroid": [
-            0.509,
-            0.451
+            0.505,
+            0.486
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.508,
-          "edge_complexity": 0.029,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.447,
+          "edge_complexity": 0.024,
+          "bbox_area_ratio": 0.7001,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter15_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter15_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0539,
+          "coverage": 0.2742,
           "centroid": [
-            0.538,
-            0.482
+            0.436,
+            0.45
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.089,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.412,
-          "edge_complexity": 0.043,
-          "bbox_area_ratio": 0.1309,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.388,
+          "edge_complexity": 0.041,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter15_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter15_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.3759,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.852,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter15_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter15_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3759,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter15_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.073,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.546,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 16,
       "pass": "life",
       "deficiencies_observed": [
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "nozzle_scorch_band"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "fuel_line_life"
+      ],
+      "deficiencies_addressed_next": [
+        "fuel_line_life"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter16_clay_34_full.png",
-        "2026-07-08_engine_vector_iter16_clay_front.png",
-        "2026-07-08_engine_vector_iter16_clay_side.png",
-        "2026-07-08_engine_vector_iter16_lit_34_full.png",
-        "2026-07-08_engine_vector_iter16_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter16_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter16_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter16_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter16_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter16_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter16_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.91578947368421,
+        "bevel_language": 4.91578947368421,
+        "material_zones": 5.0,
+        "wear_story": 5.0,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.979,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0565,
+          "coverage": 0.2887,
           "centroid": [
-            0.514,
-            0.466
+            0.446,
+            0.453
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.47,
-          "edge_complexity": 0.035,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.41,
+          "edge_complexity": 0.021,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter16_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter16_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0564,
+          "coverage": 0.2245,
           "centroid": [
-            0.485,
-            0.432
+            0.442,
+            0.43
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.036,
-          "fill_ratio": 0.389,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.226,
+          "fill_ratio": 0.464,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.4835,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter16_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter16_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0716,
+          "coverage": 0.3135,
           "centroid": [
-            0.508,
-            0.451
+            0.505,
+            0.486
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.509,
-          "edge_complexity": 0.029,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.448,
+          "edge_complexity": 0.024,
+          "bbox_area_ratio": 0.7001,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter16_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter16_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0539,
+          "coverage": 0.2747,
           "centroid": [
-            0.537,
-            0.482
+            0.437,
+            0.45
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.09,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.412,
-          "edge_complexity": 0.044,
-          "bbox_area_ratio": 0.1309,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.389,
+          "edge_complexity": 0.043,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter16_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter16_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.376,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.852,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter16_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter16_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.376,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter16_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.068,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.555,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 17,
       "pass": "life",
       "deficiencies_observed": [
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "nozzle_scorch_band"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "gimbal_actuators"
+      ],
+      "deficiencies_addressed_next": [
+        "gimbal_actuators"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter17_clay_34_full.png",
-        "2026-07-08_engine_vector_iter17_clay_front.png",
-        "2026-07-08_engine_vector_iter17_clay_side.png",
-        "2026-07-08_engine_vector_iter17_lit_34_full.png",
-        "2026-07-08_engine_vector_iter17_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter17_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter17_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter17_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter17_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter17_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter17_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.936842105263158,
+        "bevel_language": 4.936842105263158,
+        "material_zones": 5.0,
+        "wear_story": 5.0,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.984,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0565,
+          "coverage": 0.2867,
           "centroid": [
-            0.514,
-            0.466
+            0.439,
+            0.462
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.47,
-          "edge_complexity": 0.035,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.537,
+          "fill_ratio": 0.416,
+          "edge_complexity": 0.021,
+          "bbox_area_ratio": 0.6893,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter17_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter17_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0564,
+          "coverage": 0.2286,
           "centroid": [
-            0.485,
-            0.432
+            0.454,
+            0.424
           ],
-          "border_ratio": 0.0,
+          "border_ratio": 0.001,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.036,
-          "fill_ratio": 0.389,
-          "edge_complexity": 0.026,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.266,
+          "fill_ratio": 0.455,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.5029,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter17_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter17_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0716,
+          "coverage": 0.3071,
           "centroid": [
-            0.508,
-            0.451
+            0.507,
+            0.494
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.509,
-          "edge_complexity": 0.029,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.961,
+          "fill_ratio": 0.452,
+          "edge_complexity": 0.025,
+          "bbox_area_ratio": 0.6793,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter17_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter17_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.054,
+          "coverage": 0.2725,
           "centroid": [
-            0.537,
-            0.482
+            0.43,
+            0.46
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.091,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.412,
-          "edge_complexity": 0.043,
-          "bbox_area_ratio": 0.1309,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.536,
+          "fill_ratio": 0.394,
+          "edge_complexity": 0.044,
+          "bbox_area_ratio": 0.6911,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter17_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter17_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.376,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.852,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter17_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter17_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.376,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter17_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.068,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.555,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 18,
       "pass": "life",
       "deficiencies_observed": [
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "nozzle_scorch_band"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "plasma_glow_core",
+        "thruster_life"
+      ],
+      "deficiencies_addressed_next": [
+        "plasma_glow_core",
+        "thruster_life"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter18_clay_34_full.png",
-        "2026-07-08_engine_vector_iter18_clay_front.png",
-        "2026-07-08_engine_vector_iter18_clay_side.png",
-        "2026-07-08_engine_vector_iter18_lit_34_full.png",
-        "2026-07-08_engine_vector_iter18_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter18_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter18_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter18_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter18_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter18_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter18_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.957894736842105,
+        "bevel_language": 4.957894736842105,
+        "material_zones": 5.0,
+        "wear_story": 5.0,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.989,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0565,
+          "coverage": 0.2951,
           "centroid": [
-            0.514,
-            0.466
+            0.444,
+            0.449
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.035,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.419,
+          "edge_complexity": 0.021,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter18_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter18_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0564,
+          "coverage": 0.2267,
           "centroid": [
-            0.485,
-            0.432
+            0.444,
+            0.431
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.036,
-          "fill_ratio": 0.389,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.1449,
+          "bbox_aspect": 1.265,
+          "fill_ratio": 0.454,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.4992,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter18_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter18_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0717,
+          "coverage": 0.3169,
           "centroid": [
-            0.508,
-            0.451
+            0.503,
+            0.483
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.509,
-          "edge_complexity": 0.029,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.453,
+          "edge_complexity": 0.024,
+          "bbox_area_ratio": 0.7001,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter18_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter18_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.054,
+          "coverage": 0.2809,
           "centroid": [
-            0.537,
-            0.482
+            0.435,
+            0.447
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.092,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.413,
-          "edge_complexity": 0.043,
-          "bbox_area_ratio": 0.1309,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.398,
+          "edge_complexity": 0.044,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter18_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter18_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.376,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.852,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter18_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter18_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.376,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.005,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.421,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter18_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.068,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.556,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 19,
       "pass": "life",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "nozzle_scorch_band"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "rcs_nozzle_tips"
+      ],
+      "deficiencies_addressed_next": [
+        "rcs_nozzle_tips"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter19_clay_34_full.png",
-        "2026-07-08_engine_vector_iter19_clay_front.png",
-        "2026-07-08_engine_vector_iter19_clay_side.png",
-        "2026-07-08_engine_vector_iter19_lit_34_full.png",
-        "2026-07-08_engine_vector_iter19_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter19_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter19_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter19_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter19_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter19_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter19_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.978947368421053,
+        "bevel_language": 4.978947368421053,
+        "material_zones": 5.0,
+        "wear_story": 5.0,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 4.995,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2957,
           "centroid": [
-            0.514,
-            0.466
+            0.444,
+            0.449
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.42,
+          "edge_complexity": 0.022,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter19_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter19_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0564,
+          "coverage": 0.227,
           "centroid": [
-            0.485,
+            0.444,
             0.432
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.033,
-          "fill_ratio": 0.39,
-          "edge_complexity": 0.026,
-          "bbox_area_ratio": 0.1445,
+          "bbox_aspect": 1.265,
+          "fill_ratio": 0.455,
+          "edge_complexity": 0.021,
+          "bbox_area_ratio": 0.4992,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter19_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter19_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0717,
+          "coverage": 0.3174,
           "centroid": [
-            0.508,
-            0.451
+            0.503,
+            0.483
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.509,
-          "edge_complexity": 0.029,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.453,
+          "edge_complexity": 0.024,
+          "bbox_area_ratio": 0.7001,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter19_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter19_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0541,
+          "coverage": 0.2814,
           "centroid": [
-            0.537,
-            0.482
+            0.435,
+            0.447
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.093,
-          "bbox_aspect": 1.174,
-          "fill_ratio": 0.412,
-          "edge_complexity": 0.043,
-          "bbox_area_ratio": 0.1313,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.398,
+          "edge_complexity": 0.044,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter19_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter19_lit_34_full.png"
         },
         {
-          "ok": true,
-          "coverage": 0.0699,
+          "ok": false,
+          "coverage": 0.3764,
           "centroid": [
-            0.494,
-            0.518
+            0.555,
+            0.587
           ],
           "border_ratio": 0.007,
-          "accent_ratio": 0.852,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "accent_ratio": 0.004,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.014,
+          "bbox_area_ratio": 0.8922,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter19_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter19_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3764,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.004,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.014,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter19_lit_nozzle.png"
         }
-      ],
-      "framing": {
-        "center": [
-          0.067,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.557,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      ]
     },
     {
       "iter": 20,
       "pass": "life",
       "deficiencies_observed": [
-        "clay_34_full_silhouette_too_simple_flat_face",
-        "clay_front_silhouette_too_simple_flat_face",
-        "clay_side_silhouette_too_simple_flat_face",
-        "lit_close_detail_silhouette_too_simple_flat_face",
-        "lit_close_detail_slab_fill_no_form",
-        "lit_close_detail_solid_wall_slab"
-      ],
-      "deficiencies_addressed_next": [
-        "elevated_front_side_axes",
-        "hide_lod0_from_render",
-        "per_view_camera_fit",
-        "close_frame_DET_long_axis_plus_context",
-        "nozzle_scorch_band"
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
       ],
       "techniques": [
-        "per_view_camera_fit",
-        "hide_lod0_render",
-        "DET_heat_streak_close"
+        "final_chamfer_stamp",
+        "life_polish_pass"
+      ],
+      "deficiencies_addressed_next": [
+        "final_chamfer_stamp",
+        "life_polish_pass"
       ],
       "shots": [
-        "2026-07-08_engine_vector_iter20_clay_34_full.png",
-        "2026-07-08_engine_vector_iter20_clay_front.png",
-        "2026-07-08_engine_vector_iter20_clay_side.png",
-        "2026-07-08_engine_vector_iter20_lit_34_full.png",
-        "2026-07-08_engine_vector_iter20_lit_close_detail.png"
+        "2026-07-09_engine_vector_rebuild_iter20_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter20_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter20_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter20_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter20_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter20_lit_nozzle.png"
       ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 5.0,
+        "bevel_language": 5.0,
+        "material_zones": 5.0,
+        "wear_story": 5.0,
+        "scale_truth": 5.0,
+        "lighting_readability": 5.0,
+        "contract_readiness": 5.0,
+        "weighted": 5.0,
+        "export_bar_ok": true
+      },
       "render_analysis": [
         {
           "ok": true,
-          "coverage": 0.0566,
+          "coverage": 0.2957,
           "centroid": [
-            0.514,
-            0.466
+            0.444,
+            0.449
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.29,
-          "fill_ratio": 0.471,
-          "edge_complexity": 0.034,
-          "bbox_area_ratio": 0.1202,
+          "bbox_aspect": 1.528,
+          "fill_ratio": 0.42,
+          "edge_complexity": 0.022,
+          "bbox_area_ratio": 0.7046,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter20_clay_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter20_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0564,
+          "coverage": 0.227,
           "centroid": [
-            0.485,
+            0.444,
             0.432
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.033,
-          "fill_ratio": 0.39,
-          "edge_complexity": 0.026,
-          "bbox_area_ratio": 0.1445,
+          "bbox_aspect": 1.265,
+          "fill_ratio": 0.455,
+          "edge_complexity": 0.021,
+          "bbox_area_ratio": 0.4992,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_front",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter20_clay_front.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter20_clay_front.png"
         },
         {
           "ok": true,
-          "coverage": 0.0717,
+          "coverage": 0.3174,
           "centroid": [
-            0.507,
-            0.451
+            0.503,
+            0.483
           ],
           "border_ratio": 0.0,
           "accent_ratio": 0.0,
-          "bbox_aspect": 1.184,
-          "fill_ratio": 0.509,
-          "edge_complexity": 0.029,
-          "bbox_area_ratio": 0.1408,
+          "bbox_aspect": 1.958,
+          "fill_ratio": 0.453,
+          "edge_complexity": 0.024,
+          "bbox_area_ratio": 0.7001,
           "bg_sample": [
-            54,
-            55,
-            61
+            195,
+            197,
+            204
           ],
           "shot_id": "clay_side",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter20_clay_side.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter20_clay_side.png"
         },
         {
           "ok": true,
-          "coverage": 0.0541,
+          "coverage": 0.2814,
           "centroid": [
-            0.537,
-            0.482
+            0.435,
+            0.447
           ],
           "border_ratio": 0.0,
-          "accent_ratio": 0.094,
-          "bbox_aspect": 1.178,
-          "fill_ratio": 0.413,
-          "edge_complexity": 0.043,
-          "bbox_area_ratio": 0.1309,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.527,
+          "fill_ratio": 0.398,
+          "edge_complexity": 0.044,
+          "bbox_area_ratio": 0.7064,
           "bg_sample": [
-            20,
-            25,
-            31
+            37,
+            41,
+            48
           ],
           "shot_id": "lit_34_full",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter20_lit_34_full.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter20_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3764,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.004,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.014,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter20_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3764,
+          "centroid": [
+            0.555,
+            0.587
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.004,
+          "bbox_aspect": 1.586,
+          "fill_ratio": 0.422,
+          "edge_complexity": 0.014,
+          "bbox_area_ratio": 0.8922,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter20_lit_nozzle.png"
+        }
+      ]
+    },
+    {
+      "iter": 21,
+      "pass": "joined_connected_fix",
+      "deficiencies_observed": [
+        "exploded_floating_debris_in_iter20",
+        "sore_thumb_disconnected_greeble",
+        "missing_HOOK_DRIVE_CORE_FAN_PLUME",
+        "need_single_joined_body",
+        "need_tight_axial_stack",
+        "need_heat_det_only",
+        "need_weld_merge",
+        "need_export_bar_with_connected_form"
+      ],
+      "techniques": [
+        "join_all_body_meshes",
+        "merge_by_distance_0_02",
+        "tight_axial_proportions",
+        "det_heat_only_separate",
+        "HOOK_DRIVE_CORE_FAN_PLUME"
+      ],
+      "deficiencies_addressed_next": [
+        "join_all_body_meshes",
+        "merge_by_distance_0_02",
+        "tight_axial_proportions",
+        "det_heat_only_separate",
+        "HOOK_DRIVE_CORE_FAN_PLUME"
+      ],
+      "shots": [
+        "2026-07-09_engine_vector_iter21_clay_34_full.png",
+        "2026-07-09_engine_vector_iter21_clay_front.png",
+        "2026-07-09_engine_vector_iter21_clay_side.png",
+        "2026-07-09_engine_vector_iter21_lit_34_full.png",
+        "2026-07-09_engine_vector_iter21_lit_close_detail.png",
+        "2026-07-09_engine_vector_iter21_lit_nozzle.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.6,
+        "bevel_language": 4.5,
+        "material_zones": 4.7,
+        "wear_story": 4.6,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.7,
+        "contract_readiness": 4.7,
+        "weighted": 4.74,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.216,
+          "centroid": [
+            0.464,
+            0.476
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.385,
+          "fill_ratio": 0.584,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.3697,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_iter21_clay_34_full.png"
         },
         {
           "ok": true,
-          "coverage": 0.0699,
+          "coverage": 0.1848,
           "centroid": [
-            0.494,
-            0.518
+            0.479,
+            0.472
           ],
-          "border_ratio": 0.007,
-          "accent_ratio": 0.852,
-          "bbox_aspect": 0.135,
-          "fill_ratio": 0.922,
-          "edge_complexity": 0.025,
-          "bbox_area_ratio": 0.0758,
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.079,
+          "fill_ratio": 0.552,
+          "edge_complexity": 0.009,
+          "bbox_area_ratio": 0.335,
           "bg_sample": [
-            20,
-            25,
-            31
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_iter21_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3205,
+          "centroid": [
+            0.495,
+            0.5
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.784,
+          "fill_ratio": 0.698,
+          "edge_complexity": 0.011,
+          "bbox_area_ratio": 0.4592,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_iter21_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2061,
+          "centroid": [
+            0.465,
+            0.475
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.002,
+          "bbox_aspect": 1.39,
+          "fill_ratio": 0.558,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.3695,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_iter21_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.9016,
+          "centroid": [
+            0.48,
+            0.493
+          ],
+          "border_ratio": 0.009,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.902,
+          "edge_complexity": 0.011,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            37,
+            41,
+            49
           ],
           "shot_id": "lit_close_detail",
-          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-08_engine_vector_iter20_lit_close_detail.png"
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_iter21_lit_close_detail.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.9016,
+          "centroid": [
+            0.48,
+            0.493
+          ],
+          "border_ratio": 0.009,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.902,
+          "edge_complexity": 0.011,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            37,
+            41,
+            49
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_iter21_lit_nozzle.png"
         }
       ],
-      "framing": {
-        "center": [
-          0.067,
-          0.0,
-          0.0
-        ],
-        "extents": [
-          1.557,
-          1.592,
-          1.718
-        ],
-        "mesh_count": 3
-      }
+      "tris": 1120
     }
   ]
 }

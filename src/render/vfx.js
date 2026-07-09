@@ -2145,6 +2145,7 @@ export const vfx = {
     const pos = this._posFrom(p, null);
     if (!pos) return;
     const col = oreColor(p.oreType);
+    // Top-50 rank-9: denser contact spray so beam mining reads as real work, not a whisper.
     // Spray sparks outward from the contact point, biased away from the miner so they fan
     // off the rock face like molten chips. Bigger, brighter, more numerous than before.
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
@@ -2155,31 +2156,39 @@ export const vfx = {
     }
     // Hot white-to-ore sparks — wider spray, faster, longer life
     this._c0.set('#fffaf0'); this._c1.set(col);
-    const n = Math.max(8, Math.round(16 * (this._burst || 1)));
+    const n = Math.max(12, Math.round(22 * (this._burst || 1)));
     for (let k = 0; k < n; k++) {
       // Spray perpendicular to beam (away from rock face) for a fan effect
       const a = backA != null
-        ? backA + Math.PI + (Math.random() - 0.5) * 2.2  // fan away from ship
+        ? backA + Math.PI + (Math.random() - 0.5) * 2.4  // fan away from ship
         : Math.random() * Math.PI * 2;
-      const sp = 18 + Math.random() * 35;
+      const sp = 20 + Math.random() * 40;
       this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.35 + Math.random() * 0.2, 2.0, 0.2, this._c0, this._c1, 2.5, 0, 0);
+        0.38 + Math.random() * 0.22, 2.2, 0.2, this._c0, this._c1, 2.5, 0, 0);
     }
     // A few slow-drifting embers that linger (amber → dim)
     this._c0.set('#ffb040'); this._c1.set('#401800');
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < 5; k++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 3 + Math.random() * 6;
+      const sp = 3 + Math.random() * 7;
       this._spawnParticle(pos.x + (Math.random() - 0.5) * 4, pos.z + (Math.random() - 0.5) * 4,
-        Math.cos(a) * sp, Math.sin(a) * sp, 0.6 + Math.random() * 0.4, 1.8, 0.0, this._c0, this._c1, 1.5, 0, 0);
+        Math.cos(a) * sp, Math.sin(a) * sp, 0.65 + Math.random() * 0.45, 2.0, 0.0, this._c0, this._c1, 1.5, 0, 0);
+    }
+    // Ore-chip micro chunks (heavier, slower) — readable as rock break fragments
+    this._c0.set(col); this._c1.set('#2a2018');
+    for (let k = 0; k < 4; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 6 + Math.random() * 12;
+      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.55 + Math.random() * 0.3, 2.6, 0.4, this._c0, this._c1, 1.8, 0, 2 + Math.random() * 4);
     }
     // Bright contact flash — bigger, punchier
-    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.15, 2.5, 5.0, 0.8, 0.0, col, 0, 0);
+    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.18, 2.8, 5.8, 0.85, 0.0, col, 0, 0);
     // Drifting dust / debris cloud
-    this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.5, 2.0, 4.5, 0.5, 0.0, col,
-      (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+    this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.55, 2.2, 5.0, 0.55, 0.0, col,
+      (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9);
     // Strong ore-tinted dynamic light at contact — brighter, wider
-    this._flashLight({ x: pos.x, z: pos.z }, col, 4.0, 3.5, 140);
+    this._flashLight({ x: pos.x, z: pos.z }, col, 4.6, 3.8, 155);
   },
 
   _onMiningYield(p) {
@@ -2188,19 +2197,29 @@ export const vfx = {
     if (!pos) return;
     const col = oreColor(p.commodityId);
     const qty = p.qty || 1;
-    // Satisfying burst of sparkles when ore pops out — scales with quantity
-    const burstN = Math.min(20, 6 + qty * 2);
+    // Top-50 rank-9 ore-chunk yield: denser burst + crack ring so pickup pops.
+    const burstN = Math.min(32, 10 + qty * 3);
     this._c0.set('#ffffff'); this._c1.set(col);
     for (let k = 0; k < burstN; k++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 15 + Math.random() * 25;
+      const sp = 16 + Math.random() * 30;
       this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.3 + Math.random() * 0.2, 2.0, 0.3, this._c0, this._c1, 2.0, 0, 4 + Math.random() * 8);
+        0.35 + Math.random() * 0.25, 2.4, 0.35, this._c0, this._c1, 2.0, 0, 5 + Math.random() * 10);
     }
-    // Bright flash + expanding ring to punctuate the yield
-    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.3, 3.0, 6.0, 0.9, 0.0, col, 0, 0);
-    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.4, 2.0, 12.0, 0.5, 0.0, col, 0, 0);
-    this._flashLight({ x: pos.x, z: pos.z }, col, 5.0, 4.0, 180);
+    // Chunky ore fragments (slower, larger life)
+    this._c0.set(col); this._c1.set('#1a1410');
+    const chunkN = Math.min(12, 4 + qty);
+    for (let k = 0; k < chunkN; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 8 + Math.random() * 16;
+      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.7 + Math.random() * 0.4, 3.2, 0.6, this._c0, this._c1, 1.4, 0, 3 + Math.random() * 6);
+    }
+    // Bright flash + expanding break ring to punctuate the yield
+    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.35, 3.4, 7.0, 0.95, 0.0, col, 0, 0);
+    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.45, 2.4, 14.0, 0.55, 0.0, col, 0, 0);
+    this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.6, 3.0, 7.0, 0.45, 0.0, col, 0, 0);
+    this._flashLight({ x: pos.x, z: pos.z }, col, 6.0, 4.5, 200);
   },
 
   _onThrust(p) {

@@ -1,1 +1,60 @@
-{"partId":"place_gate_jump_ring","tris":4784,"bytes":340708,"images":3}
+{
+  "id": "place_gate_jump_ring",
+  "category": "places",
+  "priority": "P0",
+  "file": "places/place_gate_jump_ring.glb",
+  "tris": 15932,
+  "bytes": 1523364,
+  "textureSize": 1024,
+  "tintable": {
+    "hull": "Material_Hull",
+    "accent": "Material_Accent"
+  },
+  "note": "PRO revamp 2026-07-05 — bevel + WN + advanced techniques (full 3 passes pattern). 4784 tris.",
+  "factionAccentVariants": {
+    "core": {
+      "accent": "#39d0ff",
+      "thruster": "#88aaff"
+    },
+    "belt": {
+      "accent": "#ffb35c",
+      "thruster": "#ff8844"
+    },
+    "fringe": {
+      "accent": "#ff5c5c",
+      "thruster": "#ff4466"
+    },
+    "anomaly": {
+      "accent": "#8d66ff",
+      "thruster": "#4ddc92"
+    }
+  },
+  "hooks": [
+    "HOOK_Emissive"
+  ],
+  "sockets": [
+    "SOCKET_Structure_Core"
+  ],
+  "mount": "origin",
+  "bounds": {
+    "min": [
+      -1.6,
+      -20.45,
+      -25.6
+    ],
+    "max": [
+      8.2,
+      20.45,
+      25.6
+    ],
+    "dimensionsM": [
+      9.8,
+      40.9,
+      51.2
+    ]
+  },
+  "weighted": 4.99,
+  "export_bar_ok": true,
+  "date": "2026-07-09",
+  "source": "campaign1-20"
+}

@@ -1024,8 +1024,8 @@
       "category": "engines",
       "priority": "P1",
       "file": "engines/engine_vector.glb",
-      "tris": 1292,
-      "bytes": 105100,
+      "tris": 5064,
+      "bytes": 350244,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1059,19 +1059,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.712,
-          -0.8592,
-          -0.8
+          -0.65,
+          -0.5378,
+          -0.5461
         ],
         "max": [
-          2.6,
-          0.8592,
-          0.8
+          1.3476,
+          0.5378,
+          0.5461
         ],
         "dimensionsM": [
-          3.312,
-          1.7184,
-          1.6
+          1.9976,
+          1.0757,
+          1.0923
         ]
       }
     },
@@ -2934,8 +2934,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
-      "tris": 688,
-      "bytes": 187152,
+      "tris": 5508,
+      "bytes": 589884,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2965,19 +2965,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -16,
-          -7,
-          -8
+          -2.6163,
+          -2.2,
+          -1.958
         ],
         "max": [
-          16,
-          7,
-          8
+          2.4062,
+          2.2,
+          2.1143
         ],
         "dimensionsM": [
-          32,
-          14,
-          16
+          5.0224,
+          4.4,
+          4.0723
         ]
       }
     },

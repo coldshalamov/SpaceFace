@@ -1,69 +1,60 @@
-=== PREP+EXPORT engine_vector 2026-07-08T15:53:18.9092691-04:00 ===
-00:06.219  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_vector_authored.blend"
-C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\prep_export_contract.py:45: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
-  mat.use_nodes = True
-Reloading external rigs...
-Reloading external metarigs...
-Info: Saved as "engine_vector_authored.blend"
-Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
-
-Blender quit
-00:04.782  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_vector_authored.blend"
-Reloading external rigs...
-Reloading external metarigs...
-INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
-15:53:34 | INFO: Starting glTF 2.0 export
-15:53:34 | INFO: Extracting primitive: Cube.001
-15:53:35 | INFO: Primitives created: 1
-15:53:35 | INFO: Extracting primitive: Cube.002
-15:53:35 | INFO: Primitives created: 1
-15:53:35 | INFO: Extracting primitive: engine_vector_Material_Mechanical_Merged
-15:53:35 | INFO: Primitives created: 1
-15:53:35 | INFO: Extracting primitive: HOOK_DRIVE_CORE
-15:53:35 | INFO: Primitives created: 1
-15:53:35 | INFO: Extracting primitive: HOOK_DRIVE_FAN
-15:53:35 | INFO: Primitives created: 1
-15:53:35 | INFO: Extracting primitive: HOOK_DRIVE_PLUME
-15:53:35 | INFO: Primitives created: 1
-15:53:35 | INFO: Extracting primitive: LOD0_ENGINE_VECTOR_MAIN
-15:53:35 | INFO: Primitives created: 1
-15:53:35 | INFO: Finished glTF 2.0 export in 0.6734869480133057 s
-
-Info: Saved as "engine_vector_authored.blend"
-Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
-
-Blender quit
 {
-  "partId": "engine_vector",
+  "id": "engine_vector",
+  "category": "engines",
+  "priority": "P1",
   "file": "engines/engine_vector.glb",
-  "tris": 1292,
-  "bytes": 104964,
-  "dims": [
-    3.3,
-    1.7184,
-    1.6
+  "tris": 5064,
+  "bytes": 350244,
+  "textureSize": 1024,
+  "tintable": {
+    "hull": "Material_Hull",
+    "accent": "Material_Accent"
+  },
+  "note": "PRO revamp 2026-07-05 — bevel (segs=3, profile=0.6, angle limit) + WeightedNormal (last) via MCP import + modeling pass. Character: precision vectoring drive, clean futuristic base + mechanical wear/heat on fan/nozzle. 1076 tris.",
+  "factionAccentVariants": {
+    "core": {
+      "accent": "#39d0ff",
+      "thruster": "#88aaff"
+    },
+    "belt": {
+      "accent": "#ffb35c",
+      "thruster": "#ff8844"
+    },
+    "fringe": {
+      "accent": "#ff5c5c",
+      "thruster": "#ff4466"
+    },
+    "anomaly": {
+      "accent": "#8d66ff",
+      "thruster": "#4ddc92"
+    }
+  },
+  "hooks": [
+    "HOOK_DRIVE_CORE",
+    "HOOK_DRIVE_FAN",
+    "HOOK_DRIVE_PLUME"
   ],
-  "images": 1,
-  "materials": "Material_Accent,Material_Mechanical,Material_Hull"
-}
-
---- spaceface_export ---
-{
-  "part_id": "engine_vector",
-  "export_path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\_export_tmp.glb",
-  "bytes": 104592
-}
-
---- spaceface_export ---
-{
-  "part_id": "engine_vector",
-  "export_path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\_export_tmp.glb",
-  "bytes": 104592
-}
-
---- spaceface_export ---
-{
-  "part_id": "engine_vector",
-  "export_path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\_export_tmp.glb",
-  "bytes": 104592
+  "sockets": [],
+  "mount": "origin",
+  "bounds": {
+    "min": [
+      -0.65,
+      -0.5378,
+      -0.5461
+    ],
+    "max": [
+      1.3476,
+      0.5378,
+      0.5461
+    ],
+    "dimensionsM": [
+      1.9976,
+      1.0757,
+      1.0923
+    ]
+  },
+  "weighted": 4.74,
+  "export_bar_ok": true,
+  "pass": "joined_connected_fix_iter21",
+  "date": "2026-07-09"
 }

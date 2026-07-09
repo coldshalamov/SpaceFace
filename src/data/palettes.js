@@ -111,16 +111,17 @@ export function paintProfileFor(personality) {
 }
 
 export const SECTOR_PALETTES = {
+  // Helios Prime — rank-10 sky kit: deep azure void, cyan-nebula, bright sun for store stills.
   sector_helios_prime: {
-    skyColor:     '#010818',
-    nebulaColor:  '#081840',
-    starDensity:  0.9,
-    ambientLight: '#0A1830',
-    sunColor:     '#FFF0C8',
-    sunIntensity: 1.2,
-    fogColor:     '#000810',
-    fogDensity:   0.00002,
-    asteroidTint: '#888090',
+    skyColor:     '#010a1c',
+    nebulaColor:  '#0a2860',
+    starDensity:  1.05,
+    ambientLight: '#0c2040',
+    sunColor:     '#FFF4D4',
+    sunIntensity: 1.35,
+    fogColor:     '#000a14',
+    fogDensity:   0.000018,
+    asteroidTint: '#8a8898',
   },
   sector_ceres_belt: {
     skyColor:     '#020A10',

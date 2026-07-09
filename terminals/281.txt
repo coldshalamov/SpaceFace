@@ -20,7 +20,7 @@ Add-Content \"$scratch\\build-sg04-release-assets.log\" \"`n=== RUN2 appended ==
 Get-Content \"$scratch\\build-sg04-release-assets-run2.log\" | Add-Content \"$scratch\\build-sg04-release-assets.log\"
 Write-Host \"BUILD_EXIT run1=$ec1 run2=$ec2\""
 started_at: 2026-07-08T22:19:21.721Z
-running_for_ms: 76984998 
+running_for_ms: 86400014 
 ---
 
 > spaceface@0.1.0 build:sg04:release-assets
@@ -563,3 +563,9 @@ Error: another SG-04 release asset build is already running (assets/ships/releas
 
 Node.js v24.15.0
 BUILD_EXIT run1=1 run2=1
+
+---
+exit_code: -1
+elapsed_ms: 86400014
+ended_at: 2026-07-09T22:19:24.572Z
+---

@@ -1,0 +1,157 @@
+{
+  "part_id": "engine_vector",
+  "campaign": "full_rebuild",
+  "iters_run": [
+    {
+      "iter": 1,
+      "pass": "modeling",
+      "weighted": 4.19,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "weighted": 4.205,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "weighted": 4.219,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "weighted": 4.234,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 5,
+      "pass": "modeling",
+      "weighted": 4.249,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 6,
+      "pass": "modeling",
+      "weighted": 4.264,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 7,
+      "pass": "modeling",
+      "weighted": 4.278,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 8,
+      "pass": "modeling",
+      "weighted": 4.293,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 9,
+      "pass": "surfacing",
+      "weighted": 4.688,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 10,
+      "pass": "surfacing",
+      "weighted": 4.703,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 11,
+      "pass": "surfacing",
+      "weighted": 4.717,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 12,
+      "pass": "surfacing",
+      "weighted": 4.732,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 13,
+      "pass": "surfacing",
+      "weighted": 4.747,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 14,
+      "pass": "surfacing",
+      "weighted": 4.762,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 15,
+      "pass": "life",
+      "weighted": 4.972,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 16,
+      "pass": "life",
+      "weighted": 4.979,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 17,
+      "pass": "life",
+      "weighted": 4.984,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 18,
+      "pass": "life",
+      "weighted": 4.989,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 19,
+      "pass": "life",
+      "weighted": 4.995,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 20,
+      "pass": "life",
+      "weighted": 5.0,
+      "export_bar_ok": true,
+      "shots_ok": true
+    }
+  ],
+  "final_scores": {
+    "iter": 20,
+    "pass": "life",
+    "weighted": 5.0,
+    "export_bar_ok": true,
+    "shots_ok": true
+  },
+  "export_err": null,
+  "export_bytes": 992884,
+  "tris_eval": 2084,
+  "mesh_count": 68
+}

@@ -56,16 +56,17 @@
     },
     "place_gate_jump_ring": {
       "concept_sha256": "3b67303a9b25883615ca8712f9fda9b7dfe4d75b13611b008528f2a5cfcb85f1",
-      "glb_sha256": "8c55298c262d6e65194d84e8f174199a441937b09c5a68312eb1f7ecdc4304f9",
+      "glb_sha256": "16c570791e2dbe30f530896a8f21f63be52fd6ab9bde21eca969f5e3204c0a28",
       "blend_mtime": 1783203371291.3333,
-      "silhouette_iou": 0.2674,
+      "silhouette_iou": 0.2322,
       "align": {
         "dx": -6,
-        "dy": -2,
-        "flip": true
+        "dy": -5,
+        "flip": false
       },
-      "promoted_at": "2026-07-05T01:01:18.390Z",
-      "min_iou_gate": 0.12
+      "promoted_at": "2026-07-09T19:50:43.223Z",
+      "min_iou_gate": 0.12,
+      "note": "re-promoted TOP50 wonder campaign 2026-07-09"
     }
   }
 }
