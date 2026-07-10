@@ -10,6 +10,13 @@
   "min_tris_blender_mcp": 1500,
   "procedural_tri_band_max": 1000,
   "entries": {
+    "engine_plasma_ring": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/engine_plasma_ring_authored.blend",
+      "exporter_path": "tools/art/blender/export_sprint_part.py",
+      "texture_role_owner": "finalizer-v1",
+      "min_tris": 1500
+    },
     "place_station_trade_hub": {
       "method": "blender_mcp",
       "concept_id": "concept_station_trade_hub",

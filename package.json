@@ -225,7 +225,7 @@
     "check:parallax": "node scripts/check-parallax-layers.mjs",
     "check:assets:live": "node scripts/probe-authored-assets-live.mjs",
     "check:revamp:evidence": "node scripts/verify-full-finish-evidence.mjs",
-    "check:visual-stability": "node scripts/probe-ship-visual-stability.mjs",
+    "check:visual-stability": "node test/visual-probe-server.test.mjs && node scripts/probe-ship-visual-stability.mjs",
     "check:gpu-path": "node scripts/probe-gpu-path.mjs --headed",
     "check:perf-budget": "node scripts/check-perf-budget-contract.mjs",
     "check:spatial-hash": "node scripts/check-spatial-hash-contract.mjs",

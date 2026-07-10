@@ -62,15 +62,17 @@ runtime captures.
 - Task 0.1 established this ledger and strict evidence validator. Independent spec and quality
   reviews approved it. Supporting contract evidence is
   `.devshots/alpha/m0-alpha-evidence/evidence.json`.
-- The authored-runtime recovery is back under a scoped asset lock after independent spec review
-  rejected source-provenance, part-budget, and engine-validation regressions. Its valid LOD/socket
-  work remains candidate material until the repaired source and release gates are re-reviewed.
+- The authored-runtime recovery now passes source/release/runtime contract review, but independent
+  code-quality review found non-transactional finalization, incomplete exporter restoration, and
+  provenance/texture false-positive paths. Its valid live LOD/socket work remains candidate
+  material while those authoring-pipeline defects are repaired and re-reviewed.
 - A clean post-publisher browser/Electron baseline and independent Top-50 reacceptance are still due.
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
 | 0.1 | Authoritative ledger + alpha evidence contract | Complete | `npm run check:alpha:evidence:contract` and `npm run check:alpha:evidence`; supporting record present; independent spec and quality reviews approved. |
-| 0.2 | Post-publisher live baseline | Queued | Reproducible browser/Electron evidence; current checks, viewport, runtime, GPU, and worktree recorded. |
+| 0.2 | Post-publisher live baseline | In progress | Collision-proof browser visual-stability floor is accepted; reproducible browser/Electron route evidence with viewport, runtime, GPU, and worktree is still due. |
+| 0.2a | Isolate visual-stability server ownership | Complete | Canonical in-process server on OS-assigned loopback port; lifecycle gate plus two independent 360-frame runs pass with 315 inspected frames, nine ships, zero failures/page errors, and clean teardown while unrelated 8123 listeners remain; `.devshots/alpha/m0-visual-probe-isolation/evidence.json`; independent spec and quality reviews approved. |
 | 0.3 | Reclassify current graphics | Queued | Each output marked accepted/candidate/rejected from live game captures; Blender shots labeled honestly. |
 | 0.4 | P0/P1 truth register | In progress | Focus, station frames, Launch, map state, previews, geography, balance, assets, and performance have owners and reproduction evidence. |
 
@@ -114,8 +116,8 @@ work until a live capture distinguishes product failure from harness failure.
 | Engineering previews | P1 open | Several preview paths fabricate simplified fittings/geometry rather than using the runtime asset and loadout. Milestone 3 owns truthful previews after the asset lane is accepted. |
 | Sector geography | P1 open | The current sector-geography gate is red on `poi_helios_yard`; continuous global-region geography has not been implemented. Milestone 2 owns it. |
 | Career/economy balance | P1 open | `check:balance` is warning-only: plasma/siege dominate, railgun/torpedo are dead choices, and sustained activity income is not comparable. Milestone 3 owns hard career-parity benchmarks. |
-| Authored asset source contract | P1 open | `check-parts-manifest` is red (`2628 ok, 81 fail`); independent review identified recovery-caused provenance/texture rewrites, a miner budget bypass, and weakened engine validation. The asset author is repairing under re-review. |
-| Visual-stability harness | P1 control-plane blocker | Default probe can select port 8123 despite an unrelated IPv6 Dota listener, then accept the wrong HTTP page and time out before `window.SF`. An explicit fresh SpaceFace URL passes 360 frames. Task 0.2 must isolate the server before baseline capture. |
+| Authored asset source contract | P1 open | Recovery-caused source failures are cleared and live release checks pass, but `check-parts-manifest` retains 17 classified residuals and code-quality review rejected non-transactional finalization, generic-Blender provenance, exporter restoration, and texture/static-mesh false positives. The same author owns repair/re-review. |
+| Visual-stability harness | Closed | Default probe owns the canonical in-process server on `127.0.0.1:0`, gates its lifecycle before the full browser probe, reports cleanup failures, and passes while unrelated IPv4/IPv6 port-8123 listeners remain untouched. Accepted supporting evidence: `.devshots/alpha/m0-visual-probe-isolation/evidence.json`. |
 | Performance | Baseline pending | No post-publisher browser/Electron p95 baseline is accepted yet. Quality may not be reduced to obtain one. |
 
 ## File leases and repository safety

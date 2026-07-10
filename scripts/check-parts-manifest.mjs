@@ -8,6 +8,9 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import * as THREE from 'three';
+import { collectEngineDriveSurface } from '../tools/art/lib/engineDriveSurfaceValidation.mjs';
+import { isBlenderAuthoringMethod } from '../tools/art/lib/partProvenance.mjs';
+import { validateSourceTextureRoleCoverage } from '../tools/art/lib/sourceTextureRoleValidation.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_ROOT = resolve(ROOT, 'assets/ships/parts');
@@ -129,6 +132,25 @@ for (const part of manifest.parts || []) {
     }
     const minTris = authoringEntry.min_tris ?? placeAuthoring?.min_tris_blender_mcp ?? 1500;
     check(`${label}: Blender tri floor`, part.tris >= minTris, `tris=${part.tris} min=${minTris}`);
+  } else if (authoringEntry?.method === 'blender_generic') {
+    check(`${label}: generic Blender export/finalize provenance`,
+      generator.includes('export_sprint_part.py')
+      && generator.includes('spaceface_export.py')
+      && generator.includes('finalize_part.mjs'),
+      `generator=${generator}`);
+    check(`${label}: generic Blender source exists`,
+      typeof authoringEntry.blend_path === 'string' && existsSync(resolve(ROOT, authoringEntry.blend_path)),
+      `blend=${authoringEntry.blend_path}`);
+    check(`${label}: generic Blender exporter exists`,
+      typeof authoringEntry.exporter_path === 'string' && existsSync(resolve(ROOT, authoringEntry.exporter_path)),
+      `exporter=${authoringEntry.exporter_path}`);
+    check(`${label}: generic Blender texture role owner`,
+      authoringEntry.texture_role_owner === 'finalizer-v1',
+      `owner=${authoringEntry.texture_role_owner}`);
+    if (Number.isFinite(authoringEntry.min_tris)) {
+      check(`${label}: generic Blender tri floor`, part.tris >= authoringEntry.min_tris,
+        `tris=${part.tris} min=${authoringEntry.min_tris}`);
+    }
   } else if (authoringEntry?.method === 'procedural_fallback') {
     check(`${label}: procedural fallback generator`, generator.includes('generate_ship_parts_library.py'), `generator=${generator}`);
     const triBand = placeAuthoring?.procedural_tri_band_max ?? 1000;
@@ -157,15 +179,39 @@ for (const part of manifest.parts || []) {
   const embeddedKtx2 = embeddedImages.length >= 3 && embeddedImages.every((image) =>
     image.bufferView != null && !image.uri && image.mimeType === 'image/ktx2')
     && (gltf.textures || []).every((texture) => texture.extensions?.KHR_texture_basisu);
-  const factorOnlyBlender = authoringEntry?.method === 'blender_mcp'
+  const factorOnlyBlender = isBlenderAuthoringMethod(authoringEntry?.method)
     && embeddedImages.length === 0
     && materialNames.size >= 1
     && (gltf.materials || []).every((material) => {
       const pbr = material.pbrMetallicRoughness || {};
       return Array.isArray(pbr.baseColorFactor) && pbr.baseColorFactor.length === 4;
     });
-  check(`${label}: embedded PNG or KTX2 textures`, embeddedPng || embeddedKtx2 || factorOnlyBlender,
-    factorOnlyBlender ? 'factor-only Blender materials' : `images=${embeddedImages.length}`);
+  const textureRoleContractVersion = extras.sourceProvenance?.textureRoleContractVersion;
+  const textureRoleMode = extras.sourceProvenance?.textureRoleMode;
+  if (textureRoleContractVersion != null) {
+    check(`${label}: texture role contract version supported`, textureRoleContractVersion === 1,
+      `version=${textureRoleContractVersion}`);
+  }
+  const strictTextureRoles = textureRoleContractVersion === 1;
+  let textureRoleError = null;
+  if (strictTextureRoles && textureRoleMode === 'bound-base-normal-orm' && (embeddedPng || embeddedKtx2)) {
+    try {
+      validateSourceTextureRoleCoverage(gltf, label);
+    } catch (error) {
+      textureRoleError = error.message;
+    }
+  }
+  const strictTextureContractOk = textureRoleMode === 'factor-only'
+    ? factorOnlyBlender
+    : textureRoleMode === 'bound-base-normal-orm'
+      && (embeddedPng || embeddedKtx2)
+      && textureRoleError == null;
+  const legacyTextureContractOk = embeddedPng || embeddedKtx2 || factorOnlyBlender;
+  check(`${label}: embedded PNG or KTX2 textures${strictTextureRoles ? ' with bound roles' : ''}`,
+    strictTextureRoles ? strictTextureContractOk : legacyTextureContractOk,
+    factorOnlyBlender
+      ? 'factor-only Blender materials'
+      : (textureRoleError || `images=${embeddedImages.length} roleContract=${textureRoleContractVersion || 'legacy'}/${textureRoleMode || 'legacy'}`));
   const contractMaterials = new Set(Object.values(manifest.materialContract || {}));
   const extraMaterials = [...materialNames].filter((name) => !contractMaterials.has(name));
   check(`${label}: materials are contract-only (<=4)`, materialNames.size <= 4 && extraMaterials.length === 0,
@@ -378,35 +424,6 @@ function vector3(value) {
 
 function sameVec(actual, expected) {
   return vector3(actual) && vector3(expected) && actual.every((value, index) => Math.abs(value - expected[index]) <= EPS);
-}
-
-function collectEngineDriveSurface(gltf) {
-  const driveRenderableCounts = { core: 0, fan: 0, plume: 0 };
-  const driveRenderableNodes = [];
-  let staticRenderableCount = 0;
-  for (const node of gltf.nodes || []) {
-    if (node.mesh == null) continue;
-    const name = normalizeNodeName(node.name);
-    const role = driveRoleFromName(name);
-    if (role) {
-      driveRenderableCounts[role]++;
-      driveRenderableNodes.push(node.name || '<unnamed>');
-    } else if (name.startsWith('LOD0_')) {
-      staticRenderableCount++;
-    }
-  }
-  return { driveRenderableCounts, driveRenderableNodes, staticRenderableCount };
-}
-
-function driveRoleFromName(name) {
-  if (name === 'HOOK_DRIVE_CORE' || name.startsWith('HOOK_DRIVE_CORE_')) return 'core';
-  if (name === 'HOOK_DRIVE_FAN' || name.startsWith('HOOK_DRIVE_FAN_')) return 'fan';
-  if (name === 'HOOK_DRIVE_PLUME' || name.startsWith('HOOK_DRIVE_PLUME_')) return 'plume';
-  return null;
-}
-
-function normalizeNodeName(name) {
-  return String(name || '').toUpperCase().replace(/[\s-]+/g, '_');
 }
 
 function collectGlbFiles(dir, prefix = '') {

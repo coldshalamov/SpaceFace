@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const EXPORTER_PY = resolve(ROOT, 'tools/blender/spaceface_export.py');
+const EXPORT_STATE_TEST_PY = resolve(ROOT, 'test/spaceface-export-state.test.py');
 
 // Mirrors tools/blender/spaceface_export.py. If quality work changes one, update both.
 const KIND_BUDGETS = Object.freeze({
@@ -307,6 +308,17 @@ if (existsSync(EXPORTER_PY)) {
     check('python exporter parity (skipped — python unavailable)', true);
   } else {
     check('python exporter validates golden part', pyOk, py.stderr || py.stdout);
+  }
+
+  const stateRestore = spawn('python', [EXPORT_STATE_TEST_PY], { cwd: ROOT, encoding: 'utf8' });
+  if (stateRestore.status === 127 || /not found/i.test(stateRestore.stderr || '')) {
+    check('python exporter restores Blender state on failure (skipped — python unavailable)', true);
+  } else {
+    check(
+      'python exporter restores selection, active object, and visibility on failure',
+      stateRestore.status === 0,
+      stateRestore.stderr || stateRestore.stdout,
+    );
   }
 }
 

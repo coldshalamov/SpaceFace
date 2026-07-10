@@ -47,9 +47,45 @@ assert.throws(
   'a mesh-bearing standard drive surface without UV0 must hard-fail with its node and primitive',
 );
 
+const mismatchedUvCount = fixture(STANDARD_HOOKS);
+mismatchedUvCount.accessors[1].count = 2;
+assert.throws(
+  () => validateEngineDriveSurface(
+    mismatchedUvCount,
+    'fixture_standard_mismatched_uv_count',
+    STANDARD_HOOKS,
+  ),
+  /HOOK_DRIVE_CORE.*primitive 0.*TEXCOORD_0 count 2.*POSITION count 3/,
+  'drive-surface UV0 cardinality must match the primitive POSITION accessor',
+);
+
 assert.doesNotThrow(
   () => validateEngineDriveSurface(fixture(STANDARD_HOOKS), 'fixture_standard_valid', STANDARD_HOOKS),
   'a valid standard CORE/FAN/PLUME drive layout should pass',
+);
+
+const missingStaticMesh = fixture(STANDARD_HOOKS);
+missingStaticMesh.nodes[0].mesh = 999;
+assert.throws(
+  () => validateEngineDriveSurface(
+    missingStaticMesh,
+    'fixture_static_missing_mesh',
+    STANDARD_HOOKS,
+  ),
+  /LOD0_\* static engine render mesh.*existing mesh.*primitive.*POSITION/,
+  'a numeric LOD0 mesh reference must not count unless it resolves to renderable POSITION geometry',
+);
+
+const emptyStaticMesh = fixture(STANDARD_HOOKS);
+emptyStaticMesh.meshes[0] = { primitives: [] };
+assert.throws(
+  () => validateEngineDriveSurface(
+    emptyStaticMesh,
+    'fixture_static_empty_mesh',
+    STANDARD_HOOKS,
+  ),
+  /LOD0_\* static engine render mesh.*existing mesh.*primitive.*POSITION/,
+  'an LOD0 mesh with no primitives must not satisfy the static render-surface contract',
 );
 
 assert.throws(
@@ -67,4 +103,4 @@ assert.doesNotThrow(
   'a valid paired P/S CORE/FAN/PLUME drive layout should pass',
 );
 
-console.log('PASS engine drive surface validation: UV0, standard, and twin layouts');
+console.log('PASS engine drive surface validation: UV0, static geometry, standard, and twin layouts');

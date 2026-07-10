@@ -1,0 +1,16 @@
+{
+  "token": "manual:m0-asset-recovery-quality-repair",
+  "pid": 0,
+  "argv": [
+    "m0-asset-recovery-quality-repair"
+  ],
+  "cwd": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace",
+  "startedAt": "2026-07-10T04:40:17.6511398Z",
+  "owner": "/root/m0_asset_recovery_retry",
+  "scope": [
+    "assets/ships/parts/blender/authoring.json",
+    "assets/ships/parts/blender/engine_plasma_ring_authored.blend",
+    "assets/ships/parts/engines/engine_plasma_ring.glb",
+    "assets/ships/parts/parts_manifest.json"
+  ]
+}

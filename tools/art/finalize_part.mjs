@@ -13,7 +13,7 @@
 //   5. re-serialises with 4-byte-aligned chunks,
 //   6. writes the final GLB to its manifest path under assets/ships/parts/,
 //   7. patches the manifest entry (tris, bytes, bounds) and rewrites the manifest.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JPEG from 'jpeg-js';
@@ -21,6 +21,13 @@ import { PNG } from 'pngjs';
 import * as THREE from 'three';
 
 import { validateEngineDriveSurface } from './lib/engineDriveSurfaceValidation.mjs';
+import {
+  applyPartProvenance,
+  generatorForAuthoringMethod,
+  isBlenderAuthoringMethod,
+} from './lib/partProvenance.mjs';
+import { validateSourceTextureRoleCoverage } from './lib/sourceTextureRoleValidation.mjs';
+import { publishTwoFileTransaction } from './lib/twoFileTransaction.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PART_ROOT = resolve(ROOT, 'assets/ships/parts');
@@ -33,16 +40,16 @@ function loadAuthoringEntry(partId) {
   return authoring?.entries?.[partId] ?? null;
 }
 
-function resolveAuthoringMethod(partId, methodArg) {
-  if (methodArg) return methodArg;
-  return loadAuthoringEntry(partId)?.method ?? null;
-}
-
-function generatorString(method) {
-  if (method === 'blender_mcp') {
-    return 'SpaceFace tools/art/blender/author_place_archetype.py - Blender-authored place archetype';
+function resolveAuthoringMethod(partId, methodArg, authoringEntry) {
+  if (methodArg && authoringEntry?.method && methodArg !== authoringEntry.method) {
+    throw new Error(`authoring method mismatch for '${partId}': registry=${authoringEntry.method} cli=${methodArg}`);
   }
-  return 'SpaceFace tools/art/generate_ship_parts_library.py - procedural ship parts library v3';
+  const method = methodArg ?? authoringEntry?.method ?? null;
+  generatorForAuthoringMethod(method);
+  if (isBlenderAuthoringMethod(method) && !authoringEntry) {
+    throw new Error(`Blender-authored part '${partId}' must be registered in ${AUTHORING_PATH}`);
+  }
+  return method;
 }
 
 const GLB_MAGIC = 0x46546c67;
@@ -148,14 +155,6 @@ function textureImageIndex(texture) {
   return texture?.extensions?.KHR_texture_basisu?.source ?? texture?.source ?? null;
 }
 
-function setTextureImageIndex(texture, imageIndex) {
-  texture.source = imageIndex;
-  if (texture.extensions?.KHR_texture_basisu) {
-    delete texture.extensions.KHR_texture_basisu;
-    if (Object.keys(texture.extensions).length === 0) delete texture.extensions;
-  }
-}
-
 function embeddedImageBytes(gltf, binary, image) {
   if (image?.bufferView == null || image.uri) {
     throw new Error(`source image '${image?.name || '<unnamed>'}' must be embedded in the GLB`);
@@ -238,22 +237,21 @@ function solidPng(size, rgba) {
   return PNG.sync.write(png, { colorType: 6, deflateLevel: 9 });
 }
 
-function ensureSourceTextureContract(gltf, binary, textureSize, allowFactorOnly) {
+function ensureSourceTextureContract(gltf, binary, textureSize, allowFactorOnly, label) {
   const images = gltf.images || (gltf.images = []);
   const textures = gltf.textures || (gltf.textures = []);
   if (images.length === 0 && allowFactorOnly) return binary;
-  const embeddedPng = images.length >= 3 && images.every((image) =>
+  const embeddedPng = images.length > 0 && images.every((image) =>
     image.bufferView != null && !image.uri && image.mimeType === 'image/png');
-  const embeddedKtx2 = images.length >= 3 && images.every((image) =>
+  const embeddedKtx2 = images.length > 0 && textures.length > 0 && images.every((image) =>
     image.bufferView != null && !image.uri && image.mimeType === 'image/ktx2')
     && textures.every((texture) => texture.extensions?.KHR_texture_basisu);
-  if (embeddedPng || embeddedKtx2) return binary;
-  if (images.some((image) => image.mimeType === 'image/ktx2')) {
+  if (!embeddedKtx2 && images.some((image) => image.mimeType === 'image/ktx2')) {
     throw new Error('mixed or incomplete KTX2 source texture transport');
   }
 
   let packed = binary;
-  if (images.length > 0) {
+  if (images.length > 0 && !embeddedPng && !embeddedKtx2) {
     const replacements = new Map();
     for (const image of images) {
       const viewIndex = image.bufferView;
@@ -271,76 +269,110 @@ function ensureSourceTextureContract(gltf, binary, textureSize, allowFactorOnly)
 
   const roles = [
     {
+      name: 'baseColor',
+      rgba: [255, 255, 255, 255],
+      getInfos: (material) => [material.pbrMetallicRoughness?.baseColorTexture],
+      bindMissing: (materials, textureIndex, infos) => {
+        if (infos.length === 0) {
+          materials[0].pbrMetallicRoughness = materials[0].pbrMetallicRoughness || {};
+          materials[0].pbrMetallicRoughness.baseColorTexture = { index: textureIndex };
+        }
+      },
+    },
+    {
       name: 'normal',
       rgba: [128, 128, 255, 255],
-      get: (material) => material.normalTexture,
-      set: (material, info) => { material.normalTexture = info; },
+      getInfos: (material) => [material.normalTexture],
+      bindMissing: (materials, textureIndex, infos) => {
+        if (infos.length === 0) materials[0].normalTexture = { index: textureIndex };
+      },
     },
     {
       name: 'orm',
       rgba: [255, 255, 255, 255],
-      get: (material) => material.pbrMetallicRoughness?.metallicRoughnessTexture || material.occlusionTexture,
-      set: (material, info) => {
-        material.pbrMetallicRoughness = material.pbrMetallicRoughness || {};
-        material.pbrMetallicRoughness.metallicRoughnessTexture = info;
-        material.occlusionTexture = { ...info };
-      },
-    },
-    {
-      name: 'baseColor',
-      rgba: [255, 255, 255, 255],
-      get: (material) => material.pbrMetallicRoughness?.baseColorTexture,
-      set: (material, info) => {
-        material.pbrMetallicRoughness = material.pbrMetallicRoughness || {};
-        material.pbrMetallicRoughness.baseColorTexture = info;
+      getInfos: (material) => [
+        material.pbrMetallicRoughness?.metallicRoughnessTexture,
+        material.occlusionTexture,
+      ],
+      bindMissing: (materials, textureIndex) => {
+        const hasSharedOrm = materials.some((material) => {
+          const metallicRoughnessIndex = material.pbrMetallicRoughness?.metallicRoughnessTexture?.index;
+          return Number.isInteger(metallicRoughnessIndex)
+            && metallicRoughnessIndex === material.occlusionTexture?.index;
+        });
+        if (!hasSharedOrm) {
+          materials[0].pbrMetallicRoughness = materials[0].pbrMetallicRoughness || {};
+          materials[0].pbrMetallicRoughness.metallicRoughnessTexture = { index: textureIndex };
+          materials[0].occlusionTexture = { index: textureIndex };
+        }
       },
     },
   ];
-  for (const role of roles) {
-    if (images.length >= 3) break;
-    const materials = gltf.materials || [];
-    const infos = materials.map(role.get).filter((info) => info?.index != null);
-    const sourceInfo = infos[0];
-    const sourceTexture = textures[sourceInfo?.index];
-    const sourceImageIndex = textureImageIndex(sourceTexture);
-    const sourceImage = images[sourceImageIndex];
-    if (!sourceTexture || !sourceImage) {
-      const appended = appendEmbeddedPng(gltf, packed, solidPng(textureSize, role.rgba));
-      packed = appended.binary;
-      const imageIndex = images.length;
-      images.push({
-        bufferView: appended.bufferView,
-        mimeType: 'image/png',
-        name: `spaceface_neutral_${role.name}_${textureSize}`,
-      });
-      if (textures.length === 0) {
-        gltf.samplers = gltf.samplers || [{ magFilter: 9729, minFilter: 9987, wrapS: 10497, wrapT: 10497 }];
-      }
-      const textureIndex = textures.length;
-      textures.push({ sampler: textures[0]?.sampler ?? 0, source: imageIndex });
-      for (const material of materials) role.set(material, { index: textureIndex });
-      continue;
+
+  const materials = gltf.materials || [];
+  if (materials.length === 0) throw new Error(`source texture contract for '${label}' requires at least one material`);
+  const usedRoleImages = new Set();
+
+  const resolveTexture = (textureIndex) => {
+    const texture = Number.isInteger(textureIndex) ? textures[textureIndex] : null;
+    const imageIndex = textureImageIndex(texture);
+    const image = Number.isInteger(imageIndex) ? images[imageIndex] : null;
+    return texture && image ? { textureIndex, texture, imageIndex, image } : null;
+  };
+
+  const addNeutralTexture = (role) => {
+    if (embeddedKtx2) {
+      throw new Error(`KTX2 source for '${label}' is missing a distinct ${role.name} role; re-export that authored map instead of synthesizing mixed transport`);
     }
-    const cloneImageIndex = images.length;
+    const appended = appendEmbeddedPng(gltf, packed, solidPng(textureSize, role.rgba));
+    packed = appended.binary;
+    const imageIndex = images.length;
     images.push({
-      ...sourceImage,
-      name: `${sourceImage.name || 'source'}_${role.name}_role`,
+      bufferView: appended.bufferView,
+      mimeType: 'image/png',
+      name: `spaceface_neutral_${role.name}_${textureSize}`,
     });
-    const cloneTextureIndex = textures.length;
-    const cloneTexture = structuredClone(sourceTexture);
-    if (cloneTexture.name) cloneTexture.name = `${cloneTexture.name}_${role.name}_role`;
-    setTextureImageIndex(cloneTexture, cloneImageIndex);
-    textures.push(cloneTexture);
-    for (const info of infos) {
-      if (info.index === sourceInfo.index) info.index = cloneTextureIndex;
+    if ((gltf.samplers || []).length === 0) {
+      gltf.samplers = [{ magFilter: 9729, minFilter: 9987, wrapS: 10497, wrapT: 10497 }];
     }
+    const textureIndex = textures.length;
+    textures.push({ sampler: textures[0]?.sampler ?? 0, source: imageIndex });
+    return { textureIndex, imageIndex };
+  };
+
+  for (const role of roles) {
+    const infos = materials.flatMap(role.getInfos).filter((info) => Number.isInteger(info?.index));
+    const boundSources = infos.map((info) => resolveTexture(info.index)).filter(Boolean);
+    const boundTextureIndices = new Set(materials
+      .flatMap(materialTextureInfos)
+      .map((info) => info.index));
+    const unboundBaseSource = role.name === 'baseColor'
+      ? textures
+        .map((_, index) => resolveTexture(index))
+        .find((candidate) => candidate
+          && !boundTextureIndices.has(candidate.textureIndex)
+          && !usedRoleImages.has(candidate.imageIndex))
+      : null;
+    const source = boundSources.find((candidate) => !usedRoleImages.has(candidate.imageIndex))
+      || unboundBaseSource;
+    let roleTexture;
+    if (!source) {
+      roleTexture = addNeutralTexture(role);
+    } else {
+      roleTexture = { textureIndex: source.textureIndex, imageIndex: source.imageIndex };
+    }
+    if (infos.length > 0 && !boundSources.some((candidate) => candidate.imageIndex === roleTexture.imageIndex)) {
+      infos[0].index = roleTexture.textureIndex;
+    }
+    role.bindMissing(materials, roleTexture.textureIndex, infos);
+    usedRoleImages.add(roleTexture.imageIndex);
   }
-  if (images.length < 3 || !images.every((image) => image.bufferView != null
-    && !image.uri && image.mimeType === 'image/png')) {
-    throw new Error(`source texture contract requires at least three embedded PNG images; found ${images.length}`);
+  if (usedRoleImages.size !== roles.length) {
+    throw new Error(`source texture contract requires distinct baseColor, normal, and ORM image roles; found ${usedRoleImages.size}`);
   }
   gltf.images = images;
   gltf.textures = textures;
+  validateSourceTextureRoleCoverage(gltf, label);
   return packed;
 }
 
@@ -406,7 +438,7 @@ async function main() {
   const positional = argv.filter((a) => !a.startsWith('--'));
   const [glbPath, partId] = positional;
   if (!glbPath || !partId) {
-    console.error('usage: finalize_part.mjs <exported.glb> <partId> [--method=blender_mcp|procedural_fallback]');
+    console.error('usage: finalize_part.mjs <exported.glb> <partId> [--method=blender_mcp|blender_generic|procedural_fallback]');
     process.exit(2);
   }
 
@@ -414,25 +446,63 @@ async function main() {
   const entry = manifest.parts.find((p) => p.id === partId);
   if (!entry) { console.error(`part '${partId}' not in manifest`); process.exit(2); }
 
-  const authoringMethod = resolveAuthoringMethod(partId, methodArg);
   const authoringEntry = loadAuthoringEntry(partId);
-  if (authoringEntry?.blend_path && authoringMethod === 'blender_mcp') {
+  const authoringMethod = resolveAuthoringMethod(partId, methodArg, authoringEntry);
+  if (isBlenderAuthoringMethod(authoringMethod)) {
+    if (!authoringEntry?.blend_path) {
+      console.error(`Blender-authored part '${partId}' is missing blend_path in ${AUTHORING_PATH}`);
+      process.exit(2);
+    }
     const blendAbs = resolve(ROOT, authoringEntry.blend_path);
     if (!existsSync(blendAbs)) {
       console.error(`Blender-authored part '${partId}' missing blend at ${blendAbs}`);
+      process.exit(2);
+    }
+    if (authoringEntry.exporter_path && !existsSync(resolve(ROOT, authoringEntry.exporter_path))) {
+      console.error(`Blender-authored part '${partId}' missing exporter at ${resolve(ROOT, authoringEntry.exporter_path)}`);
+      process.exit(2);
+    }
+    if (authoringMethod === 'blender_generic' && !authoringEntry.exporter_path) {
+      console.error(`Generic Blender part '${partId}' is missing exporter_path in ${AUTHORING_PATH}`);
+      process.exit(2);
+    }
+    if (authoringMethod === 'blender_generic' && authoringEntry.texture_role_owner !== 'finalizer-v1') {
+      console.error(`Generic Blender part '${partId}' must declare texture_role_owner=finalizer-v1 in ${AUTHORING_PATH}`);
       process.exit(2);
     }
   }
 
   const parsed = parseGlb(readFileSync(glbPath));
   const { gltf } = parsed;
+  // Blender prunes unreferenced materials, but manifest tint roles are part of the runtime
+  // contract. Restore them before texture-role binding so every published material is covered.
+  gltf.materials = gltf.materials || [];
+  for (const matName of Object.values(entry.tintable || {})) {
+    if (!gltf.materials.some((material) => material.name === matName)) {
+      gltf.materials.push({
+        name: matName,
+        pbrMetallicRoughness: {
+          baseColorFactor: [0.12, 0.5, 0.62, 1],
+          metallicFactor: 0.4,
+          roughnessFactor: 0.5,
+        },
+      });
+    }
+  }
   const binary = ensureSourceTextureContract(
     gltf,
     parsed.binary,
     entry.textureSize,
-    authoringMethod === 'blender_mcp',
+    isBlenderAuthoringMethod(authoringMethod),
+    partId,
   );
   canonicalizeSourceTextureTopology(gltf);
+  const factorOnlyBlender = isBlenderAuthoringMethod(authoringMethod)
+    && (gltf.images || []).length === 0
+    && (gltf.materials || []).length > 0
+    && (gltf.materials || []).every((material) =>
+      Array.isArray(material.pbrMetallicRoughness?.baseColorFactor)
+      && material.pbrMetallicRoughness.baseColorFactor.length === 4);
   const tris = countTriangles(gltf);
   const b = worldBounds(gltf, binary);
   const dims = [round(b.max[0] - b.min[0]), round(b.max[1] - b.min[1]), round(b.max[2] - b.min[2])];
@@ -448,16 +518,28 @@ async function main() {
     normalConvention: 'OpenGL', ormChannels: 'R=AO,G=Roughness,B=Metallic',
     textureCompression: 'PNG-source', chamfered: true,
   };
-  gltf.asset = gltf.asset || {};
-  gltf.asset.version = '2.0';
-  gltf.asset.generator = generatorString(authoringMethod);
-  gltf.asset.extras = {
-    spacefaceAsset: sfAsset, assetId, partId, category: entry.category, priority: entry.priority,
-    unit: 'metre', upAxis: '+Y', forwardAxis: '+X', starboardAxis: '+Z',
-    triangleCount: tris, textureSize: entry.textureSize, boundsDimensionsM: dims,
-  };
-  const sceneIdx = gltf.scene || 0;
-  gltf.scenes[sceneIdx].extras = { spacefaceAsset: sfAsset };
+  applyPartProvenance(gltf, {
+    authoringMethod,
+    authoringEntry,
+    sfAsset,
+    assetExtras: {
+      assetId,
+      partId,
+      category: entry.category,
+      priority: entry.priority,
+      unit: 'metre',
+      upAxis: '+Y',
+      forwardAxis: '+X',
+      starboardAxis: '+Z',
+      triangleCount: tris,
+      textureSize: entry.textureSize,
+      boundsDimensionsM: dims,
+    },
+    textureRoleContract: {
+      version: 1,
+      mode: factorOnlyBlender ? 'factor-only' : 'bound-base-normal-orm',
+    },
+  });
 
   // Ensure faction-tint node extras survive: root + every LOD mesh node carry spaceface.tint.
   for (const node of gltf.nodes || []) {
@@ -471,22 +553,8 @@ async function main() {
     }
   }
 
-  // Blender's exporter prunes materials no face references, but the manifest may still
-  // declare them as tintable roles. Re-add any missing declared material so the contract
-  // (and faction-tint lookup by name) holds. A factor-only material needs no bufferView.
-  gltf.materials = gltf.materials || [];
-  for (const matName of Object.values(entry.tintable || {})) {
-    if (!gltf.materials.some((m) => m.name === matName)) {
-      gltf.materials.push({
-        name: matName,
-        pbrMetallicRoughness: { baseColorFactor: [0.12, 0.5, 0.62, 1], metallicFactor: 0.4, roughnessFactor: 0.5 },
-      });
-    }
-  }
-
   const finalBuf = serializeGlb(gltf, binary);
   const destPath = resolve(PART_ROOT, entry.file);
-  writeFileSync(destPath, finalBuf);
 
   // Canonical sources retain the Blender/procedural transport that was actually authored.
   // SG-04 owns any temporary texture-role normalization required for release parity; writing a
@@ -498,7 +566,35 @@ async function main() {
     max: b.max.map((v) => round(v)),
     dimensionsM: dims,
   };
-  writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n');
+  const manifestBuf = Buffer.from(JSON.stringify(manifest, null, 2) + '\n');
+  await publishTwoFileTransaction({
+    files: [
+      {
+        path: destPath,
+        bytes: finalBuf,
+        validate: async (_stagedPath, stagedBytes) => {
+          const staged = parseGlb(stagedBytes).gltf;
+          if (staged.asset?.extras?.partId !== partId) {
+            throw new Error(`staged GLB extras partId mismatch: ${staged.asset?.extras?.partId}`);
+          }
+          if (!factorOnlyBlender) validateSourceTextureRoleCoverage(staged, partId);
+          if (entry.category === 'engines') validateEngineDriveSurface(staged, partId, entry.hooks || []);
+        },
+      },
+      {
+        path: MANIFEST_PATH,
+        bytes: manifestBuf,
+        validate: async (_stagedPath, stagedBytes) => {
+          const stagedManifest = JSON.parse(stagedBytes.toString('utf8'));
+          const stagedEntry = stagedManifest.parts?.find((part) => part.id === partId);
+          if (!stagedEntry) throw new Error(`staged manifest is missing '${partId}'`);
+          if (stagedEntry.bytes !== finalBuf.length || stagedEntry.tris !== tris) {
+            throw new Error(`staged manifest metrics mismatch for '${partId}'`);
+          }
+        },
+      },
+    ],
+  });
 
   const imgCount = (gltf.images || []).length;
   const textureCount = (gltf.textures || []).length;

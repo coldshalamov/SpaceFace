@@ -311,6 +311,40 @@ def validate_scene_objects(spec: dict[str, Any], objects: list[Any] | None = Non
         validate_wholeship_hull_body(meshes, min_hull)
 
 
+def _object_is_live(obj: Any) -> bool:
+    return bool(obj) and obj.name in bpy.data.objects
+
+
+def _snapshot_export_state() -> tuple[list[dict[str, Any]], Any]:
+    snapshot = []
+    for obj in list(bpy.data.objects):
+        snapshot.append({
+            'object': obj,
+            'selected': obj.select_get(),
+            'hide_set': obj.hide_get(),
+            'hide_viewport': obj.hide_viewport,
+            'hide_render': obj.hide_render,
+        })
+    return snapshot, bpy.context.view_layer.objects.active
+
+
+def _restore_export_state(snapshot: list[dict[str, Any]], previous_active: Any) -> None:
+    live_records = [record for record in snapshot if _object_is_live(record['object'])]
+    # Selection cannot be restored while an object is excluded from the active view layer.
+    # Temporarily expose each touched object, restore selection, then reinstate all hide modes.
+    for record in live_records:
+        obj = record['object']
+        obj.hide_viewport = False
+        obj.hide_set(False)
+        obj.select_set(record['selected'])
+    for record in live_records:
+        obj = record['object']
+        obj.hide_render = record['hide_render']
+        obj.hide_set(record['hide_set'])
+        obj.hide_viewport = record['hide_viewport']
+    bpy.context.view_layer.objects.active = previous_active if _object_is_live(previous_active) else None
+
+
 def export_gltf(output_path: str, spec: dict[str, Any], objects: list[Any] | None = None) -> None:
     if not IN_BLENDER:
         raise RuntimeError('export_gltf requires Blender bpy')
@@ -319,14 +353,15 @@ def export_gltf(output_path: str, spec: dict[str, Any], objects: list[Any] | Non
     metadata = stamp_spaceface_metadata(spec)
     for scene in bpy.data.scenes:
         scene['spacefaceAsset'] = metadata
-    previous_selection = list(bpy.context.selected_objects)
-    previous_active = bpy.context.view_layer.objects.active
+    state_snapshot, previous_active = _snapshot_export_state()
     try:
         if objects is not None:
             if not export_objects:
                 _fail('export selection empty', spec.get('id', 'asset'))
             bpy.ops.object.select_all(action='DESELECT')
             for obj in export_objects:
+                obj.hide_viewport = False
+                obj.hide_render = False
                 obj.hide_set(False)
                 obj.select_set(True)
             bpy.context.view_layer.objects.active = export_objects[0]
@@ -343,12 +378,7 @@ def export_gltf(output_path: str, spec: dict[str, Any], objects: list[Any] | Non
             export_yup=True,
         )
     finally:
-        bpy.ops.object.select_all(action='DESELECT')
-        for obj in previous_selection:
-            if obj and obj.name in bpy.data.objects:
-                obj.select_set(True)
-        if previous_active and previous_active.name in bpy.data.objects:
-            bpy.context.view_layer.objects.active = previous_active
+        _restore_export_state(state_snapshot, previous_active)
 
 
 def parse_cli(argv: list[str]) -> dict[str, Any]:

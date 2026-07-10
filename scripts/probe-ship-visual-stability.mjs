@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { finalizeVisualProbeResources } from './lib/visualProbeCleanup.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -30,6 +31,7 @@ const FLIGHT_START_TIMEOUT_MS = readIntArg('--flight-timeout', DEFAULT_FLIGHT_ST
 const { chromium } = await loadPlaywright();
 let server = null;
 let browser = null;
+let probeError = null;
 
 try {
   const requestedBaseUrl = process.env.SF_PROBE_URL || '';
@@ -72,9 +74,10 @@ try {
     pageErrors: summarizeIssues(errorIssues),
   }, null, 2));
   if (!ok) process.exitCode = 1;
+} catch (error) {
+  probeError = error;
 } finally {
-  try { if (browser) await browser.close(); } catch (_) {}
-  try { if (server) await server.close(); } catch (_) {}
+  await finalizeVisualProbeResources({ browser, server, primaryError: probeError });
 }
 
 async function sampleVisualStability(page, options) {

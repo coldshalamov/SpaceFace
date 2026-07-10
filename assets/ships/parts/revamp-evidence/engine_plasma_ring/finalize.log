@@ -57,3 +57,13 @@ Blender quit
   "export_path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_plasma_ring\\_export_tmp.glb",
   "bytes": 178464
 }
+
+--- spaceface_export ---
+{
+  "part_id": "engine_plasma_ring",
+  "export_path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_plasma_ring\\_export_tmp.glb",
+  "bytes": 178044,
+  "export_started_ns": 1783658669847900600,
+  "export_mtime_ns": 1783658670375297400,
+  "texture_role_owner": "finalizer-v1"
+}
