@@ -5,6 +5,14 @@
 Those documents still own technical, design, and taste law. This ledger owns alpha scope,
 order, evidence, and acceptance. Live player proof outranks synthetic checks and status prose.
 
+## Production operating layer
+
+`design/production/README.md` is the durable draft suite for anti-shortcut orchestration,
+professional quality, the Blender/image asset pipeline, multi-agent research, and temporal gameplay
+observability. It refines how this ledger is executed and evidenced; it does not override this
+ledger or the authority chain above. Read it for production-system, autonomous-campaign, asset,
+observability, or model-routing work instead of relying on chat context or old terminal transcripts.
+
 ## Locked product decisions
 
 - One seamless persistent 24-region galaxy: 10 authored story regions plus 14 stable frontier
@@ -17,8 +25,9 @@ order, evidence, and acceptance. Live player proof outranks synthetic checks and
   unbounded generation, and a duplicate World Director are out of scope.
 - Every new game begins in the Hitch/Kestrel. First dock offers non-binding Hauler, Hunter, or
   Prospector origins.
-- Top-50 art continues in parallel, but independent in-game acceptance is required before any
-  asset is promoted as player-facing truth.
+- Top-50 research and candidate art may continue in the leased Blender lane, but broad production
+  through the current campaign evaluators waits for Milestone-0 integrity gates. Independent
+  in-game acceptance is required before any asset is promoted as player-facing truth.
 
 ## Four-slot operating cell
 
@@ -73,8 +82,10 @@ runtime captures.
 | 0.1 | Authoritative ledger + alpha evidence contract | Complete | `npm run check:alpha:evidence:contract` and `npm run check:alpha:evidence`; supporting record present; independent spec and quality reviews approved. |
 | 0.2 | Post-publisher live baseline | In progress | Collision-proof browser visual-stability floor is accepted; reproducible browser/Electron route evidence with viewport, runtime, GPU, and worktree is still due. |
 | 0.2a | Isolate visual-stability server ownership | Complete | Canonical in-process server on OS-assigned loopback port; lifecycle gate plus two independent 360-frame runs pass with 315 inspected frames, nine ships, zero failures/page errors, and clean teardown while unrelated 8123 listeners remain; `.devshots/alpha/m0-visual-probe-isolation/evidence.json`; independent spec and quality reviews approved. |
-| 0.3 | Reclassify current graphics | Queued | Each output marked accepted/candidate/rejected from live game captures; Blender shots labeled honestly. |
+| 0.3 | Reclassify current graphics | Queued | Every output receives the stable `unassessed/missing_evidence/candidate/rejected/blocked_external/accepted/superseded` record; accepted requires live game evidence and campaign state; Blender shots labeled honestly. |
 | 0.4 | P0/P1 truth register | In progress | Focus, station frames, Launch, map state, previews, geography, balance, assets, and performance have owners and reproduction evidence. |
+| 0.5 | Safe external candidate control plane | Queued | Auto-approved mutation is contained outside the live dirty tree; destructive boundary fixtures pass; compiled packets reject placeholders/role conflicts; strict worker/reviewer schemas, legal hash-chained state, continuation, and integration checks pass. |
+| 0.6 | Gameplay Observatory v1 | Queued | Natural twenty-minute Helios novice-miner route produces synchronized intent/execution/presentation records, full video, 4–8 fps incident evidence, first detector families, and paired no-capture performance. |
 
 ## Ordered milestones
 

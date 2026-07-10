@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/technique-card.schema.json",
+  "title": "SpaceFace Asset Technique Card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "techniqueId",
+    "status",
+    "problemSolved",
+    "eligibleAssetKinds",
+    "triggerConditions",
+    "harmfulOrUnnecessaryWhen",
+    "procedure",
+    "sourceArtifacts",
+    "exportSurvival",
+    "runtimeCost",
+    "requiredEvidence",
+    "failureModes",
+    "provenance",
+    "proofAsset",
+    "acceptedByRole",
+    "verdict"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "techniqueId": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["research", "proof_candidate", "accepted", "rejected", "superseded"] },
+    "problemSolved": { "type": "string", "minLength": 20 },
+    "eligibleAssetKinds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "triggerConditions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "harmfulOrUnnecessaryWhen": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "procedure": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "sourceArtifacts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "exportSurvival": { "type": "string", "minLength": 20 },
+    "runtimeCost": { "type": "string", "minLength": 10 },
+    "requiredEvidence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "failureModes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "provenance": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "proofAsset": { "type": ["string", "null"] },
+    "acceptedByRole": { "type": ["string", "null"] },
+    "verdict": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "accepted" } } },
+      "then": {
+        "properties": {
+          "proofAsset": { "type": "string", "minLength": 1 },
+          "acceptedByRole": { "const": "orchestrator" },
+          "verdict": { "minLength": 20 }
+        }
+      }
+    }
+  ]
+}

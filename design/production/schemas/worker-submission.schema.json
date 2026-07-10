@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/worker-submission.schema.json",
+  "title": "SpaceFace Worker Candidate Submission",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "packetId",
+    "status",
+    "sessionId",
+    "candidateId",
+    "sourceHash",
+    "candidateHash",
+    "meaningfulCycles",
+    "evidencePaths",
+    "changes",
+    "unresolvedDefects",
+    "continuation",
+    "blockerEvidence",
+    "nextAction"
+  ],
+  "properties": {
+    "packetId": { "type": "string", "minLength": 1 },
+    "status": {
+      "enum": ["submitted", "needs_continuation", "external_blocker_claimed"]
+    },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "candidateId": { "type": "string", "minLength": 1 },
+    "sourceHash": { "$ref": "#/definitions/digest" },
+    "candidateHash": { "$ref": "#/definitions/digest" },
+    "meaningfulCycles": { "type": "integer", "minimum": 0 },
+    "evidencePaths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "changes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "unresolvedDefects": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "continuation": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/continuation" }
+      ]
+    },
+    "blockerEvidence": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/blockerEvidence" }
+    },
+    "nextAction": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "submitted" } } },
+      "then": {
+        "properties": {
+          "evidencePaths": { "minItems": 1 },
+          "changes": { "minItems": 1 },
+          "continuation": { "type": "null" },
+          "blockerEvidence": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "needs_continuation" } } },
+      "then": {
+        "properties": {
+          "evidencePaths": { "minItems": 1 },
+          "continuation": { "$ref": "#/definitions/continuation" },
+          "blockerEvidence": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "external_blocker_claimed" } } },
+      "then": {
+        "properties": {
+          "evidencePaths": { "minItems": 1 },
+          "continuation": { "type": "null" },
+          "blockerEvidence": { "minItems": 1 }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "continuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "checkpointHash",
+        "checkpointPath",
+        "lastCompletedStep",
+        "processStatus",
+        "heartbeatAt"
+      ],
+      "properties": {
+        "reason": {
+          "enum": [
+            "process_exit",
+            "turn_limit",
+            "timeout",
+            "context_limit",
+            "invalid_output",
+            "controller_interrupt",
+            "tool_failure"
+          ]
+        },
+        "checkpointHash": { "$ref": "#/definitions/digest" },
+        "checkpointPath": { "type": "string", "minLength": 1 },
+        "lastCompletedStep": { "type": "string", "minLength": 1 },
+        "processStatus": { "enum": ["running", "exited", "terminated", "unknown"] },
+        "heartbeatAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "blockerEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "observation", "evidencePath", "attemptedRemedies"],
+      "properties": {
+        "class": {
+          "enum": [
+            "ownership_conflict",
+            "external_dependency",
+            "tool_unavailable",
+            "permission_required",
+            "corrupt_source"
+          ]
+        },
+        "observation": { "type": "string", "minLength": 20 },
+        "evidencePath": { "type": "string", "minLength": 1 },
+        "attemptedRemedies": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 10 },
+          "minItems": 3
+        }
+      }
+    }
+  }
+}

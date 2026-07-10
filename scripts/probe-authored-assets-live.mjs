@@ -9,7 +9,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WIDTH = 1440;
 const HEIGHT = 900;
-const SHOT = '.devshots/authored-assets-live.jpg';
+const SHOT = process.env.SF_ASSETS_LIVE_SHOT || '.devshots/authored-assets-live.jpg';
+const REPORT = process.env.SF_ASSETS_LIVE_REPORT || '';
+const LOG = process.env.SF_ASSETS_LIVE_LOG || '';
 const REQUIRED_PLAYER_MODULAR_SLOTS = ['hull', 'cockpit', 'engine', 'weapon', 'pod', 'gear', 'greeble'];
 const REQUIRED_PLAYER_WHOLE_SHIP_SLOTS = ['hull', 'weapon', 'pod', 'gear', 'greeble'];
 const MIN_AUTHORED_SHIPS = 3;
@@ -43,7 +45,8 @@ try {
   });
 
   const pageIssues = collectPageIssues(cdp);
-  await cdp.send('Page.navigate', { url: withDebugFlight(server.baseUrl) });
+  const probeRoute = withDebugFlight(server.baseUrl);
+  await cdp.send('Page.navigate', { url: probeRoute });
   await waitFor(cdp, isBootReady, 15000, 'SpaceFace debug runtime');
   await installStartupTrace(cdp);
 
@@ -67,6 +70,7 @@ try {
   await waitFor(cdp, () => getTick(cdp, startTick + 2), 10000, 'advancing gameplay ticks');
 
   await captureScreenshot(cdp, SHOT);
+  const browserIdentity = await collectBrowserIdentity(cdp);
 
   const player = report.player;
   const startupTrace = await getStartupTrace(cdp);
@@ -113,8 +117,17 @@ try {
     `all declared authored GLB parts should pass the live runtime loader: ${JSON.stringify(report.loaderDiagnostics.failures || [])}`);
   assert.deepEqual(pageIssues.errorIssues(), [], 'browser page should not report runtime errors during the asset probe');
 
-  console.log('Authored GLB live probe PASS');
-  console.log(JSON.stringify({
+  const output = {
+    route: probeRoute,
+    inputSource: 'fixture',
+    injectedState: true,
+    fixture: {
+      seed: 47,
+      internalEvents: ['game:new', 'ui:closeAll'],
+    },
+    viewport: { width: WIDTH, height: HEIGHT },
+    browser: browserIdentity,
+    gpu: browserIdentity.webgl,
     mode: report.mode,
     tick: report.tick,
     shipCount: report.shipCount,
@@ -137,7 +150,12 @@ try {
     authoredShips: report.authoredShips.map(summarizeShip),
     startupTrace,
     screenshot: SHOT,
-  }, null, 2));
+  };
+  const renderedOutput = JSON.stringify(output, null, 2);
+  if (REPORT) writeJsonReport(REPORT, output);
+  if (LOG) writeTextReport(LOG, `Authored GLB live probe PASS\n${renderedOutput}\n`);
+  console.log('Authored GLB live probe PASS');
+  console.log(renderedOutput);
 } finally {
   await closeWebSocket(ws);
   await terminateChild(chrome);
@@ -734,6 +752,43 @@ async function captureScreenshot(cdp, file) {
   const shot = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 90 });
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, Buffer.from(shot.data, 'base64'));
+}
+
+async function collectBrowserIdentity(cdp) {
+  const version = await cdp.send('Browser.getVersion');
+  const webgl = await evalJson(cdp, `(() => {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!context) return { available: false, vendor: null, renderer: null };
+    const debug = context.getExtension('WEBGL_debug_renderer_info');
+    const maskedVendor = String(context.getParameter(context.VENDOR) || '');
+    const maskedRenderer = String(context.getParameter(context.RENDERER) || '');
+    return {
+      available: true,
+      debugExtensionAvailable: !!debug,
+      vendor: debug ? String(context.getParameter(debug.UNMASKED_VENDOR_WEBGL) || '') : maskedVendor,
+      renderer: debug ? String(context.getParameter(debug.UNMASKED_RENDERER_WEBGL) || '') : maskedRenderer,
+      maskedVendor,
+      maskedRenderer,
+    };
+  })()`);
+  return {
+    product: version.product || null,
+    userAgent: version.userAgent || null,
+    jsVersion: version.jsVersion || null,
+    protocolVersion: version.protocolVersion || null,
+    webgl,
+  };
+}
+
+function writeJsonReport(file, value) {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+function writeTextReport(file, value) {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, value, 'utf8');
 }
 
 async function waitFor(cdp, predicate, timeoutMs, label) {

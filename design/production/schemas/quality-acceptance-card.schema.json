@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/quality-acceptance-card.schema.json",
+  "title": "SpaceFace Quality Acceptance Card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "cardId",
+    "compiledByRole",
+    "playerPromise",
+    "canonicalRoutes",
+    "heldOutPolicy",
+    "references",
+    "identityConstraints",
+    "criticalMoments",
+    "hardGates",
+    "subjectiveDimensions",
+    "requiredEvidence",
+    "defectDefinitions",
+    "reviewQuorum"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "cardId": { "type": "string", "minLength": 1 },
+    "compiledByRole": { "const": "controller" },
+    "playerPromise": { "type": "string", "minLength": 30 },
+    "canonicalRoutes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "heldOutPolicy": { "type": "string", "minLength": 20 },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "quality", "provenance"],
+        "properties": {
+          "source": { "type": "string", "minLength": 1 },
+          "quality": { "type": "string", "minLength": 10 },
+          "provenance": { "type": "string", "minLength": 1 }
+        }
+      },
+      "minItems": 3
+    },
+    "identityConstraints": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "criticalMoments": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "hardGates": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "subjectiveDimensions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "requiredEvidence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "defectDefinitions": {
+      "type": "object",
+      "required": ["critical", "major", "minor"],
+      "properties": {
+        "critical": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "major": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "minor": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "reviewQuorum": {
+      "type": "object",
+      "required": ["minimumCritics", "crossModelRequired", "adjudicatorOnConflict"],
+      "properties": {
+        "minimumCritics": { "type": "integer", "minimum": 2 },
+        "crossModelRequired": { "const": true },
+        "adjudicatorOnConflict": { "const": true }
+      }
+    }
+  }
+}

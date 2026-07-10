@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/blind-review-verdict.schema.json",
+  "title": "SpaceFace Independent Review Verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "packetId",
+    "reviewerId",
+    "reviewerModel",
+    "reviewerModelFamily",
+    "reviewerSessionId",
+    "candidateHash",
+    "verdict",
+    "defects",
+    "missingEvidence",
+    "requiredNextEvidence"
+  ],
+  "properties": {
+    "packetId": { "type": "string", "minLength": 1 },
+    "reviewerId": { "type": "string", "minLength": 1 },
+    "reviewerModel": { "type": "string", "minLength": 1 },
+    "reviewerModelFamily": { "type": "string", "minLength": 1 },
+    "reviewerSessionId": { "type": "string", "minLength": 1 },
+    "candidateHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "verdict": { "enum": ["PASS", "REVISE", "REJECT"] },
+    "defects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "severity", "class", "evidence", "requiredRepair"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["critical", "major", "minor"] },
+          "class": {
+            "enum": ["scope", "technical", "runtime", "temporal", "quality", "operational"]
+          },
+          "evidence": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "requiredRepair": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "missingEvidence": { "type": "array", "items": { "type": "string" } },
+    "requiredNextEvidence": { "type": "array", "items": { "type": "string" } }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "verdict": { "const": "PASS" } } },
+      "then": {
+        "properties": {
+          "defects": {
+            "items": {
+              "properties": { "severity": { "const": "minor" } }
+            }
+          },
+          "missingEvidence": { "maxItems": 0 },
+          "requiredNextEvidence": { "maxItems": 0 }
+        }
+      }
+    }
+  ]
+}

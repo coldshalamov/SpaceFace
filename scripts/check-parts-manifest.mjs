@@ -8,7 +8,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import * as THREE from 'three';
-import { collectEngineDriveSurface } from '../tools/art/lib/engineDriveSurfaceValidation.mjs';
+import { collectEngineDriveSurface, validateEngineDriveSurface } from '../tools/art/lib/engineDriveSurfaceValidation.mjs';
 import {
   allowsFactorOnlySource,
   isBlenderAuthoringMethod,
@@ -231,8 +231,15 @@ for (const part of manifest.parts || []) {
     check(`${label}: socket ${socket} exists`, metrics.nodeNames.has(socket));
   }
   if (part.category === 'engines') {
-    const engineSurface = collectEngineDriveSurface(gltf);
     const declaredHooks = new Set(part.hooks || []);
+    let engineSurface;
+    try {
+      engineSurface = validateEngineDriveSurface(gltf, parsed.binary, part.id, part.hooks || []);
+      check(`${label}: drive surfaces are backed by actual BIN storage`, true);
+    } catch (error) {
+      check(`${label}: drive surfaces are backed by actual BIN storage`, false, error.message);
+      engineSurface = collectEngineDriveSurface(gltf, parsed.binary);
+    }
     const twinLayout = ['core', 'fan', 'plume'].every((role) =>
       declaredHooks.has(`HOOK_DRIVE_${role.toUpperCase()}_P`)
       && declaredHooks.has(`HOOK_DRIVE_${role.toUpperCase()}_S`));

@@ -88,4 +88,64 @@ assert.doesNotThrow(
   'one fully textured material may coexist with a factor-only secondary material',
 );
 
-console.log('PASS source texture roles: unrelated, missing-role, and valid fixtures');
+const crossMaterialMasquerade = baseDocument();
+crossMaterialMasquerade.materials = [
+  {
+    name: 'Material_BaseOnly',
+    pbrMetallicRoughness: { baseColorTexture: { index: 0 } },
+  },
+  {
+    name: 'Material_NormalOrmOnly',
+    pbrMetallicRoughness: { metallicRoughnessTexture: { index: 2 } },
+    normalTexture: { index: 1 },
+    occlusionTexture: { index: 2 },
+  },
+];
+assert.throws(
+  () => validateSourceTextureRoleCoverage(crossMaterialMasquerade, 'cross-material-masquerade'),
+  /Material_BaseOnly.*normal.*Material_NormalOrmOnly.*baseColor/s,
+  'required roles spread across different materials must not masquerade as one complete textured material',
+);
+
+const partialSecond = structuredClone(valid);
+partialSecond.materials[1] = {
+  name: 'Material_PartialSecond',
+  pbrMetallicRoughness: {
+    baseColorFactor: [0.2, 0.4, 0.6, 1],
+    baseColorTexture: { index: 0 },
+  },
+};
+assert.throws(
+  () => validateSourceTextureRoleCoverage(partialSecond, 'partial-second-material'),
+  /Material_PartialSecond.*normal.*metallicRoughness.*occlusion/s,
+  'a partially textured material must satisfy every role on that same material',
+);
+
+const oneImageSecond = structuredClone(valid);
+oneImageSecond.materials[1] = {
+  name: 'Material_OneImageSecond',
+  pbrMetallicRoughness: {
+    baseColorTexture: { index: 0 },
+    metallicRoughnessTexture: { index: 0 },
+  },
+  normalTexture: { index: 0 },
+  occlusionTexture: { index: 0 },
+};
+assert.throws(
+  () => validateSourceTextureRoleCoverage(oneImageSecond, 'one-image-second-material'),
+  /Material_OneImageSecond.*three distinct embedded images/,
+  'a valid first material must not hide one-image role aliasing on a second material',
+);
+
+const invalidFactorSecondary = structuredClone(valid);
+invalidFactorSecondary.materials[1] = {
+  name: 'Material_InvalidFactorSecondary',
+  pbrMetallicRoughness: { baseColorFactor: [2, 0, 0, 1] },
+};
+assert.throws(
+  () => validateSourceTextureRoleCoverage(invalidFactorSecondary, 'invalid-factor-secondary'),
+  /Material_InvalidFactorSecondary.*valid baseColorFactor/,
+  'factor-only secondary materials require a finite normalized RGBA factor',
+);
+
+console.log('PASS source texture roles: per-material factor/textured modes, complete roles, and distinct images');

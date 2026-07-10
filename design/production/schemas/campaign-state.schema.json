@@ -1,0 +1,418 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/campaign-state.schema.json",
+  "title": "SpaceFace Orchestrated Candidate State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "campaignId",
+    "packetId",
+    "briefHash",
+    "coverageIds",
+    "state",
+    "controllerId",
+    "attemptCount",
+    "relaunchCount",
+    "failureSignature",
+    "heartbeatAt",
+    "continuationDeadlineAt",
+    "lease",
+    "author",
+    "reviewers",
+    "candidate",
+    "defects",
+    "gateVerdicts",
+    "acceptanceDecision",
+    "blockerAdjudication",
+    "history",
+    "nextAction"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "campaignId": { "type": "string", "minLength": 1 },
+    "packetId": { "type": "string", "minLength": 1 },
+    "briefHash": { "$ref": "#/definitions/digest" },
+    "coverageIds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "state": { "$ref": "#/definitions/state" },
+    "controllerId": { "type": "string", "minLength": 1 },
+    "attemptCount": { "type": "integer", "minimum": 0 },
+    "relaunchCount": { "type": "integer", "minimum": 0 },
+    "failureSignature": { "type": ["string", "null"] },
+    "heartbeatAt": { "type": "string", "format": "date-time" },
+    "continuationDeadlineAt": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
+    "lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "status",
+        "candidateWorkspace",
+        "writablePaths",
+        "baselineHash",
+        "acquiredAt",
+        "heartbeatAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["code_mutation", "blender_mutation", "read_only"] },
+        "status": { "enum": ["pending", "active", "released", "violated"] },
+        "candidateWorkspace": { "type": "string", "minLength": 1 },
+        "writablePaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "baselineHash": { "$ref": "#/definitions/digest" },
+        "acquiredAt": { "type": "string", "format": "date-time" },
+        "heartbeatAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "model", "modelFamily", "sessionId"],
+      "properties": {
+        "agent": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "modelFamily": { "type": "string", "minLength": 1 },
+        "sessionId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "reviewers": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "agent",
+          "model",
+          "modelFamily",
+          "sessionId",
+          "candidateHash",
+          "verdict",
+          "verdictPath"
+        ],
+        "properties": {
+          "agent": { "type": "string", "minLength": 1 },
+          "model": { "type": "string", "minLength": 1 },
+          "modelFamily": { "type": "string", "minLength": 1 },
+          "sessionId": { "type": "string", "minLength": 1 },
+          "candidateHash": { "$ref": "#/definitions/digest" },
+          "verdict": { "enum": ["PASS", "REVISE", "REJECT"] },
+          "verdictPath": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceHash",
+        "candidateHash",
+        "workspaceSnapshotHash",
+        "submissionPath",
+        "evidencePaths"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sourceHash": { "$ref": "#/definitions/digestOrNull" },
+        "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+        "workspaceSnapshotHash": { "$ref": "#/definitions/digestOrNull" },
+        "submissionPath": { "type": ["string", "null"] },
+        "evidencePaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "defects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "severity",
+          "status",
+          "openedCandidateHash",
+          "evidencePaths",
+          "resolutionEvidence"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["critical", "major", "minor"] },
+          "status": { "enum": ["open", "resolved", "superseded"] },
+          "openedCandidateHash": { "$ref": "#/definitions/digest" },
+          "evidencePaths": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "minItems": 1
+          },
+          "resolutionEvidence": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "gateVerdicts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "technical", "runtime", "temporal", "quality", "operational"],
+      "properties": {
+        "scope": { "$ref": "#/definitions/gate" },
+        "technical": { "$ref": "#/definitions/gate" },
+        "runtime": { "$ref": "#/definitions/gate" },
+        "temporal": { "$ref": "#/definitions/gate" },
+        "quality": { "$ref": "#/definitions/gate" },
+        "operational": { "$ref": "#/definitions/gate" }
+      }
+    },
+    "acceptanceDecision": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/acceptanceDecision" }
+      ]
+    },
+    "blockerAdjudication": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["adjudicatorId", "verdict", "attemptEvidence", "recordHash"],
+          "properties": {
+            "adjudicatorId": { "type": "string", "minLength": 1 },
+            "verdict": { "enum": ["confirmed", "rejected"] },
+            "attemptEvidence": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "minItems": 3
+            },
+            "recordHash": { "$ref": "#/definitions/digest" }
+          }
+        }
+      ]
+    },
+    "history": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sequence",
+          "actor",
+          "actorRole",
+          "from",
+          "to",
+          "candidateHash",
+          "evidence",
+          "previousRecordHash",
+          "recordHash"
+        ],
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 0 },
+          "actor": { "type": "string", "minLength": 1 },
+          "actorRole": { "enum": ["controller", "author", "verifier", "reviewer", "integrator"] },
+          "from": {
+            "oneOf": [
+              { "type": "null" },
+              { "$ref": "#/definitions/state" }
+            ]
+          },
+          "to": { "$ref": "#/definitions/state" },
+          "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+          "evidence": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "previousRecordHash": { "$ref": "#/definitions/digestOrNull" },
+          "recordHash": { "$ref": "#/definitions/digest" }
+        }
+      }
+    },
+    "nextAction": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "state": { "const": "ACCEPTED" } } },
+      "then": {
+        "properties": {
+          "lease": { "properties": { "status": { "const": "released" } } },
+          "candidate": {
+            "properties": {
+              "sourceHash": { "$ref": "#/definitions/digest" },
+              "candidateHash": { "$ref": "#/definitions/digest" },
+              "workspaceSnapshotHash": { "$ref": "#/definitions/digest" },
+              "submissionPath": { "type": "string", "minLength": 1 },
+              "evidencePaths": { "minItems": 1 }
+            }
+          },
+          "reviewers": {
+            "minItems": 2,
+            "items": {
+              "properties": {
+                "verdict": { "const": "PASS" }
+              }
+            }
+          },
+          "defects": {
+            "not": {
+              "contains": {
+                "type": "object",
+                "required": ["severity", "status"],
+                "properties": {
+                  "severity": { "enum": ["critical", "major"] },
+                  "status": { "const": "open" }
+                }
+              }
+            }
+          },
+          "gateVerdicts": {
+            "properties": {
+              "scope": { "$ref": "#/definitions/passedGate" },
+              "technical": { "$ref": "#/definitions/passedGate" },
+              "runtime": { "$ref": "#/definitions/passedGate" },
+              "temporal": { "$ref": "#/definitions/passedGate" },
+              "quality": { "$ref": "#/definitions/passedGate" },
+              "operational": { "$ref": "#/definitions/passedGate" }
+            }
+          },
+          "acceptanceDecision": { "$ref": "#/definitions/acceptanceDecision" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "const": "BLOCKED" } } },
+      "then": {
+        "properties": {
+          "attemptCount": { "minimum": 3 },
+          "blockerAdjudication": {
+            "type": "object",
+            "properties": { "verdict": { "const": "confirmed" } }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "enum": ["LEASED", "AUTHORING"] } } },
+      "then": {
+        "properties": {
+          "lease": { "properties": { "status": { "const": "active" } } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "const": "CONTINUATION_DUE" } } },
+      "then": {
+        "properties": {
+          "continuationDeadlineAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "digestOrNull": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/digest" }
+      ]
+    },
+    "state": {
+      "enum": [
+        "UNASSESSED",
+        "SPECIFIED",
+        "LEASED",
+        "AUTHORING",
+        "SUBMITTED",
+        "EVIDENCE_AUDIT",
+        "TECHNICAL_VALIDATION",
+        "RUNTIME_VALIDATION",
+        "OBSERVED_PLAY",
+        "OPERATIONAL_VALIDATION",
+        "BLIND_QUALITY_REVIEW",
+        "ACCEPTANCE_REVIEW",
+        "REJECTED",
+        "CONTINUATION_DUE",
+        "BLOCKER_AUDIT",
+        "ACCEPTED",
+        "BLOCKED"
+      ]
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "candidateHash", "verifierId", "evidencePaths"],
+      "properties": {
+        "status": { "enum": ["pending", "pass", "fail"] },
+        "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+        "verifierId": { "type": ["string", "null"] },
+        "evidencePaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "passedGate": {
+      "allOf": [
+        { "$ref": "#/definitions/gate" },
+        {
+          "properties": {
+            "status": { "const": "pass" },
+            "candidateHash": { "$ref": "#/definitions/digest" },
+            "verifierId": { "type": "string", "minLength": 1 },
+            "evidencePaths": { "minItems": 1 }
+          }
+        }
+      ]
+    },
+    "acceptanceDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorityRole",
+        "authorityId",
+        "candidateHash",
+        "reviewerVerdictPaths",
+        "acceptedAt",
+        "decisionRecordHash"
+      ],
+      "properties": {
+        "authorityRole": { "const": "orchestrator" },
+        "authorityId": { "type": "string", "minLength": 1 },
+        "candidateHash": { "$ref": "#/definitions/digest" },
+        "reviewerVerdictPaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "acceptedAt": { "type": "string", "format": "date-time" },
+        "decisionRecordHash": { "$ref": "#/definitions/digest" }
+      }
+    }
+  }
+}

@@ -6,10 +6,12 @@ import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'no
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PYTHON, withPythonNoBytecodeEnv } from './lib/pythonProcessEnv.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const EXPORTER_PY = resolve(ROOT, 'tools/blender/spaceface_export.py');
 const EXPORT_STATE_TEST_PY = resolve(ROOT, 'test/spaceface-export-state.test.py');
+const PYTHON_ENV = Object.freeze(withPythonNoBytecodeEnv());
 
 // Mirrors tools/blender/spaceface_export.py. If quality work changes one, update both.
 const KIND_BUDGETS = Object.freeze({
@@ -227,7 +229,7 @@ function runPythonValidate(path, spec) {
     '--id', spec.id || 'asset',
   ];
   if (spec.assetId) args.push('--asset-id', spec.assetId);
-  const result = spawn('python', args, { cwd: ROOT, encoding: 'utf8' });
+  const result = spawn(PYTHON, args, { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV });
   return { status: result.status ?? 1, stdout: result.stdout || '', stderr: result.stderr || '' };
 }
 
@@ -310,7 +312,7 @@ if (existsSync(EXPORTER_PY)) {
     check('python exporter validates golden part', pyOk, py.stderr || py.stdout);
   }
 
-  const stateRestore = spawn('python', [EXPORT_STATE_TEST_PY], { cwd: ROOT, encoding: 'utf8' });
+  const stateRestore = spawn(PYTHON, [EXPORT_STATE_TEST_PY], { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV });
   if (stateRestore.status === 127 || /not found/i.test(stateRestore.stderr || '')) {
     check('python exporter restores Blender state on failure (skipped — python unavailable)', true);
   } else {

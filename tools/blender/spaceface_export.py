@@ -10,6 +10,7 @@ in Blender, not tribal knowledge (SPEC3-37 §2 step 1).
 """
 from __future__ import annotations
 
+import copy
 import json
 import os
 import sys
@@ -67,14 +68,36 @@ def tri_count_mesh(obj: Any) -> int:
     return sum(max(0, len(poly.vertices) - 2) for poly in mesh.polygons)
 
 
+def _edge_crease(mesh: Any, edge: Any) -> float:
+    """Read edge crease across Blender's legacy and generic-attribute APIs."""
+    legacy_crease = getattr(edge, 'crease', None)
+    if isinstance(legacy_crease, (int, float)):
+        return float(legacy_crease)
+
+    attributes = getattr(mesh, 'attributes', None)
+    crease_attribute = attributes.get('crease_edge') if attributes is not None else None
+    if crease_attribute is None or getattr(crease_attribute, 'domain', None) != 'EDGE':
+        return 0.0
+    index = getattr(edge, 'index', -1)
+    data = getattr(crease_attribute, 'data', None)
+    if data is None or not isinstance(index, int) or index < 0 or index >= len(data):
+        return 0.0
+    value = getattr(data[index], 'value', 0.0)
+    return float(value) if isinstance(value, (int, float)) else 0.0
+
+
 def hard_edges_unbeveled(obj: Any, min_segments: int = 2) -> list[int]:
     if not IN_BLENDER or obj.type != 'MESH':
         return []
     bad = []
+    beveled = any(
+        getattr(mod, 'type', None) == 'BEVEL'
+        and getattr(mod, 'segments', 0) >= min_segments
+        for mod in obj.modifiers
+    )
     for edge in obj.data.edges:
-        if not edge.use_edge_sharp and edge.crease < 0.01:
+        if not getattr(edge, 'use_edge_sharp', False) and _edge_crease(obj.data, edge) < 0.01:
             continue
-        beveled = any(mod.type == 'BEVEL' and mod.segments >= min_segments for mod in obj.modifiers)
         if not beveled:
             bad.append(edge.index)
     return bad
@@ -171,10 +194,9 @@ def validate_object(obj: Any, spec: dict[str, Any]) -> None:
         extras = obj.get('spaceface_asset_extras')  # placeholder — real path uses scene extras
 
     if IN_BLENDER and obj.type == 'MESH':
-        if not obj.get('spaceface_chamfered'):
-            edges = hard_edges_unbeveled(obj)
-            if edges:
-                _fail('unchamfered hard edge', f'{obj.name} edge index {edges[0]}')
+        edges = hard_edges_unbeveled(obj)
+        if edges:
+            _fail('unchamfered hard edge', f'{obj.name} edge index {edges[0]}')
         for role in spec.get('required_maps', REQUIRED_MAPS):
             if not has_baked_map(obj, role):
                 _fail(f"missing baked map '{role}'", obj.name)
@@ -303,7 +325,6 @@ def validate_scene_objects(spec: dict[str, Any], objects: list[Any] | None = Non
     source_objects = objects if objects is not None else list(bpy.data.objects)
     meshes = [obj for obj in source_objects if obj and obj.type == 'MESH']
     for obj in meshes:
-        obj["spaceface_chamfered"] = True
         validate_object(obj, spec)
     if spec.get('kind') == 'wholeship':
         validate_merged_node_mesh_alignment(meshes)
@@ -315,7 +336,34 @@ def _object_is_live(obj: Any) -> bool:
     return bool(obj) and obj.name in bpy.data.objects
 
 
-def _snapshot_export_state() -> tuple[list[dict[str, Any]], Any]:
+def _snapshot_custom_property(holder: Any, key: str) -> dict[str, Any]:
+    exists = key in holder.keys()
+    return {
+        'exists': exists,
+        'value': _clone_custom_property_value(holder.get(key)) if exists else None,
+    }
+
+
+def _clone_custom_property_value(value: Any) -> Any:
+    if hasattr(value, 'to_dict'):
+        value = value.to_dict()
+    elif hasattr(value, 'to_list'):
+        value = value.to_list()
+    if isinstance(value, dict):
+        return {key: _clone_custom_property_value(child) for key, child in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_clone_custom_property_value(child) for child in value]
+    return copy.deepcopy(value)
+
+
+def _restore_custom_property(holder: Any, key: str, snapshot: dict[str, Any]) -> None:
+    if snapshot['exists']:
+        holder[key] = _clone_custom_property_value(snapshot['value'])
+    elif key in holder.keys():
+        del holder[key]
+
+
+def _snapshot_export_state() -> tuple[list[dict[str, Any]], Any, list[dict[str, Any]]]:
     snapshot = []
     for obj in list(bpy.data.objects):
         snapshot.append({
@@ -324,11 +372,25 @@ def _snapshot_export_state() -> tuple[list[dict[str, Any]], Any]:
             'hide_set': obj.hide_get(),
             'hide_viewport': obj.hide_viewport,
             'hide_render': obj.hide_render,
+            'spaceface_chamfered': _snapshot_custom_property(obj, 'spaceface_chamfered'),
         })
-    return snapshot, bpy.context.view_layer.objects.active
+    scene_snapshot = [
+        {
+            'scene': scene,
+            'spacefaceAsset': _snapshot_custom_property(scene, 'spacefaceAsset'),
+        }
+        for scene in bpy.data.scenes
+    ]
+    return snapshot, bpy.context.view_layer.objects.active, scene_snapshot
 
 
-def _restore_export_state(snapshot: list[dict[str, Any]], previous_active: Any) -> None:
+def _restore_export_state(
+    snapshot: list[dict[str, Any]],
+    previous_active: Any,
+    scene_snapshot: list[dict[str, Any]],
+    *,
+    restore_export_properties: bool,
+) -> None:
     live_records = [record for record in snapshot if _object_is_live(record['object'])]
     # Selection cannot be restored while an object is excluded from the active view layer.
     # Temporarily expose each touched object, restore selection, then reinstate all hide modes.
@@ -342,19 +404,33 @@ def _restore_export_state(snapshot: list[dict[str, Any]], previous_active: Any) 
         obj.hide_render = record['hide_render']
         obj.hide_set(record['hide_set'])
         obj.hide_viewport = record['hide_viewport']
+        if restore_export_properties:
+            _restore_custom_property(obj, 'spaceface_chamfered', record['spaceface_chamfered'])
+    if restore_export_properties:
+        for record in scene_snapshot:
+            _restore_custom_property(record['scene'], 'spacefaceAsset', record['spacefaceAsset'])
     bpy.context.view_layer.objects.active = previous_active if _object_is_live(previous_active) else None
+
+
+def _stamp_validated_export_properties(spec: dict[str, Any], objects: list[Any]) -> None:
+    metadata = stamp_spaceface_metadata(spec)
+    for obj in objects:
+        if obj and obj.type == 'MESH':
+            obj['spaceface_chamfered'] = True
+    for scene in bpy.data.scenes:
+        scene['spacefaceAsset'] = metadata
 
 
 def export_gltf(output_path: str, spec: dict[str, Any], objects: list[Any] | None = None) -> None:
     if not IN_BLENDER:
         raise RuntimeError('export_gltf requires Blender bpy')
     export_objects = [obj for obj in (objects or []) if obj and obj.name in bpy.data.objects]
-    validate_scene_objects(spec, export_objects if objects is not None else None)
-    metadata = stamp_spaceface_metadata(spec)
-    for scene in bpy.data.scenes:
-        scene['spacefaceAsset'] = metadata
-    state_snapshot, previous_active = _snapshot_export_state()
+    state_snapshot, previous_active, scene_snapshot = _snapshot_export_state()
+    export_succeeded = False
     try:
+        validate_scene_objects(spec, export_objects if objects is not None else None)
+        validated_objects = export_objects if objects is not None else list(bpy.data.objects)
+        _stamp_validated_export_properties(spec, validated_objects)
         if objects is not None:
             if not export_objects:
                 _fail('export selection empty', spec.get('id', 'asset'))
@@ -377,8 +453,14 @@ def export_gltf(output_path: str, spec: dict[str, Any], objects: list[Any] | Non
             export_extras=True,
             export_yup=True,
         )
+        export_succeeded = True
     finally:
-        _restore_export_state(state_snapshot, previous_active)
+        _restore_export_state(
+            state_snapshot,
+            previous_active,
+            scene_snapshot,
+            restore_export_properties=not export_succeeded,
+        )
 
 
 def parse_cli(argv: list[str]) -> dict[str, Any]:

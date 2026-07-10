@@ -28,6 +28,8 @@ import {
   isBlenderAuthoringMethod,
 } from './lib/partProvenance.mjs';
 import { validateSourceTextureRoleCoverage } from './lib/sourceTextureRoleValidation.mjs';
+import { resolvePartOutputPath } from './lib/partOutputPathContainment.mjs';
+import { parseStrictEmbeddedGlb } from './lib/strictGlbValidation.mjs';
 import { publishTwoFileTransaction } from './lib/twoFileTransaction.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -61,21 +63,6 @@ const SLOT_BY_CATEGORY = {
   hulls: 'hull', cockpits: 'cockpit', engines: 'engine', weapons: 'weapon',
   fins: 'fin', greebles: 'greeble', gear: 'gear', pods: 'pod', places: 'place',
 };
-
-function parseGlb(bytes) {
-  let off = 12, gltf = null, binary = null;
-  while (off < bytes.length) {
-    const len = bytes.readUInt32LE(off);
-    const type = bytes.readUInt32LE(off + 4);
-    const start = off + 8, end = start + len;
-    if (type === CHUNK_JSON) gltf = JSON.parse(bytes.subarray(start, end).toString('utf8').replace(/\0+$/, '').trim());
-    else if (type === CHUNK_BIN) binary = bytes.subarray(start, end);
-    off = end;
-  }
-  if (!gltf) throw new Error('missing JSON chunk');
-  if (!binary) binary = Buffer.alloc(0);
-  return { gltf, binary };
-}
 
 function countTriangles(gltf) {
   return (gltf.meshes || []).reduce((sum, mesh) =>
@@ -268,51 +255,14 @@ export function ensureSourceTextureContract(gltf, binary, textureSize, allowFact
     packed = repackBufferViews(gltf, binary, replacements);
   }
 
-  const roles = [
-    {
-      name: 'baseColor',
-      rgba: [255, 255, 255, 255],
-      getInfos: (material) => [material.pbrMetallicRoughness?.baseColorTexture],
-      bindMissing: (materials, textureIndex, infos) => {
-        if (infos.length === 0) {
-          materials[0].pbrMetallicRoughness = materials[0].pbrMetallicRoughness || {};
-          materials[0].pbrMetallicRoughness.baseColorTexture = { index: textureIndex };
-        }
-      },
-    },
-    {
-      name: 'normal',
-      rgba: [128, 128, 255, 255],
-      getInfos: (material) => [material.normalTexture],
-      bindMissing: (materials, textureIndex, infos) => {
-        if (infos.length === 0) materials[0].normalTexture = { index: textureIndex };
-      },
-    },
-    {
-      name: 'orm',
-      rgba: [255, 255, 255, 255],
-      getInfos: (material) => [
-        material.pbrMetallicRoughness?.metallicRoughnessTexture,
-        material.occlusionTexture,
-      ],
-      bindMissing: (materials, textureIndex) => {
-        const hasSharedOrm = materials.some((material) => {
-          const metallicRoughnessIndex = material.pbrMetallicRoughness?.metallicRoughnessTexture?.index;
-          return Number.isInteger(metallicRoughnessIndex)
-            && metallicRoughnessIndex === material.occlusionTexture?.index;
-        });
-        if (!hasSharedOrm) {
-          materials[0].pbrMetallicRoughness = materials[0].pbrMetallicRoughness || {};
-          materials[0].pbrMetallicRoughness.metallicRoughnessTexture = { index: textureIndex };
-          materials[0].occlusionTexture = { index: textureIndex };
-        }
-      },
-    },
-  ];
+  const roles = {
+    baseColor: { name: 'baseColor', rgba: [255, 255, 255, 255] },
+    normal: { name: 'normal', rgba: [128, 128, 255, 255] },
+    orm: { name: 'orm', rgba: [255, 255, 255, 255] },
+  };
 
   const materials = gltf.materials || [];
   if (materials.length === 0) throw new Error(`source texture contract for '${label}' requires at least one material`);
-  const usedRoleImages = new Set();
 
   const resolveTexture = (textureIndex) => {
     const texture = Number.isInteger(textureIndex) ? textures[textureIndex] : null;
@@ -321,7 +271,9 @@ export function ensureSourceTextureContract(gltf, binary, textureSize, allowFact
     return texture && image ? { textureIndex, texture, imageIndex, image } : null;
   };
 
+  const neutralTextures = new Map();
   const addNeutralTexture = (role) => {
+    if (neutralTextures.has(role.name)) return neutralTextures.get(role.name);
     if (embeddedKtx2) {
       throw new Error(`KTX2 source for '${label}' is missing a distinct ${role.name} role; re-export that authored map instead of synthesizing mixed transport`);
     }
@@ -338,38 +290,53 @@ export function ensureSourceTextureContract(gltf, binary, textureSize, allowFact
     }
     const textureIndex = textures.length;
     textures.push({ sampler: textures[0]?.sampler ?? 0, source: imageIndex });
-    return { textureIndex, imageIndex };
+    const result = { textureIndex, imageIndex };
+    neutralTextures.set(role.name, result);
+    return result;
   };
 
-  for (const role of roles) {
-    const infos = materials.flatMap(role.getInfos).filter((info) => Number.isInteger(info?.index));
-    const boundSources = infos.map((info) => resolveTexture(info.index)).filter(Boolean);
-    const boundTextureIndices = new Set(materials
-      .flatMap(materialTextureInfos)
-      .map((info) => info.index));
-    const unboundBaseSource = role.name === 'baseColor'
-      ? textures
-        .map((_, index) => resolveTexture(index))
-        .find((candidate) => candidate
-          && !boundTextureIndices.has(candidate.textureIndex)
-          && !usedRoleImages.has(candidate.imageIndex))
+  const hasRoleBinding = (material) => [
+    material.pbrMetallicRoughness?.baseColorTexture,
+    material.normalTexture,
+    material.pbrMetallicRoughness?.metallicRoughnessTexture,
+    material.occlusionTexture,
+  ].some((info) => Number.isInteger(info?.index));
+  const validFactorOnly = (material) => {
+    const factor = material.pbrMetallicRoughness?.baseColorFactor;
+    return Array.isArray(factor)
+      && factor.length === 4
+      && factor.every((value) => Number.isFinite(value) && value >= 0 && value <= 1);
+  };
+  const anyBoundMaterial = materials.some(hasRoleBinding);
+  const repairTargets = materials.filter((material, index) =>
+    hasRoleBinding(material) || !validFactorOnly(material) || (!anyBoundMaterial && index === 0));
+
+  for (const material of repairTargets) {
+    const pbr = material.pbrMetallicRoughness || (material.pbrMetallicRoughness = {});
+    let base = resolveTexture(pbr.baseColorTexture?.index);
+    if (!base) {
+      base = addNeutralTexture(roles.baseColor);
+      pbr.baseColorTexture = { index: base.textureIndex };
+    }
+
+    let normal = resolveTexture(material.normalTexture?.index);
+    if (!normal || normal.imageIndex === base.imageIndex) {
+      normal = addNeutralTexture(roles.normal);
+      material.normalTexture = { index: normal.textureIndex };
+    }
+
+    const metallicRoughness = resolveTexture(pbr.metallicRoughnessTexture?.index);
+    const occlusion = resolveTexture(material.occlusionTexture?.index);
+    let orm = metallicRoughness
+      && occlusion
+      && metallicRoughness.textureIndex === occlusion.textureIndex
+      ? metallicRoughness
       : null;
-    const source = boundSources.find((candidate) => !usedRoleImages.has(candidate.imageIndex))
-      || unboundBaseSource;
-    let roleTexture;
-    if (!source) {
-      roleTexture = addNeutralTexture(role);
-    } else {
-      roleTexture = { textureIndex: source.textureIndex, imageIndex: source.imageIndex };
+    if (!orm || orm.imageIndex === base.imageIndex || orm.imageIndex === normal.imageIndex) {
+      orm = addNeutralTexture(roles.orm);
+      pbr.metallicRoughnessTexture = { index: orm.textureIndex };
+      material.occlusionTexture = { index: orm.textureIndex };
     }
-    if (infos.length > 0 && !boundSources.some((candidate) => candidate.imageIndex === roleTexture.imageIndex)) {
-      infos[0].index = roleTexture.textureIndex;
-    }
-    role.bindMissing(materials, roleTexture.textureIndex, infos);
-    usedRoleImages.add(roleTexture.imageIndex);
-  }
-  if (usedRoleImages.size !== roles.length) {
-    throw new Error(`source texture contract requires distinct baseColor, normal, and ORM image roles; found ${usedRoleImages.size}`);
   }
   gltf.images = images;
   gltf.textures = textures;
@@ -446,6 +413,7 @@ async function main() {
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
   const entry = manifest.parts.find((p) => p.id === partId);
   if (!entry) { console.error(`part '${partId}' not in manifest`); process.exit(2); }
+  const destPath = resolvePartOutputPath(PART_ROOT, entry.file);
 
   const authoringEntry = loadAuthoringEntry(partId);
   const authoringMethod = resolveAuthoringMethod(partId, methodArg, authoringEntry);
@@ -473,7 +441,7 @@ async function main() {
     }
   }
 
-  const parsed = parseGlb(readFileSync(glbPath));
+  const parsed = parseStrictEmbeddedGlb(readFileSync(glbPath), `${partId} source GLB`);
   const { gltf } = parsed;
   // Blender prunes unreferenced materials, but manifest tint roles are part of the runtime
   // contract. Restore them before texture-role binding so every published material is covered.
@@ -511,7 +479,7 @@ async function main() {
   const assetId = 'SF_' + partId.toUpperCase();
 
   if (entry.category === 'engines') {
-    validateEngineDriveSurface(gltf, partId, entry.hooks || []);
+    validateEngineDriveSurface(gltf, binary, partId, entry.hooks || []);
   }
 
   const sfAsset = {
@@ -555,8 +523,6 @@ async function main() {
   }
 
   const finalBuf = serializeGlb(gltf, binary);
-  const destPath = resolve(PART_ROOT, entry.file);
-
   // Canonical sources retain the Blender/procedural transport that was actually authored.
   // SG-04 owns any temporary texture-role normalization required for release parity; writing a
   // glTF-Transform document back over the source loses provenance and repackages source images.
@@ -574,12 +540,15 @@ async function main() {
         path: destPath,
         bytes: finalBuf,
         validate: async (_stagedPath, stagedBytes) => {
-          const staged = parseGlb(stagedBytes).gltf;
+          const stagedParsed = parseStrictEmbeddedGlb(stagedBytes, `${partId} staged GLB`);
+          const staged = stagedParsed.gltf;
           if (staged.asset?.extras?.partId !== partId) {
             throw new Error(`staged GLB extras partId mismatch: ${staged.asset?.extras?.partId}`);
           }
           if (!factorOnlyBlender) validateSourceTextureRoleCoverage(staged, partId);
-          if (entry.category === 'engines') validateEngineDriveSurface(staged, partId, entry.hooks || []);
+          if (entry.category === 'engines') {
+            validateEngineDriveSurface(staged, stagedParsed.binary, partId, entry.hooks || []);
+          }
         },
       },
       {

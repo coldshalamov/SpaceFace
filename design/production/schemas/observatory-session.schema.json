@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/observatory-session.schema.json",
+  "title": "SpaceFace Gameplay Observatory Session",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "sessionId",
+    "candidateHash",
+    "selectionCommitHash",
+    "routeId",
+    "policyId",
+    "seed",
+    "runtime",
+    "scheduledRunIndex",
+    "retained",
+    "validForAcceptance",
+    "inputTapePath",
+    "capture",
+    "noCaptureReplay",
+    "simHashComparison",
+    "artifactPaths"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "candidateHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "selectionCommitHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "routeId": { "type": "string", "minLength": 1 },
+    "policyId": { "type": "string", "minLength": 1 },
+    "seed": { "type": "integer" },
+    "runtime": { "enum": ["browser", "electron"] },
+    "scheduledRunIndex": { "type": "integer", "minimum": 0 },
+    "retained": { "const": true },
+    "validForAcceptance": { "type": "boolean" },
+    "inputTapePath": { "type": "string", "minLength": 1 },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "videoPath",
+        "mixedAudioPath",
+        "sourceFps",
+        "inputHz",
+        "stateHz",
+        "assetExposureHz",
+        "captureP95Ms",
+        "noCaptureP95Ms",
+        "overheadPercent"
+      ],
+      "properties": {
+        "videoPath": { "type": "string", "minLength": 1 },
+        "mixedAudioPath": { "type": "string", "minLength": 1 },
+        "sourceFps": { "type": "number", "exclusiveMinimum": 0 },
+        "inputHz": { "type": "number", "exclusiveMinimum": 0 },
+        "stateHz": { "type": "number", "exclusiveMinimum": 0 },
+        "assetExposureHz": { "type": "number", "exclusiveMinimum": 0 },
+        "captureP95Ms": { "type": "number", "minimum": 0 },
+        "noCaptureP95Ms": { "type": "number", "minimum": 0 },
+        "overheadPercent": { "type": "number", "minimum": 0 }
+      }
+    },
+    "noCaptureReplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionPath", "performanceReportPath"],
+      "properties": {
+        "sessionPath": { "type": "string", "minLength": 1 },
+        "performanceReportPath": { "type": "string", "minLength": 1 }
+      }
+    },
+    "simHashComparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "captureFinalHash",
+        "noCaptureFinalHash",
+        "periodicMismatchCount",
+        "orderedEventReceiptsMatch",
+        "match"
+      ],
+      "properties": {
+        "captureFinalHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "noCaptureFinalHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "periodicMismatchCount": { "type": "integer", "minimum": 0 },
+        "orderedEventReceiptsMatch": { "type": "boolean" },
+        "match": { "type": "boolean" }
+      }
+    },
+    "artifactPaths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "validForAcceptance": { "const": true } } },
+      "then": {
+        "properties": {
+          "capture": {
+            "properties": {
+              "sourceFps": { "minimum": 30 },
+              "inputHz": { "const": 60 },
+              "stateHz": { "minimum": 20 },
+              "assetExposureHz": { "minimum": 10 },
+              "overheadPercent": { "maximum": 5 }
+            }
+          },
+          "simHashComparison": {
+            "properties": {
+              "periodicMismatchCount": { "const": 0 },
+              "orderedEventReceiptsMatch": { "const": true },
+              "match": { "const": true }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

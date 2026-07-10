@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/asset-build-card.schema.json",
+  "title": "SpaceFace Compiled Asset Build Card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "assetId",
+    "assetKind",
+    "exposureTier",
+    "profileSelectionEvidence",
+    "family",
+    "playerRole",
+    "canonical",
+    "minMeaningfulCycles",
+    "techniques",
+    "runtimeRequirements",
+    "requiredEvidence",
+    "reviewQuorum",
+    "compiledByRole",
+    "compiledBy",
+    "compiledAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "assetId": { "type": "string", "minLength": 1 },
+    "assetKind": {
+      "enum": [
+        "hero_player_ship",
+        "cast_npc_ship",
+        "capital_fleet_ship",
+        "station_landmark",
+        "modular_weapon_engine_cockpit_greeble",
+        "environment_asteroid_debris",
+        "repeated_small_prop",
+        "animated_mechanical",
+        "texture_decal_icon_portrait",
+        "vfx_presentation"
+      ]
+    },
+    "exposureTier": { "enum": ["hero", "cast", "standard", "background"] },
+    "profileSelectionEvidence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 10 },
+      "minItems": 1
+    },
+    "family": { "type": "string", "minLength": 1 },
+    "playerRole": { "type": "string", "minLength": 20 },
+    "canonical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourcePath", "manifestId", "runtimeMap"],
+      "properties": {
+        "sourcePath": { "type": "string", "minLength": 1 },
+        "manifestId": { "type": "string", "minLength": 1 },
+        "runtimeMap": { "type": "string", "minLength": 1 }
+      }
+    },
+    "minMeaningfulCycles": { "type": "integer", "minimum": 3 },
+    "techniques": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["techniqueId", "applicability", "triggerOrReason", "proofRequirements"],
+        "properties": {
+          "techniqueId": { "type": "string", "minLength": 1 },
+          "applicability": {
+            "enum": ["required", "conditional", "not_applicable", "forbidden"]
+          },
+          "triggerOrReason": { "type": "string", "minLength": 10 },
+          "proofRequirements": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "applicability": { "enum": ["required", "conditional"] }
+              }
+            },
+            "then": {
+              "properties": { "proofRequirements": { "minItems": 1 } }
+            }
+          }
+        ]
+      }
+    },
+    "runtimeRequirements": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "requiredEvidence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "reviewQuorum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimumCritics", "crossModelRequired", "adjudicatorOnConflict"],
+      "properties": {
+        "minimumCritics": { "type": "integer", "minimum": 2 },
+        "crossModelRequired": { "const": true },
+        "adjudicatorOnConflict": { "const": true }
+      }
+    },
+    "compiledByRole": { "const": "controller" },
+    "compiledBy": { "type": "string", "minLength": 1 },
+    "compiledAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "exposureTier": { "enum": ["hero", "cast"] } } },
+      "then": { "properties": { "minMeaningfulCycles": { "minimum": 20 } } }
+    },
+    {
+      "if": { "properties": { "exposureTier": { "const": "standard" } } },
+      "then": { "properties": { "minMeaningfulCycles": { "minimum": 8 } } }
+    },
+    {
+      "if": { "properties": { "exposureTier": { "const": "background" } } },
+      "then": { "properties": { "minMeaningfulCycles": { "minimum": 3 } } }
+    }
+  ]
+}

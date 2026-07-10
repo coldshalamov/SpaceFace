@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/dispatch-log.schema.json",
+  "title": "SpaceFace Orchestrator Dispatch Discipline Log",
+  "description": "Mechanically tracks whether the orchestrator is dispatching terminal agents or collapsing to solo work. This is the single file the orchestrator reads before every major action to check its own dispatch discipline.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "logId",
+    "lastUpdatedBySession",
+    "soloTurnBudget",
+    "turnsSinceLastDispatch",
+    "lastDispatchAt",
+    "totalDispatches",
+    "totalSoloTurns",
+    "totalSoloViolations",
+    "currentSprint",
+    "lanes",
+    "violations",
+    "recentDispatches"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "logId": { "type": "string", "const": "dispatch-discipline" },
+    "lastUpdatedBySession": { "type": "string", "minLength": 1 },
+    "soloTurnBudget": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Max consecutive solo (non-dispatch) turns before a violation is recorded. When exceeded, the orchestrator MUST dispatch or record a structured blocker before any further solo work. Default 3; set lower for tighter enforcement."
+    },
+    "turnsSinceLastDispatch": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Incremented every orchestrator action that is NOT a dispatch or a blocker record. Reset to 0 on every dispatch or blocker. If this exceeds soloTurnBudget, the next action is forced."
+    },
+    "lastDispatchAt": { "type": "string", "format": "date-time" },
+    "totalDispatches": { "type": "integer", "minimum": 0 },
+    "totalSoloTurns": { "type": "integer", "minimum": 0 },
+    "totalSoloViolations": { "type": "integer", "minimum": 0 },
+    "currentSprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["milestone", "activePackets", "readyPackets", "blockedPackets"],
+      "properties": {
+        "milestone": { "type": "string", "minLength": 1 },
+        "activePackets": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Packet IDs currently dispatched to a terminal agent."
+        },
+        "readyPackets": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Packet IDs compiled and ready to dispatch but not yet sent. Each ready packet with a free lane is a dispatch obligation."
+        },
+        "blockedPackets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["packetId", "blocker"],
+            "properties": {
+              "packetId": { "type": "string", "minLength": 1 },
+              "blocker": { "type": "string", "minLength": 10 }
+            }
+          }
+        }
+      }
+    },
+    "lanes": {
+      "type": "object",
+      "description": "Current ownership/lease state of each writable lane.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "packetId"],
+        "properties": {
+          "status": { "enum": ["free", "leased", "blocked"] },
+          "packetId": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "minLength": 1 }
+            ]
+          },
+          "blockedReason": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "violations": {
+      "type": "array",
+      "description": "Every time turnsSinceLastDispatch exceeded soloTurnBudget without a dispatch or blocker. These are permanent process records.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "sessionId", "turnsOver", "actionTaken"],
+        "properties": {
+          "at": { "type": "string", "format": "date-time" },
+          "sessionId": { "type": "string", "minLength": 1 },
+          "turnsOver": { "type": "integer", "minimum": 1 },
+          "actionTaken": {
+            "enum": ["dispatched", "recorded_blocker", "ignored"],
+            "description": "ignored is the failure mode this system exists to detect."
+          }
+        }
+      }
+    },
+    "recentDispatches": {
+      "type": "array",
+      "description": "Rolling log of the last 20 dispatches for quick grounding after compaction.",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["packetId", "agent", "model", "at"],
+        "properties": {
+          "packetId": { "type": "string", "minLength": 1 },
+          "agent": { "type": "string", "minLength": 1 },
+          "model": { "type": "string", "minLength": 1 },
+          "lane": { "type": "string", "minLength": 1 },
+          "at": { "type": "string", "format": "date-time" },
+          "status": { "enum": ["dispatched", "returned", "timed_out"] }
+        }
+      }
+    }
+  }
+}
