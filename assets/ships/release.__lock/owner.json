@@ -10,6 +10,8 @@
   "scope": [
     "assets/ships/parts/blender/authoring.json",
     "assets/ships/parts/blender/engine_plasma_ring_authored.blend",
+    "assets/ships/parts/revamp-evidence/engine_plasma_ring/_export_tmp.glb",
+    "assets/ships/parts/revamp-evidence/engine_plasma_ring/finalize.log",
     "assets/ships/parts/engines/engine_plasma_ring.glb",
     "assets/ships/parts/parts_manifest.json"
   ]
