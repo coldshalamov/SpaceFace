@@ -4,8 +4,13 @@ let applyPartProvenance = () => {
   throw new Error('applyPartProvenance is not implemented');
 };
 let generatorForAuthoringMethod = () => 'unimplemented';
+let allowsFactorOnlySource = () => true;
 try {
-  ({ applyPartProvenance, generatorForAuthoringMethod } = await import('../tools/art/lib/partProvenance.mjs'));
+  ({
+    applyPartProvenance,
+    generatorForAuthoringMethod,
+    allowsFactorOnlySource,
+  } = await import('../tools/art/lib/partProvenance.mjs'));
 } catch (error) {
   if (error?.code !== 'ERR_MODULE_NOT_FOUND') throw error;
 }
@@ -72,5 +77,14 @@ assert.throws(
   /unsupported authoring method.*mystery_blender_claim/i,
   'unknown methods must not silently receive procedural provenance',
 );
+
+assert.equal(allowsFactorOnlySource('blender_mcp', {}), true,
+  'legacy place-authoring Blender assets retain the sanctioned factor-only source path');
+assert.equal(
+  allowsFactorOnlySource('blender_generic', { texture_role_owner: 'finalizer-v1' }),
+  false,
+  'generic finalizer-owned assets must synthesize runtime-required texture roles',
+);
+assert.equal(allowsFactorOnlySource('procedural_fallback', {}), false);
 
 console.log('PASS part provenance: generic Blender path and extras merge');

@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url';
 
 import * as THREE from 'three';
 import { collectEngineDriveSurface } from '../tools/art/lib/engineDriveSurfaceValidation.mjs';
-import { isBlenderAuthoringMethod } from '../tools/art/lib/partProvenance.mjs';
+import {
+  allowsFactorOnlySource,
+  isBlenderAuthoringMethod,
+} from '../tools/art/lib/partProvenance.mjs';
 import { validateSourceTextureRoleCoverage } from '../tools/art/lib/sourceTextureRoleValidation.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -179,7 +182,7 @@ for (const part of manifest.parts || []) {
   const embeddedKtx2 = embeddedImages.length >= 3 && embeddedImages.every((image) =>
     image.bufferView != null && !image.uri && image.mimeType === 'image/ktx2')
     && (gltf.textures || []).every((texture) => texture.extensions?.KHR_texture_basisu);
-  const factorOnlyBlender = isBlenderAuthoringMethod(authoringEntry?.method)
+  const factorOnlyBlender = allowsFactorOnlySource(authoringEntry?.method, authoringEntry)
     && embeddedImages.length === 0
     && materialNames.size >= 1
     && (gltf.materials || []).every((material) => {

@@ -1081,7 +1081,7 @@
       "priority": "P1",
       "file": "engines/engine_plasma_ring.glb",
       "tris": 3300,
-      "bytes": 179172,
+      "bytes": 197380,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

@@ -15,6 +15,10 @@ export function isBlenderAuthoringMethod(method) {
   return method === 'blender_mcp' || method === 'blender_generic';
 }
 
+export function allowsFactorOnlySource(method, authoringEntry = null) {
+  return method === 'blender_mcp' && authoringEntry?.texture_role_owner !== 'finalizer-v1';
+}
+
 export function applyPartProvenance(gltf, {
   authoringMethod,
   authoringEntry = null,

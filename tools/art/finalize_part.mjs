@@ -22,6 +22,7 @@ import * as THREE from 'three';
 
 import { validateEngineDriveSurface } from './lib/engineDriveSurfaceValidation.mjs';
 import {
+  allowsFactorOnlySource,
   applyPartProvenance,
   generatorForAuthoringMethod,
   isBlenderAuthoringMethod,
@@ -237,7 +238,7 @@ function solidPng(size, rgba) {
   return PNG.sync.write(png, { colorType: 6, deflateLevel: 9 });
 }
 
-function ensureSourceTextureContract(gltf, binary, textureSize, allowFactorOnly, label) {
+export function ensureSourceTextureContract(gltf, binary, textureSize, allowFactorOnly, label) {
   const images = gltf.images || (gltf.images = []);
   const textures = gltf.textures || (gltf.textures = []);
   if (images.length === 0 && allowFactorOnly) return binary;
@@ -493,11 +494,11 @@ async function main() {
     gltf,
     parsed.binary,
     entry.textureSize,
-    isBlenderAuthoringMethod(authoringMethod),
+    allowsFactorOnlySource(authoringMethod, authoringEntry),
     partId,
   );
   canonicalizeSourceTextureTopology(gltf);
-  const factorOnlyBlender = isBlenderAuthoringMethod(authoringMethod)
+  const factorOnlyBlender = allowsFactorOnlySource(authoringMethod, authoringEntry)
     && (gltf.images || []).length === 0
     && (gltf.materials || []).length > 0
     && (gltf.materials || []).every((material) =>
@@ -611,4 +612,6 @@ async function main() {
   }, null, 2));
 }
 
-await main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main();
+}
