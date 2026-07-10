@@ -14,7 +14,7 @@ $ec = $LASTEXITCODE
 \"EXIT_CODE=$ec\" | Add-Content \"$scratch\\framing-gate-vector.log\"
 exit $ec"
 started_at: 2026-07-09T01:53:27.636Z
-running_for_ms: 64125009 
+running_for_ms: 79965004 
 ---
 00:04.282  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_vector_authored.blend"
 C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\framing_gate.py:67: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0

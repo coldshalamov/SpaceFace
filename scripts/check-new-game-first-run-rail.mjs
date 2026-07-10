@@ -33,9 +33,9 @@ assert.match(newGame, /mining:\s*'Mining'/,
   'starter loadout must label the mining slot as mining, not stale sampling language');
 assert.doesNotMatch(newGame, /mining:\s*'Sampler'/,
   'New Game starter loadout must not call the mining slot a sampler');
-assert.match(newGame, /rootEl\.appendChild\(route\);[\s\S]*const lore = el\('div', 'sf-ng-lore'\)/,
+assert.match(newGame, /body\.appendChild\(route\);[\s\S]*const lore = el\('div', 'sf-ng-lore'\)/,
   'route rail should sit before lore/footer so it is seen before Launch');
-assert.match(newGame, /rootEl\.appendChild\(route\);[\s\S]*rootEl\.appendChild\(el\('h2', null, 'Starting Ship'\)\)/,
+assert.match(newGame, /body\.appendChild\(route\);[\s\S]*body\.appendChild\(el\('h2', null, 'Starting Ship'\)\)/,
   'route rail should sit above the starter-ship block so it is visible without scrolling');
 assert.match(newGame, /@media \(max-width:520px\)[\s\S]*sf-ng-route__steps/,
   'route rail should collapse cleanly on narrow viewports');

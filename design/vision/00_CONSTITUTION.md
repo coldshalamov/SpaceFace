@@ -1,9 +1,16 @@
-# 00 — Product Constitution (player law)
+# 00 — Product Constitution (supporting product framing)
 
-**Status:** AUTHORITATIVE for product direction as of 2026-07-09.  
+> **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
+> (design) > `design/spec2/00_MASTER_TASTE.md` (taste/rejection).
+> `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that
+> chain. This file records supporting product framing and cannot override that chain.
+
+**Status:** SUPPORTING PRODUCT FRAMING — not an execution or override authority.
 **Owner:** Lead / human. Agents implement; they do not renegotiate pillars without an explicit human edit to this file.
 
-This file supersedes conflicting clauses in `design/spec2/00_MASTER_TASTE.md` (especially minimal HUD, anti-glass / no `backdrop-filter`, “quieter always,” and any rule that trades fun for check-green purity). Technical constraints in root `ARCHITECTURE.md` still apply (60 Hz sim, XZ plane, determinism, sim≠Three.js).
+Use this document for product intent only when `design/vision/ALPHA_PROGRAM.md` cites it. If its
+historical framing conflicts with root `ARCHITECTURE.md`, `design/GDD_2_0.md`,
+`design/spec2/00_MASTER_TASTE.md`, or an activated task spec, the higher authority wins.
 
 ---
 

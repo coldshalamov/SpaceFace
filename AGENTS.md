@@ -7,7 +7,8 @@
 > **Authority chain when documents disagree:**
 > `ARCHITECTURE.md` (technical contract) > `design/GDD_2_0.md` (design authority)
 > > `design/spec2/00_MASTER_TASTE.md` (taste constitution — its Forbidden list rejects diffs)
-> > the specific `design/spec2/` or `design/spec3/` spec you are implementing > older docs.
+> > `design/vision/ALPHA_PROGRAM.md` (current solo-alpha execution order and scope)
+> > the specific `design/spec2/` or `design/spec3/` spec activated for the task > supporting docs.
 > `design/CURRENT_BUILD_STATUS.md` is the live "what's built / what's red" map — but it drifts;
 > trust the actual `check:*` output over it (see §11).
 
@@ -17,7 +18,7 @@
 
 | You are… | Read these in order, then stop reading and do the work |
 |---|---|
-| **Product sprints / “what do we build?” / goal prompts** | (1) **`design/vision/README.md`** · (2) `design/vision/00_CONSTITUTION.md` · (3) `design/vision/03_MASTER_BUILD_PLAN.md` · (4) `design/vision/01_CURRENT_STATE.md` · (5) wave goal prompt in `design/vision/05_GOAL_PROMPTS.md` |
+| **Product sprints / “what do we build?” / goal prompts** | (1) **`design/vision/README.md`** · (2) `design/vision/ALPHA_PROGRAM.md` · (3) `design/vision/01_CURRENT_STATE.md` · (4) the specific spec or prompt the alpha ledger activates |
 | **Overnight / full autonomous pipeline (go to bed)** | Soft (allows partial): `design/vision/OVERNIGHT_GOAL.md`. **Strict (no early stop):** `design/vision/OVERNIGHT_GOAL_STRICT.md`. Morning: `design/vision/WAKE_REPORT.md` |
 | **Implementing a feature or fix** | (1) this file §3 + §5 + §7 · (2) `design/vision/01_CURRENT_STATE.md` (or `design/CURRENT_BUILD_STATUS.md` as secondary) · (3) the spec / vision wave your brief names · (4) `docs/MODULE_MAP.md` for the file you're touching · (5) `ARCHITECTURE.md` only the section your work touches |
 | **Adding or fixing a ship/station/place model** | `assets/AGENTS.md` (visual asset catalog + ship pipeline), then `design/spec3/SPEC3-F9-asset-pipeline.md` |
@@ -29,6 +30,8 @@
 | **Doing perf/render/feel work** | §10 below + `design/PERF_BUDGET.md`; run `npm run check:flight:clean` → `check:assets:live` → `check:perf` before claiming a fix |
 | **Designing new systems or content** | `design/GDD_2_0.md` (vision/pillars) → `design/spec2/00_MASTER_TASTE.md` (taste) → the relevant `design/spec3/SPEC3-Fx-*.md` thread |
 | **Lost / "where is X"** | `docs/MODULE_MAP.md` first. If it's not there, `docs/COMMON_BUGS.md`. If still stuck, the file-ownership map in `design/BUILD_PLAN_2_0.md` §0. |
+
+`design/vision/00_CONSTITUTION.md` and `design/vision/03_MASTER_BUILD_PLAN.md` are supporting only when `ALPHA_PROGRAM.md` activates them; they are not default product-sprint routing.
 
 **Do not** read the whole `design/` folder. It's 5,400+ lines across three suites plus 21 loose files, much of it historical. Use the dispatch maps above.
 

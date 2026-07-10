@@ -1,11 +1,9 @@
-import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { setTimeout as sleep } from 'node:timers/promises';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_FRAMES = 360;
@@ -35,7 +33,7 @@ let browser = null;
 
 try {
   const requestedBaseUrl = process.env.SF_PROBE_URL || '';
-  server = requestedBaseUrl ? { baseUrl: requestedBaseUrl } : await startFreshServer();
+  server = await acquireVisualProbeServer({ explicitUrl: requestedBaseUrl, root: ROOT });
   browser = await launchProbeBrowser();
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
   const pageIssues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
@@ -76,7 +74,7 @@ try {
   if (!ok) process.exitCode = 1;
 } finally {
   try { if (browser) await browser.close(); } catch (_) {}
-  try { if (server && server.kill) server.kill(); } catch (_) {}
+  try { if (server) await server.close(); } catch (_) {}
 }
 
 async function sampleVisualStability(page, options) {
@@ -819,61 +817,6 @@ function findSystemBrowser() {
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
   ];
   return candidates.find((candidate) => existsSync(candidate)) || null;
-}
-
-async function startFreshServer() {
-  const port = await findFreePort(8123);
-  const child = spawn(process.execPath, ['server.js', String(port)], {
-    cwd: ROOT,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PORT: String(port) },
-  });
-  const baseUrl = `http://127.0.0.1:${port}`;
-  await waitForHttp(baseUrl, 15000);
-  return {
-    baseUrl,
-    kill() {
-      try { child.kill(); } catch (_) {}
-    },
-  };
-}
-
-async function waitForHttp(url, timeoutMs) {
-  const started = Date.now();
-  let lastError = null;
-  while (Date.now() - started < timeoutMs) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return;
-      lastError = new Error(`HTTP ${response.status}`);
-    } catch (error) {
-      lastError = error;
-    }
-    await sleep(150);
-  }
-  throw new Error(`server did not become ready at ${url}: ${lastError && lastError.message || 'timeout'}`);
-}
-
-async function findFreePort(preferred) {
-  if (await portAvailable(preferred)) return preferred;
-  return new Promise((resolve, reject) => {
-    const server = createNetServer();
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const port = server.address().port;
-      server.close(() => resolve(port));
-    });
-  });
-}
-
-function portAvailable(port) {
-  return new Promise((resolve) => {
-    const server = createNetServer();
-    server.once('error', () => resolve(false));
-    server.listen(port, '127.0.0.1', () => {
-      server.close(() => resolve(true));
-    });
-  });
 }
 
 function withDebugFlight(url) {

@@ -34,8 +34,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_starter.glb",
-      "tris": 9520,
-      "bytes": 559896,
+      "tris": 14550,
+      "bytes": 960552,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -54,9 +54,9 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.6198,
-          -0.5126,
-          -1.5583
+          -5.6403,
+          -0.5134,
+          -1.5602
         ],
         "max": [
           5.2872,
@@ -64,9 +64,9 @@
           1.5578
         ],
         "dimensionsM": [
-          10.907,
-          1.5945,
-          3.1162
+          10.9275,
+          1.5953,
+          3.1181
         ]
       },
       "note": "PRO Full Finish 2026-07-06 — Bevel4+WN+meso insets+DET weld/reactor/DEBT/hatch/bolts/tag/soot. Surfacing: trim_sheet+wear_mask+SF_EdgeWear+SF_CavityDirt+AO bake+clearcoat+roughness_variation (textures/hull_starter/). Skin: Pit repossessed 3-owner wear, DEBT graffiti, port weld scar, reactor soot, inventory tag. 1612 tris / blender_mcp.",
@@ -94,8 +94,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_fighter.glb",
-      "tris": 3308,
-      "bytes": 1708364,
+      "tris": 4690,
+      "bytes": 2710692,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -120,12 +120,12 @@
         ],
         "max": [
           5.299,
-          0.8719,
+          0.8911,
           2.9423
         ],
         "dimensionsM": [
           10.449,
-          1.3969,
+          1.4161,
           5.8845
         ]
       },
@@ -154,8 +154,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_miner.glb",
-      "tris": 21048,
-      "bytes": 3352340,
+      "tris": 12991,
+      "bytes": 4018240,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -174,19 +174,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -5.15,
+          -5.1503,
           -1.3752,
-          -2.702
+          -2.793
         ],
         "max": [
-          5.8,
-          2.6816,
-          2.702
+          5.8011,
+          2.9856,
+          2.7011
         ],
         "dimensionsM": [
-          10.95,
-          4.0567,
-          5.404
+          10.9514,
+          4.3607,
+          5.4941
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + ore trim sheet + dust wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, roughness variation, clearcoat, 3-role EEVEE lit PBR. Belt ore hauler dust-caked rust-amber. 30 MCP renders. tris=21048.",
@@ -214,8 +214,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_freighter.glb",
-      "tris": 3248,
-      "bytes": 1781788,
+      "tris": 4621,
+      "bytes": 3110348,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -236,17 +236,17 @@
         "min": [
           -5.55,
           -1.15,
-          -2.12
+          -2.1855
         ],
         "max": [
-          5.8006,
+          5.8242,
           2.453,
-          2.12
+          2.1921
         ],
         "dimensionsM": [
-          11.3506,
+          11.3742,
           3.603,
-          4.24
+          4.3776
         ]
       },
       "note": "PRO revamp 2026-07-06 — 8 DET layers + Full Finish surfacing: trim sheet + wear mask (image-gen), SF_EdgeWear/SF_CavityDirt node groups, AO bake, roughness variation, clearcoat, 3-role PBR (Hull/Mech/Accent). Belt cargo runner manifest-lies character. tris=3248.",
@@ -274,8 +274,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_interceptor.glb",
-      "tris": 3212,
-      "bytes": 1429832,
+      "tris": 4539,
+      "bytes": 2677748,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -299,12 +299,12 @@
           -2.6961
         ],
         "max": [
-          5.6987,
+          5.7504,
           1.0908,
           2.6961
         ],
         "dimensionsM": [
-          11.1487,
+          11.2004,
           1.3508,
           5.3921
         ]
@@ -334,8 +334,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_corvette.glb",
-      "tris": 3240,
-      "bytes": 1558760,
+      "tris": 4596,
+      "bytes": 2510304,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -356,17 +356,17 @@
         "min": [
           -5.55,
           -1.145,
-          -2.525
+          -2.5853
         ],
         "max": [
-          5.95,
+          5.9503,
           2.3183,
-          2.525
+          2.5894
         ],
         "dimensionsM": [
-          11.5,
+          11.5003,
           3.4633,
-          5.05
+          5.1747
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + corporate trim + fade wear mask (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.22, 3-role EEVEE lit PBR. Core Bastion escort corporate-clean-fading. 24 MCP renders. tris=3240.",
@@ -394,8 +394,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_frigate.glb",
-      "tris": 3300,
-      "bytes": 841536,
+      "tris": 4685,
+      "bytes": 3087004,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -415,18 +415,18 @@
       "bounds": {
         "min": [
           -5.994,
-          -2.525,
-          -2.625
+          -2.5892,
+          -2.8624
         ],
         "max": [
-          7.021,
-          2.6268,
-          2.698
+          7.05,
+          2.6572,
+          2.7228
         ],
         "dimensionsM": [
-          13.015,
-          5.1518,
-          5.323
+          13.044,
+          5.2465,
+          5.5852
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + frigate trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat 0.28, stencil emissive, 3-role EEVEE lit PBR. Core authority squadron stripe + disciplined wear skin pass. 29 MCP renders. tris=3300.",
@@ -454,8 +454,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_capital.glb",
-      "tris": 3468,
-      "bytes": 930292,
+      "tris": 4882,
+      "bytes": 4172604,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -474,19 +474,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -6.496,
-          -3.245,
-          -3.525
+          -6.6142,
+          -3.28,
+          -4.0126
         ],
         "max": [
-          7.616,
-          3.365,
-          3.525
+          7.6551,
+          3.5614,
+          3.696
         ],
         "dimensionsM": [
-          14.112,
-          6.61,
-          7.05
+          14.2694,
+          6.8414,
+          7.7086
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 9 DET + cathedral trim/ashfall wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, matte oxidized, anomaly emissive, 3-role EEVEE lit PBR. Ashfall cathedral ribs + oxidation + violet vein skin pass. 30 MCP renders. tris=3468.",
@@ -514,8 +514,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_multirole.glb",
-      "tris": 2566,
-      "bytes": 774824,
+      "tris": 3534,
+      "bytes": 3460540,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -535,18 +535,18 @@
       "bounds": {
         "min": [
           -5.665,
-          -1.86,
-          -2.225
+          -1.9077,
+          -2.5385
         ],
         "max": [
-          6.517,
-          1.92,
-          2.225
+          6.6114,
+          2.0427,
+          2.3537
         ],
         "dimensionsM": [
-          12.182,
-          3.78,
-          4.45
+          12.2764,
+          3.9504,
+          4.8922
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + patchwork trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, violet emissive stripe, 3-role EEVEE lit PBR. Free Frontier smuggler patchwork skin pass. 29 render_viewport_to_path MCP renders. tris=2566.",
@@ -574,8 +574,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_gunship.glb",
-      "tris": 3288,
-      "bytes": 914176,
+      "tris": 4671,
+      "bytes": 3721344,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -596,17 +596,17 @@
         "min": [
           -5.8,
           -1.3,
-          -2.75
+          -2.774
         ],
         "max": [
-          5.95,
-          2.4401,
-          2.75
+          6.0182,
+          2.4608,
+          2.7633
         ],
         "dimensionsM": [
-          11.75,
-          3.7401,
-          5.5
+          11.8182,
+          3.7608,
+          5.5374
         ]
       },
       "note": "PRO revamp 2026-07-06 — Full Finish: 8 DET + gunship trim/wear masks (image-gen), SF_EdgeWear/SF_CavityDirt, AO bake, clearcoat, stencil emissive, 3-role EEVEE lit PBR. Military/fringe battle-scar + soot + red stencil skin pass. 32 MCP renders. tris=3288.",
@@ -635,7 +635,7 @@
       "priority": "P0",
       "file": "cockpits/cockpit_dome.glb",
       "tris": 3214,
-      "bytes": 287036,
+      "bytes": 297388,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -689,7 +689,7 @@
       "priority": "P0",
       "file": "cockpits/cockpit_slab.glb",
       "tris": 2644,
-      "bytes": 698884,
+      "bytes": 623484,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -743,7 +743,7 @@
       "priority": "P0",
       "file": "cockpits/cockpit_recessed.glb",
       "tris": 1884,
-      "bytes": 1596312,
+      "bytes": 3527524,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -796,8 +796,8 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_ion_small.glb",
-      "tris": 13564,
-      "bytes": 820332,
+      "tris": 14192,
+      "bytes": 874484,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -853,7 +853,7 @@
       "priority": "P0",
       "file": "engines/engine_ion_twin.glb",
       "tris": 5664,
-      "bytes": 459984,
+      "bytes": 412680,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -912,8 +912,8 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_industrial.glb",
-      "tris": 23308,
-      "bytes": 1009464,
+      "tris": 10128,
+      "bytes": 951016,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -948,18 +948,18 @@
       "bounds": {
         "min": [
           -0.222,
-          -1.4331,
-          -1.4331
+          -1.4313,
+          -1.4313
         ],
         "max": [
           3.302,
           1.469,
-          1.4331
+          1.4313
         ],
         "dimensionsM": [
           3.524,
-          2.9022,
-          2.8663
+          2.9003,
+          2.8626
         ]
       }
     },
@@ -968,8 +968,8 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_resonator.glb",
-      "tris": 36126,
-      "bytes": 1112280,
+      "tris": 3904,
+      "bytes": 291528,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1024,8 +1024,8 @@
       "category": "engines",
       "priority": "P1",
       "file": "engines/engine_vector.glb",
-      "tris": 5064,
-      "bytes": 350244,
+      "tris": 5628,
+      "bytes": 393368,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1064,12 +1064,12 @@
           -0.5461
         ],
         "max": [
-          1.3476,
+          1.725,
           0.5378,
           0.5461
         ],
         "dimensionsM": [
-          1.9976,
+          2.375,
           1.0757,
           1.0923
         ]
@@ -1361,8 +1361,8 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_gatling.glb",
-      "tris": 3680,
-      "bytes": 1466816,
+      "tris": 3040,
+      "bytes": 4239796,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1474,8 +1474,8 @@
       "category": "fins",
       "priority": "P1",
       "file": "fins/fin_wedge.glb",
-      "tris": 1566,
-      "bytes": 1289392,
+      "tris": 1058,
+      "bytes": 2989344,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -1513,12 +1513,12 @@
         ],
         "max": [
           3.8154,
-          0.3325,
+          0.2713,
           4.1108
         ],
         "dimensionsM": [
           4.2261,
-          0.5465,
+          0.4852,
           4.1289
         ]
       }
@@ -2434,7 +2434,7 @@
       "priority": "P1",
       "file": "places/place_lane_beacon.glb",
       "tris": 8124,
-      "bytes": 741504,
+      "bytes": 747564,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2883,7 +2883,7 @@
       "priority": "P1",
       "file": "places/place_asteroid_rock_a.glb",
       "tris": 9403,
-      "bytes": 2316688,
+      "bytes": 4955764,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2935,7 +2935,7 @@
       "priority": "P1",
       "file": "places/place_asteroid_rock_b.glb",
       "tris": 5508,
-      "bytes": 589884,
+      "bytes": 595948,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2986,8 +2986,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_asteroid_rock_c.glb",
-      "tris": 584,
-      "bytes": 184628,
+      "tris": 5552,
+      "bytes": 432200,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3017,19 +3017,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -7,
-          -6,
-          -6.33703
+          -2.8272,
+          -2.2,
+          -2.046
         ],
         "max": [
-          7,
-          6,
-          6.33703
+          2.4123,
+          2.2,
+          2.046
         ],
         "dimensionsM": [
-          14,
-          12,
-          12.67406
+          5.2396,
+          4.4,
+          4.092
         ]
       }
     },
@@ -3094,8 +3094,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_trade_hub.glb",
-      "tris": 21372,
-      "bytes": 1835976,
+      "tris": 8122,
+      "bytes": 1291424,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3129,19 +3129,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -23.2015,
-          -14,
-          -24.6
+          -23.1937,
+          -13.9991,
+          -24.5922
         ],
         "max": [
-          28,
-          37,
-          24.6
+          27.9994,
+          37.0008,
+          24.5922
         ],
         "dimensionsM": [
-          51.2015,
-          51,
-          49.2
+          51.1932,
+          50.9999,
+          49.1844
         ]
       }
     },
@@ -3318,8 +3318,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_gate_jump_ring.glb",
-      "tris": 15932,
-      "bytes": 1523364,
+      "tris": 8796,
+      "bytes": 907572,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

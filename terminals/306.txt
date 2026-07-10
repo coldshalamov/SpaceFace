@@ -16,7 +16,7 @@ npm run build:sg04:release-assets 2>&1 | Tee-Object -Append \"$scratch\\build-sg
 $ec2 = $LASTEXITCODE
 \"EXIT_CODE_RUN2=$ec2\" | Add-Content \"$scratch\\build-sg04-release-assets.log\""
 started_at: 2026-07-09T02:16:58.531Z
-running_for_ms: 62729995 
+running_for_ms: 78569988 
 ---
 
 > spaceface@0.1.0 build:sg04:release-assets

@@ -12,7 +12,7 @@ $ec = $LASTEXITCODE
 \"EXIT_CODE=$ec\" | Add-Content \"$scratch\\build-sg04-solo.log\"
 exit $ec"
 started_at: 2026-07-09T02:57:59.966Z
-running_for_ms: 60269993 
+running_for_ms: 76109990 
 ---
 === BUILD SOLO 2026-07-08T22:58:01.0389269-04:00 ===
 

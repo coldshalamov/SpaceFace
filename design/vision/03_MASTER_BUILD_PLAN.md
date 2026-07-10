@@ -1,10 +1,17 @@
-# 03 — Master Build Plan (point agents here)
+# 03 — Master Build Plan (supporting historical pre-alpha roadmap)
 
-**Status:** LIVE execution authority for product sprints (2026-07-09).  
+> **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
+> (design) > `design/spec2/00_MASTER_TASTE.md` (taste/rejection).
+> `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that
+> chain. This file is a supporting pre-alpha roadmap and wave history; a section is active only
+> when `ALPHA_PROGRAM.md` cites or activates it.
+
+**Status:** HISTORICAL / SUPPORTING — not the current execution authority.
 **Ambitious scope:** yes — full premium Freelancer-class browser/PC sandbox.  
 **Sequence:** playable fun → dense world → glass UI → wonder assets → living ripples → empire.
 
-Use [`05_GOAL_PROMPTS.md`](./05_GOAL_PROMPTS.md) to dispatch.  
+Dispatch from [`ALPHA_PROGRAM.md`](./ALPHA_PROGRAM.md). Use `05_GOAL_PROMPTS.md` only when that
+ledger explicitly activates a historical wave or prompt.
 Update [`01_CURRENT_STATE.md`](./01_CURRENT_STATE.md) when a wave’s PLAY column changes.
 
 ---
@@ -84,7 +91,8 @@ Update [`01_CURRENT_STATE.md`](./01_CURRENT_STATE.md) when a wave’s PLAY colum
 | W3-E | **One map surface** | Primary galaxy/local continuum; kill dual-map confusion |
 
 **Anti-goal:** “Dense” ≠ more paragraphs.  
-**Detail:** `FRONTEND_REBOOT_AUDIT.md` (inventory), **ignore** three-anchor as law if constitution glass/density needs more surface — hierarchy still required.
+**Detail:** `FRONTEND_REBOOT_AUDIT.md` is an inventory. Any activated UI work follows the GDD,
+MASTER_TASTE, and its task spec; supporting glass/density ideas cannot override that chain.
 
 ---
 
@@ -159,19 +167,17 @@ Update [`01_CURRENT_STATE.md`](./01_CURRENT_STATE.md) when a wave’s PLAY colum
 
 ---
 
-## Goal-prompt contract (every agent)
+## Historical goal-prompt contract (only when activated by ALPHA_PROGRAM)
 
 ```
-Read design/vision/00_CONSTITUTION.md and design/vision/03_MASTER_BUILD_PLAN.md wave <ID>.
-Implement only that wave row. Playtest rubric is mandatory acceptance.
-Do not apply superseded MASTER_TASTE rules that conflict with the constitution
-(anti-glass, minimal-HUD-for-its-own-sake, difficulty-for-difficulty).
-ARCHITECTURE.md technical constraints still hold.
+Read design/vision/ALPHA_PROGRAM.md, then the exact wave/spec it activates.
+Implement only the activated task. Its named live evidence is mandatory acceptance.
+Preserve the root authority chain: ARCHITECTURE > GDD > MASTER_TASTE > activated task spec.
 Update design/vision/01_CURRENT_STATE.md on completion.
 git add -N new files. No golden edits without named re-record reason.
 ```
 
-Full templates: `05_GOAL_PROMPTS.md`.
+Historical templates: `05_GOAL_PROMPTS.md`; they are supporting only until the alpha ledger cites them.
 
 ---
 

@@ -1,11 +1,17 @@
 # SPEC2/00 — MASTER TASTE CONSTITUTION
 
+> **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
+> (design) > `design/spec2/00_MASTER_TASTE.md` (taste/rejection).
+> `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that
+> chain.
+
 **Every spec2 document inherits this file. Read it before implementing anything.**
 Where a spec leaves room for interpretation: choose the QUIETER option. Any deviation from a number
 in any spec2 file requires editing that spec in the same change, with a one-line justification.
-Authority chain: 00_MASTER_TASTE > the specific spec2 file > design/GDD_2_0.md > older docs.
-`ARCHITECTURE.md` remains the technical contract (fixed 60 Hz sim, XZ plane, sim never imports
-Three.js, UI emits intents only, determinism via state.rng, no per-frame allocations in hot paths).
+Authority chain: root `ARCHITECTURE.md` > `design/GDD_2_0.md` >
+`design/spec2/00_MASTER_TASTE.md` > the specific task spec > supporting docs.
+`design/vision/ALPHA_PROGRAM.md` selects current execution order/scope and activates task specs or
+supporting references beneath that chain; it does not reverse design or taste authority.
 
 ## 1. The one-sentence bar
 This game must feel like a **$30 premium PC/browser release**: nothing on screen is unexplained, nothing stutters,

@@ -1,42 +1,45 @@
 # CONTINUATION — Top-50 Slice A (session 2026-07-09)
 
-## DONE this session (export bar + finalize + release)
+## DONE this session (export bar + finalize; release where run)
 
 | Rank | ID | Iters | Weighted | Notes |
 |---:|---|---:|---:|---|
 | 1 | hull_starter | 28 | 4.73 | single-island weld + ritual frame |
 | 2 | massline VFX | 10 cycles | n/a | structural pack green |
 | 3 | thruster VFX | 10 cycles | n/a | structural pack green |
+| 4 | engine_vector | 21 | 4.74 | joined thruster (no floaters) |
 | 5 | combat hit VFX | 10 cycles | n/a | structural pack green |
-| 6 | place_station_trade_hub | 20 | 4.9 | Meridian gold hub RELEASE |
+| 6 | place_station_trade_hub | 20 | 4.9 | Meridian gold hub |
 | 7 | place_lane_beacon | 21 | 4.79 | Helios landmark spire |
 | 8 | place_gate_jump_ring | 20 | 4.99 | transit gate torus |
+| 9 | mining VFX | 10 cycles | n/a | denser tick/yield chunks |
+| 10 | Helios sky kit | 10 cycles | n/a | core palette + AZURE + SECTOR_PALETTES |
+| 13 | chase camera juice | 10 cycles | n/a | zoom 72, bank lean, chaseClose |
+| 14 | asteroids rock_b/c | 11 each | 4.525 | densify + reframe; rock_a already dense |
 
-## NOT DONE (next agent — highest first)
+## Residual / optional next
 
-| Rank | ID | State | Next |
-|---:|---|---|---|
-| 4 | engine_vector | 20 iters logged 2026-07-08; residual flat-face deficiencies | re-audit scores + large meso rebuild if store still fails |
-| 9 | Mining VFX pack | not started | Thread D ≥10 cycles |
-| 10 | Helios sky/lighting kit | not started | Thread D sector palette |
-| 13 | Chase camera juice | not started | Thread D runtime |
-| 14 | Asteroid hero set | rock_a large; b/c thin | densify rock_b/c + seamed ore response |
-| 23–24 | cockpit/fin on starter | partial prior work | if starter still looks naked in-game |
+| Item | State |
+|---|---|
+| rock_a / seamed | already higher tris; optional ore-hero polish |
+| In-flight GIF | missing |
+| check:assets:live | systemic MOUNT_* reds elsewhere — not hull-only |
+| Full release after rock_b/c | run `npm run build:sg04:release-assets` before shipping |
+| HOOK_DRIVE_* on engine_vector | finalize advisory (empties may not GLB-serialize) |
 
 ## Slice A exit artifacts
 
 | Artifact | Path | Status |
 |---|---|---|
-| undock-wide | `.devshots/slice-A/undock-wide.png` | present (hull ritual) |
-| undock-close | `.devshots/slice-A/undock-close.png` | present |
-| massline-latch | note + verify json | structural (no live latch still) |
+| undock-wide/close | `.devshots/slice-A/undock-*.png` | present |
 | station-approach | `.devshots/slice-A/station-approach.png` | present |
 | landmark | `.devshots/slice-A/landmark-beacon.png` | present |
 | gate | `.devshots/slice-A/gate-approach.png` | present |
-| in-flight GIF | — | **missing** |
-| G10 in-game live probe | check:assets:live | often systemic MOUNT_* reds |
+| engine | `.devshots/slice-A/engine-vector.png` | present |
+| asteroids | `.devshots/slice-A/asteroid-rock-b/c.png` | present |
+| VFX verifies | massline/thruster/combat/mining/chase/sky json | present |
 
 ## Do not
 - Wire blocked wholeships
-- Claim full Slice A complete
+- Claim G10 live probe without authored-path screenshot from flight
 - git reset/stash/checkout tracked tree

@@ -84,6 +84,15 @@ function injectStyle() {
   .sf-ng-route__step b { display:block; font-size:12px; color:var(--ink); margin-bottom:2px; overflow-wrap:anywhere; }
   .sf-ng-route__step span { display:block; font-size:11px; color:var(--ink-dim); line-height:1.35; overflow-wrap:anywhere; }
   @media (max-width:520px) { .sf-ng-route__steps { grid-template-columns:1fr; } }
+  /* New Game keeps its decision actions in view while the detailed setup content scrolls. */
+  .sf-menu.sf-ng-shell { width:min(420px,calc(100vw - 32px)); min-width:0; height:min(88vh,820px);
+    max-height:calc(100vh - 24px); padding:0; gap:0; overflow:hidden; }
+  .sf-ng-header { flex:0 0 auto; margin:0; padding:20px 30px 14px;
+    border-bottom:1px solid var(--panel-edge); }
+  .sf-menu .sf-ng-body { flex:1 1 auto; min-height:0; overflow-x:hidden; overflow-y:auto;
+    display:flex; flex-direction:column; gap:14px; padding:16px 30px; scrollbar-gutter:stable; }
+  .sf-menu .sf-ng-footer { flex:0 0 auto; margin:0; padding:14px 30px 18px;
+    border-top:1px solid var(--panel-edge); background:rgba(5,9,18,.96); }
   /* UX-1: rotating 3D preview of the starter ship. Sits above the stat grid so the hull reads as a
      real object (with a history), not a table of numbers. */
   .sf-ng-preview { position: relative; height: 150px; margin: 6px 0 10px; border: 1px solid var(--panel-edge);
@@ -114,7 +123,9 @@ function shell(rootEl, title, extraClass) {
   rootEl.innerHTML = '';
   rootEl.classList.add('panel', 'sf-menu');
   if (extraClass) rootEl.classList.add(extraClass);
-  const h = document.createElement('h1'); h.textContent = title; rootEl.appendChild(h);
+  const header = document.createElement('header'); header.className = 'sf-ng-header';
+  const h = document.createElement('h1'); h.textContent = title; header.appendChild(h);
+  rootEl.appendChild(header);
   return rootEl;
 }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -190,24 +201,33 @@ export const newGameScreen = {
     disposeRefsPreview();
     shell(rootEl, 'New Game', 'sf-menu-narrow');
     rootEl.classList.remove('sf-menu-narrow');
-    rootEl.style.width = '420px';
+    rootEl.classList.add('sf-ng-shell');
+    rootEl.style.width = '';
+
+    const body = el('div', 'sf-ng-body');
+    rootEl.appendChild(body);
 
     // Pilot name
     const nameRow = el('div', 'sf-row');
-    nameRow.appendChild(el('label', null, 'Pilot name'));
+    const nameLabel = el('label', null, 'Pilot name');
+    nameLabel.htmlFor = 'sf-ng-pilot-name';
+    nameRow.appendChild(nameLabel);
     const nameCtl = el('div', 'sf-ctl');
-    const name = el('input'); name.type = 'text'; name.maxLength = 20; name.value = 'Wren'; name.style.flex = '1';
-    nameCtl.appendChild(name); nameRow.appendChild(nameCtl); rootEl.appendChild(nameRow);
+    const name = el('input'); name.id = 'sf-ng-pilot-name'; name.type = 'text'; name.maxLength = 20; name.value = 'Wren'; name.style.flex = '1';
+    nameCtl.appendChild(name); nameRow.appendChild(nameCtl); body.appendChild(nameRow);
 
     // Difficulty
     const diffRow = el('div', 'sf-row');
-    diffRow.appendChild(el('label', null, 'Difficulty'));
+    const diffLabel = el('label', null, 'Difficulty');
+    diffLabel.htmlFor = 'sf-ng-difficulty';
+    diffRow.appendChild(diffLabel);
     const diffCtl = el('div', 'sf-ctl');
     const diff = el('select');
+    diff.id = 'sf-ng-difficulty';
     DIFFICULTIES.forEach(([val, txt]) => { const o = el('option', null, txt); o.value = val; if (val === 'standard') o.selected = true; diff.appendChild(o); });
-    diffCtl.appendChild(diff); diffRow.appendChild(diffCtl); rootEl.appendChild(diffRow);
+    diffCtl.appendChild(diff); diffRow.appendChild(diffCtl); body.appendChild(diffRow);
     const diffDesc = el('p', 'sf-muted', '');
-    rootEl.appendChild(diffDesc);
+    body.appendChild(diffDesc);
     const setDesc = () => { const d = DIFFICULTIES.find((x) => x[0] === diff.value); diffDesc.textContent = d ? d[2] : ''; };
     diff.addEventListener('change', setDesc); setDesc();
 
@@ -221,18 +241,18 @@ export const newGameScreen = {
         '<div class="sf-ng-route__step"><b>Mine the first seam</b><span>Pulse, beam the bright seams, ride the heat.</span></div>' +
         '<div class="sf-ng-route__step"><b>Dock and pick work</b><span>Sell at Helios, then choose haul, bounty, or survey.</span></div>' +
       '</div>';
-    rootEl.appendChild(route);
+    body.appendChild(route);
 
     // Starter ship preview — ship identity comes first, then stats.
     // The Tessera has a history. The player should feel it before they click Launch.
-    rootEl.appendChild(el('h2', null, 'Starting Ship'));
+    body.appendChild(el('h2', null, 'Starting Ship'));
     // UX-1: rotating 3D preview of the starter hull. Lazy + guarded so a WebGL/factory failure never
     // blocks game creation — the stat grid + Launch button still work without it.
     const previewWrap = el('div', 'sf-ng-preview');
     const previewCanvas = el('canvas', 'sf-ng-preview__canvas');
     previewCanvas.width = 380; previewCanvas.height = 150;
     previewWrap.appendChild(previewCanvas);
-    rootEl.appendChild(previewWrap);
+    body.appendChild(previewWrap);
     let ngPreview = null;
     try {
       const envMap = ctx.state && ctx.state.render && ctx.state.render.envMap;
@@ -251,7 +271,7 @@ export const newGameScreen = {
     addStat('Crew Status', 'NO SURVIVORS ON RECORD');
     addStat('Credits', '5,000 cr');
     for (const [slot, name] of starterLoadoutRows()) addStat(slot, name);
-    rootEl.appendChild(grid);
+    body.appendChild(grid);
 
     // The friend's favor, in two lines. No cutscene. Just the facts.
     const lore = el('div', 'sf-ng-lore');
@@ -259,10 +279,10 @@ export const newGameScreen = {
       '<span class="sf-ng-lore__line">Impounded 14 months. Nobody touched it.</span>' +
       '<span class="sf-ng-lore__quote">“She’s yours. Don’t ask what happened to the last crew.”</span>' +
       '<span class="sf-ng-lore__attr">— KAEL</span>';
-    rootEl.appendChild(lore);
+    body.appendChild(lore);
 
     // Foot: Back / Launch
-    const foot = el('div', 'sf-foot');
+    const foot = el('footer', 'sf-foot sf-ng-footer');
     const back = el('button', 'sf-btn'); back.textContent = 'Back'; back.style.width = 'auto';
     back.addEventListener('click', () => nav(ctx, 'popScreen'));
     const launch = el('button', 'sf-btn'); launch.textContent = 'Launch'; launch.style.width = 'auto';

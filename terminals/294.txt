@@ -10,7 +10,7 @@ foreach ($part in @('engine_vector','engine_resonator','engine_plasma_ring')) {
   & $blender --background --python \"$root\\tools\\art\\blender\\quality_render_runner.py\" 2>&1 | Select-Object -Last 3
 }"
 started_at: 2026-07-08T23:59:50.695Z
-running_for_ms: 70939996 
+running_for_ms: 86400010 
 ---
 Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
 
@@ -21,3 +21,9 @@ Blender quit
 Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
 
 Blender quit
+
+---
+exit_code: -1
+elapsed_ms: 86400010
+ended_at: 2026-07-10T00:00:09.686Z
+---

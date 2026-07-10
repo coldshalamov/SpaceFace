@@ -2,6 +2,7 @@ import { SCENARIO_CONTRACT_SCHEMA, validateScenarioDocument } from './scenarioSc
 
 export const GOLDEN_INPUT_TAPE_SCHEMA = 'spaceface.goldenInputTape.v1';
 export const TELEMETRY_ENVELOPE_SCHEMA = 'spaceface.telemetryEnvelope.v1';
+export const ALPHA_EVIDENCE_SCHEMA = 'spaceface.alphaEvidence.v1';
 export const EVIDENCE_VALIDATION_RESULT_SCHEMA = 'spaceface.evidenceValidationResult.v1';
 
 const REQUIRED_EVENT_FAMILIES = ['flight', 'combat', 'economy', 'story', 'ai', 'camera', 'scenario', 'tether', 'presentation'];
@@ -34,6 +35,36 @@ const ACCEPTANCE_KEYS = new Set([
   'canonicalLongBranchId',
   'canonicalLongBranchFactChanges',
 ]);
+const ALPHA_EVIDENCE_KEYS = new Set([
+  'schema',
+  'taskId',
+  'worktreeId',
+  'route',
+  'viewport',
+  'runtime',
+  'captureKind',
+  'inputSource',
+  'injectedState',
+  'primaryAcceptance',
+  'checks',
+  'artifacts',
+  'notes',
+]);
+const ALPHA_VIEWPORT_KEYS = new Set(['width', 'height']);
+const ALPHA_RUNTIME_KEYS = new Set(['kind', 'gpu']);
+const ALPHA_CHECK_KEYS = new Set(['name', 'status']);
+const ALPHA_ARTIFACT_KEYS = new Set(['kind', 'path']);
+const ALPHA_CAPTURE_KINDS = new Set(['browser', 'electron', 'blender', 'synthetic']);
+const ALPHA_RUNTIME_KINDS = new Set(['browser', 'electron', 'node', 'blender']);
+const ALPHA_INPUT_SOURCES = new Set(['keyboard-mouse', 'gamepad', 'touch', 'public-intents', 'fixture']);
+const ALPHA_CHECK_STATUSES = new Set(['pass', 'fail', 'blocked']);
+const ALPHA_ARTIFACT_KINDS = new Set(['screenshot', 'video', 'telemetry', 'report', 'log']);
+const ALPHA_CAPTURE_RUNTIME = Object.freeze({
+  browser: 'browser',
+  electron: 'electron',
+  blender: 'blender',
+  synthetic: 'node',
+});
 
 export function validateEvidenceDocument(doc, options = {}) {
   const file = normalizePath(options.file || '');
@@ -42,13 +73,153 @@ export function validateEvidenceDocument(doc, options = {}) {
     addIssue(issues, file, '$', 'type', 'document must be a JSON object');
     return documentResult(doc, issues);
   }
+  if (!Object.prototype.hasOwnProperty.call(doc, 'schema')) {
+    addIssue(issues, file, '$.schema', 'required', 'required field is missing');
+    return documentResult(doc, issues);
+  }
 
   if (doc.schema === GOLDEN_INPUT_TAPE_SCHEMA) validateGoldenInputTape(doc, issues, file);
   else if (doc.schema === TELEMETRY_ENVELOPE_SCHEMA) validateTelemetryEnvelope(doc, issues, file);
+  else if (doc.schema === ALPHA_EVIDENCE_SCHEMA) validateAlphaEvidence(doc, issues, file);
   else if (doc.schema === SCENARIO_CONTRACT_SCHEMA) issues.push(...validateScenarioDocument(doc, { file }).issues);
   else addIssue(issues, file, '$.schema', 'schema', `unsupported evidence schema ${JSON.stringify(doc.schema)}`);
 
   return documentResult(doc, issues);
+}
+
+function validateAlphaEvidence(evidence, issues, file) {
+  validateKnownKeys(evidence, ALPHA_EVIDENCE_KEYS, '$', issues, file);
+  requireKeys(evidence, ALPHA_EVIDENCE_KEYS, '$', issues, file);
+  requireString(evidence.taskId, '$.taskId', issues, file, { pattern: /^[a-z0-9][a-z0-9._-]*$/ });
+  requireString(evidence.worktreeId, '$.worktreeId', issues, file);
+  requireString(evidence.route, '$.route', issues, file);
+
+  validateAlphaViewport(evidence.viewport, issues, file);
+  validateAlphaRuntime(evidence.runtime, issues, file);
+  requireEnum(evidence.captureKind, ALPHA_CAPTURE_KINDS, '$.captureKind', issues, file);
+  requireEnum(evidence.inputSource, ALPHA_INPUT_SOURCES, '$.inputSource', issues, file);
+  requireBoolean(evidence.injectedState, '$.injectedState', issues, file);
+  requireBoolean(evidence.primaryAcceptance, '$.primaryAcceptance', issues, file);
+  validateAlphaChecks(evidence.checks, issues, file);
+  validateAlphaArtifacts(evidence.artifacts, issues, file);
+  validateStringArray(evidence.notes, '$.notes', issues, file);
+
+  const expectedRuntime = ALPHA_CAPTURE_RUNTIME[evidence.captureKind];
+  if (expectedRuntime && evidence.runtime?.kind !== expectedRuntime) {
+    addIssue(issues, file, '$.runtime.kind', 'captureRuntime', `${evidence.captureKind} capture requires ${expectedRuntime} runtime`);
+  }
+
+  if (evidence.primaryAcceptance !== true) return;
+  if (!['browser', 'electron'].includes(evidence.captureKind)) {
+    addIssue(issues, file, '$.captureKind', 'primaryAcceptance', 'primary acceptance requires a browser or electron capture');
+  }
+  if (evidence.inputSource === 'fixture') {
+    addIssue(issues, file, '$.inputSource', 'primaryAcceptance', 'primary acceptance cannot use fixture input');
+  }
+  if (evidence.injectedState !== false) {
+    addIssue(issues, file, '$.injectedState', 'primaryAcceptance', 'primary acceptance cannot inject state or entities');
+  }
+  if (!Array.isArray(evidence.checks)
+    || evidence.checks.length === 0
+    || !evidence.checks.every((check) => check?.status === 'pass')) {
+    addIssue(issues, file, '$.checks', 'primaryAcceptance', 'primary acceptance requires one or more checks and every check must pass');
+  }
+  if (!Array.isArray(evidence.artifacts)
+    || !evidence.artifacts.some((artifact) => artifact?.kind === 'screenshot' || artifact?.kind === 'video')) {
+    addIssue(issues, file, '$.artifacts', 'primaryAcceptance', 'primary acceptance requires at least one screenshot or video artifact');
+  }
+}
+
+function validateAlphaViewport(viewport, issues, file) {
+  const path = '$.viewport';
+  if (!isPlainObject(viewport)) {
+    addIssue(issues, file, path, 'type', 'viewport must be an object');
+    return;
+  }
+  validateKnownKeys(viewport, ALPHA_VIEWPORT_KEYS, path, issues, file);
+  requireKeys(viewport, ALPHA_VIEWPORT_KEYS, path, issues, file);
+  requireInteger(viewport.width, `${path}.width`, issues, file, { min: 1 });
+  requireInteger(viewport.height, `${path}.height`, issues, file, { min: 1 });
+}
+
+function validateAlphaRuntime(runtime, issues, file) {
+  const path = '$.runtime';
+  if (!isPlainObject(runtime)) {
+    addIssue(issues, file, path, 'type', 'runtime must be an object');
+    return;
+  }
+  validateKnownKeys(runtime, ALPHA_RUNTIME_KEYS, path, issues, file);
+  requireKeys(runtime, ALPHA_RUNTIME_KEYS, path, issues, file);
+  requireEnum(runtime.kind, ALPHA_RUNTIME_KINDS, `${path}.kind`, issues, file);
+  if (runtime.kind === 'browser' || runtime.kind === 'electron') {
+    requireString(runtime.gpu, `${path}.gpu`, issues, file);
+  } else if (runtime.gpu !== null && (typeof runtime.gpu !== 'string' || !runtime.gpu.trim())) {
+    addIssue(issues, file, `${path}.gpu`, 'type', 'node and blender runtime gpu must be null or a non-empty string');
+  }
+}
+
+function validateAlphaChecks(checks, issues, file) {
+  const path = '$.checks';
+  if (!Array.isArray(checks)) {
+    addIssue(issues, file, path, 'type', 'checks must be an array');
+    return;
+  }
+  checks.forEach((check, index) => {
+    const itemPath = `${path}[${index}]`;
+    if (!isPlainObject(check)) {
+      addIssue(issues, file, itemPath, 'type', 'check must be an object');
+      return;
+    }
+    validateKnownKeys(check, ALPHA_CHECK_KEYS, itemPath, issues, file);
+    requireKeys(check, ALPHA_CHECK_KEYS, itemPath, issues, file);
+    requireString(check.name, `${itemPath}.name`, issues, file);
+    requireEnum(check.status, ALPHA_CHECK_STATUSES, `${itemPath}.status`, issues, file);
+  });
+}
+
+function validateAlphaArtifacts(artifacts, issues, file) {
+  const path = '$.artifacts';
+  if (!Array.isArray(artifacts)) {
+    addIssue(issues, file, path, 'type', 'artifacts must be an array');
+    return;
+  }
+  artifacts.forEach((artifact, index) => {
+    const itemPath = `${path}[${index}]`;
+    if (!isPlainObject(artifact)) {
+      addIssue(issues, file, itemPath, 'type', 'artifact must be an object');
+      return;
+    }
+    validateKnownKeys(artifact, ALPHA_ARTIFACT_KEYS, itemPath, issues, file);
+    requireKeys(artifact, ALPHA_ARTIFACT_KEYS, itemPath, issues, file);
+    requireEnum(artifact.kind, ALPHA_ARTIFACT_KINDS, `${itemPath}.kind`, issues, file);
+    validateArtifactPath(artifact.path, `${itemPath}.path`, issues, file);
+  });
+}
+
+function validateArtifactPath(value, path, issues, file) {
+  if (typeof value !== 'string' || !value.trim()) {
+    addIssue(issues, file, path, 'type', 'artifact path must be a non-empty string');
+    return;
+  }
+
+  const trimmed = value.trim();
+  const normalized = normalizePath(trimmed);
+  const segments = normalized.split('/');
+  const invalid = [];
+  if (/[\u0000-\u001f\u007f]/.test(value)) invalid.push('cannot contain control characters');
+  if (value !== trimmed) invalid.push('cannot have surrounding whitespace');
+  if (!normalized) invalid.push('cannot normalize to an empty path');
+  if (trimmed !== normalized) invalid.push('must use normalized forward slashes without a leading ./');
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(normalized)) invalid.push('cannot use a URI scheme');
+  if (normalized.includes(':')) invalid.push('cannot contain colon or alternate-data-stream syntax');
+  if (normalized.startsWith('/') || /^[a-zA-Z]:\//.test(normalized)) invalid.push('cannot be absolute');
+  if (segments.includes('..')) invalid.push('cannot traverse parent directories');
+  if (segments.includes('.')) invalid.push('cannot contain dot-only segments');
+  if (segments.some((segment) => !segment)) invalid.push('cannot contain empty path segments');
+
+  if (invalid.length) {
+    addIssue(issues, file, path, 'path', `artifact path must be a normalized repository-relative path: ${invalid.join('; ')}`);
+  }
 }
 
 export function validateEvidenceCorpus(entries) {
@@ -318,6 +489,12 @@ function validateKnownKeys(obj, allowed, path, issues, file) {
   }
 }
 
+function requireKeys(obj, required, path, issues, file) {
+  for (const key of required) {
+    if (!(key in obj)) addIssue(issues, file, `${path}.${key}`, 'required', 'required field is missing');
+  }
+}
+
 function requireString(value, path, issues, file, options = {}) {
   if (typeof value !== 'string' || !value.trim()) {
     addIssue(issues, file, path, 'type', 'must be a non-empty string');
@@ -338,6 +515,16 @@ function requireInteger(value, path, issues, file, options = {}) {
 function requireIntegerOrNull(value, path, issues, file, options = {}) {
   if (value == null) return;
   requireInteger(value, path, issues, file, options);
+}
+
+function requireBoolean(value, path, issues, file) {
+  if (typeof value !== 'boolean') addIssue(issues, file, path, 'type', 'must be a boolean');
+}
+
+function requireEnum(value, allowed, path, issues, file) {
+  if (!allowed.has(value)) {
+    addIssue(issues, file, path, 'enum', `must be one of ${[...allowed].join(', ')}`);
+  }
 }
 
 function optionalBoolean(value, path, issues, file) {

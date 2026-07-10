@@ -13,7 +13,7 @@ foreach ($part in @('engine_vector','engine_resonator','engine_plasma_ring')) {
   node \"$root\\tools\\art\\finalize_part.mjs\" \"$root\\assets\\ships\\parts\\revamp-evidence\\$part\\_export_tmp.glb\" $part --method=blender_mcp 2>&1 | Tee-Object -Append \"$scratch\\finalize-$part.log\"
 }"
 started_at: 2026-07-09T00:33:31.736Z
-running_for_ms: 68920002 
+running_for_ms: 84759997 
 ---
 === EXPORT engine_vector 2026-07-08T20:33:32.8490257-04:00 ===
 00:02.734  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\engine_vector_authored.blend"

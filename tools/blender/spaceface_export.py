@@ -297,10 +297,11 @@ def stamp_spaceface_metadata(spec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def validate_scene_objects(spec: dict[str, Any]) -> None:
+def validate_scene_objects(spec: dict[str, Any], objects: list[Any] | None = None) -> None:
     if not IN_BLENDER:
         return
-    meshes = [obj for obj in bpy.data.objects if obj.type == 'MESH']
+    source_objects = objects if objects is not None else list(bpy.data.objects)
+    meshes = [obj for obj in source_objects if obj and obj.type == 'MESH']
     for obj in meshes:
         obj["spaceface_chamfered"] = True
         validate_object(obj, spec)
@@ -310,24 +311,44 @@ def validate_scene_objects(spec: dict[str, Any]) -> None:
         validate_wholeship_hull_body(meshes, min_hull)
 
 
-def export_gltf(output_path: str, spec: dict[str, Any]) -> None:
+def export_gltf(output_path: str, spec: dict[str, Any], objects: list[Any] | None = None) -> None:
     if not IN_BLENDER:
         raise RuntimeError('export_gltf requires Blender bpy')
-    validate_scene_objects(spec)
+    export_objects = [obj for obj in (objects or []) if obj and obj.name in bpy.data.objects]
+    validate_scene_objects(spec, export_objects if objects is not None else None)
     metadata = stamp_spaceface_metadata(spec)
     for scene in bpy.data.scenes:
         scene['spacefaceAsset'] = metadata
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        export_apply=True,
-        export_texcoords=True,
-        export_normals=True,
-        export_tangents=True,
-        export_materials='EXPORT',
-        export_extras=True,
-        export_yup=True,
-    )
+    previous_selection = list(bpy.context.selected_objects)
+    previous_active = bpy.context.view_layer.objects.active
+    try:
+        if objects is not None:
+            if not export_objects:
+                _fail('export selection empty', spec.get('id', 'asset'))
+            bpy.ops.object.select_all(action='DESELECT')
+            for obj in export_objects:
+                obj.hide_set(False)
+                obj.select_set(True)
+            bpy.context.view_layer.objects.active = export_objects[0]
+        bpy.ops.export_scene.gltf(
+            filepath=output_path,
+            export_format='GLB',
+            use_selection=objects is not None,
+            export_apply=True,
+            export_texcoords=True,
+            export_normals=True,
+            export_tangents=True,
+            export_materials='EXPORT',
+            export_extras=True,
+            export_yup=True,
+        )
+    finally:
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in previous_selection:
+            if obj and obj.name in bpy.data.objects:
+                obj.select_set(True)
+        if previous_active and previous_active.name in bpy.data.objects:
+            bpy.context.view_layer.objects.active = previous_active
 
 
 def parse_cli(argv: list[str]) -> dict[str, Any]:
