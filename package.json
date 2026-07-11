@@ -187,6 +187,7 @@
     "check:station-hub-classes": "node scripts/check-station-hub-classes.mjs",
     "check:station-mission-card-keyboard": "node scripts/check-station-mission-card-keyboard.mjs",
     "check:onboarding-live-status": "node scripts/check-onboarding-live-status.mjs",
+    "check:gamepad-mission-log": "node scripts/check-gamepad-mission-log-reachability.mjs",
     "probe:experience": "node scripts/probe-game-experience.mjs",
     "check:experience": "node scripts/probe-game-experience.mjs",
     "check:experience:strict": "node scripts/probe-game-experience.mjs --strict-experience",
