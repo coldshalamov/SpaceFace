@@ -295,7 +295,13 @@ export function createScreenManager(ctx) {
     if (!isOpen() || locked()) return;
     const d = activeDef();
     if (d && d.id === 'station') {
-      bus.emit('ui:undock', { source: 'backdrop' });
+      // Implicit station Back: route through the station-exit owner (clean → confirm →
+      // committed undock). Nested screens above still pop via the branch below.
+      bus.emit('station:exitRequest', {
+        intent: 'implicit',
+        source: 'backdrop',
+        opener: typeof document !== 'undefined' ? document.activeElement : null,
+      });
       return;
     }
     popScreen();
@@ -308,8 +314,8 @@ export function createScreenManager(ctx) {
   }
 
   // Backdrop click dismisses the top screen (unless mid-transaction locked). Station is special:
-  // dismissing it must use the undock route so docked state, HUD state, and autosave all follow the
-  // same path as Escape, gamepad Cancel, and the visible Undock button.
+  // dismissing it is an implicit Back (station:exitRequest) so transient clean + confirm run before
+  // any committed dock:undocked — same owner as Esc/B/E, distinct from the explicit Undock control.
   const shieldedPointerEvents = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu'];
   if (screensRoot) {
     shieldedPointerEvents.forEach((type) => {

@@ -1,7 +1,8 @@
 // src/ui/screens/stationHub.js — the docked STATION hub screen (id 'station').
 // A 7-tab left rail (Market / Shipyard / Outfitting / Missions / Services / Factions / Bar) + a
-// right content pane; switching tabs swaps the active panel (state.ui.activeStationTab). An Undock
-// button emits dock:undocked. onShow(ctx) resolves the docked station and refreshes panels.
+// right content pane; switching tabs swaps the active panel (state.ui.activeStationTab). Undock /
+// Back exit is owned by requestStationExit (implicit clean→confirm, explicit hold/RISK confirm);
+// only committed undocks emit dock:undocked. onShow(ctx) resolves the docked station and refreshes.
 //
 // Screen-module interface (ARCHITECTURE §5, uiRoot imports + registers this):
 //   { id:'station', mount(rootEl, ctx), onShow(ctx), onHide(), refresh(ctx) }
@@ -31,6 +32,7 @@ import { BINDINGS } from '../bindings.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { glyphSvg } from '../uiPrimitives.js';
 import { STATION_BROADCASTS } from '../../systems/stationBroadcast.js';
+import { confirm, isConfirmOpen } from '../confirm.js';
 // Command-deck effect layer (vanilla DOM/canvas factories; view-only, no sim import).
 // See design/revamp/COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md §1 and src/ui/effects/README.md.
 import {
@@ -41,6 +43,75 @@ import {
   createCircularGauge,
   createDockRail,
 } from '../effects/index.js';
+
+// ── Station exit owner (UIUX-STATION-EXIT-CONFIRMATION) ─────────────────────────
+// Centralizes implicit Back (Esc/B/E/backdrop) vs explicit Undock. Input.js may still
+// emit bare dock:undocked; the bus gate rewrites those into station:exitRequest so
+// combat/save/audio never see an uncommitted undock. Committed undocks pass through.
+
+const STATION_EXIT_GATE = Symbol('sfStationExitGate');
+let _stationExitOwner = null;
+
+/** @param {{ requestStationExit?: Function }|null} owner */
+export function setStationExitOwner(owner) {
+  _stationExitOwner = owner || null;
+}
+
+/**
+ * Whether an exit request still needs a confirm dialog.
+ * @param {'implicit'|'explicit'} intent
+ * @param {'ready'|'check'|'risk'|string} readinessState
+ * @param {boolean} [held] true when the Undock hold charge completed
+ */
+export function stationExitNeedsConfirm(intent, readinessState, held) {
+  if (intent === 'implicit') return true;
+  if (intent === 'explicit' && readinessState === 'risk' && !held) return true;
+  return false;
+}
+
+/**
+ * Install a bus-level gate so bare dock:undocked while docked cannot fire side effects.
+ * Safe to call multiple times; wraps emit once per bus instance.
+ * @param {{ bus: any, state: any }} ctx
+ */
+export function installStationExitGate(ctx) {
+  const bus = ctx && ctx.bus;
+  const state = ctx && ctx.state;
+  if (!bus || !state || bus[STATION_EXIT_GATE]) return bus;
+  const rawEmit = typeof bus.emit === 'function' ? bus.emit.bind(bus) : null;
+  if (!rawEmit) return bus;
+  bus._sfStationExitRawEmit = rawEmit;
+  bus.emit = function stationExitGatedEmit(event, payload) {
+    if (event === 'dock:undocked') {
+      const p = payload || {};
+      if (state.ui && state.ui.docked === true && !p.committed) {
+        const req = {
+          intent: p.intent === 'explicit' ? 'explicit' : 'implicit',
+          source: p.source || 'dock:undocked',
+          opener: p.opener || (typeof document !== 'undefined' ? document.activeElement : null),
+          held: !!p.held,
+        };
+        if (_stationExitOwner && typeof _stationExitOwner.requestStationExit === 'function') {
+          _stationExitOwner.requestStationExit(req);
+        } else {
+          rawEmit('station:exitRequest', req);
+        }
+        return;
+      }
+    }
+    return rawEmit(event, payload);
+  };
+  bus[STATION_EXIT_GATE] = true;
+  return bus;
+}
+
+/** Emit the single canonical undock once the exit owner has committed. */
+export function commitStationUndock(bus, payload = {}) {
+  if (!bus) return;
+  const raw = bus._sfStationExitRawEmit || (typeof bus.emit === 'function' ? bus.emit.bind(bus) : null);
+  if (!raw) return;
+  raw('dock:undocked', Object.assign({}, payload, { committed: true }));
+}
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -983,10 +1054,15 @@ export const stationHub = {
   _activeRefreshJob: null,
   _activeRefreshRaf: 0,
   _activeRefreshTimer: 0,
+  _undockChargeTimer: null,
+  _exitInFlight: false,
+  _setInspectorOpen: null,
 
   /** Build the screen DOM once and cache it. Called by uiRoot/screenManager. */
   mount(rootEl, ctx) {
     this._ctx = ctx;
+    installStationExitGate(ctx);
+    setStationExitOwner(this);
     injectCss();
 
     const screen = document.createElement('div');
@@ -1221,6 +1297,7 @@ export const stationHub = {
         toggle.classList.toggle('is-active', open);
       }
     };
+    this._setInspectorOpen = setInspectorOpen;
     topbar.querySelector('.st-inspector-toggle').addEventListener('click', () => {
       setInspectorOpen(inspector.classList.contains('is-collapsed'));
       ctx.bus.emit('audio:cue', { id: 'ui_tab' });
@@ -1321,47 +1398,56 @@ export const stationHub = {
 
     const undockBtn = topbar.querySelector('.st-undock');
     this._undockBtn = undockBtn;
+    this._undockChargeTimer = null;
 
-    let chargeTimer = null;
+    // Explicit Undock — mouse/touch hold is the deliberate commitment; keyboard/gamepad
+    // activation uses the same owner (RISK confirm when not held).
     undockBtn.addEventListener('mousedown', (e) => {
-      if (e.button !== 0 || undockBtn.disabled) return;
+      if (e.button !== 0 || undockBtn.disabled || this._exitInFlight) return;
       undockBtn.classList.remove('abort');
       undockBtn.classList.add('charging');
       ctx.bus.emit('audio:cue', { id: 'ui_charge_start' });
 
-      chargeTimer = setTimeout(() => {
+      this._undockChargeTimer = setTimeout(() => {
         undockBtn.classList.remove('charging');
+        this._undockChargeTimer = null;
         ctx.bus.emit('audio:cue', { id: 'ui_undock' });
-        ctx.bus.emit('dock:undocked', {});
-        chargeTimer = null;
+        this.requestStationExit({
+          intent: 'explicit',
+          source: 'undock-hold',
+          held: true,
+          opener: undockBtn,
+        });
       }, 600);
     });
 
     undockBtn.addEventListener('mouseup', () => {
-      if (chargeTimer) {
-        clearTimeout(chargeTimer);
-        chargeTimer = null;
-        undockBtn.classList.remove('charging');
+      if (this._abortUndockCharge({ abortCue: true })) {
         undockBtn.classList.add('abort');
-        ctx.bus.emit('audio:cue', { id: 'ui_charge_abort' });
       }
     });
 
     undockBtn.addEventListener('mouseleave', () => {
-      if (chargeTimer) {
-        clearTimeout(chargeTimer);
-        chargeTimer = null;
-        undockBtn.classList.remove('charging');
+      if (this._abortUndockCharge({ abortCue: false })) {
         undockBtn.classList.add('abort');
       }
     });
 
-    // Keep click for keyboard accessibility
+    // Keyboard / gamepad / synthetic activate (HTMLElement.click detail === 0)
     undockBtn.addEventListener('click', (e) => {
-      if (e.detail === 0) { // synthetic click (e.g. keyboard Enter/Space)
-        ctx.bus.emit('audio:cue', { id: 'ui_click' });
-        ctx.bus.emit('dock:undocked', {});
+      if (e.detail !== 0 || undockBtn.disabled || this._exitInFlight) return;
+      // If a hold is in progress, treat activate as abort rather than double-request.
+      if (this._abortUndockCharge({ abortCue: true })) {
+        undockBtn.classList.add('abort');
+        return;
       }
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      this.requestStationExit({
+        intent: 'explicit',
+        source: 'undock-activate',
+        held: false,
+        opener: undockBtn,
+      });
     });
 
     // instantiate tab panels (factories from this file-set)
@@ -2758,9 +2844,127 @@ export const stationHub = {
     if (stepsEl) stepsEl.innerHTML = firstDockHandoffSteps(state).map((step) => handoffStepHtml(step)).join('');
   },
 
+  /** Abort an in-progress Undock hold charge. @returns {boolean} true if a charge was aborted */
+  _abortUndockCharge(opts = {}) {
+    if (!this._undockChargeTimer) {
+      if (this._undockBtn) this._undockBtn.classList.remove('charging');
+      return false;
+    }
+    clearTimeout(this._undockChargeTimer);
+    this._undockChargeTimer = null;
+    if (this._undockBtn) this._undockBtn.classList.remove('charging');
+    if (opts.abortCue !== false && this._ctx && this._ctx.bus) {
+      this._ctx.bus.emit('audio:cue', { id: 'ui_charge_abort' });
+    }
+    return true;
+  },
+
+  /**
+   * Clear station-local transient UI without undocking.
+   * @returns {boolean} true if something was cleaned (caller should stay docked)
+   */
+  _clearStationTransient() {
+    let cleared = false;
+    if (this._abortUndockCharge({ abortCue: true })) cleared = true;
+    if (this._inspectorEl && !this._inspectorEl.classList.contains('is-collapsed')) {
+      if (typeof this._setInspectorOpen === 'function') this._setInspectorOpen(false);
+      else {
+        this._inspectorEl.classList.add('is-collapsed');
+        this._inspectorEl.setAttribute('aria-hidden', 'true');
+      }
+      cleared = true;
+    }
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      const root = this._el;
+      if (active && root && typeof root.contains === 'function' && root.contains(active)) {
+        const tag = active.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || active.isContentEditable) {
+          try { active.blur(); } catch (_) { /* ignore */ }
+          cleared = true;
+        }
+      }
+    }
+    return cleared;
+  },
+
+  /**
+   * Centralized station-exit request owner.
+   * - implicit (Esc/B/E/backdrop): clean transient first; if already clean, confirm then undock
+   * - explicit (Undock control): hold completion is deliberate; RISK without hold confirms
+   * @param {{ intent?: string, source?: string, opener?: Element|null, held?: boolean }} opts
+   * @returns {Promise<{ action: string }>}
+   */
+  async requestStationExit(opts = {}) {
+    if (this._exitInFlight || isConfirmOpen()) return { action: 'busy' };
+    const ctx = this._ctx;
+    if (!ctx || !ctx.state) return { action: 'noop' };
+    if (!ctx.state.ui || ctx.state.ui.docked !== true) return { action: 'not-docked' };
+
+    const intent = opts.intent === 'explicit' ? 'explicit' : 'implicit';
+    const source = opts.source || intent;
+    const held = !!opts.held;
+    const opener = opts.opener
+      || (typeof document !== 'undefined' ? document.activeElement : null)
+      || this._undockBtn;
+
+    if (intent === 'implicit') {
+      if (this._clearStationTransient()) {
+        // Esc/B/E already cue ui_back in input; backdrop has no cue of its own.
+        if (ctx.bus && source === 'backdrop') ctx.bus.emit('audio:cue', { id: 'ui_back' });
+        return { action: 'cleared' };
+      }
+    }
+
+    const chips = departureReadinessChips(ctx.state);
+    const summary = departureReadinessSummary(chips);
+    const needsConfirm = stationExitNeedsConfirm(intent, summary.state, held);
+
+    if (needsConfirm) {
+      this._exitInFlight = true;
+      try {
+        if (opener && typeof opener.focus === 'function') {
+          try { opener.focus({ preventScroll: true }); } catch (_) {
+            try { opener.focus(); } catch (__) { /* ignore */ }
+          }
+        }
+        const risk = summary.state === 'risk';
+        const ok = await confirm({
+          title: intent === 'implicit'
+            ? 'Leave station?'
+            : (risk ? 'Launch risk' : 'Leave station?'),
+          body: intent === 'implicit'
+            ? 'Undock and return to flight. Stay docked to keep trading and services.'
+            : (summary.title || 'Departure Check reports risk. Undock anyway?'),
+          confirmLabel: 'Undock',
+          cancelLabel: 'Stay',
+          danger: intent === 'explicit' && risk,
+        });
+        if (!ok) return { action: 'cancelled' };
+      } finally {
+        this._exitInFlight = false;
+      }
+    }
+
+    this._abortUndockCharge({ abortCue: false });
+    if (ctx.bus && intent === 'explicit' && !held) {
+      ctx.bus.emit('audio:cue', { id: 'ui_undock' });
+    }
+    this._commitUndock(source);
+    return { action: 'undocked' };
+  },
+
+  _commitUndock(source) {
+    const bus = this._ctx && this._ctx.bus;
+    if (!bus) return;
+    commitStationUndock(bus, { source: source || 'station' });
+  },
+
   /** Called by screenManager when this screen becomes the top of the stack. */
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
+    installStationExitGate(ctx);
+    setStationExitOwner(this);
     const oldId = this._stationId;
     this._resolveStation();
     if (this._stationId && this._stationId !== oldId) {
@@ -2790,6 +2994,7 @@ export const stationHub = {
 
   onHide() {
     // Park every effect's rAF while the screen is hidden (frame-sleep contract).
+    this._abortUndockCharge({ abortCue: false });
     this._setEffectsActive(false);
     this._clearScheduledActiveRefresh();
     this._setContentBusy(false);
@@ -2914,6 +3119,11 @@ export const stationHub = {
     bus.on('origin:prospector:completed', refreshOrigins);
     bus.on('economy:eventStarted', onActive(['market']));
     bus.on('economy:eventEnded', onActive(['market']));
+    // Implicit Back (Esc/B/E via input gate, backdrop via screenManager) and any external
+    // station:exitRequest land here — one owner for clean→confirm→committed undock.
+    bus.on('station:exitRequest', (payload) => {
+      this.requestStationExit(payload || {});
+    });
   },
 
   _visible() {

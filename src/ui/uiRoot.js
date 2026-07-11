@@ -466,7 +466,20 @@ export const ui = {
         }, 50); // brief hold at full dark before fading back
       }, 400); // matches the CSS transition duration
     });
-    this.bus.on('dock:undocked', () => {
+    // Docked undock transition. Bare dock:undocked while docked is gated by installStationExitGate
+    // (stationHub) into station:exitRequest; only committed undocks reach combat/save/this handler.
+    this.bus.on('dock:undocked', (payload = {}) => {
+      // Defense in depth: if a bare undock slips through before the gate is installed, re-route.
+      if (this.state.ui && this.state.ui.docked === true && !(payload && payload.committed)) {
+        this.bus.emit('station:exitRequest', {
+          intent: payload.intent === 'explicit' ? 'explicit' : 'implicit',
+          source: (payload && payload.source) || 'dock:undocked',
+          opener: payload && payload.opener,
+          held: !!(payload && payload.held),
+        });
+        return;
+      }
+
       // Phase 1: fade to dark
       showDockFade();
 
@@ -608,6 +621,10 @@ export const ui = {
           if (!def || !def.id) { console.warn(`[ui] screen "${name}" missing valid export`); return; }
           try { this.screenManager.register(def); }
           catch (err) { console.error(`[ui] register("${def.id}") failed:`, err); return; }
+          // Station exit bus-gate must be live as soon as the hub module loads (before first dock).
+          if (def.id === 'station' && typeof mod.installStationExitGate === 'function') {
+            try { mod.installStationExitGate(this.ctx); } catch (e) { console.error('[ui] station exit gate', e); }
+          }
           if (!this._registeredScreens) this._registeredScreens = new Set();
           this._registeredScreens.add(def.id);
           if (this.state.mode === 'menu' && this.screenManager.top && this.screenManager.top() === 'mainMenu') {

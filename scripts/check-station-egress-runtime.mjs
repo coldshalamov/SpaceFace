@@ -3,9 +3,9 @@
 //
 // Boots the normal player URL, starts a real New Game through the UI, opens the station hub through
 // the same dock:docked event used by flight, verifies the hub exposes the core station affordances,
-// then proves both visible Undock and backdrop dismissal return to playable flight through the same
-// undock contract. This is a QA probe only: it does not change assets, render settings, launch URLs,
-// or gameplay.
+// then proves deliberate visible Undock and confirmed backdrop dismissal return to playable flight
+// through the same committed-undock contract. This is a QA probe only: it does not change assets,
+// render settings, launch URLs, or gameplay.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -115,7 +115,16 @@ try {
   assert(stationReport.departureChips.some((chip) => chip.label === 'Track' || chip.label === 'Nav' || chip.label === 'Route'),
     'departure readiness must summarize tracked mission or nav guidance before undock');
 
-  assert.equal(await clickButton(page, stationReport.undockText), true, 'station hub Undock button should be clickable');
+  const heldUndock = await page.evaluate(async () => {
+    const button = [...document.querySelectorAll('[data-screen="station"] button')]
+      .find((el) => /UNDOCK/i.test(el.textContent || ''));
+    if (!button || button.disabled) return false;
+    button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    button.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }));
+    return true;
+  });
+  assert.equal(heldUndock, true, 'station hub Undock button should support deliberate pointer hold');
   await page.waitForFunction(() => {
     const sf = window.SF;
     const state = sf && sf.state;
@@ -169,6 +178,24 @@ try {
   assert.equal(backdropReport.beforeDocked, true, 'backdrop probe should start docked: ' + JSON.stringify(backdropReport));
   assert.equal(backdropReport.beforeTop, 'station', 'backdrop probe should start on station screen: ' + JSON.stringify(backdropReport));
 
+  await waitForVisible(page, '#sf-confirm-root .sf-confirm', DOCK_TIMEOUT_MS, 'station backdrop exit confirmation');
+  const backdropConfirm = await page.evaluate(() => {
+    const dialog = document.querySelector('#sf-confirm-root .sf-confirm');
+    const title = dialog && dialog.querySelector('#sf-confirm-title');
+    const ok = dialog && dialog.querySelector('.sf-confirm__ok');
+    const cancel = dialog && dialog.querySelector('.sf-confirm__cancel');
+    const report = {
+      title: title && title.textContent,
+      confirmLabel: ok && ok.textContent,
+      cancelLabel: cancel && cancel.textContent,
+    };
+    if (ok) ok.click();
+    return report;
+  });
+  assert.match(backdropConfirm.title || '', /Leave station/i, 'implicit backdrop exit should ask for confirmation');
+  assert.match(backdropConfirm.confirmLabel || '', /Undock/i, 'implicit exit confirmation should name the committed action');
+  assert.match(backdropConfirm.cancelLabel || '', /Stay/i, 'implicit exit confirmation should expose the safe docked choice');
+
   await page.waitForFunction(() => {
     const sf = window.SF;
     const state = sf && sf.state;
@@ -207,7 +234,7 @@ try {
   assert.equal(backdropEgressReport.hudAriaHidden, false, 'backdrop egress should restore HUD accessibility');
   assert.deepEqual(issues.errorIssues(), [], 'station egress runtime probe should not record page errors');
 
-  console.log('Station egress runtime OK: default New Game -> station hub -> visible Undock/backdrop -> playable flight');
+  console.log('Station egress runtime OK: default New Game -> station hub -> held Undock/confirmed backdrop -> playable flight');
   console.log('Dock target:', dockTarget.stationId, dockTarget.label);
 } finally {
   if (browser) await browser.close();
