@@ -24,6 +24,7 @@ import {
   applyMapOpenIntentToView,
   galaxyMapScreen,
   levelForZoom,
+  resolveMapOpenTarget,
   zoomForMapFocus,
   LEVEL_LOCAL_AT,
   LEVEL_SYSTEM_AT,
@@ -147,7 +148,191 @@ function read(rel) {
   assert.equal(showState.ui.mapOpenIntent, null, 'onShow must clear the one-shot intent');
   assert.equal(galaxyMapScreen._cams.local.cx, 5);
   assert.equal(galaxyMapScreen._cams.local.cy, 9);
+  assert.equal(galaxyMapScreen._selectedTarget, null, 'pos-only open must not invent station selection');
   galaxyMapScreen.onHide();
+}
+
+// missionId/stationId → selection/inspector focus (no invent on plain focus)
+{
+  const stationState = {
+    ui: {},
+    playerId: 0,
+    entities: new Map([
+      [1, {
+        id: 1,
+        type: 'station',
+        alive: true,
+        pos: { x: 180, z: -40 },
+        data: { stationId: 'station_helios', name: 'HELIOS DOCK' },
+        factionId: 'faction_helios',
+      }],
+    ]),
+    world: { currentSectorId: 'sector_helios_prime' },
+    missions: {
+      active: [{
+        id: 'mission_delivery',
+        status: 'active',
+        type: 'cargo_delivery',
+        title: 'Deliver provisions',
+        destStationId: 'station_helios',
+        destSectorId: 'sector_helios_prime',
+      }],
+    },
+    content: {
+      sectors: [{
+        id: 'sector_helios_prime',
+        position: { x: 0, y: 0 },
+        stations: [{ id: 'station_helios', name: 'HELIOS DOCK', pos: { x: 180, z: -40 } }],
+      }],
+    },
+  };
+
+  const resolved = resolveMapOpenTarget(stationState, {
+    focus: MAP_FOCUS.LOCAL,
+    missionId: 'mission_delivery',
+    stationId: 'station_helios',
+    sectorId: 'sector_helios_prime',
+  });
+  assert.ok(resolved, 'resolveMapOpenTarget must resolve mission/station intent');
+  assert.equal(resolved.stationId, 'station_helios');
+  assert.equal(resolved.kind, 'station');
+  assert.equal(resolved.x, 180);
+  assert.equal(resolved.z, -40);
+
+  // Station-only (trade) without missionId still selects.
+  const tradeOnly = resolveMapOpenTarget(stationState, {
+    focus: MAP_FOCUS.LOCAL,
+    stationId: 'station_helios',
+  });
+  assert.equal(tradeOnly && tradeOnly.stationId, 'station_helios');
+
+  // Plain focus must not invent a target.
+  assert.equal(
+    resolveMapOpenTarget(stationState, { focus: MAP_FOCUS.LOCAL }),
+    null,
+    'LOCAL focus without mission/station must not invent a target',
+  );
+  assert.equal(
+    resolveMapOpenTarget(stationState, { focus: MAP_FOCUS.GALAXY }),
+    null,
+    'GALAXY focus without mission/station must not invent a target',
+  );
+
+  // applyMapOpenIntentToView pans local cam from station when pos omitted.
+  const viewFromStation = applyMapOpenIntentToView(
+    {
+      zoom: 1,
+      targetZoom: 1,
+      cams: { galaxy: { cx: 0, cy: 0 }, system: { cx: 0, cy: 0 }, local: { cx: 0, cy: 0 } },
+    },
+    { focus: MAP_FOCUS.LOCAL, stationId: 'station_helios', sectorId: 'sector_helios_prime' },
+    stationState,
+  );
+  assert.equal(viewFromStation.cams.local.cx, 180);
+  assert.equal(viewFromStation.cams.local.cy, -40);
+  assert.equal(viewFromStation.openTarget && viewFromStation.openTarget.stationId, 'station_helios');
+
+  // onShow applies selection from missionId/stationId intent.
+  setMapOpenIntent(stationState, {
+    focus: MAP_FOCUS.LOCAL,
+    missionId: 'mission_delivery',
+    stationId: 'station_helios',
+    sectorId: 'sector_helios_prime',
+    source: 'test-mission-select',
+  });
+  galaxyMapScreen.onShow({ state: stationState });
+  assert.ok(galaxyMapScreen._selectedTarget, 'onShow must set selected target from mission/station intent');
+  assert.equal(galaxyMapScreen._selectedTarget.stationId, 'station_helios');
+  assert.equal(levelForZoom(galaxyMapScreen._zoom), 'local');
+  assert.equal(stationState.ui.mapOpenIntent, null);
+
+  // Plain N/M-style re-open must clear selection (no invented target).
+  setMapOpenIntent(stationState, { focus: MAP_FOCUS.GALAXY, source: 'test-plain-m' });
+  galaxyMapScreen.onShow({ state: stationState });
+  assert.equal(galaxyMapScreen._selectedTarget, null, 'plain focus open must not keep or invent selection');
+  assert.equal(levelForZoom(galaxyMapScreen._zoom), 'galaxy');
+  galaxyMapScreen.onHide();
+
+  // Off-sector GALAXY + stationId: sector cam + station target when static catalog has it.
+  const offSectorState = {
+    ui: {},
+    playerId: 0,
+    entities: new Map(),
+    world: { currentSectorId: 'sector_helios_prime' },
+    missions: {
+      active: [{
+        id: 'mission_far',
+        status: 'active',
+        destStationId: 'station_tethys',
+        destSectorId: 'sector_tethys_junction',
+      }],
+    },
+    content: {
+      sectors: [
+        { id: 'sector_helios_prime', position: { x: 0, y: 0 }, stations: [] },
+        {
+          id: 'sector_tethys_junction',
+          position: { x: 400, y: -200 },
+          stations: [{ id: 'station_tethys', name: 'TETHYS', pos: { x: 50, z: 10 } }],
+        },
+      ],
+    },
+  };
+  const far = resolveMapOpenTarget(offSectorState, {
+    focus: MAP_FOCUS.GALAXY,
+    missionId: 'mission_far',
+    stationId: 'station_tethys',
+    sectorId: 'sector_tethys_junction',
+  });
+  assert.ok(far);
+  assert.equal(far.stationId, 'station_tethys');
+  assert.equal(far.kind, 'station');
+
+  // GALAXY + missionId only → galaxy cam pans from resolved mission destSectorId
+  // (openTarget.sectorId), not only from intent.sectorId.
+  const viewMissionOnly = applyMapOpenIntentToView(
+    {
+      zoom: 1,
+      targetZoom: 1,
+      cams: { galaxy: { cx: 0, cy: 0 }, system: { cx: 0, cy: 0 }, local: { cx: 0, cy: 0 } },
+    },
+    { focus: MAP_FOCUS.GALAXY, missionId: 'mission_far' },
+    offSectorState,
+  );
+  assert.equal(viewMissionOnly.openTarget && viewMissionOnly.openTarget.sectorId, 'sector_tethys_junction');
+  assert.equal(viewMissionOnly.cams.galaxy.cx, 400);
+  assert.equal(viewMissionOnly.cams.galaxy.cy, -200);
+}
+
+// onShow re-entry must cancel prior rAF handle (idempotent loop startup)
+{
+  const cancelled = [];
+  const prevCancel = globalThis.cancelAnimationFrame;
+  const prevRaf = globalThis.requestAnimationFrame;
+  globalThis.cancelAnimationFrame = (id) => { cancelled.push(id); };
+  // HAS_DOC is false in Node — onShow still must cancel a leftover handle before early return.
+  galaxyMapScreen._animFrame = 4242;
+  galaxyMapScreen._visible = true;
+  const rafState = {
+    ui: {},
+    playerId: 0,
+    entities: new Map(),
+    world: { currentSectorId: 'sector_helios_prime' },
+  };
+  setMapOpenIntent(rafState, { focus: MAP_FOCUS.SYSTEM, source: 'test-raf' });
+  galaxyMapScreen.onShow({ state: rafState });
+  assert.ok(cancelled.includes(4242), 'onShow must cancel prior animation frame before restart');
+  assert.equal(galaxyMapScreen._animFrame, null, 'headless onShow leaves no live rAF after cancel');
+  // Second re-show with a synthetic handle still cancels (no stack).
+  galaxyMapScreen._animFrame = 7777;
+  setMapOpenIntent(rafState, { focus: MAP_FOCUS.LOCAL, source: 'test-raf-2' });
+  galaxyMapScreen.onShow({ state: rafState });
+  assert.ok(cancelled.includes(7777), 're-show must cancel the previous handle again');
+  galaxyMapScreen.onHide();
+  if (prevCancel) globalThis.cancelAnimationFrame = prevCancel;
+  else delete globalThis.cancelAnimationFrame;
+  if (prevRaf) globalThis.requestAnimationFrame = prevRaf;
+  else delete globalThis.requestAnimationFrame;
 }
 
 // Mission Log policy → galaxyMap + focus (not legacy screens)
@@ -250,6 +435,12 @@ assert.match(galaxyMapSrc, /takeMapOpenIntent|applyMapOpenIntentToView/,
   'galaxyMap must consume map-authority open intent');
 assert.match(galaxyMapSrc, /export function applyMapOpenIntentToView/,
   'galaxyMap must expose pure focus application for checks');
+assert.match(galaxyMapSrc, /export function resolveMapOpenTarget/,
+  'galaxyMap must expose pure mission/station target resolution for checks');
+assert.match(galaxyMapSrc, /_selectedTarget\s*=\s*view\.openTarget/,
+  'onShow must apply resolved openTarget as selection');
+assert.match(galaxyMapSrc, /cancelAnimationFrame\(this\._animFrame\)/,
+  'onShow/onHide must cancel the animation frame handle');
 
 // Keyboard N = LOCAL, M = GALAXY
 assert.match(uiInputSrc, /BINDINGS\.localmap\.key[\s\S]*openGalaxyMap\([\s\S]*MAP_FOCUS\.LOCAL/,

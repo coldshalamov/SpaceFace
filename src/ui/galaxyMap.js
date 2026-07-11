@@ -64,9 +64,169 @@ export function zoomForMapFocus(focus) {
 }
 
 /**
+ * Resolve missionId/stationId (and optional pos/sector fallbacks) from a map open intent
+ * into a click-target-shaped object for selection/inspector focus.
+ * Pure — no DOM. Returns null when the intent has no mission/station target (plain N/M).
+ */
+export function resolveMapOpenTarget(state, intent) {
+  if (!intent) return null;
+  const missionId = intent.missionId != null ? String(intent.missionId) : null;
+  let stationId = intent.stationId != null ? String(intent.stationId) : null;
+  let sectorId = intent.sectorId != null ? String(intent.sectorId) : null;
+  let mission = null;
+
+  if (missionId && state) {
+    const active = (state.missions && state.missions.active) || [];
+    mission = active.find((m) => m && String(m.id) === missionId) || null;
+    if (mission) {
+      if (!stationId && mission.destStationId != null) stationId = String(mission.destStationId);
+      if (!sectorId) {
+        const midSector = mission.destSectorId || (mission.params && mission.params.sectorId) || null;
+        if (midSector != null) sectorId = String(midSector);
+      }
+    }
+  }
+
+  // Plain focus-only opens (keyboard N/M, gamepad View, touch Local/Star) must not invent a target.
+  if (!stationId && !missionId) return null;
+
+  if (stationId) {
+    // Live entity in the current sector (preferred for LOCAL selection ring).
+    for (const e of entityIterator(state)) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      const eStationId = (e.data && e.data.stationId) || e.id;
+      if (String(eStationId) !== stationId && String(e.id) !== stationId) continue;
+      return {
+        id: e.id,
+        kind: 'station',
+        name: (e.data && e.data.name) || e.name || stationId,
+        x: e.pos.x,
+        z: e.pos.z,
+        entityId: e.id,
+        stationId,
+        factionId: e.factionId || (e.data && e.data.factionId) || null,
+        sectorId: sectorId || currentSectorId(state),
+        missionId,
+      };
+    }
+
+    // System-level points for the intent sector (or current).
+    const sid = sectorId || currentSectorId(state);
+    if (sid) {
+      const model = buildSystemModel(state, sid);
+      for (const p of model.points || []) {
+        if (!p || (p.kind !== 'station' && p.kind !== 'gate')) continue;
+        if (String(p.stationId || '') !== stationId && String(p.id) !== stationId) continue;
+        return {
+          id: p.id,
+          kind: p.kind === 'gate' ? 'gate' : 'station',
+          name: p.name || stationId,
+          x: p.x,
+          z: p.z,
+          entityId: p.entityId || null,
+          stationId: p.stationId || stationId,
+          factionId: p.factionId || null,
+          sectorId: sid,
+          missionId,
+        };
+      }
+    }
+
+    // Static station catalog (may lack world pos for off-sector entries).
+    const rec = findStationRecord(state, stationId);
+    if (rec) {
+      const anchor = rec.pos || rec.anchor || rec.position || null;
+      const ax = anchor ? Number(anchor.x) : NaN;
+      const az = anchor ? Number(anchor.z != null ? anchor.z : anchor.y) : NaN;
+      const fromPos = intent.pos && Number.isFinite(intent.pos.x) && Number.isFinite(intent.pos.z)
+        ? intent.pos
+        : null;
+      return {
+        id: stationId,
+        kind: 'station',
+        name: rec.name || stationId,
+        x: Number.isFinite(ax) ? ax : (fromPos ? fromPos.x : null),
+        z: Number.isFinite(az) ? az : (fromPos ? fromPos.z : null),
+        entityId: null,
+        stationId,
+        factionId: rec.factionId || null,
+        sectorId: sectorId || null,
+        missionId,
+      };
+    }
+
+    // Synthesize from intent.pos when station catalog misses the id.
+    if (intent.pos && Number.isFinite(intent.pos.x) && Number.isFinite(intent.pos.z)) {
+      return {
+        id: stationId,
+        kind: 'station',
+        name: intent.label || stationId,
+        x: intent.pos.x,
+        z: intent.pos.z,
+        entityId: null,
+        stationId,
+        factionId: null,
+        sectorId: sectorId || null,
+        missionId,
+      };
+    }
+
+    // Known station id without coordinates — still selectable for inspector / course degrade.
+    return {
+      id: stationId,
+      kind: 'station',
+      name: intent.label || stationId,
+      x: null,
+      z: null,
+      entityId: null,
+      stationId,
+      factionId: null,
+      sectorId: sectorId || null,
+      missionId,
+    };
+  }
+
+  // missionId without stationId: sector node, then pos fix.
+  if (sectorId) {
+    const rec = sectorRecordById(state, sectorId);
+    if (rec) {
+      const p = rec.position || rec.pos || {};
+      const gx = Number(p.x);
+      const gy = Number(p.y != null ? p.y : p.z);
+      return {
+        id: sectorId,
+        kind: 'sector',
+        name: rec.name || sectorId,
+        sectorId,
+        x: Number.isFinite(gx) ? gx : 0,
+        y: Number.isFinite(gy) ? gy : 0,
+        factionId: rec.factionId || rec.owner || null,
+        security: rec.security,
+        missionId,
+      };
+    }
+  }
+
+  if (intent.pos && Number.isFinite(intent.pos.x) && Number.isFinite(intent.pos.z)) {
+    return {
+      id: missionId || 'mission_fix',
+      kind: 'local',
+      name: intent.label || (mission && (mission.title || mission.name)) || 'Mission objective',
+      x: intent.pos.x,
+      z: intent.pos.z,
+      missionId,
+      sectorId: sectorId || null,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Apply a one-shot map open intent to view state (zoom + camera centers).
  * Pure enough for headless checks: mutates `view` and returns it.
  * `view` shape: { zoom, targetZoom, cams: { galaxy, system, local } }.
+ * Also attaches `view.openTarget` when missionId/stationId resolve.
  */
 export function applyMapOpenIntentToView(view, intent, state) {
   if (!view) return view;
@@ -95,7 +255,9 @@ export function applyMapOpenIntentToView(view, intent, state) {
   }
 
   const pos = intent && intent.pos;
+  let posApplied = false;
   if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+    posApplied = true;
     if (focus === MAP_FOCUS.LOCAL && view.cams.local) {
       view.cams.local.cx = pos.x;
       view.cams.local.cy = pos.z;
@@ -105,18 +267,45 @@ export function applyMapOpenIntentToView(view, intent, state) {
     }
   }
 
-  // Off-sector / star-chart focus: center the galaxy cam on the target sector node when known.
-  const sectorId = intent && intent.sectorId;
+  // Mission/station intent: resolve selection target first so GALAXY can use openTarget.sectorId
+  // when the intent only carries missionId (emitters usually also send sectorId; this is the hole).
+  const openTarget = resolveMapOpenTarget(state, intent);
+
+  // Off-sector / star-chart focus: center galaxy cam on intent.sectorId or resolved openTarget.sectorId.
+  const sectorId = (intent && intent.sectorId)
+    || (openTarget && openTarget.sectorId)
+    || null;
   if (focus === MAP_FOCUS.GALAXY && sectorId && state && view.cams.galaxy) {
     const rec = sectorRecordById(state, sectorId);
     const p = rec && rec.position;
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y != null ? p.y : p.z)) {
       view.cams.galaxy.cx = p.x;
       view.cams.galaxy.cy = p.y != null ? p.y : p.z;
+    } else if (openTarget && openTarget.kind === 'sector'
+        && Number.isFinite(openTarget.x) && Number.isFinite(openTarget.y)) {
+      // Direct sector-node coords when catalog position is missing.
+      view.cams.galaxy.cx = openTarget.x;
+      view.cams.galaxy.cy = openTarget.y;
+    }
+  }
+
+  // Pan local/system cams from openTarget when pos was not provided.
+  if (openTarget && !posApplied && Number.isFinite(openTarget.x) && Number.isFinite(openTarget.z)) {
+    if (focus === MAP_FOCUS.LOCAL && view.cams.local) {
+      view.cams.local.cx = openTarget.x;
+      view.cams.local.cy = openTarget.z;
+    } else if (focus === MAP_FOCUS.SYSTEM && view.cams.system) {
+      view.cams.system.cx = openTarget.x;
+      view.cams.system.cy = openTarget.z;
+    } else if (focus === MAP_FOCUS.LOCAL && view.cams.system) {
+      // Local zoom still benefits from system-table pan when only system coords exist.
+      view.cams.system.cx = openTarget.x;
+      view.cams.system.cy = openTarget.z;
     }
   }
 
   view.openIntent = intent || null;
+  view.openTarget = openTarget;
   return view;
 }
 
@@ -1366,11 +1555,22 @@ export const galaxyMapScreen = {
     this._zoom = view.zoom;
     this._targetZoom = view.targetZoom;
     this._openIntent = view.openIntent || intent;
+    // Visible selection/inspector focus from missionId/stationId when resolvable.
+    // Focus-only opens leave _selectedTarget null (do not invent a station).
+    this._selectedTarget = view.openTarget || null;
+
+    // Cancel any prior animation frame before (re)starting so top-map re-show cannot stack rAF loops.
+    if (this._animFrame != null && typeof cancelAnimationFrame !== 'undefined') {
+      cancelAnimationFrame(this._animFrame);
+      this._animFrame = null;
+    }
 
     if (!HAS_DOC) return;
     this._resize();
     this._lastTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     this._lastDrawTime = 0;
+
+    if (typeof requestAnimationFrame === 'undefined') return;
 
     const loop = () => {
       if (!galaxyMapScreen._visible) return;
@@ -1408,7 +1608,10 @@ export const galaxyMapScreen = {
 
   onHide() {
     this._visible = false;
-    if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(this._animFrame);
+    if (this._animFrame != null && typeof cancelAnimationFrame !== 'undefined') {
+      cancelAnimationFrame(this._animFrame);
+    }
+    this._animFrame = null;
   },
 
   onKey(event, ctx) {
