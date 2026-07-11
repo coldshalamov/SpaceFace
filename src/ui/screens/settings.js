@@ -141,9 +141,12 @@ function mergedBindingsFor(settings) {
   return { base, live };
 }
 
+// Fixed interface keys from the live BINDINGS registry (not rebindable flight codes).
+// Pause is Esc/P (UI-owned, not in BINDINGS). Mission Log is BINDINGS.missionLog on keyboard/touch;
+// gamepad has no direct Mission Log button — Start opens Pause, then choose Mission Log.
 export const CONTROL_SHORTCUTS = Object.freeze([
   { label: 'Dock / interact', key: BINDINGS.dock.label, note: 'when prompted' },
-  { label: 'Mission Log', key: BINDINGS.missionLog.label, note: 'active + completed contracts' },
+  { label: 'Mission Log', key: BINDINGS.missionLog.label, note: 'active + completed contracts; gamepad: Start → Pause → Mission Log' },
   { label: 'Local Map', key: BINDINGS.localmap.label, note: 'same-sector contacts/objectives' },
   { label: 'Star Map', key: BINDINGS.starmap.label, note: 'jump routes and sector objectives' },
   { label: 'Codex', key: BINDINGS.codex.label, note: 'reference and unlocked journal' },
@@ -152,7 +155,7 @@ export const CONTROL_SHORTCUTS = Object.freeze([
   { label: 'Comms Log', key: BINDINGS.comms.label, note: 'messages and contacts' },
   { label: 'Drill / asteroid base', key: BINDINGS.drill.label, note: 'target asteroid first' },
   { label: 'Claim / open base', key: BINDINGS.claimBase.label, note: 'near claimable body/base' },
-  { label: 'Pause', key: 'Esc / P', note: 'resume, settings, map review' },
+  { label: 'Pause', key: 'Esc / P', note: 'pause menu: resume, settings, save/load, map review' },
 ]);
 
 // Turn a KeyboardEvent.code into a short, readable label: 'KeyW' -> 'W', 'ShiftLeft' -> 'L-Shift',
@@ -376,7 +379,9 @@ export const settingsScreen = {
     rowToggle('Gamepad enabled', () => !!gp.enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, enabled: v }));
     rowSlider('Stick deadzone', () => gp.deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, deadzone: v }));
     rowToggle('Invert right-stick Y', () => !!gp.invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, invertY: v }));
-    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, RB boost, LB brake, R3 countermeasure, X target, View star map, Y codex, Start pause/log.'));
+    // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
+    // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
+    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, A dock, X target, View star map, Y codex, Start → Pause → Mission Log.'));
 
     const touchMode = () => {
       const cfg = s.controls.touch || {};
@@ -419,7 +424,8 @@ export const settingsScreen = {
     pane.appendChild(el('h2', null, 'Touch'));
     if (!s.controls.touch) s.controls.touch = { enabled: null }; // null = auto-detect
     rowTouchMode();
-    pane.appendChild(el('p', 'sf-muted', 'Virtual sticks: left = fly, right = aim, buttons = fire/mine/boost. Auto-enabled on touch devices.'));
+    // Touch overlay exposes dedicated Dock/Map/Log/Star/Pause buttons (not only flight sticks).
+    pane.appendChild(el('p', 'sf-muted', 'Virtual sticks: left = fly, right = aim; buttons = fire, mine, boost, dock, Map, Log (Mission Log), Star, Pause. Auto-enabled on touch devices.'));
   },
 
   _renderFixedShortcuts(pane) {
