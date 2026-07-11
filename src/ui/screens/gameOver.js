@@ -1,8 +1,6 @@
-// Game Over screen (Ironman permadeath). Honors the New Game UI's "permadeath" promise: when the
-// player dies on Ironman difficulty, combat.kill() emits game:over instead of respawning. This
-// screen subscribes, opens over the wreck, and shows a run summary with New Game / Main Menu.
-// The save slot is preserved (Ironman is single-slot; the player may still import a prior export),
-// but the run is over — no respawn, no continue from the dead state.
+// Ship-loss after-action screen. Standard runs pause over the wreck until the player confirms a
+// deterministic lawful-dock recovery; Ironman keeps its final-run contract. Combat owns all state
+// mutation and consequences. This DOM surface only explains the receipt and emits intents.
 
 import { STORY_BEATS } from '../../data/missions.js';
 
@@ -15,8 +13,8 @@ function injectStyle() {
   s.textContent = `
   .sf-gameover { display:flex; flex-direction:column; gap:18px; padding:34px 40px;
     min-width:380px; max-width:min(92vw,620px); pointer-events:auto; }
-  .sf-gameover h1 { margin:0; font-family:var(--mono); letter-spacing:.34em; font-size:26px;
-    color:#ff5a5a; text-shadow:0 0 24px rgba(255,60,60,.5); text-transform:uppercase; text-align:center; }
+  .sf-gameover h1 { margin:0; font-family:var(--mono); letter-spacing:.28em; font-size:24px;
+    color:#ff7a86; text-transform:uppercase; text-align:center; }
   .sf-gameover .sf-go-sub { text-align:center; color:var(--ink-dim); font-size:13px;
     letter-spacing:.08em; margin-top:-10px; }
   .sf-gameover h2 { margin:6px 0 2px; font-size:11px; letter-spacing:.16em; text-transform:uppercase;
@@ -32,7 +30,7 @@ function injectStyle() {
     text-transform:uppercase; }
   .sf-gameover .sf-go-foot { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:10px; }
   .sf-gameover button.sf-btn { padding:12px 22px; font-size:14px; letter-spacing:.08em; min-width:150px; }
-  .sf-gameover .sf-go-newgame { border-color:var(--accent); color:var(--accent); }
+  .sf-gameover .sf-go-retry { border-color:var(--accent); color:var(--accent); }
   `;
   document.head.appendChild(s);
 }
@@ -105,6 +103,11 @@ export function lastDeathSummary(ctx = {}) {
   };
 }
 
+export function currentDefeat(ctx = {}) {
+  const state = ctx.state || {};
+  return state.combat && state.combat.lastPlayerDefeat || null;
+}
+
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
   if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
@@ -115,35 +118,48 @@ function getManager(ctx) {
 
 export const gameOverScreen = {
   id: 'gameOver',
+  data: { locked: true },
   _summaryEls: null,
   _defaultButton: null,
+  _titleEl: null,
+  _subEl: null,
+  _recoveryEl: null,
+  _retryButton: null,
+  _loadButton: null,
+  _newButton: null,
+  _menuButton: null,
 
   mount(rootEl, ctx) {
     injectStyle();
     rootEl.innerHTML = '';
     rootEl.classList.add('panel', 'sf-gameover');
+    rootEl.setAttribute('role', 'dialog');
+    rootEl.setAttribute('aria-modal', 'true');
+    rootEl.setAttribute('aria-labelledby', 'sf-gameover-title');
 
     const h = document.createElement('h1');
-    h.textContent = 'Run Over';
+    h.id = 'sf-gameover-title';
+    h.textContent = 'Ship Lost';
+    this._titleEl = h;
     rootEl.appendChild(h);
 
     const sub = document.createElement('div');
     sub.className = 'sf-go-sub';
-    sub.textContent = 'Your ship was lost. In Ironman, death is final.';
+    sub.textContent = 'Flight controls locked. Review the loss, then recover.';
+    this._subEl = sub;
     rootEl.appendChild(sub);
 
     const grid = document.createElement('div');
     grid.className = 'sf-go-grid';
     this._summaryEls = Object.create(null);
     const rows = [
-      ['time', 'Time flown'],
-      ['credits', 'Final credits'],
-      ['profit', 'Lifetime profit'],
-      ['kills', 'Kills'],
-      ['missions', 'Missions completed'],
-      ['beats', 'Story progress'],
       ['cause', 'Loss cause'],
       ['lifespan', 'Final sortie'],
+      ['damage', 'Final damage'],
+      ['dock', 'Recovery dock'],
+      ['cost', 'Recovery cost'],
+      ['cargo', 'Cargo consequence'],
+      ['insurance', 'Coverage'],
     ];
     for (const [key, label] of rows) {
       const kd = document.createElement('div'); kd.className = 'k'; kd.textContent = label; grid.appendChild(kd);
@@ -154,25 +170,52 @@ export const gameOverScreen = {
 
     const recovery = document.createElement('div');
     recovery.className = 'sf-go-recovery';
-    recovery.innerHTML = '<b>Recovery</b> This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.';
+    recovery.textContent = 'Recovery receipt pending.';
+    this._recoveryEl = recovery;
     rootEl.appendChild(recovery);
 
     const foot = document.createElement('div');
     foot.className = 'sf-go-foot';
 
+    const bRetry = document.createElement('button');
+    bRetry.className = 'sf-btn sf-go-retry';
+    bRetry.textContent = 'Retry from dock';
+    bRetry.title = 'Apply the shown recovery receipt and return to the named lawful dock';
+    bRetry.setAttribute('aria-label', 'Retry from dock with the shown recovery consequences');
+    bRetry.addEventListener('click', () => {
+      ctx.bus.emit('player:recoveryRequested', { source: 'after_action' });
+    });
+    this._retryButton = bRetry;
+    foot.appendChild(bRetry);
+
+    const bLoad = document.createElement('button');
+    bLoad.className = 'sf-btn';
+    bLoad.textContent = 'Load save';
+    bLoad.title = 'Open saved games without applying recovery consequences';
+    bLoad.setAttribute('aria-label', 'Load save instead of recovering this ship');
+    bLoad.addEventListener('click', () => {
+      const mgr = getManager(ctx);
+      if (mgr && mgr.pushScreen) mgr.pushScreen('saveLoad');
+      else ctx.bus.emit('ui:pushScreen', { id: 'saveLoad' });
+    });
+    this._loadButton = bLoad;
+    foot.appendChild(bLoad);
+
     const bNew = document.createElement('button');
-    bNew.className = 'sf-btn sf-go-newgame';
+    bNew.className = 'sf-btn';
     bNew.textContent = 'New Game';
-    bNew.title = 'Start a fresh Ironman run';
-    bNew.setAttribute('aria-label', 'Start a fresh Ironman run');
+    bNew.title = 'Start a fresh run';
+    bNew.setAttribute('aria-label', 'Start a fresh run');
     bNew.addEventListener('click', () => {
       const mgr = getManager(ctx);
       // A fresh new game clears the dead run; main.js's game:new handler resets all run state.
       ctx.bus.emit('game:over:dismissed', {});
-      ctx.bus.emit('game:new', { name: null, difficulty: 'ironman' });
+      const difficulty = ctx.state && ctx.state.settings && ctx.state.settings.gameplay
+        && ctx.state.settings.gameplay.difficulty || 'standard';
+      ctx.bus.emit('game:new', { name: null, difficulty });
       if (mgr && mgr.popScreen) { try { mgr.popScreen(); } catch (e) {} }
     });
-    this._defaultButton = bNew;
+    this._newButton = bNew;
     foot.appendChild(bNew);
 
     const bMenu = document.createElement('button');
@@ -183,7 +226,6 @@ export const gameOverScreen = {
     bMenu.addEventListener('click', () => {
       if (ctx.state) ctx.state.mode = 'menu';
       ctx.bus.emit('game:over:dismissed', {});
-      ctx.bus.emit('sim:pause', {});
       const mgr = getManager(ctx);
       if (mgr) {
         if (mgr.closeAll) mgr.closeAll();
@@ -191,7 +233,17 @@ export const gameOverScreen = {
         else if (mgr.pushScreen) mgr.pushScreen('mainMenu');
       }
     });
+    this._menuButton = bMenu;
     foot.appendChild(bMenu);
+
+    // Combat alone decides whether recovery succeeded. Keep the locked screen in place on a
+    // rejected/duplicate intent; close only on the canonical successful respawn receipt.
+    ctx.bus.on('player:respawn', () => {
+      const mgr = getManager(ctx);
+      if (!mgr || typeof mgr.top !== 'function' || mgr.top() !== 'gameOver') return;
+      ctx.bus.emit('game:over:dismissed', {});
+      if (mgr.popScreen) mgr.popScreen();
+    });
 
     rootEl.appendChild(foot);
     this._refreshSummary(ctx);
@@ -199,9 +251,6 @@ export const gameOverScreen = {
 
   onShow(ctx) {
     this._refreshSummary(ctx);
-    // Freeze the sim under the game-over screen (the run is over; nothing should advance).
-    if (ctx.state) ctx.state.timeScale = 0;
-    ctx.bus.emit('sim:pause', {});
     if (this._defaultButton) {
       try { this._defaultButton.focus({ preventScroll: true }); } catch (e) { try { this._defaultButton.focus(); } catch (err) {} }
     }
@@ -214,22 +263,55 @@ export const gameOverScreen = {
     const els = this._summaryEls;
     if (!els) return;
     const state = ctx && ctx.state || {};
-    const player = state.player || {};
-    const stats = player.stats || {};
-    const meta = state.meta || {};
+    const receipt = currentDefeat(ctx);
+    const recovery = receipt && receipt.recovery || {};
+    const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+    const ironman = difficulty === 'ironman';
+    const recoverable = !ironman && !!receipt;
     const death = lastDeathSummary(ctx);
+    const cargoLost = Math.max(0, Number(recovery.cargoLostQty) || 0);
+    const protectedQty = Math.max(0, Number(recovery.persistentCargoProtected) || 0);
+    const cargoText = cargoLost > 0
+      ? cargoLost + 'u lost' + (protectedQty > 0 ? ' · ' + protectedQty + 'u protected' : '')
+      : 'No cargo lost';
     const values = {
-      time: fmtTime(meta.playtimeS),
-      credits: fmtCr(player.credits),
-      profit: fmtCr(stats.lifetimeProfit),
-      kills: String(stats.kills || 0),
-      missions: String(stats.missionsDone || 0),
-      beats: storyProgressLabel(state),
-      cause: death.cause,
+      cause: receipt && receipt.cause || death.cause,
       lifespan: death.lifespan,
+      damage: receipt ? [
+        receipt.direction,
+        receipt.attacker,
+        receipt.weapon,
+        String(receipt.dominantLayer || 'hull').toUpperCase(),
+        receipt.subsystemId && String(receipt.subsystemId).replace(/_/g, ' ').toUpperCase(),
+        receipt.vitalsPct && `S${receipt.vitalsPct.shield}% A${receipt.vitalsPct.armor}% H${receipt.vitalsPct.hull}%`,
+      ].filter(Boolean).join(' · ') : 'Unresolved',
+      dock: recovery.stationName || 'No recovery route',
+      cost: recovery.costCr != null ? fmtCr(recovery.costCr) : '-',
+      cargo: cargoText,
+      insurance: recovery.insuranceStatus || 'No recovery coverage',
     };
     for (const key in values) {
       if (els[key] && els[key].textContent !== values[key]) els[key].textContent = values[key];
     }
+    if (this._titleEl) this._titleEl.textContent = ironman ? 'Run Over' : 'Ship Lost';
+    if (this._subEl) {
+      this._subEl.textContent = ironman
+        ? 'Your ship was lost. In Ironman, death is final.'
+        : recoverable
+        ? 'Flight controls locked. Review the loss, then recover.'
+        : 'Recovery receipt unavailable. Load a save or start a new run.';
+    }
+    if (this._recoveryEl) {
+      this._recoveryEl.textContent = recoverable
+        ? `RECOVERY · ${recovery.stationName || 'lawful dock'} · ${fmtCr(recovery.costCr)} · ${cargoText}`
+        : ironman
+          ? 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.'
+          : 'No recovery consequences were applied. Load a valid save or begin a new run.';
+    }
+    if (this._retryButton) this._retryButton.hidden = !recoverable;
+    if (this._loadButton) this._loadButton.hidden = false;
+    if (this._newButton) this._newButton.hidden = recoverable;
+    if (this._menuButton) this._menuButton.hidden = recoverable;
+    this._defaultButton = recoverable ? this._retryButton : ironman ? this._newButton : this._loadButton;
   },
 };

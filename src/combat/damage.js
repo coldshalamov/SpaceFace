@@ -132,6 +132,7 @@ export function createDamageRouter(context, statusService, options = {}) {
       subsystemResult,
       heatApplied,
       shieldBroke,
+      dominantLayer: hullDamage > 0 ? 'hull' : armorDamage > 0 ? 'armor' : shieldDamage > 0 ? 'shield' : null,
       before,
       after,
       impulseApplied: impulseResult.applied,
@@ -177,7 +178,7 @@ export function createDamageRouter(context, statusService, options = {}) {
         shieldHit: shieldDamage > 0,
         armorHit: armorDamage > 0,
         hullHit: hullDamage > 0,
-        dominantLayer: hullDamage > 0 ? 'hull' : armorDamage > 0 ? 'armor' : shieldDamage > 0 ? 'shield' : null,
+        dominantLayer: result.dominantLayer,
         brokeShield: shieldBroke,
         shieldAbsorbed: shieldDamage > 0,
         isPlayer: target.id === state.playerId,
@@ -186,11 +187,12 @@ export function createDamageRouter(context, statusService, options = {}) {
         factionLawful,
         subsystemId,
         origin,
+        weaponId: origin && origin.kind === 'weapon' ? (origin.weaponId || origin.id || null) : null,
       });
     }
 
     if (before.hull > 0 && target.hull <= 0) {
-      if (onKill) onKill(target, result.attackerId);
+      if (onKill) onKill(target, result.attackerId, { origin, packet, result });
       else fallbackKill(target, result.attackerId);
     }
     return result;
@@ -404,8 +406,11 @@ function normalizeHit(hit) {
 function snapshotVitals(entity, runtime) {
   return {
     shield: Math.max(0, Number(entity.shield) || 0),
+    shieldMax: Math.max(0, Number(entity.shieldMax) || 0),
     armor: Math.max(0, Number(entity.armorHp) || 0),
+    armorMax: Math.max(0, Number(entity.armorMax) || 0),
     hull: Math.max(0, Number(entity.hull) || 0),
+    hullMax: Math.max(0, Number(entity.hullMax) || 0),
     heat: Math.max(0, Number(runtime && runtime.heat) || 0),
   };
 }

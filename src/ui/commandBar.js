@@ -23,6 +23,7 @@
 import { SHIPS } from '../data/ships.js';
 import { SECTORS } from '../data/sectors.js';
 import { weaponHeatSummary } from './weaponHeat.js';
+import { buildDamageReadout } from '../combat/playerDefeat.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const ROLE_LABEL = {
@@ -151,11 +152,13 @@ body.ui-modal-open #sf-command-bar { opacity: 0; }
    Hull: steel when healthy, red when critical. Shield/energy: cyan (active systems). Heat: amber
    (only earns visibility when actually hot). */
 #sf-command-bar .sf-cb-fill--hull { background: var(--console-steel-dim, #5a7aa0); }
+#sf-command-bar .sf-cb-fill--armor { background: var(--ink-dim, #84a0c8); }
 #sf-command-bar .sf-cb-fill--shield { background: var(--console-cyan, #39d0ff); }
 #sf-command-bar .sf-cb-fill--energy { background: var(--console-cyan-dim, #235c78); }
 #sf-command-bar .sf-cb-fill--heat { background: var(--console-amber-dim, #5c4019); }
 /* Bright = problem state (overrides dim): hull critical, energy low, heat high. */
 #sf-command-bar.sf-cb--hull-crit .sf-cb-fill--hull { background: var(--console-red, #ff5470); }
+#sf-command-bar.sf-cb--armor-crit .sf-cb-fill--armor { background: var(--console-amber, #ffb347); }
 #sf-command-bar.sf-cb--energy-low .sf-cb-fill--energy { background: var(--console-amber, #ffb347); }
 #sf-command-bar.sf-cb--heat-high .sf-cb-fill--heat { background: var(--console-amber, #ffb347); }
 
@@ -177,6 +180,16 @@ body.ui-modal-open #sf-command-bar { opacity: 0; }
 
 /* Role/class cell — your ship's function (Miner/Fighter/...). */
 #sf-command-bar .sf-cb-cell--role { min-width: 78px; }
+
+/* Recent impact is one anchored danger receipt, not floating text or a visor arc. It appears only
+   after player damage, then yields to the normal strip. Screen readers already receive the damage
+   alert channel, so this visual status is intentionally not an assertive live region. */
+#sf-command-bar .sf-cb-cell--impact { display:none; min-width:210px; max-width:290px; }
+#sf-command-bar.sf-cb--impact .sf-cb-cell--impact { display:flex; }
+#sf-command-bar .sf-cb-impact {
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  color:var(--console-amber, #ffb347); font-size:calc(11px * var(--ui-scale, 1));
+}
 `;
 
 function ensureStyle() {
@@ -215,6 +228,11 @@ export function createCommandBar(ctx) {
           <span class="sf-cb-num" data-k="hull">100</span>
         </div>
         <div class="sf-cb-vrow">
+          <span class="sf-cb-vlabel">ARMR</span>
+          <div class="sf-cb-track"><div class="sf-cb-fill sf-cb-fill--armor"></div></div>
+          <span class="sf-cb-num" data-k="armor">100</span>
+        </div>
+        <div class="sf-cb-vrow">
           <span class="sf-cb-vlabel">SHLD</span>
           <div class="sf-cb-track"><div class="sf-cb-fill sf-cb-fill--shield"></div></div>
           <span class="sf-cb-num" data-k="shield">100</span>
@@ -246,6 +264,10 @@ export function createCommandBar(ctx) {
     <div class="sf-cb-cell sf-cb-cell--role">
       <span class="sf-cb-k">CLASS</span>
       <span class="sf-cb-v" data-k="role">—</span>
+    </div>
+    <div class="sf-cb-cell sf-cb-cell--impact" role="status" aria-live="off">
+      <span class="sf-cb-k">LAST IMPACT</span>
+      <span class="sf-cb-v sf-cb-impact" data-k="impact">—</span>
     </div>`;
 
   document.getElementById('ui-root').appendChild(bar);
@@ -254,6 +276,8 @@ export function createCommandBar(ctx) {
     sector: bar.querySelector('[data-k=sector]'),
     hullFill: bar.querySelector('.sf-cb-fill--hull'),
     hullNum: bar.querySelector('[data-k=hull]'),
+    armorFill: bar.querySelector('.sf-cb-fill--armor'),
+    armorNum: bar.querySelector('[data-k=armor]'),
     shieldFill: bar.querySelector('.sf-cb-fill--shield'),
     shieldNum: bar.querySelector('[data-k=shield]'),
     energyFill: bar.querySelector('.sf-cb-fill--energy'),
@@ -264,6 +288,7 @@ export function createCommandBar(ctx) {
     credits: bar.querySelector('[data-k=credits]'),
     delta: bar.querySelector('[data-k=delta]'),
     role: bar.querySelector('[data-k=role]'),
+    impact: bar.querySelector('[data-k=impact]'),
   };
 
   // --- helpers to resolve display values from state ---
@@ -294,24 +319,39 @@ export function createCommandBar(ctx) {
     const p = state.entities.get(state.playerId);
     if (!p) return;
     const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
+    const armorFrac = p.armorMax ? clamp01(p.armorHp / p.armorMax) : 0;
     const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
     const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
     const wpnHeat = weaponHeatSummary(p.data && p.data.weapons);
     const heatFrac = wpnHeat.frac;
 
     setFill(el.hullFill, hullFrac);
+    setFill(el.armorFill, armorFrac);
     setFill(el.shieldFill, shieldFrac);
     setFill(el.energyFill, capFrac);
     setFill(el.heatFill, heatFrac);
     setText(el.hullNum, Math.max(0, Math.round(p.hull)) + '');
+    setText(el.armorNum, Math.max(0, Math.round(p.armorHp || 0)) + '');
     setText(el.shieldNum, Math.max(0, Math.round(p.shield)) + '');
     setText(el.energyNum, Math.max(0, Math.round(p.cap)) + '');
     setText(el.heatNum, wpnHeat.pct + '%');
 
     // brightness-encodes-state flags (the load-bearing rule from Slice 1)
     bar.classList.toggle('sf-cb--hull-crit', hullFrac < 0.25);
+    bar.classList.toggle('sf-cb--armor-crit', p.armorMax > 0 && armorFrac < 0.25);
     bar.classList.toggle('sf-cb--energy-low', capFrac < 0.2 && capFrac > 0);
     bar.classList.toggle('sf-cb--heat-high', heatFrac > 0.66 || wpnHeat.overheated);
+  }
+
+  let impactTimer = 0;
+  function showImpact(payload) {
+    if (!payload || payload.targetId !== state.playerId) return;
+    const receipt = buildDamageReadout(state, payload);
+    setText(el.impact, receipt.text);
+    el.impact.title = receipt.text + ` · SHIELD ${receipt.shieldPct}% · ARMOR ${receipt.armorPct}% · HULL ${receipt.hullPct}%`;
+    bar.classList.add('sf-cb--impact');
+    clearTimeout(impactTimer);
+    impactTimer = setTimeout(() => bar.classList.remove('sf-cb--impact'), 2400);
   }
 
   function reconcileCargo() {
@@ -353,7 +393,14 @@ export function createCommandBar(ctx) {
   // Vitals move on damage and on respawn (full refresh after death). We do NOT subscribe per-frame.
   // Event names verified against the emit inventory (game:started, sector:enter, combat:damage,
   // cargo:changed, credits:changed, ship:statsChanged, player:respawn all confirmed emitted).
-  bus.on('combat:damage', (p) => { if (!p || p.targetId === state.playerId) reconcileVitals(); });
+  bus.on('combat:damage', (p) => {
+    if (!p || p.targetId === state.playerId) reconcileVitals();
+    showImpact(p);
+  });
+  bus.on('player:death', () => {
+    clearTimeout(impactTimer);
+    bar.classList.remove('sf-cb--impact');
+  });
   bus.on('player:respawn', () => reconcileAll());
   bus.on('ship:statsChanged', () => { reconcileVitals(); reconcileIdentity(); });
   // Cargo + credits are discrete events already used by the existing HUD.

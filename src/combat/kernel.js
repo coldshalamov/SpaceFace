@@ -35,8 +35,8 @@ export function createCombatKernel(ctx, options = {}) {
   const attachmentContext = { ...context, attachments };
   const statuses = createStatusService(context);
   const routeDamage = createDamageRouter(context, statuses, {
-    onKill: (target, killerId) => {
-      if (hooks.onKill) hooks.onKill(target, killerId);
+    onKill: (target, killerId, lethal) => {
+      if (hooks.onKill) hooks.onKill(target, killerId, lethal);
       else {
         target.alive = false;
         if (bus) bus.emit('entity:killed', { id: target.id, killerId, type: target.type, pos: { x: target.pos.x, z: target.pos.z } });

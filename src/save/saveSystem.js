@@ -78,6 +78,9 @@ export const save = {
     // Death/respawn gate autosave (combat signals via events, not a state.player.dead field).
     bus.on('player:death', () => { this._playerDead = true; });
     bus.on('player:respawn', () => { this._playerDead = false; });
+    const clearPlayerDeathGate = () => { this._playerDead = false; };
+    bus.on('save:loaded', clearPlayerDeathGate);
+    bus.on('game:started', clearPlayerDeathGate);
 
     // Autosave triggers (§4.5): major progression milestones. Debounced ≤1/10s unless forced.
     bus.on('dock:docked', () => this.requestAutosave('dock'));

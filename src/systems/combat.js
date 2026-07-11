@@ -13,6 +13,7 @@ import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/dama
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
+import { buildDefeatReceipt, buildRecoveryPlan } from '../combat/playerDefeat.js';
 import { normalizeActivity, normalizeRoe, roeForActivity } from '../ai/doctrine.js';
 import {
   CombatDoctrineId,
@@ -274,7 +275,8 @@ export const combat = {
     this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
     this.registry = ctx.registry || null;
     this.rng = mulberry32(hash32(ctx.state.meta.seed, 'combat'));
-    this.kernel = getCombatKernel(ctx, { onKill: (target, killerId) => this.kill(target, killerId) });
+    this.kernel = getCombatKernel(ctx, { onKill: (target, killerId, lethal) => this.kill(target, killerId, lethal) });
+    this._pendingPlayerRecovery = null;
     this._beamCandidateScratch = [];
     this._beamQueryCenter = { x: 0, z: 0 };
     this._diag = {
@@ -288,6 +290,13 @@ export const combat = {
       this.setPlayerDocked(true);
     });
     ctx.bus.on('dock:undocked', () => this.setPlayerDocked(false));
+    ctx.bus.on('player:recoveryRequested', (payload) => this.recoverPendingPlayer(payload || {}));
+    const clearPendingDefeat = () => {
+      this._pendingPlayerRecovery = null;
+      if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
+    };
+    ctx.bus.on('game:started', clearPendingDefeat);
+    ctx.bus.on('save:loaded', clearPendingDefeat);
   },
 
   // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
@@ -307,8 +316,8 @@ export const combat = {
       packet: authoredPacket
         ? scaleDamagePacket(damagePacketWithHit(authoredPacket, pos), weakMult)
         : legacyHitToDamagePacket({ damage: damage * weakMult, damageType, pos, penetration, impulse, heat, statuses }),
-      origin: origin || (authoredPacket
-        ? { kind: 'weapon', id: weaponId || (authoredPacket.source && authoredPacket.source.weaponId) || 'projectile:hit' }
+      origin: origin || (weaponId || authoredPacket && authoredPacket.source && authoredPacket.source.weaponId
+        ? { kind: 'weapon', id: weaponId || authoredPacket.source.weaponId }
         : { kind: 'legacy', id: 'projectile:hit' }),
     });
     if (result.ok && targetId === this.state.playerId) {
@@ -353,7 +362,7 @@ export const combat = {
       bus: this.bus,
       helpers,
       registry: this.registry || null,
-    }, { onKill: (target, killerId) => this.kill(target, killerId) });
+    }, { onKill: (target, killerId, lethal) => this.kill(target, killerId, lethal) });
     return this.kernel;
   },
 
@@ -370,22 +379,26 @@ export const combat = {
     return wp.bonusMult;
   },
 
-  kill(t, killerId) {
+  kill(t, killerId, lethal = {}) {
     const state = this.state, bus = this.bus, d = t.data || {};
     if (t.id === state.playerId) {
+      if (this._pendingPlayerRecovery || t.alive === false) return;
+      const receipt = buildDefeatReceipt(state, t, killerId, lethal);
       // Ironman (advertised as "permadeath" in the New Game UI) honors that promise: death ends
       // the run instead of respawning. We still fire player:death so the death banner/VFX play,
       // then emit game:over (a gameOver screen subscribes and shows a run summary). The entity is
       // left dead (not healed/relocated) so the screen opens over a real wreck, not a live ship.
       const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
       if (difficulty === 'ironman') {
-        bus.emit('player:death', { pos: { x: t.pos.x, z: t.pos.z }, killerId });
+        state.combat.lastPlayerDefeat = receipt;
         t.alive = false;
+        setVecXZ(t.vel, 0, 0);
+        bus.emit('player:death', { ...receipt, recoverable: false });
         bus.emit('camera:shake', { amount: 0.9 });
-        bus.emit('game:over', { reason: 'ironman_death', killerId });
+        bus.emit('game:over', { reason: 'ironman_death', recoverable: false, receipt });
         return;
       }
-      this.respawnPlayer(t, killerId);
+      this.beginPlayerDefeat(t, receipt);
       return;
     }
     if (!t.alive) return;
@@ -417,6 +430,87 @@ export const combat = {
     }
   },
 
+  beginPlayerDefeat(t, receipt) {
+    if (!t || this._pendingPlayerRecovery) return false;
+    t.alive = false;
+    t.flags = t.flags || {};
+    t.flags.defeated = true;
+    setVecXZ(t.vel, 0, 0);
+    this._pendingPlayerRecovery = { playerId: t.id, receipt };
+    this.state.combat.lastPlayerDefeat = receipt;
+    this.bus.emit('player:death', { ...receipt, recoverable: true });
+    this.bus.emit('camera:shake', { amount: 0.9 });
+    this.bus.emit('game:over', { reason: 'ship_destroyed', recoverable: true, receipt });
+    return true;
+  },
+
+  recoverPendingPlayer(payload = {}) {
+    const pending = this._pendingPlayerRecovery;
+    if (!pending) return { ok: false, reason: 'no_pending_defeat' };
+    const player = this.state.entities && this.state.entities.get(pending.playerId);
+    if (!player) return { ok: false, reason: 'player_missing' };
+
+    // Clear before emitting any consequence events. A synchronous duplicate button/controller event
+    // cannot charge the deductible or remove cargo twice.
+    this._pendingPlayerRecovery = null;
+    const receipt = pending.receipt || {};
+    const plan = receipt.recovery || buildRecoveryPlan(this.state, player);
+    let cargoLostQty = 0;
+    for (const loss of plan.cargoLosses || []) {
+      cargoLostQty += removeCargo(this.state, loss.commodityId, loss.qty);
+    }
+    if (plan.costCr > 0) {
+      this.bus.emit('economy:chargeCredits', { amount: plan.costCr, reason: 'recovery:deductible' });
+    }
+
+    this.restorePlayerAtRecoveryDock(player, plan);
+    const recoveryReceipt = {
+      stationId: plan.stationId,
+      stationName: plan.stationName,
+      shipId: player.data && player.data.defId,
+      costCr: plan.costCr,
+      insuranceStatus: plan.insuranceStatus,
+      cargoLost: cargoLostQty > 0,
+      cargoLostQty,
+      cause: receipt.cause || null,
+      source: payload.source || 'after_action',
+    };
+    if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
+    this.bus.emit('player:respawn', recoveryReceipt);
+    this.bus.emit('camera:shake', { amount: 0.45 });
+    return { ok: true, ...recoveryReceipt };
+  },
+
+  restorePlayerAtRecoveryDock(t, plan) {
+    const currentSectorId = this.state.world && this.state.world.currentSectorId;
+    if (plan && plan.sectorId && plan.sectorId !== currentSectorId) {
+      const world = this.registry && typeof this.registry.get === 'function' ? this.registry.get('world') : null;
+      if (world && typeof world.enterSector === 'function') {
+        world.enterSector(plan.sectorId, {
+          via: 'recovery',
+          fromSectorId: currentSectorId || null,
+          placePlayer: true,
+        });
+      }
+    }
+    const livePos = this.respawnPosition(plan && plan.stationId);
+    const pos = livePos && (livePos.x !== 0 || livePos.z !== 0) ? livePos
+      : plan && plan.stationPos || livePos || { x: 0, z: 0 };
+    t.alive = true;
+    t.hull = t.hullMax;
+    t.armorHp = t.armorMax;
+    t.shield = t.shieldMax;
+    t.cap = t.capMax;
+    setVecXZ(t.pos, pos.x, pos.z);
+    setVecXZ(t.vel, 0, 0);
+    if (t.prevPos && typeof t.prevPos.copy === 'function') t.prevPos.copy(t.pos);
+    else setVecXZ(t.prevPos, pos.x, pos.z);
+    t.flags = t.flags || {};
+    delete t.flags.defeated;
+    t.flags.invuln = true;
+    t._invulnUntil = this.state.simTime + UNDOCK_INVULN_S;
+  },
+
   rollLoot(loot) {
     const r = this.rng;
     const cr0 = (loot.creditsRange && loot.creditsRange[0]) || 0;
@@ -436,7 +530,8 @@ export const combat = {
     const refundCr = this.insuranceRefund(t);
     const cargoLostQty = this.applyRespawnCargoLoss();
     if (refundCr > 0) bus.emit('economy:grantCredits', { amount: refundCr, reason: 'insurance:respawn' });
-    t.hull = t.hullMax; t.shield = t.shieldMax; t.cap = t.capMax;
+    t.alive = true;
+    t.hull = t.hullMax; t.armorHp = t.armorMax; t.shield = t.shieldMax; t.cap = t.capMax;
     setVecXZ(t.pos, respawnPos.x, respawnPos.z);
     setVecXZ(t.vel, 0, 0);
     if (t.prevPos && typeof t.prevPos.copy === 'function') t.prevPos.copy(t.pos);
